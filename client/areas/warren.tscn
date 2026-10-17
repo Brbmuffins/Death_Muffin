@@ -24,6 +24,7 @@ roughness = 0.9
 texture_filter = 5
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_65c20"]
+lightmap_size_hint = Vector2i(333, 365)
 _surfaces = [{
 "aabb": AABB(-20.800003, 0, -22.8, 41.600002, 1e-05, 45.6),
 "attribute_data": PackedByteArray("IyJCwc3MDMHZiZ2zJLiPMmdmpsDNzAzBAACAPyS4jzJnZqbAmZmZvwAAgD8AAIA/IyJCwZmZmb/ZiZ2zAACAPw=="),
@@ -179,6 +180,7 @@ roughness = 0.62
 texture_filter = 5
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_bc4f0"]
+lightmap_size_hint = Vector2i(64, 64)
 _surfaces = [{
 "aabb": AABB(-4, 0, -4, 8, 1e-05, 8),
 "attribute_data": PackedByteArray("btuWwCVJksAAAAAAAAAAAEmSZMAlSZLAAACAPwAAAABJkmTAt21bwAAAgD8AAIA/btuWwLdtW8AAAAAAAACAPw=="),
@@ -1253,6 +1255,6 @@ metadata/door_id = "graves_warren"
 [node name="Lightmap" type="LightmapGI" parent="." unique_id=57639056]
 max_texture_size = 4096
 environment_mode = 3
-environment_custom_color = Color(0.39632353, 0.34111053, 0.25917342, 1)
+environment_custom_color = Color(0.13030624, 0.09526938, 0.05462616, 1)
 environment_custom_energy = 1.9
 light_data = ExtResource("16_3970e")

@@ -23,6 +23,7 @@ roughness = 0.8
 texture_filter = 5
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_65c20"]
+lightmap_size_hint = Vector2i(333, 301)
 _surfaces = [{
 "aabb": AABB(-20.8, 0, -18.800003, 41.600002, 1e-05, 37.600006),
 "attribute_data": PackedByteArray("eHd3QLy7s8HZiZ0yQUyus83MLEG8u7PBAQCAP0FMrrPNzCxBmZmBwQEAgD8BAIA/eHd3QJmZgcHZiZ0yAQCAPw=="),
@@ -180,6 +181,7 @@ roughness = 0.62
 texture_filter = 5
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_bc4f0"]
+lightmap_size_hint = Vector2i(64, 64)
 _surfaces = [{
 "aabb": AABB(-4, 0, -4, 8, 1e-05, 8),
 "attribute_data": PackedByteArray("t20bQAAAgMEAAAAAAAAAAEmSZEAAAIDBAACAPwAAAABJkmRA27ZtwQAAgD8AAIA/t20bQNu2bcEAAAAAAACAPw=="),
@@ -255,6 +257,7 @@ size = Vector2(7.2, 7.2)
 size = Vector3(8, 5, 1)
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_fcbc9"]
+lightmap_size_hint = Vector2i(64, 64)
 _surfaces = [{
 "aabb": AABB(-4, 0, -4, 8, 1e-05, 8),
 "attribute_data": PackedByteArray("AAAQQZIkicEAAAAAAAAAACVJIkGSJInBAACAPwAAAAAlSSJBAACAwQAAgD8AAIA/AAAQQQAAgMEAAAAAAACAPw=="),
@@ -1088,6 +1091,6 @@ metadata/door_id = "cloister_pyre"
 [node name="Lightmap" type="LightmapGI" parent="." unique_id=117563878]
 max_texture_size = 4096
 environment_mode = 3
-environment_custom_color = Color(0.300142, 0.39632353, 0.24492902, 1)
+environment_custom_color = Color(0.07330927, 0.13030624, 0.048869558, 1)
 environment_custom_energy = 1.9
 light_data = ExtResource("15_c20b3")

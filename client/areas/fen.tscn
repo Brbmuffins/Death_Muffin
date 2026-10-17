@@ -24,6 +24,7 @@ roughness = 0.8
 texture_filter = 5
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_65c20"]
+lightmap_size_hint = Vector2i(317, 333)
 _surfaces = [{
 "aabb": AABB(-19.8, 0, -20.800003, 39.6, 1e-05, 41.600002),
 "attribute_data": PackedByteArray("IiIiwWdmhsG1fqUy2YmdsyMiYsBnZobBAACAP9mJnbMjImLA3t0dwQAAgD8AAIA/IiIiwd7dHcG1fqUyAACAPw=="),
@@ -131,6 +132,7 @@ roughness = 0.62
 texture_filter = 5
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_fcbc9"]
+lightmap_size_hint = Vector2i(72, 64)
 _surfaces = [{
 "aabb": AABB(-4.5, 0, -4, 9, 1e-05, 8),
 "attribute_data": PackedByteArray("JUlSwJIkOcEAAAAAAAAAAAAAAMCSJDnBAACAPwAAAAAAAADAbtsmwQAAgD8AAIA/JUlSwG7bJsEAAAAAAACAPw=="),
@@ -919,6 +921,6 @@ metadata/door_id = "nave_fen"
 [node name="Lightmap" type="LightmapGI" parent="." unique_id=12842102]
 max_texture_size = 4096
 environment_mode = 3
-environment_custom_color = Color(0.20376971, 0.36028337, 0.39985293, 1)
+environment_custom_color = Color(0.034291487, 0.106713906, 0.13276526, 1)
 environment_custom_energy = 1.9
 light_data = ExtResource("16_c6ca6")

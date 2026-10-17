@@ -10,6 +10,12 @@ const WORLD_JSON := "../godot/data/slice/world.json"
 const TEX := "res://assets/slice/art/textures/%s.webp"
 const COMMON := "res://areas/common/"
 const EPS := 0.0005
+## The lightmap density of a floor quad, metres a texel: the bake's detail on the ground, so a candle's pool keeps its shape (client/addons/dm_bake/README.md). A different number is a different bake.
+const FLOOR_TEXEL := 0.125
+const LIGHTMAP_LIMIT := 4096   # the bake's largest texture: no quad's lightmap may need more
+## What today's DmGameRewards.tick_milestones scales the Acre's and the Wing's hemisphere energy by (its source holds these numbers: `_test_area_light` reads it), and so the bake's ambient there.
+const AREA_HEMI := {"acre": 2.0 / 0.95, "alchemist_wing": 1.12 / 0.95}
+const AREA_MOON := {"acre": 3.4 / 2.4, "alchemist_wing": 2.65 / 2.4}
 ## What world_builder hard-codes: the one hall with no gate, always open (`_gates`, `_apply_unlock_state`), and the area that draws each list
 ## that names none (`_water`, `_wing_floor`, `_hummocks`).
 const ALWAYS_OPEN_DOOR := "chapter_graves"
@@ -27,6 +33,7 @@ var _uv2_cache: Dictionary = {}
 var _seen: Dictionary = {}        # category -> how many of its things the scenes hold, against world.json in _test_totals
 var _door_seen: Dictionary = {}   # door id -> scenes it is in
 var _mm_files: Dictionary = {}    # scene file -> its MultiMesh table (_multimeshes_of_file)
+var _pending_bakes: Array[String] = []   # areas with no lighting bake yet
 
 
 func _check(ok: bool, what: String) -> void:
@@ -285,7 +292,8 @@ func _test_root(a: Dictionary) -> void:
 ## One ground quad against world_builder._plane / _floor_mat: the rect, the height, the theme's look, UVs anchored to the world, a lightmap UV2.
 func _floor_quad(mi: MeshInstance3D, x0: float, z0: float, x1: float, z1: float, theme: String, y: float) -> Dictionary:
 	var f: Dictionary = _world.floors[theme]
-	var out := {"covers its rect": false, "sits at its height": false, "has its theme's look": false, "has world-anchored UVs": false, "has a lightmap UV2": false, "is static for baked lighting": false}
+	var out := {"covers its rect": false, "sits at its height": false, "has its theme's look": false, "has world-anchored UVs": false, "has a lightmap UV2": false, "is static for baked lighting": false,
+		"has a lightmap of %s m a texel" % FLOOR_TEXEL: false}
 	if mi == null or mi.mesh == null:
 		return out
 	var box := mi.mesh.get_aabb()
@@ -312,6 +320,10 @@ func _floor_quad(mi: MeshInstance3D, x0: float, z0: float, x1: float, z1: float,
 	out["has world-anchored UVs"] = uv_ok
 	out["has a lightmap UV2"] = (arrays[Mesh.ARRAY_TEX_UV2] as PackedVector2Array).size() == verts.size()
 	out["is static for baked lighting"] = mi.gi_mode == GeometryInstance3D.GI_MODE_STATIC
+	# The quad is built by hand, so its lightmap is its size hint (Godot gives a mesh without one 64 x 64 texels whatever its size) at the instance's texel scale of 1.
+	var want := Vector2i(ceili((x1 - x0) / FLOOR_TEXEL), ceili((z1 - z0) / FLOOR_TEXEL))
+	var hint := mi.mesh.get_lightmap_size_hint()
+	out["has a lightmap of %s m a texel" % FLOOR_TEXEL] = hint == want and hint.x <= LIGHTMAP_LIMIT and hint.y <= LIGHTMAP_LIMIT and _near(mi.gi_lightmap_texel_scale, 1.0)
 	return out
 
 
@@ -1012,13 +1024,27 @@ func _test_lightmap(a: Dictionary, scene_path: String) -> void:
 	if found.is_empty():
 		return
 	var lm := found[0] as LightmapGI
-	_check(lm.environment_mode == LightmapGI.ENVIRONMENT_MODE_CUSTOM_COLOR and lm.environment_custom_color.is_equal_approx(_ambient(a))
-		and _near(lm.environment_custom_energy, float(_world.lighting.hemiIntensity) * DmWorldBuilder.HEMI_K), "the bake's ambient is set_area's colour for this area, at the hemisphere's energy")
+	# The Environment's ambient colour is sRGB, which the renderer converts to linear light; the bake takes its colour as linear light as it is, so it gets the converted one (the sRGB value
+	# made the baked shadows 3 to 5 times brighter than the real-time ambient), at the hemisphere's energy times the area's factor (the Acre's and the Wing's are brighter).
+	var hemi_k: float = AREA_HEMI.get(_id, 1.0)
+	var linear := _ambient(a).srgb_to_linear()
+	_check(lm.environment_mode == LightmapGI.ENVIRONMENT_MODE_CUSTOM_COLOR and lm.environment_custom_color.is_equal_approx(linear)
+		and _near(lm.environment_custom_energy, float(_world.lighting.hemiIntensity) * DmWorldBuilder.HEMI_K * hemi_k), "the bake's ambient is set_area's colour for this area as linear light, at the hemisphere's energy x %.3f" % hemi_k)
+	# ... which is the light the area's real-time ambient gives a surface that has no lightmap: the builder's environment in this area, colour converted to linear light, times its energy.
+	var builder := DmWorldBuilder.new()
+	builder.world = _world
+	builder._make_environment()
+	builder.set_area(_id)
+	var real := builder.env.ambient_light_color.srgb_to_linear() * builder.env.ambient_light_energy
+	var baked := lm.environment_custom_color * lm.environment_custom_energy
+	_check(_col_near(Color(baked.r, baked.g, baked.b), Color(real.r, real.g, real.b), 0.0001), "the baked ambient (%.3f %.3f %.3f) is the real-time ambient's light there (%.3f %.3f %.3f)" % [baked.r, baked.g, baked.b, real.r, real.g, real.b])
+	builder.free()
 	# The bake's other settings (a different value is a different bake: client/addons/dm_bake/README.md).
 	_check(lm.quality == LightmapGI.BAKE_QUALITY_MEDIUM and lm.bounces == 3 and not lm.directional and lm.use_denoiser and lm.max_texture_size == 4096, "the bake's quality (medium), bounces (3), denoiser, no directional lightmap and texture limit")
 	var data_path := scene_path.get_basename() + ".lmbake"
 	if not ResourceLoader.exists(data_path):
 		_check(lm.light_data == null, "no bake yet: the LightmapGI has no data")
+		_pending_bakes.append(_id)
 		return
 	var data := lm.light_data
 	_check(data != null and data.resource_path == data_path, "the LightmapGI points at %s" % data_path)
@@ -1031,6 +1057,49 @@ func _test_lightmap(a: Dictionary, scene_path: String) -> void:
 		if not (n is MeshInstance3D):
 			missing.append(String(data.get_user_path(i)))
 	_check(data.get_user_count() > 0 and missing.is_empty(), "the bake fits the scene: all %d baked meshes are there (%d missing: %s)" % [data.get_user_count(), missing.size(), str(missing.slice(0, 3))])
+
+
+## The Acre's and the Wing's brighter light: today's numbers (`DmGameRewards.tick_milestones`, whose source this reads: the rebuild does not run it), the builder's constants, and `set_area` applying them as a ratio
+## to the energies, so another writer's scaling (the Nightfall dimming) composes with a change of area.
+func _test_area_light() -> void:
+	_id = "world"
+	var src := FileAccess.get_file_as_string("res://game/dm_game_rewards.gd")
+	_check(src.contains("(3.4 if orchard else (2.65 if acre else 2.4)) / 2.4") and src.contains("(2.0 if orchard else (1.12 if acre else 0.95)) / 0.95"), "today's moon and hemisphere factors of the Acre and the Wing are still 3.4, 2.65 / 2.4 and 2.0, 1.12 / 0.95 (game/dm_game_rewards.gd)")
+	var consts_ok := DmWorldBuilder.AREA_HEMI_K.size() == AREA_HEMI.size() and DmWorldBuilder.AREA_MOON_K.size() == AREA_MOON.size()
+	for k: String in AREA_HEMI:
+		consts_ok = consts_ok and _near(float(DmWorldBuilder.AREA_HEMI_K.get(k, 0.0)), AREA_HEMI[k]) and _near(float(DmWorldBuilder.AREA_MOON_K.get(k, 0.0)), AREA_MOON[k])
+	_check(consts_ok, "the builder's AREA_HEMI_K and AREA_MOON_K are those factors for the Acre and the Wing and no other area")
+	var b := DmWorldBuilder.new()
+	b.world = _world
+	b._make_environment()
+	var moon0 := b.moon.light_energy
+	var hemi0 := b.env.ambient_light_energy
+	b.set_area("acre")
+	var ok := _near(b.moon.light_energy, moon0 * AREA_MOON["acre"]) and _near(b.env.ambient_light_energy, hemi0 * AREA_HEMI["acre"])
+	b.moon.light_energy *= 0.5   # Nightfall's ratio on the moon, another writer
+	b.env.ambient_light_energy *= 0.7
+	b.set_area("alchemist_wing")
+	ok = ok and _near(b.moon.light_energy, moon0 * 0.5 * AREA_MOON["alchemist_wing"]) and _near(b.env.ambient_light_energy, hemi0 * 0.7 * AREA_HEMI["alchemist_wing"])
+	b.set_area("graves")
+	ok = ok and _near(b.moon.light_energy, moon0 * 0.5) and _near(b.env.ambient_light_energy, hemi0 * 0.7)
+	_check(ok, "set_area scales the moon and the ambient by the area's factors as a ratio: the Acre %.3f / %.3f, the Wing %.3f / %.3f, any other area 1, and a dimming in between stays" % [AREA_MOON["acre"], AREA_HEMI["acre"], AREA_MOON["alchemist_wing"], AREA_HEMI["alchemist_wing"]])
+	b.free()
+	# ... and the world reaches it: the hero entering an area (`DmNextWorld.enter_area`) lights it with the area's factors.
+	var w := DmNextWorld.new()
+	root.add_child(w)
+	w.build(["graves", "acre", "alchemist_wing"], true)
+	w.enter_area("graves")   # (a world starts in the first of its areas in world order, the Acre here)
+	var moon_g := w.builder.moon.light_energy
+	var hemi_g := w.builder.env.ambient_light_energy
+	w.enter_area("acre")
+	var in_acre := _near(w.builder.moon.light_energy, moon_g * AREA_MOON["acre"]) and _near(w.builder.env.ambient_light_energy, hemi_g * AREA_HEMI["acre"])
+	w.enter_area("alchemist_wing")
+	var in_wing := _near(w.builder.moon.light_energy, moon_g * AREA_MOON["alchemist_wing"]) and _near(w.builder.env.ambient_light_energy, hemi_g * AREA_HEMI["alchemist_wing"])
+	w.enter_area("graves")
+	var back := _near(w.builder.moon.light_energy, moon_g) and _near(w.builder.env.ambient_light_energy, hemi_g)
+	_check(in_acre and in_wing and back, "entering the Acre, the Wing and the Graves again in a world lights them with the moon and ambient energies of the area (%.3f / %.3f in the Graves)" % [moon_g, hemi_g])
+	root.remove_child(w)
+	w.free()
 
 
 # ---------------------------------------------------------------- doors and gates
@@ -1474,6 +1543,9 @@ func _test_bounds(a: Dictionary) -> void:
 # ---------------------------------------------------------------- what the scenes hold together
 ## Everything world.json lists is in exactly the scenes it belongs to: nothing is left out and nothing is drawn twice.
 func _test_totals(ids: Array[String]) -> void:
+	if not _pending_bakes.is_empty():
+		print("INFO areas: the lighting bake is pending for %d of %d areas (%s): they are lit without lightmaps until they are baked (client/addons/dm_bake/README.md)" % [_pending_bakes.size(), ids.size(), ", ".join(_pending_bakes)])
+	_test_area_light()
 	var want := {"paths": _world.paths.size(), "walls": 0, "props": 0, "nodes": 0, "decals": 0, "lights": 0, "pond colliders": _world.ponds.size(),
 		"hummocks": _world.hummocks.size(), "wing floor quads": 0}
 	for w: Dictionary in _world.walls:

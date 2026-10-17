@@ -25,6 +25,7 @@ roughness = 0.45
 texture_filter = 5
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_65c20"]
+lightmap_size_hint = Vector2i(253, 429)
 _surfaces = [{
 "aabb": AABB(-15.8, 0, -26.800003, 31.6, 1e-05, 53.600002),
 "attribute_data": PackedByteArray("zcz8v5qZQcF1ZM+xjYl0s83M/D+amUHBAACAP42JdLPNzPw/zcyswAAAgD8AAIA/zcz8v83MrMB1ZM+xAACAPw=="),
@@ -158,6 +159,7 @@ roughness = 0.62
 texture_filter = 5
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_bc4f0"]
+lightmap_size_hint = Vector2i(64, 80)
 _surfaces = [{
 "aabb": AABB(-4, 0, -5, 8, 1e-05, 10),
 "attribute_data": PackedByteArray("JUkSv9u2zcAAAAAAAAAAACVJEj/bts3AAACAPwAAAAAlSRI/AACgwAAAgD8AAIA/JUkSvwAAoMAAAAAAAACAPw=="),
@@ -233,6 +235,7 @@ size = Vector2(7.2, 7.2)
 size = Vector3(8, 5, 1)
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_fcbc9"]
+lightmap_size_hint = Vector2i(64, 64)
 _surfaces = [{
 "aabb": AABB(-4, 0, -4, 8, 1e-05, 8),
 "attribute_data": PackedByteArray("JUkSv7dta8EAAAAAAAAAACVJEj+3bWvBAACAPwAAAAAlSRI/kiRZwQAAgD8AAIA/JUkSv5IkWcEAAAAAAACAPw=="),
@@ -282,6 +285,7 @@ size = Vector3(8, 0.08, 0.1)
 size = Vector2(7.2, 7.2)
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_1ab1f"]
+lightmap_size_hint = Vector2i(72, 64)
 _surfaces = [{
 "aabb": AABB(-4.5, 0, -4, 9, 1e-05, 8),
 "attribute_data": PackedByteArray("JUlSwJIkOcEAAAAAAAAAAAAAAMCSJDnBAACAPwAAAAAAAADAbtsmwQAAgD8AAIA/JUlSwG7bJsEAAAAAAACAPw=="),
@@ -1448,6 +1452,6 @@ metadata/door_id = "nave_fen"
 [node name="Lightmap" type="LightmapGI" parent="." unique_id=246805875]
 max_texture_size = 4096
 environment_mode = 3
-environment_custom_color = Color(0.2651189, 0.20769419, 0.46863544, 1)
+environment_custom_color = Color(0.057140123, 0.035552908, 0.1861503, 1)
 environment_custom_energy = 1.9
 light_data = ExtResource("17_38be7")

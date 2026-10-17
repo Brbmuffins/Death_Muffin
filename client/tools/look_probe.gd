@@ -7,9 +7,10 @@ extends SceneTree
 ##   today's game (Compatibility, OpenGL on llvmpipe; the script is read from the client's folder, nothing is copied; its start takes 3 to 4 minutes):
 ##     flock -w 900 /home/ubuntu/death-muffin/qa-browser.lock nice -n 10 xvfb-run -a -s "-screen 0 1280x720x24" timeout 900 \
 ##       /home/ubuntu/tools/godot/godot --rendering-method gl_compatibility --rendering-driver opengl3 --resolution 1280x720 --path godot --script /abs/path/client/tools/look_probe.gd -- --out=/abs/dir --tag=today --part=game
-## --part=game|calib|glow|both (default both), --plan="chapterhouse:base,nomoon;graves:base" (an area, then the variants to shoot: base, unfix, unlift, unpool, nomoon, norim, noshadow, noglow, nossao, nofog, nodress: the world dressing off, before: what the first test builds drew: no dressing, a plain sphere at every light and the glow of the time),
+## A plan of all twelve areas takes 5 to 12 minutes on the rebuilt client and 7 to 12 on today's game on a busy VPS (more with lift variants): raise `timeout` to 1500 (rebuilt) and 1800 (today's), one run at a time under the lock.
+## --part=game|calib|glow|both (default both), --plan="chapterhouse:base,nomoon;graves:base" (an area, then the variants to shoot: base, lift=1.5 (the rebuilt client at that exposure lift instead of the area's), unfix, unlift, unpool, nomoon, norim, noshadow, noglow, nossao, nofog, nodress: the world dressing off, before: what the first test builds drew: no dressing, a plain sphere at every light and the glow of the time),
 ## --frames=N (frames to wait after a change, 3), --warm=N (after the hero's move, 12). The game part starts the real game scene offline at Ultra with the hero at a fixed spot of each area,
-## saves <tag>_<area>_<variant>.png and prints a STAT line each (mean colour, luminance and its 10th, 50th and 90th percentile, the colour shares; the hero's own box left out). The calibration part
+## saves <tag>_<area>_<variant>.png and prints a STAT line each (mean colour, luminance and its 10th, 50th and 90th percentile, the colour shares; the hero's own box left out) and a WSTAT line over the world region alone (today's frames carry the game's HUD, the rebuilt client's none: calibrate on WSTAT). The calibration part
 ## shows one test object at a time on a grey plane under the game's environment (fog, specular, vertex colours, HDR, blends, emission) and prints a CAL2 line each: the same lines from both
 ## projects say where the renderers differ. `--part=glow --glow="<name>:<key>=<v>,<key>=<v>;<name>:..."` shoots the two bright things of the calibration (the HDR albedo quad, a small bright emission) under each glow setting of the
 ## list and prints a GLOW line each: the sRGB along the row through the thing, from its edge outwards (keys: lv the seven level weights "a/b/c/d/e/f/g", int, thr, scale, cap, strength, off=1 for no glow; an unnamed key keeps the game's `DmWfxBloom`
@@ -18,8 +19,10 @@ extends SceneTree
 
 const SPOTS := {
 	"graves": Vector3(0, 0, -16), "chapterhouse": Vector3(0, 0, 20), "ossuary": Vector3(48, 0, -20), "nave": Vector3(0, 0, -70),
-	"fen": Vector3(-42, 0, -80), "pyre": Vector3(90, 0, -116), "sanctum": Vector3(0, 0, -116), "acre": Vector3(40, 0, 20),
+	"fen": Vector3(-42, 0, -80), "pyre": Vector3(90, 0, -116), "sanctum": Vector3(0, 0, -116), "acre": Vector3(-32, 0, 22), "alchemist_wing": Vector3(40, 0, 20),
+	"warren": Vector3(-52, 0, -30), "coliseum": Vector3(91, 0, -28), "cloister": Vector3(44, 0, -116),   # the centres of the other three areas (clear of props)
 }
+const WORLD_REGION := Rect2(0.12, 0.1, 0.66, 0.62)   # x .12 to .78, y .1 to .72 of the frame: no HUD in it, today's or the rebuilt client's
 var out := ""
 var tag := ""
 var frames_per := 3
@@ -51,7 +54,14 @@ func _frames(n: int) -> void:
 		await process_frame
 
 
+## The frame's stats twice: STAT over the whole frame, WSTAT over the world alone (WORLD_REGION), because today's frames carry the game's HUD and the rebuilt client's none, so a lift calibrated on STAT
+## compares different pixels.
 func _stats(img: Image, label: String) -> void:
+	_stats_in(img, "STAT", label, Rect2(0.0, 0.0, 1.0, 1.0))
+	_stats_in(img, "WSTAT", label, WORLD_REGION)
+
+
+func _stats_in(img: Image, kind: String, label: String, region: Rect2) -> void:
 	var w := img.get_width()
 	var h := img.get_height()
 	var n := 0
@@ -63,8 +73,8 @@ func _stats(img: Image, label: String) -> void:
 	var cx1 := int(w * 0.65)
 	var cy0 := int(h * 0.25)
 	var cy1 := int(h * 0.75)
-	for y in range(0, h, 3):
-		for x in range(0, w, 3):
+	for y in range(int(h * region.position.y), int(h * region.end.y), 3):
+		for x in range(int(w * region.position.x), int(w * region.end.x), 3):
 			if x > cx0 and x < cx1 and y > cy0 and y < cy1:
 				continue
 			var c := img.get_pixel(x, y)
@@ -75,7 +85,7 @@ func _stats(img: Image, label: String) -> void:
 			ys.append(0.299 * c.r + 0.587 * c.g + 0.114 * c.b)
 	ys.sort()
 	var m := sr + sg + sb
-	print("STAT %s mean_srgb=(%.1f %.1f %.1f) Y=%.1f p10=%.1f p50=%.1f p90=%.1f share_rgb=(%.3f %.3f %.3f)" % [label, 255.0 * sr / n, 255.0 * sg / n, 255.0 * sb / n,
+	print("%s %s mean_srgb=(%.1f %.1f %.1f) Y=%.1f p10=%.1f p50=%.1f p90=%.1f share_rgb=(%.3f %.3f %.3f)" % [kind, label, 255.0 * sr / n, 255.0 * sg / n, 255.0 * sb / n,
 		255.0 * (0.299 * sr + 0.587 * sg + 0.114 * sb) / n, 255.0 * ys[int(n * 0.1)], 255.0 * ys[int(n * 0.5)], 255.0 * ys[int(n * 0.9)], sr / m, sg / m, sb / m])
 
 
@@ -143,7 +153,9 @@ func _game() -> void:
 		hb.teleport(SPOTS[area])
 		g.camera.snap(hb.position)
 		await _frames(warm)
-		print("AREA %s current_area=%s ambient=%s exposure=%.3f" % [area, b.current_area, e.ambient_light_color, e.tonemap_exposure])
+		while b.has_method("lift_blending") and b.lift_blending():   # the rebuilt client eases its exposure to the new area's lift (a few frames at the VPS's speed)
+			await process_frame
+		print("AREA %s current_area=%s ambient=%s exposure=%.3f area_lift=%s" % [area, b.current_area, e.ambient_light_color, e.tonemap_exposure, str(b.get("area_lift"))])
 		for v in variants:
 			# restore
 			e.glow_enabled = true
@@ -161,6 +173,8 @@ func _game() -> void:
 			_set_lift(lifted, true)
 			_set_pool_srgb(g.world, true)
 			var exp0 := e.tonemap_exposure
+			if v.begins_with("lift="):   # the exposure at a lift of one's own (the rebuilt client; the area's lift stays where the table has it for every other variant)
+				e.tonemap_exposure = b.base_exposure * b.brightness * b.area_exposure * float(v.substr(5)) * b.preset_lift
 			match v:
 				"unfix":
 					_set_lift(lifted, false)

@@ -23,6 +23,7 @@ roughness = 0.62
 texture_filter = 5
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_65c20"]
+lightmap_size_hint = Vector2i(221, 205)
 _surfaces = [{
 "aabb": AABB(-13.8, 0, -12.8, 27.6, 1e-05, 25.599998),
 "attribute_data": PackedByteArray("xlf8vzqogz8Ec+2xAAAAssZX/D86qIM/AACAPwAAALLGV/w/X/GVQAAAgD8AAIA/xlf8v1/xlUAEc+2xAACAPw=="),
@@ -121,6 +122,7 @@ size = Vector2(5.2, 5.2)
 orientation = 1
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_bc4f0"]
+lightmap_size_hint = Vector2i(56, 48)
 _surfaces = [{
 "aabb": AABB(-3.5, 0, -3, 7, 1e-05, 6),
 "attribute_data": PackedByteArray("AAAAv7dt2z4AAAAAAAAAAAAAAD+3bds+AACAPwAAAAAAAAA/SZKkPwAAgD8AAIA/AAAAv0mSpD8AAAAAAACAPw=="),
@@ -134,6 +136,7 @@ _surfaces = [{
 }]
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_fcbc9"]
+lightmap_size_hint = Vector2i(72, 48)
 _surfaces = [{
 "aabb": AABB(-4.5, 0, -3, 9, 1e-05, 6),
 "attribute_data": PackedByteArray("AABAwLdtG0AAAAAAAAAAALdt27+3bRtAAACAPwAAAAC3bdu/JUlSQAAAgD8AAIA/AABAwCVJUkAAAAAAAACAPw=="),
@@ -209,6 +212,7 @@ size = Vector2(5.4, 5.4)
 size = Vector3(6, 5, 1)
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_1ab1f"]
+lightmap_size_hint = Vector2i(72, 48)
 _surfaces = [{
 "aabb": AABB(-4.5, 0, -3, 9, 1e-05, 6),
 "attribute_data": PackedByteArray("t23bP7dtG0AAAAAAAAAAAAAAQEC3bRtAAACAPwAAAAAAAEBAJUlSQAAAgD8AAIA/t23bPyVJUkAAAAAAAACAPw=="),
@@ -1064,6 +1068,6 @@ metadata/door_id = "chapter_wing"
 [node name="Lightmap" type="LightmapGI" parent="." unique_id=107024743]
 max_texture_size = 4096
 environment_mode = 3
-environment_custom_color = Color(0.29164574, 0.20750755, 0.40719262, 1)
+environment_custom_color = Color(0.06917037, 0.035492316, 0.13796511, 1)
 environment_custom_energy = 1.9
 light_data = ExtResource("15_9b8a1")

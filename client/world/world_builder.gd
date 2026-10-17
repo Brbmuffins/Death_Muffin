@@ -22,13 +22,34 @@ const AMBIENT_LUMA_FLOOR := 0.3
 const AMBIENT_GROUND_MIX := 0.3
 const AMBIENT_MAX_BOOST := 2.4
 const POINT_K := 0.18
+## The Acre (the orchard) and the Alchemist Wing are lit brighter than every other area: today's DmGameRewards.tick_milestones scales the moon by 3.4 / 2.4 and 2.65 / 2.4 and the hemisphere by
+## 2.0 / 0.95 and 1.12 / 0.95 there. `set_area` applies them to the live lights, and the area converter (`client/tools/build_area.gd`) bakes the hemisphere's factor into the area's lightmap.
+const AREA_MOON_K := {"acre": 3.4 / 2.4, "alchemist_wing": 2.65 / 2.4}
+const AREA_HEMI_K := {"acre": 2.0 / 0.95, "alchemist_wing": 1.12 / 0.95}
+## The exposure lift of each area (Forward+'s own, on top of today's exposure; client/README.md "The look against today's game"): measured with `client/tools/look_probe.gd` against today's game on the same
+## camera (Ultra, the mean luminance of the world region), so that the rebuilt frame of every area is as bright as today's. One number for the whole game could not do it: the lightmap of each area carries
+## its own share of the light, so the areas differ by 0.8 to 2.1. `set_area` blends to the new area's lift (LIFT_BLEND, with the area's own easing of the exposure `area_exposure`); the preset's own factor (`DmGraphicsPreset`, `set_preset_lift`) multiplies it.
+const AREA_LIFT := {
+	"chapterhouse": 1.52, "acre": 1.11, "alchemist_wing": 2.08, "graves": 1.35, "warren": 1.35, "ossuary": 1.38,
+	"nave": 1.33, "coliseum": 1.8, "sanctum": 1.36, "cloister": 1.37, "pyre": 1.34, "fen": 0.8,
+}
+const LIFT_DEFAULT := 1.2    ## an area the table does not list (the Depths): the lift the whole game ran at before the table
+const LIFT_BLEND := 0.8      ## seconds an area change takes to ease from one lift to the next (no pop at a door)
 const LIGHT_NEAR := 8        # prop lights enabled at once (nearest to the focus)
 ## Runtime cap on prop lights (graphics quality); LIGHT_NEAR on High.
 var light_near := LIGHT_NEAR
 var base_exposure := 1.0   # the area-independent exposure (lighting.exposure x EXPOSURE_K); brightness scales it
-var area_exposure := 1.0   # per-area easing for already-bright skies (set_area)
-var preset_lift := 1.0     # graphics-preset compensation (set_preset_lift)
+var area_exposure := 1.0   # per-area easing for already-bright skies (set_area); eases to the new area's with the lift
+var area_moon_k := 1.0     # the current area's moon and hemisphere factors (AREA_MOON_K, AREA_HEMI_K), applied to the lights' energy as a ratio so other writers (Nightfall) compose
+var area_hemi_k := 1.0
+var area_lift := LIFT_DEFAULT   # the current area's lift (AREA_LIFT): the live value while it eases to the new area's, `_lift_to` once it has arrived
+var preset_lift := 1.0     # the graphics preset's own factor (set_preset_lift): 1 but Low's
 var brightness := 1.0      # Settings -> Brightness
+var _lift_from := LIFT_DEFAULT   # an area change eases the lift and the area's exposure easing from here to `_lift_to` / `_exp_to` over LIFT_BLEND (`step_lift` from `_process`, which only runs during the blend)
+var _lift_to := LIFT_DEFAULT
+var _exp_from := 1.0
+var _exp_to := 1.0
+var _lift_t := 1.0
 const STREAM_DIST := 95.0    # an area is drawn while its rect is within this many metres of the focus
 ## WorldView PROP_CELL / SHADOW_RANGE: prop batches are split into cells so off-screen ones are culled, and cells further than
 ## SHADOW_RANGE from the hero stop casting moon shadows (the shadow pass was half the frame).
@@ -250,21 +271,64 @@ func set_brightness(v: float) -> void:
 	brightness = clampf(v, 0.5, 1.6)
 	_apply_exposure()
 
-## The graphics preset's brightness compensation (DmGraphicsPreset `lift`): Low/Medium have fewer prop lights and no bloom (Medium also has the
-## moon's hard shadows), so they run a little hotter to read as bright as High. Exposure: both presets have plenty of highlight headroom.
+## The graphics preset's own factor on the area's lift (DmGraphicsPreset `lift`: 1, and Low's a little under it, its moon casts no shadow).
 func set_preset_lift(v: float) -> void:
 	preset_lift = v
 	_apply_exposure()
+
+## The lift of an area (AREA_LIFT; LIFT_DEFAULT for one the table does not list).
+static func area_lift_of(id: String) -> float:
+	return float(AREA_LIFT.get(id, LIFT_DEFAULT))
+
+## True while an area change is easing the lift.
+func lift_blending() -> bool:
+	return _lift_t < 1.0
+
+## Eases the lift (and the area's exposure easing) towards the area's by `dt` seconds. Only `_process` calls it, and only while a blend runs (a test steps it itself).
+func step_lift(dt: float) -> void:
+	_lift_t = minf(1.0, _lift_t + dt / LIFT_BLEND)
+	var k := smoothstep(0.0, 1.0, _lift_t)
+	area_lift = lerpf(_lift_from, _lift_to, k)
+	area_exposure = lerpf(_exp_from, _exp_to, k)
+	_apply_exposure()
+	if _lift_t >= 1.0:
+		set_process(false)
+
+func _process(dt: float) -> void:
+	step_lift(dt)
+
+func _ready() -> void:
+	set_process(false)   # a script with `_process` is switched on at the ready notification: the lift's blend switches it on when it has work
+
+## The lift and the exposure easing go to `lift` and `expo` at once (the first area, a node outside the tree) or by easing from where they are (an area change); the same as what they are going to changes nothing.
+func _go_lift(lift: float, expo: float, snap: bool) -> void:
+	if is_equal_approx(lift, _lift_to) and is_equal_approx(expo, _exp_to) and not snap:
+		return
+	_lift_to = lift
+	_exp_to = expo
+	if snap or not is_inside_tree():
+		_lift_from = lift
+		_exp_from = expo
+		_lift_t = 1.0
+		area_lift = lift
+		area_exposure = expo
+		set_process(false)
+	else:
+		_lift_from = area_lift
+		_exp_from = area_exposure
+		_lift_t = 0.0
+		set_process(true)
 
 var _void := Color.BLACK   # what today's Compatibility shows where nothing is drawn: the world's background colour, as it is
 
 func _apply_exposure() -> void:
 	if env != null:
-		env.tonemap_exposure = base_exposure * brightness * area_exposure * preset_lift
+		env.tonemap_exposure = base_exposure * brightness * area_exposure * area_lift * preset_lift
 		env.background_color = DmCompatAlbedo.void_color(_void, env.tonemap_exposure)   # Forward+ tonemaps the background like a pixel: this is the colour that comes out as `_void`
 
 ## Per-area ambient (AREAS[*].ambient): fog colour + density multiplier, hemisphere sky/ground, moon colour.
 func set_area(id: String) -> void:
+	var first := current_area == ""
 	current_area = id
 	var a: Dictionary = world.areas[id]
 	var amb: Dictionary = a.ambient
@@ -276,9 +340,15 @@ func set_area(id: String) -> void:
 		sky = Color(sky.r * boost, sky.g * boost, sky.b * boost)
 	var gnd := Color.html(amb.hemiGround).lerp(sky, GROUND_LIFT)
 	# Areas whose sky is already bright (Acre, the Alchemist Wing) keep their old brightness: exposure eases back a little there.
-	area_exposure = clampf(1.0 - (peak - 0.5) * 0.8, 0.88, 1.0)
+	_go_lift(area_lift_of(id), clampf(1.0 - (peak - 0.5) * 0.8, 0.88, 1.0), first)
 	_apply_exposure()
 	env.ambient_light_color = sky.lerp(gnd, AMBIENT_GROUND_MIX)
+	var moon_k: float = AREA_MOON_K.get(id, 1.0)
+	var hemi_k: float = AREA_HEMI_K.get(id, 1.0)
+	moon.light_energy *= moon_k / area_moon_k
+	env.ambient_light_energy *= hemi_k / area_hemi_k
+	area_moon_k = moon_k
+	area_hemi_k = hemi_k
 	env.fog_light_color = Color.html(amb.fog)
 	# Web FogExp2 = 1 - exp(-(0.014 m d)^2); Godot's depth fog (smoothstep to `end`) tracks it with end ~ 130 / m.
 	var m: float = float(amb.fogMult) if not a.safe else 1.0

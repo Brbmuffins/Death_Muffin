@@ -172,7 +172,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   setting carries over) and today's crowd caster counts, MSAA, anisotropy, resolution floors, effects quality and moon shadow numbers; what Forward+ changes: no
   prop-light count and no prop shadow range (the area's lights are baked into its lightmap and the rest are drawn in clusters), screen-space ambient occlusion on
   High and Ultra (Forward+ only), the crowd's shadow policy instead of a per-node caster budget, and FSR 1 instead of bilinear when Auto resolution lowers the 3D
-  scale (sharper at no real cost). The brightness lift is Forward+'s own, calibrated against today's game (B48). The benchmark plays at the player's preset, as
+  scale (sharper at no real cost). The brightness lift is Forward+'s own, one number per area calibrated against today's game (B48). The benchmark plays at the player's preset, as
   today's does, so Gate B compares like with like (`client/game/dm_graphics_preset.gd`, `client/next/perf/dm_next_perf.gd`, `client/tests/presets.gd`).
 - **B46. The panels are today's, on a ported adapter** (2026-10-16, Claude's call under B43). The rebuilt client's full UI is today's `DmGameUi` and every panel as
   copies, on `DmNextUiHost` ported to the core (the host contract: character, bag, progression, settings, casts, the HUD's view-model), exactly as today's game
@@ -189,7 +189,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 - **B48. Today's colours on Forward+** (2026-10-17, Claude's call under B35 and B45, after Helix's first test-build screenshots: a darker, purpler ground, beige pools, white glare). Today's
   Compatibility renderer reads every vertex colour as sRGB and multiplies a material's colours in sRGB, Forward+ does both in linear light. The rebuilt client matches today's look by making
   Forward+ do what Compatibility does where it shows (the pools' and the particles' vertex colours as sRGB, the effects' shader colours converted, the floors' and walls' tints lifted by the
-  measured ratio of their textures) and by one calibrated exposure lift (1.2) instead of retuning each light, so the lights keep today's numbers (a fix that stays right when a light is
+  measured ratio of their textures) and by an exposure lift calibrated per area (the bake carries each area's light differently, so no one number fits all twelve) instead of retuning each light, so the lights keep today's numbers (a fix that stays right when a light is
   changed on both sides). What is still not today's, and the bake's colour space, are listed in client/README.md "The look against today's game" and ROADMAP "Look pass".
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,

@@ -4,7 +4,7 @@ extends Node
 ## render scale, fps cap, auto-resolution.
 ##   graphics        preset (DmGraphicsPreset: low / medium / high / ultra): moon shadows + reach + atlas + soft filter, bloom, ambient occlusion, the crowd's shadow
 ##                   policy, MSAA / anisotropy / mesh LOD on the viewport, Vfx.quality + Binbun, the governor's resolution floor (0.6 Low, 0.85 above)
-##   brightness      Settings -> Brightness x the preset's lift, as the builder's exposure multiplier;  ui_scale  Interface size (window content scale)
+##   brightness      Settings -> Brightness x the preset's lift factor (on the area's lift), as the builder's exposure multiplier;  ui_scale  Interface size (window content scale)
 ##   fps             Engine.max_fps (0 = uncapped);  vsync  display V-Sync on / off (live, windowed builds only)
 ##   auto_res        DmResolutionGovernor on the 3D view's scaling_3d_scale, upscaled with FSR 1 (the UI stays sharp); held through loads and area entries
 ## Not today's: no moon-shadow caster poll (the crowd keeps its own nearest-casters budget, DmCrowd.set_shadow_policy), no prop-light count or prop shadow range
@@ -55,7 +55,7 @@ func apply(s: Dictionary) -> void:
 		b.moon.shadow_enabled = bool(gp["shadows"])
 		b.moon.directional_shadow_max_distance = float(gp["shadow_dist"])
 		b.moon.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if int(gp["shadow_splits"]) == 2 else DirectionalLight3D.SHADOW_ORTHOGONAL
-		b.set_preset_lift(float(gp["lift"]))                       # Low/Medium run hotter to read as bright as High
+		b.set_preset_lift(float(gp["lift"]))                       # the preset's own factor on the area's lift (Low's moon casts no shadow)
 		b.set_brightness(float(s.get("brightness", 1.0)))          # Settings -> Brightness
 		if b.env != null:
 			DmGraphicsPreset.apply_environment(b.env, preset)

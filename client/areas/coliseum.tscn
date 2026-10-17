@@ -21,6 +21,7 @@ roughness = 0.9
 texture_filter = 5
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_65c20"]
+lightmap_size_hint = Vector2i(349, 301)
 _surfaces = [{
 "aabb": AABB(-21.800003, 0, -18.8, 43.600006, 1e-05, 37.6),
 "attribute_data": PackedByteArray("4iseQV/x1cDaT5azQUyuMg/qgEFf8dXAAQCAP0FMrjIP6oBBgzqovwEAgD8AAIA/4iseQYM6qL/aT5azAACAPw=="),
@@ -171,6 +172,7 @@ roughness = 0.62
 texture_filter = 5
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_bc4f0"]
+lightmap_size_hint = Vector2i(64, 64)
 _surfaces = [{
 "aabb": AABB(-4, 0, -4, 8, 1e-05, 8),
 "attribute_data": PackedByteArray("AAAQQZIkicAAAAAAAAAAACVJIkGSJInAAACAPwAAAAAlSSJBkiRJwAAAgD8AAIA/AAAQQZIkScAAAAAAAACAPw=="),
@@ -977,6 +979,6 @@ metadata/door_id = "ossuary_coliseum"
 [node name="Lightmap" type="LightmapGI" parent="." unique_id=16621791]
 max_texture_size = 4096
 environment_mode = 3
-environment_custom_color = Color(0.39808822, 0.310775, 0.25664544, 1)
+environment_custom_color = Color(0.13153239, 0.07868786, 0.053577192, 1)
 environment_custom_energy = 1.9
 light_data = ExtResource("13_21002")

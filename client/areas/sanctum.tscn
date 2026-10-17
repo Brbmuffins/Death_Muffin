@@ -20,6 +20,7 @@ roughness = 0.5
 texture_filter = 5
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_65c20"]
+lightmap_size_hint = Vector2i(301, 237)
 _surfaces = [{
 "aabb": AABB(-18.8, 0, -14.800003, 37.6, 1e-05, 29.600006),
 "attribute_data": PackedByteArray("vuIrwFh8lcFBTK4yyWfds77iK0BYfJXBAACAP8ln3bO+4itAdVBnwQAAgD8BAIA/vuIrwHVQZ8FBTK4yAQCAPw=="),
@@ -121,6 +122,7 @@ roughness = 0.62
 texture_filter = 5
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_bc4f0"]
+lightmap_size_hint = Vector2i(64, 64)
 _surfaces = [{
 "aabb": AABB(-4, 0, -4, 8, 1e-05, 8),
 "attribute_data": PackedByteArray("JUkSv7dta8EAAAAAAAAAACVJEj+3bWvBAACAPwAAAAAlSRI/kiRZwQAAgD8AAIA/JUkSv5IkWcEAAAAAAACAPw=="),
@@ -196,6 +198,7 @@ size = Vector2(7.2, 7.2)
 size = Vector3(8, 5, 1)
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_fcbc9"]
+lightmap_size_hint = Vector2i(64, 64)
 _surfaces = [{
 "aabb": AABB(-4, 0, -4, 8, 1e-05, 8),
 "attribute_data": PackedByteArray("t20bQAAAgMEAAAAAAAAAAEmSZEAAAIDBAACAPwAAAABJkmRA27ZtwQAAgD8AAIA/t20bQNu2bcEAAAAAAACAPw=="),
@@ -1011,6 +1014,6 @@ metadata/door_id = "sanctum_cloister"
 [node name="Lightmap" type="LightmapGI" parent="." unique_id=257946013]
 max_texture_size = 4096
 environment_mode = 3
-environment_custom_color = Color(0.33349755, 0.19056995, 0.44466305, 1)
+environment_custom_color = Color(0.090933934, 0.030242285, 0.16634871, 1)
 environment_custom_energy = 1.9
 light_data = ExtResource("12_43473")

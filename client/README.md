@@ -40,7 +40,7 @@ node tools/rebuild/compare-scenarios.mjs                                        
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/coop_bosses.gd  # the six other bosses fight a party of two, summoned by the guest, in the whole world over the same lobby and relay: state, telegraphs, events, zones, adds, blows and effects on the guest's hero (and its hurt on its window), the phases, the defeat by the guest and both accounts paid, a wipe (about 70 s; "Co-op on the core")
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/social.gd  # the Social window: open and close, host from the Party tab, a boot scene that joins from the list and comes home (needs the lobby's modules too; about 40 s)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/dressing.gd # the world dressing on the area scenes: its pieces in the loaded areas, the stand-ins gone from the scenes, the area by event, the brazier fire's closed form against the web's step, the mist's rate, the earth beyond the walls, the Binbun shaders' colour (about 15 s; "World dressing")
-/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/presets.gd # the graphics presets on a running game: lights, environment, viewport, crowd shadows, the governor (bakes into a scratch folder)
+/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/presets.gd # the graphics presets on a running game: lights, environment, viewport, crowd shadows, the governor, the lift of each area and its blend (bakes into a scratch folder)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/rewards.gd                # the rewards node on the core: today's tests/rewards replayed (sessions, batches, lost replies, refusals, the end, per-member loot), on the mock
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/value.gd   # value on the server in the game scene: kills, accepted XP, the purse, a claimed drop, brews and lifesteal, the meta, the belt, saving ("Value on the server")
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/fx_motes.gd               # the effects' particle ring in C++ (DmMotes: the bursts' random starts and the loop) against today's ring, float for float; INFO: its update time on both sides
@@ -382,10 +382,11 @@ Settings panel applies a change live, `opts.settings` in tests and the benchmark
 and atlas and the soft filter, bloom (`DmWfxBloom`), screen-space ambient occlusion (High and Ultra), MSAA, anisotropy and mesh LOD on the viewport, the effects quality
 and the Binbun layer, the crowd's shadow policy (`DmCrowd.set_shadow_policy`: the nearest enemies that cast, today's counts, and whether thralls cast; a change reaches the
 thralls already drawn) and the floor of Auto resolution, whose lower scales are upscaled with FSR 1. Brightness, fps cap, V-Sync, window mode and interface size are
-today's. Not today's: the prop-light count and the prop shadow range (baked into the area's lightmap), and the brightness lift (`DmGraphicsPreset.LIFT`, 1.2; Low 1.15, which has no
-moon shadow): the exposure multiplier that makes the rebuilt frame as bright as today's ("The look against today's game"). `tests/presets.gd` (`--fixed-fps 60`, about 20 s) applies
-each preset to a running game and checks the lights, the environment (the ACES tonemapper, the exposure from the world's number, the area's easing, the lift and the brightness, the
-plain-colour ambient, the depth fog, the moon and the rim light at today's energies), viewport, crowd shadows and the governor.
+today's. Not today's: the prop-light count and the prop shadow range (baked into the area's lightmap), and the brightness lift: an exposure multiplier of each area (`DmWorldBuilder.AREA_LIFT`, 0.8 to 2.1,
+measured so that the rebuilt frame is as bright as today's, "The look against today's game"), eased in over 0.8 s when the hero enters another area (`LIFT_BLEND`; nothing runs per frame outside the blend),
+times the preset's own factor (`DmGraphicsPreset` `lift`: 1, and 0.96 on Low, whose moon casts no shadow). `tests/presets.gd` (`--fixed-fps 60`, about 30 s) applies
+each preset to a running game and checks the lights, the environment (the ACES tonemapper, the exposure from the world's number, the area's easing, the area's lift, the preset's factor and the brightness, the
+plain-colour ambient, the depth fog, the moon and the rim light at today's energies), viewport, crowd shadows and the governor, the twelve lifts (a number here is a calibration: measure again with the probe before changing it) and the blend.
 
 ## The look against today's game
 
@@ -403,35 +404,46 @@ software renderers, the same camera in the Chapterhouse, the Hollow Graves and t
 | a Binbun scene's own shader reading its particle's `COLOR` (`.rgb` as a colour or a mask offset) | the vertex colour converted from sRGB | taken as it is | `DmFxBinbun` reads it through a patched copy of each such shader (`dm_COLOR`: rgb converted, alpha as it is) |
 | the beyond the walls | one 420 m field of grave soil under the fog (196 tiles); the background colour past it, (7, 6, 10) | nothing drawn: black, (1, 1, 3) through the tonemapper | the field as one quad (`DmWorldBuilder.build_outside`, the soil's tint lifted by `DmCompatAlbedo`); the background colour past it is never in view (the field reaches 80 m past every area) and stays black |
 
-Measured on the frame without the hero's box (the mean luminance in 0 to 255; share of red / green / blue):
+**The lift of each area** (2026-10-17, on Helix's bake of all twelve areas, e8ce4fd9; Ultra, 1280x720, the mean luminance of the world region, the probe's WSTAT line: x .12 to .78 and y .1 to .72 of the frame, the hero's box left out, because today's frames carry the game's HUD
+where the rebuilt client's carry none). One lift for the whole game does not fit: at the old 1.2 the rebuilt Chapterhouse was 18 % darker than today's, the Alchemist Wing 29 % darker and the Acre 3 % brighter, because every area's bake carries its own share of the light.
+So the lift is a number per area (`DmWorldBuilder.AREA_LIFT`, asserted by `tests/presets.gd`), solved from each area's own response and checked by a last run at the table's numbers: the probe shot every area at lifts of 1.1, 1.5 and 2.0
+(`--plan="<area>:lift=1.1,lift=1.5,lift=2.0"`), a curve through the three points in log-log gave the lift that reaches today's mean, and one run at the table (`base`, two frames each) measured the result. The response is not one power of the lift: the mean rises as lift^0.75 to lift^0.9 in the dark areas
+and lift^0.6 in the bright ones (the Wing and the Coliseum, where the tonemapper presses the highlights), so the rule of thumb of one exponent (lift^0.85) would have put the Wing 8 % below today's.
 
-| | Chapterhouse | Graves | Ossuary |
-|---|---|---|---|
-| today | 40.5, 0.277 / 0.221 / 0.502 | 35.1, 0.272 / 0.211 / 0.517 | 41.1, 0.365 / 0.241 / 0.395 |
-| first test build | 46.7, 0.306 / 0.264 / 0.430 | 40.0, 0.304 / 0.259 / 0.437 | |
-| now, lift 1.0 | 35.2, 0.279 / 0.234 / 0.487 | 30.1, 0.273 / 0.228 / 0.499 | 34.9, 0.358 / 0.255 / 0.387 |
-| now, lift 1.2 (the frames' exposure raised in software by inverting the tonemapper) | 40.7 | 35.6 | 40.4 |
+| area | today | rebuilt at lift 1.1 / 1.5 / 2.0 | response (exponent) | lift | rebuilt at the lift |
+|---|---|---|---|---|---|
+| Chapterhouse | 45.3 | 34.3 / 44.9 / 56.7 | 0.84 | 1.52 | 45.4 (+0.2 %) |
+| Acre | 52.0 | 51.7 / 66.4 / 82.4 | 0.78 | 1.11 | 52.1 (+0.2 %) |
+| Alchemist Wing | 124.1 | 83.5 / 102.4 / 121.5 | 0.63 | 2.08 | 124.2 (+0.1 %) |
+| Graves | 37.4 | 31.0 / 41.2 / 52.7 | 0.89 | 1.35 | 37.6 (+0.5 %) |
+| Warren | 34.1 | 28.1 / 37.4 / 47.8 | 0.89 | 1.35 | 34.1 (+0.0 %) |
+| Ossuary | 40.5 | 31.7 / 42.0 / 53.6 | 0.88 | 1.38 | 39.0 to 42.2 (-3.7 to +4.2 %, see below) |
+| Nave | 36.2 | 30.6 / 40.2 / 50.9 | 0.85 | 1.33 | 36.3 (+0.3 %) |
+| Coliseum | 127.8 | 94.1 / 114.9 / 135.0 | 0.60 | 1.80 | 127.6 (-0.2 %) |
+| Sanctum | 48.7 | 40.9 / 52.6 / 65.6 | 0.79 | 1.36 | 48.7 (+0.0 %) |
+| Cloister | 52.8 | 43.9 / 57.1 / 71.8 | 0.82 | 1.37 | 53.1 (+0.6 %) |
+| Pyre | 57.8 | 49.4 / 62.9 / 77.3 | 0.75 | 1.34 | 57.8 (+0.0 %) |
+| Fen | 44.5 | 57.0 / 71.4 / 86.6 | 0.70 | 0.80 | 44.7 (+0.4 %) |
 
-With the world dressing, the tuned glow and the earth beyond the walls on (2026-10-17, rendered at the lift of 1.2, 1280x720, the same frames' mean luminance; the table above was software-scaled from frames at lift 1.0): the
-Chapterhouse 37.9 (today's 40.5), the Graves 38.7 (35.1), the Ossuary 41.7 (41.1); with the dressing off 37.2, 37.4 and 41.1, so the dressing adds 1 to 3 %. The lifts that would put each area on today's mean are 1.30, 1.08 and 1.18
-(the frames' pixels taken back through the tonemapper and exposed again): they differ by area because the baked ground does (ROADMAP "Baked lighting": the Graves' baked ambient is too bright, the Chapterhouse's pools too flat), and their
-mean, 1.19, is the 1.2 that stays (`DmGraphicsPreset.LIFT`); the lift is measured again after the bake.
+Eleven areas are within 0.6 % of today's, inside the noise of the measurement: today's own frames repeat to 1.5 % between runs (the Acre 52.0 and 52.8, the Chapterhouse 45.1 and 45.3, the Graves 37.3 to 37.5), two frames of one visit differ by 0.3 % at most, and a second visit to the Chapterhouse, the Graves, the
+Wing and the Acre (in a different order of visits) repeated the numbers to 0.1 % (the Acre to 1.9 %). The Ossuary is the exception: its ground mist drifts across the frame and is part of the mean, so a visit early in a run read 43.8 at a lift of 1.44 and 37.3 at 1.2, a later one 40.5 at 1.44 (the lift that matches the early visit is 1.33, the late one 1.44); the table's 1.38
+centres them (the curve's numbers, not a run at 1.38: 39.0 and 42.2). The numbers are for Ultra on the software renderers; Medium, High and Low share them (`DmGraphicsPreset`'s own factor, 1, Low 0.96, is not measured), and the Depths, which the probe cannot stand in, keep the old 1.2 (`LIFT_DEFAULT`).
 
-The first build's mean was higher than today's only because its pools were 9 times too bright; its ground, walls and props were darker and less blue. A candle's pool, the box left of the
-altar: today (122, 77, 124), first build (180, 143, 159), now (111, 72, 123).
+The lift is Forward+'s own, on top of today's exposure (the world's number, the area's easing, the Settings brightness). It is a property of the area, not of the preset: `DmWorldBuilder.set_area` (what the world's `enter_area` calls when the hero crosses into another area) sets the target and eases to it over
+0.8 s (`LIFT_BLEND`, smoothstep, together with the area's own exposure easing, so a door is not a pop of brightness; today's change of ambient at a door is instant); `_process` runs only during the blend and switches itself off, so a frame outside a blend costs nothing, and the first area is set at once.
 
-**Still not today's** (each one a line in ROADMAP "Look pass"): the candles' light on the floor is baked at 0.43 m a texel (the Chapterhouse's ground is 64 x 64 texels of its
-lightmap), which flattens a candle's peak: the baked light is about a quarter of the real-time one 0.3 m from a candle and half of it at 1 m, so a pool reads about half as bright half-way
-out (a denser floor lightmap, `gi_lightmap_texel_scale` on the ground quads, and a bake would fix it); the Depths' walls keep
-Forward+'s darker tint (its floor is lifted, `DmWorldBuilder._floor_mat`); Low and Medium: today's draw blended effects in sRGB space when bloom is off (an alpha sprite half-way over black: 131, with bloom on 205), Forward+ always blends
-in linear light; the Acre's and the Wing's brighter live ambient is not in the bake. The lightmap's ambient is an sRGB
-colour the bake reads as linear (`environment_custom_color` is taken as it is): the baked ground's irradiance is about three times the real-time ambient today's game uses (the Chapterhouse's
-lightmap: a median of 0.31 against 0.095), so shadows are filled in more than today's; linearising it is one `srgb_to_linear()` in `build_area._lightmap` and a bake, and the lift would then
-be measured again (it is not done: it changes every baked area and cannot be checked before the bake).
+**The unbaked things** (the hero, the creatures, the effects) take the lift as well as the baked world does, and the lift is now between 0.8 and 2.1. The probe's frames hold no crowd (no waves run), so the creatures are not checked: they are lit as the hero is, so expect the same pattern. The check is the hero (a 24 x 24 px box on the robe, the same box on both sides; `fwd_*` against `today_*` in the probe's pictures). At the table's lifts the robe is 0.9 to 1.1 times today's
+in the Chapterhouse, the Cloister and the Coliseum, 1.3 in the Acre, the Wing and the Pyre, 1.4 to 1.9 in the Sanctum, the Warren, the Graves and the Nave (the Graves 1.7: 59 against 35), 0.8 in the Fen, and the Ossuary's hero stands behind a wall in the frame. So in the Sanctum, the Warren, the Graves and the Nave the hero is 40 to 90 % brighter than today's where the world is level, but the lift is not the main cause: the robe is already 1.3 to 1.5 times today's in the Graves, the Warren, the Nave and the Sanctum at a lift of 1.1, where the world is 15 to 18 % darker than today's (not looked into; the hero is lit by the real-time hemisphere, not the lightmap), and the table's lift adds roughly a fifth on top
+(the Graves: 1.44 at 1.1, 1.70 at 1.35; the box reads a moving hero, so a few percent are the pose).
+In the Wing, with the highest lift (2.08), the robe is 1.3 times today's (0.86 at 1.1). The rebuilt hero also reads paler (lilac against today's dark purple) and its white selection ring is wider, with a glow, in every area. The Fen is the other way: its baked ground is brighter than today's even at a lift of 1.1 (the mean 57.0 against 44.5, the darkest tenth 26 against 15), so
+the lift that matches the mean is 0.80, which leaves the hero 0.8 of today's and the ground's shadows still lighter than today's. All of this wants Helix's eye on his PC, and the causes (the hero's real-time ambient, the ring's bloom, the Fen's bake) are lines in ROADMAP "For review".
 
-The probe starts the real game scene at a fixed spot of each area and shoots variants of its light (`--plan`; `nodress` takes the world dressing off, `before` is the first test builds' look: no dressing, a sphere at every light, the five-mip glow), the glow part (`--part=glow --glow="name:lv=a/b,int=..;..."`) prints the glow's profile of two bright things under each setting of a list, and the calibration part prints one pixel line per test object; run it
+**Still not today's** (each one a line in ROADMAP "Look pass"): the Depths' walls keep Forward+'s darker tint (its floor is lifted, `DmWorldBuilder._floor_mat`) and the Depths' lift is the old 1.2; Low and Medium: today's draw blended effects in sRGB space when bloom is off (an alpha sprite half-way over black: 131, with bloom on 205), Forward+ always blends
+in linear light. The Chapterhouse's floor carries the candles' light in the new bake (warm pools by every candle, as today's), which the old bake did not.
+
+The probe starts the real game scene at a fixed spot of each area and shoots variants of its light (`--plan`; `lift=1.5` shoots the rebuilt client at that exposure lift in place of the area's, which is how the table above was found; `nodress` takes the world dressing off, `before` is the first test builds' look: no dressing, a sphere at every light, the five-mip glow), the glow part (`--part=glow --glow="name:lv=a/b,int=..;..."`) prints the glow's profile of two bright things under each setting of a list, and the calibration part prints one pixel line per test object; run it
 on both projects (the header of the script has the commands; today's game takes 3 to 4 minutes to start on the VPS, the rebuild half a minute). It is not a pass/fail suite: the checked
-values are `tests/areas.gd` (the pools' flag, the tint table against its textures) and `tests/presets.gd` (the lift and the environment). `client/tools/compat_albedo.gd` prints the tint
+values are `tests/areas.gd` (the pools' flag, the tint table against its textures) and `tests/presets.gd` (the twelve lifts, the blend and the environment). `client/tools/compat_albedo.gd` prints the tint
 table of `DmCompatAlbedo`.
 
 ## The seeded scenario
@@ -938,11 +950,20 @@ generated at runtime and are not converted: "The Depths"). Output is determinist
 - `client/areas/common/ring.png`, `glow.png`: the two decal textures the live game paints at start-up.
 - `Lightmap`: the area's `LightmapGI`. Walls, gate stone and floors carry UV2, prop meshes get UV2 on import, everything solid is `gi_mode` static
   and the prop lights are `BAKE_STATIC` (positions, colours and ranges as today), so the bake takes their direct and bounced light; the area's
-  ambient (`DmWorldBuilder.set_area`'s colour, same constants) is baked in too, since a lightmapped surface ignores the environment's. When
-  `client/areas/<id>.lmbake` exists (a bake from `client/addons/dm_bake/README.md`; all twelve are baked, on Helix's RTX 4070 SUPER) the converter points the node at it; an area
-  without one has a `LightmapGI` with no data. The props stay instances of their prefab scenes: Forward+ and Mobile draw identical meshes instanced,
+  ambient is baked in too, since a lightmapped surface ignores the environment's: `DmWorldBuilder.set_area`'s colour (same constants) as linear light (the Environment's ambient colour is sRGB and
+  the renderer converts it; the bake takes `environment_custom_color` as it is) at the hemisphere's energy times the area's factor (`DmWorldBuilder.AREA_HEMI_K`: the Acre's 2.0 / 0.95 and the Wing's
+  1.12 / 0.95, which today's `DmGameRewards.tick_milestones` applies and the rebuild does not run; `set_area` applies them, and the moon's `AREA_MOON_K` 3.4 / 2.4 and 2.65 / 2.4, to the live lights). Every floor quad
+  (the ground, the paths, the door floors) is built by hand and carries a lightmap size hint of 0.125 m a texel (`FLOOR_TEXEL`); a quad without a hint gets 64 x 64 texels whatever its size, which was 0.43 m a
+  texel in the Chapterhouse, 0.84 x 0.65 m in the Graves and 0.6 m along a 40 m path (`client/addons/dm_bake/README.md` has the sizes). When
+  `client/areas/<id>.lmbake` exists (a bake from `client/addons/dm_bake/README.md`) the converter points the node at it; an area without one has a `LightmapGI` with no data and is lit as "Without a bake" below says
+  (all twelve areas have their bake since 2026-10-17: Helix's helper, one commit). The props stay instances of their prefab scenes: Forward+ and Mobile draw identical meshes instanced,
   so merging them would add draw calls (ROADMAP "Static batching"). Occluders: tall walls (3 m, 4 m long) and large solid
   box props (the mausoleums), shrunk so they never hide what is visible past them.
+
+**Without a bake** (an area whose `.lmbake` is missing) an area keeps its `LightmapGI` with no data: nothing is lightmapped, so the Environment's plain-colour ambient (the colour and energy today's game uses, the Acre's and the Wing's
+brighter ones included), the moon, the rim light and every prop light as a real-time omni light (no shadows; `BAKE_STATIC` lights only skip a mesh that has a lightmap) light the room, which is today's lighting model
+without baked contact shadows, bounce and the candle light's occlusion by props. The exposure lift of each area (`DmWorldBuilder.AREA_LIFT`) is measured on the baked areas; an unbaked one is brighter or darker than today's by whatever the bake changed, and the cost of a room's
+lights in real time (the Wing has 21, the Graves 18, the Chapterhouse 14) is not measured on a graphics card.
 
 `client/tests/areas.gd` checks every converted area, one scene at a time (instantiate, check, free), and prints `PASS areas (N checks)` or a `FAIL areas: <id>: ...`
 line per failed check. Each expected number is computed from `world.json` the way `world_builder.gd` computes it (its constants, `DmModels.prop_parts`, its
@@ -957,8 +978,10 @@ hummock ring mesh), never read from a scene:
 - navigation: the area's region and each door's region equal a fresh bake with `world_builder`'s settings, stop short of the walls by the agent's radius, and
   the regions and links are enabled exactly when the door is `open`; paths cross the area, join its door mouths and bend round box props; a sealed gate blocks the
   way to its corridor's far end and, once its region and links are enabled, the corridor is walkable to it;
-- the lighting bake: the `LightmapGI` bakes the area's ambient and points at `<id>.lmbake` when one exists, and a bake is stale (the test fails) when a mesh it
-  recorded is no longer at its path in the scene;
+- the lighting bake: the `LightmapGI` bakes the area's ambient as linear light at the hemisphere's energy times the area's factor (and that equals the light the builder's real-time ambient gives the area), every floor quad
+  (the ground, the paths, the door floors) has a lightmap size hint of 0.125 m a texel under the 4096 limit, today's `DmGameRewards` still holds the Acre's and the Wing's factors, `set_area` scales the moon and the
+  ambient by them as a ratio (so the Nightfall dimming composes); the `LightmapGI` points at `<id>.lmbake` when one exists, and a bake is stale (the test fails) when a mesh it recorded is no longer at its path in the scene;
+  the test prints which areas have no bake yet;
 - the whole: one scene per converted area, and every path, wall, prop, node, decal, hummock, wing-floor quad and door of `world.json` is in
   exactly the scenes it belongs to.
 

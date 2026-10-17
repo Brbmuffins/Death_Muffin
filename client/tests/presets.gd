@@ -1,6 +1,8 @@
 extends SceneTree
 ## The graphics presets of the rebuilt client (game/dm_graphics_preset.gd, next/perf/dm_next_perf.gd; DECISIONS B45), headless:
 ##   - the table: the four ids of today's game, an unknown or old value becomes High, every preset has every key, the order of cost (Low cheapest, Ultra dearest);
+##   - the exposure lift: one number per area (DmWorldBuilder.AREA_LIFT, calibrated against today's game with the look probe), the preset's own factor on top (Low 0.96, the others 1),
+##     the blend on an area change (nothing runs outside it);
 ##   - each preset applied to a real game scene: the moon's shadow, reach, splits and atlas, the soft filter, bloom, ambient occlusion, MSAA, anisotropy and mesh LOD
 ##     on the viewport, the effects quality, the governor's floor; and the crowd's shadow policy: with 30 robbers round the hero the shadow groups hold the preset's
 ##     nearest casters (Low none), the thralls cast from Medium up;
@@ -63,6 +65,7 @@ func _run() -> void:
 	await crowd_round(g)
 	for id in DmGraphicsPreset.IDS:
 		await applied(g, String(id))
+	await lift_blend(g)
 	await governor(g)
 	g.process_mode = Node.PROCESS_MODE_DISABLED
 	g.queue_free()
@@ -91,13 +94,94 @@ func table() -> void:
 		"Low: no shadows, bloom, ambient occlusion or crowd casters, and the lowest resolution floor")
 	check(int(ul["msaa"]) > int(hi["msaa"]) and int(ul["ssao"]) > int(hi["ssao"]) and int(ul["shadow_size"]) > int(hi["shadow_size"]) and float(ul["shadow_dist"]) > float(hi["shadow_dist"]) and int(ul["casters"]) > int(hi["casters"]),
 		"Ultra costs more than High in every knob that scales")
-	# The brightness lift is the calibration against today's game (client/README.md "Graphics presets"): 1.2 for Medium, High and Ultra, 1.15 for Low (no moon shadow).
-	check(is_equal_approx(DmGraphicsPreset.LIFT, 1.2) and is_equal_approx(DmGraphicsPreset.LIFT_LOW, 1.15) and is_equal_approx(float(lo["lift"]), 1.15)
-		and is_equal_approx(float(DmGraphicsPreset.TABLE["medium"]["lift"]), 1.2) and is_equal_approx(float(hi["lift"]), 1.2) and is_equal_approx(float(ul["lift"]), 1.2), "the brightness lifts are the calibrated ones")
+	# The preset's own factor on the area's lift: 1 for Medium, High and Ultra, 0.96 for Low (its moon casts no shadow).
+	check(is_equal_approx(DmGraphicsPreset.LIFT_LOW, 0.96) and is_equal_approx(float(lo["lift"]), 0.96)
+		and is_equal_approx(float(DmGraphicsPreset.TABLE["medium"]["lift"]), 1.0) and is_equal_approx(float(hi["lift"]), 1.0) and is_equal_approx(float(ul["lift"]), 1.0), "the presets' own lift factors are Low 0.96, the others 1")
+	area_lifts()
 	for id in DmGraphicsPreset.IDS:
 		var p: Dictionary = DmGraphicsPreset.TABLE[id]
 		var today: Array = {"low": [0, 0], "medium": [8, 6], "high": [12, 8], "ultra": [20, 14]}[id]
 		check(int(p["casters"]) == today[0] and int(p["casters_crowd"]) == today[1], "%s: today's crowd caster counts (%s)" % [id, today])
+
+
+## The calibrated exposure lift of each area (client/README.md "The look against today's game"): the value that puts the rebuilt frame's mean luminance in the world region within 5 % of
+## today's on the same camera (the look probe, Ultra, 2026-10-17). A change of a number here is a new calibration: measure it again with the probe, then change this table with it.
+const AREA_LIFTS := {
+	"chapterhouse": 1.52, "acre": 1.11, "alchemist_wing": 2.08, "graves": 1.35, "warren": 1.35, "ossuary": 1.38,
+	"nave": 1.33, "coliseum": 1.8, "sanctum": 1.36, "cloister": 1.37, "pyre": 1.34, "fen": 0.8,
+}
+
+
+func area_lifts() -> void:
+	var scenes: Array = []
+	for f in DirAccess.get_files_at("res://areas"):
+		if f.ends_with(".tscn"):
+			scenes.append(f.get_basename())
+	scenes.sort()
+	var keys: Array = DmWorldBuilder.AREA_LIFT.keys()
+	keys.sort()
+	check(keys == scenes and scenes.size() == 12, "a lift for each of the twelve areas, and only for them (%s)" % str(scenes))
+	var same := true
+	var inside := true
+	for id in AREA_LIFTS:
+		same = same and is_equal_approx(DmWorldBuilder.area_lift_of(String(id)), float(AREA_LIFTS[id]))
+		inside = inside and float(AREA_LIFTS[id]) >= 0.5 and float(AREA_LIFTS[id]) <= 2.5
+	check(same and DmWorldBuilder.AREA_LIFT.size() == AREA_LIFTS.size(), "every area's lift is the calibrated one")
+	check(inside, "every lift lies between 0.5 and 2.5 (a number beyond that is a slip, not a calibration)")
+	check(is_equal_approx(DmWorldBuilder.area_lift_of("depths"), DmWorldBuilder.LIFT_DEFAULT) and is_equal_approx(DmWorldBuilder.LIFT_DEFAULT, 1.2), "an area the table does not list (the Depths) keeps the lift of 1.2 the whole game had")
+
+
+## An area change eases the lift (DmWorldBuilder.LIFT_BLEND) and the exposure with it; the preset's factor multiplies the area's; nothing runs outside the blend.
+func lift_blend(g: DmNextGame) -> void:
+	var b := g.world.builder
+	g.perf.apply({"graphics": "ultra", "auto_res": false})
+	b.set_area("graves")
+	while b.lift_blending():
+		b.step_lift(0.25)
+	var gr := float(AREA_LIFTS["graves"])
+	var exp_of := func(lift: float, preset: float) -> float:
+		return float(b.world.lighting.exposure) * DmWorldBuilder.EXPOSURE_K * b.area_exposure * lift * preset * b.brightness
+	check(is_equal_approx(b.area_lift, gr) and is_equal_approx(b.env.tonemap_exposure, exp_of.call(gr, 1.0)) and not b.is_processing() and not b.lift_blending(),
+		"in the Graves the lift is the Graves' %.2f and nothing runs per frame" % gr)
+	b.set_area("graves")
+	check(not b.lift_blending() and not b.is_processing(), "entering the area the hero stands in starts no blend")
+	var ac := float(AREA_LIFTS["acre"])
+	var before := b.env.tonemap_exposure
+	var gr_ease := b.area_exposure
+	var sky := Color.html(str(b.world.areas["acre"].ambient.hemiSky))
+	var ac_ease := clampf(1.0 - (maxf(sky.r, maxf(sky.g, sky.b)) - 0.5) * 0.8, 0.88, 1.0)   # the area's own easing of the exposure (today's, set_area)
+	b.set_area("acre")   # the Acre's lift is lower than the Graves': the exposure falls, easing
+	check(b.lift_blending() and b.is_processing() and is_equal_approx(b.area_lift, gr) and is_equal_approx(b.area_exposure, gr_ease) and is_equal_approx(b.env.tonemap_exposure, before),
+		"an area change starts a blend from the old area's lift and exposure easing: the exposure does not jump on the first frame")
+	var prev := gr
+	var monotone := true
+	var steps := 0
+	while b.lift_blending() and steps < 100:
+		b.step_lift(DmWorldBuilder.LIFT_BLEND / 8.0)
+		steps += 1
+		monotone = monotone and b.area_lift <= prev + 1.0e-6 and b.area_lift >= ac - 1.0e-6 and b.area_exposure <= gr_ease + 1.0e-6 and b.area_exposure >= ac_ease - 1.0e-6 and is_equal_approx(b.env.tonemap_exposure, exp_of.call(b.area_lift, 1.0))
+		prev = b.area_lift
+	check(steps >= 8 and steps <= 9 and monotone, "the blend takes LIFT_BLEND (8 steps of an eighth), falls without overshoot, and the exposure follows the lift (%d steps)" % steps)
+	check(is_equal_approx(b.area_lift, ac) and is_equal_approx(b.area_exposure, ac_ease) and not b.is_processing() and is_equal_approx(b.env.tonemap_exposure, exp_of.call(ac, 1.0)), "at the end the lift is the Acre's %.2f, the exposure easing its own and the blend stops running" % ac)
+	# a change in the middle of a blend starts from where the lift is, and a preset change keeps the product
+	b.set_area("graves")
+	b.step_lift(DmWorldBuilder.LIFT_BLEND * 0.5)
+	var mid := b.area_lift
+	check(mid > ac and mid < gr, "half-way between the Acre's lift and the Graves' (%.3f)" % mid)
+	b.set_area("chapterhouse")
+	check(is_equal_approx(b.area_lift, mid) and b.lift_blending(), "an area change in the middle of a blend starts from the lift it is at")
+	g.perf.apply({"graphics": "low", "auto_res": false})
+	check(is_equal_approx(b.env.tonemap_exposure, exp_of.call(mid, DmGraphicsPreset.LIFT_LOW)), "the preset's factor multiplies the area's lift, in the middle of a blend too")
+	while b.lift_blending():
+		b.step_lift(0.25)
+	check(is_equal_approx(b.area_lift, float(AREA_LIFTS["chapterhouse"])) and is_equal_approx(b.env.tonemap_exposure, exp_of.call(float(AREA_LIFTS["chapterhouse"]), DmGraphicsPreset.LIFT_LOW)),
+		"Low in the Chapterhouse: its lift %.2f x 0.96" % float(AREA_LIFTS["chapterhouse"]))
+	# the game's own path: `DmNextWorld.enter_area` (what the area event calls) reaches the builder
+	g.perf.apply({"graphics": "ultra", "auto_res": false})
+	g.world.enter_area("graves")
+	while b.lift_blending():
+		b.step_lift(0.25)
+	check(b.current_area == "graves" and is_equal_approx(b.area_lift, gr), "the world's `enter_area` sets the area's lift")
 
 
 ## Every preset on a running game: the scene's lights, environment and viewport say what the table says.
@@ -128,7 +212,7 @@ func applied(g: DmNextGame, id: String) -> void:
 
 
 ## The environment of the scene is today's (DmWorldBuilder's, the same constants) with the calibrated lift: the ACES tonemapper, the exposure (the world's x EXPOSURE_K, the area's
-## easing, the preset's lift, the Settings brightness), the plain-colour ambient at the hemisphere's energy, the depth fog, the moon and the rim light at today's energies; the
+## easing, the area's lift, the preset's factor, the Settings brightness), the plain-colour ambient at the hemisphere's energy, the depth fog, the moon and the rim light at today's energies; the
 ## look measured against today's game is only valid while these hold.
 func environment(g: DmNextGame, id: String) -> void:
 	var p := DmGraphicsPreset.get_preset(id)
@@ -136,8 +220,10 @@ func environment(g: DmNextGame, id: String) -> void:
 	var e: Environment = b.env
 	var L: Dictionary = b.world.lighting
 	check(e.tonemap_mode == Environment.TONE_MAPPER_ACES, "%s: the ACES tonemapper" % id)
-	check(is_equal_approx(b.preset_lift, float(p["lift"])), "%s: the builder carries the preset's lift %.2f" % [id, float(p["lift"])])
-	check(is_equal_approx(e.tonemap_exposure, float(L.exposure) * DmWorldBuilder.EXPOSURE_K * b.area_exposure * float(p["lift"]) * b.brightness), "%s: the exposure is the world's x %.1f, the area's easing, the lift and the brightness (%.3f)" % [id, DmWorldBuilder.EXPOSURE_K, e.tonemap_exposure])
+	check(is_equal_approx(b.preset_lift, float(p["lift"])), "%s: the builder carries the preset's lift factor %.2f" % [id, float(p["lift"])])
+	check(is_equal_approx(b.area_lift, DmWorldBuilder.area_lift_of(b.current_area)) and not b.lift_blending(), "%s: the area's lift %.2f (%s)" % [id, b.area_lift, b.current_area])
+	check(is_equal_approx(e.tonemap_exposure, float(L.exposure) * DmWorldBuilder.EXPOSURE_K * b.area_exposure * b.area_lift * float(p["lift"]) * b.brightness),
+		"%s: the exposure is the world's x %.1f, the area's easing, the area's lift, the preset's factor and the brightness (%.3f)" % [id, DmWorldBuilder.EXPOSURE_K, e.tonemap_exposure])
 	check(e.ambient_light_source == Environment.AMBIENT_SOURCE_COLOR and is_equal_approx(e.ambient_light_energy, float(L.hemiIntensity) * DmWorldBuilder.HEMI_K), "%s: the plain-colour ambient at the hemisphere's energy" % id)
 	check(e.fog_enabled and e.fog_mode == Environment.FOG_MODE_DEPTH and is_equal_approx(e.fog_density, 1.0), "%s: the depth fog" % id)
 	# the background past everything comes out of the tonemapper as today's Compatibility shows it, the world's colour as it is (#07060a: 7, 6, 10)

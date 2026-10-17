@@ -31,6 +31,7 @@ roughness = 0.95
 texture_filter = 5
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_65c20"]
+lightmap_size_hint = Vector2i(429, 333)
 _surfaces = [{
 "aabb": AABB(-26.8, 0, -20.8, 53.6, 1e-05, 41.6),
 "attribute_data": PackedByteArray("7+6OwERExMCNiXQy2YmdMu/ujkBERMTAAACAP9mJnTLv7o5AzcxMPwAAgD8AAIA/7+6OwM3MTD+NiXQyAACAPw=="),
@@ -50,6 +51,7 @@ roughness = 0.45
 texture_filter = 5
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_bc4f0"]
+lightmap_size_hint = Vector2i(42, 316)
 _surfaces = [{
 "aabb": AABB(-2.6, 0, -19.75, 5.2, 1e-05, 39.5),
 "attribute_data": PackedByteArray("ZmamvgAAjsDZiZ0yAAAAAGZmpj4AAI7AAACAPwAAAABmZqY+AAAAPwAAgD8AAIA/ZmamvgAAAD/ZiZ0yAACAPw=="),
@@ -63,6 +65,7 @@ _surfaces = [{
 }]
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_fcbc9"]
+lightmap_size_hint = Vector2i(376, 36)
 _surfaces = [{
 "aabb": AABB(-23.5, 0, -2.2000008, 47, 1e-05, 4.4000006),
 "attribute_data": PackedByteArray("AAAwwJqZEcAAAAAAjC46tAAASECamRHAAACAP4wuOrQAAEhAzczcvwAAgD///38/AAAwwM3M3L8AAAAA//9/Pw=="),
@@ -76,6 +79,7 @@ _surfaces = [{
 }]
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_1ab1f"]
+lightmap_size_hint = Vector2i(88, 88)
 _surfaces = [{
 "aabb": AABB(-5.5, 0, -5.5, 11, 1e-05, 11),
 "attribute_data": PackedByteArray("AAAwvwAALMAAAAAAAAAAAAAAMD8AACzAAACAPwAAAAAAADA/AACovwAAgD8AAIA/AAAwvwAAqL8AAAAAAACAPw=="),
@@ -232,6 +236,7 @@ roughness = 0.62
 texture_filter = 5
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_00763"]
+lightmap_size_hint = Vector2i(56, 48)
 _surfaces = [{
 "aabb": AABB(-3.5, 0, -3, 7, 1e-05, 6),
 "attribute_data": PackedByteArray("AAAAv7dt2z4AAAAAAAAAAAAAAD+3bds+AACAPwAAAAAAAAA/SZKkPwAAgD8AAIA/AAAAv0mSpD8AAAAAAACAPw=="),
@@ -245,6 +250,7 @@ _surfaces = [{
 }]
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_9c615"]
+lightmap_size_hint = Vector2i(64, 64)
 _surfaces = [{
 "aabb": AABB(-4, 0, -4, 8, 1e-05, 8),
 "attribute_data": PackedByteArray("SZJkQJIkScAAAAAAAAAAAG7blkCSJEnAAACAPwAAAABu25ZAAAAAwAAAgD8AAIA/SZJkQAAAAMAAAAAAAACAPw=="),
@@ -320,6 +326,7 @@ size = Vector2(7.2, 7.2)
 size = Vector3(8, 5, 1)
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_c84f1"]
+lightmap_size_hint = Vector2i(64, 80)
 _surfaces = [{
 "aabb": AABB(-4, 0, -5, 8, 1e-05, 10),
 "attribute_data": PackedByteArray("JUkSv9u2zcAAAAAAAAAAACVJEj/bts3AAACAPwAAAAAlSRI/AACgwAAAgD8AAIA/JUkSvwAAoMAAAAAAAACAPw=="),
@@ -369,6 +376,7 @@ size = Vector3(8, 0.08, 0.1)
 size = Vector2(7.2, 7.2)
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_ba526"]
+lightmap_size_hint = Vector2i(64, 64)
 _surfaces = [{
 "aabb": AABB(-4, 0, -4, 8, 1e-05, 8),
 "attribute_data": PackedByteArray("btuWwCVJksAAAAAAAAAAAEmSZMAlSZLAAACAPwAAAABJkmTAt21bwAAAgD8AAIA/btuWwLdtW8AAAAAAAACAPw=="),
@@ -2372,6 +2380,6 @@ metadata/door_id = "graves_warren"
 [node name="Lightmap" type="LightmapGI" parent="." unique_id=2894048]
 max_texture_size = 4096
 environment_mode = 3
-environment_custom_color = Color(0.2697464, 0.21509123, 0.40789327, 1)
+environment_custom_color = Color(0.0591426, 0.038003117, 0.13846758, 1)
 environment_custom_energy = 1.9
 light_data = ExtResource("23_8abee")

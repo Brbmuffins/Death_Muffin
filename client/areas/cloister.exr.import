@@ -2,7 +2,7 @@
 
 importer="2d_array_texture"
 type="CompressedTexture2DArray"
-uid="uid://dg4l1ms15skon"
+uid="uid://cq3c5hvd5mslx"
 path.bptc="res://.godot/imported/cloister.exr-dbbf03b070ab2d773dc890c31d4058c2.bptc.ctexarray"
 path.astc="res://.godot/imported/cloister.exr-dbbf03b070ab2d773dc890c31d4058c2.astc.ctexarray"
 metadata={
@@ -27,4 +27,4 @@ compress/channel_pack=1
 mipmaps/generate=false
 mipmaps/limit=-1
 slices/horizontal=1
-slices/vertical=2
+slices/vertical=3

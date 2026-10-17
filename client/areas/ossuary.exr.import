@@ -2,7 +2,7 @@
 
 importer="2d_array_texture"
 type="CompressedTexture2DArray"
-uid="uid://doiu3d5vd24b"
+uid="uid://cpbmgnmem8fo6"
 path.bptc="res://.godot/imported/ossuary.exr-d2c2df43d44b05c7e8481df453638af6.bptc.ctexarray"
 path.astc="res://.godot/imported/ossuary.exr-d2c2df43d44b05c7e8481df453638af6.astc.ctexarray"
 metadata={
@@ -27,4 +27,4 @@ compress/channel_pack=1
 mipmaps/generate=false
 mipmaps/limit=-1
 slices/horizontal=1
-slices/vertical=8
+slices/vertical=3

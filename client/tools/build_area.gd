@@ -34,6 +34,10 @@ const OCC_WALL_MIN_LENGTH := 4.0
 const OCC_PROP_MIN_HEIGHT := 3.0       # solid box-collider props at least this tall and wide get one (the mausoleums)
 const OCC_PROP_MIN_SIDE := 3.0
 const OCC_PROP_SHRINK := 0.7           # occluders are the collider box scaled down so they never hide what is visible past a prop
+## The lightmap density of every floor quad (the ground, the paths, the door corridors), in metres a texel. A quad built by hand has no size hint, so Godot gives it a lightmap of 64 x 64
+## texels whatever its size (the Chapterhouse's ground 0.43 m a texel, the Graves' 0.84 x 0.65 m, a 40 m path 0.6 m): a candle's pool 0.7 to 1 m above the floor came out at a quarter of the
+## real-time light. 0.125 m (8 texels a metre, the door corridors' old density) keeps a pool's shape; no floor is over 440 texels a side, far under the bake's 4096 limit.
+const FLOOR_TEXEL := 0.125
 
 var world: Dictionary
 var out_dir := DEFAULT_OUT
@@ -396,8 +400,11 @@ func _build(id: String) -> void:
 # ---------------------------------------------------------------- the lighting bake (client/addons/dm_bake/README.md)
 ## The area's LightmapGI. What is baked: the prop lights (bake mode Static: direct and bounced light) and the area's ambient, which a lightmapped
 ## surface takes from its lightmap instead of the environment, so the bake carries the same plain-colour hemisphere ambient DmWorldBuilder.set_area
-## gives the area at runtime (same constants). The moon and the rim light stay real-time as today (they live in the game scene, outside this
-## subtree). A bake made for this scene is picked up when `<id>.lmbake` sits next to it; a bake belongs to the scene it was made from.
+## gives the area at runtime (same constants, the area's hemisphere factor included: the Acre's and the Wing's are brighter). The Environment's
+## ambient colour is an sRGB colour, which the renderer converts to linear light; the bake takes `environment_custom_color` as it is, so it gets
+## the converted colour. The moon and the rim light stay real-time as today (they live in the game scene, outside this subtree; the Acre's and the
+## Wing's brighter moon is `DmWorldBuilder.set_area`'s). A bake made for this scene is picked up when `<id>.lmbake` sits next to it; a bake belongs
+## to the scene it was made from.
 func _lightmap(parent: Node3D) -> void:
 	var lm := LightmapGI.new()
 	lm.quality = LightmapGI.BAKE_QUALITY_MEDIUM
@@ -406,8 +413,8 @@ func _lightmap(parent: Node3D) -> void:
 	lm.use_denoiser = true
 	lm.max_texture_size = 4096
 	lm.environment_mode = LightmapGI.ENVIRONMENT_MODE_CUSTOM_COLOR
-	lm.environment_custom_color = _area_ambient(world.areas[area_id])
-	lm.environment_custom_energy = float(world.lighting.hemiIntensity) * DmWorldBuilder.HEMI_K
+	lm.environment_custom_color = _area_ambient(world.areas[area_id]).srgb_to_linear()
+	lm.environment_custom_energy = float(world.lighting.hemiIntensity) * DmWorldBuilder.HEMI_K * float(DmWorldBuilder.AREA_HEMI_K.get(area_id, 1.0))
 	var data := out_dir.path_join(area_id + ".lmbake")
 	if ResourceLoader.exists(data):
 		lm.light_data = load(data)
@@ -460,8 +467,10 @@ func _ground(parent: Node3D, name: String, x0: float, z0: float, x1: float, z1: 
 	for i in [0, 1, 2, 0, 2, 3]:
 		st.add_index(i)
 	st.generate_tangents()
+	var mesh := st.commit()
+	mesh.lightmap_size_hint = Vector2i(ceili((x1 - x0) / FLOOR_TEXEL), ceili((z1 - z0) / FLOOR_TEXEL))   # the bake's lightmap for this quad: FLOOR_TEXEL
 	var mi := MeshInstance3D.new()
-	mi.mesh = st.commit()
+	mi.mesh = mesh
 	mi.material_override = _theme_mat(theme_key)
 	mi.position = Vector3(cx, y, cz)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
