@@ -59,8 +59,10 @@ const _BILLBOARD := """
 
 ## The effects' colours are sRGB values (hex colours) that reach the shader as the instance's COLOR. Compatibility, which today's game runs on, reads every colour it
 ## multiplies into ALBEDO as sRGB and converts the product to linear at the end; Forward+ takes COLOR as linear, so an effect came out much brighter and whiter
-## (client/README.md "Graphics presets"). The shaders convert the colour themselves.
+## (client/README.md "Graphics presets"). The shaders convert the colour themselves. An effect is not baked into the area's lightmap either, so the area's exposure lift (calibrated on the baked world,
+## `DmWorldBuilder.AREA_LIFT`) is divided out of it (`dm_lift_inv`, 1 / (the lift x the preset's): the effect is as bright as today's whatever the area, client/README.md "The look against today's game").
 const _SRGB := """
+global uniform float dm_lift_inv;
 vec3 dm_srgb(vec3 c) {
 	return mix(pow((c + 0.055) / 1.055, vec3(2.4)), c * 0.0773993808, lessThan(c, vec3(0.04045)));
 }
@@ -79,7 +81,7 @@ void fragment() {
 	vec4 t = texture(tex, UV);
 	float a = t.a * COLOR.a;
 	if (a < 0.004) discard;
-	ALBEDO = dm_srgb(COLOR.rgb) * t.rgb;
+	ALBEDO = dm_lift_inv * dm_srgb(COLOR.rgb) * t.rgb;
 	ALPHA = a;
 }
 """,
@@ -105,7 +107,7 @@ void fragment() {
 		a *= 1.0 - v_rim * inner * (1.0 - rim_floor);
 	}
 	if (a < 0.004) discard;
-	ALBEDO = dm_srgb(COLOR.rgb) * t.rgb;
+	ALBEDO = dm_lift_inv * dm_srgb(COLOR.rgb) * t.rgb;
 	ALPHA = a;
 }
 """,
@@ -126,7 +128,7 @@ void fragment() {
 	vec4 t = texture(tex, UV);
 	float a = t.a * v_op;
 	if (a < 0.002) discard;
-	ALBEDO = dm_srgb(COLOR.rgb) * t.rgb;
+	ALBEDO = dm_lift_inv * dm_srgb(COLOR.rgb) * t.rgb;
 	ALPHA = a;
 }
 """,
@@ -150,7 +152,7 @@ void fragment() {
 	float l = texture(tex, (v_cell + UV) / grid).r;
 	float a = l * v_op;
 	if (a < 0.004) discard;
-	ALBEDO = dm_srgb(COLOR.rgb + vec3(core * l * l * l));
+	ALBEDO = dm_lift_inv * dm_srgb(COLOR.rgb + vec3(core * l * l * l));
 	ALPHA = a;
 }
 """,
@@ -176,7 +178,7 @@ void fragment() {
 	float l = texture(tex, (v_cell + UV) / grid).r;
 	float a = l * v_op;
 	if (a < 0.002) discard;
-	ALBEDO = dm_srgb(COLOR.rgb + vec3(core * l * l * l));
+	ALBEDO = dm_lift_inv * dm_srgb(COLOR.rgb + vec3(core * l * l * l));
 	ALPHA = a;
 }
 """,
@@ -189,7 +191,7 @@ void vertex() {
 	v_op = INSTANCE_CUSTOM.x;
 }
 void fragment() {
-	ALBEDO = dm_srgb(COLOR.rgb);
+	ALBEDO = dm_lift_inv * dm_srgb(COLOR.rgb);
 	ALPHA = v_op;
 }
 """,

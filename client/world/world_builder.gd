@@ -35,6 +35,7 @@ const AREA_LIFT := {
 }
 const LIFT_DEFAULT := 1.2    ## an area the table does not list (the Depths): the lift the whole game ran at before the table
 const LIFT_BLEND := 0.8      ## seconds an area change takes to ease from one lift to the next (no pop at a door)
+const LIFT_INV_PARAM := &"dm_lift_inv"   ## the global shader parameter (project.godot `shader_globals`) the creatures' and the effects' shaders read: 1 / (the area's lift x the preset's), set with the exposure
 const LIGHT_NEAR := 8        # prop lights enabled at once (nearest to the focus)
 ## Runtime cap on prop lights (graphics quality); LIGHT_NEAR on High.
 var light_near := LIGHT_NEAR
@@ -45,6 +46,7 @@ var area_hemi_k := 1.0
 var area_lift := LIFT_DEFAULT   # the current area's lift (AREA_LIFT): the live value while it eases to the new area's, `_lift_to` once it has arrived
 var preset_lift := 1.0     # the graphics preset's own factor (set_preset_lift): 1 but Low's
 var brightness := 1.0      # Settings -> Brightness
+var lift_inv := 1.0 / LIFT_DEFAULT   # what the global `dm_lift_inv` holds: 1 / (the area's lift x the preset's), set with the exposure
 var _lift_from := LIFT_DEFAULT   # an area change eases the lift and the area's exposure easing from here to `_lift_to` / `_exp_to` over LIFT_BLEND (`step_lift` from `_process`, which only runs during the blend)
 var _lift_to := LIFT_DEFAULT
 var _exp_from := 1.0
@@ -324,6 +326,9 @@ var _void := Color.BLACK   # what today's Compatibility shows where nothing is d
 func _apply_exposure() -> void:
 	if env != null:
 		env.tonemap_exposure = base_exposure * brightness * area_exposure * area_lift * preset_lift
+		# The lift is calibrated on the baked world; what is lit by the real-time lights alone (the creatures, the effects) divides it out in its shader, so it is as bright as today's.
+		lift_inv = 1.0 / (area_lift * preset_lift)
+		RenderingServer.global_shader_parameter_set(LIFT_INV_PARAM, lift_inv)
 		env.background_color = DmCompatAlbedo.void_color(_void, env.tonemap_exposure)   # Forward+ tonemaps the background like a pixel: this is the colour that comes out as `_void`
 
 ## Per-area ambient (AREAS[*].ambient): fog colour + density multiplier, hemisphere sky/ground, moon colour.

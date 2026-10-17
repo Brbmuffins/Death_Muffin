@@ -39,7 +39,7 @@ const float SPECTRAL_OPACITY = 0.55;  // DmCreature: opacity 0.55 for a spectral
 uniform sampler2D albedo_tex : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D orm_tex : hint_default_white, filter_linear_mipmap, repeat_enable;
 uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap, repeat_enable;
-uniform vec4 albedo_col : source_color = vec4(1.0);
+uniform vec4 albedo_col = vec4(1.0);   // as the glTF has it, sRGB numbers: Compatibility reads a colour raw (no `source_color`, Forward+ would convert it)
 uniform float rough_f = 1.0;
 uniform float metal_f = 1.0;
 uniform bool use_orm = false;
@@ -76,6 +76,18 @@ uniform vec4 vat_clips[16];
 // Its clip table (a track may be sampled finer than the body).
 uniform sampler2D vat_track : filter_nearest, repeat_disable;
 uniform vec4 trk_clips[16];
+
+// Compatibility's colours (DmCreatureMat's header, client/README.md "The look against today's game"): it reads a texture, a colour and every number written to ALBEDO or EMISSION
+// as sRGB and converts the product to linear once, at the end; Forward+ takes them as linear. The tint (`COLOR.rgb`, a `lin()` of a hex), the glows and the flash are numbers made for
+// that: a tinted body multiplies in sRGB numbers and converts (`dm_s2l`), the emission is converted too (a small glow is a twelfth of itself there). The area's exposure lift is calibrated
+// on the baked world: the bodies divide their albedo, specular and emission by it (`dm_lift_inv`, 1 / (the area's lift x the preset's), set by DmWorldBuilder._apply_exposure).
+global uniform float dm_lift_inv;
+vec3 dm_s2l(vec3 c) {
+	return mix(pow((c + 0.055) / 1.055, vec3(2.4)), c * 0.0773993808, lessThan(c, vec3(0.04045)));
+}
+vec3 dm_l2s(vec3 c) {
+	return mix(1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, c * 12.92, lessThan(c, vec3(0.0031308)));
+}
 
 const vec3 FLASH_COLOR = vec3(1.0, 0.87137, 0.71569); // 0xfff0dc in linear, DmCreature.FLASH_COLOR
 const float FLASH_EMISSIVE = 0.16;                    // DmCreature._apply_flash: emis_k + f * 0.16
@@ -225,13 +237,19 @@ vec3 bumped(vec3 n, vec3 pos, vec2 uv, vec3 map) {
 void fragment() {
 	if (v_part > 0.5) {   // a hand prop: its own flat material
 		int k = clamp(int(v_part + 0.5) - 1, 0, 7);
-		ALBEDO = part_albedo[k].rgb;
+		ALBEDO = part_albedo[k].rgb * dm_lift_inv;
+		SPECULAR = 0.5 * dm_lift_inv;
 		METALLIC = part_pbr[k].x;
 		ROUGHNESS = part_pbr[k].y;
-		EMISSION = part_emission[k].rgb;
+		EMISSION = part_emission[k].rgb * dm_lift_inv;
 	} else {
-		vec4 a = texture(albedo_tex, UV) * albedo_col;
-		ALBEDO = a.rgb * COLOR.rgb;
+		vec3 alb = texture(albedo_tex, UV).rgb;   // linear light (source_color)
+		vec3 tk = albedo_col.rgb * COLOR.rgb;
+		if (any(notEqual(tk, vec3(1.0)))) {   // a tinted body: the product in sRGB numbers, converted once
+			alb = dm_s2l(dm_l2s(alb) * tk);
+		}
+		ALBEDO = alb * dm_lift_inv;
+		SPECULAR = 0.5 * dm_lift_inv;
 		if (use_orm) {
 			vec3 orm = texture(orm_tex, UV).rgb;
 			ROUGHNESS = clamp(orm.g * rough_f, 0.04, 1.0);
@@ -241,8 +259,10 @@ void fragment() {
 			METALLIC = 0.0;
 		}
 		vec3 n = normalize(NORMAL);
-		float fres = 1.0 - clamp(dot(n, normalize(VIEW)), 0.0, 1.0);   // from the geometric normal, as DmCreatureMat's rim reads NORMAL before the normal map
-		EMISSION = mix(v_glow.rgb, FLASH_COLOR, v_flash) * (v_glow.a + v_flash * FLASH_EMISSIVE) + v_rim * smoothstep(0.35, 0.95, fres);
+		if (v_glow.a + v_flash > 0.0 || v_rim.x + v_rim.y + v_rim.z > 0.0) {   // (per instance: a body with no glow, flash or rim skips the conversion)
+			float fres = 1.0 - clamp(dot(n, normalize(VIEW)), 0.0, 1.0);   // from the geometric normal, as DmCreatureMat's rim reads NORMAL before the normal map
+			EMISSION = dm_s2l(mix(v_glow.rgb, FLASH_COLOR, v_flash) * (v_glow.a + v_flash * FLASH_EMISSIVE) + v_rim * smoothstep(0.35, 0.95, fres)) * dm_lift_inv;
+		}
 		if (use_normal) {
 			NORMAL = bumped(n, VERTEX, UV, texture(normal_tex, UV).rgb);
 		}

@@ -14,6 +14,11 @@ const PET_FAR := 35.0           ## a remote pet this far from the local hero ani
 const FAR_HZ := 8.0
 const REPLAY_DELAY := 0.8       ## as DmNextGame.CASTER_DELAY: a joiner's spawner must have made the bodies before we talk about them
 const BODY_SLOTS := ["main_hand", "off_hand", "head", "chest", "legs", "hands", "feet"]
+## The hero's ring and contact shadow against today's (client/README.md "The look against today's game"): today's renderer blends a decal in the exposed, sRGB-encoded scene and Forward+ in linear light, so the same
+## ring reads wider and whiter here. The ring decals are drawn at RING_K of their opacity and the contact shadow at SHADOW_A (today's is 0.5), which puts the ring's peak where today's is (the Graves 195 against 195 to 221 in
+## three runs of today's game) and the pool inside it too. A calibration: measure again with the look probe's `ring=K/S` variants before changing either number.
+const RING_K := 0.4
+const SHADOW_A := 0.75
 
 var game: Node                  ## DmNextGame
 var looks: Dictionary = {}      ## peer id -> descriptor (every peer, as far as it has heard)
@@ -24,6 +29,8 @@ var _pets: Dictionary = {}      ## peer id -> DmPetView
 var _far_acc: Dictionary = {}   ## peer id -> accumulated dt of a far pet
 var _ring: Array = []           ## the local hero's decal handles
 var _ring_done := false
+var ring_k := RING_K            ## the opacity of the ring decals (the look probe tries others)
+var shadow_a := SHADOW_A        ## the opacity of the contact shadow
 var _gear: Dictionary = {}      ## the local look's parts (kept so each source updates its own)
 var _element := ""              ## the weapon element the local hero's socketed runes give (DmGearFx.ELEMENTS key, "" = the weapon's own)
 var _cape := ""
@@ -271,22 +278,22 @@ func _dress_ring(b: DmHeroBody) -> void:
 	var dd: Dictionary = DmContent.discipline(b.discipline_id)
 	var col: int = int(Color.html(String(dd.get("color", "#a26bff"))).to_rgba32() >> 8)
 	_ring = [
-		vfx.decal({"hero": true, "persistent": true, "tex": "glow", "blending": "mix", "color": 0x07040d, "x": 0.0, "z": 0.0, "r": 1.25, "y": 0.045, "duration": 1e9, "opacity": 0.5, "fadeIn": 0.5, "follow": at}),
-		vfx.decal({"hero": true, "persistent": true, "tex": "ring", "color": 0xf0e8ff, "x": 0.0, "z": 0.0, "r": 0.8, "y": 0.05, "duration": 1e9, "opacity": 0.6, "fadeIn": 0.5, "follow": at}),
+		vfx.decal({"hero": true, "persistent": true, "tex": "glow", "blending": "mix", "color": 0x07040d, "x": 0.0, "z": 0.0, "r": 1.25, "y": 0.045, "duration": 1e9, "opacity": shadow_a, "fadeIn": 0.5, "follow": at}),
+		vfx.decal({"hero": true, "persistent": true, "tex": "ring", "color": 0xf0e8ff, "x": 0.0, "z": 0.0, "r": 0.8, "y": 0.05, "duration": 1e9, "opacity": 0.6 * ring_k, "fadeIn": 0.5, "follow": at}),
 		vfx.decal({"tex": "glow", "color": col, "x": 0.0, "z": 0.0, "r": 2.2, "duration": 1e9, "opacity": 0.13, "fadeIn": 0.01, "follow": at}),
-		vfx.decal({"tex": "ring", "color": 0xc8bea8, "x": 0.0, "z": 0.0, "r": 0.85, "duration": 1e9, "opacity": 0.46, "fadeIn": 0.01, "follow": at}),
-		vfx.decal({"tex": "ring", "color": 0xb6a9c8, "x": 0.0, "z": 0.0, "r": 0.35, "duration": 1e9, "opacity": 0.36, "fadeIn": 0.01,
+		vfx.decal({"tex": "ring", "color": 0xc8bea8, "x": 0.0, "z": 0.0, "r": 0.85, "duration": 1e9, "opacity": 0.46 * ring_k, "fadeIn": 0.01, "follow": at}),
+		vfx.decal({"tex": "ring", "color": 0xb6a9c8, "x": 0.0, "z": 0.0, "r": 0.35, "duration": 1e9, "opacity": 0.36 * ring_k, "fadeIn": 0.01,
 			"follow": func() -> Variant:
 				var gm: Variant = wg.get_ref()
 				if gm == null:
 					return null
 				var a: Vector3 = gm.aim_point()
 				return Vector3(a.x, 0, a.z)}),
-		vfx.decal({"tex": "ring", "color": int(DmContent.spell_fx()["souls"]["jade"]), "x": 0.0, "z": 0.0, "r": 1.25, "duration": 1e9, "opacity": 0.75, "fadeIn": 0.01, "pulse": 5.0,
+		vfx.decal({"tex": "ring", "color": int(DmContent.spell_fx()["souls"]["jade"]), "x": 0.0, "z": 0.0, "r": 1.25, "duration": 1e9, "opacity": 0.75 * ring_k, "fadeIn": 0.01, "pulse": 5.0,
 			"follow": func() -> Variant:
 				var hb: Variant = wb.get_ref()
 				return Vector3(hb.position.x, 0, hb.position.z) if (hb != null and not hb.p.is_empty() and hb.alive and DmPlayerRules.souls_charged(hb.p)) else null}),
-		vfx.decal({"tex": "ring", "color": 0xf0e9dc, "x": 0.0, "z": 0.0, "r": 1.0, "duration": 1e9, "opacity": 0.85, "fadeIn": 0.01, "pulse": 6.0,
+		vfx.decal({"tex": "ring", "color": 0xf0e9dc, "x": 0.0, "z": 0.0, "r": 1.0, "duration": 1e9, "opacity": 0.85 * ring_k, "fadeIn": 0.01, "pulse": 6.0,
 			"follow": func() -> Variant:
 				var gm: Variant = wg.get_ref()
 				var id: int = int(gm.aim_target_id()) if gm != null else 0

@@ -10,7 +10,10 @@ extends SceneTree
 ## A plan of all twelve areas takes 5 to 12 minutes on the rebuilt client and 7 to 12 on today's game on a busy VPS (more with lift variants): raise `timeout` to 1500 (rebuilt) and 1800 (today's), one run at a time under the lock.
 ## --part=game|calib|glow|both (default both), --plan="chapterhouse:base,nomoon;graves:base" (an area, then the variants to shoot: base, lift=1.5 (the rebuilt client at that exposure lift instead of the area's), unfix, unlift, unpool, nomoon, norim, noshadow, noglow, nossao, nofog, nodress: the world dressing off, before: what the first test builds drew: no dressing, a plain sphere at every light and the glow of the time),
 ## --frames=N (frames to wait after a change, 3), --warm=N (after the hero's move, 12). The game part starts the real game scene offline at Ultra with the hero at a fixed spot of each area,
-## saves <tag>_<area>_<variant>.png and prints a STAT line each (mean colour, luminance and its 10th, 50th and 90th percentile, the colour shares; the hero's own box left out) and a WSTAT line over the world region alone (today's frames carry the game's HUD, the rebuilt client's none: calibrate on WSTAT). The calibration part
+## saves <tag>_<area>_<variant>.png and prints a STAT line each (mean colour, luminance and its 10th, 50th and 90th percentile, the colour shares; the hero's own box left out) and a WSTAT line over the world region alone (today's frames carry the game's HUD, the rebuilt client's none: calibrate on WSTAT)
+## and an HSTAT line over HERO_BOX, the 24 px box on the hero's robe (the camera follows him: the same box in every frame, on both sides). The hero variants (the rebuilt client only): hnogear (the worn pieces' region and head tints off), hnoemis (the body's glow, rim and
+## trim glow off), hnolantern, hgear (the hero in worn pieces' tints, to see the gear shader), noprops (the area's prop lights off), noamb (the environment's ambient off), glowthr (the glow's threshold times the
+## exposure: Forward+ reads it after the exposure, Compatibility before it), crowd (24 enemies round the hero, the baked crowd needed: last in a plan, and slow on the software renderer, so a run of its own with a long timeout) and ring=K/S (the hero's ring decals at K times their opacity and his contact shadow at opacity S: DmHeroLook.RING_K and SHADOW_A). The calibration part
 ## shows one test object at a time on a grey plane under the game's environment (fog, specular, vertex colours, HDR, blends, emission) and prints a CAL2 line each: the same lines from both
 ## projects say where the renderers differ. `--part=glow --glow="<name>:<key>=<v>,<key>=<v>;<name>:..."` shoots the two bright things of the calibration (the HDR albedo quad, a small bright emission) under each glow setting of the
 ## list and prints a GLOW line each: the sRGB along the row through the thing, from its edge outwards (keys: lv the seven level weights "a/b/c/d/e/f/g", int, thr, scale, cap, strength, off=1 for no glow; an unnamed key keeps the game's `DmWfxBloom`
@@ -23,6 +26,7 @@ const SPOTS := {
 	"warren": Vector3(-52, 0, -30), "coliseum": Vector3(91, 0, -28), "cloister": Vector3(44, 0, -116),   # the centres of the other three areas (clear of props)
 }
 const WORLD_REGION := Rect2(0.12, 0.1, 0.66, 0.62)   # x .12 to .78, y .1 to .72 of the frame: no HUD in it, today's or the rebuilt client's
+const HERO_BOX := Rect2i(628, 400, 24, 24)   # 1280x720: the hero's robe; the camera follows the hero, so he stands at the same place in every frame (scaled with the frame's width)
 var out := ""
 var tag := ""
 var frames_per := 3
@@ -59,6 +63,27 @@ func _frames(n: int) -> void:
 func _stats(img: Image, label: String) -> void:
 	_stats_in(img, "STAT", label, Rect2(0.0, 0.0, 1.0, 1.0))
 	_stats_in(img, "WSTAT", label, WORLD_REGION)
+
+
+## The mean colour and luminance of HERO_BOX (the hero's robe: the same box on both sides; it reads one pose of a moving hero: the rebuilt numbers repeat to 5 %, today's own runs differ by up to a third).
+func _hstat(img: Image, label: String) -> void:
+	var k := float(img.get_width()) / 1280.0
+	var x0 := int(HERO_BOX.position.x * k)
+	var y0 := int(HERO_BOX.position.y * k)
+	var x1 := int(HERO_BOX.end.x * k)
+	var y1 := int(HERO_BOX.end.y * k)
+	var r := 0.0
+	var g := 0.0
+	var b := 0.0
+	var n := 0
+	for y in range(y0, y1):
+		for x in range(x0, x1):
+			var c := img.get_pixel(x, y)
+			r += c.r
+			g += c.g
+			b += c.b
+			n += 1
+	print("HSTAT %s mean_srgb=(%.1f %.1f %.1f) Y=%.1f" % [label, 255.0 * r / n, 255.0 * g / n, 255.0 * b / n, 255.0 * (0.299 * r + 0.587 * g + 0.114 * b) / n])
 
 
 func _stats_in(img: Image, kind: String, label: String, region: Rect2) -> void:
@@ -147,6 +172,11 @@ func _game() -> void:
 	var hb := g.local_body()
 	await _frames(20)
 	var ssao_on: bool = e.ssao_enabled if e.get("ssao_enabled") != null else false
+	var av: Variant = hb.get("avatar") if hb != null else null   # the rebuilt client's hero: his creature and lantern (the variants below)
+	var amb_energy := e.ambient_light_energy
+	var glow_thr := e.glow_hdr_threshold
+	var hidden: Array = []   # the prop lights a variant switched off
+	var ring_now := ""       # the hero ring's variant on the screen ("" = the game's)
 	for entry in plan:
 		var area := entry.get_slice(":", 0)
 		var variants := entry.get_slice(":", 1).split(",")
@@ -170,6 +200,22 @@ func _game() -> void:
 			b.moon.visible = true
 			b.rim.visible = true
 			b.moon.shadow_enabled = true
+			e.ambient_light_energy = amb_energy
+			e.glow_hdr_threshold = glow_thr
+			for l in hidden:
+				if is_instance_valid(l):
+					l.visible = true
+			hidden.clear()
+			_hero_reset(av)
+			var ring_want := v if v.begins_with("ring=") else ""
+			if ring_want != ring_now and g.get("look") != null:
+				ring_now = ring_want
+				var rk: float = DmHeroLook.RING_K
+				var ra: float = DmHeroLook.SHADOW_A
+				if ring_want != "":
+					rk = float(ring_want.substr(5).get_slice("/", 0))
+					ra = float(ring_want.substr(5).get_slice("/", 1))
+				await _ring_redo(g, hb, rk, ra)
 			_set_lift(lifted, true)
 			_set_pool_srgb(g.world, true)
 			var exp0 := e.tonemap_exposure
@@ -196,6 +242,41 @@ func _game() -> void:
 						e.set("ssao_enabled", false)
 				"nofog":
 					e.fog_enabled = false
+				"noamb":
+					e.ambient_light_energy = 0.0
+				"glowthr":
+					e.glow_hdr_threshold = glow_thr * e.tonemap_exposure
+				"hnogear":
+					_hero_gear(av, false)
+				"hnoemis":
+					_hero_emission(av, false)
+				"hnolantern":
+					if av != null and av.lantern != null:
+						av.lantern.visible = false
+				"hgear":
+					if av != null:
+						var cr: DmCreature = av.c
+						cr.set_region_tint("chest", {"color": 0x6b4fb0, "glow": 0x9b5cff, "strength": 0.7})
+						cr.set_region_tint("legs", {"color": 0x4a4a6a, "glow": null, "strength": 0.6})
+						cr.set_region_tint("hands", {"color": 0x8a6a2a, "glow": 0xffc15a, "strength": 0.7})
+						cr.set_region_tint("feet", {"color": 0x4a3a2a, "glow": null, "strength": 0.6})
+						cr.set_head_tint({"color": 0xb06b4f, "glow": null, "strength": 0.5})
+				"crowd":   # 24 enemies round the hero (the baked crowd: bash client/tools/bake_crowd.sh): the crowd's shader in the frame. Last in a plan: they stay and fight.
+					if g.get("director") != null:
+						var d: Node = g.director
+						d.cap = 24
+						d.wave_size = 24
+						d.enemy_limit = 36
+						d.spawn_min = 5.0
+						d.spawn_max = 9.0
+						d.spawn_wave([hb], 24)
+						d.flush_spawns()
+						await _frames(150)
+				"noprops":
+					for l in g.world.find_children("*", "OmniLight3D", true, false):
+						if l != (av.lantern if av != null else null) and l.visible:
+							l.visible = false
+							hidden.append(l)
 				"nodress":
 					g.world.dressing.set_enabled(false)
 				"before":
@@ -224,11 +305,58 @@ func _game() -> void:
 				print("no image")
 				continue
 			img.convert(Image.FORMAT_RGB8)
-			img.save_png("%s/%s_%s_%s.png" % [out, tag, area, v])
+			img.save_png("%s/%s_%s_%s.png" % [out, tag, area, v.replace("/", "_")])   # (a variant's `/` is not a folder)
 			_stats(img, "%s %s %s" % [tag, area, v])
+			_hstat(img, "%s %s %s" % [tag, area, v])
 	print("game part done")
 	g.queue_free()
 	await _frames(3)
+
+
+## The hero's ring and contact shadow again, at another opacity (DmHeroLook.ring_k, shadow_a): the old decals go, the new ones fade in.
+func _ring_redo(g: Node, hb: Node, ring_k: float, shadow_a: float) -> void:
+	var look: Node = g.get("look")
+	for h in look._ring:
+		if h != null:
+			h.kill()
+	look._ring.clear()
+	look.ring_k = ring_k
+	look.shadow_a = shadow_a
+	look._ring_done = false
+	look._dress_ring(hb)
+	await _frames(30)
+
+
+## The hero variants (the rebuilt client's hero: `av` is his DmAvatar, null elsewhere). _hero_reset puts the hero back as the game dresses him.
+func _hero_reset(av: Variant) -> void:
+	if av == null:
+		return
+	if av.lantern != null:
+		av.lantern.visible = true
+	_hero_gear(av, true)
+	_hero_emission(av, true)
+
+
+func _hero_gear(av: Variant, on: bool) -> void:
+	if av == null:
+		return
+	var cr: DmCreature = av.c
+	for i in 4:
+		cr.set_region_tint(DmCreature.GEAR_REGIONS[i], av._region_tints.get(DmCreature.GEAR_REGIONS[i]) if on else null)
+	cr.set_head_tint(av._head_tint if on else null)
+
+
+func _hero_emission(av: Variant, on: bool) -> void:
+	if av == null:
+		return
+	var cr: DmCreature = av.c
+	cr.set_emissive(av.accent_hex, 0.04 if on else 0.0)
+	cr._p("rim", cr._params.get("rim", Color(0, 0, 0, 0)) if on else Color(0, 0, 0, 0))
+	if not on:
+		for i in 4:
+			cr._gear_glow[i] = Vector3.ZERO
+		cr._head_glow = Vector3.ZERO
+		cr._push_gear()
 
 
 # ---------------------------------------------------------------- part 2: calibration scenes

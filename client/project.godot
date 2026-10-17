@@ -48,6 +48,13 @@ textures/vram_compression/import_s3tc_bptc=true
 textures/vram_compression/import_etc2_astc=true
 occlusion_culling/use_occlusion_culling=true
 
+[shader_globals]
+
+dm_lift_inv={
+"type": "float",
+"value": 1.0
+}
+
 [layer_names]
 
 3d_physics/layer_1="world"

@@ -8,6 +8,11 @@ extends RefCounted
 ##  - vertex wing flap (wingFlap.ts) for moth / bat / seraph
 ##  - fade variant (blend_mix, no depth write) for opacity < 1 and spectral bodies
 ## Source textures come from the imported glTF StandardMaterial3D (albedo, ORM, normal).
+## Ported (client/code.list "Ported"): the colours are Compatibility's, and the lift is not the creature's. Today's renderer reads a texture, a colour uniform and every number a shader
+## writes to ALBEDO or EMISSION as sRGB and converts the product to linear once, at the end; Forward+ takes them as linear. The creature's numbers (the tint, the emissive, the rim and the
+## gear tints are `lin()` of a hex) are made for the first, so the shader multiplies in Compatibility's numbers and converts like it (`dm_s2l`): the hero's accent emissive (0.04 x the
+## accent) is a twelfth of itself on today's side, and was most of the robe's brightness here. The area's exposure lift (`DmWorldBuilder.AREA_LIFT`) is calibrated on the baked world: a creature
+## lit by the real-time lights alone divides its albedo, specular and emission by it (the global `dm_lift_inv`), so the lifted exposure shows it as today's does (client/README.md "The look against today's game").
 
 static var _shaders: Dictionary = {}
 static var _baked: Dictionary = {}   # source ArrayMesh -> gear-masked ArrayMesh
@@ -31,10 +36,17 @@ static func shader(fade: bool, wings: bool, gear: bool, cull_back := false) -> S
 	var c := "shader_type spatial;\n"
 	c += "render_mode blend_mix, %s, %s, diffuse_burley, specular_schlick_ggx;\n" % [("depth_draw_never" if fade else "depth_draw_opaque"), ("cull_back" if cull_back else "cull_disabled")]
 	c += """
+global uniform float dm_lift_inv;   // 1 / (the area's exposure lift x the preset's): the lift is the baked world's (DmWorldBuilder._apply_exposure sets it)
+vec3 dm_s2l(vec3 c) {
+	return mix(pow((c + 0.055) / 1.055, vec3(2.4)), c * 0.0773993808, lessThan(c, vec3(0.04045)));
+}
+vec3 dm_l2s(vec3 c) {
+	return mix(1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, c * 12.92, lessThan(c, vec3(0.0031308)));
+}
 uniform sampler2D albedo_tex : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D orm_tex : filter_linear_mipmap, repeat_enable;
 uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap, repeat_enable;
-uniform vec4 albedo_col : source_color = vec4(1.0);
+uniform vec4 albedo_col = vec4(1.0);   // as the glTF has it (sRGB numbers, Compatibility's, no `source_color`: Forward+ would convert it)
 uniform float rough_f = 1.0;
 uniform float metal_f = 1.0;
 uniform bool use_orm = false;
@@ -77,12 +89,14 @@ void vertex() {
 """
 	c += """
 void fragment() {
-	vec4 a = texture(albedo_tex, UV) * albedo_col;
-	vec3 alb = a.rgb * tint;
+	vec4 a = texture(albedo_tex, UV);   // linear light (source_color)
+	float alpha = a.a * albedo_col.a;
+	vec3 k = albedo_col.rgb * tint;
 	vec3 glow = vec3(0.0);
 """
 	if gear:
 		c += """
+	vec3 alb = dm_l2s(a.rgb) * k;   // Compatibility's product, in its numbers (sRGB texel x colour x tint), the gear's tints mixed in the same numbers
 	float lum = dot(alb, vec3(0.299, 0.587, 0.114));
 	vec4 gm = COLOR;
 	float m0 = clamp(gm.r * gt0.w, 0.0, 1.0);
@@ -100,9 +114,18 @@ void fragment() {
 	float trim = max(smoothstep(0.45, 0.8, lum), smoothstep(0.4, 0.9, edge) * 0.8);
 	glow = (gg0 * gm.r * step(0.001, gt0.w) + gg1 * gm.g * step(0.001, gt1.w) + gg2 * gm.b * step(0.001, gt2.w) + gg3 * gm.a * step(0.001, gt3.w)
 		+ head_g * UV2.x * step(0.001, head_t.w)) * (0.2 + 0.8 * trim);
+	alb = dm_s2l(alb);
+"""
+	else:
+		c += """
+	vec3 alb = a.rgb;
+	if (any(notEqual(k, vec3(1.0)))) {   // a tinted material: the product in sRGB numbers, converted once
+		alb = dm_s2l(dm_l2s(alb) * k);
+	}
 """
 	c += """
-	ALBEDO = alb;
+	ALBEDO = alb * dm_lift_inv;
+	SPECULAR = 0.5 * dm_lift_inv;
 	if (use_orm) {
 		vec3 orm = texture(orm_tex, UV).rgb;
 		ROUGHNESS = clamp(orm.g * rough_f, 0.04, 1.0);
@@ -116,10 +139,10 @@ void fragment() {
 	}
 	float fres = 1.0 - clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0);
 	vec3 rimc = rim.rgb * rim.a * smoothstep(0.35, 0.95, fres) * 0.9;
-	EMISSION = emis * emis_k + rimc + glow;
+	EMISSION = dm_s2l(emis * emis_k + rimc + glow) * dm_lift_inv;   // Compatibility converts the emission too: a small glow is a twelfth of itself there
 """
 	if fade:
-		c += "	ALPHA = opacity * a.a;\n"
+		c += "	ALPHA = opacity * alpha;\n"
 	c += "}\n"
 	var sh := Shader.new()
 	sh.code = c

@@ -3,6 +3,9 @@ extends SceneTree
 ##   - the table: the four ids of today's game, an unknown or old value becomes High, every preset has every key, the order of cost (Low cheapest, Ultra dearest);
 ##   - the exposure lift: one number per area (DmWorldBuilder.AREA_LIFT, calibrated against today's game with the look probe), the preset's own factor on top (Low 0.96, the others 1),
 ##     the blend on an area change (nothing runs outside it);
+##   - what the lift leaves alone: the creatures and the effects (lit by the real-time lights alone, not in the lightmap) divide it out in their shaders by the global `dm_lift_inv` (1 / (the area's lift x the
+##     preset's)), which follows the exposure through a blend; the creature material and the crowd's convert their colours as Compatibility does (the emission too, the tinted albedo in sRGB numbers); the hero's
+##     ring and contact shadow are today's strength (DmHeroLook.RING_K, SHADOW_A);
 ##   - each preset applied to a real game scene: the moon's shadow, reach, splits and atlas, the soft filter, bloom, ambient occlusion, MSAA, anisotropy and mesh LOD
 ##     on the viewport, the effects quality, the governor's floor; and the crowd's shadow policy: with 30 robbers round the hero the shadow groups hold the preset's
 ##     nearest casters (Low none), the thralls cast from Medium up;
@@ -66,6 +69,7 @@ func _run() -> void:
 	for id in DmGraphicsPreset.IDS:
 		await applied(g, String(id))
 	await lift_blend(g)
+	hero_look(g)
 	await governor(g)
 	g.process_mode = Node.PROCESS_MODE_DISABLED
 	g.queue_free()
@@ -106,6 +110,9 @@ func table() -> void:
 
 ## The calibrated exposure lift of each area (client/README.md "The look against today's game"): the value that puts the rebuilt frame's mean luminance in the world region within 5 % of
 ## today's on the same camera (the look probe, Ultra, 2026-10-17). A change of a number here is a new calibration: measure it again with the probe, then change this table with it.
+## The hero's ring and contact shadow at the strength calibrated against today's ring (DmHeroLook.RING_K, SHADOW_A; the look probe's `ring=K/S` variants, 2026-10-17): a new calibration changes both.
+const RING_K := 0.4
+const SHADOW_A := 0.75
 const AREA_LIFTS := {
 	"chapterhouse": 1.52, "acre": 1.11, "alchemist_wing": 2.08, "graves": 1.35, "warren": 1.35, "ossuary": 1.38,
 	"nave": 1.33, "coliseum": 1.8, "sanctum": 1.36, "cloister": 1.37, "pyre": 1.34, "fen": 0.8,
@@ -143,6 +150,7 @@ func lift_blend(g: DmNextGame) -> void:
 		return float(b.world.lighting.exposure) * DmWorldBuilder.EXPOSURE_K * b.area_exposure * lift * preset * b.brightness
 	check(is_equal_approx(b.area_lift, gr) and is_equal_approx(b.env.tonemap_exposure, exp_of.call(gr, 1.0)) and not b.is_processing() and not b.lift_blending(),
 		"in the Graves the lift is the Graves' %.2f and nothing runs per frame" % gr)
+	check(is_equal_approx(b.lift_inv, 1.0 / gr), "the shaders' `dm_lift_inv` is 1 / the Graves' lift (%.4f)" % b.lift_inv)
 	b.set_area("graves")
 	check(not b.lift_blending() and not b.is_processing(), "entering the area the hero stands in starts no blend")
 	var ac := float(AREA_LIFTS["acre"])
@@ -160,6 +168,7 @@ func lift_blend(g: DmNextGame) -> void:
 		b.step_lift(DmWorldBuilder.LIFT_BLEND / 8.0)
 		steps += 1
 		monotone = monotone and b.area_lift <= prev + 1.0e-6 and b.area_lift >= ac - 1.0e-6 and b.area_exposure <= gr_ease + 1.0e-6 and b.area_exposure >= ac_ease - 1.0e-6 and is_equal_approx(b.env.tonemap_exposure, exp_of.call(b.area_lift, 1.0))
+		monotone = monotone and is_equal_approx(b.lift_inv, 1.0 / b.area_lift)   # the creatures' compensation follows the exposure through the blend
 		prev = b.area_lift
 	check(steps >= 8 and steps <= 9 and monotone, "the blend takes LIFT_BLEND (8 steps of an eighth), falls without overshoot, and the exposure follows the lift (%d steps)" % steps)
 	check(is_equal_approx(b.area_lift, ac) and is_equal_approx(b.area_exposure, ac_ease) and not b.is_processing() and is_equal_approx(b.env.tonemap_exposure, exp_of.call(ac, 1.0)), "at the end the lift is the Acre's %.2f, the exposure easing its own and the blend stops running" % ac)
@@ -172,6 +181,7 @@ func lift_blend(g: DmNextGame) -> void:
 	check(is_equal_approx(b.area_lift, mid) and b.lift_blending(), "an area change in the middle of a blend starts from the lift it is at")
 	g.perf.apply({"graphics": "low", "auto_res": false})
 	check(is_equal_approx(b.env.tonemap_exposure, exp_of.call(mid, DmGraphicsPreset.LIFT_LOW)), "the preset's factor multiplies the area's lift, in the middle of a blend too")
+	check(is_equal_approx(b.lift_inv, 1.0 / (mid * DmGraphicsPreset.LIFT_LOW)), "and so does the creatures' compensation (Low's 0.96 too)")
 	while b.lift_blending():
 		b.step_lift(0.25)
 	check(is_equal_approx(b.area_lift, float(AREA_LIFTS["chapterhouse"])) and is_equal_approx(b.env.tonemap_exposure, exp_of.call(float(AREA_LIFTS["chapterhouse"]), DmGraphicsPreset.LIFT_LOW)),
@@ -182,6 +192,40 @@ func lift_blend(g: DmNextGame) -> void:
 	while b.lift_blending():
 		b.step_lift(0.25)
 	check(b.current_area == "graves" and is_equal_approx(b.area_lift, gr), "the world's `enter_area` sets the area's lift")
+
+
+## What the lift leaves alone (client/README.md "The look against today's game"): the project declares the global the shaders read, the creature material, the crowd's and the effects' shaders divide the lift
+## out and convert their colours as Compatibility does, and the hero's ring and shadow are the calibrated strength. A shader's text is what is checked here (the renderer is the probe's).
+func hero_look(g: DmNextGame) -> void:
+	check(ProjectSettings.has_setting("shader_globals/dm_lift_inv") and String(ProjectSettings.get_setting("shader_globals/dm_lift_inv").get("type", "")) == "float" and DmWorldBuilder.LIFT_INV_PARAM == &"dm_lift_inv",
+		"the project declares the global float `dm_lift_inv` the builder sets with the exposure")
+	var plain := DmCreatureMat.shader(false, false, false).code
+	var gear := DmCreatureMat.shader(false, false, true).code
+	var fade := DmCreatureMat.shader(true, false, false).code
+	var ok := true
+	for code: String in [plain, gear, fade, DmCreatureMat.shader(false, true, true, true).code]:
+		ok = ok and code.contains("global uniform float dm_lift_inv;") and code.contains("ALBEDO = alb * dm_lift_inv;") and code.contains("SPECULAR = 0.5 * dm_lift_inv;") \
+			and code.contains("EMISSION = dm_s2l(emis * emis_k + rimc + glow) * dm_lift_inv;") and not code.contains("albedo_col : source_color")
+	check(ok, "every creature variant divides the lift out of albedo, specular and emission, converts the emission like Compatibility and reads the glTF's colour as it is")
+	check(plain.contains("alb = dm_s2l(dm_l2s(alb) * k);") and gear.contains("vec3 alb = dm_l2s(a.rgb) * k;") and gear.contains("alb = dm_s2l(alb);") and fade.contains("ALPHA = opacity * alpha;"),
+		"a tinted material and the gear's tints are multiplied in sRGB numbers and converted once, as Compatibility does")
+	var crowd := FileAccess.get_file_as_string("res://crowd/crowd_vat.gdshader")
+	check(crowd.contains("global uniform float dm_lift_inv;") and crowd.contains("alb = dm_s2l(dm_l2s(alb) * tk);") and crowd.contains("ALBEDO = alb * dm_lift_inv;") and crowd.contains("SPECULAR = 0.5 * dm_lift_inv;")
+		and crowd.contains("EMISSION = dm_s2l(mix(v_glow.rgb, FLASH_COLOR, v_flash)") and crowd.contains("* dm_lift_inv;") and not crowd.contains("albedo_col : source_color"),
+		"the crowd's shader does the same")
+	var fx := true
+	for kind in ["particle", "decal", "sprite", "decal_sheet", "sprite_sheet", "beam"]:
+		for add in [false, true]:
+			var code: String = DmFxTex.shader(kind, add).code
+			fx = fx and code.contains("global uniform float dm_lift_inv;") and code.contains("ALBEDO = dm_lift_inv * dm_srgb(")
+	check(fx, "every effect shader (six kinds, mixed and additive) divides the lift out")
+	check(is_equal_approx(DmHeroLook.RING_K, RING_K) and is_equal_approx(DmHeroLook.SHADOW_A, SHADOW_A) and is_equal_approx(g.look.ring_k, RING_K) and is_equal_approx(g.look.shadow_a, SHADOW_A),
+		"the hero's ring decals are drawn at %.2f of their opacity and his contact shadow at %.2f (the calibration against today's ring)" % [RING_K, SHADOW_A])
+	var hb := g.local_body()
+	var accent := DmCreature.lin(int(hb.avatar.accent_hex))
+	var cr: DmCreature = hb.avatar.c
+	check(cr._params["emis"].is_equal_approx(accent) and is_equal_approx(float(cr._params["emis_k"]), 0.04) and cr._params["tint"] == Vector3.ONE,
+		"the hero's accent emissive is still 0.04 of the accent as a linear number (the shader converts it: a twelfth of itself, as Compatibility)")
 
 
 ## Every preset on a running game: the scene's lights, environment and viewport say what the table says.

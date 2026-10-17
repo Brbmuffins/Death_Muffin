@@ -69,6 +69,11 @@ Per instance (`MultiMesh.buffer`: 20 floats, 12 transform rows, 4 colour, 4 cust
 | `INSTANCE_CUSTOM.z`, `.w` | previous clip + blend weight below 1 (`pack_custom`), seconds into the previous clip; weight 0 = no blend |
 | `COLOR.rgb`, `COLOR.a` | linear tint; palette slot x 2 + hit flash 0..1 (the slot picks the body's glow from the material's `glow_palette` and its friend rim from `rim_palette`, 0 = the model's own glow and no rim; the flash is the game's emissive lerp, `0xfff0dc`, in eighths: exact in a half float up to slot 127, checked on Compatibility) |
 
+**Colours and the lift.** The material converts its colours as Compatibility does, so a body is as bright as today's (client/README.md "The look against today's game"): the tint (`COLOR.rgb`, `lin()` of a hex) multiplies the texel in
+sRGB numbers and the product is converted once (a body with no tint reads the texel as it is, nothing to convert), the glow, the rim and the hit flash are converted too (`dm_s2l`: a small glow is a twelfth of itself on today's side), and
+the glTF's colour (`albedo_col`) is read as it is. The area's exposure lift is calibrated on the baked world and a body is not in the lightmap: albedo, specular and emission are divided by it (the global `dm_lift_inv`, set with the exposure
+by `DmWorldBuilder`). A body with no glow, flash or rim skips the conversion of its emission.
+
 `DmCrowd` picks the clip from the creature's state, advances the time (walk speed matched to the ground speed) and blends over the game's fade times: "Driving the
 crowd". Set a `custom_aabb` on the MultiMesh itself so the engine does not re-measure thousands of instances.
 
