@@ -3,8 +3,9 @@ extends Node
 ## Wires the game to the AudioDirector autoload (port of the web's audio.* call sites in WorldScene / AbilitySystem / EntityViews).
 ## Game scripts call the static one-liners (`DmAudioHooks.needle_cast(pos)`), which do nothing when no hooks node exists (tests, tools).
 ## The node itself, each frame: follows the hero (listener), keeps the area bed/music in step with `main.area_id`, drives hero
-## footsteps from the walk loop's phase (water where the hero wades), watches the door gates for a seal breaking, and exposes the
+## footsteps from the walk loop's phase (water where the hero wades), plays the gate sound when a seal breaks, and exposes the
 ## boss-music switch. Combat level for the music duck is derived by the AudioDirector from the sounds played, as in the web.
+## Ported to the rebuilt client (client/code.list "Ported"): the gate sound is the world's `door_opened` signal (an event), not a poll of every door each frame; the rest is today's.
 
 static var inst: DmAudioHooks = null
 
@@ -14,8 +15,8 @@ var _area := ""
 var _last_pos := Vector3.INF
 var _water: Array = []
 var _puddles: Array = []
-var _doors: Dictionary = {}       # door id -> {x, z, open}
-var _doors_primed := false
+var _doors: Dictionary = {}       # door id -> {x, z}: where a door's centre is (the gate sound)
+var _doors_primed := false        # false until the first full frame: doors that open while the world loads are silent
 var _boss_on := false
 var _still_t := 0.0
 
@@ -28,7 +29,10 @@ func setup(m: Node, director: Node = null) -> void:
 		_water.append_array(w.get(k, []))
 	_puddles = w.get("puddles", [])
 	for d in w.doors:
-		_doors[d.id] = {"x": float(d.cx), "z": float(d.cz), "open": false}
+		_doors[d.id] = {"x": float(d.cx), "z": float(d.cz)}
+	var world: Object = m.get("world")
+	if world != null and world.has_signal("door_opened"):
+		world.door_opened.connect(_on_door_opened)
 
 func _exit_tree() -> void:
 	if inst == self:
@@ -45,7 +49,7 @@ func _process(dt: float) -> void:
 		_area = main.area_id
 		ad.set_area(_area)
 	_footsteps(p, dt)
-	_gates()
+	_doors_primed = true
 
 # ----------------------------------------------------------------- hero footsteps
 func is_wet(x: float, z: float) -> bool:
@@ -81,20 +85,11 @@ func _footsteps(p: Vector3, dt: float) -> void:
 	ad.hero_footfall(phase, p.x, p.z, _area, is_wet(p.x, p.z), running)
 
 # ----------------------------------------------------------------- seals / gates
-func _gates() -> void:
-	var b = main.builder
-	if b == null:
-		return
-	for id in _doors:
-		var g: Variant = b.gates.get(id)
-		if g == null:
-			continue
-		var open: bool = g.open
+## A seal broke and a door rose (the world's `door_opened`): the gate sound at the door's centre (WorldScene.checkUnlocks).
+func _on_door_opened(id: String) -> void:
+	if _doors_primed and ad != null and _doors.has(id):
 		var st: Dictionary = _doors[id]
-		if open and not st.open and _doors_primed:
-			ad.play_sfx("gate", Vector2(st.x, st.z))   # WorldScene.checkUnlocks: gate at the door's centre
-		st.open = open
-	_doors_primed = true
+		ad.play_sfx("gate", Vector2(st.x, st.z))
 
 # ----------------------------------------------------------------- boss score
 ## The web: audio.setBossMusic(p.alive && boss.active && boss area == current area). The boss integration calls this each frame.

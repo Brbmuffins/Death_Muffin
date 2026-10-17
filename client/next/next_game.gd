@@ -300,8 +300,19 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	perf.hold()
 	party.notice.connect(func(text: String, kind: String) -> void: game_event("toast", {"text": text, "kind": kind}))
 	ready_ = true
+	if ui_host != null:   # the counsel's welcome (and the discipline's first tip): the original game's `world_entered`
+		var lvl := float(character.get("level", 1))
+		var rl := DmAbilities.rite_level(lvl, ui_host.dev_access)
+		var grim := false
+		for id in ui_host.kit["grimoire"]:
+			if DmAbilities.unlock_level(id) <= rl and DmAbilities.unlock_level(id) > 1:
+				grim = true
+		game_event("world_entered", {"family": local_body().family, "level": int(lvl), "grimoire_unlocked": grim})
 	load_ms = Time.get_ticks_msec() - t0
 	started.emit()
+	if ui_host != null and joiner != null and joiner.notice != "":   # the backend refused the party session before the HUD existed
+		game_event("toast", {"text": joiner.notice, "kind": "err"})
+		joiner.notice = ""
 	if ui != null:   # a player's window (the boot's game, not a test's bare scene)
 		if String(opts.get("notice", "")) != "":   # why we are here (the session we were in ended, a join failed)
 			game_event("toast", {"text": String(opts["notice"]), "kind": "err"})

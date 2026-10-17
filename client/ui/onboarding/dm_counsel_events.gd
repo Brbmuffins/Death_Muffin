@@ -175,6 +175,8 @@ static func calls(event_id: String, ctx: Dictionary = {}) -> Array:
 ## wave_affordable (waveCost != null && gold >= cost), thralls_mine, corpses_near (within 7 m), pack_on_corpse, family, level, total_kills,
 ## has_tool, has_belt_item, shards, boss_near: Array of boss ids whose summon object is within 12 m ("gravedigger","abbess","congregation","saint","regent","mire"),
 ## has_seal, area, cheapest_unlock (cost of the cheapest locked vow/boon; INF if none), boss_kills, ascension, ashes, gate_near (a closed door within 6 m).
+## Ported to the rebuilt client (client/code.list "Ported"): `altar` (default true, today's): false when the build has no Altar of Ascension (DECISIONS B36), which holds back the three
+## tips that send the player there (vows, altar_unlocks, boons). Nothing else changed.
 static func tick_calls(ctx: Dictionary) -> Array:
 	var ws := "WorldScene.ts:"
 	var out: Array = []
@@ -202,13 +204,14 @@ static func tick_calls(ctx: Dictionary) -> Array:
 		add.call("boss_%s" % id, "3787")
 		if bool(ctx.get("has_seal", false)):
 			add.call("boss_seal", "3788")
-	if String(ctx.get("area", "")) == "chapterhouse":
+	var altar := bool(ctx.get("altar", true))
+	if altar and String(ctx.get("area", "")) == "chapterhouse":
 		var cheapest := float(ctx.get("cheapest_unlock", INF))
 		if cheapest != INF and int(ctx.get("shards", 0)) >= cheapest + float(DmCounselData.c("BOSS_SUMMON_SHARDS")) and kills >= 200:
 			add.call("altar_unlocks", "3794")
 		if int(ctx.get("boss_kills", 0)) >= 1 or kills >= 400:
 			add.call("vows", "3795")
-	if int(ctx.get("ascension", 0)) > 0 and int(ctx.get("ashes", 0)) > 0 and String(ctx.get("area", "")) == "chapterhouse":
+	if altar and int(ctx.get("ascension", 0)) > 0 and int(ctx.get("ashes", 0)) > 0 and String(ctx.get("area", "")) == "chapterhouse":
 		add.call("boons", "3797")
 	if bool(ctx.get("gate_near", false)):
 		add.call("gate", "3804")

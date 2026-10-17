@@ -38,6 +38,8 @@ node tools/rebuild/compare-scenarios.mjs                                        
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/panels.gd # today's panels on the core: every panel opens, the Reliquary (equip, sell, sort) on the server's bag, the loadout, Settings live, chat
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/gathering.gd # gathering and the Acre: all 68 nodes hovered and clicked, a node worked through the server (cycles, batches, finds, XP, spent and back), the stops, AFK and its report, the Grave Laborers, a collection, the garden, a contract, the Sexton ("Gathering and the Acre"; about 25 s)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/world.gd  # the whole world: every area, seals and gates, into the Warren, waystones, the recall, the core's navmesh against the server's, the Ossuary's deacon and golem, the Nave's five, the Sanctum's, Coliseum's and Cloister's rosters (the seraph's ward, the plague doctor's flask, a frenzied flagellant) and the Pyre's and the Fen's eight in the game scene
+/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/counsel.gd # the counsel and the first hour on the core: the fight facts read two ways, every fact the creatures give the counsel once, the tips each makes once, the state-driven tips, the welcome and the Next-step box, the Prior, Show tips again ("Tips and onboarding"; about 30 s with --fixed-fps 60, 2 minutes without)
+/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/sound.gd   # sound on the core's events: a scripted fight's cues against today's rules, by name and count, thralls, the hero's footsteps, the area beds and scores, the gate, the boss score ("Sound"; about 30 s)
 bash client/tools/coop_local.sh                                                                # a local lobby and relay for a trial with two game windows (prints the commands; "Co-op on the core")
 bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the Graves roster, the Ossuary's deacon and golem, the Nave's five, the Cloister's three, the Pyre's and the Fen's eight, the thralls) into client/assets/crowd/baked (not committed)
 ```
@@ -77,7 +79,7 @@ uids keep working:
   registry, 24 of the necromancer's 25 rites, the rite fx, the combat input; "The Gravecaller's rites"); the boss host, body, world, fx and view ("The Gravedigger King"); Easy auto combat, the benchmark
   with its screen, setup window and warm-up, and the boot's `--benchmark` and Benchmark button ("The benchmark"); the co-op pieces (`next/next_net.gd`, `next/party/dm_next_party.gd` and the session's hello;
   "Co-op on the core"); value on the server (the rewards node, the meta node, the progress node, the wave milestones and the joiner; "Value on the server"); the HUD's adapter and
-  view-model ("The HUD on the core"); the Reaper's helper and three of her rites ("The Gravecaller's rites"); and the Acre's glue ("Gathering and the Acre").
+  view-model ("The HUD on the core"); the counsel's host side and the audio hooks ("Tips and onboarding", "Sound"); the Reaper's helper and three of her rites ("The Gravecaller's rites"); and the Acre's glue ("Gathering and the Acre").
 - **Left out with a seam**: a file that cannot load without a seam, grouped under the seam it follows: now only the QA boot (with the QA driver).
   Freed by the game scene's port and copied again: `next/status` (`DmStatusSet`, for the status sets of heroes and bosses only),
   the chronicle, the event fx's telegraph and boss halves, the area flow and gathering. Freed by the rites' ports: the hotbar (`dm_rite_hotbar.gd`), Veil Step and the belt.
@@ -269,7 +271,7 @@ level, area line, banners, toasts, floating numbers, death veil). The adapter he
 | notices | today's `DmAreaFlow` (an area's first entry, a themed wave), a refused cast (an "info" number over the hero), the boss fx's banners and the summon refusals: all `DmNextGame.game_event`, which reaches `DmGameUi` |
 
 The upgrades box (Empower, Quicken and the wave dial), the belt (Q, Z, X), the Kill Chain, the Omen, the save chip and the pickup lines come with value ("Value on the server"); the menu row, the
-panels and the Social window with `DmGameUi`. Not in the game scene yet, each with its system: the counsel (`DmNextCounsel` reads creatures: the tips item; the adapter's counsel is null), the
+panels and the Social window with `DmGameUi`. Not in the game scene yet, each with its system: the
 Chapterhouse's prompts, the Depths readout, the Altar (DECISIONS B36). The Acre ledger's panels (Skills, Garden, Laborers, Contracts) and the node and laborer cards are in ("Gathering and the Acre"). `tests/hud_feeds.gd` (`HudFeeds.full()`) fills every view-model key for the
 tests that draw every piece.
 
@@ -321,6 +323,64 @@ fight the model said about 500 for the game scene's HUD (the hotbar 188, the min
 *CPU.* `tests/hud.gd` prints the refresh (view-model build and apply) and a frame with the HUD against one without. With 72 enemies and 32 thralls on this VPS and today's
 panel host (2026-10-16): build 0.42 ms (the core's view-model and `DmGameUi`'s own keys) + apply 0.14 ms every 50 ms; a headless frame with the HUD and panels costs about 0.4 ms more than
 without (no drawing: every `_process`, tween and `_draw` callback runs); the benchmark's HUD rounds measure the same share in the Full Party fight.
+
+## Tips and onboarding
+
+The counsel is today's: `DmCounsel` (the tip queue in `ui/onboarding`: kinds, groups, places, cadence, the card and its glow) is a copy that `DmGameUi` owns, fed through `DmNextUiHost.game_event` and polled every
+400 ms; `data/onboarding/tips.json` has the 120 tips and `DmCounselEvents` the table from a fact to its tips. What reads creatures is the counsel's host side, `DmNextCounsel` (ported), and the few facts the old
+per-enemy hooks raised. Neither has a node or a call per creature: both are the core host's events and one timer.
+
+| fact | where it comes from | tips |
+|---|---|---|
+| a body spawned within 40 m (`enemy_spawned {def, elite, near, area_safe}`) | the host's `enemy_spawned`, once for each, in `DmNextUiHost._on_enemy_spawned` | the kind's first sight, move, elite, deacon |
+| a corpse laid (`corpse_near {area_safe, dist}`) | `corpse_added` | exhume (within 12 m, outside a safe place) |
+| a Deacon blessed a body (`sanctify_near {dist}`) | the `sanctify` cue | sanctify (within 18 m) |
+| the hero hurt (`hurt_check {hp, max_hp}` each blow, the `hurt` tip below half health) | the hero's `hurt` signal | hurt |
+| a cast refused for essence (`essence_short`) | the caster's rejection | essence |
+| a fight: three living dead within 9 m of the hero, or the boss awake | `DmNextCounsel`, on the poll | holds calm tips back (`busy.combat`); the Grimoire's rune swap (`in_combat`) |
+| corpses within 7 m, a pack of three on a corpse, the thralls he owns | `DmNextCounsel`, on the poll | thrall, litany, burst |
+| kills, shards, gold, the bag, a boss site or a closed door near, the unlock set | the progression and the bag, on the poll (today's code) | codex, wave, prelate, belt, tool, boss sites, gate |
+
+`DmNextCounsel.tick_ctx` (DmGameUi's 400 ms timer) asks the core: one radius query for the fight (the core measures to the edge, which finds everything the centre test finds, so a candidate is confirmed by
+its centre as today's was: a rising or burrowed body counts, a dead one does not), `corpses_in_radius` for the corpses and, for each, one more query for its pack, `thrall_count` for the legion: 0.18 ms a poll with
+72 bodies and 30 corpses around the hero (`tests/counsel.gd`, INFO). The busy flags (`counsel_busy`, 10 Hz) are two time stamps and the hero's `alive`.
+
+**The first hour.** `world_entered {family, level, grimoire_unlocked}` is raised once at the end of `DmNextGame.start` (the welcome tip; from level 10 the signature, with the Grimoire unlocked the Grimoire tip).
+The welcome tip is a tip of the Acre (`HERE` in the tips data), so a new hero meets the belt's tip first (the bag's flask) and the welcome when he walks into the Acre. The Next-step box (`DmGuidanceHud`), the
+Prior's greeting and advice (`DmCovenantDialogue` over the same `guidance_state`), the HUD's progressive reveal, the NEW cues, Settings' "Show tips again" and "Don't show tips" (kept with the account) are
+`DmGameUi`'s and run as in today's game; a party joiner whose kills the backend will not credit is told at the end of `start`. Not today's: the poll says `altar: false` (`DmCounselEvents.tick_calls`, ported),
+because the build has no Altar of Ascension (B36), which holds back the vows, altar_unlocks and boons tips; `can_ascend` (the Prelate's fall, the bosses item) must stay unraised too. Off until their items: the
+Depths' tips (`depths_*`), the Grave Surge tip, gathering's and the Acre's (`gather_started`, `skill_up`, `bag_full`, `laborers_seen`) and the other bosses'; `omen_told`, `set_bonus_gained`,
+`necro_weapon_changed`, `loadout_check` and `depths_solo / floor / affix` are not raised by today's game either (godot/ui/onboarding/README.md).
+
+`tests/counsel.gd` plays it on the whole world as a new Gravecaller: the poll against a brute-force reading of the core's tables (24 seeded placements, and the edges by hand: bodies whose edges are within 9 m and
+whose centres are not), every fact above through the real scene with the events compared with today's, each tip queued and shown once, the state-driven tips one fact at a time, the welcome held for the Acre, the
+Next-step box, the Prior, the reveal, an area's first entry, no Altar tips, Show tips again and Don't show tips.
+
+## Sound
+
+Sound is today's: the `AudioDirector` autoload (`audio/`: its map, mixer, beds, music and footsteps; godot/audio/README.md) and the cues the game plays through it. On the core the cues come from its events, never from
+a node per creature, through the same router and the same ids (no sound was added):
+
+| cue | where in the rebuild |
+|---|---|
+| an elite rising within 40 m (`eliteAggro`), every telegraph (`tellStrike`; `tollSmall` for the cone and the toll; `raise`; `curse`), a swing landing (the attack voice within 18 m; `boneHit` for a slam), the ghoul's eruption (`burst`), a death (`enemyDeath` or `eliteDeath`; the death voice within 26 m) | `DmEnemyFx`, from the host's `enemy_spawned`, `telegraph`, `enemy_attack`, `enemy_state` and `enemy_died`, through `DmEventFx` |
+| the affixes: the bell's toll (`toll`), a meal (`raise`), the vengeful's burst (`burst`) | `DmEnemyFx._on_affix_moment` |
+| a thrall standing up (`thrallRise`), one killed (`thrallDeath`; not one that crumbled, was sacrificed or decayed) | `DmEnemyFx`, from `thrall_raised` and `thrall_died`; a guest's puppet core raises the same events |
+| the hero hurt (`hurt`, `lowHealth` under 30 %), `buy`, the pickups | `DmNextUiHost`, `DmNextLoot` |
+| the rites | `DmRiteFx` (copy), through the caster |
+| the listener, the area's bed and score, the hero's footsteps (the walk loop's phase, the area's surface, water where he wades), the gate | `DmAudioHooks` (ported, a child of the game scene) |
+| the boss score and the boss sounds | `DmBossHost`, `DmBossFx` |
+| the panels, the counsel's card | `DmGameUi.sound`, connected to the director by the game scene |
+
+Ported: the hooks' gate sound is the world's `door_opened` signal (a door rose: at the door's centre; silent for doors that rise while the world loads, before the hooks' first frame), where today's polls every door
+each frame. `DmEnemyFx` forgets a swing when its body leaves alive (a boss's adds go with him), as today's slot went with the node. Everything is gated by `opts.audio` (on in a player's window, off headless).
+Every kind on the core has its sounds (the router plays the tells; the Templar's shield glance, `tollSmall`, and the Acolyte's Unbind, `raise`, are cue sounds of `DmEnemyFx._on_cue`). Off until its item: the Depths'.
+
+`tests/sound.gd` puts a recording stand-in where the director is (every call logged, passed on to the real one where a check needs it) and plays a scripted fight in the Graves, the hero standing still and not able to
+fall, against the cues today's code plays for the events the core raised, by name and count (the expectation is written from today's `dm_enemy_fx.gd`, `dm_event_fx*.gd`, `dm_thrall.gd`, `dm_affix_set.gd` and the ui
+host; a swing within two ticks of landing or of what ended it may count either way); then the thralls at their places and only the killed ones' death, and the hero's world on the real director: footsteps, the beds
+and scores of four areas, the gate, the boss score with the King.
 
 ## Value on the server
 

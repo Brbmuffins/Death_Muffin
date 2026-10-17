@@ -9,7 +9,7 @@ extends Node
 ## Loadout: DmLoadout.load_rites(DmContent.kit family defaults); one place, changed by the Grimoire through set_rites().
 ## The rebuild's port (client/code.list "Ported", DECISIONS B46): the world is the combat core, so the enemy hooks are the core host's events (a thrall's or a DoT's
 ## number, an elite's dot, the counsel's spawn and corpse facts) and the target frame reads an enemy id (`target_id`); the bag and the drops are the game's loot node
-## (`DmNextLoot`: `inventory`, the runes owned, a click on a drop); the counsel (DmNextCounsel) waits for the tips item (null: no fight facts yet); the Altar is gone
+## (`DmNextLoot`: `inventory`, the runes owned, a click on a drop); the counsel (DmNextCounsel, ported) asks the core for its fight facts on its 400 ms poll; the Altar is gone
 ## (DECISIONS B36: no Ascension); standing thralls are refreshed through the hero's legion on the core.
 
 signal character_changed
@@ -55,7 +55,7 @@ var in_party: bool:                          ## hosting or joined: DmGameUi's /p
 var dev_account := false
 var dev_access := false
 var vm: DmNextHudVm
-var counsel: Object = null                  ## DmNextCounsel comes with the tips item (its fight facts read creatures): null until then
+var counsel: DmNextCounsel                  ## the counsel's host side: the busy flags and the 400 ms state facts (made in setup)
 var persist := true
 
 var slots: Array:
@@ -134,6 +134,7 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 	primary = String(r["primary"])
 	keys = r["keys"]
 	vm = DmNextHudVm.new(self)
+	counsel = DmNextCounsel.new(self)
 	if shell.chapterhouse != null:          # NPC / station use -> the events DmGameUi opens dialogue and panels from
 		shell.chapterhouse.npc_interact.connect(func(id: String) -> void: npc_interact.emit(id))
 		shell.chapterhouse.station_interact.connect(func(id: String) -> void: station_interact.emit(id))
@@ -801,7 +802,7 @@ func note_learned(ids: Variant) -> void:
 
 ## In a fight (DmNextCounsel.busy: hurt in the last 4 s, three living dead within 9 m, or a boss awake): runes cannot be swapped.
 func in_combat() -> bool:
-	return counsel != null and bool(counsel.busy()["combat"])
+	return bool(counsel.busy()["combat"])
 
 
 func _on_credited(cid: int, delta: Dictionary) -> void:
@@ -893,11 +894,11 @@ func dial_wave(delta: int) -> void:
 
 
 func counsel_busy() -> Dictionary:
-	return counsel.busy() if counsel != null else {"combat": false}
+	return counsel.busy()
 
 
 func counsel_tick_ctx() -> Dictionary:
-	return counsel.tick_ctx() if counsel != null else {}
+	return counsel.tick_ctx()
 
 
 func _sfx(id: String, pos: Variant = null) -> void:
@@ -909,8 +910,7 @@ func _sfx(id: String, pos: Variant = null) -> void:
 
 ## DmGameCombat.on_hurt's side: the hurt sound (+ low-health under 30 %), the counsel's hurt tip / hurt_check, the fight bookkeeping.
 func _hurt_feeds(b: DmHeroBody) -> void:
-	if counsel != null:
-		counsel.hurt()
+	counsel.hurt()
 	_sfx("hurt")
 	if b.alive and b.hp < b.max_hp * 0.3:
 		_sfx("lowHealth")

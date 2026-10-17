@@ -14,6 +14,8 @@ extends Node3D
 ## both its areas: the first one loaded keeps it, the other copy is dropped before it enters the tree. Gates start closed; `set_unlocked` opens a door when both of its
 ## areas are unlocked and loaded, and the area's own navmesh is on only while it is unlocked (the Graves' door to the Chapterhouse is always open).
 
+signal door_opened(id: String)         ## a door rose (a seal broke, a waystone, or a guest's doors followed the host's): the gate sound is DmAudioHooks'
+
 const AREA_DIR := "res://areas/"
 
 var builder: DmWorldBuilder            ## lights only (see above); not today's full builder
@@ -204,6 +206,8 @@ func set_door_open(id: String, open: bool, instant := false) -> void:
 	for l: NavigationLink3D in nav_links[id]:
 		l.enabled = open
 	_set_region("door:" + id, open)
+	if open:
+		door_opened.emit(id)
 
 
 ## The navigation server registers the baked regions and syncs the map on its own clock (a few frames to ~0.5 s the first time): wait for it

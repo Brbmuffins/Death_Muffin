@@ -279,6 +279,8 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   - What an enemy does to a hero besides damage (the Bog Hag's and the Fen Wisp's chill, the Drowned Sexton's root and pull) is `EV_TARGET_EFFECT`, host only like a blow (`EV_TARGET_HIT`): `DmNextGame._on_target_effect` hands it to
     `DmHeroBody.dm_enemy_effect`, which applies it when the tick's events are dispatched (today at the strike); a hero the blow killed refuses it, as today. A boss's chill or root (the Flood Hymn, the Mire Mother's Drowned Hands) is the boss host's.
   - The game reads the core's constants from this project's `data/` and `sim/`; the constants of `dm_corpse_field.gd` and `dm_thrall.gd`, whose files are not here, stay the compiled-in defaults (equal, asserted by `core_thralls`).
+- **The counsel has no Altar to send the player to (DECISIONS B36):** the 400 ms poll's facts (`client/next/hud/dm_next_counsel.gd`) are today's, read from the core, but it says `altar: false`, so the Covenant
+  counsel does not give the vows, altar_unlocks and boons tips (and the Prelate's fall must not raise `can_ascend`). Ascension's return brings them back (`client/README.md` "Tips and onboarding").
 - **The front flow (`client/main`, `client/net`)**: login, register, the online gate and character select are today's code on the test server (`client/README.md` "The test server"). Not the same:
   there is no Log out or Switch character (the full HUD owns them), no automatic crash report and no
   update notice; a bag or progression the server fails to give sends the player back to the login screen with the server's words (today the

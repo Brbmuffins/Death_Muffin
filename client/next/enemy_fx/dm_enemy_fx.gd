@@ -27,6 +27,8 @@ extends Node
 ## The Cinder Pyre's and the Mourning Fen's kinds: the sparks of the Husk's, the hound's and the Slag Brute's blows, the Husk's last embers, the burning ground (a zone of kind ember:
 ## the coal's, the slam's, the Husk's), the molten slam of the Slag Brute (the router picks it by the def of the body that swings), and the embers and marsh-lights they shed near the
 ## hero on the ambient tick (`_pfs`: the bodies that have such motes, with their state).
+## The thralls' sounds are DmThrall's: `thrallRise` when one stands up (every `thrall_raised`, a guest's too) and `thrallDeath` when one is killed (`thrall_died` with reason
+## "killed"; not one that crumbled at the cap, was sacrificed or decayed).
 ## Left out of this port (the ROADMAP's "Crowd looks" and "Crowd effects" items, native/README.md "Differences"): the shrouded body's fade (the crowd has no alpha yet),
 ## the elite's body glow, the Flagellant's frenzy motes, the Pyre's and the Fen's idle motes.
 ## The Weeping Seraph's blessing is the Deacon's cue (`sanctify`, a thread and a halo per ally), the Plague Doctor's flask is the router's telegraph (a rot-green ring and the lobbed
@@ -52,7 +54,7 @@ const FEN_TEAL := 0x7fe0d0
 const EFFECT_IDS: Array[String] = ["censer_incense", "vengeful_burst", "surge_eruption", "bonfire"]
 const SFX_IDS: Array[String] = ["eliteAggro", "eliteDeath", "enemyDeath", "tellStrike", "tollSmall", "burst", "boneHit",
 	"enemyAttackBeast", "enemyAttackHumanoid", "enemyAttackBrute", "enemyAttackSpirit",
-	"enemyDeathBeast", "enemyDeathHumanoid", "enemyDeathBrute", "enemyDeathSpirit", "emberThrow", "emberBurst", "slagSlam", "curse", "raise", "toll"]
+	"enemyDeathBeast", "enemyDeathHumanoid", "enemyDeathBrute", "enemyDeathSpirit", "emberThrow", "emberBurst", "slagSlam", "curse", "raise", "toll", "thrallRise", "thrallDeath"]
 
 class DefStub:
 	extends RefCounted
@@ -65,7 +67,7 @@ var fx: DmEventFx                  ## the shared router half: telegraphs, deaths
 var host := DmEnemyFxHost.new()
 var core_host: DmCoreHost
 var player_pos := Callable()       ## () -> Vector3, the local hero; default: the camera's ground point
-var stats := {"pf_mote": 0, "reach_ring": 0, "spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0, "moment": 0, "corpse_mark": 0, "affix_mark": 0, "affix_mote": 0, "status_mote": 0, "hover_mote": 0, "landing": 0, "corpse_gone": 0, "shatter": 0, "thrall_ring": 0}
+var stats := {"pf_mote": 0, "reach_ring": 0, "spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0, "moment": 0, "corpse_mark": 0, "affix_mark": 0, "affix_mote": 0, "status_mote": 0, "hover_mote": 0, "landing": 0, "corpse_gone": 0, "shatter": 0, "thrall_ring": 0, "thrall_sound": 0}
 
 var _clock := 0.0                  ## ms of rendered-frame time
 var _amb_t := 0.0
@@ -133,7 +135,7 @@ func bind(h: DmCoreHost) -> void:
 	h.affix_moment.connect(_on_affix_moment)
 	h.status_changed.connect(_on_status_changed)
 	h.thrall_raised.connect(_on_thrall_raised)
-	h.thrall_died.connect(func(id: int, _r: String, _o: int, _k: String, _s: int, _x: float, _z: float) -> void: _thrall_off(id))
+	h.thrall_died.connect(_on_thrall_died)
 	h.thrall_removed.connect(_thrall_off)
 	h.statuses_cleared.connect(func(id: int) -> void: _statused.erase(id))
 	h.corpse_added.connect(_on_corpse_added)
@@ -442,6 +444,7 @@ func _on_died(id: int, def: String, _level: int, elite: bool, _area: String, _so
 
 
 func _on_removed(id: int) -> void:
+	_strikes.erase(id)   # a body that leaves alive (a boss's adds go with him) swings no more: today's slot went with its node
 	_health.erase(id)
 	_incense_off(id)
 	_mound_off(id)
@@ -595,6 +598,8 @@ func _on_corpse_added(id: int, kind: int, _def: String, _elite: bool, area: Stri
 ## A thrall's ground ring (DmEntityViews._make_thrall): the spirit colour (a champion's gold, a wraith's blue), brighter when empowered, larger for a champion, the
 ## plague bearer and the colossus; an ally's thralls get the dimmer "other" ring. It follows the drawn body and goes when the thrall does.
 func _on_thrall_raised(id: int, kind: String, owner: int, _slot: int, empowered: bool, champion: bool, x: float, z: float, _yaw: float, _max_hp: float) -> void:
+	_sfx("thrallRise", x, z)   # DmThrall._rise_fx: every thrall that stands up, a guest's puppets too
+	stats["thrall_sound"] += 1
 	if _thrall_rings.has(id) or vfx == null:
 		return
 	if _thrall_looks.is_empty():
@@ -609,6 +614,14 @@ func _on_thrall_raised(id: int, kind: String, owner: int, _slot: int, empowered:
 	_thrall_rings[id] = vfx.decal({"other": own == false, "tex": "ring", "color": 0xd9a441 if champion else (0x8fb4ff if wraith else fx.sp("exhume", "spirit")),
 		"x": x, "z": z, "r": r, "duration": 1e9, "opacity": 1.0 if empowered else 0.7, "follow": _drawn_pos.bind(id)})
 	stats["thrall_ring"] += 1
+
+
+## A thrall fell (DmThrall._death_fx): a soft crack of bone when it was killed, not when it crumbled at the cap, was sacrificed or decayed. The ring goes with it.
+func _on_thrall_died(id: int, reason: String, _owner: int, _kind: String, _source: int, x: float, z: float) -> void:
+	_thrall_off(id)
+	if reason == "killed":
+		stats["thrall_sound"] += 1
+		_sfx("thrallDeath", x, z)
 
 
 func _thrall_off(id: int) -> void:

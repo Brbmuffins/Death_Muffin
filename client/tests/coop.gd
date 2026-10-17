@@ -14,7 +14,7 @@ extends SceneTree
 ##   - the waves: the guest's puppet shows the host's bodies: the live body sets are the same ids and every position is the host's at the snapshot's tick within the wire's
 ##     1 cm quantization, in a still moment and again in the Full Party's fight; in the fight the counts follow within the send interval;
 ##   - a guest cast is resolved by the host and its damage shows on both (the hits, the guest's puppet hp, the numbers); a guest's Exhume raises a thrall the host
-##     simulates, owned by the guest's hero external, drawn on the guest;
+##     simulates, owned by the guest's hero external, drawn on the guest, counted by the guest's counsel poll, its rise heard on both sides;
 ##   - the Gravedigger King wakes for the guest's request and fights both heroes: both are hurt by him, the casts of both and a thrall hurt him, the guest's copy follows him;
 ##   - a guest-side death shows (vitals, the body, the HUD's veil) and the hero gets up; kills are credited by the HOST only, once each: the guest credits none;
 ##   - the guest's own account (DECISIONS B22): the host makes it a rewards member (its character, rolling its own drops), it joins the host's backend party session with its own
@@ -723,6 +723,9 @@ func casts_and_thralls() -> void:
 	rites_g.request_cast("exhume", Vector3(cpos[0], 0.0, cpos[1]), -1)
 	check(await until(func() -> bool: return h.core_host.thrall_count(gb_h.core_id) > before_host, 3.0), "the guest's Exhume raised a thrall on the host, owned by the guest's hero external (core id %d)" % gb_h.core_id)
 	check(await until(func() -> bool: return g.core_host.thrall_count(gb_g.core_id) >= 1, 3.0), "the guest's puppet shows it under the same owner id")
+	await ticks(2)   # (the guest's events are dispatched on its next tick)
+	check(int(g.ui_host.counsel_tick_ctx().get("thralls_mine", -1)) >= 1 and int(h.ui_host.counsel_tick_ctx().get("thralls_mine", -1)) == 0, "the guest's counsel poll counts its legion on its puppet core, the host's counts none of the guest's")
+	check(int(g.enemy_fx.stats["thrall_sound"]) >= 1 and int(h.enemy_fx.stats["thrall_sound"]) >= 1, "the thrall's rise sounds on both sides (the fx's thrall sounds: host %d, guest %d)" % [int(h.enemy_fx.stats["thrall_sound"]), int(g.enemy_fx.stats["thrall_sound"])])
 	var tid := 0
 	var owners: PackedInt32Array = h.core_host.core.thrall_owners()
 	var tids: PackedInt32Array = h.core_host.core.thrall_ids()

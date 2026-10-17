@@ -253,6 +253,11 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
   - [x] Gathering and the Acre (2026-10-17; client/README.md "Gathering and the Acre", `client/tests/gathering.gd`): the nodes of every area hovered, clicked and worked through the server (the walk, the cycle, the batches, the finds and XP the server decides, spent and
     back, Auto, AFK and its report), the professions' levels and banners, the Acre ledger's panels, the Grave Laborers as pooled views (at most four, only in the Acre), the garden, the contracts and the Sexton's and the Next box's feeds; a guest holds the nodes and cannot gather, as today.
 - [ ] Tips, onboarding and sound on the core's events.
+  - [x] The counsel on the core (2026-10-17, client/README.md "Tips and onboarding", `client/tests/counsel.gd`): `DmNextCounsel` ported, its fight, corpse, pack and legion facts asked of the core on the 400 ms poll (0.18 ms with 72 bodies
+    and 30 corpses), the spawn, corpse, Sanctify and hurt facts the core host's events, each tip fired once on the facts of today's table; the first hour's `world_entered` (the welcome tip, the signature and Grimoire tips) was
+    never raised in the game scene and is now. The build has no Altar (B36): the vows, altar_unlocks and boons tips are held back (native/README.md "Differences").
+  - [x] Sound on the core's events (`client/README.md` "Sound", `client/tests/sound.gd`): the thralls' rise and death, the gate sound (an event, not a poll of every door), a scripted fight's cues against today's rules by name and count.
+    Left in it: the Depths' sounds come with the Depths.
 - [ ] Gate C: every rule test matches today's, playtests OK, nothing slower than the test build.
 
 **Working rules for the rebuild.**
