@@ -14,7 +14,8 @@ extends RefCounted
 ##   action    every ACT_MS: one `select_action` (rite rotation, corpse rites, target priority) and one cast; a Healing flask under 42 % hp
 ##   movement  every MOVE_MS: `select_movement` (leave telegraphs / hostile pools first, close to the primary's range, back off a pack), sent as a
 ##             direction intent (re-sent every RESEND_MS, one ZERO when it stops); 2 %/s regen for 5 s after a hit (the old game loop's Easy sustain)
-## Cost: one compare per physics frame; a decision reuses its enemy / corpse / hazard dictionaries (no per-enemy allocation), so ~every 100 ms a few hundred us.
+## Cost: one compare per physics frame; a decision reuses its enemy / corpse / hazard dictionaries (no per-enemy allocation): every 100 ms the tables are read (0.3 ms for 62 enemies and
+## 31 corpses on the VPS) and every 180 ms DmAutoCombat chooses (0.6 ms); a hero that holds his ground reads them only when an action is due.
 
 const ACT_MS := 180.0
 const MOVE_MS := 100.0
@@ -45,7 +46,7 @@ var gate_probe := Callable()                     ## () -> bool, tests swap it; d
 var telegraphs := DmBossTelegraphs.new()
 var mem: Dictionary = {}                         ## AutoMoveMemory
 var aim_active := false                          ## auto has a target: the standing mouse-aim leaves the hero alone
-var stats := {"ticks": 0, "actions": 0, "casts": 0, "moves": 0, "yields": 0, "flasks": 0}
+var stats := {"ticks": 0, "actions": 0, "casts": 0, "moves": 0, "yields": 0, "flasks": 0, "fills": 0}   ## (fills: the times the core's tables were read for a decision)
 var last_action: Variant = null                  ## the last select_action result (tests)
 var hold_position := false                       ## cast but never walk (the in-game benchmark keeps the hero at the room's centre)
 
@@ -171,9 +172,13 @@ func tick(now: float) -> void:
 		return
 	if not b.p.is_empty() and b.clock_ms() - float(b.p["lastHurtAt"]) < REGEN_MS:
 		b.heal(b.max_hp * 0.02 * dt)
+	var act_due := now >= _next_act
+	if hold_position and not act_due:
+		return   # a hero that holds his ground has nothing to decide between two actions: the tables are read when one is due
 	var p := b.position
+	stats["fills"] += 1
 	var ctx := _fill(b, c, p, now)
-	if now >= _next_act:
+	if act_due:
 		_next_act = now + ACT_MS
 		_act(b, c, ctx, p, now)
 	if not hold_position:

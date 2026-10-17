@@ -92,6 +92,7 @@ func _initialize() -> void:
 	await the_setup()
 	await the_fight_by_hand()
 	await auto_combat()
+	await frame_split()
 	await full_party_run()
 	await breakdown_run()
 	await every_room()
@@ -294,6 +295,7 @@ func auto_combat() -> void:
 		intents_ok = intents_ok and int(h[0]) >= 0 and int(h[0]) <= 6 and (int(h[1]) == 0 or host.enemy_alive(int(h[1])) or true)
 	check(intents_ok, "it casts through the hotbar seam, slots 0 to 6, as the keyboard does")
 	check(damaged[0] > 0, "and the casts land (%d blows on enemies)" % damaged[0])
+	check(int(auto.stats["actions"]) > 0 and int(auto.stats["fills"]) == int(auto.stats["actions"]), "holding his ground it reads the core's tables only when an action is due (%d reads, %d actions)" % [int(auto.stats["fills"]), int(auto.stats["actions"])])
 	check(hero.position.distance_to(at) < 1.6 and int(auto.stats["moves"]) == 0, "holding position it never walks (moved %.2f m, %d walks)" % [hero.position.distance_to(at), int(auto.stats["moves"])])
 	# what it reads: the core's bulk arrays and the facts the host's signals keep
 	check(auto._core_wired and auto._facts.size() > 0 and auto._facts.size() <= host.core.enemy_count(), "it keeps %d enemy records, from the core's events" % auto._facts.size())
@@ -330,6 +332,7 @@ func auto_combat() -> void:
 		host.spawn_enemy("robber", at + Vector3(0.0, 0.0, -22.0 + float(i) * 0.6), 60, 5.0, 0.0, false, "graves", false)
 	await ticks(150)
 	check(int(auto.stats["moves"]) > walks0, "not holding its ground it walks toward a pack out of reach (%d walks, moved %.1f m)" % [int(auto.stats["moves"]) - walks0, hero.position.distance_to(at)])
+	check(int(auto.stats["fills"]) > int(auto.stats["actions"]), "and then it reads the tables every move tick, for its steps (%d reads, %d actions)" % [int(auto.stats["fills"]), int(auto.stats["actions"])])
 	# a hostile zone is a hazard it leaves
 	host.zone.emit(900, 0, 0, hero.position.x, hero.position.z, 3.0, 5.0)
 	auto._gather(hero.position, "graves")
@@ -338,6 +341,58 @@ func auto_combat() -> void:
 	check(not auto._zones.has(900), "and the zone ends with its event")
 	g.queue_free()
 	await process_frame
+	await process_frame
+
+
+# ------------------------------------------------------------------------------------------------------------------ the frame split
+
+## A physics callback that holds the tick for `us` microseconds: the split must see at least that in every tick.
+class Busy:
+	extends Node
+	var us := 0
+
+	func _physics_process(_dt: float) -> void:
+		var t0 := Time.get_ticks_usec()
+		while Time.get_ticks_usec() - t0 < us:
+			pass
+
+
+func frame_split() -> void:
+	var split := DmFrameSplit.new()
+	root.add_child(split)
+	var busy := Busy.new()
+	busy.us = 3000
+	root.add_child(busy)
+	var made0 := Engine.get_physics_frames()
+	split.start(self)
+	await ticks(12)
+	await process_frame
+	split.stop()
+	var made := Engine.get_physics_frames() - made0
+	check(split.frames >= 6 and split.ticks >= 10 and absi(split.ticks - made) <= 1, "the split counts the frames and the ticks the engine ran (%d frames, %d ticks of %d)" % [split.frames, split.ticks, made])
+	check(split.worst_tick_us >= float(busy.us) and split.physics_us >= float(busy.us) * float(split.ticks), "a tick that holds 3 ms for itself is at least 3 ms in the physics part (slowest %.2f ms, %.2f ms in all for %d ticks)" % [split.worst_tick_us / 1000.0, split.physics_us / 1000.0, split.ticks])
+	check(split.tick_ms() <= split.worst_tick_us / 1000.0 + 1e-9 and split.physics_ms() > 0.0 and split.process_ms() >= 0.0 and split.ticks_per_frame() > 0.0, "the average tick is no slower than the slowest, and the parts are positive")
+	var frames := split.frames
+	await process_frame
+	await process_frame
+	check(split.frames == frames, "a stopped split counts nothing more")
+	print("INFO frame split: physics %.2f ms and process %.3f ms a frame over %d frames (%.2f ticks a frame, the busy tick 3 ms)" % [split.physics_ms(), split.process_ms(), split.frames, split.ticks_per_frame()])
+	split.reset()
+	check(split.frames == 0 and split.ticks == 0 and split.physics_us == 0.0 and split.process_us == 0.0 and split.worst_tick_us == 0.0, "reset starts a new window")
+	busy.queue_free()
+	split.queue_free()
+	# the F3 overlay's logic line is the same split (Godot's own monitors are the slowest frame and tick of each second)
+	var overlay := DmPerfOverlay.new()
+	root.add_child(overlay)
+	overlay.set_shown(true)
+	check(overlay.get_children().any(func(n: Node) -> bool: return n is DmFrameSplit), "an open overlay counts the frame's parts")
+	var t0 := Time.get_ticks_msec()
+	while not overlay.label.text.contains("slowest tick") and Time.get_ticks_msec() - t0 < 5000:
+		await process_frame
+	check(overlay.label.text.contains("logic ") and overlay.label.text.contains("slowest tick"), "the overlay's logic line gives the average process and physics and the slowest tick")
+	overlay.set_shown(false)
+	check(not overlay.get_children().any(func(n: Node) -> bool: return n is DmFrameSplit and not n.is_queued_for_deletion()), "a closed overlay counts nothing")
+	overlay.queue_free()
 	await process_frame
 
 
@@ -419,6 +474,9 @@ func full_party_run() -> void:
 	check(cc.bodies > 0.0 and cc.drawn > 0.0 and cc.drawn <= cc.bodies and cc.casting_thralls > 0.0 and cc.casting >= cc.casting_thralls and cc.band_near > 0.0, "the crowd counters are sane: %s" % str(cc))
 	print("INFO crowd per frame: %s" % str(cc))
 	# the core's budget: the numbers exist and add up
+	check(float(ph["physics_avg_ms"]) > 0.0 and float(ph["process_avg_ms"]) > 0.0 and float(ph["physics_worst_ms"]) >= float(ph["physics_tick_ms"]) and float(ph["split_ticks_per_frame"]) > 0.0 \
+		and float(ph["physics_avg_ms"]) + float(ph["process_avg_ms"]) <= float(ph["avg_ms"]) * 1.1 + 0.1,
+		"the frame split adds up: physics %.2f + process %.2f of the frame's %.2f ms (the monitors' peaks are %.2f and %.2f)" % [float(ph["physics_avg_ms"]), float(ph["process_avg_ms"]), float(ph["avg_ms"]), float(ph["physics_ms"]), float(ph["process_ms"])])
 	check(float(ph["core_ms"]) > 0.0 and absf(float(ph["core_ms"]) - (float(ph["core_step_ms"]) + float(ph["core_sync_ms"]) + float(ph["core_events_ms"]))) < 1e-6, "the core's tick is its step + crowd sync + event dispatch (%.2f ms)" % float(ph["core_ms"]))
 	check(float(ph["ticks_per_frame"]) > 0.0 and absf(float(ph["core_frame_ms"]) - float(ph["core_ms"]) * float(ph["ticks_per_frame"])) < 1e-6, "the core's cost a frame is its tick times the ticks a frame ran (%.2f x %.2f)" % [float(ph["core_ms"]), float(ph["ticks_per_frame"])])
 	check(absf(float(ph["rest_ms"]) - maxf(0.0, float(ph["avg_ms"]) - float(ph["core_frame_ms"]))) < 1e-6, "the rest of the frame is the frame less the core's share (%.2f ms)" % float(ph["rest_ms"]))
@@ -427,7 +485,7 @@ func full_party_run() -> void:
 	var text := DmBenchmark.format_text(r)
 	for needle in ["Death Muffin benchmark", "Average fps", "Frame ms (p95)", "V-Sync: off during measurement", "Combat core: dmcore", "Setup: The Hollow Graves, Gravecaller, Full Party, Quick (custom",
 			"Boss: The Gravedigger King", "held awake", "seed 20261011", "Crowd: mesh levels at 32 / 60 m; 128 instances reserved a group; animation 24.0 Hz beyond 32 m, 10.0 Hz beyond 60 m; culling on; thralls cast shadows",
-			"Crowd per frame (average over the measured window"]:
+			"Crowd per frame (average over the measured window", "Process ms (avg)", "Physics ms (Godot peak)", "Frame ", "'Godot peak' rows are Godot's slowest tick"]:
 		check(text.contains(needle), "the report has '%s'" % needle)
 	var budget := DmBenchmark.budget_lines(r)
 	var btext := "\n".join(budget)
@@ -620,6 +678,9 @@ func every_room() -> void:
 			check(DmBenchmark.format_text(r).contains("no boss (this room has none)") and not DmBenchmark.format_text(r).contains("Boss:"), "%s: the report says the room has none" % room)
 		var text := DmBenchmark.format_text(r)
 		check(text.contains("Setup: %s, Gravecaller, Full Party, Quick (custom" % DmBenchmark.room_name(room)) and text.contains("Budgets (ROADMAP") and text.contains("Combat core per tick"), "%s: the report names the room and has its budget section" % room)
+		check(text.contains("Process ms (avg)") and text.contains("Physics ms (avg)") and text.contains("Slowest tick ms") and text.contains("Process ms (Godot peak)") and text.contains("Physics ms (Godot peak)") and text.contains("\nFrame ")
+			and float(ph["physics_avg_ms"]) > 0.0 and float(ph["process_avg_ms"]) > 0.0 and float(ph["physics_worst_ms"]) >= float(ph["physics_tick_ms"]),
+			"%s: the report has the frame's physics and process averages beside Godot's peaks (physics %.2f, process %.2f ms)" % [room, float(ph.get("physics_avg_ms", 0.0)), float(ph.get("process_avg_ms", 0.0))])
 		var cc: Dictionary = ph.get("crowd", {})
 		check(text.contains("Crowd: mesh levels at") and text.contains("Crowd per frame (average over the measured window") and not cc.is_empty() and float(cc["bodies"]) > 0.0 and float(cc["drawn"]) <= float(cc["bodies"]) and float(cc["casting_thralls"]) > 0.0
 			and float(cc["triangles"]) > 0.0 and r["meta"]["crowd"].culling and r["meta"]["crowd"].anim_lod, "%s: the report records the crowd's settings and counters (%.0f bodies, %.0f drawn, %.0f outside the view, %.0f casting)" % [room, float(cc.get("bodies", 0.0)), float(cc.get("drawn", 0.0)), float(cc.get("culled", 0.0)), float(cc.get("casting", 0.0))])

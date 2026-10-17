@@ -1,7 +1,7 @@
 class_name DmPerfOverlay
 extends CanvasLayer
 ## F3 (rebindable in Settings > Controls, see DmUiBinds.perf_key) performance overlay, modelled on the web FpsOverlay: fps / avg / worst frame / hitches (>50 ms) over the last 5 s,
-## p50 frame time, logic (process + physics) vs render CPU/GPU, draw calls, objects, primitives, memory.
+## p50 frame time, logic (process + physics, averaged per frame over the last second: DmFrameSplit) vs render CPU/GPU, draw calls, objects, primitives, memory.
 ## Numbers from a software renderer (llvmpipe) are meaningless for real hardware: compare on the player's PC.
 
 const WINDOW_S := 5.0
@@ -15,6 +15,9 @@ var _vp: RID
 var _prev_fx_us := 0
 var _frames_since_paint := 0
 var _ms_since_paint := 0.0
+var _split: DmFrameSplit        # counts the frame's process and physics parts while the overlay is open
+var _split_t0 := 0.0
+var _logic := [0.0, 0.0, 0.0]    # the last second's [process ms, physics ms, slowest tick ms] a frame
 
 func _ready() -> void:
 	layer = 100
@@ -44,6 +47,15 @@ func _mono() -> Font:
 
 func set_shown(on: bool) -> void:
 	panel.visible = on
+	if on and _split == null:
+		_split = DmFrameSplit.new()
+		add_child(_split)
+		_split.start(get_tree())
+		_split_t0 = Time.get_ticks_msec() / 1000.0
+	elif not on and _split != null:
+		_split.stop()
+		_split.queue_free()
+		_split = null
 	RenderingServer.viewport_set_measure_render_time(_vp, on)
 	_samples.clear()
 	_frames_since_paint = 0
@@ -94,15 +106,19 @@ func _process(dt: float) -> void:
 	var objs := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME)
 	var prims := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)
 	var tex := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TEXTURE_MEM_USED)
-	var proc := Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
-	var phys := Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0
+	if _split != null and now - _split_t0 >= 1.0:   # (Godot's TIME_PROCESS / TIME_PHYSICS_PROCESS are the slowest frame and tick of each second, not what a frame costs)
+		_logic = [_split.process_ms(), _split.physics_ms(), _split.worst_tick_us / 1000.0]
+		_split.reset()
+		_split_t0 = now
+	var proc: float = _logic[0]
+	var phys: float = _logic[1]
 	var cpu_r := RenderingServer.viewport_get_measured_render_time_cpu(_vp)
 	var gpu_r := RenderingServer.viewport_get_measured_render_time_gpu(_vp)
 	var vs := get_viewport().get_visible_rect().size
 	var split := _split_line()
 	var lines := [
 		"%d fps   avg %.1f ms   p50 %.1f ms   worst %.1f ms   hitches %.1f/s (>%d ms)" % [int(round(s.fps)), s.avg, s.p50, s.worst, s.hitches, int(HITCH_MS)],
-		"logic %.1f ms (process %.1f + physics %.1f)   render cpu %.1f ms   gpu %s" % [proc + phys, proc, phys, cpu_r, ("%.1f ms" % gpu_r) if gpu_r > 0.0 else "n/a"],
+		"logic %.1f ms (process %.1f + physics %.1f)   slowest tick %.1f ms   render cpu %.1f ms   gpu %s" % [proc + phys, proc, phys, _logic[2], cpu_r, ("%.1f ms" % gpu_r) if gpu_r > 0.0 else "n/a"],
 		split,
 		"calls %d   objects %d   prims %s   tex %.0f MB   nodes %d" % [calls, objs, _kilo(prims), tex / 1048576.0, int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))],
 		"%s  %dx%d  mem %.0f MB  window 5 s (%d frames)" % [RenderingServer.get_video_adapter_name(), int(vs.x), int(vs.y), Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0, s.n],

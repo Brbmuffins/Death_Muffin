@@ -11,8 +11,8 @@ extends Node
 ## the measured window, then the HUD's share, then the render breakdown.
 ## What the creatures cost is the combat core's: `DmCoreHost.measure` times its step, the crowd's sync and the event dispatch per tick during the measured window, and the report's
 ## budget section sets them (and the rest of the main thread) against the ROADMAP budgets (BUDGET_*).
-## Per-frame cost: one float appended to a preallocated PackedFloat32Array plus a handful of engine counter reads; the fight upkeep (top-up,
-## counts, progress text) runs at TICK_S. Wiring: `var b := DmBenchmark.new(); add_child(b); var r := await b.run()`; `progress(text)` fires ~1 Hz.
+## Per-frame cost: one float appended to a preallocated PackedFloat32Array plus a handful of engine counter reads, and DmFrameSplit's two signal callbacks and one `_process` (the physics
+## and process parts of the frame); the fight upkeep (top-up, counts, progress text) runs at TICK_S. Wiring: `var b := DmBenchmark.new(); add_child(b); var r := await b.run()`; `progress(text)` fires ~1 Hz.
 ## Text report: `format_text(results)`; `save_text(text)` writes bench-<datetime>.txt into `dir` (user://benchmarks).
 ## Render breakdown (`breakdown`, after the measured window): the fight is paused (the picture stays) and each of BREAK_CATS is hidden in turn for
 ## BREAK_MEASURE_S; the drop in draw calls / objects / render CPU / GPU / frame time against the everything-on sample is what that part costs
@@ -49,7 +49,8 @@ const ROWS := [
 	["p95_ms", "Frame ms (p95)", "%.2f"], ["p99_ms", "Frame ms (p99)", "%.2f"], ["worst_ms", "Worst frame ms", "%.1f"],
 	["hitches", "Hitches > 50 ms", "%d"], ["draw_calls", "Draw calls (avg)", "%.0f"], ["objects", "Objects (avg)", "%.0f"],
 	["primitives", "Primitives (avg)", "%.0f"], ["render_cpu_ms", "Render CPU ms", "%.2f"], ["render_gpu_ms", "Render GPU ms", "%.2f"],
-	["process_ms", "Process ms (script+anim)", "%.2f"], ["physics_ms", "Physics ms", "%.2f"],
+	["process_avg_ms", "Process ms (avg)", "%.2f"], ["physics_avg_ms", "Physics ms (avg)", "%.2f"], ["physics_worst_ms", "Slowest tick ms", "%.2f"],
+	["process_ms", "Process ms (Godot peak)", "%.2f"], ["physics_ms", "Physics ms (Godot peak)", "%.2f"],
 	["kills_per_min", "Kills per minute", "%.0f"], ["loot", "Loot on the ground (avg)", "%.1f"], ["corpses", "Corpses (avg)", "%.1f"], ["enemies", "Enemies (avg)", "%.1f"], ["enemies_min", "Enemies (fewest)", "%d"], ["thralls", "Thralls (avg)", "%.1f"],
 ]
 
@@ -126,8 +127,9 @@ var _objs := 0.0
 var _prims := 0.0
 var _rcpu := 0.0
 var _rgpu := 0.0
-var _proc := 0.0
+var _proc := 0.0                ## Godot's TIME_PROCESS / TIME_PHYSICS_PROCESS read every frame, added up: the slowest frame / tick of each second, not averages
 var _phys := 0.0
+var _split: DmFrameSplit        ## what the frame's physics and process parts cost on average (the monitors above are peaks)
 var _ms_sum := 0.0
 var _hidden: Array = []         ## the render breakdown's currently hidden nodes (its restore check)
 var _ticks := 0
@@ -349,6 +351,9 @@ func run() -> Dictionary:
 	var opts := {"audio": false, "settings": settings}
 	if baked_dir != "":
 		opts["baked_dir"] = baked_dir
+	_split = DmFrameSplit.new()
+	add_child(_split)
+	_split.start(get_tree())
 	var asked: Dictionary = {"opts": crowd_opts, "unknown": []} if not crowd_opts.is_empty() else parse_crowd(OS.get_cmdline_user_args())
 	for t: String in asked["unknown"]:
 		printerr("BENCHMARK ignored --bench-crowd setting '%s' (%s)" % [t, ", ".join(CROWD_KEYS)])
@@ -508,6 +513,10 @@ func _teardown() -> void:
 		game.queue_free()
 		await get_tree().process_frame
 	game = null
+	if _split != null:
+		_split.stop()
+		_split.queue_free()
+		_split = null
 	_restore()
 
 
@@ -542,6 +551,8 @@ func _reset_acc() -> void:
 	_rgpu = 0.0
 	_proc = 0.0
 	_phys = 0.0
+	if _split != null:
+		_split.reset()
 	_ms_sum = 0.0
 	_en_min = 1 << 30
 	_loot_sum = 0.0
@@ -656,6 +667,9 @@ func _summary() -> Dictionary:
 		"p95_ms": sorted[mini(n - 1, int(n * 0.95))] if n > 0 else 0.0, "p99_ms": sorted[mini(n - 1, int(n * 0.99))] if n > 0 else 0.0,
 		"worst_ms": worst, "hitches": hitches, "draw_calls": _calls / d, "objects": _objs / d, "primitives": _prims / d,
 		"render_cpu_ms": _rcpu / d, "render_gpu_ms": _rgpu / d, "process_ms": _proc / d * 1000.0, "physics_ms": _phys / d * 1000.0,
+		"process_avg_ms": _split.process_ms() if _split != null else 0.0, "physics_avg_ms": _split.physics_ms() if _split != null else 0.0,
+		"physics_worst_ms": _split.worst_tick_us / 1000.0 if _split != null else 0.0, "physics_tick_ms": _split.tick_ms() if _split != null else 0.0,
+		"split_ticks_per_frame": _split.ticks_per_frame() if _split != null else 0.0,
 		"loot": _loot_sum / maxf(1.0, _ticks), "corpses": _corpse_sum / maxf(1.0, _ticks),
 		"enemies": _en_sum / maxf(1.0, _ticks), "enemies_min": _en_min if _ticks > 0 else 0, "thralls": _th_sum / maxf(1.0, _ticks), "capped": at_refresh_rate(1000.0 / maxf(avg, 0.001)), "floored": at_headless_floor(sorted[n / 2] if n > 0 else 0.0),
 		# the budget section (not table rows): the combat core per tick, how many ticks a frame ran, and what is left of the frame for everything else
@@ -862,6 +876,10 @@ static func format_text(r: Dictionary) -> String:
 		for p in ph:
 			line += "%-30s" % (row[2] % p[row[0]])
 		L.append(line)
+	var fl := frame_line(r)
+	if fl != "":
+		L.append("")
+		L.append(fl)
 	var bl := budget_lines(r)
 	if not bl.is_empty():
 		L.append("")
@@ -906,6 +924,19 @@ static func format_text(r: Dictionary) -> String:
 		if float(b["render_gpu_ms"]) > float(b["render_cpu_ms"]) * 1.5:
 			L.append("(GPU-bound: frame times jitter with the GPU queue; the draw-call column is exact, trust the ms columns less)")
 	return "\n".join(L)
+
+
+## Where the measured frame went, from DmFrameSplit: its physics part (every tick's scripts and the engine's physics and navigation work), its process part (every `_process`), and
+## what is left (drawing, waiting for the GPU, presenting; on a headless run that is the idle pad, or nothing under `--fixed-fps`). "" when the run has no split. The two "Godot peak"
+## rows are Godot's own monitors, which report the slowest frame and tick of each second, so they read above the average frame; these averages are what a frame costs.
+static func frame_line(r: Dictionary) -> String:
+	var ph: Array = r.get("phases", [])
+	if ph.is_empty() or not (ph[0] as Dictionary).has("physics_avg_ms"):
+		return ""
+	var p: Dictionary = ph[0]
+	var rest := maxf(0.0, float(p["avg_ms"]) - float(p["physics_avg_ms"]) - float(p["process_avg_ms"]))
+	return "Frame %.2f ms = physics %.2f (%.2f ticks a frame, %.2f a tick, the slowest %.2f) + process %.2f + the rest %.2f (drawing, waiting, presenting). The 'Godot peak' rows are Godot's slowest tick and frame of each second, not averages." % [
+		p["avg_ms"], p["physics_avg_ms"], p["split_ticks_per_frame"], p["physics_tick_ms"], p["physics_worst_ms"], p["process_avg_ms"], rest]
 
 
 ## "PASS" or "MISS": `value` within `budget`.

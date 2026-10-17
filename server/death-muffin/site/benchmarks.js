@@ -5,7 +5,7 @@ const SIZES = { light: 'Light', standard: 'Standard', heavy: 'Heavy', full_party
 const COLORS = ['#9b5cff', '#dcc38a', '#5ad1c4', '#ff7d7d', '#7fb4ff', '#e58bd8', '#9be37f', '#ffb066'];
 // Compare panel: which direction is better. Metrics in neither list are shown without a colour.
 const HIGHER_BETTER = new Set(['avg_fps', 'kills_per_min', 'kills']);
-const LOWER_BETTER = new Set(['avg_ms', 'median_ms', 'p95_ms', 'p99_ms', 'worst_ms', 'hitches', 'draw_calls', 'objects', 'primitives', 'render_cpu_ms', 'render_gpu_ms', 'process_ms', 'physics_ms']);
+const LOWER_BETTER = new Set(['avg_ms', 'median_ms', 'p95_ms', 'p99_ms', 'worst_ms', 'hitches', 'draw_calls', 'objects', 'primitives', 'render_cpu_ms', 'render_gpu_ms', 'process_ms', 'physics_ms', 'process_avg_ms', 'physics_avg_ms', 'physics_worst_ms']);
 
 const $ = (id) => document.getElementById(id);
 const statusEl = $('bench-status');

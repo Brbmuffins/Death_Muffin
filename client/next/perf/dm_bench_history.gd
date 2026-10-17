@@ -9,7 +9,7 @@ extends RefCounted
 const KEEP := 200               ## local runs kept (oldest dropped)
 const PENDING_KEEP := 50
 ## Lower-is-better rows of DmBenchmark.ROWS (the rest are higher-is-better or neutral counts; see `better`).
-const LOWER_BETTER := ["avg_ms", "median_ms", "p95_ms", "p99_ms", "worst_ms", "hitches", "draw_calls", "objects", "primitives", "render_cpu_ms", "render_gpu_ms", "process_ms", "physics_ms"]
+const LOWER_BETTER := ["avg_ms", "median_ms", "p95_ms", "p99_ms", "worst_ms", "hitches", "draw_calls", "objects", "primitives", "render_cpu_ms", "render_gpu_ms", "process_ms", "physics_ms", "process_avg_ms", "physics_avg_ms", "physics_worst_ms"]
 const HIGHER_BETTER := ["avg_fps"]
 
 static var _flushing := false

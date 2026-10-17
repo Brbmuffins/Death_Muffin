@@ -50,6 +50,16 @@ static func _list(src: Variant) -> Array:
 	return []
 
 
+## An object's fields as a Dictionary (the names the decisions read), so an enemy or corpse that is a sim object is read the way the adapter's dictionaries are.
+static func _fields(o: Variant) -> Dictionary:
+	var out := {}
+	if o == null:
+		return out
+	for k in ["hp", "state", "area", "x", "z", "id", "radius", "elite", "maxHp", "hexOwner", "kind", "seedOwner", "echoOwner"]:
+		out[k] = (o as Object).get(k)
+	return out
+
+
 static func _ab(id: String) -> Dictionary:
 	return DmContent.ability(id)
 
@@ -84,11 +94,28 @@ static func _action(id: String, t: Variant) -> Dictionary:
 	return {"id": id, "target": _aim(t)}
 
 
+## `arr`'s dictionaries by their "distance", equal distances in their order (JS's sort is stable, Godot's `sort_custom` is not): [distance, position] pairs sorted natively (an array
+## compares its first element, then its second), the dictionaries picked out in that order. The merge sort with a lambda it replaces took 1 ms for 64 targets.
 static func _by_distance(arr: Array) -> Array:
-	return DmStableSort.sorted(arr, func(a, b): return float(a["distance"]) < float(b["distance"]))
+	var n := arr.size()
+	if n < 2:
+		return arr.duplicate()
+	var keyed: Array = []
+	keyed.resize(n)
+	for i in n:
+		keyed[i] = [arr[i]["distance"], i]
+	keyed.sort()
+	var out: Array = []
+	out.resize(n)
+	for i in n:
+		out[i] = arr[(keyed[i] as Array)[1]]
+	return out
 
 
 ## One Easy-auto combat decision. Returns null or {id, target}.
+## Same decisions as the TS function, with its cost cut (Gravecaller, 62 enemies and 31 corpses in reach: 3.0 ms a decision on the VPS, 6.6 ms when it ends in Corpse Explosion,
+## which is a 14 ms physics tick; now see "The benchmark" in client/README.md): the sorts are native (`_by_distance`, the corpses' `keyed`), the field reads are made once per body, and the
+## counting rites run on packed arrays (`_around`, `_knot`) instead of a lambda calling `_dist` for every pair.
 static func select_action(ctx: Dictionary) -> Variant:
 	var p: Variant = ctx["player"]
 	var px := float(_g(p, "x", 0.0))
@@ -108,25 +135,42 @@ static func select_action(ctx: Dictionary) -> Variant:
 		inspected += 1
 		if inspected > 512:
 			break
-		var hp := float(_g(e, "hp", 0.0))
-		var st: String = str(_g(e, "state", ""))
-		var e_area: String = str(_g(e, "area", ""))
-		if hp <= 0.0 or st == "dead" or st == "rising" or st == "burrow" or (p_area != "" and e_area != "" and e_area != p_area):
+		var ed: Dictionary = e if e is Dictionary else _fields(e)
+		var v: Variant = ed.get("hp")
+		var hp := 0.0 if v == null else float(v)
+		v = ed.get("state")
+		var st := "" if v == null else str(v)
+		if hp <= 0.0 or st == "dead" or st == "rising" or st == "burrow":
 			continue
-		var d := _dist(p_pt, e)
+		if p_area != "":
+			v = ed.get("area")
+			var e_area := "" if v == null else str(v)
+			if e_area != "" and e_area != p_area:
+				continue
+		v = ed.get("x")
+		var ex := 0.0 if v == null else float(v)
+		v = ed.get("z")
+		var ez := 0.0 if v == null else float(v)
+		var d := DmSimMath.hypot(px - ex, pz - ez)   # (_dist(p_pt, e))
 		if d <= miasma_range:
-			targets.append({"x": float(_g(e, "x", 0.0)), "z": float(_g(e, "z", 0.0)), "enemyId": _g(e, "id", 0), "radius": float(_g(e, "radius", 0.5)),
-				"distance": d, "elite": _g(e, "elite", false), "hp": hp, "maxHp": _g(e, "maxHp", null), "state": st, "hexOwner": _g(e, "hexOwner", "")})
+			var v_id: Variant = ed.get("id")
+			var v_rad: Variant = ed.get("radius")
+			var v_elite: Variant = ed.get("elite")
+			var v_hex: Variant = ed.get("hexOwner")
+			targets.append({"x": ex, "z": ez, "enemyId": 0 if v_id == null else v_id, "radius": 0.5 if v_rad == null else float(v_rad), "distance": d,
+				"elite": false if v_elite == null else v_elite, "hp": hp, "maxHp": ed.get("maxHp"), "state": st, "hexOwner": "" if v_hex == null else v_hex})
 	targets = _by_distance(targets)
 	if targets.size() > 64:
 		targets.resize(64)
 	if boss != null and bool(_g(boss, "active", false)) and float(_g(boss, "hp", 0.0)) > 0.0 and str(_g(boss, "state", "")) != "dead":
 		var bd := _dist(p_pt, boss)
 		if bd <= miasma_range:
-			targets.append({"x": float(_g(boss, "x", 0.0)), "z": float(_g(boss, "z", 0.0)), "boss": true, "radius": BOSS_RADIUS, "distance": bd})
+			var at := targets.size()   # (the boss sorts in after every target at its distance or nearer: the stable sort of the list with the boss appended)
+			while at > 0 and float(targets[at - 1]["distance"]) > bd:
+				at -= 1
+			targets.insert(at, {"x": float(_g(boss, "x", 0.0)), "z": float(_g(boss, "z", 0.0)), "boss": true, "radius": BOSS_RADIUS, "distance": bd})
 	if targets.is_empty():
 		return null
-	targets = _by_distance(targets)
 	var family: Variant = ctx.get("family")
 	if family == "reaper":
 		return _reaper_action(ctx, targets)
@@ -148,24 +192,66 @@ static func select_action(ctx: Dictionary) -> Variant:
 		return _action(primary, needle)
 
 	var corpses: Array = []
+	var keyed: Array = []   # [distance from the hero, position in `corpses`]: sorted natively below, the position keeping equal distances in order
 	inspected = 0
 	var exhume_range := float(_ab("exhume")["range"])
 	for c in _list(ctx.get("corpses")):
 		inspected += 1
 		if inspected > 256:
 			break
-		if str(_g(c, "kind", "normal")) != "none" and _dist(p_pt, c) <= exhume_range:
-			corpses.append(_corpse(c))
-	corpses = DmStableSort.sorted(corpses, func(a, b): return _dist(p_pt, a) < _dist(p_pt, b))
+		var cf: Dictionary = c if c is Dictionary else _fields(c)
+		var v: Variant = cf.get("kind")
+		var kind := "normal" if v == null else str(v)
+		if kind == "none":
+			continue
+		v = cf.get("x")
+		var cx := 0.0 if v == null else float(v)
+		v = cf.get("z")
+		var cz := 0.0 if v == null else float(v)
+		var cd := DmSimMath.hypot(px - cx, pz - cz)   # (_dist(p_pt, c))
+		if cd <= exhume_range:
+			keyed.append([cd, corpses.size()])
+			var echo: Variant = cf.get("echoOwner")
+			if echo is String and echo == "":
+				echo = null   # (like _corpse: "" = undefined)
+			var v_seed: Variant = cf.get("seedOwner")
+			v = cf.get("area")
+			corpses.append({"x": cx, "z": cz, "kind": kind, "seedOwner": "" if v_seed == null else v_seed, "echoOwner": echo, "area": "" if v == null else str(v)})
+	if keyed.size() > 1:
+		keyed.sort()
+		var nearest_first: Array = []
+		for k: Array in keyed:
+			nearest_first.append(corpses[k[1]])
+		corpses = nearest_first
 	if corpses.size() > 32:
 		corpses.resize(32)
-	if thrall_count < thrall_cap and not corpses.is_empty() and can_spend.call("exhume"):
+	var cn := corpses.size()
+	var kx := PackedFloat64Array()
+	var kz := PackedFloat64Array()
+	kx.resize(cn)
+	kz.resize(cn)
+	for i in cn:
+		kx[i] = corpses[i]["x"]
+		kz[i] = corpses[i]["z"]
+	var tn := targets.size()
+	var tx := PackedFloat64Array()
+	var tz := PackedFloat64Array()
+	var trd := PackedFloat64Array()
+	tx.resize(tn)
+	tz.resize(tn)
+	trd.resize(tn)
+	for i in tn:
+		tx[i] = targets[i]["x"]
+		tz[i] = targets[i]["z"]
+		trd[i] = targets[i]["radius"]
+	if thrall_count < thrall_cap and cn > 0 and can_spend.call("exhume"):
 		return _action("exhume", corpses[0])
 	# Grave Offering: only when essence is low AND the legion is full; resonant corpses are kept back for Litany.
 	if essence < max_essence * 0.3 and thrall_count >= thrall_cap and ready.call("grave_offering"):
 		var go_range := float(_ab("grave_offering")["range"])
-		for c in corpses:
-			if c["kind"] != "resonant" and not _tr(c["seedOwner"]) and _dist(p_pt, c) <= go_range:
+		for i in cn:
+			var c: Dictionary = corpses[i]
+			if c["kind"] != "resonant" and not _tr(c["seedOwner"]) and DmSimMath.hypot(px - kx[i], pz - kz[i]) <= go_range:
 				return _action("grave_offering", c)
 	var t0: Dictionary = targets[0]
 	# Rally the Dead: a legion of three or more with the enemy close.
@@ -182,32 +268,27 @@ static func select_action(ctx: Dictionary) -> Variant:
 		if not has_seed:
 			var best: Variant = null
 			var best_d := 6.0
-			for c in corpses:
+			for i in cn:
+				var c: Dictionary = corpses[i]
 				if _tr(c["seedOwner"]):
 					continue
-				var d := _dist(c, t0)
+				var d := DmSimMath.hypot(kx[i] - float(t0["x"]), kz[i] - float(t0["z"]))   # (_dist(c, t0))
 				if d > 1.5 and d < best_d:
 					best = c
 					best_d = d
 			if best != null:
 				return _action("carrion_seed", best)
 
-	var count_around := func(point: Variant, radius: float) -> int:
-		var n := 0
-		for t in targets:
-			if _dist(point, t) <= radius + float(t["radius"]):
-				n += 1
-		return n
 	var hp_v: Variant = _g(p, "hp", null)
 	var max_hp_v: Variant = _g(p, "maxHp", null)
 	var has_hp: bool = hp_v != null and _tr(max_hp_v)
 	# Bone Mantle: armour up when the pack is on you and you are hurt, or when the dead lie thick.
-	if can_spend.call("bone_mantle") and count_around.call(p_pt, 3.0) >= 2:
+	if can_spend.call("bone_mantle") and _around(px, pz, 3.0, tx, tz, trd) >= 2:
 		var hurt: bool = float(hp_v) < float(max_hp_v) * 0.6 if has_hp else false
 		var fuel := 0
 		var mr := float(_ab("bone_mantle")["radius"])
-		for c in corpses:
-			if _dist(p_pt, c) <= mr:
+		for i in cn:
+			if DmSimMath.hypot(px - kx[i], pz - kz[i]) <= mr:
 				fuel += 1
 		if hurt or fuel >= 3:
 			return _action("bone_mantle", p_pt)
@@ -215,18 +296,19 @@ static func select_action(ctx: Dictionary) -> Variant:
 	var litany_r := float(_ab("black_litany")["radius"])
 	if thrall_count == 0:
 		var lc := 0
-		for c in corpses:
-			if _dist(p_pt, c) <= litany_r:
+		for i in cn:
+			if DmSimMath.hypot(px - kx[i], pz - kz[i]) <= litany_r:
 				lc += 1
-		if lc >= 2 and count_around.call(p_pt, litany_r) >= 6 and can_spend.call("black_litany"):
+		if lc >= 2 and _around(px, pz, litany_r, tx, tz, trd) >= 6 and can_spend.call("black_litany"):
 			return _action("black_litany", p_pt)
 	if can_spend.call("corpse_explosion"):
 		var D: Dictionary = DmContent.get_export("abilities", "DETONATE")
 		var best_c: Variant = null
 		var hits := 1
-		for c in corpses:
+		for i in cn:
+			var c: Dictionary = corpses[i]
 			var r := float(D["radius"]) * (float(D["resonantRadiusMult"]) if c["kind"] == "resonant" else 1.0)
-			var count: int = count_around.call(c, r)
+			var count := _around(kx[i], kz[i], r, tx, tz, trd)
 			if count > hits:
 				best_c = c
 				hits = count
@@ -250,35 +332,25 @@ static func select_action(ctx: Dictionary) -> Variant:
 	if can_spend.call("miasma"):
 		var best_m: Variant = null
 		var hits_m := 2
-		for t in candidates:
-			var count: int = count_around.call(t, float(_ab("miasma")["radius"]))
+		var miasma_r := float(_ab("miasma")["radius"])
+		for i in candidates.size():
+			var count := _around(tx[i], tz[i], miasma_r, tx, tz, trd)
 			if count > hits_m:
-				best_m = t
+				best_m = candidates[i]
 				hits_m = count
 		if best_m != null:
 			return _action("miasma", best_m)
 	# Grimoire expansion: a cage, a field and a storm want a knot of three or more; the siphon wants a sturdy target, or answers pressure.
-	var knot := func(id: String, r: float, minimum: int) -> Variant:
-		var best_k: Variant = null
-		var hits_k := minimum - 1
-		for t in candidates:
-			if t.has("boss") or float(t["distance"]) > float(_ab(id)["range"]) + 0.4:
-				continue
-			var n: int = count_around.call(t, r)
-			if n > hits_k:
-				best_k = t
-				hits_k = n
-		return best_k
 	if can_spend.call("bone_prison"):
-		var t: Variant = knot.call("bone_prison", float(_ab("bone_prison")["radius"]), 3)
+		var t: Variant = _knot("bone_prison", float(_ab("bone_prison")["radius"]), 3, candidates, tx, tz, trd)
 		if t != null:
 			return _action("bone_prison", t)
 	if can_spend.call("grave_hands"):
-		var t: Variant = knot.call("grave_hands", float(_ab("grave_hands")["radius"]), 3)
+		var t: Variant = _knot("grave_hands", float(_ab("grave_hands")["radius"]), 3, candidates, tx, tz, trd)
 		if t != null:
 			return _action("grave_hands", t)
 	if can_spend.call("bone_storm"):
-		var t: Variant = knot.call("bone_storm", float(_ab("bone_storm")["radius"]) + 1.0, 3)
+		var t: Variant = _knot("bone_storm", float(_ab("bone_storm")["radius"]) + 1.0, 3, candidates, tx, tz, trd)
 		if t != null:
 			return _action("bone_storm", t)
 	if can_spend.call("soul_siphon"):
@@ -309,11 +381,11 @@ static func select_action(ctx: Dictionary) -> Variant:
 			var dx := (float(t["x"]) - px) / td
 			var dz := (float(t["z"]) - pz) / td
 			var count := 0
-			for e in targets:
-				var rx := float(e["x"]) - px
-				var rz := float(e["z"]) - pz
+			for j in tn:
+				var rx := tx[j] - px
+				var rz := tz[j] - pz
 				var along := rx * dx + rz * dz
-				var er := float(e["radius"])
+				var er := trd[j]
 				if along >= -er and along <= length + er and absf(rx * dz - rz * dx) <= slope * maxf(0.0, along) + er:
 					count += 1
 			if count > hits_f:
@@ -332,11 +404,11 @@ static func select_action(ctx: Dictionary) -> Variant:
 			var dx := (float(t["x"]) - px) / td
 			var dz := (float(t["z"]) - pz) / td
 			var count := 0
-			for e in targets:
-				var rx := float(e["x"]) - px
-				var rz := float(e["z"]) - pz
+			for j in tn:
+				var rx := tx[j] - px
+				var rz := tz[j] - pz
 				var along := rx * dx + rz * dz
-				if along >= 0.0 and along <= float(MS["range"]) and absf(rx * dz - rz * dx) <= float(MS["radius"]) + float(e["radius"]):
+				if along >= 0.0 and along <= float(MS["range"]) and absf(rx * dz - rz * dx) <= float(MS["radius"]) + trd[j]:
 					count += 1
 			if count > hits_s:
 				best_s = t
@@ -357,7 +429,7 @@ static func select_action(ctx: Dictionary) -> Variant:
 				break
 		if chain == null:
 			for t in candidates:
-				if float(t["distance"]) <= ws_range + (BOSS_RADIUS if t.has("boss") else 0.4) and int(count_around.call(t, leap)) >= 3:
+				if float(t["distance"]) <= ws_range + (BOSS_RADIUS if t.has("boss") else 0.4) and _around(float(t["x"]), float(t["z"]), leap, tx, tz, trd) >= 3:
 					chain = t
 					break
 		if chain != null:
@@ -366,13 +438,48 @@ static func select_action(ctx: Dictionary) -> Variant:
 	if _tr(sig) and ready.call(sig) and targets.size() >= 3:
 		if sig == "command_rend" and thrall_count >= 2:
 			return _action(sig, t0)
-		if sig == "plague_bloom" and int(count_around.call(t0, 4.0)) >= 3:
+		if sig == "plague_bloom" and _around(float(t0["x"]), float(t0["z"]), 4.0, tx, tz, trd) >= 3:
 			return _action(sig, t0)
-		if sig == "ossuary_wall" and int(count_around.call(p_pt, 5.0)) >= 3:
+		if sig == "ossuary_wall" and _around(px, pz, 5.0, tx, tz, trd) >= 3:
 			return _action(sig, t0)
 		if sig == "dirge" and hp_v != null and _tr(max_hp_v) and float(hp_v) < float(max_hp_v) * 0.65:
 			return _action(sig, p_pt)
 	return _action(primary, needle) if needle != null and ready.call(primary) else null
+
+
+## How many of the targets (their packed x, z and radius) stand within `radius` plus their own radius of the point (x, z): `_dist(point, t) <= radius + t.radius` for each of them, with
+## V8's hypot only where the squares cannot tell (a hair either side of the line; the squares are off by 1e-16 at most, the band is 1e-6).
+static func _around(x: float, z: float, radius: float, tx: PackedFloat64Array, tz: PackedFloat64Array, trd: PackedFloat64Array) -> int:
+	var n := 0
+	for i in tx.size():
+		var lim := radius + trd[i]
+		if lim < 0.0:
+			continue
+		var dx := x - tx[i]
+		var dz := z - tz[i]
+		var d2 := dx * dx + dz * dz
+		var l2 := lim * lim
+		if d2 < l2 * 0.999999:
+			n += 1
+		elif d2 <= l2 * 1.000001 and DmSimMath.hypot(dx, dz) <= lim:
+			n += 1
+	return n
+
+
+## The candidate that has the most targets within `r` of it (more than `minimum - 1`, the first of equals), among those in `id`'s reach: the knot a cage, a field or a storm wants.
+static func _knot(id: String, r: float, minimum: int, candidates: Array, tx: PackedFloat64Array, tz: PackedFloat64Array, trd: PackedFloat64Array) -> Variant:
+	var best_k: Variant = null
+	var hits_k := minimum - 1
+	var reach := float(_ab(id)["range"]) + 0.4
+	for i in candidates.size():
+		var t: Dictionary = candidates[i]
+		if t.has("boss") or float(t["distance"]) > reach:
+			continue
+		var n := _around(tx[i], tz[i], r, tx, tz, trd)
+		if n > hits_k:
+			best_k = t
+			hits_k = n
+	return best_k
 
 
 ## The Reaper (family "reaper", ctx.player.souls = her soul bag): Scythe Sweep is the free filler, souls are spent on the rite that fits the crowd,
@@ -393,12 +500,15 @@ static func _reaper_action(ctx: Dictionary, targets: Array) -> Variant:
 	var reserve := walk_cost if hurt < 0.6 else 0
 	var can := func(id: String, keep := 0) -> bool:
 		return ready.call(id) and souls >= int(_ab(id).get("soulCost", 0)) + keep
+	var tx := PackedFloat64Array()
+	var tz := PackedFloat64Array()
+	var trd := PackedFloat64Array()
+	for t in targets:
+		tx.append(t["x"])
+		tz.append(t["z"])
+		trd.append(t["radius"])
 	var crowd := func(centre: Variant, r: float) -> int:
-		var n := 0
-		for e in targets:
-			if _dist(centre, e) <= r + float(e["radius"]):
-				n += 1
-		return n
+		return _around(float(centre["x"]), float(centre["z"]), r, tx, tz, trd)
 	var big := false   # a boss or an elite close enough to be worth spending souls on
 	for e in targets:
 		if (e.has("boss") or _tr(e.get("elite", false))) and float(e["distance"]) <= 7.0:
@@ -654,9 +764,21 @@ static func _raw_movement(ctx: Dictionary, mem: Variant, now: float) -> Variant:
 			return dout
 	var enemies: Array = []
 	for e in _list(ctx.get("enemies")):
-		var st: String = str(_g(e, "state", ""))
-		if float(_g(e, "hp", 0.0)) > 0.0 and st != "dead" and st != "rising" and st != "burrow" and (p_area == "" or str(_g(e, "area", "")) == p_area):
-			enemies.append({"id": _g(e, "id", 0), "x": float(_g(e, "x", 0.0)), "z": float(_g(e, "z", 0.0)), "state": st, "distance": _dist(p_pt, e)})
+		var ed: Dictionary = e if e is Dictionary else _fields(e)
+		var v: Variant = ed.get("state")
+		var st := "" if v == null else str(v)
+		v = ed.get("hp")
+		if (0.0 if v == null else float(v)) > 0.0 and st != "dead" and st != "rising" and st != "burrow":
+			if p_area != "":
+				v = ed.get("area")
+				if (("" if v == null else str(v)) != p_area):
+					continue
+			v = ed.get("x")
+			var ex := 0.0 if v == null else float(v)
+			v = ed.get("z")
+			var ez := 0.0 if v == null else float(v)
+			var v_id: Variant = ed.get("id")
+			enemies.append({"id": 0 if v_id == null else v_id, "x": ex, "z": ez, "state": st, "distance": DmSimMath.hypot(px - ex, pz - ez)})   # (_dist(p_pt, e))
 	enemies = _by_distance(enemies)
 	if enemies.is_empty():
 		if mem != null:

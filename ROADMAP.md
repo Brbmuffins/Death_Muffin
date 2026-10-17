@@ -218,8 +218,13 @@ server (B38).
     p95 18.1, p99 21.0, 1,091 draw calls) against the test build 20261017.012954 (Forward+) 242.5 fps (4.12 ms, p95 5.1, p99 6.7, worst 13.3, 581 draw calls): 3.1 times today's speed (3.5 at p95), so Gate B's
     2 times holds on a real PC as on the VPS. The HUD row: 126 draw calls (150) and 0.08 ms of the frame; no hitch through the warm-up and the fight. The test builds before da9cc529 drew no enemies or
     thralls (the crowd looked for its models by file name, which an export changes); their runs do not count.
-  - [ ] The physics frame: the same run reads 6.5 ms of physics time (today's 8.8) while the core's step is 0.13 ms and its events 0.14: find what Godot counts there (the navigation server's sync, the
-    scripts' `_physics_process`, the hero's body) and cut what is ours.
+  - [x] The physics frame (2026-10-17): the 6.5 ms was not what a frame costs. Godot's `TIME_PHYSICS_PROCESS` (and `TIME_PROCESS`, the 5.6) is the slowest single tick (frame) of each second, refreshed once a second, so it read above the 4.1 ms average
+    frame; the average physics part is a few tenths of a millisecond a frame at 0.25 ticks a frame. The slow tick of each second was Easy auto combat's choice (`DmAutoCombat.select_action`, the web game's TypeScript line for line: a lambda calling a field reader for
+    every pair of bodies, a merge sort with a lambda; 3 ms on the VPS, 7 when it ends in Corpse Explosion, once every eleven ticks), then a rite's cast with its effects (2 to 4 ms) and a big kill's event handlers. Not in it: the core's step, the physics and navigation
+    servers (0.1 ms a tick, 0.3 at p99), the interpolation, the hero (a `Node3D`, no physics body). The report now prints the monitors as the two "Godot peak" rows, beside the averages, the slowest tick and a Frame line (`DmFrameSplit`; the F3 overlay's logic line too:
+    client/README.md "The benchmark"). Cut: `DmAutoCombat` ported, the same choice and step (the live game's golden cases and seeded fights: `client/tests/auto_combat.gd`) at a quarter of the cost, and a hero that holds his ground reads the core's tables only when an
+    action is due. VPS Full Party on dcd89c4d, `--fixed-fps 60`, four alternating runs each: frame 4.69 ms (4.37 to 5.38) to 4.03 (3.36 to 4.68), the slowest tick of each second 14.5 (13.3 to 16.5) to 7.0 (6.0 to 7.7), tick p99 13.5 to 6.4; the full report, three
+    runs each: Godot's physics peak 15.7 to 9.1 (one run hit by a 128 ms stall of the shared VPS left out). Helix's PC shows it with the next test build.
   - [x] The seeded scenario comparison with today's game (`tools/rebuild/compare-scenarios.mjs`, native/README.md "Proof of same game", 2026-10-16): the Hollow Graves, a level-10 Gravecaller on Easy auto combat, 180 s of game time, twenty seeds on each side.
     Kills -2.3 % (tolerance 15), hero damage -3.0 % (15), thrall damage -6.5 % (20), median time to kill 0.0 % (20), thrall uptime -0.4 points (10), damage taken by the hero and his thralls -1.3 % (25): every metric inside its tolerance, and underneath it the kinds, the rites, the thralls lost
     and who hurt them agree. Seeds 1 to 5 (6 minutes) are too few for damage taken (-32.5 % against a noise band of 47 %); the verdict takes `--seeds=1-20` (23 minutes). No behaviour difference found. Not in it: bosses, rewards, loot and the other disciplines.
@@ -344,6 +349,9 @@ combat simulation for now.
     send it to the shadow map alone. Worth doing if Helix's PC shows the kept casters cost something (2026-10-17).
   - The benchmark's held Full Party keeps the whole pack inside the camera's view and within 32 m of it, so the crowd's culling and animation bands barely engage in it (1 of 148 bodies culled);
     their saving shows in play (F3) or in a looser fight (2026-10-17).
+  - Today's game: Easy auto combat's choice costs 3 ms (7 ms when it ends in Corpse Explosion) inside one physics tick with 60 enemies and 30 corpses in reach: `godot/game/dm_auto_combat.gd` is the file the rebuild ported to a quarter of that (client/code.list); the live game keeps it until launch day (2026-10-17).
+  - The rebuild's slowest ticks after Easy auto combat's choice (2026-10-17, VPS): a rite's cast, 2 to 4 ms in the tick it is cast, 1.2 to 1.9 ms of it its effects (`DmRiteCaster._play_event`, the `Vfx` nodes), and the event handlers of a big kill (`DmCoreHost._dispatch`: rewards, loot, the counsel), 2 to 9 ms.
+  - `DmAutoCombat._primary_target` (Bone Fan's pick) tests every pair of targets with V8's hypot: up to 4,000 calls, about 6 ms on the VPS in the tick it runs; the Gravecaller's default loadout does not use it (2026-10-17).
 - **Found during the rebuild, today's game ignores them** (Helix 2026-10-16: fixed after launch day, in the rebuild only; until then both keep today's behaviour; the core already emits each one):
   toxic corpse pools always hit as at level 1 (nothing sets the area level), a fallen plague bearer's pool never appears, and the
   Mourning Bell wraith's ally heal never happens (both are signals nobody listens to). Statuses never change the blows a boss takes:
