@@ -424,7 +424,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
 - **More reaches guests than today:** the slam, erupt, dig-in, scream and hook cues are on the wire (today only shield_block, sanctify and unbind replicate, so a guest saw no dust at a slam). A burning pool (the Husk's embers,
   the coal's, the slam's) reaches a guest as the host's zone event, when the host made it; today a guest's puppet drew its own visual-only copy when its own copy of the body died or at its impact timer.
   A snap above 6 m is not counted as walking speed (today's puppet counts it, and its walk clip sprints for a moment).
-- **Not replicated yet, stays GDScript:** bosses (state, phases, telegraphs, their statuses; their adds, niches and zones are the core's and ride the wire), hero vitals and positions (the session channel), rite events and the visuals they drive, ground drops (the party relays them),
+- **Not replicated yet, stays GDScript:** bosses (state, phases, telegraphs, their statuses; their adds, niches and zones are the core's and ride the wire; a party fights all seven, `client/tests/coop.gd` and `coop_bosses.gd`), hero vitals and positions (the session channel), rite events and the visuals they drive, ground drops (the party relays them),
   party calls and chat; guests still send their intents (move, cast requests) to the host as today. The per-kind extras of today's enemy snapshots are bit 5 of the snapshot record
   (the deacon's `rz`, the gargoyle's `dv`, the sexton's `hk`).
 - **The kinds of the other areas (`world.cpp`, `support.cpp`, `nave.cpp`, `cloister.cpp`, `pyre_fen.cpp`; `client/tests/core_kinds.gd`)**: each against its own script and state, numbers from the def and the scripts' `const` lines. The Bone Golem is the sac's script
@@ -613,7 +613,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   `client/tests/core_affixes.gd` (each affix against mirrors of today's timer arithmetic, the pause while staggered, Vengeful inside a call and inside a
   DoT tick), `client/tests/core_coop.gd` (two cores: a real fight, 20 Hz snapshots and batches into puppets, loss and reordering, a late guest and a lost batch,
   refusals, damaged messages, the commands and queries on a puppet, `DmCrowd` on one, the Full Party's size and cost, and `snapshot_parts`; `-- --verbose` lists every check) and
-  `client/tests/coop.gd` (the game's half: a host and a guest game over a real local lobby and relay, client/README.md "Co-op on the core"),
+  `client/tests/coop.gd` (the game's half: a host and a guest game over a real local lobby and relay, client/README.md "Co-op on the core"), `client/tests/coop_bosses.gd` (the six other bosses fought by a party of two on it),
   `client/tests/rites.gd` (the Gravecaller's rites on the core: every necromancer rite against today's formulas, the synchronous kills, the input, a full fight),
   `client/tests/boss.gd` (the Gravedigger King: his brain against today's scenarios, his fight by hand and on the real clock, the thralls, the rites, the defeat),
   `client/tests/core_boss.gd` (the core's half of the bosses: the Skull Niche against its script, a body's health, a boss's zones and their query, the wire of all three) and `client/tests/boss_abbess.gd`, `boss_congregation.gd`, `boss_prelate.gd`, `boss_saint.gd`, `boss_regent.gd` and

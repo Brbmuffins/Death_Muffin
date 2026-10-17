@@ -13,7 +13,8 @@ extends Node3D
 ## no state machine (the labels nobody read).
 ##
 ## Host: _physics_process pumps `brain.update(dt)` and mirrors the result (position, hp, phase, state) onto the body. Everywhere else the node is
-## a puppet fed by DmBossHost's snapshots (`get_net_state` / `apply_net_state`).
+## a puppet fed by DmBossHost's snapshots (`get_net_state` / `apply_net_state`). A guest's puppet is known to its puppet core host by the id the host's core gave the boss (told in the state),
+## for the queries only (the hover pick, a cast's aim): nothing is written to the guest's core, which has no externals.
 
 signal phase_changed(phase: int)
 signal damaged(amount: float, hp_left: float, from: Node)
@@ -37,7 +38,7 @@ var view: DmBossView
 var phase: int = 1
 var telegraphs: Array = []                ## [[kind, seconds_left, radius]] live telegraphs (host: from the brain, puppets: from snapshots)
 var visual := true
-var core_id: int = 0                      ## host: this body's id in the combat core (an external of kind 1), set when it registers in _ready
+var core_id: int = 0                      ## this body's id in the host's combat core (an external of kind 1): set when it registers in _ready; a guest learns it from the first state
 var max_hp: float = 1.0
 var hp: float = 1.0
 var radius: float = BOSS_RADIUS
@@ -192,6 +193,7 @@ func get_net_state() -> Dictionary:
 	d["act"] = bstate.active
 	d["bs"] = bstate.state
 	d["emp"] = bstate.empowered
+	d["cid"] = core_id
 	var tl: Array = []
 	if brain != null:
 		var now: float = world.now()
@@ -224,11 +226,25 @@ func apply_net_state(d: Dictionary) -> void:
 	bstate.x = float(d["pos"].x) if first else bstate.x
 	bstate.z = float(d["pos"].z) if first else bstate.z
 	telegraphs = d.get("tl", [])
+	if core_id == 0 and int(d.get("cid", 0)) != 0 and host_node != null:
+		_adopt(int(d["cid"]))
 	if bstate.phase != phase:
 		phase = bstate.phase
 		phase_changed.emit(phase)
 		if first and phase >= 3 and host_node != null:
 			host_node.replay_pits(self)   # a late joiner: the open graves have no event to wait for
+
+
+## A guest: the host's id for this boss, and the puppet core host's list of bosses (the queries answer for it as they do on the host).
+func _adopt(id: int) -> void:
+	core_id = id
+	var ch: DmCoreHost = host_node.core_host()
+	if ch == null:
+		return
+	ch.adopt_boss(self, id)
+	tree_exiting.connect(func() -> void:
+		if is_instance_valid(ch):
+			ch.unregister_boss(self))
 
 
 func _process(delta: float) -> void:

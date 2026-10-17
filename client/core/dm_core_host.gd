@@ -199,11 +199,21 @@ func register_boss(body: DmBoss) -> int:
 	return id
 
 
+## A guest: the host's boss body known by the id the host's core gave it, for the queries only (a puppet core has no externals, so nothing is written to it): the hover pick finds it,
+## a cast aims at it, `enemy_info` / `foe` / `enemy_position` answer for it from the body's state.
+func adopt_boss(body: DmBoss, id: int) -> void:
+	if _bosses.has(body):
+		return
+	_bosses.append(body)
+	_boss_ids.append(id)
+
+
 func unregister_boss(body: DmBoss) -> void:
 	var i := _bosses.find(body)
 	if i < 0:
 		return
-	core.remove_external(_boss_ids[i])
+	if not puppet:
+		core.remove_external(_boss_ids[i])
 	_bosses.remove_at(i)
 	_boss_ids.remove_at(i)
 

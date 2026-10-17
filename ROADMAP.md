@@ -208,6 +208,9 @@ server (B38).
     effects and HUD from its events, no rewards or kill report (`kill_credited` is the host's, once); the hello carries the build and `DmCore.wire_version()` and refuses a mismatch in the player's words; a guest's casts and move intents go to the host, which
     resolves them on its core (Exhume raises a thrall the host simulates, owned by the guest's hero external). The Full Party for one guest: about 28 KB/s and 82 packets/s on the host's connection (2.7 % and 14 % of the relay's limits), the largest packet 1,231 B.
   - [x] The Gravedigger King, hero vitals and the rites' events reach the guest (GDScript beside the core, as today's code sends them); the King fights both heroes in the proof.
+  - [x] The six other bosses fight a party (2026-10-17; `client/tests/coop_bosses.gd`, client/README.md "Co-op on the core"): the Bone Abbess, the Drowned Congregation, the Prelate, the Plague Saint, the Cinder Regent and the Mire Mother, each woken by the
+    guest with its own shards, on the real local lobby and relay: the boss's state, telegraphs, events, banners and sounds, the pools, the adds and the niches are the guest's as the host's; the blows, the chill and the root on the guest's hero; the guest's casts
+    counted; the defeat by the guest with both accounts paid; a wipe. It found that a guest could not hover or click a boss (its puppet core knows no externals): the guest's core host now knows the host's boss by its core id (`DmCoreHost.adopt_boss`).
   - [x] The party flow on the test lobby and relay (`DmNextParty`: host, join by code or id, invite, ask to join, answer, leave; `DmConfig` pins the test lobby and the test relay's port).
   - [x] The test lobby and relay installed and running (2026-10-16, Helix's OK; `server/death-muffin/test-server/coop/README.md`): `death-muffin-lobby-test` on 5195 behind `/death-muffin/test-lobby/`, `death-muffin-relay-test` on udp 5196,
     in the drift report's service list.
@@ -215,7 +218,7 @@ server (B38).
     and main.gd's hand-over (join, leave, a refused join, a closed party: home with the reason); `client/tests/social.gd`.
   - [x] The party's seals: the party plays in the host's world, so a guest's seals, doors and open areas are the host's (told to a guest as it joins, silently, and to every guest when they change: the gate rises
     with its sound and the banner); its own account's seals never open or close a door there (client/README.md "Co-op on the core", `client/tests/coop.gd`).
-  - [ ] Still to do beside the core: the six other bosses' two-player fights (they ride `DmBossHost`'s state and events like the King); a new baseline for each new area. (A guest's build
+  - [ ] Still to do beside the core: a new baseline for each new area. (A guest's build
     from the server's record and its own account came with value on the server; party chat and ground drops between members with the panels.)
   - [ ] Phones join as guests only (B40): the same messages; measure the snapshot on the Mobile renderer's budget when the first phone build exists.
 - [ ] The Full Party fight in the new client with the budget checks, and a seeded scenario comparison with today's game → Gate B.
@@ -318,7 +321,7 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
   `set_enemy_hp`, and zones for a boss (`add_zone`, `zones`: the Saint's rot, the Regent's coals), with their wire (`client/tests/core_boss.gd`); the corpses (`devoured`, `raised`), the pews and the Mire Mother's sunk state ride the core's existing
   calls. `DmBossMeta` and the HUD's boss-key prompt are in (`client/tests/boss_meta.gd`, on the mock backend). The Prelate's echoes are the world's vows, none in the rebuild (B36; native/README.md "Differences").
   Every add a boss calls is a core body now (the Cloister's, the Pyre's and the Fen's kinds are on the core): each boss suite checks its waves arrive on the rim in the boss's area, and the Saint's doctors feed her through the link as real bodies.
-  Their two-player fights are the co-op item's ("Still to do beside the core").
+  Their two-player fights are in the co-op item (`client/tests/coop_bosses.gd`).
 - [x] The Depths and gathering (the Chapterhouse came with the areas, DECISIONS B47).
   - [x] The Depths (2026-10-17, client/README.md "The Depths"): the instanced descent on the core: floors generated on a worker thread, baked off the main thread and handed to the core (one floor's triangles, replaced per floor), the dead
     core bodies with their own aggro, the stair, quota, chest and rewards on the server as today, the HUD's readout, map and prompt, solo, death takes nothing; every band's kinds are on the core, so the rosters are today's.
@@ -442,6 +445,13 @@ combat simulation for now.
   - The rebuild: `DmFxBinbun.update` takes each of the Pyre's 56 live effects through about 25 statements a frame (0.2 ms on the VPS); a list of only the effects that need something this frame (a follower, a fade, an end) would skip the steady loopers (2026-10-17).
   - The rebuild: `DmCore.enemy_info` builds a 25-entry Dictionary (8 us); the HUD's target frame, the event handlers and the rites' single reads call it 14 times a frame in a Full Party fight. A getter for the few fields they read would cost a quarter (2026-10-17).
   - The rebuild: Easy auto combat's gather (`DmNextAutoCombat._gather`, ten times a second) costs 0.4 to 0.75 ms each in a Full Party fight, about 0.1 ms a frame: it copies every body in range into a pooled row only for `select_action` to copy it again into its targets (2026-10-17).
+  - Today's game and the rebuild: a party guest gets no floating damage number, red hit flash, hurt sound or low-health warning when a boss or an enemy hits its hero: the HUD binds the hero's `hurt` and `enemy_effect` on the host only
+    (`DmNextUiHost._bind_bodies`); its health bar and its avatar's hurt animation follow the vitals (found by `client/tests/coop_bosses.gd`, 2026-10-17).
+  - Today's game and the rebuild: a guest whose own account has a boss's area sealed wakes the host's boss for nothing: the host does not ask, the guest's client spends its shards, the server refuses the charge ("... is still sealed.") and gives them
+    back, and the toast comes after the boss is awake (`DmBossHost._rpc_summoned`; the co-op seals item may want the guest asked first; 2026-10-17).
+  - Today's game and the rebuild: when a guest kills the Prelate, the run's Prelate tally (`record_prelate_kill`) and the `can_ascend` line go to the host's stand-in for the guest and the host's HUD, not to the guest's own progression (Ascension is redesigned after
+    launch day, B36); a guest never gets a boss's first-kill bonus or trophy either (its member's `trophy_store` says no: "its own backend's business, later"; 2026-10-17).
+  - The rebuild: `DmCore.zones(kind)` on a puppet core lists nothing (a guest's zones are events for its effects, not table state); nothing reads it on a guest today, but a guest-side "standing in rot" hint would (2026-10-17).
 - **Found during the rebuild, today's game ignores them** (Helix 2026-10-16: fixed after launch day, in the rebuild only; until then both keep today's behaviour; the core already emits each one):
   toxic corpse pools always hit as at level 1 (nothing sets the area level), a fallen plague bearer's pool never appears, and the
   Mourning Bell wraith's ally heal never happens (both are signals nobody listens to). Statuses never change the blows a boss takes:

@@ -15,7 +15,8 @@ extends SceneTree
 ##     1 cm quantization, in a still moment and again in the Full Party's fight; in the fight the counts follow within the send interval;
 ##   - a guest cast is resolved by the host and its damage shows on both (the hits, the guest's puppet hp, the numbers); a guest's Exhume raises a thrall the host
 ##     simulates, owned by the guest's hero external, drawn on the guest, counted by the guest's counsel poll, its rise heard on both sides;
-##   - the Gravedigger King wakes for the guest's request and fights both heroes: both are hurt by him, the casts of both and a thrall hurt him, the guest's copy follows him;
+##   - the Gravedigger King wakes for the guest's request and fights both heroes: both are hurt by him, the casts of both and a thrall hurt him, the guest's copy follows him and its core host knows him
+##     (the other six bosses fight a party in tests/coop_bosses.gd);
 ##   - a guest-side death shows (vitals, the body, the HUD's veil) and the hero gets up; kills are credited by the HOST only, once each: the guest credits none;
 ##   - the guest's own account (DECISIONS B22): the host makes it a rewards member (its character, rolling its own drops), it joins the host's backend party session with its own
 ##     token, the host reads its build from the server; a kill near both pays the guest's XP on its account (the host's accepted report, sent on) and its drops reach it,
@@ -800,6 +801,7 @@ func the_king() -> void:
 	var bh := h.bosses.active_boss()
 	check(await until(func() -> bool: return g.bosses.active_boss() != null, 5.0), "the guest has his body too, awake")
 	var bg := g.bosses.active_boss()
+	check(await until(func() -> bool: return bg.core_id == bh.core_id and g.core_host.enemies_in_radius(bg.global_position, 3.0).has(bh.core_id), 3.0), "the guest's core host knows him by the host's id and names him among the bodies near him (so its hover pick finds him)")
 	var rites_h := hb.get_node("Rites") as DmRiteCaster
 	var rites_g := gb_g.get_node("Rites") as DmRiteCaster
 	var rites_h_for_g := gb_h.get_node("Rites") as DmRiteCaster
