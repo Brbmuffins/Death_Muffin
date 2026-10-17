@@ -11,7 +11,7 @@ extends SceneTree
 ##   - the affixed elites' standing marks and motes (gone when they fall); a status's tell (frost motes on a chilled body); the dirt mound over a ghoul underground;
 ##   - the kinds of blow (the penitent's cone, the moth's dust and cloud, the sac's and the golem's slam, the deacon's and the acolyte's curse, the wraith's scream, the gargoyle's dive, a hurt ghoul's
 ##     dig and eruption), the templar's glance and the censer's incense (its cloud, its haste) and the affixes' bell, meal, shroud and burst are
-##     events of the core's buffer that DmEnemyFx played (scripted: one of each, close to the hero);
+##     events of the core's buffer that DmEnemyFx played (scripted: one of each, close to the hero, who stands at the Graves' door);
 ##   - the order of a tick (session and director, then the core, then the crowd) and that the host takes the event buffer once;
 ##   - the hover pick finds the enemy under the cursor through the core;
 ##   - the scene refuses an api that is not the test server's and no HTTP request node exists;
@@ -47,6 +47,8 @@ var corpses_added := 0
 var tele_events := 0
 var tells := {}   # DmCoreEvents.TELLS name -> telegraph events
 var cue_seen := {}   # DmCoreEvents.CUES name -> cue events
+var dive_marks := {}   # body id -> dive telegraphs (the Gargoyle's mark on the ground)
+var slam_stones := {}   # body id -> slam cues (a stone landing: the Gargoyle's dive ends in one, and so do the sac's and the golem's slams, so the kind alone cannot tell whose)
 var zones_seen := 0
 var attack_events := 0
 var hero_died_n := 0
@@ -72,6 +74,19 @@ func check(ok: bool, what: String) -> void:
 
 func nodes() -> int:
 	return int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
+
+
+## The nodes outside the effects: the Vfx autoload's pools and its Binbun effects come and go with the fighting (a burst, a cloud), not with the crowd.
+func scene_nodes() -> int:
+	var vfx := root.get_node_or_null("Vfx")
+	return nodes() - (_subtree(vfx) if vfx != null else 0)
+
+
+func _subtree(n: Node) -> int:
+	var c := 1
+	for ch in n.get_children(true):
+		c += _subtree(ch)
+	return c
 
 
 func ticks(n: int) -> void:
@@ -155,10 +170,17 @@ func start_game(api: DmApi, character: Dictionary) -> void:
 	host.enemy_died.connect(func(_id: int, _d: String, _lv: int, _el: bool, _ar: String, _s: int, _x: float, _z: float) -> void: died += 1)
 	host.enemy_removed.connect(func(_id: int) -> void: removed += 1)
 	host.corpse_added.connect(func(_id: int, _k: int, _d: String, _e: bool, _a: String, _x: float, _z: float, _f: float, _s: float) -> void: corpses_added += 1)
-	host.telegraph.connect(func(_id: int, t: int, _a: float, _b: float, _c: float, _d: float, _r: float, _s: float) -> void:
+	host.telegraph.connect(func(id: int, t: int, _a: float, _b: float, _c: float, _d: float, _r: float, _s: float) -> void:
 		tele_events += 1
-		tells[DmCoreEvents.TELLS[t]] = int(tells.get(DmCoreEvents.TELLS[t], 0)) + 1)
-	host.cue.connect(func(_id: int, k: int, _x: float, _z: float, _r: float) -> void: cue_seen[DmCoreEvents.CUES[k]] = int(cue_seen.get(DmCoreEvents.CUES[k], 0)) + 1)
+		var tell := DmCoreEvents.TELLS[t]
+		tells[tell] = int(tells.get(tell, 0)) + 1
+		if tell == &"dive":
+			dive_marks[id] = int(dive_marks.get(id, 0)) + 1)
+	host.cue.connect(func(id: int, k: int, _x: float, _z: float, _r: float) -> void:
+		var cue := DmCoreEvents.CUES[k]
+		cue_seen[cue] = int(cue_seen.get(cue, 0)) + 1
+		if cue == &"slam":
+			slam_stones[id] = int(slam_stones.get(id, 0)) + 1)
 	host.zone.connect(func(_id: int, _k: int, _s: int, _x: float, _z: float, _r: float, _t: float) -> void: zones_seen += 1)
 	host.enemy_attack.connect(func(_id: int, _b: int, _x: float, _z: float, _w: float) -> void: attack_events += 1)
 	host.target_hit.connect(func(_id: int, _t: int, _k: int, _d: float) -> void:
@@ -204,7 +226,7 @@ func the_run() -> void:
 		max_alive = maxi(max_alive, host.alive_count())
 		max_total = maxi(max_total, host.enemy_total())
 		if t % 60 == 59:
-			samples.append([host.alive_count(), nodes()])
+			samples.append([host.alive_count(), scene_nodes(), nodes()])
 	print("INFO the run: %d ticks in %.1f s, %d bodies spawned (%d waves), %d died, %d removed, max %d alive / %d with the dying, hero min hp %.0f of %.0f, died %d, got up %d, blows on him %s, %d events" % [
 		RUN_TICKS, float(Time.get_ticks_msec() - t0) / 1000.0, spawned, g.director.waves_spawned, died, removed, max_alive, max_total, min_hero_hp, b.max_hp, hero_died_n, hero_respawned_n,
 		str(g.hits_taken), host.events_total])
@@ -243,6 +265,10 @@ func kinds() -> void:
 			await physics_frame
 			w += 1
 	b.restore_vitals()
+	# Every run starts the kinds from the same ground, the Graves' door where he gets up. The director's waves are not seeded, so wherever the 60 s left him differs
+	# each run, and the Gargoyle dives only with a clear sight line to him (the core reads a cut in the navmesh, a grave, as a wall): from some spots a grave stands
+	# between them for the whole approach and it never dives. The door's approach is open.
+	b.teleport(g.respawn_point())
 	# The waves' bodies still ring the hero: clear them, so the four kinds reach him without depending on room in a crowd (a sac behind a full ring
 	# never gets to slam: that is crowd spacing, checked in core_enemies.gd, not the kinds of blow).
 	for id in host.core.enemy_ids():
@@ -279,8 +305,8 @@ func kinds() -> void:
 	var mound_seen := [false, false]   # [a mound while it was underground, none once it was up again]
 	for t in 720:
 		await physics_frame
-		if t % 120 == 60:
-			b.restore_vitals()   # he is only the target
+		if t % 10 == 0:
+			b.restore_vitals()   # he is only the target: his death would end every body's hunt before the Gargoyle's mark (the blows take him in about 110 ticks)
 		if t == 90:
 			incense_seen = host.enemy_alive(ids["censer"]) and host.status_stacks(ids["censer"], "incensed") == 1.0 and g.enemy_fx._incense.has(ids["censer"])
 		var st := int(host.enemy_info(ids["ghoul"]).get("state", -1)) if host.enemy_alive(ids["ghoul"]) else -1
@@ -301,7 +327,9 @@ func kinds() -> void:
 	for k in DmCoreEvents.CUES:
 		cues_got[k] = int(cue_seen.get(k, 0)) - int(cues_before.get(k, 0))
 	check(got["scream"] >= 1 and cues_got["scream"] >= 1, "the wraith sang its scream: the ring was drawn, and the cue came (%d, %d)" % [got["scream"], cues_got["scream"]])
-	check(got["dive"] >= 1 and cues_got["slam"] >= 1, "the gargoyle dived: the mark was drawn, and the stone landed (%d, %d)" % [got["dive"], cues_got["slam"]])
+	var marks := int(dive_marks.get(ids["gargoyle"], 0))
+	var stones := int(slam_stones.get(ids["gargoyle"], 0))
+	check(marks >= 1 and stones >= 1 and stones <= marks, "the gargoyle dived: its mark was drawn, and its stone landed, none without a mark (%d marks, %d stones; the hero stood at %s)" % [marks, stones, str(b.position)])
 	check(cues_got["shield_block"] >= 1, "the templar's shield glanced the blow from the front (%d)" % cues_got["shield_block"])
 	check(incense_seen, "the censer's cloud is up while it lives, and it is hasted by its own incense")
 	check(got["erupt"] >= 1 and g.enemy_fx.stats["dig"] > int(fx_before["dig"]) and g.enemy_fx.stats["erupt"] > int(fx_before["erupt"]), "the hurt ghoul dug in and erupted: dig, tunnel, a telegraph, the eruption's fx")
@@ -403,12 +431,16 @@ func no_nodes_per_creature() -> void:
 	# the nodes over the whole run did not follow the crowd either
 	var lo := 1 << 30
 	var hi := 0
+	var all_lo := 1 << 30
+	var all_hi := 0
 	var xs: Array = []
 	for s in samples:
 		lo = mini(lo, int(s[1]))
 		hi = maxi(hi, int(s[1]))
-	print("INFO nodes over the run: %d to %d (enemies alive %d at most); the scene tree has %d nodes" % [lo, hi, max_alive, nodes()])
-	check(hi - lo <= 50, "the node count over the run varies by %d (effects, not creatures: 35 before the Bellringers' censer, whose incense cloud is a Binbun effect of about eight nodes, led a procession)" % (hi - lo))
+		all_lo = mini(all_lo, int(s[2]))
+		all_hi = maxi(all_hi, int(s[2]))
+	print("INFO nodes over the run, outside the effects: %d to %d (with the effects %d to %d; enemies alive %d at most); the scene tree has %d nodes" % [lo, hi, all_lo, all_hi, max_alive, nodes()])
+	check(hi - lo <= 15, "the nodes outside the effects vary by %d over the run, the crowd up to %d bodies (a ghoul's dirt mound is a node: a few at most; the effects' own nodes, %d to %d here, come and go with the fighting)" % [hi - lo, max_alive, all_lo, all_hi])
 	var http := root.find_children("*", "HTTPRequest", true, false)
 	check(http.is_empty(), "no HTTP request node exists")
 	g.director.enabled = true

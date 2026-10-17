@@ -334,7 +334,6 @@ combat simulation for now.
     skips the send).
   - Today's game: the Plague Doctor's flask leaves a 5 s toxic pool that hurts but draws nothing on the ground (DmEnemyFx draws only dust and ember zones);
     the rebuild keeps it so until this is decided (2026-10-17).
-  - The rebuild: `client/tests/game_scene.gd` "the gargoyle dived: the mark was drawn, and the stone landed" failed once in three runs (no mark drawn, three stones landed) on a loaded machine and passed on both reruns (2026-10-17).
   - Today's game: the Reaper's soul wisp bursts on arrival through a lambda that reads the meta node (`DmNextMeta._soul_fx`), so a wisp still flying when the game is left logs a script error
     (the benchmark's Reaper run found it; the rebuild's port reads a local, 2026-10-17).
   - Today's game's benchmark: the fight's settings carry no V-Sync, so the game scene turns it back on during the measurement; a run faster than the monitor reads its
