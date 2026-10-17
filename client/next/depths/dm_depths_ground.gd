@@ -1,73 +1,87 @@
 class_name DmDepthsGround
 extends Node
-## The Depths floor as ground: the picture (DmWorldBuilder.build_depths_floor / clear_depths_floor, the existing look), the navmesh of THIS floor
-## (one NavigationRegion3D, its mesh swapped per floor), and the wall / prop colliders enemies slide on.
+## The Depths floor as ground, made at run time: the picture (the lights builder's `build_depths_floor` / `clear_depths_floor`, the existing look, drawn into the world's
+## `depths_root`) and the navmesh of THIS floor (one NavigationRegion3D, its mesh swapped per floor).
 ##
-## The world builder bakes a sample Depths floor into "area:depths" at build and keeps its walls' colliders in the shared Colliders body; both are
-## wrong for a generated floor, so setup() removes the sample colliders (inside the Depths rect) and this node's own region stands in while a run
-## is on (the builder's region stays disabled: `depths_open` is never set).
-## Cost per floor is measured: `build_ms` (picture + colliders + bake: all of it on the main thread, before the first await), `bake_ms`, `nav_ms` (+ the server merging the region).
+## On the combat core (client/code.list "Ported"). The other areas are scenes built offline; a Depths floor is generated per run, so everything an area scene carries is
+## made here, in two steps so the hero never waits on a bake:
+##   `prepare(f)`  bakes the floor's navmesh from its rooms, doors and obstacles on a worker thread (NavigationServer3D, the builder's settings) while the old floor still stands;
+##   `show(f)`     swaps the picture, puts the baked mesh on the floor's region (on the navigation map) and hands the core its copy (DmNextWorld.attach_floor);
+##   `merged()`    waits until the navigation server has merged the region, so a path from the way in to the stair already exists (the core's own copy answers at once).
+## No physics colliders: the hero has no body and the core keeps bodies on the navmesh, whose projected obstructions are the walls and props (the area scenes' colliders are
+## not read by anything either).
+## Cost per floor is measured: `build_ms` (the main thread's part: picture, region and the core's copy), `bake_ms` (the worker's bake, waited for), `nav_ms` (everything, to the merge).
 
 const GROW := 0.55               ## the builder's obstruction grow (the baker does not inflate projected obstructions)
-const WALL_H := 3.0
+const BAKE_TIMEOUT_MS := 20000   ## a bake that takes longer than this is abandoned (the floor is baked again on the main thread)
 
-var game: Node                   ## DmNextGame
+var game: DmNextGame
 var region: NavigationRegion3D
-var colliders: StaticBody3D
 var build_ms: int = 0
-var bake_ms: int = 0              ## the navmesh bake (main thread)
-var nav_ms: int = 0               ## bake + the navigation server merging the region (until the hero can stand on it)
+var bake_ms: int = 0              ## the navmesh bake (the worker thread's time, waited for)
+var nav_ms: int = 0               ## prepare + show + the navigation server merging the region (until the hero can path on it)
 var floor_data: Dictionary = {}
+var async_ok := false             ## the last bake came from the worker thread (false: the main thread made it after the worker did not deliver)
 
-var _rect: Dictionary
-var _sample_freed: int = 0
+var _baked: NavigationMesh        ## prepare's result, waiting for show
+var _iter0 := 0                   ## the map's iteration when the region was enabled: merged() waits for a later one
+var _t0 := 0
 
 
-func setup(game_: Node) -> void:
+func setup(game_: DmNextGame) -> void:
 	game = game_
-	_rect = DmContent.area("depths")["rect"]
 	region = NavigationRegion3D.new()
 	region.name = "DepthsNav"
 	region.enabled = false
 	game.world.add_child(region)
-	colliders = StaticBody3D.new()
-	colliders.name = "DepthsColliders"
-	game.world.add_child(colliders)
-	# The sample floor's colliders: invisible walls in the middle of generated rooms.
-	var shared: Node = game.world.builder.get_node_or_null("Colliders")
-	if shared != null:
-		for c in shared.get_children():
-			var cs := c as CollisionShape3D
-			if cs != null and cs.position.x >= float(_rect["x0"]) and cs.position.x <= float(_rect["x1"]) and cs.position.z >= float(_rect["z0"]) and cs.position.z <= float(_rect["z1"]):
-				cs.queue_free()
-				_sample_freed += 1
 
 
-## Draw and bake floor `f`; returns when the navigation map knows it (the hero can stand and walk on it).
-func build(f: Dictionary) -> void:
-	var t0 := Time.get_ticks_msec()
-	clear_colliders()
-	floor_data = f
-	region.enabled = false
-	game.world.builder.build_depths_floor(f)
-	_make_colliders(f)
+## Bake floor `f`'s navmesh off the main thread; the old floor (picture and region) is untouched. False when the bake gave no ground.
+func prepare(f: Dictionary) -> bool:
+	_t0 = Time.get_ticks_msec()
 	var src := _source(f)
 	var nm := _nav_mesh()
-	var map := region.get_world_3d().navigation_map
-	var iter0 := NavigationServer3D.map_get_iteration_id(map)
 	var t1 := Time.get_ticks_msec()
-	NavigationServer3D.bake_from_source_geometry_data(nm, src)   # ~6 ms for a floor (measured): cheaper than a thread round trip
+	NavigationServer3D.bake_from_source_geometry_data_async(nm, src)
+	while NavigationServer3D.is_baking_navigation_mesh(nm) and Time.get_ticks_msec() - t1 < BAKE_TIMEOUT_MS:
+		await game.get_tree().physics_frame
+	async_ok = not NavigationServer3D.is_baking_navigation_mesh(nm) and nm.get_polygon_count() > 0
+	if not async_ok:
+		nm = _nav_mesh()   # the worker did not deliver: the same bake here, on a fresh mesh
+		NavigationServer3D.bake_from_source_geometry_data(nm, src)
 	bake_ms = Time.get_ticks_msec() - t1
-	region.navigation_mesh = nm
+	_baked = nm
+	return nm.get_polygon_count() > 0
+
+
+## Swap to floor `f` (prepared): draw it, put its navmesh on the region and give the core its copy. The hero may stand on it from here.
+func show(f: Dictionary) -> void:
+	var t0 := Time.get_ticks_msec()
+	floor_data = f
+	region.enabled = false
+	var builder := game.world.builder
+	if builder != null:
+		builder.build_depths_floor(f)
+		for e: Dictionary in builder.prop_lights:   # the builder leaves a prop light off until its light budget (Compatibility's) picks it: a Forward+ floor lights them all
+			e["node"].visible = true
+	_iter0 = NavigationServer3D.map_get_iteration_id(region.get_world_3d().navigation_map)
+	region.navigation_mesh = _baked
 	region.enabled = true
-	build_ms = Time.get_ticks_msec() - t0   # everything the main thread did before its first await
-	# The server merges the region on its own clock: wait for a map iteration that sees it, then for walkable ground at the way in.
+	_baked = null
+	game.world.attach_floor(region)
+	build_ms = Time.get_ticks_msec() - t0
+
+
+## Returns once the navigation map knows floor `f` (a path from the way in to the stair exists): the server merges a region on its own clock, a few frames after it is enabled.
+func merged() -> void:
+	var f := floor_data
+	var map := region.get_world_3d().navigation_map
 	var probes: Array[Vector3] = [Vector3(float(f["start"]["x"]), 0.0, float(f["start"]["z"])), Vector3(float(f["stairDown"]["x"]), 0.0, float(f["stairDown"]["z"]) + 1.6)]
 	var frames := 0
-	while frames < 120:
+	while frames < 120 and not floor_data.is_empty():
 		await game.get_tree().physics_frame
 		frames += 1
-		if NavigationServer3D.map_get_iteration_id(map) > iter0:
+		if NavigationServer3D.map_get_iteration_id(map) > _iter0:
 			var ok := true   # both probes (a stale mesh of the last floor would not cover both)
 			for pr in probes:
 				var q := NavigationServer3D.map_get_closest_point(map, pr)
@@ -77,21 +91,17 @@ func build(f: Dictionary) -> void:
 				ok = path.size() >= 2 and Vector2(path[path.size() - 1].x - probes[1].x, path[path.size() - 1].z - probes[1].z).length() < 1.0
 			if ok:
 				break
-	nav_ms = Time.get_ticks_msec() - t0
+	nav_ms = Time.get_ticks_msec() - _t0
 
 
-## The run is over: the picture is freed, the region and colliders go away.
+## The run is over: the picture is freed, the region goes off the map and out of the core.
 func clear() -> void:
 	region.enabled = false
-	clear_colliders()
+	_baked = null
 	floor_data = {}
-	game.world.builder.clear_depths_floor()
-
-
-func clear_colliders() -> void:
-	for c in colliders.get_children():
-		colliders.remove_child(c)
-		c.queue_free()
+	game.world.detach_floor()
+	if game.world.builder != null:
+		game.world.builder.clear_depths_floor()
 
 
 # ---- navmesh source -------------------------------------------------------------------------------------------------------------
@@ -142,23 +152,3 @@ func _nav_mesh() -> NavigationMesh:
 	nm.agent_max_slope = 45.0
 	nm.region_min_size = 1.0
 	return nm
-
-
-# ---- colliders ------------------------------------------------------------------------------------------------------------------
-
-## Walls and solid props, as the sim's obstacle boxes / circles (the generated floor's walls are drawn without colliders by the builder).
-func _make_colliders(f: Dictionary) -> void:
-	for o: DmNavObstacle in DmDepthsFloor.floor_obstacles(f):
-		var cs := CollisionShape3D.new()
-		if o.is_circle:
-			var cy := CylinderShape3D.new()
-			cy.radius = o.r
-			cy.height = WALL_H
-			cs.shape = cy
-			cs.position = Vector3(o.x, WALL_H / 2.0, o.z)
-		else:
-			var bs := BoxShape3D.new()
-			bs.size = Vector3(o.x1 - o.x0, WALL_H, o.z1 - o.z0)
-			cs.shape = bs
-			cs.position = Vector3((o.x0 + o.x1) / 2.0, WALL_H / 2.0, (o.z0 + o.z1) / 2.0)
-		colliders.add_child(cs)

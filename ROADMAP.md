@@ -254,6 +254,9 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
   - [ ] The benchmark's other rooms (today's Sanctum and the rest), so Gate C can compare every room.
 - [ ] The six other bosses (a core zone for a boss, a call that sets a body's health, the Veilwalker's echoes), and the Covenant Seal's Empowered call (`DmBossMeta`, the boss key prompt).
 - [ ] The Depths and gathering (the Chapterhouse came with the areas, DECISIONS B47).
+  - [x] The Depths (2026-10-17, client/README.md "The Depths"): the instanced descent on the core: floors generated on a worker thread, baked off the main thread and handed to the core (one floor's triangles, replaced per floor), the dead
+    core bodies with their own aggro, the stair, quota, chest and rewards on the server as today, the HUD's readout, map and prompt, solo, death takes nothing; every band's kinds are on the core, so the rosters are today's.
+    `client/tests/depths.gd`.
   - [x] Gathering and the Acre (2026-10-17; client/README.md "Gathering and the Acre", `client/tests/gathering.gd`): the nodes of every area hovered, clicked and worked through the server (the walk, the cycle, the batches, the finds and XP the server decides, spent and
     back, Auto, AFK and its report), the professions' levels and banners, the Acre ledger's panels, the Grave Laborers as pooled views (at most four, only in the Acre), the garden, the contracts and the Sexton's and the Next box's feeds; a guest holds the nodes and cannot gather, as today.
 - [ ] Tips, onboarding and sound on the core's events.

@@ -98,6 +98,7 @@ func _init() -> void:
 	bat()
 	ghoul()
 	leash()
+	aggro_override()
 	stagger_and_stun()
 	crowd_spacing()
 	obstacles()
@@ -226,6 +227,42 @@ func leash() -> void:
 	check(ret[0] > 0, "leash: a target beyond 22.5 m is dropped")
 	var home := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_STATE and e["id"] == r and e["ints"][1] == IDLE, 600)
 	check(home[0] > 0 and (c.enemy_info(r)["pos"] as Vector2).length() <= 1.0, "leash: walks home, then idles")
+
+
+## A body can have its own notice and chase distances (the Depths' hunters: 36 and 90; everyone else's are 15 and 30, a target is dropped at aggro x 1.5 or past the leash from home).
+func aggro_override() -> void:
+	var c := make()
+	hero(c, Vector2(25, 0))
+	var plain: int = c.spawn_enemy("robber", Vector2(0, 0), 1, 1.0, 1.0, false, "graves", false)
+	var hunter: int = c.spawn_enemy("robber", Vector2(0, 4), 1, 1.0, 1.0, false, "depths", false)
+	check(float(c.enemy_info(plain)["aggro"]) == 15.0 and float(c.enemy_info(plain)["leash"]) == 30.0, "aggro: every body's defaults are 15 and 30")
+	check(c.set_enemy_aggro(hunter, 36.0, 90.0) and float(c.enemy_info(hunter)["aggro"]) == 36.0 and float(c.enemy_info(hunter)["leash"]) == 90.0, "aggro: a body can be given its own")
+	check(not c.set_enemy_aggro(999, 36.0, 90.0), "aggro: an unknown body is refused")
+	var log := []
+	run_until(c, func(e: Dictionary) -> bool: return false, 120, log)
+	check(states_of(log, hunter).has(CHASE) and not states_of(log, plain).has(CHASE), "aggro: at 25 m the hunter chases and the plain body, past its 15 m, idles")
+	# a target that runs to 45 m: the plain body's aggro x 1.5 is 22.5 (dropped, as in leash()); the hunter's is 54 (kept)
+	var c2 := make()
+	var h2 := hero(c2, Vector2(8, 0))
+	var a: int = c2.spawn_enemy("robber", Vector2(0, 0), 1, 1.0, 1.0, false, "graves", false)
+	var b: int = c2.spawn_enemy("robber", Vector2(0, 3), 1, 1.0, 1.0, false, "depths", false)
+	c2.set_enemy_aggro(b, 36.0, 90.0)
+	run_until(c2, func(e: Dictionary) -> bool: return false, 90)   # (each body notices the hero on its own scan phase)
+	check(int(c2.enemy_info(a)["state"]) == CHASE and int(c2.enemy_info(b)["state"]) == CHASE, "aggro: both chase a hero at 8 m")
+	c2.set_external(h2, Vector2(45, 0), true)
+	var log2 := []
+	run_until(c2, func(e: Dictionary) -> bool: return false, 30, log2)
+	check(states_of(log2, a).has(RETURN) and not states_of(log2, b).has(RETURN) and int(c2.enemy_info(b)["state"]) == CHASE, "aggro: a target at 45 m is dropped by the plain body (22.5) and kept by the hunter (54)")
+	# the leash from home: a hunter with a 5 m leash gives up the chase 5 m from where it stood
+	var c3 := make()
+	hero(c3, Vector2(30, 0))
+	var d: int = c3.spawn_enemy("robber", Vector2(0, 0), 1, 1.0, 1.0, false, "depths", false)
+	c3.set_enemy_aggro(d, 36.0, 5.0)
+	var log3 := []
+	run_until(c3, func(e: Dictionary) -> bool: return e["type"] == EV_STATE and e["id"] == d and e["ints"][1] == RETURN, 600, log3)
+	check(states_of(log3, d).has(CHASE) and states_of(log3, d).has(RETURN), "aggro: past its own leash from home a body gives up and walks back")
+	c3.damage(d, 1.0e6, 1)
+	check(not c3.set_enemy_aggro(d, 36.0, 90.0), "aggro: a dead body is refused")
 
 
 ## A plain hit staggers an idle/chasing body for 0.3 s at most once per 0.9 s; a stun mid-swing cancels the blow.

@@ -94,6 +94,8 @@ func build() -> Dictionary:
 	vm["brews"] = _brews(g)
 	vm["chain"] = _chain(g, b)
 	vm["omen"] = _omen(g)
+	vm["prompt"] = g.chapterhouse.prompt_text if g.chapterhouse != null else null   # the hub's hover / nearby prompt (the stair's among them)
+	vm["depth"] = g.depths.hud_state() if g.depths != null else null   # the Depths readout (depth, kills / quota, stair, chest)
 	var core: RefCounted = g.core_host.core
 	vm["thralls"] = int(core.thrall_places(b.core_id))
 	vm["thrall_hurt"] = _legion_hurt(core, b.core_id)
@@ -127,8 +129,6 @@ func _refresh_static(g: DmNextGame, b: DmHeroBody) -> void:
 		"cost": null if host.prog.wave_cost() == -1 else host.prog.wave_cost()}
 	vm["raises_thralls"] = family == "necromancer"
 	vm["soul_bag"] = bag
-	vm["prompt"] = null
-	vm["depth"] = null
 	vm["thrall_cap"] = int(b.mods.get("thrallCap", 0))
 
 
@@ -378,6 +378,8 @@ func _party(g: DmNextGame) -> Array:
 
 
 func _area_progress(area: String) -> String:
+	if area == "depths" and host.shell.depths != null and host.shell.depths.active():
+		return host.shell.depths.progress_line()
 	var def := _area(area)
 	if bool(def.get("safe", false)):
 		return "Sanctuary. The dead cannot follow you here."
@@ -450,5 +452,5 @@ func _minimap(g: DmNextGame, b: DmHeroBody) -> Dictionary:
 		_map["destination"] = _dest
 	else:
 		_map["destination"] = null
-	_map["depths"] = null
+	_map["depths"] = g.depths.map_floor() if g.depths != null else null
 	return _map

@@ -13,6 +13,11 @@ extends Node3D
 ## Every area but the Depths exists by default, as today's builder builds them all; `build` takes a shorter list (tests: the Graves alone). A door lies in the scenes of
 ## both its areas: the first one loaded keeps it, the other copy is dropped before it enters the tree. Gates start closed; `set_unlocked` opens a door when both of its
 ## areas are unlocked and loaded, and the area's own navmesh is on only while it is unlocked (the Graves' door to the Chapterhouse is always open).
+##
+## The Depths are the one area with no scene: an instance, its floors generated and baked at run time (next/depths/dm_depths_ground.gd). Its rect is known from the start
+## (`area_rect` knows it; `bounds` covers it when the Warren, whose stair leads there, is in the world); `open_instance("depths", true)` makes it an area (`area_at`) while a run stands on it, and `attach_floor / detach_floor` give the
+## floor's navmesh region to the combat core (its own copy, replaced floor by floor) the way `bind_core` gave it the others. The floor's picture is drawn into `depths_root`
+## by the lights builder's `build_depths_floor` (no see-through cutout yet, like the other areas).
 
 signal door_opened(id: String)         ## a door rose (a seal broke, a waystone, or a guest's doors followed the host's): the gate sound is DmAudioHooks'
 
@@ -35,10 +40,16 @@ var gates: Dictionary = {}
 var nav_regions: Dictionary = {}
 var nav_links: Dictionary = {}
 
+## The instance areas (the Depths): their rects, whether a run has one open, and the node a runtime floor is drawn into.
+var depths_open := false
+var depths_root: Node3D                ## where `builder.build_depths_floor` draws the generated floor (null in a world with no lights)
+
 var _map: RID
 var _nav_ok := false
 var _core: RefCounted                  ## the combat core once bound (bind_core): it keeps its own copy of the navmesh
 var _core_region := {}                 ## nav_regions key -> the core's region index
+var _floor_region: NavigationRegion3D  ## the Depths floor's region while a floor stands (attach_floor)
+var _core_floor := -1                  ## the core's region index of the Depths floor (one index, its polygons replaced per floor), -1 = none yet
 var _scenes := {}                      ## area id -> its scene root
 var _rects := {}                       ## area id -> {x0, z0, x1, z1} from world.json
 
@@ -70,6 +81,7 @@ func build(area_ids: Array = [], with_lights: bool = true) -> void:
 		_rects[String(id)] = data["areas"][id]["rect"]
 		loaded.append(String(id))
 		_collect_doors(scene, String(id))
+	_rects["depths"] = data["areas"]["depths"]["rect"]
 	focus = Node3D.new()
 	focus.name = "Focus"
 	add_child(focus)
@@ -81,9 +93,14 @@ func build(area_ids: Array = [], with_lights: bool = true) -> void:
 		builder.name = "Lights"
 		add_child(builder)
 		builder.world = data
+		builder.occlusion_enabled = false   # the see-through cutout comes with the look pass (client/README.md "Areas")
 		builder._make_environment()
 		builder.set_area(loaded[0])
 		_register_nodes()
+		depths_root = Node3D.new()
+		depths_root.name = "area_depths"
+		add_child(depths_root)
+		builder.area_nodes["depths"] = depths_root
 	area_id = loaded[0]
 	set_unlocked([])
 	build_ms = Time.get_ticks_msec() - t0
@@ -131,20 +148,29 @@ func _collect_doors(scene: Node3D, id: String) -> void:
 func bind_core(core: RefCounted) -> void:
 	_core = core
 	_core_region.clear()
+	_core_floor = -1
 	core.nav_clear_regions()
 	for key: String in nav_regions:
 		var reg := nav_regions[key] as NavigationRegion3D
-		var nm := reg.navigation_mesh
-		var xf := reg.global_transform
-		var verts := PackedVector3Array()
-		for v in nm.get_vertices():
-			verts.append(xf * v)
-		var polys := PackedInt32Array()
-		for i in nm.get_polygon_count():
-			var poly := nm.get_polygon(i)
-			polys.append(poly.size())
-			polys.append_array(poly)
-		_core_region[key] = core.nav_add_region(verts, polys, reg.enabled)
+		var arrays := _region_arrays(reg)
+		_core_region[key] = core.nav_add_region(arrays[0], arrays[1], reg.enabled)
+	if _floor_region != null:
+		attach_floor(_floor_region)
+
+
+## A navmesh region as the core takes it: its vertices in world space and its polygons ([n, i0 .. in-1, ...]).
+func _region_arrays(reg: NavigationRegion3D) -> Array:
+	var nm := reg.navigation_mesh
+	var xf := reg.global_transform
+	var verts := PackedVector3Array()
+	for v in nm.get_vertices():
+		verts.append(xf * v)
+	var polys := PackedInt32Array()
+	for i in nm.get_polygon_count():
+		var poly := nm.get_polygon(i)
+		polys.append(poly.size())
+		polys.append_array(poly)
+	return [verts, polys]
 
 
 func _set_region(key: String, on: bool) -> void:
@@ -155,6 +181,39 @@ func _set_region(key: String, on: bool) -> void:
 
 func has_area(id: String) -> bool:
 	return _scenes.has(id)
+
+
+## The scene root of a loaded area (null when the area is not in this world): where an area's run-time dressing goes (the Warren's stair).
+func area_node(id: String) -> Node3D:
+	return _scenes.get(id)
+
+
+# ---- the instance (the Depths; today's DmWorldBuilder.open_instance) -----------------------------------------------------------
+
+## A run opens the Depths: `area_at` answers "depths" inside its rect until it closes. Its floor's navmesh is the floor's own (`attach_floor`).
+func open_instance(id: String, open: bool) -> void:
+	if id == "depths":
+		depths_open = open
+
+
+## The Depths floor's navmesh region is on the navigation map (the floor's node owns it) and now also the core's: its first floor adds a region, every later floor
+## replaces that region's polygons, so nothing of an old floor piles up in the core's grid.
+func attach_floor(region: NavigationRegion3D) -> void:
+	_floor_region = region
+	if _core == null:
+		return
+	var arrays := _region_arrays(region)
+	if _core_floor < 0:
+		_core_floor = int(_core.nav_add_region(arrays[0], arrays[1], true))
+	else:
+		_core.nav_replace_region(_core_floor, arrays[0], arrays[1], true)
+
+
+## The floor is gone: its triangles leave the core's grid.
+func detach_floor() -> void:
+	_floor_region = null
+	if _core != null and _core_floor >= 0:
+		_core.nav_replace_region(_core_floor, PackedVector3Array(), PackedInt32Array(), false)
 
 
 # ---- seals and doors (today's DmWorldBuilder.set_unlocked / set_door_open) -----------------------------------------------------
@@ -224,12 +283,16 @@ func camera_config() -> Dictionary:
 	return DmData.world()["camera"]
 
 
-## The area at a ground point ("" = outside every loaded area, a door corridor included): the rect test of the builder's `area_at`.
+## The area at a ground point ("" = outside every loaded area, a door corridor included): the rect test of the builder's `area_at`. The Depths count while a run has them open.
 func area_at(x: float, z: float) -> String:
 	for id in loaded:
 		var r: Dictionary = _rects[id]
 		if x >= r.x0 and x <= r.x1 and z >= r.z0 and z <= r.z1:
 			return id
+	if depths_open:
+		var d: Dictionary = _rects["depths"]
+		if x >= d.x0 and x <= d.x1 and z >= d.z0 and z <= d.z1:
+			return "depths"
 	return ""
 
 
@@ -237,11 +300,14 @@ func area_rect(id: String) -> Dictionary:
 	return _rects.get(id, {})
 
 
-## The area's ground and its door corridors: the combat core's bounds (its spatial grid) and the crowd's custom bounds.
+## The areas' ground and their door corridors, and the Depths' rect when the Warren (whose stair leads there) is in the world: the combat core's bounds (its spatial grid) and the crowd's custom bounds.
 func bounds(pad: float = 12.0) -> Rect2:
 	var lo := Vector2(INF, INF)
 	var hi := Vector2(-INF, -INF)
-	for id in loaded:
+	var covered: Array = loaded.duplicate()
+	if has_area("warren"):   # the Warren's stair leads to the Depths: a run's floors stand in their rect
+		covered.append("depths")
+	for id in covered:
 		var r: Dictionary = _rects[id]
 		lo = Vector2(minf(lo.x, float(r.x0)), minf(lo.y, float(r.z0)))
 		hi = Vector2(maxf(hi.x, float(r.x1)), maxf(hi.y, float(r.z1)))

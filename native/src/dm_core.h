@@ -58,6 +58,8 @@ public:
 	// With none, the step asks the navigation map (set_nav_map). nav_closest answers the same query for GDScript (the hero's moves, spawn points).
 	int64_t nav_add_region(const godot::PackedVector3Array &p_vertices, const godot::PackedInt32Array &p_polygons, bool p_enabled);
 	void nav_set_region_enabled(int64_t p_region, bool p_enabled);
+	// A region's polygons swapped for new ones (the Depths floor, generated and baked at run time: one region, its mesh replaced per floor); empty arrays empty it. False for an unknown index.
+	bool nav_replace_region(int64_t p_region, const godot::PackedVector3Array &p_vertices, const godot::PackedInt32Array &p_polygons, bool p_enabled);
 	void nav_clear_regions();
 	godot::Vector3 nav_closest(const godot::Vector3 &p_point);
 	int64_t nav_triangle_count() const;
@@ -71,6 +73,9 @@ public:
 	int64_t add_obstacle(const godot::Vector2 &p_a, const godot::Vector2 &p_b, double p_thickness);
 	bool remove_obstacle(int64_t p_id);
 	godot::Dictionary damage(int64_t p_id, double p_amount, int64_t p_source, bool p_allow_stagger = true);
+	// How far this body notices a target and how far from its home it chases (metres): the director's `over.aggro / leash` (the Depths hunt across the whole floor: 36 and 90).
+	// The defaults (15, 30) are every other body's. False for a dead or unknown id.
+	bool set_enemy_aggro(int64_t p_id, double p_aggro, double p_leash);
 	bool remove_enemy(int64_t p_id);  // a living enemy leaves without dying (a boss's adds): no death, corpse or credit; EV_ENEMY_REMOVED with 1. False for a dead or unknown id
 	void stun(int64_t p_id, double p_seconds);
 	// DmStatusSet.apply: params dps (bleed, withered), cap (withered stack cap / barrier cap), amount (barrier).

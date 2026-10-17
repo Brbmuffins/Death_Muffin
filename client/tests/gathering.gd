@@ -180,7 +180,7 @@ func _the_nodes() -> void:
 			misplaced.append(n["id"])
 	check(missing.is_empty() and misplaced.is_empty(), "every node is in its area scene where world.json puts it (missing %s, misplaced %s)" % [str(missing), str(misplaced)])
 	var b := g.world.builder
-	check(b.node_views.size() == data.size() and b.area_nodes.size() == 12 and g.gather.views != null, "the views hold every node's prop (%d) and every area's root (%d)" % [b.node_views.size(), b.area_nodes.size()])
+	check(b.node_views.size() == data.size() and b.area_nodes.size() == 13 and g.gather.views != null, "the views hold every node's prop (%d) and every area's root, the twelve scenes' and the Depths' node (%d)" % [b.node_views.size(), b.area_nodes.size()])
 	var spent: Dictionary = {}
 	for n: Dictionary in data:
 		if n["spentModel"] != null:

@@ -54,7 +54,8 @@ Today's runtime it replaces is mapped in the private audit `~/vps-handoffs/Death
   bit for bit. Live play seeds from the clock, like today's `randomize()`.
 - **Movement:** paths from `NavigationServer3D` (batched, cached per target cell), steering and separation in the core, positions
   kept on the navmesh by the core's own copy of it (`navgrid`: the enabled regions' triangles on a 2 m grid, about 0.7 us a body where the server's
-  closest-point query walked every polygon of the map), heroes and walls pushed out as circles. This replaces Godot's RVO avoidance: crowds may flow slightly
+  closest-point query walked every polygon of the map; `nav_replace_region` swaps one region's polygons, which is how a Depths floor changing leaves no old triangles behind), heroes and walls pushed out as circles.
+  Every body notices a target at 15 m and strays 30 m from home; `set_enemy_aggro` gives one body its own (the Depths' hunters: 36 and 90), with the same drop rule (aggro x 1.5). (`dmcore 0.12`: `nav_replace_region`, `set_enemy_aggro` and `aggro` / `leash` in `enemy_info`; the wire layout is unchanged.) This replaces Godot's RVO avoidance: crowds may flow slightly
   differently, a difference written down for Helix to judge (B42). No physics body per creature.
 - **Drawing:** one MultiMesh per creature model, level of detail and shadow setting, transforms and animation data written in one buffer update per
   rendered frame, interpolated between ticks; animations play from baked vertex-animation textures. `DmCrowd` does it (`dm_crowd.*`, `core/crowd_view.*`): it reads the core's
@@ -408,7 +409,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   - **No collider, agent or state machine on his body** (`DmBoss` is a `Node3D`): nothing read them but the old `DmEnemy` code (the labels are gone, the hover pick and the chase go through the host's queries).
 - **The HUD on the core (today's `DmGameUi` and panels on `client/next/hud/dm_next_ui_host.gd`, `client/ui/hud`; `client/README.md` "The HUD on the core")**: the same layout, colours, fonts and
   numbers; drawn to fit 150 draw calls, which changes the pixels a little where the same shape is drawn another way. What a player could notice:
-  - **Not there yet** (their systems are not in the game scene): the counsel's tips (its fight facts read creatures), the Depths readout, the Chapterhouse's prompts and the Next line, the Altar (no Ascension: DECISIONS B36).
+  - **Not there yet** (their systems are not in the game scene): the Next line, the Altar (no Ascension: DECISIONS B36).
   - **Panels and borders** are pictures of the same fill, border and rounded corners (`DmHudAtlas.nine`, 16 samples a pixel) instead of `StyleBoxFlat` geometry: identical at the design size, and at other
     UI scales the 1 px borders and the 2 and 3 px corners are filtered a little differently. The hotbar's plate keeps its soft shadow (still a `StyleBoxFlat`).
   - **Icons** are scaled once, to at most twice the size they are shown at (ability art 256 to 128 px for a 62 px slot, portraits 480x640 to 96x128), with a Lanczos filter: slightly smoother than the file
@@ -441,6 +442,15 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   - **A spent node's model is not in the bake.** A node's live look is the area scene's prop, which the lighting bake lit; its spent look (the stump, the spent ore, the dug grave) is built at run time, as today, and is lit by the area's real-time light
     and ambient, and the bounce light the live model gave the ground around it stays after it is hidden. Rendering is Helix's PC's to judge.
 
+- **The Depths on the core (`client/next/depths`; `client/README.md` "The Depths")**: the run's rules, numbers, rewards and flow are today's. What is not the same:
+  - **A Risen raised on a floor is of the floor.** The core gives a Risen (a deacon's, a Vengeful elite's) its raiser's area, `depths`: it counts for the quota, pays as a kill on the Depths' ground and leaves with the floor. Today it takes the director's current area (the Graves, say),
+    counts for no quota and is not cleared with the floor. Its notice and chase distances are the core's 15 and 30 (today's are the default too).
+  - **A floor's last dying bodies sink on the next one.** A body that fell within the 4 s before the stair was taken is dying, and `remove_enemy` refuses a dead body (it leaves by itself); today `clear_area` freed it with the rest. Its corpse is consumed with the floor's.
+  - **The hero stands on the new floor before the navigation server has merged it.** Today the new floor was drawn first and the hero waited on it (inside its walls) for the merge; now the old floor stays until the new one is baked (on a worker thread), then the swap and the hero's jump are one
+    frame, and the core's own copy of the navmesh answers at once. Paths from the navigation server (click-to-walk, the dead's route) exist a few frames later; the first wave comes at 1.4 s.
+  - **No physics colliders on a floor's walls and props** (the hero has no body and the core keeps bodies on the navmesh, whose projected obstructions are the walls and props); a floor is not lightmapped (made at run time): the area's ambient, the moon and the real prop lights, all on (Forward+ has no per-object light budget; today's game switched all but the 8 nearest off).
+  - **No warm-up of the roster's models** (`warm`): the crowd's baked models are the core's.
+
 ## Files
 
 - `native/src/`: `dm_core.cpp` is the Godot-facing API (`DmCore`); `dm_crowd.cpp` the crowd's (`DmCrowd`: looks, the core's tables into rows, the RenderingServer);
@@ -452,13 +462,13 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   `thralls` (the thrall brain and the legion: raise, make_room, formation, separation, rally, deaths), `corpses` (the corpse field),
   `affixes` (the elite affixes), `support` (the Crypt Deacon's raise, Sanctify and curse), `nave` (the Censer Bearer's pulse, the Lich Acolyte's Unbind, the Templar's shield, the Gargoyle's sight line), `cloister` (the Weeping Seraph's ward with Godot's sort, the Plague Doctor's flask and pool), `pyre_fen` (the Cinder Pyre's and the Mourning Fen's burning ground, coal, hex, pulse, lure and chain), `body` (what a status set needs from its owner, shared by enemies and thralls), `thrall` and `corpse` (their records and enums), `status` (the status
   set, a port of DmStatusSet; its rule table comes from `client/core/dm_status_rules.gd`), `grid` (dense XZ grid rebuilt per tick by counting
-  sort), `navgrid` (the navmesh's triangles on a grid, for keeping bodies on it; DmNextWorld gives it every region and switches them with the seals), `events` (the per-tick event buffer and its type numbers), `rng` (PCG32 per entity), `crowd_view` (the presentation of the crowd: one view per creature, fed plain rows,
+  sort), `navgrid` (the navmesh's triangles on a grid, for keeping bodies on it; DmNextWorld gives it every region, switches them with the seals and swaps the Depths floor's polygons floor by floor), `events` (the per-tick event buffer and its type numbers), `rng` (PCG32 per entity), `crowd_view` (the presentation of the crowd: one view per creature, fed plain rows,
   writing the MultiMesh buffers; a port of the view layer of `godot/game`, which does not touch the simulation), and the co-op pieces: `wire` (byte writer and bounds-checked reader), `replica`
   (the format's constants and a core's co-op counters), `snapshot` (the 20 Hz message, both ways), `reliable` (event batches and the baseline, both ways) and `puppet` (a guest's step, snapshot
   records and reliable records).
 - Tests: `client/tests/core_smoke.gd` (loads, answers), `client/tests/core_api.gd` (queries in spawn order, synchronous kills,
-  events, seeded stats, the rise and the 4 s body linger) and `client/tests/core_enemies.gd` (the Graves roster against today's
-  rules: bite timing, cone, dust cloud, slam, hit-and-run, tunnel and eruption, leash, stagger, stun, crowd spacing), `client/tests/core_status.gd`
+  events, seeded stats, the rise and the 4 s body linger, the navmesh regions: added, switched, replaced, emptied) and `client/tests/core_enemies.gd` (the Graves roster against today's
+  rules: bite timing, cone, dust cloud, slam, hit-and-run, tunnel and eruption, leash, a body's own aggro and leash, stagger, stun, crowd spacing), `client/tests/core_status.gd`
   (the 0.1 s step, DoT lumps, stacking and ownership, multipliers, stun, dig-in clear, Withered on death, wire bytes),
   `client/tests/core_corpses.gd` (kinds, the order in a death, extra corpses, the cap, lifetime, toxic rupture and its pool, the pick and consume
   rules) and `client/tests/core_thralls.gd` (the rise, caps and make_room, formation and leash, the scan and the boss edge rule, the swing and its

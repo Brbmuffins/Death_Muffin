@@ -40,6 +40,21 @@ float seg_closest(float p_ax, float p_az, float p_bx, float p_bz, float p_x, flo
 int32_t NavGrid::add_region(const float *p_xz, int32_t p_vertex_count, const int32_t *p_polys, int32_t p_poly_ints, bool p_enabled) {
 	const int32_t region = int32_t(region_on.size());
 	region_on.push_back(p_enabled ? 1 : 0);
+	append_region(region, p_xz, p_vertex_count, p_polys, p_poly_ints);
+	return region;
+}
+
+bool NavGrid::replace_region(int32_t p_region, const float *p_xz, int32_t p_vertex_count, const int32_t *p_polys, int32_t p_poly_ints, bool p_enabled) {
+	if (p_region < 0 || p_region >= int32_t(region_on.size())) {
+		return false;
+	}
+	tris.erase(std::remove_if(tris.begin(), tris.end(), [p_region](const Tri &t) { return t.region == p_region; }), tris.end());
+	region_on[size_t(p_region)] = p_enabled ? 1 : 0;
+	append_region(p_region, p_xz, p_vertex_count, p_polys, p_poly_ints);
+	return true;
+}
+
+void NavGrid::append_region(int32_t p_region, const float *p_xz, int32_t p_vertex_count, const int32_t *p_polys, int32_t p_poly_ints) {
 	int32_t i = 0;
 	while (i < p_poly_ints) {
 		const int32_t n = p_polys[i];
@@ -53,13 +68,12 @@ int32_t NavGrid::add_region(const float *p_xz, int32_t p_vertex_count, const int
 		}
 		if (ok) {
 			for (int32_t k = 1; k + 1 < n; k++) {  // a fan over the convex polygon
-				tris.push_back({p_xz[v[0] * 2], p_xz[v[0] * 2 + 1], p_xz[v[k] * 2], p_xz[v[k] * 2 + 1], p_xz[v[k + 1] * 2], p_xz[v[k + 1] * 2 + 1], region});
+				tris.push_back({p_xz[v[0] * 2], p_xz[v[0] * 2 + 1], p_xz[v[k] * 2], p_xz[v[k] * 2 + 1], p_xz[v[k + 1] * 2], p_xz[v[k + 1] * 2 + 1], p_region});
 			}
 		}
 		i += n + 1;
 	}
 	dirty = true;
-	return region;
 }
 
 void NavGrid::set_enabled(int32_t p_region, bool p_enabled) {

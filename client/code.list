@@ -23,10 +23,10 @@ world_fx   # world dressing and atmosphere
 
 # ==== Ported (client/code.lock.json "ported"; edited in client/, so the sync leaves them alone and reports one whose original changed)
 # next/next_game.gd, next/next_game.tscn   the game scene on DmCoreHost: a solo run in the Graves with a test-server character or a dev one, with the Gravecaller's rites and the Gravedigger King; refuses any api but the test server's; the warm-up on request (opts.warmup); host or guest of a 2-player party (a puppet core on the guest), the friends list, online for friends' presence; value on the server on the host (rewards, meta, Chronicle, progression, the loot node); today's HUD and panels (DmGameUi); an enemy's chill, root and drag reach the hero (`_on_target_effect`); the four necromancers and the Reaper; the Chapterhouse; gathering (the Gather node on every peer before a guest's relay hold is released, the Acre's glue on the host with the HUD, the Acre ledger's panels warmed); no Depths; the counsel's `world_entered` and a joiner's notice at the end of start
-# next/next_world.gd                       loads client/areas/<id>.tscn (every area but the Depths) and its navigation map instead of the runtime DmWorldBuilder build; the same small API, today's seals and gates (set_unlocked, set_door_open); gives the core its copy of the navmesh (bind_core); hands the lights-only builder the two members the gathering views read: `area_nodes` (each area's root) and `node_views` (each GatherNodes holder); `door_opened` (a door rose: the gate sound)
+# next/next_world.gd                       loads client/areas/<id>.tscn (every area but the Depths) and its navigation map instead of the runtime DmWorldBuilder build; the same small API, today's seals and gates (set_unlocked, set_door_open); gives the core its copy of the navmesh (bind_core); the Depths as an instance with no scene (open_instance, area_at, attach_floor / detach_floor: the floor's navmesh region goes to the core); hands the lights-only builder the two members the gathering views read: `area_nodes` (each area's root) and `node_views` (each GatherNodes holder); `door_opened` (a door rose: the gate sound)
 # next/chapterhouse/dm_chapterhouse.gd     the gates and navmesh regions are DmNextWorld's (same names as the builder's); the people only with the Chapterhouse loaded; a waystone recalls the thralls through the core's legion
 # next/next_input.gd                       the hover pick asks the core; the chase and the queued casts are today's (DmCombatInput); Easy auto combat is back (`auto`, closed until the settings or a gate_probe open it)
-# next/spawn/dm_wave_director.gd           spawns through the core (ids); counts from the core; `off` leaves defs out (the parity scenario drops the Bellringers' censer, as today's side does); no Grave Surges, no clearing of living bodies
+# next/spawn/dm_wave_director.gd           spawns through the core (ids); counts from the core; `off` leaves defs out (the parity scenario drops the Bellringers' censer, as today's side does); no Grave Surges, no clearing of living bodies; `over.aggro / leash` reach the body in the core (the Depths' hunters)
 # next/hero/dm_hero_body.gd                an external of the core; enemy blows arrive by id (EV_TARGET_HIT), a chill, root or drag by `dm_enemy_effect` (EV_TARGET_EFFECT); no collider; thralls counted by the core
 # next/hero/dm_hero_look.gd                the hovered-enemy ring reads the core by id
 # next/enemy_fx/dm_enemy_fx.gd             an event consumer: the core's telegraphs, strikes, deaths, zones (dust and burning ground) and affix moments, the Pyre's and the Fen's sparks, embers and idle motes (no node per enemy); the thralls' sounds (thrallRise on thrall_raised, thrallDeath on thrall_died "killed": DmThrall's); a body removed alive swings no more
@@ -66,7 +66,7 @@ world_fx   # world dressing and atmosphere
 # next/hud/dm_next_counsel.gd              the counsel's host side (the busy flags and the 400 ms poll's facts) asks the core on the poll: three living dead within 9 m, the corpses within 7 m, a pack of three on a corpse, the thralls he owns; no DmEnemy, DmCorpseField or DmThrallHost
 # ui/onboarding/dm_counsel_events.gd      `tick_calls` takes `altar` (default true, today's); the rebuilt poll says false (no Altar of Ascension, DECISIONS B36), which holds back the vows, altar_unlocks and boons tips
 # main/audio_hooks.gd                      the gate sound is the world's `door_opened` signal, not a poll of every door each frame; the rest (listener, area bed and music, footsteps, the boss switch) is today's
-# next/hud/dm_next_hud_vm.gd               the view-model from the core's bulk arrays (target frame, minimap dots, thrall count, corpses near the hero, cooldowns); no DmThrallHost, DmEnemy or DmCorpseField; its host is the adapter
+# next/hud/dm_next_hud_vm.gd               the view-model from the core's bulk arrays (target frame, minimap dots, thrall count, corpses near the hero, cooldowns); no DmThrallHost, DmEnemy or DmCorpseField; its host is the adapter; the Depths readout, the minimap's floor and the area line, and the hub's prompt
 # game/dm_game_hud.gd                      only the art path and the interaction prompts: the old game's view-model builder (DmSimEnemy) is gone
 # ui/hud/dm_hud.gd                         the pieces (movable, scalable: set_piece, set_layout, show_piece), drawn from one atlas on z layers, floats from a pool
 # ui/hud/dm_hud_kit.gd                     the layers (Z_PANEL .. Z_FLOATS), plate / rect / outline / gradient_rect from the atlas, the draw-call model's log; `style` still gives a StyleBoxFlat (copied panels ask for it)
@@ -91,6 +91,10 @@ world_fx   # world dressing and atmosphere
 # next/areas/dm_wave_milestones.gd         the Nightfall light dims the world's lights (DmNextWorld.builder); banners through the game's `game_event`
 # next/party/dm_next_joiner.gd             a party guest's own account; its bag is the loot node's
 # next/progress/dm_next_codex.gd          a spawn is the core host's enemy_spawned (an id, its def and place)
+# The Depths (client/README.md "The Depths"): the instanced descent below the world, its floors generated, drawn and baked at run time:
+# next/depths/dm_depths.gd                 the controller on the core: its dead are core ids (the core's spawned, died and removed events keep the Depths' living set; remove_enemy takes every body of the Depths out), corpses through the core's field, the hero's thralls recalled through the caster; the floor is baked first and swapped in one frame; the HUD's readout and map are kept in place; no warm-up (the crowd's baked models are the core's)
+# next/depths/dm_depths_ground.gd          the floor's navmesh baked on a worker thread (NavigationServer3D, the builder's settings) and handed to the core (DmNextWorld.attach_floor); the picture is the lights builder's build_depths_floor; no physics colliders
+# next/depths/dm_depths_run.gd             the floor can be handed in already generated (the controller makes it on a worker thread)
 # The effects (client/README.md "The benchmark"; native/README.md "Files"):
 # fx/dm_fx_ring.gd                         the motes and the per-frame loop are the core's DmMotes (C++); the random start of each mote is still made here (client/tests/fx_motes.gd)
 
@@ -109,7 +113,6 @@ world_fx   # world dressing and atmosphere
 !game/dm_caster_budget.gd                 # uses DmEnemy, DmEnemyState
 !main/qa_driver.gd                        # uses DmEnemy
 !next/areas/dm_grave_surge.gd             # uses DmEnemy
-!next/depths/dm_depths.gd                 # uses DmEnemy, DmEnemyState, DmThrallHost
 
 # ==== Left out with a seam (main/qa_driver.gd)
 !main/qa_boot.gd                          # uses qa_driver

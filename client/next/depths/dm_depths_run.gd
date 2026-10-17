@@ -4,7 +4,9 @@ extends RefCounted
 ## update_depths) without the sim. The floor of a depth is DmDepthsFloor.generate_floor(floor_seed(seed, depth)), the quota DmSimDepthsRules
 ## .floor_kills, the roster DmSimDepthsRules.depth_roster, the pacing the sim's (first wave 1.4 s, 8 on the first wave, then depth_wave_size,
 ## a gap of depth_wave_gap_s, never more than DEPTHS.cap alive, only as many as the quota still needs). `plan_wave` returns what to spawn;
-## DmDepths turns the orders into DmEnemy scenes.
+## DmDepths turns the orders into bodies of the combat core.
+## On the combat core (client/code.list "Ported"): `create / load_floor / descend` take the floor already `generate`d (DmDepths makes it on a worker thread, so the main thread
+## does not pay the generator's ~16 ms when a floor is entered).
 
 var seed: int = 0
 var depth: int = 1
@@ -20,13 +22,13 @@ var total_kills: int = 0
 var floor_data: Dictionary = {}
 
 
-static func create(seed_: int, depth_: int = 1) -> DmDepthsRun:
+static func create(seed_: int, depth_: int = 1, prebuilt: Dictionary = {}) -> DmDepthsRun:
 	DmSimData.ensure()
 	var r := DmDepthsRun.new()
 	r.seed = seed_
 	r.depth = maxi(1, depth_)
 	r.peak = r.depth
-	r.load_floor()
+	r.load_floor(prebuilt)
 	return r
 
 
@@ -35,9 +37,9 @@ static func generate(seed_: int, depth_: int) -> Dictionary:
 	return DmDepthsFloor.generate_floor(DmDepthsFloor.floor_seed(seed_, depth_), depth_, int(DmSimData.DEPTHS["chestEvery"]))
 
 
-## Generate the floor of the current depth and reset the floor's counters.
-func load_floor() -> Dictionary:
-	floor_data = generate(seed, depth)
+## The floor of the current depth (generated here, or `prebuilt`: what `generate(seed, depth)` made elsewhere) and the floor's counters reset.
+func load_floor(prebuilt: Dictionary = {}) -> Dictionary:
+	floor_data = prebuilt if not prebuilt.is_empty() else generate(seed, depth)
 	need = DmSimDepthsRules.floor_kills(float(depth))
 	kills = 0
 	stair_open = false
@@ -48,10 +50,10 @@ func load_floor() -> Dictionary:
 
 
 ## The stair down was taken: one deeper, a new floor.
-func descend() -> Dictionary:
+func descend(prebuilt: Dictionary = {}) -> Dictionary:
 	depth += 1
 	peak = maxi(peak, depth)
-	return load_floor()
+	return load_floor(prebuilt)
 
 
 ## One death on the floor. True when this kill met the quota (the stair opens, the floor pays).

@@ -459,9 +459,13 @@ func remove_enemy(id: int) -> bool:
 	return bool(core.remove_enemy(id))
 
 
-## The director's spawn: the core makes the body at once, the event comes with the next tick's buffer.
-func spawn_enemy(def: String, pos: Vector3, level: int, hp_mult: float, damage_mult: float, elite: bool, area: String, rising: bool, affixes := PackedStringArray()) -> int:
-	return int(core.spawn_enemy(def, Vector2(pos.x, pos.z), level, hp_mult, damage_mult, elite, area, rising, affixes))
+## The director's spawn: the core makes the body at once, the event comes with the next tick's buffer. `aggro` / `leash` (metres, > 0) give this body its own notice and
+## chase distances in place of everyone's (the Depths' hunters see across the whole floor: 36 and 90).
+func spawn_enemy(def: String, pos: Vector3, level: int, hp_mult: float, damage_mult: float, elite: bool, area: String, rising: bool, affixes := PackedStringArray(), aggro := 0.0, leash := 0.0) -> int:
+	var id := int(core.spawn_enemy(def, Vector2(pos.x, pos.z), level, hp_mult, damage_mult, elite, area, rising, affixes))
+	if id > 0 and aggro > 0.0:
+		core.set_enemy_aggro(id, aggro, leash)
+	return id
 
 
 ## Bodies in the core's enemy table, the dead ones included until they are removed 4 s after (the global cap counts them: DmSimData.GLOBAL_ENEMY_CAP).

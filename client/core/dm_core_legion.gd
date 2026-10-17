@@ -237,9 +237,13 @@ func refresh(hp_mult: float, damage_mult: float, speed_mult: float) -> void:
 		core.set_thrall_stats(id, r)
 
 
-## Recall: every thrall to the owner's side.
+## Recall: every thrall to the owner's side. The owner's place in the core is where the last tick left it, so it is written first: a recall right after a jump (a
+## waystone, the Depths' stairs) brings them to where he stands now.
 func recall() -> void:
-	_core().recall_thralls(owner_id())
+	var o := owner_id()
+	if o != 0 and _body != null and is_instance_valid(_body):
+		_core().set_external(o, Vector2(_body.position.x, _body.position.z), bool(_body.get("alive")))
+	_core().recall_thralls(o)
 
 
 func clear(reason: String = "crumbled") -> void:

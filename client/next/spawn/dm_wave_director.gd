@@ -289,7 +289,8 @@ func scaling_levels(heroes: Array) -> Array:
 ## feeds the level / party scaling. `mult` overrides the computed scaling ({level, hp, dmg}: the hp / damage multipliers; a Risen raised by a
 ## deacon or unbound by an acolyte is made by the core itself, with its raiser's level and multipliers). `over` (optional): area (the ground
 ## the enemy counts as for level scaling; a boss's adds belong to the boss's area), depth (the Depths run: its level, and full Wave Speed ramp like the
-## sim's instance), affix_list (PackedStringArray of elite affixes; an elite without one rolls its own: the Omen's forced affix, else one of four, + the
+## sim's instance), aggro / leash (metres: this body's own notice and chase distances, as the Depths give theirs; the core's every-body defaults when absent),
+## affix_list (PackedStringArray of elite affixes; an elite without one rolls its own: the Omen's forced affix, else one of four, + the
 ## Depths' extras). The affix roll is `DmAffixRoll.roll`, today's, from this director's random stream.
 func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false, mult: Dictionary = {}, over: Dictionary = {}) -> int:
 	var levels := scaling_levels(heroes)
@@ -307,6 +308,7 @@ func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false
 		affixes = PackedStringArray()
 	var data := {
 		"def": def_id, "pos": pos, "level": int(mult.get("level", level)), "area": spawn_area, "affixes": affixes, "rising": true, "elite": elite,
+		"aggro": float(over.get("aggro", 0.0)), "leash": float(over.get("leash", 0.0)),
 		"hp": float(mult["hp"]) if mult.has("hp") else DmEnemyStats.hp_scale(level) * DmEnemyStats.party_hp_scale(maxf(1.0, float(heroes.size()))) * float(tier["enemyHpMult"]) \
 			* float(diff["enemyHpMult"]) * float(vow_fx.get("enemyHpMult", 1.0)),
 		"dmg": float(mult["dmg"]) if mult.has("dmg") else DmEnemyStats.damage_scale(level) * float(tier["enemyDamageMult"]) * float(diff["enemyDamageMult"])}
@@ -318,7 +320,7 @@ func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false
 
 func _make(data: Dictionary) -> int:
 	return core_host.spawn_enemy(String(data["def"]), data["pos"], int(data["level"]), float(data["hp"]), float(data["dmg"]), bool(data["elite"]), String(data["area"]),
-		bool(data["rising"]), data["affixes"])
+		bool(data["rising"]), data["affixes"], float(data["aggro"]), float(data["leash"]))
 
 
 func _pick_kind(roster: Array = []) -> String:

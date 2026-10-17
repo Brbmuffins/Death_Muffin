@@ -134,6 +134,29 @@ func _init() -> void:
 	var sev := events(s1)
 	check(sev.size() == 1 and sev[0]["type"] == EV_SPAWNED and Array(sev[0]["ints"]) == [0, 1, 0, 0, 0], "spawned event: def, level, elite, area, affixes")
 
+	_navmesh_regions()
 	if fails == 0:
 		print("PASS core_api %d checks" % checks)
 	quit(1 if fails > 0 else 0)
+
+
+## The core's own copy of the navmesh (NavGrid): regions added, switched, replaced (a Depths floor changing) and emptied; the others untouched.
+func _navmesh_regions() -> void:
+	var c := make(5)
+	var poly := PackedInt32Array([4, 0, 1, 2, 3])
+	var sq := func(x0: float) -> PackedVector3Array: return PackedVector3Array([Vector3(x0, 0, 0), Vector3(x0 + 10, 0, 0), Vector3(x0 + 10, 0, 10), Vector3(x0, 0, 10)])
+	var r0: int = c.nav_add_region(sq.call(0.0), poly, true)
+	var r1: int = c.nav_add_region(sq.call(40.0), poly, true)
+	check(r0 == 0 and r1 == 1 and c.nav_triangle_count() == 4, "nav: two square regions, two triangles each")
+	check(c.nav_closest(Vector3(5, 0, 5)) == Vector3(5, 0, 5) and c.nav_closest(Vector3(15, 0, 5)) == Vector3(10, 0, 5) and c.nav_closest(Vector3(36, 0, 5)) == Vector3(40, 0, 5), "nav: a point on the mesh stays, one off it moves to the nearest edge")
+	c.nav_set_region_enabled(r0, false)
+	check(c.nav_closest(Vector3(5, 0, 5)) == Vector3(40, 0, 5), "nav: a switched-off region is no ground")
+	# replace: the region's old triangles go, its new ones come; the other region is untouched
+	check(c.nav_replace_region(r0, sq.call(20.0), poly, true) and c.nav_triangle_count() == 4, "nav: a region's polygons replaced (the old triangles are gone, not added to)")
+	check(c.nav_closest(Vector3(5, 0, 5)) == Vector3(20, 0, 5) and c.nav_closest(Vector3(25, 0, 5)) == Vector3(25, 0, 5) and c.nav_closest(Vector3(45, 0, 5)) == Vector3(45, 0, 5), "nav: the new polygons answer, the other region is the same")
+	check(c.nav_replace_region(r0, PackedVector3Array(), PackedInt32Array(), false) and c.nav_triangle_count() == 2, "nav: replaced with nothing, the region is empty")
+	check(c.nav_closest(Vector3(25, 0, 5)) == Vector3(40, 0, 5), "nav: ...and no ground")
+	check(c.nav_replace_region(r0, sq.call(0.0), poly, true) and c.nav_closest(Vector3(5, 0, 5)) == Vector3(5, 0, 5), "nav: an emptied region takes polygons again")
+	check(not c.nav_replace_region(7, sq.call(0.0), poly, true) and not c.nav_replace_region(-1, sq.call(0.0), poly, true), "nav: an unknown region is refused")
+	c.nav_clear_regions()
+	check(c.nav_triangle_count() == 0, "nav: cleared")

@@ -35,12 +35,13 @@ extends Node3D
 ##
 ## THE WORLD: every area but the Depths (DmNextWorld, the area scenes; `opts.areas` takes a shorter list), the hero starting and getting up in the Chapterhouse as today. The
 ## Chapterhouse node (DmChapterhouse, ported) breaks the seals as kills come in and opens the doors, runs waystone travel and the recall, the stations and the people.
-## The graphics preset, fps cap and auto-resolution are `perf` (DmNextPerf, the player's settings read from their file).
+## The Depths (DmDepths, `depths`, host only; client/README.md "The Depths") are the one area made at run time: the Warren's stair starts a run, each floor is generated, drawn and baked
+## when it is entered, its dead are bodies of the core, the HUD reads its readout and map. The graphics preset, fps cap and auto-resolution are `perf` (DmNextPerf, the player's settings read from their file).
 ##
 ## GATHERING (client/README.md "Gathering and the Acre"): `gather` (DmNextGather, a copy: the nodes of every area, hover and click, the loop that walks, works and batches to the backend, the skills) is a child of every
 ## peer at the same path (its depleted nodes reach a guest as RPCs); `acre` (DmNextAcre, ported: the visible Grave Laborers and the labor, garden and contract notices) is the host's, with the real HUD.
 ##
-## Off in this step, each until its ROADMAP item: the Depths, the Covenant Seal's altar choice (a summon is the plain soul-shard one). `start` refuses any api whose base url is not the TEST server's
+## Off in this step, each until its ROADMAP item: the Covenant Seal's altar choice (a summon is the plain soul-shard one). `start` refuses any api whose base url is not the TEST server's
 ## (DmConfig.allows_api_base: the local mock has none): the rebuilt client never plays against the live server before launch day (DECISIONS B38). It takes the
 ## character and its build from the front flow (`slots`, `local` below) until the progression and the bag have loaded theirs from the server.
 ##
@@ -80,7 +81,7 @@ var ui_host: DmNextUiHost                       ## child "UiHost" (opts hud = tr
 var ui: DmGameUi                                ## child "Ui" (opts hud = true): today's HUD and panels
 var areas: DmAreaFlow                           ## child "Areas": the entry banners and the Codex facts, the processions (next/areas/)
 var chapterhouse: DmChapterhouse               ## child "Chapterhouse": NPCs, stations, waystones, seals, hover + prompts (next/chapterhouse/)
-var depths: Node = null                         ## the Depths (its ROADMAP item)
+var depths: DmDepths                           ## child "Depths" (host): the procedural descent (next/depths/; client/README.md "The Depths")
 var gather: DmNextGather                        ## child "Gather" (every peer): gathering nodes, the gather loop (host), skills, AFK (next/gathering/)
 var acre: DmNextAcre                            ## child "Acre" (host, with the HUD): visible Grave Laborers, labor / garden notices, the first-hour guidance feeds (next/gathering/)
 var bosses: DmBossHost                          ## child "Bosses": summon rules, the boss body, its events and music
@@ -277,6 +278,10 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 				bosses.request_summon(bid))
 	if session.is_host():
 		chapterhouse.start_seals()
+		depths = DmDepths.new()
+		depths.name = "Depths"
+		add_child(depths)
+		depths.setup(self)
 	await _start_hud()
 	areas = DmAreaFlow.new()
 	areas.name = "Areas"
@@ -471,10 +476,10 @@ func _register_body(b: DmHeroBody) -> void:
 	b.tree_exiting.connect(func() -> void: core_host.unregister_hero(b))
 
 
-## Where a new player appears: around the host's hero (null while he lies dead).
+## Where a new player appears: around the host's hero (null while he lies dead or is below in the Depths).
 func _joiner_spawn() -> Variant:
 	var b := local_body()
-	if b == null or not b.alive:
+	if b == null or not b.alive or area_id == "depths":   # (a solo descent: a new player appears at the origin, the Chapterhouse)
 		return null
 	return b.position
 

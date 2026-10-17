@@ -40,6 +40,7 @@ node tools/rebuild/compare-scenarios.mjs                                        
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/world.gd  # the whole world: every area, seals and gates, into the Warren, waystones, the recall, the core's navmesh against the server's, the Ossuary's deacon and golem, the Nave's five, the Sanctum's, Coliseum's and Cloister's rosters (the seraph's ward, the plague doctor's flask, a frenzied flagellant) and the Pyre's and the Fen's eight in the game scene
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/counsel.gd # the counsel and the first hour on the core: the fight facts read two ways, every fact the creatures give the counsel once, the tips each makes once, the state-driven tips, the welcome and the Next-step box, the Prior, Show tips again ("Tips and onboarding"; about 30 s with --fixed-fps 60, 2 minutes without)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/sound.gd   # sound on the core's events: a scripted fight's cues against today's rules, by name and count, thralls, the hero's footsteps, the area beds and scores, the gate, the boss score ("Sound"; about 30 s)
+/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/depths.gd # the Catacomb Depths on the core: the rules, the Warren's stair, floors baked at run time and the core's copy of each, the dead on a floor, the quota, the chest, leaving, death, 14 floors (bakes into a scratch folder; about 40 s)
 bash client/tools/coop_local.sh                                                                # a local lobby and relay for a trial with two game windows (prints the commands; "Co-op on the core")
 bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the Graves roster, the Ossuary's deacon and golem, the Nave's five, the Cloister's three, the Pyre's and the Fen's eight, the thralls) into client/assets/crowd/baked (not committed)
 ```
@@ -79,7 +80,7 @@ uids keep working:
   registry, 24 of the necromancer's 25 rites, the rite fx, the combat input; "The Gravecaller's rites"); the boss host, body, world, fx and view ("The Gravedigger King"); Easy auto combat, the benchmark
   with its screen, setup window and warm-up, and the boot's `--benchmark` and Benchmark button ("The benchmark"); the co-op pieces (`next/next_net.gd`, `next/party/dm_next_party.gd` and the session's hello;
   "Co-op on the core"); value on the server (the rewards node, the meta node, the progress node, the wave milestones and the joiner; "Value on the server"); the HUD's adapter and
-  view-model ("The HUD on the core"); the counsel's host side and the audio hooks ("Tips and onboarding", "Sound"); the Reaper's helper and three of her rites ("The Gravecaller's rites"); and the Acre's glue ("Gathering and the Acre").
+  view-model ("The HUD on the core"); the counsel's host side and the audio hooks ("Tips and onboarding", "Sound"); the Reaper's helper and three of her rites ("The Gravecaller's rites"); the Acre's glue ("Gathering and the Acre"); and the Depths (the controller, the floor's ground and the run: "The Depths").
 - **Left out with a seam**: a file that cannot load without a seam, grouped under the seam it follows: now only the QA boot (with the QA driver).
   Freed by the game scene's port and copied again: `next/status` (`DmStatusSet`, for the status sets of heroes and bosses only),
   the chronicle, the event fx's telegraph and boss halves, the area flow and gathering. Freed by the rites' ports: the hotbar (`dm_rite_hotbar.gd`), Veil Step and the belt.
@@ -130,7 +131,7 @@ wind-up), deaths, voices, dust clouds and burning ground and the affixes' bell, 
 
 Co-op and the Social window are in ("Co-op on the core"), value on the server ("Value on the server"), today's HUD and panels ("The HUD on the core"), the Reaper ("The Gravecaller's rites") and
 gathering with the Acre ("Gathering and the Acre").
-Off in this step, each until its ROADMAP item: the Depths, the graphics governor, Grave Surges, and the enemies of the areas past the Warren (the director skips a kind the
+The Depths are in ("The Depths"). Off in this step, each until its ROADMAP item: the graphics governor, Grave Surges, and the enemies of the areas past the Warren (the director skips a kind the
 core does not run yet). Easy auto combat is in and opens from Settings as today. `tests/world.gd` plays the whole world: seals, gates, walking from the Chapterhouse into the Warren, waystones,
 the recall. `native/README.md` "Differences from today's game" lists what behaves differently from today.
 
@@ -271,8 +272,7 @@ level, area line, banners, toasts, floating numbers, death veil). The adapter he
 | notices | today's `DmAreaFlow` (an area's first entry, a themed wave), a refused cast (an "info" number over the hero), the boss fx's banners and the summon refusals: all `DmNextGame.game_event`, which reaches `DmGameUi` |
 
 The upgrades box (Empower, Quicken and the wave dial), the belt (Q, Z, X), the Kill Chain, the Omen, the save chip and the pickup lines come with value ("Value on the server"); the menu row, the
-panels and the Social window with `DmGameUi`. Not in the game scene yet, each with its system: the
-Chapterhouse's prompts, the Depths readout, the Altar (DECISIONS B36). The Acre ledger's panels (Skills, Garden, Laborers, Contracts) and the node and laborer cards are in ("Gathering and the Acre"). `tests/hud_feeds.gd` (`HudFeeds.full()`) fills every view-model key for the
+panels and the Social window with `DmGameUi`. Not in the game scene yet, each with its system: the Altar (DECISIONS B36). The hub's prompts (the Chapterhouse node's hover and nearby lines) and the Depths readout, minimap floor and area line are in. The Acre ledger's panels (Skills, Garden, Laborers, Contracts) and the node and laborer cards are in ("Gathering and the Acre"). `tests/hud_feeds.gd` (`HudFeeds.full()`) fills every view-model key for the
 tests that draw every piece.
 
 **Pieces (DECISIONS B40).** Every readout group is a Control of its own with its own anchors and offsets, listed in `DmHud.pieces` (`party omen ward chain belt target boss map toasts banner prompt hint chat xp altar
@@ -581,6 +581,53 @@ node tools/rebuild/sync-assets.mjs [--dry-run] [--list <file>]     # copy what t
   is read from `$FX_SHEETS` (default `~/death-muffin/private/fx-sheets/`, the source of `tools/godot/fx-sheets-sync.sh`) and copied to
   `client/assets/fx/sheets/`, which the root `.gitignore` keeps out of git; the tool refuses to copy them anywhere git does not ignore.
 
+## The Depths
+
+The Catacomb Depths (area `depths`, an instance below the Warren, solo: DECISIONS D5) are the one area with no scene: a run's floors are generated, drawn and baked when they are entered. The rules and numbers are
+today's (the floor generator `sim/depths_floor.gd`, the quota, pacing, rosters and affixes `sim/sim_depths_rules.gd`, the rewards `rules/loot/depths_rewards.gd` are copies); `next/depths` is the game's side:
+
+| file | job |
+|---|---|
+| `dm_depths_run.gd` (`DmDepthsRun`, a port) | the run as pure rules: seed, depth, quota, kills, stair, peak, summary, `plan_wave` |
+| `dm_depths_ground.gd` (`DmDepthsGround`, a port) | one floor as ground: the navmesh baked on a worker thread, the picture, the core's copy |
+| `dm_depths.gd` (`DmDepths`, a port; child `Depths` of `DmNextGame`, host only) | the controller: enter / descend / leave, waves, quota and rewards, chest, death, the Chronicle, the HUD's readout and map, the interactables |
+
+**Flow.** The Warren's stair (a `DmStairMesh` the controller puts in the Warren's scene) is an interactable of the hub: `stair_clicked()` offers "start at 1 or resume at the deepest" once a deeper floor is on the Chronicle (`depths_stair_offer`, the card calls
+`DmNextUiHost.enter_depths`), else starts a run on depth 1; the floor's stairs and chest join the hub's interactables while the run is on (the hub's hover, walk-and-use and prompts work as everywhere). Quota `9 + depth` (at most 30); the stair opens at the
+quota, once, and the floor pays (gold, XP, 65% an item); a chest on every fifth floor; death ends the run and takes nothing (the floor stays up behind the death screen; the Depths close when the hero rises in the Chapterhouse); the exit asks twice;
+a recall or waystone out ends the run; a second player joining ends it (the stair refuses a party of two). The floor's gold and XP are reported (`psync.report_floor`) and its items and the chest's come from the server's drop tape (kinds `floor` and `chest`,
+DECISIONS B20): the server rolls the same event on the claim and grants its own roll. A run's kills are the ordinary kills of the core (area `depths`, level `max(12, hero) + depth`, the loot ground following the depth: `rewards.loot_area_of`) and count for the
+quota; they do not count toward any area's seal.
+
+**On the core.** The dead are bodies of the combat core made by the ported director (`DmWaveDirector.spawn` with `over = {area: "depths", depth, aggro: 36, leash: 90, affix_list}`; the core gives each body its own notice and chase distances,
+`DmCore.set_enemy_aggro`, where everyone else's are 15 and 30), spawned from the floor's breaches (not the hero's room, up to 3 breaches, first wave 8 after 1.4 s, at most 24 alive). `DmDepths._living` counts the Depths' living bodies from the core's
+spawned, died and removed events (a Risen a Vengeful elite or a deacon raises on a floor is of the floor, as the core makes it); a kill is the core's `enemy_died` with area `depths`. When a floor goes, every body of the Depths leaves the core without a death or a credit
+(`remove_enemy`, found by the core's table), its corpses are consumed through the core's field (`corpses_in_radius(..., "depths")`), its loot is cleared, and the hero's thralls are recalled through his caster (`thralls().recall()`, which writes the hero's new
+place into the core first) with the camera snapped. The roster is the bands' (`depth_roster`: 1 / 5 / 10 / 15), every kind of which the core runs (`tests/depths.gd` fails if a band gains one it does not).
+
+**A floor, in order** (`DmDepths._load_floor`; measured on the VPS, headless, one run of `tests/depths.gd`): the floor is generated on a worker thread (`WorkerThreadPool`; `DmDepthsRun.generate` is pure and reads data loaded at `setup`, about 16 ms there, off the main thread);
+`DmDepthsGround.prepare` builds the navmesh's source geometry (the rooms and doors as ground, the walls and solid props as projected obstructions, the builder's settings and grow) and bakes it with `NavigationServer3D.bake_from_source_geometry_data_async`, the old floor
+(or the Warren) standing meanwhile; then, in one frame, the old floor's dead, corpses and loot go, `show` draws the new floor (the lights builder's `build_depths_floor`: floors, walls, props, light pools, the stairs and the chest, the existing look, into the world's
+`depths_root`; every prop light on, since Forward+ lights them all), puts the baked mesh on the floor's one `NavigationRegion3D` and hands the core its copy; the hero is put at the way in with the banner (about 4 to 8 ms of the main thread); the navigation server
+merges the region a few frames later (`merged`: a path from the way in to the stair exists), and the floor counts as loaded (`floor_loaded`, the end of `enter` / `descend`, about 80 to 160 ms after the click). The core keeps bodies on the navmesh with its own copy of it
+(DECISIONS B47): the floor is one region of it, added with the first floor and **replaced** by every later one (`DmCore.nav_replace_region`, so a long run holds one floor's 220 to 260 triangles and nothing piles up), emptied when the run ends. A floor has no physics
+colliders: the hero has no body and the core keeps the dead on the navmesh, whose obstructions are the walls and props.
+
+**The world's side.** `DmNextWorld` keeps the Depths' rect from the start (`area_rect`; the core's bounds and the crowd's cover it when the Warren is in the world) and the shape of today's builder: `open_instance("depths", true)` makes `area_at` answer "depths" there while a run stands (so the game's area, the
+lighting, the music and the ambience follow the hero, and the director sees no hero in a combat area while he is below), `attach_floor / detach_floor` give the core the floor's region. The HUD reads `vm["depth"]` (depth, kills / quota, stair, chest), the minimap's floor (rooms,
+doors, stairs, chest; built once per floor and kept current in place), the area line "Level N dead · elites bear K affixes" and, for the stair, the hub's hover prompt (`vm["prompt"]`).
+
+The floor's tall props follow today's moon-shadow range rule: while a run lasts `DmDepths` calls the lights builder's `update_shadow_cells` for the hero (it checks every 0.25 s, a few cells a frame, and drops the cells of freed floors from its list); nothing else in the rebuild calls it.
+
+**Not yet.** The first floor of a session is not in the warm-up (the warm-up is on request only until it has been looked at on a GPU: "The benchmark"); a floor is not lightmapped (made at run time: the area's ambient, the moon and the real prop lights light it; the look pass decides
+what it becomes); the see-through cutout is not applied to it (as in every area). What differs from today's game is in `native/README.md` "Differences from today's game".
+
+`tests/depths.gd` is the proof: the rules without a game (floors per seed, quota, pacing, rosters, the filter, the first wave, the stair opening once, the loot ground by depth); then the game scene as a player gets it, on the local mock: the Warren's seal broken, waystone travel, a click on the stair
+(the hero walks to it and the run starts), floor 1 (drawn, the hero at its way in, the interactables, banner, HUD readout, map and prompts, the core's copy of the navmesh equal to the server's at 600 points, a point inside a wall moved out, paths to the stair and breaches), the dead (bodies of the core
+at the depth's level, aggro 36, hunting across the rooms, hitting back, an elite's affixes), the quota and the floor's pay and report, descending (the dead and corpses gone from the core, the core's navmesh replaced, thralls recalled, a click on the open stair walking across the floor and taking it),
+the chest on depth 5 (a find claimed into the bag on the server), leaving (twice to confirm, everything torn down, the record on the backend, the stair's resume offer and `enter_depths`), a second player joining, a recall, death (nothing taken), and 14 more floors (nodes flat, one floor's
+triangles in the core, every bake from the worker); zero script or engine errors.
+
 ## Areas
 
 An area is a scene built once, offline, from `godot/data/slice/world.json`: the layout `godot/world/world_builder.gd` builds at start-up today.
@@ -593,7 +640,7 @@ godot --headless --path client --script res://tests/areas.gd         # every con
 ```
 
 `client/tools/build_area.gd` is the one converter for every area (`--lenient` skips models not synced yet, for a smoke run; the Depths' floors are
-generated at runtime and are not converted). Output is deterministic, so regenerating changes nothing unless the data or the converter did:
+generated at runtime and are not converted: "The Depths"). Output is deterministic, so regenerating changes nothing unless the data or the converter did:
 
 - `client/areas/<id>.tscn`: groups `Floor` (the ground quad, the paths whose centre lies in the area, the Alchemist Wing's rugs and stains, the Fen's
   hummocks), `Walls`, `Props`, `GatherNodes`, `Decals` (decals and puddles), `Water` (the Nave's channels, the Fen's bog, the Acre's ponds), `Doors`, `Lights`,

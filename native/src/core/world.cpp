@@ -183,7 +183,7 @@ int32_t World::tick_state(int32_t p_slot, double p_dt) {
 			return t >= RISE_S ? IDLE : -1;
 		case IDLE: {  // dm_state_idle
 			if (scan_due(e, p_dt)) {
-				const int32_t tg = find_target(e, AGGRO_RANGE);
+				const int32_t tg = find_target(e, e.aggro);
 				if (tg != 0) {
 					e.target = tg;
 					return CHASE;
@@ -198,12 +198,12 @@ int32_t World::tick_state(int32_t p_slot, double p_dt) {
 				return flat_dist(e.x, e.z, e.home_x, e.home_z) > HOME_ARRIVE ? RETURN : IDLE;
 			}
 			double d = flat_dist(e.x, e.z, tg.x, tg.z);
-			if (d > AGGRO_RANGE * DROP_MULT || flat_dist(e.x, e.z, e.home_x, e.home_z) > LEASH) {
+			if (d > e.aggro * DROP_MULT || flat_dist(e.x, e.z, e.home_x, e.home_z) > e.leash) {
 				e.target = 0;
 				return RETURN;
 			}
 			if (scan_due(e, p_dt)) {
-				const int32_t nearer = find_target(e, AGGRO_RANGE);
+				const int32_t nearer = find_target(e, e.aggro);
 				if (nearer != 0 && nearer != e.target) {
 					e.target = nearer;
 					target_at(nearer, tg);
@@ -258,7 +258,7 @@ int32_t World::tick_state(int32_t p_slot, double p_dt) {
 			Tgt tg;
 			bool have = target_at(e.target, tg);
 			if (!have || scan_due(e, p_dt)) {
-				e.target = find_target(e, AGGRO_RANGE);
+				e.target = find_target(e, e.aggro);
 				have = target_at(e.target, tg);
 			}
 			if (!have) {

@@ -139,6 +139,7 @@ struct EnemyDef {
 struct Enemy : Body {
 	int32_t def = 0, level = 1, area = 0, state = IDLE, last_source = 0, target = 0, phase = 0;
 	bool elite = false, in_graves = true, dug_in = false;
+	double aggro = AGGRO_RANGE, leash = LEASH;  // how far it notices a target and strays from home: every body's, except where the director gives one its own (the Depths)
 	uint8_t affixes = 0;  // bit per Affix
 	double hp_mult = 1, damage_mult = 1;  // the spawn's multipliers (Vengeful's Risen are as strong as the body that fell)
 	// DmAffixSet: its own clock (runs only while the body acts), the bell and hunger countdowns (-1 = fresh), the shroud check, the last Miasma cover

@@ -71,6 +71,7 @@ void DmCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_area_bounds", "min", "max"), &DmCore::set_area_bounds);
 	ClassDB::bind_method(D_METHOD("nav_add_region", "vertices", "polygons", "enabled"), &DmCore::nav_add_region);
 	ClassDB::bind_method(D_METHOD("nav_set_region_enabled", "region", "enabled"), &DmCore::nav_set_region_enabled);
+	ClassDB::bind_method(D_METHOD("nav_replace_region", "region", "vertices", "polygons", "enabled"), &DmCore::nav_replace_region);
 	ClassDB::bind_method(D_METHOD("nav_clear_regions"), &DmCore::nav_clear_regions);
 	ClassDB::bind_method(D_METHOD("nav_closest", "point"), &DmCore::nav_closest);
 	ClassDB::bind_method(D_METHOD("nav_triangle_count"), &DmCore::nav_triangle_count);
@@ -80,6 +81,7 @@ void DmCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("add_obstacle", "a", "b", "thickness"), &DmCore::add_obstacle);
 	ClassDB::bind_method(D_METHOD("remove_obstacle", "id"), &DmCore::remove_obstacle);
 	ClassDB::bind_method(D_METHOD("damage", "id", "amount", "source", "allow_stagger"), &DmCore::damage, DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("set_enemy_aggro", "id", "aggro", "leash"), &DmCore::set_enemy_aggro);
 	ClassDB::bind_method(D_METHOD("remove_enemy", "id"), &DmCore::remove_enemy);
 	ClassDB::bind_method(D_METHOD("stun", "id", "seconds"), &DmCore::stun);
 	ClassDB::bind_method(D_METHOD("apply_status", "id", "status", "source", "stacks", "duration", "params"), &DmCore::apply_status, DEFVAL(1.0), DEFVAL(-1.0), DEFVAL(Dictionary()));
@@ -157,7 +159,7 @@ void DmCore::_bind_methods() {
 }
 
 String DmCore::version() const {
-	return "dmcore 0.11";
+	return "dmcore 0.12";
 }
 
 int64_t DmCore::checksum(int64_t p_count) const {
@@ -551,6 +553,15 @@ void DmCore::nav_set_region_enabled(int64_t p_region, bool p_enabled) {
 	world.navgrid.set_enabled(int32_t(p_region), p_enabled);
 }
 
+bool DmCore::nav_replace_region(int64_t p_region, const PackedVector3Array &p_vertices, const PackedInt32Array &p_polygons, bool p_enabled) {
+	std::vector<float> xz(size_t(p_vertices.size()) * 2);
+	for (int64_t i = 0; i < p_vertices.size(); i++) {
+		xz[size_t(i) * 2] = p_vertices[i].x;
+		xz[size_t(i) * 2 + 1] = p_vertices[i].z;
+	}
+	return world.navgrid.replace_region(int32_t(p_region), xz.data(), int32_t(p_vertices.size()), p_polygons.ptr(), int32_t(p_polygons.size()), p_enabled);
+}
+
 void DmCore::nav_clear_regions() {
 	world.navgrid.clear();
 }
@@ -642,6 +653,20 @@ Dictionary DmCore::damage(int64_t p_id, double p_amount, int64_t p_source, bool 
 	out["dealt"] = dealt;
 	out["killed"] = killed;
 	return out;
+}
+
+bool DmCore::set_enemy_aggro(int64_t p_id, double p_aggro, double p_leash) {
+	if (refused("set_enemy_aggro")) {
+		return false;
+	}
+	const auto it = world.enemy_slot.find(int32_t(p_id));
+	if (it == world.enemy_slot.end() || world.enemies[size_t(it->second)].state == dm::DEAD) {
+		return false;
+	}
+	dm::Enemy &e = world.enemies[size_t(it->second)];
+	e.aggro = p_aggro;
+	e.leash = p_leash;
+	return true;
 }
 
 bool DmCore::remove_enemy(int64_t p_id) {
@@ -862,6 +887,8 @@ Dictionary DmCore::enemy_info(int64_t p_id) const {
 	d["damage"] = e.damage;
 	d["speed"] = e.speed;
 	d["radius"] = e.radius;
+	d["aggro"] = e.aggro;
+	d["leash"] = e.leash;
 	d["attack_cd"] = e.attack_cd;
 	d["windup_s"] = e.windup_s;
 	d["speed_mult"] = e.speed_mult;
