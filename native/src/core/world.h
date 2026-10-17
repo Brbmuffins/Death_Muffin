@@ -27,13 +27,14 @@ namespace dm {
 // Wire ids of today's enemy states (godot/enemies/states/dm_enemy_state.gd): append only.
 enum EnemyState : int32_t { RISING = 0, IDLE, CHASE, ATTACK, HURT, RETURN, DEAD, FLEE, BURROW, ERUPT, DIG, EMERGE };
 enum Behavior : int32_t { B_MELEE = 0, B_FLANK, B_CASTER, B_HAZARD, B_SUPPORT };  // B_SUPPORT: the Crypt Deacon (DmEnemyDeacon, DmStateCathSupport)
-// BLOW_CURSE: the Lich Acolyte's homing curse (the plain reach, hit kind curse); BLOW_SCREAM: the Choir Wraith's ring at the aim; BLOW_DIVE: the Belfry Gargoyle's drop.
-enum Blow : int32_t { BLOW_MELEE = 0, BLOW_CONE, BLOW_DUST, BLOW_SLAM, BLOW_CURSE, BLOW_SCREAM, BLOW_DIVE };
+// BLOW_CURSE: the Lich Acolyte's homing curse (the plain reach, hit kind curse); BLOW_SCREAM: the Choir Wraith's ring at the aim; BLOW_DIVE: the Belfry Gargoyle's drop;
+// BLOW_FLASK: the Plague Doctor's lobbed flask (a ring at the aim, hit kind toxic, and a toxic pool).
+enum Blow : int32_t { BLOW_MELEE = 0, BLOW_CONE, BLOW_DUST, BLOW_SLAM, BLOW_CURSE, BLOW_SCREAM, BLOW_DIVE, BLOW_FLASK };
 // Damage kinds of a hit on a target (the sim's hurt `from`; GDScript maps them back to strings): append only.
 enum HitKind : int32_t { HK_MELEE = 0, HK_TOXIC, HK_BURN, HK_EMBER, HK_DUST, HK_CURSE, HK_TOLL };
 // Telegraph and cue kinds (DmEnemy.telegraph / cue): append only.
-enum Tell : int32_t { TELL_CONE = 0, TELL_SLAM, TELL_DUST, TELL_ERUPT, TELL_TOLL, TELL_RAISE, TELL_CURSE, TELL_SCREAM, TELL_DIVE };
-enum Cue : int32_t { CUE_SLAM = 0, CUE_ERUPT, CUE_DIG_IN, CUE_SANCTIFY, CUE_SHIELD_BLOCK, CUE_UNBIND, CUE_SCREAM, CUE_COUNT };
+enum Tell : int32_t { TELL_CONE = 0, TELL_SLAM, TELL_DUST, TELL_ERUPT, TELL_TOLL, TELL_RAISE, TELL_CURSE, TELL_SCREAM, TELL_DIVE, TELL_FLASK };
+enum Cue : int32_t { CUE_SLAM = 0, CUE_ERUPT, CUE_DIG_IN, CUE_SANCTIFY, CUE_SHIELD_BLOCK, CUE_UNBIND, CUE_SCREAM, CUE_FLASK, CUE_COUNT };
 enum ZoneKind : int32_t { ZONE_DUST = 0, ZONE_TOXIC };
 // Elite affixes in DmSimData.AFFIX_ORDER (bit k of Enemy::affixes) and the one-off beats DmAffixSet.moment sends: append only.
 enum Affix : int32_t { AF_BELL_TOLLED = 0, AF_HUNGERING, AF_SHROUDED, AF_VENGEFUL, AF_COUNT };
@@ -58,6 +59,8 @@ constexpr double SUPPORT_CORPSE_RANGE = 8.0, SUPPORT_BACK_OFF = 4.0, SUPPORT_BAC
 // SHIELD_GAP_S: dm_enemy_clst_templar.gd BLOCK_FX_GAP_MS (250); DIVE_LOS_S: dm_state_cath_dive_chase.gd LOS_S (the sight line is cast at most every 0.25 s).
 // LOS_STEP / LOS_NAV_PAD are the core's own (no collision world: "a wall between" is a stretch of the straight line off the navmesh; native/README.md).
 constexpr double AURA_PULSE_S = 1.0, WATCH_S = 0.5, SHIELD_GAP_S = 0.25, DIVE_LOS_S = 0.25, LOS_STEP = 0.4, LOS_NAV_PAD = 0.35;
+// The Sanctum's and Cloister's kinds (cloister.cpp). WARD_RETRY_S: dm_enemy_clst_seraph.gd WARD_RETRY_S (no ally to bless: look again this much later).
+constexpr double WARD_RETRY_S = 0.25;
 // Crowd spacing (World::resolve_overlaps): the share of an overlap removed per tick, and the most a body is moved by it in one tick.
 constexpr double OVERLAP_EASE = 0.3, OVERLAP_MAX_STEP = 0.15;
 constexpr double SIDESTEP = 0.6;  // a body blocked head-on slides sideways at this share of its speed (World::separate)
@@ -84,6 +87,9 @@ struct Tuning {  // data/content/enemies.json blocks
 	double censer_r = 5.0, censer_haste_s = 1.5, scream_r = 2.2, shield_arc_deg = 60.0, shield_cos = 0.5, shield_pass = 0.3;
 	double unbind_range = 7.0, unbind_delay_s = 1.0, unbind_cooldown_s = 4.0;
 	int32_t unbind_max = 4;
+	// enemies.json WARD (range, maxTargets: the Weeping Seraph) and PLAGUE_FLASK (radius, poolS, poolDpsMult: the Plague Doctor's flask)
+	double ward_range = 5.5, flask_r = 1.8, flask_pool_s = 5.0, flask_pool_dps = 0.35;
+	int32_t ward_max = 4;
 };
 
 // Thralls, corpses and the toxic pool. Numbers come from data (World::load in DmCore): content/{abilities,fen,statuses,gameplay_legendary,
@@ -122,6 +128,7 @@ struct EnemyDef {
 	// The Nave's kinds: the Censer's aura, the Templar's shield, the Lich Acolyte's Unbind and a caster that cannot cast silenced (the cloister casters' DmStateClstKite),
 	// and the Gargoyle's dive (def `dive`: minRange, range, radius, groundedS)
 	bool aura = false, shield = false, unbind = false, silence_aware = false, has_dive = false;
+	bool ward = false;  // the Weeping Seraph (behavior support with `ward`): it keeps the Deacon's distance, casts the curse, and blesses allies (DmEnemyClstSeraph)
 	double dive_min = 3.5, dive_range = 9.0, dive_r = 2.0, dive_grounded_s = 1.4;
 };
 
@@ -146,6 +153,7 @@ struct Enemy : Body {
 	// The Nave's kinds: the Censer's pulse countdown (_aura_cd); the Gargoyle's dive (`diving`, where it began: DmStateCathDive._from; the sight line's countdown and last answer:
 	// DmStateCathDiveChase._los_t / _los_ok; the recovery this swing needs: DmStateCathDive._recover); the Templar's glance cue not before this game time (_block_at_ms)
 	double aura_t = 0, los_t = 0, recover_s = RECOVER_S, block_at = -std::numeric_limits<double>::infinity();
+	double ward_t = 0;  // the Weeping Seraph's retry countdown (_ward_t): not before it is up does it look for allies to bless again
 	bool diving = false, los_ok = false;
 	float dive_x = 0, dive_z = 0;
 	float nav_gx = 0, nav_gz = 0;
@@ -257,6 +265,7 @@ struct World {
 	std::vector<double> sep_scratch;  // thrall separation: pushed x, z per thrall
 	std::vector<double> overlap_scratch;  // enemy crowd spacing: correction x, z per enemy
 	std::vector<int32_t> near_scratch;
+	std::vector<int32_t> ward_scratch;  // the Seraph's candidates: slots
 	mutable std::vector<std::pair<double, int32_t>> hit_scratch;  // corpse queries: squared distance, id
 
 	World();
@@ -415,6 +424,10 @@ private:
 	double shield(Enemy &e, int32_t p_source, double p_amount);  // Bell-Sworn Templar: a directed blow from the front passes only `passThrough` of its damage
 	bool body_place(int32_t p_id, float &r_x, float &r_z) const;  // a hero, boss, thrall or enemy by id
 	bool line_clear(float p_ax, float p_az, float p_bx, float p_bz);  // Belfry Gargoyle: no wall between (obstacles, and the straight line staying on the navmesh)
+	// the Sanctum's and Cloister's kinds (cloister.cpp)
+	void tick_ward(int32_t p_slot, double p_dt);   // Weeping Seraph: before the base's tick
+	void ward(int32_t p_slot);                     // ... blesses up to maxTargets of the most wounded unblessed bodies in range, or tries again in WARD_RETRY_S
+	void strike_flask(Enemy &e);                   // Plague Doctor: the flask lands
 	void hit_target(Enemy &e, int32_t p_target, double p_damage, int32_t p_kind);
 	void hit_id(int32_t p_source, int32_t p_target, double p_damage, int32_t p_kind);  // a blow on a hero (event) or a thrall (applied here)
 	bool hittable(const Enemy &e) const { return e.state != BURROW && e.state != ERUPT; }

@@ -19,6 +19,15 @@ extends SceneTree
 ##   - the templar (dm_enemy_clst_templar.gd): the shield's arc, who it stops, Fracture, DoT ticks, the glance cue and its rate, a melee body with a resonant corpse;
 ##   - the wraith (dm_enemy_wraith.gd, DmEnemyCaster): the scream ring at the aim fixed at the wind-up's start, the caster set's walk, no silence check, no corpse;
 ##   - the wire: a guest sees the dive, the scream, the curse, Unbind's cue and its Risen, the glance and the incense; the roster and a seeded replay of the five.
+## The Sanctum's and Cloister's three (a section per kind, after the Nave's):
+##   - the seraph (dm_enemy_clst_seraph.gd, dm_state_clst_kite.gd): the Deacon's walk with its own numbers, the curse (the acolyte's), and the ward: the tick it fires on (the cooldown the last
+##     tick left), who is a candidate (range, the fallen, the rising and the underground, the blessed, a body of its own kind, the unhurt), who is picked (the most wounded, up to maxTargets, ties
+##     as Godot's own sort_custom leaves them, checked against the engine's on random lists up to 100 bodies), the cue and the status, the cooldown it spends, the retry, silence, a stun, and
+##     the curse that comes first when a target is in reach;
+##   - the plague doctor (dm_enemy_clst_caster.gd, attack flask): the caster set's silence-aware walk, the flask (the ring at the aim fixed at the wind-up, who it reaches, the damage kind toxic),
+##     the toxic pool it leaves (radius, seconds, pulses, damage a pulse), a stun, an elite, the toxic corpse;
+##   - the flagellant (flagellant.tscn, the plain dm_enemy.gd): frenzy below half health (the status, the factors, the tick it starts on), the quicker blows and feet, a melee body otherwise;
+##   - the wire (the flask's ring and pool, the ward's cues and blessings, the frenzy), the rosters of the Sanctum, the Coliseum and the Cloister, and a seeded replay.
 ## The expected ticks come from mirrors of today's arithmetic (countdowns that lose 1/60 s a tick in doubles, clocks that gain it), the numbers from today's data and
 ## from the scripts' own `const` lines. Seeded, no navmesh (straight lines). Run: godot --headless --path client --script res://tests/core_kinds.gd [-- --verbose]
 
@@ -243,6 +252,24 @@ func _init() -> void:
 	wraith_no_corpse()
 	nave_on_the_wire()
 	the_nave_roster_and_a_replay()
+	cloister_setup()
+	cloister_defs()
+	seraph_walk()
+	seraph_curse()
+	seraph_ward()
+	seraph_ward_gates()
+	seraph_ward_cadence()
+	seraph_ward_ties()
+	seraph_ward_sort_matches_godot()
+	plague_walk()
+	plague_flask()
+	plague_flask_edges()
+	plague_pool()
+	plague_corpse_and_elite()
+	flagellant_frenzy()
+	flagellant_blows()
+	cloister_on_the_wire()
+	cloister_rosters_and_a_replay()
 	keep.clear()
 	if fails == 0:
 		print("PASS core_kinds %d checks" % checks)
@@ -253,11 +280,11 @@ func _init() -> void:
 
 ## The tables GDScript decodes events with end in the new names, append only, and the scripts' constants are the ones this suite reads.
 func names_and_tables() -> void:
-	check(DmCoreEvents.TELLS.size() == 9 and DmCoreEvents.TELLS[TELL_SLAM] == &"slam" and DmCoreEvents.TELLS[TELL_RAISE] == &"raise" and DmCoreEvents.TELLS[TELL_CURSE] == &"curse"
+	check(DmCoreEvents.TELLS.size() >= 9 and DmCoreEvents.TELLS[TELL_SLAM] == &"slam" and DmCoreEvents.TELLS[TELL_RAISE] == &"raise" and DmCoreEvents.TELLS[TELL_CURSE] == &"curse"
 		and DmCoreEvents.TELLS[TELL_SCREAM] == &"scream" and DmCoreEvents.TELLS[TELL_DIVE] == &"dive", "the telegraph names: raise and curse appended after toll, then scream and dive (append only)")
-	check(DmCoreEvents.CUES.size() == 7 and DmCoreEvents.CUES[CUE_SLAM] == &"slam" and DmCoreEvents.CUES[CUE_SANCTIFY] == &"sanctify" and DmCoreEvents.CUES[CUE_SHIELD_BLOCK] == &"shield_block"
+	check(DmCoreEvents.CUES.size() >= 7 and DmCoreEvents.CUES[CUE_SLAM] == &"slam" and DmCoreEvents.CUES[CUE_SANCTIFY] == &"sanctify" and DmCoreEvents.CUES[CUE_SHIELD_BLOCK] == &"shield_block"
 		and DmCoreEvents.CUES[CUE_UNBIND] == &"unbind" and DmCoreEvents.CUES[CUE_SCREAM] == &"scream", "the cue names: sanctify appended after dig_in, then shield_block, unbind and scream")
-	check(DmCoreEvents.BLOWS.size() == 7 and DmCoreEvents.BLOWS[BLOW_SLAM] == &"slam" and DmCoreEvents.BLOWS[BLOW_CURSE] == &"curse" and DmCoreEvents.BLOWS[BLOW_SCREAM] == &"scream"
+	check(DmCoreEvents.BLOWS.size() >= 7 and DmCoreEvents.BLOWS[BLOW_SLAM] == &"slam" and DmCoreEvents.BLOWS[BLOW_CURSE] == &"curse" and DmCoreEvents.BLOWS[BLOW_SCREAM] == &"scream"
 		and DmCoreEvents.BLOWS[BLOW_DIVE] == &"dive", "the blow names: curse, scream and dive appended after slam")
 	check(K.has("CORPSE_RANGE") and K.has("BACK_OFF_DIST") and K.has("BACK_OFF_SPEED") and K.has("SCAN_S") and K.has("STRIKE_REACH_MULT") and K.has("EXTRA_RING"),
 		"the scripts' own constants are read (%s)" % str(K.keys()))
@@ -2224,7 +2251,7 @@ func the_nave_roster_and_a_replay() -> void:
 	# The director can leave a def out as if it had no scene (the parity scenario drops the Bellringers' censer, as today's side does).
 	var dir := DmWaveDirector.new()
 	dir.off["censer"] = true
-	check(dir.makes("deacon") and dir.makes("wraith") and not dir.makes("censer") and DmWaveDirector.runs_on_core("censer") and not dir.makes("seraph"), "roster: the director's `off` leaves the censer out; the core still runs it")
+	check(dir.makes("deacon") and dir.makes("wraith") and not dir.makes("censer") and DmWaveDirector.runs_on_core("censer") and dir.makes("seraph"), "roster: the director's `off` leaves the censer out; the core still runs it")
 	dir.free()
 	var logs := []
 	for round in 2:
@@ -2256,3 +2283,1106 @@ func the_nave_roster_and_a_replay() -> void:
 					c.kill_thrall(tid, "killed")
 		logs.append([rec, recf, c.enemy_count(), c.corpse_count()])
 	check(logs[0][0] == logs[1][0] and logs[0][1] == logs[1][1] and logs[0][0].size() > 300, "replay: a seeded fight of the Nave's five kinds and a crowd replays event for event (%d ints)" % logs[0][0].size())
+
+
+# ================================================================================================================== the Sanctum's and Cloister's three
+#
+# The Weeping Seraph (godot/enemies/kinds/dm_enemy_clst_seraph.gd on DmEnemyClstCaster, walking with dm_state_clst_kite.gd), the Plague Doctor (dm_enemy_clst_caster.gd, attack "flask") and the
+# Flagellant (flagellant.tscn: the plain dm_enemy.gd, and the status set's frenzy). Numbers come from enemies.json (WARD, PLAGUE_FLASK, FRENZY) and the scripts' const lines; the expected ticks
+# from mirrors of the scripts' arithmetic.
+
+const SANCTUM := "sanctum"
+const CLOISTER := "cloister"
+const COLISEUM := "coliseum"
+const CLOISTER_KINDS: Array[String] = ["seraph", "flagellant", "plague_doctor"]
+const SERAPH_KITE: Array[float] = [0.0, 0.5, 4.0, 0.7]   ## dm_enemy_clst_seraph.gd kite_params(): cast pad, near pad, back-off distance, back-off speed (pinned against the file)
+const BLOW_FLASK := 7
+const TELL_FLASK := 9
+const CUE_FLASK := 7
+const HK_TOXIC := 1
+const ZONE_TOXIC := 1
+const EV_ZONE := 10
+const EV_ZONE_PULSE := 11
+const EV_ZONE_GONE := 12
+const CK_TOXIC := 3
+const CK_RESONANT := 2
+
+var KS: Dictionary    ## dm_enemy_clst_seraph.gd's const lines (WARD_RETRY_S)
+var W: Dictionary     ## enemies.json WARD
+var PF: Dictionary    ## enemies.json PLAGUE_FLASK
+var FR: Dictionary    ## enemies.json FRENZY
+
+
+func cloister_setup() -> void:
+	KS = DmCoreData.consts(godot_dir, ["enemies/kinds/dm_enemy_clst_seraph.gd"])
+	W = content["WARD"]
+	PF = content["PLAGUE_FLASK"]
+	FR = content["FRENZY"]
+
+
+func spawn_seraph(c: RefCounted, at: Vector2, level := 1, hp_mult := 1.0, dmg_mult := 1.0, elite := false, rising := false) -> int:
+	return c.spawn_enemy("seraph", at, level, hp_mult, dmg_mult, elite, SANCTUM, rising)
+
+
+func spawn_doctor(c: RefCounted, at: Vector2, level := 1, hp_mult := 1.0, dmg_mult := 1.0, elite := false) -> int:
+	return c.spawn_enemy("plague_doctor", at, level, hp_mult, dmg_mult, elite, CLOISTER, false)
+
+
+## An ally for the ward: a robber that does no damage and stays where it is.
+func ally(c: RefCounted, at: Vector2, wounded := 0.0, def_id := "robber", rising := false) -> int:
+	var id: int = c.spawn_enemy(def_id, at, 1, 1.0, 0.0, false, SANCTUM, rising)
+	if wounded > 0.0:
+		wound(c, id, wounded)
+	return id
+
+
+## The ticks the seraph's ward fires on, from the cooldown it spawned with: the check comes before the base's tick, so it sees the cooldown the last tick left (one tick after it reached
+## 0), spends `cooldown`, and that tick's own share still comes off it.
+func ward_ticks(cd0: float, cooldown: float, n: int) -> Array:
+	var out := []
+	var t := to_zero(cd0) + 1
+	for i in n:
+		out.append(t)
+		t += to_zero(cooldown - DT) + 1
+	return out
+
+
+func cloister_defs() -> void:
+	var el: Dictionary = content["ELITE"]
+	for id in CLOISTER_KINDS:
+		var d := def(id)
+		var c := make(401)
+		hero(c, FAR)
+		var e: int = c.spawn_enemy(id, Vector2(0, 0), 6, 2.0, 1.5, false, SANCTUM, false)
+		var info: Dictionary = c.enemy_info(e)
+		check(is_equal_approx(info["max_hp"], float(d["hp"]) * 2.0) and is_equal_approx(info["damage"], float(d["damage"]) * 1.5) and info["radius"] == float(d["radius"])
+			and is_equal_approx(info["windup_s"], float(d["windupMs"]) / 1000.0) and info["level"] == 6 and info["area"] == SANCTUM,
+			"%s: hp, damage, radius and wind-up from the def, the spawn's multipliers and level" % id)
+		var spd := float(info["speed"])
+		check(spd >= float(d["speed"]) * 0.92 - 1e-6 and spd <= float(d["speed"]) * 1.08 + 1e-6, "%s: speed %.2f within the +-8%% roll of %.1f" % [id, spd, float(d["speed"])])
+		var ee: int = c.spawn_enemy(id, Vector2(5, 5), 1, 1.0, 1.0, true, SANCTUM, false)
+		var ei: Dictionary = c.enemy_info(ee)
+		check(is_equal_approx(ei["max_hp"], float(d["hp"]) * float(el["hpMult"])) and is_equal_approx(ei["windup_s"], float(d["windupMs"]) / 1000.0 * ELITE_WINDUP) and is_equal_approx(ei["damage"], float(d["damage"]) * float(el["damageMult"])),
+			"%s: an elite has x%.1f health, x%.1f damage and a x%.2f wind-up" % [id, float(el["hpMult"]), float(el["damageMult"]), ELITE_WINDUP])
+	var t: Dictionary = make().tuning()
+	check(t["WARD.range"] == float(W["range"]) and t["WARD.maxTargets"] == float(W["maxTargets"]) and t["PLAGUE_FLASK.radius"] == float(PF["radius"]) and t["PLAGUE_FLASK.poolS"] == float(PF["poolS"])
+		and t["PLAGUE_FLASK.poolDpsMult"] == float(PF["poolDpsMult"]), "the Cloister's numbers are enemies.json's: WARD (range %.1f, %d targets), PLAGUE_FLASK (radius %.1f, pool %.0f s, x%.2f)" % [float(W["range"]), int(W["maxTargets"]), float(PF["radius"]), float(PF["poolS"]), float(PF["poolDpsMult"])])
+	# The scripts' own numbers: the seraph's walk is [0, 0.5, 4, 0.7] on the cloister casters' state, which is the Deacon's state with other names; the plague doctor walks as the acolyte does.
+	var seraph_src: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/kinds/dm_enemy_clst_seraph.gd"))
+	var kite_src: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/states/dm_state_clst_kite.gd"))
+	var support_src: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/states/dm_state_cath_support.gd"))
+	var caster_src: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/kinds/dm_enemy_clst_caster.gd"))
+	check(seraph_src.contains("return [0.0, 0.5, 4.0, 0.7]") and seraph_src.contains("attack_kind = \"curse\"") and KS.has("WARD_RETRY_S") and float(KS["WARD_RETRY_S"]) == 0.25,
+		"the seraph's script: walk [0, 0.5, 4, 0.7], the curse as its blow, a retry of %.2f s" % float(KS.get("WARD_RETRY_S", -1.0)))
+	check(kite_src.contains("if d <= enemy.attack_range - cast_pad and enemy.attack_cd <= 0.0 and not silenced():") and kite_src.contains("if d > enemy.attack_range - near_pad:") and kite_src.contains("elif d < back_dist:")
+		and support_src.contains("if enemy.attack_cd <= 0.0 and d <= enemy.attack_range and not (enemy as DmEnemyDeacon).silenced():") and support_src.contains("if d > enemy.attack_range - 0.5:") and support_src.contains("elif d < BACK_OFF_DIST:")
+		and float(K["BACK_OFF_DIST"]) == SERAPH_KITE[2] and float(K["BACK_OFF_SPEED"]) == SERAPH_KITE[3],
+		"the seraph's walk [cast at attackRange, walk in beyond - 0.5, back off under 4 m at 0.7] is the Deacon's keep-away (dm_state_cath_support.gd), one body of code for both")
+	check(caster_src.contains("return [0.5, 1.5, 3.5, 0.8]") and caster_src.contains("CLST_FALLBACK") and caster_src.contains("elif attack_kind == \"curse\":") and caster_src.contains("if attack_kind == \"flask\":"),
+		"the plague doctor's script: the caster set's walk [0.5, 1.5, 3.5, 0.8] and the flask as its blow")
+	var flag_scene: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/flagellant.tscn"))
+	var ge: Dictionary = def("flagellant")
+	check(not flag_scene.contains("script =") and flag_scene.contains("def_id = \"flagellant\"") and bool(ge.get("frenzy", false)) and String(ge["behavior"]) == "melee" and ge.get("attack") == null,
+		"the flagellant is the plain base (no script of its own): a melee body whose def says frenzy")
+	check(float(FR["atFrac"]) == 0.5 and float(FR["moveMult"]) == 1.45 and float(FR["attackRateMult"]) == 1.6, "frenzy: below %.0f%% health, x%.2f feet, x%.1f blows (enemies.json FRENZY)" % [float(FR["atFrac"]) * 100.0, float(FR["moveMult"]), float(FR["attackRateMult"])])
+	check(DmCoreEvents.TELLS.size() >= 10 and DmCoreEvents.TELLS[TELL_FLASK] == &"flask" and DmCoreEvents.CUES.size() >= 8 and DmCoreEvents.CUES[CUE_FLASK] == &"flask" and DmCoreEvents.BLOWS.size() >= 8 and DmCoreEvents.BLOWS[BLOW_FLASK] == &"flask",
+		"the name tables end in flask: a telegraph, a cue and a blow, appended after dive, scream and dive (append only)")
+
+
+# ------------------------------------------------------------------------------------------------------------------ the seraph: walking, the curse
+
+## The walk (dm_state_clst_kite with [0, 0.5, 4, 0.7]): walk in beyond attackRange - 0.5, cast at attackRange, back off under 4 m at 0.7 x. Silenced here so that nothing else moves it.
+func seraph_walk() -> void:
+	var d := def("seraph")
+	var range_ := float(d["attackRange"])
+	var cast_at := range_ - SERAPH_KITE[0]
+	var walk_in := range_ - SERAPH_KITE[1]
+	var back := SERAPH_KITE[2]
+	var back_speed := SERAPH_KITE[3]
+	var c := make(411)
+	var h := hero(c, Vector2(12, 0))
+	var id := spawn_seraph(c, Vector2(0, 0))
+	var spd := float(c.enemy_info(id)["speed"])
+	silence(c, id)
+	var log := []
+	var xs := []
+	for i in 400:
+		run(c, 1, log)
+		var p: Vector2 = c.enemy_info(id)["pos"]
+		xs.append(p.x)
+		if Vector2(12, 0).distance_to(p) <= walk_in and i > 10:
+			break
+	var step_ok := true
+	for i in range(40, mini(100, xs.size() - 1)):
+		step_ok = step_ok and absf((xs[i + 1] - xs[i]) - spd * DT) < 2e-4
+	check(step_ok, "seraph: walks in at full speed (%.2f m/s) while the target is farther than %.1f m" % [spd, walk_in])
+	run(c, 60, log)
+	var rest: Vector2 = c.enemy_info(id)["pos"]
+	var dist := Vector2(12, 0).distance_to(rest)
+	check(dist <= walk_in + 1e-3 and dist > walk_in - spd * DT * 1.5, "seraph: stops %.2f m from the target (%.1f - one step)" % [dist, walk_in])
+	run(c, 60, log)
+	var yaw := float(c.enemy_info(id)["yaw"])
+	check(Vector2(c.enemy_info(id)["pos"]).distance_to(rest) < 1e-4 and c.enemy_info(id)["state"] == CHASE and of(log, EV_ATTACK, id).is_empty() and absf(angle_difference(yaw, atan2(12.0 - rest.x, 0.0 - rest.y))) < 0.02,
+		"seraph: stands still, facing the target, between %.0f and %.1f m; silenced it never casts" % [back, walk_in])
+	c.set_external(h, Vector2(rest.x + 2.0, rest.y), true)
+	var from := Vector2(c.enemy_info(id)["pos"]).x
+	run(c, 1, log)
+	var x1 := Vector2(c.enemy_info(id)["pos"]).x
+	check(absf((from - x1) - spd * back_speed * DT) < 2e-4, "seraph: backs off at %.1f x its speed (%.4f m a tick)" % [back_speed, from - x1])
+	run(c, 200, log)
+	var d2 := Vector2(c.enemy_info(id)["pos"]).distance_to(Vector2(rest.x + 2.0, rest.y))
+	check(d2 >= back - 1e-3 and d2 < back + spd * back_speed * DT * 1.5, "seraph: stops backing off at %.2f m (%.1f m)" % [d2, back])
+	# The cast gate: rooted, so it cannot close in; a target on attackRange is cast at, one 2 cm past it is not.
+	for trial in [[cast_at, true], [cast_at + 0.02, false]]:
+		var e := make(412)
+		hero(e, Vector2(float(trial[0]), 0))
+		var eid := spawn_seraph(e, Vector2(0, 0))
+		root(e, eid)
+		var lg := []
+		run(e, 600, lg)
+		check(of(lg, EV_ATTACK, eid).is_empty() == (not bool(trial[1])), "seraph: a target %.2f m away is %s (it casts at attackRange - %.1f = %.1f m)" % [float(trial[0]), "cast at" if trial[1] else "not cast at", SERAPH_KITE[0], cast_at])
+
+
+## The curse is the acolyte's (dm_enemy_clst_caster.gd): the telegraph ring on the target, windupMs later a blow of the def's damage, kind curse, on the CURRENT target within the sim's reach
+## of the body; the cooldown starts at the blow. With a target in reach the curse comes first: the ward never gets the cooldown.
+func seraph_curse() -> void:
+	var d := def("seraph")
+	var windup := float(d["windupMs"]) / 1000.0
+	var cooldown := float(d["cooldownMs"]) / 1000.0
+	var reach := float(d["attackRange"]) * float(K["STRIKE_REACH_MULT"]) + float(K["STRIKE_REACH_PAD"])
+	var c := make(421)
+	var h := hero(c, Vector2(5, 0))
+	var id := spawn_seraph(c, Vector2(0, 0))
+	var friend := ally(c, Vector2(-3, 0))     # unhurt, in range: a candidate for the ward all the same
+	var cd0 := float(c.enemy_info(id)["attack_cd"])
+	var log := []
+	run(c, 1500, log)
+	var tell := of(log, EV_TELEGRAPH, id, TELL_CURSE)
+	var att := of(log, EV_ATTACK, id)
+	check(tell.size() >= 3 and att.size() >= 3, "seraph: a curse telegraph and a swing, over and over (%d)" % tell.size())
+	if tell.size() < 3:
+		return
+	var k0 := int(tell[0]["tick"])
+	check(k0 == to_zero(cd0), "seraph: the first curse comes on the tick the cooldown is up (tick %d)" % k0)
+	var f: PackedFloat32Array = tell[0]["floats"]
+	check(is_equal_approx(f[2], 5.0) and is_equal_approx(f[3], 0.0) and f[4] == 0.0 and is_equal_approx(f[5], windup), "seraph: the ring is on the target and lasts the wind-up (%.2f s)" % f[5])
+	check(att[0]["ints"][0] == BLOW_CURSE and is_equal_approx(att[0]["floats"][2], windup), "seraph: the swing is a curse")
+	var ks := k0 + to_reach(windup)
+	var hits := of(log, EV_HIT, id)
+	check(hits.size() >= 1 and int(hits[0]["tick"]) == ks and hits[0]["ints"][0] == h and hits[0]["ints"][1] == HK_CURSE and hits[0]["floats"][0] == float(d["damage"]),
+		"seraph: the blow lands %d ticks (%.2f s) later for %d, kind curse, on the target" % [ks - k0, windup, int(d["damage"])])
+	check(int(tell[1]["tick"]) == ks + to_zero(cooldown), "seraph: the next one a cooldown (%.1f s) after the blow (tick %d)" % [cooldown, int(tell[1]["tick"])])
+	check(of(log, EV_CUE, id).is_empty() and c.status_stacks(friend, "sanctified") == 0.0, "seraph: with a target in reach the ward never gets its cooldown: nobody was blessed in 25 s, three curses")
+	# The reach is measured at the blow, from the body (the acolyte's rule).
+	for trial in [[reach - 0.2, true], [reach + 0.2, false]]:
+		var e := make(422)
+		var hh := hero(e, Vector2(5, 0))
+		var did := spawn_seraph(e, Vector2(0, 0))
+		var lg := []
+		for i in 700:
+			run(e, 1, lg)
+			if not of(lg, EV_TELEGRAPH, did, TELL_CURSE).is_empty():
+				break
+		var p: Vector2 = e.enemy_info(did)["pos"]
+		e.set_external(hh, Vector2(p.x + float(trial[0]), p.y), true)
+		var rest := []
+		run(e, to_reach(windup) + 2, rest)
+		check(of(rest, EV_HIT, did).size() == (1 if trial[1] else 0), "seraph: a target %.2f m away at the blow is %s (the reach is %.3f m)" % [float(trial[0]), "cursed" if trial[1] else "missed", reach])
+	# Silence holds the curse back, a stun cancels it.
+	var s := make(423)
+	hero(s, Vector2(5, 0))
+	var sid := spawn_seraph(s, Vector2(0, 0))
+	silence(s, sid)
+	var sl := []
+	run(s, 600, sl)
+	check(of(sl, EV_ATTACK, sid).is_empty() and s.enemy_info(sid)["state"] == CHASE, "seraph: a silenced seraph does not cast in 10 s, with the target in reach")
+	check(s.remove_status(sid, "silence"), "seraph: silence lifts")
+	run(s, 1, sl)
+	check(first_tick(state_edges(sl, sid, ATTACK)) == tick and of(sl, EV_TELEGRAPH, sid, TELL_CURSE).size() == 1, "seraph: the curse starts on the next tick (the cooldown was up)")
+	run(s, 20, sl)
+	s.stun(sid, 2.0)
+	drain(s, sl)
+	run(s, to_reach(windup) + 4, sl)
+	check(of(sl, EV_HIT, sid).is_empty() and s.enemy_info(sid)["state"] == HURT, "seraph: a stun in the wind-up cancels the curse (nothing lands)")
+
+
+# ------------------------------------------------------------------------------------------------------------------ the seraph: the ward
+
+## The ward: when the cooldown (seen as the last tick left it) is up and the body is neither winding up, flinching, fallen nor rising and not silenced, it blesses the WARD.maxTargets most wounded
+## living bodies within WARD.range that are not blessed already: the status `sanctified`, a cue each, the cooldown spent.
+func seraph_ward() -> void:
+	var d := def("seraph")
+	var cooldown := float(d["cooldownMs"]) / 1000.0
+	var S2: Dictionary = statuses["SANCTIFIED"]
+	var rng_ := float(W["range"])
+	var c := make(431)
+	hero(c, FAR)
+	var id := spawn_seraph(c, Vector2(0, 0))
+	wound(c, id, 0.99)       # (itself: the most wounded of all, and still not a candidate)
+	var ring := []
+	var wounds := [0.10, 0.50, 0.30, 0.70, 0.20, 0.60]      # health fractions 0.9 0.5 0.7 0.3 0.8 0.4
+	for k in 6:
+		var a := float(k) * TAU / 6.0
+		ring.append(ally(c, Vector2(3.0 * cos(a), 3.0 * sin(a)), wounds[k]))
+	var edge := ally(c, Vector2(0, -rng_), 0.95)           # exactly on the range: a candidate, and the most wounded
+	var beyond := ally(c, Vector2(rng_ + 0.1, 0), 0.97)    # a little past it
+	var other := spawn_seraph(c, Vector2(-4.5, -2.0))      # a body of its own kind is a candidate (the Deacon's rule excludes its kind, the seraph's does not)
+	wound(c, other, 0.75)
+	silence(c, other)                                       # (so that it does not ward, curse or move in this scene)
+	var dead := ally(c, Vector2(-2, 4), 1.0)               # fallen: health 0, the most wounded of all, and not a candidate
+	c.damage(dead, 1.0e6, 0, false)
+	var pre := ally(c, Vector2(4.0, -3.0), 0.99)           # blessed already: skipped, however wounded
+	c.apply_status(pre, "sanctified", 0, 1.0, 1000.0)
+	var cd0 := float(c.enemy_info(id)["attack_cd"])
+	var w1: int = ward_ticks(cd0, cooldown, 2)[0]
+	var w2: int = ward_ticks(cd0, cooldown, 2)[1]
+	var log := []
+	drain(c, log)
+	run_to(c, w1 - 1, log)
+	check(of(log, EV_CUE, id).is_empty(), "ward: nothing before the cooldown is up (tick %d)" % (w1 - 1))
+	run_to(c, w1, log)
+	var cues := of(log, EV_CUE, id, CUE_SANCTIFY)
+	check(cues.size() == int(W["maxTargets"]) and cues.all(func(e: Dictionary) -> bool: return int(e["tick"]) == w1), "ward: %d cues, all on the tick after the cooldown was seen up (tick %d: the check comes before the tick's own share comes off)" % [cues.size(), w1])
+	var want: Array = [edge, other, ring[3], ring[5]]       # the most wounded first
+	var got := []
+	for e in cues:
+		for cand in ring + [edge, other, beyond, pre, dead, id]:
+			var p: Vector2 = c.enemy_info(cand)["pos"]
+			if absf(p.x - e["floats"][0]) < 1e-3 and absf(p.y - e["floats"][1]) < 1e-3:
+				got.append(cand)
+	check(got == want, "ward: it blesses the most wounded first: the one on the range's edge, the other seraph, then two of the ring (%s)" % str(got))
+	var only := true
+	for cand in want:
+		only = only and c.status_stacks(cand, "sanctified") == 1.0
+	for cand in [ring[0], ring[1], ring[2], ring[4], beyond, dead, id]:
+		only = only and c.status_stacks(cand, "sanctified") == 0.0
+	check(only, "ward: those four are blessed, not the milder wounds, the one a hair past the range, the fallen, the blessed (its own) or the seraph itself")
+	check(is_equal_approx(float(c.enemy_info(ring[3])["taken_mult"]), float(S2["damageTakenMult"])) and absf(status_left(c, ring[3], "sanctified") - float(S2["durationS"])) < 0.15,
+		"ward: damage taken x%.1f for %.0f s" % [float(S2["damageTakenMult"]), float(S2["durationS"])])
+	check(is_equal_approx(float(c.enemy_info(id)["attack_cd"]), cooldown - DT) and c.enemy_info(id)["state"] == IDLE and of(log, EV_ATTACK, id).is_empty() and of(log, EV_TELEGRAPH, id).is_empty(),
+		"ward: the cooldown is spent (%.2f s, less the tick's own share), and it is no swing: the seraph does not leave its state" % cooldown)
+	check(is_equal_approx(float(c.enemy_info(id)["hp"]), 120.0 * 0.01), "ward: (the seraph itself was left alone: it is wounded to %.1f)" % float(c.enemy_info(id)["hp"]))
+	# The next ward a cooldown later, on the tick after it ran out; the first four's blessing has run out by then, so it is the same four again.
+	run_to(c, w2 - 1, log)
+	check(of(log, EV_CUE, id, CUE_SANCTIFY).size() == 4, "ward: no second ward before the cooldown (%.1f s) is up" % cooldown)
+	run_to(c, w2, log)
+	var cues2 := of(log, EV_CUE, id, CUE_SANCTIFY)
+	check(cues2.size() == 8 and cues2.slice(4).all(func(e: Dictionary) -> bool: return int(e["tick"]) == w2), "ward: the second ward comes on tick %d, a cooldown (%d ticks) later, and blesses four again" % [w2, w2 - w1])
+	var again := true
+	for cand in want:
+		again = again and c.status_stacks(cand, "sanctified") == 1.0
+	check(again and c.status_stacks(pre, "sanctified") == 1.0, "ward: the same four, whose blessing had run out (the blessed one it skipped still carries its own)")
+	# A blow on a blessed body costs damageTakenMult of itself.
+	var before := float(c.enemy_info(ring[3])["hp"])
+	c.damage(ring[3], 10.0, 0, false)
+	check(is_equal_approx(before - float(c.enemy_info(ring[3])["hp"]), 10.0 * float(S2["damageTakenMult"])), "ward: a blow of 10 costs %.0f while blessed" % (10.0 * float(S2["damageTakenMult"])))
+
+
+## Gates and edges: the range is inclusive; the fallen, the rising and the underground are not candidates; a body of any health is (the unhurt too, first in spawn order on a tie); with nobody to
+## bless the seraph looks again WARD_RETRY_S later; silence, a flinch and a swing hold the ward back; an elite spends its own quicker cooldown.
+func seraph_ward_gates() -> void:
+	var d := def("seraph")
+	var cooldown := float(d["cooldownMs"]) / 1000.0
+	var retry := float(KS["WARD_RETRY_S"])
+	var rng_ := float(W["range"])
+	# The range, from centre to centre, inclusive: 5.5 m is in, 5.52 m is out.
+	var c := make(441)
+	hero(c, FAR)
+	var id := spawn_seraph(c, Vector2(0, 0))
+	var in_ := ally(c, Vector2(rng_, 0))
+	var out := ally(c, Vector2(-rng_ - 0.02, 0))
+	var log := []
+	run_to(c, ward_ticks(float(c.enemy_info(id)["attack_cd"]), cooldown, 1)[0], log)
+	check(c.status_stacks(in_, "sanctified") == 1.0 and c.status_stacks(out, "sanctified") == 0.0, "ward: a body %.2f m away is in the range, one %.2f m away is not (the range is %.1f m)" % [rng_, rng_ + 0.02, rng_])
+	# Unhurt allies are blessed too, and a tie goes to the first in spawn order.
+	var e := make(442)
+	hero(e, FAR)
+	var eid := spawn_seraph(e, Vector2(0, 0))
+	var six := []
+	for k in 6:
+		var a := float(k) * TAU / 6.0
+		six.append(ally(e, Vector2(2.5 * cos(a), 2.5 * sin(a))))
+	run_to(e, ward_ticks(float(e.enemy_info(eid)["attack_cd"]), cooldown, 1)[0], [])
+	var blessed := six.map(func(i: int) -> float: return e.status_stacks(i, "sanctified"))
+	check(blessed == [1.0, 1.0, 1.0, 1.0, 0.0, 0.0], "ward: six unhurt allies on the same health: the first four spawned are blessed (%s)" % str(blessed))
+	# Underground and rising bodies are skipped, and nothing to bless is a retry WARD_RETRY_S later.
+	var f := make(443)
+	hero(f, FAR)
+	var fid := spawn_seraph(f, Vector2(0, 0))
+	var mole := ally(f, Vector2(2, 0), 0.0, "ghoul", true)
+	check(f.enemy_info(mole)["state"] == 8, "ward: (a rising ghoul starts underground)")
+	var fl := []
+	var w1: int = ward_ticks(float(f.enemy_info(fid)["attack_cd"]), cooldown, 1)[0]
+	run_to(f, w1 - 3, fl)
+	var riser := ally(f, Vector2(-2, 0), 0.0, "robber", true)
+	run_to(f, w1, fl)
+	check(of(fl, EV_CUE, fid).is_empty() and f.status_stacks(mole, "sanctified") == 0.0 and f.status_stacks(riser, "sanctified") == 0.0 and f.enemy_info(riser)["state"] == RISING,
+		"ward: an underground ghoul and a rising body are not candidates: nothing was blessed")
+	check(is_equal_approx(float(f.enemy_info(fid)["ward_t"]), retry) and float(f.enemy_info(fid)["attack_cd"]) <= 0.0, "ward: with nobody to bless it looks again in %.2f s, and keeps the cooldown it did not spend" % retry)
+	# The scans come every WARD_RETRY_S (15 or 16 ticks); the riser is blessed at the first one after it has risen (the check comes before the state changes), the mole never.
+	var step := to_zero(retry)
+	var scans := []
+	var t_scan := w1
+	for i in 40:
+		scans.append(t_scan)
+		t_scan += step
+	var risen_at := (w1 - 3) + to_reach(float(K["RISE_TIME"]))        # the tick on which it stops rising: the check of that tick still sees it rising
+	var want_scan := 0
+	for s_ in scans:
+		if s_ > risen_at:
+			want_scan = s_
+			break
+	run_to(f, want_scan - 1, fl)
+	check(f.status_stacks(riser, "sanctified") == 0.0, "ward: and not before its scan (tick %d)" % (want_scan - 1))
+	run_to(f, want_scan, fl)
+	check(f.status_stacks(riser, "sanctified") == 1.0 and f.status_stacks(mole, "sanctified") == 0.0 and of(fl, EV_CUE, fid, CUE_SANCTIFY).size() == 1 and int(of(fl, EV_CUE, fid, CUE_SANCTIFY)[0]["tick"]) == want_scan,
+		"ward: the body that has risen is blessed at the first scan after it (tick %d: scans every %d ticks from tick %d), the ghoul under the ground never" % [want_scan, step, w1])
+	# Silence holds the ward back; it fires on the tick after the silence lifts.
+	var g := make(444)
+	hero(g, FAR)
+	var gid := spawn_seraph(g, Vector2(0, 0))
+	var ga := ally(g, Vector2(2.5, 0), 0.5)
+	silence(g, gid)
+	var gl := []
+	run(g, 600, gl)
+	check(of(gl, EV_CUE, gid).is_empty() and g.status_stacks(ga, "sanctified") == 0.0, "ward: a silenced seraph blesses nobody in 10 s, however long its cooldown has been up")
+	check(g.remove_status(gid, "silence"), "ward: silence lifts")
+	var t0 := tick
+	run(g, 1, gl)
+	check(of(gl, EV_CUE, gid, CUE_SANCTIFY).size() == 1 and int(of(gl, EV_CUE, gid, CUE_SANCTIFY)[0]["tick"]) == t0 + 1, "ward: and the ward comes on the next tick")
+	# A flinch holds it back: a stun between the tick the cooldown ran out and the tick the ward would have fired.
+	var h2 := make(445)
+	hero(h2, FAR)
+	var hid := spawn_seraph(h2, Vector2(0, 0))
+	var ha := ally(h2, Vector2(2.5, 0), 0.5)
+	var k := to_zero(float(h2.enemy_info(hid)["attack_cd"]))
+	var hl := []
+	run_to(h2, k, hl)
+	h2.stun(hid, 3.0)
+	drain(h2, hl)
+	run_to(h2, k + to_reach(3.0), hl)
+	check(of(hl, EV_CUE, hid).is_empty() and h2.enemy_info(hid)["state"] == IDLE and h2.status_stacks(ha, "sanctified") == 0.0, "ward: a seraph flinching (HURT) for 3 s blesses nobody, though its cooldown is up, until it is up again")
+	run(h2, 1, hl)
+	check(of(hl, EV_CUE, hid, CUE_SANCTIFY).size() == 1 and int(of(hl, EV_CUE, hid, CUE_SANCTIFY)[0]["tick"]) == k + to_reach(3.0) + 1, "ward: and it blesses on the tick after it is up (tick %d)" % (k + to_reach(3.0) + 1))
+	# A target out of reach and allies near: the ward comes first, and the curse waits for the cooldown it spent; a target in reach: the curse comes first (seraph_curse).
+	var i3 := make(446)
+	var hh := hero(i3, Vector2(9, 0))
+	var iid := spawn_seraph(i3, Vector2(0, 0))
+	root(i3, iid)
+	var ia := ally(i3, Vector2(-2.5, 0), 0.5)
+	var cd0 := float(i3.enemy_info(iid)["attack_cd"])
+	var il := []
+	var w: int = ward_ticks(cd0, cooldown, 2)[0]
+	run_to(i3, w, il)
+	check(i3.status_stacks(ia, "sanctified") == 1.0 and of(il, EV_TELEGRAPH, iid).is_empty() and i3.enemy_info(iid)["state"] == CHASE, "ward: a target 9 m away (out of reach, rooted): the ward comes first, and no curse")
+	i3.set_external(hh, Vector2(5, 0), true)
+	run_to(i3, w + to_zero(cooldown - DT), il)
+	var curse := of(il, EV_TELEGRAPH, iid, TELL_CURSE)
+	check(curse.size() == 1 and int(curse[0]["tick"]) == w + to_zero(cooldown - DT), "ward: and with the target in reach the curse waits for the cooldown the ward spent (tick %d)" % (w + to_zero(cooldown - DT)))
+	# An elite spends its own quicker cooldown (x0.8) and winds up x0.85.
+	var j := make(447)
+	hero(j, FAR)
+	var jid := spawn_seraph(j, Vector2(0, 0), 1, 1.0, 1.0, true)
+	var ja := ally(j, Vector2(2.5, 0), 0.5)
+	var ecd := cooldown * ELITE_COOLDOWN
+	var jt: int = ward_ticks(float(j.enemy_info(jid)["attack_cd"]), ecd, 1)[0]
+	run_to(j, jt, [])
+	check(j.status_stacks(ja, "sanctified") == 1.0 and is_equal_approx(float(j.enemy_info(jid)["attack_cd"]), ecd - DT), "ward: an elite seraph's cooldown is its own x%.1f = %.2f s" % [ELITE_COOLDOWN, ecd])
+
+
+## The retry cadence, from the script's own constant (the scan finds nobody, a body appears, the next scan finds it).
+func seraph_ward_cadence() -> void:
+	var d := def("seraph")
+	var cooldown := float(d["cooldownMs"]) / 1000.0
+	var retry := float(KS["WARD_RETRY_S"])
+	var c := make(451)
+	hero(c, FAR)
+	var id := spawn_seraph(c, Vector2(0, 0))
+	var w1: int = ward_ticks(float(c.enemy_info(id)["attack_cd"]), cooldown, 1)[0]
+	var log := []
+	run_to(c, w1, log)
+	check(is_equal_approx(float(c.enemy_info(id)["ward_t"]), retry), "cadence: the first scan found nobody and set the retry to %.2f s" % retry)
+	run_to(c, w1 + 3, log)
+	var late := ally(c, Vector2(3, 0), 0.4)
+	var n := to_zero(retry)
+	run_to(c, w1 + n - 1, log)
+	check(c.status_stacks(late, "sanctified") == 0.0, "cadence: a body that arrived 3 ticks after the scan is not blessed before the next scan")
+	run_to(c, w1 + n, log)
+	var cue := of(log, EV_CUE, id, CUE_SANCTIFY)
+	check(cue.size() == 1 and int(cue[0]["tick"]) == w1 + n and c.status_stacks(late, "sanctified") == 1.0, "cadence: it is blessed %d ticks (%.2f s) after the scan that found nobody (tick %d)" % [n, retry, w1 + n])
+	check(is_equal_approx(float(c.enemy_info(id)["attack_cd"]), cooldown - DT), "cadence: and the cooldown is spent")
+	# The scan runs every tick the seraph acts: a seraph that is busy for the whole retry scans at once when it is free.
+	var e := make(452)
+	hero(e, FAR)
+	var eid := spawn_seraph(e, Vector2(0, 0))
+	var wb: int = ward_ticks(float(e.enemy_info(eid)["attack_cd"]), cooldown, 1)[0]
+	run_to(e, wb, [])
+	e.stun(eid, 2.0)       # flinching through several scans
+	var cand := ally(e, Vector2(3, 0), 0.4)
+	run_to(e, wb + to_reach(2.0), [])
+	check(e.status_stacks(cand, "sanctified") == 0.0, "cadence: a flinching seraph does not scan")
+	var lg := []
+	run(e, 1, lg)
+	check(e.status_stacks(cand, "sanctified") == 1.0, "cadence: it scans on the first tick it is free (the retry ran out while it flinched)")
+
+
+## Many candidates on the same health: more than sixteen, and Godot's sort is no longer stable, so which of them is blessed depends on its algorithm. A grid of bodies, three levels
+## of health, in a spawn order; the expectation is the engine's own `Array.sort_custom` on the same list.
+func seraph_ward_ties() -> void:
+	var d := def("seraph")
+	var cooldown := float(d["cooldownMs"]) / 1000.0
+	var matches := 0
+	var trials := 0
+	var unstable := 0       # lists where the engine's four are not the first four of a stable sort: the proof that the order of equals matters here
+	for n in [5, 12, 16, 17, 18, 24, 33, 50]:
+		for variant in 2:
+			var c := make(460 + n * 3 + variant)
+			hero(c, FAR)
+			var id := spawn_seraph(c, Vector2(0, 0))
+			var spots := ward_grid(n)
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 9000 + n * 7 + variant
+			var levels := [0.0, 0.3, 0.6] if variant == 0 else [0.2, 0.2, 0.2, 0.5]      # (the second variant: almost all tied)
+			var ids := []
+			for s in spots:
+				ids.append(ally(c, s, float(levels[rng.randi() % levels.size()])))
+			var list := []
+			for i in ids:
+				list.append({"id": i, "frac": float(c.enemy_info(i)["hp"]) / float(c.enemy_info(i)["max_hp"])})
+			list.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["frac"] < b["frac"])
+			var expect := list.slice(0, int(W["maxTargets"])).map(func(x: Dictionary) -> int: return x["id"])
+			expect.sort()
+			var stable := list.duplicate()
+			stable.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["frac"] < b["frac"] or (a["frac"] == b["frac"] and ids.find(a["id"]) < ids.find(b["id"])))
+			var stable4 := stable.slice(0, int(W["maxTargets"])).map(func(x: Dictionary) -> int: return x["id"])
+			stable4.sort()
+			if stable4 != expect:
+				unstable += 1
+			var w1: int = ward_ticks(float(c.enemy_info(id)["attack_cd"]), cooldown, 1)[0]
+			run_to(c, w1, [])
+			var blessed := []
+			for i in ids:
+				if c.status_stacks(i, "sanctified") == 1.0:
+					blessed.append(i)
+			blessed.sort()
+			trials += 1
+			if blessed == expect:
+				matches += 1
+			else:
+				printerr("tie trial n=%d variant=%d: core %s, engine %s" % [n, variant, str(blessed), str(expect)])
+	check(matches == trials and unstable >= 1, "ward: with 5 to 50 candidates and ties, the four blessed are the ones Godot's own sort_custom puts first (%d of %d lists; in %d of them that is not what a stable sort gives)" % [matches, trials, unstable])
+
+
+## `n` spots on a grid 1.2 m apart inside the ward's range (no two bodies close enough to be pushed), nearest the seraph first, in a fixed shuffle.
+func ward_grid(n: int) -> Array:
+	var all := []
+	for gx in range(-4, 5):
+		for gz in range(-4, 5):
+			var p := Vector2(gx, gz) * 1.2
+			if p.length() > 1.5 and p.length() < float(W["range"]) - 0.2:
+				all.append(p)
+	all.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.length() < b.length() if absf(a.length() - b.length()) > 1e-6 else (a.x < b.x if a.x != b.x else a.y < b.y))
+	var pick := all.slice(0, n)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77 + n
+	for i in range(pick.size() - 1, 0, -1):
+		var j := rng.randi() % (i + 1)
+		var tmp = pick[i]
+		pick[i] = pick[j]
+		pick[j] = tmp
+	return pick
+
+
+## The core's reproduction of Godot's sort against the engine's, on more lists: heights from a few levels so that ties are everywhere, sizes up to 100, seraphs with the whole table around them.
+func seraph_ward_sort_matches_godot() -> void:
+	var d := def("seraph")
+	var cooldown := float(d["cooldownMs"]) / 1000.0
+	var matches := 0
+	var trials := 0
+	var unstable := 0
+	for round in 24:
+		var n := 17 + (round * 7) % 40 + (round / 8) * 20
+		var c := make(480 + round)
+		hero(c, FAR)
+		var id := spawn_seraph(c, Vector2(0, 0))
+		var spots := ward_grid(mini(n, 56))
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 31337 + round
+		var levels: Array = [[0.0, 0.25, 0.5, 0.75], [0.1, 0.1, 0.1, 0.1, 0.9], [0.0, 0.5], [0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.31, 0.29]][round % 4]
+		var ids := []
+		for s in spots:
+			ids.append(ally(c, s, float(levels[rng.randi() % levels.size()])))
+		var list := []
+		for i in ids:
+			list.append({"id": i, "frac": float(c.enemy_info(i)["hp"]) / float(c.enemy_info(i)["max_hp"])})
+		list.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["frac"] < b["frac"])
+		var expect := list.slice(0, int(W["maxTargets"])).map(func(x: Dictionary) -> int: return x["id"])
+		expect.sort()
+		var stable := list.duplicate()
+		stable.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["frac"] < b["frac"] or (a["frac"] == b["frac"] and ids.find(a["id"]) < ids.find(b["id"])))
+		var stable4 := stable.slice(0, int(W["maxTargets"])).map(func(x: Dictionary) -> int: return x["id"])
+		stable4.sort()
+		if stable4 != expect:
+			unstable += 1
+		run_to(c, ward_ticks(float(c.enemy_info(id)["attack_cd"]), cooldown, 1)[0], [])
+		var blessed := []
+		for i in ids:
+			if c.status_stacks(i, "sanctified") == 1.0:
+				blessed.append(i)
+		blessed.sort()
+		trials += 1
+		if blessed == expect:
+			matches += 1
+		else:
+			printerr("sort trial round=%d n=%d: core %s, engine %s" % [round, ids.size(), str(blessed), str(expect)])
+	check(matches == trials and unstable >= 3, "ward: on %d more lists of 17 to 56 candidates with heavy ties, the blessed four are the engine's sort_custom's first four (%d of %d; a stable sort would have chosen otherwise in %d)" % [trials, matches, trials, unstable])
+
+
+# ------------------------------------------------------------------------------------------------------------------ the plague doctor
+
+## The caster set's walk (dm_state_clst_kite with [0.5, 1.5, 3.5, 0.8], silence-aware): walk in beyond attackRange - 1.5, cast at attackRange - 0.5, back off at 0.8 x under 3.5 m.
+func plague_walk() -> void:
+	var d := def("plague_doctor")
+	var range_ := float(d["attackRange"])
+	var cast_at := range_ - float(KITE_PARAMS[0])
+	var walk_in := range_ - float(KITE_PARAMS[1])
+	var back := float(KITE_PARAMS[2])
+	var back_speed := float(KITE_PARAMS[3])
+	var c := make(491)
+	var h := hero(c, Vector2(14, 0))
+	var id := spawn_doctor(c, Vector2(0, 0))
+	var spd := float(c.enemy_info(id)["speed"])
+	silence(c, id)
+	var log := []
+	var xs := []
+	for i in 500:
+		run(c, 1, log)
+		var p: Vector2 = c.enemy_info(id)["pos"]
+		xs.append(p.x)
+		if Vector2(14, 0).distance_to(p) <= walk_in and i > 10:
+			break
+	var step_ok := true
+	for i in range(40, mini(100, xs.size() - 1)):
+		step_ok = step_ok and absf((xs[i + 1] - xs[i]) - spd * DT) < 2e-4
+	check(step_ok, "plague doctor: walks in at full speed (%.2f m/s) while the target is farther than %.1f m" % [spd, walk_in])
+	run(c, 60, log)
+	var rest: Vector2 = c.enemy_info(id)["pos"]
+	var dist := Vector2(14, 0).distance_to(rest)
+	check(dist <= walk_in + 1e-3 and dist > walk_in - spd * DT * 1.5, "plague doctor: stops %.2f m from the target (%.1f - one step)" % [dist, walk_in])
+	run(c, 60, log)
+	check(Vector2(c.enemy_info(id)["pos"]).distance_to(rest) < 1e-4 and c.enemy_info(id)["state"] == CHASE and of(log, EV_ATTACK, id).is_empty(), "plague doctor: stands still between %.1f and %.1f m, and silenced it never casts" % [back, walk_in])
+	c.set_external(h, Vector2(rest.x + 2.0, rest.y), true)
+	var from := Vector2(c.enemy_info(id)["pos"]).x
+	run(c, 1, log)
+	var x1 := Vector2(c.enemy_info(id)["pos"]).x
+	check(absf((from - x1) - spd * back_speed * DT) < 2e-4, "plague doctor: backs off at %.1f x its speed (%.4f m a tick)" % [back_speed, from - x1])
+	run(c, 200, log)
+	var d2 := Vector2(c.enemy_info(id)["pos"]).distance_to(Vector2(rest.x + 2.0, rest.y))
+	check(d2 >= back - 1e-3 and d2 < back + spd * back_speed * DT * 1.5, "plague doctor: stops backing off at %.2f m (%.1f m)" % [d2, back])
+	# The cast gate: rooted; a target on attackRange - 0.5 is cast at, one 2 cm past it is not.
+	for trial in [[cast_at, true], [cast_at + 0.02, false]]:
+		var e := make(492)
+		hero(e, Vector2(float(trial[0]), 0))
+		var eid := spawn_doctor(e, Vector2(0, 0))
+		root(e, eid)
+		var lg := []
+		run(e, 600, lg)
+		check(of(lg, EV_ATTACK, eid).is_empty() == (not bool(trial[1])), "plague doctor: a target %.2f m away is %s (it casts at attackRange - %.1f = %.1f m)" % [float(trial[0]), "cast at" if trial[1] else "not cast at", float(KITE_PARAMS[0]), cast_at])
+
+
+## The flask: with the cooldown up and the target within attackRange - 0.5 it winds up for windupMs (telegraph "flask": a ring of PLAGUE_FLASK.radius on the aim fixed at the start), and at the
+## end everything within the radius of the aim takes the body's damage (hit kind toxic), a toxic pool is left there and the flask's cue is told. The next one comes a cooldown after the blow.
+func plague_flask() -> void:
+	var d := def("plague_doctor")
+	var windup := float(d["windupMs"]) / 1000.0
+	var cooldown := float(d["cooldownMs"]) / 1000.0
+	var r := float(PF["radius"])
+	var c := make(501)
+	var h := hero(c, Vector2(6, 0))
+	var id := spawn_doctor(c, Vector2(0, 0), 3, 2.0, 1.5)
+	var dmg := float(d["damage"]) * 1.5
+	var cd0 := float(c.enemy_info(id)["attack_cd"])
+	var log := []
+	run(c, 900, log)
+	var tell := of(log, EV_TELEGRAPH, id, TELL_FLASK)
+	var att := of(log, EV_ATTACK, id)
+	check(tell.size() >= 3 and att.size() >= 3, "flask: a telegraph and a swing, over and over (%d)" % tell.size())
+	if tell.size() < 3:
+		return
+	var k0 := int(tell[0]["tick"])
+	check(k0 == to_zero(cd0), "flask: the first comes on the tick the cooldown is up (tick %d)" % k0)
+	var f: PackedFloat32Array = tell[0]["floats"]
+	check(is_equal_approx(f[0], 0.0) and is_equal_approx(f[1], 0.0) and is_equal_approx(f[2], 6.0) and is_equal_approx(f[3], 0.0) and is_equal_approx(f[4], r) and is_equal_approx(f[5], windup),
+		"flask: a ring of %.1f m on the target's place, from the body, for the %.1f s wind-up" % [r, windup])
+	check(att[0]["ints"][0] == BLOW_FLASK and is_equal_approx(att[0]["floats"][0], 6.0) and is_equal_approx(att[0]["floats"][2], windup), "flask: the swing is a flask, aimed at the target")
+	var ks := k0 + to_reach(windup)
+	var hits := of(log, EV_HIT, id).filter(func(e: Dictionary) -> bool: return is_equal_approx(e["floats"][0], dmg))
+	check(hits.size() >= 1 and int(hits[0]["tick"]) == ks and hits[0]["ints"][0] == h and hits[0]["ints"][1] == HK_TOXIC,
+		"flask: the blow lands %d ticks (%.1f s) later for %.1f, kind toxic, on the target" % [ks - k0, windup, dmg])
+	var zones := of(log, EV_ZONE)
+	check(zones.size() >= 1 and int(zones[0]["tick"]) == ks and zones[0]["ints"][0] == ZONE_TOXIC and zones[0]["ints"][1] == id and is_equal_approx(zones[0]["floats"][0], 6.0) and is_equal_approx(zones[0]["floats"][1], 0.0)
+		and is_equal_approx(zones[0]["floats"][2], r) and is_equal_approx(zones[0]["floats"][3], float(PF["poolS"])),
+		"flask: and a toxic pool at the aim, %.1f m wide, for %.0f s (the zone is the doctor's)" % [r, float(PF["poolS"])])
+	var cue := of(log, EV_CUE, id, CUE_FLASK)
+	check(cue.size() >= 1 and int(cue[0]["tick"]) == ks and is_equal_approx(cue[0]["floats"][0], 6.0) and is_equal_approx(cue[0]["floats"][2], r), "flask: and the cue at the aim")
+	var at_ks := log.filter(func(e: Dictionary) -> bool: return int(e["tick"]) == ks and ((e["type"] == EV_HIT and e["id"] == id) or e["type"] == EV_ZONE or (e["type"] == EV_CUE and e["id"] == id)))
+	check(at_ks.map(func(e: Dictionary) -> int: return e["type"]) == [EV_HIT, EV_ZONE, EV_CUE], "flask: in that order on the tick: the hit, the pool, the cue")
+	check(int(tell[1]["tick"]) == ks + to_zero(cooldown), "flask: the next one a cooldown (%.1f s) after the blow (tick %d)" % [cooldown, int(tell[1]["tick"])])
+
+
+## The edges of the ring: the aim is fixed when the wind-up starts (a target that steps out is not hit, one at the edge is), no reach condition at the blow, heroes and thralls alike, a stun
+## in the wind-up cancels it, silence stops the cast but not one begun.
+func plague_flask_edges() -> void:
+	var d := def("plague_doctor")
+	var windup := float(d["windupMs"]) / 1000.0
+	var r := float(PF["radius"])
+	var pool_reach := r + 0.45
+	for trial in [[1.75, true, true], [1.85, false, true], [2.3, false, false]]:     # [offset from the aim, direct hit, pool pulses]
+		var c := make(511)
+		var h := hero(c, Vector2(6, 0))
+		var id := spawn_doctor(c, Vector2(0, 0))
+		var log := []
+		for i in 900:
+			run(c, 1, log)
+			if not of(log, EV_TELEGRAPH, id, TELL_FLASK).is_empty():
+				break
+		silence(c, id)       # (no second flask in this trial)
+		c.set_external(h, Vector2(6.0 + float(trial[0]), 0), true)
+		var rest := []
+		run(c, to_reach(windup) + 2 + 130, rest)
+		var direct := of(rest, EV_HIT, id).filter(func(e: Dictionary) -> bool: return is_equal_approx(e["floats"][0], 13.0))
+		var pulse := of(rest, EV_HIT, id).filter(func(e: Dictionary) -> bool: return is_equal_approx(e["floats"][0], 13.0 * float(PF["poolDpsMult"])))
+		check(direct.size() == (1 if trial[1] else 0) and (pulse.size() >= 1) == bool(trial[2]),
+			"flask: a target %.2f m from the aim when the flask lands is %s directly (the ring is %.1f m) and %s by the pool (it reaches %.2f m)"
+			% [float(trial[0]), "hit" if trial[1] else "missed", r, "pulsed" if trial[2] else "left alone", pool_reach])
+	# The aim is fixed at the wind-up's start: a target that walks 5 m away is not followed (and no reach is asked of the blow).
+	var e := make(512)
+	var he := hero(e, Vector2(6, 0))
+	var eid := spawn_doctor(e, Vector2(0, 0))
+	var el := []
+	for i in 900:
+		run(e, 1, el)
+		if not of(el, EV_TELEGRAPH, eid, TELL_FLASK).is_empty():
+			break
+	silence(e, eid)
+	e.set_external(he, Vector2(11, 0), true)
+	var rest2 := []
+	run(e, to_reach(windup) + 2, rest2)
+	var z2 := of(rest2, EV_ZONE)
+	check(of(rest2, EV_HIT, eid).is_empty() and z2.size() == 1 and z2[0]["ints"][1] == eid and is_equal_approx(z2[0]["floats"][0], 6.0), "flask: a target who walked 5 m off is not followed: the flask lands at the old aim (6, 0)")
+	# Two heroes in the ring: both are hit, in the order of the heroes; and a thrall too.
+	var g := make(513)
+	var h1 := hero(g, Vector2(6, 0))
+	var h2 := hero(g, Vector2(6.8, 0.8))
+	var owner := h2        # (a thrall far from its owner is carried to it)
+	var th: int = g.raise_thrall({"kind": "warrior", "hp": 1000.0, "maxHp": 1000.0, "damage": 0.0, "attackInterval": 1.0, "range": 1.3, "speed": 5.6, "empowered": false, "champion": false, "allyHeal": 0.0}, owner, Vector2(5.4, 0.9), 0.0, 99.0)
+	var gl := []
+	run(g, 60, gl)         # (a thrall rises in 0.9 s)
+	g.stun(th, 1.0e6)
+	var did := spawn_doctor(g, Vector2(0, 0))
+	for i in 900:
+		run(g, 1, gl)
+		if not of(gl, EV_TELEGRAPH, did, TELL_FLASK).is_empty():
+			break
+	var tp: Vector2 = g.thrall_info(th)["pos"]
+	check(tp.distance_to(Vector2(6, 0)) <= r and g.thrall_info(th)["state"] != 0, "flask: (the thrall stands in the ring, risen: %.2f m from the aim)" % tp.distance_to(Vector2(6, 0)))
+	var thp := float(g.thrall_info(th)["hp"])
+	var gr := []
+	run(g, to_reach(windup) + 1, gr)
+	var gh := of(gr, EV_HIT, did).filter(func(e2: Dictionary) -> bool: return is_equal_approx(e2["floats"][0], 13.0))
+	check(gh.size() == 2 and gh[0]["ints"][0] == h1 and gh[1]["ints"][0] == h2 and is_equal_approx(thp - float(g.thrall_info(th)["hp"]), 13.0),
+		"flask: both heroes in the ring are hit (in order), and the thrall costs %.0f health" % (thp - float(g.thrall_info(th)["hp"])))
+	# A stun in the wind-up cancels the flask: no hit, no pool, no cue; silence stops the cast but not one begun.
+	var s := make(514)
+	hero(s, Vector2(6, 0))
+	var sid := spawn_doctor(s, Vector2(0, 0))
+	var sl := []
+	for i in 900:
+		run(s, 1, sl)
+		if not of(sl, EV_TELEGRAPH, sid, TELL_FLASK).is_empty():
+			break
+	run(s, 20, sl)
+	s.stun(sid, 2.0)
+	drain(s, sl)
+	var cut := []
+	run(s, to_reach(windup) + 4, cut)
+	check(of(cut, EV_HIT, sid).is_empty() and of(cut, EV_ZONE).is_empty() and of(cut, EV_CUE, sid).is_empty() and s.enemy_info(sid)["state"] == HURT, "flask: a stun in the wind-up cancels it: no hit, no pool, no cue")
+	var q := make(515)
+	var hq := hero(q, Vector2(6, 0))
+	var qid := spawn_doctor(q, Vector2(0, 0))
+	silence(q, qid)
+	var ql := []
+	run(q, 600, ql)
+	check(of(ql, EV_ATTACK, qid).is_empty() and q.enemy_info(qid)["state"] == CHASE, "flask: a silenced doctor does not cast in 10 s, with the target in reach")
+	check(q.remove_status(qid, "silence"), "flask: silence lifts")
+	run(q, 1, ql)
+	var t0 := tick
+	check(first_tick(state_edges(ql, qid, ATTACK)) == t0 and of(ql, EV_TELEGRAPH, qid, TELL_FLASK).size() == 1, "flask: the flask starts on the next tick (the cooldown was up)")
+	silence(q, qid)
+	var kq := t0 + to_reach(windup)
+	run_to(q, kq, ql)
+	check(of(ql, EV_HIT, qid).size() == 1 and of(ql, EV_HIT, qid)[0]["ints"][0] == hq and int(of(ql, EV_HIT, qid)[0]["tick"]) == kq, "flask: a flask already winding up lands all the same, on tick %d" % kq)
+
+
+## The pool: PLAGUE_FLASK.poolS seconds, a pulse every second (DmHostileZone, the dust cloud's clock) of damage x poolDpsMult for everything within radius + 0.45, kind toxic, then it is gone.
+func plague_pool() -> void:
+	var d := def("plague_doctor")
+	var windup := float(d["windupMs"]) / 1000.0
+	var r := float(PF["radius"])
+	var pool_s := float(PF["poolS"])
+	var per_pulse := float(d["damage"]) * float(PF["poolDpsMult"])
+	var c := make(521)
+	var h := hero(c, Vector2(6, 0))
+	var id := spawn_doctor(c, Vector2(0, 0))
+	var log := []
+	for i in 900:
+		run(c, 1, log)
+		if not of(log, EV_TELEGRAPH, id, TELL_FLASK).is_empty():
+			break
+	var ks := tick + to_reach(windup)
+	silence(c, id)
+	run_to(c, ks + 400, log)
+	var zones := of(log, EV_ZONE)
+	check(zones.size() == 1, "pool: one pool for the one flask")
+	if zones.is_empty():
+		return
+	# Mirror of DmHostileZone._physics_process: age gains a tick, and at lifetime it goes; the first pulse clock starts at the period; each tick takes a tick off it.
+	var pulses_at := []
+	var gone_at := -1
+	var age := 0.0
+	var tk := -1.0
+	for j in 1000:
+		age += DT
+		if age >= pool_s:
+			gone_at = ks + j
+			break
+		if tk < 0.0:
+			tk = 1.0
+		tk -= DT
+		if tk <= 0.0:
+			tk = 1.0
+			pulses_at.append(ks + j)
+	var zid: int = zones[0]["id"]
+	var got_pulses := of(log, EV_ZONE_PULSE, zid).map(func(e: Dictionary) -> int: return int(e["tick"]))
+	check(got_pulses == pulses_at, "pool: it pulses on ticks %s (every second from the second after the flask), the engine-side mirror says %s" % [str(got_pulses), str(pulses_at)])
+	var pulse_hits := of(log, EV_HIT, id).filter(func(e: Dictionary) -> bool: return is_equal_approx(e["floats"][0], per_pulse))
+	check(pulse_hits.size() == pulses_at.size() and pulse_hits.all(func(e: Dictionary) -> bool: return e["ints"][0] == h and e["ints"][1] == HK_TOXIC),
+		"pool: each pulse costs %.2f (damage %d x %.2f), kind toxic, from the doctor (%d pulses)" % [per_pulse, int(d["damage"]), float(PF["poolDpsMult"]), pulse_hits.size()])
+	var gone := of(log, EV_ZONE_GONE, zid)
+	check(gone.size() == 1 and int(gone[0]["tick"]) == gone_at, "pool: and it is gone on tick %d, %d ticks (%.0f s) after the flask" % [gone_at, gone_at - ks, pool_s])
+	# A pool pulses for every target in its reach (radius + 0.45 = 2.25 m from the aim), a direct hit only within the ring (1.8 m): a hero 2.2 m off is pulsed and not struck, one 2.3 m off is left alone.
+	var e := make(522)
+	var a := hero(e, Vector2(6, 0))
+	var near := hero(e, Vector2(6.0 + r + 0.4, 0))
+	var wide := hero(e, Vector2(6.0 + r + 0.5, 0))
+	var did := spawn_doctor(e, Vector2(0, 0))
+	var el := []
+	for i in 900:
+		run(e, 1, el)
+		if not of(el, EV_TELEGRAPH, did, TELL_FLASK).is_empty():
+			break
+	silence(e, did)
+	e.set_external(a, Vector2(40, 40), true)        # the target steps far away: only the pool is left to meet
+	var rest := []
+	run(e, to_reach(windup) + 130, rest)
+	var near_hits := of(rest, EV_HIT, did).filter(func(x: Dictionary) -> bool: return x["ints"][0] == near)
+	var wide_hits := of(rest, EV_HIT, did).filter(func(x: Dictionary) -> bool: return x["ints"][0] == wide)
+	check(near_hits.size() == 2 and near_hits.all(func(x: Dictionary) -> bool: return is_equal_approx(x["floats"][0], per_pulse)) and wide_hits.is_empty() and of(rest, EV_HIT, did).filter(func(x: Dictionary) -> bool: return x["ints"][0] == a).is_empty(),
+		"pool: a hero %.1f m off the aim takes the pulses (%d) and not the blow, one %.1f m off neither: the pool reaches %.2f m, the ring %.1f" % [r + 0.4, near_hits.size(), r + 0.5, r + 0.45, r])
+
+
+## An elite doctor winds up x0.85, cools down x0.8, and its pool is its own (stronger) damage x poolDpsMult; a fallen one leaves a toxic corpse (which bursts into a pool of its own after 5 s).
+func plague_corpse_and_elite() -> void:
+	var d := def("plague_doctor")
+	var windup := float(d["windupMs"]) / 1000.0 * ELITE_WINDUP
+	var cooldown := float(d["cooldownMs"]) / 1000.0 * ELITE_COOLDOWN
+	var el: Dictionary = content["ELITE"]
+	var c := make(531)
+	var h := hero(c, Vector2(6, 0))
+	var id := spawn_doctor(c, Vector2(0, 0), 1, 1.0, 1.0, true)
+	var edmg := float(d["damage"]) * float(el["damageMult"])
+	var log := []
+	run(c, 700, log)
+	var tell := of(log, EV_TELEGRAPH, id, TELL_FLASK)
+	check(tell.size() >= 2 and is_equal_approx(tell[0]["floats"][5], windup), "elite doctor: the flask's wind-up is x%.2f (%.3f s)" % [ELITE_WINDUP, windup])
+	var ks := int(tell[0]["tick"]) + to_reach(windup)
+	check(tell.size() >= 2 and int(tell[1]["tick"]) == ks + to_zero(cooldown), "elite doctor: the next flask a cooldown of x%.1f (%.2f s) after the blow" % [ELITE_COOLDOWN, cooldown])
+	var hit := of(log, EV_HIT, id)
+	check(not hit.is_empty() and is_equal_approx(hit[0]["floats"][0], edmg) and hit[0]["ints"][0] == h, "elite doctor: the blow is its own damage (x%.1f = %.1f)" % [float(el["damageMult"]), edmg])
+	var pulse := hit.filter(func(e: Dictionary) -> bool: return is_equal_approx(e["floats"][0], edmg * float(PF["poolDpsMult"])))
+	check(not pulse.is_empty(), "elite doctor: and its pool pulses for %.2f" % (edmg * float(PF["poolDpsMult"])))
+	# The corpses: a doctor's is toxic, the seraph's resonant, the flagellant's normal.
+	for trial in [["plague_doctor", CK_TOXIC], ["seraph", CK_RESONANT], ["flagellant", 0]]:
+		var e := make(532)
+		var he := hero(e, FAR)
+		var bid: int = e.spawn_enemy(String(trial[0]), Vector2(0, 0), 1, 1.0, 1.0, false, CLOISTER, false)
+		e.damage(bid, 1.0e6, he, false)
+		var added := of(events(e), EV_CORPSE_ADDED)
+		check(added.size() == 1 and added[0]["ints"][0] == int(trial[1]) and e.def_name(added[0]["ints"][1]) == String(trial[0]), "%s: it falls into a corpse of kind %d (%s in the def)" % [trial[0], int(trial[1]), String(def(String(trial[0]))["corpse"])])
+		if trial[0] == "plague_doctor":
+			var lg := []
+			run(e, 5 * 60 + 30, lg)
+			var burst := of(lg, EV_ZONE)
+			check(burst.size() == 1 and burst[0]["ints"][0] == ZONE_TOXIC and burst[0]["ints"][1] == 0, "plague doctor: its corpse bursts after 5 s into a toxic pool of its own (no source)")
+
+
+# ------------------------------------------------------------------------------------------------------------------ the flagellant
+
+## Ticks until the swing a flagellant begins with `cd0` on the clock, when frenzy set in after tick `onset` (blows hurry x rate from the next tick on): the cooldown loses DT a tick, DT x rate after.
+func swing_start(cd0: float, onset: int, rate: float) -> int:
+	var v := cd0
+	var t := 0
+	while v > 0.0:
+		t += 1
+		v -= DT * (rate if t > onset else 1.0)
+	return t
+
+
+## Frenzy (the def's `frenzy`, the status set's rule): below FRENZY.atFrac of its health (strictly) the Flagellant has the status `frenzy` for good, x1.45 feet and x1.6 blows; the status set checks it
+## at its own 0.1 s step.
+func flagellant_frenzy() -> void:
+	var c := make(541)
+	hero(c, FAR)
+	var id: int = c.spawn_enemy("flagellant", Vector2(0, 0), 1, 1.0, 1.0, false, CLOISTER, false)
+	var max_hp := float(c.enemy_info(id)["max_hp"])
+	var log := []
+	check(max_hp == float(def("flagellant")["hp"]), "frenzy: the flagellant has %.0f health" % max_hp)
+	c.damage(id, max_hp * float(FR["atFrac"]), 0, false)        # exactly half: not below it
+	run(c, 30, log)
+	check(float(c.enemy_info(id)["hp"]) == max_hp * float(FR["atFrac"]) and c.status_stacks(id, "frenzy") == 0.0 and of(log, EV_STATUS_CHANGED, id).is_empty()
+		and float(c.enemy_info(id)["speed_mult"]) == 1.0 and float(c.enemy_info(id)["attack_rate_mult"]) == 1.0, "frenzy: at exactly half health (%.0f) it is calm" % float(c.enemy_info(id)["hp"]))
+	c.damage(id, 0.01, 0, false)
+	var t0 := tick
+	drain(c, log)
+	run(c, 8, log)
+	var ch := of(log, EV_STATUS_CHANGED, id)
+	check(ch.size() == 1 and first_tick(ch) > t0 and first_tick(ch) <= t0 + 7 and c.status_stacks(id, "frenzy") == 1.0, "frenzy: a hair below half it is frenzied within one status step (0.1 s: tick %d, %d ticks after the blow)" % [first_tick(ch), first_tick(ch) - t0])
+	check(is_equal_approx(float(c.enemy_info(id)["speed_mult"]), float(FR["moveMult"])) and is_equal_approx(float(c.enemy_info(id)["attack_rate_mult"]), float(FR["attackRateMult"])),
+		"frenzy: x%.2f feet and x%.1f blows" % [float(FR["moveMult"]), float(FR["attackRateMult"])])
+	run(c, 20 * 60, log)
+	check(c.status_stacks(id, "frenzy") == 1.0 and of(log, EV_STATUS_EXPIRED, id).is_empty(), "frenzy: it does not run out")
+	# An elite's half is half of its own (larger) health.
+	var e := make(542)
+	hero(e, FAR)
+	var eid: int = e.spawn_enemy("flagellant", Vector2(0, 0), 1, 1.0, 1.0, true, CLOISTER, false)
+	var emax := float(e.enemy_info(eid)["max_hp"])
+	e.damage(eid, emax * 0.5 - 1.0, 0, false)     # one hit point over half
+	run(e, 20, [])
+	check(e.status_stacks(eid, "frenzy") == 0.0, "frenzy: an elite at %.1f of %.1f is calm" % [float(e.enemy_info(eid)["hp"]), emax])
+	e.damage(eid, 1.5, 0, false)
+	run(e, 20, [])
+	check(e.status_stacks(eid, "frenzy") == 1.0, "frenzy: and at %.1f it is frenzied (half is %.1f)" % [float(e.enemy_info(eid)["hp"]), emax * 0.5])
+	# The feet: a frenzied body closes in at x1.45, a calm one at its own speed.
+	for trial in [[0.0, 1.0], [0.6, float(FR["moveMult"])]]:
+		var w := make(543)
+		hero(w, Vector2(14, 0))
+		var wid: int = w.spawn_enemy("flagellant", Vector2(0, 0), 1, 1.0, 1.0, false, CLOISTER, false)
+		if trial[0] > 0.0:
+			wound(w, wid, float(trial[0]))
+		var spd := float(w.enemy_info(wid)["speed"])
+		var xs := []
+		var wl := []
+		for i in 100:
+			run(w, 1, wl)
+			xs.append(Vector2(w.enemy_info(wid)["pos"]).x)
+		var ok := true
+		for i in range(30, 90):
+			ok = ok and absf((xs[i + 1] - xs[i]) - spd * float(trial[1]) * DT) < 2e-4
+		check(ok, "frenzy: %s it walks at x%.2f its speed (%.2f m/s)" % ["wounded" if trial[0] > 0.0 else "calm", float(trial[1]), spd * float(trial[1])])
+
+
+## The blows: a melee body of 12 damage, a 0.38 s wind-up and 1.1 s cooldown from the def; frenzy lets the cooldown run x1.6 as fast (the next swing begins a cooldown at that rate after the
+## blow), the wind-up and the recovery are as they were.
+func flagellant_blows() -> void:
+	var d := def("flagellant")
+	var windup := float(d["windupMs"]) / 1000.0
+	var cooldown := float(d["cooldownMs"]) / 1000.0
+	for frenzied in [false, true]:
+		var rate := float(FR["attackRateMult"]) if frenzied else 1.0
+		var c := make(551)
+		var h := hero(c, Vector2(1.0, 0))
+		var id: int = c.spawn_enemy("flagellant", Vector2(0, 0), 1, 1.0, 1.0, false, CLOISTER, false)
+		if frenzied:
+			wound(c, id, 0.6)
+		var cd0 := float(c.enemy_info(id)["attack_cd"])
+		var log := []
+		run(c, 900, log)
+		var hits := of(log, EV_HIT, id)
+		var att := of(log, EV_ATTACK, id)
+		check(hits.size() >= 5 and att.size() >= 5 and of(log, EV_TELEGRAPH, id).is_empty(), "%s flagellant: five blows, and a plain swing has no telegraph (%d)" % ["frenzied" if frenzied else "calm", hits.size()])
+		if hits.size() < 5:
+			continue
+		var onset := first_tick(of(log, EV_STATUS_CHANGED, id)) if frenzied else 0
+		var k0 := swing_start(cd0, onset, rate)
+		check(first_tick(att) == k0 and att[0]["ints"][0] == 0 and is_equal_approx(att[0]["floats"][2], windup), "%s flagellant: the first swing begins on tick %d (the cooldown, hurried from tick %d), %.2f s wind-up" % ["frenzied" if frenzied else "calm", k0, onset + 1, windup])
+		var ks := k0 + to_reach(windup)
+		var ok: bool = int(hits[0]["tick"]) == ks and hits[0]["ints"][0] == h and hits[0]["ints"][1] == 0 and hits[0]["floats"][0] == float(d["damage"])
+		var gap := to_zero_rate(cooldown, rate) + to_reach(windup)
+		for i in range(1, 5):
+			ok = ok and int(hits[i]["tick"]) - int(hits[i - 1]["tick"]) == gap
+		check(ok, "%s flagellant: a blow for %d on tick %d, then one every %d ticks (a cooldown of %.1f s at x%.1f = %d ticks, and the %.2f s wind-up)" % ["frenzied" if frenzied else "calm", int(d["damage"]), ks, gap, cooldown, rate, to_zero_rate(cooldown, rate), windup])
+
+
+# ------------------------------------------------------------------------------------------------------------------ the wire
+
+## A guest sees the flask (its ring derived from the snapshot's ATTACK edge, its pool and cue as events), the seraph's curse, the ward's cues and blessings, and the frenzy; the data the two
+## sides must share include the seraph's ward and the flask's radius.
+func cloister_on_the_wire() -> void:
+	# The flask: telegraph, pool, cue.
+	var d := def("plague_doctor")
+	var windup := float(d["windupMs"]) / 1000.0
+	var r := float(PF["radius"])
+	var host := make(601)
+	host.set_replication(true)
+	hero(host, Vector2(6, 0))
+	var id := spawn_doctor(host, Vector2(0, 0), 3, 2.0, 1.5)
+	var guest := puppet()
+	var hl := []
+	var gl := []
+	var t := join(host, guest, hl, gl)
+	var k0 := to_zero(float(host.enemy_info(id)["attack_cd"]))
+	t = lockstep(host, guest, hl, gl, t, k0 + to_reach(windup) + 150)
+	var ht := of(hl, EV_TELEGRAPH, id, TELL_FLASK)
+	var gt := of(gl, EV_TELEGRAPH, id, TELL_FLASK)
+	check(ht.size() == 1 and gt.size() == 1, "wire: the guest sees the flask's telegraph once (host %d, guest %d)" % [ht.size(), gt.size()])
+	if gt.size() == 1:
+		var f: PackedFloat32Array = gt[0]["floats"]
+		check(absf(f[2] - 6.0) < 0.02 and absf(f[3]) < 0.02 and is_equal_approx(f[4], r) and f[5] >= 0.05 and f[5] <= windup + 1e-4, "wire: aimed at the target, %.1f m wide, for what is left of the %.1f s (%.2f s)" % [r, windup, f[5]])
+		check(int(gt[0]["tick"]) - int(ht[0]["tick"]) <= 6, "wire: within two snapshots of the host's (%d ticks later)" % (int(gt[0]["tick"]) - int(ht[0]["tick"])))
+	check(of(gl, EV_ATTACK, id).size() == 1 and of(gl, EV_ATTACK, id)[0]["ints"][0] == BLOW_FLASK, "wire: and its swing is a flask on the guest")
+	var hz := of(hl, EV_ZONE)
+	var gz := of(gl, EV_ZONE)
+	check(hz.size() == 1 and gz.size() == 1 and gz[0]["ints"][0] == ZONE_TOXIC and gz[0]["ints"][1] == id and absf(gz[0]["floats"][0] - 6.0) < 1e-4 and is_equal_approx(gz[0]["floats"][2], r),
+		"wire: the pool reaches the guest once, toxic, at the aim, with the doctor as its source")
+	check(of(gl, EV_ZONE_PULSE).size() == of(hl, EV_ZONE_PULSE).size() and of(gl, EV_ZONE_PULSE).size() >= 2 and of(gl, EV_ZONE_GONE).size() == of(hl, EV_ZONE_GONE).size(), "wire: and its pulses and its end (%d pulses)" % of(gl, EV_ZONE_PULSE).size())
+	check(of(gl, EV_CUE, id, CUE_FLASK).size() == 1 and of(hl, EV_CUE, id, CUE_FLASK).size() == 1, "wire: and the flask's cue")
+	check(of(hl, EV_HIT, id).size() >= 1 and of(gl, EV_HIT).is_empty(), "wire: the blow on the hero is the host's alone")
+	# The seraph's curse reaches the guest as a curse.
+	var s := make(602)
+	s.set_replication(true)
+	hero(s, Vector2(5, 0))
+	var sid := spawn_seraph(s, Vector2(0, 0), 2)
+	var sg := puppet()
+	var sl := []
+	var sgl := []
+	t = join(s, sg, sl, sgl)
+	t = lockstep(s, sg, sl, sgl, t, to_zero(float(s.enemy_info(sid)["attack_cd"])) + 12)
+	var cg := of(sgl, EV_TELEGRAPH, sid, TELL_CURSE)
+	check(cg.size() == 1 and of(sl, EV_TELEGRAPH, sid, TELL_CURSE).size() == 1 and absf(cg[0]["floats"][2] - 5.0) < 0.02 and of(sgl, EV_ATTACK, sid)[0]["ints"][0] == BLOW_CURSE and sg.enemy_info(sid).get("def", "") == "seraph",
+		"wire: the seraph's curse reaches the guest as a curse ring on the target")
+	# The ward: the cues and the blessings.
+	var w := make(603)
+	w.set_replication(true)
+	hero(w, FAR)
+	var wid := spawn_seraph(w, Vector2(0, 0))
+	var three := [ally(w, Vector2(3, 0), 0.5), ally(w, Vector2(-3, 0), 0.3), ally(w, Vector2(0, 3), 0.1)]
+	var wg := puppet()
+	var wl := []
+	var wgl := []
+	t = join(w, wg, wl, wgl)
+	t = lockstep(w, wg, wl, wgl, t, ward_ticks(float(w.enemy_info(wid)["attack_cd"]), float(def("seraph")["cooldownMs"]) / 1000.0, 1)[0] + 12)
+	var hc := of(wl, EV_CUE, wid, CUE_SANCTIFY)
+	var gc := of(wgl, EV_CUE, wid, CUE_SANCTIFY)
+	check(hc.size() == 3 and gc.size() == 3, "wire: the ward's three cues reach the guest once each (host %d, guest %d)" % [hc.size(), gc.size()])
+	var same := gc.size() == 3
+	for k in gc.size():
+		same = same and absf(gc[k]["floats"][0] - hc[k]["floats"][0]) < 1e-3 and absf(gc[k]["floats"][1] - hc[k]["floats"][1]) < 1e-3
+	check(same, "wire: in the host's order, at the same places")
+	var on_guest := three.all(func(i: int) -> bool: return wg.status_stacks(i, "sanctified") == 1.0 and is_equal_approx(float(wg.enemy_info(i)["taken_mult"]), float(statuses["SANCTIFIED"]["damageTakenMult"])))
+	check(on_guest and wg.status_stacks(wid, "sanctified") == 0.0, "wire: the three blessed bodies carry the status on the guest too, with its multiplier; the seraph does not")
+	# The frenzy.
+	var fz := make(604)
+	fz.set_replication(true)
+	hero(fz, FAR)
+	var fid: int = fz.spawn_enemy("flagellant", Vector2(0, 0), 1, 1.0, 1.0, false, CLOISTER, false)
+	var fg := puppet()
+	var fl := []
+	var fgl := []
+	t = join(fz, fg, fl, fgl)
+	wound(fz, fid, 0.6)
+	t = lockstep(fz, fg, fl, fgl, t, t + 30)
+	check(fz.status_stacks(fid, "frenzy") == 1.0 and fg.status_stacks(fid, "frenzy") == 1.0 and is_equal_approx(float(fg.enemy_info(fid)["speed_mult"]), float(FR["moveMult"]))
+		and is_equal_approx(float(fg.enemy_info(fid)["attack_rate_mult"]), float(FR["attackRateMult"])), "wire: the frenzy reaches the guest, with its factors")
+	# A guest that does not share the data refuses the host's messages: the seraph's ward, the flask's radius, the doctor's blow.
+	for change in [["seraph", "ward"], ["plague_doctor", "flask radius"], ["plague_doctor", "attack"]]:
+		var odd: RefCounted = ClassDB.instantiate("DmCore")
+		var defs: Dictionary = content["ENEMIES"].duplicate(true)
+		var tun_content: Dictionary = content.duplicate(true)
+		match String(change[1]):
+			"ward":
+				defs["seraph"].erase("ward")
+			"flask radius":
+				tun_content["PLAGUE_FLASK"]["radius"] = 2.4
+			"attack":
+				defs["plague_doctor"]["attack"] = "curse"
+		odd.load_enemy_defs(defs)
+		odd.load_tuning(tun_content)
+		odd.load_status_defs(DmStatusRules.build(DmCoreData.json(godot_dir.path_join("data/content/abilities.json")), statuses, content))
+		odd.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
+		odd.set_puppet(true)
+		check(not odd.apply_snapshot(w.snapshot(900)) and "data" in str(odd.replication_error()), "wire: a guest with another %s of the %s refuses the host's snapshot (%s)" % [change[1], change[0], odd.replication_error()])
+
+
+# ------------------------------------------------------------------------------------------------------------------ the rosters and a replay
+
+## The whole rosters of the Bell Sanctum, the Bone Coliseum and the Plague Cloister (their enemy tables and the Sanctum's procession themes, leads included) are made by the core, the models are
+## drawn by the crowd, and a seeded run replays event for event.
+func cloister_rosters_and_a_replay() -> void:
+	var areas := DmCoreData.json(godot_dir.path_join("data/content/areas.json"))
+	for area in [SANCTUM, COLISEUM, CLOISTER]:
+		var ids := {}
+		for e in areas["AREAS"][area]["enemies"]:
+			ids[String(e["id"])] = true
+		for th in content["WAVE_THEMES"].get(area, []):
+			for e in th["roster"]:
+				ids[String(e["id"])] = true
+			if th.get("lead") != null:
+				ids[String(th["lead"])] = true
+		var missing := []
+		for id: String in ids:
+			if not DmWaveDirector.runs_on_core(id):
+				missing.append(id)
+		check(missing.is_empty() and ids.size() >= 5, "roster: every kind of the %s's waves and processions runs on the core (%d kinds, missing %s)" % [area, ids.size(), str(missing)])
+		if area == SANCTUM or area == COLISEUM:
+			check(ids.has("seraph"), "roster: the %s has the Weeping Seraph" % area)
+		else:
+			check(ids.has("plague_doctor") and ids.has("flagellant"), "roster: the %s has the Plague Doctor and the Flagellant" % area)
+	var looks := DmCoreData.json("res://crowd/crowd_looks.json")
+	var drawn := true
+	for id in CLOISTER_KINDS:
+		var slug := String(looks["enemy_model"].get(id, ""))
+		drawn = drawn and slug != "" and FileAccess.file_exists("res://assets/slice/models/%s/character.glb" % slug)
+	check(drawn and looks["casters"].has("seraph") and looks["casters"].has("plague_doctor") and not looks["casters"].has("flagellant") and float(def("seraph")["flying"]) == 0.7 and looks["wings"].has("weeping_seraph"),
+		"roster: the crowd draws them (their models; the seraph and the doctor as casters, the seraph hovering at %.1f m with its wings)" % float(def("seraph")["flying"]))
+	var dir := DmWaveDirector.new()
+	check(CLOISTER_KINDS.all(func(k: String) -> bool: return dir.makes(k)) and not dir.makes("pyre_priest_that_does_not_exist"), "roster: the director makes all three")
+	dir.free()
+	var logs := []
+	for round in 2:
+		var c := make(611)
+		var h1 := hero(c, Vector2(0, 0))
+		hero(c, Vector2(2, -3))
+		thrall(c, h1, Vector2(-2, 2), 400.0)
+		spawn_seraph(c, Vector2(9, 3), 4, 1.5, 1.2)
+		spawn_seraph(c, Vector2(-10, 4), 4, 1.5, 1.2, true)
+		spawn_doctor(c, Vector2(-9, -8), 4, 1.5, 1.2)
+		spawn_doctor(c, Vector2(8, -9), 4, 1.5, 1.2, true)
+		for i in 3:
+			c.spawn_enemy("flagellant", Vector2(12 - i * 6, 12), 4, 1.5, 1.2, i == 2, CLOISTER, false)
+		for i in 6:
+			c.spawn_enemy("robber" if i % 2 == 0 else "hound", Vector2(12 - i * 4, 13), 4, 1.5, 1.2, false, SANCTUM, false)
+		var rec := PackedInt32Array()
+		var recf := PackedFloat32Array()
+		for i in 1800:
+			c.step(DT)
+			var raw: Array = c.take_events()
+			rec.append_array(raw[0])
+			recf.append_array(raw[1])
+			if i == 400:
+				for id in c.enemy_ids():
+					if c.enemy_info(id)["def"] == "robber":
+						c.damage(id, 25.0, 0, true)
+					elif c.enemy_info(id)["def"] == "flagellant":
+						c.damage(id, 60.0, 0, true)
+		logs.append([rec, recf, c.enemy_count(), c.corpse_count()])
+	check(logs[0][0] == logs[1][0] and logs[0][1] == logs[1][1] and logs[0][0].size() > 300, "replay: a seeded fight of the seraphs, the doctors, the flagellants and a crowd replays event for event (%d ints)" % logs[0][0].size())

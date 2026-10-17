@@ -95,7 +95,7 @@ slice/models/props/prop_node_ore_seam*
 slice/models/props/prop_node_ore_spent*
 slice/models/props/prop_node_stump*
 
-# ---- Crowd creatures (client/crowd/README.md): models the vertex-animation baker reads. The Graves roster (crowd_looks.json enemy_model), then the Ossuary's and the Nave's:
+# ---- Crowd creatures (client/crowd/README.md): models the vertex-animation baker reads. The Graves roster (crowd_looks.json enemy_model), then the Ossuary's, the Nave's and the Cloister's:
 slice/models/grave_robber
 slice/models/bone_hound
 slice/models/penitent
@@ -110,6 +110,10 @@ slice/models/lich_acolyte
 slice/models/belfry_gargoyle
 slice/models/bell_templar
 slice/models/props/choir_wraith*
+# the Bell Sanctum's and Plague Cloister's three (the weeping seraph, the plague doctor and the flagellant; the rest of their rosters is the Graves', the Ossuary's and the Nave's)
+slice/models/weeping_seraph
+slice/models/plague_doctor
+slice/models/flagellant
 slice/models/props/shroud_moth*
 slice/models/props/tithe_bat*
 slice/models/props/wraith_thrall*   # the Mourner's spectral thralls (an unrigged prop, like the moth)

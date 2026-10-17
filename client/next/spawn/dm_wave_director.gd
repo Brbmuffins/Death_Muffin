@@ -14,10 +14,11 @@ signal area_followed(id: String)        ## host: the director moved to the comba
 signal surge_event(ev: Dictionary)      ## host: {t: surge | surgeCleared | surgeFailed, area, x, z, ...} (Grave Surges are not ported yet: never emitted)
 
 ## The defs the core's enemy brain runs (today: "has a scene at res://enemies/<id>.tscn"): the Hollow Graves' roster, the rat of the kennel
-## procession and the risen, the Ossuary's golem and deacon (so the whole Ossuary roster) and the Drowned Nave's censer, acolyte, gargoyle, templar and wraith
-## (so the whole Nave roster). The other areas' kinds come with the core items that run them; a roster entry outside this list is skipped like a kind without
-## a scene was.
-const CORE_KINDS: Array[String] = ["robber", "hound", "penitent", "sac", "moth", "bat", "ghoul", "rat", "risen", "golem", "deacon", "censer", "acolyte", "gargoyle", "templar", "wraith"]
+## procession and the risen, the Ossuary's golem and deacon (so the whole Ossuary roster), the Drowned Nave's censer, acolyte, gargoyle, templar and wraith
+## (so the whole Nave roster) and the Weeping Seraph, Flagellant and Plague Doctor (so the Bell Sanctum, the Bone Coliseum and the Plague Cloister run their whole rosters).
+## The other areas' kinds come with the core items that run them; a roster entry outside this list is skipped like a kind without a scene was.
+const CORE_KINDS: Array[String] = ["robber", "hound", "penitent", "sac", "moth", "bat", "ghoul", "rat", "risen", "golem", "deacon", "censer", "acolyte", "gargoyle", "templar", "wraith",
+	"seraph", "flagellant", "plague_doctor"]
 const EMPTY_CLEAR_S := 15.0             ## no hero in the area this long -> the area's queued spawns are dropped
 const SPAWN_MIN := DmSimConsts.AGGRO_RANGE + 3.0   ## owner 2026-10-07: waves climb in outside aggro so the player sees them coming (+3: a group fans out 2.1 m)
 const SPAWN_MAX := 30.0                 ## farthest spawn distance (m)

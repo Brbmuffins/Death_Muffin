@@ -11,7 +11,7 @@ The combat core writes one buffer per frame; the GPU does the rest in the vertex
   plays, skins every vertex on the CPU, and writes the files below. Headless, a few seconds per model.
 - `client/crowd/crowd_vat.gdshader`: the material. `client/crowd/crowd_vat_data.gd` (`CrowdVatData`): what a baked model loads as, plus the helpers that
   build its material and MultiMesh and pack the per-instance data.
-- `bash client/tools/bake_crowd.sh [enemy id or model slug ...]` (default: the Graves roster `robber hound penitent ghoul rat moth bat`, the Ossuary's `deacon bone_golem`, the Drowned Nave's `censer acolyte gargoyle templar wraith` (the wraith, an unrigged prop, is a still pose of a few KB), and the thralls the rites raise: `skeleton_thrall thrall_legionnaire thrall_sentinel thrall_plague carrion_sac bone_colossus`, 7 to 23 MB each): runs the baker at low priority.
+- `bash client/tools/bake_crowd.sh [enemy id or model slug ...]` (default: the Graves roster `robber hound penitent ghoul rat moth bat`, the Ossuary's `deacon bone_golem`, the Drowned Nave's `censer acolyte gargoyle templar wraith` (the wraith, an unrigged prop, is a still pose of a few KB), the Sanctum's and Cloister's `seraph flagellant plague_doctor`, and the thralls the rites raise: `skeleton_thrall thrall_legionnaire thrall_sentinel thrall_plague carrion_sac bone_colossus`, 7 to 23 MB each): runs the baker at low priority.
   Output: `client/assets/crowd/baked/<model slug>/`.
 - `client/tests/crowd_bake.gd`: the headless proof (below). `client/tests/crowd_smoke.gd`: the one rendered look (software GL).
 - `client/crowd/crowd_view.gd` (`CrowdView`): the node that draws the combat core's creatures, with `client/crowd/crowd_looks.json` (which model each enemy
@@ -29,11 +29,12 @@ forward, before the enemy's own `scale`. Clips are the ones `DmCreature` can pla
 clips with: per clip the whole source length, the second the blow lands and, for a death, the second the body comes to rest; the model row's stride),
 `pos.res`, `nrm.res` and `mesh_lod<N>.res`.
 
-**Unrigged models** (props today's creature shader animates: the moth, the bat, the choir wraith, the seraph; `godot/game/dm_creature_mat.gd` wings) have no
+**Unrigged models** (props today's creature shader animates: the moth, the bat, the choir wraith; `godot/game/dm_creature_mat.gd` wings) have no
 skeleton to pose. They bake one looping clip, `fly`: the shader's wing beat (`crowd_looks.json` `wings`, today's `DmEntityViews.WINGS`) written frame by frame,
 `CrowdBaker.FLAP_FRAMES` frames over one beat (2 pi / speed seconds), positions and normals; every role plays it (today the shader keeps beating through a
 fall; the body layer does the rest). A model without wings bakes a still pose. The crowd starts each body at its own point of the loop, as today's
-per-creature phase did.
+per-creature phase did. The Weeping Seraph is a rigged character (idle, cast, hurt, death) that today's shader also gives a wing beat (`wings` in `crowd_looks.json`
+lists it): the baker poses its clips and does not add the beat, so it hovers with still wings (native/README.md "Differences").
 
 - **Positions** `pos.res`: `ImageTexture`, RGBAH (half floats, xyz in creature space). **Normals** `nrm.res`: RG8, octahedral. Both saved as binary `.res`
   of raw pixels: they sample the same on Forward+ and Mobile, need no import step, and are never VRAM-compressed (that would corrupt the numbers).

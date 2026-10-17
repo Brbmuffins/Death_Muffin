@@ -15,6 +15,9 @@ extends SceneTree
 ##   - the Drowned Nave: its seal breaks with the Ossuary's kills, the director makes its whole roster (the gargoyle leads the Belfry, the acolyte the Unbound), and in the game scene
 ##     the censer's incense hastes the bodies near it and its cloud is drawn, the wraith's scream and the gargoyle's dive are announced and land, the templar's shield glances, and an
 ##     acolyte that sees the hero's thrall killed claims the fall: Unbind's cue and thread, a Risen of the acolyte's level, its reach ring while a thrall stands in it;
+##   - the Bell Sanctum, the Bone Coliseum and the Plague Cloister: their seals break (the Nave's and the Sanctum's kills; the Coliseum's broke with the Ossuary's), the director makes each
+##     one's whole roster (the Sanctum's processions lead with a seraph, a golem and a templar), and in the game scene the seraph's ward blesses its neighbour (its cue, the status, the counsel
+##     hears the Sanctify), the plague doctor's flask is announced and lands with its pool, and a wounded flagellant is frenzied (the status, the blood motes);
 ##   - ZERO script errors or engine errors in the log.
 ## Run: godot --headless --fixed-fps 60 --path client --script res://tests/world.gd
 
@@ -90,6 +93,7 @@ func _main() -> void:
 	await _getting_up()
 	await _the_ossuary()
 	await _the_nave()
+	await _the_late_areas()
 	for e in errlog.errors:
 		printerr("ERROR in log: " + e)
 	check(errlog.errors.is_empty(), "no script or engine errors in the log (%d)" % errlog.errors.size())
@@ -441,3 +445,110 @@ func _the_nave() -> void:
 	for id in g.core_host.core.enemy_ids():
 		g.core_host.remove_enemy(id)
 	await ticks(2)
+
+
+# ------------------------------------------------------------------------------------------------------------------ the Sanctum's, the Coliseum's and the Cloister's kinds
+
+func _the_late_areas() -> void:
+	var prog := g.ui_host.prog
+	# The Nave's kills break the Sanctum's seal and the Sanctum's the Cloister's; the Coliseum's broke with the Ossuary's (_the_nave).
+	for area in ["sanctum", "cloister"]:
+		var u: Dictionary = DmContent.area(area)["unlock"]
+		prog.local["areaKills"][String(u["area"])] = prog.unlock_kills(float(u["kills"]))
+		var broken: Array = g.chapterhouse.check_seals()
+		check(broken.has(area), "the %s's %d kills break the %s's seal (%s)" % [String(u["area"]), prog.unlock_kills(float(u["kills"])), area, str(broken)])
+	check(["coliseum", "sanctum", "cloister"].all(func(a: String) -> bool: return prog.really_unlocked(a)), "the Coliseum, the Sanctum and the Cloister are open")
+	# The director makes each one's whole roster, the Sanctum's processions lead with a seraph, a golem and a templar.
+	var leads := {}
+	var n := 0
+	for area in ["coliseum", "sanctum", "cloister"]:
+		g.director.configure_area(area)
+		var roster: Array = DmContent.area(area)["enemies"].map(func(e: Dictionary) -> String: return String(e["id"]))
+		var kinds: Array = g.director.kinds.map(func(k: Dictionary) -> String: return String(k["id"]))
+		check(kinds == roster, "the director makes the %s's whole roster (%s)" % [area, str(kinds)])
+		check(kinds.has("seraph") == ["coliseum", "sanctum"].has(area) and kinds.has("plague_doctor") == (area == "cloister") and kinds.has("flagellant") == (area == "cloister"),
+			"(the seraph is in the Coliseum's and the Sanctum's, the doctor and the flagellant in the Cloister's)")
+		g.director.rng.seed = 11
+		for th: Dictionary in DmSimData.WAVE_THEMES.get(area, []):
+			if th.get("lead") == null:
+				continue
+			var made_ids: Array = []
+			var made: int = g.director.spawn_group(_area_mid(area) + Vector3(3.0 + 6.0 * n, 0, 0), [hero], 1, String(th["lead"]), th["roster"], made_ids)
+			var info: Dictionary = g.core_host.enemy_info(int(made_ids[0])) if not made_ids.is_empty() else {}
+			leads[String(th["lead"])] = [made, String(info.get("def", "")), String(info.get("area", ""))]
+			n += 1
+	check(leads.get("seraph", []) == [1, "seraph", "sanctum"] and leads.get("golem", []).slice(1, 3) == ["golem", "sanctum"] and leads.get("templar", []).slice(1, 3) == ["templar", "sanctum"],
+		"Vespers leads with a seraph, the Procession with a golem and the Bell-Sworn March with a templar, made in the Sanctum (%s)" % str(leads))
+	for id in g.core_host.core.enemy_ids():
+		g.core_host.remove_enemy(id)
+	# The waystone takes him to the Sanctum.
+	_break_seal("sanctum")
+	g.chapterhouse.travel("sanctum")
+	await ticks(3)
+	check(g.area_id == "sanctum", "the waystone takes him to the Sanctum, whose seal is broken (%s)" % g.area_id)
+	var host := g.core_host
+	var hp: Vector3 = hero.position
+	var tells: Array = []
+	var cues: Array = []
+	var zones: Array = []
+	host.telegraph.connect(func(_id: int, tell: int, _fx: float, _fz: float, _ax: float, _az: float, _r: float, _s: float) -> void: tells.append(DmCoreEvents.TELLS[tell]))
+	host.cue.connect(func(_id: int, kind: int, _x: float, _z: float, _r: float) -> void: cues.append(DmCoreEvents.CUES[kind]))
+	host.zone.connect(func(_id: int, k: int, _s: int, _x: float, _z: float, _r: float, _t: float) -> void: zones.append(DmCoreEvents.ZONE_KINDS[k]))
+	hero.restore_vitals()
+	# The seraph, a dozen metres off (out of reach of its curse), with a robber beside it: the ward comes first, with the cue and the status, and the counsel hears of the Sanctify.
+	events.clear()
+	var seraph := 0
+	var friend := 0
+	for dir in [Vector3(12, 0, 0), Vector3(-12, 0, 0), Vector3(0, 0, 12), Vector3(0, 0, -12)]:
+		seraph = host.spawn_enemy("seraph", hp + dir, 1, 1.0, 1.0, false, "sanctum", false)
+		friend = host.spawn_enemy("robber", hp + dir + Vector3(2.0, 0, 0), 1, 1.0, 0.0, false, "sanctum", false)
+		await ticks(2)
+		var away := Vector2(host.enemy_info(seraph)["pos"]).distance_to(Vector2(hp.x, hp.z))
+		if away >= 10.0:
+			break
+		host.remove_enemy(seraph)
+		host.remove_enemy(friend)
+		seraph = 0
+	check(seraph != 0, "(a seraph stands 10 m or more from him)")
+	host.damage(friend, float(host.enemy_info(friend)["max_hp"]) * 0.3, hero.core_id, false)
+	var warded := await until(func() -> bool: return cues.has(&"sanctify"), 60 * 4)
+	check(warded and host.status_stacks(friend, "sanctified") == 1.0 and not tells.has(&"curse"), "the seraph's ward blesses the robber beside it before it is in reach of him: the cue, the status, no curse yet")
+	check(events.any(func(e: Array) -> bool: return e[0] == "sanctify_near"), "the counsel hears of the Sanctify (sanctify_near)")
+	for id in host.core.enemy_ids():
+		host.remove_enemy(id)
+	await ticks(2)
+	# The Cloister: the plague doctor's flask is announced and lands with its pool; a wounded flagellant is frenzied and sheds its motes.
+	_break_seal("cloister")      # (the character's progress has been refreshed from the test server since: it holds the kills the server knows)
+	g.chapterhouse.travel("cloister")
+	await ticks(3)
+	check(g.area_id == "cloister", "the waystone takes him to the Cloister, whose seal is broken (%s)" % g.area_id)
+	hp = hero.position
+	hero.restore_vitals()
+	tells.clear()
+	cues.clear()
+	zones.clear()
+	var fx_before: Dictionary = g.enemy_fx.stats.duplicate()
+	var doctor: int = host.spawn_enemy("plague_doctor", hp + Vector3(-1.0, 0, -6.0), 1, 1.0, 1.0, false, "cloister", false)
+	var lands := await until(func() -> bool: return cues.has(&"flask"), 60 * 12)
+	check(lands and tells.has(&"flask") and zones.has(&"toxic"), "the plague doctor's flask was announced (a ring), landed (its cue) and left a toxic pool (%s)" % str(tells))
+	check(g.enemy_fx.stats["telegraph"] > int(fx_before["telegraph"]) and g.enemy_fx.stats["strike"] > int(fx_before["strike"]), "DmEnemyFx drew the flask's ring and its landing")
+	host.remove_enemy(doctor)
+	hero.restore_vitals()
+	var fl: int = host.spawn_enemy("flagellant", hp + Vector3(3.0, 0, -4.0), 1, 1.0, 0.0, false, "cloister", false)
+	await ticks(3)
+	var motes := int(g.enemy_fx.stats["status_mote"])
+	host.damage(fl, float(host.enemy_info(fl)["max_hp"]) * 0.6, hero.core_id, false)
+	await ticks(60)
+	check(host.status_stacks(fl, "frenzy") == 1.0 and absf(float(host.enemy_info(fl)["speed_mult"]) - 1.45) < 1e-9, "a flagellant under half health is frenzied (x1.45 feet)")
+	check(int(g.enemy_fx.stats["status_mote"]) > motes, "and sheds blood motes near him (%d)" % (int(g.enemy_fx.stats["status_mote"]) - motes))
+	for id in host.core.enemy_ids():
+		host.remove_enemy(id)
+	await ticks(2)
+
+
+## Breaks an area's seal by the kills it asks of the area before it (again, when the character's progress was refreshed since).
+func _break_seal(area: String) -> void:
+	var prog := g.ui_host.prog
+	var u: Dictionary = DmContent.area(area)["unlock"]
+	prog.local["areaKills"][String(u["area"])] = prog.unlock_kills(float(u["kills"]))
+	g.chapterhouse.check_seals()

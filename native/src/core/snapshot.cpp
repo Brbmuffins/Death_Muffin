@@ -35,7 +35,9 @@ uint32_t World::content_hash() const {
 		f.str(d.id);
 		for (const double v : { d.hp, d.damage, d.speed, d.radius, d.attack_range, d.windup_s, d.cooldown_s, d.scale, d.slam_r, double(d.blow), double(d.behavior), d.frenzy ? 1.0 : 0.0,
 					 // the Nave's kinds: what a guest draws a dive's telegraph with, and the flags that make a def the Censer, the Templar, the Acolyte or a silenceable caster
-					 d.has_dive ? d.dive_r : 0.0, d.aura ? 1.0 : 0.0, d.shield ? 1.0 : 0.0, d.unbind ? 1.0 : 0.0, d.silence_aware ? 1.0 : 0.0 }) {
+					 d.has_dive ? d.dive_r : 0.0, d.aura ? 1.0 : 0.0, d.shield ? 1.0 : 0.0, d.unbind ? 1.0 : 0.0, d.silence_aware ? 1.0 : 0.0,
+					 // the Sanctum's and Cloister's kinds: the Seraph's flag (it blesses and casts the curse)
+					 d.ward ? 1.0 : 0.0 }) {
 			f.num(v);
 		}
 	}
@@ -49,7 +51,7 @@ uint32_t World::content_hash() const {
 		f.str(n);
 	}
 	for (const double v : { tun.elite_windup, tun.elite_radius, tun.elite_damage, tun.elite_scale, tun.dust_radius, tun.burrow_erupt_r, tun.burrow_erupt_s,
-				 tun.burrow_erupt_s_graves, tun.burrow_dig_s, tun.bell_r, tun.bell_windup, tun.scream_r }) {
+				 tun.burrow_erupt_s_graves, tun.burrow_dig_s, tun.bell_r, tun.bell_windup, tun.scream_r, tun.flask_r }) {
 		f.num(v);
 	}
 	return f.h;

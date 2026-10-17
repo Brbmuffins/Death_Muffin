@@ -209,13 +209,17 @@ int64_t DmCore::load_enemy_defs(const Dictionary &p_enemies) {
 			def.behavior = dm::B_FLANK;
 		} else if (behavior == "caster") {
 			def.behavior = dm::B_CASTER;
-			def.blow = attack == "dust" ? dm::BLOW_DUST : (attack == "curse" ? dm::BLOW_CURSE : (attack == "scream" ? dm::BLOW_SCREAM : dm::BLOW_CONE));
-			def.silence_aware = attack == "curse";  // the cloister casters (DmEnemyClstCaster) walk with dm_state_clst_kite: a silenced one never starts a cast
+			def.blow = attack == "dust" ? dm::BLOW_DUST : (attack == "curse" ? dm::BLOW_CURSE : (attack == "scream" ? dm::BLOW_SCREAM : (attack == "flask" ? dm::BLOW_FLASK : dm::BLOW_CONE)));
+			def.silence_aware = attack == "curse" || attack == "flask";  // the cloister casters (DmEnemyClstCaster) walk with dm_state_clst_kite: a silenced one never starts a cast
 		} else if (behavior == "hazard") {
 			def.behavior = dm::B_HAZARD;
 			def.blow = dm::BLOW_SLAM;
-		} else if (behavior == "support" && !bool(d.get("ward", false)) && !bool(d.get("inert", false))) {
-			def.behavior = dm::B_SUPPORT;  // the Crypt Deacon: its curse is the plain blow (melee), its raise and Sanctify are the support scan. The Seraph (ward) and the Niche (inert) keep the melee default until they are ported.
+		} else if (behavior == "support" && !bool(d.get("inert", false))) {
+			def.behavior = dm::B_SUPPORT;  // the Crypt Deacon: its curse is the plain blow (melee), its raise and Sanctify are the support scan. The Niche (inert) keeps the melee default until it is ported.
+			def.ward = bool(d.get("ward", false));  // the Weeping Seraph keeps the Deacon's distance (dm_state_clst_kite.gd [0, 0.5, 4, 0.7] = dm_state_cath_support.gd), casts the curse and blesses allies (its ward, cloister.cpp)
+			if (def.ward) {
+				def.blow = dm::BLOW_CURSE;
+			}
 		}
 		def.aura = bool(d.get("aura", false));      // the Censer Bearer's incense
 		def.shield = bool(d.get("shield", false));  // the Bell-Sworn Templar's shield
@@ -276,6 +280,13 @@ void DmCore::load_tuning(const Dictionary &p_content) {
 	u.unbind_delay_s = num(ub, "delayS", u.unbind_delay_s);
 	u.unbind_cooldown_s = num(ub, "cooldownS", u.unbind_cooldown_s);
 	u.unbind_max = int32_t(num(ub, "maxAlive", u.unbind_max));
+	const Dictionary wd = p_content.get("WARD", Dictionary());
+	u.ward_range = num(wd, "range", u.ward_range);
+	u.ward_max = int32_t(num(wd, "maxTargets", u.ward_max));
+	const Dictionary pf = p_content.get("PLAGUE_FLASK", Dictionary());
+	u.flask_r = num(pf, "radius", u.flask_r);
+	u.flask_pool_s = num(pf, "poolS", u.flask_pool_s);
+	u.flask_pool_dps = num(pf, "poolDpsMult", u.flask_pool_dps);
 	const Dictionary af = p_content.get("AFFIX_TUNING", Dictionary());
 	const Dictionary bell = af.get("bellTolled", Dictionary());
 	u.bell_interval = num(bell, "intervalS", u.bell_interval);
@@ -449,6 +460,11 @@ Dictionary DmCore::tuning() const {
 	d["UNBIND.delayS"] = world.tun.unbind_delay_s;
 	d["UNBIND.cooldownS"] = world.tun.unbind_cooldown_s;
 	d["UNBIND.maxAlive"] = world.tun.unbind_max;
+	d["WARD.range"] = world.tun.ward_range;
+	d["WARD.maxTargets"] = world.tun.ward_max;
+	d["PLAGUE_FLASK.radius"] = world.tun.flask_r;
+	d["PLAGUE_FLASK.poolS"] = world.tun.flask_pool_s;
+	d["PLAGUE_FLASK.poolDpsMult"] = world.tun.flask_pool_dps;
 	return d;
 }
 
@@ -792,6 +808,7 @@ Dictionary DmCore::enemy_info(int64_t p_id) const {
 	d["aim"] = Vector2(e.aim_x, e.aim_z);
 	d["yaw"] = e.yaw;
 	d["diving"] = e.diving;
+	d["ward_t"] = e.ward_t;
 	PackedStringArray af;
 	for (int32_t k = 0; k < dm::AF_COUNT; k++) {
 		if (e.affixes & (1 << k)) {

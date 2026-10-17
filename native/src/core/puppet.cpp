@@ -180,6 +180,9 @@ void World::puppet_apply_enemy(const SnapRec &s) {
 				case BLOW_DIVE:
 					events.push(EV_TELEGRAPH, e.id, { TELL_DIVE }, { s.x, s.z, ax, az, float(d.dive_r), left });
 					break;
+				case BLOW_FLASK:
+					events.push(EV_TELEGRAPH, e.id, { TELL_FLASK }, { s.x, s.z, ax, az, float(tun.flask_r), left });
+					break;
 				default:  // a Deacon's swing is a raise or a curse (bit 5 of the record); the plain melee swing has no telegraph
 					if (d.behavior == B_SUPPORT) {
 						events.push(EV_TELEGRAPH, e.id, { e.swing_raise ? TELL_RAISE : TELL_CURSE }, { s.x, s.z, ax, az, 0.0f, left });

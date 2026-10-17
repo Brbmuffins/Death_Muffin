@@ -16,7 +16,7 @@ extends Node
 ## An affixed elite's standing tells are DmEntityViews._dress_affix / _tick_affix': per affix a ground mark that follows the drawn body (the bell's ring, the hunger's
 ## glow, the shroud's haze, the vengeful cracks) and, near the hero, its motes on the ambient tick (drool, embers, shroud smoke while the shroud is up).
 ## Near the hero, on the same ambient tick, today's status tells (_tick_alive): marrow drips while it bleeds, frost motes while chilled, a priest-gold glint while
-## sanctified, rot while withered, bone dust while fractured, bronze motes while incensed; and the fliers' and the wraith's hover motes. The bodies looked at are
+## sanctified, rot while withered, bone dust while fractured, bronze motes while incensed, blood motes while frenzied (the Flagellant under half health); and the fliers' and the wraith's hover motes. The bodies looked at are
 ## only those with a status (`status_changed`) or that fly.
 ## A body underground (a ghoul's BURROW and its eruption's wind-up) has today's dirt mound over it (`_mounds`, a node each: a few at most); a dying body raises
 ## dust where it comes to rest (the crowd says when: `DmCrowd.take_landings`); a corpse that goes plays today's puff for why, and one Corpse Explosion bursts is
@@ -25,7 +25,9 @@ extends Node
 ## status tells'), the Lich Acolyte's crimson reach ring (drawn while a thrall stands within Unbind's range) and its Unbind thread and sigil, the Templar's shield glance (a
 ## spark and a chime), the Choir Wraith's mist when it falls (it leaves no body) and the Gargoyle's dive and the wraith's scream (telegraphs of the router).
 ## Left out of this port (the ROADMAP's "Crowd looks" and "Crowd effects" items, native/README.md "Differences"): the shrouded body's fade (the crowd has no alpha yet),
-## the elite's body glow, the Pyre's and the Fen's idle motes (those defs are not on the core yet), the Flagellant's frenzy motes.
+## the elite's body glow, the Pyre's and the Fen's idle motes (those defs are not on the core yet).
+## The Weeping Seraph's blessing is the Deacon's cue (`sanctify`, a thread and a halo per ally), the Plague Doctor's flask is the router's telegraph (a rot-green ring and the lobbed
+## flask, `flask`); its toxic pool has no visual of its own, as today (today's `DmEnemyFx` draws the dust and ember zones only).
 
 const AMBIENT_S := 0.2
 const NEAR_X := 24.0               ## ambient motes only near the hero (DmEntityViews near_fx)
@@ -352,7 +354,7 @@ func _impact(s: Array) -> void:
 			var dust := fx.sp("enemy", "dust")
 			vfx.emit({"x": ax, "y": 0.4, "z": az, "count": 18, "color": dust, "spread": r2 * 0.5, "speed": 1.6, "up": 0.9, "life": 0.7, "size": 0.2, "drag": 0.5})
 			vfx.decal({"tex": "ring", "color": dust, "x": ax, "z": az, "r": r2 * 1.2, "duration": 0.45, "opacity": 0.9, "growFrom": 0.3})
-		&"cone", &"curse", &"scream":   # the casters' blows (the penitent's cone, the acolyte's curse, the wraith's scream) have no beat of their own beyond their telegraph
+		&"cone", &"curse", &"scream", &"flask":   # the casters' blows (the penitent's cone, the acolyte's curse, the wraith's scream, the plague doctor's flask) have no beat of their own beyond their telegraph
 			pass
 		_:
 			vfx.emit_smoke({"x": ax, "y": 0.3, "z": az, "count": 2, "color": 0x3a3340, "spread": 0.3, "speed": 0.8, "up": 0.3, "life": 0.5, "size": 0.6})
@@ -672,7 +674,7 @@ func _sfx(id: String, x: float, z: float) -> void:
 func warm(at: Vector3) -> void:
 	var quiet := fx.audio
 	fx.audio = null
-	for kind in [&"cone", &"slam", &"dust", &"erupt", &"ember", &"hex", &"pulse", &"hook", &"raise", &"curse", &"scream", &"dive"]:
+	for kind in [&"cone", &"slam", &"dust", &"erupt", &"ember", &"hex", &"pulse", &"hook", &"raise", &"curse", &"scream", &"dive", &"flask"]:
 		_telegraph(kind, at.x, at.z, at.x, at.z + 2.5, 0.0 if kind == &"cone" else 1.8, 0.3)
 	for id in ["vengeful_burst", "surge_eruption", "bonfire"]:   # the pyre's bursts and burning pools
 		var hb = fx.bb(id, at.x, at.z, {"scale": 0.5})
@@ -822,6 +824,9 @@ func _status_motes(id: int) -> void:
 			"incensed":
 				if randf() < AMBIENT_S * 3.0:
 					_mote(p.x, 1.2 * sc, p.z, _st("incensed", "bronze"), 0.4, 0.2, 0.6, 0.8, 0.14)
+			"frenzy":   # the Flagellant below half health sheds blood motes (DmEntityViews: hp below half, 5 a second)
+				if randf() < AMBIENT_S * 5.0:
+					_mote(p.x, 1.1, p.z, 0x9a1b2a, 0.3, 0.4, 0.4, 0.5, 0.14, 6.0)
 
 
 ## One mote through a reused option record (the emitter copies what it keeps): no dictionary is built per mote.

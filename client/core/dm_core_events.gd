@@ -46,11 +46,11 @@ const STATE_NAMES: Array[String] = ["rising", "idle", "chase", "attack", "hurt",
 enum ThrallState { RISING, IDLE, MOVE, ATTACK, DEAD }
 
 # ---- names by number (the core decodes defs, areas, thrall kinds, death reasons and corpse reasons itself; these are the fixed small enums)
-const TELLS: Array[StringName] = [&"cone", &"slam", &"dust", &"erupt", &"toll", &"raise", &"curse", &"scream", &"dive"]   ## Tell
-const CUES: Array[StringName] = [&"slam", &"erupt", &"dig_in", &"sanctify", &"shield_block", &"unbind", &"scream"]            ## Cue
+const TELLS: Array[StringName] = [&"cone", &"slam", &"dust", &"erupt", &"toll", &"raise", &"curse", &"scream", &"dive", &"flask"]   ## Tell
+const CUES: Array[StringName] = [&"slam", &"erupt", &"dig_in", &"sanctify", &"shield_block", &"unbind", &"scream", &"flask"]    ## Cue
 const ZONE_KINDS: Array[StringName] = [&"dust", &"toxic"]                                              ## ZoneKind
 const HIT_KINDS: Array[String] = ["melee", "toxic", "burn", "ember", "dust", "curse", "toll"]          ## HitKind: the sim's hurt `from`
-const BLOWS: Array[StringName] = [&"melee", &"cone", &"dust", &"slam", &"curse", &"scream", &"dive"]  ## Blow
+const BLOWS: Array[StringName] = [&"melee", &"cone", &"dust", &"slam", &"curse", &"scream", &"dive", &"flask"]  ## Blow
 const CORPSE_KINDS: Array[String] = ["normal", "swift", "resonant", "toxic", "none"]                   ## CorpseKind
 const AFFIXES: Array[String] = ["bellTolled", "hungering", "shrouded", "vengeful"]                     ## Affix: the bit order of EV_ENEMY_SPAWNED's mask
 const AFFIX_MOMENTS: Array[StringName] = [&"tell", &"toll", &"hungering", &"vengeful", &"unveil"]      ## AffixMoment

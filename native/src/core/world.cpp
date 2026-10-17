@@ -91,8 +91,8 @@ Enemy World::make_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level, do
 	e.scan_t = e.rng.next_double() * SCAN_S;
 	e.wander_heading = e.rng.next_double() * TAU;
 	e.st.acc = e.rng.next_double() * STATUS_TICK_S;  // DmStatusSet spreads a crowd's 0.1 s steps across ticks
-	if (d.behavior == B_SUPPORT) {
-		e.support_t = e.rng.next_double() * SCAN_S;  // DmEnemyDeacon._ready, after the base's rolls
+	if (d.behavior == B_SUPPORT && !d.ward) {
+		e.support_t = e.rng.next_double() * SCAN_S;  // DmEnemyDeacon._ready, after the base's rolls (the Seraph rolls nothing more)
 	}
 	if (d.unbind) {  // DmEnemyClstAcolyte._ready: `_watch_t = rng.randf() * WATCH_S`, after the base's rolls
 		Unbind u;
@@ -537,7 +537,7 @@ void World::wander(Enemy &e, double p_dt) {  // DmEnemy.wander
 // DmEnemy.begin_attack + announce_telegraph per kind.
 void World::begin_attack(Enemy &e) {
 	const EnemyDef &d = defs[e.def];
-	if (d.behavior == B_SUPPORT) {  // DmEnemyDeacon.begin_attack: the swing its trigger chose is a raise (aim = the corpse), else the plain curse
+	if (d.behavior == B_SUPPORT && !d.ward) {  // DmEnemyDeacon.begin_attack: the swing its trigger chose is a raise (aim = the corpse), else the plain curse
 		e.raise_id = e.raise_pending;
 		e.raise_pending = -1;
 		e.swing_raise = e.raise_id >= 0;
@@ -588,6 +588,9 @@ void World::begin_attack(Enemy &e) {
 			break;
 		case BLOW_SCREAM:  // DmEnemyWraith.announce_telegraph: song-lines to a ring on the aim
 			events.push(EV_TELEGRAPH, e.id, { TELL_SCREAM }, { e.x, e.z, e.aim_x, e.aim_z, float(tun.scream_r), float(e.windup_s) });
+			break;
+		case BLOW_FLASK:  // DmEnemyClstCaster.announce_telegraph: a rot-green ring where the flask will land
+			events.push(EV_TELEGRAPH, e.id, { TELL_FLASK }, { e.x, e.z, e.aim_x, e.aim_z, float(tun.flask_r), float(e.windup_s) });
 			break;
 		default:
 			break;
@@ -682,6 +685,9 @@ void World::strike(Enemy &e) {
 				}
 			});
 			events.push(EV_CUE, e.id, { CUE_SCREAM }, { e.aim_x, e.aim_z, float(tun.scream_r) });
+			break;
+		case BLOW_FLASK:  // DmEnemyClstCaster.strike: the ring at the aim fixed when the wind-up began, and the pool
+			strike_flask(e);
 			break;
 		default:
 			break;
@@ -1000,6 +1006,9 @@ void World::step(double p_dt) {
 			e.state_t += p_dt;
 			continue;
 		}
+		if (defs[e.def].ward) {  // DmEnemyClstSeraph._physics_process: its ward comes before the base's tick, on the cooldown the last tick left
+			tick_ward(i, p_dt);
+		}
 		// DmEnemy._physics_process order: attack cooldown, incense, stagger, the state machine, then movement.
 		if (e.state != HURT && e.state != RISING) {
 			e.attack_cd -= p_dt * e.attack_rate_mult * (e.incense_t > 0.0 ? INCENSE_ATTACK : 1.0);
@@ -1015,7 +1024,7 @@ void World::step(double p_dt) {
 		}
 		if (enemies[i].state != DEAD) {  // the kinds' own _physics_process, after the base's: the Deacon's scan, the Censer's pulse, the Acolyte's claims
 			const EnemyDef &kd = defs[enemies[i].def];
-			if (kd.behavior == B_SUPPORT) {
+			if (kd.behavior == B_SUPPORT && !kd.ward) {
 				tick_support(i, p_dt);
 			}
 			if (kd.aura) {
