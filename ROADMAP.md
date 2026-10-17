@@ -121,35 +121,37 @@ server (B38).
 - [x] Crowd drawing: `DmCrowd` reads the core's tables after each step and writes each creature model's MultiMesh buffers once per rendered frame, interpolated between
   ticks (clips, blends, flash, knock, rise, death into corpses, shadow budget, level of detail); `CrowdView` builds the nodes from the baked models
   (`client/tests/crowd_view.gd`, `client/crowd/README.md` "Driving the crowd"). Left out on purpose, each its own item:
-  - [ ] Crowd looks: a crowd thrall is drawn as today's (2026-10-17, `client/tests/crowd_look_smoke.gd`: the same thralls skinned and crowd-drawn in the Graves' lighting, Forward+ and Compatibility on
+  - [x] Crowd looks: a crowd thrall is drawn as today's (2026-10-17, `client/tests/crowd_look_smoke.gd`: the same thralls skinned and crowd-drawn in the Graves' lighting, Forward+ and Compatibility on
     the software drivers; the lighting alone, no glow and no rim, comes within 5 levels of a colour channel of today's). The test build's "flat lavender" was the crowd material's metallic factor, 0
     where today's glTF material has 1: armour and bone read matt and silver, +38 levels over a thrall's pixels, and without the rim and the normal map nothing broke it up. Now the glTF's factors, the normal map
     (a frame from the derivatives, the crowd mesh has no tangents), the friend rim (0.9 for this player's thralls, 0.6 for another's, a champion's gold 1.4) and the Leech's slither. The rim rides the glow's palette
     slot: no instance data, no draw call (a material per rim would split each model's MultiMeshes by the rims in them: 8 groups drawing in the Full Party against 10), see `client/crowd/README.md` "Differences
-    from the creature material". Not drawn: the legion kit's armour tint and weapon tier colour, which today's game never shows either (no host gives DmEntityViews a `legion_kit_for`: "For review"). Left:
-    the Bone Colossus's rim reads fuller than today's in the Forward+ test (a pose that differs, or the baked normals
-    at its hard edges: to look at on a real GPU). Done (2026-10-17): sinking bodies fade out as they sink, and the Shrouded ward's body is see-through, through the crowd's alpha path (the "Crowd effects, the rest" item below).
+    from the creature material". Not drawn: the legion kit's armour tint and weapon tier colour, which today's game never shows either (no host gives DmEntityViews a `legion_kit_for`: "For review"). Seen on a real GPU
+    in Helix's playtest (test build 20261017.140709, RTX 4070 SUPER: no issues against the live build); the Bone Colossus's rim, fuller than today's in the Forward+ test,
+    went to the asset and effects rebuild's notes. Done (2026-10-17): sinking bodies fade out as they sink, and the Shrouded ward's body is see-through, through the crowd's alpha path (the "Crowd effects, the rest" item below).
     Done before: every body's glow (elite, risen and drowned, wraith, wisp, a legion's thralls with the empowered and champion boosts) through a glow palette, no extra
     draw call (`client/crowd/README.md`), the wings, the spectral wraiths (see-through, no shadow), the dirt mound over a ghoul underground (`DmEnemyFx`), and the thralls' hand props (swords, shields, bows, staffs:
     "<model>+<kind>" variants, `client/crowd/README.md` "Hand props").
-  - [ ] Crowd download size: a thrall variant (`<model>+<kind>`) shares its plain body's textures and draws its hand props as rigid meshes on a baked hand-transform track (one small
+  - [x] Crowd download size: a thrall variant (`<model>+<kind>`) shares its plain body's textures and draws its hand props as rigid meshes on a baked hand-transform track (one small
     RGBAF texture per variant; under 2 MB a variant, it was about 25 MB), and positions are three integer codes over the model's bounds in one 32-bit texel (4 bytes, they were 8). The
     baked crowd is 234 MB, it was 565 (the test build #4's 493 MB assets pack held 200 MB of variants); draw calls are today's (no extra MultiMesh), and the variants no longer upload their own
     copy of the textures. Positions are within 1.5 mm for most models and 2.9 mm for the widest boxes (a colossus's; the half floats had 2.4 mm there); the props are where today's
-    formula puts them (0.001 mm): `client/crowd/README.md` "What is baked", "Hand props", `client/tests/crowd_bake.gd`. Left: the first rendered check on a real GPU
-    (`client/tests/crowd_smoke.gd`, Forward+, Mobile and Compatibility): the shader's integer decoding and its prop branch are proven in a line-by-line mirror and a GLSL compile, not yet on a renderer.
+    formula puts them (0.001 mm): `client/crowd/README.md` "What is baked", "Hand props", `client/tests/crowd_bake.gd`. Rendered on a real GPU in Helix's playtest
+    (test build 20261017.140709, Forward+ on every preset, the thralls' hand props in place); Mobile with the first phone build (`client/tests/crowd_smoke.gd`).
   - [x] Crowd effects, the rest (2026-10-17): `DmEnemyFx` plays the telegraphs, swings, deaths, voices, rising dust, dust clouds and the affixes' bell, meal and burst from the core's events, and the status
     and idle motes on its 5 Hz ambient tick (the Flagellant's frenzy, the Pyre's and the Fen's: `client/tests/world.gd`); the last of native/README.md "Differences", the fade of a sinking body and of the Shrouded
     ward's, is the crowd's alpha path: a fade group a model and level (MultiMesh, alpha shader, no shadow), a body in it only while it is not solid (opacity `1 - sink_t / 0.9` as it sinks, the ward eased to 0.38 at 6 a second and
     solid where the body falls), the opacity in the clip index's fraction (no instance float more), closed bodies cull their back faces in it as today's fade variant does, a ghost needs no group; the Full Party with 24 bodies
     sinking and three shrouded elites draws two crowd draw calls more (22 to 24, `client/tests/draw_budget.gd`), rendered once on llvmpipe (`client/tests/crowd_fade_smoke.gd`: `client/crowd/README.md` "The alpha path");
     Forward+ and Mobile not yet seen (a look for Helix's PC). Done: the thralls' ground rings, the shattered corpse (`DmCrowd.shatter`) and each corpse's puff when it goes, the landing dust (`DmCrowd.take_landings`), the corpse rings and the toxic disc, the affixes' standing marks and motes, the status tells and the fliers' motes (their cost in the VPS Full Party fight, headless, two rounds each: 5.06 -> 5.22 ms a frame on average, the median unchanged; today pays the same effects every frame).
-  - [ ] Crowd cost. In the crowd (`client/crowd/README.md` "Crowd cost"): animation bands (a body beyond 32 m of the camera works its pose out 24 times a second, beyond 60 m 10 times; always placed every frame), bodies outside the camera's
+  - [x] Crowd cost. In the crowd (`client/crowd/README.md` "Crowd cost"): animation bands (a body beyond 32 m of the camera works its pose out 24 times a second, beyond 60 m 10 times; always placed every frame), bodies outside the camera's
     view not written (a casting body kept while its shadow falls in), the thrall shadows counted (instances, MultiMeshes and triangles in the shadow pass) and switchable for a run, and the level-of-detail distances (32 and 60 m) and the
     128-instance reserve as settings the benchmark records; `-- --bench-crowd=...` changes them for a run. Measured on the VPS (headless): the crowd's whole CPU is 30 to 50 us a frame at Full Party, so the saving is on the GPU.
     Left for Helix's PC (the Full Party, a few alternating runs each way): what culling and the bands save in the render CPU and GPU columns; whether the thralls' shadows (4 of 5 casting instances) are worth their triangles, kept or
-    capped; the level-of-detail distances and the reserve, from the draw calls, triangles and upload. Then tick this. (The crowd's draw calls are the groups in use: `client/crowd/README.md` "Crowd cost".)
-  - [ ] The whole roster baked (`bash client/tools/bake_crowd.sh`; the Graves' whole roster, robber, hound, penitent, sac, moth, bat, ghoul, rat and risen, and the thralls are baked and synced so far) and its models synced (`client/assets.list`); a first look on Forward+ and Mobile.
+    capped; the level-of-detail distances and the reserve, from the draw calls, triangles and upload. Measured there (2026-10-17, the Bell Sanctum's Full Party, 2560x1440, the benchmark's render
+    breakdown): the creatures 27, 41 and 48 draw calls and 0.56, 0.74 and 1.20 ms of GPU on Low, High and Ultra, the shadows 0, 26 and 41 draws and 0, 0.14 and 0.46 ms, the whole frame's GPU 1.3, 2.5 and 4.5 ms.
+    Kept as they are: the shadows (today's policy, under half a millisecond on Ultra), 32 and 60 m and the 128 reserve; a weaker PC's benchmark (Gate C) is where they would be tuned. (The crowd's draw calls are the groups in use: `client/crowd/README.md` "Crowd cost".)
+  - [x] The whole roster baked (`bash client/tools/bake_crowd.sh`): all 28 enemy models of `client/crowd/crowd_looks.json`, the thralls and their hand-prop variants (41 models, the test-channel smoke counts them), synced (`client/assets.list`); the first look on Forward+ in Helix's playtest, Mobile with the first phone build.
   - [x] Unrigged creatures (props today's shader animates, `DmCreatureMat` wings): the baker's static-mesh path bakes the wing beat into a 24-frame
     loop (moth and bat within about a millimetre of today's formula, `client/tests/crowd_bake.gd`); a model without wings gets a still pose.
   - [x] Co-op guest: a puppet core is drawn by `DmCrowd.sync(core)` like a host core (its hits come from the hp drops it derives); no translation into `sync_rows` is needed.
@@ -191,13 +193,13 @@ server (B38).
   `prepare-rebuild.sh`: the combat core, the sheets, the crowd's bakes), proven in dry runs (2026-10-16). The crowd's bakes live under
   `client/assets/crowd/baked` and ship in the assets pack, counted by their inputs (baker, looks, models), so a code-only build is a 15 MB code
   pack and the 268 MB assets pack is reused. The first publish waits for the benchmark in the client.
-- [ ] The new HUD and the Low to Ultra presets:
-  - [ ] The HUD, same layout and look, under 150 draw calls: built, **not yet measured**. Today's HUD runs in the game scene from the core (today's `DmGameUi` on the ported `DmNextUiHost` since the panels, DECISIONS B46) (orbs, hotbar with cooldowns and the cast state, target frame
+- [x] The new HUD and the Low to Ultra presets:
+  - [x] The HUD, same layout and look, under 150 draw calls: measured on Helix's PC (2026-10-17, below). Today's HUD runs in the game scene from the core (today's `DmGameUi` on the ported `DmNextUiHost` since the panels, DECISIONS B46) (orbs, hotbar with cooldowns and the cast state, target frame
     with statuses, minimap, thrall pips, "no corpse" dimming, floating numbers with today's caps, XP and level, area line, banners, the King's plate and map dot, the death veil), every readout group a movable, scalable piece
     (client/README.md "The HUD on the core"). The budget is modelled at 63 draw calls as the game scene shows it and 81 with every piece on (`client/tests/hud.gd`; the model reproduces the 18 numbers a rendered run
-    counted), but ticks only when `client/tools/hud_measure.gd` has measured it in the game scene: the three 55 s runs of this item went on lavapipe's start-up (~44 s before the first frame; "The HUD's budget"). Left: that
-    run once, with a longer limit or on Helix's PC (draw calls, and the HUD's 0.5 ms there); the look on Helix's PC against today's; the panels' pieces (menu row, chat, Empower, party frames, belt) as their items
-    land, each keeping the budget.
+    counted), but ticks only when `client/tools/hud_measure.gd` has measured it in the game scene: the three 55 s runs of this item went on lavapipe's start-up (~44 s before the first frame; "The HUD's budget"). Measured on
+    Helix's PC instead (the benchmark's render breakdown, the Bell Sanctum's Full Party with the panels in): 120, 120 and 117 draw calls on Low, High and Ultra, 0.03 to 0.05 ms of GPU, and the HUD's
+    share of the main thread 0.07 ms against 0.5 (eight on/off rounds); the look: Helix's playtest found no issue against the live build.
   - [x] The Low to Ultra presets on Forward+ (DECISIONS B45; client/README.md "Graphics presets", `client/tests/presets.gd`): today's four, with ambient occlusion on High and Ultra, the crowd's shadow policy and FSR 1 for Auto
     resolution; the game and the benchmark play at the player's preset. Each preset's cost on a real GPU comes from the benchmark (its report names the preset).
 - [ ] 2-player co-op (the combat core's half: native/README.md "Co-op", `client/tests/core_coop.gd`; the game's half: client/README.md "Co-op on the core", `client/tests/coop.gd`):
@@ -474,7 +476,8 @@ combat simulation for now.
   `DmBoss.take_damage` does not apply the status set's damage-taken multiplier, and the brain's own Fracture is never fed (a Marrow Spear's Fracture or a Sanctify on the King does nothing); kept, and so is the port.
 - **Phones:** on the Mobile renderer, following the phone rules kept since the rebuild (B40).
 - **The asset and effects rebuild** (Helix, 2026-10-16: after the core is rebuilt, with its own roadmap and pipelines). Until then the rebuild changes effects
-  and assets only where speed needs it. Notes for it: the crowd's download size (234 MB baked: positions 140, normals 70, level-of-detail meshes 23; "Test build checklist").
+  and assets only where speed needs it. Notes for it: the crowd's download size (234 MB baked: positions 140, normals 70, level-of-detail meshes 23; "Test build checklist"); the Bone Colossus's rim reads fuller than
+  today's in the Forward+ test (a pose that differs, or the baked normals at its hard edges).
 
 ## Later
 

@@ -553,9 +553,11 @@ What the HUD does with that (`ui/hud/dm_hud_kit.gd` has the layers, `next/hud/dm
 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json flock -w 900 /home/ubuntu/death-muffin/qa-browser.lock nice -n 10 xvfb-run -a -s "-screen 0 1600x900x24" \
   timeout 55 /home/ubuntu/tools/godot/godot --path client --rendering-driver vulkan --resolution 1280x720 --fixed-fps 60 --script res://tools/hud_measure.gd -- --out=<file.jsonl> [--shot=<png>] [--micro] [--fidelity] [--3d]
 ```
-**Status (2026-10-16): the budget is modelled, not yet measured in the game scene.** On this VPS a Forward+ process needs ~21 s to reach its first script line and then ~23 s inside the first main-loop iteration (software
+**Status (2026-10-17): measured on Helix's PC** (RTX 4070 SUPER, 2560x1440, the benchmark's render breakdown, the Bell Sanctum's Full Party with the panels in): the HUD row draws 120, 120 and 117 calls on Low, High
+and Ultra for 0.03 to 0.05 ms of GPU, and the HUD's share of the main thread is 0.07 ms (eight on/off rounds). The model's 63 to 81 counts the HUD alone; the rendered row also holds the panels' pieces. Before that
+(2026-10-16) the budget was only modelled: on this VPS a Forward+ process needs ~21 s to reach its first script line and then ~23 s inside the first main-loop iteration (software
 Vulkan pipelines; it did not shrink with drawing switched off), so a 55 s run has about ten seconds left. The three runs allowed for this item produced the table above (the first, a bare scene) and nothing from the game scene
-(the later two reached the end of the scene's build at 50 s). Run the harness once with a longer limit (`timeout 180 ... --budget=170`) or on Helix's PC to close it.
+(the later two reached the end of the scene's build at 50 s). The harness still runs with a longer limit (`timeout 180 ... --budget=170`) for a look at single widgets.
 
 *The model.* `tests/hud_cost.gd` is a model of the batching rules in the table; `tests/hud.gd` first checks that it reproduces the 18 numbers the rendered run counted for the same trees, then asks it about the HUD in a Full Party fight
 (72 enemies, 12 thralls, casts on cooldown, a target with four statuses, toasts, numbers at their caps): 63 draw calls as the game scene shows it (26 text, 10 vector art, 8 floating numbers, 6 toasts and banner, 3 panels, 1 rectangles
