@@ -14,6 +14,7 @@
 [ext_resource type="PackedScene" path="res://areas/props/bone_pile.tscn" id="12_35804"]
 [ext_resource type="Texture2D" path="res://areas/common/ring.png" id="13_bdf92"]
 [ext_resource type="Texture2D" path="res://areas/common/glow.png" id="14_16348"]
+[ext_resource type="LightmapGIData" path="res://areas/chapterhouse.lmbake" id="15_9b8a1"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
 albedo_color = Color(0.6039216, 0.57254905, 0.65882355, 1)
@@ -1164,3 +1165,4 @@ max_texture_size = 4096
 environment_mode = 3
 environment_custom_color = Color(0.29164574, 0.20750755, 0.40719262, 1)
 environment_custom_energy = 1.9
+light_data = ExtResource("15_9b8a1")

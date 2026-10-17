@@ -29,6 +29,7 @@
 [ext_resource type="PackedScene" path="res://areas/props/prop_node_crypt_collapse.tscn" id="27_0cc24"]
 [ext_resource type="PackedScene" path="res://areas/props/prop_node_barrow_tomb.tscn" id="28_adc2d"]
 [ext_resource type="Texture2D" path="res://areas/common/glow.png" id="29_16348"]
+[ext_resource type="LightmapGIData" path="res://areas/acre.lmbake" id="30_b0878"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
 albedo_color = Color(0.9019608, 0.9411765, 0.83137256, 1)
@@ -1750,3 +1751,4 @@ max_texture_size = 4096
 environment_mode = 3
 environment_custom_color = Color(0.37333333, 0.44215685, 0.49313727, 1)
 environment_custom_energy = 1.9
+light_data = ExtResource("30_b0878")

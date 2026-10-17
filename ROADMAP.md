@@ -242,7 +242,8 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
     opens their gates, runs waystone travel, the recall, the stations and the people; a guest's doors follow the host's seals. The core keeps its own copy of the
     navmesh (`NavGrid`): its step with 72 chasing enemies went from 1.76 to 0.10 ms with the Graves alone and from 11.75 to 0.11 ms with every area loaded (VPS, one
     run, 2026-10-16). `client/tests/world.gd`.
-  - [ ] The lighting bake of the eleven, in one run of Helix's helper (`publish-bake-kit.sh` with every scene).
+  - [x] The lighting bake of the eleven (Helix's helper, RTX 4070 SUPER, 0.8 min, 2026-10-17); the helper waits for the editor's first scene, its 3D toolbar
+    and each lightmap, retries a bake and gives a failed scene a second pass (three runs found those snags).
   - [ ] Their enemies in the core, kind by kind against today's (the censer, deacon, golem, acolyte, gargoyle, templar, wraith, seraph, flagellant, plague doctor, the Pyre's four
     and the Fen's four), and their crowd models baked. Done so far (2026-10-16, `client/tests/core_kinds.gd`, the file later groups append to): the Ossuary's golem and deacon, with
     their crowd models, so the whole Ossuary roster runs on the core.
@@ -284,6 +285,8 @@ combat simulation for now.
   - Today's game: quitting while models still load in the background can abort on a PC with few cores (the GitHub runner's 4: the CI's perfctl abort, 2026-10-16).
   - Today's game: a party guest leaving with kills not yet reported makes the host send to a peer that is gone (an engine error in the log, nothing lost; the rebuild
     skips the send).
+  - Today's game's benchmark: the fight's settings carry no V-Sync, so the game scene turns it back on during the measurement; a run faster than the monitor reads its
+    refresh rate (the server flags it). The rebuild keeps it off (2026-10-17).
   - The benchmark (both games): a level-up during the fight refreshes the god-mode hero's stats from the throwaway character's real level, so the held fight changes
     as that character levels; the benchmark could hold its XP.
 - **Found during the rebuild, today's game ignores them** (Helix 2026-10-16: fixed after launch day, in the rebuild only; until then both keep today's behaviour; the core already emits each one):

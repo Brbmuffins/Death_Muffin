@@ -17,6 +17,7 @@
 [ext_resource type="PackedScene" path="res://areas/props/prop_node_crypt_collapse.tscn" id="15_0cc24"]
 [ext_resource type="Texture2D" path="res://areas/common/glow.png" id="16_16348"]
 [ext_resource type="Texture2D" path="res://areas/common/ring.png" id="17_bdf92"]
+[ext_resource type="LightmapGIData" path="res://areas/ossuary.lmbake" id="18_6c65d"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
 albedo_color = Color(0.6901961, 0.6431373, 0.68235296, 1)
@@ -1362,3 +1363,4 @@ max_texture_size = 4096
 environment_mode = 3
 environment_custom_color = Color(0.34660572, 0.275002, 0.39544117, 1)
 environment_custom_energy = 1.9
+light_data = ExtResource("18_6c65d")

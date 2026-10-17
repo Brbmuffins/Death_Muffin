@@ -15,6 +15,7 @@
 [ext_resource type="Texture2D" path="res://areas/common/glow.png" id="13_16348"]
 [ext_resource type="Texture2D" path="res://areas/common/ring.png" id="14_bdf92"]
 [ext_resource type="Texture2D" path="res://assets/slice/art/textures/flagstone.webp" id="15_7607e"]
+[ext_resource type="LightmapGIData" path="res://areas/warren.lmbake" id="16_3970e"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
 albedo_color = Color(0.72156864, 0.6745098, 0.59607846, 1)
@@ -1373,3 +1374,4 @@ max_texture_size = 4096
 environment_mode = 3
 environment_custom_color = Color(0.39632353, 0.34111053, 0.25917342, 1)
 environment_custom_energy = 1.9
+light_data = ExtResource("16_3970e")

@@ -292,6 +292,7 @@ var hp_seen := {}
 var boss_seen := 0
 var samples := 0
 var casts_seen := 0
+var vsync_setting: Variant = null   ## what the game's perf node was told about V-Sync during the fight
 var nodes_lo := 1 << 30
 var nodes_hi := 0
 var creature_nodes := 0         ## samples in which a node of a creature kind existed (an enemy group, an agent, a physics body other than the hero's)
@@ -307,6 +308,7 @@ func note(b: DmBenchmark) -> void:
 	if b.game.bosses.active_boss() != null:
 		boss_seen += 1
 	casts_seen = int(b.game.input.auto.stats["casts"])
+	vsync_setting = b.game.perf.settings.get("vsync", true) if b.game.perf != null else null
 	if b.game.bosses.active_boss() != null:   # (the King's own nodes are there from his summon on)
 		nodes_lo = mini(nodes_lo, nodes())
 		nodes_hi = maxi(nodes_hi, nodes())
@@ -341,6 +343,7 @@ func full_party_run() -> void:
 	check(float(ph["boss_awake_pct"]) >= 50.0, "and was awake for most of the window (%.0f%%)" % float(ph["boss_awake_pct"]))
 	check(hp_seen.size() == 1 and absf(float(hp_seen.keys()[0]) / 1000.0 - STD_HP) < 0.01, "every enemy, the King's adds included, had the standard health (%s)" % str(hp_seen.keys()))
 	check(casts_seen > 5 and int(r["kills"]) >= 5, "auto combat cast %d times and %d enemies died: the fight is a fight" % [casts_seen, int(r["kills"])])
+	check(vsync_setting == false, "the fight's graphics settings keep V-Sync off (%s): a run is never capped at the monitor's refresh" % str(vsync_setting))
 	check(float(r["max_drift"]) <= 1.6, "the hero holds the centre (farthest %.2f m between checks)" % float(r["max_drift"]))
 	check(b.area_nav_on and bool(r["input_locked"]), "the Graves' navmesh is on and the player's input is switched off")
 	print("INFO nodes with the King awake: %d to %d" % [nodes_lo, nodes_hi])

@@ -11,6 +11,7 @@
 [ext_resource type="PackedScene" path="res://areas/props/prop_node_ore_geode_h160.tscn" id="9_60a09"]
 [ext_resource type="Texture2D" path="res://areas/common/ring.png" id="10_bdf92"]
 [ext_resource type="Texture2D" path="res://areas/common/glow.png" id="11_16348"]
+[ext_resource type="LightmapGIData" path="res://areas/sanctum.lmbake" id="12_43473"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
 albedo_color = Color(0.6039216, 0.5254902, 0.6666667, 1)
@@ -1123,3 +1124,4 @@ max_texture_size = 4096
 environment_mode = 3
 environment_custom_color = Color(0.33349755, 0.19056995, 0.44466305, 1)
 environment_custom_energy = 1.9
+light_data = ExtResource("12_43473")

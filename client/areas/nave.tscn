@@ -16,6 +16,7 @@
 [ext_resource type="Texture2D" path="res://areas/common/ring.png" id="14_bdf92"]
 [ext_resource type="PackedScene" path="res://areas/props/prop_node_bleeding_willow.tscn" id="15_9b029"]
 [ext_resource type="Texture2D" path="res://areas/common/glow.png" id="16_16348"]
+[ext_resource type="LightmapGIData" path="res://areas/nave.lmbake" id="17_38be7"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
 albedo_color = Color(0.54901963, 0.5254902, 0.65882355, 1)
@@ -1596,3 +1597,4 @@ max_texture_size = 4096
 environment_mode = 3
 environment_custom_color = Color(0.2651189, 0.20769419, 0.46863544, 1)
 environment_custom_energy = 1.9
+light_data = ExtResource("17_38be7")

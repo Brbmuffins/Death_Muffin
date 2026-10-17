@@ -104,8 +104,13 @@ func _bake(scene: String) -> Dictionary:
 			lm.light_data = data
 		row["tries"] = attempt + 1
 		btn.pressed.emit()   # bakes synchronously, with the editor's progress window
-		await _frames(10)
-		data = lm.light_data
+		# The lightmap's textures arrive once the editor has imported the new images, some frames later: wait up to about 10 s before calling the
+		# try a failure (2026-10-16: a 10-frame look missed them, every scene was baked twice and the second bake could not overwrite the images).
+		for i in 600:
+			await _frames(1)
+			data = lm.light_data
+			if data != null and not data.get_lightmap_textures().is_empty():
+				break
 		if data != null and not data.get_lightmap_textures().is_empty():
 			break
 	row["ms"] = Time.get_ticks_msec() - t0

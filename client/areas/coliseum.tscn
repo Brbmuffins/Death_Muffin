@@ -12,6 +12,7 @@
 [ext_resource type="Texture2D" path="res://areas/common/glow.png" id="10_16348"]
 [ext_resource type="Texture2D" path="res://assets/slice/art/textures/flagstone.webp" id="11_7607e"]
 [ext_resource type="Texture2D" path="res://assets/slice/art/textures/stone_wall.webp" id="12_45f94"]
+[ext_resource type="LightmapGIData" path="res://areas/coliseum.lmbake" id="13_21002"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
 albedo_color = Color(0.78431374, 0.7372549, 0.65882355, 1)
@@ -1037,3 +1038,4 @@ max_texture_size = 4096
 environment_mode = 3
 environment_custom_color = Color(0.39808822, 0.310775, 0.25664544, 1)
 environment_custom_energy = 1.9
+light_data = ExtResource("13_21002")

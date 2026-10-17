@@ -262,13 +262,16 @@ func run() -> Dictionary:
 	RenderingServer.viewport_set_measure_render_time(_vp, true)
 	seed(SEED)
 	progress.emit("Building the fight...")
+	# Today's: the player's preset, uncapped, at full resolution, V-Sync off (2026-10-16: the game scene turned it back on, so Helix's runs read his
+	# monitor's 170 fps and the server flagged them).
 	var settings := {"graphics": DmGraphicsPreset.normalize(user.get("graphics", DmGraphicsPreset.DEFAULT)), "fps": 0, "auto_res": false,
-		"brightness": user.get("brightness", 1.0), "ui_scale": user.get("ui_scale", 1.0)}   # today's: the player's preset, uncapped, at full resolution
+		"brightness": user.get("brightness", 1.0), "ui_scale": user.get("ui_scale", 1.0), "vsync": false}
 	var opts := {"audio": false, "settings": settings}
 	if baked_dir != "":
 		opts["baked_dir"] = baked_dir
 	_fight = await DmBenchFight.boot(self, discipline, opts, area)
 	game = _fight["game"]
+	game.perf.apply(settings)   # the HUD applied the player's own settings while the game started (their V-Sync included): the run's win
 	host = game.core_host
 	_hero = _fight["hero"]
 	_at = _fight["at"]
