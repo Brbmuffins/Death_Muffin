@@ -1,5 +1,12 @@
 [
   {
+    "date": "2026-10-17",
+    "title": "A Steadier Soundtrack",
+    "items": [
+      "Fixed a rare crash in the game's sound: once in a while, setting up or re-routing sound channels while sounds were playing could close the game."
+    ]
+  },
+  {
     "date": "2026-10-16",
     "title": "The Biggest Fight",
     "items": [
