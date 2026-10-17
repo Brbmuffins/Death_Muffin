@@ -146,6 +146,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	var guest := lobby != null or join is Dictionary or (opts.get("peer", null) != null and not bool(opts.get("host", true)))
 	is_guest = guest
 	DmSimData.ensure()
+	DmDbWarm.all()   # every dataset read now, in loading: the workers (the Depths' floor generator, the Gear Atlas' verdicts) then read a cache that never changes (client/README.md "Threads")
 	input.game = self
 	net.game = self
 	director.game = self

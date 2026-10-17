@@ -45,6 +45,7 @@ func prepare(f: Dictionary) -> bool:
 	NavigationServer3D.bake_from_source_geometry_data_async(nm, src)
 	while NavigationServer3D.is_baking_navigation_mesh(nm) and Time.get_ticks_msec() - t1 < BAKE_TIMEOUT_MS:
 		await game.get_tree().physics_frame
+	DmThreadGuard.assert_main("the Depths navmesh taken from its bake")   # (the server applies a finished bake in its main-thread sync: nothing here runs on the bake's thread)
 	async_ok = not NavigationServer3D.is_baking_navigation_mesh(nm) and nm.get_polygon_count() > 0
 	if not async_ok:
 		nm = _nav_mesh()   # the worker did not deliver: the same bake here, on a fresh mesh

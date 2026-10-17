@@ -119,8 +119,8 @@ world_fx   # world dressing and atmosphere
 # next/party/dm_next_joiner.gd             a party guest's own account; its bag is the loot node's
 # next/progress/dm_next_codex.gd          a spawn is the core host's enemy_spawned (an id, its def and place)
 # The Depths (client/README.md "The Depths"): the instanced descent below the world, its floors generated, drawn and baked at run time:
-# next/depths/dm_depths.gd                 the controller on the core: its dead are core ids (the core's spawned, died and removed events keep the Depths' living set; remove_enemy takes every body of the Depths out), corpses through the core's field, the hero's thralls recalled through the caster; the floor is baked first and swapped in one frame; the HUD's readout and map are kept in place; no warm-up (the crowd's baked models are the core's)
-# next/depths/dm_depths_ground.gd          the floor's navmesh baked on a worker thread (NavigationServer3D, the builder's settings) and handed to the core (DmNextWorld.attach_floor); the picture is the lights builder's build_depths_floor; no physics colliders
+# next/depths/dm_depths.gd                 the controller on the core: its dead are core ids (the core's spawned, died and removed events keep the Depths' living set; remove_enemy takes every body of the Depths out), corpses through the core's field, the hero's thralls recalled through the caster; the floor is baked first and swapped in one frame; the HUD's readout and map are kept in place; no warm-up (the crowd's baked models are the core's); the floor's worker takes only warmed data (`DmDbWarm`) and the controller takes its result on the main thread (`DmThreadGuard.assert_main`)
+# next/depths/dm_depths_ground.gd          the floor's navmesh baked on a worker thread (NavigationServer3D, the builder's settings) and handed to the core (DmNextWorld.attach_floor); the picture is the lights builder's build_depths_floor; no physics colliders; the finished bake is taken on the main thread (`DmThreadGuard.assert_main`)
 # next/depths/dm_depths_run.gd             the floor can be handed in already generated (the controller makes it on a worker thread)
 # The effects (client/README.md "The effects"; native/README.md "Files"):
 # fx/dm_fx_ring.gd                         the motes, their random starts and the per-frame loop are the core's DmMotes (C++, the same randf stream: client/tests/fx_motes.gd)
@@ -128,6 +128,9 @@ world_fx   # world dressing and atmosphere
 #                                          `decal` works out what a decal is made of and hands it over, a decal that follows a crowd body by id (`follow_body`) is placed by C++; every other transient is as today's
 #                                          (client/tests/fx_decals.gd compares every drawn float with today's, compiled from godot/fx/dm_fx_prims.gd at run time)
 # fx/dm_fx_binbun.gd                       an effect is moved only when it moved, a looping one is tested against the camera every third frame (its margin is 4 m), an idle instance is kept 8 deep per effect (it was 4)
+
+# Threads (client/README.md "Threads"): the mixer thread reads the bus layout while a bus is added:
+# audio/audio_director.gd                  every bus added and every bus send changed holds the mixer's lock (`_add_bus`, `_set_bus_send`): AudioServer.add_bus and set_bus_send take none, and an edit that lands in the middle of a mix step can crash the mixer thread (also in today's game)
 
 # ==== Per-creature systems the combat core and the crowd view replace: not copied (DECISIONS B42, B43)
 !enemies                      # DmEnemy, its states, kinds and scenes: the core owns enemies

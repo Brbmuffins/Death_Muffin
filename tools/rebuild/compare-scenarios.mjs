@@ -63,6 +63,16 @@ const SIDES = {
   client: { project: 'client', script: 'res://tools/parity_scenario.gd' },
 };
 
+// What a run that ended without a result says about itself. Godot's crash handler tells the main loop (SceneTree), which hands it to /root.propagate_notification, and that call
+// is refused off the main thread: so "The caller thread can't call the function `propagate_notification()`" on /root is what ANY crash on a thread other than the main one prints
+// just before "handle_crash: Program crashed with signal N". It is not a node touched from a thread; the signal and the C++ frames below it (client/README.md "Threads") are the crash.
+function crashNote(text) {
+  const sig = /handle_crash: Program crashed with signal (\d+)/.exec(text);
+  if (!sig) return '';
+  const offMain = /caller thread can't call the function `propagate_notification\(\)`/.test(text);
+  return `    Godot's crash handler ran (signal ${sig[1]}) ${offMain ? "on a thread other than the main one: the propagate_notification line above it is the handler's own message, not the cause" : 'on the main thread'}; the C++ frames are in the log`;
+}
+
 function runSide(side, seed, dir) {
   const s = SIDES[side];
   const out = path.join(dir, `${side}-${seed}.json`);
@@ -88,6 +98,8 @@ function runSide(side, seed, dir) {
     writeFileSync(log, text);
     const tail = text.split('\n').filter((l) => /ERROR|SCRIPT|Parse|error/i.test(l) && !/leaked|still in use|Pages in use|RID allocations/.test(l)).slice(0, 12).join('\n');
     console.log(`  ${side.padEnd(6)} seed ${seed}: no result (exit ${r.status}, signal ${r.signal}); output in ${log}`);
+    const note = crashNote(text);
+    if (note) console.log(note);
     if (attempt >= 2) throw new Error(`${side} seed ${seed}: no result twice (exit ${r.status}, signal ${r.signal})\n${tail}`);
   }
 }

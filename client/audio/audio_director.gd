@@ -66,6 +66,8 @@ var _boss_bed_target := 0.0
 var _lp_buses: Dictionary = {}
 var _footsteps := DmFootstepTracker.new()
 var _ready_done := false
+## Bus-layout edits made under the mixer's lock (tests; see `_add_bus`).
+var layout_edits := 0
 
 
 func _ready() -> void:
@@ -125,19 +127,41 @@ func _make_bus(bus_name: String, send: String, reverb: bool) -> int:
 	var idx := AudioServer.get_bus_index(bus_name)
 	if idx >= 0:
 		return idx
-	AudioServer.add_bus()
-	idx = AudioServer.bus_count - 1
-	AudioServer.set_bus_name(idx, bus_name)
-	AudioServer.set_bus_send(idx, send)
+	var r: AudioEffectReverb = null
 	if reverb:
 		# stands in for the web's per-voice reverb send (wet 0.3 into a 2.8 s impulse at gain 0.32)
-		var r := AudioEffectReverb.new()
+		r = AudioEffectReverb.new()
 		r.room_size = 0.75
 		r.damping = 0.55
 		r.wet = 0.1
 		r.dry = 1.0
-		AudioServer.add_bus_effect(idx, r)
+	return _add_bus(bus_name, send, r)
+
+
+## The only place a bus is added or a bus's send changed. AudioServer.add_bus and set_bus_send edit the bus list, the name map and a bus's send WITHOUT taking the mixer's
+## lock (Godot 4.7.2 servers/audio/audio_server.cpp), while the mixer thread reads all three in _mix_step: an edit that lands in the middle of a mix step can crash that
+## thread (a headless run of this director did, 2026-10-07; the log shows it as the crash handler's "caller thread can't call propagate_notification() on /root"). Holding
+## the lock makes an edit wait for the step to end and the next step wait for the edit (the lock is recursive: set_bus_name and add_bus_effect take it themselves).
+## client/README.md "Threads".
+func _add_bus(bus_name: String, send: String, effect: AudioEffect) -> int:
+	AudioServer.lock()
+	AudioServer.add_bus()
+	var idx := AudioServer.bus_count - 1
+	AudioServer.set_bus_name(idx, bus_name)
+	if send != "":
+		AudioServer.set_bus_send(idx, send)
+	if effect != null:
+		AudioServer.add_bus_effect(idx, effect)
+	layout_edits += 1
+	AudioServer.unlock()
 	return idx
+
+
+func _set_bus_send(bus_idx: int, send: String) -> void:
+	AudioServer.lock()
+	AudioServer.set_bus_send(bus_idx, send)
+	layout_edits += 1
+	AudioServer.unlock()
 
 
 # --- clock / rng -----------------------------------------------------------------
@@ -352,10 +376,7 @@ func _new_voice() -> Dictionary:
 	var bus_name := "DmPan%d" % _voices.size()
 	var idx := AudioServer.get_bus_index(bus_name)
 	if idx < 0:
-		AudioServer.add_bus()
-		idx = AudioServer.bus_count - 1
-		AudioServer.set_bus_name(idx, bus_name)
-		AudioServer.add_bus_effect(idx, AudioEffectPanner.new())
+		_add_bus(bus_name, "", AudioEffectPanner.new())
 	p.bus = bus_name
 	var v := {"player": p, "pan_bus": bus_name, "end": 0.0, "fade_at": INF, "base_v": 1.0, "active": false}
 	_voices.append(v)
@@ -388,7 +409,7 @@ func _play_clip(stream: AudioStream, vol: float, rate: float, jitter: float, ctx
 		bus_idx = AudioServer.get_bus_index(v["pan_bus"])
 		v["bus_idx"] = bus_idx
 	if AudioServer.get_bus_send(bus_idx) != send:
-		AudioServer.set_bus_send(bus_idx, send)
+		_set_bus_send(bus_idx, send)
 	v["send"] = send
 	(AudioServer.get_bus_effect(bus_idx, 0) as AudioEffectPanner).pan = pan
 	var pl: AudioStreamPlayer = v["player"]
@@ -563,13 +584,9 @@ func _lp_bus(hz: int) -> String:
 	if not _lp_buses.has(hz):
 		var idx := AudioServer.get_bus_index(bus_name)
 		if idx < 0:
-			AudioServer.add_bus()
-			idx = AudioServer.bus_count - 1
-			AudioServer.set_bus_name(idx, bus_name)
-			AudioServer.set_bus_send(idx, BUS_NAMES["ambience"])
 			var f := AudioEffectLowPassFilter.new()
 			f.cutoff_hz = float(hz)
-			AudioServer.add_bus_effect(idx, f)
+			_add_bus(bus_name, BUS_NAMES["ambience"], f)
 		_lp_buses[hz] = true
 	return bus_name
 

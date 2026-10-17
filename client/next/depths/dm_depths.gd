@@ -280,13 +280,17 @@ func leave() -> bool:
 	return true
 
 
-## The floor of `depth` for a run seed, generated on a worker thread (the generator is pure and only reads data already loaded): the old floor goes on meanwhile.
+## The floor of `depth` for a run seed, generated on a worker thread (the generator is pure and only reads data already loaded): the old floor goes on meanwhile. The worker
+## computes a Dictionary and touches no node; the main thread takes it once the task has finished (client/README.md "Threads").
 func _generate(seed_: int, depth: int) -> Dictionary:
+	DmDbWarm.all()   # no dataset may be a first use (a write to DmDb's cache) while the worker reads
+	DmSimData.ensure()
 	var out := [{}]
-	var task := WorkerThreadPool.add_task(func() -> void: out[0] = DmDepthsRun.generate(seed_, depth))
+	var task := WorkerThreadPool.add_task(func() -> void: out[0] = DmDepthsRun.generate(seed_, depth), false, "depths floor")
 	while not WorkerThreadPool.is_task_completed(task):
 		await get_tree().physics_frame
 	WorkerThreadPool.wait_for_task_completion(task)
+	DmThreadGuard.assert_main("the Depths floor taken from its worker")
 	return out[0]
 
 

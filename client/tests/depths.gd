@@ -113,6 +113,8 @@ func _main() -> void:
 	await _h_leaving()
 	await _i_death()
 	await _j_many_floors()
+	check(DmThreadGuard.checks > 0 and DmThreadGuard.violations == 0, "the floor's worker and bake were taken on the main thread (%d taken, %d off it: %s)" % [DmThreadGuard.checks, DmThreadGuard.violations, DmThreadGuard.last_violation])
+	check(DmDbWarm.done, "the datasets were all read in loading (DmDbWarm)")
 	for e in errlog.errors:
 		printerr("ERROR in log: " + e)
 	check(errlog.errors.is_empty(), "no script or engine errors in the log (%d)" % errlog.errors.size())

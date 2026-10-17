@@ -50,6 +50,7 @@ node tools/rebuild/compare-scenarios.mjs                                        
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/counsel.gd # the counsel and the first hour on the core: the fight facts read two ways, every fact the creatures give the counsel once, the tips each makes once, the state-driven tips, the welcome and the Next-step box, the Prior, Show tips again ("Tips and onboarding"; about 30 s with --fixed-fps 60, 2 minutes without)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/sound.gd   # sound on the core's events: a scripted fight's cues against today's rules, by name and count, thralls, the hero's footsteps, the area beds and scores, the gate, the boss score ("Sound"; about 30 s)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/depths.gd # the Catacomb Depths on the core: the rules, the Warren's stair, floors baked at run time and the core's copy of each, the dead on a floor, the quota, the chest, leaving, death, 14 floors (bakes into a scratch folder; about 40 s)
+/home/ubuntu/tools/godot/godot --headless --path client --script res://tests/threads.gd           # the work off the main thread ("Threads"): the list of what starts a thread, the audio bus layout edited only under the mixer's lock, the Depths' floor generator and the Atlas' verdicts on a worker against the main thread's, the guard (about 6 s)
 bash client/tools/coop_local.sh                                                                # a local lobby and relay for a trial with two game windows (prints the commands; "Co-op on the core")
 bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the Graves roster, the Ossuary's deacon and golem and the Abbess's niche, the Nave's five, the Cloister's three, the Pyre's and the Fen's eight, the thralls) into client/assets/crowd/baked (not committed)
 ```
@@ -601,6 +602,31 @@ fall, against the cues today's code plays for the events the core raised, by nam
 host; a swing within two ticks of landing or of what ended it may count either way); then the thralls at their places and only the killed ones' death, and the hero's world on the real director: footsteps, the beds
 and scores of four areas, the gate, the boss score with the King.
 
+## Threads
+
+A worker computes data and hands it back; whatever touches the scene tree, a node, a signal or a Godot object that is not thread-safe happens on the main thread, after the worker has finished. The places that take a worker's result call
+`DmThreadGuard.assert_main` first (a violation is an error in the log and a count the suites check is 0: `tests/depths.gd`). `tests/threads.gd` lists what starts work off the main thread and fails on anything new until it has been read and added here; the C++ core starts no thread, lock or atomic.
+
+| what | thread | touches | result |
+|---|---|---|---|
+| the Depths' floor generator (`DmDepths._generate`) | a `WorkerThreadPool` task | content (read only once `DmDbWarm` has run) and its own arrays | polled on the physics frame with `is_task_completed`, joined, the Dictionary returned to the controller |
+| the Depths' navmesh bake (`DmDepthsGround.prepare`) | the navigation server's pool task (`bake_from_source_geometry_data_async`) | the source geometry and the `NavigationMesh` handed to it, which the main thread leaves alone until `is_baking_navigation_mesh` is false; the server emits `changed` in its own main-thread `sync` | the mesh goes on the region (`show`) on the main thread; a bake that does not finish in 20 s is made again on the main thread on a fresh mesh |
+| the Gear Atlas' verdicts (`DmUiPanelsA._atlas_*`) | a `WorkerThreadPool` task | a deep copy of the stat context, a fresh map of what is owned, and the static tables the first main-thread pass filled (`tests/threads.gd` checks a worker writes none of them) | joined in `_atlas_data` or `tick` before the result is read |
+| a legendary body's prefetch (`DmGearModels.prefetch`), the sample bank (`DmSampleBank`, twelve in flight), the warm-up's models (`DmNextWarmup`, not headless) | `ResourceLoader.load_threaded_request` | resources only, no node | `load_threaded_get`, or `load` from the cache, on the main thread |
+| the mixer | the audio driver's thread (the Dummy driver in a headless run) | the bus layout and every playing stream, under the audio lock | n/a |
+
+**Data the workers read.** `DmDbWarm.all()` (`DmNextGame.start`, in loading) reads every dataset and projection of `DmDb` once, so its cache never changes again: a Godot Dictionary is not safe to read on one thread while another inserts, and a first use of a dataset
+is an insert. About 100 files, 4.6 MB; +60 ms in loading (3.37 s without, 3.43 s with, three runs each alternating on the shared VPS, spread +-0.25 s). The Depths' floor generator calls `DmDbWarm.all()` (a hundred lookups when warm) and `DmSimData.ensure()` before it starts.
+
+**The mixer.** `AudioServer.add_bus` and `set_bus_send` edit the bus list, the name map and a bus's send without taking the audio lock (Godot 4.7.2 `servers/audio/audio_server.cpp`), while the mixer thread reads all three in every mix step (`bus_map[bus->send]`). An edit that lands
+in the middle of a step can crash the mixer thread (the one crash log with frames, 2026-10-07: the Dummy driver's loop, then the step's lookup of a bus's send in the name map). The director makes about 55 buses at start, while the mixer already runs (`AudioDirector` is an autoload), and changes a voice's send as sounds play. Its two helpers `_add_bus` and `_set_bus_send` (ported, code.list) hold
+`AudioServer.lock()` around an edit (the lock is recursive: `set_bus_name` and `add_bus_effect` take it themselves); nothing else in the client edits the layout (`tests/threads.gd`).
+
+**Reading a crash.** A crash on any thread but the main one prints, just before Godot's `handle_crash: Program crashed with signal N` and its C++ frames, `ERROR: /root: The caller thread can't call the function propagate_notification()`. That is not code touching the tree: the crash
+handler tells the main loop, the scene tree hands the notification to `/root`, and the call is refused off the main thread. Then the process aborts (exit 134, SIGABRT) whatever the signal was. (`OS.crash()` in a `WorkerThreadPool` task prints exactly this.) The signal and the frames are the
+crash: `start_thread` at the bottom is a pool, loader or driver thread, and a GDScript backtrace under the message names the script that thread was running, if any. `compare-scenarios.mjs` keeps such a run's whole output and says so. The official binary has no symbols; the frames can
+be told apart by what they call (a function that takes the audio mutex, calls `clock_gettime` before and after, then `delay_usec` is the Dummy driver's loop).
+
 ## Value on the server
 
 The backend owns value (DECISIONS D1, B20, B32), and the game scene on the core earns it through today's code. On the host (`DmNextGame._start_value`, under the loading cover):
@@ -831,7 +857,7 @@ spawned, died and removed events (a Risen a Vengeful elite or a deacon raises on
 (`remove_enemy`, found by the core's table), its corpses are consumed through the core's field (`corpses_in_radius(..., "depths")`), its loot is cleared, and the hero's thralls are recalled through his caster (`thralls().recall()`, which writes the hero's new
 place into the core first) with the camera snapped. The roster is the bands' (`depth_roster`: 1 / 5 / 10 / 15), every kind of which the core runs (`tests/depths.gd` fails if a band gains one it does not).
 
-**A floor, in order** (`DmDepths._load_floor`; measured on the VPS, headless, one run of `tests/depths.gd`): the floor is generated on a worker thread (`WorkerThreadPool`; `DmDepthsRun.generate` is pure and reads data loaded at `setup`, about 16 ms there, off the main thread);
+**A floor, in order** (`DmDepths._load_floor`; measured on the VPS, headless, one run of `tests/depths.gd`): the floor is generated on a worker thread (`WorkerThreadPool`; `DmDepthsRun.generate` is pure and reads only data `DmDbWarm` loaded in loading ("Threads"), about 16 ms there, off the main thread);
 `DmDepthsGround.prepare` builds the navmesh's source geometry (the rooms and doors as ground, the walls and solid props as projected obstructions, the builder's settings and grow) and bakes it with `NavigationServer3D.bake_from_source_geometry_data_async`, the old floor
 (or the Warren) standing meanwhile; then, in one frame, the old floor's dead, corpses and loot go, `show` draws the new floor (the lights builder's `build_depths_floor`: floors, walls, props, light pools, the stairs and the chest, the existing look, into the world's
 `depths_root`; every prop light on, since Forward+ lights them all), puts the baked mesh on the floor's one `NavigationRegion3D` and hands the core its copy; the hero is put at the way in with the banner (about 4 to 8 ms of the main thread); the navigation server
