@@ -14,7 +14,7 @@
 [ext_resource type="LightmapGIData" path="res://areas/sanctum.lmbake" id="12_43473"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
-albedo_color = Color(0.6039216, 0.5254902, 0.6666667, 1)
+albedo_color = Color(0.67933136, 0.61661583, 0.71764594, 1)
 albedo_texture = ExtResource("1_7607e")
 roughness = 0.5
 texture_filter = 5
@@ -33,7 +33,7 @@ _surfaces = [{
 }]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_fdc72"]
-albedo_color = Color(0.6039216, 0.57254905, 0.6431373, 1)
+albedo_color = Color(0.6802741, 0.6570144, 0.7044801, 1)
 albedo_texture = ExtResource("2_45f94")
 roughness = 0.92
 uv1_scale = Vector3(0.25, 0.25, 0.25)
@@ -115,7 +115,7 @@ size = Vector2(21, 21)
 orientation = 1
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ac1a3"]
-albedo_color = Color(0.6039216, 0.57254905, 0.65882355, 1)
+albedo_color = Color(0.67933136, 0.6545985, 0.7108683, 1)
 albedo_texture = ExtResource("1_7607e")
 roughness = 0.62
 texture_filter = 5
@@ -134,7 +134,7 @@ _surfaces = [{
 }]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_060c7"]
-albedo_color = Color(0.5411765, 0.50980395, 0.5882353, 1)
+albedo_color = Color(0.6296748, 0.6068347, 0.6590789, 1)
 albedo_texture = ExtResource("2_45f94")
 roughness = 0.9
 uv1_scale = Vector3(0.25, 0.25, 0.25)
@@ -264,6 +264,7 @@ blend_mode = 1
 cull_mode = 2
 shading_mode = 0
 vertex_color_use_as_albedo = true
+vertex_color_is_srgb = true
 albedo_texture = ExtResource("11_16348")
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_1ab1f"]

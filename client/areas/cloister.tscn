@@ -17,7 +17,7 @@
 [ext_resource type="LightmapGIData" path="res://areas/cloister.lmbake" id="15_c20b3"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
-albedo_color = Color(0.65882355, 0.7058824, 0.627451, 1)
+albedo_color = Color(0.7394933, 0.763938, 0.7040856, 1)
 albedo_texture = ExtResource("1_d8873")
 roughness = 0.8
 texture_filter = 5
@@ -36,7 +36,7 @@ _surfaces = [{
 }]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_fdc72"]
-albedo_color = Color(0.6039216, 0.57254905, 0.6431373, 1)
+albedo_color = Color(0.6802741, 0.6570144, 0.7044801, 1)
 albedo_texture = ExtResource("2_45f94")
 roughness = 0.92
 uv1_scale = Vector3(0.25, 0.25, 0.25)
@@ -174,7 +174,7 @@ size = Vector2(18, 18)
 orientation = 1
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f0e93"]
-albedo_color = Color(0.6039216, 0.57254905, 0.65882355, 1)
+albedo_color = Color(0.67933136, 0.6545985, 0.7108683, 1)
 albedo_texture = ExtResource("13_7607e")
 roughness = 0.62
 texture_filter = 5
@@ -193,7 +193,7 @@ _surfaces = [{
 }]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_fcd29"]
-albedo_color = Color(0.5411765, 0.50980395, 0.5882353, 1)
+albedo_color = Color(0.6296748, 0.6068347, 0.6590789, 1)
 albedo_texture = ExtResource("2_45f94")
 roughness = 0.9
 uv1_scale = Vector3(0.25, 0.25, 0.25)
@@ -319,6 +319,7 @@ blend_mode = 1
 cull_mode = 2
 shading_mode = 0
 vertex_color_use_as_albedo = true
+vertex_color_is_srgb = true
 albedo_texture = ExtResource("14_16348")
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_1ab1f"]

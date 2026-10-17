@@ -27,7 +27,7 @@
 [ext_resource type="LightmapGIData" path="res://areas/alchemist_wing.lmbake" id="25_c3867"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
-albedo_color = Color(0.9098039, 0.8627451, 0.78431374, 1)
+albedo_color = Color(0.9189887, 0.88084936, 0.82161504, 1)
 albedo_texture = ExtResource("1_6d94a")
 roughness = 0.75
 texture_filter = 5
@@ -136,7 +136,7 @@ size = Vector2(1.5, 1.2)
 orientation = 1
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_d3539"]
-albedo_color = Color(0.84705883, 0.8, 0.72156864, 1)
+albedo_color = Color(0.8655847, 0.8295625, 0.7737736, 1)
 albedo_texture = ExtResource("3_c64c6")
 roughness = 0.92
 uv1_scale = Vector3(0.25, 0.25, 0.25)
@@ -181,7 +181,7 @@ size = Vector2(6.8, 6.8)
 orientation = 1
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_e5def"]
-albedo_color = Color(0.6039216, 0.57254905, 0.65882355, 1)
+albedo_color = Color(0.67933136, 0.6545985, 0.7108683, 1)
 albedo_texture = ExtResource("23_7607e")
 roughness = 0.62
 texture_filter = 5
@@ -200,7 +200,7 @@ _surfaces = [{
 }]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1c5d5"]
-albedo_color = Color(0.5411765, 0.50980395, 0.5882353, 1)
+albedo_color = Color(0.6296748, 0.6068347, 0.6590789, 1)
 albedo_texture = ExtResource("24_45f94")
 roughness = 0.9
 uv1_scale = Vector3(0.25, 0.25, 0.25)
@@ -293,6 +293,7 @@ blend_mode = 1
 cull_mode = 2
 shading_mode = 0
 vertex_color_use_as_albedo = true
+vertex_color_is_srgb = true
 albedo_texture = ExtResource("2_16348")
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_fcbc9"]

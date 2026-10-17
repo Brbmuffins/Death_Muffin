@@ -18,7 +18,7 @@
 [ext_resource type="LightmapGIData" path="res://areas/fen.lmbake" id="16_c6ca6"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
-albedo_color = Color(0.65882355, 0.7529412, 0.7372549, 1)
+albedo_color = Color(0.7402609, 0.7973408, 0.7771057, 1)
 albedo_texture = ExtResource("1_b8acd")
 roughness = 0.8
 texture_filter = 5
@@ -80,7 +80,7 @@ mesh = SubResource("ArrayMesh_bc4f0")
 buffer = PackedFloat32Array(2.7, 0, 0, -42, 0, 1, 0, 0, 0, 0, 2.7, -90.2, 3.2, 0, 0, -42, 0, 1, 0, 0, 0, 0, 3.2, -80, 2.4, 0, 0, -42, 0, 1, 0, 0, 0, 0, 2.4, -73.4, 2.3, 0, 0, -36.3, 0, 1, 0, 0, 0, 0, 2.3, -76.7, 2.4, 0, 0, -36.3, 0, 1, 0, 0, 0, 0, 2.4, -83.3, 2.4, 0, 0, -47.7, 0, 1, 0, 0, 0, 0, 2.4, -83.3, 2.3, 0, 0, -47.7, 0, 1, 0, 0, 0, 0, 2.3, -76.7, 2.6, 0, 0, -55.5, 0, 1, 0, 0, 0, 0, 2.6, -95, 2.5, 0, 0, -33, 0, 1, 0, 0, 0, 0, 2.5, -95.5, 2.6, 0, 0, -56, 0, 1, 0, 0, 0, 0, 2.6, -82, 2.5, 0, 0, -55, 0, 1, 0, 0, 0, 0, 2.5, -68.5, 2.4, 0, 0, -47, 0, 1, 0, 0, 0, 0, 2.4, -64.5, 2.5, 0, 0, -34, 0, 1, 0, 0, 0, 0, 2.5, -65.5, 2.3, 0, 0, -52, 0, 1, 0, 0, 0, 0, 2.3, -90.5)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_14b5d"]
-albedo_color = Color(0.6039216, 0.57254905, 0.6431373, 1)
+albedo_color = Color(0.6802741, 0.6570144, 0.7044801, 1)
 albedo_texture = ExtResource("2_45f94")
 roughness = 0.92
 uv1_scale = Vector3(0.25, 0.25, 0.25)
@@ -140,7 +140,7 @@ size = Vector2(8.4, 11.4)
 size = Vector2(8.4, 9.4)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_060c7"]
-albedo_color = Color(0.6039216, 0.57254905, 0.65882355, 1)
+albedo_color = Color(0.67933136, 0.6545985, 0.7108683, 1)
 albedo_texture = ExtResource("14_7607e")
 roughness = 0.62
 texture_filter = 5
@@ -159,7 +159,7 @@ _surfaces = [{
 }]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_13779"]
-albedo_color = Color(0.5411765, 0.50980395, 0.5882353, 1)
+albedo_color = Color(0.6296748, 0.6068347, 0.6590789, 1)
 albedo_texture = ExtResource("2_45f94")
 roughness = 0.9
 uv1_scale = Vector3(0.25, 0.25, 0.25)
@@ -240,6 +240,7 @@ blend_mode = 1
 cull_mode = 2
 shading_mode = 0
 vertex_color_use_as_albedo = true
+vertex_color_is_srgb = true
 albedo_texture = ExtResource("15_16348")
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_1ab1f"]
