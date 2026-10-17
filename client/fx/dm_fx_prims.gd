@@ -311,6 +311,16 @@ func warm_layers(at: Vector3) -> Array:
 	return out
 
 
+## Loading screen (DmNextWarmup): one shot of each kind (the needle's and the orb's materials, the sprite shot's own shader) and a beam, so they compile under
+## the cover and not on a rite's first cast (Forward+ stalled on the Reaper's Unleash Souls and Scythe Weave, Helix 2026-10-17). The shots land by themselves
+## within three seconds (into their pools); the beam's handle is returned with the layers' for the caller to kill.
+func warm_shots(at: Vector3) -> Array:
+	var far := at + Vector3(0.0, 1.0, 40.0)
+	for kind in ["needle", "orb", "sprite"]:
+		projectile({"from": at + Vector3(0.0, 1.0, 0.0), "to": func() -> Vector3: return far, "speed": 0.5, "kind": kind, "tex": "wisp", "size": 0.9, "color": 0xffffff})
+	return [beam(at + Vector3(-1.0, 1.0, 0.0), func() -> Vector3: return at + Vector3(1.0, 1.0, 0.0), 0xffffff, 0.2, 600.0)]
+
+
 func _wake_layer(l: DmFxLayer) -> void:
 	_live_layers.append(l)
 

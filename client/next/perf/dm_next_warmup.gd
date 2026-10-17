@@ -23,6 +23,7 @@ static var last_ms := 0
 static var models := 0
 static var effects := 0
 static var crowd_rows := 0
+static var shots := 0                  ## the shots (needle, orb, sprite) and beams drawn under the cover
 
 
 ## Every boss body the game draws as a node: [{slug, opts}] for the bosses of `served` areas (the other bosses' models are not in this build).
@@ -90,8 +91,22 @@ static func run(game: DmNextGame) -> void:
 		if w != null:
 			stage.add_child(w)
 			w.position = at0 + Vector3(-1.2 + 0.6 * k, 0.9, 0.0)
+	var scythe := DmGearProps.scythe_model()   # the Reaper's scythe: worn, and the spinning copy Scythe Throw makes
+	if scythe != null:
+		stage.add_child(scythe)
+		scythe.position = at0 + Vector3(0.6, 0.9, 0.0)
+		var sp := DmModels.BASE + "models/props/%s.glb" % DmGearProps.SCYTHE_FILE
+		DmWarmup.hold(sp, load(sp))   # kept loaded: every throw instances it again
 	var warmed: Array = binbun.warm(ids, at0) if binbun != null else []
 	var layer_handles: Array = vfx.prims.warm_layers(at0) if vfx != null and vfx.prims != null else []
+	shots = 0
+	if vfx != null and vfx.prims != null:
+		var beams: Array = vfx.prims.warm_shots(at0)
+		layer_handles.append_array(beams)
+		shots = 3 + beams.size()
+	var hero_look := _hero_creature(game)   # the hero's own see-through variant (Wraith Walk's phantom) compiles now, not on the first rush
+	if hero_look != null:
+		hero_look.set_opacity(0.45)
 	game.enemy_fx.warm(at0)
 	game.bosses.warm(at0)
 	crowd_rows = _feed_crowd(game, cam)
@@ -100,6 +115,8 @@ static func run(game: DmNextGame) -> void:
 		_feed_crowd(game, cam)
 	# 3. the area tour (+ the "no point light" variant at each stop)
 	await _tour(game, stage, bodies, warmed, at0, cover)
+	if hero_look != null:
+		hero_look.set_opacity(1.0)
 	if binbun != null:
 		binbun.warm_end(warmed)
 	for h in layer_handles:
@@ -123,6 +140,13 @@ static func run(game: DmNextGame) -> void:
 	effects = warmed.size()
 	last_ms = Time.get_ticks_msec() - t0
 	print("DmNextWarmup: %d bodies + %d effects + %d crowd rows in %d ms" % [models, effects, crowd_rows, last_ms])
+
+
+## The local hero's model (its avatar's creature), or null before the avatar exists.
+static func _hero_creature(game: DmNextGame) -> DmCreature:
+	var b := game.local_body()
+	var av: Variant = b.get("avatar") if b != null else null
+	return (av as DmAvatar).c if av is DmAvatar and is_instance_valid(av) else null
 
 
 ## One boss body per spec plus a mid-fade pass of each (DmCreatureMat's opaque and fade variants).

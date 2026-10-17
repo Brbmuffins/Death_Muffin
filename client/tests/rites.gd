@@ -1574,6 +1574,10 @@ func _reaper_class() -> void:
 	var necro := DmPlayerRules.take_damage(DmPlayerRules.new_state(c.p["stats"], "necromancer"), 100.0, 0.0, 1000.0)
 	check(near(mine, necro * float(K["damageTakenMult"]), 1e-4), "reaper: she takes %.0f %% of a blow (%.1f against a necromancer's %.1f)" % [100.0 * float(K["damageTakenMult"]), mine, necro])
 	check(hero.avatar != null and hero.avatar.weapon_gesture() == "scythe", "reaper: she gestures with the scythe")
+	var sc := DmGearProps.scythe_model()   # the asset list once left it out: her hand was empty in the test build (2026-10-17)
+	check(sc != null and hero.avatar != null and hero.avatar.get("_staff") != null, "reaper: she holds today's scythe model (%s is in the build)" % DmGearProps.SCYTHE_FILE)
+	if sc != null:
+		sc.free()
 	var no_clip: Array = []
 	for rite: String in DmAvatar.REAPER_CLIPS:
 		if hero.avatar == null or hero.avatar._cast_clip_for("scythe", rite) == null:
