@@ -204,6 +204,10 @@ func the_fight_by_hand() -> void:
 	check(g.world.area_at(at.x, at.z) == "graves" and hero.position.distance_to(at) < 0.1 and g.world.nav_closest(at).distance_to(at) < 0.5, "the hero stands on walkable ground in the Graves (%s)" % str(at))
 	check(DmNextWarmup.crowd_rows == host.view.model_slots().size() * 3 * 2 and host.is_physics_processing() and g.is_processing(), "the warm-up fed %d rehearsal rows to the crowd and gave the game back" % DmNextWarmup.crowd_rows)
 	check(host.view.stats().bodies == 0, "the rehearsal rows are gone from the crowd (%d bodies)" % int(host.view.stats().bodies))
+	var none := PackedStringArray()
+	check(DmNextGame._wants_warmup(none, "Windows") and not DmNextGame._wants_warmup(none, "headless") and DmNextGame._wants_warmup(PackedStringArray(["--warmup"]), "headless")
+		and not DmNextGame._wants_warmup(PackedStringArray(["--qa"]), "Windows") and not DmNextGame._wants_warmup(PackedStringArray(["--shot-plan=x.json"]), "X11"),
+		"a player's game warms up as today's does (on in a window, off headless and on QA or screenshot runs, --warmup forces it)")
 	check(bool(hero.p["god"]) and float(f["caster"].p["stats"]["level"]) == 60.0 and g.director.difficulty == "easy" and g.input.auto.allowed(), "a god-mode level 60 hero on Easy, auto combat open")
 	check(int(f["stats"]["calls"]) > 0 and g.api.get("base_url") == "", "the backend is the mock (%d requests, no base url)" % int(f["stats"]["calls"]))
 	DmBenchFight.arm(g, 72, DmBenchmark.SEED)

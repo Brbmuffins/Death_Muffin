@@ -11,7 +11,8 @@ extends RefCounted
 ##     (Godot's separate "no omni light" variant), then with the shared flash light on.
 ## The combat core's tick is held while it runs (the host's sync would otherwise forget the rehearsal rows at once); the rows are cleared at the end. The cover is the
 ## shared art DmLoadingScreen (main's, else acquired here). Costs the loading time only: nothing here survives into play (the stage, the rows and the effect handles are freed).
-## Not run in play yet: `opts.warmup` or `--warmup` turns it on (the benchmark does); it has not been looked at on a GPU.
+## Runs for players as today's does (`DmNextGame._wants_warmup`: not headless, not on QA runs; the benchmark forces it). Before 2026-10-17 it ran only in the benchmark, and play
+## compiled every effect on its first use (warbogar: "Reaper lags out hard on first time VFX rendering").
 
 const TOUR_FRAMES := 3
 const ROW_ID := 900000                 ## ids of the rehearsal rows (the core's ids are small)

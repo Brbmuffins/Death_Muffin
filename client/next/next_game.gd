@@ -46,7 +46,7 @@ extends Node3D
 ## character and its build from the front flow (`slots`, `local` below) until the progression and the bag have loaded theirs from the server.
 ##
 ##   var g: DmNextGame = load("res://next/next_game.tscn").instantiate(); add_child(g); await g.start(character, api, opts)
-## `opts`: warmup (false: the first-use warm-up of models, effects and area lighting; the benchmark forces it), name, slots (the character's bag rows from the server: worn gear feeds the build), local (its progression: damage and legion tier, boons, vows; DmMain.load_build), visual (true), waves (true), hud (true = today's HUD and panels on DmNextUiHost; false = none), audio (true outside a headless
+## `opts`: warmup (the first-use warm-up of models, effects and area lighting; default `_wants_warmup()`: on for players, off headless and on QA runs; the benchmark forces it), name, slots (the character's bag rows from the server: worn gear feeds the build), local (its progression: damage and legion tier, boons, vows; DmMain.load_build), visual (true), waves (true), hud (true = today's HUD and panels on DmNextUiHost; false = none), audio (true outside a headless
 ## run: the music, ambience and footsteps), seed (the core's random seed; default from the clock), areas (the area ids to load; default every one, DmNextWorld.every_area),
 ## data_dir (res://), baked_dir / assets_dir (where the baked crowd models are), lod_distances / reserve / cull / anim_lod / thrall_shadows (the crowd's cost: CrowdView.setup),
 ## peer (a MultiplayerPeer; default OfflineMultiplayerPeer).
@@ -301,8 +301,8 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		enemy_fx.warm(local_body().global_position)
 		bosses.warm(local_body().global_position)
 		DmRiteFx.with_autoloads().warm()
-		# Every model, effect and area lighting drawn once under a cover, so no shader compiles mid-play. Off in play until it has been looked at on a GPU
-		# (client/next/perf/dm_next_warmup.gd); `opts.warmup` or `--warmup` turns it on, and the benchmark does.
+		# Every model, effect and area lighting drawn once under a cover, so no shader compiles mid-play (client/next/perf/dm_next_warmup.gd): for players
+		# as in today's game (`_wants_warmup`); `opts.warmup` overrides it.
 		if bool(opts.get("warmup", _wants_warmup())):
 			await DmNextWarmup.run(self)
 	perf.hold()
@@ -746,9 +746,17 @@ func respawn_point() -> Vector3:
 	return world.spawn_point()
 
 
-## The warm-up runs when a launch asks for it (`--warmup`), or `opts.warmup`.
-static func _wants_warmup() -> bool:
-	return "--warmup" in OS.get_cmdline_user_args()
+## The warm-up runs for players, as today's game does: not on a headless run, and not on a QA or screenshot run (`--qa`, `--shot-plan=`), where software GL
+## spends minutes on it and nobody plays. `--warmup` forces it; `opts.warmup` overrides all of it (the benchmark: on; the look and HUD tools: off).
+static func _wants_warmup(args: PackedStringArray = OS.get_cmdline_user_args(), display: String = DisplayServer.get_name()) -> bool:
+	if "--warmup" in args:
+		return true
+	if display == "headless":
+		return false
+	for a in args:
+		if a == "--qa" or a.begins_with("--shot-plan="):
+			return false
+	return true
 
 
 ## A guest: wait until the host accepted it (the roster arrived). false = the session ended or timed out first (`start_failed` emitted).

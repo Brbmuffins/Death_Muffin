@@ -160,7 +160,7 @@ func _game() -> void:
 	var g: DmNextGame = load("res://next/next_game.tscn").instantiate()
 	root.add_child(g)
 	var t0 := Time.get_ticks_msec()
-	await g.start(c.data, api, {"persist": false, "waves": false, "audio": false, "name": "look", "settings": {"graphics": "ultra", "auto_res": false, "brightness": 1.0}})
+	await g.start(c.data, api, {"persist": false, "waves": false, "audio": false, "warmup": false, "name": "look", "settings": {"graphics": "ultra", "auto_res": false, "brightness": 1.0}})
 	print("renderer: %s %s; started in %d ms; viewport %s" % [RenderingServer.get_video_adapter_name(), RenderingServer.get_current_rendering_method(), Time.get_ticks_msec() - t0, root.get_viewport().get_visible_rect().size])
 	var b: DmWorldBuilder = g.world.builder
 	var e: Environment = b.env
