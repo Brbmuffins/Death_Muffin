@@ -508,11 +508,12 @@ func affix_marks() -> int:
 	return n
 
 
-## A dust cloud (the moth's) or burning ground (the coal's, the slag slam's, the Husk's embers): the router's zone visual. The toxic pool of a burst corpse has no visual of its own
-## today either (its aura is the corpse's).
-func _on_zone(id: int, kind: int, _source: int, x: float, z: float, radius: float, seconds: float) -> void:
-	var zk := DmCoreEvents.ZONE_KINDS[kind]
-	if zk != &"dust" and zk != &"ember":
+## A dust cloud (the moth's), burning ground (a boss's coals, the firebreak and the embers, the coal's, the slag slam's, the Husk's embers) and a boss's rot pool: the router's zone visual.
+## The toxic pool of a burst corpse has no visual of its own today either (its aura is the corpse's), nor has a flask's (the Plague Doctor's): a boss's pool is the toxic one whose
+## source is not a body of the core's table (a boss is an external of it, on a guest too); a corpse's has no source and a thrower's is its own body.
+func _on_zone(id: int, kind: int, source: int, x: float, z: float, radius: float, seconds: float) -> void:
+	var zk: StringName = DmCoreEvents.ZONE_KINDS[kind]
+	if zk != &"dust" and zk != &"ember" and (zk != &"toxic" or source == 0 or not core_host.core.enemy_info(source).is_empty()):
 		return
 	stats["zone"] += 1
 	_zone["id"] = id

@@ -22,6 +22,7 @@ constexpr size_t WIRE_HEADER = 8;  // magic (2), kind, version, content hash (4)
 enum WireRecord : uint8_t {
 	WR_NAME = 101,          // a string table entry: table (NameTable), index, length, bytes
 	WR_THRALL_MAX_HP = 102, // id, max hp (f32): set_thrall_stats changed a thrall's maximum
+	WR_ENEMY_MAX_HP = 103,  // id, max hp (f32): set_enemy_hp changed an enemy's maximum (a boss gave its niche its health)
 };
 enum NameTable : uint8_t { NT_AREA = 0, NT_REASON = 1 };
 

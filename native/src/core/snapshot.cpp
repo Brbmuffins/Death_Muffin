@@ -37,7 +37,9 @@ uint32_t World::content_hash() const {
 					 // the Nave's kinds: what a guest draws a dive's telegraph with, and the flags that make a def the Censer, the Templar, the Acolyte or a silenceable caster
 					 d.has_dive ? d.dive_r : 0.0, d.aura ? 1.0 : 0.0, d.shield ? 1.0 : 0.0, d.unbind ? 1.0 : 0.0, d.silence_aware ? 1.0 : 0.0,
 					 // the Sanctum's and Cloister's kinds: the Seraph's flag (it blesses and casts the curse)
-					 d.ward ? 1.0 : 0.0 }) {
+					 d.ward ? 1.0 : 0.0,
+					 // the Skull Niche: an inert def never moves or acts, so its state is what a guest shows
+					 d.inert ? 1.0 : 0.0 }) {
 			f.num(v);
 		}
 	}

@@ -374,14 +374,18 @@ bool read_record(World &w, ByteReader &r, std::string &r_why) {
 		}
 		return true;
 	}
-	if (type == WR_THRALL_MAX_HP) {
+	if (type == WR_THRALL_MAX_HP || type == WR_ENEMY_MAX_HP) {
 		const uint32_t id = r.uvar();
 		const float mx = r.f32();
 		if (r.bad) {
 			r_why = "damaged message (a maximum)";
 			return false;
 		}
-		w.puppet_thrall_max_hp(int32_t(id), mx);
+		if (type == WR_THRALL_MAX_HP) {
+			w.puppet_thrall_max_hp(int32_t(id), mx);
+		} else {
+			w.puppet_enemy_max_hp(int32_t(id), mx);
+		}
 		return true;
 	}
 	int32_t mi = 0, mf = 0;

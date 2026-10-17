@@ -23,6 +23,7 @@ class DmCore : public godot::RefCounted {
 	dm::World world;
 	godot::RID nav_map;
 	mutable std::vector<int32_t> query_out;
+	mutable std::vector<float> zone_scratch;  // zones(): x, z, radius per live zone of one kind
 	godot::PackedInt32Array ev_ints;
 	godot::PackedFloat32Array ev_floats;
 	friend class DmCrowd;        // the presentation reads the tables and the event buffer in place, read only (dm_crowd.h)
@@ -77,6 +78,10 @@ public:
 	// The defaults (15, 30) are every other body's. False for a dead or unknown id.
 	bool set_enemy_aggro(int64_t p_id, double p_aggro, double p_leash);
 	bool remove_enemy(int64_t p_id);  // a living enemy leaves without dying (a boss's adds): no death, corpse or credit; EV_ENEMY_REMOVED with 1. False for a dead or unknown id
+	bool set_enemy_hp(int64_t p_id, double p_hp, double p_max_hp);  // a boss gives a body its health (the Abbess's niches); guests learn the maximum by a wire record. False for a dead or unknown id
+	// A boss's hostile ground zone ("toxic" rot, "ember" coals, "dust"): pulses dps x 1 s at the heroes and thralls within radius + 0.45, `source` the boss's id. Returns its id (EV_ZONE tells the rest).
+	int64_t add_zone(const godot::String &p_kind, const godot::Vector2 &p_pos, double p_radius, double p_seconds, double p_dps, int64_t p_source);
+	godot::PackedFloat32Array zones(const godot::String &p_kind) const;  // the live zones of one kind: x, z, radius each
 	void stun(int64_t p_id, double p_seconds);
 	// DmStatusSet.apply: params dps (bleed, withered), cap (withered stack cap / barrier cap), amount (barrier).
 	void apply_status(int64_t p_id, const godot::String &p_status, int64_t p_source, double p_stacks = 1.0, double p_duration = -1.0, const godot::Dictionary &p_params = godot::Dictionary());
@@ -143,6 +148,7 @@ public:
 	godot::Array take_events();  // [PackedInt32Array ints, PackedFloat32Array floats], see core/events.h; clears the buffer
 	int64_t enemy_count() const;
 	godot::PackedInt32Array enemy_ids() const;
+	godot::PackedFloat32Array enemy_rows() const;       // id, def, x, z, hp, max hp, state per enemy, spawn order (a boss's brain reads the table each tick)
 	godot::PackedFloat32Array enemy_positions() const;  // x, z, yaw per enemy, spawn order
 	godot::PackedInt32Array enemy_states() const;
 	godot::PackedFloat32Array enemy_ground_speeds() const;  // m/s each enemy walked this tick (walk/run clips)

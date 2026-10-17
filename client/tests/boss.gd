@@ -12,7 +12,7 @@ extends SceneTree
 ##     a rite's damage goes to his brain with the hero's credit, his statuses are his own DmStatusSet (the brain ignores slow, root and chill), a stun staggers him once;
 ##   - he dies: the defeat events (the brain's `defeated`, the host's `defeated` signal, `died`, the sound), the adds that stood by him are gone without dying, he can be woken again;
 ##   - a fight on the real clock (the brain on the engine's physics ticks, the host's tick, the core's events) with no script or engine error; the net state round trip (the co-op step's seam).
-## Rewards are off in this step (`g.rewards` is null): the defeat events are what the rewards item connects to. ZERO script errors or engine errors in the log (an OS Logger counts them).
+## The other six bosses have their own suites (boss_abbess.gd ... boss_mire.gd on boss_base.gd) and the Covenant Seal's Empowered call is boss_meta.gd. ZERO script errors or engine errors in the log (an OS Logger counts them).
 ## Bakes the robber, the hound and the Gravecaller's legionnaire into a scratch folder first (a few seconds). Run: godot --headless --path client --script res://tests/boss.gd
 ## It plays about 60 s of game time: with the engine argument `--fixed-fps 60` before `--path` it runs faster than real time.
 
@@ -202,7 +202,7 @@ func finish() -> void:
 
 func _wire() -> void:
 	check(g.ready_ and hb != null and c != null and g.bosses != null and g.bosses.name == "Bosses" and g.bosses.fx != null, "the game scene is up, the hero has his caster and the scene has a Bosses host with its fx")
-	check(g.bosses.served_areas == ["graves"], "the host wakes the Hollow Graves' boss only")
+	check(g.bosses.served_areas == ["graves", "ossuary", "nave", "sanctum", "cloister", "pyre", "fen"], "the host wakes the boss of every area (the other six have their own suites: boss_*.gd)")
 	hb.p["stats"]["maxHp"] = 1.0e5   # the fight is about numbers, not about the hero surviving them
 	hb.heal(1.0e6)
 	g.bosses.fx.set_backends(stub, astub)
@@ -458,7 +458,7 @@ func t_summon() -> void:
 	await ticks(2)
 	hb.teleport(Vector3(0.0, 0.0, 20.0))
 	check(g.bosses.try_summon(me, "gravedigger") == "far", "summon refused away from the grave (far)")
-	check(g.bosses.try_summon(me, "nobody") == "unknown" and g.bosses.try_summon(me, "abbess") == "unknown", "a boss that is not live is unknown, and so is one of an area this build does not serve")
+	check(g.bosses.try_summon(me, "nobody") == "unknown" and g.bosses.try_summon(me, "abbess") == "far", "a boss that is not live is unknown, and another area's boss is far from here")
 	check(g.bosses.try_summon(999, "gravedigger") == "dead", "an unknown summoner is refused")
 	hb.teleport(near_site())
 	await ticks(2)

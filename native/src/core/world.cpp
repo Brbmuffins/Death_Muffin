@@ -66,6 +66,7 @@ Enemy World::make_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level, do
 	Enemy e;
 	e.id = next_id++;
 	e.frenzy = d.frenzy;
+	e.inert = d.inert;
 	e.rng.seed(seed, uint64_t(e.id));
 	e.def = p_def;
 	e.level = p_level;
@@ -768,6 +769,9 @@ double World::damage_enemy(int32_t p_slot, double p_amount, int32_t p_source, bo
 		r_killed = true;
 		return amount;
 	}
+	if (e.inert) {  // DmEnemyNiche.take_damage: never staggers (and, with only rising, idle and dead states, nothing else it could change into)
+		return amount;
+	}
 	if (e.target == 0 && target_valid(p_source)) {  // a hit aggroes the attacker when nothing is targeted
 		e.target = p_source;
 	}
@@ -789,7 +793,7 @@ double World::damage_enemy(int32_t p_slot, double p_amount, int32_t p_source, bo
 
 void World::stun(int32_t p_slot, double p_seconds) {  // DmEnemy.stun: a hard interrupt, cancels a swing too
 	Enemy &e = enemies[p_slot];
-	if (e.state == DEAD || !hittable(e)) {
+	if (e.state == DEAD || !hittable(e) || e.inert) {  // DmEnemyNiche.stun does nothing
 		return;
 	}
 	e.hurt_s = p_seconds;
@@ -1061,7 +1065,7 @@ void World::step(double p_dt) {
 		}
 		e.stagger_t -= p_dt;
 		e.state_t += p_dt;
-		const int32_t nxt = tick_state(i, p_dt);
+		const int32_t nxt = e.inert ? tick_inert(i) : tick_state(i, p_dt);
 		if (nxt >= 0 && nxt != enemies[i].state) {
 			change(i, nxt);
 		}
@@ -1083,7 +1087,7 @@ void World::step(double p_dt) {
 	}
 	separate();
 	for (int32_t i = 0; i < n; i++) {
-		if (enemies[i].state != DEAD) {
+		if (enemies[i].state != DEAD && !enemies[i].inert) {  // a niche is never moved (nor pushed out of a hero or a wall: its body never slid)
 			move(enemies[i], p_dt);
 		}
 	}

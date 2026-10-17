@@ -197,7 +197,15 @@ fx/sheets/summon_circle.png
 fx/sheets/chain_arc.png
 fx/sheets/trail_arc.png
 
-# ---- The Gravedigger King (client/next/bosses): the Hollow Graves' boss, drawn by DmBossView with the full skeleton (the model and the textures Godot extracts from it)
+# ---- The seven bosses (client/next/bosses): each drawn by DmBossView with the full skeleton (the model and the textures Godot extracts from it). The Prelate's model is `prelate`
 slice/models/boss_gravedigger_king
+slice/models/boss_bone_abbess
+slice/models/boss_drowned_congregation
+slice/models/prelate
+slice/models/boss_plague_saint
+slice/models/boss_cinder_regent
+slice/models/boss_mire_mother
+# the Bone Abbess's Skull Niche (an unrigged prop the crowd draws; the rest of its adds are the Graves', Ossuary's and Nave's)
+slice/models/props/skull_niche*
 
-# ---- Later blocks (not listed yet): the rest of the Graves roster, the other areas' props, the other bosses.
+# ---- Later blocks (not listed yet): the rest of the other areas' rosters.

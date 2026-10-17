@@ -37,7 +37,7 @@ enum HitKind : int32_t { HK_MELEE = 0, HK_TOXIC, HK_BURN, HK_EMBER, HK_DUST, HK_
 // Telegraph and cue kinds (DmEnemy.telegraph / cue): append only.
 enum Tell : int32_t { TELL_CONE = 0, TELL_SLAM, TELL_DUST, TELL_ERUPT, TELL_TOLL, TELL_RAISE, TELL_CURSE, TELL_SCREAM, TELL_DIVE, TELL_FLASK, TELL_EMBER, TELL_HEX, TELL_PULSE, TELL_HOOK };
 enum Cue : int32_t { CUE_SLAM = 0, CUE_ERUPT, CUE_DIG_IN, CUE_SANCTIFY, CUE_SHIELD_BLOCK, CUE_UNBIND, CUE_SCREAM, CUE_FLASK, CUE_HOOK, CUE_COUNT };
-enum ZoneKind : int32_t { ZONE_DUST = 0, ZONE_TOXIC, ZONE_EMBER };
+enum ZoneKind : int32_t { ZONE_DUST = 0, ZONE_TOXIC, ZONE_EMBER };  // hurt kinds toxic, burn and dust: a boss's pools, the flask's pool, a corpse's burst, the husks' coals
 // Elite affixes in DmSimData.AFFIX_ORDER (bit k of Enemy::affixes) and the one-off beats DmAffixSet.moment sends: append only.
 enum Affix : int32_t { AF_BELL_TOLLED = 0, AF_HUNGERING, AF_SHROUDED, AF_VENGEFUL, AF_COUNT };
 enum AffixMoment : int32_t { AM_TELL = 0, AM_TOLL, AM_HUNGERING, AM_VENGEFUL, AM_UNVEIL };
@@ -134,6 +134,9 @@ struct EnemyDef {
 	bool ward = false;  // the Weeping Seraph (behavior support with `ward`): it keeps the Deacon's distance, casts the curse, and blesses allies (DmEnemyClstSeraph)
 	double dive_min = 3.5, dive_range = 9.0, dive_r = 2.0, dive_grounded_s = 1.4;
 	PfDef pf;  // the Cinder Pyre's and the Mourning Fen's kinds (pyre_fen.h)
+	// The Skull Niche (niche.cpp; def `inert`): a body that only stands. It rises, never targets, moves, strikes, staggers or stuns, takes no part in the crowd's spacing and
+	// leaves no corpse; the boss that owns it sets its health (set_enemy_hp).
+	bool inert = false;
 };
 
 struct Enemy : Body {
@@ -141,6 +144,7 @@ struct Enemy : Body {
 	bool elite = false, in_graves = true, dug_in = false;
 	double aggro = AGGRO_RANGE, leash = LEASH;  // how far it notices a target and strays from home: every body's, except where the director gives one its own (the Depths)
 	uint8_t affixes = 0;  // bit per Affix
+	bool inert = false;   // the def's `inert` (the Skull Niche): its brain is niche.cpp's tick_inert
 	double hp_mult = 1, damage_mult = 1;  // the spawn's multipliers (Vengeful's Risen are as strong as the body that fell)
 	// DmAffixSet: its own clock (runs only while the body acts), the bell and hunger countdowns (-1 = fresh), the shroud check, the last Miasma cover
 	double affix_t = 0, toll_cd = -1, toll_at = -1, hunger_cd = -1, shroud_t = 0, miasma_at = -std::numeric_limits<double>::infinity();
@@ -283,6 +287,16 @@ struct World {
 	bool remove_obstacle(int32_t p_id);
 	// Adds the bodies a kill queued. step() calls it last; DmCore calls it before returning from anything that can kill outside the tick.
 	void flush_spawns();
+	// ---- what bosses call (boss.cpp, niche.cpp): a hostile ground zone, a body's health, the Skull Niche's tick
+	// A hostile zone of `p_kind` (ZoneKind) at (x, z): pulses `dps` x one second at every hero and thrall within radius + 0.45, `p_source` (a boss's id) as the hurt's source (DmHostileZone.spawn).
+	// Returns its id; EV_ZONE tells the crowd, the effects and the guests.
+	int32_t add_zone(int32_t p_kind, float p_x, float p_z, double p_radius, double p_seconds, double p_dps, int32_t p_source);
+	// The live zones of one kind as x, z, radius (the Plague Saint stands in her own rot).
+	void zones_of(int32_t p_kind, std::vector<float> &out) const;
+	// DmBossNodeWorld.set_enemy_hp: the boss gives a body (a niche) its health, at its spawn. False for a dead or unknown id, or a maximum of zero or less.
+	bool set_enemy_hp(int32_t p_id, double p_hp, double p_max_hp);
+	void queue_enemy_max_hp(int32_t p_id);                // a wire record: a guest knows health as a fraction of the maximum
+	void puppet_enemy_max_hp(int32_t p_id, float p_max_hp);
 	// A living body leaves without dying (a boss's adds go with the boss): no death, no corpse, no kill credit, no Vengeful. False for a dead or unknown id.
 	bool remove_enemy(int32_t p_id);
 	// DmAffixSet.strip_shroud (Last Light, a Warden sweep): the ward is gone for good. False when the body has none.
@@ -364,7 +378,7 @@ private:
 	void move(Enemy &e, double p_dt);
 	void separate();
 	void resolve_overlaps();
-	bool on_surface(const Enemy &e) const { return e.state != DEAD && e.state != BURROW && e.state != ERUPT; }
+	bool on_surface(const Enemy &e) const { return e.state != DEAD && e.state != BURROW && e.state != ERUPT && !e.inert; }  // an inert body is not in the crowd (it never moves; others walk through it, as RVO did)
 	void keep_off_heroes(Enemy &e) const;  // and out of the obstacles
 	void step_zones(double p_dt);
 	void remove_dead_bodies();
@@ -419,6 +433,8 @@ private:
 	int32_t sanctify_target(const Enemy &e) const;  // the slot of the most wounded unblessed other-kind ally in range, or -1
 	void raise_corpse(Enemy &e);
 	bool silenced(const Enemy &e) const { return st_silence >= 0 && e.st.find(st_silence) >= 0; }
+	// the Skull Niche (niche.cpp)
+	int32_t tick_inert(int32_t p_slot);             // the niche's whole brain: rise, then stand
 	// the Drowned Nave's kinds (nave.cpp)
 	void tick_aura(int32_t p_slot, double p_dt);    // Censer Bearer
 	void tick_unbind(int32_t p_slot, double p_dt);  // Lich Acolyte

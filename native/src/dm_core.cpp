@@ -83,6 +83,9 @@ void DmCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("damage", "id", "amount", "source", "allow_stagger"), &DmCore::damage, DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("set_enemy_aggro", "id", "aggro", "leash"), &DmCore::set_enemy_aggro);
 	ClassDB::bind_method(D_METHOD("remove_enemy", "id"), &DmCore::remove_enemy);
+	ClassDB::bind_method(D_METHOD("set_enemy_hp", "id", "hp", "max_hp"), &DmCore::set_enemy_hp);
+	ClassDB::bind_method(D_METHOD("add_zone", "kind", "pos", "radius", "seconds", "dps", "source"), &DmCore::add_zone);
+	ClassDB::bind_method(D_METHOD("zones", "kind"), &DmCore::zones);
 	ClassDB::bind_method(D_METHOD("stun", "id", "seconds"), &DmCore::stun);
 	ClassDB::bind_method(D_METHOD("apply_status", "id", "status", "source", "stacks", "duration", "params"), &DmCore::apply_status, DEFVAL(1.0), DEFVAL(-1.0), DEFVAL(Dictionary()));
 	ClassDB::bind_method(D_METHOD("remove_status", "id", "status"), &DmCore::remove_status);
@@ -135,6 +138,7 @@ void DmCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("take_events"), &DmCore::take_events);
 	ClassDB::bind_method(D_METHOD("enemy_count"), &DmCore::enemy_count);
 	ClassDB::bind_method(D_METHOD("enemy_ids"), &DmCore::enemy_ids);
+	ClassDB::bind_method(D_METHOD("enemy_rows"), &DmCore::enemy_rows);
 	ClassDB::bind_method(D_METHOD("enemy_positions"), &DmCore::enemy_positions);
 	ClassDB::bind_method(D_METHOD("enemy_states"), &DmCore::enemy_states);
 	ClassDB::bind_method(D_METHOD("enemy_ground_speeds"), &DmCore::enemy_ground_speeds);
@@ -159,7 +163,7 @@ void DmCore::_bind_methods() {
 }
 
 String DmCore::version() const {
-	return "dmcore 0.12";
+	return "dmcore 0.13";
 }
 
 int64_t DmCore::checksum(int64_t p_count) const {
@@ -217,12 +221,13 @@ int64_t DmCore::load_enemy_defs(const Dictionary &p_enemies) {
 			def.behavior = dm::B_HAZARD;
 			def.blow = dm::BLOW_SLAM;
 		} else if (behavior == "support" && !bool(d.get("inert", false))) {
-			def.behavior = dm::B_SUPPORT;  // the Crypt Deacon: its curse is the plain blow (melee), its raise and Sanctify are the support scan. The Niche (inert) keeps the melee default until it is ported.
+			def.behavior = dm::B_SUPPORT;  // the Crypt Deacon: its curse is the plain blow (melee), its raise and Sanctify are the support scan. The Niche (inert) never reaches the brain (niche.cpp).
 			def.ward = bool(d.get("ward", false));  // the Weeping Seraph keeps the Deacon's distance (dm_state_clst_kite.gd [0, 0.5, 4, 0.7] = dm_state_cath_support.gd), casts the curse and blesses allies (its ward, cloister.cpp)
 			if (def.ward) {
 				def.blow = dm::BLOW_CURSE;
 			}
 		}
+		def.inert = bool(d.get("inert", false));    // the Skull Niche
 		def.aura = bool(d.get("aura", false));      // the Censer Bearer's incense
 		def.shield = bool(d.get("shield", false));  // the Bell-Sworn Templar's shield
 		def.unbind = bool(d.get("unbind", false));  // the Lich Acolyte's Unbind
@@ -676,6 +681,51 @@ bool DmCore::remove_enemy(int64_t p_id) {
 	return world.remove_enemy(int32_t(p_id));
 }
 
+// DmBossNodeWorld.set_enemy_hp: a boss gives a body its health (the Abbess's niches). False for a dead or unknown id or a maximum of zero or less.
+bool DmCore::set_enemy_hp(int64_t p_id, double p_hp, double p_max_hp) {
+	if (refused("set_enemy_hp")) {
+		return false;
+	}
+	return world.set_enemy_hp(int32_t(p_id), p_hp, p_max_hp);
+}
+
+// DmHostileZone.spawn for a boss: `kind` "toxic" (a rot pool), "ember" (burning ground) or "dust"; it pulses dps x one second at the heroes and thralls in it, with `source` (the boss's id)
+// as the hurt's source. Returns the zone's id, 0 for an unknown kind.
+int64_t DmCore::add_zone(const String &p_kind, const Vector2 &p_pos, double p_radius, double p_seconds, double p_dps, int64_t p_source) {
+	if (refused("add_zone")) {
+		return 0;
+	}
+	int32_t k = -1;
+	if (p_kind == "dust") {
+		k = dm::ZONE_DUST;
+	} else if (p_kind == "toxic") {
+		k = dm::ZONE_TOXIC;
+	} else if (p_kind == "ember") {
+		k = dm::ZONE_EMBER;
+	}
+	if (k < 0) {
+		UtilityFunctions::push_error("DmCore.add_zone: unknown zone kind ", p_kind);
+		return 0;
+	}
+	return world.add_zone(k, p_pos.x, p_pos.y, p_radius, p_seconds, p_dps, int32_t(p_source));
+}
+
+// The live zones of one kind, x, z, radius each (the Plague Saint's "am I standing in rot"). Empty on a puppet (a guest's zones are the host's events).
+PackedFloat32Array DmCore::zones(const String &p_kind) const {
+	PackedFloat32Array out;
+	const int32_t k = p_kind == "dust" ? dm::ZONE_DUST : (p_kind == "toxic" ? dm::ZONE_TOXIC : (p_kind == "ember" ? dm::ZONE_EMBER : -1));
+	if (k < 0) {
+		return out;
+	}
+	zone_scratch.clear();
+	world.zones_of(k, zone_scratch);
+	out.resize(int64_t(zone_scratch.size()));
+	for (size_t i = 0; i < zone_scratch.size(); i++) {
+		out.set(int64_t(i), zone_scratch[i]);
+	}
+	return out;
+}
+
 void DmCore::stun(int64_t p_id, double p_seconds) {
 	if (refused("stun")) {
 		return;
@@ -833,6 +883,26 @@ PackedInt32Array DmCore::enemy_ids() const {
 	a.resize(int64_t(world.enemies.size()));
 	for (size_t i = 0; i < world.enemies.size(); i++) {
 		a.set(int64_t(i), world.enemies[i].id);
+	}
+	return a;
+}
+
+// Seven numbers per body in spawn order (id, def, x, z, hp, max hp, state): what a boss's brain reads of the table each tick (the Plague Saint looks for her doctors)
+// without a Dictionary per body.
+PackedFloat32Array DmCore::enemy_rows() const {
+	PackedFloat32Array a;
+	a.resize(int64_t(world.enemies.size()) * 7);
+	float *w = a.ptrw();
+	for (size_t i = 0; i < world.enemies.size(); i++) {
+		const dm::Enemy &e = world.enemies[i];
+		float *r = w + i * 7;
+		r[0] = float(e.id);
+		r[1] = float(e.def);
+		r[2] = e.x;
+		r[3] = e.z;
+		r[4] = float(e.hp);
+		r[5] = float(e.max_hp);
+		r[6] = float(e.state);
 	}
 	return a;
 }

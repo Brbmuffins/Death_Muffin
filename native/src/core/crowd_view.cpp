@@ -647,6 +647,11 @@ void CrowdView::die(View &v) {
 		start_fade(v);
 		return;
 	}
+	if (v.flags & BF_INERT) {  // a Skull Niche crumbles: hidden at once, not toppled (DmEnemyNiche.on_death); the nicheBreak effect is the burst
+		start_fade(v);
+		v.sink_t = SINK_S + 1.0;
+		return;
+	}
 	const CrowdModel &m = models[v.model];
 	v.mode = M_DYING;
 	v.die_t = 0.0;

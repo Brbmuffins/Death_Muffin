@@ -151,8 +151,7 @@ server (B38).
     external of kind 1 (position and `alive` written before every step), thralls pick him by the core's boss edge rule and their blows come back as `thrall_hit_external` into his brain, the host's queries and damage calls answer for his id so every rite
     reaches him (edge distance, his radius, after the enemies; the Scythe's arc and the needle's range count him), his statuses are his own GDScript set, his ghouls and elite robber are core bodies that leave with him through the new `DmCore.remove_enemy`,
     and his blows reach the hero and the thralls (`core.damage` on their ids). `client/tests/boss.gd` replays his six recorded scenarios against the copy of the brain and fights him: summon, phases, telegraphs, thralls, rites, wipe, defeat, a second summon
-    (client/README.md "The Gravedigger King"). Not in it, each its own item: the other six bosses (their pools, niches and hooks need a core zone call for a boss and a call that sets a body's health), shards and the Covenant Seal (the summon is free until
-    progression comes), rewards (the defeat events exist: `bosses.defeated`, `brain_event`, `DmBoss.died`), Easy auto combat's use of him, replicating him to guests (co-op).
+    (client/README.md "The bosses"). The other six bosses and the Covenant Seal's call are the "Bring everything over" item below.
 - [x] Core obstacles: Ossuary Wall solid for the core's enemies (`DmCore.add_obstacle`, a box the core keeps enemies out of and their steering
   slides along; `client/tests/core_enemies.gd` obstacles, `client/tests/rites.gd`). A later rite or boss barrier uses the same call.
 - [ ] The rebuild on the test channel: `publish-test-channel.sh <rev>` exports `client/` (`publish-godot-client.sh` with `PROJECT=client`,
@@ -183,7 +182,7 @@ server (B38).
     and main.gd's hand-over (join, leave, a refused join, a closed party: home with the reason); `client/tests/social.gd`.
   - [x] The party's seals: the party plays in the host's world, so a guest's seals, doors and open areas are the host's (told to a guest as it joins, silently, and to every guest when they change: the gate rises
     with its sound and the banner); its own account's seals never open or close a door there (client/README.md "Co-op on the core", `client/tests/coop.gd`).
-  - [ ] Still to do beside the core: the other six bosses' state with their items; a new baseline for each new area. (A guest's build
+  - [ ] Still to do beside the core: the six other bosses' two-player fights (they ride `DmBossHost`'s state and events like the King); a new baseline for each new area. (A guest's build
     from the server's record and its own account came with value on the server; party chat and ground drops between members with the panels.)
   - [ ] Phones join as guests only (B40): the same messages; measure the snapshot on the Mobile renderer's budget when the first phone build exists.
 - [ ] The Full Party fight in the new client with the budget checks, and a seeded scenario comparison with today's game → Gate B.
@@ -255,6 +254,12 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
     Mourning Fen's hag, leech, wisp and sexton (2026-10-17), with their crowd models: every area's roster runs on the core (the bosses' adds come with the bosses).
   - [ ] The benchmark's other rooms (today's Sanctum and the rest), so Gate C can compare every room.
 - [ ] The six other bosses (a core zone for a boss, a call that sets a body's health, the Veilwalker's echoes), and the Covenant Seal's Empowered call (`DmBossMeta`, the boss key prompt).
+  Progress (2026-10-17, client/README.md "The bosses"): all seven bosses wake in their areas (`served_areas`), their brains the copies of today's, each replayed against its recorded scenarios (44) and fought by hand against today's numbers
+  (`client/tests/boss_abbess|congregation|prelate|saint|regent|mire.gd` on `boss_base.gd`, 130 to 160 checks each, with the summon at the altar, thralls, rites, wipe, defeat and rewards). The core got the `niche` kind (the Abbess's Skull Niche),
+  `set_enemy_hp`, and zones for a boss (`add_zone`, `zones`: the Saint's rot, the Regent's coals), with their wire (`client/tests/core_boss.gd`); the corpses (`devoured`, `raised`), the pews and the Mire Mother's sunk state ride the core's existing
+  calls. `DmBossMeta` and the HUD's boss-key prompt are in (`client/tests/boss_meta.gd`, on the mock backend). The Prelate's echoes are the world's vows, none in the rebuild (B36; native/README.md "Differences").
+  Every add a boss calls is a core body now (the Cloister's, the Pyre's and the Fen's kinds are on the core): each boss suite checks its waves arrive on the rim in the boss's area, and the Saint's doctors feed her through the link as real bodies.
+  Left: the six bosses' two-player fights are not in a test yet (the state and events are `DmBossHost`'s, as the King's).
 - [ ] The Depths and gathering (the Chapterhouse came with the areas, DECISIONS B47).
   - [x] The Depths (2026-10-17, client/README.md "The Depths"): the instanced descent on the core: floors generated on a worker thread, baked off the main thread and handed to the core (one floor's triangles, replaced per floor), the dead
     core bodies with their own aggro, the stair, quota, chest and rewards on the server as today, the HUD's readout, map and prompt, solo, death takes nothing; every band's kinds are on the core, so the rosters are today's.

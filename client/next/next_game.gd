@@ -7,7 +7,7 @@ extends Node3D
 ##   Core    (DmCoreHost)  the one owner of the combat core and the crowd that draws it        Waves (DmWaveDirector)  waves, spawned through the core
 ##   Input   (DmNextInput) click / WASD / hover pick through the core                          Camera (DmCameraRig)    the existing rig
 ##   EnemyFx (DmEnemyFx)   telegraphs, strikes, deaths, voices: the core's events as effects   UiHost, Ui (DmNextUiHost, DmGameUi)  today's HUD and panels (B46)
-##   Bosses  (DmBossHost)  the Gravedigger King: summon rules, the boss body (an external of the core, its brain GDScript), its fx and music
+##   Bosses  (DmBossHost)  the seven bosses: summon rules, the boss body (an external of the core, its brain GDScript), its fx and music      BossMeta (DmBossMeta)  the Covenant Seal's altar choice
 ## The hero is a DmHeroBody made by the session's body_factory, registered with the core as an external; the blows enemies land on it arrive as the
 ## core's EV_TARGET_HIT events (`_on_target_hit`). Enemies are ids (ints) everywhere, never nodes: `enemy_spawned` carries an id, the queries
 ## (`enemies_in_radius`, `enemy_position`) answer ids and positions from the core. No node and no script exists per creature.
@@ -16,9 +16,9 @@ extends Node3D
 ## through DmNextInput and DmRiteHotbar). A rite calls the core synchronously (`core_host.damage / apply_status`, `corpses`, the legion), so a kill resolves inside the cast;
 ## its thralls are the core's and are drawn by the crowd. `rite_hit` carries every blow a rite or a Withered DoT lands, for the rewards seam.
 ##
-## The Hollow Graves' boss, the Gravedigger King, wakes at his grave (key E within 4 m, `bosses.request_summon`): his body is an external entity of the core (kind 1, DmBoss),
-## his brain is today's GDScript, the rites and the thralls hit him through the core's host (`enemies_in_radius`, `damage`) and the events, his adds are core bodies and his
-## defeat is `bosses.defeated` (a real kill, not a wipe; `rewards.on_boss_defeated` when the rewards item brings the rewards) (client/README.md "The Gravedigger King").
+## A boss (the Gravedigger King at his grave, the Bone Abbess at her Reliquary ... the Mire Mother at her altar) wakes where its summon site is (key E within 4 m, `bosses.request_summon`): its body is an
+## external entity of the core (kind 1, DmBoss), its brain is today's GDScript, the rites and the thralls hit it through the core's host (`enemies_in_radius`, `damage`) and the events, its adds and pools are
+## the core's and its defeat is `bosses.defeated` (a real kill, not a wipe; `rewards.on_boss_defeated` pays it) (client/README.md "The bosses").
 ##
 ## 2-PLAYER CO-OP (client/README.md "Co-op on the core"): the same scene runs as the HOST (the default: a solo run, or hosted over the test lobby's relay once `party.host_session` swaps
 ## the transport) or as a GUEST (`opts.lobby`: the lobby socket a join happened on, or `opts.peer` with `host` false). The host simulates and sends (`Net`, DmNextNet: the core's snapshot,
@@ -85,6 +85,7 @@ var depths: DmDepths                           ## child "Depths" (host): the pro
 var gather: DmNextGather                        ## child "Gather" (every peer): gathering nodes, the gather loop (host), skills, AFK (next/gathering/)
 var acre: DmNextAcre                            ## child "Acre" (host, with the HUD): visible Grave Laborers, labor / garden notices, the first-hour guidance feeds (next/gathering/)
 var bosses: DmBossHost                          ## child "Bosses": summon rules, the boss body, its events and music
+var boss_meta: DmBossMeta                       ## child "BossMeta" (host): the Covenant Seal altar choice, Empowered summons, the Seal's prize (next/bosses/)
 var rewards: DmSessionRewards                   ## child "Rewards" (host): kill credit, the backend's party session, loot rolls (next/rewards/)
 var progress: DmNextProgress                    ## child "Progress" (host): levels, upgrade tiers, the belt, the backend saves (next/progress/)
 var meta: DmNextMeta                            ## child "Meta" (host): difficulty, world vows, the Omen, Soul Harvest, the Kill Chain, Bonded Dead (next/meta/)
@@ -361,6 +362,10 @@ func _start_value(b: DmHeroBody) -> void:
 	progress.name = "Progress"
 	add_child(progress)
 	await progress.setup(self, rewards.members.get(cid), bool(opts.get("persist", DisplayServer.get_name() != "headless")))
+	boss_meta = DmBossMeta.new()
+	boss_meta.name = "BossMeta"
+	add_child(boss_meta)
+	await boss_meta.setup(self)
 	party.attach_host()
 	codex = DmNextCodex.new()
 	codex.name = "Codex"

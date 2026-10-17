@@ -7,7 +7,8 @@ extends Node
 ## Seams on DmNextGame: `bosses` (this node).
 ## Ported to the combat core (client/code.list "Ported"): a boss body registers with the core's host as an external of kind 1 (DmBoss, `core_id`), whose queries include
 ## the living bosses after the enemies (so rites and the hover pick hit them), whose thralls' blows come back as `thrall_hit_external` (routed to the brain here) and
-## whose adds are core bodies. The boss pools (`spawn_pool`, `toxic_zones`: the Saint's rot, the Regent's coals) are not here: the core makes no zone for a boss yet.
+## whose adds are core bodies. The boss pools (`spawn_pool`, `toxic_zones`: the Saint's rot, the Regent's coals) are core zones (DmBossNodeWorld makes them with the boss as the source,
+## DmEnemyFx draws them from the zone events), so none of that is here.
 
 signal boss_spawned(boss: DmBoss)                 ## every peer, once in the tree
 signal summoned(boss_id: String, by_peer: int)    ## host
@@ -27,9 +28,9 @@ const WHY := {"busy": "Another boss is awake.", "far": "Stand at its altar to wa
 
 var game: Node                                    ## DmNextGame
 var area_id: String = "graves"                    ## fallback area of an enemy that carries no `dm_area`
-## Areas whose bosses this host wakes (each boss's own DmContent.boss(id).area is its arena; a boss in another area is "unknown" here). The game scene loads the Hollow
-## Graves only, so the Gravedigger King is the one boss that wakes; each later boss's item adds its area (and its adds, pools and hooks).
-var served_areas: Array = ["graves"]
+## Areas whose bosses this host wakes (each boss's own DmContent.boss(id).area is its arena; a boss in another area is "unknown" here): all seven. A boss of an area the game scene did
+## not load wakes on a floor that is not there, so the game loads the area first (tests load the one they fight in).
+var served_areas: Array = ["graves", "ossuary", "nave", "sanctum", "cloister", "pyre", "fen"]
 var difficulty: String = "medium"                 ## DmNextMeta: Settings -> difficulty (the brains read it: hp, damage)
 var vow_fx: Dictionary = {}                       ## DmNextMeta: the sworn world vows (levels: Elder Dead, echoes: Prelate Echoes)
 var visual: bool = true                           ## false = no DmBossView (headless)

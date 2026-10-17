@@ -3,15 +3,19 @@ extends DmBossWorld
 ## The world a DmBossBrain sees, answered from the live nodes of the slice (REBUILD D1: host only). One per DmBoss. Entities are plain
 ## Dictionaries as the brain expects; the player dictionaries are reused between ticks (`refresh()` once per tick, no per-tick allocation
 ## except for the brain's own events). Brain events go to `DmBossHost.on_brain_event`.
-## Ported to the combat core (client/code.list "Ported"): the adds a boss spawns are core bodies (`spawn_enemy` is the director's spawn through the core, the area set), they
-## leave with the boss through `DmCore.remove_enemy` (no death, no corpse, no credit), the thralls are the core's (`thrall_*`, a blow on one is `core.damage` with the boss as
-## the source) and the corpses are the core's field. Pools (the Saint's rot, the Regent's coals) wait for those bosses: the core makes no zone for a boss yet.
+## Ported to the combat core (client/code.list "Ported"): the adds a boss spawns are core bodies (`spawn_enemy` is the director's spawn through the core, the area set; a kind the
+## core does not run yet is skipped, as a kind without a scene was), they leave with the boss through `DmCore.remove_enemy` (no death, no corpse, no credit), the thralls are the
+## core's (`thrall_*`, a blow on one is `core.damage` with the boss as the source), the corpses are the core's field, a body's health is `DmCore.set_enemy_hp` (the Abbess's niches)
+## and the pools (the Saint's rot, the Regent's coals) are core zones with the boss as their source (`DmCore.add_zone`, `DmCore.zones`).
 
 var host: DmBossHost
 var boss: DmBoss
 var t: float = 0.0                   ## room clock: the boss advances it by its own physics delta
 const WALK_SNAP_M := 2.5            ## a step more than this from the navmesh is not on it at all: leave the boss where the brain put it
 
+var _rows: Array = []                ## enemies(): the brain's list of the core's bodies, reused
+var _def_names := PackedStringArray()
+var _zone_rows: Array = []           ## hostile_toxic_zones(): reused
 var _players: Array = []
 var _by_peer: Dictionary = {}        ## peer id -> reused player dict
 var _heroes: Array = []   ## the session's hero bodies this tick (the level the arena scales to is worked out when a brain asks)
@@ -104,7 +108,10 @@ func player_count() -> int:
 
 
 ## Adds leave with the boss (no kill credit / corpse): `remove_enemy` takes them out of the core. The director's spawn through the core: the body belongs to the boss's area.
+## A kind the core does not run yet (the Cloister's, the Pyre's and the Fen's, until their items) is skipped as a kind without a scene was: -1, and the boss goes on without it.
 func spawn_enemy(def: String, area: String, x: float, z: float, elite: bool, _rising: bool = true) -> int:
+	if not DmWaveDirector.runs_on_core(def):
+		return -1
 	var id: int = host.game.director.spawn(def, Vector3(x, 0.0, z), host.heroes(), elite, {}, {"area": area})
 	return id if id > 0 else -1
 
@@ -118,16 +125,41 @@ func enemy_get(id: int) -> Dictionary:
 	return {"id": id, "def": String(info["def"]), "area": host.area_at(p.x, p.y), "x": p.x, "z": p.y, "hp": float(info["hp"]), "max_hp": float(info["max_hp"]), "state": DmCoreEvents.STATE_NAMES[int(info["state"])]}
 
 
+## Every body of the core's table, in spawn order (the dead ones until they are removed): the Plague Saint reads it every tick to find her doctors. One call of the core gives seven numbers
+## a body, and the dictionaries are reused from call to call (their fields are overwritten): a brain reads them at once and keeps nothing.
 func enemies() -> Array:
-	var out: Array = []
-	for id in core().core.enemy_ids():
-		out.append(enemy_get(int(id)))
-	return out
+	var f: PackedFloat32Array = core().core.enemy_rows()
+	var n := f.size() / 7
+	if _rows.size() > n:
+		_rows.resize(n)
+	while _rows.size() < n:
+		_rows.append({"id": 0, "def": "", "area": "", "x": 0.0, "z": 0.0, "hp": 0.0, "max_hp": 0.0, "state": ""})
+	for i in n:
+		var d: Dictionary = _rows[i]
+		var k := i * 7
+		d["id"] = int(f[k])
+		d["def"] = _def_name(int(f[k + 1]))
+		d["x"] = f[k + 2]
+		d["z"] = f[k + 3]
+		d["area"] = host.area_at(f[k + 2], f[k + 3])
+		d["hp"] = f[k + 4]
+		d["max_hp"] = f[k + 5]
+		d["state"] = DmCoreEvents.STATE_NAMES[int(f[k + 6])]
+	return _rows
 
 
-## The core has no call that sets a body's health (only the Abbess's niches use it, with the niche kind the core does not run yet).
-func set_enemy_hp(_id: int, _hp: float, _max_hp: float) -> void:
-	push_warning("DmBossNodeWorld.set_enemy_hp: the core cannot set a body's health yet (the Abbess's niches come with the Abbess)")
+## The core's def number as its name, fetched once.
+func _def_name(i: int) -> String:
+	if _def_names.size() <= i:
+		_def_names.resize(i + 1)
+	if _def_names[i] == "":
+		_def_names[i] = String(core().core.def_name(i))
+	return _def_names[i]
+
+
+## A boss gives a body its health: the Abbess's niche gets a share of her own maximum (the core also tells its guests the new maximum).
+func set_enemy_hp(id: int, hp: float, max_hp: float) -> void:
+	core().core.set_enemy_hp(id, hp, max_hp)
 
 
 func remove_enemy(id: int) -> void:
@@ -180,22 +212,36 @@ func cover() -> Array:
 	return _cover
 
 
-## The Prelate's Echoes (vow `prelate_echo`, 0-3) of whoever rang the bell: the summoner's own progression.
-## (No summoner member -> the world's sworn vows, DmNextMeta's vow_fx.)
+## The Prelate's Echoes (Prelate Echoes I-III) are a vow of Ascension, which the rebuild does not have (DECISIONS B36): the world's vows are the neutral ones (DmNextMeta's `vow_fx`, no
+## `echoes`), so this is 0 whoever rang the bell. Today's reads the summoner's own saved vows; here a character who swore them on the account does not play them. The brain's Echoes code is
+## today's and replays (client/tests/boss_prelate.gd), ready for the redesigned Ascension.
 func echoes() -> int:
-	var m: DmRewardsMember = host.member_of(boss.summoner) if boss != null else null
-	return int(m.prog.vow_fx().get("echoes", 0)) if m != null else int(host.vow_fx.get("echoes", 0))
+	return int(host.vow_fx.get("echoes", 0))
 
 
-# ---- hooks of the Saint / Regent / Mire Mother: rot pools, ember pools (the core makes no zone for a boss yet: they come with those bosses) -------------
+# ---- hooks of the Saint / Regent: rot pools, ember pools (core zones with the boss as their source) --------------------------------------------------
 
+## Rot the Saint stands in: every live toxic pool of the core (hers, a sac's burst corpse, a flask), as {x, z, r}. The core lists them, three floats each; the dictionaries are reused.
 func hostile_toxic_zones() -> Array:
-	return []
+	var f: PackedFloat32Array = core().core.zones("toxic")
+	var n := f.size() / 3
+	if _zone_rows.size() > n:
+		_zone_rows.resize(n)
+	while _zone_rows.size() < n:
+		_zone_rows.append({"x": 0.0, "z": 0.0, "r": 0.0})
+	for i in n:
+		var d: Dictionary = _zone_rows[i]
+		d["x"] = f[i * 3]
+		d["z"] = f[i * 3 + 1]
+		d["r"] = f[i * 3 + 2]
+	return _zone_rows
 
 
-func add_hostile_pool(_x: float, _z: float, _r: float, _dps: float, _seconds: float) -> void:
-	push_warning("DmBossNodeWorld.add_hostile_pool: the core makes no zone for a boss yet (the Saint's rot comes with the Saint)")
+## The Saint's Rot Rain pool: a toxic core zone (dps already scaled by the brain), `seconds` long, the boss its source.
+func add_hostile_pool(x: float, z: float, r: float, dps: float, seconds: float) -> void:
+	core().core.add_zone("toxic", Vector2(x, z), r, seconds, dps, boss.core_id)
 
 
-func ember_pool(_x: float, _z: float, _r: float, _seconds: float, _dps: float) -> void:
-	push_warning("DmBossNodeWorld.ember_pool: the core makes no zone for a boss yet (the Regent's coals come with the Regent)")
+## The Regent's coals / firebreak / ember pool: burning ground, a core zone.
+func ember_pool(x: float, z: float, r: float, seconds: float, dps: float) -> void:
+	core().core.add_zone("ember", Vector2(x, z), r, seconds, dps, boss.core_id)

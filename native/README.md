@@ -43,6 +43,9 @@ Today's runtime it replaces is mapped in the private audit `~/vps-handoffs/Death
   `strip_shroud(id)` (Last Light, a Warden sweep). Vengeful runs inside `kill()` in today's listener order: its Risen get their ids, rolls and
   `EV_ENEMY_SPAWNED` there, but join the table in `flush_spawns()`, at the end of the tick or of the `DmCore` call that killed (a kill can happen
   while the caller holds a reference into the table: a DoT lump, a swing that kills a bursting thrall).
+- **What a boss asks of the core (boss.cpp, niche.cpp):** a hostile ground zone of its own (`add_zone(kind, pos, radius, seconds, dps, source)`: kinds dust, toxic and ember; the core pulses it once a second, dps x 1 s, on every hero
+  and living thrall within radius + 0.45, hit kinds dust, toxic and burn, the boss's id as the source; `zones(kind)` lists the live ones as x, z, radius for the Plague Saint's "am I standing in rot"), and a body's health
+  (`set_enemy_hp(id, hp, max_hp)`: the Abbess gives each Skull Niche a share of her own maximum; guests learn the maximum from a wire record). The Skull Niche is the `inert` def of enemies.json: it rises, then only stands.
 - **Numbers from data, not retyped:** `load_enemy_defs` / `load_tuning` (enemies.json), `load_status_defs`, `load_legion_tuning` (abilities RALLY, fen
   HAG_HEX, statuses PLAGUE_BURST, gameplay_legendary LEGEND, runes RUNE_TUNING.colossus, combat/enemies damage_scale) and `load_sim_consts` (the
   constants of `sim_consts.gd`, `dm_corpse_field.gd` and `dm_thrall.gd`, which `client/core/dm_core_data.gd` reads from those files).
@@ -183,6 +186,7 @@ test's fight (`client/tests/core_coop.gd`), against about 180 bytes per enemy as
   with a count and 4 bytes per status in the `DmCore.statuses()` layout, the set as it is when the batch is made.
 - 101, a name: table (0 area, 1 corpse reason), index, length, bytes. Areas and corpse reasons are numbers in events; the names go before their first use.
 - 102, a thrall's new maximum health: id, f32 (`set_thrall_stats` with a `maxHp`); guests know health as a fraction of the maximum.
+- 103, an enemy's new maximum health: id, f32 (`set_enemy_hp`: a boss gave its niche its share); the baseline names the present maximum in the body's spawn record.
 
 On the wire as events: spawned, died, removed, cue, zone, zone pulse, zone gone, statuses cleared, status changed, status dot, status expired, corpse added, consumed, gone and
 ruptured, thrall raised, died, removed and status, affix moment, and the bell's toll telegraph. Derived on the guest from the snapshots (so its buffer has them, once per change
@@ -307,7 +311,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
 - **More reaches guests than today:** the slam, erupt, dig-in, scream and hook cues are on the wire (today only shield_block, sanctify and unbind replicate, so a guest saw no dust at a slam). A burning pool (the Husk's embers,
   the coal's, the slam's) reaches a guest as the host's zone event, when the host made it; today a guest's puppet drew its own visual-only copy when its own copy of the body died or at its impact timer.
   A snap above 6 m is not counted as walking speed (today's puppet counts it, and its walk clip sprints for a moment).
-- **Not replicated yet, stays GDScript:** bosses (state, phases, telegraphs, their statuses), hero vitals and positions (the session channel), rite events and the visuals they drive, ground drops (the party relays them),
+- **Not replicated yet, stays GDScript:** bosses (state, phases, telegraphs, their statuses; their adds, niches and zones are the core's and ride the wire), hero vitals and positions (the session channel), rite events and the visuals they drive, ground drops (the party relays them),
   party calls and chat; guests still send their intents (move, cast requests) to the host as today. The per-kind extras of today's enemy snapshots are bit 5 of the snapshot record
   (the deacon's `rz`, the gargoyle's `dv`, the sexton's `hk`).
 - **The kinds of the other areas (`world.cpp`, `support.cpp`, `nave.cpp`, `cloister.cpp`, `pyre_fen.cpp`; `client/tests/core_kinds.gd`)**: each against its own script and state, numbers from the def and the scripts' `const` lines. The Bone Golem is the sac's script
@@ -384,7 +388,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
     enemy on the surface out of it (one standing where it rises is put out through the nearer side, as `move_and_slide`'s recovery does) and an enemy's steering does not drive into it, so a body slides along
     it toward its goal and presses there, as on today's collider; thralls and the hero pass. Not ported: the navigation obstacle's avoidance (RVO is not in the core), so a crowd does not curve around the
     wall's ends before reaching it.
-  - **A boss is in the rites' queries since the Gravedigger King** (see "The Gravedigger King" below): the fan, the lance, the siphon, the skull, the Scythe's arc and Colossus Mantle's reflect reach it by its id.
+  - **A boss is in the rites' queries since the Gravedigger King** (see "The bosses" below): the fan, the lance, the siphon, the skull, the Scythe's arc and Colossus Mantle's reflect reach it by its id.
   - **Withered's kill credit and its hand-on come from the event buffer**, so at the end of the tick that killed (today inside the kill): the DoT's `hit_resolved`, Contagion's and Plague Choir's spread to the neighbours,
     and the corpse-consumed beat of Requiem Wraiths' wisp. A rite's own blows are known at once (`killed` in the reply of `damage`), so nothing a player sees waits for it.
   - **A status on an enemy or thrall is the core's** (`apply_status`): the hero is its source, so the last stacker of a Withered owns the kill as today; the Miasma's lift of the Shrouded ward is `cover_miasma` (0.35 s of
@@ -398,15 +402,30 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   - **Wraith Walk's green flame is the core's status** (`wraithfire`, a damage over time like Hemorrhage, its damage a second set by the cast), so its kill credit comes from the event buffer at the end of the tick, as
     Withered's does; the Reaper's swings, harvest and wisps strike through `deal` and know their kills at once. Her life steal counts the enemies a swing struck, as today.
 
-- **The Gravedigger King (`client/next/bosses`; `client/README.md` "The Gravedigger King")**: his brain is today's GDScript, replayed against today's recorded scenarios; his body is an external of kind 1. What is not the same:
-  - **A thrall's blow on him lands when the tick's events are dispatched**, after every thrall and enemy has acted (`EV_THRALL_HIT_EXTERNAL`), where today it landed inside the thrall's swing. His brain runs once a tick before the core, so it sees
+- **The bosses (`client/next/bosses`; `client/README.md` "The bosses")**: the seven brains are today's GDScript, replayed against today's recorded scenarios (44) and fought by hand against today's numbers; a boss's body is an external of kind 1. What is not the same:
+  - **A thrall's blow on a boss lands when the tick's events are dispatched**, after every thrall and enemy has acted (`EV_THRALL_HIT_EXTERNAL`), where today it landed inside the thrall's swing. A brain runs once a tick before the core, so it sees
     every blow of tick N when it runs in tick N + 1 either way; the hits, their order and their credit (the thrall's owner) are the same.
-  - **Enemies' support abilities do not reach him** (a Censer's aura, a Deacon's sanctify, a Seraph's ward): he is not in the core's table, where today he was in the `dm_enemy` group. The King's adds are ghouls and a robber, so none of these meets him; the later bosses' items decide it.
-  - **His adds are core bodies drawn by the crowd**: the ghoul borrows the robber's model until the roster is baked. They leave with him (defeat or wipe) by `remove_enemy`; the crowd fades a body that vanished alive where the node popped out at once.
-  - **A rite's Withered on him is not a `rite_hit` and has no `status_dot` event** (his status set is GDScript's, B42): the DoT lumps hurt him and the brain's credit is the caster as today, but the kill-credit consumers (off) will not see the lumps.
-  - **The hero is hurt with his core id as the source** (`DmHeroBody.take_damage(dmg, boss.core_id)`), where today it was the node: the same place of blow, and Colossus Mantle's reflect finds him through `foe(id)`.
-  - **The plain soul-shard summon only**: the summon rules (`far`, `unknown`, `busy`, `dead`, `shards`) are today's, but the Covenant Seal's Empowered call waits for its prompt (the panels), and only the Hollow Graves' boss is served. No boss pools: the core makes no zone for a boss.
-  - **No collider, agent or state machine on his body** (`DmBoss` is a `Node3D`): nothing read them but the old `DmEnemy` code (the labels are gone, the hover pick and the chase go through the host's queries).
+  - **Enemies' support abilities do not reach a boss** (a Censer's aura, a Deacon's sanctify, a Seraph's ward): it is not in the core's table, where today it was in the `dm_enemy` group. A boss ignores what they give (its brain reads neither a blessing's
+    damage taken nor a censer's haste), so only the supporter's choice differs: an Ossuary Deacon never spends its Sanctify on the wounded Abbess, it blesses a wounded add instead.
+  - **A boss's adds are core bodies drawn by the crowd.** They leave with it (defeat or wipe) by `remove_enemy`; the crowd fades a body that vanished alive where the node popped out at once. The ghoul borrows the robber's model until the roster is baked.
+  - **Every add a boss calls is a core body** (the Saint's Plague Doctors, Flagellants and rats, the Regent's Husks, Priests and Cinderhounds, the Mire Mother's Leeches, Hags and Risen, the Congregation's Wraiths and Penitents, the Prelate's Risen and Penitents,
+    the Abbess's niches): the director's spawn through the core, in the boss's area and at its level; a kind the core did not run would be skipped as a kind without a scene was (`DmWaveDirector.runs_on_core`). The Saint's doctors feed her through the link
+    as soon as they stand in the arena (their heal is read from the core's table, `enemy_rows`), and the doctors' and the Priests' own pools and coals are zones of their own (a flask's toxic pool is not drawn, today's neither).
+  - **A rite's Withered on a boss is not a `rite_hit` and has no `status_dot` event** (a boss's status set is GDScript's, B42): the DoT lumps hurt it and the brain's credit is the caster as today, but the kill-credit consumers (off) will not see the lumps.
+  - **The hero is hurt with the boss's core id as the source** (`DmHeroBody.take_damage(dmg, boss.core_id)`), where today it was the node: the same place of blow, and Colossus Mantle's reflect finds it through `foe(id)`. A pool's pulse likewise.
+  - **No collider, agent or state machine on a boss's body** (`DmBoss` is a `Node3D`): nothing read them but the old `DmEnemy` code (the labels are gone, the hover pick and the chase go through the host's queries).
+  - **A boss's pools are the core's zones.** The Saint's rot and the Regent's coals, firebreak and embers pulse in the core's step (after the enemies and before the corpses and thralls), where today each was a node in the host's `Pools` holder; the pulse
+    is dps x 1 s on the heroes and living thralls within radius + 0.45, as `DmHostileZone` did. A guest draws a pool from the zone event (no pool node and no reliable pool RPC), and a late joiner now sees pools already burning (the baseline lists the
+    zones; today's pool RPC was creation-time only). The Saint's "in rot" reads every live toxic zone of the core, a burst sac's too, as before.
+  - **The Skull Niche (`niche.cpp`)** is the `inert` def: it rises 1.1 s, then stands. A hit never staggers it or makes it aggro its attacker, a stun and a stun status do nothing, nothing moves it (a hero's body, a raised Ossuary Wall) and it takes no part in the
+    crowd's spacing (it is no avoidance agent today, and enemies' masks do not include its layer); a thrall or a rite hits it as an enemy; its status set runs (Withered burns it); it lays no corpse and the rewards skip it. The crowd hides its body the moment it falls.
+  - **Prelate Echoes are not played** (DECISIONS B36: the rebuild has no Ascension, so no vows). Today `echoes()` read the summoner's own saved vow `prelate_echo` (0 to 3: a second, smaller bell on the farthest hero; a longer procession whose first two
+    walkers are elite; a chasing volley of rain). With no vows the world's `vow_fx` is the neutral one, `echoes()` is 0 whoever rang the bell and whatever vows the account has saved, and the Prelate plays her plain fight. The brain's Echoes code is today's and
+    replays (the three Echoes scenarios) and is fought by hand in `client/tests/boss_prelate.gd` with the world sworn to them, ready for the redesigned Ascension. The HUD is still told `can_ascend` after a kill that makes the run Ascendable; with no Altar
+    and no tips yet nothing shows it.
+  - **`DmCore.version()` is "dmcore 0.13"** for these: the `inert` flag joins the content hash, record 103 joins the wire, and `add_zone`, `zones`, `set_enemy_hp` and `enemy_rows` join the API (no enum changed: the ember zone and the burn hit kind were the Pyre's).
+  - **The Covenant Seal's Empowered call and the boss key prompt are in** (`DmBossMeta`, today's copy, against the backend's `/api/boss-key/*`): a boss that can be Empowered with a Seal in the bag, or a bound summon, offers the choice at its altar.
+    A party guest still cannot call Empowered (its summon is the plain RPC), as today.
 - **The HUD on the core (today's `DmGameUi` and panels on `client/next/hud/dm_next_ui_host.gd`, `client/ui/hud`; `client/README.md` "The HUD on the core")**: the same layout, colours, fonts and
   numbers; drawn to fit 150 draw calls, which changes the pixels a little where the same shape is drawn another way. What a player could notice:
   - **Not there yet** (their systems are not in the game scene): the Next line, the Altar (no Ascension: DECISIONS B36).
@@ -458,7 +477,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   the ring's MultiMesh; `client/fx/dm_fx_ring.gd` is the port that drives it, about 0.06 ms for 3,000 motes where today's GDScript loop took 2.8, and `client/tests/fx_motes.gd`
   compares every float of its buffer with today's ring, compiled from `godot/fx/dm_fx_ring.gd` at run time); `register_types.cpp` registers them, entry symbol
   `dmcore_library_init` (`client/bin/dmcore.gdextension`).
-- `native/src/core/`: the simulation, free of Godot types: `world` (tables, the enemy brain, damage and kills, queries, statuses on bodies),
+- `native/src/core/`: the simulation, free of Godot types: `world` (tables, the enemy brain, damage and kills, queries, statuses on bodies), `niche` (the Bone Abbess's Skull Niche: the inert body's whole brain), `boss` (what a boss calls: a hostile zone, the zones of a kind, a body's health and its wire record),
   `thralls` (the thrall brain and the legion: raise, make_room, formation, separation, rally, deaths), `corpses` (the corpse field),
   `affixes` (the elite affixes), `support` (the Crypt Deacon's raise, Sanctify and curse), `nave` (the Censer Bearer's pulse, the Lich Acolyte's Unbind, the Templar's shield, the Gargoyle's sight line), `cloister` (the Weeping Seraph's ward with Godot's sort, the Plague Doctor's flask and pool), `pyre_fen` (the Cinder Pyre's and the Mourning Fen's burning ground, coal, hex, pulse, lure and chain), `body` (what a status set needs from its owner, shared by enemies and thralls), `thrall` and `corpse` (their records and enums), `status` (the status
   set, a port of DmStatusSet; its rule table comes from `client/core/dm_status_rules.gd`), `grid` (dense XZ grid rebuilt per tick by counting
@@ -480,6 +499,8 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   `client/tests/coop.gd` (the game's half: a host and a guest game over a real local lobby and relay, client/README.md "Co-op on the core"),
   `client/tests/rites.gd` (the Gravecaller's rites on the core: every necromancer rite against today's formulas, the synchronous kills, the input, a full fight),
   `client/tests/boss.gd` (the Gravedigger King: his brain against today's scenarios, his fight by hand and on the real clock, the thralls, the rites, the defeat),
+  `client/tests/core_boss.gd` (the core's half of the bosses: the Skull Niche against its script, a body's health, a boss's zones and their query, the wire of all three) and `client/tests/boss_abbess.gd`, `boss_congregation.gd`, `boss_prelate.gd`, `boss_saint.gd`, `boss_regent.gd` and
+  `boss_mire.gd` on `boss_base.gd` (the other six bosses on the core: recorded scenarios, the generic parts, each fight by hand) and `boss_meta.gd` (the Covenant Seal on the mock backend),
   `client/tests/benchmark.gd` (the benchmark: the Full Party fight held as its setup says, Easy auto combat on the core's arrays, the report and its budget section, real `--benchmark` launches, nothing sent but to the test API),
   `client/tests/crowd_view.gd` (the crowd's views against today's view code, and a Full Party driven by a real core) and `client/tests/game_scene.gd` (the game scene on
   the core: an offline run in the Graves, the director, the event signals, no node per creature, timings). Run
