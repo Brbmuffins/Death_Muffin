@@ -112,7 +112,15 @@ func t_fight() -> void:
 	# the second Chorus (9 s later): the hero between two spokes (22.5 deg off) is spared, a thrall on a spoke is hurt for 20 x scale
 	step_until(func() -> bool: return telegraphs("chorus").size() >= 2, 12.0)
 	ch = telegraphs("chorus")
-	check(ch.size() == 2 and absf(float(ch[1]["t"]) - float(ch[0]["t"]) - 9.0) < 0.1, "Chorus repeats on its 9 s cooldown (%d)" % ch.size())
+	# Due 9 s after the first; a Grasp she started just before it holds her (busy) until its wind-up ends, and the Chorus comes then (today's rule;
+	# whether her chase brings her into Grasp range in time varies with the navigation server's timing).
+	var due := float(ch[0]["t"]) + 9.0
+	var held := due
+	for e: Dictionary in telegraphs("grasp"):
+		var gt := float(e["t"])
+		if gt < due and gt + float(e["ev"]["ms"]) / 1000.0 > due:
+			held = maxf(held, gt + float(e["ev"]["ms"]) / 1000.0)
+	check(ch.size() == 2 and absf(float(ch[1]["t"]) - held) < 0.1, "Chorus repeats on its 9 s cooldown, or as soon as a Grasp that holds her ends (%d; at %s, due %.2f, held to %.2f)" % [ch.size(), str(ch.map(func(x) -> float: return snappedf(float(x["t"]), 0.01))), due, held])
 	ce = ch[1]["ev"]
 	cdir = float(ce["dir"])
 	hurts.clear()

@@ -221,6 +221,7 @@ func boot() -> void:
 	c = hb.get_node("Rites") as DmRiteCaster
 	me = g.session.get_my_id()
 	c.random = func() -> float: return 0.5   # no crit, the middle of the needle's jitter
+	g.bosses.rng.seed = int(opts["seed"])   # the brains' dice (a Chorus's direction, a lance's niche) the same every run: the host randomizes them in play
 	_wire()
 	await ticks(3)
 
