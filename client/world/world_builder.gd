@@ -287,7 +287,7 @@ func _floor_mat(theme_key: String, w: float, d: float) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_texture = _tex(f.tex)
 	m.texture_filter = SHARP
-	m.albedo_color = _hex(f.color)
+	m.albedo_color = DmCompatAlbedo.tint(String(f.tex), _hex(f.color))   # Compatibility's albedo: client/next/look/dm_compat_albedo.gd
 	m.roughness = float(f.rough)
 	m.uv1_scale = Vector3(w / float(f.tile), d / float(f.tile), 1.0)
 	if f.has("glow"):
@@ -572,6 +572,7 @@ func _light_pools(parent: Node3D, srcs: Array, area: String) -> void:
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	m.vertex_color_use_as_albedo = true
+	m.vertex_color_is_srgb = true   # Compatibility reads every vertex colour as sRGB, Forward+ as linear (the pools were 9 times too bright): client/README.md "Graphics presets"
 	m.albedo_texture = _glow_texture()
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	m.no_depth_test = false

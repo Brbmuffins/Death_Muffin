@@ -329,8 +329,53 @@ Settings panel applies a change live, `opts.settings` in tests and the benchmark
 and atlas and the soft filter, bloom (`DmWfxBloom`), screen-space ambient occlusion (High and Ultra), MSAA, anisotropy and mesh LOD on the viewport, the effects quality
 and the Binbun layer, the crowd's shadow policy (`DmCrowd.set_shadow_policy`: the nearest enemies that cast, today's counts, and whether thralls cast; a change reaches the
 thralls already drawn) and the floor of Auto resolution, whose lower scales are upscaled with FSR 1. Brightness, fps cap, V-Sync, window mode and interface size are
-today's. Not today's: the prop-light count and the prop shadow range (baked into the area's lightmap). The brightness lifts are today's numbers until the look pass.
-`tests/presets.gd` (`--fixed-fps 60`, about 20 s) applies each preset to a running game and checks the lights, environment, viewport, crowd shadows and the governor.
+today's. Not today's: the prop-light count and the prop shadow range (baked into the area's lightmap), and the brightness lift (`DmGraphicsPreset.LIFT`, 1.2; Low 1.15, which has no
+moon shadow): the exposure multiplier that makes the rebuilt frame as bright as today's ("The look against today's game"). `tests/presets.gd` (`--fixed-fps 60`, about 20 s) applies
+each preset to a running game and checks the lights, the environment (the ACES tonemapper, the exposure from the world's number, the area's easing, the lift and the brightness, the
+plain-colour ambient, the depth fog, the moon and the rim light at today's energies), viewport, crowd shadows and the governor.
+
+## The look against today's game
+
+Today's game runs the Compatibility renderer; the rebuilt client runs Forward+. The same scene, lights and numbers look different, and the first test builds looked darker and
+purpler, with big beige pools under every flame and white blobs of glow, than today's blue-lit stone. `client/tools/look_probe.gd` measured it (2026-10-17, Ultra, the VPS's
+software renderers, the same camera in the Chapterhouse, the Hollow Graves and the Ossuary, plus calibration scenes: a grey plane under one light kind at a time). What it found:
+
+| What | Today (Compatibility) | Forward+ | The rebuild now |
+|---|---|---|---|
+| ambient, moon, rim, prop lights, fog, specular on a plane | the same pixel as Forward+ to within 1 | the same pixel as today's to within 1 | nothing to change |
+| a vertex colour (a light pool's 0.25 / 0.17 / 0.09, a particle's colour, a gear mote) | read as sRGB: the pool's centre (82, 49, 24) | read as linear: (203, 175, 130), 9 times the light | `vertex_color_is_srgb` on the pools (`build_area._light_pools`, `DmWorldBuilder._light_pools`), the gear motes (`DmGearFx`) and the Binbun particles' materials (`DmFxBinbun`): (79, 48, 24) |
+| a colour an effect's shader writes to `ALBEDO` (`COLOR.rgb` of the Fx layer, the world mist and particles) | converted from sRGB after the shader multiplied it | taken as linear | the shaders convert it (`dm_srgb` in `DmFxTex`, `DmWfxParticles`, `DmWfxMist`): (191, 155, 114) for today's (191, 156, 114) |
+| a tinted dark texture (every floor, every wall, the gate posts) | tint x texel multiplied in sRGB, the product converted once | each converted, then multiplied: 1.04 to 1.6 times darker | the area converter lifts the tint by the measured ratio (`DmCompatAlbedo`, `client/next/look/`): the Graves' ground tint 0.72 / 0.67 / 0.72 becomes 0.80 / 0.77 / 0.81 |
+| the glow of a very bright thing (an HDR quad on a dark plane) | (115, 97, 67) 140 px out, nothing 260 px out | (255, 255, 249) 140 px out, (155, 134, 49) 260 px out | not changed (open) |
+| the void beyond the walls | the background colour shown as it is, (7, 6, 10) | through the exposure and the tonemapper: (1, 1, 3) | not changed (open) |
+
+Measured on the frame without the hero's box (the mean luminance in 0 to 255; share of red / green / blue):
+
+| | Chapterhouse | Graves | Ossuary |
+|---|---|---|---|
+| today | 40.5, 0.277 / 0.221 / 0.502 | 35.1, 0.272 / 0.211 / 0.517 | 41.1, 0.365 / 0.241 / 0.395 |
+| first test build | 46.7, 0.306 / 0.264 / 0.430 | 40.0, 0.304 / 0.259 / 0.437 | |
+| now, lift 1.0 | 35.2, 0.279 / 0.234 / 0.487 | 30.1, 0.273 / 0.228 / 0.499 | 34.9, 0.358 / 0.255 / 0.387 |
+| now, lift 1.2 (the frames' exposure raised in software by inverting the tonemapper) | 40.7 | 35.6 | 40.4 |
+
+The first build's mean was higher than today's only because its pools were 9 times too bright; its ground, walls and props were darker and less blue. A candle's pool, the box left of the
+altar: today (122, 77, 124), first build (180, 143, 159), now (111, 72, 123).
+
+**Still not today's** (each one a line in ROADMAP "Look pass"): the rebuilt world has no world dressing at all (`DmWorldDressing`, today's `DmNextWorld.build` attaches it: ground mist, the
+weather of each area, the stained-glass windows with their light shafts, the candle flames and brazier fire as sprites, the far silhouettes, the water's ripples and glint; the code is
+copied, not attached, and the flames are the converter's plain spheres); the candles' light on the floor is baked at 0.43 m a texel (the Chapterhouse's ground is 64 x 64 texels of its
+lightmap), which flattens a candle's peak: the baked light is about a quarter of the real-time one 0.3 m from a candle and half of it at 1 m, so a pool reads about half as bright half-way
+out (a denser floor lightmap, `gi_lightmap_texel_scale` on the ground quads, and a bake would fix it); the glow of very bright HDR things (a bright quad bloomed much wider than today's); the void beyond the walls; the Depths' walls keep
+Forward+'s darker tint (its floor is lifted, `DmWorldBuilder._floor_mat`); Low and Medium: today's draw blended effects in sRGB space when bloom is off (an alpha sprite half-way over black: 131, with bloom on 205), Forward+ always blends
+in linear light; the Binbun scenes' own shaders read a particle's `COLOR` as it is; the Acre's and the Wing's brighter live ambient is not in the bake. The lightmap's ambient is an sRGB
+colour the bake reads as linear (`environment_custom_color` is taken as it is): the baked ground's irradiance is about three times the real-time ambient today's game uses (the Chapterhouse's
+lightmap: a median of 0.31 against 0.095), so shadows are filled in more than today's; linearising it is one `srgb_to_linear()` in `build_area._lightmap` and a bake, and the lift would then
+be measured again (it is not done: it changes every baked area and cannot be checked before the bake).
+
+The probe starts the real game scene at a fixed spot of each area and shoots variants of its light (`--plan`), and the calibration part prints one pixel line per test object; run it
+on both projects (the header of the script has the commands; today's game takes 3 to 4 minutes to start on the VPS, the rebuild half a minute). It is not a pass/fail suite: the checked
+values are `tests/areas.gd` (the pools' flag, the tint table against its textures) and `tests/presets.gd` (the lift and the environment). `client/tools/compat_albedo.gd` prints the tint
+table of `DmCompatAlbedo`.
 
 ## The seeded scenario
 
@@ -794,9 +839,10 @@ line per failed check. Each expected number is computed from `world.json` the wa
 hummock ring mesh), never read from a scene:
 
 - the ground and every path and door floor (theme texture, tint, roughness, glow; UVs anchored to the world; lightmap UV2), walls (position, size, the
-  texture and tint `world_builder` shares per texture), props (the same meshes where `DmModels.prop_parts` puts them, shadow and visibility range), gathering
+  texture and tint `world_builder` shares per texture; the tints are lifted by `DmCompatAlbedo` to the albedo today's renderer makes of them, and the test measures its table against the
+  textures again: "The look against today's game"), props (the same meshes where `DmModels.prop_parts` puts them, shadow and visibility range), gathering
   nodes (models, an ore's three crystals, the herb, pool and tree stand-ins), decals, puddles, water, bog and ponds, the Wing's rugs and stains, the Fen's hummocks
-  and rims, prop lights with their flames and the floor-pool mesh (the Nave's dimmer, smaller pools), colliders, occluders, the two decal textures pixel for pixel;
+  and rims, prop lights with their flames and the floor-pool mesh (the Nave's dimmer, smaller pools; its vertex colours read as sRGB, as today's renderer reads them), colliders, occluders, the two decal textures pixel for pixel;
 - doors: each door touching the area (and no other) with its corridor floor, and each gate's posts, lintel, bars, rails, seal and body, closed or open;
 - navigation: the area's region and each door's region equal a fresh bake with `world_builder`'s settings, stop short of the walls by the agent's radius, and
   the regions and links are enabled exactly when the door is `open`; paths cross the area, join its door mouths and bend round box props; a sealed gate blocks the

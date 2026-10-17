@@ -92,10 +92,9 @@ server (B38).
   the numbers are in "Before numbers" (Helix's PC: the Sanctum; the Graves comes with Gate B's back-to-back run).
 - [x] First test build: today's game on Forward+, fixing only what stops it running → **Gate A passed** (2026-10-16, Helix's PC): it runs
   without a crash or a broken screen and is faster (Full Party, Sanctum, 1440p Ultra: 61.5 fps, p95 21.0 ms on Compatibility; 100.2 fps,
-  p95 14.2 ms, worst 22 ms, no hitch on Forward+). The lighting is too bright on Forward+ (flat cream pools under every light, white glow
-  blobs): today's values were tuned for Compatibility, which clamps before tone mapping. Retuning them (light energies, falloff, ambient,
-  exposure, fog, glow and the bake's) belongs to the look pass; test builds may look off until then (Helix 2026-10-16: "if there is a looks
-  pass later we can wait").
+  p95 14.2 ms, worst 22 ms, no hitch on Forward+). The lighting looked wrong on Forward+ (flat cream pools under every light, white glow
+  blobs, a darker and purpler ground): the causes were found and the first part fixed on 2026-10-17 (the look pass's first item, below;
+  client/README.md "The look against today's game"; Helix 2026-10-16: "if there is a looks pass later we can wait").
 
 **Test build checklist** (built ahead while Gate A waits; nothing from it reaches anyone before Gate A passes):
 - [x] Assets: `tools/rebuild/sync-assets.mjs` copies the test build's assets from `godot/assets` into `client/assets` by the list
@@ -313,6 +312,28 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
   - [x] Sound on the core's events (`client/README.md` "Sound", `client/tests/sound.gd`): the thralls' rise and death, the gate sound (an event, not a poll of every door), a scripted fight's cues against today's rules by name and count.
     The Depths play today's sounds (the stairs' gate, the chest, a refusal, the floor's level-up) from `DmDepths`.
 - [ ] Gate C: every rule test matches today's, playtests OK, nothing slower than the test build.
+
+**Look pass checklist** (phase 4, Gate D; the first item came early because the test build looked wrong):
+- [x] Today's colours on Forward+ (2026-10-17, client/README.md "The look against today's game", `client/tools/look_probe.gd`; Helix's RTX 4070 SUPER shots of the Chapterhouse and the Graves were
+  the report): Compatibility reads every vertex colour as sRGB and multiplies a material's colours in sRGB, Forward+ does both in linear light, which made the light pools 9 times too bright
+  (the beige pools, the glare round the waystone), the effects' and gear motes' colours too white, and the tinted ground and walls darker and less red and green. Fixed: `vertex_color_is_srgb`
+  on the pools, the gear motes and the Binbun particles, the Fx layer's and the world particles' and mist shaders convert their colour, the area converter lifts the floor, wall and gate-post
+  tints (`DmCompatAlbedo`, checked by `client/tests/areas.gd`), and a brightness lift of 1.2 (`DmGraphicsPreset.LIFT`, checked by `client/tests/presets.gd`) puts the mean luminance of the Chapterhouse, the
+  Graves and the Ossuary within 3 % of today's (measured on frames at lift 1.0 and raised in software; not re-rendered). The tinted-floor change needs no bake; the pools' fix is in the area scenes.
+- [ ] World dressing on the area scenes: today's `DmNextWorld.build` attaches `DmWorldDressing` (ground mist, each area's weather, the stained-glass windows and their light shafts, candle
+  flames and brazier fire as sprites, the far silhouettes, the water's ripples and glint, and the area's bloom settings); the rebuilt `DmNextWorld` does not, so none of it is drawn and the
+  flames are the converter's plain spheres. Attach it, measure its draw calls and frame cost with the benchmark, and compare the look with `look_probe.gd`; the lift above was measured without it and
+  is measured again after (a rebuilt frame with mist may need less).
+- [ ] Baked lighting, one bake for these (Helix's helper): the bake reads the area's ambient (an sRGB colour) as linear light, so baked shadows are filled about three times brighter than today's
+  real-time ambient (`environment_custom_color`: `srgb_to_linear()` in `build_area._lightmap`); the big floors' lightmap is 0.43 m a texel, which flattens a candle's pool to a quarter of the
+  real-time light at 0.3 m (`gi_lightmap_texel_scale` on the ground quads); the Acre's and the Alchemist Wing's live ambient and moon are brighter than the other areas' (`DmGameRewards`) and are not in
+  their bakes. Measure the lift again after.
+- [ ] Glow and the void: a very bright HDR thing glows much wider than in today's game (Compatibility's glow is small: 115 against 255 at 140 px, 11 against 155 at 260 px; tune the glow's
+  threshold, scale and luminance cap), the background colour beyond the walls is black on Forward+ where today's shows (7, 6, 10), and the Binbun scenes' own shaders read a particle's `COLOR`
+  as it is.
+- [ ] Low and Medium: today's draw blended effects in sRGB space when bloom is off (half-transparent white over black: 131; with bloom, 205), Forward+ blends in linear light on every preset;
+  the lift of Low (1.15) and Medium (1.2) is the High and Ultra number, not measured; the Depths' walls keep Forward+'s darker tint (its floor is lifted in `DmWorldBuilder._floor_mat`).
+- [ ] Every area's look signed off by Helix on his PC (Acre, Alchemist Wing, Warren, Nave, Coliseum, Sanctum, Cloister, Pyre and Fen were not measured: one frame each is in the probe's plan).
 
 **Working rules for the rebuild.**
 - This checklist is the only to-do list; the next unchecked item is the only work. Ideas go to "After launch day".

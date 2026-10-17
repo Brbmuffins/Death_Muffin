@@ -10,14 +10,18 @@ extends RefCounted
 ##     `thralls_cast`), not a node budget: same counts as today's DmCasterBudget.
 ##   - `ssao`: screen-space ambient occlusion, Forward+ only (0 off, 1 medium, 2 high): High and Ultra. Contact shadows where bodies stand and props meet the floor.
 ##   - the governor's lower resolutions are upscaled with FSR 1 (sharpened) instead of bilinear, which Compatibility could not do.
-## The brightness lift is today's until the look pass calibrates Forward+'s lighting (ROADMAP: "Lighting calibration waits for the look pass").
+## The brightness lift (the exposure multiplier of a preset, `LIFT_*` below) is Forward+'s own: measured against today's game on the same camera in the Chapterhouse, the Graves and
+## the Ossuary (Ultra, software Vulkan against software OpenGL; client/README.md "Graphics presets"), a lift of 1.2 puts the mean luminance of the rebuilt frame within 3 % of today's.
+## Every preset keeps every light (they are baked) and a preset changes nothing else the eye reads as light, so the four share the lift, except Low, whose moon casts no shadow (7 % brighter).
 ##   shadows/bloom  moon shadow + the bloom glow         msaa   0 / 2 / 4 / 8 samples on the 3D view     aniso  anisotropic filtering level
 ##   floor          lowest 3D scale Auto resolution may drop to   fx   DmFx quality ("low" thins bursts and drops the Binbun layer)   binbun  the Binbun VFX layer
 ##   shadow_size / shadow_dist / shadow_splits / soft   the moon's shadow atlas size, reach, PSSM splits (2 = sharper near the hero), soft-shadow filter (0 low .. 3 ultra)
 ##   casters / casters_crowd / thralls_cast   the crowd's shadow policy (above)       ssao   (above)       lod   mesh LOD threshold (0.5 = detail holds longer)
-##   lift           exposure multiplier that keeps a preset as bright as High (no bloom: today's numbers)
+##   lift           exposure multiplier: the calibration above, and it keeps a preset as bright as High
 
 const DEFAULT := "high"
+const LIFT := 1.2         ## the calibrated exposure lift of Medium, High and Ultra (above)
+const LIFT_LOW := 1.15    ## Low: no moon shadow
 const IDS: Array[String] = ["low", "medium", "high", "ultra"]
 const LABELS := {
 	"low": "Low (fastest)",
@@ -26,13 +30,13 @@ const LABELS := {
 	"ultra": "Ultra (long sharp shadows, 4x smoothing)",
 }
 const TABLE := {
-	"low": {"lift": 1.4, "shadows": false, "bloom": false, "ssao": 0, "msaa": 0, "aniso": 2, "floor": 0.6, "fx": "low", "binbun": false,
+	"low": {"lift": LIFT_LOW, "shadows": false, "bloom": false, "ssao": 0, "msaa": 0, "aniso": 2, "floor": 0.6, "fx": "low", "binbun": false,
 		"casters": 0, "casters_crowd": 0, "thralls_cast": false, "shadow_size": 2048, "shadow_dist": 45.0, "shadow_splits": 1, "soft": 0, "lod": 1.0},
-	"medium": {"lift": 1.38, "shadows": true, "bloom": false, "ssao": 0, "msaa": 0, "aniso": 4, "floor": 0.85, "fx": "high", "binbun": false,
+	"medium": {"lift": LIFT, "shadows": true, "bloom": false, "ssao": 0, "msaa": 0, "aniso": 4, "floor": 0.85, "fx": "high", "binbun": false,
 		"casters": 8, "casters_crowd": 6, "thralls_cast": true, "shadow_size": 2048, "shadow_dist": 45.0, "shadow_splits": 1, "soft": 1, "lod": 1.0},
-	"high": {"lift": 1.0, "shadows": true, "bloom": true, "ssao": 1, "msaa": 0, "aniso": 8, "floor": 0.85, "fx": "high", "binbun": true,
+	"high": {"lift": LIFT, "shadows": true, "bloom": true, "ssao": 1, "msaa": 0, "aniso": 8, "floor": 0.85, "fx": "high", "binbun": true,
 		"casters": 12, "casters_crowd": 8, "thralls_cast": true, "shadow_size": 2048, "shadow_dist": 45.0, "shadow_splits": 1, "soft": 1, "lod": 1.0},
-	"ultra": {"lift": 1.0, "shadows": true, "bloom": true, "ssao": 2, "msaa": 4, "aniso": 16, "floor": 0.85, "fx": "high", "binbun": true,
+	"ultra": {"lift": LIFT, "shadows": true, "bloom": true, "ssao": 2, "msaa": 4, "aniso": 16, "floor": 0.85, "fx": "high", "binbun": true,
 		"casters": 20, "casters_crowd": 14, "thralls_cast": true, "shadow_size": 4096, "shadow_dist": 80.0, "shadow_splits": 2, "soft": 3, "lod": 0.5},
 }
 

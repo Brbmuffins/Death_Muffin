@@ -217,6 +217,40 @@ func _test_world_first(ids: Array[String]) -> void:
 			ok = want_img.get_width() == file.get_width() and want_img.get_format() == file.get_format() and want_img.get_data() == file.get_data()
 		_check(ok, "areas/common/%s.png equals world_builder's %s texture pixel for pixel" % [pair[0], pair[0]])
 	builder.free()
+	_test_compat_albedo()
+
+
+## DmCompatAlbedo: every tinted texture the converter uses has an entry, and every entry is what measuring the texture's source image gives now (no stale table).
+func _test_compat_albedo() -> void:
+	var used := {}
+	for k: String in _world.floors:
+		var f: Dictionary = _world.floors[k]
+		used[DmCompatAlbedo.key(String(f.tex), _hex(f.color))] = [String(f.tex), _hex(f.color)]
+	for w: Dictionary in _world.walls:
+		used[DmCompatAlbedo.key(String(w.texture), _hex(w.color))] = [String(w.texture), _hex(w.color)]
+	used[DmCompatAlbedo.key("stone_wall", Color.html("#8a8296"))] = ["stone_wall", Color.html("#8a8296")]
+	var missing: Array[String] = []
+	for key: String in used:
+		if not DmCompatAlbedo.TABLE.has(key):
+			missing.append(key)
+	_check(missing.is_empty(), "every tinted floor, wall and gate-post texture has a DmCompatAlbedo entry (missing: %s; `client/tools/compat_albedo.gd` prints them)" % str(missing))
+	var stale: Array[String] = []
+	for key: String in DmCompatAlbedo.TABLE:
+		if not used.has(key):
+			stale.append(key + " (unused)")
+			continue
+		var img := Image.load_from_file(ProjectSettings.globalize_path(TEX % String(used[key][0])))
+		var got := DmCompatAlbedo.measure(img, used[key][1])
+		var want: Vector3 = DmCompatAlbedo.TABLE[key]
+		if absf(got.x - want.x) > 0.0006 or absf(got.y - want.y) > 0.0006 or absf(got.z - want.z) > 0.0006:
+			stale.append("%s (table %s, measured %s)" % [key, want, got])
+	_check(stale.is_empty(), "DmCompatAlbedo's table is what its textures measure, and holds nothing unused: %s" % str(stale))
+	# Compatibility makes a tinted dark texture brighter than Forward+ does: the lift is above 1 for every floor and wall, and the lifted tint stays a colour.
+	var lifts_ok := true
+	for key: String in DmCompatAlbedo.TABLE:
+		var r: Vector3 = DmCompatAlbedo.TABLE[key]
+		lifts_ok = lifts_ok and r.x >= 1.0 and r.y >= 1.0 and r.z >= 1.0 and r.x < 2.0 and r.y < 2.0 and r.z < 2.0
+	_check(lifts_ok, "every albedo lift is between 1 and 2")
 
 
 ## world_builder._walls: one material per texture for the whole world, made from the first wall that names it (areas in order of first appearance).
@@ -230,7 +264,7 @@ func _builder_wall_colors() -> Dictionary:
 	for id: String in by_area:
 		for w: Dictionary in by_area[id]:
 			if not out.has(w.texture):
-				out[w.texture] = _hex(w.color)
+				out[w.texture] = DmCompatAlbedo.tint(String(w.texture), _hex(w.color))
 	return out
 
 
@@ -257,7 +291,7 @@ func _floor_quad(mi: MeshInstance3D, x0: float, z0: float, x1: float, z1: float,
 	out["covers its rect"] = _near(mi.position.x + box.position.x, x0) and _near(mi.position.x + box.end.x, x1) and _near(mi.position.z + box.position.z, z0) and _near(mi.position.z + box.end.z, z1)
 	out["sits at its height"] = _near(mi.position.y, y) and _near(box.size.y, 0.0)
 	var m := mi.material_override as StandardMaterial3D
-	var look := m != null and m.albedo_texture != null and m.albedo_texture.resource_path == TEX % f.tex and m.albedo_color.is_equal_approx(_hex(f.color))
+	var look := m != null and m.albedo_texture != null and m.albedo_texture.resource_path == TEX % f.tex and m.albedo_color.is_equal_approx(DmCompatAlbedo.tint(String(f.tex), _hex(f.color)))
 	look = look and m != null and _near(m.roughness, float(f.rough)) and m.texture_filter == DmWorldBuilder.SHARP and m.uv1_scale.is_equal_approx(Vector3.ONE)
 	if f.has("glow"):
 		look = look and m.emission_enabled and m.emission.is_equal_approx(_hex(f.glow)) and m.emission_texture != null and m.emission_texture.resource_path == TEX % f.tex \
@@ -874,6 +908,8 @@ func _test_lights() -> void:
 	_check(m != null and m.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED and m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA and m.blend_mode == BaseMaterial3D.BLEND_MODE_ADD \
 		and m.vertex_color_use_as_albedo and m.cull_mode == BaseMaterial3D.CULL_DISABLED and m.albedo_texture != null and m.albedo_texture.resource_path == COMMON + "glow.png" \
 		and pm.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF, "the light pools are additive, unshaded, vertex-coloured glow quads")
+	# Compatibility reads vertex colours as sRGB and Forward+ as linear: without the flag the pools come out about 9 times as bright as today's.
+	_check(m != null and m.vertex_color_is_srgb, "the light pools' vertex colours are read as sRGB, as today's renderer reads them")
 
 
 # ---------------------------------------------------------------- colliders
@@ -982,6 +1018,8 @@ func _test_lightmap(a: Dictionary, scene_path: String) -> void:
 	var lm := found[0] as LightmapGI
 	_check(lm.environment_mode == LightmapGI.ENVIRONMENT_MODE_CUSTOM_COLOR and lm.environment_custom_color.is_equal_approx(_ambient(a))
 		and _near(lm.environment_custom_energy, float(_world.lighting.hemiIntensity) * DmWorldBuilder.HEMI_K), "the bake's ambient is set_area's colour for this area, at the hemisphere's energy")
+	# The bake's other settings (a different value is a different bake: client/addons/dm_bake/README.md).
+	_check(lm.quality == LightmapGI.BAKE_QUALITY_MEDIUM and lm.bounces == 3 and not lm.directional and lm.use_denoiser and lm.max_texture_size == 4096, "the bake's quality (medium), bounces (3), denoiser, no directional lightmap and texture limit")
 	var data_path := scene_path.get_basename() + ".lmbake"
 	if not ResourceLoader.exists(data_path):
 		_check(lm.light_data == null, "no bake yet: the LightmapGI has no data")
@@ -1067,7 +1105,7 @@ func _gate_problems(d: Dictionary, gate: Node3D) -> Array[String]:
 		k += 1
 		post_ok = post_ok and post != null and (post.mesh as BoxMesh).size.is_equal_approx(Vector3(1, 5, 1)) and _near_v(post.position, Vector3(s * (width + 1.0) / 2.0, 2.5, 0))
 		var pm: StandardMaterial3D = post.material_override as StandardMaterial3D if post != null else null
-		post_ok = post_ok and pm != null and pm.albedo_texture != null and pm.albedo_texture.resource_path == TEX % "stone_wall" and pm.albedo_color.is_equal_approx(Color.html("#8a8296")) \
+		post_ok = post_ok and pm != null and pm.albedo_texture != null and pm.albedo_texture.resource_path == TEX % "stone_wall" and pm.albedo_color.is_equal_approx(DmCompatAlbedo.tint("stone_wall", Color.html("#8a8296"))) \
 			and _near(pm.roughness, 0.9) and pm.uv1_triplanar and pm.uv1_world_triplanar and pm.uv1_scale.is_equal_approx(Vector3.ONE / 4.0) and pm.texture_filter == DmWorldBuilder.SHARP
 	if not post_ok:
 		bad.append("posts")

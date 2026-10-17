@@ -57,6 +57,15 @@ const _BILLBOARD := """
 	MODELVIEW_MATRIX = MODELVIEW_MATRIX * mat4(vec4(length(MODEL_MATRIX[0].xyz), 0.0, 0.0, 0.0), vec4(0.0, length(MODEL_MATRIX[1].xyz), 0.0, 0.0), vec4(0.0, 0.0, length(MODEL_MATRIX[2].xyz), 0.0), vec4(0.0, 0.0, 0.0, 1.0));
 """
 
+## The effects' colours are sRGB values (hex colours) that reach the shader as the instance's COLOR. Compatibility, which today's game runs on, reads every colour it
+## multiplies into ALBEDO as sRGB and converts the product to linear at the end; Forward+ takes COLOR as linear, so an effect came out much brighter and whiter
+## (client/README.md "Graphics presets"). The shaders convert the colour themselves.
+const _SRGB := """
+vec3 dm_srgb(vec3 c) {
+	return mix(pow((c + 0.055) / 1.055, vec3(2.4)), c * 0.0773993808, lessThan(c, vec3(0.04045)));
+}
+"""
+
 const _SRC := {
 	# Effects.ts ParticleSystem: a billboard per mote, colour * texture, alpha from the instance colour.
 	"particle": """
@@ -70,7 +79,7 @@ void fragment() {
 	vec4 t = texture(tex, UV);
 	float a = t.a * COLOR.a;
 	if (a < 0.004) discard;
-	ALBEDO = COLOR.rgb * t.rgb;
+	ALBEDO = dm_srgb(COLOR.rgb) * t.rgb;
 	ALPHA = a;
 }
 """,
@@ -96,7 +105,7 @@ void fragment() {
 		a *= 1.0 - v_rim * inner * (1.0 - rim_floor);
 	}
 	if (a < 0.004) discard;
-	ALBEDO = COLOR.rgb * t.rgb;
+	ALBEDO = dm_srgb(COLOR.rgb) * t.rgb;
 	ALPHA = a;
 }
 """,
@@ -117,7 +126,7 @@ void fragment() {
 	vec4 t = texture(tex, UV);
 	float a = t.a * v_op;
 	if (a < 0.002) discard;
-	ALBEDO = COLOR.rgb * t.rgb;
+	ALBEDO = dm_srgb(COLOR.rgb) * t.rgb;
 	ALPHA = a;
 }
 """,
@@ -141,7 +150,7 @@ void fragment() {
 	float l = texture(tex, (v_cell + UV) / grid).r;
 	float a = l * v_op;
 	if (a < 0.004) discard;
-	ALBEDO = COLOR.rgb + vec3(core * l * l * l);
+	ALBEDO = dm_srgb(COLOR.rgb + vec3(core * l * l * l));
 	ALPHA = a;
 }
 """,
@@ -167,7 +176,7 @@ void fragment() {
 	float l = texture(tex, (v_cell + UV) / grid).r;
 	float a = l * v_op;
 	if (a < 0.002) discard;
-	ALBEDO = COLOR.rgb + vec3(core * l * l * l);
+	ALBEDO = dm_srgb(COLOR.rgb + vec3(core * l * l * l));
 	ALPHA = a;
 }
 """,
@@ -180,7 +189,7 @@ void vertex() {
 	v_op = INSTANCE_CUSTOM.x;
 }
 void fragment() {
-	ALBEDO = COLOR.rgb;
+	ALBEDO = dm_srgb(COLOR.rgb);
 	ALPHA = v_op;
 }
 """,
@@ -193,7 +202,7 @@ static func shader(kind: String, additive: bool) -> Shader:
 	if _shaders.has(key):
 		return _shaders[key]
 	var s := Shader.new()
-	s.code = String(_SRC[kind]).replace("BLEND", "blend_add" if additive else "blend_mix")
+	s.code = String(_SRC[kind]).replace("BLEND", "blend_add" if additive else "blend_mix").replace("fog_disabled;\n", "fog_disabled;\n" + _SRGB)
 	_shaders[key] = s
 	return s
 

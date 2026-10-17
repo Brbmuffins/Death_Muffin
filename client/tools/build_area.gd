@@ -435,7 +435,7 @@ func _theme_mat(theme_key: String) -> StandardMaterial3D:
 		var m := StandardMaterial3D.new()
 		m.albedo_texture = _tex(f.tex)
 		m.texture_filter = SHARP
-		m.albedo_color = _hex(f.color)
+		m.albedo_color = DmCompatAlbedo.tint(String(f.tex), _hex(f.color))   # today's albedo: client/next/look/dm_compat_albedo.gd
 		m.roughness = float(f.rough)
 		if f.has("glow"):
 			m.emission_enabled = true
@@ -511,7 +511,7 @@ func _wall_mat(w: Dictionary) -> StandardMaterial3D:
 		var mat := StandardMaterial3D.new()
 		mat.albedo_texture = _tex(w.texture)
 		mat.texture_filter = SHARP
-		mat.albedo_color = _hex(w.color)
+		mat.albedo_color = DmCompatAlbedo.tint(String(w.texture), _hex(w.color))
 		mat.roughness = 0.92
 		mat.uv1_triplanar = true
 		mat.uv1_world_triplanar = true
@@ -659,6 +659,7 @@ func _light_pools(parent: Node3D, srcs: Array) -> void:
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	m.vertex_color_use_as_albedo = true
+	m.vertex_color_is_srgb = true   # the Compatibility renderer reads every vertex colour as sRGB, Forward+ as linear (the pools came out 9 times too bright): "Graphics presets" in client/README.md
 	m.albedo_texture = _glow_tex
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	var mi := MeshInstance3D.new()
@@ -1008,7 +1009,7 @@ func _gate(parent: Node3D, d: Dictionary, open: bool) -> void:
 		var m := StandardMaterial3D.new()
 		m.albedo_texture = _tex("stone_wall")
 		m.texture_filter = SHARP
-		m.albedo_color = Color.html("#8a8296")
+		m.albedo_color = DmCompatAlbedo.tint("stone_wall", Color.html("#8a8296"))
 		m.roughness = 0.9
 		m.uv1_triplanar = true
 		m.uv1_world_triplanar = true

@@ -445,6 +445,7 @@ func _own_material(inst: Inst, gi: GeometryInstance3D) -> void:
 		inst.base_depth.append(float(d) if d != null else -1.0)
 	elif m is StandardMaterial3D:
 		var std := m as StandardMaterial3D
+		std.vertex_color_is_srgb = true   # the particles' colours: Compatibility reads vertex colours as sRGB, Forward+ as linear (client/README.md "Graphics presets")
 		inst.std_mats.append([std, std.albedo_color])
 
 

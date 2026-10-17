@@ -91,6 +91,9 @@ func table() -> void:
 		"Low: no shadows, bloom, ambient occlusion or crowd casters, and the lowest resolution floor")
 	check(int(ul["msaa"]) > int(hi["msaa"]) and int(ul["ssao"]) > int(hi["ssao"]) and int(ul["shadow_size"]) > int(hi["shadow_size"]) and float(ul["shadow_dist"]) > float(hi["shadow_dist"]) and int(ul["casters"]) > int(hi["casters"]),
 		"Ultra costs more than High in every knob that scales")
+	# The brightness lift is the calibration against today's game (client/README.md "Graphics presets"): 1.2 for Medium, High and Ultra, 1.15 for Low (no moon shadow).
+	check(is_equal_approx(DmGraphicsPreset.LIFT, 1.2) and is_equal_approx(DmGraphicsPreset.LIFT_LOW, 1.15) and is_equal_approx(float(lo["lift"]), 1.15)
+		and is_equal_approx(float(DmGraphicsPreset.TABLE["medium"]["lift"]), 1.2) and is_equal_approx(float(hi["lift"]), 1.2) and is_equal_approx(float(ul["lift"]), 1.2), "the brightness lifts are the calibrated ones")
 	for id in DmGraphicsPreset.IDS:
 		var p: Dictionary = DmGraphicsPreset.TABLE[id]
 		var today: Array = {"low": [0, 0], "medium": [8, 6], "high": [12, 8], "ultra": [20, 14]}[id]
@@ -110,9 +113,27 @@ func applied(g: DmNextGame, id: String) -> void:
 	check(vp.msaa_3d == DmGraphicsPreset.msaa_mode(int(p["msaa"])) and vp.anisotropic_filtering_level == DmGraphicsPreset.aniso_mode(int(p["aniso"])) and is_equal_approx(vp.mesh_lod_threshold, float(p["lod"])),
 		"%s: MSAA, anisotropy and mesh LOD on the viewport" % id)
 	check(is_equal_approx(g.perf.governor.floor_scale, float(p["floor"])), "%s: the governor's floor %.2f" % [id, float(p["floor"])])
+	environment(g, id)
 	var vfx := root.get_node_or_null("/root/Vfx")
 	if vfx != null:
 		check(String(vfx.quality) == String(p["fx"]), "%s: the effects quality" % id)
+
+
+## The environment of the scene is today's (DmWorldBuilder's, the same constants) with the calibrated lift: the ACES tonemapper, the exposure (the world's x EXPOSURE_K, the area's
+## easing, the preset's lift, the Settings brightness), the plain-colour ambient at the hemisphere's energy, the depth fog, the moon and the rim light at today's energies; the
+## look measured against today's game is only valid while these hold.
+func environment(g: DmNextGame, id: String) -> void:
+	var p := DmGraphicsPreset.get_preset(id)
+	var b := g.world.builder
+	var e: Environment = b.env
+	var L: Dictionary = b.world.lighting
+	check(e.tonemap_mode == Environment.TONE_MAPPER_ACES, "%s: the ACES tonemapper" % id)
+	check(is_equal_approx(b.preset_lift, float(p["lift"])), "%s: the builder carries the preset's lift %.2f" % [id, float(p["lift"])])
+	check(is_equal_approx(e.tonemap_exposure, float(L.exposure) * DmWorldBuilder.EXPOSURE_K * b.area_exposure * float(p["lift"]) * b.brightness), "%s: the exposure is the world's x %.1f, the area's easing, the lift and the brightness (%.3f)" % [id, DmWorldBuilder.EXPOSURE_K, e.tonemap_exposure])
+	check(e.ambient_light_source == Environment.AMBIENT_SOURCE_COLOR and is_equal_approx(e.ambient_light_energy, float(L.hemiIntensity) * DmWorldBuilder.HEMI_K), "%s: the plain-colour ambient at the hemisphere's energy" % id)
+	check(e.fog_enabled and e.fog_mode == Environment.FOG_MODE_DEPTH and is_equal_approx(e.fog_density, 1.0), "%s: the depth fog" % id)
+	check(is_equal_approx(b.moon.light_energy, float(L.moonIntensity) * DmWorldBuilder.MOON_K) and is_equal_approx(b.rim.light_energy, float(L.rimIntensity) * DmWorldBuilder.RIM_K) and not b.rim.shadow_enabled,
+		"%s: the moon and the rim light at today's energies, the rim without a shadow" % id)
 
 
 ## 30 robbers and 6 thralls round the hero: the crowd's shadow groups hold the preset's nearest casters (and the thralls), the rest draw without a shadow.
