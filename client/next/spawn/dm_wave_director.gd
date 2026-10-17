@@ -21,7 +21,7 @@ signal surge_event(ev: Dictionary)      ## host: {t: surge | surgeCleared | surg
 const CORE_KINDS: Array[String] = ["robber", "hound", "penitent", "sac", "moth", "bat", "ghoul", "rat", "risen", "golem", "deacon", "censer", "acolyte", "gargoyle", "templar", "wraith",
 	"seraph", "flagellant", "plague_doctor", "cinder_husk", "pyre_priest", "cinderhound", "slag_brute", "bog_hag", "drowned_sexton", "fen_wisp", "mire_leech"]
 const BOSS_KINDS: Array[String] = ["niche"]   ## kinds only a boss makes (the Bone Abbess's Skull Niche: never in a wave's roster, always through `spawn`)
-const EMPTY_CLEAR_S := 15.0             ## no hero in the area this long -> the area's queued spawns are dropped
+const EMPTY_CLEAR_S := 15.0             ## no hero in the area this long -> the area's remaining enemies are sent away (today's)
 const SPAWN_MIN := DmSimConsts.AGGRO_RANGE + 3.0   ## owner 2026-10-07: waves climb in outside aggro so the player sees them coming (+3: a group fans out 2.1 m)
 const SPAWN_MAX := 30.0                 ## farthest spawn distance (m)
 const SPAWNS_PER_TICK := 3              ## wave bodies made per physics tick: a 12-body wave takes 4 ticks
@@ -149,7 +149,7 @@ func _physics_process(delta: float) -> void:
 		_first_wave = true
 		_wave_n = 0
 		_empty_t += delta
-		if _empty_t > EMPTY_CLEAR_S and not _pending.is_empty():
+		if _empty_t > EMPTY_CLEAR_S and _empty_t - delta <= EMPTY_CLEAR_S:   # once, as the time runs out
 			clear_area(area_id)
 		return
 	_empty_t = 0.0
@@ -361,12 +361,19 @@ func _spawn_pos(around: Vector3) -> Variant:
 	return best
 
 
-## Drop the queued spawns. (The core has no call that removes a living body yet, so the bodies already made stay and fight on: the old director
-## freed them when the hero had been away for EMPTY_CLEAR_S. Area travel arrives with the Chapterhouse.)
+## Drop the queued spawns.
 func clear() -> void:
 	_pending.clear()
 
 
-## Drop the queued spawns that belong to one ground.
+## Drop the queued spawns that belong to one ground and send its living bodies away (today's director freed them: no death, corpse, credit or
+## loot), so the global cap is free for the ground the heroes are on: when the director follows the heroes into another area, and when an area has
+## been empty EMPTY_CLEAR_S. A body already dying finishes its fall; a boss is not in the core's table (the boss host's).
 func clear_area(area: String) -> void:
 	_pending = _pending.filter(func(d: Dictionary) -> bool: return String(d["area"]) != area)
+	if core_host == null:
+		return
+	for id in core_host.core.enemy_ids():
+		var info: Dictionary = core_host.core.enemy_info(id)
+		if String(info.get("area", "")) == area and int(info.get("state", DmCoreEvents.State.DEAD)) != DmCoreEvents.State.DEAD:
+			core_host.remove_enemy(id)

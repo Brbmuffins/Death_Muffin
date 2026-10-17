@@ -22,6 +22,7 @@ extends SceneTree
 ##     the Sexton's Round), and in the game scene the Husk's embers are a pool that burns him and burns out, the Priest's coal, the Slag Brute's slam, the Hag's hex, the Wisp's pulse and
 ##     the Sexton's chain are announced and reach him (as ember, curse, dust and melee blows, a chill, a drag and a root on his body), the Leech's bite is toxic, and the kinds shed
 ##     embers and marsh-lights near him;
+##   - waves follow the hero from area to area (the Graves, the Ossuary, the Nave, the Graves again), and the ground left behind is cleared, as today's director does;
 ##   - ZERO script errors or engine errors in the log.
 ## Run: godot --headless --fixed-fps 60 --path client --script res://tests/world.gd
 
@@ -99,6 +100,7 @@ func _main() -> void:
 	await _the_nave()
 	await _the_late_areas()
 	await _the_pyre_and_fen()
+	await _waves_follow_the_hero()
 	for e in errlog.errors:
 		printerr("ERROR in log: " + e)
 	check(errlog.errors.is_empty(), "no script or engine errors in the log (%d)" % errlog.errors.size())
@@ -706,3 +708,33 @@ func _the_pyre_and_fen() -> void:
 	for id in g.core_host.core.enemy_ids():
 		host.remove_enemy(id)
 	await ticks(2)
+
+
+# ------------------------------------------------------------------------------------------------------------------ waves follow the hero
+
+## Today's director: the waves come to whatever combat area a hero stands in, and the ground left behind is cleared at once (its living bodies sent away: no
+## death, corpse or credit) so the global cap is free for the new one (Helix's playtest, 2026-10-17: once the Graves' bodies filled the cap, no wave came anywhere else).
+func _waves_follow_the_hero() -> void:
+	g.world.set_unlocked(DmNextWorld.every_area())
+	hero.p["god"] = true
+	var made := {}
+	var gone: Array = []
+	g.core_host.enemy_spawned.connect(func(_id: int, _d: String, _l: int, _e: bool, a: String, _af: int, _x: float, _z: float, _h: float) -> void: made[a] = int(made.get(a, 0)) + 1)
+	g.core_host.enemy_removed.connect(func(id: int) -> void: gone.append(id))
+	g.director.enabled = true
+	var cap := int(DmSimData.GLOBAL_ENEMY_CAP)
+	for area: String in ["graves", "ossuary", "nave", "graves"]:
+		hero.teleport(g.world.nav_closest(_area_mid(area)))
+		var from := int(made.get(area, 0))
+		var wanted := int(DmContent.area(area).get("cap", 28))
+		var ok := await until(func() -> bool: return int(made.get(area, 0)) - from >= mini(wanted, cap) * 3 / 4, 60 * 40)
+		var others := 0
+		for id in g.core_host.core.enemy_ids():
+			var info: Dictionary = g.core_host.core.enemy_info(id)
+			if String(info.get("area", "")) != area and int(info["state"]) != DmCoreEvents.State.DEAD:
+				others += 1
+		check(ok and g.director.area_id == area, "waves come to the hero in the %s (%d made there, the director on %s)" % [area, int(made.get(area, 0)) - from, g.director.area_id])
+		check(others == 0, "the ground left behind holds no living body (%d)" % others)
+	check(gone.size() >= 20, "the bodies left behind were sent away (%d)" % gone.size())
+	g.director.enabled = false
+	hero.p["god"] = false
