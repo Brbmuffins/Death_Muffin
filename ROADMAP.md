@@ -376,7 +376,7 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
 **Launch day checklist** (2026-10-18, B49):
 - [x] The endpoints: `client/net/dm_config.gd` names the live API, manifest, lobby and relay; `client/tests/front.gd` pins them and refuses the test server.
 - [x] The rebuilt client published to everyone (`publish-godot-client.sh`, which exports `client/` by default): 20261018.035843-2b88467, 2026-10-18 04:07 UTC, announced (PATCH_NOTES.json "Rebuilt from the Bones").
-- [ ] The Discord agent builds and ships `client/` (its ships are paused until then: its config forbids every path).
+- [x] The Discord agent ships `client/` (2026-10-18, 65754b47): its change in `godot/` is synced into `client/` before the push; its prompt keeps it off the rebuild's own ("ported") files.
 - [ ] 2026-11-01, the end of B40's undo window: `godot/` and the paths only it used go (the copies become the client's own files), and `launch-undo.sh` with them.
 
 **Working rules for the rebuild.**
@@ -404,6 +404,7 @@ combat simulation for now.
   - [ ] Low and Medium: today's draw blended effects in sRGB space when bloom is off (half-transparent white over black: 131; with bloom, 205), Forward+ blends in linear light on every preset;
     the lifts are the Ultra measurement's, Low's factor (0.96) and Medium's (1) are not measured; the Depths' walls keep Forward+'s darker tint (its floor is lifted in `DmWorldBuilder._floor_mat`) and its lift is the old 1.2, not measured (the probe cannot stand in the instance).
   - [ ] Every area's look signed off by Helix on their PC (the brightness of all twelve is measured against today's; the look itself, the hero in the dark areas and the Fen above all, is Helix's to judge).
+- **Haunting Wraith** (warbogar's new Reaper ability, Discord proposal 565c7c, made on the old game before launch day): rebuild it on `client/` (its rite, the ported `DmAvatar` clip).
 - **Ascension, redesigned** (B36): the first new feature. Players' saved boons, Ashes and best rank are kept for it.
 - **Necromancer polish:** combat feel and loot for the four disciplines from playtests, readability of rites and statuses, gear and affix
   legibility, the first hour (Next-step box, counsel tips, guide NPCs); the rejoin window (D13) and the party gaps (KNOWN-GAPS: Party and
