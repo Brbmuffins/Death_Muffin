@@ -2,7 +2,7 @@
    python3 pck_extract.py <in.pck> <out dir>"""
 import os, struct, sys
 
-KEEP = ('assets/', '.godot/imported/', '.godot/exported/')
+KEEP = ('assets/', '.godot/imported/', '.godot/exported/', '.godot/shader_cache/')
 
 def entries(f):
     if f.read(4) != b'GDPC':

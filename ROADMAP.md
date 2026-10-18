@@ -86,10 +86,10 @@ the end of the undo window; B57).
   with a skeleton, or a hero body without the shared skeleton and its combat clips (`tools/assets/check-models.mjs`); the tool that installs a
   new sound brings it to the game's loudness (-20 LUFS) and writes it into the licence record, docs/AUDIO-SOURCES.md. Armor sets still touch
   about five files by hand (KNOWN-GAPS "Content pipelines").
-- [ ] **Fix: first-use stutters.** Now: an effect is compiled the first time it is drawn, which stutters, unless it is on a warm-up list
-  kept by hand (both Reaper stutter reports came from gaps in that list). After: Godot compiles every effect when the game is built (its
-  shader baking option), a test fails when an effect used in play is not warmed at load, and the team app's stutter test confirms it on a
-  real graphics card once it runs.
+- [ ] **Fix: first-use stutters.** Now: every release bakes the game's shaders into its pack (since 2026-10-19; the art pack's are baked the
+  next time its art changes), but an effect still builds its graphics pipeline the first time it is drawn, which stutters, unless it is on
+  a warm-up list kept by hand (both Reaper stutter reports came from gaps in that list). After: a test fails when an effect used in play is
+  not warmed at load, and the team app's stutter test confirms it on a real graphics card once it runs.
 - [ ] **New: play reports.** When a play session ends, the game sends a small summary: average and worst frame times, the graphics preset,
   the graphics card, time and deaths per area, and where the session ended (nothing personal). A page on the site shows them per release,
   beside the server's own numbers (XP and gold per hour, drops) and how often and how long people play. It gives: how the game really runs on

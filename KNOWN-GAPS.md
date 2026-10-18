@@ -122,6 +122,8 @@ polish list). Also:
 
 ## Tools and tests
 
+- The Windows launcher workflow (`.github/workflows/launcher-windows.yml`) rebuilds and re-uploads the launcher zip of the current release for any
+  change under `launcher/`, a README included (same version, so no launcher update and no notice; it happened on 2026-10-18).
 - `client/tests/game_scene.gd`'s node checks pass about every other run under load: the counsel's tip card (16 nodes, shown at the first
   Barrow Ghoul and dismissed on a wall-clock timer) is in the scene tree for part of the run.
 - The client's suites other than `world.gd` do not set `DM_SYNC_NAV`: under `--fixed-fps` a suite that enables a region (a seal, a baked

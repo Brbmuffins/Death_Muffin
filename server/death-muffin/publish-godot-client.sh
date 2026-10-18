@@ -80,7 +80,7 @@ git -C "$REPO" worktree add -q --detach "$WT" "$SHA" >/dev/null 2>&1
 # PREPARE=<script> (the test channel): adjusts the scratch worktree before the import, e.g. renderer and endpoints. Never the repository.
 [ -z "${PREPARE:-}" ] || bash "$PREPARE" "$WT" || { echo "prepare step failed: $PREPARE" >&2; exit 1; }
 "$GODOT" --headless --path "$WT/$PROJECT" --import >"$STAGE/import.log" 2>&1 || { tail -30 "$STAGE/import.log" >&2; echo "godot import failed" >&2; exit 1; }
-"$GODOT" --headless --path "$WT/$PROJECT" --export-release "$PRESET" "$STAGE/DeathMuffin.exe" >"$STAGE/export.log" 2>&1 || { tail -30 "$STAGE/export.log" >&2; echo "godot export failed" >&2; exit 1; }
+bash "$WT/tools/godot/export-baked.sh" "$WT/$PROJECT" release "$PRESET" "$STAGE/DeathMuffin.exe" "$GODOT" || exit 1   # baked shaders when a renderer is free (the script says)
 rm -f "$STAGE/import.log" "$STAGE/export.log"
 if [ -f "$WT/tools/godot/assets-pack.sh" ]; then
   CACHE="$WORK/assets-cache"; mkdir -p "$CACHE"

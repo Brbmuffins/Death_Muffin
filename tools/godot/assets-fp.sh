@@ -8,7 +8,7 @@ set -euo pipefail
 BAKER=(client/crowd/crowd_baker.gd client/crowd/crowd_vat_data.gd client/crowd/crowd_looks.json client/tools/bake_crowd.gd client/tools/bake_crowd.sh
   client/game/dm_creature.gd client/game/dm_creature_mat.gd client/game/dm_gear_props.gd client/world/dm_models.gd client/world/dm_animator.gd
   client/game/view_models.json)
-SETTINGS=(client/export_presets.cfg client/project.godot tools/godot/assets-pack.sh tools/godot/pck_extract.py tools/godot/pck_pack.gd)
+SETTINGS=(client/export_presets.cfg client/project.godot tools/godot/assets-pack.sh tools/godot/export-baked.sh tools/godot/pck_extract.py tools/godot/pck_pack.gd)
 if [ "${1:-}" = --paths ]; then printf '%s\n' client/assets "${BAKER[@]}" client/data/content/enemies.json "${SETTINGS[@]}"; exit 0; fi
 WT="${1:?usage: assets-fp.sh <checkout> [godot]}"
 GODOT="${2:-${GODOT:-/home/ubuntu/tools/godot/godot}}"
