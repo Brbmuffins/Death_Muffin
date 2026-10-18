@@ -13,9 +13,9 @@ Every item says what kind it is:
 
 ## At a glance
 
-- **Phase 1, settle the launch.** Before 2026-11-01: Grave Surges back, alerts when a server stops, the Discord agent working on the new
-  game, and the old game's code gone. After it: the team app (screenshots and benchmarks on team PCs), checks for War's content, crash
-  reports that point at the cause, no first-use stutters, and play reports.
+- **Phase 1, settle the launch,** as soon as possible: alerts when a server stops, Grave Surges back, crash reports that point at the
+  cause, the Discord agent working on the new game and the old game's code gone, checks for War's content, no first-use stutters, play
+  reports, and the team app (screenshots and benchmarks on team PCs).
 - **Phase 2, the foundation's core:** the game vision, how we work, the look, the size limits and the balance rules, content data in one
   place with automatic checks, recipes for what is made today, and the server owning every value. Done when three real pieces of content
   have gone through it cleanly. The rest of the standards are written when their first content arrives.
@@ -30,7 +30,8 @@ Every item says what kind it is:
 - **The rebuilt game is live** (launch day 2026-10-18, B49): the same game on a C++ combat core and Forward+ graphics. The biggest fight
   runs 3 to 4 times faster on Helix's PC (the Bell Sanctum's Full Party on Ultra: 61 to 224 fps); warbogar's PC plays it at 342 fps where the
   old game gave 41 in a lighter fight. The rebuild's record is B34-B50.
-- Until 2026-11-01 one command puts the old game back (`server/death-muffin/launch-undo.sh`, B40); after that the old game's code goes.
+- The old game's code goes as soon as nothing depends on it (Helix, 2026-10-18: the live build is solid; B57). Until then one command can
+  still put the old build back (`server/death-muffin/launch-undo.sh`); after it, a rollback goes to an earlier build of the new game.
 - Ascension (the Altar, vows and heat, Ashes, Covenant Boons) left on launch day and comes back redesigned in Phase 3 (B36). Players'
   saved Ascension data is kept.
 - **Now:** Phase 1, settling the launch.
@@ -39,7 +40,8 @@ Every item says what kind it is:
 
 Nothing right now. Answered on 2026-10-18: the code stays public until 1.0 and goes private, with the game's files encrypted, for that
 first public release (B52); big changes get a test lane (B53); off-site backups go to a cloud storage bucket later (B51); the team PC
-helper is a separate team app for War, Muffins and Helix (B54, B55); the roadmap is slimmed as Claude advised (B56).
+helper is a separate team app for War, Muffins and Helix (B54, B55); the roadmap is slimmed as Claude advised (B56); the old game's code
+goes as soon as nothing depends on it (B57).
 
 ## Always on
 
@@ -55,31 +57,46 @@ helper is a separate team app for War, Muffins and Helix (B54, B55); the roadmap
 ## Phase 1: settle the launch
 
 Goal: the new game has everything the old one had, it is the only game, we hear when something breaks, and we can see how it runs on
-players' PCs. The old game's code goes on 2026-11-01, when the undo window ends, so everything that still depends on it comes first.
-
-**Before 2026-11-01**
-- [ ] **Fix: Grave Surges are missing.** Now: since launch day no Grave Surge ever starts (they were left out of the rebuild). After: as in
-  the old game, after about 100 seconds in a combat area a crypt bursts open nearby, three waves climb out, and clearing them pays the surge
-  reward; the surge tip shows again. (Port `godot/next/areas/dm_grave_surge.gd` onto the combat core.)
+players' PCs. Everything here is done as soon as possible, in this order (Helix, 2026-10-18: the live build is solid, no need to wait for
+the end of the undo window; B57).
 - [ ] **Fix: nobody is told when the game's servers stop.** Now: only the database is watched; if the game's server, the lobby or the
   co-op relay stops, nobody knows until players notice. After: each one is watched every minute, and a failure posts to #build-alerts
   (KNOWN-GAPS "Operations").
+- [ ] **Fix: Grave Surges are missing.** Now: since launch day no Grave Surge ever starts (they were left out of the rebuild). After: as in
+  the old game, after about 100 seconds in a combat area a crypt bursts open nearby, three waves climb out, and clearing them pays the surge
+  reward; the surge tip shows again. (Port `godot/next/areas/dm_grave_surge.gd` onto the combat core.)
+- [ ] **Fix: crash reports cannot point inside the combat core.** Now: when the C++ combat core crashes, the report has the log but no
+  location, because the core ships without its debug symbols. After: each crash report names the build and the line of code that crashed
+  (the symbols of every published build are kept on the server).
 - [ ] **Fix: the Discord agent tests and photographs the old game.** Now: its proposals are checked with the old game's tests, its
   before/after screenshots are rendered from the old game on the server, its "Try it" previews are builds of the old game, and it still
-  makes its changes in the old game's folder, all of which stops working when that folder goes. After: every proposal is tested on the
-  live game, its screenshots and previews are of the live game (rendered on the server until the team app takes over the screenshots),
-  and from 2026-11-01 it makes its changes in the new game directly. (The screenshot tool and its driver come over to `client/`.)
+  makes its changes in the old game's folder. After: every proposal is tested on the live game, its screenshots and previews are of the
+  live game (rendered on the server until the team app takes over the screenshots), and it makes its changes in the new game directly. (The screenshot tool and its driver come over to `client/`.)
 - [ ] **Fix: a document change from the Discord agent ships a game update.** Now: every change the agent ships also publishes a new game
   build, even when it only touches documents, so adding a line to this roadmap from Discord would send every player an update notice.
   After: a change that touches only documents goes to `main` with no new build and no notice, and the agent adds a team member's idea to
   "Ideas" (with its section) on an approver's ✅.
-- [ ] **Fix: two copies of the game's code** (on 2026-11-01). Now: the old game's folder `godot/` is still there, most of the new game's
+- [ ] **Fix: two copies of the game's code** (as soon as the Discord agent works on the new game; B57). Now: the old game's folder `godot/` is still there, most of the new game's
   scripts are copied from it, and the crowd and map tools, about 66 tool and server scripts and some tests still read it; the 31 short
   system guides (how each system works and its known gaps) live only in `godot/`. After: the system guides move into `client/` first, then
-  `godot/` is deleted, the new game owns its files, every tool and test reads the new game, `server/death-muffin/launch-undo.sh` goes, and
-  README.md and CLAUDE.md describe one game.
-
-**After 2026-11-01**
+  `godot/` is deleted (an archive tag keeps its source), the new game owns its files, every tool and test reads the new game,
+  `server/death-muffin/launch-undo.sh` and the server paths only the old game used go, and README.md and CLAUDE.md describe one game; a
+  rollback goes to an earlier build of the new game.
+- [ ] **Fix: War's content pipelines run on trust, not on checks.** Now: armor sets, models and sounds come out right because the
+  Discord agent follows a long set of written steps, and nothing checks the result. The agent may ask Tripo for up to 14,000 triangles for
+  any model (so far every gear piece is under 3,500 and every hero body about 12,000 or less); new sounds are not matched in loudness and are
+  left out of the licence record. After (ahead of Phase 2's full checks): the agent's check refuses a model over its budget, with more than
+  one material or a different skeleton, and a hero body without its combat clips; the tools bring every new sound to the same loudness and
+  write it into the licence record (KNOWN-GAPS "Content pipelines").
+- [ ] **Fix: first-use stutters.** Now: an effect is compiled the first time it is drawn, which stutters, unless it is on a warm-up list
+  kept by hand (both Reaper stutter reports came from gaps in that list). After: Godot compiles every effect when the game is built (its
+  shader baking option), a test fails when an effect used in play is not warmed at load, and the team app's stutter test confirms it on a
+  real graphics card once it runs.
+- [ ] **New: play reports.** When a play session ends, the game sends a small summary: average and worst frame times, the graphics preset,
+  the graphics card, time and deaths per area, and where the session ended (nothing personal). A page on the site shows them per release,
+  beside the server's own numbers (XP and gold per hour, drops) and how often and how long people play. It gives: how the game really runs on
+  every player's PC, weak ones included (no GTX 970-class PC or laptop has run the benchmark yet), whether a release made it slower, where
+  players struggle or stop, and whether polish is making the game more fun.
 - [ ] **New: the team app** (Helix, 2026-10-18: for War, Muffins and Helix only, B54; its own app, not the players' launcher, B55). A small
   Windows app, installed only on the three team PCs, with the launcher's look and its own automatic updates; a bug in it can be fixed in
   minutes and never reaches players. It runs jobs that need a real graphics card, which the server does not have; the server keeps
@@ -101,24 +118,6 @@ players' PCs. The old game's code goes on 2026-11-01, when the undo window ends,
   - With the art rebuild (Phase 4): lighting bakes on the strongest graphics card available instead of by hand, the result coming back as
     a proposal.
   - Later: a co-op test between two team PCs.
-- [ ] **Fix: War's content pipelines run on trust, not on checks.** Now: armor sets, models and sounds come out right because the
-  Discord agent follows a long set of written steps, and nothing checks the result. The agent may ask Tripo for up to 14,000 triangles for
-  any model (so far every gear piece is under 3,500 and every hero body about 12,000 or less); new sounds are not matched in loudness and are
-  left out of the licence record. After (ahead of Phase 2's full checks): the agent's check refuses a model over its budget, with more than
-  one material or a different skeleton, and a hero body without its combat clips; the tools bring every new sound to the same loudness and
-  write it into the licence record (KNOWN-GAPS "Content pipelines").
-- [ ] **Fix: crash reports cannot point inside the combat core.** Now: when the C++ combat core crashes, the report has the log but no
-  location, because the core ships without its debug symbols. After: each crash report names the build and the line of code that crashed
-  (the symbols of every published build are kept on the server).
-- [ ] **Fix: first-use stutters.** Now: an effect is compiled the first time it is drawn, which stutters, unless it is on a warm-up list
-  kept by hand (both Reaper stutter reports came from gaps in that list). After: Godot compiles every effect when the game is built (its
-  shader baking option), a test fails when an effect used in play is not warmed at load, and the team app's stutter test confirms it on a
-  real graphics card.
-- [ ] **New: play reports.** When a play session ends, the game sends a small summary: average and worst frame times, the graphics preset,
-  the graphics card, time and deaths per area, and where the session ended (nothing personal). A page on the site shows them per release,
-  beside the server's own numbers (XP and gold per hour, drops) and how often and how long people play. It gives: how the game really runs on
-  every player's PC, weak ones included (no GTX 970-class PC or laptop has run the benchmark yet), whether a release made it slower, where
-  players struggle or stop, and whether polish is making the game more fun.
 - [ ] **Decide: an "Ultra Low (old PCs)" option** (B35). Once the play reports and the GTX 970 benchmark show how Low runs on weak PCs: if
   Low on the new renderer misses the laptop floor (60 fps in normal play, 45 in the biggest fight), add an option that restarts the game in
   the old, lighter renderer. Claude recommends deciding from those numbers, not before.
@@ -395,8 +394,8 @@ Worked through beside the phases, top first. Each change is shown to the team wi
   goes private for 1.0 (B52).
 - **Licences:** the ElevenLabs plan in use excludes monetized games, and every asset's licence matters once the game is offered to the
   public. The vision decides about money (Phase 2, track A); 1.0 checks every licence.
-- **The undo window ends on 2026-11-01:** after that the old build cannot come back, so the new game's crash reports and play reports
-  (Phase 1) are how we learn about problems.
+- **No way back to the old game** once its code goes (B57): problems are fixed forward or rolled back to an earlier build of the new game,
+  so the crash reports, alerts and play reports (Phase 1) are how we learn about them.
 - **A long foundation:** players see little new while it is built. Something players notice ships every week or two (Always on), Phase 2
   holds only the core, and Ascension follows it directly.
 

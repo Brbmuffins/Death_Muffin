@@ -4,7 +4,7 @@ A dark-fantasy action RPG. You play a necromancer: raise corpses as thralls, fig
 world (Chapterhouse, Sexton's Acre, Alchemist's Wing, Hollow Graves, Catacomb Warren, Marrow Ossuary, Drowned Nave, Bone
 Coliseum, Bell Sanctum, Plague Cloister, Cinder Pyre, Mourning Fen, and the Catacomb Depths), gather and craft, and chase gear.
 
-**One game, one client:** a Godot 4 client (`client/`, live since 2026-10-18; the old game in `godot/` stays until 2026-11-01), played online against the Death Muffin backend. Four necromancer
+**One game, one client:** a Godot 4 client (`client/`, live since 2026-10-18; the old game in `godot/` stays only until nothing depends on it, DECISIONS B57), played online against the Death Muffin backend. Four necromancer
 disciplines are playable (Ossuary, Gravecaller, Mourner, Rotweaver), and so is the Reaper, a scythe fighter with a soul bag; the other
 five show greyed out as "Coming later".
 Parties of up to 4 join through a lobby and relay. Players get the game through the Windows launcher at
@@ -18,7 +18,7 @@ Where to read next: [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNO
 | Path | What |
 |---|---|
 | `client/` | The game (DECISIONS B49): its own Godot 4.7.2 project on Forward+ with the C++ combat core ([client/README.md](client/README.md)). Entry `main/main.gd` (`DmMain`) -> front flow (`front/`) -> `DmNextGame` (`next/next_game.gd`). `next/` holds the game systems (each folder has a README), `rules/` and `data/` the game rules and content, `session/` + `net/relay/` multiplayer, `core/` and `crowd/` the combat core's host and the crowd, `tests/` the headless suites |
-| `godot/` | The old game (Compatibility renderer, GDScript enemies), kept until 2026-11-01 for `server/death-muffin/launch-undo.sh` (DECISIONS B40). Most of `client/`'s GDScript, data and assets are still copies of its files: a fix to a copied file is made here and synced (CLAUDE.md). Same layout as `client/` (B43) with the old `enemies/` scenes; its suites are `godot/tests/` |
+| `godot/` | The old game (Compatibility renderer, GDScript enemies), kept only until nothing depends on it (DECISIONS B57); until then `server/death-muffin/launch-undo.sh` can put its last build back. Most of `client/`'s GDScript, data and assets are still copies of its files: a fix to a copied file is made here and synced (CLAUDE.md). Same layout as `client/` (B43) with the old `enemies/` scenes; its suites are `godot/tests/` |
 | `native/` | The rebuilt client's C++ combat core (GDExtension), built into `client/bin/` by `native/build.sh` ([native/README.md](native/README.md)) |
 | `server/death-muffin/backend/` | Auth and game API on 127.0.0.1:5190 (accounts, characters, bag, loot, kill ledger, sessions). Plain Node `.cjs` + MySQL, migrations in `migrations/` |
 | `server/death-muffin/lobby/` | Lobby + packet relay (WebSocket), :5192 |
@@ -76,7 +76,7 @@ Client publish, backend deploy and the online gate are separate; none runs on it
 checks passing. The full procedure (scripts, release notes, rollback, services) is in
 [server/death-muffin/README.md](server/death-muffin/README.md).
 
-- **Client:** `server/death-muffin/publish-godot-client.sh <git-rev>` exports the `Windows Desktop` preset of the game, `client/` since launch day (2026-10-18, DECISIONS B49), and publishes it for the launcher. `server/death-muffin/launch-undo.sh` puts the last old build back until 2026-11-01.
+- **Client:** `server/death-muffin/publish-godot-client.sh <git-rev>` exports the `Windows Desktop` preset of the game, `client/` since launch day (2026-10-18, DECISIONS B49), and publishes it for the launcher. `server/death-muffin/launch-undo.sh` puts the last old build back until the old game's code goes (DECISIONS B57).
 - **Backend:** `server/death-muffin/deploy-release.sh [--if-changed] [rev] [migration.sql ...]`. Never edit the installed backend by hand. A Discord agent ship runs it with `--if-changed` before publishing the client, so a change that touches the server goes live on both sides (a no-op when the installed server files already match).
 - **Release notes:** both scripts end with `announce-release.sh`, which posts the release in #build-alerts. Put a new top entry in `PATCH_NOTES.json` for a named release. A notice lists only the patch-note lines added since the last announced release; lines added to an existing entry (Discord ships) are titled with the job's proposal title, else its thread name (`RELEASE_TITLE`, passed by the Discord agent), else the newest commit subject.
 - **Online gate:** `server/death-muffin/set-online.sh on|staff|off ["message"]`; live state is `on`.

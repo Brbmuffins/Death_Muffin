@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Undo launch day (DECISIONS B40; the window closes 2026-11-01): the launcher goes back to today's old game, the last build of godot/ that was
+# Undo launch day (DECISIONS B40; the window closes when the old game's code goes, B57): the launcher goes back to today's old game, the last build of godot/ that was
 # live before the rebuild. The launch kept that build's folder and manifest in $KEEP (outside the web folder, so publishes never prune it). This
 # puts the folder back next to the live builds and writes its manifest as the live one, carrying over the online block that is live now.
 # The backend, lobby and relay need nothing: they accept the old client and the rebuilt one alike.

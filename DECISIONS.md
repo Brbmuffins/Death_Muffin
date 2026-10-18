@@ -144,7 +144,8 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 - **B40. Ready for phones, and an undo for launch day** (Helix, 2026-10-16). From day one: textures also import in phone formats (a
   separate phone pack), every shader and effect runs on the Mobile renderer, the HUD is built from movable, scalable pieces, phones join co-op
   but never host, co-op messages carry a version (PC co-op still pairs identical builds until phones exist, B28), presets assume a phone runs
-  Low. For 2 weeks after launch day the last old build stays downloadable and the server keeps accepting it, so one command undoes the launch.
+  Low. For 2 weeks after launch day the last old build stays downloadable and the server keeps accepting it, so one command undoes the launch
+  (ended early by B57: the old game's code goes as soon as nothing depends on it).
 - **B41. The rebuild is its own Godot project** (2026-10-16, Claude's call under B34). `client/` is a separate Godot project next to the
   live `godot/`, not folders inside it: Godot loads every GDExtension in a project, so a shared project would make the live game and its
   tests load the new C++ core, and shared assets would flip import settings (phone formats, lightmap UVs) between the two. The rebuild gets
@@ -195,7 +196,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 - **B49. Launch day** (Helix, 2026-10-18: "launch", twice, the second time after hearing that the look pass, Gate D, was not done). `client/` is the
   game: its endpoints are the live server's (`net/dm_config.gd`; B38 turned round, the build never reaches the test server), `publish-godot-client.sh`
   exports it by default, and the test channel keeps its last test build. The look pass's two open items (effects on Low and Medium, Helix's sign-off
-  of every area) moved to the ROADMAP's polish list (B50). Until 2026-11-01 (B40) `server/death-muffin/launch-undo.sh` puts the last old build back and the
+  of every area) moved to the ROADMAP's polish list (B50). Until the old game's code goes (B40, B57) `server/death-muffin/launch-undo.sh` puts the last old build back and the
   backend keeps accepting it. The Discord agent ships `client/`: its change in `godot/` is synced into `client/` before the push (65754b47). After the window
   `godot/` and the paths only it used go.
 - **B50. The roadmap after launch** (Helix, 2026-10-18: "building systems, frameworks, pipelines, code upgrades, rules/guidelines/standards/requirements,
@@ -214,7 +215,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   as Claude Code skills), a catalogue of what exists, rules for changing live content, and Phase 1's alerts and off-site backups.
   A full review the same day added team lanes with "in progress" marks and a plain-words team guide, an automatic secret scan, test
   runs that skip the game suites for document-only pushes, a watch on the server's packages, the Ultra Low decision of B35, the move of the
-  31 system guides before 2026-11-01, the remaining co-op and first-hour gaps, and a list of the risks we carry.
+  31 system guides before the old game's code goes, the remaining co-op and first-hour gaps, and a list of the risks we carry.
   The rebuild's record, which the ROADMAP held as checklists (git keeps them): Gate A (the old game on Forward+ runs on Helix's PC) passed
   2026-10-16. Gate B, the engine checkpoint: the Full Party fight in the Hollow Graves at 3.1 times the old game's speed on Helix's PC
   (RTX 4070 SUPER, 1440p Ultra: 77 to 242 fps, p95 18.1 to 5.1 ms) and 4.6 times in the VPS processor test (14.9 to 3.2 ms a frame), the rule
@@ -258,9 +259,13 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   every value, and engineering health; it is done when three real pieces of content went through it cleanly. Every other standard is
   written with its first content (effects with Haunting Wraith, UI before Ascension's windows, rigging, animation, enemy, boss and area rules
   with the first new creature, boss and place, the world-kit pipeline and art storage with the art rebuild), in three standards pages
-  instead of eleven. Phase 1 is ordered around 2026-11-01 (what depends on the old game's folder comes first). Ascension's plan is written
+  instead of eleven. Phase 1 was ordered around 2026-11-01 (B57 dropped the date). Ascension's plan is written
   during Phase 2 so it is built right after. Something players notice ships every week or two, and the play reports also say how often and
   how long people play and where they stop.
+- **B57. The old game goes as soon as possible** (Helix, 2026-10-18: "nov 1 is irrelevent. we can do these things asap. no need ot wait.
+  the currentl ive build is solid"). B40's two-week undo window ends early: Phase 1 runs as soon as possible, and the old game's code, its
+  last build, `launch-undo.sh` and the server paths only it used go as soon as the Discord agent and the tools work on `client/` (the system
+  guides move first). An archive tag keeps the old game's source; from then on a rollback goes to an earlier build of the new game.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

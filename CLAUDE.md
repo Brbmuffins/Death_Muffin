@@ -1,7 +1,7 @@
 # Death Muffin: agent rules
 
 Death Muffin is one game: the Godot 4 client in `client/` (the rebuild, live since 2026-10-18, DECISIONS B49), played online against
-`server/death-muffin/`. `godot/` is the old game, kept until 2026-11-01 for `launch-undo.sh` (B40); most of `client/`'s GDScript is still synced
+`server/death-muffin/`. `godot/` is the old game, kept only until nothing depends on it (B57); most of `client/`'s GDScript is still synced
 from it (`tools/rebuild/sync-code.mjs`), so a fix to a copied file goes into `godot/` and is synced. Read
 [README.md](README.md) (layout, run, test, release), [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNOWN-GAPS.md](KNOWN-GAPS.md)
 and the README of any `godot/next/` system before changing it. Tag `archive/legacy-web` is the retired web game: history only, do not port from it.

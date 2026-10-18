@@ -1,8 +1,8 @@
 # Known gaps
 
 Open gaps, verified against the code on `main`. The order they are worked in is [ROADMAP.md](ROADMAP.md). Remove an entry when it is closed.
-Since launch day (2026-10-18) the game is `client/`; a path below without a folder is the same in `client/` and in the old `godot/` (kept until
-2026-11-01).
+Since launch day (2026-10-18) the game is `client/`; a path below without a folder is the same in `client/` and in the old `godot/` (kept only until
+nothing depends on it, B57).
 
 ## Missing since launch day
 
