@@ -32,7 +32,7 @@ world_fx   # world dressing and atmosphere
 # next/enemy_fx/dm_enemy_fx.gd             an event consumer: the core's telegraphs, strikes, deaths, zones (dust and burning ground) and affix moments, the Pyre's and the Fen's sparks, embers and idle motes (no node per enemy); the thralls' sounds (thrallRise on thrall_raised, thrallDeath on thrall_died "killed": DmThrall's); a body removed alive swings no more; the shroud's smoke stops while the crowd's ward flag is down (`view_info(id).veiled`: a Miasma over the body, or the shroud stripped), as today's smoke stopped while the shroud was down (`target < 1.0`)
 # game/dm_avatar.gd                        its own three motion helpers instead of DmEntityViews'
 # game/dm_event_fx.gd, game/dm_event_fx_zones.gd   zone and corpse records read by field name (no DmSimZone, DmSimCorpse)
-# main/main.gd, main/main.tscn             the boot (DmMain): the front flow against the TEST server, then the game scene with the chosen character, its bag and progression (DmMain.load_build); `--benchmark` and the Benchmark button (the run is sent to the test server only); the party hand-over (join_ready, client_ended, a failed join); the panels' Log out, Switch character and discipline change; no crash report
+# main/main.gd, main/main.tscn             the boot (DmMain): the front flow against the TEST server, then the game scene with the chosen character, its bag and progression (DmMain.load_build); `--benchmark` and the Benchmark button (the run is sent to the test server only); the party hand-over (join_ready, client_ended, a failed join); the panels' Log out, Switch character and discipline change; no crash report; `--qa` / `--shot-plan=` start the QA driver (`qa_wanted`, `start_qa`: dev-offline debug runs only)
 # net/dm_config.gd                         the TEST server's, lobby's and relay's addresses and the allow-list (DmConfig.allows_url, allows_api_base, allows_lobby_url, allows_relay); the live ones never appear (tests/front.gd)
 # net/dm_http_transport.gd                 refuses any request DmConfig does not allow
 # Easy auto combat and the benchmark (client/README.md "The benchmark"):
@@ -111,6 +111,9 @@ world_fx   # world dressing and atmosphere
 # Copied again because of them: next/rites/dm_rite_hotbar.gd, next/rites/rite_veil_step.gd, next/progress/dm_next_belt.gd.
 # The Reaper (client/README.md "The Gravecaller's rites"): her shared helper and three rites ported as the necromancer's (DmFoe snapshots, `c.deal`, `c.apply_status`):
 # next/rites/dm_reaper_rites.gd, rite_scythe_weave.gd, rite_wraith_walk.gd, rite_unleash_souls.gd; her other five rites are copies, and game/dm_rite_fx.gd is a copy again.
+# Screenshots for proposals (client/README.md "Screenshots for proposals"): today's QA tools, started by the boot (the autoload stub main/qa_boot.gd is left out, below):
+# main/qa_driver.gd                        the scripted fight reads and spawns through the core (`core_host.enemies_in_radius / enemy_position`, `director.spawn`, ids; the fight's clock starts with the game); the game is the boot's child `NextGame`; a start that makes no game ends the run with a line; `--shot-plan=` alone starts the plan
+# main/qa_ui_shots.gd                      today's plan, windows, demo bag and output; a run is cut into `prepare`, `stage` and `capture` (tests/qa_shots.gd checks a plan's set-up without a renderer), `clip_rect` and `grab` are functions of their own, `go_area` is public (the fight uses it), and a headless run says there is no picture
 # Value on the server (client/README.md "Value on the server"): kills are the game's `kill_credited`, the bag is the game's `loot` (client-only next/rewards/dm_next_loot.gd:
 # today's DmNextUiHost take, pickup, claim and rune-ownership paths on their own):
 # next/rewards/dm_session_rewards.gd       kills from `kill_credited` (the killer is a peer), lifesteal from DmCoreHost.struck; no watch_enemy / attach_spawner
@@ -143,20 +146,14 @@ world_fx   # world dressing and atmosphere
 
 # ==== Seams: ported to the core in later steps (each uses a per-creature class or scene)
 !game/dm_caster_budget.gd                 # uses DmEnemy, DmEnemyState
-!main/qa_driver.gd                        # uses DmEnemy
 !next/areas/dm_grave_surge.gd             # uses DmEnemy
 
-# ==== Left out with a seam (main/qa_driver.gd)
-!main/qa_boot.gd                          # uses qa_driver
+# ==== Left out: the autoload stub of the QA tools. Today's project registers main/qa_boot.gd as the autoload `Qa`, which loads the QA driver only for a QA run (the driver names most of the game);
+# the client's boot does that itself (main/main.gd `start_qa`), because client/project.godot is an input of the art pack's fingerprint: an edit there makes every player download the art again
+!main/qa_boot.gd
 
 # ==== Left out: the boss is a plain node in the port (next/bosses/dm_boss.gd), made by DmBossHost; this scene was a CharacterBody3D with a collider and a navigation agent
 !next/bosses/boss.tscn
 
 # ==== Left out: today's minimal HUD host (the rebuilt client's HUD is today's DmGameUi on DmNextUiHost, DECISIONS B46)
 !next/next_hud.gd
-
-# ==== Left out: the screenshot and QA tools of today's game (main/qa_driver.gd's chain)
-!game_ui/shoot.gd                         # the screenshot tool
-!game_ui/shoot.tscn                       # uses shoot
-!main/qa_ui_shots.gd                      # uses the QA driver
-

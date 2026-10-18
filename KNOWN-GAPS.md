@@ -118,11 +118,14 @@ polish list). Also:
 
 - **No in-game leaderboard panel.** `DmApi.get_leaderboard` exists; only the website shows it.
 - Unraised counsel events: `godot/ui/onboarding/README.md`. Hero gaps: `godot/next/hero/README.md`.
+- **The item card squeezes the stat name of a long affix row:** the card of an affixed staff (the Reliquary's tooltip, seen in the screenshot tool's picture of 2026-10-18) lays a row such as `+30 INT` beside
+  `+42.9 spell power, +60 essence, +3.0 essence/s (+19.4 thrall damage)` out with the name 1 px wide, so it shows a letter a line (`client/ui/widgets/dm_item_card.gd`: a row is an HBox of two labels, the first wraps and the second
+  does not; the layout is the same in any renderer).
 
 ## Tools and tests
 
 - **The Discord agent's checks and screenshots use the old game:** its checks run `tools/godot/run-all-tests.sh` and its screenshots
-  `server/death-muffin/discord-agent/shot-godot.sh` (the QA driver is not in `client/`); the live game's suites run in GitHub CI after a ship
+  `server/death-muffin/discord-agent/shot-godot.sh` (the screenshot tool is in `client/` now, `client/tools/qa_shots.sh`, and the agent does not use it yet); the live game's suites run in GitHub CI after a ship
   is pushed and published (ROADMAP Phase 1). Its "Try it" previews (`server/death-muffin/discord-agent/preview-godot.sh`) export `godot/`,
   the old game, too.
 - `client/tests/game_scene.gd`'s node checks pass about every other run under load: the counsel's tip card (16 nodes, shown at the first

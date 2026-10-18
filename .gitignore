@@ -29,6 +29,8 @@ godot/assets/fx/sheets/
 
 # Rebuilt client (client/) and its C++ core (native/): godot-cpp is fetched by native/build.sh; built libraries are not committed
 client/.godot/
+# The QA driver's default folder for its pictures (`--shots=`, client/README.md "Screenshots for proposals")
+/shots/
 client/bin/*.so
 client/bin/*.dll
 # Licensed flipbook sheets are not redistributable in a public repo: tools/rebuild/sync-assets.mjs copies them in from the private source (client/README.md).

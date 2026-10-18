@@ -73,7 +73,8 @@ the end of the undo window; B57).
 - [ ] **Fix: the Discord agent tests and photographs the old game.** Now: its proposals are checked with the old game's tests, its
   before/after screenshots are rendered from the old game on the server, its "Try it" previews are builds of the old game, and it still
   makes its changes in the old game's folder. After: every proposal is tested on the live game, its screenshots and previews are of the
-  live game (rendered on the server until the team app takes over the screenshots), and it makes its changes in the new game directly. (The screenshot tool and its driver come over to `client/`.)
+  live game (rendered on the server until the team app takes over the screenshots), and it makes its changes in the new game directly. (The screenshot tool and its driver are in `client/` since 2026-10-18,
+  `client/tools/qa_shots.sh`; the agent does not use them yet.)
 - [x] **Fix: a document change from the Discord agent shipped a game update.** Done 2026-10-18: an approved change that touches only
   documents (Markdown files, docs/) goes to `main` and stops there, with no game build, deploy or notice, and the thread says so; when someone
   shares an idea the roadmap lacks, the agent offers to add it to "Ideas" with its section (server/death-muffin/discord-agent/README.md).

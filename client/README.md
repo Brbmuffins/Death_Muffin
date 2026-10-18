@@ -53,6 +53,7 @@ node tools/rebuild/compare-scenarios.mjs                                        
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/sound.gd   # sound on the core's events: a scripted fight's cues against today's rules, by name and count, thralls, the hero's footsteps, the area beds and scores, the gate, the boss score ("Sound"; about 30 s)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/depths.gd # the Catacomb Depths on the core: the rules, the Warren's stair, floors baked at run time and the core's copy of each, the dead on a floor, the quota, the chest, leaving, death, 14 floors (bakes into a scratch folder; about 40 s)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/threads.gd           # the work off the main thread ("Threads"): the list of what starts a thread, the audio bus layout edited only under the mixer's lock, the Depths' floor generator and the Atlas' verdicts on a worker against the main thread's, the guard (about 6 s)
+/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/qa_shots.gd  # the screenshot tool of proposals without a renderer: the plan, a plan's set-up on the game scene, the fight, a real launch, tools/qa_shots.sh against a stand-in for godot (about 30 s; "Screenshots for proposals")
 bash client/tools/coop_local.sh                                                                # a local lobby and relay for a trial with two game windows (prints the commands; "Co-op on the core")
 bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the Graves roster, the Ossuary's deacon and golem and the Abbess's niche, the Nave's five, the Cloister's three, the Pyre's and the Fen's eight, the thralls) into client/assets/crowd/baked (not committed)
 ```
@@ -80,7 +81,7 @@ uids keep working:
   path in code (comments do not count). It prints the counts. A new file in a copied folder of `godot/` is copied by the next sync; if the test
   then fails on it, it is a new seam: add it to the right section of `code.list`.
 - **`project.godot` is the client's own, not a copy.** From `godot/project.godot` it takes by hand what the copies need: the autoloads of copied
-  scripts (`Packs`, `AudioDirector`, `Vfx`; not `Qa`, which is left out with its seam), the display and theme settings the UI layout assumes
+  scripts (`Packs`, `AudioDirector`, `Vfx`; not `Qa`: the boot starts the QA tools, "Screenshots for proposals"), the display and theme settings the UI layout assumes
   (1600x900 viewport, `canvas_items` stretch, `dm_theme.tres`) and the 60 Hz physics settings (3 steps per frame, physics interpolation). The
   renderer, name, features, main scene (the boot, `main/main.tscn`), layer names and import defaults stay the client's. Input actions are registered at run time by the copied code, and
   the only `ProjectSettings` read, `application/config/version`, has a default.
@@ -96,9 +97,9 @@ uids keep working:
   registry, 24 of the necromancer's 25 rites, the rite fx, the combat input; "The Gravecaller's rites"); the boss host, body, world, fx and view ("The bosses"); Easy auto combat, the benchmark
   with its screen, setup window and warm-up, and the boot's `--benchmark` and Benchmark button ("The benchmark"); the co-op pieces (`next/next_net.gd`, `next/party/dm_next_party.gd` and the session's hello;
   "Co-op on the core"); value on the server (the rewards node, the meta node, the progress node, the wave milestones and the joiner; "Value on the server"); the HUD's adapter and
-  view-model ("The HUD on the core"); the counsel's host side and the audio hooks ("Tips and onboarding", "Sound"); the Reaper's helper and three of her rites ("The Gravecaller's rites"); the Acre's glue ("Gathering and the Acre"); and the Depths (the controller, the floor's ground and the run: "The Depths").
-- **Left out with a seam**: a file that cannot load without a seam, grouped under the seam it follows: now only the QA boot (with the QA driver).
-  Freed by the game scene's port and copied again: `next/status` (`DmStatusSet`, for the status sets of heroes and bosses only),
+  view-model ("The HUD on the core"); the counsel's host side and the audio hooks ("Tips and onboarding", "Sound"); the Reaper's helper and three of her rites ("The Gravecaller's rites"); the Acre's glue ("Gathering and the Acre"); the Depths (the controller, the floor's ground and the run: "The Depths"); and the QA driver and its shot plan ("Screenshots for proposals").
+- **Left out with a seam**: a file that cannot load without a seam, grouped under the seam it follows: none now. The one left out for another reason is the autoload stub of the QA tools
+  (`main/qa_boot.gd`: the boot starts the driver, "Screenshots for proposals"). Freed by the game scene's port and copied again: `next/status` (`DmStatusSet`, for the status sets of heroes and bosses only),
   the chronicle, the event fx's telegraph and boss halves, the area flow and gathering. Freed by the rites' ports: the hotbar (`dm_rite_hotbar.gd`), Veil Step and the belt.
   Freed by the boss ports: `next/bosses/dm_boss_meta.gd` (the Covenant Seal altar choice: a copy, made by the game scene's value step). Freed by the panels
   and the Reaper: `DmGameUi` with every panel and the Social window, the Codex, the registry and the Reaper's other rites.
@@ -151,6 +152,27 @@ The Depths are in ("The Depths"). Grave Surges are not in yet (KNOWN-GAPS "Missi
 the combat area a hero stands in, and the ground left behind is cleared at once (its living bodies sent away through the core, no death or corpse), as is one nobody has stood in
 for 15 s. Easy auto combat is in and opens from Settings as today. `tests/world.gd` plays the whole world: seals, gates, walking from the Chapterhouse into the Warren, waystones,
 the recall, the waves following the hero. `native/README.md` "Differences from today's game" lists what behaves differently from today.
+
+## Screenshots for proposals
+
+The Discord agent shows a change with pictures taken from the game itself: the client started as the dev-offline hero `tester` on the local mock (no server, no network) with a **shot plan** that opens windows, shows an item's
+tooltip, dresses the hero in gear and saves one PNG a shot. It is today's QA tool on the core: the driver `main/qa_driver.gd` and the plan `main/qa_ui_shots.gd` (ports: the plan format, the windows, the demo bag and the raw PNGs
+are today's) and `game_ui/shoot.tscn` (a copy: the panels over a mock game, `-- --page=<name> --out=<png>`, pages in `shoot.gd`).
+
+```
+bash client/tools/qa_shots.sh <plan.json> <out_dir> [class]                                         # on the VPS: PNGs in <out_dir>/<shot name>.png; class 1-4 or 11, default the plan's `discipline`, else 2
+godot --path client -- --dev-offline --class=2 --qa --shot-plan=/abs/plan.json --shots=/abs/dir    # the launch line itself (it needs a screen); --qa alone plays a scripted fight in the Graves (--seconds=N)
+```
+
+- **Launch:** `DmMain.start_qa` starts the driver (its child `Driver`) for `--qa` or `--shot-plan=` on a `--dev-offline` start of a debug build only (`DmMain.qa_wanted`; a release export ignores `--dev-offline`). It is loaded by path,
+  so no other start compiles it, and the project file lists no autoload for it: `client/project.godot` is an input of the art pack's fingerprint, and an edit there makes every player download the art again. `--shots=<dir>`
+  defaults to `shots/` in the repository (ignored by git). Lines start with `QA-SHOTS`; exit code 0 = every picture written, 1 = one was not (a headless run draws nothing), 2 = a refused plan or no game.
+- **Plan:** the agent's (`server/death-muffin/discord-agent/PROMPT-godot.md` "Screenshots"; the header of `main/qa_ui_shots.gd`). `DmQaUiShots` cuts a run into `prepare` (the bag, the gear worn), `stage` (area, windows, view, tooltip) and
+  `capture` (the picture, its crop), so a plan's set-up is tested without a renderer.
+- **Script:** Forward+ on the software Vulkan driver (lavapipe), `xvfb-run`, `nice -n 10`, one renderer at a time (it waits up to 15 minutes for `qa-browser.lock`), 10 minutes at most, a scratch user folder. If Vulkan cannot start, the
+  run is repeated on OpenGL 3 and a line says the pictures use the fallback renderer (not the game's look). It needs `client/setup.sh` once per checkout (the baked crowd only for a plan with enemies). Two shots took 4 min 43 s on
+  2026-10-18, most of it the world's start. `DM_QA_LOG=<file>` keeps godot's log; `--help` lists the rest.
+- **Test:** `tests/qa_shots.gd` (headless, about 30 s): the plan, a plan's set-up on the game scene, the scripted fight, a real headless launch, and the script against a stand-in for godot (the fallback, the lock, the time limit).
 
 ## The Gravecaller's rites
 

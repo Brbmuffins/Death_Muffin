@@ -8,6 +8,7 @@ extends Node
 ## (DmMockBackend: no network at all); `--dev-offline --class=N` skips the front flow (test account `tester`) and enters directly, with `--seed=N`, `--no-waves` and `--baked=<dir>`
 ## as the dev entry (dev/dm_dev_entry.tscn, which stays the way to a crowd or a screenshot); `--world-demo` is an alias of `--dev-offline --class=2`.
 ## `--boot-smoke`: reach the first screen, print "BOOT OK <screen>" and quit (the test channel's publish check).
+## `--qa` / `--shot-plan=<plan.json>` (with `--shots=<dir>`, `--seconds=N`; dev-offline runs only): the QA tools beside the game, the scripted fight or the shot plan of a proposal (`start_qa`, client/README.md "Screenshots for proposals").
 ## `--benchmark`: runs the in-game benchmark straight away on an isolated offline game (DmBenchmark, no login; `--bench-room=`, `--bench-class=`, `--bench-size=`,
 ## `--bench-length=` pick the setup, default the Standard one, `--bench-warm=` / `--bench-measure=` shorten it, `--baked=<dir>` names the baked crowd models) and stays on the
 ## results screen with a Quit button (a headless run quits by itself). A room or class the benchmark does not list is refused with a message and exit code 2. Release builds then
@@ -82,6 +83,8 @@ func _ready() -> void:
 			start_opts["baked_dir"] = o["baked"]
 		if bool(o["no_waves"]):
 			start_opts["waves"] = false
+	if qa_wanted(args, mode):
+		start_qa()
 	if api != null:
 		pass   # injected (tests)
 	elif mode == "dev_offline":
@@ -127,6 +130,25 @@ static func mode_for(args: PackedStringArray, debug_build: bool = OS.is_debug_bu
 	if not debug_build:
 		return "online"
 	return "dev_offline" if ("--dev-offline" in args or "--world-demo" in args) else "online"
+
+
+## Testing: whether the QA tools start (`--qa`, or `--shot-plan=<plan.json>`): on the local dev backend of a debug build only, as `mode_for` has it, so a release export never starts them.
+static func qa_wanted(args: PackedStringArray, mode_: String, debug_build: bool = OS.is_debug_build()) -> bool:
+	if not debug_build or mode_ != "dev_offline":
+		return false
+	for a in args:
+		if a == "--qa" or a.begins_with("--shot-plan="):
+			return true
+	return false
+
+
+## Testing: the QA driver (main/qa_driver.gd) as the child Driver, which finds the game this boot makes. It is loaded here, by path, and never named: it names most of the game (compiling it took
+## every start about 5 s in today's game, which registered it as an autoload stub), so no other start pays for it. The project file registers no autoload for it: `client/project.godot` is an input
+## of the art pack's fingerprint.
+func start_qa() -> void:
+	var d: Node = load("res://main/qa_driver.gd").new()
+	d.name = "Driver"
+	add_child(d)
 
 
 ## A normal shutdown (window close, quit) saves first (the web's pagehide flush), then quits.
