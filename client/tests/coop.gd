@@ -421,6 +421,7 @@ func _run() -> void:
 	await gathering()
 	await chat_and_ground()
 	await seals()
+	await guest_travel()
 	await versions()
 	await full_party()
 	await leaving()
@@ -1225,6 +1226,57 @@ func seals() -> void:
 	await ticks(30)
 
 
+## Waystones and the recall for a guest: the guest asks, the host moves its body (the host simulates every body) and the guest's jump plays (its sound, bursts,
+## camera and `travelled`); a jump the host refuses comes back as the guest's toast. Runs after `seals`, which opened the Warren in the host's world.
+func guest_travel() -> void:
+	var gid: int = h.net.guests()[0]
+	var hb: DmHeroBody = h.body_of(gid)
+	var gb: DmHeroBody = g.local_body()
+	var start := hb.position
+	var toasts := []
+	g.ui_host.game_event.connect(func(id: String, ctx: Dictionary) -> void:
+		if id == "toast":
+			toasts.append(String(ctx.get("text", ""))))
+	var went := []
+	g.chapterhouse.travelled.connect(func(a: String) -> void: went.append(a))
+	var stone := func(area: String) -> Vector3:
+		for w in h.chapterhouse.waystones:
+			if w["area"] == area:
+				return Vector3(float(w["x"]), 0.0, float(w["z"]))
+		return Vector3.INF
+	var gs: Vector3 = stone.call("graves")
+	var ws: Vector3 = stone.call("warren") + Vector3(0.0, 0.0, 1.6)
+	check(gs != Vector3.INF and ws.x != INF, "the Graves and the Warren have waystones (%s, %s)" % [str(gs), str(ws)])
+	# away from every stone: the guest's own check refuses and nothing is sent
+	var away: Vector3 = h.world.nav_closest(gs + Vector3(0.0, 0.0, -12.0))
+	hb.teleport(away)
+	await until(func() -> bool: return gb.position.distance_to(away) < 0.5, 3.0)
+	check(away.distance_to(gs) > DmChapterhouse.WAYSTONE_RANGE, "(the guest stands %.1f m from the Graves' stone)" % away.distance_to(gs))
+	g.chapterhouse.travel("warren")
+	await ticks(20)
+	check(toasts.any(func(t: String) -> bool: return t.begins_with("Stand beside a waystone")) and hb.position.distance_to(away) < 0.5 and went.is_empty(),
+		"away from a stone the guest is told to stand beside one, and its body stays (%s)" % str(toasts))
+	# beside the Graves' stone: the host moves the guest's body to the Warren's
+	hb.teleport(h.world.nav_closest(gs + Vector3(1.5, 0.0, 0.0)))
+	await until(func() -> bool: return gb.position.distance_to(hb.position) < 0.5, 3.0)
+	g.chapterhouse.travel("warren")
+	check(await until(func() -> bool: return hb.position.distance_to(ws) < 0.1, 3.0), "the host moves the guest's body to the Warren's waystone (%s, the stone's spot %s)" % [str(hb.position), str(ws)])
+	check(await until(func() -> bool: return gb.position.distance_to(ws) < 0.5 and went == ["warren"], 3.0), "the guest sees itself there and its jump played (%s, %s)" % [str(gb.position), str(went)])
+	# an area still sealed in the host's world: the host refuses and the guest is told why
+	toasts.clear()
+	g.party.ask_travel("ossuary")
+	check(await until(func() -> bool: return toasts.any(func(t: String) -> bool: return t.contains("still sealed")), 3.0) and hb.position.distance_to(ws) < 0.1,
+		"a sealed area: the host refuses, the guest is told why and stays (%s)" % str(toasts))
+	# the recall (T) home: the host takes the guest's body to the Chapterhouse's return spot
+	var ret: Dictionary = DmContent.get_export("areas", "CHAPTERHOUSE_RETURN")
+	var home := Vector3(float(ret["x"]), 0.0, float(ret["z"]))
+	g.chapterhouse.finish_recall()
+	check(await until(func() -> bool: return went == ["warren", "chapterhouse"], 3.0) and hb.position.distance_to(ws) > 5.0,
+		"the guest's recall takes its body home (%s, the return spot %s, %s)" % [str(hb.position), str(home), str(went)])
+	hb.teleport(start)
+	await until(func() -> bool: return gb.position.distance_to(start) < 0.5, 3.0)
+
+
 # ------------------------------------------------------------------------------------------------------------------ chat and the ground
 
 func chat_and_ground() -> void:
@@ -1266,6 +1318,18 @@ func chat_and_ground() -> void:
 	await h.loot._on_claim(d)
 	check(_count(h, "staff_oak") == oaks0 + 1, "the host picked it up into its own bag")
 	check(await until(func() -> bool: return not g.my_member().loot_view._drops.any(func(x: Dictionary) -> bool: return x.get("drop_id") == d["drop_id"]), 3.0), "and the guest's copy is gone")
+	# a piece found before the party was together (DECISIONS B16): the server lets only its dropper take it back, so the host never sees it
+	var old_iid := mock._mint_instance(acc, "staff_oak", 3, [])
+	var free2 := mock._free_bag_slot(acc)
+	acc["slots"].append({"slot_index": free2, "item_id": "staff_oak", "quantity": 1, "equipped": 0, "instance_id": old_iid})
+	await g.loot.refresh_inventory()
+	var row2: Dictionary = {}
+	for r: Dictionary in g.loot.slots():
+		if int(r.get("slot_index", -1)) == free2:
+			row2 = r
+	var err2: String = await g.ui_host.drop_gear(row2)
+	await ticks(30)
+	check(err2 == "" and shared.call().is_empty(), "a piece found before the party was together drops, and the host never sees it on the ground (%s)" % err2)
 
 
 func _count(gm: DmNextGame, item_id: String) -> int:

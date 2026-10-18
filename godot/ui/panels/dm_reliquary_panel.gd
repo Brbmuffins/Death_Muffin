@@ -78,6 +78,7 @@ var _doll_slots: Dictionary = {}
 var _belt_slots: Dictionary = {}
 var _potion_slots: Dictionary = {}
 var _built := false
+var _detail_sig := -1                    ## what the detail strip shows (`_render_detail`)
 
 
 func _init() -> void:
@@ -478,7 +479,14 @@ func _render_tools() -> void:
 
 
 # --- detail strip ----------------------------------------------------------------------------------------------------
+## Rebuilt only when what it shows changes (the selected card, its actions, the grinder, selling, the sell-all question): every bag change refreshes the panel, and
+## a rebuild between a button's press and its release swallowed the click (a Drop in a fight took several tries, Helix 2026-10-18).
 func _render_detail() -> void:
+	var acts_of: Array = extra_actions.call(sel_item) if extra_actions.is_valid() and not sel_item.is_empty() else []
+	var sig := [sel_item.hash(), acts_of.hash(), at_grinder, has_sell, confirm_sell_all].hash()
+	if sig == _detail_sig and _detail.get_child_count() > 0:
+		return
+	_detail_sig = sig
 	for c in _detail.get_children():
 		c.queue_free()
 	if sel_item.is_empty():
@@ -503,7 +511,7 @@ func _render_detail() -> void:
 	if it.get("equippable", true):
 		acts.add_child(_full(_small("Unequip" if equipped else "Equip", func() -> void: equip_toggled.emit(it))))
 	if extra_actions.is_valid():
-		for a in extra_actions.call(it):
+		for a in acts_of:
 			var aid: String = a["id"]
 			var ab := _small(String(a["label"]), func() -> void: action_requested.emit(aid, it), bool(a.get("disabled", false)), bool(a.get("primary", false)))
 			ab.tooltip_text = String(a.get("hint", ""))

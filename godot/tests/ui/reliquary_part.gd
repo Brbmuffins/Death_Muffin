@@ -127,6 +127,23 @@ func _run() -> void:
 	rq._slots[30]._drop_data(Vector2.ZERO, pay)
 	rq._slots[7]._drop_data(Vector2.ZERO, pay)
 	_check(moves == [[2, 30], [2, 7]], "drops ask to move to the empty cell and to swap with another item (%s)" % str(moves))
+	# the selected item's buttons survive a bag change in another cell (a fight refreshes the bag all the time, and a rebuild between a press and its release
+	# swallowed the click: a Drop took several tries), and are rebuilt when the selected item itself changes
+	rq._slots[7].pressed.emit(rq._slots[7])
+	await _frames(2)
+	var btns: Array = rq._detail.find_children("*", "Button", true, false)
+	_check(not btns.is_empty(), "the selected item shows its buttons")
+	var bg2 := bg.duplicate()
+	bg2[11] = {"id": 11, "item_id": "ore_copper", "name": "Ore", "rarity": "common", "quantity": 5, "row": {"slot_index": 11, "item_id": "ore_copper", "quantity": 5}}
+	rq.set_inventory(bg2, {}, {})
+	await _frames(2)
+	_check(btns.all(func(b: Variant) -> bool: return is_instance_valid(b) and (b as Node).is_inside_tree()), "a bag change in another cell keeps the selected item's buttons (a click in flight still lands)")
+	var bg3 := bg2.duplicate()
+	bg3[7] = (bg2[7] as Dictionary).duplicate()
+	bg3[7]["quantity"] = 2
+	rq.set_inventory(bg3, {}, {})
+	await _frames(2)
+	_check(not btns.any(func(b: Variant) -> bool: return is_instance_valid(b) and (b as Node).is_inside_tree()), "a change to the selected item rebuilds them")
 	rq.queue_free()
 	print("%d passed, %d failed" % [_pass, _fail])
 	quit(1 if _fail > 0 else 0)

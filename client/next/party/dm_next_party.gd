@@ -986,6 +986,43 @@ func _rpc_levels(t: Dictionary) -> void:
 	changed.emit()
 
 
+# ---- waystones and the recall for a guest: the host moves its body (the host simulates every body) ---------------------------------------
+
+## A guest beside a waystone (or in the Chapterhouse) asks the host to take it to `area`; `recall` = the T recall home (the guest stood still for it).
+func ask_travel(area: String, recall := false) -> void:
+	if in_party() and shell.session.is_active() and not shell.session.is_host():
+		_rpc_travel.rpc_id(1, area, recall)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_travel(area: String, recall: bool) -> void:
+	if not multiplayer.is_server() or shell == null or shell.chapterhouse == null:
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	var b: DmHeroBody = shell.body_of(peer)
+	if b == null or not b.alive:
+		return
+	var to: Variant = shell.chapterhouse.guest_destination(b, area, recall)
+	if to is String:
+		_rpc_travel_refused.rpc_id(peer, to)
+		return
+	var from := b.position
+	shell.chapterhouse.move_body(b, (to as Vector3).x, (to as Vector3).z)
+	_rpc_travelled.rpc_id(peer, "chapterhouse" if recall else area, from, to)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_travelled(area: String, from: Vector3, to: Vector3) -> void:
+	if shell != null and shell.chapterhouse != null:
+		shell.chapterhouse.arrived(area, from, to)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_travel_refused(why: String) -> void:
+	if shell != null and shell.chapterhouse != null:
+		shell.chapterhouse.travel_refused(why)
+
+
 # ---- ground drops between members (ground.cjs): the Reliquary's Drop, drawn for the members the server lets take it -----------------------
 
 ## A member dropped gear on the party session's ground (DmNextUiHost.drop_gear): every member the server says may take it draws it.

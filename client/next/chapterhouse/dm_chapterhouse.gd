@@ -394,40 +394,99 @@ func near_waystone(b: DmHeroBody) -> bool:
 	return false
 
 
-## Waystone travel: from the Chapterhouse or beside a waystone, to any area with a waystone whose seal is broken.
+## Waystone travel: from the Chapterhouse or beside a waystone, to any area with a waystone whose seal is broken. The host moves every body (it simulates
+## them all): its own here, a guest's when the guest asks (DmNextParty `ask_travel`, answered with `guest_destination` + `move_body`).
 func travel(area: String) -> void:
 	var b := game.local_body()
 	if b == null or not b.alive:
 		return
-	if not near_waystone(b) and game.area_id != "chapterhouse":
-		_toast("Stand beside a waystone to travel (or press T to return home)", "err")
+	var why := travel_refusal(b, area)
+	if why != "":
+		_toast(why, "err")
 		return
+	if not game.session.is_host():
+		if game.party != null:
+			game.party.ask_travel(area)
+		return
+	var st := _stone_of(area)
+	if not st.is_empty():
+		teleport_to(float(st["x"]), float(st["z"]) + 1.6)
+		travelled.emit(area)
+
+
+## Why body `b` may not take a waystone to `area` ("" = it may): it must stand beside a stone or in the Chapterhouse, and the area must be open in the world
+## the party plays in (the host's seals; a guest's own account's never apply there, DmNextParty `send_seals`).
+func travel_refusal(b: DmHeroBody, area: String) -> String:
+	if not near_waystone(b) and game.world.area_at(b.position.x, b.position.z) != "chapterhouse":
+		return "Stand beside a waystone to travel (or press T to return home)"
+	if not _open(area):
+		return "%s is still sealed." % String(DmContent.area(area).get("name", area))
+	return ""
+
+
+func _open(area: String) -> bool:
+	if game.is_guest:
+		return game.world.unlocked.has(area)
 	var prog := _prog()
-	if prog != null and not prog.is_unlocked(area):
-		_toast("%s is still sealed." % String(DmContent.area(area).get("name", area)), "err")
-		return
+	return prog == null or prog.is_unlocked(area)
+
+
+func _stone_of(area: String) -> Dictionary:
 	for it in waystones:
 		if it["area"] == area:
-			teleport_to(float(it["x"]), float(it["z"]) + 1.6)
-			travelled.emit(area)
-			return
+			return it
+	return {}
+
+
+## Host: where a guest's body goes for its waystone to `area` or its recall home, or why not (a String the guest toasts).
+func guest_destination(b: DmHeroBody, area: String, recall: bool) -> Variant:
+	if recall:
+		var ret: Dictionary = DmContent.get_export("areas", "CHAPTERHOUSE_RETURN")
+		return Vector3(float(ret["x"]), 0.0, float(ret["z"]))
+	var why := travel_refusal(b, area)
+	if why != "":
+		return why
+	var st := _stone_of(area)
+	if st.is_empty():
+		return "There is no waystone there."
+	return Vector3(float(st["x"]), 0.0, float(st["z"]) + 1.6)
+
+
+## Host: body `b` jumps to (x, z) and its thralls are recalled to it.
+func move_body(b: DmHeroBody, x: float, z: float) -> void:
+	b.teleport(Vector3(x, 0.0, z))
+	var c := b.get_node_or_null("Rites") as DmRiteCaster
+	if c != null and c.thralls() != null:
+		c.thralls().recall()
 
 
 func teleport_to(x: float, z: float) -> void:
 	var b := game.local_body()
 	if b == null or not game.session.is_host():
 		return
+	var from := b.position
+	move_body(b, x, z)
+	_arrive_fx(from, Vector3(x, 0.0, z))
+
+
+## A guest's jump the host made (DmNextParty): the same sound, bursts and camera as the host's own, then `travelled`.
+func arrived(area: String, from: Vector3, to: Vector3) -> void:
+	_arrive_fx(from, to)
+	travelled.emit(area)
+
+
+## The host refused a guest's jump.
+func travel_refused(why: String) -> void:
+	_toast(why, "err")
+
+
+func _arrive_fx(from: Vector3, to: Vector3) -> void:
 	_sfx("waystoneTravel")
 	pending = null
 	if _vfx != null:
-		_burst(b.position)
-	b.teleport(Vector3(x, 0.0, z))
-	var c := b.get_node_or_null("Rites") as DmRiteCaster
-	if c != null and c.thralls() != null:
-		c.thralls().recall()
-	game.camera.snap(Vector3(x, 0.0, z))
-	if _vfx != null:
-		_burst(Vector3(x, 0.0, z))
+		_burst(from)
+		_burst(to)
+	game.camera.snap(to)
 
 
 ## T: after RECALL_S standing still, back to the Chapterhouse (any movement cancels).
@@ -461,6 +520,10 @@ func cancel_recall() -> void:
 func finish_recall() -> void:
 	recall_active = false
 	_recall_fx = null
+	if not game.session.is_host():
+		if game.party != null:
+			game.party.ask_travel("chapterhouse", true)
+		return
 	var ret: Dictionary = DmContent.get_export("areas", "CHAPTERHOUSE_RETURN")
 	teleport_to(float(ret["x"]), float(ret["z"]))
 	travelled.emit("chapterhouse")
