@@ -9,8 +9,11 @@ SRC=server/death-muffin/ops
 git -C "$REPO" fetch -q origin
 mkdir -p "$DEST"
 for f in backup-db.sh drift-report.sh launcher-release-notice.sh health-watch.mjs; do
-  git -C "$REPO" show "$REV:$SRC/$f" >"$DEST/$f.new" && chmod 755 "$DEST/$f.new"
-  case "$f" in *.mjs) node --check "$DEST/$f.new" && mv "$DEST/$f.new" "$DEST/$f" ;; *) bash -n "$DEST/$f.new" && mv "$DEST/$f.new" "$DEST/$f" ;; esac
+  # the new copy keeps its extension (node only reads a .mjs file as a module) and must pass its syntax check, or the install stops here
+  tmp="$DEST/.new.$f"
+  git -C "$REPO" show "$REV:$SRC/$f" >"$tmp" && chmod 755 "$tmp"
+  case "$f" in *.mjs) node --check "$tmp" ;; *) bash -n "$tmp" ;; esac || { rm -f "$tmp"; echo "install.sh: $f failed its syntax check; nothing installed for it" >&2; exit 1; }
+  mv "$tmp" "$DEST/$f"
 done
 # the shared checkout's pre-push hook (no push to main while a Discord agent ship runs); hooks live in the common git dir, so every worktree has it
 HOOKS="$(git -C "$REPO" rev-parse --path-format=absolute --git-common-dir)/hooks"; mkdir -p "$HOOKS"
