@@ -634,6 +634,21 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   builds only recompile what changed, in any checkout or worktree (`SConstruct` keeps each directory's build records next to its files: godot-cpp's in the cache, a checkout's own in the checkout). Builds take turns on a lock next to the cache (`<cache>.lock`): two scons runs against the
   same godot-cpp break each other.
 
+## Crash notes
+
+Godot's own crash log prints `???` for code it has no symbols for, so a crash inside the core used to arrive without a place. The core
+writes a short note while the game crashes (`native/src/crash_note.cpp`): the build, what happened and, for each stack frame, the module and the
+offset into it (`#0 libdmcore.windows.template_release.x86_64.dll+0x23a0`). The boot arms it once (`DmCore.arm_crash_note`, `client/main/main.gd`)
+with `user://core_crash_note.txt`; the next start's automatic crash report (DmCrashWatch) puts the note first in its log and in `coreCrash`.
+- Windows: an unhandled-exception filter chained to the one Godot set (its crash handler runs right after); it walks the stack from the
+  crash's own context with the x64 unwind data every module carries, using static buffers only. Linux (headless tests): handlers for
+  SIGSEGV, SIGBUS, SIGFPE and SIGILL that start at the crashing instruction and hand the signal on to Godot's handler.
+- `native/build.sh` builds the Windows core with debug symbols and moves them into `native/build/symbols/` before the library ships (stripping
+  moves no code, so the shipped size stays what it was); `publish-godot-client.sh` keeps them per build in `~/death-muffin/symbols/<version>/`
+  (the newest 40). `node tools/crash/symbolize.mjs <bug report id>` turns a report's note into function names and source lines.
+- Tested by `client/tests/crash_note.gd`: the format, a real crash inside the core in a child process (`DmCore.crash_for_test`), Godot's
+  handler still running after the note, and the report carrying it. The Windows half has not crashed on a real Windows PC yet (KNOWN-GAPS).
+
 ## Build machine (the VPS)
 
 `g++` (system), SCons 4.11 (`python3 -m pip install --user scons`, `~/.local/bin/scons`) and `mingw-w64` (apt) switched to the posix

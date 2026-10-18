@@ -867,7 +867,8 @@ the saved login `user://dm_jwt.txt` in this project's own user folder), pointed 
 - Server errors are shown as today shows them ("Cannot reach server — check your connection", the server's own `error`, "Request failed: 502"); a stored login with the server unreachable lands on
   the login screen saying "Online opens soon", as today.
 - **Value is the server's** ("Value on the server"): the kill reports, the drops claimed into the bag, the progression's and the bag's saves all go to the live API with the logged-in character.
-- **As today's since launch day:** the automatic crash report (`DmMain._send_crash_report`, DmCrashWatch) and the update notice (`DmNextGame._start_update_check`,
+- **As today's since launch day:** the automatic crash report (`DmMain._send_crash_report`, DmCrashWatch; with the combat core's crash note since
+  2026-10-18: native/README.md "Crash notes") and the update notice (`DmNextGame._start_update_check`,
   DmUpdateCheck). Log out, Switch character and a discipline change (Settings, the class
   panel) save and hand over as today's (`tests/front.gd` "hand-overs"). The four necromancer disciplines and the Reaper play (their hero models are in `client/assets.list`; `tests/rites.gd` "the disciplines", "the Reaper").
 

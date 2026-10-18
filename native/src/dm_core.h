@@ -147,6 +147,11 @@ public:
 	godot::Dictionary replication_stats() const;    // counters of both roles
 	static int64_t wire_version();
 
+	// The crash note (crash_note.h, native/README.md "Crash notes"): armed once at start-up by the client's boot
+	static void arm_crash_note(const godot::String &p_path, const godot::String &p_build);
+	static godot::String crash_note_sample();  // a note made from fixed frames: the tests check its format
+	static void crash_for_test();             // crashes inside the core on purpose (the crash note's own test)
+
 	// The tick and its outputs
 	void step(double p_dt);
 	godot::Array take_events();  // [PackedInt32Array ints, PackedFloat32Array floats], see core/events.h; clears the buffer

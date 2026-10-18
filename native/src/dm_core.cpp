@@ -1,4 +1,5 @@
 #include "dm_core.h"
+#include "crash_note.h"
 
 #include <algorithm>
 #include <cmath>
@@ -135,6 +136,9 @@ void DmCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("replication_error"), &DmCore::replication_error);
 	ClassDB::bind_method(D_METHOD("replication_stats"), &DmCore::replication_stats);
 	ClassDB::bind_static_method("DmCore", D_METHOD("wire_version"), &DmCore::wire_version);
+	ClassDB::bind_static_method("DmCore", D_METHOD("arm_crash_note", "path", "build"), &DmCore::arm_crash_note);
+	ClassDB::bind_static_method("DmCore", D_METHOD("crash_note_sample"), &DmCore::crash_note_sample);
+	ClassDB::bind_static_method("DmCore", D_METHOD("crash_for_test"), &DmCore::crash_for_test);
 	ClassDB::bind_method(D_METHOD("step", "dt"), &DmCore::step);
 	ClassDB::bind_method(D_METHOD("take_events"), &DmCore::take_events);
 	ClassDB::bind_method(D_METHOD("enemy_count"), &DmCore::enemy_count);
@@ -1126,6 +1130,21 @@ bool DmCore::apply_reliable(const PackedByteArray &p_bytes) {
 
 String DmCore::replication_error() const {
 	return String::utf8(world.rep.error.c_str());
+}
+
+void DmCore::arm_crash_note(const String &p_path, const String &p_build) {
+	dm::crash::arm(p_path.utf8().get_data(), p_build.utf8().get_data());
+}
+
+String DmCore::crash_note_sample() {
+	const dm::crash::Frame frames[3] = {{"libdmcore.windows.template_release.x86_64.dll", 0x1a2b3}, {"DeathMuffin.exe", 0x45}, {"", 7}};
+	char note[512];
+	const size_t len = dm::crash::format_note(note, sizeof(note), "20261018.000000-abcdef0", "access violation (0xc0000005)", frames, 3);
+	return String::utf8(note, int64_t(len));
+}
+
+void DmCore::crash_for_test() {
+	dm::crash::crash_now();
 }
 
 int64_t DmCore::wire_version() {

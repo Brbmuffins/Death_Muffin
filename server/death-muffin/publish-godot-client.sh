@@ -20,7 +20,7 @@
 #
 # Served at https://muffindevelopment.com/death-muffin/client/ (static, see nginx-locations.conf).
 # Refuses a forward release while the live lobby differs from <rev>'s (run deploy-lobby.sh first; LOBBY_SKEW_OK=1 overrides).
-# Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2 FX_SHEETS LOBBY_DIR PREPARE SMOKE
+# Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2 FX_SHEETS LOBBY_DIR PREPARE SMOKE SYMBOLS_DIR SYMBOL_BUILDS
 # The game is client/ (the rebuild, DECISIONS B41) since launch day, 2026-10-18: its PREPARE and SMOKE steps (test-channel/prepare-rebuild.sh, smoke-rebuild.sh) run by
 # default. PROJECT=godot exports today's old game instead (launch-undo.sh restores the last old build without exporting one).
 set -euo pipefail
@@ -165,6 +165,17 @@ with open(out, "w") as f:
 PY
 chmod 644 "$OUT_DIR/manifest.json.tmp"
 mv -f "$OUT_DIR/manifest.json.tmp" "$OUT_DIR/manifest.json"   # the switch: clients see the new build only now
+
+# The combat core's debug symbols for this build (native/build.sh splits them off the shipped library), kept per build so that a crash note
+# from any build still running on players' PCs can be read (tools/crash/symbolize.mjs, native/README.md "Crash notes"). Newest 40 kept.
+SYMBOLS_DIR="${SYMBOLS_DIR:-/home/ubuntu/death-muffin/symbols}"
+if ls "$WT/native/build/symbols/"*.debug >/dev/null 2>&1; then
+  mkdir -p "$SYMBOLS_DIR/$VERSION"
+  cp -f "$WT/native/build/symbols/"*.debug "$SYMBOLS_DIR/$VERSION/"
+  (cd "$OUT_DIR/$VERSION" && sha256sum libdmcore*.dll) >"$SYMBOLS_DIR/$VERSION/shipped.sha256" 2>/dev/null || true
+  ls -1d "$SYMBOLS_DIR"/[0-9]*/ 2>/dev/null | sort -r | tail -n +"$((${SYMBOL_BUILDS:-40} + 1))" | while read -r d; do rm -rf "$d"; done
+  echo "== the combat core's symbols kept in $SYMBOLS_DIR/$VERSION"
+fi
 
 # Prune old build folders, newest first, keeping KEEP_BUILDS.
 ls -1d "$OUT_DIR"/[0-9]*/ 2>/dev/null | sort -r | tail -n +"$((KEEP_BUILDS + 1))" | while read -r d; do rm -rf "$d"; done

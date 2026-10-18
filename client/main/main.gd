@@ -43,6 +43,8 @@ var _crash_checked := false         ## the pending crash report (DmCrashWatch) w
 func _ready() -> void:
 	get_tree().auto_accept_quit = false
 	DmCrashWatch.begin(DmBuild.version())   # a release build's lock: still there at the next start = this run crashed
+	# The combat core writes where it crashed into this note while crashing (native/README.md "Crash notes"); the next start's report carries it.
+	DmCore.arm_crash_note(ProjectSettings.globalize_path(DmCrashWatch.CORE_NOTE), DmBuild.version())
 	# The window title players see. config/name in project.godot stays as it is: Godot names the user:// folder after it (the saved
 	# login, settings, tips), so renaming it would sign every player out and reset their settings.
 	get_window().title = "Death Muffin"

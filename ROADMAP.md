@@ -66,9 +66,10 @@ the end of the undo window; B57).
 - [ ] **Fix: Grave Surges are missing.** Now: since launch day no Grave Surge ever starts (they were left out of the rebuild). After: as in
   the old game, after about 100 seconds in a combat area a crypt bursts open nearby, three waves climb out, and clearing them pays the surge
   reward; the surge tip shows again. (Port `godot/next/areas/dm_grave_surge.gd` onto the combat core.)
-- [ ] **Fix: crash reports cannot point inside the combat core.** Now: when the C++ combat core crashes, the report has the log but no
-  location, because the core ships without its debug symbols. After: each crash report names the build and the line of code that crashed
-  (the symbols of every published build are kept on the server).
+- [x] **Fix: crash reports could not point inside the combat core.** Done 2026-10-18: the core writes a crash note while the game crashes
+  (each stack frame's module and offset, where Godot's log says "???"), the next start's automatic crash report carries it, every publish keeps
+  that build's symbols, and `node tools/crash/symbolize.mjs <report id>` names the function and source line (native/README.md "Crash notes").
+  The Windows half is confirmed on a real PC by the team app's crash check (KNOWN-GAPS "Stability").
 - [ ] **Fix: the Discord agent tests and photographs the old game.** Now: its proposals are checked with the old game's tests, its
   before/after screenshots are rendered from the old game on the server, its "Try it" previews are builds of the old game, and it still
   makes its changes in the old game's folder. After: every proposal is tested on the live game, its screenshots and previews are of the

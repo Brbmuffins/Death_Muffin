@@ -26,5 +26,11 @@ if [ "$what" = all ] || [ "$what" = linux ]; then
   nice -n 10 "$SCONS" -Q -j"$JOBS" platform=linux target=template_debug api_version=4.7
 fi
 if [ "$what" = all ] || [ "$what" = windows ]; then
-  nice -n 10 "$SCONS" -Q -j"$JOBS" platform=windows target=template_release api_version=4.7 use_mingw=yes
+  # Built with debug symbols, which then leave the shipped library for build/symbols/ (outside client/, so no export carries them): stripping
+  # moves no code, so the offsets of a crash note (native/README.md "Crash notes") point into this symbols file; the publish keeps it per build.
+  nice -n 10 "$SCONS" -Q -j"$JOBS" platform=windows target=template_release api_version=4.7 use_mingw=yes debug_symbols=yes
+  DLL=../client/bin/libdmcore.windows.template_release.x86_64.dll
+  mkdir -p build/symbols
+  x86_64-w64-mingw32-objcopy --only-keep-debug "$DLL" "build/symbols/$(basename "$DLL").debug"
+  x86_64-w64-mingw32-strip --strip-all "$DLL"  # the symbol table goes too: the shipped size stays what it was without symbols
 fi

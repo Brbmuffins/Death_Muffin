@@ -145,6 +145,8 @@ polish list). Also:
 
 ## Stability
 
+- The Windows half of the combat core's crash note (the unhandled-exception filter and its stack walk, native/README.md "Crash notes") has
+  not crashed on a real Windows PC yet; the Linux half is tested on every run. The team app's release crash check will cover it (ROADMAP Phase 1).
 - Quitting while models still load in the background aborted the old game on a 4-core PC (the CI runner, 2026-10-16); not checked in the
   rebuilt game.
 
