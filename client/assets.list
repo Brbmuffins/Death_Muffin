@@ -180,15 +180,10 @@ slice/models/hero_reaper_v2a
 
 # ---- Worn gear (next/hero/dm_hero_look.gd, data/slice/necro_gear.json): the necromancer weapons, helms and mantles, the green-bone set's pieces, the Reaper's scythe
 # (DmGearProps.SCYTHE_FILE: without it the Reaper's hand was empty, 2026-10-17) and the legendary
-# bodies a full legendary set swaps the hero into
+# bodies a full legendary set swaps the hero into; by pattern, so a new set's gear and body (warbogar's armor sets) come without a list change
 slice/models/props/necro_*
-slice/models/props/gear_greenbone_*
-slice/models/props/gear_reaper_*
-slice/models/hero_leg_colossus_mantle
-slice/models/hero_leg_legion_unburied
-slice/models/hero_leg_plague_choir
-slice/models/hero_leg_requiem_wraiths
-slice/models/hero_leg_soul_harbingers
+slice/models/props/gear_*
+slice/models/hero_leg_*/**
 
 # ---- The rites' licensed flipbook sheets (godot/fx/README.md "Flipbook sheets"): read from $FX_SHEETS, copied into the git-ignored client/assets/fx/sheets/. Without them
 # the effects draw their plain look.

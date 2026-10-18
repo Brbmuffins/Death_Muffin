@@ -2,7 +2,7 @@
 # The deploy helper (NOT the AI): runs only after an approver's check, from the runner. All inputs are environment variables set by
 # the runner. Takes the global deploy lock (shared with deploy-release.sh), merges the branch onto the current base branch (BASE_BRANCH, default
 # main), re-gates and re-tests the merged tree, pushes it, runs the deploy, and prints machine-readable lines:
-#   RESULT: <live|live-already|merged|conflict|head-moved|gate|tests-failed|master-moved|backup-failed|deploy-failed|lock-timeout> ...      ("master-moved" = BASE_BRANCH moved)
+#   RESULT: <live|live-already|merged|conflict|head-moved|gate|sync-failed|tests-failed|master-moved|backup-failed|deploy-failed|lock-timeout> ...      ("master-moved" = BASE_BRANCH moved)
 # DEFER_PUBLISH=1 (godot; the runner sets it when another approved ship waits): merge, gate, test and push, but no client publish ("RESULT: merged
 # <sha>"); the next ship's client carries it (one publish and one notice for a backlog). The runner publishes it alone if nothing else ships.
 # PUBLISH_ONLY=1 PUBLISH_SHA=<sha> (godot only; the retry after a failed client publish): no merge/tests/push. Publishes that already-tested, already-
@@ -67,6 +67,19 @@ say "re-checking the merged diff"
 GATE=$(node "$TOOLS/runner/ship-gate.cjs" "$CONFIG" "$SW" "$OLD" "$MAX_TIER" 2>&1); GRC=$?
 echo "$GATE"
 [ $GRC -eq 0 ] || { echo "RESULT: gate $(echo "$GATE" | tail -1)"; exit 8; }
+
+# Since launch day (2026-10-18, DECISIONS B49) the game is client/: what the agent changed in godot/ reaches it through the code and asset syncs, committed
+# on top of the merge (after the gate, which judges the agent's own change), so main's client/ is what gets published.
+if [ "$MODE" = godot ] && [ -f tools/rebuild/sync-code.mjs ] && [ -f tools/rebuild/sync-assets.mjs ]; then
+  say "syncing the change into client/"
+  if ! { node tools/rebuild/sync-code.mjs && node tools/rebuild/sync-assets.mjs --quiet; } >"$TOOLS/state/ship-$JOBID.sync.log" 2>&1; then
+    tail -5 "$TOOLS/state/ship-$JOBID.sync.log"; echo "RESULT: sync-failed"; exit 7
+  fi
+  if [ -n "$(g status --porcelain -- client)" ]; then
+    g add -- client && g commit -q -m "Sync client/ with $BRANCH (tools/rebuild/sync-code.mjs, sync-assets.mjs)" || { echo "RESULT: sync-failed commit"; exit 7; }
+    SHA=$(g rev-parse HEAD)
+  fi
+fi
 
 say "running tests on the merged tree"
 # Dev build (owner, 2026-10-10: tests were costing too much time): the ship runs the QUICK check (the suites the change can affect plus a smoke

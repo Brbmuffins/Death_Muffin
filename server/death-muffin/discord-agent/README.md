@@ -47,7 +47,9 @@ nothing else is left in that folder). The proposal's "Try it (Windows download)"
 any preview. The build takes about a minute, and the runner allows 40.
 
 **Godot ship** (`ship.sh`, `MODE=godot`), in order: deploy lock; fetch; check `EXPECT_HEAD`; scratch worktree at `origin/$BASE_BRANCH`; ff or no-ff merge (same
-conflict handling); ship gate on the merged diff with the godot tiers; `check-godot.sh` on the merged tree; **rollback preparation, before anything is
+conflict handling); ship gate on the merged diff with the godot tiers; **the client sync** (since launch day, 2026-10-18: `tools/rebuild/sync-code.mjs` and
+`sync-assets.mjs` copy the change into `client/`, the game players run, committed on top of the merge; `RESULT: sync-failed` stops the ship before anything is
+pushed); `check-godot.sh` on the merged tree; **rollback preparation, before anything is
 pushed**: read `rev` from the live client manifest (`clientManifest`, default `/var/www/death-muffin/client/manifest.json`; must be hex and in the repo,
 else `RESULT: backup-failed` and nothing changes), create `<deployDir>/backup-pre-release-godot-<UTC stamp>/`, save a fresh `git show
 origin/main:server/death-muffin/publish-godot-client.sh` there (a copy from `origin/main`, whatever `baseBranch` is) and write `ROLLBACK.sh`, which runs that saved

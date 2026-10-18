@@ -36,11 +36,6 @@ BASE_URL="${BASE_URL:-https://muffindevelopment.com/death-muffin/client}"
 KEEP_BUILDS="${KEEP_BUILDS:-2}"
 PRESET="Windows Desktop"
 PROJECT="${PROJECT:-client}"   # the Godot project folder in the repository
-if [ "$PROJECT" = client ]; then
-  HERE="$(cd "$(dirname "$0")" && pwd)"
-  PREPARE="${PREPARE-$HERE/test-channel/prepare-rebuild.sh}"
-  SMOKE="${SMOKE-$HERE/test-channel/smoke-rebuild.sh}"
-fi
 DEFAULT_MESSAGE="Online opens soon"
 
 command -v python3 >/dev/null || { echo "python3 is required" >&2; exit 1; }
@@ -74,6 +69,11 @@ cleanup() {
 trap cleanup EXIT
 cleanup
 mkdir -p "$STAGE"
+# The game's build steps come from the revision being published (its scratch worktree), so a saved copy of this script (a ship's rollback) finds them too.
+if [ "$PROJECT" = client ]; then
+  PREPARE="${PREPARE-$WT/server/death-muffin/test-channel/prepare-rebuild.sh}"
+  SMOKE="${SMOKE-$WT/server/death-muffin/test-channel/smoke-rebuild.sh}"
+fi
 
 echo "== exporting $SHA as $VERSION"
 git -C "$REPO" worktree add -q --detach "$WT" "$SHA" >/dev/null 2>&1

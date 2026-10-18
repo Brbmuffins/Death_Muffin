@@ -1262,6 +1262,7 @@ function createRunner(cfgIn, opts = {}) {
       'master-moved': `${BB} moved while I was deploying; nothing was pushed. React ✅ again or say !sync.`,
       'backup-failed': `I could not prepare a rollback for the Godot client, so nothing was pushed or published (${detail}). Ask the owner to look, then react ✅ again.`,
       'lock-timeout': 'another deploy held the lock for too long; nothing was changed. React ✅ again later.',
+      'sync-failed': `copying the change into the game (client/) failed, so nothing was pushed or published (${detail}). Ask the owner to look, then react ✅ again.\n${tail}`,
       'deploy-failed': `${BB} was pushed but the deploy script FAILED. The owner should look now.\n${tail}`,
     }[kind] || `unexpected failure (${kind}).\n${tail}`;
     if (GODOT && kind === 'deploy-failed') {
