@@ -136,7 +136,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 - **B38. A separate test build for the rebuild** (Helix, 2026-10-16: "its a huge overhaul"; the one exception to builds going straight to
   main, B14). The rebuild's code lives on main in its own project (B41). The launcher gets a Test build switch that
   installs the test build next to the normal game and keeps it updated; it plays on a test server with copies of the team's accounts, so it
-  can never touch live characters. Team only at first.
+  can never touch live characters. Team only at first. Kept after the rebuild for big changes (B53).
 - **B39. Performance without a goal to stop at** (Helix, 2026-10-16: "i want to get as MUCH performance as possible"). No frame-rate target;
   floors only for weaker PCs; nothing ships slower than what it replaces; Gate B needs at least twice today's speed in the Full Party fight.
   Each system has a time budget and each model a size budget, checked automatically (numbers in CLAUDE.md "Performance budgets"). Godot stays 4.7.2 until a
@@ -224,6 +224,14 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 - **B51. Off-site backups: a cloud storage bucket, later** (Helix, 2026-10-18: "we will eventually use a cloud storage bucket but it will be
   later"). Until it exists the nightly database dumps stay on the VPS with the art sources and private files (KNOWN-GAPS "Operations"); the
   item is under ROADMAP "Later".
+- **B52. Public code until 1.0** (Helix, 2026-10-18: "Public code for now. private and encryption for our first public release 1.0 build").
+  The GitHub repository stays public (secrets never go in it, CLAUDE.md); for 1.0, the first public release, it goes private and the build
+  encrypts the game's files (the encryption left open since authority Phase 0, B19). Until then encryption is not worked on: with the code
+  public it would hide nothing.
+- **B53. A test lane for big changes** (Helix, 2026-10-18: "Lets do a test lane as well"). B38's test build becomes the rule for big
+  changes (Ascension, a new class, the map revamp): they go to the launcher's test channel and the test server first and the team plays
+  them there; small fixes and everyday requests still go straight to main and live (B14). A test build reaches only the test server and
+  the live build only the live one.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

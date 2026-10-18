@@ -20,8 +20,8 @@ Every item says what kind it is:
 - **Phase 3, Ascension redesigned:** the first new feature, built on the foundation.
 - **Phase 4, new content:** the look of the world, new places, enemies and bosses, the other five classes, quests and endgame, each with
   its toolkit built first.
-- **Beside them all:** bugs first, the team's requests, and the polish list. **Later:** off-site backups, phones, and going public if the
-  team decides to.
+- **Beside them all:** bugs first, the team's requests, and the polish list. **Later:** off-site backups, phones, and 1.0, the first public
+  release.
 
 ## Where we are (2026-10-18)
 
@@ -35,12 +35,8 @@ Every item says what kind it is:
 
 ## Waiting on Helix
 
-1. **Decide: public or private code.** The repository is public on GitHub, so encrypting the game's files would hide nothing. Make it
-   private (GitHub's free minutes for the automatic tests get tight: fewer test runs or a small bill), or stay public and drop the
-   encryption? Holds up: the encryption item in Phase 2.
-2. **Decide: a test lane for big changes.** Keep the launcher's Test build switch and the test server for big changes such as Ascension,
-   while small fixes still go straight to live? Claude recommends yes: the test build caught the Reaper's first-cast stutters before players
-   met them (B38 made it a one-off for the rebuild). Holds up: nothing before Phase 3.
+Nothing right now. Answered on 2026-10-18: the code stays public until 1.0 and goes private, with the game's files encrypted, for that
+first public release (B52); big changes get a test lane (B53); off-site backups go to a cloud storage bucket later (B51).
 
 ## Always on
 
@@ -92,12 +88,17 @@ kinds of content (enemy parts, rite parts, maps, quests) are built in Phase 4 to
 ### A. Direction and workflow: what we are making, and how an idea becomes a feature
 
 - [ ] **Decide + New: the game vision, on one page,** written with the team. What Death Muffin is (the fantasy, the core loop, the feel of
-  a fight), who it is for (friends, or the public one day), whether it will ever earn money (asset licences depend on it: the ElevenLabs
+  a fight), who it is for (friends now, the public from 1.0, B52), whether it will ever earn money (asset licences depend on it: the ElevenLabs
   plan in use excludes monetized games), the pillars that decide ties (performance first, polish over new content, necromancer focus, loot
   never vacuums, readable fights), and what the game will not be. It gives: the root every other standard follows, and the first thing every
   session reads.
 - [ ] **Decide + New: who decides what.** Now the owner, Helix and warbogar can each approve everything. After: art, design and numbers,
   spend, and releases each name who approves them and who is asked, so two approvals never pull in different directions.
+- [ ] **Fix: the test lane for big changes cannot be used** (Helix, 2026-10-18: keep it; B53). Now: the launcher's Test build switch, the test server and its
+  lobby and relay still exist, but since launch day the game only talks to the live server, so no new test build can be made. After: a big
+  change (Ascension, a new class, the map revamp) is published to the test channel first, from `main` or a short-lived branch, built so it
+  reaches only the test server (and the live build only the live one); the test server's copies of the team's accounts are refreshed when
+  asked; the team plays it there before it goes live. Small fixes and everyday requests still go straight to live.
 - [ ] **New: from idea to shipped.** Any feature bigger than a tweak gets a one-page spec first: the goal, what the player sees, the rules
   and numbers, the art and sound it needs, its budgets, and how we will know it works. The team approves the spec, then it is built with
   the recipes, passes the checks and the look check, is playtested and ships with its patch note. The Discord agent uses the same spec for
@@ -199,7 +200,6 @@ any automatic check of a new asset. Each standard is one page in one folder of t
   by mistake (a false flag holds back part of an honest player's gain), and the old audit rows cleared.
 - [ ] **New: a written way to roll one character back** to an earlier save (`character_save_versions`), for when a bug or an exploit
   damages a character.
-- [ ] **New: encryption of the game's files** in the build, only if the code goes private (Waiting on Helix 1).
 
 ### E. Engineering standards and health
 
@@ -302,9 +302,9 @@ Worked through beside the phases, top first. Each change is shown to the team wi
   it is tested.
 - **New: phones.** The Mobile renderer, touch controls built with the HUD, phones join as guests. The game stays ready for them (B40:
   phone texture formats, shaders that run on Mobile, a scalable HUD) and Phase 2's quality tiers set their budgets.
-- **New: going public, only if the vision says so.** Accounts with an email address and password recovery (none exist today), reporting
-  and moderation for chat, a privacy policy and terms, a signed launcher and game so Windows does not warn new players, a review of the
-  servers' capacity and of cheating, and a store or download page.
+- **New: 1.0, the first public release** (B52). The repository goes private and the game's files are encrypted in the build; accounts
+  get an email address and password recovery (none exist today); chat gets reporting and moderation; a privacy policy and terms; a signed
+  launcher and game so Windows does not warn new players; a review of the servers' capacity and of cheating; and a store or download page.
 - Not planned: dedicated or VPS-hosted game sessions and host migration (the hybrid model stays, owner 2026-10-15; D6), translations, mod
   support.
 
