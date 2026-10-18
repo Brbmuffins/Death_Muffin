@@ -1,9 +1,10 @@
 # Roadmap
 
-What gets built, in order. Two kinds of work run side by side: the **always-on** work (bugs, the team's requests, the polish list) and
-**one phase at a time**, top to bottom. Inside a phase the next unchecked item is the work (Phase 2's tracks can run side by side), and
-each phase ends with a "Done when" check. The technical detail of each gap is in [KNOWN-GAPS.md](KNOWN-GAPS.md), the reasons behind
-choices in [DECISIONS.md](DECISIONS.md) (this plan's: B50), and the rules every change follows in [CLAUDE.md](CLAUDE.md).
+What gets built, in order. Two kinds of work run side by side: the **always-on** work (bugs, the team's requests, a steady stream of
+things players notice, the polish list) and **one phase at a time**, top to bottom. Inside a phase the next unchecked item is the work
+(Phase 2's tracks can run side by side), and each phase ends with a "Done when" check. The technical detail of each gap is in
+[KNOWN-GAPS.md](KNOWN-GAPS.md), the reasons behind choices in [DECISIONS.md](DECISIONS.md) (this plan's: B50 and B56), and the rules
+every change follows in [CLAUDE.md](CLAUDE.md).
 
 Every item says what kind it is:
 - **Fix:** something wrong or missing in the game or in our tools. It says what happens **now** and what it will be **after** the fix.
@@ -12,23 +13,23 @@ Every item says what kind it is:
 
 ## At a glance
 
-- **Phase 1, settle the launch** (now; the old game's code goes on 2026-11-01): everything the old game had, the team PC helper
-  (screenshots, benchmarks and bakes on team PCs), one game instead of two, alerts when a server stops, and play reports that show how the
-  game runs on players' PCs.
-- **Phase 2, foundation:** the system that makes every Claude session and the Discord agent build the same way: the game's direction
-  and how ideas become features, the content standards, the pipelines and automatic checks, the server owning every value, healthy code
-  and short docs.
-- **Phase 3, Ascension redesigned:** the first new feature, built on the foundation.
-- **Phase 4, new content:** the look of the world, new places, enemies and bosses, the other five classes, quests and endgame, each with
-  its toolkit built first.
-- **Beside them all:** bugs first, the team's requests, and the polish list. **Later:** off-site backups, phones, and 1.0, the first public
-  release.
+- **Phase 1, settle the launch.** Before 2026-11-01: Grave Surges back, alerts when a server stops, the Discord agent working on the new
+  game, and the old game's code gone. After it: the team app (screenshots and benchmarks on team PCs), checks for War's content, crash
+  reports that point at the cause, no first-use stutters, and play reports.
+- **Phase 2, the foundation's core:** the game vision, how we work, the look, the size limits and the balance rules, content data in one
+  place with automatic checks, recipes for what is made today, and the server owning every value. Done when three real pieces of content
+  have gone through it cleanly. The rest of the standards are written when their first content arrives.
+- **Phase 3, Ascension redesigned:** the first new feature, planned with Helix during Phase 2 and built right after it.
+- **Phase 4, new content:** the look of the world, new places, enemies and bosses, the other five classes, quests and endgame, each with its
+  toolkit and its standards built first.
+- **Beside them all:** bugs first, the team's requests, something players notice every week or two, and the polish list. **Later:**
+  off-site backups, phones, and 1.0, the first public release.
 
 ## Where we are (2026-10-18)
 
 - **The rebuilt game is live** (launch day 2026-10-18, B49): the same game on a C++ combat core and Forward+ graphics. The biggest fight
-  runs 3 to 4 times faster on Helix's PC (the Bell Sanctum's Full Party on Ultra: 61 to 224 fps); warbogar's PC plays it at 342 fps where
-  the old game gave 41 in a lighter fight. The rebuild's record is B34-B50.
+  runs 3 to 4 times faster on Helix's PC (the Bell Sanctum's Full Party on Ultra: 61 to 224 fps); warbogar's PC plays it at 342 fps where the
+  old game gave 41 in a lighter fight. The rebuild's record is B34-B50.
 - Until 2026-11-01 one command puts the old game back (`server/death-muffin/launch-undo.sh`, B40); after that the old game's code goes.
 - Ascension (the Altar, vows and heat, Ashes, Covenant Boons) left on launch day and comes back redesigned in Phase 3 (B36). Players'
   saved Ascension data is kept.
@@ -37,7 +38,8 @@ Every item says what kind it is:
 ## Waiting on Helix
 
 Nothing right now. Answered on 2026-10-18: the code stays public until 1.0 and goes private, with the game's files encrypted, for that
-first public release (B52); big changes get a test lane (B53); off-site backups go to a cloud storage bucket later (B51).
+first public release (B52); big changes get a test lane (B53); off-site backups go to a cloud storage bucket later (B51); the team PC
+helper is a separate team app for War, Muffins and Helix (B54, B55); the roadmap is slimmed as Claude advised (B56).
 
 ## Always on
 
@@ -45,172 +47,175 @@ first public release (B52); big changes get a test lane (B53); off-site backups 
   players something.
 - **The team's requests** through the Discord agent ship after approval, as before: bug fixes, small polish, warbogar's armor sets. A
   bigger new feature is planned into a phase instead: it goes to "Ideas" below.
+- **Something players notice, every week or two:** an item from the polish list or a fix players asked for ships with its patch notes, so
+  the game keeps moving while the foundation is built.
 - **The polish list** (below), top first, between phase items.
 - Every gameplay change is measured and ships no slower than what it replaces (CLAUDE.md "Performance budgets").
 
 ## Phase 1: settle the launch
 
-Goal: the new game has everything the old one had, it is the only game, it is safe if something breaks, and we can see how it runs on
-players' PCs. The old game's removal is fixed on 2026-11-01, when the undo window ends; the other items run until they are done.
-- [ ] **Fix: the Discord agent tests and photographs the old game.** Now: its proposals are checked with the old game's tests, its
-  before/after screenshots are rendered from the old game on the server (minutes of software drawing next to the live game servers), and
-  its "Try it" previews are builds of the old game too, so the team approves pictures of a game nobody plays. After: every proposal is
-  tested on the live game, its screenshots come from a team PC through the team PC helper below (the server's slower pictures only when
-  no PC is available, marked as such), and its previews are the live game. (The screenshot tool and its driver come over to `client/`.)
-- [ ] **New: the team PC helper, in the launcher** (Helix, 2026-10-18: approved, for the accounts of War, Muffins and Helix only; B54).
-  Jobs that need a real graphics card or Windows, which the server does not have, run on team PCs; the server keeps everything with keys or
-  passwords and everything that changes the live game, and checks each result before using it. Only those three accounts can turn it on:
-  they sign in to it in the launcher, and the server's job routes accept only them (hiding the option is not the protection). Each of them
-  turns it on for their own PC and picks the job types it takes. When a job comes in, a small box says what it is and how heavy
-  ("Screenshots of a change, about 1 minute": Run now / Not now / Pause 2 hours), and without an answer it runs by itself after 5 minutes,
-  except while Death Muffin or another full-screen game or movie is running (Windows hides the question then, and a party's host runs the
-  whole party's fight) or a laptop is on battery: then it waits for a yes or for the game to close. It never takes the keyboard or mouse,
-  runs at low priority and stops if the game starts; it uses its own folder and plays offline (never the player's game, settings or
-  account), runs only builds and kits our server made, and uploads only its results. Each PC can also run without asking (War's spare
-  Alienware, if he sets it) or only on a yes. A new launcher reaches every player, so the release that carries the helper goes out only
-  after it is tested and Helix gives the final OK. Its job types, in order:
-  - Screenshots of a proposal on Low and Ultra, posted to the thread by our server (the item above).
-  - Benchmarks for every release on a fast PC and on the Alienware's GTX 970 (the weak-PC floor of B39), on the benchmarks page; a
-    benchmark waits until nothing else is loading the PC, and a run disturbed halfway is thrown out and retried, so its numbers are honest.
-  - The stutter test of Phase 1's first-use item: every rite and effect played on a real graphics card, each hitch reported.
-  - A release crash check: a release candidate plays a few minutes on two different graphics cards before it goes live, and quits while it
-    is still loading (which crashed the old game on 4-core PCs); a crash stops the release.
-  - Lighting bakes: when an area changes, the bake kit runs on the strongest graphics card available instead of by hand, and the result
-    comes back as a proposal.
-  - Later: a co-op test between two team PCs.
-- [ ] **Fix: a document change from the Discord agent ships a game update.** Now: every change the agent ships also publishes a new game
-  build, even when it only touches documents, so adding a line to this roadmap from Discord would send every player an update notice.
-  After: a change that touches only documents goes to `main` with no new build and no notice, and the agent adds a team member's idea to
-  "Ideas" (with its section) on an approver's ✅.
-- [ ] **Fix: War's content pipelines run on trust, not on checks.** Now: armor sets, models and sounds come out right because the Discord
-  agent follows a long set of written steps, and nothing checks the result. The agent may ask Tripo for up to 14,000 triangles for any model
-  (so far every gear piece is under 3,500 and every hero body about 12,000 or less); new sounds are not matched in loudness and are left out
-  of the licence record. After (ahead of Phase 2's full checks): the agent's check refuses a model over its budget, with more than one
-  material or a different skeleton, and a hero body without its combat clips; the tools bring every new sound to the same loudness and write
-  it into the licence record (KNOWN-GAPS "Content pipelines").
+Goal: the new game has everything the old one had, it is the only game, we hear when something breaks, and we can see how it runs on
+players' PCs. The old game's code goes on 2026-11-01, when the undo window ends, so everything that still depends on it comes first.
+
+**Before 2026-11-01**
 - [ ] **Fix: Grave Surges are missing.** Now: since launch day no Grave Surge ever starts (they were left out of the rebuild). After: as in
   the old game, after about 100 seconds in a combat area a crypt bursts open nearby, three waves climb out, and clearing them pays the surge
   reward; the surge tip shows again. (Port `godot/next/areas/dm_grave_surge.gd` onto the combat core.)
 - [ ] **Fix: nobody is told when the game's servers stop.** Now: only the database is watched; if the game's server, the lobby or the
   co-op relay stops, nobody knows until players notice. After: each one is watched every minute, and a failure posts to #build-alerts
   (KNOWN-GAPS "Operations").
-- [ ] **New: play reports.** When a play session ends, the game sends a small summary: average and worst frame times, the graphics preset,
-  the graphics card, and time and deaths per area (nothing personal). A page on the site shows them per release, beside the server's own
-  numbers (XP and gold per hour, drops). It gives: how the game really runs on every player's PC, weak ones included (no GTX 970-class PC
-  or laptop has run the benchmark yet), whether a release made it slower, and where players struggle.
-- [ ] **Decide: an "Ultra Low (old PCs)" option** (B35). Once the play reports and the GTX 970 benchmark show how Low runs on weak PCs: if
-  Low on the new renderer misses the laptop floor (60 fps in normal play, 45 in the biggest fight), add an option that restarts the game in
-  the old, lighter renderer. Claude recommends deciding from those numbers, not before.
+- [ ] **Fix: the Discord agent tests and photographs the old game.** Now: its proposals are checked with the old game's tests, its
+  before/after screenshots are rendered from the old game on the server, its "Try it" previews are builds of the old game, and it still
+  makes its changes in the old game's folder, all of which stops working when that folder goes. After: every proposal is tested on the
+  live game, its screenshots and previews are of the live game (rendered on the server until the team app takes over the screenshots),
+  and from 2026-11-01 it makes its changes in the new game directly. (The screenshot tool and its driver come over to `client/`.)
+- [ ] **Fix: a document change from the Discord agent ships a game update.** Now: every change the agent ships also publishes a new game
+  build, even when it only touches documents, so adding a line to this roadmap from Discord would send every player an update notice.
+  After: a change that touches only documents goes to `main` with no new build and no notice, and the agent adds a team member's idea to
+  "Ideas" (with its section) on an approver's ✅.
+- [ ] **Fix: two copies of the game's code** (on 2026-11-01). Now: the old game's folder `godot/` is still there, most of the new game's
+  scripts are copied from it, and the crowd and map tools, about 66 tool and server scripts and some tests still read it; the 31 short
+  system guides (how each system works and its known gaps) live only in `godot/`. After: the system guides move into `client/` first, then
+  `godot/` is deleted, the new game owns its files, every tool and test reads the new game, `server/death-muffin/launch-undo.sh` goes, and
+  README.md and CLAUDE.md describe one game.
+
+**After 2026-11-01**
+- [ ] **New: the team app** (Helix, 2026-10-18: for War, Muffins and Helix only, B54; its own app, not the players' launcher, B55). A small
+  Windows app, installed only on the three team PCs, with the launcher's look and its own automatic updates; a bug in it can be fixed in
+  minutes and never reaches players. It runs jobs that need a real graphics card, which the server does not have; the server keeps
+  everything with keys or passwords and everything that changes the live game, and checks each result before using it. Only those three
+  accounts can sign in to it, and the server's job routes accept only them. When a job comes in, a small box says what it is and how heavy
+  ("Screenshots of a change, about 1 minute": Run now / Not now / Pause 2 hours), and without an answer it runs by itself after 5 minutes,
+  except while Death Muffin or another full-screen game or movie is running (Windows hides the question then, and a party's host runs the
+  whole party's fight) or a laptop is on battery: then it waits for a yes or for the game to close. It never takes the keyboard or mouse,
+  runs at low priority and stops if the game starts; it uses its own folder and plays offline (never the player's game, settings or
+  account), runs only builds and kits our server made, and uploads only its results. Each PC can also run without asking (War's spare
+  Alienware, if he sets it) or only on a yes. Its jobs, each added when it is needed:
+  - First: screenshots of a proposal on Low and Ultra, posted to the thread by our server (they replace the server's slower pictures).
+  - Soon after: benchmarks for every release on a fast PC and on the Alienware's GTX 970 (the weak-PC floor of B39), on the benchmarks
+    page. A benchmark waits until nothing else is loading the PC, and a run disturbed halfway is thrown out and retried, so its numbers are
+    honest.
+  - Then: the stutter test (every rite and effect played on a real graphics card, each hitch reported) and a release crash check (a release
+    candidate plays a few minutes on two different graphics cards, and quits while still loading, which crashed the old game on 4-core
+    PCs, before it goes live; a crash stops the release).
+  - With the art rebuild (Phase 4): lighting bakes on the strongest graphics card available instead of by hand, the result coming back as
+    a proposal.
+  - Later: a co-op test between two team PCs.
+- [ ] **Fix: War's content pipelines run on trust, not on checks.** Now: armor sets, models and sounds come out right because the
+  Discord agent follows a long set of written steps, and nothing checks the result. The agent may ask Tripo for up to 14,000 triangles for
+  any model (so far every gear piece is under 3,500 and every hero body about 12,000 or less); new sounds are not matched in loudness and are
+  left out of the licence record. After (ahead of Phase 2's full checks): the agent's check refuses a model over its budget, with more than
+  one material or a different skeleton, and a hero body without its combat clips; the tools bring every new sound to the same loudness and
+  write it into the licence record (KNOWN-GAPS "Content pipelines").
 - [ ] **Fix: crash reports cannot point inside the combat core.** Now: when the C++ combat core crashes, the report has the log but no
   location, because the core ships without its debug symbols. After: each crash report names the build and the line of code that crashed
   (the symbols of every published build are kept on the server).
 - [ ] **Fix: first-use stutters.** Now: an effect is compiled the first time it is drawn, which stutters, unless it is on a warm-up list
   kept by hand (both Reaper stutter reports came from gaps in that list). After: Godot compiles every effect when the game is built (its
-  shader baking option), and a test fails if an effect used in play could still stutter.
-- [ ] **Fix: two copies of the game's code** (on 2026-11-01, when the undo window ends). Now: the old game's folder `godot/` is still there,
-  most of the new game's scripts are copied from it, and the crowd and map tools, about 66 tool and server scripts and some tests still read
-  it; the 31 short system guides (how each system works and its known gaps) live only in `godot/`. After: the system guides move into
-  `client/` first, then `godot/` is deleted, the new game owns its files, every tool and test reads the new game, the Discord agent edits
-  the new game directly, `server/death-muffin/launch-undo.sh` goes, and README.md and CLAUDE.md describe one game.
+  shader baking option), a test fails when an effect used in play is not warmed at load, and the team app's stutter test confirms it on a
+  real graphics card.
+- [ ] **New: play reports.** When a play session ends, the game sends a small summary: average and worst frame times, the graphics preset,
+  the graphics card, time and deaths per area, and where the session ended (nothing personal). A page on the site shows them per release,
+  beside the server's own numbers (XP and gold per hour, drops) and how often and how long people play. It gives: how the game really runs on
+  every player's PC, weak ones included (no GTX 970-class PC or laptop has run the benchmark yet), whether a release made it slower, where
+  players struggle or stop, and whether polish is making the game more fun.
+- [ ] **Decide: an "Ultra Low (old PCs)" option** (B35). Once the play reports and the GTX 970 benchmark show how Low runs on weak PCs: if
+  Low on the new renderer misses the laptop floor (60 fps in normal play, 45 in the biggest fight), add an option that restarts the game in
+  the old, lighter renderer. Claude recommends deciding from those numbers, not before.
 
 Done when: `godot/` is gone, every check and screenshot is of the live game, the servers are watched, and a week of play reports is in.
 
-## Phase 2: foundation
+## Phase 2: the foundation's core
 
-Goal: every Claude session and the Discord agent understand what the game should be and build every part of it the same way, so the
-team's ideas come out right the first time and little is redone. Nobody on the team writes code, so the written direction, standards,
-pipelines and automatic checks are the framework. Six tracks that can run side by side; inside a track, top first. The toolkits for new
-kinds of content (enemy parts, rite parts, maps, quests) are built in Phase 4 together with their first content.
+Goal: every Claude session and the Discord agent understand what the game should be and build what we make today the same way, so the
+team's ideas come out right the first time and little is redone. Nobody on the team writes code, so the written direction, a few strong
+standards, the pipelines and the automatic checks are the framework. It holds only what every piece of content needs; each other
+standard is written when its first content arrives, because rules written before anyone knows the content are guesswork (CLAUDE.md: no
+speculative abstraction). Written when first needed, each an item where it lands:
+- The effects standard: with Haunting Wraith, the rite recipe's first test (track C).
+- The UI standard: before Ascension's windows (Phase 3).
+- The rigging and animation standard, and enemy roles, the boss template and area rules: with the first new creature, boss and place
+  (Phase 4).
+- The props and world-kit pipeline, and where big art files live: at the start of the art rebuild (Phase 4).
+- The audio rules start with Phase 1's loudness fix and grow with the next sounds.
 
-### A. Direction and workflow: what we are making, and how an idea becomes a feature
+Five tracks that can run side by side; inside a track, top first. All standards live in three pages (the look, the tech art, design and
+writing) plus one "How we work" page; CLAUDE.md points every session to them.
+
+### A. Direction and how we work
 
 - [ ] **Decide + New: the game vision, on one page,** written with the team. What Death Muffin is (the fantasy, the core loop, the feel of
   a fight), who it is for (friends now, the public from 1.0, B52), which platforms (Windows now, phones later, anything else such as the
-  Steam Deck), whether it will ever earn money (asset licences depend on it: the ElevenLabs
-  plan in use excludes monetized games), the pillars that decide ties (performance first, polish over new content, necromancer focus, loot
-  never vacuums, readable fights), and what the game will not be. It gives: the root every other standard follows, and the first thing every
-  session reads.
-- [ ] **Decide + New: who decides what, and who works on what.** Now the owner, Helix and warbogar can each approve everything, and nothing
-  says who is working on which part. After: art, design and numbers, spend, and releases each name who approves them and who is asked;
-  each person has a lane (for example: Helix with the terminal sessions on the phases; War with the Discord agent on content whose pipeline
-  works, and on concepts and lore ideas for later content; Muffins on the direction and money); and a roadmap item someone starts is marked
-  "in progress: who, date", so two people or sessions never take the same work.
-- [ ] **New: a team guide in plain words.** One page for Helix, War and Muffins: how to ask the Discord agent for something, what a
-  proposal, a ✅, the test lane and the team PC helper do, what Fix, New and Decide mean here, and where to look (this roadmap, Ideas, the
-  catalogue). It gives: everyone works the same way without asking how.
+  Steam Deck), whether it will ever earn money (asset licences depend on it: the ElevenLabs plan in use excludes monetized games), the
+  pillars that decide ties (performance first, polish over new content, necromancer focus, loot never vacuums, readable fights), and what
+  the game will not be. It gives: the root every other standard follows, and the first thing every session reads.
+- [ ] **Decide + New: "How we work", on one page,** in plain words for Helix, War and Muffins:
+  - Who decides what and who works on what. Now the owner, Helix and warbogar can each approve everything, and nothing says who works on
+    which part. After: art, design and numbers, spend and releases each name who approves them and who is asked; each person has a lane
+    (for example: Helix with the terminal sessions on the phases; War with the Discord agent on content whose pipeline works, and on
+    concepts and lore ideas for later; Muffins on the direction and money); a roadmap item someone starts is marked "in progress: who,
+    date", so two people or sessions never take the same work.
+  - From idea to shipped: any feature bigger than a tweak gets a one-page plan first (the goal, what the player sees, the rules and
+    numbers, the art and sound it needs, its budgets, how we will know it works); the team approves it, then it is built with the recipes,
+    passes the checks and the look check, is playtested and ships with its patch note. The Discord agent uses the same plan for bigger
+    requests. This is where most rework is saved.
+  - The playtest routine: after each phase and each big change, a short team session with a checklist of what changed; findings go to
+    KNOWN-GAPS or Ideas through the Discord agent, beside the play reports' numbers.
+  - Done means done: for each kind of change (code, content, art, server, docs), what must be true before it ships.
+  - How to ask the Discord agent for something, what a proposal, a ✅, the test lane and the team app do, what Fix, New and Decide mean,
+    and where to look (this roadmap, Ideas, the catalogue).
 - [ ] **Fix: the test lane for big changes cannot be used** (Helix, 2026-10-18: keep it; B53). Now: the launcher's Test build switch, the
-  test server and its lobby and relay still exist, but since launch day the game only talks to the live server, so no new test build can be
-  made. After: a big change (Ascension, a new class, the map revamp) is published to the test channel first, from `main` or a short-lived
-  branch, built so it reaches only the test server (and the live build only the live one); the test server's copies of the team's accounts
-  are refreshed when asked; the team plays it there before it goes live. Small fixes and everyday requests still go straight to live.
-- [ ] **New: from idea to shipped.** Any feature bigger than a tweak gets a one-page spec first: the goal, what the player sees, the rules
-  and numbers, the art and sound it needs, its budgets, and how we will know it works. The team approves the spec, then it is built with
-  the recipes, passes the checks and the look check, is playtested and ships with its patch note. The Discord agent uses the same spec for
-  bigger requests. It gives: the team sees what will be built before anything is built, which is where most rework is saved.
-- [ ] **Decide + New: a playtest routine.** After each phase and each big change, a short team session with a checklist of what changed;
-  findings go to KNOWN-GAPS or Ideas through the Discord agent, and the play reports give the numbers beside them.
+  test server and its lobby and relay still exist, but since launch day the game only talks to the live server, so no new test build can
+  be made. After: a big change (Ascension, a new class, the map revamp) is published to the test channel first, from `main` or a
+  short-lived branch, built so it reaches only the test server (and the live build only the live one); the test server's copies of the
+  team's accounts are refreshed when asked; the team plays it there before it goes live. Small fixes and everyday requests still go
+  straight to live.
+- [ ] **Decide + New: Ascension's one-page plan,** written with Helix through "From idea to shipped", so Phase 3 starts building the day
+  this phase ends: what the Altar, vows and heat, Ashes and Covenant Boons become, and the co-op rules (today a guest's Prelate kill counts
+  for the host).
 
-### B. Content standards: the rulebook for new content
+### B. The core standards: the look, the tech art, design and writing
 
 Today some of it exists: budgets for the hero, bosses and crowd creatures (CLAUDE.md "Performance budgets" and ASSET_PIPELINE.md, with
-different numbers), the asset generation steps (ASSET_PIPELINE.md, `docs/BLENDER-PIPELINE.md`, `docs/TRIPO-ANIMATE-IN-PLACE.md`) and the
-quality bar (`docs/GRAVECRAWL.md`). Missing: an art direction, a rigging or animation standard, budgets for gear, props and the world, and
-any automatic check of a new asset. Each standard is one page in one folder of the docs; CLAUDE.md points every session to them.
-- [ ] **Decide + New: the art direction guide.** Claude drafts it from today's look, the area moodboards (`docs/art/areas/`) and
+different numbers), the asset generation steps (ASSET_PIPELINE.md, `docs/BLENDER-PIPELINE.md`, `docs/TRIPO-ANIMATE-IN-PLACE.md`), the
+gear's attachment rules (inside `godot/data/slice/necro_gear.json`) and the quality bar (`docs/GRAVECRAWL.md`). Missing: an art
+direction, one set of budgets for every kind of asset, and any automatic check of a new asset.
+- [ ] **Decide + New: the look (the art direction).** Claude drafts it from today's look, the area moodboards (`docs/art/areas/`) and
   Gravecrawl's lessons, with example pictures; the team picks and approves. It sets the game's look in a paragraph, each area's palette and
   lighting mood, the colour rules (for example: enemies, heroes and the ground always differ in colour and brightness; violet for magic,
-  gold for reward, red for danger; what each spell colour and loot rarity means), silhouettes that read at the game camera's distance (about
-  22 m), how shiny and how bright materials may be (Tripo's models come out metallic and white out under glow), how heroes, thralls and
-  enemies are told apart (rims, glows), and the style of icons, portraits and UI frames. It gives: one page every new asset is checked
-  against, and the target for the asset and effects rebuild.
-- [ ] **Fix: budgets in two places, for three kinds of asset.** Now: ASSET_PIPELINE.md asks Tripo for a 12,000-triangle hero and a 14,000
-  boss while CLAUDE.md caps both at 20,000, and nothing covers gear, props or the world. After: one table for the hero, bosses, crowd
-  creatures, thrall variants, weapons and gear pieces, small, medium and large props, wall and floor pieces, effect meshes and UI art, each
-  with triangles (a target and a hard cap), texture size, materials, bones and levels of detail, plus a budget per area (triangles in view,
-  draw calls, lights). Starting numbers come from today's assets and are confirmed with the benchmark.
-- [ ] **New: how one model serves Ultra, old PCs and phones.** Written rules for the quality tiers: each model is made once, at its budget,
-  and the tools make the lighter versions (Godot already makes levels of detail for every model, and each preset decides how soon the
-  lighter ones show); Ultra adds extras on top (shadows, ambient occlusion, more particles) rather than heavier models; Low thins the
-  effects out; phones get the Low preset plus a phone pack with smaller textures in phone formats (B40), and a check proves every shader and
-  effect also runs on the phone renderer. It gives: Ultra keeps looking its best while Low stays above the weak-PC floors, and nothing has
-  to be remade when phones come.
-- [ ] **New: the rigging standard.** One skeleton per body type (humanoid, which is Tripo's shared biped skeleton; four-legged; and today's
-  bloated and robed kinds), bone names, the attachment points (right and left hand for weapons and shields, head for helms, shoulders and
-  back for mantles), scale (1 unit = 1 m, a height range per kind), facing and the pivot at the feet, and a bone limit for phones. It gives:
-  any new creature reuses the existing animations, gear and props, and goes straight into the crowd baker.
-- [ ] **New: the animation standard.** The clips every kind of creature must have (idle, walk, run, attack, a second attack, hurt, death,
-  rise, plus role clips such as cast or dig), their names, lengths, loops and frame rates; clips stay in place (the game moves the body);
-  the moment each attack lands is marked so the damage lines up with the swing; the crowd baker's limits; and the known traps of Tripo's
-  presets (its "hurt" is a 14-second lying-down clip). It gives: every creature moves and hits the same way, and a missing or broken clip is
-  caught by a check instead of a player.
-- [ ] **New: the effects standard.** The spell colour language, how big and bright an effect may be so a fight stays readable (immersive,
-  not overwhelming), particle and overdraw budgets per tier, reusing the existing effects first, and every new effect warmed at load (the
-  Phase 1 check). It also settles the licensed effect pack's 3D scenes, ruled out while players ran the old renderer and usable now
-  (KNOWN-GAPS "Assets and effects").
-- [ ] **New: the audio standard.** Loudness targets for music, ambience, effects and voices, formats, names, how many variations a sound
-  needs, how long and how often a sound may play, and a licence record for every file (`docs/AUDIO-SOURCES.md` is that record today).
-- [ ] **New: the UI and icon standard.** Icon size, style and frame; fonts and text sizes; the rarity and danger colours, never shown by
-  colour alone (for colour-blind players); and how a new window fits the HUD budget (150 draw calls, 0.5 ms).
-- [ ] **New: the writing standard and the lore bible,** written with the team. The voice (dark, with dry humour where it fits), naming
-  patterns for items, enemies, places and rites, what a tooltip says and in what order, the patch-note style; and the world itself (its
-  factions, history and places), which names, quests, bosses and the Codex then follow.
-- [ ] **New: the game design rules and the balance sheet.** The power curve over levels 1 to 999 (item power by level and rarity, enemy
-  health and damage by area level, XP and gold per minute, drop rates, where gold comes from and where it goes); enemy roles (melee,
-  flanker, caster, hazard, support) and telegraph rules (every dangerous attack has a readable wind-up and a ground marker); how hits and
-  kills feel (sound, flash, number and screen shake, each with its cap); a boss template (phases, telegraphs, adds, summoning key, scaling
-  for a party, rewards); and area rules (size, fighting space, landmarks, spawn points, safe spots). A balance tool built on the seeded
-  fight harness plays a fight without a screen and reports time to kill, damage taken and XP and gold per minute, so a new item or enemy is
-  checked against the curve before anyone plays it. It gives: new items, enemies and areas fit the game without retuning everything around
-  them.
-- [ ] **New: rules for changing live content.** What happens to what players already own when content changes: an item id is never
-  reused or deleted while anyone owns it, a removed item turns into something stated (gold or a replacement), a rebalance says whether owned
-  items change too, and each change ships with its database migration. It gives: updates never break or silently change players'
-  characters.
+  gold for reward, red for danger; what each spell colour and loot rarity means), silhouettes that read at the game camera's distance
+  (about 22 m), how shiny and how bright materials may be (Tripo's models come out metallic and white out under glow), how heroes, thralls
+  and enemies are told apart (rims, glows), and the style of icons, portraits and UI frames. It gives: one page every new asset is checked
+  against, and the target for the art rebuild.
+- [ ] **Fix: budgets in two places, for three kinds of asset (the tech art page).** Now: ASSET_PIPELINE.md asks Tripo for a 12,000-triangle
+  hero and a 14,000 boss while CLAUDE.md caps both at 20,000, and nothing covers gear, props or the world. After: one table for the hero,
+  bosses, crowd creatures, thrall variants, weapons and gear pieces, props, wall and floor pieces, effect meshes and UI art, each with
+  triangles (a target and a hard cap), texture size, materials, bones and levels of detail, plus a budget per area (triangles in view, draw
+  calls, lights); the gear's attachment rules (axes, size, grip point, anchor bone) move here from `necro_gear.json`. Starting numbers come
+  from today's assets and are confirmed with the benchmark.
+- [ ] **New: how one model serves Ultra, old PCs and phones (the tech art page).** Each model is made once, at its budget, and the tools
+  make the lighter versions (Godot already makes levels of detail for every model, and each preset decides how soon the lighter ones show);
+  Ultra adds extras on top (shadows, ambient occlusion, more particles) rather than heavier models; Low thins the effects out; phones get the
+  Low preset plus a phone pack with smaller textures in phone formats (B40), and a check proves every shader and effect also runs on the
+  phone renderer. It gives: Ultra keeps looking its best while Low stays above the weak-PC floors, and nothing has to be remade when phones
+  come.
+- [ ] **New: the balance sheet (the design page).** The power curve over levels 1 to 999 (item power by level and rarity, enemy health and
+  damage by area level, XP and gold per minute, drop rates, where gold comes from and where it goes) and how hits and kills feel (sound,
+  flash, number and screen shake, each with its cap). A balance tool built on the seeded fight harness plays a fight without a screen and
+  reports time to kill, damage taken and XP and gold per minute, so a new item or enemy is checked against the curve before anyone plays
+  it. It gives: new items and enemies fit the game without retuning everything around them.
+- [ ] **New: rules for changing live content (the design page).** What happens to what players already own when content changes: an item
+  id is never reused or deleted while anyone owns it, a removed item turns into something stated (gold or a replacement), a rebalance says
+  whether owned items change too, and each change ships with its database migration. It gives: updates never break or silently change
+  players' characters.
+- [ ] **New: the writing rules and the lore bible (the writing page),** the lore written with the team alongside the rest. The voice
+  (dark, with dry humour where it fits), naming patterns for items, enemies, places and rites, what a tooltip says and in what order, the
+  patch-note style; and the world itself (its factions, history and places), which names, quests, bosses and the Codex then follow.
 - [ ] **New: the look check and the review checklist.** A scene that shows a new model beside existing ones at the game camera's distance,
   in each area's light, on Low and on Ultra, with its triangle count, next to approved reference shots of each area. Every new visual asset
-  is posted to the team with those shots and passes the checklist (art direction, budgets, rig, clips, readability) before it ships.
+  is posted to the team with those shots and passes the checklist (the look, the budgets, the rig, the clips, readability) before it ships.
 
-### C. Content pipelines and automatic checks: how content gets made, step by step
+### C. Content pipelines and automatic checks
 
 - [ ] **Fix: content is defined in several places.** Now: an enemy is defined in four places (`server/rules/content/enemies.ts`, two
   client data files and its special moves in the combat core), and an armor set touches several files and breaks tests that count items.
@@ -224,18 +229,18 @@ any automatic check of a new asset. Each standard is one page in one folder of t
   is also a Claude Code skill that loads by itself when a session is asked to do that job (sessions on the server and the Discord agent
   alike); the agent's proposals show the checklist's results (the automatic checks and the look-check shots). It gives: no session has to
   know where a rule lives to follow it.
-- [ ] **New: a catalogue of what exists.** Every item, enemy, rite, area, model, animation, sound and effect with its picture and numbers,
-  generated from the one home of each kind into a page the team can browse. The team and every session look there before asking for or
-  making something new (reuse first). It gives: no duplicates and no paying twice for the same asset.
 - [ ] **Fix: the character pipeline guide describes the old game.** Now: ASSET_PIPELINE.md sends new art through the old game's folder and
   says players run the old renderer, and its steps are spread over three pages. After: one guide for the new game from concept (the team
   approves the picture first) to Tripo model, cleanup to budget in Blender, rig, clips (Tripo's presets, the shared clip library, Blender
   recipes), build, levels of detail, crowd bake, look check and ship, each step with its tool and its check.
-- [ ] **New: the props and world-kit pipeline.** How props and wall, floor and decoration pieces are made: budgets, the same sharpness
-  everywhere (texel density), shared materials so they draw cheaply, collision and walkable-area rules, and lightmap layout for the lighting
-  bake. It feeds the map pipeline in Phase 4.
-- [ ] **New: recipes with their checks:** add an enemy, an item, a rite, a boss, an area, an armor set, a sound, a tip. Haunting Wraith
-  (warbogar's Reaper ability, Discord proposal 565c7c, made on the old game) is built with the rite recipe as its first test.
+- [ ] **New: recipes, with their checks, for what is made today:** an armor set, an item, a sound, a tip, and a rite. Haunting Wraith
+  (warbogar's Reaper ability, Discord proposal 565c7c, made on the old game) is built with the rite recipe as its first test, and the effects
+  standard is written with it (how big and bright an effect may be so a fight stays readable, particle budgets per tier, reusing existing
+  effects first, every new effect warmed at load, and whether the licensed effect pack's 3D scenes can be used now: KNOWN-GAPS "Assets and
+  effects"). The enemy, boss and area recipes come with their first content in Phase 4.
+- [ ] **New: a catalogue of what exists.** Every item, enemy, rite, area, model, animation, sound and effect with its picture and numbers,
+  generated from the one home of each kind into a page the team can browse. The team and every session look there before asking for or
+  making something new (reuse first). It gives: no duplicates and no paying twice for the same asset.
 
 ### D. The server owns every value (finishing B19-B26 and B32)
 
@@ -247,10 +252,8 @@ any automatic check of a new asset. Each standard is one page in one folder of t
 - [ ] **New: a written way to roll one character back** to an earlier save (`character_save_versions`), for when a bug or an exploit
   damages a character.
 
-### E. Engineering standards and health
+### E. Engineering health and docs
 
-- [ ] **New: done means done.** CLAUDE.md says, for each kind of change (code, content, art, server, docs), what must be true before it
-  ships: tests, measurements, screenshots, docs.
 - [ ] **New: an automatic secret scan.** The repository is public and many sessions push to it, but only a scan each session runs by hand
   keeps keys and passwords out. After: every push is scanned before it leaves the server and again in CI, and one with a secret is refused.
 - [ ] **Fix: a document-only push runs every test.** Now: each push to `main` runs all the suites (about 20 minutes), even when only a
@@ -267,47 +270,51 @@ any automatic check of a new asset. Each standard is one page in one folder of t
   tests"), so a red CI does not always mean a real problem. After: every suite passes every time, and red means broken.
 - [ ] **Fix: leftovers from the web game.** Now: parts of the code still copy the old web game's exact math, and an asset list is kept by
   hand. After: plain Godot code and generated lists (KNOWN-GAPS "Leftovers from the web era").
-
-### F. Organization and documentation
-
 - [ ] **Fix: docs too long to read.** Now: `client/README.md` (171 KB) and `native/README.md` (97 KB) are mostly the rebuild's measurement
   history, more than a fresh Claude session can read before it starts working. After: short pages on how each system works now, with the
   history kept in git and DECISIONS.
-- [ ] **New: one map of the docs:** which page holds which rule (the vision, the standards, the pipelines, the recipes, each system), so the
-  Discord agent and every session find the rule before they build.
+- [ ] **New: one map of the docs:** which page holds which rule (the vision, How we work, the three standards pages, the pipelines, the
+  recipes, each system), so the Discord agent and every session find the rule before they build.
 - [ ] **Fix: the repository after `godot/` goes.** Now: leftovers of the two-game setup. After: each top-level folder has one stated
   purpose, nothing is left over, and README.md's layout is true.
-- [ ] **Decide + Fix: where big art files live.** Now: the repository holds about 520 MB of files, mostly art, and every version of every
-  model stays in its history for good, so it grows with each new asset and every session's copy grows with it. After: before the asset
-  rebuild starts, big art files move out of the main history, to Git's large-file storage or to an asset store outside git (Claude brings
-  both with their monthly cost; the automatic tests download the art on every run, which decides it), so the repository stays small and
-  fast.
 
-Done when: the vision, who decides what, the spec template and the playtest routine are agreed; an enemy, an item and a rite can each be
-added by following their recipes and pass the automatic checks and the look check; every standard in track B is written and approved;
-the rules reach every session by themselves; the server owns every value; and the docs a session needs fit in one read.
+Done when: the vision and "How we work" are agreed; three real pieces (Haunting Wraith, War's next armor set and one new item) have gone
+through their recipes and the automatic checks and the look check without trouble; the look, the tech art and the design and writing
+pages are written and approved; the rules reach every session by themselves; the server owns every value; and the docs a session needs
+fit in one read.
 
 ## Phase 3: Ascension, redesigned (the first new feature, B36)
 
-- [ ] **Decide: what Ascension becomes,** designed with Helix through the spec of track A: the Altar, vows and heat, Ashes, Covenant
-  Boons, and the co-op rules (today a guest's Prelate kill counts for the host).
-- [ ] **New: Ascension built on the foundation:** its data in one home, Ashes owned by the server from day one, measured like everything
-  else.
-- [ ] **New: players' saved boons, Ashes and best rank carried into it,** as the design decides (the rules for changing live content).
+Built right after Phase 2, from the one-page plan written during it.
+- [ ] **New: the UI standard, before Ascension's windows:** icon size, style and frame; fonts and text sizes; the rarity and danger
+  colours, never shown by colour alone (for colour-blind players); and how a new window fits the HUD budget (150 draw calls, 0.5 ms).
+- [ ] **New: Ascension built on the foundation:** its data in one home, Ashes owned by the server from day one, played on the test lane
+  first, measured like everything else.
+- [ ] **New: players' saved boons, Ashes and best rank carried into it,** as the plan decides (the rules for changing live content).
 
 ## Phase 4: new content (the look of the world, places, enemies, classes, quests)
 
-Each kind starts by building its toolkit (the reusable parts and its recipe) together with its first piece of content: a toolkit built
-before anyone knows the content is guesswork (CLAUDE.md: no speculative abstraction). Phase 4 starts when Phase 3 is done and so are the
-first four items of the polish list; the order below is a first guess, set with Helix then.
-- [ ] **New: the look of the world** (the asset and effects rebuild; Helix, 2026-10-16: its own plan and pipelines), following the art
-  direction guide. First the map pipeline: areas built as scenes from reusable wall, floor and prop pieces with the lighting bake helper,
-  instead of generated from the web game's map file (`world.json`) as now; then the maps revamped. Its notes: KNOWN-GAPS "Assets and
-  effects".
-- [ ] **New: new places:** new zones (the Hollow Court) made with the map pipeline.
-- [ ] **New: new enemies and bosses.** First the enemy building blocks: each special move (the Censer's aura, the Gargoyle's dive, the
-  Sexton's hook) is today a one-off written for its enemy; they become reusable parts that the data combines. Then new kinds and bosses
-  with summoning keys, from the design rules' roles and boss template.
+Each kind starts by building its toolkit and writing its standard (the reusable parts, the rules and its recipe) together with its first
+piece of content. Phase 4 starts when Phase 3 is done and so are the first four items of the polish list; the order below is a first guess,
+set with Helix then.
+- [ ] **New: the look of the world** (the art rebuild; Helix, 2026-10-16: its own plan and pipelines), following the look page. First:
+  - **Decide + Fix: where big art files live.** Now: the repository holds about 520 MB of files, mostly art, and every version of every
+    model stays in its history for good, so it grows with each new asset and every session's copy grows with it. After: big art files move
+    out of the main history, to Git's large-file storage or to an asset store outside git (Claude brings both with their monthly cost; the
+    automatic tests download the art on every run, which decides it), so the repository stays small and fast.
+  - **New: the props and world-kit pipeline:** how props and wall, floor and decoration pieces are made (budgets, the same sharpness
+    everywhere, shared materials so they draw cheaply, collision and walkable-area rules, lightmap layout), with the team app baking the
+    lighting.
+  - **New: the map pipeline:** areas built as scenes from those pieces with the lighting bake, instead of generated from the web game's map
+    file (`world.json`) as now.
+  Then the maps revamped. Its notes: KNOWN-GAPS "Assets and effects".
+- [ ] **New: new places:** first the area rules and the area recipe (size, fighting space, landmarks, spawn points, safe spots), then new
+  zones (the Hollow Court) made with the map pipeline.
+- [ ] **New: new enemies and bosses.** First the rigging and animation standard (one skeleton per body type, attachment points, scale, the
+  clips every kind of creature must have, attacks marked where they land, Tripo's traps), enemy roles and telegraph rules, the boss
+  template (phases, telegraphs, adds, summoning key, party scaling, rewards), the enemy and boss recipes, and the enemy building blocks
+  (each special move, such as the Censer's aura, the Gargoyle's dive and the Sexton's hook, is today a one-off written for its enemy; they
+  become reusable parts that the data combines). Then new kinds and bosses with summoning keys.
 - [ ] **New: the other five classes** (Grave Warden, Bell Monk, Carrion Witch, Hollow Knight, Veilwalker; their data is in
   `client/data/content/`): first rite building blocks, then one class at a time with its kit (Shrouded suspension, the monk's beat meter,
   Bulwark).
@@ -342,8 +349,8 @@ Worked through beside the phases, top first. Each change is shown to the team wi
   - Players in different areas. Now: only the host's area gets waves; a member fighting in another area meets no new enemies until the
     host's area empties. After: each area a member fights in gets its own waves.
   - The Depths. Now: they are solo only. After: decide whether a party can descend together, and build it if so.
-  - What a guest brings. Now: a guest cannot call an Empowered boss, and a guest's Colossus Mantle effects, Covenant Seal and Nightfall dimming
-    do not reach the host's game. After: a guest's gear and choices work in the party as they do solo.
+  - What a guest brings. Now: a guest cannot call an Empowered boss, and a guest's Colossus Mantle effects, Covenant Seal and Nightfall
+    dimming do not reach the host's game. After: a guest's gear and choices work in the party as they do solo.
   - Late joiners. Now: someone who joins during a boss fight does not see the pools already burning. After: they see the fight as it is.
   - Friends online. Now: friends show as online only once they are in the world, not at character select or in the launcher. After: they
     show as online whenever the game is open.
@@ -365,9 +372,9 @@ Worked through beside the phases, top first. Each change is shown to the team wi
 ## Later
 
 - **Fix: backups never leave this server** (Helix, 2026-10-18: a cloud storage bucket, set up later; B51). Now: the database is backed up
-  every night, but onto the same server, and the raw art sources, the licensed packs and the private effect sheets exist only here, so
-  losing the server would lose all of it. After: every night a copy of everything that is not in git goes to the cloud bucket, and a restore
-  from it is tested.
+  every night, but onto the same server, and the raw art sources, the licensed packs and the private effect sheets exist only here, so losing
+  the server would lose all of it. After: every night a copy of everything that is not in git goes to the cloud bucket, and a restore from
+  it is tested.
 - **New: phones.** The Mobile renderer, touch controls built with the HUD, phones join as guests. The game stays ready for them (B40:
   phone texture formats, shaders that run on Mobile, a scalable HUD) and Phase 2's quality tiers set their budgets.
 - **New: 1.0, the first public release** (B52). The repository goes private and the game's files are encrypted in the build; accounts
@@ -384,12 +391,14 @@ Worked through beside the phases, top first. Each change is shown to the team wi
   tell us when something stops.
 - **Every line is written by Claude:** when usage runs out or the service is down, all building pauses. The docs, recipes and checks
   (Phase 2) make any fresh session able to continue; nothing depends on one session's memory.
-- **The code is public until 1.0:** cheaters can read how the server checks them. The server owns every value (Phase 2, track D), and the
-  code goes private for 1.0 (B52).
+- **The code is public until 1.0:** cheaters can read how the server checks them. The server owns every value (Phase 2, track D), and the code
+  goes private for 1.0 (B52).
 - **Licences:** the ElevenLabs plan in use excludes monetized games, and every asset's licence matters once the game is offered to the
   public. The vision decides about money (Phase 2, track A); 1.0 checks every licence.
 - **The undo window ends on 2026-11-01:** after that the old build cannot come back, so the new game's crash reports and play reports
   (Phase 1) are how we learn about problems.
+- **A long foundation:** players see little new while it is built. Something players notice ships every week or two (Always on), Phase 2
+  holds only the core, and Ascension follows it directly.
 
 ## Ideas
 
@@ -398,6 +407,12 @@ until the team says yes, because every unchecked item in a phase or the polish l
 phase is planned, its ideas move into its checklist as Fix or New items (or straight away, when Helix says so). Bugs and gaps go to
 KNOWN-GAPS.md instead.
 - A hint for a party guest standing in a boss's rot (a guest's core lists no zones today). Section: polish list, co-op gaps. 2026-10-17.
+- A results card when a session ends: what you reached, kills, gold, time, and your personal best (Gravecrawl's lesson 3,
+  `docs/GRAVECRAWL.md`). Section: polish list. 2026-10-18.
+- A one-click invite link: copy it, a friend clicks it, the game opens and joins the party (Gravecrawl's lesson 9). Section: polish list,
+  co-op gaps. 2026-10-18.
+- A check that a new player's first fight starts within seconds of entering the world (Gravecrawl's lesson 2). Section: polish list, the
+  first hour. 2026-10-18.
 
 ## Done
 

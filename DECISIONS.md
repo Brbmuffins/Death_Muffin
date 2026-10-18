@@ -236,7 +236,8 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   them there; small fixes and everyday requests still go straight to main and live (B14). A test build reaches only the test server and
   the live build only the live one.
 - **B54. The team PC helper, for the team's accounts only** (Helix, 2026-10-18: "Lets move forward with it but only allow War, muffins and
-  helix accounts access to the feature on the launcher"; Helix holds the owner's authority for the project). The launcher gets a helper
+  helix accounts access to the feature on the launcher"; Helix holds the owner's authority for the project). It lives in its own team app,
+  not the launcher (B55). A helper
   that runs jobs needing a real graphics card on team PCs: screenshots of proposals, benchmarks, the stutter test, a release crash check and
   lighting bakes (ROADMAP Phase 1). Only the accounts of brbmuffins, Helix and warbogar can use it: they sign in to it in the launcher and
   the server's job routes accept only those accounts (a list on the server), so hiding the option is not the protection. It asks before a
@@ -244,6 +245,22 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   a laptop is on battery; it runs only builds and kits the server made, plays offline in its own folder, and uploads only results. Keys,
   passwords and anything that changes the live game stay on the server. A launcher release reaches every player, so it ships after tests
   and Helix's final OK.
+- **B55. The team PC helper is its own team app** (2026-10-18, Claude's call, Helix agreed: "yes make all those changes"). Not inside the
+  players' launcher: a launcher bug reaches every player and launchers only update forward (a broken updater means reinstalling by hand),
+  while a small separate app with the launcher's look and its own updates is installed only on the three team PCs, can be fixed in minutes
+  and puts no team-only code in front of players. B54's rules hold for it. It starts with screenshots; benchmarks, the stutter test, the
+  release crash check and lighting bakes are added each when needed.
+- **B56. A slimmer foundation, standards when their content arrives** (2026-10-18, Claude's review of the roadmap, Helix agreed). The
+  roadmap had close to 50 setup items before players saw much new; small projects stall in that gap. Phase 2 holds only the core: the game
+  vision, one "How we work" page (who decides, lanes and in-progress marks, one-page plans, playtests, done means done, the team guide), the
+  look, one budget table with the quality tiers, the balance sheet and the rules for changing live content, the writing rules and lore,
+  content data in one place with automatic checks, recipes for what is made today, the rules reaching every session, the server owning
+  every value, and engineering health; it is done when three real pieces of content went through it cleanly. Every other standard is
+  written with its first content (effects with Haunting Wraith, UI before Ascension's windows, rigging, animation, enemy, boss and area rules
+  with the first new creature, boss and place, the world-kit pipeline and art storage with the art rebuild), in three standards pages
+  instead of eleven. Phase 1 is ordered around 2026-11-01 (what depends on the old game's folder comes first). Ascension's plan is written
+  during Phase 2 so it is built right after. Something players notice ships every week or two, and the play reports also say how often and
+  how long people play and where they stop.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking
