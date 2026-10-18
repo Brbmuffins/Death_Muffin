@@ -221,6 +221,9 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   lighter Standard fight), co-op on two real PCs (Helix and warbogar, 2026-10-18). The old HUD was about 550 of the old game's 800 draw calls;
   the new one 117 to 120 and 0.07 ms on Helix's PC. Open at launch: a weaker PC's benchmark (ROADMAP Phase 1, play reports) and Gate D, the
   look pass (ROADMAP polish list).
+- **B51. Off-site backups: a cloud storage bucket, later** (Helix, 2026-10-18: "we will eventually use a cloud storage bucket but it will be
+  later"). Until it exists the nightly database dumps stay on the VPS with the art sources and private files (KNOWN-GAPS "Operations"); the
+  item is under ROADMAP "Later".
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

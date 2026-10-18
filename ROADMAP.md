@@ -12,15 +12,16 @@ Every item says what kind it is:
 
 ## At a glance
 
-- **Phase 1, settle the launch** (now until 2026-11-01): everything the old game had, one game instead of two, alerts and off-site
-  backups, and play reports that show how the game runs on players' PCs.
+- **Phase 1, settle the launch** (now until 2026-11-01): everything the old game had, one game instead of two, alerts when a
+  server stops, and play reports that show how the game runs on players' PCs.
 - **Phase 2, foundation:** the system that makes every Claude session and the Discord agent build the same way: the game's direction
   and how ideas become features, the content standards, the pipelines and automatic checks, the server owning every value, healthy code
   and short docs.
 - **Phase 3, Ascension redesigned:** the first new feature, built on the foundation.
 - **Phase 4, new content:** the look of the world, new places, enemies and bosses, the other five classes, quests and endgame, each with
   its toolkit built first.
-- **Beside them all:** bugs first, the team's requests, and the polish list. **Later:** phones, and going public if the team decides to.
+- **Beside them all:** bugs first, the team's requests, and the polish list. **Later:** off-site backups, phones, and going public if the
+  team decides to.
 
 ## Where we are (2026-10-18)
 
@@ -40,9 +41,6 @@ Every item says what kind it is:
 2. **Decide: a test lane for big changes.** Keep the launcher's Test build switch and the test server for big changes such as Ascension,
    while small fixes still go straight to live? Claude recommends yes: the test build caught the Reaper's first-cast stutters before players
    met them (B38 made it a one-off for the rebuild). Holds up: nothing before Phase 3.
-3. **Decide: where the off-site backups go.** A cloud storage bucket (a few dollars a month) or a team member's PC that is always on.
-   Claude recommends the cloud bucket: it is always reachable and a restore can be tested from the server. Holds up: the backup item in
-   Phase 1.
 
 ## Always on
 
@@ -67,9 +65,6 @@ players' PCs.
 - [ ] **Fix: nobody is told when the game's servers stop.** Now: only the database is watched; if the game's server, the lobby or the
   co-op relay stops, nobody knows until players notice. After: each one is watched every minute, and a failure posts to #build-alerts
   (KNOWN-GAPS "Operations").
-- [ ] **Fix: backups never leave this server.** Now: the database is backed up every night, but onto the same server, and the raw art
-  sources, the licensed packs and the private effect sheets exist only here, so losing the server would lose all of it. After: every night
-  a copy of everything that is not in git goes off-site (Waiting on Helix 3), and a restore from it is tested.
 - [ ] **New: play reports.** When a play session ends, the game sends a small summary: average and worst frame times, the graphics preset,
   the graphics card, and time and deaths per area (nothing personal). A page on the site shows them per release, beside the server's own
   numbers (XP and gold per hour, drops). It gives: how the game really runs on every player's PC, weak ones included (no GTX 970-class PC
@@ -85,8 +80,7 @@ players' PCs.
   read it. After: `godot/` is deleted, the new game owns its files, every tool and test reads the new game, the Discord agent edits the new
   game directly, `server/death-muffin/launch-undo.sh` goes, and README.md and CLAUDE.md describe one game.
 
-Done when: `godot/` is gone, every check and screenshot is of the live game, the servers are watched and backed up off-site, and a week of
-play reports is in.
+Done when: `godot/` is gone, every check and screenshot is of the live game, the servers are watched, and a week of play reports is in.
 
 ## Phase 2: foundation
 
@@ -302,6 +296,10 @@ Worked through beside the phases, top first. Each change is shown to the team wi
 
 ## Later
 
+- **Fix: backups never leave this server** (Helix, 2026-10-18: a cloud storage bucket, set up later; B51). Now: the database is backed up
+  every night, but onto the same server, and the raw art sources, the licensed packs and the private effect sheets exist only here, so losing
+  the server would lose all of it. After: every night a copy of everything that is not in git goes to the cloud bucket, and a restore from
+  it is tested.
 - **New: phones.** The Mobile renderer, touch controls built with the HUD, phones join as guests. The game stays ready for them (B40:
   phone texture formats, shaders that run on Mobile, a scalable HUD) and Phase 2's quality tiers set their budgets.
 - **New: going public, only if the vision says so.** Accounts with an email address and password recovery (none exist today), reporting
