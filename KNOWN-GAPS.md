@@ -27,6 +27,15 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
   draw call each (the Graves: 23); a crowd body outside the view that casts a shadow is drawn in the main pass too (a shadows-only MultiMesh
   would send it to the shadow map alone; worth it only if Helix's PC shows a cost).
 
+## Operations
+
+- **The game's services are not watched.** Uptime Kuma watches only the database's port (monitor 7, MySQL); `death-muffin-auth` (:5190),
+  `deathmuffin-lobby` (:5192) and `deathmuffin-relay` (udp 5193) have no monitor, so a stopped service raises no alert (the nightly drift
+  report lists services once a day). ROADMAP Phase 1.
+- **Backups stay on this server.** `server/death-muffin/ops/backup-db.sh` writes the nightly dumps to `~/death-muffin/backups/db/` on the
+  same VPS; the raw art sources (`art-src/`, gitignored), the private effect sheets and keys (`~/death-muffin/private/`), the licensed packs
+  and the services' `.env` files exist only here. ROADMAP Phase 1 (where the copies go: Waiting on Helix 3).
+
 ## Server authority
 
 Live runs `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce` since 2026-10-15 (DECISIONS B32): XP and gold beyond what the kill ledger

@@ -208,7 +208,10 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   fixed or something that needs to be added"): every ROADMAP item says whether it is a Fix (what happens now, what it will be after), New
   (what it gives) or Decide (the question and Claude's recommendation), and Phase 2 starts with the content standards (the art direction,
   one budget table per asset type and quality tier, rigging, animation, effects, audio, UI, writing and lore, the design rules, the look
-  check), because new content stays cohesive and runs on every PC only if those rules exist before it.
+  check), because new content stays cohesive and runs on every PC only if those rules exist before it. Asked whether that is everything
+  needed for every session to build the team's ideas consistently, the roadmap gained the layer above the standards (the game vision, who
+  decides what, a one-page spec for every feature, a playtest routine), the rules reaching every session by themselves (CLAUDE.md, recipes
+  as Claude Code skills), a catalogue of what exists, rules for changing live content, and Phase 1's alerts and off-site backups.
   The rebuild's record, which the ROADMAP held as checklists (git keeps them): Gate A (the old game on Forward+ runs on Helix's PC) passed
   2026-10-16. Gate B, the engine checkpoint: the Full Party fight in the Hollow Graves at 3.1 times the old game's speed on Helix's PC
   (RTX 4070 SUPER, 1440p Ultra: 77 to 242 fps, p95 18.1 to 5.1 ms) and 4.6 times in the VPS processor test (14.9 to 3.2 ms a frame), the rule
