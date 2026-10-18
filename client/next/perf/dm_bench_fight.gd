@@ -53,6 +53,7 @@ static func boot(parent: Node, disc: int, opts: Dictionary = {}, area: String = 
 ## The director set up the way the benchmark holds a fight: waves close to the hero (a small room), the cap at `enemies`, the body limit raised so
 ## corpses don't stall spawning, every enemy on the standard health, the hero holding its ground (auto combat casts without walking). Switches the waves on.
 static func arm(g: DmNextGame, enemies: int, seed_: int) -> void:
+	g.director.surge = null   # no Grave Surge: it would add bodies to the counts the fight holds (a full run is about 90 s, the first surge opens at 100 s of hero time)
 	g.director.enabled = true
 	g.director.rng.seed = seed_
 	g.director.spawn_min = DmBenchmark.SPAWN_MIN_M

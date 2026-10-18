@@ -6,8 +6,6 @@ nothing depends on it, B57).
 
 ## Missing since launch day
 
-- **Grave Surges are not in the rebuilt game.** `client/next/spawn/dm_wave_director.gd` never starts one: `godot/next/areas/dm_grave_surge.gd`
-  was left out of the rebuild (it drives the old game's enemies), so there is no surge, surge reward or surge tip (ROADMAP Phase 1).
 - Ascension (the Altar, vows and heat, Ashes, Covenant Boons) left on purpose (B36; ROADMAP Phase 3).
 
 ## Performance
@@ -109,6 +107,8 @@ polish list). Also:
 - Suspected, read from the code, not seen: after a baseline a guest's thralls may fall back to the plain look and the strong rim until the
   heroes are adopted again (`DmCrowd.clear` forgets `owner_legion` and `owner_ally`).
 - A guest's core lists no zones (`DmCore.zones`): its zones arrive as events for its effects. Nothing reads them on a guest today.
+- A guest sees a Grave Surge only as the bodies that climb out of the crypt (the core's snapshot) and, once the host quells it, its offering: the
+  banner, the cracked crypt, the sounds and the tip are the host's window only (`DmAreaFlow` listens to the host's director); the old game was the same.
 
 ## Gathering
 

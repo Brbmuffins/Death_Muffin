@@ -121,6 +121,7 @@ func _run() -> void:
 	g.kill_credited.disconnect(g.rewards._on_kill_credited)   # no kill reaches the rewards: no XP, no Soul Harvest, no Kill Chain, no loot (as today's side)
 	g.input.auto.gate_probe = func() -> bool: return true
 	g.director.off["censer"] = true                           # no censer for the Bellringers' procession (today's side leaves it out: its scene is dropped), so both sides play the same rules
+	g.director.surge = null                                   # no Grave Surges (today's side plays without them too): the scenario's 180 s hold one, which would be a different fight
 	g.director.difficulty = difficulty
 	g.director.rng.seed = seed_n
 	_place_area()

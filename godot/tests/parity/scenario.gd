@@ -123,7 +123,7 @@ func _run() -> void:
 		await process_frame
 	# the scenario's rules
 	g.enemy_spawned.disconnect(g.rewards.watch_enemy)   # no kill reaches the rewards: no XP, no Soul Harvest, no Kill Chain, no loot
-	g.director.surge = null                             # no Grave Surges (the client has none)
+	g.director.surge = null                             # no Grave Surges (the rebuilt client's scenario plays without them too)
 	g.director._scene_cache["censer"] = null            # no censer for the Bellringers' procession (the client's core does not run it)
 	g.input.set_physics_process(false)                  # the tool ticks Easy auto combat on the physics clock (below)
 	auto = DmNextAutoCombat.new()                       # fresh: the input's own ticks ran it on the wall clock while the game started

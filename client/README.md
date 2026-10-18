@@ -49,6 +49,7 @@ node tools/rebuild/compare-scenarios.mjs                                        
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/panels.gd # today's panels on the core: every panel opens, the Reliquary (equip, sell, sort) on the server's bag, the loadout, Settings live, chat
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/gathering.gd # gathering and the Acre: all 68 nodes hovered and clicked, a node worked through the server (cycles, batches, finds, XP, spent and back), the stops, AFK and its report, the Grave Laborers, a collection, the garden, a contract, the Sexton ("Gathering and the Acre"; about 25 s)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/world.gd  # the whole world: every area, seals and gates, into the Warren, waystones, the recall, the core's navmesh against the server's, the Ossuary's deacon and golem, the Nave's five, the Sanctum's, Coliseum's and Cloister's rosters (the seraph's ward, the plague doctor's flask, a frenzied flagellant) and the Pyre's and the Fen's eight in the game scene, the waves following the hero from area to area
+/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/surge.gd  # Grave Surges on the core: the clock, the crypt, three waves, the deaths by id, the offering and the failures, by hand and through the director ("Grave Surges"; about 25 s)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/counsel.gd # the counsel and the first hour on the core: the fight facts read two ways, every fact the creatures give the counsel once, the tips each makes once, the state-driven tips, the welcome and the Next-step box, the Prior, Show tips again ("Tips and onboarding"; about 30 s with --fixed-fps 60, 2 minutes without)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/sound.gd   # sound on the core's events: a scripted fight's cues against today's rules, by name and count, thralls, the hero's footsteps, the area beds and scores, the gate, the boss score ("Sound"; about 30 s)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/depths.gd # the Catacomb Depths on the core: the rules, the Warren's stair, floors baked at run time and the core's copy of each, the dead on a floor, the quota, the chest, leaving, death, 14 floors (bakes into a scratch folder; about 40 s)
@@ -93,7 +94,7 @@ uids keep working:
   replace them (native/README.md "Design").
 - **Seams** (55 files at the start): a file outside those systems that names one of their classes or scenes: the rites, the bosses, the HUD's enemy reads, auto combat input, the benchmark
   fight. Each line names what it uses. A seam is ported to the core in its own step, and `--port` then moves it from the list into `code.lock.json`.
-  Ported already: the game scene, the director, the hero body and look, the input, the enemy fx, the avatar and the event fx; the Gravecaller's rites (the caster, the module base, the legends, the
+  Ported already: the game scene, the director and its Grave Surges ("Grave Surges"), the hero body and look, the input, the enemy fx, the avatar and the event fx; the Gravecaller's rites (the caster, the module base, the legends, the
   registry, 24 of the necromancer's 25 rites, the rite fx, the combat input; "The Gravecaller's rites"); the boss host, body, world, fx and view ("The bosses"); Easy auto combat, the benchmark
   with its screen, setup window and warm-up, and the boot's `--benchmark` and Benchmark button ("The benchmark"); the co-op pieces (`next/next_net.gd`, `next/party/dm_next_party.gd` and the session's hello;
   "Co-op on the core"); value on the server (the rewards node, the meta node, the progress node, the wave milestones and the joiner; "Value on the server"); the HUD's adapter and
@@ -148,7 +149,7 @@ wind-up), deaths, voices, dust clouds and burning ground and the affixes' bell, 
 
 Co-op and the Social window are in ("Co-op on the core"), value on the server ("Value on the server"), today's HUD and panels ("The HUD on the core"), the Reaper ("The Gravecaller's rites") and
 gathering with the Acre ("Gathering and the Acre").
-The Depths are in ("The Depths"). Grave Surges are not in yet (KNOWN-GAPS "Missing since launch day"); the graphics governor is ("Graphics presets"). The waves follow the heroes from area to area as today's: the director moves to
+The Depths are in ("The Depths"), Grave Surges ("Grave Surges") and the graphics governor ("Graphics presets"). The waves follow the heroes from area to area as today's: the director moves to
 the combat area a hero stands in, and the ground left behind is cleared at once (its living bodies sent away through the core, no death or corpse), as is one nobody has stood in
 for 15 s. Easy auto combat is in and opens from Settings as today. `tests/world.gd` plays the whole world: seals, gates, walking from the Chapterhouse into the Warren, waystones,
 the recall, the waves following the hero. `native/README.md` "Differences from today's game" lists what behaves differently from today.
@@ -173,6 +174,35 @@ godot --path client -- --dev-offline --class=2 --qa --shot-plan=/abs/plan.json -
   run is repeated on OpenGL 3 and a line says the pictures use the fallback renderer (not the game's look). It needs `client/setup.sh` once per checkout (the baked crowd only for a plan with enemies). Two shots took 4 min 43 s on
   2026-10-18, most of it the world's start. `DM_QA_LOG=<file>` keeps godot's log; `--help` lists the rest.
 - **Test:** `tests/qa_shots.gd` (headless, about 30 s): the plan, a plan's set-up on the game scene, the scripted fight, a real headless launch, and the script against a stand-in for godot (the fallback, the lock, the time limit).
+
+## Grave Surges
+
+A Grave Surge is an event of the wave director (`director.surge`, `next/areas/dm_grave_surge.gd`), host only: a crypt cracks open in the hero's combat area, three waves climb out, and
+quelling most of them pays an offering. It is today's file with the same rules and numbers (`SURGE` in `data/content/enemies.json`), working on the core's ids where today's held enemy nodes.
+- **The clock** (`surge_in`) runs only while a living hero stands in the director's combat area (not a hub or the Depths) and no boss is awake and hittable: the first surge opens after 100 s of that
+  time, the next 90 to 150 s after one ends (0.6 x that from Wave Speed tier 6, Restless Crypts). It keeps its value while no hero is in a combat area. The director calls `update(dt, heroes)` at the end of
+  every physics tick and `reset()` when no hero is in the area or when it follows the heroes to another one, which fails an open surge. Idle it costs a few comparisons a tick (the area's flags are
+  worked out when the director moves, the bosses' list is read only while one stands, the crypts are decoded when the director is made).
+- **Opening:** one of the area's crypts (`DmDb.sim_world()["crypts"]`: the Graves, the Ossuary, the Nave and the Warren have them) 9 to 30 m from EVERY hero, else a wave's spawn point.
+  `surge_event` `surge`; `DmAreaFlow` draws it: the cracked crypt, the banner, the sound, the shake and the counsel's Surge tip (`surge_opened`).
+- **Three waves** at 1.5, 7.5 and 13.5 s, each 1.2 x the area's wave size (times the Wave Speed tier's size), at most up to the global cap of 72 bodies (the dying and the queued count). A wave climbs out over a few ticks like an
+  ordinary wave: it is queued through the director (`begin_surge_wave`, then `spawn_group`: 0.5 to 2.9 m around the crypt on the navmesh, rising, with the area's roster, elites and affixes as a wave's) and made `SPAWNS_PER_TICK` (3) bodies a tick,
+  the surge's own update makes none. Each queued body carries the surge's serial (bumped by every `start`) and the director hands the surge its core id when it is made (`_make_next`, the one step of the tick's drain and of `flush_spawns`):
+  the surge keeps it only while it is the open one, so a surge that ends with a wave still queued, and the surge after it, are not credited with those bodies. `spawned` counts a wave when it is decided, so the 80 % rule is the old one.
+  The director hears every `DmCoreHost.enemy_died` and passes the id on (`DmWaveDirector._on_enemy_died`), so nothing runs per body in GDScript. A body that leaves alive (its area was left) never dies and counts for nothing, and
+  `clear_area` drops the area's queued bodies too: a surge left open without them fails when its 20 s are up (the director fails it at once when it clears the area).
+- **Quelled** when 80 % of what came is dead, once the third wave is out: `surgeCleared`, and `DmAreaFlow` calls `rewards.on_surge_cleared`, which gives every living member within 38 m of the crypt an item from its
+  drop tape (the "surge" kind, "Value on the server") and bonus gold on the ground at the crypt. **Failed** after 20 s, or when no hero is left in the area (dead, gone to a hub, the Depths or another combat area):
+  `surgeFailed`, the crypt seals and nothing is paid.
+- **In a party** the host's director runs it and the host pays every member in range (a guest's drops reach it as a kill's do: "Value on the server"). A guest sees the bodies climb out (the core's snapshot) and,
+  when the host quells it, its offering; the banner, the cracked crypt, the sounds and the tip are the host's window only (the old game was the same: KNOWN-GAPS "Party and online").
+- The parity scenario and the benchmark's fight set `director.surge = null`: the scenario's 180 s hold one, and the benchmark holds fixed counts.
+
+`tests/surge.gd` plays it in the whole world on the local mock (about 25 s with `--fixed-fps 60`): the rules by hand (no surge in a hub, an instance, with no hero or while the real Gravedigger King stands;
+the first after 100 s, not before; a crypt 9 to 30 m from every one of two heroes, one 3 m from a crypt never getting it, a spawn point when none is fair; three waves at 1.5 / 7.5 / 13.5 s of 11, queued by the update and made three a tick, the Wave Speed tier's size and the
+global cap; a death that is not the surge's is not counted; 80 % quells it with gold and a surge item at the crypt; 20 s fails it with nothing paid; the hero leaving, and the director following him to the Ossuary, fail it;
+Restless Crypts; a surge that ends with a wave still queued, and the next surge, not credited with it; the Graves cleared under an open surge), then the whole chain through the director's own ticks (the clock, the surge, the waves three
+bodies a tick, the core's deaths, the offering). It prints INFO lines: what a wave costs per tick (the surge's update, each tick that makes 3 bodies against an idle tick, the spawn events those ticks dispatch).
 
 ## The Gravecaller's rites
 
@@ -650,7 +680,7 @@ The welcome tip is a tip of the Acre (`HERE` in the tips data), so a new hero me
 Prior's greeting and advice (`DmCovenantDialogue` over the same `guidance_state`), the HUD's progressive reveal, the NEW cues, Settings' "Show tips again" and "Don't show tips" (kept with the account) are
 `DmGameUi`'s and run as in today's game; a party joiner whose kills the backend will not credit is told at the end of `start`. Not today's: the poll says `altar: false` (`DmCounselEvents.tick_calls`, ported),
 because the build has no Altar of Ascension (B36), which holds back the vows, altar_unlocks and boons tips; `can_ascend` (the Prelate's fall, the bosses item) must stay unraised too. Off until their items: the
-Depths' tips (`depths_*`), the Grave Surge tip, gathering's and the Acre's (`gather_started`, `skill_up`, `bag_full`, `laborers_seen`) and the other bosses'; `omen_told`, `set_bonus_gained`,
+Depths' tips (`depths_*`), gathering's and the Acre's (`gather_started`, `skill_up`, `bag_full`, `laborers_seen`) and the other bosses'; `omen_told`, `set_bonus_gained`,
 `necro_weapon_changed`, `loadout_check` and `depths_solo / floor / affix` are not raised by today's game either (godot/ui/onboarding/README.md).
 
 `tests/counsel.gd` plays it on the whole world as a new Gravecaller: the poll against a brute-force reading of the core's tables (24 seeded placements, and the edges by hand: bodies whose edges are within 9 m and

@@ -11,7 +11,7 @@ extends Node
 signal wave_spawned(count: int)         ## host only
 signal procession(theme: Dictionary)    ## host: a themed wave (DmSimData.WAVE_THEMES) was spawned
 signal area_followed(id: String)        ## host: the director moved to the combat area the heroes are in
-signal surge_event(ev: Dictionary)      ## host: {t: surge | surgeCleared | surgeFailed, area, x, z, ...} (Grave Surges are not ported yet: never emitted)
+signal surge_event(ev: Dictionary)      ## host: {t: surge | surgeCleared | surgeFailed, area, x, z, ...} (DmGraveSurge)
 
 ## The defs the core's enemy brain runs (today: "has a scene at res://enemies/<id>.tscn"): the Hollow Graves' roster, the rat of the kennel
 ## procession and the risen, the Ossuary's golem and deacon (so the whole Ossuary roster), the Drowned Nave's censer, acolyte, gargoyle, templar and wraith
@@ -27,7 +27,11 @@ const SPAWN_MAX := 30.0                 ## farthest spawn distance (m)
 const SPAWNS_PER_TICK := 3              ## wave bodies made per physics tick: a 12-body wave takes 4 ticks
 
 var game: Node                          ## DmNextGame
-var core_host: DmCoreHost
+var core_host: DmCoreHost:
+	set(host):
+		core_host = host
+		if host != null and not host.enemy_died.is_connected(_on_enemy_died):
+			host.enemy_died.connect(_on_enemy_died)   # every death, by core id, for the open Grave Surge
 var area_id: String = "graves"
 var enabled: bool = true
 var wave_interval: float = 6.5
@@ -51,18 +55,20 @@ var _wave_t: float = 0.0
 var _empty_t: float = 0.0
 var _base := [6.5, 9, 28]               ## the area's own interval / size / cap, before the tier
 var follow_areas := true                ## host: when no hero is in `area_id`, move to the combat area one is in (DmNextGame: every area has a roster)
-var surge = null                        ## Grave Surges (next/areas/dm_grave_surge.gd) are not ported yet
+var surge: DmGraveSurge                 ## Grave Surges (next/areas/dm_grave_surge.gd), host; its clock runs from `_physics_process` while a hero is in a combat area
 var off: Dictionary = {}                ## defs the director leaves out as if the core did not run them (def id -> true): the parity scenario drops the Bellringers' censer, as today's side does
 var _first_wave := true                 ## the first wave of a visit is 1.3 x the area's wave size (the sim's spawn_wave first)
 var _wave_n: int = 0                    ## waves since arrival (processions start at PROCESSION.minWave)
 var _vanguard := false                  ## this wave carries the Elite Vanguard (every other wave): its first plain pick is an elite
-var _pending: Array[Dictionary] = []    ## host: wave spawns decided (kind, position, scaling) but not yet made, drained SPAWNS_PER_TICK per tick
-var _staging := false                   ## spawn_wave is queueing its bodies
+var _pending: Array[Dictionary] = []    ## host: wave spawns decided (kind, position, scaling) but not yet made, drained SPAWNS_PER_TICK per tick (a Grave Surge's carry its serial in "surge")
+var _staging := false                   ## spawn_wave (or a Grave Surge's wave) is queueing its bodies
+var _surge_serial := 0                  ## a Grave Surge is queueing its wave: the serial each queued body carries, so `_make_next` can hand the surge the body's core id (0 = an ordinary wave's)
 var _since_arrival: float = 0.0         ## s a hero has been in the area (Wave Speed ramps in over DmEnemyStats.RAMP_S, like the sim's ramp_tier)
 
 
 func _ready() -> void:
 	rng.randomize()
+	surge = DmGraveSurge.new(self)
 	configure_area(area_id)
 
 
@@ -126,13 +132,33 @@ func pending_count() -> int:
 ## Make every queued wave body now (tests and scripted setups that read the core right after `spawn_wave`).
 func flush_spawns() -> void:
 	while not _pending.is_empty():
-		_make(_pending.pop_front())
+		_make_next()
+
+
+## The next queued body is made in the core. A Grave Surge's carries the surge's serial: the surge is handed its core id and keeps it only while that surge is the open one.
+func _make_next() -> void:
+	var data: Dictionary = _pending.pop_front()
+	var id := _make(data)
+	if surge != null and data.has("surge"):
+		surge.adopt(id, int(data["surge"]))
+
+
+## A Grave Surge's wave goes through the same queue as an ordinary wave's, SPAWNS_PER_TICK bodies a tick; every body queued between `begin_surge_wave` and `end_surge_wave`
+## carries the surge's `serial` (DmGraveSurge._spawn_wave).
+func begin_surge_wave(serial: int) -> void:
+	_staging = true
+	_surge_serial = serial
+
+
+func end_surge_wave() -> void:
+	_staging = false
+	_surge_serial = 0
 
 
 func _physics_process(delta: float) -> void:
 	if not _pending.is_empty():
 		for _i in mini(SPAWNS_PER_TICK, _pending.size()):
-			_make(_pending.pop_front())
+			_make_next()
 	if not enabled or game == null or not multiplayer.is_server() or not game.session.is_active():
 		return
 	var heroes := _heroes_in_area()
@@ -140,6 +166,8 @@ func _physics_process(delta: float) -> void:
 		var other := _combat_area_with_hero()
 		if other != "" and other != area_id:
 			clear_area(area_id)   # the old ground's queued spawns; a Depths run's dead are the Depths'
+			if surge != null:
+				surge.reset()
 			configure_area(other)
 			area_followed.emit(other)
 			heroes = _heroes_in_area()
@@ -151,6 +179,8 @@ func _physics_process(delta: float) -> void:
 		_empty_t += delta
 		if _empty_t > EMPTY_CLEAR_S and _empty_t - delta <= EMPTY_CLEAR_S:   # once, as the time runs out
 			clear_area(area_id)
+		if surge != null:
+			surge.reset()
 		return
 	_empty_t = 0.0
 	_since_arrival += delta
@@ -172,6 +202,14 @@ func _physics_process(delta: float) -> void:
 				if made > 0:
 					procession.emit(th)
 			_vanguard = false
+	if surge != null:
+		surge.update(delta, heroes)
+
+
+## Every body of the core that died, by its id: a Grave Surge counts the ones it brought up (connected when `core_host` is set).
+func _on_enemy_died(id: int, _def: String, _level: int, _elite: bool, _area: String, _source: int, _x: float, _z: float) -> void:
+	if surge != null:
+		surge.on_enemy_died(id)
 
 
 ## A combat (non-instance, non-safe) area a living hero stands in, "" if none.
@@ -286,7 +324,7 @@ func scaling_levels(heroes: Array) -> Array:
 	return levels
 
 
-## Host: make one enemy in the core and return its id (0 while it is queued by `spawn_wave`, whose bodies are made over the next ticks). `heroes` only
+## Host: make one enemy in the core and return its id (0 while it is queued by `spawn_wave` or a Grave Surge's wave, whose bodies are made over the next ticks). `heroes` only
 ## feeds the level / party scaling. `mult` overrides the computed scaling ({level, hp, dmg}: the hp / damage multipliers; a Risen raised by a
 ## deacon or unbound by an acolyte is made by the core itself, with its raiser's level and multipliers). `over` (optional): area (the ground
 ## the enemy counts as for level scaling; a boss's adds belong to the boss's area), depth (the Depths run: its level, and full Wave Speed ramp like the
@@ -314,7 +352,9 @@ func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false
 			* float(diff["enemyHpMult"]) * float(vow_fx.get("enemyHpMult", 1.0)),
 		"dmg": float(mult["dmg"]) if mult.has("dmg") else DmEnemyStats.damage_scale(level) * float(tier["enemyDamageMult"]) * float(diff["enemyDamageMult"])}
 	if _staging:
-		_pending.append(data)   # a wave's bodies are made over the next few ticks (spawn_wave)
+		if _surge_serial != 0:
+			data["surge"] = _surge_serial
+		_pending.append(data)   # a wave's bodies are made over the next few ticks (spawn_wave, a Grave Surge's wave)
 		return 0
 	return _make(data)
 

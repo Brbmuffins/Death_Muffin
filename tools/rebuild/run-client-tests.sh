@@ -21,8 +21,8 @@ done
 # Every suite, in the order the core comes first. PACED suites play game time faster than real time (`--fixed-fps 60`); the rest run in real time.
 SUITES="core_smoke core_api core_enemies core_status core_corpses core_thralls core_affixes core_coop code_load areas crowd_bake crowd_view game_scene rites boss hud front coop
 benchmark social presets rewards value fx_motes panels world core_kinds gathering counsel sound depths auto_combat draw_budget dressing fx_decals threads coop_bosses core_boss crash_note qa_shots
-boss_abbess boss_congregation boss_prelate boss_saint boss_regent boss_mire boss_meta"
-PACED=" front hud coop value panels world gathering counsel sound depths boss_abbess boss_congregation boss_prelate boss_saint boss_regent boss_mire boss_meta dressing coop_bosses qa_shots "
+boss_abbess boss_congregation boss_prelate boss_saint boss_regent boss_mire boss_meta surge"
+PACED=" front hud coop value panels world gathering counsel sound depths boss_abbess boss_congregation boss_prelate boss_saint boss_regent boss_mire boss_meta dressing coop_bosses qa_shots surge "
 [ -z "$ONLY" ] || SUITES="${ONLY//,/ }"
 for s in $SUITES; do [ -f "client/tests/$s.gd" ] || { echo "no suite client/tests/$s.gd" >&2; exit 2; }; done
 LOG="${KEEP_LOGS:-$(mktemp -d)}"

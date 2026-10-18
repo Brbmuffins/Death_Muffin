@@ -63,9 +63,8 @@ the end of the undo window; B57).
   lobby, the co-op relay and the game download are checked every minute; a failure that lasts two minutes posts to #build-alerts, a
   reminder follows every hour while it lasts, and the recovery is posted too (`server/death-muffin/ops/health-watch.mjs`; ops README
   "Health watch").
-- [ ] **Fix: Grave Surges are missing.** Now: since launch day no Grave Surge ever starts (they were left out of the rebuild). After: as in
-  the old game, after about 100 seconds in a combat area a crypt bursts open nearby, three waves climb out, and clearing them pays the surge
-  reward; the surge tip shows again. (Port `godot/next/areas/dm_grave_surge.gd` onto the combat core.)
+- [x] **Fix: Grave Surges are missing.** Done 2026-10-18: after about 100 seconds in a combat area a crypt bursts open nearby, three waves climb
+  out, and clearing them in time pays the surge reward; the surge tip shows again (`client/next/areas/dm_grave_surge.gd`; client README "Grave Surges").
 - [x] **Fix: crash reports could not point inside the combat core.** Done 2026-10-18: the core writes a crash note while the game crashes
   (each stack frame's module and offset, where Godot's log says "???"), the next start's automatic crash report carries it, every publish keeps
   that build's symbols, and `node tools/crash/symbolize.mjs <report id>` names the function and source line (native/README.md "Crash notes").
