@@ -204,6 +204,11 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   bugs and crashes first, the team's requests through the Discord agent as before, and a polish list. A bigger new feature goes to ROADMAP
   "Ideas" until its phase is planned; a bug or gap goes to KNOWN-GAPS.md. Each kind of new content gets its toolkit (reusable parts and a recipe)
   together with its first content, not before (no speculative abstraction). The performance budgets moved to CLAUDE.md. Replaces B37.
+  The same day Helix asked for content standards and a clearer list ("hard to determine what is being listed as something that needs to be
+  fixed or something that needs to be added"): every ROADMAP item says whether it is a Fix (what happens now, what it will be after), New
+  (what it gives) or Decide (the question and Claude's recommendation), and Phase 2 starts with the content standards (the art direction,
+  one budget table per asset type and quality tier, rigging, animation, effects, audio, UI, writing and lore, the design rules, the look
+  check), because new content stays cohesive and runs on every PC only if those rules exist before it.
   The rebuild's record, which the ROADMAP held as checklists (git keeps them): Gate A (the old game on Forward+ runs on Helix's PC) passed
   2026-10-16. Gate B, the engine checkpoint: the Full Party fight in the Hollow Graves at 3.1 times the old game's speed on Helix's PC
   (RTX 4070 SUPER, 1440p Ultra: 77 to 242 fps, p95 18.1 to 5.1 ms) and 4.6 times in the VPS processor test (14.9 to 3.2 ms a frame), the rule

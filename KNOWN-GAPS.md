@@ -131,6 +131,9 @@ Notes for the asset and effects rebuild (ROADMAP Phase 4):
 - The baked crowd is 234 MB (positions 140, normals 70, level-of-detail meshes 23); each level of detail's mesh repeats the vertex arrays,
   where one array with Godot's own mesh LODs would share them.
 - The Bone Colossus's rim reads fuller than the old game's (a pose that differs, or the baked normals at its hard edges).
+- The owner's licensed effect pack's VESPER and REEBOO 3D scenes were ruled out because they need Forward+ or GPU particles while players
+  ran Compatibility (ASSET_PIPELINE.md "Flipbook sheets", B12); the game is Forward+ since launch day, so they could be used once their cost
+  is measured (ROADMAP Phase 2, the effects standard).
 
 ## Leftovers from the web era
 

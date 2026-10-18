@@ -1,9 +1,14 @@
 # Roadmap
 
-What gets built next, in order. Two kinds of work run side by side: the **always-on** work (bugs, the team's requests, the polish list)
-and **one phase at a time**, top to bottom. Inside a phase the next unchecked item is the work, and each phase ends with a "done when" check.
-Bugs and gaps are listed in [KNOWN-GAPS.md](KNOWN-GAPS.md), the reasons behind choices in [DECISIONS.md](DECISIONS.md) (this plan's: B50),
-and the rules every change follows in [CLAUDE.md](CLAUDE.md).
+What gets built, in order. Two kinds of work run side by side: the **always-on** work (bugs, the team's requests, the polish list) and
+**one phase at a time**, top to bottom. Inside a phase the next unchecked item is the work (Phase 2's tracks can run side by side), and
+each phase ends with a "Done when" check. The technical detail of each gap is in [KNOWN-GAPS.md](KNOWN-GAPS.md), the reasons behind
+choices in [DECISIONS.md](DECISIONS.md) (this plan's: B50), and the rules every change follows in [CLAUDE.md](CLAUDE.md).
+
+Every item says what kind it is:
+- **Fix:** something wrong or missing in the game or in our tools. It says what happens **now** and what it will be **after** the fix.
+- **New:** something we add. It says what it gives us.
+- **Decide:** a question only the team can answer, with Claude's recommendation.
 
 ## Where we are (2026-10-18)
 
@@ -17,13 +22,12 @@ and the rules every change follows in [CLAUDE.md](CLAUDE.md).
 
 ## Waiting on Helix
 
-Decisions only the team can make. Each one holds up only what it names.
-1. **Public or private code.** The repository is public on GitHub, so encrypting the game's files would hide nothing. Make it private
-   (GitHub's free minutes for the automatic tests get tight: fewer test runs or a small bill), or stay public and drop the encryption?
-   Holds up: the encryption item in Phase 2.
-2. **A test lane for big changes.** Keep the launcher's Test build switch and the test server for big changes such as Ascension, while
-   small fixes still go straight to live? Claude recommends yes: the test build caught the Reaper's first-cast stutters before players met
-   them (B38 made it a one-off for the rebuild). Holds up: nothing before Phase 3.
+1. **Decide: public or private code.** The repository is public on GitHub, so encrypting the game's files would hide nothing. Make it
+   private (GitHub's free minutes for the automatic tests get tight: fewer test runs or a small bill), or stay public and drop the
+   encryption? Holds up: the encryption item in Phase 2.
+2. **Decide: a test lane for big changes.** Keep the launcher's Test build switch and the test server for big changes such as Ascension,
+   while small fixes still go straight to live? Claude recommends yes: the test build caught the Reaper's first-cast stutters before players
+   met them (B38 made it a one-off for the rebuild). Holds up: nothing before Phase 3.
 
 ## Always on
 
@@ -37,123 +41,219 @@ Decisions only the team can make. Each one holds up only what it names.
 ## Phase 1: settle the launch (until 2026-11-01)
 
 Goal: the new game has everything the old one had, it is the only game, and we can see how it runs on players' PCs.
-- [ ] **Grave Surges come back.** They were left out of the rebuild and are missing since launch day: the wave director never starts one,
-  so no crypt bursts open in a combat area with its three waves and its reward. Port `godot/next/areas/dm_grave_surge.gd` onto the core with
-  the old game's rules, reward and tip.
-- [ ] **The Discord agent checks and shows the real game.** Its checks run the old game's tests and its before/after screenshots render the
-  old game (`server/death-muffin/discord-agent/shot-godot.sh`), so the team approves pictures of a game nobody plays, and the live game's
-  tests run only after a ship is out (GitHub CI). Its checks run the suites of `client/`, and the screenshot tool (the QA driver and
-  `shoot.gd`, left out of the rebuild) works in `client/`.
-- [ ] **Play reports.** Each play session sends a small summary (average and worst frame times, the preset, the graphics card, time and
-  deaths per area; nothing personal) and a page shows them. This also answers the weaker-PC question: no GTX 970-class PC or laptop has
-  run the new game's benchmark yet.
-- [ ] **Crash reports that name the cause.** The combat core ships without its debug symbols, so a crash inside it arrives without a place:
-  keep the symbols of every published build, name the build in the report, and turn a crash address into a line of code.
-- [ ] **First-use stutters, for good.** An effect compiles the first time it is drawn unless the hand-kept warm-up list has it (both of the
-  Reaper's stutter reports). Turn on Godot's export-time shader baking (`shader_baker`), measure the first casts, and add a test that fails
-  when an effect used in play is not warmed at load.
-- [ ] **2026-11-01: the old game goes** (B40's window ends). `godot/` is deleted and its copies become `client/`'s own files
-  (`tools/rebuild/sync-code.mjs` retires). Everything that still reads `godot/` reads `client/` or retires: the crowd baker and the area
-  builder, about 66 tool and server scripts, the hygiene check's path rules, and the client tests that compare with the old game. The
-  Discord agent edits `client/` directly, `server/death-muffin/launch-undo.sh` goes, and README.md and CLAUDE.md describe one game.
+- [ ] **Fix: Grave Surges are missing.** Now: since launch day no Grave Surge ever starts (they were left out of the rebuild). After: as in
+  the old game, after about 100 seconds in a combat area a crypt bursts open nearby, three waves climb out, and clearing them pays the surge
+  reward; the surge tip shows again. (Port `godot/next/areas/dm_grave_surge.gd` onto the combat core.)
+- [ ] **Fix: the Discord agent tests and photographs the old game.** Now: its proposals are checked with the old game's tests and its
+  before/after screenshots are taken in the old game, so the team approves pictures of a game nobody plays, and the live game's tests run
+  only after the change is out. After: every proposal is tested on the live game and shows the live game's screenshots before anyone
+  approves it. (The screenshot tool and its driver come over to `client/`; the agent's check runs the client's suites.)
+- [ ] **New: play reports.** When a play session ends, the game sends a small summary: average and worst frame times, the graphics preset,
+  the graphics card, and time and deaths per area (nothing personal). A page on the site shows them. It gives: how the game really runs on
+  every player's PC, weak ones included (no GTX 970-class PC or laptop has run the benchmark yet), and where players struggle.
+- [ ] **Fix: crash reports cannot point inside the combat core.** Now: when the C++ combat core crashes, the report has the log but no
+  location, because the core ships without its debug symbols. After: each crash report names the build and the line of code that crashed
+  (the symbols of every published build are kept on the server).
+- [ ] **Fix: first-use stutters.** Now: an effect is compiled the first time it is drawn, which stutters, unless it is on a warm-up list
+  kept by hand (both Reaper stutter reports came from gaps in that list). After: Godot compiles every effect when the game is built (its
+  shader baking option), and a test fails if an effect used in play could still stutter.
+- [ ] **Fix: two copies of the game's code** (on 2026-11-01, when the undo window ends). Now: the old game's folder `godot/` is still
+  there, most of the new game's scripts are copied from it, and the crowd and map tools, about 66 tool and server scripts and some tests still
+  read it. After: `godot/` is deleted, the new game owns its files, every tool and test reads the new game, the Discord agent edits the new
+  game directly, `server/death-muffin/launch-undo.sh` goes, and README.md and CLAUDE.md describe one game.
 
 Done when: `godot/` is gone, every check and screenshot is of the live game, and a week of play reports is in.
 
 ## Phase 2: foundation
 
-Goal: every kind of change is cheap, safe and done the same way by any fresh Claude session. Nobody on the team writes code, so the
-rules, recipes and checks are the framework. (The toolkits for new kinds of content, such as enemy parts, maps and quests, are built in
-Phase 4 together with their first content.)
+Goal: new content looks like one game, runs on every PC (and later on phones), and is cheap and safe to add by any fresh Claude session.
+Nobody on the team writes code, so the written standards, the pipelines and the automatic checks are the framework. Five tracks that can
+run side by side; inside a track, top first.
 
-**Content pipeline**
-- [ ] **One home for each kind of content.** An enemy is defined in four places today (`server/rules/content/enemies.ts`,
-  `client/data/content/enemies.json`, `client/data/combat/enemies.json` and its special moves in the combat core), and an armor set touches
-  several files plus tests that count items. Each kind (enemies, items, rites, statuses, loot tables, sets, area rosters) gets one source;
-  a generator writes every copy (client data, server rules, the server's item rows), and the build fails on a stale copy.
-- [ ] **Content checks instead of counts:** a validator for each content file in CI (fields, ids that exist, numbers in range, every item
-  with an icon and a server row, every enemy with a crowd model), replacing the tests that pin counts.
+### A. Content standards: the rulebook for new content
 
-**The server owns every value** (finishing B19-B26 and B32)
-- [ ] Area kills, shards and seals in the necromancer save come only from accepted reports (KNOWN-GAPS "Server authority").
-- [ ] A Discord notice when a character trips a flag; `progress_audit` checked for rule false positives; the old audit rows cleared.
-- [ ] A written way to roll one character back (`character_save_versions`).
-- [ ] Encryption of the game's files in the build, if the code goes private (Waiting on Helix 1).
+Today some of it exists: budgets for the hero, bosses and crowd creatures (CLAUDE.md "Performance budgets" and ASSET_PIPELINE.md, with
+different numbers), the asset generation steps (ASSET_PIPELINE.md, `docs/BLENDER-PIPELINE.md`, `docs/TRIPO-ANIMATE-IN-PLACE.md`) and the
+quality bar (`docs/GRAVECRAWL.md`). Missing: an art direction, a rigging or animation standard, budgets for gear, props and the world, and
+any automatic check of a new asset. Each standard is one page in one folder of the docs; CLAUDE.md points every session to them.
+- [ ] **Decide + New: the art direction guide.** Claude drafts it from today's look, the area moodboards (`docs/art/areas/`) and Gravecrawl's
+  lessons, with example pictures; the team picks and approves. It sets the game's look in a paragraph, each area's palette and lighting mood,
+  the colour rules (for example: enemies, heroes and the ground always differ in colour and brightness; violet for magic, gold for reward,
+  red for danger; what each spell colour and loot rarity means), silhouettes that read at the game camera's distance (about 22 m), how shiny
+  and how bright materials may be (Tripo's models come out metallic and white out under glow), how heroes, thralls and enemies are told
+  apart (rims, glows), and the style of icons, portraits and UI frames. It gives: one page every new asset is checked against, and the
+  target for the asset and effects rebuild.
+- [ ] **Fix: budgets in two places, for three kinds of asset.** Now: ASSET_PIPELINE.md asks Tripo for a 12,000-triangle hero and a 14,000
+  boss while CLAUDE.md caps both at 20,000, and nothing covers gear, props or the world. After: one table for the hero, bosses, crowd
+  creatures, thrall variants, weapons and gear pieces, small, medium and large props, wall and floor pieces, effect meshes and UI art, each
+  with triangles (a target and a hard cap), texture size, materials, bones and levels of detail, plus a budget per area (triangles in view,
+  draw calls, lights). Starting numbers come from today's assets and are confirmed with the benchmark.
+- [ ] **New: how one model serves Ultra, old PCs and phones.** Written rules for the quality tiers: each model is made once, at its budget,
+  and the tools make the lighter versions (Godot already makes levels of detail for every model, and each preset decides how soon the lighter
+  ones show); Ultra adds extras on top (shadows, ambient occlusion, more particles) rather than heavier models; Low thins the effects out;
+  phones get the Low preset plus a phone pack with smaller textures in phone formats (B40). It gives: Ultra keeps looking its best while
+  Low stays above the weak-PC floors, and nothing has to be remade when phones come.
+- [ ] **New: the rigging standard.** One skeleton per body type (humanoid, which is Tripo's shared biped skeleton; four-legged; and today's
+  bloated and robed kinds), bone names, the attachment points (right and left hand for weapons and shields, head for helms, shoulders and
+  back for mantles), scale (1 unit = 1 m, a height range per kind), facing and the pivot at the feet, and a bone limit for phones. It gives:
+  any new creature reuses the existing animations, gear and props, and goes straight into the crowd baker.
+- [ ] **New: the animation standard.** The clips every kind of creature must have (idle, walk, run, attack, a second attack, hurt, death,
+  rise, plus role clips such as cast or dig), their names, lengths, loops and frame rates; clips stay in place (the game moves the body); the
+  moment each attack lands is marked so the damage lines up with the swing; the crowd baker's limits; and the known traps of Tripo's presets
+  (its "hurt" is a 14-second lying-down clip). It gives: every creature moves and hits the same way, and a missing or broken clip is caught
+  by a check instead of a player.
+- [ ] **New: the effects standard.** The spell colour language, how big and bright an effect may be so a fight stays readable (immersive,
+  not overwhelming), particle and overdraw budgets per tier, reusing the existing effects first, and every new effect warmed at load (the
+  Phase 1 check). It also settles the licensed effect pack's 3D scenes, ruled out while players ran the old renderer and usable now
+  (KNOWN-GAPS "Assets and effects").
+- [ ] **New: the audio standard.** Loudness targets for music, ambience, effects and voices, formats, names, how many variations a sound
+  needs, how long and how often a sound may play, and a licence record for every file (`docs/AUDIO-SOURCES.md` is that record today).
+- [ ] **New: the UI and icon standard.** Icon size, style and frame; fonts and text sizes; the rarity and danger colours, never shown by
+  colour alone (for colour-blind players); and how a new window fits the HUD budget (150 draw calls, 0.5 ms).
+- [ ] **New: the writing standard and the lore bible,** written with the team. The voice (dark, with dry humour where it fits), naming
+  patterns for items, enemies, places and rites, what a tooltip says and in what order, the patch-note style; and the world itself (its
+  factions, history and places), which names, quests, bosses and the Codex then follow.
+- [ ] **New: the game design rules (the balance sheet).** The power curve over levels 1 to 999 (item power by level and rarity, enemy
+  health and damage by area level, XP and gold per minute, drop rates); enemy roles (melee, flanker, caster, hazard, support) and telegraph
+  rules (every dangerous attack has a readable wind-up and a ground marker); a boss template (phases, telegraphs, adds, summoning key,
+  scaling for a party, rewards); and area rules (size, fighting space, landmarks, spawn points, safe spots). A check flags new content
+  outside the curve. It gives: new items, enemies and areas fit the game without retuning everything around them.
+- [ ] **New: the look check and the review checklist.** A scene that shows a new model beside existing ones at the game camera's distance,
+  in each area's light, on Low and on Ultra, with its triangle count. Every new visual asset is posted to the team with those shots and
+  passes the checklist (art direction, budgets, rig, clips, readability) before it ships.
 
-**Standards**
-- [ ] **Done means done:** CLAUDE.md says, for each kind of change (code, content, art, server, docs), what must be true before it ships.
-- [ ] **Every budget checked automatically** (CLAUDE.md "Performance budgets"), the art ones too (triangles, texture sizes, draw calls per
-  area), so new content cannot ship over budget.
-- [ ] **Typed code stays typed:** Godot's warning for untyped GDScript becomes an error (about 99 % of `client/` is typed today).
+### B. Content pipelines: how content gets made, step by step
 
-**Organization and documentation**
-- [ ] **Docs a fresh session can read.** `client/README.md` (171 KB) and `native/README.md` (97 KB) are mostly the rebuild's measurement
-  history: rewrite them as how each system works now (the history stays in git and DECISIONS).
-- [ ] **Recipes** with their checks: add an enemy, an item, a rite, a boss, an area, an armor set, a sound, a tip. Haunting Wraith
+- [ ] **Fix: content is defined in several places.** Now: an enemy is defined in four places (`server/rules/content/enemies.ts`, two
+  client data files and its special moves in the combat core), and an armor set touches several files and breaks tests that count items.
+  After: each kind of content (enemies, items, rites, statuses, loot tables, sets, area rosters) lives in one source file, the tools write
+  every other copy (client data, server rules, the server's item rows), and the build fails if a copy is out of date.
+- [ ] **New: automatic checks for every new asset and content entry.** At import and in CI: triangles, texture sizes, materials, bones,
+  levels of detail, the required clips, scale and pivot, a source and licence record; for data: required fields, ids that exist, numbers
+  inside the balance sheet. They replace today's tests that pin counts. It gives: an over-budget model, a missing clip or a broken item
+  cannot ship.
+- [ ] **Fix: the character pipeline guide describes the old game.** Now: ASSET_PIPELINE.md sends new art through the old game's folder and
+  says players run the old renderer, and its steps are spread over three pages. After: one guide for the new game from concept (the team
+  approves the picture first) to Tripo model, cleanup to budget in Blender, rig, clips (Tripo's presets, the shared clip library, Blender
+  recipes), build, levels of detail, crowd bake, look check and ship, each step with its tool and its check.
+- [ ] **New: the props and world-kit pipeline.** How props and wall, floor and decoration pieces are made: budgets, the same sharpness
+  everywhere (texel density), shared materials so they draw cheaply, collision and walkable-area rules, and lightmap layout for the lighting
+  bake. It feeds the map pipeline in Phase 4.
+- [ ] **New: recipes with their checks:** add an enemy, an item, a rite, a boss, an area, an armor set, a sound, a tip. Haunting Wraith
   (warbogar's Reaper ability, Discord proposal 565c7c, made on the old game) is built with the rite recipe as its first test.
-- [ ] **The repository after `godot/`:** each top-level folder with one stated purpose, nothing left over, README.md's layout true.
 
-**Code upgrades**
-- [ ] The web era's leftovers go (KNOWN-GAPS "Leftovers from the web era").
-- [ ] The rebuild's performance follow-ups, measured one at a time: the spikes first (a rite's cast, a big kill's handlers, Bone Fan's
-  pick in Easy auto combat), then the per-frame waste and the draw calls (KNOWN-GAPS "Performance").
-- [ ] Test health: the flaky and exposed suites (KNOWN-GAPS "Tools and tests").
+### C. The server owns every value (finishing B19-B26 and B32)
 
-Done when: an enemy, an item and a rite can each be added by a written recipe that changes one data file plus its art, a mistake in it
-fails the checks, the server owns every value, and the docs a session needs fit in one read.
+- [ ] **Fix: area kills and soul shards are taken on the player's word.** Now: the necromancer save sends its area kills and shards and
+  the server stores them, so a cheater could hand himself shards. After: the server counts them from the kill reports it accepted, as it
+  already does for XP and gold.
+- [ ] **New: cheat flags reach the team.** A Discord notice when a character trips a flag, a review of the flags for honest players caught
+  by mistake (a false flag holds back part of an honest player's gain), and the old audit rows cleared.
+- [ ] **New: a written way to roll one character back** to an earlier save (`character_save_versions`), for when a bug or an exploit
+  damages a character.
+- [ ] **New: encryption of the game's files** in the build, only if the code goes private (Waiting on Helix 1).
+
+### D. Engineering standards and health
+
+- [ ] **New: done means done.** CLAUDE.md says, for each kind of change (code, content, art, server, docs), what must be true before it
+  ships: tests, measurements, screenshots, docs.
+- [ ] **Fix: untyped code is allowed.** Now: GDScript without types still loads (under 1 % of the game's code), so some mistakes only
+  show when a player hits them. After: Godot treats untyped code as an error, so those mistakes show the moment a test loads the game.
+- [ ] **Fix: the rebuild's performance leftovers.** Now: in the biggest fight a rite's cast can take 2 to 4 ms in one frame and a big kill's
+  rewards and loot 2 to 9 ms (measured on the VPS: a small hitch on a weaker PC), some code repeats work every frame, and some effects draw
+  while empty. After: each one inside its budget, fixed and measured one at a time, the hitches first (KNOWN-GAPS "Performance").
+- [ ] **Fix: some test suites fail at random.** Now: a few suites fail now and then under load or on timing (KNOWN-GAPS "Tools and
+  tests"), so a red CI does not always mean a real problem. After: every suite passes every time, and red means broken.
+- [ ] **Fix: leftovers from the web game.** Now: parts of the code still copy the old web game's exact math, and an asset list is kept by
+  hand. After: plain Godot code and generated lists (KNOWN-GAPS "Leftovers from the web era").
+
+### E. Organization and documentation
+
+- [ ] **Fix: docs too long to read.** Now: `client/README.md` (171 KB) and `native/README.md` (97 KB) are mostly the rebuild's measurement
+  history, more than a fresh Claude session can read before it starts working. After: short pages on how each system works now, with the
+  history kept in git and DECISIONS.
+- [ ] **New: one map of the docs:** which page holds which rule (the standards, the pipelines, the recipes, each system), so the Discord
+  agent and every session find the rule before they build.
+- [ ] **Fix: the repository after `godot/` goes.** Now: leftovers of the two-game setup. After: each top-level folder has one stated
+  purpose, nothing is left over, and README.md's layout is true.
+
+Done when: an enemy, an item and a rite can each be added by following their recipes and pass the automatic checks and the look check; the
+art direction, budget table, quality tiers, rigging, animation, effects, audio, UI, writing and design rules are written and approved; the
+server owns every value; and the docs a session needs fit in one read.
 
 ## Phase 3: Ascension, redesigned (the first new feature, B36)
 
-- [ ] Designed with Helix: what the Altar, vows and heat, Ashes and Covenant Boons become, and the co-op rules (today a guest's Prelate kill
-  counts for the host: KNOWN-GAPS "Party and online").
-- [ ] Built on the foundation: its data in one home, Ashes owned by the server from day one, measured like everything else.
-- [ ] Players' saved boons, Ashes and best rank carried into it as the design decides.
+- [ ] **Decide: what Ascension becomes,** designed with Helix: the Altar, vows and heat, Ashes, Covenant Boons, and the co-op rules (today
+  a guest's Prelate kill counts for the host).
+- [ ] **New: Ascension built on the foundation:** its data in one home, Ashes owned by the server from day one, measured like everything
+  else.
+- [ ] **New: players' saved boons, Ashes and best rank carried into it,** as the design decides.
 
-## Phase 4: new content (lore, maps, enemies, classes, quests)
+## Phase 4: new content (the look of the world, places, enemies, classes, quests)
 
-Each kind starts with its toolkit (the reusable parts and a recipe), built together with its first content: a toolkit built before the
-content is known is guesswork (CLAUDE.md: no speculative abstraction). Phase 4 starts when Phase 3 is done and so are the first four items
-of the polish list; the order below is a first guess, set with Helix then.
-- [ ] **The lore bible,** written with the team: the world, its factions, history and tone, in one doc that names, quests, bosses and the
-  Codex follow.
-- [ ] **The look of the world** (Helix, 2026-10-16: the asset and effects rebuild, with its own plan and pipelines). First the map pipeline:
-  areas made as scenes from reusable wall, floor and prop pieces with the lighting bake helper, in place of the web-era `world.json` they are
-  generated from today; then the maps revamped. Notes for it: KNOWN-GAPS "Assets and effects".
-- [ ] **New places:** new zones (the Hollow Court) on the map pipeline.
-- [ ] **New enemies and bosses:** first the enemy building blocks (the core's one-off moves, such as the Censer's aura, the Gargoyle's dive
-  and the Sexton's hook, become reusable parts that the data combines), then new kinds and bosses with summoning keys.
-- [ ] **The other five classes** (Grave Warden, Bell Monk, Carrion Witch, Hollow Knight, Veilwalker; their data is in `client/data/content/`):
-  first the rite building blocks, then one class at a time with its kit (Shrouded suspension, the monk's beat meter, Bulwark).
-- [ ] **Quests:** first a quest system (objectives, givers, dialogue, rewards paid by the server), then quests written from the lore bible.
-- [ ] **Endgame depth:** weekly Omen variants, deeper Depths rewards, replay.
+Each kind starts by building its toolkit (the reusable parts and its recipe) together with its first piece of content: a toolkit built
+before anyone knows the content is guesswork (CLAUDE.md: no speculative abstraction). Phase 4 starts when Phase 3 is done and so are the
+first four items of the polish list; the order below is a first guess, set with Helix then.
+- [ ] **New: the look of the world** (the asset and effects rebuild; Helix, 2026-10-16: its own plan and pipelines), following the art
+  direction guide. First the map pipeline: areas built as scenes from reusable wall, floor and prop pieces with the lighting bake helper,
+  instead of generated from the web game's map file (`world.json`) as now; then the maps revamped. Its notes: KNOWN-GAPS "Assets and effects".
+- [ ] **New: new places:** new zones (the Hollow Court) made with the map pipeline.
+- [ ] **New: new enemies and bosses.** First the enemy building blocks: each special move (the Censer's aura, the Gargoyle's dive, the
+  Sexton's hook) is today a one-off written for its enemy; they become reusable parts that the data combines. Then new kinds and bosses
+  with summoning keys, from the design rules' roles and boss template.
+- [ ] **New: the other five classes** (Grave Warden, Bell Monk, Carrion Witch, Hollow Knight, Veilwalker; their data is in
+  `client/data/content/`): first rite building blocks, then one class at a time with its kit (Shrouded suspension, the monk's beat meter,
+  Bulwark).
+- [ ] **New: quests.** First a quest system (objectives, quest givers, dialogue, rewards paid by the server), then quests written from the
+  lore bible.
+- [ ] **New: endgame depth:** weekly Omen variants, deeper Depths rewards, replay.
 
 ## Polish list
 
-Worked through beside the phases, top first; each change is shown to the team (screenshots) before it ships.
-- [ ] **The rebuild's combat fixes** (Helix, 2026-10-16: fixed after launch day): toxic corpse pools at the area's level, the plague
-  bearer's pool, the Mourning Bell wraith's heal, statuses raising the damage a boss takes, and Fracture on bosses (KNOWN-GAPS "Combat and
-  statuses").
-- [ ] **The look pass** (Gate D, moved after launch by Helix, B49): effects on Low and Medium, the lifts, the Depths' walls, the hero in
-  bright and dark areas; then Helix signs off every area on their PC (KNOWN-GAPS "Look").
-- [ ] **The Reaper's first pass finished:** her own model, armor set, runes and signature (R) rite (KNOWN-GAPS "Disciplines").
-- [ ] **Co-op gaps:** rejoin after a drop (D13), a guest's waystone map, a guest seeing its thralls' hits, a guest waking a boss its own
-  account has sealed, first-kill rewards for guests (KNOWN-GAPS "Party and online").
-- [ ] **Built but never shown:** the thralls' legion kit and discipline looks, water ripples, the Prelate's candles, the Plague Doctor's
-  flask pool; each shown to the team, then wired or deleted (KNOWN-GAPS "Built but never shown").
-- [ ] **Necromancer polish from playtests:** combat feel and loot, readability of rites and statuses, gear and affix legibility, the first
-  hour (Next-step box, counsel tips, guide NPCs).
-- [ ] Small: the chat window's colours; the in-game leaderboard panel (KNOWN-GAPS "UI").
+Worked through beside the phases, top first. Each change is shown to the team with screenshots before it ships.
+- [ ] **Fix: four combat rules the rebuild found broken** (Helix, 2026-10-16: fix them after launch day; the old game had them too).
+  - Toxic corpse pools. Now: they always hurt as if at level 1. After: they hurt at the area's level.
+  - The plague bearer. Now: its toxic pool never appears when it dies. After: it leaves its pool.
+  - The Mourning Bell wraith. Now: its heal on the monsters around it never happens. After: it heals them, as designed.
+  - Bosses and statuses. Now: effects that make an enemy take more damage (Sanctify, a Marrow Spear's Fracture) do nothing to a boss.
+    After: they work on bosses too, so those rites shorten boss fights.
+- [ ] **Fix: the look pass** (moved after launch by Helix, B49). Now: blended effects (decals, telegraphs, particles) look wider and brighter
+  than in the old game, most on Low and Medium; the Depths' walls are darker; the hero reads darker in bright areas (the Coliseum, the
+  Cloister, the Pyre, the Wing) and brighter in dark ones; not every area is signed off. After: every preset looks like the old game or
+  better, and Helix has signed off each area on their PC.
+- [ ] **Fix: the Reaper is unfinished.** Now: she borrows the Mourner's body and other rites' icons, and has no armor set, no runes and no
+  signature (R) rite. After: her own model and icons, an armor set, runes and a signature rite.
+- [ ] **Fix: co-op gaps.**
+  - Dropped players. Now: a dropped player lands in their own solo game and has to rejoin by hand. After: they are offered to rejoin the
+    same party within a short window (a host who drops still ends the session, D6).
+  - A guest's waystone map. Now: it lists the guest's own unlocked areas. After: it lists the host's world, where the party plays.
+  - A guest's thrall hits. Now: a guest sees only the killing blow of its thralls. After: it sees every blow, as the host does.
+  - A guest waking a boss. Now: if the guest's own account has not opened that boss's area, the boss wakes anyway, the server refuses the
+    guest's payment and the guest is told only afterwards. After: the team decides whether a guest may wake a boss only the host has
+    opened, and the guest is told before anything happens.
+  - Boss rewards for guests. Now: a guest never gets a boss's first-kill bonus or trophy. After: guests get their own.
+- [ ] **Decide + Fix: things built but never shown.** Now: thralls never wear their Legion kit or their discipline's look, water never
+  ripples, the Prelate's candles never gutter, and the Plague Doctor's flask leaves a pool that hurts but cannot be seen. After: each one is
+  shown to the team with screenshots; what they keep is switched on (the invisible pool at least gets drawn, so players can dodge it) and
+  the rest is deleted.
+- [ ] **Fix: two small bugs.** Gathering: now the last 8 seconds of gathering before quitting are lost; after, they are saved. Easy auto
+  combat: now it walks the hero into pockets between tombstones and parks there; after, it walks around them.
+- [ ] **New: necromancer polish from playtests:** combat feel and loot, readability of rites and statuses, gear and affix legibility, the
+  first hour (the Next-step box, counsel tips, guide NPCs).
+- [ ] **New: small additions:** colours in the chat window; an in-game leaderboard panel (today only the website shows it).
 
 ## Later
 
-- **Phones:** the Mobile renderer, phones join as guests (B40 keeps the game ready: phone texture formats, Mobile-safe shaders, a
-  scalable HUD).
-- Not planned: dedicated or VPS-hosted sessions and host migration (the hybrid model stays, owner 2026-10-15; D6), translations, mod support.
+- **New: phones.** The Mobile renderer; phones join as guests. The game stays ready for them (B40: phone texture formats, shaders that run
+  on Mobile, a scalable HUD) and Phase 2's quality tiers set their budgets.
+- Not planned: dedicated or VPS-hosted game sessions and host migration (the hybrid model stays, owner 2026-10-15; D6), translations, mod
+  support.
 
 ## Ideas
 
 Ideas and requests not planned yet, one line each with its date; each is sorted into a phase when that phase is planned. Bugs and gaps go
 to KNOWN-GAPS.md instead.
-- A hint for a party guest standing in a boss's rot (a guest's core lists no zones today: KNOWN-GAPS "Party and online"; 2026-10-17).
+- A hint for a party guest standing in a boss's rot (a guest's core lists no zones today; 2026-10-17).
 
 ## Done
 

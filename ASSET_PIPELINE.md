@@ -73,7 +73,7 @@ A few VFX sprite sheets come from the owner's licensed pack (`~/vps-handoffs/Dea
 CLEAVE: commercial use, no credit, **not redistributable in a public repository**). Converted greyscale grids live in
 `~/death-muffin/private/fx-sheets/` (`<id>.png` + `.png.import`: lossless, mipmaps) and are listed in `fx_data.json` `sheets`;
 `godot/assets/fx/sheets/` is gitignored. How they are drawn and installed: `godot/fx/README.md` "Flipbook sheets". Do not use the pack's
-VESPER or REEBOO 3D scenes: they need Forward+/Mobile or GPUParticles (players run Compatibility; DECISIONS B12).
+VESPER or REEBOO 3D scenes until their cost is measured: they need Forward+/Mobile or GPUParticles and were ruled out while players ran Compatibility (DECISIONS B12); the game is Forward+ since launch day (KNOWN-GAPS "Assets and effects").
 
 ## Verify
 

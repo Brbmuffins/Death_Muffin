@@ -71,7 +71,8 @@ Never deploy, publish a client, or flip `set-online.sh` without passing checks f
 
 - **Work order** (ROADMAP.md, DECISIONS B50): bugs and crashes first, then the team's approved requests, then the next unchecked item of the
   current phase and the polish list. Findings outside your task go in the same commit, a line each: a bug or gap to KNOWN-GAPS.md, an idea
-  to ROADMAP "Ideas". Don't act on them.
+  to ROADMAP "Ideas". Don't act on them. A ROADMAP item says what kind it is: Fix (what happens now and what it will be after), New (what
+  it gives) or Decide (the question and Claude's recommendation).
 - Online is the default start. For tests and screenshots use `-- --dev-offline` (`--class=N` enters directly).
 - Godot GDScript: `class_name Dm*`, one source of truth for content in `godot/data` and `godot/rules`; no speculative
   abstraction; remove temporary code. Commit the `.import` files and `.uid` files Godot generates for new assets/scripts.
