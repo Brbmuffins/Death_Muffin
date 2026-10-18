@@ -89,9 +89,11 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   new sound brings it to the game's loudness (-20 LUFS) and writes it into the licence record, docs/AUDIO-SOURCES.md. Armor sets still touch
   about five files by hand (KNOWN-GAPS "Content pipelines").
 - [ ] **Fix: first-use stutters.** Now: every release bakes the game's shaders into its pack (since 2026-10-19; the art pack's are baked the
-  next time its art changes), but an effect still builds its graphics pipeline the first time it is drawn, which stutters, unless it is on
-  a warm-up list kept by hand (both Reaper stutter reports came from gaps in that list). After: a test fails when an effect used in play is
-  not warmed at load, and the team app's stutter test confirms it on a real graphics card once it runs.
+  next time its art changes), and since 2026-10-19 a test fails when play draws a material the loading screen never drew
+  (`client/tests/warm_coverage.gd`: every rite of the five disciplines, a fight, a boss, waves, loot, worn gear and pets); it found nine
+  gaps (a dropped item's icon, name and light, and six pieces of worn gear and pets) and the warm-up now draws them. The test cannot see
+  lighting variants, presets other than High, the other areas and bosses, UI panels, death and respawn, or other players' effects. After:
+  the team app's stutter test confirms it on a real graphics card once it runs.
 - [x] **New: play reports.** Done 2026-10-19: when a play session ends (log out, switch character, quit; a crash is sent at the next start) the
   game sends a small summary: average, p99 and worst frame times, hitches, the graphics preset and card, time and deaths per area, and where
   the session ended (nothing personal). The site's play reports page shows them per release, beside the server's own numbers over the same

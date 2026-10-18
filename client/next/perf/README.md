@@ -14,9 +14,13 @@
   `hold()` on every area entry. A graphics / fps / auto_res change restarts it at 1.0 and holds.
 - The area scenes stay loaded and their props are instanced: there is no streaming, culling cell or light LOD (KNOWN-GAPS "Performance", "Draw calls": the props always cast the moon's shadow).
 
-`DmNextWarmup.run(game)` (end of `start()`, under `DmWarmup`'s cover; on by default for players, off headless and on a QA run (`--qa`, `--shot-plan=`), `--warmup` forces it, `opts.warmup` overrides it) draws every model, effect, crowd model at its three levels of detail, telegraph shape, shot and area's lighting once so nothing
+`DmNextWarmup.run(game)` (end of `start()`, under `DmWarmup`'s cover; on by default for players, off headless and on a QA run (`--qa`, `--shot-plan=`), `--warmup` forces it, `opts.warmup` overrides it) draws every model, effect, crowd model at its three levels of detail, telegraph shape, shot, dropped item (`DmLootView.warm`: icon, light pillar, glow, name), piece of worn gear (a throwaway hero in a legendary set with off-hand, cape and a flying pet) and area's lighting once so nothing
 compiles mid-play: what it draws, and why it started running for players on 2026-10-17, is client/README.md "The benchmark" ("The warm-up"). The stage and effect handles are freed afterwards. The loaded model scenes stay held (`DmWarmup.hold`) so no model loads
 from disk in play, except the hero kits of the greyed-out disciplines: `DmWarmup.release_unused_heroes` drops them (kept = `DmWarmup.hero_slugs_in_play()`: the playable disciplines' kits, the local hero's, and the `necromancer` fallback). `DmNextWarmup.last_ms` holds the time.
+
+Test: `client/tests/warm_coverage.gd` fails when play uses a material that was not drawn while warming. It notes every material the scene tree gets (a node's a frame after it enters, the whole tree after each step) by what makes its shader (the Shader, a StandardMaterial3D's modes, flags and texture slots,
+a particle material's shader-changing properties, a sprite's flags, `next_pass`); what is seen until `start` returns counts as warmed. Play, in a fresh warm-up game of each of the five disciplines: every hotbar slot cast (and as a crit), a fight, loot, the hero hurt and healed, worn gear and pets; the Gravecaller and the Reaper cast
+their whole kit, the Gravecaller meets the boss and waves. Each gap prints its node, script, scene, discipline and rite; `-- --list` prints every signature. Not covered: lighting variants (the area tour's job), other graphics presets and areas, the panels.
 
 Textures used in 3D are imported VRAM Compressed (`compress/mode=2`, normal maps RGTC; `textures/vram_compression/import_s3tc_bptc` and the phone formats are on in `client/project.godot`); `npm run hygiene` enforces it.
 Test hooks: `DmModels.cold_loads`, `DmGearModels.cold_loads`, `DmFxBinbun.cold_loads` count first loads from disk (0 after a warm-up).

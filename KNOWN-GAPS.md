@@ -147,6 +147,9 @@ polish list). Also:
 
 ## Stability
 
+- Nothing calls `Vfx.clear_all()` when a game is freed (logging out, switching character), though `client/fx/dm_fx.gd` says `DmNextGame._exit_tree` does: an Unleash Souls
+  orbit still circling then runs its `follow` closure on the freed hero every frame and logs "Lambda capture ... was freed" errors (55 in five frames, found 2026-10-19 by
+  `client/tests/warm_coverage.gd`, which calls it itself between games).
 - The Windows half of the combat core's crash note (the unhandled-exception filter and its stack walk, native/README.md "Crash notes") has
   not crashed on a real Windows PC yet; the Linux half is tested on every run. The team app's release crash check will cover it (ROADMAP Phase 1).
 - Quitting while models still load in the background aborted the old game on a 4-core PC (the CI runner, 2026-10-16); not checked in the

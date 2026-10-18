@@ -25,14 +25,14 @@ done
 # Every suite, in the order the core comes first. PACED suites play game time faster than real time (`--fixed-fps 60`); the rest run in real time.
 SUITES="core_smoke core_api core_enemies core_status core_corpses core_thralls core_affixes core_coop code_load areas crowd_bake crowd_view game_scene rites boss hud front coop
 benchmark social presets rewards value fx_motes panels world core_kinds gathering counsel sound depths auto_combat draw_budget dressing fx_decals threads coop_bosses core_boss crash_note qa_shots
-boss_abbess boss_congregation boss_prelate boss_saint boss_regent boss_mire boss_meta surge play_report
+boss_abbess boss_congregation boss_prelate boss_saint boss_regent boss_mire boss_meta surge play_report warm_coverage
 rules-combat rules-core rules-gathering rules-loot rules-progression data dialogue gear sim audio loot_view panels_a bosses onboarding fx world_builder world_fx game_ui ui ui_parity gear_look
 next_online_gate session relay relay/udp_run backend chapterhouse next_bag next_loot next_acre_guide next_gathering next_hero_look next_front next_polish perf/first_frame_run next_progress
 next_boss_meta next_hud audio_wire next_playtest status game/units_run game/anim_run game/autocombat_run game/regress_run next_perfctl next_autocombat next_feel next_spawn_aggro
 next_lobby next_lobby/ui_run next_lobby/proc_run next_meta next_hud_counsel next_brews_affix next_runes next_clarity next_combat_odds next_glue next_affixes interp enemy_fx"
-# The suites after `play_report` came from the first game's tests (B57). ui, chapterhouse, audio_wire, next_autocombat, next_feel, next_affixes and interp keep real time
+# The suites after `warm_coverage` came from the first game's tests (B57). ui, chapterhouse, audio_wire, next_autocombat, next_feel, next_affixes and interp keep real time
 # (they measure it), and so do session, relay and next_lobby (real sockets and child processes).
-PACED=" front hud coop value panels world gathering counsel sound depths boss_abbess boss_congregation boss_prelate boss_saint boss_regent boss_mire boss_meta dressing coop_bosses qa_shots surge \
+PACED=" front hud coop value panels world gathering counsel sound depths boss_abbess boss_congregation boss_prelate boss_saint boss_regent boss_mire boss_meta dressing coop_bosses qa_shots surge warm_coverage \
  rules-combat rules-core rules-gathering rules-loot rules-progression data dialogue gear sim audio loot_view panels_a bosses onboarding fx world_builder world_fx game_ui ui_parity gear_look \
  next_online_gate backend next_bag next_loot next_acre_guide next_gathering next_hero_look next_front next_polish perf/first_frame_run next_progress next_boss_meta next_hud next_playtest \
  status game/units_run game/anim_run game/autocombat_run game/regress_run next_perfctl next_spawn_aggro next_meta next_hud_counsel next_brews_affix next_runes next_clarity next_combat_odds next_glue enemy_fx "

@@ -1,5 +1,12 @@
 [
   {
+    "date": "2026-10-19",
+    "title": "Smoother First Moments",
+    "items": [
+      "The first item that drops in a session, and the first time you equip new gear, a cape or a flying pet, no longer cause a brief hitch: the loading screen now prepares them."
+    ]
+  },
+  {
     "date": "2026-10-18",
     "title": "The Crypts Stir Again",
     "items": [

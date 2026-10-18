@@ -97,6 +97,10 @@ static func run(game: DmNextGame) -> void:
 		scythe.position = at0 + Vector3(0.6, 0.9, 0.0)
 		var sp := DmModels.BASE + "models/props/%s.glb" % DmGearProps.SCYTHE_FILE
 		DmWarmup.hold(sp, load(sp))   # kept loaded: every throw instances it again
+	var loot := DmLootView.new()   # a drop on the ground: its icon, light pillar, glow and name (drawn at the stage's height: the drop itself lies at ground level)
+	stage.add_child(loot)
+	loot.position.y = at0.y
+	loot.warm(Vector3(at0.x, 0.0, at0.z))
 	var warmed: Array = binbun.warm(ids, at0) if binbun != null else []
 	var layer_handles: Array = vfx.prims.warm_layers(at0) if vfx != null and vfx.prims != null else []
 	shots = 0
@@ -104,6 +108,7 @@ static func run(game: DmNextGame) -> void:
 		var beams: Array = vfx.prims.warm_shots(at0)
 		layer_handles.append_array(beams)
 		shots = 3 + beams.size()
+	var worn := _worn_gear(game, stage, at0)   # what the Reliquary's equip shows: gear, a legendary set, a cape and a pet
 	var hero_look := _hero_creature(game)   # the hero's own see-through variant (Wraith Walk's phantom) compiles now, not on the first rush
 	if hero_look != null:
 		hero_look.set_opacity(0.45)
@@ -124,6 +129,8 @@ static func run(game: DmNextGame) -> void:
 			h.kill()
 	for b in bodies:
 		b["c"].dispose()
+	for w in worn:
+		w.dispose()
 	stage.queue_free()
 	if host.view != null:
 		host.view.clear()   # the rehearsal rows go; the core's own bodies come with its next sync
@@ -140,6 +147,55 @@ static func run(game: DmNextGame) -> void:
 	effects = warmed.size()
 	last_ms = Time.get_ticks_msec() - t0
 	print("DmNextWarmup: %d bodies + %d effects + %d crowd rows in %d ms" % [models, effects, crowd_rows, last_ms])
+
+
+## What equipping shows for the first time: a throwaway avatar of the local hero's model dressed in a legendary-rarity staff (the tip light and motes), an off-hand and the
+## full legendary set of its discipline (the aura, the helm, the mantle and the body swap to the set's own hero model), with a cape, and the pets that fly (their wing-beat material).
+## Returns what to dispose (each has `dispose()`).
+static func _worn_gear(game: DmNextGame, stage: Node3D, at: Vector3) -> Array:
+	var out: Array = []
+	var body := game.local_body()
+	if body == null or body.avatar == null:
+		return out
+	var disc := String(body.discipline_id)
+	var set_id := ""
+	for sid: String in DmGearModels.table().get("legendary_hero_by_set_id", {}):
+		if DmGearModels.legendary_discipline(sid) == disc:
+			set_id = sid
+	var wear := {}
+	var items: Dictionary = DmContent.items()
+	for id: String in items:
+		var t := String(DmContent.item(id).get("type", ""))
+		if t == "weapon" and not wear.has("main_hand") and id.ends_with("_hell") and not DmGearProps.necro_by_id(id).is_empty():   # (hell: the emissive tier dress)
+			wear["main_hand"] = {"item_id": id, "rarity": "legendary"}
+		elif t == "offhand" and not wear.has("off_hand") and id.ends_with("_hell") and not DmGearProps.necro_by_id(id).is_empty():
+			wear["off_hand"] = {"item_id": id, "rarity": "epic"}
+		elif t.begins_with("armor_") and set_id != "" and String(DmGearProps.armor_by_id(id).get("setId", "")) == set_id:
+			wear[t.trim_prefix("armor_")] = {"item_id": id, "rarity": "legendary"}
+	var made: Array[String] = []   # the craftable weapons (a sword, a bow) are stand-ins built in code: one of each kind
+	for id: String in items:
+		var kind := DmGearProps.weapon_kind(id)
+		if String(DmContent.item(id).get("type", "")) == "weapon" and DmGearProps.necro_by_id(id).is_empty() and not made.has(kind):
+			made.append(kind)
+			var prop := DmGearProps.build_weapon(id, "common")
+			stage.add_child(prop)
+			prop.position = at + Vector3(0.0 + 0.5 * made.size(), 0.0, 0.8)
+	var av := DmAvatar.new()
+	var dd: Dictionary = DmContent.discipline(disc)
+	av.setup(stage, dd.get("color", 0xa26bff), false, String(dd.get("modelSlug", "hero_gravecaller")), String(dd.get("family", "")))
+	av.c.root.position = at + Vector3(-2.4, -0.9, 0.0)
+	av.set_equipment(wear)
+	var capes: Array = DmContent.get_export("cosmetics", "CAPES")
+	if not capes.is_empty():
+		av.set_cape(String(capes[0]["id"]))
+	out.append(av)
+	for def: Dictionary in DmContent.get_export("cosmetics", "PETS"):
+		if def.get("fly") != null:
+			var pet := DmPetView.new(stage, def, at.x + 2.4, at.z)
+			pet.c.root.position = Vector3(at.x + 2.4, at.y - 0.4, at.z)
+			out.append(pet)
+			break
+	return out
 
 
 ## The local hero's model (its avatar's creature), or null before the avatar exists.

@@ -383,6 +383,18 @@ func clear_all() -> void:
 		_remove(_drops.size() - 1, "")
 
 
+## Loading screen (DmNextWarmup): one rare drop's icon, light pillar, ground glow and name at `at`, so their materials are drawn under the cover and not when the first drop
+## lands in a fight. The caller frees this view with the stage it was drawn on.
+func warm(at: Vector3) -> void:
+	var was := show_labels
+	show_labels = true
+	for id: String in DmContent.items():
+		if str(DmContent.item(id).get("rarity", "")) == "rare" and not DmRunes.is_rune_id(id):
+			item(at, {"item_id": id, "quantity": 1}, true)
+			break
+	show_labels = was
+
+
 ## QA: where every drop lies (TS debugDrops).
 func debug_drops() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
