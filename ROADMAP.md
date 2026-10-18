@@ -375,7 +375,7 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
   past it comes out of the tonemapper as (7, 6, 10) (`DmCompatAlbedo.void_color`, set whenever the exposure changes); the Binbun scenes' own shaders read their particle's colour converted from sRGB through a patched copy (`DmFxBinbun`).
 **Launch day checklist** (2026-10-18, B49):
 - [x] The endpoints: `client/net/dm_config.gd` names the live API, manifest, lobby and relay; `client/tests/front.gd` pins them and refuses the test server.
-- [ ] The rebuilt client published to everyone (`publish-godot-client.sh`, which exports `client/` by default) and announced (PATCH_NOTES.json "Rebuilt from the Bones").
+- [x] The rebuilt client published to everyone (`publish-godot-client.sh`, which exports `client/` by default): 20261018.035843-2b88467, 2026-10-18 04:07 UTC, announced (PATCH_NOTES.json "Rebuilt from the Bones").
 - [ ] The Discord agent builds and ships `client/` (its ships are paused until then: its config forbids every path).
 - [ ] 2026-11-01, the end of B40's undo window: `godot/` and the paths only it used go (the copies become the client's own files), and `launch-undo.sh` with them.
 
