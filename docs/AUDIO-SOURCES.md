@@ -14,7 +14,7 @@ audio without recording its licence here.
 
 ## `public/audio/esm/` (the Epic Stock Media clips)
 
-- **What plays when** is the audio map in `godot/audio/audio_map.gd` (see `godot/audio/README.md`). Clip names there are `folder/name` from the pack's own
+- **What plays when** is the audio map in `godot/audio/audio_map.gd` (see `client/audio/README.md`). Clip names there are `folder/name` from the pack's own
   file list (`docs/audio/esm-fantasy-game-files.txt`, prefix stripped).
 - **Built** from the owner's copy of the pack (`/home/ubuntu/death-muffin/audio-src/fantasy-game`) by a script that is no longer in this repo
   (`tools/audio/build-esm.mjs`, see git history before 2026-10-09). The shipped files are the clips the map names (318 clips for 181 sounds). Per clip: mono, 48 kHz; leading silence trimmed; cut to the longest length any

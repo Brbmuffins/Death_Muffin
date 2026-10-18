@@ -92,7 +92,7 @@ backend. The Graves' enemies are level 1 whatever the hero's level (the Graves h
 the caster's events (the director's, the enemies', the thralls', the hero's), the legion is sampled once a tick by the tool; the game scenes get no code for it.
 - **Switched off on both sides** so both play the same rules: the kill-credit consumers (XP and level-ups mid-run, Soul Harvest's free casts, the Kill Chain, loot: the kill credit is disconnected from the
   rewards) and the weekly Omen (pinned to none); the Bellringers' censer (today's side drops its scene, the client's director leaves it out: `DmWaveDirector.off`) and Grave Surges (`director.surge = null`: a 180 s run in a combat area holds one). Easy auto combat is ticked on the physics clock on both sides: today's input ticks it with the wall clock, which a faster-than-real-time run stretches (`DmNextAutoCombat.clock_ms`).
-- **A stuck hero is set back at the door and counted.** Easy auto combat steers straight at the nearest enemy and has no path round the graves (`godot/next/feel/README.md`: no `DmNav`), so it parks the hero against pockets of tombstones, for good (around (6, -29), (-4, 1), (13, -23),
+- **A stuck hero is set back at the door and counted.** Easy auto combat steers straight at the nearest enemy and has no path round the graves (`client/next/feel/README.md`: no `DmNav`), so it parks the hero against pockets of tombstones, for good (around (6, -29), (-4, 1), (13, -23),
   (3.5, -4) and (4, -20)): a run that parked kills half as many as one that did not, which drowns every other difference. A hero who moved under 1 m and cast under 4 times in 10 s is put back at the door (a player would walk him out), and `unsticks` counts it.
   Both games park the hero at the same places and as often (1.6 and 1.4 times a run), which also says the area scene's colliders are today's.
 - **A seed is not a replay.** Runs of one seed agree for the first seconds and then drift apart, in both games (the hero's walk through a crowd); so the table averages seeds, and says how loose the average still is (the noise column: two standard errors of the difference).
@@ -585,6 +585,52 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
     frame, and the core's own copy of the navmesh answers at once. Paths from the navigation server (click-to-walk, the dead's route) exist a few frames later; the first wave comes at 1.4 s.
   - **No physics colliders on a floor's walls and props** (the hero has no body and the core keeps bodies on the navmesh, whose projected obstructions are the walls and props); a floor is not lightmapped (made at run time): the area's ambient, the moon and the real prop lights, all on (Forward+ has no per-object light budget; today's game switched all but the 8 nearest off).
   - **No warm-up of the roster's models** (`warm`): the crowd's baked models are the core's.
+
+## Affixes, corpses and thralls
+
+These are the old game's `DmAffixSet`, `DmCorpseField`, `DmThrall` and `DmThrallHost`, now run by the core ("Design" says what it owns, "Differences from today's game" what behaves differently).
+Here is what each does, where its GDScript half is and what is still open. The numbers are the data files' (`DmCoreData.load_all`: `client/data/README.md`).
+
+### Affixes (`affixes.cpp`)
+An elite carries some of four affixes, a bit mask on its body (the spawn event carries it and the target frame's chips read it).
+- **Rolling stays GDScript**: `DmAffixRoll.roll` (`client/core/dm_affix_roll.gd`), called by the director so its random stream is today's. An elite gets the Omen's affix when the Omen forces one (the Tolling: Bell-Tolled), else one of the four at random;
+  in the Depths it also gets extras (`DmSimDepthsRules.pick_extra_affixes`: one more every 5 depths, at most 3 extra, all different; the Depths run passes its own list as `over.affix_list`, the Omen's first). A plain body gets Nightfall's shroud
+  (`NIGHTFALL_SHROUD_CHANCE` 0.5, once per pick, so a whole pack) while that milestone is on.
+- **Rules** (`AFFIX_TUNING`; they run after the body's move and only while it acts: not while it rises, is hurt or burrows; the shroud's 0.1 s check always runs). *Bell-Tolled*: every 6 s a ring (r 3) is shown for 0.9 s where the body stands (`EV_TELEGRAPH`, kind toll),
+  then every hero and thrall inside takes the body's blow x 0.6 (hit kind toll). *Hungering*: every 4 s (retry after 0.5 s) while it is hurt, the nearest corpse within 5 m is eaten (reason `devoured`) and heals it 15 % of its maximum, at most what it lacks.
+  *Shrouded*: the `shrouded` status (damage taken x 0.5, drawn at 0.38 opacity), lifted while a friendly Miasma covers the body (`cover_miasma`, 0.35 s of game time); `strip_shroud(id)` takes it off for good and no rite calls it yet (Last Light and the Warden's sweep are not in the game).
+  *Vengeful*: on death three Risen climb out on a 1.4 m ring round the fall, as strong as the body (level, health and damage multipliers).
+- **The look** is the client's (`DmEnemyFx`, `client/next/enemy_fx/README.md`): the standing marks that follow the drawn body, the motes near the hero and the one-off beats from `EV_AFFIX_MOMENT` (tell, toll, hungering, vengeful, unveil). Hungering's meal shows no "+N" health number
+  (the moment carries the place; the amount is the health change).
+- Proof: `client/tests/core_affixes.gd` (each affix against mirrors of today's timer arithmetic, the pause while staggered, Vengeful inside a call and inside a DoT tick).
+
+### Corpses (`corpses.cpp`)
+- **The adapter**: `DmCoreCorpses` (`client/core/dm_core_corpses.gd`, the caster's `c.corpses()`) gives the rites the field's contract: `pick_corpse(aim, pick_r, max_range, from, area)` (the nearest to the aim within `pick_r` and within `max_range` of the caster, else the nearest to the caster within 7 m),
+  `corpses_in_radius` (nearest first, ties by id; a filter runs in GDScript), `consume(id, by_peer, reason)` (atomic, one winner), `add_corpse`, `count`, and `notes(id)` (what a rite keeps on a corpse, gone with it: Carrion Seed's seed). A corpse is a `DmCoreCorpse` snapshot
+  (`client/core/dm_core_corpse.gd`: id, x, z, kind, enemy, elite, facing, scale, area), so a rite reads what it needs before it consumes. Exhume's pick radius and range are `DmSimData.ABILITIES.exhume`'s.
+- **Laying**: a death leaves a corpse of its def's kind at the body's feet (`normal`, `swift`, `resonant`, `toxic`; `none` for the Risen, rat, bat, wraith, niche, Mire Leech and Fen Wisp), plus the def's `deathCorpses` as "risen" corpses on a 1.6 m ring (the Bone Golem 3, the Drowned Sexton 2).
+  Other sources call `corpse_add` (a sacrificed thrall's, when Black Litany's `sacrificeLeavesCorpse` mod is set).
+- **Why a corpse goes** (the reason names in its events, six built in): `expired`, `burst` (a toxic rupture, or a Corpse Explosion's blast), `consumed` (Exhume, Grave Offering, Bone Mantle, Plague Bloom, a raise), `litany`, `raised` (the Deacon's and the Drowned Rite's Risen), `devoured` (a hungry elite, the Abbess's Communion).
+- **Numbers**: lifetime 26 s x the life multiplier (`set_corpse_life_mult`, 1 in the game: the vows and boons that moved it are Ascension's), at most 45 (the oldest goes first as `expired`), a toxic corpse bursts after 5 s into a pool (r 2.4 x its scale, 5 s, a pulse every 0.4 s for
+  6 x `damage_scale(level)`; the level is 1 unless GDScript calls `set_area_level`: "Differences").
+- **Cost**: expiry is event driven (the corpse clock is compared with the earliest due time and nothing is scanned until it is reached); queries scan the at most 45 records linearly.
+- **The look** is the client's (`DmEnemyFx`): a pale ring under every fresh corpse (at most 8), a violet one under a resonant corpse, a green disc under a toxic one, the puff for why it went, and `DmCrowd.shatter` for the body a Corpse Explosion blows apart.
+- Proof: `client/tests/core_corpses.gd`. Not done: `corpse_gone` has no sound; Plague Bloom's seeded corpses use the plain `consumed` look.
+
+### Thralls (`thralls.cpp`)
+- **The adapter**: a hero's legion is `DmCoreLegion` (`client/core/dm_core_legion.gd`, the caster's `c.thralls()`): the calls a cast makes, `raise(intent, aim) -> {ok, thralls, crumbled, why}`, `rally(secs, focus)`, `command_rend(point, leaps)`, `sacrifice(n)`, `refresh(hp, damage, speed)`, `recall()`, `kill(id, reason)`, `clear(reason)`,
+  and the queries `list()`, `active()`, `count()`, `places_used()`, `info(id)`, `near(pos, r)`; signals `raised(thrall_id, corpse)` and `exhume_failed(why)`; `legend` (the worn legendary's mods, `championEvery` and `thrallDeathBurst`, kept current by the caster). A thrall is an id.
+  `DmThralls.raise_stats / colossus_stats` stay GDScript and hand the core a raise's stats.
+- **A raise**: `pick_corpse` -> read the record -> `consume(id, peer, "consumed")` (false = lost the race, why `gone`) -> the core makes room (the cap rules in "Design") -> the thrall rises at the corpse (0.9 s). Mass Grave consumes each corpse in its radius (the stat multiplier when more than one);
+  a Bone Colossus takes the nearest corpses within its pick radius, all consumed, else `few`. `why`: `no_corpse`, `gone`, `few`, `owner_dead`.
+- **The brain** (from `dm_thrall.gd` and `dm_thrall_host.gd`; the numbers are those scripts' literals). *Follow*: a seat on a 1.9 m ring round the owner, dealt by rank among the living, 1.35x pace when more than 6 m behind, and a jump next to the owner (target dropped) beyond 24 m.
+  *Acquire*: the nearest enemy within 10 m of the thrall and 11 m of the owner (a target is dropped beyond 13 m of the owner), scanned every 0.25 s only while it has none (staggered); the path is asked for at most every 0.3 s and only when the goal moved more than 1 m (a goal under 3 m is walked straight).
+  *Blow*: at the swing's start, damage x rally 1.4 x the Hag's hex 0.7 x the Spear rally's mark, every `attackInterval`, reach `range + the target's radius`.
+- **Kinds**: the wraith chills what it hits (and signals `bell_heal`), the bone mage hexes, the Colossus cleaves 0.6x on every other enemy within 2.4 m of the one struck, a plague bearer bursts when it dies other than crumbling (2.5x damage within 2.6 m, and a pool event),
+  and Legion of the Unburied's burst goes off when a thrall is killed. Nothing acts on the `bell_heal` and pool events yet (KNOWN-GAPS "Combat and statuses").
+- **Dying**: reasons `killed`, `crumbled` (over the cap, or its owner gone), `sacrificed`, `decayed`; the body lies 1.4 s; a thrall's blows credit its owner.
+- **The look** is the client's: the crowd draws the thralls (`client/crowd/crowd_looks.json`: the legions' models and tints, the plague bearer's and the Colossus' larger rings), `DmEnemyFx` their ground rings and the rise and death sounds (`client/next/enemy_fx/README.md`).
+- Proof: `client/tests/core_thralls.gd` (the rise, caps and make room, formation and leash, the scan and the boss edge rule, the swing, kinds, enemies choosing and hurting thralls, deaths and bursts, statuses on thralls, rally, separation, tick order).
 
 ## Files
 

@@ -76,7 +76,7 @@ owner's sound users with no budget gate and records the cost (`server/death-muff
 A few VFX sprite sheets come from the owner's licensed pack (`~/vps-handoffs/DeathMuffin/godot_vfx.zip`; godboyhappy ARCLIGHT /
 CLEAVE: commercial use, no credit, **not redistributable in a public repository**). Converted greyscale grids live in
 `~/death-muffin/private/fx-sheets/` (`<id>.png` + `.png.import`: lossless, mipmaps) and are listed in `fx_data.json` `sheets`;
-`godot/assets/fx/sheets/` is gitignored. How they are drawn and installed: `godot/fx/README.md` "Flipbook sheets". Do not use the pack's
+`godot/assets/fx/sheets/` is gitignored. How they are drawn and installed: `client/fx/README.md` "Flipbook sheets". Do not use the pack's
 VESPER or REEBOO 3D scenes until their cost is measured: they need Forward+/Mobile or GPUParticles and were ruled out while players ran Compatibility (DECISIONS B12); the game is Forward+ since launch day (KNOWN-GAPS "Assets and effects").
 
 ## Verify

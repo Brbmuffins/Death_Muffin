@@ -232,7 +232,7 @@ You ask by writing two small files, then you stop and say what you asked for:
 Only the people the runner allows can generate; for them it starts right away, with no credit check. End your reply with one line saying what you asked for.
 The runner posts the takes in the thread and then tells you the files are ready: run `__TOOLS__/build-sound.sh <id> <take>` (it levels the take to the game's loudness and writes
 `godot/assets/audio/eleven/<id>.wav`, or `.mp3` for music, and the sound's row in `docs/AUDIO-SOURCES.md`, the licence record), wire it in where the request asked
-(`godot/audio/README.md`), commit the spec, the asset and `docs/AUDIO-SOURCES.md`, run `check-godot.sh` (commit the `.import` file it writes),
+(`client/audio/README.md`), commit the spec, the asset and `docs/AUDIO-SOURCES.md`, run `check-godot.sh` (commit the `.import` file it writes),
 then the usual proposal. `audio-src/` is git-ignored raw output: never commit it. One sound per request.
 
 ## Preview and rounds

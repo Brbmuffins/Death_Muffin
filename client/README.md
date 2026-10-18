@@ -13,6 +13,35 @@ launcher's Test build channel keeps its last test build.
 - Crowds are drawn from baked vertex-animation textures, one MultiMesh per creature model and level of detail, driven by the combat core through `CrowdView`:
   [crowd/README.md](crowd/README.md).
 
+## System guides
+
+One short README per system folder: how the system works in the live game and its known gaps (this file holds what spans systems; the combat core, with its affixes, corpses and thralls, is [native/README.md](../native/README.md)).
+- The game scene and its parts: `next/` (the scene's nodes and seams), `next/spawn/`, `next/areas/`, `next/chapterhouse/`, `next/depths/`, `next/bosses/` with the brains in `sim/bosses/`, `next/rites/`, `next/feel/`, `next/hero/`, `next/status/`, `next/enemy_fx/`.
+- Value and the player's account: `next/rewards/` (with the loot node), `next/progress/`, `next/meta/`, `next/gathering/`, `next/party/` (friends, the lobby, a guest's own account).
+- What the player sees and hears: `next/hud/`, `ui/hud/`, `ui/onboarding/`, `game/` (creatures, gear look, settings), `fx/`, `world_fx/`, `audio/`, `next/perf/` (graphics controls, the warm-up, the benchmark, the F3 overlay).
+- Data and shared rules: `data/`, `sim/`.
+
+**Where features live.** Start here for a request, then read the system's README. One row per feature; paths are from `client/`, the backend side is under `server/death-muffin/backend/`.
+
+| Feature | In the client | Backend |
+|---|---|---|
+| Bags, inventory, take / deposit, drag between slots | `game_ui/dm_ui_inventory.gd`, `game_ui/dm_ui_panels_b.gd`, `ui/widgets/dm_item_slot.gd`, `game/dm_inventory.gd`; rules `rules/inventory/vault_rules.gd` | `vault.cjs`, `bag-store.cjs` |
+| Vault window | `ui/panels_b/dm_vault_panel.gd` | `vault.cjs` |
+| Gear, Reliquary, equipping | `ui/panels/dm_reliquary_panel.gd`, `game/dm_loadout.gd`, `game/dm_gear_models.gd`; rules and data `rules/gear/`, `data/combat/armor.json`, `data/combat/necro_weapons.json` | `inventory-save.cjs`, `loadouts.cjs` |
+| Abilities, rites, Reaper kit | `next/rites/`, `game_ui/dm_rites.gd`, `game_ui/dm_spell_tooltip.gd`; rules and data `rules/combat/dm_abilities.gd`, `data/combat/abilities.json`, `data/combat/disciplines.json` | `discipline.cjs` |
+| Grimoire, loadouts, keybinds | `ui/panels_a/dm_grimoire_window.gd`, `game_ui/dm_loadout_presets.gd`, `game_ui/dm_ui_binds.gd`, `next/next_input.gd` | `loadouts.cjs` |
+| HUD, action bar, orbs, minimap, tips | `ui/hud/`, `next/hud/`, `game_ui/dm_hud_reveal.gd`, `game_ui/dm_hud_tips.gd` | |
+| Settings, logout, switch character | `ui/panels/dm_settings_panel.gd`, `game_ui/dm_ui_settings.gd` | |
+| Loot drops, item cards, tooltips, dropped gear | `next/rewards/`, `loot_view/`, `ui/widgets/dm_item_card.gd`, `ui/widgets/dm_item_tooltip.gd`, `game_ui/dm_ui_inventory.gd` (Drop); rules and data `rules/loot/`, `data/content/` | `loot.cjs`, `loot-instances.cjs`, `ground.cjs` |
+| Enemies, bosses, Grave Surges | the combat core ([native/README.md](../native/README.md)), `next/spawn/`, `next/areas/` (the surges), `next/bosses/`, `game/dm_boss_view.gd`, `crowd/`; data `data/combat/enemies.json`, `sim/` | `kills.cjs`, `boss-key.cjs` |
+| Hero body, avatar, death pose | `next/hero/dm_hero_body.gd`, `game/dm_avatar.gd` | |
+| Thralls, corpses, affixes | the combat core (native/README.md "Affixes, corpses and thralls"), `core/dm_core_legion.gd`, `core/dm_core_corpses.gd`, `core/dm_affix_roll.gd` | |
+| Co-op party, friends, Social window | `session/`, `net/relay/`, `next/party/`, `next/next_net.gd`, `ui/panels/dm_social_window.gd`, `game_ui/dm_ui_social.gd` | `party-sessions.cjs`, `friends.cjs` (and the lobby, `server/death-muffin/lobby/`) |
+| Crafting, gathering, garden, labor | `ui/panels_b/`, `next/gathering/`; rules and data `rules/gathering/`, `data/gathering/` | `gathering/`, `garden.cjs`, `labor.cjs` |
+| F3 performance overlay | `main/perf_overlay.gd`, `next/perf/` | |
+| Bug report window, automatic crash reports | `game_ui/dm_bug_report_view.gd`, `main/dm_crash_watch.gd`, `main/main.gd` | `bug-reports.cjs` |
+| API calls (one function per route), offline mock | `net/dm_api.gd`, `net/dm_mock_backend.gd` | the route's `.cjs` |
+
 ## Set up and test
 
 ```
@@ -282,7 +311,7 @@ Flagellants and rats, the Regent's Cinder Husks, Pyre Priests and Cinderhounds, 
 
 ## The benchmark
 
-Today's in-game benchmark (`godot/next/perf/README.md` "Benchmark"), ported to the core: the same held fight in today's nine rooms with the four necromancers and the Reaper, so the Full Party fight can be measured in this client against today's game, room by room (the rebuild's Gates B and C, DECISIONS B50).
+Today's in-game benchmark (`next/perf/README.md`), ported to the core: the same held fight in today's nine rooms with the four necromancers and the Reaper, so the Full Party fight can be measured in this client against today's game, room by room (the rebuild's Gates B and C, DECISIONS B50).
 
 ```
 bash client/tools/bake_crowd.sh                                                                                                    # once: the crowd models the fight draws (with none baked the crowd does no view work: about 0.6 ms a frame cheaper, and the report says so)
@@ -681,7 +710,7 @@ Prior's greeting and advice (`DmCovenantDialogue` over the same `guidance_state`
 `DmGameUi`'s and run as in today's game; a party joiner whose kills the backend will not credit is told at the end of `start`. Not today's: the poll says `altar: false` (`DmCounselEvents.tick_calls`, ported),
 because the build has no Altar of Ascension (B36), which holds back the vows, altar_unlocks and boons tips; `can_ascend` (the Prelate's fall, the bosses item) must stay unraised too. Off until their items: the
 Depths' tips (`depths_*`), gathering's and the Acre's (`gather_started`, `skill_up`, `bag_full`, `laborers_seen`) and the other bosses'; `omen_told`, `set_bonus_gained`,
-`necro_weapon_changed`, `loadout_check` and `depths_solo / floor / affix` are not raised by today's game either (godot/ui/onboarding/README.md).
+`necro_weapon_changed`, `loadout_check` and `depths_solo / floor / affix` are not raised by today's game either (`ui/onboarding/README.md`).
 
 `tests/counsel.gd` plays it on the whole world as a new Gravecaller: the poll against a brute-force reading of the core's tables (24 seeded placements, and the edges by hand: bodies whose edges are within 9 m and
 whose centres are not), every fact above through the real scene with the events compared with today's, each tip queued and shown once, the state-driven tips one fact at a time, the welcome held for the Acre, the
@@ -689,7 +718,7 @@ Next-step box, the Prior, the reveal, an area's first entry, no Altar tips, Show
 
 ## Sound
 
-Sound is today's: the `AudioDirector` autoload (`audio/`: its map, mixer, beds, music and footsteps; godot/audio/README.md) and the cues the game plays through it. On the core the cues come from its events, never from
+Sound is today's: the `AudioDirector` autoload (`audio/`: its map, mixer, beds, music and footsteps; `audio/README.md`) and the cues the game plays through it. On the core the cues come from its events, never from
 a node per creature, through the same router and the same ids (no sound was added):
 
 | cue | where in the rebuild |
@@ -913,6 +942,8 @@ the saved login `user://dm_jwt.txt` in this project's own user folder), pointed 
 
 - A character that already exists skips the select screen (today's `resume()`); one whose discipline is not playable goes to the discipline switch. The online gate reads the live
   manifest (`https://muffindevelopment.com/death-muffin/client/manifest.json`, its `online` block).
+- **One character per account.** A discipline card selects the account's main character and switches its discipline (`DmApi.load_or_create_character`, server `POST /character`); only an account with no character gets a new one. Settings has **Log out** (final save, the token dropped,
+  the login screen) and **Switch character** (final save, the party left, the select screen on the same token; the login screen only when the server refuses the token: `DmFrontFlow.switch_character`).
 - **The character's build comes from the server**, read-only, before the game starts (`DmMain.load_build`): the bag's rows (worn gear, set bonuses, the weapon line) and the progression (damage and
   legion tier, boons, vows). `DmNextGame.build_for` builds the hero from them as today's does from the progress node and the bag, so the hero's health, spell power and loadout follow the worn gear.
   A bag or progression the server fails to give sends the player back to the login screen with the server's words; nothing is written, created or imported.
@@ -962,7 +993,7 @@ node tools/rebuild/sync-assets.mjs [--dry-run] [--list <file>]     # copy what t
   hero) may set `meshes/light_baking=1` in its `.import`.
 - Scenes and resources in `godot/` name assets by path, never by uid, so a client asset's new uid raises no "invalid UID" warning (0 in the
   imports and in `code_load`). If a copied scene ever carries `uid=` references, seed the `.import` of new assets with the live asset's uid here.
-- **Licensed flipbook sheets** (`fx/sheets/`) are not in git (`godot/fx/README.md`). A list line under `fx/sheets/` (for example `fx/sheets/hit_flash.png`)
+- **Licensed flipbook sheets** (`fx/sheets/`) are not in git (`fx/README.md` "Flipbook sheets"). A list line under `fx/sheets/` (for example `fx/sheets/hit_flash.png`)
   is read from `$FX_SHEETS` (default `~/death-muffin/private/fx-sheets/`, the source of `tools/godot/fx-sheets-sync.sh`) and copied to
   `client/assets/fx/sheets/`, which the root `.gitignore` keeps out of git; the tool refuses to copy them anywhere git does not ignore.
 

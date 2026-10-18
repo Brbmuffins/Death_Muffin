@@ -64,7 +64,7 @@ player part of a gain until it is fixed; few real sessions ran on the gains save
   damage-taken multiplier, and the brain's own Fracture is never fed: a Marrow Spear's Fracture or a Sanctify on the King does nothing).
 - **Easy auto combat parks the hero in pockets of tombstones:** it steers straight at the nearest enemy, with no path round the graves (found
   by the seeded comparison, native/README.md "Proof of same game").
-- Shrouded suspension in the player's own Miasma, the Barrier decay, and boss-pool gaps for late joiners: see `godot/next/status/README.md` and `godot/next/bosses/README.md`.
+- Shrouded suspension in the player's own Miasma, the Barrier decay, and boss-pool gaps for late joiners: see `client/next/status/README.md` and `client/next/bosses/README.md`.
 
 ## Built but never shown
 
@@ -92,10 +92,10 @@ polish list). Also:
 ## Party and online
 
 - **No automatic rejoin** (D13). A dropped client returns to its own solo game and has to join again by hand (an Open party: Join; a Closed one: a new invite or Ask to join); a dropped host ends the session (D6).
-- **One area per session, Depths solo:** `godot/next/areas/README.md`, `godot/next/depths/README.md`.
+- **One area per session, Depths solo:** `client/next/areas/README.md`, `client/next/depths/README.md`.
 - **Part of a joiner's state does not reach the host's sim:** the host builds the joiner's hero from the server's record (level, gear,
   set bonuses, affixes, boons, vows, upgrade tiers, rune sockets), but Colossus Mantle hooks are host-hero only; no Covenant Seal or Nightfall dim; a client cannot call Empowered bosses.
-- Client (non-host) peers get no full HUD feed beyond what `next/party/` provides (`next/hud/README.md`).
+- Client (non-host) peers get no full HUD feed beyond what `client/next/party/` provides (`client/next/hud/README.md`).
 - Chat is party chat in a party and local-only when solo.
 - **Friends show online only in the world:** character select and the launcher count as offline (the lobby link starts after loading).
 - A guest's waystone map lists its own account's open areas, not the host's world's (a jump to a sealed one is refused with the reason).
@@ -117,7 +117,7 @@ polish list). Also:
 ## UI
 
 - **No in-game leaderboard panel.** `DmApi.get_leaderboard` exists; only the website shows it.
-- Unraised counsel events: `godot/ui/onboarding/README.md`. Hero gaps: `godot/next/hero/README.md`.
+- Unraised counsel events: `client/ui/onboarding/README.md`. Hero gaps: `client/next/hero/README.md`.
 - **The item card squeezes the stat name of a long affix row:** the card of an affixed staff (the Reliquary's tooltip, seen in the screenshot tool's picture of 2026-10-18) lays a row such as `+30 INT` beside
   `+42.9 spell power, +60 essence, +3.0 essence/s (+19.4 thrall damage)` out with the name 1 px wide, so it shows a letter a line (`client/ui/widgets/dm_item_card.gd`: a row is an HBox of two labels, the first wraps and the second
   does not; the layout is the same in any renderer).
@@ -157,7 +157,7 @@ Notes for the asset and effects rebuild (ROADMAP Phase 4):
 
 ## Leftovers from the web era
 
-- Bit-exact web math (fdlibm, exact-double loading) is still used by the Depths floor generator, auto-combat and the DB loader: `godot/sim/README.md`.
+- Bit-exact web math (fdlibm, exact-double loading) is still used by the Depths floor generator, auto-combat and the DB loader: `client/sim/README.md`.
 - `tools/godot/sync-slice-assets.mjs` reads `godot/data/slice/assets_used.json`; the exporter that wrote it (`export-slice.ts`) is gone, so the list is now hand-maintained.
 - The user:// folder (saved login and settings) is named after `config/name`: "Death Muffin (rebuild)" in `client/project.godot` (the old
   game's was "Death Muffin (Godot slice)"). Renaming it needs a migration that copies the folder. Players see "Death Muffin" (`main.gd` sets
