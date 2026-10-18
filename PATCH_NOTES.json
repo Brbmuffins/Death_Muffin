@@ -5,7 +5,9 @@
     "items": [
       "Grave Surges are back: after a while in a combat area, a crypt nearby cracks open and three waves of the dead climb out. Kill most of them before it seals (about 20 seconds) for a guaranteed relic and bonus gold.",
       "If the game ever crashes in a fight, its automatic crash report now says exactly where, so we can fix it faster.",
-      "The benchmark window now says where your finished runs go: the game's benchmark page."
+      "The benchmark window now says where your finished runs go: the game's benchmark page.",
+      "When you stop playing, the game sends us a small report of how smoothly it ran (frame times, your graphics card and preset) and where you played. Nothing personal; it helps us make the game run well on every PC. The numbers are on the site's play reports page.",
+      "The game now arrives with many of its shaders already prepared, so the first start after an update loads faster."
     ]
   },
   {

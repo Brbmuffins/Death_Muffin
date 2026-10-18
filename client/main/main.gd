@@ -22,6 +22,9 @@ extends Node
 ## discipline change from the class panel (final save, the game restarts with the changed character).
 ## The automatic crash report (since launch day, 2026-10-18): a release build's lock (DmCrashWatch) still there at the next start sends the last run's crash
 ## as a bug report once the player is in an online world (`_send_crash_report`).
+## The play report (ROADMAP Phase 1; client/next/perf/README.md "Play reports"): a release build's online session is counted by one DmPlayReport (`report`, a child of this node, so a party
+## hand-over or a discipline change that swaps the game scene keeps it) from the first ready game scene until Log out, Switch character or quit, then queued in user:// and sent with the
+## logged-in api at the character select and when a session starts (DmPlayReportQueue). Never from a debug build, a script run, the dev-offline backend or the benchmark (`plays_report`).
 
 const DEV_OFFLINE_DB := "user://dm_dev_offline_db.json"    ## --dev-offline testing backend (the same file the dev entry uses)
 
@@ -39,6 +42,8 @@ var _build := {}                    ## the character's bag and progression of th
 var _transit_lobby: DmLobbyClient   ## the lobby socket a join was made on, polled here while the solo game is swapped for the guest game
 var _party_busy := false            ## a join / return is in progress (one at a time)
 var _crash_checked := false         ## the pending crash report (DmCrashWatch) was tried this run
+var plays_report := false           ## this session is counted for a play report (decided in _ready by DmPlayReportQueue.records; a test sets it before add_child to try the wiring)
+var report: DmPlayReport            ## the session in progress (null until the first ready game scene)
 
 
 func _ready() -> void:
@@ -75,6 +80,9 @@ func _ready() -> void:
 		return
 	if mode == "":
 		mode = mode_for(args)
+	plays_report = plays_report or DmPlayReportQueue.records(mode, OS.is_debug_build(), OS.get_cmdline_args())
+	if plays_report:
+		DmPlayReportQueue.recover()   # a session the last run left unfinished (a crash) is queued with endReason "crash"
 	if mode == "dev_offline":
 		var o := DmLaunchArgs.options(args)
 		if o.has("seed"):
@@ -160,6 +168,7 @@ func _notification(what: int) -> void:
 
 ## Final save of the game (also the quit path of the tests): the scene's `flush_all` (rewards, Chronicle, progression, bag).
 func save_all() -> void:
+	_end_report("quit")   # first, and only files: the queue is sent at the next start, so quitting never waits on the network
 	if slice != null and slice.ready_:
 		var s := slice
 		slice = null
@@ -174,6 +183,7 @@ func _start_flow(switching_character: bool = false) -> void:
 	flow.enter_world.connect(_enter_world)
 	flow.benchmark_requested.connect(_open_benchmark_setup)
 	add_child(flow)
+	_flush_play_reports()   # (not awaited) the character select, or the login screen with a kept login: reports of earlier sessions go out now
 	if switching_character:
 		flow.switch_character()
 	else:
@@ -258,6 +268,7 @@ func _run_benchmark(quit_on_close: bool, setup: Dictionary = DmBenchmark.STANDAR
 
 ## Back to the login screen with the reason on it (the token is dropped, as the front flow does when a character cannot be resumed).
 func _back_to_login(reason: String) -> void:
+	_end_report("logout")   # (a session that was counting before a restart or a hand-over that could not go on)
 	api.set_token("")
 	_start_flow()
 	if flow.current is DmLoginScreen:
@@ -313,6 +324,7 @@ func _enter_world(character: Dictionary, session) -> void:
 	api = session
 	if mode == "online" and DmBenchHistory.pending_count() > 0:
 		DmBenchHistory.flush(api)   # benchmark runs that could not be sent before (no login, no network); not awaited
+	_flush_play_reports()
 	if flow != null:
 		flow.queue_free()
 		flow = null
@@ -364,6 +376,7 @@ func _enter_next(character: Dictionary, loading: DmLoadingScreen, build: Diction
 		_back_to_login(refused[0])
 		return
 	_transit_lobby = null
+	_attach_report(g)
 	if g.ui_host != null:
 		g.ui_host.left_world.connect(_on_next_left.bind(true))
 		g.ui_host.character_switch.connect(_on_next_switch)
@@ -376,7 +389,37 @@ func _enter_next(character: Dictionary, loading: DmLoadingScreen, build: Diction
 
 ## A normal shutdown (window close, quit, benchmark end) removes the crash lock; a crash never gets here.
 func _exit_tree() -> void:
+	_end_report("quit")   # (a quit has ended it already in save_all)
 	DmCrashWatch.end()
+
+
+## The game scene is ready: the session's play report counts its frames (a first scene starts the report, a hand-over's next scene continues it).
+func _attach_report(g: DmNextGame) -> void:
+	if not plays_report or not g.ready_:
+		return
+	if report == null:
+		report = DmPlayReport.new()
+		report.name = "PlayReport"
+		report.autosave = true
+		add_child(report)
+		report.begin(DmBuild.version())
+	report.attach(g)
+
+
+## The session is over (`reason`: logout, switch, quit): the report is queued in user:// (files only) and goes out at the next character select or session start.
+func _end_report(reason: String) -> void:
+	if report == null:
+		return
+	var rep := report
+	report = null
+	DmPlayReportQueue.end_session(rep, reason)
+	rep.queue_free()
+
+
+## Sends the queued play reports with the logged-in online api, in the background (DmPlayReportQueue.flush; nothing waits on it).
+func _flush_play_reports() -> void:
+	if plays_report and api != null and DmPlayReportQueue.pending_count() > 0:
+		DmPlayReportQueue.flush(api)
 
 
 ## Once per run, in an online world: the last run's crash (DmCrashWatch) goes to the devs as a bug report, and the player is told.
@@ -446,7 +489,7 @@ func _on_next_join_failed(reason: String, character: Dictionary, loading: DmLoad
 
 ## Log out (Settings): final save, the game freed, the token dropped, back to the login screen.
 func _on_next_left(logout: bool) -> void:
-	await _teardown_next()
+	await _teardown_next("logout")
 	if logout:
 		api.set_token("")
 	_start_flow()
@@ -459,7 +502,7 @@ func _on_next_switch() -> void:
 		return
 	_party_busy = true
 	var lobby: DmLobbyClient = slice.party.lobby
-	await _teardown_next()
+	await _teardown_next("switch")
 	if lobby != null:
 		lobby.close()
 	_party_busy = false
@@ -472,12 +515,17 @@ func _on_next_restart(character: Dictionary) -> void:
 	await _enter_world(character, api)
 
 
-## Ends the running game: the session closes (a host's guests are told) and the scene is freed.
-func _teardown_next() -> void:
+## Ends the running game: the session closes (a host's guests are told) and the scene is freed. `end_reason` ("logout", "switch") also ends the play report; "" is a hand-over (a party, a
+## discipline change): the report stops counting this scene and goes on with the next. Either way it is closed before the scene saves, so the final numbers do not wait on the network.
+func _teardown_next(end_reason: String = "") -> void:
 	var g := slice
 	if g == null:
 		return
 	slice = null
+	if report != null:
+		report.detach()
+	if end_reason != "":
+		_end_report(end_reason)
 	await g.leave()   # flush_all + session end
 	g.queue_free()
 	await get_tree().process_frame

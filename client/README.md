@@ -18,7 +18,7 @@ launcher's Test build channel keeps its last test build. The first Godot game, t
 One short README per system folder: how the system works and its known gaps (this file holds what spans systems; the combat core, with its affixes, corpses and thralls, is [native/README.md](../native/README.md)).
 - The game scene and its parts: `next/` (the scene's nodes and seams), `next/spawn/`, `next/areas/`, `next/chapterhouse/`, `next/depths/`, `next/bosses/` with the brains in `sim/bosses/`, `next/rites/`, `next/feel/`, `next/hero/`, `next/status/`, `next/enemy_fx/`.
 - Value and the player's account: `next/rewards/` (with the loot node), `next/progress/`, `next/meta/`, `next/gathering/`, `next/party/` (friends, the lobby, a guest's own account).
-- What the player sees and hears: `next/hud/`, `ui/hud/`, `ui/onboarding/`, `game/` (creatures, gear look, settings), `fx/`, `world_fx/`, `audio/`, `next/perf/` (graphics controls, the warm-up, the benchmark, the F3 overlay).
+- What the player sees and hears: `next/hud/`, `ui/hud/`, `ui/onboarding/`, `game/` (creatures, gear look, settings), `fx/`, `world_fx/`, `audio/`, `next/perf/` (graphics controls, the warm-up, the benchmark, the play reports, the F3 overlay).
 - Data and shared rules: `data/`, `sim/`.
 
 **Where features live.** Start here for a request, then read the system's README. One row per feature; paths are from `client/`, the backend side is under `server/death-muffin/backend/`.
@@ -39,6 +39,7 @@ One short README per system folder: how the system works and its known gaps (thi
 | Co-op party, friends, Social window | `session/`, `net/relay/`, `next/party/`, `next/next_net.gd`, `ui/panels/dm_social_window.gd`, `game_ui/dm_ui_social.gd` | `party-sessions.cjs`, `friends.cjs` (and the lobby, `server/death-muffin/lobby/`) |
 | Crafting, gathering, garden, labor | `ui/panels_b/`, `next/gathering/`; rules and data `rules/gathering/`, `data/gathering/` | `gathering/`, `garden.cjs`, `labor.cjs` |
 | F3 performance overlay | `main/perf_overlay.gd`, `next/perf/` | |
+| Play reports (what a session sends when it ends) | `next/perf/dm_play_report.gd`, `next/perf/dm_play_report_queue.gd`, `main/main.gd` | the play-reports route |
 | Bug report window, automatic crash reports | `game_ui/dm_bug_report_view.gd`, `main/dm_crash_watch.gd`, `main/main.gd` | `bug-reports.cjs` |
 | API calls (one function per route), offline mock | `net/dm_api.gd`, `net/dm_mock_backend.gd` | the route's `.cjs` |
 
@@ -84,6 +85,7 @@ Run `client/setup.sh` in every new checkout or worktree (it lists the extension 
 | `hud` | the HUD on the core: target frame, minimap dots, hotbar and cooldowns, thrall pips, floating number caps, pools, pieces, z layers, the draw-call model |
 | `auto_combat` | Easy auto combat's decisions: golden cases, seeded Full Party fights for the necromancer's rites and the Reaper's, the movement; INFO: a decision's time |
 | `benchmark` | the benchmark on the core: the Full Party fight held as the setup says, every room and every class, Easy auto combat, the report and its budget section, real launches, nothing sent anywhere (its own folder for the models and every file; about 4 minutes) |
+| `play_report` | the play reports ("Play reports" in next/perf/README.md): the numbers on known frame sequences, the contract's shape, a real offline game scene, the autosave and the crash, the queue's cap, sending through the mock, nothing leaving a script run, and `DmMain`'s wiring on the mock (about 20 s) |
 | `coop` | 2-player co-op: a host and a guest in one process over a real local lobby and relay (needs `cd server/death-muffin/lobby && npm ci`; about a minute; "Co-op on the core") |
 | `coop_bosses` | the six other bosses fight a party of two, summoned by the guest, in the whole world over the same lobby and relay: state, telegraphs, events, zones, adds, blows and effects on the guest's hero (and its hurt on its window), the phases, the defeat by the guest and both accounts paid, a wipe (about 70 s) |
 | `social` | the Social window: open and close, host from the Party tab, a boot scene that joins from the list and comes home (needs the lobby's modules too; about 40 s) |

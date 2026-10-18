@@ -595,6 +595,11 @@ func send_bug_report(report: Dictionary) -> DmResult:
 func post_benchmark(run: Dictionary) -> DmResult:
 	return await _post("/api/benchmarks", run)
 
+## A finished play session's summary (DmPlayReport.build_payload; client/next/perf/README.md "Play reports"): how the game ran and what happened, nothing personal. A repeated `reportId`
+## answers the first report's id, so a resend is safe. data: {id}. 400 bad_request, 429 rate_limited (50 a day), 503 unavailable (the server's table is missing).
+func post_play_report(report: Dictionary) -> DmResult:
+	return await _post("/api/play-reports", report)
+
 func get_my_bug_reports() -> DmResult:
 	return await _rget("/api/bug-reports/mine")
 

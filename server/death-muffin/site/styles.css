@@ -2041,3 +2041,14 @@ a.enter-button { display: flex; align-items: center; justify-content: center; te
 .bench-compare .better { color: #7fe39a; }
 .bench-compare .worse { color: #ff7d7d; }
 .bench-compare pre { white-space: pre-wrap; word-break: break-word; max-height: 24rem; overflow: auto; background: #0d0a14; padding: .8rem; border-radius: 6px; font-size: .8rem; }
+
+/* Play reports page (play-reports.html / play-reports.js) */
+.reports-section h2 { margin: 2.2rem 0 .3rem; font-size: 1.25rem; }
+.reports-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: .8rem; margin: 1.4rem 0; }
+.reports-fact { border: 1px solid rgba(155, 92, 255, .3); border-radius: 8px; padding: .8rem 1rem; }
+.reports-fact b { display: block; font-size: 1.6rem; font-weight: 600; color: #dcc38a; }
+.reports-fact span { font-size: .85rem; color: #b9aed0; }
+.reports-note { margin: .2rem 0 .6rem; font-size: .9rem; color: #b9aed0; }
+.reports-table tr:first-child td { color: inherit; }
+.reports-table th.num, .reports-table td.num { text-align: right; }
+.reports-section .leaderboard-scroll { margin: .8rem 0 1.2rem; }

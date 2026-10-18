@@ -40,6 +40,7 @@ var _sessions := DmOfflineSessions.new()
 var _ground: Dictionary = {}       ## dropped gear lying on a session's ground (ground.cjs): drop id -> {session, from_char, from_account, item_id, roll, x, z}
 var _ground_seq := 0
 var _drop_tapes: Dictionary = {}   ## server-decided drops (drops.cjs): character id -> {issued: {kind: n}, spent: {kind: n}, events: {"kind#n": {items, claimed}}}
+var play_reports: Array = []       ## the play reports it was sent, oldest first: {id, account, report} (the dev-offline backend never gets one; tests read this)
 
 func _init(path: String = "user://dm_offline_db.json") -> void:
 	persist_path = path
@@ -463,6 +464,18 @@ func _route(method: String, p: String, query: String, body: Dictionary, token: V
 		return _route_post(acc, p, body)
 	return _err("Offline backend: no route for %s %s" % [method, p], 404)
 
+## POST /api/play-reports: the contract's reportId rule (16 to 64 of [A-Za-z0-9_-]) and the reply {id}; a repeated reportId answers the first row's id.
+func _play_report(report_id: String, body: Dictionary, acc: Dictionary) -> Dictionary:
+	if not RegEx.create_from_string("^[A-Za-z0-9_-]{16,64}$").search(report_id):
+		return {"status": 400, "body": {"success": false, "code": "bad_request", "error": "reportId must be 16 to 64 letters, digits, - or _."}}
+	for row: Dictionary in play_reports:
+		if row["report"].get("reportId") == report_id:
+			return _ok({"id": row["id"]})
+	var id := play_reports.size() + 1
+	play_reports.append({"id": id, "account": String(acc.get("username", "")), "report": body.duplicate(true)})
+	return _ok({"id": id})
+
+
 # --- friends (backend friends.cjs: one row per pair, "pending" until the other side accepts) -----------------------------------------
 
 ## Account id of an account key (the mock keys accounts by username; ids are handed out on first use and kept in the save).
@@ -618,6 +631,10 @@ func _route_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary:
 	# Server authority step 2: the mock keeps no ledger (there is no authority to enforce offline); it just acknowledges.
 	if p == "/api/kills/report":
 		return _ok({"mode": "off"})
+	# Play reports (the backend's play-reports route): the mock keeps what it was sent in `play_reports` (account, body), so a test sees what would have gone out; a repeated reportId answers
+	# the first one's id. Not saved: play reports are never recorded on the dev-offline backend.
+	if p == "/api/play-reports":
+		return _play_report(String(body.get("reportId", "")), body, acc)
 	# everything below needs the character id
 	if not _own(acc, body.get("characterId")):
 		return _err("Character not found", 404)

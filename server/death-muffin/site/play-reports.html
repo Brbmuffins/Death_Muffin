@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#07060a" />
+    <meta
+      name="description"
+      content="Death Muffin play reports: how the game runs on players' PCs, release by release, and how long people play."
+    />
+    <title>Death Muffin Play Reports</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%2307060a'/%3E%3Cpath d='M16 4v24M8 10l8-5 8 5M9 22l7 6 7-6M7 16h18' fill='none' stroke='%239b5cff' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23c6a4ff'/%3E%3C/svg%3E"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Pirata+One&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link rel="preload" href="assets/covenant-bg.png" as="image" />
+    <link rel="stylesheet" href="styles.css?v=12" />
+  </head>
+  <body class="about-page leaderboard-page">
+  <header class="site-nav">
+    <a class="site-nav__brand" href="index.html"><span class="site-nav__mark" aria-hidden="true"></span><span>Death Muffin</span></a>
+    <nav aria-label="Primary navigation">
+      <a class="site-nav__link" href="about.html">About</a>
+      <a class="site-nav__link" href="classes.html">Classes</a>
+      <a class="site-nav__link" href="leaderboard.html">Leaderboard</a>
+      <a class="site-nav__link" href="benchmarks.html">Benchmarks</a>
+      <a class="site-nav__link" href="play-reports.html" aria-current="page">Play reports</a>
+      <a class="site-nav__link" href="patch-notes.html">Patch notes</a>
+      <a class="site-nav__enter" href="index.html">Download</a>
+    </nav>
+  </header>
+  <main class="about-section leaderboard-section bench-section reports-section">
+    <div class="section-heading"><p class="eyebrow">How it really runs</p><h1>Play reports</h1></div>
+    <p>When a play session ends, the game sends one small summary: how smoothly it ran, which graphics preset and graphics card it used, how long each area took and where the session ended. Nothing personal is in it: no names, no emails, no chat. Pick a release to see how it ran on everyone's PCs.</p>
+    <form class="bench-filters" id="reports-filters" onsubmit="return false">
+      <label>Release <select id="r-version"></select></label>
+    </form>
+    <p id="reports-status" role="status">Reading the play reports…</p>
+    <div id="reports-body" hidden>
+      <div class="reports-facts" id="r-facts"></div>
+      <p class="reports-note" id="r-truncated" hidden>This release has more reports than the page reads at once: the newest ones are shown.</p>
+
+      <h2>By graphics preset</h2>
+      <p class="reports-note">A frame is one picture. Fewer milliseconds is smoother: 16.7 ms is 60 frames a second, 33 ms is 30. The slow frames figure is what the slowest 1 in 100 frames cost in a typical session. The worst frame is the single slowest one in a typical session. A hitch is a frame over 50 ms, which you feel as a stutter.</p>
+      <div class="leaderboard-scroll">
+        <table class="leaderboard-table reports-table">
+          <caption class="sr-only">Frame times by graphics preset</caption>
+          <thead><tr><th scope="col">Preset</th><th scope="col" class="num">Sessions</th><th scope="col" class="num">Average frame (ms)</th><th scope="col" class="num">About (fps)</th><th scope="col" class="num">Slow frames (ms)</th><th scope="col" class="num">Worst frame (ms)</th><th scope="col" class="num">Hitches per hour</th></tr></thead>
+          <tbody id="r-presets"></tbody>
+        </table>
+      </div>
+
+      <h2>By graphics card</h2>
+      <p class="reports-note">The 15 cards with the most sessions.</p>
+      <div class="leaderboard-scroll">
+        <table class="leaderboard-table reports-table">
+          <caption class="sr-only">Frame times by graphics card</caption>
+          <thead><tr><th scope="col">Graphics card</th><th scope="col" class="num">Sessions</th><th scope="col" class="num">Average frame (ms)</th><th scope="col" class="num">About (fps)</th><th scope="col" class="num">Slow frames (ms)</th></tr></thead>
+          <tbody id="r-gpus"></tbody>
+        </table>
+      </div>
+
+      <h2>How sessions ended</h2>
+      <p class="reports-note">A crash is found at the next start: the game sees that the last session never finished.</p>
+      <div class="leaderboard-scroll">
+        <table class="leaderboard-table reports-table">
+          <caption class="sr-only">How play sessions ended</caption>
+          <thead><tr><th scope="col">How</th><th scope="col" class="num">Sessions</th><th scope="col" class="num">Share</th></tr></thead>
+          <tbody id="r-reasons"></tbody>
+        </table>
+      </div>
+      <div class="leaderboard-scroll">
+        <table class="leaderboard-table reports-table">
+          <caption class="sr-only">Where play sessions ended</caption>
+          <thead><tr><th scope="col">Where</th><th scope="col" class="num">Sessions that ended there</th><th scope="col" class="num">Share</th></tr></thead>
+          <tbody id="r-end-areas"></tbody>
+        </table>
+      </div>
+
+      <h2>By area</h2>
+      <p class="reports-note">Time spent and deaths in each area, and how smooth it ran there.</p>
+      <div class="leaderboard-scroll">
+        <table class="leaderboard-table reports-table">
+          <caption class="sr-only">Time, deaths and frame times by area</caption>
+          <thead><tr><th scope="col">Area</th><th scope="col" class="num">Hours</th><th scope="col" class="num">Deaths</th><th scope="col" class="num">Deaths per hour</th><th scope="col" class="num">Average frame (ms)</th></tr></thead>
+          <tbody id="r-areas"></tbody>
+        </table>
+      </div>
+
+      <h2>What the server saw</h2>
+      <p class="reports-note" id="r-server-note"></p>
+      <div class="leaderboard-scroll">
+        <table class="leaderboard-table reports-table">
+          <caption class="sr-only">The server's own numbers for the party sessions in these reports</caption>
+          <thead><tr><th scope="col">Per player-hour</th><th scope="col" class="num">Total</th><th scope="col" class="num">Per hour</th></tr></thead>
+          <tbody id="r-server"></tbody>
+        </table>
+      </div>
+    </div>
+    <a class="about-button about-button--primary" href="index.html">Download for Windows</a>
+  </main>
+  <script src="play-reports.js?v=1"></script>
+</body></html>

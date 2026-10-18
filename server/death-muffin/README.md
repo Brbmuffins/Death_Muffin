@@ -1,7 +1,7 @@
 # Death Muffin server
 
 Backend and operations for Death Muffin. The game is the Godot client (`client/`, with its combat core in `native/`), online only; the Windows launcher is `launcher/windows`. Public site:
-https://muffindevelopment.com/death-muffin/ (launcher download, patch notes, leaderboard, benchmarks).
+https://muffindevelopment.com/death-muffin/ (launcher download, patch notes, leaderboard, benchmarks, play reports).
 
 ## Services
 
@@ -27,7 +27,7 @@ Both services run as `ubuntu` from `/home/ubuntu/death-muffin/{backend,lobby}` (
 
 ## Static files (`/var/www/death-muffin/`)
 
-- `site/`: the launcher download page, About, Classes, leaderboard, benchmarks and patch notes. Copied to `/var/www/death-muffin/` by hand; no script publishes it.
+- `site/`: the launcher download page, About, Classes, leaderboard, benchmarks, play reports and patch notes. Copied to `/var/www/death-muffin/` by hand; no script publishes it.
 - `client/`: the Godot Windows client and `manifest.json`, written by `publish-godot-client.sh`.
 - `play/release-notes.json`, `play/patch-notes.json`: written by `announce-release.sh`; read by the launcher, the site and the client.
 
@@ -136,6 +136,13 @@ Each new report gets its own thread in #in-game-reports (message, context, game 
 The client uploads every finished in-game benchmark run to `POST /api/benchmarks` (`backend/benchmarks.cjs`, table `benchmark_runs`, migration 048; reply `{ success, data: { id } }`; a repeated `clientRunId` answers the first id; 60 runs per account per day, 30 calls a minute). Everything in it is untrusted and is clamped on the way in; vsync-capped or cancelled runs are stored with `flagged` set and left out of the default list.
 Anyone can read: `GET /api/benchmarks` (filters `room`, `discipline`, `size` (`light`, `standard`, `heavy`, `full_party`), `length`, `version`, `gpu`, `account`, `standard=1`, `includeFlagged=1`, `limit`, `before`) and `GET /api/benchmarks/:id` (metrics, breakdown, text report); only admin / gm accounts (GM mode or not) may `DELETE /api/benchmarks/:id`. nginx strips `/death-muffin/api`, so every route is mounted both as `/api/benchmarks` (the game's base) and `/benchmarks` (the site, like `/leaderboard`).
 The public page is `site/benchmarks.html` (`benchmarks.js`): filters (default: every run, flagged ones shown with a badge), a per-version trend chart (one line per PC, per PC and setup when several setups are shown; flagged runs left out), the runs table and a two-run compare.
+
+## Play reports
+
+When a play session ends, the game sends one summary to `POST /api/play-reports` (`backend/play-reports.cjs`, table `play_reports`, migration 056; the player's token; reply `{ success, data: { id } }`). Errors are `{ success: false, code, error }`: 400 `bad_request`, 401 `unauthorized`, 429 `rate_limited` (50 reports a day per account, 30 calls a minute), 503 `unavailable` while the table is missing. A report needs a valid `reportId` (16-64 characters, made once per session; a repeated one answers the first id), a `version` and `seconds`; everything else is untrusted and cleaned (unknown keys dropped, strings trimmed and capped, numbers clamped, a bad value becomes its safe default), so a crash found at the next start still counts. The account id (only to count players and cap spam) and the party session ids a report names are never returned.
+Anyone can read `GET /api/play-reports/releases` (every release newest first by its first report: `version, reports, players, hours, first, last`) and `GET /api/play-reports/summary?version=<v>` (kept a minute): reports, players, hours, median and average session minutes; by graphics preset and by graphics card (the 15 with most sessions) the sessions, average frame ms (weighted by frames), p99 ms and worst frame ms (the median over sessions of each one's own) and hitches per hour (frames over 50 ms); end reasons and end areas (counts); per area hours, deaths, deaths per hour and average frame ms; and `server`, the server's own numbers. Both are mounted as `/api/play-reports/...` (the game's base) and `/play-reports/...` (the site: nginx strips `/death-muffin/api`).
+**The server's numbers** (`server`) cover the party sessions the reports name, each counted once however many of its members reported, and only when an account that named it was a member of it. They are per player-hour, each member counted from joining to leaving (or to the session's end): `kills` and `bosses` are the members' accepted counters in `party_session_members`; `xp` and `gold` are what the members' progress saves paid in that time (`value_ledger`, reason `save`, gains only), because the kill ledger keeps XP and gold only as lifetime totals. `dropsPerHour` is always null: `character_drop_events` carries no party session (a claim's `sessionId` only decides whether a member may carry a drop and is not stored), an event's time is its first pickup (up to 3 minutes after the kill) and drops nobody picks up leave no row, so a time window would count a member's solo Depths drops and miss late pickups.
+The public page is `site/play-reports.html` (`play-reports.js`): a release picker (newest first) and the summary as tables.
 
 ## Tests
 

@@ -1889,6 +1889,14 @@ require('./benchmarks.cjs')(app, pool, {
   },
   limiter: rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => `acct:${req.user.accountId}` }),
 });
+// Play reports: one small summary per finished play session (the game), public per-release numbers (the site). 50 a day per account is in the route.
+require('./play-reports.cjs')(app, pool, {
+  requireAuth: requireJWT,
+  limiter: rateLimit({
+    windowMs: 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => `acct:${req.user.accountId}`,
+    message: { success: false, code: 'rate_limited', error: 'Too many play reports at once. Please try again in a minute.' },
+  }),
+});
 // Per account, not per IP: the lobby reads every player's list from 127.0.0.1 (presence), with that player's own token.
 require('./friends.cjs')(app, pool, { requireAuth: requireJWT, limiter: rateLimit({ windowMs: 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => `acct:${req.user.accountId}` }) });
 require('./discipline.cjs')(app, pool, { verifyJWT, formatCharacter, getGearLoadout, invalidateLeaderboard, maxIndex: MAX_DISCIPLINE_INDEX, playable: PLAYABLE_DISCIPLINE_INDICES });
