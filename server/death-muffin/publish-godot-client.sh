@@ -21,7 +21,8 @@
 # Served at https://muffindevelopment.com/death-muffin/client/ (static, see nginx-locations.conf).
 # Refuses a forward release while the live lobby differs from <rev>'s (run deploy-lobby.sh first; LOBBY_SKEW_OK=1 overrides).
 # Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2 FX_SHEETS LOBBY_DIR PREPARE SMOKE
-# PROJECT=client exports the rebuilt client (DECISIONS B41) instead of godot/ (the test channel: test-channel/publish-test-channel.sh).
+# The game is client/ (the rebuild, DECISIONS B41) since launch day, 2026-10-18: its PREPARE and SMOKE steps (test-channel/prepare-rebuild.sh, smoke-rebuild.sh) run by
+# default. PROJECT=godot exports today's old game instead (launch-undo.sh restores the last old build without exporting one).
 set -euo pipefail
 
 REV="${1:-}"
@@ -34,7 +35,12 @@ WORK="${WORK:-/home/ubuntu/death-muffin/deploy}"
 BASE_URL="${BASE_URL:-https://muffindevelopment.com/death-muffin/client}"
 KEEP_BUILDS="${KEEP_BUILDS:-2}"
 PRESET="Windows Desktop"
-PROJECT="${PROJECT:-godot}"   # the Godot project folder in the repository
+PROJECT="${PROJECT:-client}"   # the Godot project folder in the repository
+if [ "$PROJECT" = client ]; then
+  HERE="$(cd "$(dirname "$0")" && pwd)"
+  PREPARE="${PREPARE-$HERE/test-channel/prepare-rebuild.sh}"
+  SMOKE="${SMOKE-$HERE/test-channel/smoke-rebuild.sh}"
+fi
 DEFAULT_MESSAGE="Online opens soon"
 
 command -v python3 >/dev/null || { echo "python3 is required" >&2; exit 1; }

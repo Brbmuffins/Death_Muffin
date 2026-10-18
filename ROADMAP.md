@@ -6,6 +6,8 @@ are listed once, in [KNOWN-GAPS.md](KNOWN-GAPS.md); decisions in [DECISIONS.md](
 
 ## Now: the rebuild (Helix, 2026-10-16)
 
+**Launched 2026-10-18** (DECISIONS B49): `client/` is the game on the live server; the look pass (Gate D) waits in "After launch day".
+
 Death Muffin is rebuilt underneath so the same game runs smoothly on low-end PCs and laptops (phones later) and looks great on high-end
 PCs, on a simple foundation that does not need patching again (DECISIONS B34-B42). Same game: same rules, numbers and timing. Every
 difference from today is written down; improvements are proposed to Helix, never slipped in. Ascension leaves on launch day and comes back
@@ -23,7 +25,7 @@ redesigned right after (B36). First-guess timing: 4 to 6 weeks of working days, 
 - Areas become scenes with the same layouts, built by a tool from `godot/data/slice/world.json`, with baked navmesh, occluders, visibility
   ranges and baked lighting (`LightmapGI`, baked on Helix's PC through a one-click helper).
 - Forward+ at every PC preset; Compatibility is only the automatic fallback; the Mobile renderer is for phones.
-- On launch day `client/` becomes the game and `godot/` is retired.
+- Since launch day (2026-10-18) `client/` is the game; `godot/` stays until 2026-11-01 for the undo (B40), then goes.
 
 **Performance rules (B39).** No goal to stop at: as much performance as we can get with the Forward+ graphics on top, and nothing ships
 slower than what it replaces. Floors protect weaker PCs: a 2020-era laptop at Low never drops below 60 fps in normal play or 45 in the
@@ -179,7 +181,7 @@ server (B38).
     loadout, rune and weapon sockets (the panels and the bag); the floating damage numbers came with the HUD. The rites' pictures have run headless only: their first look is on Helix's PC.
   - [x] Login to the test server and character select (today's front flow, pointed at the test API): the boot (`main/main.tscn`, the project's main scene) runs today's login, online gate and
     character select against the test server, then the game scene with the chosen character, its bag and its progression read from the server. The API base is the test API in one place
-    (`net/dm_config.gd`), enforced by the transport and the game scene and pinned by `client/tests/front.gd` (client/README.md "The test server"). Proved on the mock backend and against the
+    (`net/dm_config.gd`), enforced by the transport and the game scene and pinned by `client/tests/front.gd` (client/README.md "The server"). Proved on the mock backend and against the
     real test server's health and manifest; no real account was used (the team's first real login there is the check left for Helix). Off until their items: rewards and the kill ledger,
     saves, party, friends, chat, gathering, the Chapterhouse, the panels (no Log out, no Switch character), the benchmark, the crash report; the other disciplines' hero models.
   - [x] The Gravedigger King's brain as an external entity: the Hollow Graves' boss is `DmBossHost`, `DmBoss`, `DmBossNodeWorld`, `DmBossFx` and `DmBossView` ported to the core; the brains of `sim/bosses` are today's copies. His body registers as an
@@ -347,7 +349,8 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
   - [x] Nothing slower: Helix's PC, the Bell Sanctum's Full Party fight, 2560x1440: Low 594 fps (p99 2.9 ms), High 343 (4.6), Ultra 224 (6.2) against today's game's 61 (Ultra, p99 24.8); warbogar's PC (i7-8700K, Arc B580, 1920x1009 High, test build
     20261017.161453): 342 fps (p99 4.1 to 5.4 ms, no hitch, one frame of 32 to 36 ms a run) on the Full Party against today's 41 (p99 34.7) on the lighter Standard fight; every benchmark
     room inside its frame budget on the VPS.
-  - [ ] Co-op on two real PCs (the automated two-instance suites pass: `client/tests/coop.gd`, `coop_bosses.gd`).
+  - [x] Co-op on two real PCs: Helix and warbogar, 2026-10-18, "coop is working well" (the automated two-instance suites pass: `client/tests/coop.gd`, `coop_bosses.gd`); the waystone jump
+    and the recall for a guest, which did nothing (as in today's game), fixed the same day.
   - [ ] A weaker PC's benchmark (the Medium floor: a GTX 970-class PC at 60 fps), if one is to hand.
 
 **Look pass checklist** (phase 4, Gate D; the first item came early because the test build looked wrong):
@@ -370,9 +373,11 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
 - [x] Glow and the void (2026-10-17, client/README.md "The look against today's game"): the glow is today's width (`DmWfxBloom`: the two finest mips at 0.8 of the web's strength; five mips glowed to 66 px past an edge, today's is gone by 30, and a candle's
   sphere or a Binbun effect became the soft white blob Helix saw: the same Chapterhouse frame has none now); the dark earth beyond the walls is one quad (`DmWorldBuilder.build_outside`, today's 196 tiles) and the background colour
   past it comes out of the tonemapper as (7, 6, 10) (`DmCompatAlbedo.void_color`, set whenever the exposure changes); the Binbun scenes' own shaders read their particle's colour converted from sRGB through a patched copy (`DmFxBinbun`).
-- [ ] Low and Medium: today's draw blended effects in sRGB space when bloom is off (half-transparent white over black: 131; with bloom, 205), Forward+ blends in linear light on every preset;
-  the lifts are the Ultra measurement's, Low's factor (0.96) and Medium's (1) are not measured; the Depths' walls keep Forward+'s darker tint (its floor is lifted in `DmWorldBuilder._floor_mat`) and its lift is the old 1.2, not measured (the probe cannot stand in the instance).
-- [ ] Every area's look signed off by Helix on their PC (the brightness of all twelve is measured against today's; the look itself, the hero in the dark areas and the Fen above all, is Helix's to judge).
+**Launch day checklist** (2026-10-18, B49):
+- [x] The endpoints: `client/net/dm_config.gd` names the live API, manifest, lobby and relay; `client/tests/front.gd` pins them and refuses the test server.
+- [ ] The rebuilt client published to everyone (`publish-godot-client.sh`, which exports `client/` by default) and announced (PATCH_NOTES.json "Rebuilt from the Bones").
+- [ ] The Discord agent builds and ships `client/` (its ships are paused until then: its config forbids every path).
+- [ ] 2026-11-01, the end of B40's undo window: `godot/` and the paths only it used go (the copies become the client's own files), and `launch-undo.sh` with them.
 
 **Working rules for the rebuild.**
 - This checklist is the only to-do list; the next unchecked item is the only work. Ideas go to "After launch day".
@@ -395,6 +400,10 @@ combat simulation for now.
 
 ## After launch day
 
+- **The look pass** (Gate D; not done at launch, Helix's call, B49):
+  - [ ] Low and Medium: today's draw blended effects in sRGB space when bloom is off (half-transparent white over black: 131; with bloom, 205), Forward+ blends in linear light on every preset;
+    the lifts are the Ultra measurement's, Low's factor (0.96) and Medium's (1) are not measured; the Depths' walls keep Forward+'s darker tint (its floor is lifted in `DmWorldBuilder._floor_mat`) and its lift is the old 1.2, not measured (the probe cannot stand in the instance).
+  - [ ] Every area's look signed off by Helix on their PC (the brightness of all twelve is measured against today's; the look itself, the hero in the dark areas and the Fen above all, is Helix's to judge).
 - **Ascension, redesigned** (B36): the first new feature. Players' saved boons, Ashes and best rank are kept for it.
 - **Necromancer polish:** combat feel and loot for the four disciplines from playtests, readability of rites and statuses, gear and affix
   legibility, the first hour (Next-step box, counsel tips, guide NPCs); the rejoin window (D13) and the party gaps (KNOWN-GAPS: Party and
@@ -410,8 +419,8 @@ combat simulation for now.
     caught (that run's log is gone); the one log of that message with frames (today's game, 2026-10-07, headless) is the audio mixer thread, in the step that reads the bus layout while the main thread adds a bus without the audio lock. The
     client's director now holds the lock for every bus it adds or re-routes; if the message comes back, `compare-scenarios.mjs` keeps the run's whole output and names the signal.
   - Today's game: quitting while models still load in the background can abort on a PC with few cores (the GitHub runner's 4: the CI's perfctl abort, 2026-10-16).
-  - Today's game and the rebuild: a party guest cannot use a waystone or the recall (T): `DmChapterhouse.teleport_to` moves the host's own body only, so the stone's jump and the recall do nothing for a guest
-    (its waystone list also reads its own account's open areas, not the host's world). It needs a guest request the host answers by moving the guest's body (2026-10-17).
+  - Today's game: a party guest cannot use a waystone or the recall (T): `DmChapterhouse.teleport_to` moves the host's own body only (the rebuild's guest asks the host since 2026-10-18,
+    client/README.md "Co-op on the core"). The rebuild: a guest's waystone map lists its own account's open areas, not the host's world's (a jump to a sealed one is refused with the reason).
   - Today's game: a thrall never wears its Legion kit: DmEntityViews asks its host for `legion_kit_for` (the kit's armour tint on a thrall's chest and hands, the kit weapon's tier colour on its sword, bow or staff) and no host
     has it, so `kit` is always null; the rebuild draws thralls the same until this is decided (2026-10-17).
   - Today's game: a thrall never wears its discipline's legion look either (the Ossuary's sentinel, the Gravecaller's legionnaire, the Rotweaver's plague thrall, their tints and glows):

@@ -19,7 +19,8 @@ extends Node
 ## put back in its own world with the reason on screen (client/README.md "Co-op on the core").
 ## The panels' hand-overs as today's: Log out (final save, the token dropped, the login screen), Switch character (final save, the select screen with the same token) and a
 ## discipline change from the class panel (final save, the game restarts with the changed character).
-## Off until its ROADMAP item, against today's: the automatic crash report (DmCrashWatch; a report would open a thread for a test build).
+## The automatic crash report as today's (since launch day, 2026-10-18): a release build's lock (DmCrashWatch) still there at the next start sends the last run's crash
+## as a bug report once the player is in an online world (`_send_crash_report`).
 
 const DEV_OFFLINE_DB := "user://dm_dev_offline_db.json"    ## --dev-offline testing backend (the same file the dev entry uses)
 
@@ -36,10 +37,12 @@ var _idle_cam: Camera3D
 var _build := {}                    ## the character's bag and progression of the last world entry (load_build): a party hand-over starts the next game with them
 var _transit_lobby: DmLobbyClient   ## the lobby socket a join was made on, polled here while the solo game is swapped for the guest game
 var _party_busy := false            ## a join / return is in progress (one at a time)
+var _crash_checked := false         ## the pending crash report (DmCrashWatch) was tried this run
 
 
 func _ready() -> void:
 	get_tree().auto_accept_quit = false
+	DmCrashWatch.begin(DmBuild.version())   # a release build's lock: still there at the next start = this run crashed
 	# The window title players see. config/name in project.godot stays as it is: Godot names the user:// folder after it (the saved
 	# login, settings, tips), so renaming it would sign every player out and reset their settings.
 	get_window().title = "Death Muffin"
@@ -344,6 +347,28 @@ func _enter_next(character: Dictionary, loading: DmLoadingScreen, build: Diction
 	g.party.join_ready.connect(_on_next_join_ready)
 	g.party.client_ended.connect(_on_next_client_ended.bind(character))
 	loading.dismiss()
+	_send_crash_report(g, character)
+
+
+## A normal shutdown (window close, quit, benchmark end) removes the crash lock; a crash never gets here.
+func _exit_tree() -> void:
+	DmCrashWatch.end()
+
+
+## Once per run, in an online world: the last run's crash (DmCrashWatch) goes to the devs as a bug report, and the player is told.
+func _send_crash_report(g: DmNextGame, character: Dictionary) -> void:
+	if _crash_checked or mode != "online" or api == null:
+		return
+	_crash_checked = true
+	var rep := DmCrashWatch.pending_report(int(character.get("id", 0)))
+	if rep.is_empty():
+		return
+	var r: DmResult = await api.send_bug_report(rep)
+	if not r.ok:
+		return   # kept: tried again next run
+	DmCrashWatch.clear()
+	if is_instance_valid(g) and g.ui_host != null:
+		g.ui_host.game_event.emit("toast", {"text": "The game closed unexpectedly last time. A crash report with your game log was sent to the devs.", "kind": ""})
 
 
 func _process(_dt: float) -> void:

@@ -1,13 +1,13 @@
 # The rebuilt client
 
-The rebuilt Death Muffin client (ROADMAP "Now: the rebuild", DECISIONS B34-B42): its own Godot 4.7.2 project, next to the live game in
-`godot/`, which it never changes. The live game keeps shipping from `godot/` until launch day; this project ships only to the launcher's
-Test build channel until then.
+The Death Muffin client, rebuilt (ROADMAP "Now: the rebuild", DECISIONS B34-B42): its own Godot 4.7.2 project, next to the old game in
+`godot/`, which it never changes. Since launch day (2026-10-18, B49) this project is the game: `publish-godot-client.sh` publishes it to everyone; the
+launcher's Test build channel keeps its last test build.
 
 - Renderer: Forward+ (`project.godot`), Compatibility only as the automatic fallback, the Mobile renderer for phones (B35). Textures also
   import in phone formats (B40).
 - Its own user:// folder (`config/name` "Death Muffin (rebuild)"), so it never shares saved logins or settings with the live game.
-- It talks to the **test server** only (DECISIONS B38), never the live one before launch day: [The test server](#the-test-server-login-and-character-select).
+- It plays on the **live server** since launch day and never reaches the test server ([The API rule](#the-api-rule-decisions-b38-b49)).
 - The combat core is a C++ GDExtension built from [native/](../native/README.md) into `bin/` (built files are not committed;
   `bin/dmcore.gdextension` is).
 - Crowds are drawn from baked vertex-animation textures, one MultiMesh per creature model and level of detail, driven by the combat core through `CrowdView`:
@@ -777,8 +777,11 @@ party's other player is a GUEST: its game scene (`DmNextGame` joined, `is_guest`
   (the minimap's) are the host's: the message goes to a guest as it joins (`joining`: the doors just stand open for it, silently, without the gate sound or a banner) and to every guest whenever the host's seals change (`apply_seals`:
   a kill that breaks one, GM mode). A seal that breaks while the guest is in rises on the guest through the world's `set_unlocked` (the gate, the collider, the navmesh region and both links, and one `door_opened`, the event
   `DmAudioHooks` plays the gate sound on) and shows the host's "A seal breaks" banner (`DmChapterhouse.announce_seal`). The guest's own account is its own world's: its seals, GM mode included, never open or close a door in the
-  host's (`apply_seals` and `check_seals` do nothing on a guest), and what its account earned by the host's kills is its own business (`DmNextJoiner`). The waystones' jump and the recall (T) move the host's own body
-  only: for a guest they do nothing (ROADMAP "For review").
+  host's (`apply_seals` and `check_seals` do nothing on a guest), and what its account earned by the host's kills is its own business (`DmNextJoiner`).
+- **Travel**, reliable, guest to host and back (`DmNextParty.ask_travel`): a guest's waystone jump or recall (T). The host simulates every body, so it moves the
+  guest's (`DmChapterhouse.guest_destination` + `move_body`: beside a stone or in the Chapterhouse, the area open in the host's world; the recall goes home from anywhere) and answers
+  with the jump the guest plays (`arrived`: the sound, the bursts, the camera, `travelled`) or the reason it refused (the guest's toast). A guest's waystone map still lists its own
+  account's open areas; a jump to one sealed in the host's world is refused with that reason. `client/tests/coop.gd` "guest_travel".
 - **Hero table**, reliable, on a join and a leave: peer id to the hero's external id in the host's core. **Vitals**, unreliable ordered, 20 Hz: every hero's health, resource and alive flag. The hero positions are the session's own snapshot.
 - **Guest to host:** move intents (`DmSession`), `request_cast` (`DmRiteCaster`: the host validates the owner, the rite's rules and the aim, resolves it on its core with the guest's hero as the source, and broadcasts the rite's events, which the guest
   plays), a baseline request, and the **profile** (class and level, clamped to 100) once the session is live: the host binds that character to the guest's body, so what its caster may cast follows the level. The guest's thralls are the
@@ -845,44 +848,44 @@ hosting an Open party from the Party tab, a guest that is the real boot scene (`
 reason), a friend request sent and answered from the windows, friends' presence over the lobby, and zero script errors. It prints INFO lines: the Full Party's bandwidth for one guest was about 28 KB/s (23 KB/s snapshots, 0.7 KB/s reliable) in 82 packets/s on the host's connection, 2.7 % and 14 % of the relay's limits (1 MiB/s, 600 packets/s); the largest game
 packet was 1,231 B.
 
-## The test server: login and character select
+## The server: login and character select
 
 `main/main.tscn` (`DmMain`, a port of today's) is the project's main scene. It is today's boot and front flow (login, register, the online gate, character select, the discipline switch,
-the saved login `user://dm_jwt.txt` in this project's own user folder), pointed at the **test server** (`server/death-muffin/test-server/README.md`: copies of the team's accounts, its own
-database and signing key, so nothing played here can touch a live character), then the ported game scene with the chosen character:
+the saved login `user://dm_jwt.txt` in this project's own user folder), pointed at the **live server** since launch day (2026-10-18; before it, the test server,
+`server/death-muffin/test-server/README.md`), then the ported game scene with the chosen character:
 
 ```
-/home/ubuntu/tools/godot/godot --path client            # login (the team's accounts were copied to the test server) or register a throwaway account there; pick a discipline
+/home/ubuntu/tools/godot/godot --path client            # login with a live account (never a real one in a test; tests run on the local mock); pick a discipline
 ```
 
-- A character that already exists skips the select screen (today's `resume()`); one whose discipline is not playable goes to the discipline switch. The online gate reads the test channel's
-  manifest (`https://muffindevelopment.com/death-muffin/client-test/manifest.json`, its `online` block).
+- A character that already exists skips the select screen (today's `resume()`); one whose discipline is not playable goes to the discipline switch. The online gate reads the live
+  manifest (`https://muffindevelopment.com/death-muffin/client/manifest.json`, its `online` block).
 - **The character's build comes from the server**, read-only, before the game starts (`DmMain.load_build`): the bag's rows (worn gear, set bonuses, the weapon line) and the progression (damage and
   legion tier, boons, vows). `DmNextGame.build_for` builds the hero from them as today's does from the progress node and the bag, so the hero's health, spell power and loadout follow the worn gear.
   A bag or progression the server fails to give sends the player back to the login screen with the server's words; nothing is written, created or imported.
 - Server errors are shown as today shows them ("Cannot reach server — check your connection", the server's own `error`, "Request failed: 502"); a stored login with the server unreachable lands on
   the login screen saying "Online opens soon", as today.
-- **Value is the test server's** ("Value on the server"): the kill reports, the drops claimed into the bag, the progression's and the bag's saves all go to the test API with the logged-in character.
-- **Off until their items:** the automatic crash report and the update notice. Log out, Switch character and a discipline change (Settings, the class
+- **Value is the server's** ("Value on the server"): the kill reports, the drops claimed into the bag, the progression's and the bag's saves all go to the live API with the logged-in character.
+- **As today's since launch day:** the automatic crash report (`DmMain._send_crash_report`, DmCrashWatch) and the update notice (`DmNextGame._start_update_check`,
+  DmUpdateCheck). Log out, Switch character and a discipline change (Settings, the class
   panel) save and hand over as today's (`tests/front.gd` "hand-overs"). The four necromancer disciplines and the Reaper play (their hero models are in `client/assets.list`; `tests/rites.gd` "the disciplines", "the Reaper").
 
-### The API rule (DECISIONS B38)
+### The API rule (DECISIONS B38, B49)
 
-The rebuilt client **never talks to the live server before launch day.** Where it may talk is set in **one place**, `net/dm_config.gd` (a port of the live game's config), and enforced twice:
-- `DmConfig.API_BASE` is the test API (`https://muffindevelopment.com/death-muffin/test-api`), `SITE_BASE` the test channel's folder (`.../client-test/`, the manifest), `LOBBY_URL` the test lobby (`wss://muffindevelopment.com/death-muffin/test-lobby/`) and `RELAY_PORT` the test relay's UDP port (5196). A dev run, a
-  test run and an exported build all read these constants: there is no publish-time swap to miss.
-- `DmHttpTransport.send` (the one door to the network, a port) refuses any URL `DmConfig.allows_url` does not accept: under the test API or the test channel's folder, nothing with a `/..` that a
-  server would resolve elsewhere. It logs an error and answers like an unreachable server. `DmNextGame.start` refuses any api whose base url is not the test API or empty (the local mock).
-  `DmNextParty` connects only to a lobby `DmConfig.allows_lobby_url` accepts (the test lobby, or one on this machine for a trial) and keeps a relay the lobby offers only when `DmConfig.allows_relay` does (port 5196, or this
-  machine; never the live relay's 5193): a lobby that handed out the live relay is ignored and the session stays on the lobby's WebSocket.
-- A finished benchmark run is sent (`DmApi.post_benchmark`) through the same transport to the test API's benchmark history, never anywhere else; "The benchmark" says when it is sent.
-- `client/tests/front.gd` fails if any of it moves: the constants are the test server's and not the live API, lobby or manifest (read from `godot/net/dm_config.gd`), the allow-list refuses the live
-  addresses and lookalikes, every request the flows made stayed on the test server, and a scan of every shipped file finds no address outside `net/dm_config.gd` and no live path anywhere.
+The client plays on the **live server** and **never reaches the test server** (since launch day, 2026-10-18; before it the rule was the other way round). Where it may talk is set in
+**one place**, `net/dm_config.gd` (a port of the live game's config), and enforced twice:
+- `DmConfig.API_BASE` is the live API (`https://muffindevelopment.com/death-muffin/api`), `SITE_BASE` the site's root (the manifest `client/manifest.json` and the patch notes under it),
+  `LOBBY_URL` the live lobby and `RELAY_PORT` the live relay's (5193). A test run and an exported build all read these constants: there is no publish-time swap to miss.
+- `DmHttpTransport.send` (the one door to the network, a port) refuses any URL `DmConfig.allows_url` does not accept: under the site's root, never under a test-server path
+  (`DmConfig.TEST_PATHS`: the test API, the test channel, the test lobby), nothing with a `/..` that a server would resolve elsewhere. It logs an error and answers like an unreachable server.
+  `DmNextGame.start` refuses any api whose base url is not the live API or empty (the local mock). `DmNextParty` connects only to a lobby `DmConfig.allows_lobby_url` accepts (the live
+  lobby, or one on this machine for a trial) and keeps a relay the lobby offers only when `DmConfig.allows_relay` does (port 5193, or this machine; never the test relay's 5196).
+- A finished benchmark run is sent (`DmApi.post_benchmark`) through the same transport to the live API's benchmark history.
+- `client/tests/front.gd` fails if any of it moves: the constants are the live server's (read from `godot/net/dm_config.gd` too), the allow-list refuses the test server's addresses and
+  lookalikes, every request the flows made stayed on the live server, and a scan of every shipped file finds no address outside `net/dm_config.gd` and no test-server path anywhere.
 
-**Launch day flips it** (the day `client/` becomes the game, B38/B40): in one commit, set `API_BASE` to `https://muffindevelopment.com/death-muffin/api`, `SITE_BASE` to `https://muffindevelopment.com/death-muffin/`,
-`CLIENT_MANIFEST_URL` to `SITE_BASE + "client/manifest.json"`, `LOBBY_URL` to the live lobby (the values in `godot/net/dm_config.gd` that day) and `RELAY_PORT` to the live relay's (5193). The allow-list is written in those constants, so it
-follows. Then change `tests/front.gd` to pin the live addresses instead (its `TEST_API` and `LIVE_API` constants and the "never the live API" checks). Until that commit the test fails on any live
-address; after it the same test pins the live ones.
+Test builds (the launcher's Test build switch) keep the last one published to the test channel before launch day; a new test build needs its own endpoints first (a PREPARE step
+that points a scratch copy at the test server), never a change to `net/dm_config.gd`.
 
 ## Assets
 

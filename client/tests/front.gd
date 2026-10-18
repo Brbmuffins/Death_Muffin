@@ -21,11 +21,13 @@ extends SceneTree
 
 const OUT := "user://front_test"
 const BAKE := ["grave_robber", "bone_hound"]
-## What this build may talk to (the literal, so a change of net/dm_config.gd cannot move the test with it) and what it never may (also read from godot/net/dm_config.gd below).
+## What this build talks to (the literals, so a change of net/dm_config.gd cannot move the test with it; also read from godot/net/dm_config.gd below) and what it never may:
+## the test server, since launch day (2026-10-18).
 const TEST_API := "https://muffindevelopment.com/death-muffin/test-api"
 const LIVE_API := "https://muffindevelopment.com/death-muffin/api"
 const LIVE_LOBBY := "wss://muffindevelopment.com/death-muffin/lobby/"
 const TEST_LOBBY := "wss://muffindevelopment.com/death-muffin/test-lobby/"   # the test lobby of 2-player co-op (server/death-muffin/test-server/coop)
+const TEST_MANIFEST := "https://muffindevelopment.com/death-muffin/client-test/manifest.json"
 const SCAN_EXT := ["gd", "tscn", "tres", "json", "cfg", "godot", "gdshader", "gdshaderinc", "txt", "csv"]
 const SCAN_SKIP := ["tests", "assets", "addons", ".godot", "bin", "assets/crowd/baked", "ui/fonts"]   # ui/fonts: the fonts' licence texts carry their authors' web addresses
 
@@ -108,7 +110,7 @@ func _run() -> void:
 		if not r.ok:
 			quit(1)
 			return
-	config_is_the_test_server()
+	config_is_the_live_server()
 	scan_shipped_files()
 	var shim := Shim.new()
 	shim.mock = DmOffline.make_mock("")   # memory only: no file, no server
@@ -118,10 +120,10 @@ func _run() -> void:
 	await hand_overs(api, shim)
 	await unplayable_discipline(api, shim)
 	await unreachable_and_failing(shim)
-	await live_api_is_refused()
+	await test_api_is_refused()
 	await dev_entry_offline()
 	await real_transport()
-	await real_test_server()
+	await real_live_server()
 	finish()
 
 
@@ -129,8 +131,8 @@ func finish() -> void:
 	var unexpected := errlog.errors.size()
 	check(unexpected == 0, "no script error or engine error in the log (%d: %s)" % [unexpected, "; ".join(errlog.errors.slice(0, 3))])
 	for u in all_urls:
-		check(DmConfig.allows_url(u) and not u.begins_with(LIVE_API), "a request the flows made stays on the test server: %s" % u.get_slice("?", 0))
-	print("INFO front: %d requests made by the flows, all to the test API or the test channel's manifest" % all_urls.size())
+		check(DmConfig.allows_url(u) and not u.begins_with(TEST_API), "a request the flows made stays on the live server: %s" % u.get_slice("?", 0))
+	print("INFO front: %d requests made by the flows, all to the live API or the live manifest" % all_urls.size())
 	if fails == 0:
 		print("PASS front (%d checks)" % checks)
 		quit(0)
@@ -374,28 +376,28 @@ func unreachable_and_failing(shim: Shim) -> void:
 	await drop(m3, shim)
 
 
-## The API rule, the live side: an api whose address is the live one never gets a game (the real transport never sends it either: real_transport).
-func live_api_is_refused() -> void:
+## The API rule, the test side: an api whose address is the test server's never gets a game (the real transport never sends it either: real_transport).
+func test_api_is_refused() -> void:
 	var shim := Shim.new()
 	shim.mock = DmOffline.make_mock("")
-	shim.base = LIVE_API
+	shim.base = TEST_API
 	var api := make_api(shim)
-	api.base_url = LIVE_API
+	api.base_url = TEST_API
 	var signed: DmResult = await api.register(PLAYER, PLAYER_MAIL, PLAYER_PASS)
 	api.set_token(signed.data["token"])
 	var made: DmResult = await api.load_or_create_character(2)
-	check(made.ok, "(the stand-in made a character for the live-address api)")
-	# This stand-in answers the live address, so only the second layer is under test here: the game scene refuses the live api, the boot drops the game and says why.
+	check(made.ok, "(the stand-in made a character for the test-address api)")
+	# This stand-in answers the test address, so only the second layer is under test here: the game scene refuses the test api, the boot drops the game and says why.
 	var m := boot(api)
 	var told := await until(func() -> bool: return m.flow != null and m.flow.current is DmLoginScreen and (m.flow.current as DmLoginScreen).error_label.text != "", 30.0)
-	check(told, "an api on the live address ends on the login screen with a message")
+	check(told, "an api on the test address ends on the login screen with a message")
 	check(m.slice == null, "and no game is left running on it")
 	if told:
-		check((m.flow.current as DmLoginScreen).error_label.text == "This build plays on the test server only.", "'%s'" % (m.flow.current as DmLoginScreen).error_label.text)
+		check((m.flow.current as DmLoginScreen).error_label.text == "This build plays on the live server only.", "'%s'" % (m.flow.current as DmLoginScreen).error_label.text)
 	check(api.get_token().is_empty(), "the login was dropped")
 	await drop(m)
 	# The game scene itself, whatever the address looks like.
-	for base in [LIVE_API, LIVE_API + "/", TEST_API + "/", TEST_API + "x", "http://muffindevelopment.com/death-muffin/test-api", "https://example.invalid/api"]:
+	for base in [TEST_API, TEST_API + "/", LIVE_API + "/", LIVE_API + "x", "http://muffindevelopment.com/death-muffin/api", "https://example.invalid/api"]:
 		var g: DmNextGame = load("res://next/next_game.tscn").instantiate()
 		root.add_child(g)
 		var a := DmApi.new(Callable(shim, "send"))
@@ -408,13 +410,13 @@ func live_api_is_refused() -> void:
 	await process_frame
 
 
-## The real transport: the live address is refused before any socket is opened, and says so in the log (the one error this suite expects).
+## The real transport: the test server's addresses are refused before any socket is opened, and say so in the log (the one error this suite expects).
 func real_transport() -> void:
 	var t := DmHttpTransport.new()
 	root.add_child(t)
 	var before := errlog.errors.size()
-	var forbidden := [LIVE_API + "/api/health", LIVE_API, LIVE_LOBBY, TEST_API + "/../api/health", TEST_API + "/%2e%2e/api/health",
-		"https://muffindevelopment.com/death-muffin/client/manifest.json", "https://muffindevelopment.com/death-muffin/", "https://example.invalid/"]
+	var forbidden := [TEST_API + "/api/health", TEST_API, TEST_LOBBY, LIVE_API + "/../test-api/api/health", LIVE_API + "/%2e%2e/test-api/api/health",
+		TEST_MANIFEST, "https://muffindevelopment.com/death-muffin/test-lobby/", "https://example.invalid/"]
 	for url in forbidden:
 		var r: Dictionary = await t.send({"method": "GET", "url": url, "headers": {}, "body": ""})
 		check(bool(r.get("network_error", false)) and int(r.get("status", -1)) == 0, "the real transport refuses %s" % url)
@@ -444,7 +446,7 @@ func dev_entry_offline() -> void:
 		check(m._transport == null and root.find_children("*", "HTTPRequest", true, false).is_empty(), "no transport and no HTTP request node exists")
 		check(m.slice.build_for(m.slice.session.get_my_id()) == DmCharacterBuild.build(m.slice.character, m.slice.server_slots, m.slice.server_local) and float(m.slice.local_body().p["stats"]["maxHp"]) > 0.0, "the dev character's build comes from the mock's bag, as the server's does")
 	check(DmMain.mode_for(PackedStringArray(["--dev-offline"]), true) == "dev_offline" and DmMain.mode_for(PackedStringArray(["--dev-offline"]), false) == "online", "--dev-offline works in a debug build and a release build ignores it")
-	check(DmMain.mode_for(PackedStringArray([]), true) == "online", "the default start is online (against the test server)")
+	check(DmMain.mode_for(PackedStringArray([]), true) == "online", "the default start is online (against the live server)")
 	check(DmMain.quick_start_class(PackedStringArray(["--dev-offline", "--class=4"])) == 4, "--class=N is read")
 	await drop(m)
 
@@ -464,56 +466,57 @@ func live_config() -> Dictionary:
 	return out
 
 
-func config_is_the_test_server() -> void:
+func config_is_the_live_server() -> void:
 	var live := live_config()
-	check(live.has("API_BASE") and live.has("LOBBY_URL") and live.has("SITE_BASE"), "godot/net/dm_config.gd (today's live config) was read")
-	var live_api: String = live.get("API_BASE", LIVE_API)
-	var live_lobby: String = live.get("LOBBY_URL", LIVE_LOBBY)
-	var live_manifest: String = String(live.get("SITE_BASE", "")) + "client/manifest.json"
+	check(live.has("API_BASE") and live.has("LOBBY_URL") and live.has("SITE_BASE"), "godot/net/dm_config.gd (the old game's live config) was read")
+	var live_api: String = live.get("API_BASE", "")
+	var live_lobby: String = live.get("LOBBY_URL", "")
+	var live_site: String = live.get("SITE_BASE", "")
 	check(live_api == LIVE_API and live_lobby == LIVE_LOBBY, "the live addresses are the ones this test knows (%s, %s): if they moved, update the test" % [live_api, live_lobby])
-	var never := [live_api, live_lobby, live_manifest, LIVE_API, LIVE_LOBBY]
-	check(DmConfig.API_BASE == TEST_API, "API_BASE is the test API: %s" % DmConfig.API_BASE)
-	check(DmConfig.CLIENT_MANIFEST_URL == "https://muffindevelopment.com/death-muffin/client-test/manifest.json", "the manifest is the test channel's: %s" % DmConfig.CLIENT_MANIFEST_URL)
+	check(DmConfig.API_BASE == LIVE_API and DmConfig.API_BASE == live_api, "API_BASE is the live API: %s" % DmConfig.API_BASE)
+	check(DmConfig.SITE_BASE == live_site and DmConfig.CLIENT_MANIFEST_URL == live_site + "client/manifest.json", "the manifest is the live one: %s" % DmConfig.CLIENT_MANIFEST_URL)
+	check(DmConfig.PATCH_NOTES_URL == live_site + "play/patch-notes.json", "the patch notes are the live ones: %s" % DmConfig.PATCH_NOTES_URL)
+	check(DmConfig.LOBBY_URL == LIVE_LOBBY and DmConfig.LOBBY_URL == live_lobby, "LOBBY_URL is the live lobby: %s" % DmConfig.LOBBY_URL)
+	var never := [TEST_API, TEST_LOBBY, TEST_MANIFEST]
 	for pair in [["API_BASE", DmConfig.API_BASE], ["SITE_BASE", DmConfig.SITE_BASE], ["CLIENT_MANIFEST_URL", DmConfig.CLIENT_MANIFEST_URL], ["PATCH_NOTES_URL", DmConfig.PATCH_NOTES_URL], ["LOBBY_URL", DmConfig.LOBBY_URL]]:
 		for u in never:
 			var v: String = pair[1]
-			check(v != u and not v.begins_with(u), "DmConfig.%s is not the live address %s" % [pair[0], u])
-	check(DmConfig.LOBBY_URL == TEST_LOBBY, "LOBBY_URL is the test lobby: %s" % DmConfig.LOBBY_URL)
-	check(DmConfig.allows_lobby_url(TEST_LOBBY) and not DmConfig.allows_lobby_url(LIVE_LOBBY) and not DmConfig.allows_lobby_url(LIVE_LOBBY.trim_suffix("/")) and not DmConfig.allows_lobby_url("ws://muffindevelopment.com:5192"), "the lobby allow-list takes the test lobby and refuses the live one")
-	check(DmConfig.allows_lobby_url("ws://127.0.0.1:45195") and DmConfig.allows_lobby_url("ws://localhost:5195/") and not DmConfig.allows_lobby_url("ws://127.0.0.1@example.invalid/") and not DmConfig.allows_lobby_url("wss://127.0.0.1:5195") and not DmConfig.allows_lobby_url(""), "and takes a lobby on this machine (a trial), not a lookalike")
-	check(DmConfig.RELAY_PORT == 5196 and DmConfig.allows_relay("203.0.113.9", 5196) and not DmConfig.allows_relay("203.0.113.9", 5193) and not DmConfig.allows_relay("127.0.0.1", 5193) and DmConfig.allows_relay("127.0.0.1", 45196), "the relay is the test relay's port (5196) or one on this machine, never the live relay's (5193)")
+			check(v != u and not v.begins_with(u), "DmConfig.%s is not the test address %s" % [pair[0], u])
+	check(DmConfig.allows_lobby_url(LIVE_LOBBY) and not DmConfig.allows_lobby_url(TEST_LOBBY) and not DmConfig.allows_lobby_url(TEST_LOBBY.trim_suffix("/")) and not DmConfig.allows_lobby_url("ws://muffindevelopment.com:5195"), "the lobby allow-list takes the live lobby and refuses the test one")
+	check(DmConfig.allows_lobby_url("ws://127.0.0.1:45195") and DmConfig.allows_lobby_url("ws://localhost:5195/") and not DmConfig.allows_lobby_url("ws://127.0.0.1@example.invalid/") and not DmConfig.allows_lobby_url("wss://127.0.0.1:5195") and not DmConfig.allows_lobby_url(""), "and takes a lobby on this machine (the local trial, the tests), nothing that only looks like one")
+	check(DmConfig.RELAY_PORT == 5193 and DmConfig.allows_relay("203.0.113.9", 5193) and not DmConfig.allows_relay("203.0.113.9", 5196) and not DmConfig.allows_relay("127.0.0.1", 5196) and DmConfig.allows_relay("127.0.0.1", 45196), "the relay is the live relay's port (5193) or one on this machine, never the test relay's (5196)")
 	for u in never:
 		check(not DmConfig.allows_url(u) and not DmConfig.allows_url(u + "/login") and not DmConfig.allows_url(u + "/api/health") and not DmConfig.allows_api_base(u), "the allow-list refuses %s" % u)
-	for u in [TEST_API, TEST_API + "/login", TEST_API + "/api/health", DmConfig.CLIENT_MANIFEST_URL, DmConfig.CLIENT_MANIFEST_URL + "?t=1"]:
+	for u in [LIVE_API, LIVE_API + "/login", LIVE_API + "/api/health", DmConfig.CLIENT_MANIFEST_URL, DmConfig.CLIENT_MANIFEST_URL + "?t=1", DmConfig.PATCH_NOTES_URL]:
 		check(DmConfig.allows_url(u), "the allow-list accepts %s" % u)
-	for u in [TEST_API + "/../api/health", TEST_API + "/%2E%2e/api", TEST_API + "x/login", TEST_API + ".evil.invalid/login", "http://muffindevelopment.com/death-muffin/test-api/login", "HTTPS://MUFFINDEVELOPMENT.COM/death-muffin/test-api/login", "", "/login"]:
+	for u in [LIVE_API + "/../test-api/api/health", LIVE_API + "/%2E%2e/test-api", "https://muffindevelopment.com/death-muffin/test-api/login", "http://muffindevelopment.com/death-muffin/api/login", "HTTPS://MUFFINDEVELOPMENT.COM/death-muffin/api/login", "https://muffindevelopment.com.evil.invalid/death-muffin/api/login", "", "/login"]:
 		check(not DmConfig.allows_url(u), "the allow-list refuses the lookalike '%s'" % u)
-	check(DmConfig.allows_api_base("") and DmConfig.allows_api_base(TEST_API) and not DmConfig.allows_api_base(TEST_API + "/") and not DmConfig.allows_api_base("https://example.invalid/api"), "a base url is the test API or none (the local mock)")
+	check(DmConfig.allows_api_base("") and DmConfig.allows_api_base(LIVE_API) and not DmConfig.allows_api_base(LIVE_API + "/") and not DmConfig.allows_api_base(TEST_API) and not DmConfig.allows_api_base("https://example.invalid/api"), "a base url is the live API or none (the local mock)")
 	var api := DmApi.new()
-	check(api.base_url == DmConfig.API_BASE and api.base_url == TEST_API, "a new DmApi's base url is the test API")
-	check(api.site_base == DmConfig.SITE_BASE and not api.site_base.begins_with(LIVE_API), "and its site base is the test channel's folder")
+	check(api.base_url == DmConfig.API_BASE and api.base_url == LIVE_API, "a new DmApi's base url is the live API")
+	check(api.site_base == DmConfig.SITE_BASE and not api.site_base.contains("client-test"), "and its site base is the site's root")
 	check(DmOffline.make_api(DmOffline.make_mock("")).base_url == "", "the dev backend's api has none")
 
 
-## No shipped file names an address outside net/dm_config.gd, and none names the live API or lobby at all.
+## No shipped file names an address outside net/dm_config.gd, and none but that file names the test server at all.
 func scan_shipped_files() -> void:
 	var files := PackedStringArray()
 	_walk("res://", "", files)
 	var url_re := RegEx.new()
 	url_re.compile("(?i)(https?|wss?)://|muffindevelopment")
 	var hits: Array[String] = []
-	var live_hits: Array[String] = []
+	var test_hits: Array[String] = []
 	for rel in files:
 		var text := FileAccess.get_file_as_string("res://" + rel)
 		if rel.ends_with(".gd"):
 			text = _strip_comments(text)
-		if text.contains("death-muffin/api") or text.contains("death-muffin/lobby"):
-			live_hits.append(rel)
+		if rel != "net/dm_config.gd" and (text.contains("death-muffin/test-api") or text.contains("death-muffin/test-lobby") or text.contains("death-muffin/client-test")):
+			test_hits.append(rel)
 		if rel != "net/dm_config.gd" and url_re.search(text) != null:
 			hits.append(rel)
 	print("INFO front: %d shipped files scanned for addresses" % files.size())
 	check(files.size() > 300, "the scan found the shipped files (%d)" % files.size())
-	check(live_hits.is_empty(), "no shipped file names the live API or lobby: %s" % ", ".join(live_hits.slice(0, 5)))
+	check(test_hits.is_empty(), "no shipped file names the test server: %s" % ", ".join(test_hits.slice(0, 5)))
 	check(hits.is_empty(), "no shipped file names an address outside net/dm_config.gd: %s" % ", ".join(hits.slice(0, 5)))
 
 
@@ -555,24 +558,24 @@ func _strip_comments(text: String) -> String:
 # ------------------------------------------------------------------------------------------------------------------ the real test server
 
 ## The real client path (DmHttpTransport -> DmApi) against the real test server: its public health route and its manifest, with no credentials.
-func real_test_server() -> void:
+func real_live_server() -> void:
 	var t := DmHttpTransport.new()
 	root.add_child(t)
 	var api := DmApi.new(t.request_callable())
-	check(api.base_url == TEST_API and api.get_token() == "", "the real api points at the test API and holds no login")
+	check(api.base_url == LIVE_API and api.get_token() == "", "the real api points at the live API and holds no login")
 	var pacing := [true]
 	_pace(pacing)
 	var h: DmResult = await api.health()
 	if h.status == 0:
 		pacing[0] = false
-		print("SKIP front: the test server cannot be reached from here (%s, time scale %s); health and manifest not checked" % [h.error, Engine.time_scale])
+		print("SKIP front: the live server cannot be reached from here (%s, time scale %s); health and manifest not checked" % [h.error, Engine.time_scale])
 	else:
-		check(h.ok and h.data is Dictionary and h.data.get("status") == "ok", "the test server's /api/health answers ok (status %s)" % h.status)
+		check(h.ok and h.data is Dictionary and h.data.get("status") == "ok", "the live server's /api/health answers ok (status %s)" % h.status)
 		check(h.data is Dictionary and h.data.get("db") == "connected", "and its database is connected")
 		var gate := DmOnlineGate.parse(await api.fetch_client_manifest())
 		pacing[0] = false
-		check(bool(gate["open"]) or bool(gate["staff"]), "the test channel's manifest lets the team in: online open %s, staff %s" % [gate["open"], gate["staff"]])
-		print("INFO front: test server health %s, manifest online open=%s staff=%s" % [h.data.get("status"), gate["open"], gate["staff"]])
+		check(bool(gate["open"]) or bool(gate["staff"]), "the live manifest lets players in: online open %s, staff %s" % [gate["open"], gate["staff"]])
+		print("INFO front: live server health %s, manifest online open=%s staff=%s" % [h.data.get("status"), gate["open"], gate["staff"]])
 	t.queue_free()
 	await process_frame
 

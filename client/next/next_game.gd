@@ -133,7 +133,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	var base_url := String(api_.get("base_url")) if api_ != null else ""
 	if not DmConfig.allows_api_base(base_url):
 		push_warning("DmNextGame: refused an api that is not the test server's (DECISIONS B38)")
-		start_failed.emit("This build plays on the test server only.")
+		start_failed.emit("This build plays on the live server only.")
 		return
 	is_offline = base_url == ""
 	server_slots = opts.get("slots", [])
@@ -325,6 +325,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		if String(opts.get("notice", "")) != "":   # why we are here (the session we were in ended, a join failed)
 			game_event("toast", {"text": String(opts["notice"]), "kind": "err"})
 		party.go_online()          # after the loading cover: friends see us online, invites and asks reach us (no-op without a lobby the build may use)
+		_start_update_check(String(opts.get("update_check_installed", DmBuild.version())))
 		friends.check_requests()   # a waiting friend request is a toast + the Friends tab's pip
 	if not guest and DmNextParty.arg("--host-party") != null:   # a trial without a panel: host a Closed party at once and say its code
 		party.hosting_changed.connect(func(on: bool) -> void:
@@ -586,6 +587,30 @@ func _enter(pos: Vector3) -> void:
 ## them comes with the panels; the same file today's game writes, so the test build plays at the player's preset). A bare scene (tests): High's defaults.
 func _player_settings() -> Dictionary:
 	return DmSettings.new(DmSettings.FILE, true).values if opts.get("hud", false) == true else {}
+
+
+# ---- update notice (today's, since launch day 2026-10-18) -----------------------------------------------------------------------
+
+const UPDATE_TEXT := "A new version of Death Muffin is out. Restart the game from the launcher to update."
+var update_check: DmUpdateCheck
+var _update_shown := ""
+
+## An installed release build asks every few minutes whether a newer one is out (DmUpdateCheck) and says so at once, fight or not (owner 2026-10-15).
+func _start_update_check(installed: String) -> void:
+	if not DmBuild.is_release(installed) or api == null or not api.has_method("fetch_client_manifest"):
+		return
+	update_check = DmUpdateCheck.new()
+	update_check.name = "UpdateCheck"
+	add_child(update_check)
+	update_check.update_available.connect(func(_v: String) -> void: _show_update_notice())
+	update_check.setup(installed, api.fetch_client_manifest)
+
+
+func _show_update_notice() -> void:
+	if update_check == null or ui_host == null or _update_shown == update_check.notified:
+		return
+	_update_shown = update_check.notified
+	ui_host.game_event.emit("toast", {"text": UPDATE_TEXT, "kind": "good"})
 
 
 # ---- seams: accessors for the rites and rewards tracks ------------------------------------------------------------------------

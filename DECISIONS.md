@@ -74,7 +74,8 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   can drop: B17). Legendaries and new runes are announced to the party; co-op loot is personal.
 - **B16. Dropping gear for the party** (2026-10-12). Gear only. A dropped piece lies on the session's ground until the session ends; the dropper
   and members who were there when it was found may take it, first pickup wins, up to 20 per player per session. The server owns it
-  (`ground.cjs`, migration 043); the host only relays the drawing to the members the server named.
+  (`ground.cjs`, migration 043); the host only relays the drawing to the members the server named. Any gear may be dropped; a member who may not
+  take it never sees it, and the dropper gets no message about it (Helix, 2026-10-18).
 - **B17. Learned runes** (2026-10-13). Learn in the Reliquary spends a rune and the character knows it for good (`runes.cjs`, migration 044);
   a socket holds a choice of learned runes, changed out of combat only. A rune the character has (learned, bag, sockets, Vault) never drops.
   Each elite in a rune ground that leaves no new rune raises the next chance by 5% of the base (at most 3x, per session); a new rune resets it.
@@ -191,6 +192,12 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   Forward+ do what Compatibility does where it shows (the pools' and the particles' vertex colours as sRGB, the effects' shader colours converted, the floors' and walls' tints lifted by the
   measured ratio of their textures) and by an exposure lift calibrated per area (the bake carries each area's light differently, so no one number fits all twelve) instead of retuning each light, so the lights keep today's numbers (a fix that stays right when a light is
   changed on both sides). What is still not today's, and the bake's colour space, are listed in client/README.md "The look against today's game" and ROADMAP "Look pass".
+- **B49. Launch day** (Helix, 2026-10-18: "launch", twice, the second time after hearing that the look pass, Gate D, was not done). `client/` is the
+  game: its endpoints are the live server's (`net/dm_config.gd`; B38 turned round, the build never reaches the test server), `publish-godot-client.sh`
+  exports it by default, and the test channel keeps its last test build. The look pass's two open items (effects on Low and Medium, Helix's sign-off
+  of every area) moved to ROADMAP "After launch day". Until 2026-11-01 (B40) `server/death-muffin/launch-undo.sh` puts the last old build back and the
+  backend keeps accepting it. The Discord agent's ships are paused (its config forbids every path) until it builds `client/`. After the window
+  `godot/` and the paths only it used go.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

@@ -457,13 +457,13 @@ func party_flow() -> void:
 	sampler = Sampler.new()
 	sampler.game = h
 	h.add_child(sampler)
-	# the live addresses are refused whatever the override says
-	var live_lobby := "wss://muffindevelopment.com/death-muffin/lobby/"
-	check(not DmConfig.allows_lobby_url(live_lobby) and not DmConfig.allows_lobby_url("ws://example.invalid:5192") and not DmConfig.allows_lobby_url("ws://127.0.0.1@example.invalid:5192/"), "the live lobby and lookalikes are not allowed")
-	check(DmConfig.allows_lobby_url(DmConfig.LOBBY_URL) and DmConfig.allows_lobby_url("ws://127.0.0.1:5195") and DmConfig.allows_lobby_url("ws://localhost:41000/x"), "the test lobby and a lobby on this machine are")
-	check(not DmConfig.allows_relay("203.0.113.5", 5193) and not DmConfig.allows_relay("127.0.0.1", 5193) and DmConfig.allows_relay("203.0.113.5", DmConfig.RELAY_PORT) and DmConfig.allows_relay("127.0.0.1", relay_port), "a relay on the live port is refused, the test relay's port and this machine are accepted")
-	var live := DmNextParty.checked_relay({"addr": "203.0.113.5", "port": 5193, "ticket": "x"})
-	check(live.is_empty() and not DmNextParty.checked_relay({"addr": "127.0.0.1", "port": relay_port, "ticket": "x"}).is_empty(), "the party drops a relay offer on the live port and keeps a local one")
+	# the test server's addresses are refused whatever the override says
+	var test_lobby := "wss://muffindevelopment.com/death-muffin/test-lobby/"
+	check(not DmConfig.allows_lobby_url(test_lobby) and not DmConfig.allows_lobby_url("ws://example.invalid:5195") and not DmConfig.allows_lobby_url("ws://127.0.0.1@example.invalid:5195/"), "the test lobby and lookalikes are not allowed")
+	check(DmConfig.allows_lobby_url(DmConfig.LOBBY_URL) and DmConfig.allows_lobby_url("ws://127.0.0.1:5195") and DmConfig.allows_lobby_url("ws://localhost:41000/x"), "the live lobby and a lobby on this machine are")
+	check(not DmConfig.allows_relay("203.0.113.5", 5196) and not DmConfig.allows_relay("127.0.0.1", 5196) and DmConfig.allows_relay("203.0.113.5", DmConfig.RELAY_PORT) and DmConfig.allows_relay("127.0.0.1", relay_port), "a relay on the test port is refused, the live relay's port and this machine are accepted")
+	var off := DmNextParty.checked_relay({"addr": "203.0.113.5", "port": 5196, "ticket": "x"})
+	check(off.is_empty() and not DmNextParty.checked_relay({"addr": "127.0.0.1", "port": relay_port, "ticket": "x"}).is_empty(), "the party drops a relay offer on the test port and keeps a local one")
 
 	# a third player, solo: errors in words, then the Closed party, an invite and an ask
 	var cq := new_branch()

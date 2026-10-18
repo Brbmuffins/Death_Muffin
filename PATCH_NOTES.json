@@ -1,5 +1,19 @@
 [
   {
+    "date": "2026-10-18",
+    "title": "Rebuilt from the Bones",
+    "items": [
+      "Death Muffin has been rebuilt underneath: the same game, much faster. The biggest fights run about three times faster on a strong PC, and older PCs gain even more.",
+      "Big fights stay smooth: whole crowds of enemies and thralls are now drawn by the graphics card, and every effect is prepared on the loading screen so nothing stutters the first time you cast it.",
+      "Every area has baked lighting, and every graphics setting from Low to Ultra now uses the high-quality renderer.",
+      "Ascension is resting while it is redesigned: the Altar of Ascension, vows, heat, Ashes and Covenant Boons are gone for now (with them the boon's extra thrall). Your Ascension progress is kept safe on the server; nothing is lost.",
+      "Co-op: a party guest can now use waystones and the recall (T).",
+      "The Reliquary no longer misses clicks while loot comes in during a fight.",
+      "This update is one bigger download (about 510 MB of art). Updates after it are small again.",
+      "Something look or feel wrong? Send it with the bug report button in Settings."
+    ]
+  },
+  {
     "date": "2026-10-17",
     "title": "A Steadier Soundtrack",
     "items": [

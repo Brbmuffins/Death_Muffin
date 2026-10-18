@@ -399,7 +399,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   - The game reads the core's constants from this project's `data/` and `sim/`; the constants of `dm_corpse_field.gd` and `dm_thrall.gd`, whose files are not here, stay the compiled-in defaults (equal, asserted by `core_thralls`).
 - **The counsel has no Altar to send the player to (DECISIONS B36):** the 400 ms poll's facts (`client/next/hud/dm_next_counsel.gd`) are today's, read from the core, but it says `altar: false`, so the Covenant
   counsel does not give the vows, altar_unlocks and boons tips (and the Prelate's fall must not raise `can_ascend`). Ascension's return brings them back (`client/README.md` "Tips and onboarding").
-- **The front flow (`client/main`, `client/net`)**: login, register, the online gate and character select are today's code on the test server (`client/README.md` "The test server"). Not the same:
+- **The front flow (`client/main`, `client/net`)**: login, register, the online gate and character select are today's code on the live server since launch day (`client/README.md` "The server"). Not the same:
   there is no Log out or Switch character (the full HUD owns them), no automatic crash report and no
   update notice; a bag or progression the server fails to give sends the player back to the login screen with the server's words (today the
   game starts with an empty bag); the game starts only on the test server or the local mock. The hero is built from the server's bag and progression, then from the progression and bag the
