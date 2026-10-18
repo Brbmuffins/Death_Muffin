@@ -1,5 +1,5 @@
 extends "res://tests/boss_base.gd"
-## The Bone Abbess on the combat core (the Marrow Ossuary's boss; godot/tests/next_bosses/abbess_part.gd on today's game, the same numbers and timing). Her four Skull Niches are core bodies of
+## The Bone Abbess on the combat core (the Marrow Ossuary's boss; archive/old-game:godot/tests/next_bosses/abbess_part.gd on today's game, the same numbers and timing). Her four Skull Niches are core bodies of
 ## the new `niche` kind (native/src/core/niche.cpp) whose health she sets (`DmCore.set_enemy_hp`), her Bone Communion eats the core's corpses (`devoured`).
 ##   - her recorded scenarios replay through the client's copy of the brain; the generic parts (boss_base.gd): the summon at the Reliquary (3 soul shards), thralls, rites, wipe, defeat, rewards;
 ##   - the awaken: four niches at the four ABBESS_NICHE_SPOTS, each 7 % of her health, Ossuary enemies, standing after the rise; Grasp, Lance (from a standing niche, a side attack) and

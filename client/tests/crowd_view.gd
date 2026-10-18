@@ -1,6 +1,6 @@
 extends SceneTree
 ## The crowd's presentation (client/crowd/README.md "Driving the crowd", native/README.md "Drawing") against the view layer of today's game
-## (godot/game/dm_entity_views.gd, dm_creature.gd, dm_animator.gd), proven headless: DmCrowd takes plain rows (or the core's tables), advances a view
+## (archive/old-game:godot/game/dm_entity_views.gd, dm_creature.gd, dm_animator.gd), proven headless: DmCrowd takes plain rows (or the core's tables), advances a view
 ## per creature and writes the MultiMesh buffers, which `buffer()` hands back exactly as they would be uploaded.
 ## Mirrors of today's pure helpers sit below, line by line (turn_toward, smooth_speed, knock_impulse, step_knock, settle_depth, strike_timing, the
 ## stride plan, the body layer's pose); the C++ is held against them on random inputs and on the views' own clocks. Then: the clip of every state
@@ -65,9 +65,10 @@ class ErrorLog:
 
 
 var errlog := ErrorLog.new()
-var godot_dir: String
+var data_dir: String   ## this project's data/ (res://): the same files the game loads
 var cam: Camera3D      ## the game's camera, for the crowd cost sections
-var live_assets: String   ## where the models' sources are: skeleton_thrall is not synced into client/assets yet
+var live_assets: String   ## where the models' sources are: this project's assets/
+var rows_path: String     ## the model rows the baker reads (game/view_models.json)
 var data := {}      ## model slug -> CrowdVatData
 var keep := []      ## MultiMeshes the RIDs belong to
 var lods := []      ## levels of detail per model slot
@@ -306,11 +307,12 @@ func clip_impact(slug: String, clip: String) -> float:
 func _initialize() -> void:
 	await process_frame   # the scene tree is live from the first frame; animation players need it
 	OS.add_logger(errlog)
-	godot_dir = ProjectSettings.globalize_path("res://").path_join("../godot")
+	data_dir = "res://"
 	DirAccess.make_dir_recursive_absolute(OUT)
-	live_assets = godot_dir.path_join("assets")
+	live_assets = ProjectSettings.globalize_path("res://assets")
+	rows_path = ProjectSettings.globalize_path("res://game/view_models.json")
 	for slug in SLUGS:
-		var r: Dictionary = Baker.bake(root, slug, OUT.path_join(slug), {"assets_dir": live_assets})
+		var r: Dictionary = Baker.bake(root, slug, OUT.path_join(slug), {"assets_dir": live_assets, "rows_path": rows_path})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			quit(1)
@@ -352,7 +354,7 @@ func _initialize() -> void:
 
 ## What the baker now writes for the views: the whole source length, the impact, the landing, the stride.
 func baked_data() -> void:
-	var rows_json: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(godot_dir.path_join("game/view_models.json")))
+	var rows_json: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(rows_path))
 	for slug in SLUGS:
 		var d: CrowdVatData = data[slug]
 		var row: Dictionary = rows_json[slug]
@@ -1680,10 +1682,10 @@ var ally_owners: Array = []   # core hero ids whose thralls are another player's
 
 
 func full_party() -> void:
-	var enemies_json: Dictionary = DmCoreData.json(godot_dir.path_join("data/content/enemies.json"))
+	var enemies_json: Dictionary = DmCoreData.json(data_dir.path_join("data/content/enemies.json"))
 	var core: RefCounted = ClassDB.instantiate("DmCore")
 	core.set_seed(77)
-	DmCoreData.load_all(core, godot_dir)
+	DmCoreData.load_all(core, data_dir)
 	core.set_wander(false)
 	core.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
 	var view := CrowdView.new()
@@ -2020,13 +2022,13 @@ func rims(view: CrowdView, crowd: RefCounted, core: RefCounted, enemy_ids: Array
 ## Thralls with hand props (DmEntityViews._make_thrall): a warrior with no legion or an armed one is drawn with the "<model>+warrior" variant when it is baked;
 ## a Rotweaver's (unarmed legion) stays bare; a kind whose variant is not baked keeps its plain body and says so once. A variant is never a stand-in for another model.
 func armed_variants() -> void:
-	var r: Dictionary = Baker.bake(root, "skeleton_thrall+warrior", OUT.path_join("skeleton_thrall+warrior"), {"assets_dir": live_assets})
+	var r: Dictionary = Baker.bake(root, "skeleton_thrall+warrior", OUT.path_join("skeleton_thrall+warrior"), {"assets_dir": live_assets, "rows_path": rows_path})
 	check(r.ok, "bake skeleton_thrall+warrior: %s" % r.get("error", ""))
 	if not r.ok:
 		return
-	var enemies_json: Dictionary = DmCoreData.json(godot_dir.path_join("data/content/enemies.json"))
+	var enemies_json: Dictionary = DmCoreData.json(data_dir.path_join("data/content/enemies.json"))
 	var core: RefCounted = ClassDB.instantiate("DmCore")
-	DmCoreData.load_all(core, godot_dir)
+	DmCoreData.load_all(core, data_dir)
 	core.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
 	var view := CrowdView.new()
 	view.auto_sync = false
@@ -2063,7 +2065,7 @@ func armed_variants() -> void:
 	check(int(view.crowd.view_info(t_rot).model) != int(slots["skeleton_thrall+warrior"]), "a Rotweaver's warrior is bare: its legion is unarmed")
 	view.queue_free()
 	# the Mourner's wraiths: a spectral model is see-through (the SPECTRAL shader) and never casts into the moon's shadow
-	var rw: Dictionary = Baker.bake(root, "wraith_thrall", OUT.path_join("wraith_thrall"), {"assets_dir": live_assets})
+	var rw: Dictionary = Baker.bake(root, "wraith_thrall", OUT.path_join("wraith_thrall"), {"assets_dir": live_assets, "rows_path": rows_path})
 	check(rw.ok, "bake wraith_thrall: %s" % rw.get("error", ""))
 	if not rw.ok:
 		return

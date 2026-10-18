@@ -1,5 +1,5 @@
 extends SceneTree
-## Statuses in the combat core against DmStatusSet (godot/next/status/dm_status_set.gd): the 0.1 s step (7 ticks at 60 Hz), DoT lumps every
+## Statuses in the combat core against DmStatusSet (client/next/status/dm_status_set.gd): the 0.1 s step (7 ticks at 60 Hz), DoT lumps every
 ## 3 steps (21 ticks), stacking and ownership rules, multipliers on the body, stun, the ghoul's dig-in clear, Withered on death, the wire bytes.
 ## Run: godot --headless --path client --script res://tests/core_status.gd
 
@@ -26,7 +26,7 @@ func check(ok: bool, what: String) -> void:
 
 
 func load_json(name: String) -> Dictionary:
-	var f := FileAccess.open(ProjectSettings.globalize_path("res://").path_join("../godot/data/content/%s.json" % name), FileAccess.READ)
+	var f := FileAccess.open("res://data/content/%s.json" % name, FileAccess.READ)
 	return JSON.parse_string(f.get_as_text())
 
 

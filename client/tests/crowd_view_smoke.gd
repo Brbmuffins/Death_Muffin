@@ -5,7 +5,7 @@ extends SceneTree
 ##   flock -w 900 /home/ubuntu/death-muffin/qa-browser.lock nice -n 10 xvfb-run -a -s "-screen 0 1280x720x24" timeout 90 \
 ##     /home/ubuntu/tools/godot/godot --rendering-method gl_compatibility --rendering-driver opengl3 --resolution 1280x720 --path client \
 ##     --script res://tests/crowd_view_smoke.gd -- --out=/abs/path/crowd_view_smoke.png
-## Needs the models baked: bash client/tools/bake_crowd.sh robber hound && bash client/tools/bake_crowd.sh skeleton_thrall --assets=<repo>/godot/assets
+## Needs the models baked: bash client/tools/bake_crowd.sh robber hound skeleton_thrall
 
 const DT := 1.0 / 60.0
 
@@ -16,7 +16,7 @@ func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--out="):
 			out = a.substr(6)
-	var godot_dir := ProjectSettings.globalize_path("res://").path_join("../godot")
+	var data_dir := "res://"   # this project's data/: the same files the game loads
 	var world := Node3D.new()
 	root.add_child(world)
 	var cam := Camera3D.new()
@@ -46,13 +46,13 @@ func _initialize() -> void:
 
 	var core: RefCounted = ClassDB.instantiate("DmCore")
 	core.set_seed(5)
-	DmCoreData.load_all(core, godot_dir)
+	DmCoreData.load_all(core, data_dir)
 	core.set_wander(false)
 	core.set_area_bounds(Vector2(-40, -40), Vector2(40, 40))
 	var view := CrowdView.new()
 	view.auto_sync = false
 	world.add_child(view)
-	view.setup(core, DmCoreData.json(godot_dir.path_join("data/content/enemies.json"))["ENEMIES"], Vector2(-40, -40), Vector2(40, 40), {"assets_dir": CrowdBaker.default_assets_dir()})
+	view.setup(core, DmCoreData.json(data_dir.path_join("data/content/enemies.json"))["ENEMIES"], Vector2(-40, -40), Vector2(40, 40), {"assets_dir": CrowdBaker.default_assets_dir()})
 	if view.model_slots().is_empty():
 		printerr("FAIL crowd_view_smoke: bake the models first (see the header)")
 		quit(1)

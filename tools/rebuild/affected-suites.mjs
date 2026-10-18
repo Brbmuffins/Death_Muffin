@@ -79,9 +79,10 @@ export function affected(changed, ctx) {
   // added to audioMap.json without the manifest count shipped on a quick check that never ran rules-core)
   if (relevant.some((f) => /^client\/data\/content\/[^/]+\.json$/.test(f)) && ctx.suites.includes('rules-core')) sel.add('rules-core');
   const direct = new Set();   // suites chosen because their own files changed
-  // client/tests/<name>.gd is a suite's script, client/tests/<name>/... a folder suite's files (helpers that no suite is named after select none)
-  const suiteOf = (f) => { const m = /^client\/tests\/([^/]+?)(?:\.gd|\/.*)$/.exec(f); return m ? m[1] : null; };
-  for (const f of relevant) { const s = suiteOf(f); if (s && ctx.suites.includes(s)) { sel.add(s); direct.add(s); } }
+  // client/tests/<name>.gd is a suite's script, client/tests/<name>/... a folder's files: they select the folder's suites (<name> and its runners
+  // <name>/<runner>); helpers that no suite is named after select none
+  const suitesOf = (f) => { const m = /^client\/tests\/([^/]+?)(?:\.gd|\/.*)$/.exec(f); return m ? ctx.suites.filter((s) => s === m[1] || s.startsWith(m[1] + '/')) : []; };
+  for (const f of relevant) for (const s of suitesOf(f)) { sel.add(s); direct.add(s); }
 
   // what the rest of the code base refers to: changed non-test files (scripts, scenes, resources, assets, data)
   const patsFor = (list) => {
@@ -98,7 +99,7 @@ export function affected(changed, ctx) {
   const nonTest = relevant.filter((f) => !f.startsWith('client/tests/'));
   const p1 = patsFor(relevant.filter((f) => !additive.has(f)));
   for (const a of additive.values()) { p1.fixed.push(...a.fixed); p1.words.push(...a.words); }
-  const addSuites = (testFiles) => { for (const t of testFiles) { const s = suiteOf(t); if (s && ctx.suites.includes(s)) sel.add(s); } };
+  const addSuites = (testFiles) => { for (const t of testFiles) for (const s of suitesOf(t)) sel.add(s); };
   addSuites(ctx.testsOnly(p1));
   // one level of dependents: non-test scripts/scenes that refer to the changed files (data -> its readers; class -> its users)
   const deps = nonTest.length ? ctx.srcOnly(p1).filter((f) => !relevant.includes(f)) : [];

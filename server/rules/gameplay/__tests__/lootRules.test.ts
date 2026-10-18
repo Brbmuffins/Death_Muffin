@@ -14,7 +14,7 @@ import { EVENT_STREAMS, dropStream, eventStreams, rollBoss, rollBossRune, rollEv
  * DmLoot + DmDropStream. The client and the server must roll the same drop from the same stream (ROADMAP, authority Phase 1).
  * After a deliberate loot change on both sides: UPDATE_LOOT_PARITY=1 npx vitest run server/rules/gameplay/__tests__/lootRules.test.ts
  */
-const FIXTURE = path.resolve(__dirname, '../../../../godot/tests/rules-loot/fixtures/loot_parity.json');
+const FIXTURE = path.resolve(__dirname, '../../../../client/tests/rules-loot/fixtures/loot_parity.json');
 
 type Words = [number, number, number, number];
 function buildCases() {

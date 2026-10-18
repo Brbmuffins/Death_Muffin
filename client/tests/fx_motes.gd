@@ -1,11 +1,11 @@
 extends SceneTree
-## The particle ring's loop in C++ (DmMotes, client/fx/dm_fx_ring.gd ported) against TODAY'S ring: the reference is godot/fx/dm_fx_ring.gd itself, read and
-## compiled at run time (its class_name line dropped), so it can never drift from the live game. Both rings get the same bursts (the same randf stream:
+## The particle ring's loop in C++ (DmMotes, client/fx/dm_fx_ring.gd ported) against TODAY'S ring: the reference is the old game's fx/dm_fx_ring.gd itself, kept
+## as text (tests/fixtures/old_game/fx/dm_fx_ring.gd.txt, so Godot never parses it) and compiled at run time (its class_name line dropped). Both rings get the same bursts (the same randf stream:
 ## the global seed is set before each emit on each side) and the same frame times (60 Hz, 144 Hz, hitches), through the ring's wrap-around and the switch
 ## between the small and the full MultiMesh; after every update the live count, the drawn count and every float of the drawn buffer must be EQUAL.
 ## Prints INFO: the update's time per frame on both sides with about 3,000 live motes. Run: godot --headless --path client --script res://tests/fx_motes.gd
 
-const TODAY := "godot/fx/dm_fx_ring.gd"
+const TODAY := "res://tests/fixtures/old_game/fx/dm_fx_ring.gd.txt"   ## the old game's ring, kept as text
 
 var fails := 0
 var checks := 0
@@ -23,9 +23,8 @@ func _initialize() -> void:
 
 
 func _main() -> void:
-	var path := ProjectSettings.globalize_path("res://").path_join("..").path_join(TODAY).simplify_path()
-	var src := FileAccess.get_file_as_string(path)
-	check(src != "", "today's ring is readable at %s" % path)
+	var src := FileAccess.get_file_as_string(TODAY)
+	check(src != "", "today's ring is readable at %s" % TODAY)
 	if src == "":
 		_end()
 		return

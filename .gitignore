@@ -17,8 +17,8 @@ __pycache__/
 launcher/windows/bin/
 launcher/windows/obj/
 
-# The old game's folder (DECISIONS B57; tag archive/old-game): frozen, nothing is added to it, and it goes next. Older checkouts can hold its build
-# files and its copy of the licensed flipbook sheets there, which must never be committed.
+# The first game's folder, deleted 2026-10-19 (DECISIONS B57; tag archive/old-game). Older checkouts can still hold its build files and its copy
+# of the licensed flipbook sheets there, which must never be committed.
 /godot/
 
 # The game (client/) and its C++ core (native/): godot-cpp is fetched by native/build.sh; built libraries are not committed

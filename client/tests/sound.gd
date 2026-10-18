@@ -3,8 +3,8 @@ extends SceneTree
 ## today's HUD, audio on), headless, with a RECORDING STAND-IN for the AudioDirector autoload: every call the game makes on it is logged, and it passes the calls on to the real
 ## director where a check needs the real thing (areas, music, footsteps). Checked:
 ##   - a scripted fight in the Hollow Graves plays the cues today's code would play, by name and count. The expectation is built from the core's own events with TODAY'S rules,
-##     written out here from godot/next/enemy_fx/dm_enemy_fx.gd, godot/game/dm_event_fx*.gd, godot/next/thralls/dm_thrall.gd, godot/next/affixes/dm_affix_set.gd and
-##     godot/next/hud/dm_next_ui_host.gd, not from the client's code:
+##     written out here from archive/old-game:godot/next/enemy_fx/dm_enemy_fx.gd, archive/old-game:godot/game/dm_event_fx*.gd, archive/old-game:godot/next/thralls/dm_thrall.gd, archive/old-game:godot/next/affixes/dm_affix_set.gd and
+##     archive/old-game:godot/next/hud/dm_next_ui_host.gd, not from the client's code:
 ##       a rising elite within 40 m: eliteAggro; every telegraph: its sound by kind (cone and toll tollSmall, raise raise, curse curse, else tellStrike);
 ##       a swing that lands (not interrupted by a state change or the body leaving): the enemy's attack voice within 18 m, and boneHit for a slam;
 ##       a ghoul's eruption: burst; a death: enemyDeath or eliteDeath and the death voice within 26 m; the affixes' moments: toll (the bell), raise (a meal), burst (the vengeful);
@@ -193,7 +193,7 @@ func _main() -> void:
 	DmUiConfig.dir = ""   # in-memory stores: the run reads and leaves nothing in the user folder
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug))
+		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 	DmSimData.ensure()
 	real = root.get_node("AudioDirector")

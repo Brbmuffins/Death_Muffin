@@ -38,7 +38,7 @@ const CAST := [
 const HERO := {"A": Vector2(-1.2, 0.4), "B": Vector2(1.2, 0.4)}
 ## Core ticks until the thralls have risen (60) and settled into their formation.
 const SETTLE_TICKS := 300
-## godot/game/dm_entity_views.gd LEGION, THRALL_SLUG, THRALL_LOOK (the oracle: kept as today's, not read from crowd_looks.json).
+## archive/old-game:godot/game/dm_entity_views.gd LEGION, THRALL_SLUG, THRALL_LOOK (the oracle: kept as today's, not read from crowd_looks.json).
 const LEGION := {
 	"gravecaller": {"slug": "thrall_legionnaire", "tint": 0xffffff, "emissive": 0x6a3fc0, "glow": 0.16, "armed": true},
 	"mourner": {"slug": "wraith_thrall"},
@@ -67,7 +67,7 @@ func _initialize() -> void:
 			_before_shader = a.substr(16)
 		elif a.begins_with("--rows="):
 			_rows = a.substr(7).split(",")
-	var godot_dir := ProjectSettings.globalize_path("res://").path_join("../godot")
+	var data_dir := "res://"   # this project's data/: the same files the game loads
 	var world := Node3D.new()
 	root.add_child(world)
 	var cam := Camera3D.new()
@@ -96,7 +96,7 @@ func _initialize() -> void:
 	world.add_child(ground)
 	print("renderer: ", RenderingServer.get_video_adapter_name(), " ", RenderingServer.get_current_rendering_method(), " ", root.size)
 
-	var enemies: Dictionary = DmCoreData.json(godot_dir.path_join("data/content/enemies.json"))["ENEMIES"]
+	var enemies: Dictionary = DmCoreData.json(data_dir.path_join("data/content/enemies.json"))["ENEMIES"]
 	var names: Array = []
 	for n: String in COLUMNS:
 		if _rows.has(COLUMNS[n].row) and not (COLUMNS[n].get("old", false) and _before_shader == ""):
@@ -104,7 +104,7 @@ func _initialize() -> void:
 	var crowds := {}
 	for n: String in names:
 		if COLUMNS[n].crowd:
-			crowds[n] = _column(world, COLUMNS[n].at, godot_dir, enemies)
+			crowds[n] = _column(world, COLUMNS[n].at, data_dir, enemies)
 			if COLUMNS[n].get("old", false):
 				_use_shader(crowds[n].view, FileAccess.get_file_as_string(_before_shader))
 			elif COLUMNS[n].has("debug"):
@@ -158,10 +158,10 @@ func _initialize() -> void:
 
 
 ## A column of the crowd: its own core with the cast raised (this player's thralls and another's, rim and legion as the game gives them), drawn by its own CrowdView.
-func _column(world: Node3D, at: Vector2, godot_dir: String, enemies: Dictionary) -> Dictionary:
+func _column(world: Node3D, at: Vector2, data_dir: String, enemies: Dictionary) -> Dictionary:
 	var core: RefCounted = ClassDB.instantiate("DmCore")
 	core.set_seed(5)
-	DmCoreData.load_all(core, godot_dir)
+	DmCoreData.load_all(core, data_dir)
 	core.set_wander(false)
 	core.set_area_bounds(Vector2(-40, -40), Vector2(40, 40))
 	var view := CrowdView.new()

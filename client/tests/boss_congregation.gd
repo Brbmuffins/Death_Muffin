@@ -1,5 +1,5 @@
 extends "res://tests/boss_base.gd"
-## The Drowned Congregation on the combat core (the Drowned Nave's boss; godot/tests/next_bosses/congregation_part.gd on today's game, the same numbers and timing). Her climbers are core
+## The Drowned Congregation on the combat core (the Drowned Nave's boss; archive/old-game:godot/tests/next_bosses/congregation_part.gd on today's game, the same numbers and timing). Her climbers are core
 ## bodies (the Choir Wraith and the Bellbound Penitent), the pews are cover (`DmDb.sim_world()["cover"]`), her grasp roots and her hymn chills the hero.
 ##   - her recorded scenarios replay through the client's copy of the brain (the pews scenario among them); the generic parts (boss_base.gd): the summon at the Drowned Font (4 soul shards),
 ##     thralls, rites, wipe, defeat, rewards;

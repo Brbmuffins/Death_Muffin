@@ -1,5 +1,5 @@
 extends "res://tests/boss_base.gd"
-## The Plague Saint on the combat core (the Cloister's boss; godot/tests/next_bosses/saint_part.gd on today's game, the same numbers and timing). Her rot pools are core zones with her as the
+## The Plague Saint on the combat core (the Cloister's boss; archive/old-game:godot/tests/next_bosses/saint_part.gd on today's game, the same numbers and timing). Her rot pools are core zones with her as the
 ## source (`DmCore.add_zone`), the rot she stands in is the core's list of toxic zones (`DmCore.zones`), her adds are core bodies.
 ##   - her recorded scenarios replay through the client's copy of the brain (the Plague Doctors' rot scenario among them); the generic parts (boss_base.gd): the summon at the Saint's Litter
 ##     (5 soul shards), thralls, rites, wipe, defeat, rewards;

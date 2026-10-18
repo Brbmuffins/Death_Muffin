@@ -1,5 +1,5 @@
 extends SceneTree
-## Thralls in the combat core against DmThrall and DmThrallHost (godot/next/thralls): the rise (0.9 s), the owner leash and teleport, the 0.25 s
+## Thralls in the combat core against DmThrall and DmThrallHost (archive/old-game:godot/next/thralls): the rise (0.9 s), the owner leash and teleport, the 0.25 s
 ## scan and the targets it accepts (the boss edge rule), engage and the instant swing with Rally / Hag's curse / the Spear mark / damage dealt,
 ## the kinds' extras, the formation ring (1.9 m), make_room by cap and weight, enemies choosing thralls by weight and hurting them, deaths with
 ## their reasons, bursts, statuses on thralls, rally, separation and the tick order. Timers are computed the way today's clock adds them: a double
@@ -42,10 +42,14 @@ const DT := 1.0 / 60.0
 const BASE := {"warrior": [1.3, 1.0, 5.6], "shieldbearer": [1.3, 1.25, 5.2], "hound": [1.2, 0.7, 7.2], "wraith": [5.5, 1.1, 5.8],
 	"archer": [7.5, 1.3, 5.4], "bonemage": [6.5, 1.8, 5.2], "plaguebearer": [1.3, 1.2, 4.8]}
 const SEAT_R := 1.9   ## DmThrall._follow: the formation ring
+## The old game's scripts whose `const` lines the core's constants are checked against, kept as text (a ".txt" added, so Godot never parses them): the corpse field's and
+## the thralls' (sim_consts.gd is this project's own). The game keeps the numbers compiled into the core; `tuning_matches_data` checks they are these.
+const OLD := "res://tests/fixtures/old_game/"
+const OLD_CONSTS: Array = ["next/corpses/dm_corpse_field.gd.txt", "next/thralls/dm_thrall.gd.txt"]
 
 var fails := 0
 var checks := 0
-var godot_dir: String
+var data_dir: String   ## this project's data/ (res://): the same files the game loads
 var data := {}
 var tick_no := 0
 
@@ -60,7 +64,8 @@ func check(ok: bool, what: String) -> void:
 func make(seed_: int = 31) -> RefCounted:
 	var c: RefCounted = ClassDB.instantiate("DmCore")
 	c.set_seed(seed_)
-	DmCoreData.load_all(c, godot_dir)
+	DmCoreData.load_all(c, data_dir)
+	c.load_sim_consts(DmCoreData.consts(OLD, OLD_CONSTS))
 	c.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
 	c.set_wander(false)
 	tick_no = 0
@@ -180,9 +185,9 @@ func pos_of(c: RefCounted, id: int) -> Vector2:
 
 
 func _init() -> void:
-	godot_dir = ProjectSettings.globalize_path("res://").path_join("../godot")
+	data_dir = "res://"
 	for n in ["enemies", "runes", "abilities", "statuses", "fen", "gameplay_legendary"]:
-		data[n] = DmCoreData.json(godot_dir.path_join("data/content/%s.json" % n))
+		data[n] = DmCoreData.json(data_dir.path_join("data/content/%s.json" % n))
 	tuning_matches_data()
 	raise_and_rise()
 	caps_and_room()
@@ -215,7 +220,8 @@ func tuning_matches_data() -> void:
 		if not before.has(k) or not is_equal_approx(float(before[k]), float(after[k])):
 			bad.append(k)
 	check(bad.is_empty(), "the defaults compiled into the core equal the data (%s)" % str(bad))
-	var cs := DmCoreData.consts(godot_dir)
+	var cs := DmCoreData.consts(data_dir)
+	cs.merge(DmCoreData.consts(OLD, OLD_CONSTS), true)
 	check(after["THRALL_LEASH"] == cs["THRALL_LEASH"] and after["CORPSE_S"] == cs["CORPSE_S"] and after["TOXIC_TICK"] == cs["TOXIC_TICK"] and after["MAX_CORPSES"] == int(cs["MAX_CORPSES"]), "the constants come from sim_consts.gd, dm_corpse_field.gd and dm_thrall.gd")
 	check(after["RALLY.damageMult"] == float(data["abilities"]["RALLY"]["damageMult"]) and after["colossus.slots"] == float(data["runes"]["RUNE_TUNING"]["colossus"]["slots"]), "Rally and the Colossus come from the content files")
 

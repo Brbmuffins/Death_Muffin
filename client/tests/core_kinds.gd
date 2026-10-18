@@ -1,5 +1,5 @@
 extends SceneTree
-## The kinds the other areas add to the combat core, against today's rules (godot/enemies): so far the Marrow Ossuary's two, the Bone Golem and the
+## The kinds the other areas add to the combat core, against the first game's rules (archive/old-game:godot/enemies): so far the Marrow Ossuary's two, the Bone Golem and the
 ## Crypt Deacon, the Drowned Nave's five, the Censer Bearer, Lich Acolyte, Belfry Gargoyle, Bell-Sworn Templar and Choir Wraith, the Sanctum's and Cloister's three and the Cinder Pyre's
 ## and the Mourning Fen's eight (each later group's section opens with its own banner, at the end of the file). Later area groups append their kinds here.
 ##   - the golem (dm_enemy_hazard.gd, the sac's script): its slam (radius, wind-up, cooldown, damage, the aim fixed at the wind-up's start, who it reaches), its
@@ -75,14 +75,16 @@ const DT := 1.0 / 60.0
 const ELITE_WINDUP := 0.85    ## dm_enemy.gd _ready: an elite's wind-up and cooldown factors
 const ELITE_COOLDOWN := 0.8
 const FAR := Vector2(40.0, 0.0)   ## a hero out of the deacon's sight (aggro 15 m)
-const SCRIPTS: Array[String] = ["enemies/dm_enemy.gd", "enemies/kinds/dm_enemy_deacon.gd", "enemies/states/dm_state_cath_support.gd", "next/corpses/dm_corpse_field.gd",
-	"enemies/kinds/dm_enemy_clst_acolyte.gd", "enemies/kinds/dm_enemy_clst_templar.gd", "enemies/kinds/dm_enemy_wraith.gd", "enemies/states/dm_state_cath_dive_chase.gd",
-	"enemies/states/dm_state_attack.gd", "enemies/states/dm_state_rising.gd"]
+## The old game's scripts this suite reads for their numbers and lines, kept as text (a ".txt" added, so Godot never parses them): the core ports what they do.
+const OLD := "res://tests/fixtures/old_game/"
+const SCRIPTS: Array[String] = ["enemies/dm_enemy.gd.txt", "enemies/kinds/dm_enemy_deacon.gd.txt", "enemies/states/dm_state_cath_support.gd.txt", "next/corpses/dm_corpse_field.gd.txt",
+	"enemies/kinds/dm_enemy_clst_acolyte.gd.txt", "enemies/kinds/dm_enemy_clst_templar.gd.txt", "enemies/kinds/dm_enemy_wraith.gd.txt", "enemies/states/dm_state_cath_dive_chase.gd.txt",
+	"enemies/states/dm_state_attack.gd.txt", "enemies/states/dm_state_rising.gd.txt"]
 
 var fails := 0
 var checks := 0
 var verbose := false
-var godot_dir: String
+var data_dir: String   ## this project's data/ (res://): the same files the game loads
 var content: Dictionary
 var statuses: Dictionary
 var K: Dictionary        ## the scripts' `const` lines (CORPSE_RANGE, BACK_OFF_DIST, SCAN_S, STRIKE_REACH_MULT, WATCH_S, LOS_S ...)
@@ -108,7 +110,7 @@ func def(id: String) -> Dictionary:
 func make(seed_: int = 11) -> RefCounted:
 	var c: RefCounted = ClassDB.instantiate("DmCore")
 	c.set_seed(seed_)
-	DmCoreData.load_all(c, godot_dir)
+	DmCoreData.load_all(c, data_dir)
 	c.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
 	c.set_wander(false)
 	tick = 0
@@ -210,13 +212,13 @@ func silence(c: RefCounted, id: int) -> void:
 
 func _init() -> void:
 	verbose = "--verbose" in OS.get_cmdline_user_args()
-	godot_dir = ProjectSettings.globalize_path("res://").path_join("../godot")
-	content = DmCoreData.json(godot_dir.path_join("data/content/enemies.json"))
-	statuses = DmCoreData.json(godot_dir.path_join("data/content/statuses.json"))
+	data_dir = "res://"
+	content = DmCoreData.json(data_dir.path_join("data/content/enemies.json"))
+	statuses = DmCoreData.json(data_dir.path_join("data/content/statuses.json"))
 	S = statuses["SANCTIFIED"]
-	K = DmCoreData.consts(godot_dir, SCRIPTS)
-	KITE = DmCoreData.consts(godot_dir, ["enemies/states/dm_state_kite.gd"])
-	fen = DmCoreData.json(godot_dir.path_join("data/content/fen.json"))
+	K = DmCoreData.consts(OLD, SCRIPTS)
+	KITE = DmCoreData.consts(OLD, ["enemies/states/dm_state_kite.gd.txt"])
+	fen = DmCoreData.json(data_dir.path_join("data/content/fen.json"))
 	names_and_tables()
 	golem_slam()
 	golem_stats_and_corpses()
@@ -1041,7 +1043,7 @@ func deacon_on_the_wire() -> void:
 	changed["deacon"]["behavior"] = "melee"
 	odd.load_enemy_defs(changed)
 	odd.load_tuning(content)
-	odd.load_status_defs(DmStatusRules.build(DmCoreData.json(godot_dir.path_join("data/content/abilities.json")), statuses, content))
+	odd.load_status_defs(DmStatusRules.build(DmCoreData.json(data_dir.path_join("data/content/abilities.json")), statuses, content))
 	odd.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
 	odd.set_puppet(true)
 	check(not odd.apply_snapshot(h3.snapshot(900)) and "data" in str(odd.replication_error()), "wire: a guest with the deacon as a melee body refuses the host's snapshot (%s)" % odd.replication_error())
@@ -1121,7 +1123,7 @@ func lockstep(host: RefCounted, guest: RefCounted, hl: Array, gl: Array, from_ti
 
 func puppet() -> RefCounted:
 	var c: RefCounted = ClassDB.instantiate("DmCore")
-	DmCoreData.load_all(c, godot_dir)
+	DmCoreData.load_all(c, data_dir)
 	c.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
 	c.set_puppet(true)
 	return c
@@ -1132,7 +1134,7 @@ func puppet() -> RefCounted:
 ## The whole Ossuary roster (its enemy table and its procession themes, lead included) is made by the core, the models are drawn by the crowd, and a seeded
 ## run replays event for event.
 func the_roster_and_a_replay() -> void:
-	var areas := DmCoreData.json(godot_dir.path_join("data/content/areas.json"))
+	var areas := DmCoreData.json(data_dir.path_join("data/content/areas.json"))
 	var ids := {}
 	for e in areas["AREAS"]["ossuary"]["enemies"]:
 		ids[String(e["id"])] = true
@@ -1182,7 +1184,7 @@ func the_roster_and_a_replay() -> void:
 
 # ================================================================================================================== the Drowned Nave
 #
-# Its five kinds (godot/enemies/kinds: dm_enemy_censer, dm_enemy_clst_acolyte, dm_enemy_gargoyle, dm_enemy_clst_templar, dm_enemy_wraith; the states dm_state_clst_kite,
+# Its five kinds (archive/old-game:godot/enemies/kinds: dm_enemy_censer, dm_enemy_clst_acolyte, dm_enemy_gargoyle, dm_enemy_clst_templar, dm_enemy_wraith; the states dm_state_clst_kite,
 # dm_state_cath_dive_chase, dm_state_cath_dive and the base classes DmEnemyClstCaster and DmEnemyCaster). Numbers come from enemies.json and the scripts' const lines;
 # the expected ticks from mirrors of the scripts' arithmetic.
 
@@ -1252,9 +1254,9 @@ func nave_defs() -> void:
 		and t["TEMPLAR_SHIELD.halfArcDeg"] == float(S2["halfArcDeg"]) and t["TEMPLAR_SHIELD.passThrough"] == float(S2["passThrough"])
 		and t["UNBIND.range"] == float(U["range"]) and t["UNBIND.delayS"] == float(U["delayS"]) and t["UNBIND.cooldownS"] == float(U["cooldownS"]) and t["UNBIND.maxAlive"] == float(U["maxAlive"]),
 		"the Nave's numbers are enemies.json's: CENSER, SCREAM, TEMPLAR_SHIELD, UNBIND")
-	var kite: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/kinds/dm_enemy_clst_caster.gd"))
-	var censer_src: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/kinds/dm_enemy_censer.gd"))
-	var kite_state: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/states/dm_state_kite.gd"))
+	var kite: String = FileAccess.get_file_as_string(OLD.path_join("enemies/kinds/dm_enemy_clst_caster.gd.txt"))
+	var censer_src: String = FileAccess.get_file_as_string(OLD.path_join("enemies/kinds/dm_enemy_censer.gd.txt"))
+	var kite_state: String = FileAccess.get_file_as_string(OLD.path_join("enemies/states/dm_state_kite.gd.txt"))
 	check(kite.contains("return [0.5, 1.5, 3.5, 0.8]") and kite_state.contains("d <= enemy.attack_range - 0.5 and enemy.attack_cd <= 0.0") and kite_state.contains("d > enemy.attack_range - 1.5") and censer_src.contains("_aura_cd = 1.0")
 		and float(KITE["BACK_OFF_DIST"]) == 3.5 and float(KITE["BACK_OFF_SPEED"]) == 0.8,
 		"the walk of the caster set [cast at attackRange - 0.5, walk in beyond - 1.5, back off under 3.5 m at 0.8] and the censer's one-second pulse are the scripts' own numbers")
@@ -2233,7 +2235,7 @@ func nave_on_the_wire() -> void:
 				defs["templar"].erase("shield")
 		odd.load_enemy_defs(defs)
 		odd.load_tuning(tun_content)
-		odd.load_status_defs(DmStatusRules.build(DmCoreData.json(godot_dir.path_join("data/content/abilities.json")), statuses, content))
+		odd.load_status_defs(DmStatusRules.build(DmCoreData.json(data_dir.path_join("data/content/abilities.json")), statuses, content))
 		odd.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
 		odd.set_puppet(true)
 		check(not odd.apply_snapshot(s.snapshot(900)) and "data" in str(odd.replication_error()), "wire: a guest with another %s of the %s refuses the host's snapshot (%s)" % [change[1], change[0], odd.replication_error()])
@@ -2243,7 +2245,7 @@ func nave_on_the_wire() -> void:
 
 ## The whole Nave roster (its enemy table and its procession themes, lead included) is made by the core, the models are drawn by the crowd, and a seeded run replays event for event.
 func the_nave_roster_and_a_replay() -> void:
-	var areas := DmCoreData.json(godot_dir.path_join("data/content/areas.json"))
+	var areas := DmCoreData.json(data_dir.path_join("data/content/areas.json"))
 	var ids := {}
 	for e in areas["AREAS"]["nave"]["enemies"]:
 		ids[String(e["id"])] = true
@@ -2308,7 +2310,7 @@ func the_nave_roster_and_a_replay() -> void:
 
 # ================================================================================================================== the Sanctum's and Cloister's three
 #
-# The Weeping Seraph (godot/enemies/kinds/dm_enemy_clst_seraph.gd on DmEnemyClstCaster, walking with dm_state_clst_kite.gd), the Plague Doctor (dm_enemy_clst_caster.gd, attack "flask") and the
+# The Weeping Seraph (archive/old-game:godot/enemies/kinds/dm_enemy_clst_seraph.gd on DmEnemyClstCaster, walking with dm_state_clst_kite.gd), the Plague Doctor (dm_enemy_clst_caster.gd, attack "flask") and the
 # Flagellant (flagellant.tscn: the plain dm_enemy.gd, and the status set's frenzy). Numbers come from enemies.json (WARD, PLAGUE_FLASK, FRENZY) and the scripts' const lines; the expected ticks
 # from mirrors of the scripts' arithmetic.
 
@@ -2335,7 +2337,7 @@ var FR: Dictionary    ## enemies.json FRENZY
 
 
 func cloister_setup() -> void:
-	KS = DmCoreData.consts(godot_dir, ["enemies/kinds/dm_enemy_clst_seraph.gd"])
+	KS = DmCoreData.consts(OLD, ["enemies/kinds/dm_enemy_clst_seraph.gd.txt"])
 	W = content["WARD"]
 	PF = content["PLAGUE_FLASK"]
 	FR = content["FRENZY"]
@@ -2389,10 +2391,10 @@ func cloister_defs() -> void:
 	check(t["WARD.range"] == float(W["range"]) and t["WARD.maxTargets"] == float(W["maxTargets"]) and t["PLAGUE_FLASK.radius"] == float(PF["radius"]) and t["PLAGUE_FLASK.poolS"] == float(PF["poolS"])
 		and t["PLAGUE_FLASK.poolDpsMult"] == float(PF["poolDpsMult"]), "the Cloister's numbers are enemies.json's: WARD (range %.1f, %d targets), PLAGUE_FLASK (radius %.1f, pool %.0f s, x%.2f)" % [float(W["range"]), int(W["maxTargets"]), float(PF["radius"]), float(PF["poolS"]), float(PF["poolDpsMult"])])
 	# The scripts' own numbers: the seraph's walk is [0, 0.5, 4, 0.7] on the cloister casters' state, which is the Deacon's state with other names; the plague doctor walks as the acolyte does.
-	var seraph_src: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/kinds/dm_enemy_clst_seraph.gd"))
-	var kite_src: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/states/dm_state_clst_kite.gd"))
-	var support_src: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/states/dm_state_cath_support.gd"))
-	var caster_src: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/kinds/dm_enemy_clst_caster.gd"))
+	var seraph_src: String = FileAccess.get_file_as_string(OLD.path_join("enemies/kinds/dm_enemy_clst_seraph.gd.txt"))
+	var kite_src: String = FileAccess.get_file_as_string(OLD.path_join("enemies/states/dm_state_clst_kite.gd.txt"))
+	var support_src: String = FileAccess.get_file_as_string(OLD.path_join("enemies/states/dm_state_cath_support.gd.txt"))
+	var caster_src: String = FileAccess.get_file_as_string(OLD.path_join("enemies/kinds/dm_enemy_clst_caster.gd.txt"))
 	check(seraph_src.contains("return [0.0, 0.5, 4.0, 0.7]") and seraph_src.contains("attack_kind = \"curse\"") and KS.has("WARD_RETRY_S") and float(KS["WARD_RETRY_S"]) == 0.25,
 		"the seraph's script: walk [0, 0.5, 4, 0.7], the curse as its blow, a retry of %.2f s" % float(KS.get("WARD_RETRY_S", -1.0)))
 	check(kite_src.contains("if d <= enemy.attack_range - cast_pad and enemy.attack_cd <= 0.0 and not silenced():") and kite_src.contains("if d > enemy.attack_range - near_pad:") and kite_src.contains("elif d < back_dist:")
@@ -2401,7 +2403,7 @@ func cloister_defs() -> void:
 		"the seraph's walk [cast at attackRange, walk in beyond - 0.5, back off under 4 m at 0.7] is the Deacon's keep-away (dm_state_cath_support.gd), one body of code for both")
 	check(caster_src.contains("return [0.5, 1.5, 3.5, 0.8]") and caster_src.contains("CLST_FALLBACK") and caster_src.contains("elif attack_kind == \"curse\":") and caster_src.contains("if attack_kind == \"flask\":"),
 		"the plague doctor's script: the caster set's walk [0.5, 1.5, 3.5, 0.8] and the flask as its blow")
-	var flag_scene: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/flagellant.tscn"))
+	var flag_scene: String = FileAccess.get_file_as_string(OLD.path_join("enemies/flagellant.tscn.txt"))
 	var ge: Dictionary = def("flagellant")
 	check(not flag_scene.contains("script =") and flag_scene.contains("def_id = \"flagellant\"") and bool(ge.get("frenzy", false)) and String(ge["behavior"]) == "melee" and ge.get("attack") == null,
 		"the flagellant is the plain base (no script of its own): a melee body whose def says frenzy")
@@ -3338,7 +3340,7 @@ func cloister_on_the_wire() -> void:
 				defs["plague_doctor"]["attack"] = "curse"
 		odd.load_enemy_defs(defs)
 		odd.load_tuning(tun_content)
-		odd.load_status_defs(DmStatusRules.build(DmCoreData.json(godot_dir.path_join("data/content/abilities.json")), statuses, content))
+		odd.load_status_defs(DmStatusRules.build(DmCoreData.json(data_dir.path_join("data/content/abilities.json")), statuses, content))
 		odd.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
 		odd.set_puppet(true)
 		check(not odd.apply_snapshot(w.snapshot(900)) and "data" in str(odd.replication_error()), "wire: a guest with another %s of the %s refuses the host's snapshot (%s)" % [change[1], change[0], odd.replication_error()])
@@ -3349,7 +3351,7 @@ func cloister_on_the_wire() -> void:
 ## The whole rosters of the Bell Sanctum, the Bone Coliseum and the Plague Cloister (their enemy tables and the Sanctum's procession themes, leads included) are made by the core, the models are
 ## drawn by the crowd, and a seeded run replays event for event.
 func cloister_rosters_and_a_replay() -> void:
-	var areas := DmCoreData.json(godot_dir.path_join("data/content/areas.json"))
+	var areas := DmCoreData.json(data_dir.path_join("data/content/areas.json"))
 	for area in [SANCTUM, COLISEUM, CLOISTER]:
 		var ids := {}
 		for e in areas["AREAS"][area]["enemies"]:
@@ -3411,7 +3413,7 @@ func cloister_rosters_and_a_replay() -> void:
 
 # ================================================================================================================== the Cinder Pyre and the Mourning Fen
 #
-# Their eight kinds, the "pf" family of godot/enemies/kinds: dm_enemy_pf_melee (the Cinder Husk), dm_enemy_pf_flanker (the Cinderhound, the Mire Leech), dm_enemy_pf_caster (the Pyre
+# Their eight kinds, the "pf" family of archive/old-game:godot/enemies/kinds: dm_enemy_pf_melee (the Cinder Husk), dm_enemy_pf_flanker (the Cinderhound, the Mire Leech), dm_enemy_pf_caster (the Pyre
 # Priest, the Bog Hag, the Fen Wisp), dm_enemy_pf_hazard (the Slag Brute, the Drowned Sexton), dm_pf_util and the states dm_state_pf_hook_chase and dm_state_pf_lure_kite.
 #   - the Husk: a melee body that bursts into a burning pool (EMBER_DEATH) where it falls, after `died`; nothing when it leaves alive;
 #   - the Priest: the caster set's walk, the coal (EMBER_BOLT: the ring at the aim fixed at the wind-up, kind ember, and the pool), the blow softened by Bone Hex;
@@ -3541,10 +3543,10 @@ func pf_names_defs_and_numbers() -> void:
 		and is_equal_approx(t["SEXTON_HOOK.rootS"], float(SH["rootMs"]) / 1000.0) and t["FEN_LURE.x"] == float(fen["FEN_LURE"]["x"]) and t["FEN_LURE.z"] == float(fen["FEN_LURE"]["z"]),
 		"the Fen's numbers are fen.json's: HAG_HEX, WISP_PULSE, SEXTON_HOOK, FEN_LURE")
 	# The scripts' own literals (the chain's strip, the drag's limits, the lure's heading) are the ones the core compiles in.
-	var hazard_src: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/kinds/dm_enemy_pf_hazard.gd"))
-	var util_src: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/kinds/dm_pf_util.gd"))
-	var lure_src: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/states/dm_state_pf_lure_kite.gd"))
-	var caster_src: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/kinds/dm_enemy_pf_caster.gd"))
+	var hazard_src: String = FileAccess.get_file_as_string(OLD.path_join("enemies/kinds/dm_enemy_pf_hazard.gd.txt"))
+	var util_src: String = FileAccess.get_file_as_string(OLD.path_join("enemies/kinds/dm_pf_util.gd.txt"))
+	var lure_src: String = FileAccess.get_file_as_string(OLD.path_join("enemies/states/dm_state_pf_lure_kite.gd.txt"))
+	var caster_src: String = FileAccess.get_file_as_string(OLD.path_join("enemies/kinds/dm_enemy_pf_caster.gd.txt"))
 	check(hazard_src.contains('var reach := float(H["range"]) + 0.6') and hazard_src.contains('var half := float(H["halfWidth"]) + 0.3') and hazard_src.contains("hook_cd -= delta")
 		and util_src.contains("maxf(0.0, len - 1.6)") and util_src.contains("if step > 0.05:") and lure_src.contains("(ax * 0.55 + lx / ll * 0.45) * 3.0") and lure_src.contains("steer_to(goal, BACK_OFF_SPEED)")
 		and caster_src.contains("if flat_dist_to(t) > attack_range:") and caster_src.contains("if cnt > best_n:"), "the late scripts' own literals (the strip's 0.6 and 0.3, the pull's 1.6 and 0.05, the lure's 0.55, 0.45 and 3 m, the hex's reach and knot) are the ones compiled in")
@@ -4429,7 +4431,7 @@ func pf_on_the_wire() -> void:
 	var control: RefCounted = ClassDB.instantiate("DmCore")
 	control.load_enemy_defs(content["ENEMIES"])
 	control.load_tuning(content)
-	control.load_status_defs(DmStatusRules.build(DmCoreData.json(godot_dir.path_join("data/content/abilities.json")), statuses, content))
+	control.load_status_defs(DmStatusRules.build(DmCoreData.json(data_dir.path_join("data/content/abilities.json")), statuses, content))
 	control.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
 	control.set_puppet(true)
 	check(control.apply_snapshot(snap), "wire: (a guest with the same data takes the snapshot: %s)" % control.replication_error())
@@ -4452,7 +4454,7 @@ func pf_on_the_wire() -> void:
 		odd.load_enemy_defs(defs)
 		odd.load_tuning(tun_content)
 		odd.load_legion_tuning({"fen": fen_changed})
-		odd.load_status_defs(DmStatusRules.build(DmCoreData.json(godot_dir.path_join("data/content/abilities.json")), statuses, content))
+		odd.load_status_defs(DmStatusRules.build(DmCoreData.json(data_dir.path_join("data/content/abilities.json")), statuses, content))
 		odd.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
 		odd.set_puppet(true)
 		check(not odd.apply_snapshot(snap) and "data" in str(odd.replication_error()), "wire: a guest with another %s of the %s refuses the host's snapshot (%s)" % [change[1], change[0], odd.replication_error()])
@@ -4463,7 +4465,7 @@ func pf_on_the_wire() -> void:
 ## The whole Pyre and Fen rosters (their enemy tables and the Fen's procession themes, leads included) are made by the core, the models are drawn by the crowd, and a seeded run replays
 ## event for event, with the pools and the effects on heroes in it.
 func pf_roster_and_a_replay() -> void:
-	var areas := DmCoreData.json(godot_dir.path_join("data/content/areas.json"))
+	var areas := DmCoreData.json(data_dir.path_join("data/content/areas.json"))
 	var ids := {}
 	for area in [PYRE, FEN]:
 		for e in areas["AREAS"][area]["enemies"]:

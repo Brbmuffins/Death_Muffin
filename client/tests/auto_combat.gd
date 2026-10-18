@@ -1,15 +1,15 @@
 extends SceneTree
 ## Easy auto combat's decisions (client/game/dm_auto_combat.gd, ported to cost a quarter as much and choose the same: client/code.list "Ported") against TODAY'S: the reference is
-## godot/game/dm_auto_combat.gd itself, read and compiled at run time (its class_name line dropped), so it can never drift from the live game.
-##   - the golden cases of the live game's test (godot/tests/game/fixtures/auto_action.json, auto_movement.json: generated from the frozen web game, read from there: one home) replayed
+## the old game's game/dm_auto_combat.gd itself, kept as text (tests/fixtures/old_game/game/dm_auto_combat.gd.txt, so Godot never parses it) and compiled at run time (its class_name line dropped).
+##   - the golden cases of the live game's test (tests/game/fixtures/auto_action.json, auto_movement.json: generated from the frozen web game, one home) replayed
 ##     against both: the action and movement choices, the enemies and corpses once as plain dictionaries and once as objects (the half of the cases the live test feeds sim objects);
 ##   - seeded Full-Party-sized contexts (sixty-odd enemies in reach, corpses of every kind, boss or none, random cooldowns, essence, hurt, souls and thralls; stacked enemies for equal
 ##     distances) for the necromancer's rites and the Reaper's: the port's choice must equal the reference's, every rule of the list reached;
 ##   - the movement (`select_movement`) on seeded rooms, memory included.
 ## Prints INFO: a decision's time on both sides on a Full Party sized context. Run: godot --headless --path client --script res://tests/auto_combat.gd
 
-const TODAY := "godot/game/dm_auto_combat.gd"
-const FIXTURES := "godot/tests/game/fixtures/"
+const TODAY := "res://tests/fixtures/old_game/game/dm_auto_combat.gd.txt"   ## the old game's decision code, kept as text
+const FIXTURES := "res://tests/game/fixtures/"   ## the live game's golden cases, generated from the frozen web game (tests/game/autocombat_run.gd replays them on the port alone)
 const RITES := ["bone_needle", "bone_fan", "exhume", "grave_offering", "rally_dead", "carrion_seed", "bone_mantle", "black_litany", "corpse_explosion", "ivory_cleave", "miasma", "bone_prison",
 	"grave_hands", "bone_storm", "soul_siphon", "grave_frost", "marrow_spear", "wailing_skull", "command_rend", "plague_bloom", "ossuary_wall", "dirge", "scythe_sweep", "reap", "harvest_spin",
 	"scythe_throw", "wraith_walk", "soul_burst"]
@@ -67,8 +67,7 @@ func _initialize() -> void:
 
 func _main() -> void:
 	DmSimData.ensure()
-	var root_dir := ProjectSettings.globalize_path("res://").path_join("..")
-	var src := FileAccess.get_file_as_string(root_dir.path_join(TODAY).simplify_path())
+	var src := FileAccess.get_file_as_string(TODAY)
 	check(src != "", "today's decision code is readable at %s" % TODAY)
 	if src == "":
 		_end()
@@ -77,7 +76,7 @@ func _main() -> void:
 	today.source_code = src.replace("class_name DmAutoCombat\n", "")
 	check(today.reload() == OK, "today's decision code compiles in this project")
 	ref = today
-	var fixtures := root_dir.path_join(FIXTURES).simplify_path()
+	var fixtures := FIXTURES
 	for name in ["auto_action", "auto_movement"]:
 		var path := fixtures.path_join(name + ".json")
 		check(FileAccess.file_exists(path), "the golden cases %s are there" % name)

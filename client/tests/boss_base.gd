@@ -3,8 +3,8 @@ extends SceneTree
 ## the Covenant Seal suite (boss_meta.gd). A suite extends this file, names its boss in `_config()` and writes `run_suite()` from the generic parts below and its boss's own fight.
 ## Each boss is the real game scene (client/next/next_game.tscn) of a level-20 Gravecaller on the local mock, headless, with the boss's own area loaded and no waves: today's DmBossHost /
 ## DmBoss / DmBossBrain, ported (client/README.md "The bosses"): the body is an external of the combat core (kind 1), the brain is GDScript and its world is the core.
-## The generic parts every boss gets (what godot/tests/next_bosses/harness.gd checked of each boss, on the core):
-##   - `t_replays`: the boss's recorded scenarios (godot/tests/bosses/fixtures, captured from the TS brain) replayed tick by tick through this project's copy of the brain;
+## The generic parts every boss gets (what archive/old-game:godot/tests/next_bosses/harness.gd checked of each boss, on the core):
+##   - `t_replays`: the boss's recorded scenarios (tests/bosses/fixtures, captured from the TS brain) replayed tick by tick through this project's copy of the brain;
 ##   - `t_summon`: the hub's prompt at the site, the refusals (far, unknown, dead, shards: none spent), key E, the boss's price, busy, the awaken numbers, its registration with the core;
 ##   - `t_thralls`: a thrall picks the boss by the edge rule, its blows reach the brain with the owner's credit, the boss's blows reach the thrall through the core;
 ##   - `t_rites`: the rites' queries see it, Bone Needle's range counts its radius and its blow goes to the brain, a stun staggers it once;
@@ -16,7 +16,7 @@ extends SceneTree
 
 const OUT := "user://boss_test"
 const DT := 1.0 / 60.0
-const FIXTURES := "../godot/tests/bosses/"   ## today's recorded scenarios (godot/tests/bosses/fixtures), replayed on this project's copy of the brains
+const FIXTURES := "res://tests/bosses/"   ## the recorded scenarios (tests/bosses/fixtures, captured from the TS brain; tests/bosses replays them too), replayed on this project's copy of the brains
 
 
 class ErrorLog:
@@ -28,7 +28,7 @@ class ErrorLog:
 			errors.append("%s:%d %s %s %s" % [file, line, function, code, rationale])
 
 
-## Counting back-ends for the fx (every Vfx / AudioDirector call the router makes), as godot/tests/next_bosses/harness.gd has them.
+## Counting back-ends for the fx (every Vfx / AudioDirector call the router makes), as archive/old-game:godot/tests/next_bosses/harness.gd has them.
 class Stub:
 	extends Node
 	var calls: Dictionary = {}
@@ -91,7 +91,7 @@ class Stub:
 var boss_id := ""
 var load_areas: Array = []                    ## the areas the game scene loads (the boss's own)
 var bakes: Array = ["thrall_legionnaire"]     ## the crowd models to bake into the scratch folder first (model slugs): the adds the boss calls, the thrall
-var replay_count := 6                         ## the recorded scenarios of this boss in godot/tests/bosses/fixtures
+var replay_count := 6                         ## the recorded scenarios of this boss in tests/bosses/fixtures
 var start_opts := {}                          ## extra options for the game scene
 var mock_clock: Array = []                    ## [ms]: when given, the mock backend's clock is this (the Seal's prize wants the fight to have lasted a while)
 
@@ -185,7 +185,7 @@ func _initialize() -> void:
 	_config()
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in bakes:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug))
+		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			quit(1)
@@ -487,9 +487,9 @@ func awaken_hp_ok(base_hp: float) -> bool:
 
 # ------------------------------------------------------------------------------------------------------------------------ the brain, replayed
 
-## Today's recorded scenarios of this boss (godot/tests/bosses/fixtures, captured from the TS brain) through this project's copy of the brain, tick by tick, on today's fake world.
+## Today's recorded scenarios of this boss (tests/bosses/fixtures, captured from the TS brain) through this project's copy of the brain, tick by tick, on today's fake world.
 func t_replays() -> void:
-	var dir := ProjectSettings.globalize_path("res://").path_join(FIXTURES).simplify_path()
+	var dir := FIXTURES
 	var fake = load(dir.path_join("fake_world.gd"))
 	var diff = load(dir.path_join("deep_diff.gd"))
 	check(fake != null and diff != null, "today's fake world and diff helper are readable (%s)" % dir)

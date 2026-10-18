@@ -2,7 +2,6 @@
   "maxFileMB": 20,
   "bigFileAllow": [],
   "scanExclude": [
-    "godot/**",
     "client/data/**",
     "client/assets/**",
     "package-lock.json",
@@ -19,9 +18,7 @@
       "allow": [
         "DECISIONS.md",
         "tools/hygiene/**",
-        "godot/next/hud/README.md",
-        "godot/next/hud/dm_next_ui_host.gd",
-        "godot/tests/next_acre_guide/run.gd",
+        "client/tests/next_acre_guide/run.gd",
         "server/death-muffin/discord-agent/runner/lib/config.cjs",
         "client/next/hud/dm_next_ui_host.gd"
       ]
@@ -84,8 +81,8 @@
         "tools/hygiene/**",
         "server/death-muffin/lobby/**",
         "launcher/**",
-        "godot/tests/common/dm_test_lobby.gd",
-        "godot/tests/relay/run.gd",
+        "client/tests/common/dm_test_lobby.gd",
+        "client/tests/relay/run.gd",
         "server/death-muffin/discord-agent/runner/lib/config.cjs"
       ]
     },
@@ -135,8 +132,6 @@
       "reason": "there is no offline edition; --dev-offline is test-only",
       "allow": [
         "DECISIONS.md",
-        "godot/main/main.gd",
-        "godot/tests/**",
         "tools/hygiene/**",
         "server/death-muffin/backend/authority.test.cjs",
         "server/death-muffin/discord-agent/preview.sh",
@@ -235,7 +230,7 @@
       "reason": "the client never saves or edits its bag (DECISIONS B25): bag changes are server operations (bag-ops.cjs and the other bag routes)",
       "allow": [
         "tools/hygiene/**",
-        "godot/tests/next_bag/run.gd"
+        "client/tests/next_bag/run.gd"
       ]
     },
     {
@@ -261,7 +256,6 @@
       "allow": [
         "DECISIONS.md",
         "tools/hygiene/**",
-        "godot/**",
         "client/code.list"
       ]
     },
@@ -282,6 +276,17 @@
         "tools/hygiene/**",
         "client/crowd/crowd_baker.gd"
       ]
+    },
+    {
+      "id": "old-game-folder",
+      "pattern": "(?<![\\w.:-])(?<!\\w/)godot/",
+      "reason": "the first Godot game's folder, deleted 2026-10-19 (B57): the game is client/; name a file of it as archive/old-game:godot/<path>",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**",
+        ".gitignore",
+        "server/death-muffin/lobby/src/server.js"
+      ]
     }
   ],
   "allowPaths": {
@@ -289,19 +294,8 @@
       "tools/audio/build-esm.mjs",
       "public/audio/crossworlds/"
     ],
-    "godot/fx/EVAL.md": [
-      "godot/shots/fx_eval/"
-    ],
     "launcher/windows/README.md": [
       "launcher/windows/bin/Release/net48/DeathMuffinLauncher.exe"
-    ],
-    "server/death-muffin/discord-agent/README.md": [
-      "tools/godot/gen-fixtures.sh",
-      "godot/data/loot/content.json",
-      "godot/.godot"
-    ],
-    "ASSET_PIPELINE.md": [
-      "godot/assets/fx/sheets/"
     ]
   },
   "historyDocs": [

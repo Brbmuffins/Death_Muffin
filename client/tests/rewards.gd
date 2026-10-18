@@ -1,5 +1,5 @@
 extends SceneTree
-## The rebuild's DmSessionRewards (client/next/rewards, ported) against the OFFLINE backend only (never a real server): today's godot/tests/rewards/run.gd
+## The rebuild's DmSessionRewards (client/next/rewards, ported) against the OFFLINE backend only (never a real server): the first game's archive/old-game:godot/tests/rewards/run.gd
 ## replayed, with kills arriving as the game scene's `kill_credited` instead of each enemy's `died`. Headless:
 ##   godot --headless --path client --script res://tests/rewards.gd
 ## The shell is a test double (a Node with DmNextGame's `kill_credited`); an enemy is an id and a place (the core's enemies are ids), and a kill names the

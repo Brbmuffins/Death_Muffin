@@ -1,5 +1,5 @@
 extends "res://tests/boss_base.gd"
-## The Cinder Regent on the combat core (the Cinder Pyre's boss; godot/tests/next_bosses/regent_part.gd on today's game, the same numbers and timing). Her coals, the firebreak down the line of
+## The Cinder Regent on the combat core (the Cinder Pyre's boss; archive/old-game:godot/tests/next_bosses/regent_part.gd on today's game, the same numbers and timing). Her coals, the firebreak down the line of
 ## her cleave and what is left of the floor after a Conflagration are core zones of kind ember with her as the source (`DmCore.add_zone`), drawn by the zone visual.
 ##   - her recorded scenarios replay through the client's copy of the brain (the thralls scenario among them); the generic parts (boss_base.gd): the summon at the Ember Altar (6 soul shards),
 ##     thralls, rites, wipe, defeat, rewards;

@@ -18,8 +18,8 @@ const FORBIDDEN_IN_SHADER := ["hint_screen_texture", "hint_depth_texture", "hint
 	"SCREEN_UV", "SSS_", "BENT_NORMAL_MAP", "ANISOTROPY", "CLEARCOAT", "SDFGI", "textureLod(vat"]
 
 var _failed := 0
-var _assets := Baker.default_assets_dir()
-var _rows := Baker.default_rows_path()
+var _assets := ProjectSettings.globalize_path("res://assets")                    ## this project's models
+var _rows := ProjectSettings.globalize_path("res://game/view_models.json")      ## this project's model rows
 
 
 func check(ok: bool, msg: String) -> void:
@@ -52,7 +52,7 @@ func _initialize() -> void:
 
 func _test_model(slug: String) -> void:
 	var dir := OUT.path_join(slug)
-	var r: Dictionary = Baker.bake(root, slug, dir)
+	var r: Dictionary = Baker.bake(root, slug, dir, {"assets_dir": _assets, "rows_path": _rows})
 	check(r.ok, "%s: bake: %s" % [slug, r.get("error", "")])
 	if not r.ok:
 		return
@@ -386,9 +386,9 @@ func _check_codes(data: CrowdVatData, label: String, bounds: AABB) -> void:
 ## A model over the triangle budget falls back to Godot's own simplified level; with none small enough it is reported.
 func _test_decimation() -> void:
 	var dir := OUT.path_join("decimated")
-	var r: Dictionary = Baker.bake(root, "grave_robber", dir, {"max_triangles": 3000, "clips": ["idle", "walk"]})
+	var r: Dictionary = Baker.bake(root, "grave_robber", dir, {"max_triangles": 3000, "clips": ["idle", "walk"], "assets_dir": _assets, "rows_path": _rows})
 	check(r.ok and r.triangles.size() == 1 and r.triangles[0] <= 3000 and not r.over_budget, "over budget: level 0 is the simplified mesh (got %s)" % str(r.get("triangles")))
-	var r2: Dictionary = Baker.bake(root, "grave_robber", dir, {"max_triangles": 100, "clips": ["idle"]})
+	var r2: Dictionary = Baker.bake(root, "grave_robber", dir, {"max_triangles": 100, "clips": ["idle"], "assets_dir": _assets, "rows_path": _rows})
 	check(r2.ok and r2.over_budget, "over budget with no small enough level is reported")
 
 
@@ -563,7 +563,7 @@ func _remove_dir(path: String) -> void:
 ## the shader's wing formula, mirrored here line by line from DmCreatureMat (not the baker's own function), on the placed mesh.
 func _test_unrigged(slug: String) -> void:
 	var dir := OUT.path_join(slug)
-	var r: Dictionary = Baker.bake(root, slug, dir)
+	var r: Dictionary = Baker.bake(root, slug, dir, {"assets_dir": _assets, "rows_path": _rows})
 	check(r.ok, "%s: bake: %s" % [slug, r.get("error", "")])
 	if not r.ok:
 		return
@@ -644,7 +644,7 @@ func _test_props(variant: String) -> void:
 	var base_dir := OUT.path_join(model)
 	if DirAccess.dir_exists_absolute(base_dir):
 		_remove_dir(base_dir)   # the variant bakes the plain body it shares first
-	var r: Dictionary = Baker.bake(root, variant, OUT.path_join(variant))
+	var r: Dictionary = Baker.bake(root, variant, OUT.path_join(variant), {"assets_dir": _assets, "rows_path": _rows})
 	check(r.ok, "%s: bakes (%s)" % [variant, r.get("error", "")])
 	if not r.ok:
 		return
@@ -686,7 +686,7 @@ func _test_props(variant: String) -> void:
 	print("INFO %s: %d KB of its own (track %d KB) next to the plain body's %d KB" % [variant, own_bytes / 1024, FileAccess.get_file_as_bytes(OUT.path_join(variant).path_join("track.res")).size() / 1024, base_bytes / 1024])
 	check(own_bytes < 2 * 1024 * 1024 and own_bytes < base_bytes / 4, "%s: a variant costs a mesh and a track, not a body (%d KB against %d KB)" % [variant, own_bytes / 1024, base_bytes / 1024])
 
-	var plain: Dictionary = Baker.load_model(root, model, Baker.default_assets_dir(), Baker.default_rows_path())
+	var plain: Dictionary = Baker.load_model(root, model, _assets, _rows)
 	var src_vc: int = ((plain.mesh_instance as MeshInstance3D).mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
 	var specs := Baker.props_for("warrior")
 	var g := Baker._prop_geometry(specs)

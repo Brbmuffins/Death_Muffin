@@ -17,7 +17,7 @@ func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--out="):
 			out = a.substr(6)
-	var assets := Baker.default_assets_dir()
+	var assets := ProjectSettings.globalize_path("res://assets")
 	var robber: CrowdVatData = load("res://assets/crowd/baked/grave_robber/model.tres")
 	var hound: CrowdVatData = load("res://assets/crowd/baked/bone_hound/model.tres")
 	if robber == null or hound == null:
@@ -116,7 +116,7 @@ func _initialize() -> void:
 		var clip: String = PAIRS[i][0]
 		var t: float = PAIRS[i][1]
 		var x := -6.4 + float(i) * 1.5
-		var m: Dictionary = Baker.load_model(root, "grave_robber", assets, Baker.default_rows_path())
+		var m: Dictionary = Baker.load_model(root, "grave_robber", assets, ProjectSettings.globalize_path("res://game/view_models.json"))
 		Baker.pose_at(m, clip, t)
 		var rot := Basis(Vector3.UP, m.yaw)
 		(m.root as Node3D).transform = Transform3D(Basis(Vector3.UP, 0.0), Vector3(x, 0, 4.2)) * Transform3D(rot * Basis.from_scale(Vector3.ONE * m.scale), rot * m.offset)

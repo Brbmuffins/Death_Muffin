@@ -86,7 +86,7 @@ func _initialize() -> void:
 	t0_msec = Time.get_ticks_msec()
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug))
+		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			quit(1)
@@ -1510,7 +1510,7 @@ func _withered_cap() -> int:
 
 # ------------------------------------------------------------------------------------------------------------------------ the Reaper
 
-## The Reaper (class 11), a real level-20 character in a fresh game, replaying today's godot/tests/rites/reaper_part.gd on core enemies: the class (her model,
+## The Reaper (class 11), a real level-20 character in a fresh game, replaying the first game's archive/old-game:godot/tests/rites/reaper_part.gd on core enemies: the class (her model,
 ## the soul bag, the kit on the hotbar, more health, less damage taken, the scythe gestures), the nine rites (who is struck, the damage with the bag's and the
 ## spent souls' bonuses, souls paid and refused, the life steal), Unleash Souls' wisps, Soul Harbinger's Raiment, a kill banking a soul and the easy
 ## auto-combat's pick. Numbers come from the REAPER constants and DmAbilities.

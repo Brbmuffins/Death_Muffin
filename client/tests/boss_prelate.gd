@@ -1,5 +1,5 @@
 extends "res://tests/boss_base.gd"
-## The Bell-Sworn Prelate on the combat core (the Bell Sanctum's boss, woken with the Sundered Bell; godot/tests/next_bosses/prelate_part.gd on today's game, the same numbers and timing). Her
+## The Bell-Sworn Prelate on the combat core (the Bell Sanctum's boss, woken with the Sundered Bell; archive/old-game:godot/tests/next_bosses/prelate_part.gd on today's game, the same numbers and timing). Her
 ## Procession is core bodies (the Risen and the Bellbound Penitent), her echoes are the world's vows.
 ##   - her recorded scenarios replay through the client's copy of the brain, Prelate Echoes I, II and III among them; the generic parts (boss_base.gd): the bell (5 soul shards), thralls,
 ##     rites, wipe, defeat, rewards;

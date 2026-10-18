@@ -1,9 +1,9 @@
 extends SceneTree
 ## The Gravedigger King on the combat core (client/README.md "The bosses"): the real offline game scene (client/next/next_game.tscn)
 ## with a level-20 Gravecaller, no waves, headless. The King is today's DmBossHost / DmBoss / DmBossBrain, ported: his body is an external of the core (kind 1), his brain stays GDScript.
-##   - the brain: today's gravedigger_* scenarios replay tick by tick through the client's copy of the brain (fixtures read from godot/tests/bosses);
+##   - the brain: today's gravedigger_* scenarios replay tick by tick through the client's copy of the brain (fixtures in tests/bosses);
 ##   - summoning: the rules of the Graves (far, unknown, busy, dead), key E at his grave, the awaken numbers and event; he is registered with the core (core_id, the host's records);
-##   - his fight stepped by hand (exact timing, as godot/tests/next_bosses/gravedigger_part.gd does): Spade Sweep and Burial (numbers, telegraphs, the blows on the hero and on a thrall), the phases at
+##   - his fight stepped by hand (exact timing, as archive/old-game:godot/tests/next_bosses/gravedigger_part.gd does): Spade Sweep and Burial (numbers, telegraphs, the blows on the hero and on a thrall), the phases at
 ##     60 / 30 %, Barrow Ghouls on the arena rim and the elite robber (adds are core bodies of the Graves, the boss's area), the four pits, the double sweep; a wipe resets him and his adds leave
 ##     the core silently (no death, no corpse, no credit: remove_enemy);
 ##   - thralls: they pick him by the boss edge rule, hit him through EV_THRALL_HIT_EXTERNAL into the brain with their owner's credit, and he hits them back with `core.damage` on their ids;
@@ -19,7 +19,7 @@ extends SceneTree
 const OUT := "user://boss_test"
 const BAKE := ["grave_robber", "bone_hound", "thrall_legionnaire"]
 const DT := 1.0 / 60.0
-const FIXTURES := "../godot/tests/bosses/"   ## today's recorded scenarios (godot/tests/bosses/fixtures), replayed on this project's copy of the brains
+const FIXTURES := "res://tests/bosses/"   ## the recorded scenarios (tests/bosses/fixtures, captured from the TS brain; tests/bosses replays them too), replayed on this project's copy of the brains
 
 
 class ErrorLog:
@@ -31,7 +31,7 @@ class ErrorLog:
 			errors.append("%s:%d %s %s %s" % [file, line, function, code, rationale])
 
 
-## Counting back-ends for the fx (every Vfx / AudioDirector call the router makes), as godot/tests/next_bosses/harness.gd has them.
+## Counting back-ends for the fx (every Vfx / AudioDirector call the router makes), as archive/old-game:godot/tests/next_bosses/harness.gd has them.
 class Stub:
 	extends Node
 	var calls: Dictionary = {}
@@ -153,7 +153,7 @@ func _initialize() -> void:
 	OS.add_logger(errlog)
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug))
+		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			quit(1)
@@ -335,9 +335,9 @@ func hits_of(rite: String, mark := 0) -> Array:
 
 # ------------------------------------------------------------------------------------------------------------------------ the brain, replayed
 
-## Today's recorded Gravedigger scenarios (godot/tests/bosses/fixtures, captured from the TS brain) through this project's copy of the brain, tick by tick, on today's fake world.
+## Today's recorded Gravedigger scenarios (tests/bosses/fixtures, captured from the TS brain) through this project's copy of the brain, tick by tick, on today's fake world.
 func t_replays() -> void:
-	var dir := ProjectSettings.globalize_path("res://").path_join(FIXTURES).simplify_path()
+	var dir := FIXTURES
 	var fake = load(dir.path_join("fake_world.gd"))
 	var diff = load(dir.path_join("deep_diff.gd"))
 	check(fake != null and diff != null, "today's fake world and diff helper are readable (%s)" % dir)

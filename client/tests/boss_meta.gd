@@ -1,5 +1,5 @@
 extends "res://tests/boss_base.gd"
-## The Covenant Seal's Empowered call and the first-kill trophies on the combat core (DmBossMeta, the HUD's boss-key prompt; godot/tests/next_boss_meta/run.gd on today's game), on the local mock
+## The Covenant Seal's Empowered call and the first-kill trophies on the combat core (DmBossMeta, the HUD's boss-key prompt; archive/old-game:godot/tests/next_boss_meta/run.gd on today's game), on the local mock
 ## backend (its `/api/boss-key/*` routes): nothing here talks to a real server.
 ##   - the first-kill trophy: the King's first kill pays the first-kill bonus once and is the Chronicle's `boss.gravedigger` (the backend has it after a flush), a second kill is no first kill and
 ##     the counter says 2; the Abbess's trophy likewise (+2 shards, her own area's drop);

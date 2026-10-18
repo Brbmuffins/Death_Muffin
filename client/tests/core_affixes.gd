@@ -1,5 +1,5 @@
 extends SceneTree
-## Elite affixes in the combat core against DmAffixSet (godot/next/affixes/dm_affix_set.gd): the bell's countdown, ring and toll, Hungering's
+## Elite affixes in the combat core against DmAffixSet (archive/old-game:godot/next/affixes/dm_affix_set.gd): the bell's countdown, ring and toll, Hungering's
 ## meals, the shroud's 0.1 s check and Miasma hold, Vengeful's Risen inside the kill, all paused while the body cannot act. The expected
 ## ticks come from mirrors of today's arithmetic (the functions named *_mirror), not from hand-picked numbers.
 ## Run: godot --headless --path client --script res://tests/core_affixes.gd
@@ -41,7 +41,7 @@ func check(ok: bool, what: String) -> void:
 
 
 func load_json(name: String) -> Dictionary:
-	var f := FileAccess.open(ProjectSettings.globalize_path("res://").path_join("../godot/data/content/%s.json" % name), FileAccess.READ)
+	var f := FileAccess.open("res://data/content/%s.json" % name, FileAccess.READ)
 	return JSON.parse_string(f.get_as_text())
 
 

@@ -1,5 +1,5 @@
 extends SceneTree
-## Corpses in the combat core against DmCorpseField (godot/next/corpses/dm_corpse_field.gd, host logic): which kinds the roster leaves, where in
+## Corpses in the combat core against DmCorpseField (archive/old-game:godot/next/corpses/dm_corpse_field.gd, host logic): which kinds the roster leaves, where in
 ## a death they are laid, the extra "risen" corpses, the cap of 45, the lifetime, the toxic rupture into a hostile pool, the nearest-first and
 ## two-stage pick queries and the atomic consume. Timings are computed the way today's clock adds them (a double that gains 1/60 per tick).
 ## Run: godot --headless --path client --script res://tests/core_corpses.gd
@@ -24,7 +24,7 @@ const DT := 1.0 / 60.0
 
 var fails := 0
 var checks := 0
-var godot_dir: String
+var data_dir: String   ## this project's data/ (res://): the same files the game loads
 var data := {}
 var clock := 0.0   ## what the core's corpse clock reads: the sum of the steps taken so far
 var tick_no := 0   ## the tick the last step was (events are tagged with it)
@@ -40,7 +40,7 @@ func check(ok: bool, what: String) -> void:
 func make(seed_: int = 21) -> RefCounted:
 	var c: RefCounted = ClassDB.instantiate("DmCore")
 	c.set_seed(seed_)
-	DmCoreData.load_all(c, godot_dir)
+	DmCoreData.load_all(c, data_dir)
 	c.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
 	c.set_wander(false)
 	clock = 0.0
@@ -100,9 +100,9 @@ func countdown(x0: float) -> int:
 
 
 func _init() -> void:
-	godot_dir = ProjectSettings.globalize_path("res://").path_join("../godot")
-	data["enemies"] = DmCoreData.json(godot_dir.path_join("data/content/enemies.json"))
-	data["combat"] = DmCoreData.json(godot_dir.path_join("data/combat/enemies.json"))
+	data_dir = "res://"
+	data["enemies"] = DmCoreData.json(data_dir.path_join("data/content/enemies.json"))
+	data["combat"] = DmCoreData.json(data_dir.path_join("data/combat/enemies.json"))
 	kinds_and_order()
 	extra_corpses()
 	cap_and_lifetime()

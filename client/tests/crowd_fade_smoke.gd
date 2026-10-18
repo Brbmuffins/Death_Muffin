@@ -104,7 +104,7 @@ func _initialize() -> void:
 		analyze(Image.load_from_file(redo + "_ward.png"), Image.load_from_file(redo + "_sinking.png"), Image.load_from_file(redo + "_late.png"), opac["ward"], opac["mid"], opac["late"])
 		quit(1 if fails > 0 else 0)
 		return
-	var godot_dir := ProjectSettings.globalize_path("res://").path_join("../godot")
+	var data_dir := "res://"   # this project's data/: the same files the game loads
 	var world := Node3D.new()
 	root.add_child(world)
 	var cam := Camera3D.new()
@@ -134,13 +134,13 @@ func _initialize() -> void:
 
 	var core: RefCounted = ClassDB.instantiate("DmCore")
 	core.set_seed(5)
-	DmCoreData.load_all(core, godot_dir)
+	DmCoreData.load_all(core, data_dir)
 	core.set_wander(false)
 	core.set_area_bounds(Vector2(-40, -40), Vector2(40, 40))
 	view = CrowdView.new()
 	view.auto_sync = false
 	world.add_child(view)
-	view.setup(core, DmCoreData.json(godot_dir.path_join("data/content/enemies.json"))["ENEMIES"], Vector2(-40, -40), Vector2(40, 40), {"assets_dir": CrowdBaker.default_assets_dir()})
+	view.setup(core, DmCoreData.json(data_dir.path_join("data/content/enemies.json"))["ENEMIES"], Vector2(-40, -40), Vector2(40, 40), {"assets_dir": CrowdBaker.default_assets_dir()})
 	if not view.model_slots().has("grave_robber"):
 		printerr("FAIL crowd_fade_smoke: bake the robber first (see the header)")
 		quit(1)

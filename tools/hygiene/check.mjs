@@ -39,7 +39,7 @@ const read = (f) => readFileSync(path.join(root, f), 'utf8');
 const lineOf = (text, idx) => text.slice(0, idx).split('\n').length;
 const exists = (p) => existsSync(path.join(root, p));
 
-const mdFiles = files.filter((f) => f.endsWith('.md') && !matches(['client/tests/**', 'godot/**'], f));   // godot/: the old game's frozen folder, deleted next (ROADMAP Phase 1)
+const mdFiles = files.filter((f) => f.endsWith('.md') && !matches(['client/tests/**'], f));
 
 // Blank out fenced code blocks (keeping line numbers) when asked.
 function stripFences(text) {

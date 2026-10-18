@@ -1,12 +1,12 @@
 extends SceneTree
-## The ground decals in C++ (DmDecals, client/fx/dm_fx_prims.gd's `decal`) against TODAY'S: the reference is godot/fx/dm_fx_prims.gd itself (its DecalTr and the DECAL half of
-## DmFxLayer.flush), read and compiled at run time with its class_name line dropped, so it can never drift from the live game. Both effect layers get the same decals (every texture,
+## The ground decals in C++ (DmDecals, client/fx/dm_fx_prims.gd's `decal`) against TODAY'S: the reference is the old game's fx/dm_fx_prims.gd itself (its DecalTr and the DECAL half of
+## DmFxLayer.flush), kept as text (tests/fixtures/old_game/fx/dm_fx_prims.gd.txt, so Godot never parses it) and compiled at run time with its class_name line dropped. Both effect layers get the same decals (every texture,
 ## blend, role and order, delays, spin, pulse, growth, anchors, sheets, followers that vanish, persistent ones, settling ones that overlap and bring each other's outline forward,
 ## kills, and more than the cap of 160) and the same frame times (60 Hz, 144 Hz, hitches); after every frame each layer's drawn count and every float of its drawn buffer must be EQUAL,
 ## and so must the number of combat transients and whether each handle is alive. Prints INFO: the update's time per frame on both sides with about 140 decals alive.
 ## Run: godot --headless --path client --script res://tests/fx_decals.gd
 
-const TODAY := "godot/fx/dm_fx_prims.gd"
+const TODAY := "res://tests/fixtures/old_game/fx/dm_fx_prims.gd.txt"   ## the old game's effects layer, kept as text
 
 var fails := 0
 var checks := 0
@@ -25,9 +25,8 @@ func _initialize() -> void:
 
 
 func _main() -> void:
-	var path := ProjectSettings.globalize_path("res://").path_join("..").path_join(TODAY).simplify_path()
-	var src := FileAccess.get_file_as_string(path)
-	check(src != "", "today's effects layer is readable at %s" % path)
+	var src := FileAccess.get_file_as_string(TODAY)
+	check(src != "", "today's effects layer is readable at %s" % TODAY)
 	if src == "":
 		_end()
 		return

@@ -1,12 +1,12 @@
 extends SceneTree
-## Every converted area (client/areas/<id>.tscn, made by client/tools/build_area.gd from godot/data/slice/world.json) matches what today's runtime
-## builder (godot/world/world_builder.gd) makes for that area. The areas are world.json's `order` without the instance (the Depths' floors are generated at
+## Every converted area (client/areas/<id>.tscn, made by client/tools/build_area.gd from client/data/slice/world.json) matches what today's runtime
+## builder (client/world/world_builder.gd) makes for that area. The areas are world.json's `order` without the instance (the Depths' floors are generated at
 ## runtime); each scene is checked on its own: instantiate, check, free. Every expected number is computed here from world.json the way world_builder.gd
 ## computes it (its own constants, DmModels.prop_parts, the hummock ring mesh), never read from a scene.
 ## Run: godot --headless --path client --script res://tests/areas.gd
 
 const Build := preload("res://tools/build_area.gd")
-const WORLD_JSON := "../godot/data/slice/world.json"
+const WORLD_JSON := "res://data/slice/world.json"
 const TEX := "res://assets/slice/art/textures/%s.webp"
 const COMMON := "res://areas/common/"
 const EPS := 0.0005
@@ -127,10 +127,10 @@ func _see(category: String, n: int) -> void:
 
 
 func _run() -> void:
-	var text := FileAccess.get_file_as_string(ProjectSettings.globalize_path("res://").path_join(WORLD_JSON))
+	var text := FileAccess.get_file_as_string(WORLD_JSON)
 	var parsed: Variant = JSON.parse_string(text)
 	if not parsed is Dictionary:
-		printerr("FAIL areas: cannot read godot/data/slice/world.json")
+		printerr("FAIL areas: cannot read %s" % WORLD_JSON)
 		quit(1)
 		return
 	_world = parsed

@@ -70,9 +70,7 @@ static func model_for(name: String, enemies_path := "") -> String:
 	var looks: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://crowd/crowd_looks.json"))
 	if looks is Dictionary and (looks as Dictionary).get("enemy_model", {}).has(name):
 		return String((looks as Dictionary).enemy_model[name])
-	if enemies_path == "":
-		enemies_path = ProjectSettings.globalize_path("res://data/content/enemies.json")
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(enemies_path))
+	var parsed: Variant = DmDb.content("enemies") if enemies_path == "" else JSON.parse_string(FileAccess.get_file_as_string(enemies_path))
 	if parsed is Dictionary and (parsed as Dictionary).get("ENEMIES", {}).has(name):
 		return String((parsed as Dictionary).ENEMIES[name].get("modelSlug", "grave_robber"))
 	return name

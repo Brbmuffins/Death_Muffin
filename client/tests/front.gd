@@ -10,7 +10,7 @@ extends SceneTree
 ##     screen with the same login and a pick goes back in, Log out lands on the login screen with no login kept;
 ##   - an account whose discipline is not playable is sent to the discipline switch;
 ##   - THE API RULE (DECISIONS B38): every address the client can use resolves to the TEST server, never to the live API, live lobby or live manifest (read from
-##     godot/net/dm_config.gd): the config, DmApi's default, every request the flows made, the allow-list of the transport and of the game scene, the real transport's
+##     tests/fixtures/old_game/net/dm_config.gd.txt, the old game's config kept as text): the config, DmApi's default, every request the flows made, the allow-list of the transport and of the game scene, the real transport's
 ##     refusal of a live address, a front flow whose api is the live one (it ends on the login screen, saying why), and a scan of every shipped file for an address
 ##     outside net/dm_config.gd;
 ##   - an unreachable or failing server shows today's player-readable error (login, a stored login at boot, and the bag failing to load);
@@ -21,7 +21,7 @@ extends SceneTree
 
 const OUT := "user://front_test"
 const BAKE := ["grave_robber", "bone_hound"]
-## What this build talks to (the literals, so a change of net/dm_config.gd cannot move the test with it; also read from godot/net/dm_config.gd below) and what it never may:
+## What this build talks to (the literals, so a change of net/dm_config.gd cannot move the test with it; also read from tests/fixtures/old_game/net/dm_config.gd.txt below) and what it never may:
 ## the test server, since launch day (2026-10-18).
 const TEST_API := "https://muffindevelopment.com/death-muffin/test-api"
 const LIVE_API := "https://muffindevelopment.com/death-muffin/api"
@@ -105,7 +105,7 @@ func _run() -> void:
 	OS.add_logger(errlog)
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug))
+		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			quit(1)
@@ -453,9 +453,9 @@ func dev_entry_offline() -> void:
 
 # ------------------------------------------------------------------------------------------------------------------ the API rule
 
-## What godot/net/dm_config.gd says today: the live addresses this client must never use.
+## What the old game's net/dm_config.gd says (kept as text, a ".txt" added so Godot never parses it): the live addresses this client must use and never leave.
 func live_config() -> Dictionary:
-	var path := ProjectSettings.globalize_path("res://").path_join("../godot/net/dm_config.gd").simplify_path()
+	var path := "res://tests/fixtures/old_game/net/dm_config.gd.txt"
 	var out := {}
 	if not FileAccess.file_exists(path):
 		return out
@@ -468,7 +468,7 @@ func live_config() -> Dictionary:
 
 func config_is_the_live_server() -> void:
 	var live := live_config()
-	check(live.has("API_BASE") and live.has("LOBBY_URL") and live.has("SITE_BASE"), "godot/net/dm_config.gd (the old game's live config) was read")
+	check(live.has("API_BASE") and live.has("LOBBY_URL") and live.has("SITE_BASE"), "tests/fixtures/old_game/net/dm_config.gd.txt (the old game's live config) was read")
 	var live_api: String = live.get("API_BASE", "")
 	var live_lobby: String = live.get("LOBBY_URL", "")
 	var live_site: String = live.get("SITE_BASE", "")

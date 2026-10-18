@@ -14,7 +14,7 @@ export interface ParityCase {
   out: unknown;
 }
 
-const ROOT = path.resolve(__dirname, '../../../../godot/tests');
+const ROOT = path.resolve(__dirname, '../../../../client/tests');
 
 /** `call(fn, input, run)` records one case; the output is what JSON round-trips to, which is what Godot will read. */
 export function recorder() {

@@ -71,7 +71,7 @@ func _run() -> void:
 # ---------------------------------------------------------------- the data
 func _the_data() -> void:
 	var d := _data
-	check(not d.is_empty(), "godot/data/world_fx/fx.json is there")
+	check(not d.is_empty(), "data/world_fx/fx.json is there")
 	check(d.windows.size() == 4 and d.silhouettes.size() == 70, "4 stained-glass windows and 70 far silhouettes")
 	var n := 0
 	for k in d.flames:

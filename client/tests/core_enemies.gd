@@ -1,5 +1,5 @@
 extends SceneTree
-## The core's enemy brain against today's rules (godot/enemies, combat map sections 2 and 12): chase and bite timing, the penitent's cone,
+## The core's enemy brain against the first game's rules (archive/old-game:godot/enemies, combat map sections 2 and 12): chase and bite timing, the penitent's cone,
 ## the moth's dust cloud, the sac's slam, the bat's hit-and-run, the ghoul's tunnel and eruption, leash and return, stagger and stun, and the
 ## crowd spacing that replaces RVO.
 ## Seeded and without a navmesh (straight lines). Run: godot --headless --path client --script res://tests/core_enemies.gd
@@ -89,7 +89,7 @@ func states_of(log: Array, id: int) -> Array:
 
 
 func _init() -> void:
-	var f := FileAccess.open(ProjectSettings.globalize_path("res://").path_join("../godot/data/content/enemies.json"), FileAccess.READ)
+	var f := FileAccess.open("res://data/content/enemies.json", FileAccess.READ)
 	content = JSON.parse_string(f.get_as_text())
 	robber()
 	penitent()

@@ -1,6 +1,6 @@
 extends SceneTree
 ## What the bosses call on the combat core beyond damage and queries (native/src/core/niche.cpp, boss.cpp; client/README.md "The bosses"), against today's code:
-##   - the Skull Niche (godot/enemies/kinds/dm_enemy_niche.gd, the Bone Abbess's shrines): a body that only stands. Its def, the rise (dm_state_rising.gd), no target, no walk, no blow,
+##   - the Skull Niche (archive/old-game:godot/enemies/kinds/dm_enemy_niche.gd, the Bone Abbess's shrines): a body that only stands. Its def, the rise (dm_state_rising.gd), no target, no walk, no blow,
 ##     no stagger (a hit, a stun, a stun status), a hit while it rises refused, never moved (a hero's body, a raised wall), not in the crowd's spacing, thralls and statuses reach it,
 ##     it falls with no corpse and is removed 4 s later;
 ##   - a body's health (`set_enemy_hp`, DmBossNodeWorld.set_enemy_hp): the hp and maximum, the refusals, a puppet refused;
@@ -36,12 +36,14 @@ const ZK_EMBER := 2
 const DT := 1.0 / 60.0
 const AREA := "ossuary"
 const FAR := Vector2(40.0, 0.0)
-const SCRIPTS: Array[String] = ["enemies/states/dm_state_rising.gd", "enemies/dm_hostile_zone.gd", "next/corpses/dm_corpse_field.gd"]
+## The old game's scripts whose `const` lines this suite reads, kept as text (a ".txt" added, so Godot never parses them).
+const OLD := "res://tests/fixtures/old_game/"
+const SCRIPTS: Array[String] = ["enemies/states/dm_state_rising.gd.txt", "enemies/dm_hostile_zone.gd.txt", "next/corpses/dm_corpse_field.gd.txt"]
 
 var fails := 0
 var checks := 0
 var verbose := false
-var godot_dir: String
+var data_dir: String   ## this project's data/ (res://): the same files the game loads
 var content: Dictionary
 var abilities: Dictionary
 var K: Dictionary        ## the scripts' `const` lines (RISE_TIME, TICK_S, TARGET_PAD)
@@ -64,7 +66,7 @@ func def(id: String) -> Dictionary:
 func make(seed_: int = 11) -> RefCounted:
 	var c: RefCounted = ClassDB.instantiate("DmCore")
 	c.set_seed(seed_)
-	DmCoreData.load_all(c, godot_dir)
+	DmCoreData.load_all(c, data_dir)
 	c.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
 	c.set_wander(false)
 	tick = 0
@@ -73,7 +75,7 @@ func make(seed_: int = 11) -> RefCounted:
 
 func puppet() -> RefCounted:
 	var c: RefCounted = ClassDB.instantiate("DmCore")
-	DmCoreData.load_all(c, godot_dir)
+	DmCoreData.load_all(c, data_dir)
 	c.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
 	c.set_puppet(true)
 	return c
@@ -144,10 +146,10 @@ func niche(c: RefCounted, at: Vector2, rising := true, hp_mult := 1.0) -> int:
 
 func _init() -> void:
 	verbose = "--verbose" in OS.get_cmdline_user_args()
-	godot_dir = ProjectSettings.globalize_path("res://").path_join("../godot")
-	content = DmCoreData.json(godot_dir.path_join("data/content/enemies.json"))
-	abilities = DmCoreData.json(godot_dir.path_join("data/content/abilities.json"))
-	K = DmCoreData.consts(godot_dir, SCRIPTS)
+	data_dir = "res://"
+	content = DmCoreData.json(data_dir.path_join("data/content/enemies.json"))
+	abilities = DmCoreData.json(data_dir.path_join("data/content/abilities.json"))
+	K = DmCoreData.consts(OLD, SCRIPTS)
 	names_and_defs()
 	niche_rises_and_stands()
 	niche_takes_blows_without_a_flinch()
@@ -546,7 +548,7 @@ func on_the_wire() -> void:
 	changed["niche"]["inert"] = false
 	odd.load_enemy_defs(changed)
 	odd.load_tuning(content)
-	odd.load_status_defs(DmStatusRules.build(abilities, DmCoreData.json(godot_dir.path_join("data/content/statuses.json")), content))
+	odd.load_status_defs(DmStatusRules.build(abilities, DmCoreData.json(data_dir.path_join("data/content/statuses.json")), content))
 	odd.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
 	odd.set_puppet(true)
 	check(not odd.apply_snapshot(host.snapshot(900)) and "data" in str(odd.replication_error()), "wire: a guest that runs the niche as a plain body refuses the host's snapshot (%s)" % odd.replication_error())

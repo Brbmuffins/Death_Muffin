@@ -1,5 +1,5 @@
 extends "res://tests/boss_base.gd"
-## The Mire Mother on the combat core (the Mourning Fen's boss; godot/tests/next_bosses/mire_part.gd on today's game, the same numbers and timing). She sinks under a hummock (an external of
+## The Mire Mother on the combat core (the Mourning Fen's boss; archive/old-game:godot/tests/next_bosses/mire_part.gd on today's game, the same numbers and timing). She sinks under a hummock (an external of
 ## the core that is not alive for its queries while she is under: thralls let go, rites and the pick find nothing), her Drowned Rite raises a Risen from every corpse of the Fen (the core's
 ## corpse field, `raised`) and her Drowned Hands root a wading hero.
 ##   - her recorded scenarios replay through the client's copy of the brain (the corpses rite among them); the generic parts (boss_base.gd): the summon at the Mire Altar (7 soul shards), thralls,

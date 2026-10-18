@@ -10,7 +10,7 @@ Discord #death-muffin ── Muffin Core bot (user `muffin`, /opt/muffin/discord
         ▼
 Runner (user `ubuntu`, ~/death-muffin/discord-agent/runner/server.cjs, port 4321)
    allow-list · approver gate · rate limits · audit.jsonl · job queue · tier classifier · proposal builder
-   ├─ per request: git worktree + branch discord/<id> from origin/{baseBranch} (`main`) with main's Godot import cache copied in, `claude -p` (sandboxed, --resume within a round)
+   ├─ per request: git worktree + branch discord/<id> from origin/{baseBranch} (`main`), `claude -p` (sandboxed, --resume within a round)
    ├─ verify (runner code, not the AI): commits clean · no Co-Authored-By · forbidden paths · secret scan · generated files re-derived · check-godot.sh · tier
    ├─ propose: push branch, embed with tier / files / tests / migrations / compare link, ✅ ❌
    └─ ship.sh (only after an approver's ✅): deploy lock · merge onto {baseBranch} · re-gate · re-test (skipped when the merged tree is the proposal's) · push · publish-godot-client.sh (deferred when another approved ship waits)
@@ -141,8 +141,7 @@ its notice lists both changes under both titles, and the waiting thread gets "�
 that touches only Markdown files and `docs/` is pushed and stops there: no backend or lobby deploy, no client publish, no release notice (`RESULT: docs`;
 the thread is told no game update went out, the ships log records `type: docs`). **One test run at a time:** `check-godot.sh` takes
 `~/death-muffin/test-slot.lock` (shared with the ship; created by the installer) and waits for it, so parallel jobs no longer slow each
-other down. Fresh worktrees (jobs, ships) start from the main checkout's Godot import cache (~14 s instead of ~70 s); the
-client publish still imports from scratch.
+other down. A job's check gets the import from the trusted cache (`client-prep.sh`); the client publish still imports from scratch.
 A message sent while a turn runs is handled by the next turn, and the finished turn posts no proposal for the outdated state (audit `proposal-skipped`), so one proposal comes with everything. Screenshot runs (`shot-godot.sh`, `--qa --shot-plan`) skip the game's start-up warm-up (software GL: 192 s -> 41 s per start).
 A reply to an open proposal that changes nothing (a thank-you, a question) is answered, and the proposal stays as it is: same commit and clean
 workspace means no new checks, preview or re-post (`proposal-kept` in the audit log), and ✅ works right away. The prompt also tells the agent not to

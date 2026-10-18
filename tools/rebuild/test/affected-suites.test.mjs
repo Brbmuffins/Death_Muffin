@@ -29,6 +29,11 @@ test('a changed suite (its script, or a file of a folder suite) selects it plus 
   assert.deepEqual(sel(affected(['client/tests/backend/test_routes.gd'], mk())), [...new Set([...SMOKE, 'backend'])].sort());
   assert.deepEqual(sel(affected(['client/tests/boss_base.gd'], mk())), [...SMOKE].sort(), 'a helper no suite is named after');
 });
+test('a folder with several runners: a file in it selects every runner of that folder', () => {
+  const ctx = { ...mk(), suites: [...suites, 'next_lobby', 'next_lobby/ui_run', 'next_lobby/proc_run', 'relay/udp_run'] };
+  assert.deepEqual(sel(affected(['client/tests/next_lobby/helpers.gd'], ctx)), [...new Set([...SMOKE, 'next_lobby', 'next_lobby/proc_run', 'next_lobby/ui_run'])].sort());
+  assert.deepEqual(sel(affected(['client/tests/relay/udp_run.gd'], ctx)), [...new Set([...SMOKE, 'relay/udp_run'])].sort());
+});
 test('a script is found by res:// path and by class_name in tests', () => {
   const ctx = mk({
     tests: [['client/tests/hud/run.gd', 'preload("res://hud/bar.gd")'], ['client/tests/gear/run.gd', 'var x := DmGear.new()'], ['client/tests/world/run.gd', 'DmGearish.x']],

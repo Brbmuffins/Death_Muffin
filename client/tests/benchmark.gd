@@ -18,7 +18,7 @@ extends SceneTree
 
 const SCRATCH_ROOT := "user://benchmark_test"   ## every run of this suite makes its own folder in here and removes it at the end
 const BAKE := ["grave_robber", "bone_hound"]
-## The boss today's Full Party fight holds awake in each room (godot/next/perf/dm_bench_fight.gd `boss_of`: the boss whose arena is the room); the Warren and the Coliseum have none.
+## The boss today's Full Party fight holds awake in each room (client/next/perf/dm_bench_fight.gd `boss_of`: the boss whose arena is the room); the Warren and the Coliseum have none.
 ## Kinds the room's own bodies make: a Deacon raises a corpse and a Lich Acolyte unbinds a fallen thrall as a Risen (native/src/core/support.cpp, nave.cpp), today's too.
 const MADE_BY := {"risen": ["deacon", "acolyte"]}
 const TODAYS_BOSS := {"graves": "gravedigger", "warren": "", "ossuary": "abbess", "nave": "congregation", "coliseum": "", "sanctum": "prelate", "cloister": "saint", "pyre": "regent", "fen": "mire"}
@@ -81,7 +81,7 @@ func _initialize() -> void:
 	DirAccess.make_dir_recursive_absolute(data)
 	DmBenchmark.dir = data   # every history, queue, setup and report file of the suite lands in this run's folder: no other run's files are read, none is left for a real session to send
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, scratch.path_join(slug))
+		var r: Dictionary = CrowdBaker.bake(root, slug, scratch.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			quit(1)

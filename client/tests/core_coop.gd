@@ -54,7 +54,7 @@ const BUDGET_BYTES := 2048
 
 var fails := 0
 var checks := 0
-var godot_dir: String
+var data_dir: String   ## this project's data/ (res://): the same files the game loads
 var runes: Dictionary
 var enemies_json: Dictionary
 var soft_n := {}
@@ -90,14 +90,14 @@ func settle_soft(key: String, what: String) -> void:
 func make_core(seed_: int) -> RefCounted:
 	var c: RefCounted = ClassDB.instantiate("DmCore")
 	c.set_seed(seed_)
-	DmCoreData.load_all(c, godot_dir)
+	DmCoreData.load_all(c, data_dir)
 	c.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
 	return c
 
 
 func make_puppet() -> RefCounted:
 	var c: RefCounted = ClassDB.instantiate("DmCore")
-	DmCoreData.load_all(c, godot_dir)
+	DmCoreData.load_all(c, data_dir)
 	c.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
 	c.set_puppet(true)
 	return c
@@ -155,9 +155,9 @@ func alive_enemies(c: RefCounted) -> Array:
 
 func _init() -> void:
 	verbose = "--verbose" in OS.get_cmdline_user_args()
-	godot_dir = ProjectSettings.globalize_path("res://").path_join("../godot")
-	runes = DmCoreData.json(godot_dir.path_join("data/content/runes.json"))
-	enemies_json = DmCoreData.json(godot_dir.path_join("data/content/enemies.json"))
+	data_dir = "res://"
+	runes = DmCoreData.json(data_dir.path_join("data/content/runes.json"))
+	enemies_json = DmCoreData.json(data_dir.path_join("data/content/enemies.json"))
 	check(ClassDB.class_exists("DmCore") and int(DmCore.wire_version()) >= 1, "the core has a wire version, callable on the class (%d)" % DmCore.wire_version())
 	fight()
 	wire_format()

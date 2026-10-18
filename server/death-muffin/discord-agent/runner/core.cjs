@@ -661,7 +661,6 @@ function createRunner(cfgIn, opts = {}) {
     try {
       say(job, 'Rendering the "before" pictures from the unchanged game (a minute or two)…');
       await G.git(cfg.repo, ['worktree', 'add', '-q', '--detach', '-f', dir, job.base]);
-      await G.seedGodotCache(cfg, dir);
       fs.copyFileSync(path.join(job.worktree, '.dm-shot.json'), path.join(dir, '.dm-shot.json'));
       const r = await G.run(path.join(cfg.toolsDir, 'shot-godot.sh'), [], { cwd: dir, env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: 20 * 60000 });
       audit.log('base-shots', { job: job.id, code: r.code, timedOut: !!r.timedOut });

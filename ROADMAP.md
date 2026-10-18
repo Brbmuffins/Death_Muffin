@@ -33,8 +33,8 @@ Every item says what kind it is:
 - The old game is retired (B57; its source is tag `archive/old-game`): a rollback publishes an earlier build of the game.
 - **Now: Phase 1, settling the launch.** Done: alerts when a server stops, Grave Surges back, crash reports that point inside the combat
   core, the Discord agent working on the live game, document-only changes that ship no update, checks for War's content, play reports,
-  and shaders baked into every release. Left: deleting the old game's frozen folder (its last tests have moved), the stutter test, the
-  team app, and the Ultra Low decision once the numbers are in.
+  shaders baked into every release, and the old game's folder deleted (its tests moved to the game). Left: the stutter test, the team app,
+  and the Ultra Low decision once the numbers are in.
 - Ascension (the Altar, vows and heat, Ashes, Covenant Boons) left on launch day and comes back redesigned in Phase 3 (B36). Players'
   saved Ascension data is kept.
 
@@ -80,10 +80,9 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
 - [x] **Fix: a document change from the Discord agent shipped a game update.** Done 2026-10-18: an approved change that touches only
   documents (Markdown files, docs/) goes to `main` and stops there, with no game build, deploy or notice, and the thread says so; when someone
   shares an idea the roadmap lacks, the agent offers to add it to "Ideas" with its section (server/death-muffin/discord-agent/README.md).
-- [ ] **Fix: the old game's folder is still in the repository** (B57). Now: nothing uses `godot/` any more: the game owns its files, its
-  system guides are in `client/`, and every tool and the Discord agent work on the game. But a few of the old game's test suites still cover
-  code the game runs, and some of the game's suites read reference files from the folder. After: those suites run in `client/tests`, the
-  reference files move with them, and the folder is deleted (tag `archive/old-game` keeps its source).
+- [x] **Fix: the old game's folder was still in the repository** (B57). Done 2026-10-19: the old game's test suites that covered code the
+  game runs moved to `client/tests` (111 suites now, their reference files beside them), and the folder is deleted (tag `archive/old-game`
+  keeps its source; a check refuses new references to it).
 - [x] **Fix: War's content pipelines ran on trust, not on checks.** Done 2026-10-18: the Discord agent's check, and CI over every model,
   refuses a model over its cap (gear 4,000 triangles, props 6,000, heroes and other characters 20,000), with more than one material, gear
   with a skeleton, or a hero body without the shared skeleton and its combat clips (`tools/assets/check-models.mjs`); the tool that installs a
@@ -124,7 +123,7 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   Low on the new renderer misses the laptop floor (60 fps in normal play, 45 in the biggest fight), add an option that restarts the game in
   the old, lighter renderer. Claude recommends deciding from those numbers, not before.
 
-Done when: `godot/` is gone, every check and screenshot is of the live game, the servers are watched, and a week of play reports is in.
+Done when: the old game's folder is gone, every check and screenshot is of the live game, the servers are watched, and a week of play reports is in.
 
 ## Phase 2: the foundation's core
 
@@ -278,7 +277,7 @@ budgets for every kind of asset, and checks for everything but models.
   history kept in git and DECISIONS.
 - [ ] **New: one map of the docs:** which page holds which rule (the vision, How we work, the three standards pages, the pipelines, the
   recipes, each system), so the Discord agent and every session find the rule before they build.
-- [ ] **Fix: the repository after `godot/` goes.** Now: leftovers of the two-game setup. After: each top-level folder has one stated
+- [ ] **Fix: the repository after the old game's folder went.** Now: leftovers of the two-game setup. After: each top-level folder has one stated
   purpose, nothing is left over, and README.md's layout is true.
 
 Done when: the vision and "How we work" are agreed; three real pieces (Haunting Wraith, War's next armor set and one new item) have gone
