@@ -2,9 +2,11 @@
 # The deploy helper (NOT the AI): runs only after an approver's check, from the runner. All inputs are environment variables set by
 # the runner. Takes the global deploy lock (shared with deploy-release.sh), merges the branch onto the current base branch (BASE_BRANCH, default
 # main), re-gates and re-tests the merged tree, pushes it, runs the deploy, and prints machine-readable lines:
-#   RESULT: <live|live-already|merged|conflict|head-moved|gate|sync-failed|tests-failed|master-moved|backup-failed|deploy-failed|lock-timeout> ...      ("master-moved" = BASE_BRANCH moved)
+#   RESULT: <live|live-already|merged|docs|conflict|head-moved|gate|sync-failed|tests-failed|master-moved|backup-failed|deploy-failed|lock-timeout> ...      ("master-moved" = BASE_BRANCH moved)
 # DEFER_PUBLISH=1 (godot; the runner sets it when another approved ship waits): merge, gate, test and push, but no client publish ("RESULT: merged
 # <sha>"); the next ship's client carries it (one publish and one notice for a backlog). The runner publishes it alone if nothing else ships.
+# A godot change that touches only documents (Markdown files, docs/) is pushed and stops there: no backend or lobby deploy, no client publish, no
+# release notice ("RESULT: docs <sha>"; a roadmap line from Discord used to send every player an update notice).
 # PUBLISH_ONLY=1 PUBLISH_SHA=<sha> (godot only; the retry after a failed client publish): no merge/tests/push. Publishes that already-tested, already-
 # pushed commit with a fresh rollback, or prints "RESULT: live-already" when the live client already contains it (never publishes an older client).
 # The Godot publish itself is tried up to 3 times (PUBLISH_RETRY_SLEEPS, default "30 90") before deploy-failed: one-off Godot import crashes heal by themselves.
@@ -108,7 +110,13 @@ fi   # (end of the normal ship's merge/gate/tests; PUBLISH_ONLY skips them: that
 # revision that is live right now (the `rev` in the client manifest). No manifest = nothing is live yet = nothing to roll back to ("Rollback: none").
 BK=""
 DEFER="${DEFER_PUBLISH:-}"; [ -n "$PUBLISH_ONLY" ] && DEFER=""
-if [ "$MODE" = godot ] && [ -z "$DEFER" ]; then
+DOCS_ONLY=""
+if [ "$MODE" = godot ] && [ -z "$PUBLISH_ONLY" ]; then
+  CHANGED=$(g diff --name-only "$OLD" "$SHA")
+  OTHER=$(printf '%s\n' "$CHANGED" | grep -vE '(\.md$|^docs/)')   # grep reads the whole list: no early exit for pipefail to misread
+  [ -n "$CHANGED" ] && [ -z "$OTHER" ] && DOCS_ONLY=1
+fi
+if [ "$MODE" = godot ] && [ -z "$DEFER" ] && [ -z "$DOCS_ONLY" ]; then
   DEPLOY_DIR="${DEPLOY_DIR:-$(dirname "$LOCK")}"
   MANIFEST="${CLIENT_MANIFEST:-/var/www/death-muffin/client/manifest.json}"
   PUB_REF="${PUBLISH_SRC_REF:-origin/${BASE_BRANCH:-main}}"; PUB_PATH="${PUBLISH_SRC_PATH:-server/death-muffin/publish-godot-client.sh}"
@@ -139,6 +147,7 @@ say "pushing $BASE_BRANCH"
 if ! g push -q origin "HEAD:refs/heads/$BASE_BRANCH" 2>/tmp/ship-push.$$; then tail -3 /tmp/ship-push.$$; rm -f /tmp/ship-push.$$; [ -n "$BK" ] && abandon_backup; echo "RESULT: master-moved"; exit 10; fi
 rm -f /tmp/ship-push.$$
 fi
+if [ -n "$DOCS_ONLY" ]; then echo "RESULT: docs ${SHA:0:12}"; exit 0; fi   # documents only: nothing to deploy or publish
 if [ "$MODE" = godot ] && [ -n "$DEFER" ]; then echo "RESULT: merged ${SHA:0:12}"; exit 0; fi   # the next ship (or the runner) publishes it
 
 say "deploying ${SHA:0:12}"

@@ -950,6 +950,28 @@ test('godot mode: question, gameplay proposal (godot-port compare link, zip prev
   await until(() => !fs.existsSync(path.join(w.cfg.worktreeRoot, `discord-${id}`)) && !fs.existsSync(path.join(w.cfg.worktreeRoot, `ship-${id}`)), d.ad);
 });
 
+test('godot mode: a change that touches only documents merges with no game update (no backend, lobby or client step, no rollback backup)', async () => {
+  const w = godotWorld(); const d = makeDiscord(w.runner);
+  const order = path.join(w.deploy, 'order.log');
+  w.cfg.deployCmd = `echo client >> ${order}; ` + w.cfg.deployCmd;
+  w.cfg.backendDeployCmd = `echo backend >> ${order}`;
+  w.cfg.lobbyDeployCmd = `echo lobby >> ${order}`;
+  const before = remoteHead(w, 'godot-port');
+  const { thread } = await request(d, IDS.HELIX, 'GD-DOC readme');
+  const p = await waitProposal(d, thread);
+  assert.deepEqual(await d.react(p, IDS.HELIX, '✅'), []);
+  const msg = await until(() => texts(thread).find((t) => /only changes documents/.test(t)), d.ad);
+  assert.match(msg, /Merged into godot-port as `[0-9a-f]{12}`\. It only changes documents, so no game update went out\./);
+  assert.notEqual(remoteHead(w, 'godot-port'), before, 'pushed to the base branch');
+  assert.equal(sh(w.repo, 'show', 'origin/godot-port:godot/README.md').trim(), 'godot readme v2');
+  assert.ok(!fs.existsSync(order), 'no backend, lobby or client step ran');
+  assert.ok(!fs.existsSync(path.join(w.deploy, 'deploys.log')), 'no client publish');
+  assert.equal(godotBackups(w).length, 0, 'no rollback backup for a documents-only change');
+  const ship = shipsLog(w)[0]; assert.equal(ship.type, 'docs'); assert.equal(ship.rollback, null);
+  await until(() => Object.values(w.runner.jobs()).find((j) => j.threadId === thread.id).status === 'shipped', d.ad);
+  assert.ok(!texts(thread).some((t) => /Live\. Release/.test(t)));
+});
+
 test('godot mode: the ship deploys the backend (deploy-release.sh --if-changed) before the client, and ROLLBACK.sh undoes both', async () => {
   const w = godotWorld(); const d = makeDiscord(w.runner);
   const order = path.join(w.deploy, 'order.log'), brb = path.join(w.deploy, 'backup-pre-release-bbbbbbbbbbbb-20261011T190000Z');
@@ -1413,7 +1435,7 @@ test('godot publish: the runner retries by itself, and a later ship heals a thre
   const d2 = makeDiscord(w2.runner); const { thread: a } = await request(d2, IDS.HELIX, 'GD-GAMEPLAY faster');
   await d2.react(await waitProposal(d2, a), IDS.HELIX, '✅'); await until(() => lastSent(a, /Not live yet/), d2.ad);
   fs.rmSync(path.join(w2.deploy, 'FAIL'));
-  const { thread: b } = await request(d2, IDS.HELIX, 'GD-DOC readme');
+  const { thread: b } = await request(d2, IDS.HELIX, 'GD-UI menu');
   await d2.react(await waitProposal(d2, b), IDS.HELIX, '✅');
   await until(() => texts(b).some((t) => /Live\. Release/.test(t)), d2.ad);
   await until(() => texts(a).some((t) => /went out with the client published for/.test(t)), d2.ad);
@@ -1459,7 +1481,7 @@ test('archiving: a finished thread is archived once quiet, reopened by a message
 const deploys = (w) => { try { return fs.readFileSync(path.join(w.deploy, 'deploys.log'), 'utf8').split('\n').filter(Boolean); } catch { return []; } };
 async function threeApproved(w, d) {
   const a = (await request(d, IDS.HELIX, 'GD-GAMEPLAY faster')).thread; const pa = await waitProposal(d, a);
-  const b = (await request(d, IDS.HELIX, 'GD-DOC readme')).thread; const pb = await waitProposal(d, b);
+  const b = (await request(d, IDS.HELIX, 'GD-UI menu')).thread; const pb = await waitProposal(d, b);
   const c = (await request(d, IDS.OWNER, 'GD-NET api')).thread; const pc = await waitProposal(d, c);
   await d.react(pa, IDS.HELIX, '✅'); await d.react(pb, IDS.HELIX, '✅'); await d.react(pc, IDS.OWNER, '✅');
   return { a, b, c, pc };
@@ -1570,7 +1592,7 @@ test('godot mode: a second approval during a ship is queued and ships by itself 
   const d = makeDiscord(w.runner);
   const { thread: a } = await request(d, IDS.OWNER, 'GD-GAMEPLAY faster');
   const pa = await waitProposal(d, a);
-  const { thread: b } = await request(d, IDS.OWNER, 'GD-DOC readme');
+  const { thread: b } = await request(d, IDS.OWNER, 'GD-UI menu');
   const pb = await waitProposal(d, b);
   assert.deepEqual(await d.react(pa, IDS.OWNER, '✅'), []);
   await until(() => fs.existsSync(path.join(w.cfg.stateDir, 'ship-active')), d.ad);
@@ -1582,7 +1604,7 @@ test('godot mode: a second approval during a ship is queued and ships by itself 
   const ja = Object.values(w.runner.jobs()).find((j) => j.threadId === a.id), jb = Object.values(w.runner.jobs()).find((j) => j.threadId === b.id);
   assert.deepEqual(ships.map((s) => s.jobId), [ja.id, jb.id], 'shipped in approval order');
   assert.equal(jb.shipQueued, null);
-  assert.equal(sh(w.repo, 'show', 'origin/godot-port:godot/README.md').trim(), 'godot readme v2');
+  assert.equal(sh(w.repo, 'show', 'origin/godot-port:godot/ui/menu.gd').trim(), 'title=2');
   assert.equal(sh(w.repo, 'show', 'origin/godot-port:godot/game/a.gd').trim(), 'speed=9');
 });
 
@@ -1591,7 +1613,7 @@ test('godot mode: a queued ship whose branch moved on is dropped with a note, no
   const d = makeDiscord(w.runner);
   const { thread: a } = await request(d, IDS.OWNER, 'GD-GAMEPLAY faster');
   const pa = await waitProposal(d, a);
-  const { thread: b } = await request(d, IDS.OWNER, 'GD-DOC readme');
+  const { thread: b } = await request(d, IDS.OWNER, 'GD-UI menu');
   const pb = await waitProposal(d, b);
   await d.react(pa, IDS.OWNER, '✅');
   await until(() => fs.existsSync(path.join(w.cfg.stateDir, 'ship-active')), d.ad);

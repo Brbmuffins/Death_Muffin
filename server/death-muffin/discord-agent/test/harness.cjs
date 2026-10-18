@@ -34,7 +34,7 @@ function makeWorld(over = {}) {
     w('server/death-muffin/publish-godot-client.sh', '#!/usr/bin/env bash\n# stub of the real publisher: records what it was asked to publish, next to itself\necho "published $1 REPO=$REPO" >> "$(dirname "$0")/published.log"\n');
     sh(repo, 'add', '-A'); sh(repo, 'commit', '-q', '-m', 'publish script on master'); sh(repo, 'push', '-q', 'origin', 'master');
     sh(repo, 'checkout', '-q', '-b', 'godot-port');
-    w('godot/project.godot', 'config_version=5'); w('godot/README.md', 'godot readme'); w('godot/game/a.gd', 'speed=1'); w('godot/net/dm_api.gd', 'url=1'); w('godot/export_presets.cfg', '[preset.0]');
+    w('godot/project.godot', 'config_version=5'); w('godot/README.md', 'godot readme'); w('godot/game/a.gd', 'speed=1'); w('godot/ui/menu.gd', 'title=1'); w('godot/net/dm_api.gd', 'url=1'); w('godot/export_presets.cfg', '[preset.0]');
     w('godot/data/loot/content.json', '{"v":1}');
     w('.gitignore', 'art-src/\naudio-src/\n');   // like the real repo: raw art outputs are never committed
     sh(repo, 'add', '-A'); sh(repo, 'commit', '-q', '-m', 'godot tree'); sh(repo, 'push', '-q', 'origin', 'godot-port');

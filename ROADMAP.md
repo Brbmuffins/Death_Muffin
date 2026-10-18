@@ -74,10 +74,9 @@ the end of the undo window; B57).
   before/after screenshots are rendered from the old game on the server, its "Try it" previews are builds of the old game, and it still
   makes its changes in the old game's folder. After: every proposal is tested on the live game, its screenshots and previews are of the
   live game (rendered on the server until the team app takes over the screenshots), and it makes its changes in the new game directly. (The screenshot tool and its driver come over to `client/`.)
-- [ ] **Fix: a document change from the Discord agent ships a game update.** Now: every change the agent ships also publishes a new game
-  build, even when it only touches documents, so adding a line to this roadmap from Discord would send every player an update notice.
-  After: a change that touches only documents goes to `main` with no new build and no notice, and the agent adds a team member's idea to
-  "Ideas" (with its section) on an approver's ✅.
+- [x] **Fix: a document change from the Discord agent shipped a game update.** Done 2026-10-18: an approved change that touches only
+  documents (Markdown files, docs/) goes to `main` and stops there, with no game build, deploy or notice, and the thread says so; when someone
+  shares an idea the roadmap lacks, the agent offers to add it to "Ideas" with its section (server/death-muffin/discord-agent/README.md).
 - [ ] **Fix: two copies of the game's code** (as soon as the Discord agent works on the new game; B57). Now: the old game's folder `godot/` is still there, most of the new game's
   scripts are copied from it, and the crowd and map tools, about 66 tool and server scripts and some tests still read it; the 31 short
   system guides (how each system works and its known gaps) live only in `godot/`. After: the system guides move into `client/` first, then

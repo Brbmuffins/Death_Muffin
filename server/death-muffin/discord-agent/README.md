@@ -108,7 +108,9 @@ changed on the branch), the ship is queued again by itself (`auto-reship`, at mo
 passed the same quick check; a sensitive change still runs the full suite. **Backlog:** when another approved ship is waiting, the current one merges, tests
 and pushes but does not publish (`DEFER_PUBLISH=1`, `RESULT: merged`; the thread is told it goes live with the next publish). The next publish carries it:
 its notice lists both changes under both titles, and the waiting thread gets "🚀 Live" and closes (`healOtherPublishes`, logged in the ships log with
-`batchedWith`). If nothing else ships, the runner publishes the merged one by itself (`drainShipQueue`). **One test run at a time:** `check-godot.sh` takes
+`batchedWith`). If nothing else ships, the runner publishes the merged one by itself (`drainShipQueue`). **Documents only (2026-10-18):** a change
+that touches only Markdown files and `docs/` is pushed and stops there: no backend or lobby deploy, no client publish, no release notice (`RESULT: docs`;
+the thread is told no game update went out, the ships log records `type: docs`). **One test run at a time:** `check-godot.sh` takes
 `~/death-muffin/test-slot.lock` (shared with the ship; created by the installer) and waits for it, so parallel jobs no longer slow each
 other down. Fresh worktrees (jobs, ships) start from the main checkout's Godot import cache (~14 s instead of ~70 s); the
 client publish still imports from scratch.

@@ -1235,6 +1235,15 @@ function createRunner(cfgIn, opts = {}) {
       say(job, `✅ Merged into ${BB} as \`${sha}\`. Another approved change is right behind it, so both go live together with the next publish (a few minutes).`);
       pump(); return;
     }
+    if (kind === 'docs') {   // only documents changed (ship.sh): on the base branch, and there is nothing to deploy or publish
+      const sha = detail.split(' ')[0];
+      logShip({ type: 'docs', jobId: job.id, sha, approverId: String(approverId), approverName: nameOf(approverId), tier: p.tier, title: p.title, rollback: null });
+      job.status = 'shipped'; job.proposal = { ...p, shipSha: sha }; (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, shipSha: sha, title: p.title, at: new Date(now()).toISOString() }); save(); syncName(job);
+      say(job, `✅ Merged into ${BB} as \`${sha}\`. It only changes documents, so no game update went out. Keep going here for the next change.`);
+      if (job.queue.length && !job.deleteRequested) await beginRound(job);
+      else { await G.removeJobArtifacts(cfg, job); job.worktree = null; save(); }
+      pump(); return;
+    }
     if (kind === 'live') {
       const [sha, rb] = detail.split(' ');
       healOtherPublishes(job, sha);
