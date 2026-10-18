@@ -202,8 +202,9 @@ runner     ── runner/lib/sound.cjs validates (no extra fields; sfx 0.5-30 s,
               The asker (job.lastAsker) must be in soundUsers (config.json; the owner always is). Then it runs right away, no ✅ and no budget:
               the owner authorized sound users to spend any amount of the ElevenLabs balance (2026-10-11).
               sound-run.mjs (trusted copy in the tools dir, ELEVENLABS_API_KEY in its env only) -> audio-src/eleven/<id>/v<n>.mp3 (git-ignored), takes posted in the thread
-agent turn ── build-sound.sh <id> <take> (sandboxed ffmpeg: sfx -> godot/assets/audio/eleven/<id>.wav mono 16-bit, music -> .mp3), wires it in, commits spec + asset + .import,
-              then the usual proposal / ✅ ship
+agent turn ── build-sound.sh <id> <take> (sandboxed sound-build.mjs: levels the take to -20 LUFS, peaks at most -1.5 dBTP, a plain gain; sfx ->
+              godot/assets/audio/eleven/<id>.wav mono 16-bit, music -> .mp3; writes the sound's row in docs/AUDIO-SOURCES.md, the licence record),
+              wires it in, commits spec + asset + .import + docs/AUDIO-SOURCES.md, then the usual proposal / ✅ ship
 ```
 
 - Key: `/home/ubuntu/death-muffin/private/elevenlabs-api-key` (`soundKeyFile`), hidden inside every sandbox by `sandbox-lib.sh`, registered with `redact.cjs` (plus an `sk_` pattern).
@@ -211,7 +212,8 @@ agent turn ── build-sound.sh <id> <take> (sandboxed ffmpeg: sfx -> godot/ass
 - Ledger: `eleven-ledger.json` (tools dir, mode 600): `{id, ts, userId, userName, jobId, specId, kind, seconds, variants, files, credits, result}`. `!credits` shows a sound user's total.
 - A take that already exists is not generated again, so a retry pays only for missing takes. Audit events: `sound-start`, `sound-result`, `sound-refused`, `sound-invalid`.
 - Config keys (optional): `soundUsers` (Discord ids), `soundKeyFile`, `soundRunScript` (`<toolsDir>/sound-run.mjs`), `soundLedgerFile`.
-- Tests: `test/sound.test.cjs` (validation, refusal, ledger, a fake ElevenLabs server for sound-run.mjs); no API is called.
+- Tests: `test/sound.test.cjs` (validation, refusal, ledger, a fake ElevenLabs server for sound-run.mjs; no API is called) and `test/sound-build.test.cjs`
+  (levelling and the licence row, on real ffmpeg takes).
 
 ## In-game bug reports (#in-game-reports)
 

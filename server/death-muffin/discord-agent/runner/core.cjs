@@ -1088,8 +1088,8 @@ function createRunner(cfgIn, opts = {}) {
       post({ threadId: job.threadId }, { content: `Done: ${res.files.length} take${res.files.length === 1 ? '' : 's'} of "${spec.id}"${partial}, ${fmtN(res.credits)} ElevenLabs credits. Have a listen below.\n${res.files.length > 1 ? 'Say which take you want (e.g. "take 2"), or ask for another go. ' : ''}The agent wires it in now; you get a normal proposal to approve.`, ...(files.length ? { files } : {}) });
       job.queue.push({ userId: 'runner', name: 'runner', role: 'runner', art: true, ts: now(), text:
         `The runner generated the sound "${spec.id}" (${spec.kind}, ${spec.duration_seconds} s): ${res.files.join(', ')} (git-ignored raw takes; never commit audio-src/). The takes were posted in the thread. ` +
-        `Next: unless the requester already picked a take, use take 1. Run ${cfg.toolsDir}/build-sound.sh ${spec.id} <take> (writes godot/assets/audio/eleven/${spec.id}.${spec.kind === 'music' ? 'mp3' : 'wav'}), ` +
-        `wire it in where the request asked (godot/audio/README.md: audioMap.json + the sample bank), commit ${S.SPEC_DIR}/${spec.id}.json and the asset, run ${CHECK} (commit the .import file it writes), add a PATCH_NOTES.json item if players can hear it, and keep your reply short. ` +
+        `Next: unless the requester already picked a take, use take 1. Run ${cfg.toolsDir}/build-sound.sh ${spec.id} <take> (levels it and writes godot/assets/audio/eleven/${spec.id}.${spec.kind === 'music' ? 'mp3' : 'wav'} and its row in docs/AUDIO-SOURCES.md), ` +
+        `wire it in where the request asked (godot/audio/README.md: audioMap.json + the sample bank), commit ${S.SPEC_DIR}/${spec.id}.json, the asset and docs/AUDIO-SOURCES.md, run ${CHECK} (commit the .import file it writes), add a PATCH_NOTES.json item if players can hear it, and keep your reply short. ` +
         `If the requester later picks another take, rerun build-sound.sh with that take number.` });
       job.lastActive = now(); save();
     } finally {

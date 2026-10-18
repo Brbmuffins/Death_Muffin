@@ -71,6 +71,21 @@ Five original instrumental cues were generated for Death Muffin with Eleven Musi
 
 The owner confirmed on 2026-10-04 that Death Muffin is not currently monetized. ElevenLabs' [Music Model-Specific Terms](https://elevenlabs.io/eleven-music-model-specific-terms) exclude monetized games offered on more than one platform from Creator media rights, and list Creator as an individual-use plan. Recheck the distribution plan and rights before monetizing the game or transferring its music to an entity.
 
+## Discord agent sounds: `godot/assets/audio/eleven/`
+
+The Discord agent generates these with ElevenLabs (Sound Effects v2, or Eleven Music for music) on the owner's paid account, the account
+and terms of the beds and the score above (the music rights note above covers the agent's music too). The raw takes stay private and out of
+git (`audio-src/eleven/`); each sound's spec, with its prompt, is in `audio-manifest/eleven/`. `server/death-muffin/discord-agent/build-sound.sh`
+levels the chosen take to the game's loudness (-20 LUFS, peaks at most -1.5 dBTP) and writes its row here.
+
+| File | Made | Spec |
+|---|---|---|
+| `godot/assets/audio/eleven/chat_ping.wav` | ElevenLabs Sound Effects, 2026-10-13 | [chat_ping.json](../audio-manifest/eleven/chat_ping.json) |
+| `godot/assets/audio/eleven/chat_toll.wav` | ElevenLabs Sound Effects, 2026-10-13 | [chat_toll.json](../audio-manifest/eleven/chat_toll.json) |
+| `godot/assets/audio/eleven/chat_ding.wav` | ElevenLabs Sound Effects, 2026-10-13 | [chat_ding.json](../audio-manifest/eleven/chat_ding.json) |
+
+chat_ping and chat_toll are the party chat's earlier sounds, replaced by chat_ding the same day; nothing plays them.
+
 ## Removed: `public/audio/crossworlds/`
 
 Three clips (`dark-magic-spell-1`, `dark-magic-spell-2`, `magic-cast-whoosh-2-1`)

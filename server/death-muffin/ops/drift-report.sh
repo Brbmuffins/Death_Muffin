@@ -69,7 +69,7 @@ compare_exact() {
 section "1. Installed agent and ops copies"
 SRC=server/death-muffin/discord-agent
 LIST="$(g ls-tree -r --name-only "$REV" -- "$SRC/runner" | sed "s#^$SRC/##")
-ship.sh rollback.sh sandbox-lib.sh check.sh check-godot.sh regen.sh shot.sh shoot.cjs shot-godot.sh label-shot.py art-run.sh build-art.sh preview.sh preview-godot.sh agit wait-for-ship.sh reports-cli.cjs PROMPT.md PROMPT-godot.md config.example.json death-muffin-discord-agent.service"
+ship.sh rollback.sh sandbox-lib.sh check.sh check-godot.sh regen.sh shot.sh shoot.cjs shot-godot.sh label-shot.py render-model.sh render-model.py art-run.sh build-art.sh sound-run.mjs build-sound.sh sound-build.mjs preview.sh preview-godot.sh agit wait-for-ship.sh reports-cli.cjs PROMPT.md PROMPT-godot.md config.example.json death-muffin-discord-agent.service"
 for f in $(echo $LIST); do compare_exact "$SRC/$f" "$DM/discord-agent/$f" "discord-agent/$f"; done
 for f in common gemini tripo; do compare_exact "tools/ai/$f.mjs" "$DM/discord-agent/art-tools/tools/ai/$f.mjs" "discord-agent/art-tools/tools/ai/$f.mjs"; done
 compare_exact "$SRC/death-muffin-discord-agent.service" /etc/systemd/system/death-muffin-discord-agent.service "systemd death-muffin-discord-agent.service"

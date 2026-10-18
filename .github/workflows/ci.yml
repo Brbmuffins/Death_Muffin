@@ -41,6 +41,9 @@ jobs:
       - name: Repo hygiene (stale docs, references, retired terms)
         run: npm run hygiene
 
+      - name: Model budgets (triangles, materials, skeletons, clips)
+        run: npm run check:models
+
       - name: Shared rules tests
         run: npm run test:rules
 

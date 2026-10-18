@@ -83,12 +83,11 @@ the end of the undo window; B57).
   `godot/` is deleted (an archive tag keeps its source), the new game owns its files, every tool and test reads the new game,
   `server/death-muffin/launch-undo.sh` and the server paths only the old game used go, and README.md and CLAUDE.md describe one game; a
   rollback goes to an earlier build of the new game.
-- [ ] **Fix: War's content pipelines run on trust, not on checks.** Now: armor sets, models and sounds come out right because the
-  Discord agent follows a long set of written steps, and nothing checks the result. The agent may ask Tripo for up to 14,000 triangles for
-  any model (so far every gear piece is under 3,500 and every hero body about 12,000 or less); new sounds are not matched in loudness and are
-  left out of the licence record. After (ahead of Phase 2's full checks): the agent's check refuses a model over its budget, with more than
-  one material or a different skeleton, and a hero body without its combat clips; the tools bring every new sound to the same loudness and
-  write it into the licence record (KNOWN-GAPS "Content pipelines").
+- [x] **Fix: War's content pipelines ran on trust, not on checks.** Done 2026-10-18: the Discord agent's check, and CI over every model,
+  refuses a model over its cap (gear 4,000 triangles, props 6,000, heroes and other characters 20,000), with more than one material, gear
+  with a skeleton, or a hero body without the shared skeleton and its combat clips (`tools/assets/check-models.mjs`); the tool that installs a
+  new sound brings it to the game's loudness (-20 LUFS) and writes it into the licence record, docs/AUDIO-SOURCES.md. Armor sets still touch
+  about five files by hand (KNOWN-GAPS "Content pipelines").
 - [ ] **Fix: first-use stutters.** Now: an effect is compiled the first time it is drawn, which stutters, unless it is on a warm-up list
   kept by hand (both Reaper stutter reports came from gaps in that list). After: Godot compiles every effect when the game is built (its
   shader baking option), a test fails when an effect used in play is not warmed at load, and the team app's stutter test confirms it on a

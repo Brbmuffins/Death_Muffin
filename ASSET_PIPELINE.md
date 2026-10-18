@@ -36,7 +36,10 @@ ignored:
 - Bipeds use the biped rig; quadrupeds `rig_type: "quadruped"` (one walk preset). Do not use `rig_type: "avian"` (boned one wing);
   use a biped rig for winged humanoids or no rig for animals.
 - Tripo's `hurt` preset is a 14 s lying-injured clip, not a flinch; `tools/build-characters.mjs` keeps it out of play.
-- Props: omit `rig` and `animations`. Face budgets: hero 12k, boss 14k, horde enemy 4-5k, props 0.9-3.5k.
+- Props: omit `rig` and `animations`. Face budgets: hero 12k, boss 14k, horde enemy 4-5k, props 0.9-3.5k. `tools/assets/check-models.mjs`
+  (`npm run check:models`: CI over every model, the Discord agent's check over the models a change adds or edits) fails a model over its cap
+  (gear 4k, props 6k, heroes and other characters 20k), with more than one material, gear with a skeleton, or a hero body without the shared biped
+  skeleton or its combat clips; over the face budget but under the cap is a warning. Crowd creatures are checked by the crowd bake (5k).
 - Combat-trim source clips (`box_03`, `pitch_baseball`, `sing_01`, `basketball_shot`, see `build-characters.mjs` `COMBAT_TRIMS`) need no retarget credits for another biped hero: all Tripo biped rigs share one joint set, so copy the four `anim_*.glb` files from `art-src/tripo/hero_gravecaller/` into the new hero's folder before `build-characters.mjs`; it borrows them from there by itself for `hero_leg_*` bodies and the heroes in `NECRO_HEROES` (include a new playable hero there, or it loses its combat swings).
 - Runs are resumable: task ids are written to `art-src/tripo/<id>/state.json` before polling; failed tasks refund.
 
@@ -65,7 +68,8 @@ rig fixes, CC0 retargets); see `docs/BLENDER-PIPELINE.md`.
 
 From Discord, the dev agent asks for a sound effect or track with `audio-manifest/eleven/<id>.json` (the spec, committed); the runner generates it for the
 owner's sound users with no budget gate and records the cost (`server/death-muffin/discord-agent/README.md` "New sounds"). Raw takes land in
-`audio-src/eleven/<id>/` (gitignored); the chosen take is installed as `godot/assets/audio/eleven/<id>.wav` (sfx) or `.mp3` (music).
+`audio-src/eleven/<id>/` (gitignored); `build-sound.sh` levels the chosen take (-20 LUFS, peaks at most -1.5 dBTP), installs it as
+`godot/assets/audio/eleven/<id>.wav` (sfx) or `.mp3` (music) and writes its row in [docs/AUDIO-SOURCES.md](docs/AUDIO-SOURCES.md), the licence record.
 
 ## Flipbook sheets (licensed, outside git)
 

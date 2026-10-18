@@ -158,7 +158,9 @@ A set worn, seen from the front and the back:
 You cannot call Gemini or Tripo yourself and you never see their keys; the runner generates. Use this only when someone wants a NEW model (a character,
 creature, boss, prop, weapon, helm, mantle, or a whole armor set); never for anything an existing model can do. Read `ASSET_PIPELINE.md` first (concept
 rules: one subject, strict T-pose and empty hands for characters, three-quarter view for props, plain light grey background, flat lighting; face
-budgets: hero 12k, boss 14k, horde enemy 4 to 5k, props 0.9 to 3.5k). People see every stage in the thread, the way the necromancer gear was made:
+budgets: hero 12k, boss 14k, horde enemy 4 to 5k, props 0.9 to 3.5k). `check-godot.sh` refuses a model over its cap (gear 4k, props 6k, heroes and
+characters 20k), with more than one material, or a hero body without the shared biped skeleton and its combat clips (`tools/assets/check-models.mjs`).
+People see every stage in the thread, the way the necromancer gear was made:
 
 **1. Concepts first (no model credits).** For each piece write `art-manifest/gemini-jobs/<id>.json`, a list with ONE job:
 `[{"id": "concept_<id>", "prompt": "...", "out": "art-src/concepts/<id>.png", "aspect": "3:4"}]` (optional: `refs`, up to 3 images: `art-src/concepts/<name>.png`
@@ -228,8 +230,9 @@ You ask by writing two small files, then you stop and say what you asked for:
    For a sound people will pick from, ask for 2 or 3 variants. `<id>` is lower-case letters, digits and underscores (3 to 40), and not already used in `audio-manifest/eleven/`.
 2. `.dm-sound-request.json` (never commit it): `{"id": "<id>", "note": "one plain sentence on what this is for"}`.
 Only the people the runner allows can generate; for them it starts right away, with no credit check. End your reply with one line saying what you asked for.
-The runner posts the takes in the thread and then tells you the files are ready: run `__TOOLS__/build-sound.sh <id> <take>` (sfx -> `godot/assets/audio/eleven/<id>.wav`,
-music -> `.mp3`), wire it in where the request asked (`godot/audio/README.md`), commit the spec and the asset, run `check-godot.sh` (commit the `.import` file it writes),
+The runner posts the takes in the thread and then tells you the files are ready: run `__TOOLS__/build-sound.sh <id> <take>` (it levels the take to the game's loudness and writes
+`godot/assets/audio/eleven/<id>.wav`, or `.mp3` for music, and the sound's row in `docs/AUDIO-SOURCES.md`, the licence record), wire it in where the request asked
+(`godot/audio/README.md`), commit the spec, the asset and `docs/AUDIO-SOURCES.md`, run `check-godot.sh` (commit the `.import` file it writes),
 then the usual proposal. `audio-src/` is git-ignored raw output: never commit it. One sound per request.
 
 ## Preview and rounds

@@ -3,7 +3,8 @@
 # proposal and before a deploy. Same sandbox as check.sh (sandbox-lib.sh): fresh user/network/mount namespaces, no network (loopback only), the WHOLE
 # filesystem read-only (Godot binary, node_modules, the repo's .git stay readable), a private /tmp, only the worktree writable. HOME and the XDG dirs are a fresh temp dir, so Godot's
 # user:// (saves, settings) can never touch the real home. Hard limit 85 minutes for the whole run (the full suite outgrew 40 min on 2026-10-09).
-# Inside: the repo hygiene check (tools/hygiene/check.mjs = npm run hygiene, also on docs-only changes), then tools/godot/run-all-tests.sh (one line per suite) against the committed golden fixtures. An older branch that still has
+# Inside: the repo hygiene check (tools/hygiene/check.mjs = npm run hygiene, also on docs-only changes), the model check on the models the change adds or edits
+# (tools/assets/check-models.mjs), then tools/godot/run-all-tests.sh (one line per suite) against the committed golden fixtures. An older branch that still has
 # tools/godot/gen-fixtures.sh runs it first (it rewrites godot/data/loot/content.json, which is snapshotted and put back). Prints per-suite lines and a final "GODOT TESTS: ..." line; exit 1 if any suite or step fails.
 # Two modes. QUICK (default; the agent in-turn and the runner before a proposal): hygiene + only the suites the change can affect
 # (tools/godot/affected-suites.mjs: changed suites, suites referencing a changed file, a small smoke set; ALL when the change is too central or too wide),
@@ -28,14 +29,15 @@ NM=$(readlink -f "$TOP/node_modules" 2>/dev/null || true)
 # that cannot be found, runs the full suites.
 BASE_REF="origin/${BASE_BRANCH:-main}"
 DOCS_ONLY=
-if MB=$(git -C "$TOP" merge-base HEAD "$BASE_REF" 2>/dev/null); then
+MB=$(git -C "$TOP" merge-base HEAD "$BASE_REF" 2>/dev/null) || MB=
+if [ -n "$MB" ]; then
   CHANGED=$( { git -C "$TOP" diff --name-only "$MB"; git -C "$TOP" ls-files --others --exclude-standard; } | sort -u | grep -v '^node_modules$')
   if [ -n "$CHANGED" ] && ! grep -qvE '\.md$' <<<"$CHANGED"; then
     echo "$CHANGED" | sed 's/^/  docs: /'
     DOCS_ONLY=$(wc -l <<<"$CHANGED")
   fi
 fi
-export DOCS_ONLY
+export DOCS_ONLY MB
 export DM_SANDBOX_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/sandbox-lib.sh"
 export TOP NM GODOT="${GODOT:-/home/ubuntu/tools/godot/godot}"
 export DM_PAYLOAD='
@@ -50,6 +52,11 @@ export DM_PAYLOAD='
     if ! node tools/hygiene/check.mjs > "$SCR/hygiene.log" 2>&1; then cat "$SCR/hygiene.log"; echo "GODOT TESTS: repo hygiene FAILED (npm run hygiene)"; exit 1; fi
     cat "$SCR/hygiene.log"; fi
   if [ -n "$DOCS_ONLY" ]; then echo "GODOT TESTS: skipped, docs-only change ($DOCS_ONLY Markdown files)"; exit 0; fi
+  # The models this change adds or edits (tools/assets/check-models.mjs, also in CI over every model): budget, one material, the shared
+  # skeleton, the combat clips of a hero body. Skipped on old revisions that predate it, and when the base cannot be found.
+  if [ -f tools/assets/check-models.mjs ] && [ -n "$MB" ]; then echo "== model check"
+    if ! node tools/assets/check-models.mjs --changed "$MB" > "$SCR/models.log" 2>&1; then cat "$SCR/models.log"; echo "GODOT TESTS: model check FAILED (tools/assets/check-models.mjs)"; exit 1; fi
+    cat "$SCR/models.log"; fi
   LOOT=godot/data/loot/content.json
   if [ -f "$LOOT" ]; then cp -p "$LOOT" "$SCR/content.json.snap"; fi
   restore() { if [ -f "$SCR/content.json.snap" ]; then cp -p "$SCR/content.json.snap" "$LOOT"; fi; }

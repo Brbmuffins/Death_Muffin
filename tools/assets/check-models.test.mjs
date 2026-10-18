@@ -1,0 +1,89 @@
+// tools/assets/check-models.mjs: reading a GLB, sorting models into kinds, and the rules (npm run test:server).
+import test from 'node:test';
+import assert from 'node:assert';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { HERO_CLIPS, check, kindOf, readGlb } from './check-models.mjs';
+
+const SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), 'check-models.mjs');
+const BIPED = ['Hips', 'Spine', 'Head', 'L_Arm', 'R_Arm'];
+
+// A GLB with only its JSON chunk: enough for the checker, which reads counts, never vertex data.
+function glb({ tris = 100, materials = 1, joints = [], clips = [], unindexed = 0 }) {
+  const json = {
+    asset: { version: '2.0' },
+    accessors: [{ count: tris * 3 }, { count: unindexed * 3 }],
+    meshes: [{ primitives: [{ indices: 0, attributes: { POSITION: 1 } }, ...(unindexed ? [{ attributes: { POSITION: 1 } }] : [])] }],
+    materials: Array.from({ length: materials }, (_, i) => ({ name: `m${i}` })),
+    nodes: joints.map((name) => ({ name })),
+    skins: joints.length ? [{ joints: joints.map((_, i) => i) }] : [],
+    animations: clips.map((name) => ({ name })),
+  };
+  let j = Buffer.from(JSON.stringify(json));
+  j = Buffer.concat([j, Buffer.alloc((4 - (j.length % 4)) % 4, 0x20)]);
+  const h = Buffer.alloc(20);
+  h.write('glTF', 0, 'latin1');
+  h.writeUInt32LE(2, 4);
+  h.writeUInt32LE(20 + j.length, 8);
+  h.writeUInt32LE(j.length, 12);
+  h.writeUInt32LE(0x4e4f534a, 16);
+  return Buffer.concat([h, j]);
+}
+
+test('a GLB is read for triangles, materials, skeleton and clips', () => {
+  const m = readGlb(glb({ tris: 1200, materials: 2, joints: BIPED, clips: ['idle', 'run'], unindexed: 10 }));
+  assert.deepStrictEqual(m, { tris: 1210, materials: 2, joints: BIPED, clips: ['idle', 'run'] });
+  assert.throws(() => readGlb(Buffer.from('not a model at all')), /not a binary glTF/);
+});
+
+test('models sort into heroes, crowd creatures, characters, gear and props', () => {
+  const crowd = new Set(['bone_rat']);
+  assert.strictEqual(kindOf('client/assets/slice/models/hero_mourner/character.glb', crowd).kind, 'hero');
+  assert.strictEqual(kindOf('client/assets/slice/models/bone_rat/character.glb', crowd).kind, 'crowd');
+  assert.strictEqual(kindOf('client/assets/slice/models/prelate/character.glb', crowd).kind, 'character');
+  assert.strictEqual(kindOf('client/assets/slice/models/props/necro_wpn_bone_staff.glb', crowd).kind, 'gear');
+  assert.strictEqual(kindOf('client/assets/slice/models/props/necro_helm_cowl.glb', crowd).kind, 'gear');
+  assert.strictEqual(kindOf('client/assets/slice/models/props/gear_soul_lantern.glb', crowd).kind, 'gear');
+  assert.strictEqual(kindOf('client/assets/slice/models/props/shroud_moth.glb', crowd).kind, 'prop');
+});
+
+test('the rules: caps and materials fail, a target is a warning, gear has no skeleton', () => {
+  const gear = (o) => check('x.glb', readGlb(glb(o)), 'gear', BIPED);
+  assert.deepStrictEqual(gear({ tris: 3400 }), { errors: [], warnings: [] });
+  assert.match(gear({ tris: 3800 }).warnings[0], /over the gear target of 3500/);
+  assert.match(gear({ tris: 4100 }).errors[0], /over the gear cap of 4000/);
+  assert.match(gear({ tris: 3000, materials: 2 }).errors[0], /2 materials/);
+  assert.match(gear({ tris: 3000, joints: ['Bone'] }).errors[0], /has a skeleton/);
+  assert.deepStrictEqual(check('x.glb', readGlb(glb({ tris: 9000 })), 'crowd', BIPED), { errors: [], warnings: [] }, 'crowd creatures are the baker\'s');
+});
+
+test('a hero body needs the shared skeleton and its combat clips', () => {
+  const hero = (o) => check('x.glb', readGlb(glb({ tris: 11000, joints: BIPED, clips: [...HERO_CLIPS, 'death2', 'dig', 'hurt2'], ...o })), 'hero', BIPED);
+  assert.deepStrictEqual(hero({}), { errors: [], warnings: [] });
+  assert.match(hero({ joints: BIPED.slice(0, 4) }).errors[0], /not the shared biped/);
+  assert.match(hero({ clips: HERO_CLIPS.filter((c) => c !== 'slam' && c !== 'summon') }).errors[0], /missing the clips slam, summon/);
+  const noExtras = hero({ clips: HERO_CLIPS });
+  assert.deepStrictEqual(noExtras.errors, []);
+  assert.match(noExtras.warnings[0], /missing the extra clips death2, dig, hurt2/);
+  assert.match(hero({ tris: 21000 }).errors[0], /over the hero cap of 20000/);
+});
+
+test('the command fails on a broken model and passes a good one', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'dm-check-models-'));
+  try {
+    mkdirSync(path.join(dir, 'props'));
+    const bad = path.join(dir, 'props', 'necro_wpn_test.glb');
+    const good = path.join(dir, 'props', 'necro_helm_test.glb');
+    writeFileSync(bad, glb({ tris: 5000, materials: 2 }));
+    writeFileSync(good, glb({ tris: 3000 }));
+    const r = spawnSync('node', [SCRIPT, bad, good], { encoding: 'utf8' });
+    assert.strictEqual(r.status, 1, r.stdout);
+    assert.match(r.stdout, /MODEL FAIL .*necro_wpn_test\.glb: 5000 triangles, over the gear cap of 4000/);
+    assert.match(r.stdout, /MODEL FAIL .*necro_wpn_test\.glb: 2 materials/);
+    assert.match(r.stdout, /models: 2 checked, 1 failing, 0 over target/);
+    assert.strictEqual(spawnSync('node', [SCRIPT, good], { encoding: 'utf8' }).status, 0);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
