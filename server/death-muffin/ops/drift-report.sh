@@ -74,8 +74,8 @@ for f in $(echo $LIST); do compare_exact "$SRC/$f" "$DM/discord-agent/$f" "disco
 for f in common gemini tripo; do compare_exact "tools/ai/$f.mjs" "$DM/discord-agent/art-tools/tools/ai/$f.mjs" "discord-agent/art-tools/tools/ai/$f.mjs"; done
 compare_exact "$SRC/death-muffin-discord-agent.service" /etc/systemd/system/death-muffin-discord-agent.service "systemd death-muffin-discord-agent.service"
 # the ops jobs themselves (this script included: an installed copy left behind once kept reporting a retired agent)
-for f in drift-report.sh backup-db.sh launcher-release-notice.sh; do compare_exact "server/death-muffin/ops/$f" "$DM/ops/$f" "ops/$f"; done
-for u in death-muffin-drift-report.service death-muffin-drift-report.timer death-muffin-db-backup.service death-muffin-db-backup.timer death-muffin-launcher-notice.service death-muffin-launcher-notice.timer; do
+for f in drift-report.sh backup-db.sh launcher-release-notice.sh health-watch.mjs; do compare_exact "server/death-muffin/ops/$f" "$DM/ops/$f" "ops/$f"; done
+for u in death-muffin-drift-report.service death-muffin-drift-report.timer death-muffin-db-backup.service death-muffin-db-backup.timer death-muffin-launcher-notice.service death-muffin-launcher-notice.timer death-muffin-health-watch.service death-muffin-health-watch.timer; do
   compare_exact "server/death-muffin/ops/$u" "/etc/systemd/system/$u" "systemd $u"; done
 compare_exact server/death-muffin/ops/git-pre-push.sh "$(git -C "$REPO" rev-parse --path-format=absolute --git-common-dir)/hooks/pre-push" "git pre-push hook"
 

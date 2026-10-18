@@ -145,4 +145,4 @@ Backend dependencies: `npm ci` inside `backend/`. The Godot suites are run by `t
 
 ## Ops jobs
 
-Nightly DB backup and the nightly drift report: [`ops/README.md`](ops/README.md) (`ops/install.sh` installs both).
+The health watch (every minute, alerts in #build-alerts), the nightly DB backup and the nightly drift report: [`ops/README.md`](ops/README.md) (`ops/install.sh` installs them).

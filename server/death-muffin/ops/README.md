@@ -1,7 +1,26 @@
-# Ops: nightly DB backup, nightly drift report, launcher release notice, pre-push hook
+# Ops: health watch, nightly DB backup, nightly drift report, launcher release notice, pre-push hook
 
 Install or update both from a committed revision: `server/death-muffin/ops/install.sh [rev]` (copies the scripts to
 `/home/ubuntu/death-muffin/ops/`, installs the units, enables the timers). Never edit the installed copies.
+
+## Health watch (timer `death-muffin-health-watch`, every minute)
+
+`health-watch.mjs` checks the live game every minute and posts to #build-alerts when something goes down and when it comes back:
+
+| Check | What it reads |
+|---|---|
+| Game server | `http://127.0.0.1:5190/api/health`: `status` ok and `db` connected |
+| Public API | `https://muffindevelopment.com/death-muffin/api/health` (through nginx and Cloudflare, what players' games reach) |
+| Lobby | `http://127.0.0.1:5192/health`: `ok` |
+| Co-op relay | `deathmuffin-relay` active and something listening on UDP 5193 |
+| Game download | `https://muffindevelopment.com/death-muffin/client/manifest.json` has a `version` |
+
+A check must fail twice in a row (two minutes) before it alerts, so a single blip stays quiet; while a service stays down a reminder goes
+out every 60 minutes; the recovery is posted too. Several failures in one run go out as one post, which mentions nobody. The state is
+`~/death-muffin/ops/state/health.json`, and it changes only after a post went out, so a failed post is retried on the next run. Its journal
+lines (`journalctl -u death-muffin-health-watch`) appear only while a check fails or a post goes out. `node health-watch.mjs --dry-run`
+prints what it would post and changes nothing; the env overrides are in the script's header (tests:
+`server/death-muffin/ops/health-watch.test.cjs`). The test services (ports 5194 to 5196) are not watched: the drift report covers them.
 
 ## Nightly DB backup
 

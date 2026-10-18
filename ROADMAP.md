@@ -59,9 +59,10 @@ goes as soon as nothing depends on it (B57).
 Goal: the new game has everything the old one had, it is the only game, we hear when something breaks, and we can see how it runs on
 players' PCs. Everything here is done as soon as possible, in this order (Helix, 2026-10-18: the live build is solid, no need to wait for
 the end of the undo window; B57).
-- [ ] **Fix: nobody is told when the game's servers stop.** Now: only the database is watched; if the game's server, the lobby or the
-  co-op relay stops, nobody knows until players notice. After: each one is watched every minute, and a failure posts to #build-alerts
-  (KNOWN-GAPS "Operations").
+- [x] **Fix: nobody was told when the game's servers stopped.** Done 2026-10-18: the game server and its database, the public API, the
+  lobby, the co-op relay and the game download are checked every minute; a failure that lasts two minutes posts to #build-alerts, a
+  reminder follows every hour while it lasts, and the recovery is posted too (`server/death-muffin/ops/health-watch.mjs`; ops README
+  "Health watch").
 - [ ] **Fix: Grave Surges are missing.** Now: since launch day no Grave Surge ever starts (they were left out of the rebuild). After: as in
   the old game, after about 100 seconds in a combat area a crypt bursts open nearby, three waves climb out, and clearing them pays the surge
   reward; the surge tip shows again. (Port `godot/next/areas/dm_grave_surge.gd` onto the combat core.)

@@ -1,0 +1,11 @@
+[Unit]
+Description=Death Muffin health watch (server/death-muffin/ops/health-watch.mjs; posts to #build-alerts when a live service goes down or comes back)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+ExecStart=/usr/bin/node /home/ubuntu/death-muffin/ops/health-watch.mjs
+TimeoutStartSec=50
+SyslogLevel=notice
+LogLevelMax=notice
