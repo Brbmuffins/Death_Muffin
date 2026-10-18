@@ -46,7 +46,7 @@ var _npc_acc := 0.0
 var _guide_acc := GUIDE_S
 var _news_state: Dictionary = {}
 var _news_sig := -1
-var _recall_end := 0
+var _recall_left := 0.0                         ## game seconds left of the recall (game time, so a fixed-fps run and a hitch count it as play does)
 var _recall_fx: Variant = null
 var _new: Dictionary = {}
 var _npc_spots: Dictionary = {}
@@ -109,8 +109,10 @@ func _tick(dt: float) -> void:
 	if recall_active:
 		if game.input.held_direction() != Vector3.ZERO or b.moving or not b.alive:
 			cancel_recall()
-		elif Time.get_ticks_msec() >= _recall_end:
-			finish_recall()
+		else:
+			_recall_left -= dt
+			if _recall_left <= 0.0:
+				finish_recall()
 	if pending != null:
 		if game.input.held_direction() != Vector3.ZERO or not b.alive:
 			pending = null
@@ -499,7 +501,7 @@ func start_recall() -> void:
 		return
 	stop_player()
 	recall_active = true
-	_recall_end = Time.get_ticks_msec() + int(RECALL_S * 1000.0)
+	_recall_left = RECALL_S
 	_sfx("recallStart")
 	if _vfx != null:
 		_recall_fx = _vfx.decal({"tex": "sigil", "color": 0x8f9ed1, "x": b.position.x, "z": b.position.z, "r": 1.4, "duration": RECALL_S, "opacity": 0.9, "growFrom": 0.2, "spin": 3.0})

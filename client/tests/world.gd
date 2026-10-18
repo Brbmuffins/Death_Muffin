@@ -314,7 +314,7 @@ func _waystones_and_recall() -> void:
 	var ex := {"kind": c.mods["thrallKind"], "cap": c.mods["thrallCap"], "hp": c.p["stats"]["thrallHp"], "damage": c.p["stats"]["thrallDamage"], "attackSpeedMult": c.mods["thrallAttackSpeedMult"], "r": 0.8}
 	var raised: Dictionary = c.thralls().raise(ex, hero.position + Vector3(2.0, 0, 0))
 	check(bool(raised["ok"]) and cp > 0, "a thrall walks with him")
-	g.chapterhouse.start_recall()   # 1.5 s of wall time standing still, as today's
+	g.chapterhouse.start_recall()   # 1.5 s of game time standing still
 	await until(func() -> bool: return not g.chapterhouse.recall_active, 60 * 120)
 	await ticks(3)
 	var ret: Dictionary = DmContent.get_export("areas", "CHAPTERHOUSE_RETURN")
