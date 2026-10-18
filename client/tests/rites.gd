@@ -337,8 +337,8 @@ func raise_at(pos: Vector3, kind := "normal", enemy := "robber", elite := false)
 
 func the_catalogue() -> void:
 	var ids := DmRiteRegistry.ids()
-	check(ids.size() == 34, "the registry holds the necromancer's 25 rites and the Reaper's 9 (%d)" % ids.size())
-	for reaper in ["scythe_sweep", "scythe_throw", "reap", "wraith_walk", "soul_burst", "harvest_spin", "unleash_souls", "soul_harvest", "scythe_weave"]:
+	check(ids.size() == 35, "the registry holds the necromancer's 25 rites and the Reaper's 10 (%d)" % ids.size())
+	for reaper in ["scythe_sweep", "scythe_throw", "reap", "wraith_walk", "soul_burst", "harvest_spin", "unleash_souls", "soul_harvest", "scythe_weave", "haunting_wraith"]:
 		check(DmRiteRegistry.has(reaper), "the Reaper's %s is registered" % reaper)
 	for rite in ids:
 		check(DmRiteRegistry.module(rite) != null and DmRiteRegistry.module(rite).id == rite, "%s has its module" % rite)
@@ -1642,6 +1642,19 @@ func _reaper_swings() -> void:
 	check(souls() == 12 and evs("scythe_weave", "weave").size() == 2, "weave: free, one event a stroke")
 	r = cast("scythe_weave", hero.position)
 	check(not r["ok"] and r["reason"] == "no_target", "weave: refused with the cursor on her (%s)" % r["reason"])
+	# Haunting Wraith: 5 souls, 14 s; walks toward the cursor and hurts what it passes through every quarter second
+	await reaper_reset()
+	var hw_in := foe("robber", at(6.0))
+	var hw_out := foe("robber", at(6.0, 9.0))
+	c.p["souls"] = 12
+	m = dmg_log.size()
+	if accepted(cast("haunting_wraith", at(14.0)), "haunting_wraith"):
+		check(souls() == 7 and near(c.cooldown_left("haunting_wraith"), 14000.0), "wraith: pays 5 souls, 14 s cooldown (%d left)" % souls())
+		await secs(2.5)
+		check(blows(hw_in, m) >= 2 and blows(hw_out, m) == 0, "wraith: hurts the enemy in its path more than once, not the one off to the side (%d, %d)" % [blows(hw_in, m), blows(hw_out, m)])
+		check(evs("haunting_wraith", "rise").size() == 1 and evs("haunting_wraith", "walk").size() >= 2, "wraith: one rise event, then one event each step")
+	r = cast("haunting_wraith", hero.position)
+	check(not r["ok"] and r["reason"] != "", "wraith: refused with the cursor on her (%s)" % r["reason"])
 	# life steal: each enemy a swing strikes heals leechPerHit of her health, at most leechSwingCap a swing; the thrown scythe heals nothing
 	await reaper_reset(8.0)
 	var mx := c.max_hp()

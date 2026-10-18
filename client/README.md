@@ -236,8 +236,8 @@ bodies a tick, the core's deaths, the offering). It prints INFO lines: what a wa
 ## The Gravecaller's rites
 
 The rites (`next/rites/`, DECISIONS B42) are GDScript and call the core synchronously: a rite damages with `core.damage(id, amount, source)` and reads `{dealt, killed}` at once, so Wailing Skull's
-extra leap on a kill, Bone Prison skipping the dead and the Litany's loops resolve inside the cast. `next/rites/` has the necromancer's 25 rites and the Reaper's nine (her shared helper `DmReaperRites`: the cone and circle pick, the blow with its life steal, the soul bag).
-The registry lists all 34; a rite with no module (the five later classes') is refused `unavailable`. `DmNextGame.attach_caster` gives the hero his `Rites` node (a `DmRiteCaster`; the game scene is its `DmRiteWorld`) and `DmRiteHotbar.wire`
+extra leap on a kill, Bone Prison skipping the dead and the Litany's loops resolve inside the cast. `next/rites/` has the necromancer's 25 rites and the Reaper's ten (her shared helper `DmReaperRites`: the cone and circle pick, the blow with its life steal, the soul bag).
+The registry lists all 35; a rite with no module (the five later classes') is refused `unavailable`. `DmNextGame.attach_caster` gives the hero his `Rites` node (a `DmRiteCaster`; the game scene is its `DmRiteWorld`) and `DmRiteHotbar.wire`
 connects the input. The numbers (spell power, cooldowns, costs, runes) are `DmAbilities`, `DmSimData` and `abilities.json`; the thralls' stats `DmThralls.raise_stats / colossus_stats`.
 
 What a rite reaches creatures through (all on the caster `c`; the adapters belong to the game scene's `DmCoreHost` and live in `core/`):

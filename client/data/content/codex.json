@@ -68,7 +68,8 @@
   "harvest_spin",
   "unleash_souls",
   "soul_harvest",
-  "scythe_weave"
+  "scythe_weave",
+  "haunting_wraith"
  ],
  "CODEX_RITES": {
   "flail_swing": {
@@ -410,6 +411,11 @@
    "fx": "reaper",
    "colour": "Soul green",
    "tip": "Free, 0.45s cooldown: your fast single-target strike. The scythe chops down from above onto the nearest enemy within 3.6m in front of you, then cuts back up through it on the next press. Hold its key and you keep striking. It does not feed the soul bag; place it from the Grimoire."
+  },
+  "haunting_wraith": {
+   "fx": "reaper",
+   "colour": "Soul green",
+   "tip": "5 souls, 14s cooldown: a huge wraith rises at your feet and walks 14m toward the cursor, hurting every enemy it touches every quarter second as it passes. Send it down a corridor of monsters; place it from the Grimoire."
   },
   "unleash_souls": {
    "fx": "reaper",
