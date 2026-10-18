@@ -176,7 +176,9 @@ func _attached() -> void:
 	check(not dr.silhouette_node.visible and not dr.is_processing(), "the master switch hides everything and stops the dressing")
 	dr.set_enabled(true)
 	check(dr.is_processing() and dr.silhouette_node.visible, "and brings it back")
-	# nothing piles up
+	# nothing piles up. The count is the whole engine's: background work started earlier in the suite (loads, the weather's cross-fade) can still land in the first
+	# frames on a slow machine (GitHub's 4-core runner: +31 once, 2026-10-18), so 300 frames settle first and the next 300 are measured: a pile-up grows in both.
+	await frames(300)
 	var objs0 := Performance.get_monitor(Performance.OBJECT_COUNT)
 	await frames(300)
 	var objs1 := Performance.get_monitor(Performance.OBJECT_COUNT)

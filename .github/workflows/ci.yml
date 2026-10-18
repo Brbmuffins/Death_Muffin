@@ -19,7 +19,7 @@ env:
 jobs:
   server:
     name: Backend + lobby tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19 (GitHub notice), a move to make on purpose
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -52,7 +52,7 @@ jobs:
 
   godot:
     name: Godot client tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19 (GitHub notice), a move to make on purpose
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -91,7 +91,7 @@ jobs:
   # The game players run since launch day (client/, DECISIONS B49): the combat core is built (Linux), the project imported, the crowd baked, then every suite.
   client:
     name: Game client tests (client/)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19 (GitHub notice), a move to make on purpose
     timeout-minutes: 60
     env:
       GODOT: /home/runner/godot-bin/godot

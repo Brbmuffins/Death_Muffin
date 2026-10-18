@@ -216,9 +216,14 @@ func the_frame() -> void:
 	check(hud.xp_txt.text.begins_with("1,234 / ") and near(hud.xp_bar.value, 1234.0 / DmStats.xp_to_next(20.0), 0.01), "XP and the next level: '%s'" % hud.xp_txt.text)
 	check(hud.area_lbl.text == "THE HOLLOW GRAVES", "the area name: '%s'" % hud.area_lbl.text)
 	check(hud.banner_active(), "the area's banner is up on entering it")
+	var t0 := hud.toasts.get_child_count()   # a first run (a fresh user folder, as in CI) already shows one of the game's own toasts here
+	var up: Array = []
+	for t in hud.toasts.get_children():
+		up.append(" / ".join(t.find_children("*", "Label", true, false).map(func(l: Node) -> String: return (l as Label).text)))
+	print("INFO hud: toasts already up: %s" % str(up))
 	hud.toast("The dead answer you more readily", "good")
 	hud.toast("A crypt cracks open", "")
-	check(hud.toasts.get_child_count() == 2, "toasts stack (%d)" % hud.toasts.get_child_count())
+	check(hud.toasts.get_child_count() == t0 + 2, "toasts stack (%d, %d before)" % [hud.toasts.get_child_count(), t0])
 	var party: Array = vm["party"]
 	check(party.size() == 1 and party[0]["name"] == "tester" and hud.party_box.get_child_count() == 1, "the party list shows this hero")
 	var shown_btns: Array = []
