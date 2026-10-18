@@ -51,10 +51,20 @@ first public release (B52); big changes get a test lane (B53); off-site backups 
 
 Goal: the new game has everything the old one had, it is the only game, it is safe if something breaks, and we can see how it runs on
 players' PCs.
-- [ ] **Fix: the Discord agent tests and photographs the old game.** Now: its proposals are checked with the old game's tests and its
-  before/after screenshots are taken in the old game, so the team approves pictures of a game nobody plays, and the live game's tests run
-  only after the change is out. After: every proposal is tested on the live game and shows the live game's screenshots before anyone
-  approves it. (The screenshot tool and its driver come over to `client/`; the agent's check runs the client's suites.)
+- [ ] **Fix: the Discord agent tests and photographs the old game.** Now: its proposals are checked with the old game's tests, its
+  before/after screenshots are rendered from the old game on the server (minutes of software drawing next to the live game servers), and
+  its "Try it" previews are builds of the old game too, so the team approves pictures of a game nobody plays. After: every proposal is
+  tested on the live game, its screenshots come from a team PC through the screenshot helper below (the server's slower pictures only when
+  no PC is available, marked as such), and its previews are the live game. (The screenshot tool and its driver come over to `client/`.)
+- [ ] **New: the screenshot helper, in the launcher** (needs Muffins' OK: launcher changes reach every player's launcher). Each person turns
+  it on for their own PC. When a job comes in, a small box asks "The team needs screenshots of a change (about 1 minute): Run now / Not now /
+  Pause 2 hours", and without an answer it runs by itself after 5 minutes, except while Death Muffin or another full-screen game or movie
+  is running (Windows hides the question then, and a party's host runs the whole party's fight) or a laptop is on battery: then it waits
+  for a yes or for the game to close. It never takes the keyboard or mouse, runs at low priority for about a minute and stops if the game
+  starts; it uses its own folder and plays offline (never the player's game, settings or account), runs only builds our server made, and
+  uploads only the pictures, which our server posts to the thread. Each PC chooses: ask first (the default), run without asking (War's spare
+  Alienware, with his OK) or only on a yes. It gives: screenshots with the real graphics card on Low and Ultra in about a minute, and later
+  the benchmark on real PCs (the Alienware's GTX 970 is the weak-PC floor of B39).
 - [ ] **Fix: a document change from the Discord agent ships a game update.** Now: every change the agent ships also publishes a new game
   build, even when it only touches documents, so adding a line to this roadmap from Discord would send every player an update notice.
   After: a change that touches only documents goes to `main` with no new build and no notice, and the agent adds a team member's idea to

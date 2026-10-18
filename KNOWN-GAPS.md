@@ -134,7 +134,8 @@ polish list). Also:
 
 - **The Discord agent's checks and screenshots use the old game:** its checks run `tools/godot/run-all-tests.sh` and its screenshots
   `server/death-muffin/discord-agent/shot-godot.sh` (the QA driver is not in `client/`); the live game's suites run in GitHub CI after a ship
-  is pushed and published (ROADMAP Phase 1).
+  is pushed and published (ROADMAP Phase 1). Its "Try it" previews (`server/death-muffin/discord-agent/preview-godot.sh`) export `godot/`,
+  the old game, too.
 - `client/tests/game_scene.gd`'s node checks pass about every other run under load: the counsel's tip card (16 nodes, shown at the first
   Barrow Ghoul and dismissed on a wall-clock timer) is in the scene tree for part of the run.
 - The client's suites other than `world.gd` do not set `DM_SYNC_NAV`: under `--fixed-fps` a suite that enables a region (a seal, a baked
