@@ -54,17 +54,27 @@ players' PCs.
 - [ ] **Fix: the Discord agent tests and photographs the old game.** Now: its proposals are checked with the old game's tests, its
   before/after screenshots are rendered from the old game on the server (minutes of software drawing next to the live game servers), and
   its "Try it" previews are builds of the old game too, so the team approves pictures of a game nobody plays. After: every proposal is
-  tested on the live game, its screenshots come from a team PC through the screenshot helper below (the server's slower pictures only when
+  tested on the live game, its screenshots come from a team PC through the team PC helper below (the server's slower pictures only when
   no PC is available, marked as such), and its previews are the live game. (The screenshot tool and its driver come over to `client/`.)
-- [ ] **New: the screenshot helper, in the launcher** (needs Muffins' OK: launcher changes reach every player's launcher). Each person turns
-  it on for their own PC. When a job comes in, a small box asks "The team needs screenshots of a change (about 1 minute): Run now / Not now /
-  Pause 2 hours", and without an answer it runs by itself after 5 minutes, except while Death Muffin or another full-screen game or movie
-  is running (Windows hides the question then, and a party's host runs the whole party's fight) or a laptop is on battery: then it waits
-  for a yes or for the game to close. It never takes the keyboard or mouse, runs at low priority for about a minute and stops if the game
-  starts; it uses its own folder and plays offline (never the player's game, settings or account), runs only builds our server made, and
-  uploads only the pictures, which our server posts to the thread. Each PC chooses: ask first (the default), run without asking (War's spare
-  Alienware, with his OK) or only on a yes. It gives: screenshots with the real graphics card on Low and Ultra in about a minute, and later
-  the benchmark on real PCs (the Alienware's GTX 970 is the weak-PC floor of B39).
+- [ ] **New: the team PC helper, in the launcher** (needs Muffins' OK: launcher changes reach every player's launcher). Jobs that need a real
+  graphics card or Windows, which the server does not have, run on team PCs; the server keeps everything with keys or passwords and
+  everything that changes the live game, and checks each result before using it. Each person turns it on for their own PC and picks the
+  job types it takes. When a job comes in, a small box says what it is and how heavy ("Screenshots of a change, about 1 minute": Run now /
+  Not now / Pause 2 hours), and without an answer it runs by itself after 5 minutes, except while Death Muffin or another full-screen game
+  or movie is running (Windows hides the question then, and a party's host runs the whole party's fight) or a laptop is on battery: then it
+  waits for a yes or for the game to close. It never takes the keyboard or mouse, runs at low priority and stops if the game starts; it
+  uses its own folder and plays offline (never the player's game, settings or account), runs only builds and kits our server made, and
+  uploads only its results. Each PC can also run without asking (War's spare Alienware, with his OK) or only on a yes. Its job types,
+  in order:
+  - Screenshots of a proposal on Low and Ultra, posted to the thread by our server (the item above).
+  - Benchmarks for every release on a fast PC and on the Alienware's GTX 970 (the weak-PC floor of B39), on the benchmarks page; a
+    benchmark waits until nothing else is loading the PC, and a run disturbed halfway is thrown out and retried, so its numbers are honest.
+  - The stutter test of Phase 1's first-use item: every rite and effect played on a real graphics card, each hitch reported.
+  - A release crash check: a release candidate plays a few minutes on two different graphics cards before it goes live, and a crash stops
+    the release.
+  - Lighting bakes: when an area changes, the bake kit runs on the strongest graphics card available instead of by hand, and the result
+    comes back as a proposal.
+  - Later: a co-op test between two team PCs.
 - [ ] **Fix: a document change from the Discord agent ships a game update.** Now: every change the agent ships also publishes a new game
   build, even when it only touches documents, so adding a line to this roadmap from Discord would send every player an update notice.
   After: a change that touches only documents goes to `main` with no new build and no notice, and the agent adds a team member's idea to
