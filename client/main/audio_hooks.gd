@@ -5,7 +5,7 @@ extends Node
 ## The node itself, each frame: follows the hero (listener), keeps the area bed/music in step with `main.area_id`, drives hero
 ## footsteps from the walk loop's phase (water where the hero wades), plays the gate sound when a seal breaks, and exposes the
 ## boss-music switch. Combat level for the music duck is derived by the AudioDirector from the sounds played, as in the web.
-## Ported to the rebuilt client (client/code.list "Ported"): the gate sound is the world's `door_opened` signal (an event), not a poll of every door each frame; the rest is today's.
+## The gate sound is the world's `door_opened` signal (an event), not a poll of every door each frame.
 
 static var inst: DmAudioHooks = null
 

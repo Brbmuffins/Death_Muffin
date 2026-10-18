@@ -2,8 +2,8 @@
 
 #include <algorithm>
 
-// The enemy brain is a port of godot/enemies: DmEnemy (dm_enemy.gd), its states (states/*.gd) and the kinds (flanker, caster,
-// hazard, burrower; the Deacon is support.cpp, the Nave's five are nave.cpp, the Pyre's and the Fen's eight are pyre_fen.cpp). Comments name the GDScript it mirrors. Differences from today are listed in native/README.md.
+// The enemy brain follows the old game's enemy scripts: DmEnemy (dm_enemy.gd), its states (states/*.gd) and the kinds (flanker, caster,
+// hazard, burrower; the Deacon is support.cpp, the Nave's five are nave.cpp, the Pyre's and the Fen's eight are pyre_fen.cpp). Comments name the GDScript it mirrors. Differences from the old game are noted in native/README.md.
 
 namespace dm {
 
@@ -37,7 +37,7 @@ void World::flush_spawns() {
 	pending_spawns.clear();
 }
 
-// A living body leaves the table at once and silently: DmBossNodeWorld.remove_enemy frees the node today (the adds leave with their boss, no death event, no
+// A living body leaves the table at once and silently: the old game's DmBossNodeWorld.remove_enemy freed the node (the adds leave with their boss, no death event, no
 // corpse, no credit). EV_ENEMY_REMOVED carries 1 so the host knows it never died (it is not among the dying). Called by GDScript between ticks, never inside
 // step(), so no reference into the table is held; later slots shift down (stable compaction) and the grid is rebuilt for the queries that follow.
 bool World::remove_enemy(int32_t p_id) {
@@ -754,7 +754,7 @@ void World::hit_id(int32_t p_source, int32_t p_target, double p_damage, int32_t 
 double World::damage_enemy(int32_t p_slot, double p_amount, int32_t p_source, bool p_allow_stagger, bool &r_killed) {
 	r_killed = false;
 	Enemy &e = enemies[p_slot];
-	if (p_allow_stagger && defs[e.def].shield) {  // DmEnemyClstTemplar.take_damage: before the base's refusals, as today (a glance off a rising body shows too)
+	if (p_allow_stagger && defs[e.def].shield) {  // DmEnemyClstTemplar.take_damage: before the base's refusals (a glance off a rising body shows too)
 		p_amount = shield(e, p_source, p_amount);
 	}
 	if (e.state == DEAD || e.state == RISING || !hittable(e) || p_amount <= 0.0) {  // DmEnemy.take_damage refusals
@@ -800,7 +800,7 @@ void World::stun(int32_t p_slot, double p_seconds) {  // DmEnemy.stun: a hard in
 	change(p_slot, HURT);
 }
 
-// DmEnemy.take_damage -> sm.change(DEAD), then the listeners of `died` in today's order: director, affixes (Vengeful), status set, corpse field,
+// DmEnemy.take_damage -> sm.change(DEAD), then the listeners of `died` in the old game's order: director, affixes (Vengeful), status set, corpse field,
 // rewards. The director's bookkeeping and the rewards are GDScript's, from the events.
 void World::kill(int32_t p_slot, int32_t p_source) {
 	Enemy &e = enemies[p_slot];
@@ -1039,7 +1039,7 @@ void World::step_statuses(Body &b, double p_dt) {
 
 // ---------------------------------------------------------------------------------------------------------------- the tick
 
-// One 60 Hz tick in today's order (combat map section 1): the thrall host's separation (it runs with the heroes, first), the enemies in spawn
+// One 60 Hz tick in the old game's order (combat map section 1): the thrall host's separation (it runs with the heroes, first), the enemies in spawn
 // order (each followed by its statuses), the hostile zones, the corpses, then every thrall in raise order. Enemies therefore see the
 // positions thralls ended the last tick with, and a thrall can kill an enemy that already acted this tick.
 void World::step(double p_dt) {
@@ -1157,7 +1157,7 @@ void World::separate() {
 			}
 		}
 		for (const Obstacle &o : obstacles) {  // a wall it touches: no driving into it, so it slides along it toward its goal and presses there, as a body
-			                                    // sliding on today's collider does (no sidestep: the wall is there to hold the crowd)
+			                                    // sliding along a collider does (no sidestep: the wall is there to hold the crowd)
 			const double qx = double(a.x) - o.x, qz = double(a.z) - o.z, onx = -o.uz, onz = o.ux;
 			const double lu = qx * o.ux + qz * o.uz, lv = qx * onx + qz * onz;
 			const double du = lu - std::max(-o.half_len, std::min(o.half_len, lu)), dv = lv - std::max(-o.half_thick, std::min(o.half_thick, lv));
@@ -1251,7 +1251,7 @@ bool World::remove_obstacle(int32_t p_id) {
 }
 
 // What blocks an enemy on the surface: the hero capsules (layer PLAYER) and the obstacles (boxes on the same layer: Ossuary Wall). A body
-// overlapping a box leaves it by the nearest point (or, centre inside, through the nearest face), as a body sliding on today's collider would.
+// overlapping a box leaves it by the nearest point (or, centre inside, through the nearest face), as a body sliding along a collider would.
 void World::keep_off_heroes(Enemy &e) const {
 	for (const Obstacle &o : obstacles) {
 		const double px = double(e.x) - o.x, pz = double(e.z) - o.z;
@@ -1289,7 +1289,7 @@ void World::keep_off_heroes(Enemy &e) const {
 	}
 }
 
-// Crowd spacing, the rest of what Godot's RVO did for today's bodies (B42; native/README.md "Differences"): separate() only steers bodies that
+// Crowd spacing, the rest of what Godot's RVO did for the old game's bodies (B42; native/README.md "Design"): separate() only steers bodies that
 // want to move, so a crowd standing around its target (attacking, idle) would pile up. After everyone moved, every overlapping pair of surface
 // bodies, moving or standing, eases apart by OVERLAP_EASE of its overlap, split by size (the bigger body gives way less), each body by at most
 // OVERLAP_MAX_STEP per tick. Corrections are summed from the same positions before any is applied, so the result does not depend on slot order.

@@ -39,11 +39,11 @@ DmBossHost  (node "Bosses" under DmNextGame, every peer)   summon rules, spawner
 
 ## Tests
 One suite for the King (`client/tests/boss.gd`), one for each of the other six on `boss_base.gd`, `boss_meta.gd` (the Covenant Seal, first-kill trophies), `core_boss.gd` (the core's half) and the party fights `coop.gd` and `coop_bosses.gd`: client/README.md "The bosses", "Co-op on the core".
-The recorded scenarios the brains are replayed against are the old game's (44 of them).
+The recorded scenarios the brains are replayed against are recordings of the web game's brains (44 of them).
 
 ## Known gaps
 - Empowered choice is the host's own hero (a client's `request_summon` is the plain RPC); the prize claim window is the backend's (3 h).
 - Pools of a boss that resets linger their remaining seconds (core zones have a lifetime, no owner to remove them).
 - The Mire Mother's flood shrinks the Fen's hummocks for the brain (`FEN_FLOOD_SCALE`); the event plays the rings, and nothing eases the drawn hummocks.
-- `can_ascend` after a Prelate kill is only a game event (no Altar: B36). Prelate Echoes are not played for the same reason (native/README.md "Differences from today's game").
+- `can_ascend` after a Prelate kill is only a game event (no Altar: B36). Prelate Echoes are not played for the same reason (client/README.md "The bosses").
 - The Prelate tally is validated by the backend only for a bell it was told of (online `spend_shards` queues `summon_prelate`).

@@ -49,8 +49,8 @@ The set's motes (withered rot, fracture dust, bleed, chill frost, sanctified, fr
 core's bodies are `DmEnemyFx`'s (`client/next/enemy_fx/README.md`: the ambient pass over `status_changed`), and the Censer Bearer's ring and smoke are its status tell's, not this node's.
 
 ## Tests / known gaps
-`client/tests/core_status.gd` holds the core's set against the old arithmetic (the 0.1 s step, DoT lumps, stacking and ownership, multipliers, stun, dig-in clear, Withered on death, wire bytes); `client/tests/rites.gd` and the boss suites
-use a hero's and a boss's set. Not covered in the client: `DmStatusSet` on its own (the old game's status suite).
+`client/tests/core_status.gd` holds the core's set (the 0.1 s step, DoT lumps, stacking and ownership, multipliers, stun, dig-in clear, Withered on death, wire bytes); `client/tests/rites.gd` and the boss suites
+use a hero's and a boss's set.
 - Player-side Bone Ward / Colossus guard stay in `DmPlayerRules` / `DmHeroBody._ward` (computed from the living thralls on every hit), not here. Barrier here has no decay (the 6 s duration only).
 - Bosses (`DmBoss`) carry a set and show `slow` / `root` / `chill` but the brain ignores them: bosses are immune. Statuses never change the blows a boss takes: `DmBoss.take_damage` skips `scale_taken`, and the brain's own Fracture is never fed, so a
   Marrow Spear's Fracture or a Sanctify on the King does nothing (KNOWN-GAPS "Combat and statuses").

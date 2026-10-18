@@ -1,6 +1,6 @@
 extends Node3D
 ## Screenshot scene for DmLootView: a ring of drops of every rarity + gold piles + shards on a dark floor.
-## usage: godot --path godot res://loot_view/demo.tscn -- --out=/path.png [--labels]
+## usage: godot --path client res://loot_view/demo.tscn -- --out=/path.png [--labels]
 
 func _ready() -> void:
 	var out := ""

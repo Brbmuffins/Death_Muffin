@@ -2,7 +2,7 @@ class_name DmCorners
 extends Control
 ## The chipped carved corners of `.cw-plate::before/::after`: top-left and bottom-right 14px brackets. Add as the LAST child of a
 ## plate (it draws above the fill). Mouse-transparent.
-## Ported (client/code.list): the four bars are rectangles of the HUD atlas (DmHudKit.rect), which batch with the HUD's other chrome.
+## The four bars are rectangles of the HUD atlas (DmHudKit.rect), which batch with the HUD's other chrome.
 
 @export var arm: float = 14.0
 @export var thickness: float = 2.0

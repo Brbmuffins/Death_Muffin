@@ -84,5 +84,5 @@ id to the report (`m.empower_pending / empower_summon_id`, set by `DmBossMeta`).
 - Ground: item names in rarity colour within 7 m (3 m ordinary; `DmLootView.near_labels = false` turns them off), icon is the inventory's own item art (`DmUiArt.item`; a rarity tile only for an item without art) and blinks in the last 8 s, drops from one kill land >= 0.65 m apart.
 
 ## Tests
-`client/tests/rewards.gd` replays the old game's rewards suite on the port (sessions, batches, lost replies, refusals, the end, per-member loot, on the mock backend; a test double emits `kill_credited`); `client/tests/value.gd` plays the game scene (a drop claimed into the bag, the purse, brews and lifesteal);
-`client/tests/panels.gd` the Reliquary on the server's bag. Not covered in the client: the loot view's own suite (the ground, labels, expiry, the pickup radius; the old game's loot-view suite).
+`client/tests/rewards.gd` plays the rewards node (sessions, batches, lost replies, refusals, the end, per-member loot, on the mock backend; a test double emits `kill_credited`); `client/tests/value.gd` plays the game scene (a drop claimed into the bag, the purse, brews and lifesteal);
+`client/tests/panels.gd` the Reliquary on the server's bag.

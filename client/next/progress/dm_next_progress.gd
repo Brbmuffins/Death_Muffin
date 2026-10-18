@@ -9,7 +9,7 @@ extends Node
 ## through ground pickups, and every purchase is priced by the backend's rules. This node reacts: level-ups (stats, banner, sound, Grimoire
 ## toasts), the Damage / Wave Speed tiers (stats, the wave director), seal unlocks, milestones and the belt.
 ## `event(id, ctx)` is the host game_event shape (the HUD adapter forwards it to DmGameUi).
-## The rebuild's port (client/code.list "Ported"): the bag is the game's `loot` (DmNextLoot), not the panels' adapter; before it exists, the bag the server gave.
+## The bag is the game's `loot` (DmNextLoot), not the panels' adapter; before it exists, the bag the server gave.
 
 signal event(id: String, ctx: Dictionary)
 

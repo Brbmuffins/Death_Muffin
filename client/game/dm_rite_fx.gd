@@ -1,6 +1,6 @@
 class_name DmRiteFx
 extends RefCounted
-## The per-rite visuals and sounds of the necromancer's rites (needle, miasma, exhume, corpse rites), used by DmRiteCaster (godot/next/rites). One place draws a rite.
+## The per-rite visuals and sounds of the necromancer's rites (needle, miasma, exhume, corpse rites), used by DmRiteCaster (client/next/rites). One place draws a rite.
 ##
 ## `fx` / `audio` are the Vfx / AudioDirector back-ends (null-safe; tests pass recording stubs). `stats` is the SAME Dictionary the owner counts
 ## into (the caster's stats), so every call is counted exactly once, here.

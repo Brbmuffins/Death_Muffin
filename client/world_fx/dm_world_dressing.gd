@@ -2,10 +2,10 @@ class_name DmWorldDressing
 extends Node3D
 ## Everything the web draws around the static world that the world track left out, as one self-contained node:
 ##   stained-glass windows + light shafts, candle-flame sprites + brazier fire, far silhouettes (spires/trees/ruins), ground mist, per-area weather
-##   (Atmosphere), standing water with ripples + moon glint. (Occlusion, wing flap, hover and wade ripples live in godot/world + godot/game.)
-## Ported from godot/world_fx/dm_world_dressing.gd (client/code.list "Ported"): the world is `DmNextWorld`, whose area scenes carry no stand-ins for what this draws (the converter
+##   (Atmosphere), standing water with ripples + moon glint. (Occlusion, wing flap, hover and wade ripples live in client/world + client/game.)
+## The world is `DmNextWorld`, whose area scenes carry no stand-ins for what this draws (the converter
 ## leaves out the flame spheres, the water planes and the puddle quads), so nothing is hidden at run time; the bloom is the graphics preset's (DmGraphicsPreset.apply_environment);
-## the area the focus stands in comes from `set_area` (the world's `enter_area`) where today's asked the builder every frame; and what moves is moved the cheap way:
+## the area the focus stands in comes from `set_area` (the world's `enter_area`), not asked of the builder every frame; and what moves is moved the cheap way:
 ## flames, windows, silhouettes and water are static meshes or shaders, the weather and the brazier fire are drawn by their vertex shaders from a clock, the mist steps at 4 Hz and the
 ## brazier fire rolls its emission at 20 Hz. A frame costs this node a clock, three uniforms for the weather, one for the water and one for the brazier fire while it burns.
 ## Usage:
@@ -53,7 +53,7 @@ static func attach(w: Node3D, follow: Node3D = null) -> DmWorldDressing:
 func build() -> void:
 	data = DmWfxData.get_data()
 	if data.is_empty():
-		push_error("world_fx: godot/data/world_fx/fx.json missing (it is committed; restore it from git)")
+		push_error("world_fx: client/data/world_fx/fx.json missing (it is committed; restore it from git)")
 		return
 	var lights: DmWorldBuilder = world.builder
 	var world_data: Dictionary = lights.world

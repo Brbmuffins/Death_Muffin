@@ -31,7 +31,7 @@ const INFLIGHT_MAX := 12
 var failed := 0
 
 
-## Resource path of a map clip (`Folder/name` -> flat `Folder__name.wav`, as encoded by tools/godot/sync-audio-assets.sh).
+## Resource path of a map clip (`Folder/name` -> flat `Folder__name.wav`, as the clips were converted from the public/audio/esm masters).
 static func clip_path(clip: String) -> String:
 	return ESM_DIR + clip.replace("/", "__") + ".wav"
 

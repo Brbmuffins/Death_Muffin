@@ -3,9 +3,9 @@ extends Node
 ## Gravecaller rites on the rebuild's session structure (REBUILD D1: the host's game is authoritative). One DmRiteCaster is a child of every
 ## player body, on EVERY peer, at the same NodePath (name it "Rites"; use `DmRiteCaster.attach(body, world)`).
 ##
-## The caster is the SHARED PLUMBING only. Each rite is its own small module (godot/next/rites/rite_<id>.gd, a DmRiteModule) registered in
-## DmRiteRegistry (one line per rite); the recipe for adding one is in godot/next/rites/README.md. The rules numbers live in DmAbilities /
-## DmSimData / DmFxData, the visuals in DmRiteFx (shared with the original game).
+## The caster is the SHARED PLUMBING only. Each rite is its own small module (client/next/rites/rite_<id>.gd, a DmRiteModule) registered in
+## DmRiteRegistry (one line per rite); the recipe for adding one is in client/next/rites/README.md. The rules numbers live in DmAbilities /
+## DmSimData / DmFxData, the visuals in DmRiteFx.
 ##
 ## Flow:
 ##   owner client  request_cast(rite, aim, target_id)  --RPC intent-->  host `_apply_cast`
@@ -14,15 +14,15 @@ extends Node
 ##        (rolls the numbers, schedules shots with `after`, damages through `deal`, consumes corpses);
 ##        a resolve that fails (e.g. the corpse was taken first) refunds the cost and cooldown;
 ##   host broadcasts EVENT dicts ({t, rite, ...}) by RPC; EVERY peer (the host included, also solo) plays each event exactly once
-##        through module.play: fx via DmRiteFx (the same code the original game draws the rites with), sound via AudioDirector.
+##        through module.play: fx via DmRiteFx, sound via AudioDirector.
 ##   host replicates {essence, max, cooldowns, souls} to the owner for the HUD (`get_state()` + `state_changed`); a refusal goes back as `cast_rejected`.
 ## Casting is not predicted on the owner: it sees its own cast when the host's event arrives (one round trip).
 ##
-## World contract: see godot/next/rites/README.md (DmRiteWorld).
+## World contract: see client/next/rites/README.md (DmRiteWorld).
 ##
-## Ported to the combat core (client/code.list "Ported"; DECISIONS B42): the rites stay GDScript and call the core synchronously, so a kill resolves inside the cast. An
+## On the combat core (DECISIONS B42): the rites stay GDScript and call the core synchronously, so a kill resolves inside the cast. An
 ## enemy is an id (an int, the core's) or a `DmFoe` snapshot of it, never a node; a thrall is an id; the corpse field and the legion are the adapters the game scene's
-## `core_host` owns (`corpses()`, `thralls()`). What a module uses instead of the nodes it used:
+## `core_host` owns (`corpses()`, `thralls()`). What a module uses:
 ##   c.foe(id) / c.foes_in_radius(pos, r)   the living enemies (DmFoe: id, x, z, radius, hp, state, def, area ...)
 ##   c.deal(id, amount) -> {dealt, killed}   the hero's blow (DmStatusSet.hit; `hit` is the bool); a kill is known at once
 ##   c.apply_status / has_status / status_stacks / remove_status   the statuses of an enemy or a thrall (the core's; DmStatusSet stays the hero's and the bosses')

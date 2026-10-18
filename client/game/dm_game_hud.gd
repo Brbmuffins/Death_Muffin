@@ -1,8 +1,7 @@
 class_name DmGameHud
 extends RefCounted
-## Helpers of the HUD view-model (client/code.list "Ported"): the art path and the interaction prompts. Today's file also holds the old game's
-## view-model builder (`build`, `target`, `minimap`, ...), which read the per-creature sim records (DmSimEnemy); the HUD on the combat core
-## is built by DmNextHudVm from the core's bulk arrays, so those are not here.
+## Helpers of the HUD view-model: the art path and the interaction prompts. The view-model itself is DmNextHudVm's, built from the core's bulk arrays
+## (the old game's builder read the per-creature sim records, DmSimEnemy).
 
 const ART := "res://assets/game/art/"
 

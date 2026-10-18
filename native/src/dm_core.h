@@ -49,7 +49,7 @@ public:
 	// Thralls and corpses: the parsed data files by name ("abilities" RALLY, "fen" HAG_HEX, "statuses" PLAGUE_BURST, "gameplay_legendary" LEGEND,
 	// "runes" RUNE_TUNING.colossus, "combat_enemies" = data/combat/enemies.json damage_scale).
 	void load_legion_tuning(const godot::Dictionary &p_files);
-	// The constants of DmSimConsts, DmCorpseField and DmThrall by their GDScript names (client/core/dm_gd_consts.gd reads them from the files).
+	// The constants of DmSimConsts, DmCorpseField and DmThrall by their GDScript names (DmCoreData.consts, client/core/dm_core_data.gd, reads them from the files).
 	void load_sim_consts(const godot::Dictionary &p_consts);
 	godot::Dictionary tuning() const;  // the legion tuning in force, keyed like load_sim_consts plus the data-file values (drift check in tests)
 	// The status rule table, one Dictionary per status IN WIRE ORDER (DmStatusSet.IDS), keys as DmStatusSet._defs plus "name".
@@ -121,7 +121,7 @@ public:
 
 	// Corpses (DmCorpseField, host logic). Ids are the corpse's own numbers.
 	void set_corpse_life_mult(double p_mult);  // corpseLifeMult x the vow multiplier
-	void set_area_level(const godot::String &p_area, int64_t p_level);  // the toxic pool's damage level; unset = 1, as today
+	void set_area_level(const godot::String &p_area, int64_t p_level);  // the toxic pool's damage level; unset = 1
 	int64_t corpse_add(const godot::Vector2 &p_pos, const godot::String &p_kind, const godot::String &p_enemy, bool p_elite, double p_facing, double p_scale, const godot::String &p_area);
 	godot::PackedInt32Array corpses_in_radius(const godot::Vector2 &p_pos, double p_r, const godot::String &p_area = godot::String()) const;
 	int64_t corpse_pick(const godot::Vector2 &p_aim, double p_pick_r, double p_max_range, const godot::Vector2 &p_from, const godot::String &p_area = godot::String()) const;

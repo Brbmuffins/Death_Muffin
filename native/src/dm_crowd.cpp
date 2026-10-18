@@ -570,7 +570,7 @@ void DmCrowd::sync(const Ref<DmCore> &p_core) {
 		r.tint[0] = look.tint[0];
 		r.tint[1] = look.tint[1];
 		r.tint[2] = look.tint[2];
-		r.glow = enemy_glow(look, c.elite, look.has_fen && c.area == fen);  // the corpse keeps the body's glow, as today's body did
+		r.glow = enemy_glow(look, c.elite, look.has_fen && c.area == fen);  // the corpse keeps the body's glow
 		feed.corpses.push_back(r);
 	}
 	view.tick(feed);
@@ -842,7 +842,7 @@ Dictionary DmCrowd::view_info(int64_t p_id, bool p_corpse) const {
 	return info_of(p_corpse ? view.find_corpse(int32_t(p_id)) : view.find(int32_t(p_id)));
 }
 
-// ---------------------------------------------------------------------------------------------------------------- today's pure helpers
+// ---------------------------------------------------------------------------------------------------------------- the pure helpers
 
 double DmCrowd::turn_toward(double p_cur, double p_target, double p_dt, double p_rate, double p_max_rate) {
 	return dm::CrowdView::turn_toward(p_cur, p_target, p_dt, p_rate, p_max_rate);

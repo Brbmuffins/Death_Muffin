@@ -1,9 +1,9 @@
 class_name DmSessionRewards
 extends Node
-## Host-side rewards for one party session (REBUILD D1/D4/D5; contract in godot/next/rewards/README.md). Runs ONLY on the session host.
-## The rebuild's port (client/code.list "Ported"): a kill arrives as the game scene's `kill_credited` (the host's one credit per kill, from the core's
+## Host-side rewards for one party session (REBUILD D1/D4/D5; contract in client/next/rewards/README.md). Runs ONLY on the session host.
+## A kill arrives as the game scene's `kill_credited` (the host's one credit per kill, from the core's
 ## EV_ENEMY_DIED; the killer is a peer, and its member's body is the killer), not as each enemy's `died`; lifesteal hears the core host's `struck` (a hero's
-## direct blow; a DoT tick or a thrall's swing never is one). Everything after that is today's code.
+## direct blow; a DoT tick or a thrall's swing never is one).
 ##
 ##  1. every credited kill -> who earned it (the original game's rule: a living member within DmGameRewards.KILL_REWARD_RANGE,
 ##     each at ITS OWN multipliers; the Kill Chain only for the killer, only in unsafe ground),

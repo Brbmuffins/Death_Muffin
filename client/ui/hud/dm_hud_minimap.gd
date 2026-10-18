@@ -2,7 +2,7 @@ class_name DmHudMinimap
 extends Control
 ## `.hud-map .frame` + archive/legacy-web:src/ui/Minimap.ts: a 190 px circular north-up map centred on the player.
 ## Fed with a "minimap" Dictionary (README: "minimap"); the draw order and colours are Minimap.ts line for line.
-## Ported (client/code.list): the dots come as flat arrays (`enemies` and `allies`: x, z, elite per dot; `thralls`: x, z, yaw; `corpses`: x, z, facing, scale; the core's own
+## The dots come as flat arrays (`enemies` and `allies`: x, z, elite per dot; `thralls`: x, z, yaw; `corpses`: x, z, facing, scale; the core's own
 ## layouts) and are drawn by ONE MultiMesh (one draw call; a draw_circle per dot was one each, 130 in a Full Party fight), the frame, disc and edge vignette are static meshes,
 ## the rectangles come from the HUD atlas, the marks and the player's arrow are one mesh: about eight draw calls in all (client/README.md "The HUD's budget").
 

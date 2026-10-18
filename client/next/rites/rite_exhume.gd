@@ -3,7 +3,7 @@ extends DmRiteModule
 ## DmCoreLegion.raise on the caster's own body (consumes through the corpse field's atomic consume, enforces the cap); the intent is the sim's exhume
 ## intent (sim_caster._exhume): kind / cap from the discipline mods, hp / damage from the stats, runes Mass Grave (count) and Bone Colossus.
 ## 12 essence, 500 ms; the Sickle refund and the Colossus cooldown come from DmAbilities.apply_cast_cost. Visuals: DmRiteFx.exhume_cast.
-## On the combat core (client/code.list "Ported"): enemies are DmFoe snapshots, the blow is `c.deal`, corpses and thralls are the core's through `c.corpses()` and `c.thralls()` (atomic consume, the cap, the stats of today's DmThralls).
+## On the combat core: enemies are DmFoe snapshots, the blow is `c.deal`, corpses and thralls are the core's through `c.corpses()` and `c.thralls()` (atomic consume, the cap, the stats of DmThralls).
 
 
 func _init() -> void:

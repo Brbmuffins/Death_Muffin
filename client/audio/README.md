@@ -40,14 +40,14 @@ per-bus trims (enemies 0.8, thralls 0.5, ui 0.9), master x0.9, music x0.72. The 
 - `audio_synth.gd` `DmAudioSynth`: procedural loops (zone drones, boss drum) generated at runtime.
 - `audio_director.gd`: the autoload.
 
-## Assets (`client/assets/audio/`, named in `client/assets.list`, `.import` files committed)
+## Assets (`client/assets/audio/`, `.import` files committed)
 | Folder | Files | Size | Notes |
 | --- | --- | --- | --- |
 | `esm/` | 318 | 35 MB | one-shots, WAV |
 | `music/` | 5 | 7.9 MB | MP3 |
 | `ambience/` | 7 | 0.5 MB | bed loops, Ogg; `.import` has `loop=true` |
 | `world/`, `combat/` | 12 + 2 | 0.3 MB | bells, gusts, crows, moans, embers, boss toll |
-| `eleven/` | 1 | 0.1 MB | sounds generated from Discord with ElevenLabs (ASSET_PIPELINE.md): sfx WAV mono 16-bit, music MP3; spec in `audio-manifest/eleven/<id>.json`. The client lists only `chat_ding.wav` |
+| `eleven/` | 1 | 0.1 MB | sounds generated from Discord with ElevenLabs (ASSET_PIPELINE.md): sfx WAV mono 16-bit, music MP3; spec in `audio-manifest/eleven/<id>.json`. Only `chat_ding.wav` is here so far |
 
 How a sound is made, levelled and recorded (its licence row is in docs/AUDIO-SOURCES.md): ASSET_PIPELINE.md "Audio generation". How the files reach
 `client/assets/`: client/README.md "Assets".
@@ -66,10 +66,7 @@ How a sound is made, levelled and recorded (its licence row is in docs/AUDIO-SOU
 - `client/tests/sound.gd`: the cues the combat core's events play, by name and count, the hero's footsteps, the area beds and scores, the gate and the boss
   score, on a recording stand-in for the director (client/README.md "Sound").
 - `client/tests/threads.gd` holds the bus-layout lock rule.
-- Not covered in the client: the mixer maths, the music state machine and that every clip id has an imported file (the old game pinned them with golden
-  fixtures, which the client does not carry).
 
 ## Known gaps
 - The score is five ElevenLabs music cues (`docs/AUDIO-SOURCES.md`): one boss cue for every boss, no per-boss scores yet.
-  New cues: `tools/audio/generate-eleven-music.mjs` -> `tools/audio/prepare-eleven-music.mjs` (writes `public/audio/music/`) -> `tools/godot/sync-audio-assets.sh`
-  and the client's asset list.
+  New cues: `tools/audio/generate-eleven-music.mjs` -> `tools/audio/prepare-eleven-music.mjs` (writes `public/audio/music/`) -> copied into `client/assets/audio/music/` by hand (ASSET_PIPELINE.md "Into the game").

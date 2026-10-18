@@ -67,7 +67,7 @@ static func reforge_problem(inst: Dictionary, index: int, affix_range: Callable)
 	return ""
 
 
-## A fresh value for the affix: uniform over today's range. `rand` returns [0,1).
+## A fresh value for the affix: uniform over the range the item level allows. `rand` returns [0,1).
 static func reforge_value(affix_id: String, ilvl: int, rand: Callable, affix_range: Callable) -> int:
 	var r: Variant = affix_range.call(affix_id, ilvl)
 	if r == null:

@@ -2,9 +2,9 @@ class_name DmBenchHistory
 extends RefCounted
 ## The benchmark's run history. Local (`history_file`): every finished run's setup, PC and numbers, for the results screen's "vs last run" column
 ## (the previous run of the same setup on the same GPU). Server: every finished run is queued in `pending_file` and sent with the player's login
-## (DmApi.post_benchmark -> the benchmark history of the TEST server); `flush` retries what is left the next time a logged-in online session has an api (the results screen,
+## (DmApi.post_benchmark -> the benchmark history on the game's server); `flush` retries what is left the next time a logged-in online session has an api (the results screen,
 ## character select). Runs that ran at the refresh rate (V-Sync forced on) or were cancelled are sent too, flagged by the server and left out of its trends.
-## Ported to the rebuilt client (client/code.list "Ported"): both files live in `DmBenchmark.dir`, so a test keeps its own, and a script run (every test is one) never sends through a real transport.
+## Both files live in `DmBenchmark.dir`, so a test keeps its own, and a script run (every test is one) never sends through a real transport.
 
 const KEEP := 200               ## local runs kept (oldest dropped)
 const PENDING_KEEP := 50
@@ -119,7 +119,7 @@ static func flush(api: DmApi) -> int:
 
 
 ## True when `api` would carry the run over the network (a DmHttpTransport) from a script run: every test is one (`godot --script`), and no test sends a benchmark run anywhere but
-## a mock, the test server included. A real launch is not a script run.
+## a mock. A real launch is not a script run.
 static func over_the_network_from_a_script(api: DmApi) -> bool:
 	return "--script" in OS.get_cmdline_args() and api.transport.is_valid() and api.transport.get_object() is DmHttpTransport
 

@@ -17,7 +17,7 @@ replicated `discipline_id` (`DmHeroBody.family_of`), so a joining Reaper plays t
 - **Cape / pet**: `DmAvatar.set_cape`, `DmPetView` (trails the owner, idles, snaps when far; parented to the game). Source = the Capes & Pets panel:
   `_cosmetics_act` -> backend -> `DmNextUiHost.refresh_character` -> `load_cosmetics` -> `Look.set_cosmetics`.
 - **Hero ring** (local hero only): contact shadow + pale ring, discipline glow + bone ring, cursor reticle, soul halo, hover ring. The hover ring finds the hovered enemy in the core by id and follows the body the crowd draws; the ring
-  decals are drawn at `RING_K` of their opacity and the contact shadow at `SHADOW_A`, because Forward+ blends a decal in linear light and the old renderer in the encoded scene (client/README.md "The look against today's game").
+  decals are drawn at `RING_K` of their opacity and the contact shadow at `SHADOW_A`, because Forward+ blends a decal in linear light and the old renderer in the encoded scene (client/README.md "The look on Forward+").
 - **Settings -> Hide helm** reaches the avatars (`DmAvatar.refresh_all` in `DmNextUiHost._apply_settings_side_effects`).
 
 ## Replication
@@ -32,6 +32,5 @@ Gear is 1 draw call per model (weapon, off-hand, helm, mantle); a remote pet far
 (client/game/README.md).
 
 ## Tests / known gaps
-`client/tests/rites.gd` builds each discipline and the Reaper as a real character in a fresh game (her set look: Soul Harbinger's Raiment, hood, body and scythe). Not covered in the client: the look node's replication (an unchanged look sends nothing,
-the remote peer's look), grips, clips and the legendary swap (the old game's hero-look and gear-look suites).
+`client/tests/rites.gd` builds each discipline and the Reaper as a real character in a fresh game (her set look: Soul Harbinger's Raiment, hood, body and scythe).
 No friendly rim on the hero. The hover ring follows hover only (not the attack or auto target). Remote heroes get no ring or halo.

@@ -2,7 +2,7 @@ extends DmRiteModule
 ## Command: Rend (the Gravecaller's signature, R): your whole legion leaps to the cursor (pulled back to 13 m, and to where your area ends) and cleaves everything around
 ## it, each thrall paying 15 % of its health instead of essence (DmThrallHost.command_rend: ring of 1.2 m, cleave 2.2 m, damage x 2.5; numbers DmSimData.SIGNATURE.rend).
 ## Free, 9 s, unlocks at level 10, refused `no_thralls` without a living legion. Visuals: DmRiteFx.rend (a jade beam and claw per thrall).
-## On the combat core (client/code.list "Ported"): the legion is the core's (`c.thralls().command_rend`: each thrall is moved, charged and made to cleave through the core).
+## On the combat core: the legion is the core's (`c.thralls().command_rend`: each thrall is moved, charged and made to cleave through the core).
 
 const STEP := 0.5   ## sim_signatures.last_point_in_area walks the line in 0.5 m steps
 

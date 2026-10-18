@@ -1,14 +1,14 @@
 class_name DmDevEntry
 extends Node
-## The dev entry of the rebuilt client: starts the game scene (DmNextGame) OFFLINE in the Hollow Graves with a dev character, the way today's `--dev-offline --class=2` does,
-## and takes the options for a crowd or a screenshot. It is not the main scene (that is the boot, main/main.tscn: login and character select against the test server); run it as a scene.
+## The dev entry of the rebuilt client: starts the game scene (DmNextGame) OFFLINE in the Hollow Graves with a dev character, the way `--dev-offline --class=2` does,
+## and takes the options for a crowd or a screenshot. It is not the main scene (that is the boot, main/main.tscn: login and character select); run it as a scene.
 ## Nothing here reaches a server: the backend is the local mock (DmOffline.make_mock, its accounts in user://dm_dev_offline_db.json), and DmNextGame refuses any api whose base url is not the test
 ## server's. DmMain reads the same options for `-- --dev-offline` (DmLaunchArgs, main/dm_launch_args.gd).
 ##
 ##   godot --path client res://dev/dm_dev_entry.tscn                       # the Gravecaller (class 2), level 10, the HUD, waves
 ##   godot --path client res://dev/dm_dev_entry.tscn -- --class=1 --seed=7  # after `--`: the options below
 ##
-## He fights with the rites of today's game (client/README.md "The Gravecaller's rites"): LMB walks, or attacks the enemy under the cursor with the primary (Bone Needle; hold to
+## He fights with the Gravecaller's rites (client/README.md "The Gravecaller's rites"): LMB walks, or attacks the enemy under the cursor with the primary (Bone Needle; hold to
 ## repeat, Shift+LMB casts in place), keys 1-4 are the kit's default loadout (Marrow Spear, Exhume, Miasma, Black Litany), RMB is Corpse Explosion and R the signature from level 10
 ## (Command: Rend). WASD walks. Click-to-move, camera zoom on the wheel.
 ##
@@ -17,7 +17,7 @@ extends Node
 ## --shot=<png> [--shot-after=<game seconds, default 25>] [--shot-wall=<real seconds, default none>] (save a screenshot and quit: the QA hook; software GL runs slower than the game, so
 ## --shot-wall takes the picture when that many real seconds have gone even if the game time has not come).
 
-const DEV_DB := "user://dm_dev_offline_db.json"   ## this project's own user folder ("Death Muffin (rebuild)"), never the live game's
+const DEV_DB := "user://dm_dev_offline_db.json"   ## in this project's own user folder ("Death Muffin (rebuild)")
 
 var game: DmNextGame
 var api: DmApi

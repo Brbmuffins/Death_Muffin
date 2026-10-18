@@ -8,11 +8,11 @@ extends RefCounted
 ##  - vertex wing flap (wingFlap.ts) for moth / bat / seraph
 ##  - fade variant (blend_mix, no depth write) for opacity < 1 and spectral bodies
 ## Source textures come from the imported glTF StandardMaterial3D (albedo, ORM, normal).
-## Ported (client/code.list "Ported"): the colours are Compatibility's, and the lift is not the creature's. Today's renderer reads a texture, a colour uniform and every number a shader
+## The colours are Compatibility's (the old game's renderer), and the lift is not the creature's. Compatibility reads a texture, a colour uniform and every number a shader
 ## writes to ALBEDO or EMISSION as sRGB and converts the product to linear once, at the end; Forward+ takes them as linear. The creature's numbers (the tint, the emissive, the rim and the
 ## gear tints are `lin()` of a hex) are made for the first, so the shader multiplies in Compatibility's numbers and converts like it (`dm_s2l`): the hero's accent emissive (0.04 x the
-## accent) is a twelfth of itself on today's side, and was most of the robe's brightness here. The area's exposure lift (`DmWorldBuilder.AREA_LIFT`) is calibrated on the baked world: a creature
-## lit by the real-time lights alone divides its albedo, specular and emission by it (the global `dm_lift_inv`), so the lifted exposure shows it as today's does (client/README.md "The look against today's game").
+## accent) is a twelfth of itself in Compatibility, and was most of the robe's brightness here. The area's exposure lift (`DmWorldBuilder.AREA_LIFT`) is calibrated on the baked world: a creature
+## lit by the real-time lights alone divides its albedo, specular and emission by it (the global `dm_lift_inv`), so the lifted exposure shows it as the old game's did (client/README.md "The look on Forward+").
 
 static var _shaders: Dictionary = {}
 static var _baked: Dictionary = {}   # source ArrayMesh -> gear-masked ArrayMesh

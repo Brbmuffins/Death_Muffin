@@ -5,7 +5,7 @@ extends Node
 ## and broadcasts the boss events + 20 Hz state to the other peers. Every peer: DmBossFx plays each event once, the boss music follows the local
 ## hero. Solo is the same code on the OfflineMultiplayerPeer.
 ## Seams on DmNextGame: `bosses` (this node).
-## Ported to the combat core (client/code.list "Ported"): a boss body registers with the core's host as an external of kind 1 (DmBoss, `core_id`), whose queries include
+## On the combat core: a boss body registers with the core's host as an external of kind 1 (DmBoss, `core_id`), whose queries include
 ## the living bosses after the enemies (so rites and the hover pick hit them), whose thralls' blows come back as `thrall_hit_external` (routed to the brain here) and
 ## whose adds are core bodies. The boss pools (`spawn_pool`, `toxic_zones`: the Saint's rot, the Regent's coals) are core zones (DmBossNodeWorld makes them with the boss as the source,
 ## DmEnemyFx draws them from the zone events), so none of that is here.

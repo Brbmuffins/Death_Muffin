@@ -2,8 +2,8 @@ class_name DmBenchmarkSetup
 extends Control
 ## The window the character select's Benchmark button opens: room, class, fight size and length (DmBenchmark.ROOMS / class_indices / SIZES /
 ## LENGTHS), Start / Back (Esc). It opens on the last setup used (`file`, per PC) and says whether the pick is the Standard setup (the one
-## that compares PCs) or a custom one. `start(setup)` hands the pick to main, which runs DmBenchmarkScreen with it. Ported to the rebuilt client (client/code.list "Ported"):
-## the upload note names the test server, and the last setup is kept in `DmBenchmark.dir` (`file`).
+## that compares PCs) or a custom one. `start(setup)` hands the pick to main, which runs DmBenchmarkScreen with it.
+## The upload note says where finished runs go (the game's benchmark page), and the last setup is kept in `DmBenchmark.dir` (`file`).
 
 signal start(setup: Dictionary)
 signal closed
@@ -58,7 +58,7 @@ func _ready() -> void:
 		_add(_length, DmBenchmark.LENGTH_NAMES[k] + ("" if DmBenchmark.LENGTHS[k][2] else ", no render breakdown"), k)
 	_note = DmFrontUi.lbl("", "body", 14, DmUi.SPELL_300, 0.0, true)
 	v.add_child(_note)
-	v.add_child(DmFrontUi.lbl("Every finished run is added to the benchmark history of the test server with your name and this PC's GPU and CPU.",
+	v.add_child(DmFrontUi.lbl("Every finished run is added to the game's benchmark page with your name and this PC's GPU and CPU.",
 		"body", 12, DmUi.TEXT_FAINT, 0.0, true))
 	var btns := HBoxContainer.new()
 	btns.alignment = BoxContainer.ALIGNMENT_CENTER

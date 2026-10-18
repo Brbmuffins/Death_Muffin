@@ -1,6 +1,6 @@
 class_name DmPaPortrait
 extends Control
-## Class portrait (3:4, full width of its card). Uses res://assets/<path> once synced; else a tinted placeholder with the class initial.
+## Class portrait (3:4, full width of its card). Uses res://assets/<path> when the file is there; else a tinted placeholder with the class initial.
 
 var tex: Texture2D
 var seed_text := ""

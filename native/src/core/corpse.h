@@ -1,5 +1,5 @@
 #pragma once
-// A corpse: DmSimCorpse (godot/sim/sim_corpse.gd) with the fields the host logic of DmCorpseField (godot/next/corpses) uses.
+// A corpse: the old game's DmSimCorpse with the fields the host logic of its DmCorpseField uses.
 #include <cstdint>
 #include <limits>
 

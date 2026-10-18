@@ -1,5 +1,5 @@
 #pragma once
-// A raised thrall: a port of DmThrall (godot/next/thralls/dm_thrall.gd), its brain and the host's bookkeeping (dm_thrall_host.gd).
+// A raised thrall: its brain and the host's bookkeeping, from the old game's DmThrall (dm_thrall.gd) and dm_thrall_host.gd.
 #include <cstdint>
 #include <limits>
 
@@ -18,7 +18,7 @@ enum DeathReason : int32_t { DR_KILLED = 0, DR_CRUMBLED, DR_SACRIFICED, DR_DECAY
 constexpr const char *THRALL_KIND_NAMES[TK_COUNT] = { "warrior", "shieldbearer", "hound", "wraith", "archer", "bonemage", "plaguebearer", "colossus" };
 constexpr const char *DEATH_REASON_NAMES[4] = { "killed", "crumbled", "sacrificed", "decayed" };
 
-// The stats DmThralls.raise_stats / colossus_stats compute in GDScript (today's DmThrall.configure() keys).
+// The stats DmThralls.raise_stats / colossus_stats compute in GDScript (the old game's DmThrall.configure() keys).
 struct ThrallSpec {
 	int32_t kind = TK_WARRIOR;
 	double hp = 1, max_hp = 1, damage = 1, interval = 1, range = 1.3, speed = 5, ally_heal = 0, lifetime_s = 0;

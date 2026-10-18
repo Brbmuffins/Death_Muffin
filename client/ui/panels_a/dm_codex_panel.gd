@@ -1,8 +1,8 @@
 class_name DmCodexPanel
 extends DmPaTabbedWindow
 ## The Codex (K; archive/legacy-web:src/ui/CodexPanel.ts): rites, disciplines, weapons, armor sets, Gear Atlas, affixes, runes, Altar & Vows, stats, the dead, the diocese,
-## people, professions, lore, Chronicle. Text comes from the exported content/codex.ts (godot/data/content/codex.json) and from the computed rows
-## (godot/data/panels_a/codex_rows.json: set rows, affix rows, ...).
+## people, professions, lore, Chronicle. Text comes from the exported content/codex.ts (client/data/content/codex.json) and from the computed rows
+## (client/data/panels_a/codex_rows.json: set rows, affix rows, ...).
 ## Enemy and area entries stay sealed until the journal records them. Each tab is built when you open it.
 ##
 ## Data in:  set_discipline(id), set_journal(dead: Array, areas: Array), set_runes_found(ids), set_met_npcs(ids), set_chronicle(view),

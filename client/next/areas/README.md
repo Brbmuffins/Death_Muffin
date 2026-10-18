@@ -1,4 +1,4 @@
-# client/next/areas: every area of the world on the rebuild
+# client/next/areas: every area of the world
 
 All thirteen areas live in `DmNextGame`: twelve area scenes (`client/areas/<id>.tscn`, client/README.md "Areas") and the Depths, the one area with no scene (`client/next/depths/`; `DmWaveDirector` skips `instance` areas).
 Nothing here re-implements a rule; it wires the shared content (`areas.json`, `enemies.json`, `DmSimData`) onto DmNextGame's systems.
@@ -21,8 +21,7 @@ Nothing here re-implements a rule; it wires the shared content (`areas.json`, `e
 
 ## Tests
 `client/tests/world.gd` plays the whole world: every area, seals and gates, walking from the Chapterhouse into the Warren, waystones, the recall, the later areas' rosters in the game scene, the waves following the hero from area to area
-(`--fixed-fps 60`). `client/tests/areas.gd` checks every area scene against what `world.json` says, and `client/tests/surge.gd` plays the Grave Surges. Not covered in the client: every fresh wave standing beyond aggro range over nine areas and twelve waves,
-and the wave milestones' banners and Nightfall light (the old game's spawn and milestone suites).
+(`--fixed-fps 60`). `client/tests/areas.gd` checks every area scene against what `world.json` says, and `client/tests/surge.gd` plays the Grave Surges.
 
 ## Wave milestones (`dm_wave_milestones.gd`, child `Milestones`)
 Elite Vanguard (tier 3), Restless Crypts (6), Nightfall (8): banner on crossing (`DmNextProgress.apply_progress` -> `on_tier`), a "fades" toast on dropping back, and the Nightfall light (moon x(1 - 0.6 k),

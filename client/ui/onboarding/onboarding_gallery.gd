@@ -1,6 +1,6 @@
 extends Control
 ## Counsel gallery: the HUD mock with one counsel card up and its TIP_ANCHOR glow lit.
-## godot --path godot res://ui/onboarding/onboarding_gallery.tscn -- --tip=<tip id> [--page=calm|combat] [--out=/x.png] [--crop=x,y,w,h[,scale]]
+## godot --path client res://ui/onboarding/onboarding_gallery.tscn -- --tip=<tip id> [--page=calm|combat] [--out=/x.png] [--crop=x,y,w,h[,scale]]
 ## (ui/onboarding/shoot.sh wraps it in the renderer lock.)
 
 var hud: DmHud

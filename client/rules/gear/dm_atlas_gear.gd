@@ -2,7 +2,7 @@ class_name DmAtlasGear
 extends RefCounted
 ## The per-player half of the Gear Atlas (archive/legacy-web:src/gameplay/atlas.ts: atlasSlot, powerGainPct, setOutlook; AtlasPanel.verdict/outlook):
 ## the up/down arrow and the "as part of its set" figures for every catalogue item, which need the live stat context.
-## The static Atlas model itself (drop tables, fit bands...) is exported JSON (godot/data/panels_a/atlas.json), not rules.
+## The static Atlas model itself (drop tables, fit bands...) is exported JSON (client/data/panels_a/atlas.json), not rules.
 
 static var _by_id: Dictionary = {}
 static var _by_set: Dictionary = {}

@@ -1,7 +1,7 @@
 class_name DmNextWarmup
 extends RefCounted
-## GPU first-use warm-up for the rebuilt client (DmNextGame.start, under a cover): DmWarmup's approach on the parts this game draws. Ported
-## (client/code.list "Ported"): there are no per-creature nodes to rehearse, so the crowd is warmed with rehearsal rows and the bosses' models stay nodes.
+## GPU first-use warm-up for the rebuilt client (DmNextGame.start, under a cover): DmWarmup's approach on the parts this game draws.
+## There are no per-creature nodes to rehearse, so the crowd is warmed with rehearsal rows and the bosses' models stay nodes.
 ##  1. Every creature model and Binbun effect scene loads on worker threads.
 ##  2. Every boss model the game serves is drawn in front of the camera (opaque and mid-fade), with every effect (Binbun scenes, decal / flash layers, enemy +
 ##     boss telegraph shapes) and the gear models, and every crowd model is drawn at three distances (the three levels of detail; the nearest also cast shadows) from
@@ -11,7 +11,7 @@ extends RefCounted
 ##     (Godot's separate "no omni light" variant), then with the shared flash light on.
 ## The combat core's tick is held while it runs (the host's sync would otherwise forget the rehearsal rows at once); the rows are cleared at the end. The cover is the
 ## shared art DmLoadingScreen (main's, else acquired here). Costs the loading time only: nothing here survives into play (the stage, the rows and the effect handles are freed).
-## Runs for players as today's does (`DmNextGame._wants_warmup`: not headless, not on QA runs; the benchmark forces it). Before 2026-10-17 it ran only in the benchmark, and play
+## Runs for players (`DmNextGame._wants_warmup`: not headless, not on QA runs; the benchmark forces it). Before 2026-10-17 it ran only in the benchmark, and play
 ## compiled every effect on its first use (warbogar: "Reaper lags out hard on first time VFX rendering").
 
 const TOUR_FRAMES := 3

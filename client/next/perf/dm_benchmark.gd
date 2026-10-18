@@ -1,11 +1,10 @@
 class_name DmBenchmark
 extends Node
-## The in-game benchmark of the rebuilt client (character select "Benchmark" button, launch arg `--benchmark`), a port of godot/next/perf/dm_benchmark.gd
-## (client/code.list "Ported"): the same held fight on every PC so builds and machines compare, and the same fight as today's game so the rebuild can be measured
-## against it (Gate B, DECISIONS B50). An ISOLATED offline game (DmBenchFight: mock backend with an in-memory db, nothing persisted, no network); the player's settings
+## The in-game benchmark of the rebuilt client (character select "Benchmark" button, launch arg `--benchmark`): the same held fight on every PC so builds and machines compare
+## (DECISIONS B50). An ISOLATED offline game (DmBenchFight: mock backend with an in-memory db, nothing persisted, no network); the player's settings
 ## file is only READ (graphics preset, fps cap for the report; the run itself is uncapped with V-Sync off).
-## Setup (`configure`, the setup window DmBenchmarkSetup): room (ROOMS: today's nine combat areas), class (`class_indices`: the four necromancers and the Reaper), fight size (SIZES)
-## and length (LENGTHS); STANDARD is the setup that compares PCs, today's. Fight: only the room's area is loaded, the room's own enemy kinds at the walkable point nearest its centre,
+## Setup (`configure`, the setup window DmBenchmarkSetup): room (ROOMS: the nine combat areas), class (`class_indices`: the four necromancers and the Reaper), fight size (SIZES)
+## and length (LENGTHS); STANDARD is the setup that compares PCs. Fight: only the room's area is loaded, the room's own enemy kinds at the walkable point nearest its centre,
 ## every enemy with the same hp / damage in every room (`standard_stats`, no elites), a god-mode level 60 hero on auto combat, thralls raised directly, enemies topped up to the size's
 ## count, the room's boss held awake in a Full Party fight (BOSS_SIZES), fixed seed and camera zoom. Warm-up (not measured; the first frames compile shaders), then
 ## the measured window, then the HUD's share, then the render breakdown.
@@ -17,19 +16,19 @@ extends Node
 ## Render breakdown (`breakdown`, after the measured window): the fight is paused (the picture stays) and each of BREAK_CATS is hidden in turn for
 ## BREAK_MEASURE_S; the drop in draw calls / objects / render CPU / GPU / frame time against the everything-on sample is what that part costs
 ## on this PC. Hiding is visibility only (restored after each sample); nothing is freed or rebuilt.
-## The fight plays at the player's graphics preset (DmNextPerf, as today's: uncapped, at full resolution), with rewards, loot drops and the kill ledger against the run's mock as
-## today's. Not in the rebuilt client yet, so not in the fight (client/README.md "The benchmark"): the guests' hero bodies.
+## The fight plays at the player's graphics preset (DmNextPerf: uncapped, at full resolution), with rewards, loot drops and the kill ledger against the run's mock.
+## Not in the rebuilt client yet, so not in the fight (client/README.md "The benchmark"): the guests' hero bodies.
 
 signal progress(text: String)
 signal breakdown_step(step: int, total: int, what: String)   ## the render breakdown froze the fight: step 0 = everything on, total + 1 = the re-measure
 signal _step
 
 const SEED := 20261011
-## The setup that compares PCs, today's: the Bell Sanctum (36 x 28 m: a small room keeps the pack on screen and the waves coming), Gravecaller (thrall master), Standard size, Full length.
+## The setup that compares PCs: the Bell Sanctum (36 x 28 m: a small room keeps the pack on screen and the waves coming), Gravecaller (thrall master), Standard size, Full length.
 ## Gate B's Full Party fight is `--bench-room=graves --bench-size=full_party`.
 const STANDARD := {"room": "sanctum", "discipline": 2, "size": "standard", "length": "full"}
-const ROOMS := ["graves", "warren", "ossuary", "nave", "coliseum", "sanctum", "cloister", "pyre", "fen"]   ## the combat areas, today's list (not the Depths instance)
-const STATS_ROOM := "sanctum"   ## the room whose roster fixes every enemy's health and damage (`standard_stats`), in every room, as today's
+const ROOMS := ["graves", "warren", "ossuary", "nave", "coliseum", "sanctum", "cloister", "pyre", "fen"]   ## the combat areas (not the Depths instance)
+const STATS_ROOM := "sanctum"   ## the room whose roster fixes every enemy's health and damage (`standard_stats`), in every room
 ## [enemies held, thralls]. Full Party is the biggest fight the game makes: the global enemy cap (DmSimData.GLOBAL_ENEMY_CAP, a test keeps the two equal)
 ## and 4 necromancers' legions (4 x 8 thralls, all raised by the one hero here), plus the room's boss (BOSS_SIZES).
 const SIZES := {"light": [15, 10], "standard": [30, 20], "heavy": [60, 30], "full_party": [72, 32]}
@@ -329,7 +328,7 @@ static func setup_label(s: Dictionary) -> String:
 
 
 ## The hp / damage every benchmark enemy gets, in every room: the Bell Sanctum roster's weighted average at its level on Easy (what the
-## benchmark's enemies had before rooms could be picked; STATS_ROOM, so the fight is as tough as today's), so a kill costs the same hits whatever the room or the kind.
+## benchmark's enemies had before rooms could be picked; STATS_ROOM, so the fight stays as tough as it was), so a kill costs the same hits whatever the room or the kind.
 static func standard_stats() -> Dictionary:
 	DmSimData.ensure()
 	var def: Dictionary = DmContent.area(STATS_ROOM)
@@ -365,7 +364,7 @@ func run() -> Dictionary:
 	RenderingServer.viewport_set_measure_render_time(_vp, true)
 	seed(SEED)
 	progress.emit("Building the fight...")
-	# Today's: the player's preset, uncapped, at full resolution, V-Sync off (2026-10-16: the game scene turned it back on, so Helix's runs read his
+	# The player's preset, uncapped, at full resolution, V-Sync off (2026-10-16: the game scene turned it back on, so Helix's runs read his
 	# monitor's 170 fps and the server flagged them).
 	var settings := {"graphics": DmGraphicsPreset.normalize(user.get("graphics", DmGraphicsPreset.DEFAULT)), "fps": 0, "auto_res": false,
 		"brightness": user.get("brightness", 1.0), "ui_scale": user.get("ui_scale", 1.0), "vsync": false}
@@ -457,7 +456,7 @@ func _core_end() -> void:
 	_core = {"ticks": host.ticks - _core_ticks0, "step_us": host.step_us, "sync_us": host.sync_us, "dispatch_us": host.dispatch_us}
 
 
-## The HUD nodes the game has: today's HUD and panels (`ui`, DmGameUi on the core, DECISIONS B46).
+## The HUD nodes the game has: the HUD and panels (`ui`, DmGameUi on the core, DECISIONS B46).
 func _hud_nodes() -> Array:
 	return [game.ui] if game.ui != null and is_instance_valid(game.ui) else []
 

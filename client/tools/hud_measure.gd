@@ -26,7 +26,7 @@ var out: FileAccess
 var g: DmNextGame
 var layer: CanvasLayer          ## the micro experiments' layer
 var micro_host: Control
-var hud_layer: HudShim             # today's HUD and panels as the measurement drives them (tests/hud_shim.gd)
+var hud_layer: HudShim             # the HUD and panels as the measurement drives them (tests/hud_shim.gd)
 var fps_now_ms := 0.0           ## the game clock the floats' caps count in (each rendered frame is 1/60 s under --fixed-fps)
 var spam_n := 0
 var budget_s := 50

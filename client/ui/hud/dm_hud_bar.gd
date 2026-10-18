@@ -1,7 +1,7 @@
 class_name DmHudBar
 extends Control
 ## A thin HUD track: inset background, 1px border, left-to-right gradient fill, optional glow and fixed tick marks.
-## Ported (client/code.list): drawn from the HUD atlas on the chrome layer (DmHudKit), so a bar adds no draw calls of its own.
+## Drawn from the HUD atlas on the chrome layer (DmHudKit), so a bar adds no draw calls of its own.
 ## Mirrors the web's `.track > .fill` pairs (xp bar, target/boss hp, chain timer, depth, upgrade bars, party hp, soul meter).
 
 var value: float = 0.0: set = set_value

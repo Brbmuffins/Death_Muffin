@@ -1,7 +1,7 @@
 class_name DmCombatData
 extends RefCounted
-## Loader for godot/data/combat/*.json (originally exported from the web game's TS; now edited by hand).
-## Every rules file in godot/rules/combat reads its tables through here so the JSON is parsed once.
+## Loader for client/data/combat/*.json (originally exported from the web game's TS; now edited by hand).
+## Every rules file in client/rules/combat reads its tables through here so the JSON is parsed once.
 
 
 

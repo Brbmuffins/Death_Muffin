@@ -1,7 +1,7 @@
 class_name DmDialogueLines
 extends RefCounted
 ## Port of archive/legacy-web:src/content/dialogue.ts: what the people of the Covenant say. Every answer is a small function of the real GuidanceState (DmGuidance).
-## Labels, topic ids/labels and boss hints are exported JSON (godot/data/content/dialogue.json); the line functions live here.
+## Labels, topic ids/labels and boss hints are exported JSON (client/data/content/dialogue.json); the line functions live here.
 
 
 static func _n(v: Variant) -> String:

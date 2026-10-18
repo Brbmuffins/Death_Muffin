@@ -1,6 +1,6 @@
 class_name DmConfig
 extends RefCounted
-## Endpoints and limits of the game (a port of godot/net/dm_config.gd; client/code.list "Ported"). Since launch day (2026-10-18, DECISIONS B38/B40) this client is the game and
+## Endpoints and limits of the game. Since launch day (2026-10-18, DECISIONS B38/B40) this client is the game and
 ## plays on the LIVE server; the test server (its API, channel, lobby and relay) serves test builds only, and this build never reaches it. This file is the one place that says where:
 ## the API, the manifest and the lobby below, and the allow-list the HTTP transport (net/dm_http_transport.gd) and the game scene (DmNextGame.start) enforce.
 ## tests/front.gd fails if any of it resolves to the test server: client/README.md "The server".

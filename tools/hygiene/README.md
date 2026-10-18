@@ -5,14 +5,13 @@ Output is one `file:line: message` per violation; exit 0 prints a one-line OK.
 
 Checks (`check.mjs`, config in `retired.json`):
 
-1. Relative Markdown links in tracked `*.md` (not `godot/tests/**`) resolve.
-2. Backticked repo paths in tracked `*.md` (starting `godot/ server/ tools/ launcher/ docs/ .github/ public/ art-manifest/`, a root file, or `tests/` / `next/` meaning `godot/...`) exist. Globs, placeholders, `/abs`, `~/` paths are skipped.
+1. Relative Markdown links in tracked `*.md` (not `client/tests/**`) resolve.
+2. Backticked repo paths in tracked `*.md` (starting `client/ native/ server/ tools/ launcher/ docs/ .github/ public/ art-manifest/`, a root file, or `tests/` / `next/` meaning `client/...`) exist. Globs, placeholders, `/abs`, `~/` paths are skipped. `DECISIONS.md` records what was true when each decision was made, so its paths may name files that are gone (`historyDocs` in `retired.json`).
 3. Retired terms (`terms` in `retired.json`) do not appear in scanned text files (`*.md *.sh *.cjs *.mjs *.js *.ts *.gd *.yml *.json`, minus `scanExclude`).
-4. `res://tests/<suite>/<file>.gd` and `tests/<suite>/<file>.gd` paths named in docs and scripts exist.
+4. `res://tests/<suite>/<file>.gd` and `tests/<suite>/<file>.gd` paths named in docs and scripts exist under `client/`.
 5. No tracked file is larger than `maxFileMB` (20) unless listed in `bigFileAllow`.
-6. Texture `.import` files under the 3D asset folders (`check.mjs` `tex3d`, in `godot/` and in the rebuilt client's `client/assets/`) use `compress/mode=2`; normal maps also `compress/normal_map=1`. UI art stays lossless. `npm run hygiene -- --fix-textures` rewrites violating `.import` files; then re-import headless (`godot/` or `client/`).
-7. No call inside a GDScript `assert(...)` condition outside the test folders (`godot/` and `client/`): release exports strip asserts together with their expression, so the call never runs in a shipped client.
-8. The rebuilt client's copies of today's code (DECISIONS B43) are untouched: every file `client/code.lock.json` lists as a copy still has the content it recorded, and every port exists. Edit `godot/` and sync, or port the file (`node tools/rebuild/sync-code.mjs --port <path>`). A live change in `godot/` is not a violation here: `sync-code.mjs` and the test build publish catch it.
+6. Texture `.import` files under the 3D asset folders (`check.mjs` `tex3d`, in `client/assets/` and `client/world_fx/assets/`) use `compress/mode=2`; normal maps also `compress/normal_map=1`. UI art stays lossless. `npm run hygiene -- --fix-textures` rewrites violating `.import` files; then re-import headless (`godot --headless --path client --import`).
+7. No call inside a GDScript `assert(...)` condition in `client/` outside the test folders: release exports strip asserts together with their expression, so the call never runs in a shipped client.
 
 ## When you delete something
 
@@ -21,5 +20,5 @@ Add an entry to `terms` in `retired.json`: `id`, `pattern` (JS regex source; opt
 ## When a mention is legitimate
 
 - Retired term: add a narrow path glob to that term's `allow` (a file, not a directory tree, where possible). Prefer rewording as `archive/<name>` when you mean the tag; the branch terms ignore that prefix.
-- Backticked path that is intentionally absent (gitignored output, "removed" notes, "only if present" guards): add it under `allowPaths` as `"<doc>": ["<path>"]`.
+- Backticked path that is intentionally absent (gitignored output, "removed" notes, "only if present" guards): add it under `allowPaths` as `"<doc>": ["<path>"]`, or name it in words without backticks (the docs say "the baked folder" for the generated crowd models).
 - Large file: add its repo path to `bigFileAllow`.

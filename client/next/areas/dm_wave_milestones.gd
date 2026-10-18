@@ -5,7 +5,7 @@ extends Node
 ## DmGameRewards.tick_milestones). The VARIANTS themselves (the vanguard elite, shrouded commons, sooner surges) are the director's
 ## (`DmWaveDirector.milestone`). Event driven: `on_tier` is called when the tier changes (DmNextProgress.apply_progress), and `_process` only runs
 ## while the light is easing toward its target (about 4 s per change), never otherwise.
-## The rebuild's port (client/code.list "Ported"): the lights are the world's (DmNextWorld.builder holds them), the banners go through the game's `game_event`.
+## The lights are the world's (DmNextWorld.builder holds them), the banners go through the game's `game_event`.
 
 signal announced(kind: String, id: String)         ## banner | fades (tests, HUD)
 

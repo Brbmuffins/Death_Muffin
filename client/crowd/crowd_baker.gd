@@ -4,7 +4,7 @@ extends RefCounted
 ## vertices are computed from the skeleton pose and the mesh's bone weights for every frame of every clip the game plays, written as
 ## position and normal textures, next to a mesh with an animation id per vertex and a table of clips. Run through tools/bake_crowd.gd.
 ##
-## The creature is baked exactly as DmModels / DmCreature (godot/) put it in the world: the height normalisation of DmModels.analyze, the yaw
+## The creature is baked exactly as DmModels / DmCreature put it in the world: the height normalisation of DmModels.analyze, the yaw
 ## of its model row, the clip preparation of DmModels._prep_anims and DmCreature._prep_clips. Feet at the origin, +Z forward.
 
 const FLINCH_CLIP_SECONDS := 0.5 * 1.35   # DmCreature.flinch plays this much of a hurt clip
@@ -43,20 +43,17 @@ const FALLBACK := {
 }
 
 
-## The folder holding `slice/models/...`: the client's own assets once they are synced, else the live game's.
+## The folder holding `slice/models/...`.
 static func default_assets_dir() -> String:
-	var own := ProjectSettings.globalize_path("res://assets")
-	if DirAccess.dir_exists_absolute(own.path_join("slice/models")):
-		return own
-	return ProjectSettings.globalize_path("res://").path_join("../godot/assets").simplify_path()
+	return ProjectSettings.globalize_path("res://assets")
 
 
 static func default_rows_path() -> String:
-	return ProjectSettings.globalize_path("res://").path_join("../godot/game/view_models.json").simplify_path()
+	return ProjectSettings.globalize_path("res://game/view_models.json")
 
 
-## The model an enemy id is drawn with: the crowd's own table (crowd/crowd_looks.json enemy_model, today's DmEntityViews.ENEMY_SLUG: what CrowdView draws),
-## then godot/data/content/enemies.json modelSlug (the robber's model when it names none); `name` itself when it is already a model slug.
+## The model an enemy id is drawn with: the crowd's own table (crowd/crowd_looks.json enemy_model: what CrowdView draws),
+## then data/content/enemies.json modelSlug (the robber's model when it names none); `name` itself when it is already a model slug.
 ## A variant name "<model>+<thrall kind>" -> [model slug, kind]; a plain slug -> [slug, ""].
 static func split_variant(name: String) -> Array:
 	var i := name.find("+")
@@ -74,7 +71,7 @@ static func model_for(name: String, enemies_path := "") -> String:
 	if looks is Dictionary and (looks as Dictionary).get("enemy_model", {}).has(name):
 		return String((looks as Dictionary).enemy_model[name])
 	if enemies_path == "":
-		enemies_path = ProjectSettings.globalize_path("res://").path_join("../godot/data/content/enemies.json").simplify_path()
+		enemies_path = ProjectSettings.globalize_path("res://data/content/enemies.json")
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(enemies_path))
 	if parsed is Dictionary and (parsed as Dictionary).get("ENEMIES", {}).has(name):
 		return String((parsed as Dictionary).ENEMIES[name].get("modelSlug", "grave_robber"))
@@ -159,7 +156,7 @@ static func _load_static(root: Node3D, mi: MeshInstance3D, row: Dictionary, slug
 		"yaw": yaw, "height": float(row.height), "place": place, "url": rel_url}
 
 
-## The wing beat of an unrigged model by its slug (crowd/crowd_looks.json `wings`, today's DmEntityViews.WINGS: speed, amp, body), {} = none.
+## The wing beat of an unrigged model by its slug (crowd/crowd_looks.json `wings`: speed, amp, body), {} = none.
 static func wings_for(slug: String) -> Dictionary:
 	var looks: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://crowd/crowd_looks.json"))
 	if looks is Dictionary:
@@ -167,7 +164,7 @@ static func wings_for(slug: String) -> Dictionary:
 	return {}
 
 
-## Today's wing flap (DmCreatureMat's vertex shader, wingFlap.ts) on mesh-local points and normals at `t` seconds (phase 0): the parts past the
+## The wing flap (DmCreatureMat's vertex shader, wingFlap.ts) on mesh-local points and normals at `t` seconds (phase 0): the parts past the
 ## body's half-width swing about the hinge by amp x sin(t x speed), more toward the tips. `ax` 2 = along z, 0 = along x (the longer side).
 static func flap(verts: PackedVector3Array, normals: PackedVector3Array, t: float, w: Dictionary, ax: int, center: float, half: float,
 		out_p: PackedVector3Array, out_n: PackedVector3Array) -> void:
@@ -510,7 +507,7 @@ static func _bake_loaded(m: Dictionary, out_dir: String, opts: Dictionary, asset
 		"source_triangles": indices.size() / 3})
 
 ## An unrigged model's bake: one baked loop, the wing beat for a winged model (FLAP_FRAMES frames over 2 pi / speed seconds) or a still pose
-## for the rest, playing every role (today the shader keeps beating through a fall, and the body layer does the rest).
+## for the rest, playing every role (the shader keeps beating through a fall, and the body layer does the rest).
 static func _bake_static(m: Dictionary, out_dir: String, opts: Dictionary, assets_dir: String) -> Dictionary:
 	var slug: String = m.slug
 	var mi: MeshInstance3D = m.mesh_instance
@@ -928,7 +925,7 @@ static func _write_variant(m: Dictionary, slug: String, specs: Array, base: Crow
 				hi = hi.max(p)
 	var trk_img := Image.create_from_data(width, total, false, Image.FORMAT_RGBAF, trk.to_byte_array())   # full floats: a few KB, and a hand's reach is exact
 
-	# The mesh: the body's vertices at the rest pose and the props' in their own space; the idle pose holds the props where today's calibration does, for the levels of detail.
+	# The mesh: the body's vertices at the rest pose and the props' in their own space; the idle pose holds the props where DmCreature's calibration does, for the levels of detail.
 	var rest_p := PackedVector3Array()
 	var rest_n := PackedVector3Array()
 	rest_p.resize(vc)
@@ -1062,7 +1059,7 @@ static func _track_frames(m: Dictionary, plan: Dictionary, g: Dictionary, rig: A
 	return {"plan": out, "xforms": frames}
 
 
-## Today's prop builders (DmGearProps.bone_sword, round_shield, bone_bow, bone_staff) as geometry in the prop's own space: every MeshInstance3D's
+## The prop builders (DmGearProps.bone_sword, round_shield, bone_bow, bone_staff) as geometry in the prop's own space: every MeshInstance3D's
 ## triangles moved by its transform in the prop, the spec each vertex belongs to, and its material part (1-based; the parts list the distinct
 ## materials: linear albedo, metallic, roughness, linear emission x energy; an unshaded part glows its own colour).
 static func _prop_geometry(specs: Array) -> Dictionary:
@@ -1122,7 +1119,7 @@ static func _part_of(parts: Array, mat: BaseMaterial3D) -> int:
 	return parts.size() - 1
 
 
-## The props' calibration (DmCreature._calibrate) on the idle pose where today's runs: a body settled for 0.25 s, then 4 frames (`_tick_props`), so
+## The props' calibration (DmCreature._calibrate) on the idle pose at the moment DmCreature runs it: a body settled for 0.25 s, then 4 frames (`_tick_props`), so
 ## PROP_CALIBRATE_S into the idle loop: each prop's up turned onto its `dir` in creature space. Per spec: {bone, base_q, dir, follow, idle}. A bone the model
 ## lacks is the hip, as DmCreature.attach does.
 static func _prop_rig(m: Dictionary, specs: Array, idle: String) -> Array:
@@ -1190,7 +1187,7 @@ static func _save(res: Resource, path: String) -> Resource:
 	return ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_REPLACE)
 
 
-## The colour, ORM and normal textures next to a model's glb (the sync keeps glTF's own file names), relative to the assets folder.
+## The colour, ORM and normal textures next to a model's glb (glTF's own file names), relative to the assets folder.
 static func _texture_paths(assets_dir: String, url: String) -> Dictionary:
 	var out := {"albedo": "", "orm": "", "normal": ""}
 	var rel_dir := url.get_base_dir()

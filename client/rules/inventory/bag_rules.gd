@@ -4,7 +4,7 @@ extends RefCounted
 ## is the server's (DECISIONS B25). Slots are InventorySlot Dictionaries (net/types.ts): {id, slot_index, quantity, equipped (0|1),
 ## item_id, name, rarity, item_type, stat_bonus, icon_id, sell_value, crafted, instance_id?, ilvl?, affixes?, inst?}.
 ## NOTE: DmLoot (rules/loot/loot.gd) also ports add_to_slots but reads loot fixtures content; this copy is self-contained
-## (data from godot/data/gathering) and verified against its own golden fixtures. Either may be used; results match the TS.
+## (data from client/data/gathering) and verified against its own golden fixtures. Either may be used; results match the TS.
 ## Pure: input arrays are never mutated; functions return new arrays.
 
 const Data := preload("res://rules/gathering/gather_data.gd")

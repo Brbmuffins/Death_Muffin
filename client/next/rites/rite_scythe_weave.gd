@@ -3,7 +3,7 @@ extends DmRiteModule
 ## and the strokes alternate: an overhead chop (the scythe drops from above onto the target), then a rising cut (up from the ground through it). Free, 0.45 s: on a
 ## held hotbar key the hold repeat (DmCombatInput) strikes again the moment it is ready. Every hit leeches. `p["weaveStroke"]` is the stroke just thrown
 ## (0 chop, 1 rise); the gesture (DmRiteCaster._gesture_cast) reads it to pick the matching clip.
-## On the combat core (client/code.list "Ported"): the target is a DmFoe snapshot (DmReaperRites.cone).
+## On the combat core: the target is a DmFoe snapshot (DmReaperRites.cone).
 
 const HALF_DEG := 35.0   ## either side of the aim line
 const HIGH := 2.9        ## m: where a chop starts above the target / where a rising cut ends

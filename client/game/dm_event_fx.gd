@@ -7,8 +7,7 @@ extends RefCounted
 ## Gameplay consequences are NOT done here: they go through `hooks` (Callables the host sets, each optional):
 ##   on_death(ev)  on_hurt(ev)  on_exhumed_refund(ev)  on_exhumed_ok(ev)  on_detonated_refund(ev)  on_heal(ev)  on_new_blood_heal(ev)
 ##   on_boss_busy(ev) (alias on_boss_bussy)  on_surge_cleared(ev)  on_boss_defeated(ev)  on_node_gone(id)  on_node_back(id)  on_legend(ev)
-## Ported to the rebuilt client (client/code.list "Ported"): zone and corpse records are read by field name, so the sim records the combat core replaced
-## (DmSimZone, DmSimCorpse) are not needed: a Dictionary (DmEnemyFx's reused scratch zone) or any object with the same fields works. Nothing else changed.
+## Zone and corpse records are read by field name, so no sim record class is needed: a Dictionary (DmEnemyFx's reused scratch zone) or any object with the same fields works.
 ## Host (duck-typed; DmEnemyFxHost in next/enemy_fx) members used: sim, mirror (optional), p, self_id, now_ms, area_id, world_root, camera, builder, abilities,
 ## views, depths, telegraphs, emit_game_event(), float_text(), tip(), hitstop(), remote_ids(), remote_position(id), remote_bodies(),
 ## remote_gesture(ev), codex_discover(kind, id), boss_view_hide(id), empower_pending.

@@ -31,7 +31,7 @@ const float SPECTRAL_OPACITY = 0.55;  // DmCreature: opacity 0.55 for a spectral
 //                      from `rim_palette` (a thrall's: DmCreatureMat's `rim`), the flash is the game's emissive lerp toward the flash colour (in eighths, so exact in a
 //                      half float up to slot 127)
 // Per vertex: CUSTOM0.y = its material part: 0 the body, k a hand prop's part k (a thrall variant's sword, shield, bow or staff: `part_*`, no tint, flash or
-// glow, as today's props). A body vertex's CUSTOM0.x = its animation id (a column of the baked textures; UV seams share one id); a prop vertex sits in its
+// glow, as DmCreature's props). A body vertex's CUSTOM0.x = its animation id (a column of the baked textures; UV seams share one id); a prop vertex sits in its
 // prop's own space (VERTEX, NORMAL) and its CUSTOM0.x = which prop of the variant: the prop's transform comes from the baked track of the hand.
 
 // The model's own textures and factors, as DmCreatureMat takes them from the glTF material (the glTF's own defaults: both factors 1, the ORM texture scales them).
@@ -77,7 +77,7 @@ uniform vec4 vat_clips[16];
 uniform sampler2D vat_track : filter_nearest, repeat_disable;
 uniform vec4 trk_clips[16];
 
-// Compatibility's colours (DmCreatureMat's header, client/README.md "The look against today's game"): it reads a texture, a colour and every number written to ALBEDO or EMISSION
+// Compatibility's colours (DmCreatureMat's header, client/README.md "The look on Forward+"): it reads a texture, a colour and every number written to ALBEDO or EMISSION
 // as sRGB and converts the product to linear once, at the end; Forward+ takes them as linear. The tint (`COLOR.rgb`, a `lin()` of a hex), the glows and the flash are numbers made for
 // that: a tinted body multiplies in sRGB numbers and converts (`dm_s2l`), the emission is converted too (a small glow is a twelfth of itself there). The area's exposure lift is calibrated
 // on the baked world: the bodies divide their albedo, specular and emission by it (`dm_lift_inv`, 1 / (the area's lift x the preset's), set by DmWorldBuilder._apply_exposure).

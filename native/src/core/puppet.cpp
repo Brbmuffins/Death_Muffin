@@ -4,8 +4,8 @@
 #include <cmath>
 
 // A guest's core (native/README.md "Co-op"): no brains and no rules. Its bodies come from the host: a body appears from a reliable spawn event, is
-// moved by snapshots (eased the way today's puppets are, dm_enemy.gd `_puppet_step`) and goes with a reliable removal. The events GDScript reads on
-// the host are in the guest's buffer too: forwarded ones as they came, derived ones from state edges and health drops, as today's puppets do.
+// moved by snapshots (eased the way the old game's puppets were, dm_enemy.gd `_puppet_step`) and goes with a reliable removal. The events GDScript reads on
+// the host are in the guest's buffer too: forwarded ones as they came, derived ones from state edges and health drops.
 // The tables are the host's own tables, so queries and DmCrowd work on a puppet the way they do on the host.
 
 namespace dm {
@@ -32,7 +32,7 @@ void ease(T &b, double p_dt, double p_k, double p_ks) {  // _puppet_step
 		b.z = bz + float(double(dz) * p_k);
 	}
 	b.yaw = float(lerp_angle(b.yaw, b.net_yaw, p_k));
-	if (!snapped) {  // a jump is not speed (today's puppet counts it; a walking clip would sprint for a moment)
+	if (!snapped) {  // a jump is not speed (the old game's puppet counted it; a walking clip would sprint for a moment)
 		const double mx = double(b.x) - bx, mz = double(b.z) - bz;
 		const double sp = std::sqrt(mx * mx + mz * mz) / std::max(p_dt, 0.0001);
 		b.speed_smooth = float(double(b.speed_smooth) + (sp - double(b.speed_smooth)) * p_ks);
@@ -129,13 +129,13 @@ void World::puppet_apply_enemy(const SnapRec &s) {
 		e.aim_x = s.aim_x;
 		e.aim_z = s.aim_z;
 	}
-	if (!e.net_seen) {  // the first snapshot places the body (today: "first snapshot snaps")
+	if (!e.net_seen) {  // the first snapshot places the body: it snaps
 		e.net_seen = true;
 		e.x = e.last_x = s.x;
 		e.z = e.last_z = s.z;
 		e.yaw = s.yaw;
 	}
-	// health: a drop is a hit the guest did not see (today's `damaged` + flash from the hp difference); a rise (a meal) is just taken
+	// health: a drop is a hit the guest did not see (a `damaged` event and a flash from the hp difference); a rise (a meal) is just taken
 	if (s.hpq < e.net_hpq) {
 		const double lost = double(e.net_hpq - s.hpq) / double(HP_ONE) * e.max_hp;
 		e.net_hpq = uint16_t(s.hpq);
@@ -326,7 +326,7 @@ bool World::puppet_event(int32_t p_type, int32_t p_id, const int32_t *I, int32_t
 			if (it != enemy_slot.end() && enemies[it->second].state != DEAD) {
 				Enemy &e = enemies[it->second];
 				const int32_t prev = e.state;
-				if (e.net_hpq > 0) {  // the blow that killed it: the last snapshot showed health left, and today's guest sees it go as a damaged event
+				if (e.net_hpq > 0) {  // the blow that killed it: the last snapshot showed health left, and the guest sees it go as a damaged event
 					events.push(EV_ENEMY_DAMAGED, p_id, { I[4] }, { float(e.hp), 0.0f });
 					rep.events_derived++;
 				}

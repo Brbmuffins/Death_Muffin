@@ -1,12 +1,11 @@
 class_name DmBoss
 extends Node3D
-## One boss as a node: the body of an EXTERNAL entity of the combat core (kind 1, DECISIONS B42) whose BRAIN is the existing per-boss brain of godot/sim/bosses
+## One boss as a node: the body of an EXTERNAL entity of the combat core (kind 1, DECISIONS B42) whose BRAIN is the per-boss brain of client/sim/bosses
 ## (DmBossBrain: awaken, phases at 60/30 %, telegraph + resolve loop, arena leash, the numbers in content/bosses.json) running on the host through a DmBossNodeWorld.
-## The arenas are open rings and the brain owns movement. The look is the original game's DmBossView (model, clips, glow, rise/fade) fed from a DmBossState; the
+## The arenas are open rings and the brain owns movement. The look is DmBossView's (model, clips, glow, rise/fade) fed from a DmBossState; the
 ## effects are the current DmEventFx boss events (DmBossFx), exactly once per peer. See README.md.
 ##
-## Ported to the combat core (client/code.list "Ported"). Today it is a DmEnemy, so rites, thralls, statuses, the hover pick and rewards treat it as an enemy; here
-## it is a plain node and the core's world is told about it: it registers as an external (`core_id`, DmCoreHost.register_boss), DmCoreHost writes its place and
+## On the combat core it is a plain node (rites, thralls, statuses, the hover pick and rewards still treat it as an enemy) and the core's world is told about it: it registers as an external (`core_id`, DmCoreHost.register_boss), DmCoreHost writes its place and
 ## whether it can be hurt into the core before every step (thralls then pick it by their boss rule and their blows come back as EV_THRALL_HIT_EXTERNAL), and the
 ## host's queries and damage calls (`enemies_in_radius`, `foe`, `damage`, `apply_status` ...) answer for its id (a rite hits it through `take_damage`). What it
 ## took from DmEnemy is here as small fields (hp, max_hp, radius, `damaged`, `died`); its statuses stay a GDScript DmStatusSet (B42). No collision, no navmesh agent,
@@ -156,7 +155,7 @@ func finish(killed: bool) -> void:
 
 
 ## A blow: from a rite (the host's `damage` call), a thrall (EV_THRALL_HIT_EXTERNAL) or a DoT lump of its status set. `from` is the hero body or thrall owner that
-## gets the kill (the brain's `last_hit_by` is its peer). The status set's damage-taken multiplier is not applied: the brain takes the blow as it is (it does today).
+## gets the kill (the brain's `last_hit_by` is its peer). The status set's damage-taken multiplier is not applied: the brain takes the blow as it is.
 func take_damage(amount: float, from: Node = null, _allow_stagger: bool = true) -> bool:
 	if brain == null or not is_multiplayer_authority() or not is_hittable():
 		return false

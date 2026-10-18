@@ -44,6 +44,6 @@ kill batch + `session_end`, progression, bag; `main.gd` calls it on window close
 ## Tests
 
 `client/tests/value.gd` plays it on the game scene against the mock backend (kills through the core, the accepted XP and counts, the purse, a drop claimed into the bag, brews and lifesteal, the meta, Q's flask, the save on leave, the belt chips against the bag);
-`client/tests/boss_meta.gd` the first-kill trophies. Not covered in the client: the progression node on its own (levels, upgrade tiers, the chronicle's and the Codex's flush and cost; the old game's progress suite).
+`client/tests/boss_meta.gd` the first-kill trophies.
 
 Difficulty, the Omen and the Soul Harvest reach the world through `DmNextMeta.sync()` (called by `apply_progress`; `client/next/meta/README.md`).

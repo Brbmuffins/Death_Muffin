@@ -858,7 +858,7 @@ func setup_window() -> void:
 	for l in w.find_children("*", "Label", true, false):
 		texts.append((l as Label).text)
 	var all_text := "\n".join(texts)
-	check(all_text.contains("test server") and not all_text.contains("muffindevelopment.com"), "the window says runs go to the test server's history, and names no live address")
+	check(all_text.contains("benchmark page") and not all_text.contains("muffindevelopment.com"), "the window says runs go to the game's benchmark page, and names no address")
 	w.queue_free()
 
 

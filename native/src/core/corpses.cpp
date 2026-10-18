@@ -2,8 +2,8 @@
 
 #include <algorithm>
 
-// Corpses are a port of the host logic of DmCorpseField (godot/next/corpses/dm_corpse_field.gd): lay on death, cap, lifetime, toxic rupture,
-// queries, atomic consume. Views, replication and the Veilwalker's echo corpses are not part of it. Differences from today are listed in
+// Corpses follow the host logic of the old game's DmCorpseField: lay on death, cap, lifetime, toxic rupture,
+// queries, atomic consume. Views, replication and the Veilwalker's echo corpses are not part of it. Differences from the old game are noted in
 // native/README.md.
 
 namespace dm {

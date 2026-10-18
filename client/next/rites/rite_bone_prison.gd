@@ -2,7 +2,7 @@ extends DmRiteModule
 ## Bone Prison: a ring of bone spikes bursts at the cursor (clamped to 11 m), radius 2.4. Everything inside takes spell power x 1.1, is Rooted 1.8 s
 ## (move 0, it still turns and swings) and gains a Fracture stack (the hit lands first, then the stack, like the sim). 24 essence, 9 s, level 9.
 ## Numbers: DmAbilities.rite_damage + DmSimData.BONE_PRISON; statuses only through the core (`root`, `fracture`). Visuals: DmRiteFx.prison.
-## On the combat core (client/code.list "Ported"): the blow is `c.deal` and its `killed` is known at once, so the dead get no root and no fracture, as today.
+## On the combat core: the blow is `c.deal` and its `killed` is known at once, so the dead get no root and no fracture.
 
 const MAX_HITS := 64
 const POPUPS := 6

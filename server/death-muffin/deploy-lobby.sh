@@ -17,7 +17,7 @@
 # 3. Waits until /health shows 0 sessions (or --force).
 # 4. Backs up the installed lobby, writes ROLLBACK.sh, installs the lobby code, package files and README, `npm ci` only if the lockfile changed,
 #    restarts deathmuffin-lobby and checks /health. A failure after the install began runs ROLLBACK.sh --force on its own (exit 1).
-# The UDP relay's files (relay/project.godot, relay/relay_main.gd, godot/net/relay/dm_udp_relay.gd) go to $RUNTIME/relay and restart
+# The UDP relay's files (relay/project.godot, relay/relay_main.gd, client/net/relay/dm_udp_relay.gd) go to $RUNTIME/relay and restart
 # `deathmuffin-relay` when they changed and the unit is installed (installed by hand, see relay/README.md). Players on the UDP lane fall
 # back to the WebSocket when it restarts; the lobby restart already waits for no running parties.
 # Test overrides (all optional): REPO RUNTIME LOBBY_DIR LOBBY_URL LOBBY_UNIT POLL_S SYSTEMCTL RELAY_DIR RELAY_UNIT
@@ -61,7 +61,7 @@ installed_of() { echo "$LOBBY_DIR/${1#server/death-muffin/lobby/}"; }
 relay_files() {
   git -C "$REPO" cat-file -e "$SHA:server/death-muffin/relay/relay_main.gd" 2>/dev/null || return 0
   for f in project.godot relay_main.gd README.md; do echo "server/death-muffin/relay/$f $RELAY_DIR/$f"; done
-  echo "godot/net/relay/dm_udp_relay.gd $RELAY_DIR/dm_udp_relay.gd"
+  echo "client/net/relay/dm_udp_relay.gd $RELAY_DIR/dm_udp_relay.gd"
 }
 relay_changed() { relay_files | grep -v '/README\.md ' | while read -r f dst; do git -C "$REPO" show "$SHA:$f" | cmp -s - "$dst" || echo "$f"; done; }
 if [ -n "$IF_CHANGED" ]; then

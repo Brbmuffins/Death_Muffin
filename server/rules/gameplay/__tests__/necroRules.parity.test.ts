@@ -11,7 +11,7 @@ import {
 import { checkParity, recorder } from './parity';
 
 /**
- * The necromancer progression rules (godot/rules/progression/necro_rules.gd), the Ascension / vow / boon tables they read
+ * The necromancer progression rules (client/rules/progression/necro_rules.gd), the Ascension / vow / boon tables they read
  * (ascension.gd), the upgrade price curves (progression/prog_content.gd, DmUpgrades) and the Kill Chain (kill_chain.gd).
  * Replayed by the Godot suite rules-progression (necro_parity.json, upgrades_parity.json, kill_chain_parity.json).
  * Regenerate: UPDATE_NECRO_PARITY=1 / UPDATE_UPGRADES_PARITY=1 / UPDATE_KILL_CHAIN_PARITY=1 npx vitest run <this file>

@@ -85,36 +85,42 @@ const DEFAULTS = {
     ],
     gameplay: ['src/**'],
   },
-  // Tier rules for mode 'godot' (replace `tiers`; same semantics). The Godot client carries its own offline backend, saves, login and net code,
-  // so those are sensitive here exactly like server/auth are on the web side. First check is sensitive; unmatched paths (the frozen web src/, root
-  // files) are sensitive too. gameplay = everything else under godot/. A changed project.godot can add autoloads / main scene, so it is sensitive.
+  // Tier rules for mode 'godot' (replace `tiers`; same semantics): the game is client/ (DECISIONS B49, B57). It carries its own offline backend, saves,
+  // login and net code, so those are sensitive here exactly like server/auth are on the web side. First check is sensitive; unmatched paths (the
+  // frozen web src/, root files, native/) are sensitive too. gameplay = everything else under client/. A changed project.godot can add autoloads /
+  // main scene, so it is sensitive; so are the files the players' 500 MB asset pack is fingerprinted by (tools/godot/assets-fp.sh), whose change
+  // sends every player that download again.
   godotTiers: {
     sensitive: [
       'server/**', 'launcher/**', 'tools/**', '.github/**', '**/*.sh', '**/deploy*', 'CLAUDE.md', '.claude/**', '**/.env*', '.gitignore',
-      'godot/project.godot', 'godot/export_presets.cfg', 'godot/net/**', 'godot/front/**', 'godot/backend/**', 'godot/addons/**',
-      'godot/**/*auth*', 'godot/**/*session*', 'godot/**/*online*', 'godot/**/*save*', 'godot/**/*mock_backend*',
-      // where the real tree keeps the same concerns outside those folders (checked against origin/godot-port 2026-10-07): the offline edition
-      // (game/dm_offline.gd), server progress saves (game/dm_progress_sync.gd), co-op / host authority (game/dm_game_coop.gd), the boot script
-      // that picks offline/online (main/main.gd), plus anything named for login, accounts, tokens, relay/lobby/realtime, and native code.
-      'godot/**/*offline*', 'godot/**/*progress_sync*', 'godot/**/*coop*', 'godot/**/*login*', 'godot/**/*account*', 'godot/**/*token*',
-      'godot/**/*credential*', 'godot/**/*relay*', 'godot/**/*lobby*', 'godot/**/*realtime*', 'godot/main/main.gd',
-      'godot/**/*.gdextension', 'godot/**/*.dll', 'godot/**/*.so', 'godot/**/*.dylib', 'godot/**/*.exe', 'godot/**/*.pck',
-      // progression, unlocks, kills, gold sinks and other economy rules mirror the server's authority (web tiers: src/gameplay/progression*); checked
-      // against origin/godot-port 2026-10-07 (rules/progression/, data/progression, gameplay_{kill*,goldSink,vault,labor,legion,milestones}Rules json, game/dm_game_rewards.gd ...)
-      'godot/rules/progression/**', 'godot/data/progression/**', 'godot/**/*progression*', 'godot/**/*authority*', 'godot/**/*ledger*', 'godot/**/*economy*', 'godot/**/*spend*',
-      'godot/**/*kill*', 'godot/**/*gold_sink*', 'godot/**/*goldSink*', 'godot/**/*vault_rules*', 'godot/**/*vaultRules*', 'godot/**/*labor_rules*', 'godot/**/*laborRules*',
-      'godot/**/*legionRules*', 'godot/**/*milestone*', 'godot/**/*reward*', 'godot/**/*tradeGoods*', 'godot/**/*unlock*', 'godot/**/*seal*',
-      'godot/tests/rules-progression/**',
-      'godot/tests/backend/**', 'godot/tests/relay/**', 'godot/tests/realtime/**', 'godot/tests/next_front/**',
+      'native/**', 'client/project.godot', 'client/export_presets.cfg', 'client/net/**', 'client/front/**', 'client/session/**', 'client/addons/**',
+      'client/main/**', 'client/bin/**', 'client/core/**', 'client/backend/**',
+      'client/**/*auth*', 'client/**/*session*', 'client/**/*online*', 'client/**/*save*', 'client/**/*mock_backend*',
+      // the same concerns outside those folders: the offline edition, server progress saves, co-op / host authority, plus anything named for login,
+      // accounts, tokens, relay/lobby/realtime, and native libraries.
+      'client/**/*offline*', 'client/**/*progress_sync*', 'client/**/*coop*', 'client/**/*login*', 'client/**/*account*', 'client/**/*token*',
+      'client/**/*credential*', 'client/**/*relay*', 'client/**/*lobby*', 'client/**/*realtime*',
+      'client/**/*.gdextension', 'client/**/*.dll', 'client/**/*.so', 'client/**/*.dylib', 'client/**/*.exe', 'client/**/*.pck',
+      // progression, unlocks, kills, gold sinks and other economy rules mirror the server's authority (web tiers: src/gameplay/progression*)
+      'client/rules/progression/**', 'client/data/progression/**', 'client/**/*progression*', 'client/**/*authority*', 'client/**/*ledger*', 'client/**/*economy*', 'client/**/*spend*',
+      'client/**/*kill*', 'client/**/*gold_sink*', 'client/**/*goldSink*', 'client/**/*vault_rules*', 'client/**/*vaultRules*', 'client/**/*labor_rules*', 'client/**/*laborRules*',
+      'client/**/*legionRules*', 'client/**/*milestone*', 'client/**/*reward*', 'client/**/*tradeGoods*', 'client/**/*unlock*', 'client/**/*seal*',
+      // the tests that guard those systems
+      'client/tests/rules-progression/**', 'client/tests/backend/**', 'client/tests/relay/**', 'client/tests/realtime/**', 'client/tests/next_front/**',
+      'client/tests/front.gd', 'client/tests/value.gd',
+      // the asset pack's fingerprint (tools/godot/assets-fp.sh) beyond client/assets/**, which every asset change already touches
+      'client/crowd/**', 'client/tools/bake_crowd*', 'client/game/view_models.json', 'client/game/dm_creature*', 'client/game/dm_gear_props.gd',
+      'client/world/dm_models.gd', 'client/world/dm_animator.gd',
     ],
     casual: [
-      { glob: 'docs/**', mode: 'any' }, { glob: '*.md', mode: 'any' }, { glob: 'godot/**/*.md', mode: 'any' }, { glob: 'PATCH_NOTES.json', mode: 'any' },
+      { glob: 'docs/**', mode: 'any' }, { glob: '*.md', mode: 'any' }, { glob: 'client/**/*.md', mode: 'any' },
+      { glob: 'PATCH_NOTES.json', mode: 'any' },
     ],
-    gameplay: ['godot/**'],
+    gameplay: ['client/**'],
   },
   // Paths the agent may never touch (proposal refused, not even for the owner to approve): secrets, and the agent's own rules/deploy scripts.
   // They are still "sensitive" if the owner removes them from this list and makes the change by hand.
-  forbiddenPaths: ['server/death-muffin/discord-agent/**', '**/deploy*.sh', '**/.env*', '.claude/**', 'godot/export_presets.cfg'],
+  forbiddenPaths: ['server/death-muffin/discord-agent/**', '**/deploy*.sh', '**/.env*', '.claude/**', 'client/export_presets.cfg'],
 };
 function merge(a, b) {
   if (Array.isArray(a) || typeof a !== 'object' || a === null) return b === undefined ? a : b;

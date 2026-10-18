@@ -53,47 +53,9 @@ jobs:
       - name: Lobby tests
         run: npm test --prefix server/death-muffin/lobby
 
-  godot:
-    name: Godot client tests
-    runs-on: ubuntu-24.04   # pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19 (GitHub notice), a move to make on purpose
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Cache Godot binary
-        id: godot-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/godot-bin
-          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64
-
-      - name: Download Godot ${{ env.GODOT_VERSION }}
-        if: steps.godot-cache.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p ~/godot-bin
-          curl -fsSL -o /tmp/godot.zip \
-            "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
-          unzip -q /tmp/godot.zip -d ~/godot-bin
-          mv ~/godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64 ~/godot-bin/godot
-          chmod +x ~/godot-bin/godot
-
-      - name: Import project
-        run: ~/godot-bin/godot --headless --path godot --import
-
-      # The lobby/relay suites start the real lobby service (node + ws).
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - name: Lobby dependencies
-        run: npm ci --prefix server/death-muffin/lobby
-
-      # Every suite, in parallel (tools/godot/run-all-tests.sh: one line per suite, retries a pool failure once alone, exit 1 on failure).
-      - name: Godot suites
-        run: GODOT=~/godot-bin/godot bash tools/godot/run-all-tests.sh --jobs 4
-
-  # The game players run since launch day (client/, DECISIONS B49): the combat core is built (Linux), the project imported, the crowd baked, then every suite.
+  # The game (client/, DECISIONS B49): the combat core is built (Linux), the project imported, the crowd baked, then every suite.
   client:
-    name: Game client tests (client/)
+    name: Game client tests
     runs-on: ubuntu-24.04   # pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19 (GitHub notice), a move to make on purpose
     timeout-minutes: 60
     env:

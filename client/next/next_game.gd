@@ -1,23 +1,23 @@
 class_name DmNextGame
 extends Node3D
-## The game scene on the combat core (the rebuilt client's DmNextGame; client/code.list "Ported"): a solo run in the Hollow Graves, with a character from the test
+## The game scene on the combat core: a solo run in the Hollow Graves, with a character from the test
 ## server (the front flow) or a dev character on the local mock. It composes
 ## child nodes and owns almost no logic:
 ##   Session (DmSession)   solo = OfflineMultiplayerPeer, the same code path as a party        World (DmNextWorld)  the area scene, its navigation map, its lights
 ##   Core    (DmCoreHost)  the one owner of the combat core and the crowd that draws it        Waves (DmWaveDirector)  waves, spawned through the core
 ##   Input   (DmNextInput) click / WASD / hover pick through the core                          Camera (DmCameraRig)    the existing rig
-##   EnemyFx (DmEnemyFx)   telegraphs, strikes, deaths, voices: the core's events as effects   UiHost, Ui (DmNextUiHost, DmGameUi)  today's HUD and panels (B46)
+##   EnemyFx (DmEnemyFx)   telegraphs, strikes, deaths, voices: the core's events as effects   UiHost, Ui (DmNextUiHost, DmGameUi)  the HUD and panels (B46)
 ##   Bosses  (DmBossHost)  the seven bosses: summon rules, the boss body (an external of the core, its brain GDScript), its fx and music      BossMeta (DmBossMeta)  the Covenant Seal's altar choice
 ## The hero is a DmHeroBody made by the session's body_factory, registered with the core as an external; the blows enemies land on it arrive as the
 ## core's EV_TARGET_HIT events (`_on_target_hit`). Enemies are ids (ints) everywhere, never nodes: `enemy_spawned` carries an id, the queries
 ## (`enemies_in_radius`, `enemy_position`) answer ids and positions from the core. No node and no script exists per creature.
 ##
-## The hero fights with the Gravecaller's rites (next/rites, ported: the `Rites` node, a DmRiteCaster, is attached to his body in `attach_caster`; LMB, keys 1-4, RMB and R go
+## The hero fights with the Gravecaller's rites (next/rites: the `Rites` node, a DmRiteCaster, is attached to his body in `attach_caster`; LMB, keys 1-4, RMB and R go
 ## through DmNextInput and DmRiteHotbar). A rite calls the core synchronously (`core_host.damage / apply_status`, `corpses`, the legion), so a kill resolves inside the cast;
 ## its thralls are the core's and are drawn by the crowd. `rite_hit` carries every blow a rite or a Withered DoT lands, for the rewards seam.
 ##
 ## A boss (the Gravedigger King at his grave, the Bone Abbess at her Reliquary ... the Mire Mother at her altar) wakes where its summon site is (key E within 4 m, `bosses.request_summon`): its body is an
-## external entity of the core (kind 1, DmBoss), its brain is today's GDScript, the rites and the thralls hit it through the core's host (`enemies_in_radius`, `damage`) and the events, its adds and pools are
+## external entity of the core (kind 1, DmBoss), its brain is GDScript, the rites and the thralls hit it through the core's host (`enemies_in_radius`, `damage`) and the events, its adds and pools are
 ## the core's and its defeat is `bosses.defeated` (a real kill, not a wipe; `rewards.on_boss_defeated` pays it) (client/README.md "The bosses").
 ##
 ## 2-PLAYER CO-OP (client/README.md "Co-op on the core"): the same scene runs as the HOST (the default: a solo run, or hosted over the test lobby's relay once `party.host_session` swaps
@@ -26,27 +26,27 @@ extends Node3D
 ## puppet's events. Hero casts are intents the host resolves on its core (DmRiteCaster); a guest's hero is an external of the HOST's core (`core_id` is the host's id for it), and
 ## its thralls are the host's bodies. A guest's `enemy_died` events are presentation only: kill credit (`kill_credited`) is the HOST's, once.
 ##
-## VALUE ON THE SERVER (DECISIONS D1, B20, B32; client/README.md "Value on the server"): the host's `rewards` (DmSessionRewards, ported) hears `kill_credited` and pays every
-## member in range through the backend's party session (numbered kill reports, XP and kill counts applied from what the server accepted), with today's loot rolls from the
-## member's drop tape; `meta` (DmNextMeta: difficulty, world vows, the Omen, Soul Harvest, the Kill Chain, Bonded Dead), `milestones`, `chron` (the Chronicle, first-kill
-## trophies) and `progress` (DmNextProgress: levels, upgrade tiers, the belt, the backend saves) are today's. `loot` (DmNextLoot) is this player's drops and bag: a click
+## VALUE ON THE SERVER (DECISIONS D1, B20, B32; client/README.md "Value on the server"): the host's `rewards` (DmSessionRewards) hears `kill_credited` and pays every
+## member in range through the backend's party session (numbered kill reports, XP and kill counts applied from what the server accepted), with the loot rolls from the
+## member's drop tape; beside it are `meta` (DmNextMeta: difficulty, world vows, the Omen, Soul Harvest, the Kill Chain, Bonded Dead), `milestones`, `chron` (the Chronicle, first-kill
+## trophies) and `progress` (DmNextProgress: levels, upgrade tiers, the belt, the backend saves). `loot` (DmNextLoot) is this player's drops and bag: a click
 ## walks to a drop, a tape drop is claimed (the server puts its own roll in the bag), worn gear feeds the build. `flush_all` saves everything (the last report, the
 ## Chronicle, the progression, the bag) on leave and on the window's close.
 ##
-## THE WORLD: every area but the Depths (DmNextWorld, the area scenes; `opts.areas` takes a shorter list), the hero starting and getting up in the Chapterhouse as today. The
-## Chapterhouse node (DmChapterhouse, ported) breaks the seals as kills come in and opens the doors, runs waystone travel and the recall, the stations and the people.
+## THE WORLD: every area but the Depths (DmNextWorld, the area scenes; `opts.areas` takes a shorter list), the hero starting and getting up in the Chapterhouse. The
+## Chapterhouse node (DmChapterhouse) breaks the seals as kills come in and opens the doors, runs waystone travel and the recall, the stations and the people.
 ## The Depths (DmDepths, `depths`, host only; client/README.md "The Depths") are the one area made at run time: the Warren's stair starts a run, each floor is generated, drawn and baked
 ## when it is entered, its dead are bodies of the core, the HUD reads its readout and map. The graphics preset, fps cap and auto-resolution are `perf` (DmNextPerf, the player's settings read from their file).
 ##
-## GATHERING (client/README.md "Gathering and the Acre"): `gather` (DmNextGather, a copy: the nodes of every area, hover and click, the loop that walks, works and batches to the backend, the skills) is a child of every
-## peer at the same path (its depleted nodes reach a guest as RPCs); `acre` (DmNextAcre, ported: the visible Grave Laborers and the labor, garden and contract notices) is the host's, with the real HUD.
+## GATHERING (client/README.md "Gathering and the Acre"): `gather` (DmNextGather: the nodes of every area, hover and click, the loop that walks, works and batches to the backend, the skills) is a child of every
+## peer at the same path (its depleted nodes reach a guest as RPCs); `acre` (DmNextAcre: the visible Grave Laborers and the labor, garden and contract notices) is the host's, with the real HUD.
 ##
 ## Not in it: the Covenant Seal's altar choice (Ascension, B36: a summon is the plain soul-shard one). `start` refuses any api whose base url DmConfig does not allow
 ## (DmConfig.allows_api_base: the live server since launch day, B49; the local mock has none). It takes the
 ## character and its build from the front flow (`slots`, `local` below) until the progression and the bag have loaded theirs from the server.
 ##
 ##   var g: DmNextGame = load("res://next/next_game.tscn").instantiate(); add_child(g); await g.start(character, api, opts)
-## `opts`: warmup (the first-use warm-up of models, effects and area lighting; default `_wants_warmup()`: on for players, off headless and on QA runs; the benchmark forces it), name, slots (the character's bag rows from the server: worn gear feeds the build), local (its progression: damage and legion tier, boons, vows; DmMain.load_build), visual (true), waves (true), hud (true = today's HUD and panels on DmNextUiHost; false = none), audio (true outside a headless
+## `opts`: warmup (the first-use warm-up of models, effects and area lighting; default `_wants_warmup()`: on for players, off headless and on QA runs; the benchmark forces it), name, slots (the character's bag rows from the server: worn gear feeds the build), local (its progression: damage and legion tier, boons, vows; DmMain.load_build), visual (true), waves (true), hud (true = the HUD and panels on DmNextUiHost; false = none), audio (true outside a headless
 ## run: the music, ambience and footsteps), seed (the core's random seed; default from the clock), areas (the area ids to load; default every one, DmNextWorld.every_area),
 ## data_dir (res://), baked_dir / assets_dir (where the baked crowd models are), lod_distances / reserve / cull / anim_lod / thrall_shadows (the crowd's cost: CrowdView.setup),
 ## peer (a MultiplayerPeer; default OfflineMultiplayerPeer).
@@ -62,7 +62,7 @@ signal hero_died(body: DmHeroBody)              ## host
 signal hero_respawned(body: DmHeroBody)         ## host
 signal hero_hit(enemy_id: int, kind: String, damage: float)   ## an enemy's blow reached the hero (before the body's own damage rules)
 signal rite_hit(rite: String, enemy_id: int, amount: float, crit: bool, killed: bool)   ## host: a rite's (or a Withered DoT's) blow on an enemy, from the local caster: the kill credit / rewards hook
-signal start_failed(reason: String)             ## `start` refused to run (an api that is not the test server's), or a guest was refused / lost the host
+signal start_failed(reason: String)             ## `start` refused to run (an api that is not the live server's), or a guest was refused / lost the host
 signal kill_credited(enemy_id: int, def: String, level: int, elite: bool, area: String, killer_peer: int, x: float, z: float)   ## HOST only, once per kill: the kill report / rewards hook (killer_peer 0 = no hero)
 
 
@@ -79,7 +79,7 @@ var party: DmNextParty                          ## child "Party" (every peer): t
 var friends: DmNextFriends                      ## child "Friends": the account's friends and friend requests (the test backend's friends routes; next/party/)
 ## Left out until their step; the code that is shared with the full game asks `x != null` and finds none.
 var ui_host: DmNextUiHost                       ## child "UiHost" (opts hud = true): the host-contract adapter of the HUD and the panels (DECISIONS B46)
-var ui: DmGameUi                                ## child "Ui" (opts hud = true): today's HUD and panels
+var ui: DmGameUi                                ## child "Ui" (opts hud = true): the HUD and panels
 var areas: DmAreaFlow                           ## child "Areas": the entry banners and the Codex facts, the processions (next/areas/)
 var chapterhouse: DmChapterhouse               ## child "Chapterhouse": NPCs, stations, waystones, seals, hover + prompts (next/chapterhouse/)
 var depths: DmDepths                           ## child "Depths" (host): the procedural descent (next/depths/; client/README.md "The Depths")
@@ -98,7 +98,7 @@ var joiner: DmNextJoiner                        ## child "Joiner" (a party guest
 var remote_builds := {}                         ## host: peer id -> a member's build from the server {character, slots, local} (DmNextParty.fetch_build)
 var perf: DmNextPerf                           ## child "Perf": the graphics preset, the fps cap and the auto-resolution governor (next/perf/dm_next_perf.gd)
 var character: Dictionary = {}
-var api: Variant = null                         ## DmApi: the test server's (the front flow) or the local mock (DmOffline.make_api)
+var api: Variant = null                         ## DmApi: the live server's (the front flow) or the local mock (DmOffline.make_api)
 var is_offline: bool = true                     ## the api is the local mock (no base url)
 var server_slots: Array = []                    ## the character's bag rows as the server holds them (opts.slots): what `build_for` builds from
 var server_local: Dictionary = {}               ## its progression (opts.local)
@@ -132,7 +132,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	api = api_
 	var base_url := String(api_.get("base_url")) if api_ != null else ""
 	if not DmConfig.allows_api_base(base_url):
-		push_warning("DmNextGame: refused an api that is not the test server's (DECISIONS B38)")
+		push_warning("DmNextGame: refused an api that is not the live server's (DECISIONS B38)")
 		start_failed.emit("This build plays on the live server only.")
 		return
 	is_offline = base_url == ""
@@ -207,7 +207,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	session.build_version = String(opts["build"]) if opts.has("build") else DmBuild.version()   # tests: play as another release build
 	if opts.has("wire"):
 		session.wire = int(opts["wire"])   # tests: play as a build with another core wire version
-	# The host's own body starts 3 m from the origin (DmSession._spawn_point): today's game puts the origin on the Chapterhouse's return point; a world without the
+	# The host's own body starts 3 m from the origin (DmSession._spawn_point): the origin is the Chapterhouse's return point; a world without the
 	# Chapterhouse puts the body itself on the Graves' door.
 	session.spawn_origin = world.spawn_point() if world.has_area("chapterhouse") else world.spawn_point() - Vector3(3.0, 0.0, 0.0)
 	session.spawn_override = _joiner_spawn
@@ -302,7 +302,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		bosses.warm(local_body().global_position)
 		DmRiteFx.with_autoloads().warm()
 		# Every model, effect and area lighting drawn once under a cover, so no shader compiles mid-play (client/next/perf/dm_next_warmup.gd): for players
-		# as in today's game (`_wants_warmup`); `opts.warmup` overrides it.
+		# (`_wants_warmup`); `opts.warmup` overrides it.
 		if bool(opts.get("warmup", _wants_warmup())):
 			await DmNextWarmup.run(self)
 	perf.hold()
@@ -388,17 +388,17 @@ func _start_loot() -> void:
 	loot.event.connect(game_event)   # toasts, floats, pickup lines -> the HUD
 
 
-## A game moment for the player's screen (toast, banner, float, loot, chat, level_up ...): today's DmGameUi draws it or hands it to the counsel.
+## A game moment for the player's screen (toast, banner, float, loot, chat, level_up ...): DmGameUi draws it or hands it to the counsel.
 func game_event(id: String, ctx: Dictionary) -> void:
 	if ui_host != null:
 		ui_host.game_event.emit(id, ctx)
 
 
-## The panels this build has to warm: today's list less the Altar (DECISIONS B36).
+## The panels this build has to warm (no Altar: DECISIONS B36).
 const WARM_PANELS := ["inventory", "sheet", "cosmetics", "legion", "forge", "professions", "garden", "labor", "contracts", "grimoire", "codex", "atlas", "map", "settings", "salvage", "shelf", "party"]
 
 
-## The HUD and the panels (opts hud = true; DECISIONS B46): today's DmGameUi on the ported DmNextUiHost, as today's game composes them, built and warmed under the
+## The HUD and the panels (opts hud = true; DECISIONS B46): DmGameUi on DmNextUiHost, built and warmed under the
 ## caller's loading cover. The worn gear reaches the avatar and the socketed runes the caster whenever the bag changes.
 func _start_hud() -> void:
 	if opts.get("hud", false) != true:
@@ -584,12 +584,12 @@ func _enter(pos: Vector3) -> void:
 
 
 ## A player's window (opts.hud): the graphics, brightness, fps and window settings from the player's own file, READ only (the Settings panel that changes
-## them comes with the panels; the same file today's game writes, so the test build plays at the player's preset). A bare scene (tests): High's defaults.
+## them comes with the panels). A bare scene (tests): High's defaults.
 func _player_settings() -> Dictionary:
 	return DmSettings.new(DmSettings.FILE, true).values if opts.get("hud", false) == true else {}
 
 
-# ---- update notice (today's, since launch day 2026-10-18) -----------------------------------------------------------------------
+# ---- update notice (since launch day 2026-10-18) -----------------------------------------------------------------------
 
 const UPDATE_TEXT := "A new version of Death Muffin is out. Restart the game from the launcher to update."
 var update_check: DmUpdateCheck
@@ -679,7 +679,7 @@ func rite_for_slot(slot: int) -> String:
 	return DmRiteHotbar.rite_for_slot(slot, b.family, b.discipline_id) if b != null else ""
 
 
-## A body's DmCharacterBuild. The local host's carries its progression (damage tier, boons, vows) and its bag's gear (the progress node's, as today's build_for; before it
+## A body's DmCharacterBuild. The local host's carries its progression (damage tier, boons, vows) and its bag's gear (the progress node's; before it
 ## loaded, what the server gave: `server_slots`, `server_local`); a party member's comes from the server's record of that member (remote_builds: gear, set bonuses,
 ## boons, vows, upgrade tiers); until it arrives, the defaults. A guest's own hero is simulated by the host: what it builds here is only what it shows itself.
 func build_for(peer_id: int) -> Dictionary:
@@ -766,12 +766,12 @@ func area_of(peer_id: int) -> String:
 	return world.area_at(b.position.x, b.position.z) if b != null else ""
 
 
-## Where a fallen hero gets up: the Chapterhouse's return point, as today (the Graves' door in a world without the Chapterhouse).
+## Where a fallen hero gets up: the Chapterhouse's return point (the Graves' door in a world without the Chapterhouse).
 func respawn_point() -> Vector3:
 	return world.spawn_point()
 
 
-## The warm-up runs for players, as today's game does: not on a headless run, and not on a QA or screenshot run (`--qa`, `--shot-plan=`), where software GL
+## The warm-up runs for players: not on a headless run, and not on a QA or screenshot run (`--qa`, `--shot-plan=`), where software GL
 ## spends minutes on it and nobody plays. `--warmup` forces it; `opts.warmup` overrides all of it (the benchmark: on; the look and HUD tools: off).
 static func _wants_warmup(args: PackedStringArray = OS.get_cmdline_user_args(), display: String = DisplayServer.get_name()) -> bool:
 	if "--warmup" in args:

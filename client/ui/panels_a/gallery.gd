@@ -1,6 +1,6 @@
 extends Control
-## Panels-A gallery: every panel with mock data (DmPaMock). Interactive:  godot --path godot res://ui/panels_a/gallery.tscn
-## Capture:  godot --path godot res://ui/panels_a/gallery.tscn -- --pages=ascension,class,... --dir=/abs/shots [--w=1280 --h=900]
+## Panels-A gallery: every panel with mock data (DmPaMock). Interactive:  godot --path client res://ui/panels_a/gallery.tscn
+## Capture:  godot --path client res://ui/panels_a/gallery.tscn -- --pages=ascension,class,... --dir=/abs/shots [--w=1280 --h=900]
 ## (rendering: see ui/panels_a/shoot.sh, which takes the renderer lock). Pages: see PAGES.
 
 const PAGES := [

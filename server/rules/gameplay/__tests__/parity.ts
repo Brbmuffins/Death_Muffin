@@ -27,7 +27,7 @@ export function recorder() {
   };
 }
 
-/** Writes (UPDATE_<ENV>_PARITY=1) or checks godot/tests/<suite>/fixtures/<name>_parity.json against `cases`. */
+/** Writes (UPDATE_<ENV>_PARITY=1) or checks client/tests/<suite>/fixtures/<name>_parity.json against `cases`. */
 export function checkParity(suite: string, name: string, env: string, cases: ParityCase[]) {
   const file = path.join(ROOT, suite, 'fixtures', `${name}_parity.json`);
   const text = `${JSON.stringify({ cases })}\n`;

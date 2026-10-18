@@ -40,7 +40,7 @@ enum EventType : int32_t {
 	EV_THRALL_REMOVED = 27,    // the body is gone (1.4 s after death)
 	EV_THRALL_STATUS = 28,     // ints: target, status   floats: seconds   (status_applied: wraith chill, bone mage hex)
 	EV_THRALL_BELL_HEAL = 29,  // floats: x, z, fraction   (bell_heal: a Mourning Bell wraith hit heals allies near the point)
-	EV_THRALL_PLAGUE_POOL = 30,  // floats: x, z, radius, seconds, dps   (plague_pool: a plague bearer fell; today only a signal)
+	EV_THRALL_PLAGUE_POOL = 30,  // floats: x, z, radius, seconds, dps   (plague_pool: a plague bearer fell; only a signal)
 	EV_THRALL_HIT_EXTERNAL = 31, // ints: target (a boss), thrall kind   floats: damage   (a thrall blow on a boss: GDScript routes it to the brain)
 	// Affixes (DmAffixSet)
 	EV_AFFIX_MOMENT = 32,  // id = the enemy; ints: AffixMoment   floats: at x, at z, to x, to z, amount

@@ -2,7 +2,7 @@ class_name DmBossWorld
 extends RefCounted
 ## The boss-world view: the ONLY thing a DmBossBrain knows about the world. Subclass it (the host is next/bosses/dm_boss_node_world.gd) and
 ## override every method. Entities are plain Dictionaries so a host is free to keep its own richer objects behind them.
-## See godot/sim/bosses/README.md for the contract; defaults here only report the missing override.
+## See client/sim/bosses/README.md for the contract; defaults here only report the missing override.
 ##
 ## player dict:  { id: String, x, z: float, alive: bool, area: String }          (host order = the TS Map insertion order)
 ## enemy dict:   { id: int, def: String, area: String, x, z, hp, max_hp: float, state: String }

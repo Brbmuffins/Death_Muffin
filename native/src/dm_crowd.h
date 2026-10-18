@@ -36,7 +36,7 @@ class DmCrowd : public godot::RefCounted {
 		float hover = 0, scale = 1;
 		float tint[3] = { 1, 1, 1 }, tint_fen[3] = { 1, 1, 1 };
 		float glow[4] = { 0, 0, 0, 0 }, glow_fen[4] = { 0, 0, 0, 0 };  // linear rgb + strength (DmCreature's emissive and emissive_intensity); strength 0 = none
-		float glow_emp = 0;                                               // what an empowered thrall adds to the strength (0.22; the wraith none, as today)
+		float glow_emp = 0;                                               // what an empowered thrall adds to the strength (0.22; the wraith none)
 		mutable int32_t slot = -1, slot_fen = -1, slot_var[8] = { -1, -1, -1, -1, -1, -1, -1, -1 };  // palette slots, found on first use (slot_var: a thrall's [plain, empowered, champion, both] x [own, an ally's])
 		bool has_fen = false, set = false;
 	};
@@ -102,8 +102,8 @@ public:
 	// instance all the same (one draw call, and one more for each shadow cascade a caster meets), so a group is shown (`visible`) the frame it gets its first instance and hidden
 	// once it has had none for HIDE_AFTER_S seconds; the nodes start hidden. Without this call a group's node is never touched.
 	void set_group_nodes(int64_t p_model, const godot::Array &p_plain_nodes, const godot::Array &p_shadow_nodes, const godot::Array &p_fade_nodes = godot::Array());
-	// Today's glows that are not a look's own: `elite` (Color, linear, alpha = strength) for every elite enemy and its corpse, and what a champion thrall adds
-	// to its look's strength (DmEntityViews: 0.35).
+	// The glows that are not a look's own: `elite` (Color, linear, alpha = strength) for every elite enemy and its corpse, and what a champion thrall adds
+	// to its look's strength (the old game's DmEntityViews: 0.35).
 	void set_glows(const godot::Color &p_elite, double p_champion_add);
 	godot::PackedColorArray glow_palette() const;  // the slots' glows, linear rgb + strength in alpha
 	godot::PackedColorArray rim_palette() const;   // the slots' rims, the same layout (a body's slot picks both)
@@ -149,7 +149,7 @@ public:
 	godot::Dictionary view_info(int64_t p_id, bool p_corpse = false) const;
 	godot::Dictionary last_feed() const;  // the rows the last sync or sync_rows took, in sync_rows' layout (a co-op guest builds the same)
 
-	// Today's pure helpers, for the tests to hold against the GDScript (dm_entity_views.gd, dm_animator.gd).
+	// The pure helpers, for the tests to hold against GDScript mirrors (the old game's dm_entity_views.gd and dm_animator.gd).
 	static double turn_toward(double p_cur, double p_target, double p_dt, double p_rate, double p_max_rate);
 	static double smooth_speed(double p_prev, double p_sample, double p_dt, double p_tau);
 	static godot::Vector2 knock_impulse(double p_frac, double p_mass, double p_dx, double p_dz);

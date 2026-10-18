@@ -11,7 +11,7 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   try { const ex = require('path').join(String(execFileSync('git', ['rev-parse', '--git-common-dir'])).trim(), 'info', 'exclude'); if (!fs.readFileSync(ex, 'utf8').includes('.fake-calls')) fs.appendFileSync(ex, '\n.fake-calls\n'); } catch { /* not a repo */ }
   const mtI = process.argv.indexOf('--max-turns'); fs.appendFileSync('.fake-calls', `${mtI >= 0 ? process.argv[mtI + 1] : '-'} ${process.argv.includes('--resume') ? 'resume' : 'fresh'} ${/step limit\. The work continues/.test(p) ? 'note' : /<handoff>/.test(p) ? 'continue' : 'turn'}\n`);
   const out = (o) => process.stdout.write(JSON.stringify({ type: 'result', session_id: 'sess-' + Math.random().toString(16).slice(2, 8), total_cost_usd: 0, ...o }));
-  if (/step limit\. The work continues/.test(p)) { if (!fs.existsSync('NO-NOTE')) fs.writeFileSync('.dm-handoff.md', 'HANDOFF: speed half done; next set speed=9 in godot/game/a.gd\n'); return out({ subtype: 'success', is_error: false, result: 'Note written.' }); }
+  if (/step limit\. The work continues/.test(p)) { if (!fs.existsSync('NO-NOTE')) fs.writeFileSync('.dm-handoff.md', 'HANDOFF: speed half done; next set speed=9 in client/game/a.gd\n'); return out({ subtype: 'success', is_error: false, result: 'Note written.' }); }
   if (/LONG-FOREVER/.test(p) || (/LONG-TASK/.test(p) && !/<handoff>|left no note/.test(p))) return out({ subtype: 'error_max_turns', is_error: true, errors: ['Reached maximum number of turns (40)'] });
   if (/LOG-MARKER-77/.test(p)) text = 'Saw LOG-MARKER-77 in the report.';
   if (/STATUS-TURN/.test(p)) { fs.writeFileSync('.dm-status', '20% · Hunting the tooltip crash, then fixing it; ~1 min.\n'); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2500); }
@@ -21,7 +21,7 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   // SHOT-PNG / SHOT-PNG2: pretend shot.sh ran (a scenario file + a PNG; PNG2 = different bytes). The !shot prompt mentions shot.sh.
   const rules = 'server/vps-handoff/necro-progress/necro-rules.cjs';
   const wr = (f, c) => { fs.mkdirSync(require('path').dirname(f), { recursive: true }); fs.writeFileSync(f, c); };
-  // godot mode (base branch godot-port): GD-GAMEPLAY = godot/game/a.gd (GD-SHOT in the same request also leaves a shot plan + picture), GD-NET = sensitive net code, GD-DOC = readme, GD-PRESET = a forbidden path
+  // godot mode (base branch godot-port): GD-GAMEPLAY = client/game/a.gd (GD-SHOT in the same request also leaves a shot plan + picture), GD-NET = sensitive net code, GD-DOC = readme, GD-PRESET = a forbidden path
   // model requests: GD-ART [kind] id=<id>. kinds: (none) rigged biped with 6 clips | PROP | BAD (unknown field) | BADFIX (bad first, valid once the runner says it was rejected) | LINK (concept png is a symlink) | SWAP (rewrites the spec bigger, no request)
   const art = /GD-ART(?:-(\w+))? id=([a-z0-9_]+)/.exec(p);
   // a sync that hit conflicts: keep this branch's side of each conflicted file and commit the merge (a CONFLICT-ADD marker file in the worktree makes it also touch a new file)
@@ -62,11 +62,11 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
     text = 'Cannot fix it.';
   } else if (/The runner generated the sound "([a-z0-9_]+)"/.test(p)) {
     const id = /The runner generated the sound "([a-z0-9_]+)"/.exec(p)[1];
-    wr(`godot/assets/audio/eleven/${id}.wav`, fs.readFileSync(`audio-src/eleven/${id}/v1.mp3`)); git('add', '--', `godot/assets/audio/eleven/${id}.wav`, `audio-manifest/eleven/${id}.json`); git('commit', '-q', '-m', `Add the ${id} sound`); ready(`New sound: ${id}`, [`Added ${id}`]); text = 'Built and committed.' + (/build-sound\.sh/.test(p) ? ' BUILD-SOUND-SEEN' : '');
+    wr(`client/assets/audio/eleven/${id}.wav`, fs.readFileSync(`audio-src/eleven/${id}/v1.mp3`)); git('add', '--', `client/assets/audio/eleven/${id}.wav`, `audio-manifest/eleven/${id}.json`); git('commit', '-q', '-m', `Add the ${id} sound`); ready(`New sound: ${id}`, [`Added ${id}`]); text = 'Built and committed.' + (/build-sound\.sh/.test(p) ? ' BUILD-SOUND-SEEN' : '');
   } else if (/The runner generated the approved models? "/.test(p)) {
     const ids = [.../The runner generated the approved models? ((?:"[a-z0-9_]+"(?:, )?)+)/.exec(p)[1].matchAll(/"([a-z0-9_]+)"/g)].map((m) => m[1]);
     for (const id of ids) {
-      const glb = id.startsWith('prop_') ? `godot/assets/slice/models/props/${id.slice(5)}.glb` : `godot/assets/slice/models/${id}/character.glb`;
+      const glb = id.startsWith('prop_') ? `client/assets/slice/models/props/${id.slice(5)}.glb` : `client/assets/slice/models/${id}/character.glb`;
       wr(glb, 'glb-bytes'); git('add', '--', glb, `art-manifest/gemini-jobs/${id}.json`, `art-manifest/tripo-specs/${id}.json`, `art-manifest/tripo/${id}.json`);
     }
     git('commit', '-q', '-m', `Add the ${ids.join(', ')} model${ids.length > 1 ? 's' : ''}`); ready(`New model: ${ids.join(', ')}`, ids.map((i) => `Added ${i}`));
@@ -78,11 +78,11 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
     if (fs.existsSync('CONFLICT-ADD')) { fs.rmSync('CONFLICT-ADD'); fs.writeFileSync('src/extra.ts', 'x=1\n'); git('add', '--', 'src/extra.ts'); }
     git('commit', '-q', '--no-edit'); text = 'Resolved the merge.';
   }
-  else if (/GD-GAMEPLAY/.test(p)) { edit('godot/game/a.gd', 'speed=1', 'speed=9', 'Faster movement'); ready('Faster movement', ['speed 9']); text = 'Done.'; }
-  else if (/GD-NET/.test(p)) { edit('godot/net/dm_api.gd', 'url=1', 'url=2', 'Change the api url'); ready('Api url', ['url 2']); text = 'Done.'; }
-  else if (/GD-UI/.test(p)) { edit('godot/ui/menu.gd', 'title=1', 'title=2', 'Rename the menu title'); ready('Menu title', ['title 2']); text = 'Done.'; }
-  else if (/GD-DOC/.test(p)) { edit('godot/README.md', 'godot readme', 'godot readme v2', 'Clarify the Godot readme'); ready('Readme', ['readme']); text = 'Done.'; }
-  else if (/GD-PRESET/.test(p)) { edit('godot/export_presets.cfg', '[preset.0]', '[preset.0]\nx=1', 'Tweak the export'); ready('Export', ['x']); text = 'Done.'; }
+  else if (/GD-GAMEPLAY/.test(p)) { edit('client/game/a.gd', 'speed=1', 'speed=9', 'Faster movement'); ready('Faster movement', ['speed 9']); text = 'Done.'; }
+  else if (/GD-NET/.test(p)) { edit('client/net/dm_api.gd', 'url=1', 'url=2', 'Change the api url'); ready('Api url', ['url 2']); text = 'Done.'; }
+  else if (/GD-UI/.test(p)) { edit('client/ui/menu.gd', 'title=1', 'title=2', 'Rename the menu title'); ready('Menu title', ['title 2']); text = 'Done.'; }
+  else if (/GD-DOC/.test(p)) { edit('client/README.md', 'client readme', 'client readme v2', 'Clarify the game readme'); ready('Readme', ['readme']); text = 'Done.'; }
+  else if (/GD-PRESET/.test(p)) { edit('client/export_presets.cfg', '[preset.0]', '[preset.0]\nx=1', 'Tweak the export'); ready('Export', ['x']); text = 'Done.'; }
   else if (/not what the generators produce/.test(p)) { wr(rules, 'SPEED=9\n'); git('add', '--', rules); try { git('commit', '-q', '-m', 'Regenerate the server rules'); } catch { /* nothing to commit */ } text = 'Regenerated.'; }
   else if (/MAKE-DATA-HAND/.test(p)) { wr('src/gameplay/a.ts', 'speed=9\n'); wr(rules, 'SPEED=9 // hand edit\n'); git('add', '--', 'src/gameplay/a.ts', rules); git('commit', '-q', '-m', 'Faster movement'); ready('Faster', ['speed 9']); text = 'Done.'; }
   else if (/MAKE-DATA-FORBIDDEN/.test(p)) { wr('src/gameplay/a.ts', 'speed=9\n'); wr('server/death-muffin/deploy-release.sh', 'echo evil\n'); git('add', '--', 'src/gameplay/a.ts', 'server/death-muffin/deploy-release.sh'); git('commit', '-q', '-m', 'Faster movement'); ready('Faster', ['speed 9']); text = 'Done.'; }

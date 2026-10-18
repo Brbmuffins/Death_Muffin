@@ -1,9 +1,9 @@
-# client/next/gathering: gathering and professions on the rebuild
+# client/next/gathering: gathering and professions
 
 `DmNextGather` (child `Gather` of `DmNextGame`, same path on every peer) wires gathering into DmNextGame. It adds no rules:
 `DmGatherLoop` (walk -> work -> batch -> adopt the server's answer), `DmGathering` (timings, yields, success chance, XP curve, blockers, Auto's next node),
 `DmSkills`, `DmNodeViews` (hover / selected ring, progress arc under the hero, spent look), `DmGatherSession` (AFK report) (all in `client/game/`) are used as they are.
-How it plays on the area scenes (a cycle, the server call and its refusals, the stops, AFK, the Acre's panels and notices, the laborers, cost and differences) is client/README.md "Gathering and the Acre"; this guide keeps the numbers of the world and who owns what.
+How it plays on the area scenes (a cycle, the server call and its refusals, the stops, AFK, the Acre's panels and notices, the laborers, cost and gaps) is client/README.md "Gathering and the Acre"; this guide keeps the numbers of the world and who owns what.
 
 ## Playing it
 - 68 nodes (Acre 45, Fen 9, Cloister 3, Pyre 3, Graves 2, Ossuary 2, Nave 2, Sanctum 2: `DmData.world()["nodes"]`), props of the area scenes (group `GatherNodes`). Hover = ring + the node card

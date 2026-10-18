@@ -33,11 +33,11 @@ constexpr uint32_t T_SATURATED = 255; // time in state in centiseconds; 255 = 2.
 // Enemy record flag byte: bits 0..3 state, then elite, dug in, has aim, has affix byte. Thrall: bits 0..2 state, rally, has aim.
 // Bit 5 means dug in for a burrower; for a Deacon (EnemyDef behavior support), a raise in progress (its ATTACK is a raise, not a curse); for a Gargoyle (EnemyDef dive),
 // a dive in progress (its ATTACK is a drop, not a bite); for a Drowned Sexton (EnemyDef hook), a chain in progress (its ATTACK is the hook, not the slam): the guest's telegraph
-// differs (the swing_raise of DmEnemyDeacon, the `dv` of DmEnemyGargoyle and the `hk` of DmEnemyPfHazard, replicated today).
+// differs (the old game replicated the swing_raise of DmEnemyDeacon, the `dv` of DmEnemyGargoyle and the `hk` of DmEnemyPfHazard).
 constexpr uint32_t EF_ELITE = 0x10, EF_DUG_IN = 0x20, EF_AIM = 0x40, EF_AFFIXES = 0x80;
 constexpr uint32_t TF_RALLY = 0x08, TF_AIM = 0x10;
 
-// The puppet (today's puppets, dm_enemy.gd _puppet_step): exponential easing toward the last snapshot, a snap above 6 m, a speed smoothed at 10/s.
+// The puppet (the old game's puppets, dm_enemy.gd _puppet_step): exponential easing toward the last snapshot, a snap above 6 m, a speed smoothed at 10/s.
 constexpr double PUPPET_EASE = 15.0, PUPPET_SPEED_RATE = 10.0, PUPPET_TELEPORT_SQ = 36.0, PUPPET_MIN_SPEED = 0.3;
 constexpr double PUPPET_MIN_TELL_S = 0.05;   // dm_enemy.gd: announce_telegraph(maxf(0.05, windup_s - net_age))
 constexpr double PUPPET_T_RESYNC_S = 0.1;    // the time in state is taken from a snapshot only when it is this far from the guest's own count

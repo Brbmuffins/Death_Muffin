@@ -1,7 +1,7 @@
 class_name DmFxTex
 extends RefCounted
-## Textures + shaders shared by the procedural effects. The sprites are the web's own pixels: fxTextures.ts canvas drawings baked by
-## tools/godot/fx-textures.mjs to res://assets/fx/tex/<name>.png (glow ring disc sigil cone coneEdge bar smoke spark cracks
+## Textures + shaders shared by the procedural effects. The sprites are the web's own pixels: its canvas drawings, baked once (with the
+## web game, archive/legacy-web) to res://assets/fx/tex/<name>.png (glow ring disc sigil cone coneEdge bar smoke spark cracks
 ## lightPool) and the generated sprites res://assets/fx/art/<name>.webp (FX_IMAGES: skull, boneShard, crescent, ...).
 ## Flipbook sheets: res://assets/fx/sheets/<id>.png, greyscale intensity grids listed in fx_data.json `sheets`. The pack's licence forbids a
 ## public repo, so the PNGs are not in git (README "Flipbook sheets"); a missing sheet loads as null and callers keep their plain look.
@@ -57,10 +57,10 @@ const _BILLBOARD := """
 	MODELVIEW_MATRIX = MODELVIEW_MATRIX * mat4(vec4(length(MODEL_MATRIX[0].xyz), 0.0, 0.0, 0.0), vec4(0.0, length(MODEL_MATRIX[1].xyz), 0.0, 0.0), vec4(0.0, 0.0, length(MODEL_MATRIX[2].xyz), 0.0), vec4(0.0, 0.0, 0.0, 1.0));
 """
 
-## The effects' colours are sRGB values (hex colours) that reach the shader as the instance's COLOR. Compatibility, which today's game runs on, reads every colour it
+## The effects' colours are sRGB values (hex colours) that reach the shader as the instance's COLOR. Compatibility, which the old game ran on, reads every colour it
 ## multiplies into ALBEDO as sRGB and converts the product to linear at the end; Forward+ takes COLOR as linear, so an effect came out much brighter and whiter
 ## (client/README.md "Graphics presets"). The shaders convert the colour themselves. An effect is not baked into the area's lightmap either, so the area's exposure lift (calibrated on the baked world,
-## `DmWorldBuilder.AREA_LIFT`) is divided out of it (`dm_lift_inv`, 1 / (the lift x the preset's): the effect is as bright as today's whatever the area, client/README.md "The look against today's game").
+## `DmWorldBuilder.AREA_LIFT`) is divided out of it (`dm_lift_inv`, 1 / (the lift x the preset's): the effect is as bright as the old game's whatever the area, client/README.md "The look on Forward+").
 const _SRGB := """
 global uniform float dm_lift_inv;
 vec3 dm_srgb(vec3 c) {

@@ -7,10 +7,10 @@ extends Node
 ## The hotbar is an input SEAM: casters listen to `hotbar` (they never read InputEvents). Actions are registered at runtime in
 ## `ensure_actions()` (project.godot is not edited): dm_move_up/down/left/right, dm_primary (LMB), dm_secondary (RMB), dm_hotbar_1..6.
 ##
-## Ported to the combat core (client/code.list "Ported"): the hover pick asks the core. The cursor's ray meets the chest-height plane, the core names the
+## The hover pick asks the core. The cursor's ray meets the chest-height plane, the core names the
 ## enemies near that point (`enemies_in_radius`, a handful), and the one whose chest is nearest the cursor on screen within PICK_PX wins: no loop over
-## every enemy. The attack-target chase, hold repeat and queued casts are today's DmCombatInput (ported: it asks the caster for the enemy). Easy auto-combat
-## (DmNextAutoCombat, ported: it reads the core's bulk arrays) casts through `cast_at` and walks through the session's intents, gated by `auto.allowed()`.
+## every enemy. The attack-target chase, hold repeat and queued casts are DmCombatInput's (it asks the caster for the enemy). Easy auto-combat
+## (DmNextAutoCombat: it reads the core's bulk arrays) casts through `cast_at` and walks through the session's intents, gated by `auto.allowed()`.
 ## A drop under the cursor is the game's `loot` (DmNextLoot), not the panels' adapter.
 
 signal hotbar(slot: int, aim: Vector3, enemy_id: int)   ## slot 0 = LMB primary, 1..4 = keys, 5 = RMB, 6 = R (signature); enemy_id 0 = ground aim

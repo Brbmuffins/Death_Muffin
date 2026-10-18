@@ -7,9 +7,9 @@ extends Node
 ## Reads: DmHeroBody (vitals), DmRiteCaster (cooldowns, essence, hit numbers, rejections, the legion), DmStatusSet, the rewards
 ## member (character xp/gold, bag). Writes: rite casts (`request_cast`), the bag (DmInventory: loot pickups land in it and flush to the api).
 ## Loadout: DmLoadout.load_rites(DmContent.kit family defaults); one place, changed by the Grimoire through set_rites().
-## The rebuild's port (client/code.list "Ported", DECISIONS B46): the world is the combat core, so the enemy hooks are the core host's events (a thrall's or a DoT's
+## DECISIONS B46: the world is the combat core, so the enemy hooks are the core host's events (a thrall's or a DoT's
 ## number, an elite's dot, the counsel's spawn and corpse facts) and the target frame reads an enemy id (`target_id`); the bag and the drops are the game's loot node
-## (`DmNextLoot`: `inventory`, the runes owned, a click on a drop); the counsel (DmNextCounsel, ported) asks the core for its fight facts on its 400 ms poll; the Altar is gone
+## (`DmNextLoot`: `inventory`, the runes owned, a click on a drop); the counsel (DmNextCounsel) asks the core for its fight facts on its 400 ms poll; the Altar is gone
 ## (DECISIONS B36: no Ascension); standing thralls are refreshed through the hero's legion on the core.
 
 signal character_changed
@@ -154,7 +154,7 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 	set_process(true)
 
 
-## The core host's events the HUD and the counsel hear (today's per-enemy hooks, `watch_enemy`): elites for the minimap, a thrall's blow and a DoT lump as numbers over
+## The core host's events the HUD and the counsel hear, in place of per-enemy hooks: elites for the minimap, a thrall's blow and a DoT lump as numbers over
 ## the enemy, the counsel's spawn, corpse and Sanctify facts. No node and no per-frame work per creature.
 func _watch_core() -> void:
 	var ch := shell.core_host
@@ -175,7 +175,7 @@ func _watch_core() -> void:
 func _on_enemy_spawned(id: int, def: String, _level: int, elite: bool, _area: String, _affixes: int, x: float, z: float, _hp: float) -> void:
 	if elite:
 		_elite[id] = true
-	if _dist_hero(x, z) < 40.0:   # the counsel's spawn facts (today's DmEventFx._spawn): once per spawn
+	if _dist_hero(x, z) < 40.0:   # the counsel's spawn facts: once per spawn
 		game_event.emit("enemy_spawned", {"def": def, "elite": elite, "near": true, "area_safe": bool(DmContent.area(shell.area_id)["safe"])})
 
 
@@ -297,7 +297,7 @@ func refresh_progress() -> void:
 	progress_changed.emit()
 
 
-## Bag edits the Reliquary makes (GAME_CONTRACT.md): `slots` is for reading; every change is a server operation (DECISIONS B25).
+## Bag edits the Reliquary makes: `slots` is for reading; every change is a server operation (DECISIONS B25).
 ## The server sorts the bag; `on_moves(moves)` (old slot -> new slot) runs before the answer is shown, so slot-keyed state follows its item.
 ## Returns "" or the reason it did not sort.
 func bag_sort(on_moves: Callable = Callable(), is_locked: Callable = Callable()) -> String:

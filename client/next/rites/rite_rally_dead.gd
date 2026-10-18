@@ -3,7 +3,7 @@ extends DmRiteModule
 ## turns on the enemy nearest the cursor (within the leash). 20 essence, 12 s, level 6; refused `no_thralls` with an empty legion (free). The host
 ## applies it once; ONE event goes to every peer, which plays the beams / sigils / rims / sound exactly once (the original game's double-dispatch bug
 ## drew them twice). Numbers: DmSimData.RALLY (the core applies them). Visuals: DmRiteFx.rally_cast / rally; the follow targets read the thralls' positions.
-## On the combat core (client/code.list "Ported"): the legion is the core's (`c.thralls()`: rally heals, hastens and retargets inside the core), a thrall is an id.
+## On the combat core: the legion is the core's (`c.thralls()`: rally heals, hastens and retargets inside the core), a thrall is an id.
 
 const FOCUS_SEARCH := 30.0
 

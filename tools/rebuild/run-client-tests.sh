@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The game's (client/) test suites, one line each (what tools/godot/run-all-tests.sh is for godot/). Run client/setup.sh and
+# The game's (client/) test suites, one line each. Run client/setup.sh and
 # client/tools/bake_crowd.sh first (the combat core, the import, the crowd's baked models).
 #   tools/rebuild/run-client-tests.sh [--jobs N] [--only a,b]
 # A suite passes with exit 0, a PASS line and no SCRIPT ERROR in its log. Each suite gets its own user folders (XDG_*), so they can run side by

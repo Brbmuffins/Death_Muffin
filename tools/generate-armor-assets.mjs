@@ -1,14 +1,14 @@
 /**
  * Armor sets end to end, from the server rules (server/rules/content/armorSets.ts + legendarySets.ts) to every copy that must match them:
- *   - the Godot client's hand-kept data copies (godot/data/README.md "Merged and overlapping data"): content/{armorSets,legendarySets,items,
+ *   - the game's hand-kept data copies (client/data/README.md "Merged and overlapping data"): content/{armorSets,legendarySets,items,
  *     setBonuses,computed,gameplay_atlas,gameplay_authorityRules}.json, combat/armor.json, gathering/gathering.json, panels_a/{codex_rows,atlas}.json
- *   - the inventory icons (godot/assets/ui_art/art/items/<id>.svg, and the same file under public/art/items/, which the item catalogue test reads)
+ *   - the inventory icons (client/assets/ui_art/art/items/<id>.svg, and the same file under public/art/items/, which the item catalogue test reads)
  *   - the server's `items` rows: pieces no migration inserts yet get a NEW additive migration (applied ones are never rewritten)
  *
  *   node tools/generate-armor-assets.mjs           write everything that is missing or stale, print what changed
  *   node tools/generate-armor-assets.mjs --check   exit 1 (and list the files) when anything is out of date
  *
- * A new set: add it to legendarySets.ts (or armorSets.ts), add its bonuses to godot/data/content/setBonuses.json SET_BONUSES (an effect the game
+ * A new set: add it to legendarySets.ts (or armorSets.ts), add its bonuses to client/data/content/setBonuses.json SET_BONUSES (an effect the game
  * folds, or `{"text": "..."}` for a bonus coded elsewhere, e.g. DmReaperSet), run this, then `npm run build:server-rules`. The new migration ships
  * with the change (the Discord agent's ship applies it). Gear Atlas rows of a new piece copy the drop sources of the same slot of an existing set in
  * its collection (the Atlas has no generator; its rates are those sources').
@@ -54,25 +54,25 @@ function withRows(obj, ids, make) {
 // ---- first: every set needs its (hand-written) bonuses, or nothing is written ----------------------------------------------
 const setIds = [...new Set(PIECES.map((x) => x.setId))];
 const setName = Object.fromEntries(PIECES.map((x) => [x.setId, x.setName]));
-const bonusSrc = readJson('godot/data/content/setBonuses.json').SET_BONUSES;
+const bonusSrc = readJson('client/data/content/setBonuses.json').SET_BONUSES;
 const noBonus = setIds.filter((id) => !bonusSrc[id]);
 if (noBonus.length) {
-  console.error(`No bonuses for set(s) ${noBonus.join(', ')}: add them to godot/data/content/setBonuses.json SET_BONUSES first, e.g.\n` +
+  console.error(`No bonuses for set(s) ${noBonus.join(', ')}: add them to client/data/content/setBonuses.json SET_BONUSES first, e.g.\n` +
     `  "${noBonus[0]}": [{"pieces": 2, "effect": {"text": "..."}}, {"pieces": 4, "name": "...", "effect": {"text": "..."}}, {"pieces": 5, "name": "...", "effect": {"text": "..."}}]`);
   process.exit(2);
 }
 // ---- content/* : straight copies of the TS exports ------------------------------------------------------------------------------------
-editJson('godot/data/content/armorSets.json', (d) => { for (const k of Object.keys(d)) if (k in A) d[k] = A[k]; });
-editJson('godot/data/content/legendarySets.json', (d) => { for (const k of Object.keys(d)) if (k in L) d[k] = L[k]; });
-editJson('godot/data/content/items.json', (d) => { for (const k of Object.keys(d)) if (k in I) d[k] = I[k]; });
-editJson('godot/data/content/computed.json', (d) => { d.itemIds = Object.keys(I.ITEMS); });
-editJson('godot/data/content/gameplay_authorityRules.json', (d) => { d.GROUND_RATES = R.GROUND_RATES; });
-editJson('godot/data/content/gameplay_atlas.json', (d) => { d.ARMOR_BY_ID = A.ARMOR_BY_ID; d.LEGENDARY_SETS = L.LEGENDARY_SETS; });
+editJson('client/data/content/armorSets.json', (d) => { for (const k of Object.keys(d)) if (k in A) d[k] = A[k]; });
+editJson('client/data/content/legendarySets.json', (d) => { for (const k of Object.keys(d)) if (k in L) d[k] = L[k]; });
+editJson('client/data/content/items.json', (d) => { for (const k of Object.keys(d)) if (k in I) d[k] = I[k]; });
+editJson('client/data/content/computed.json', (d) => { d.itemIds = Object.keys(I.ITEMS); });
+editJson('client/data/content/gameplay_authorityRules.json', (d) => { d.GROUND_RATES = R.GROUND_RATES; });
+editJson('client/data/content/gameplay_atlas.json', (d) => { d.ARMOR_BY_ID = A.ARMOR_BY_ID; d.LEGENDARY_SETS = L.LEGENDARY_SETS; });
 
 // ---- content/manifest.json: the export counts the rules-core suite checks (array length / key count, 1 for a scalar) -------------------
-editJson('godot/data/content/manifest.json', (m) => {
+editJson('client/data/content/manifest.json', (m) => {
   for (const name of ['armorSets', 'legendarySets', 'items', 'setBonuses', 'computed', 'gameplay_authorityRules', 'gameplay_atlas']) {
-    const file = name === 'setBonuses' ? { ...readJson(`godot/data/content/${name}.json`), SET_NAMES: setName, SET_IDS: setIds } : readJson(`godot/data/content/${name}.json`);
+    const file = name === 'setBonuses' ? { ...readJson(`client/data/content/${name}.json`), SET_NAMES: setName, SET_IDS: setIds } : readJson(`client/data/content/${name}.json`);
     for (const [k, v] of Object.entries(file)) m.files[name].counts[k] = v && typeof v === 'object' ? Object.keys(v).length : 1;
     m.files[name].keys = Object.keys(file).length;
   }
@@ -80,16 +80,16 @@ editJson('godot/data/content/manifest.json', (m) => {
 });
 
 // ---- set bonuses: names and ids follow the sets ------------------------------------------------------------------------------------
-editJson('godot/data/content/setBonuses.json', (d) => { d.SET_NAMES = setName; d.SET_IDS = setIds; });
+editJson('client/data/content/setBonuses.json', (d) => { d.SET_NAMES = setName; d.SET_IDS = setIds; });
 const PIECE_KEYS = ['id', 'setId', 'disciplineId', 'collection', 'part', 'stats', 'area', 'name', 'setName'];
-editJson('godot/data/combat/armor.json', (d) => {
+editJson('client/data/combat/armor.json', (d) => {
   d.pieces = PIECES.map((x) => Object.fromEntries(PIECE_KEYS.map((k) => [k, x[k]])));
   d.set_bonuses = bonusSrc;
   d.set_names = setName;
 });
 
 // ---- gathering items subset -------------------------------------------------------------------------------------------------------------
-editJson('godot/data/gathering/gathering.json', (d) => {
+editJson('client/data/gathering/gathering.json', (d) => {
   d.items = withRows(d.items, PIECES.map((x) => x.id), (id) => {
     const m = I.ITEMS[id];
     return { name: m.name, type: m.type, rarity: m.rarity, sell: m.sell, offlineStats: m.offlineStats };
@@ -104,7 +104,7 @@ function bonusText(b, sibling) {
   throw new Error(`set bonus ${JSON.stringify(b)} has no text and no existing codex row to copy it from: give it an effect "text"`);
 }
 const wearerSuffix = { 1: 'Drops in its areas.', 2: 'Drops in its areas.', 3: 'Drops from area bosses.' };
-editJson('godot/data/panels_a/codex_rows.json', (d) => {
+editJson('client/data/panels_a/codex_rows.json', (d) => {
   const have = new Set(d.sets.map((s) => s.setId));
   for (const id of setIds) {
     if (have.has(id)) continue;
@@ -116,7 +116,7 @@ editJson('godot/data/panels_a/codex_rows.json', (d) => {
     });
   }
 });
-editJson('godot/data/panels_a/atlas.json', (d) => {
+editJson('client/data/panels_a/atlas.json', (d) => {
   const sibling = (x) => PIECES.find((o) => o.collection === x.collection && o.part === x.part && o.setId !== x.setId && d.items[o.id]);
   for (const x of PIECES) {
     if (d.items[x.id]) continue;
@@ -153,7 +153,7 @@ for (const x of PIECES) {
   const legendaryFrame = x.collection === 3 ? `<rect x="5" y="5" width="118" height="118" rx="15" fill="none" stroke="#ff9a2e" stroke-width="3"/><rect x="10" y="10" width="108" height="108" rx="12" fill="none" stroke="${hex(x.accent)}" stroke-width="1.5" opacity=".8"/><path d="m64 5 9 11-9 11-9-11z" fill="#ff9a2e"/><path d="M30 113h68" stroke="#ff9a2e" stroke-width="3"/>` : '';
   const ascendedFrame = x.collection === 2 ? `<rect x="7" y="7" width="114" height="114" rx="14" fill="none" stroke="${hex(x.accent)}" stroke-width="2" opacity=".9"/><path d="m64 8 8 10-8 10-8-10z" fill="${hex(x.accent)}"/><path d="M34 112h60" stroke="${hex(x.accent)}" stroke-width="2"/>` : '';
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><defs><radialGradient id="bg"><stop stop-color="${hex(x.color)}" stop-opacity=".34"/><stop offset="1" stop-color="${dark}"/></radialGradient><linearGradient id="metal" x2="1" y2="1"><stop stop-color="${hex(x.accent)}"/><stop offset=".48" stop-color="${hex(x.color)}"/><stop offset="1" stop-color="${dark}"/></linearGradient></defs><rect width="128" height="128" rx="17" fill="url(#bg)"/><path d="M12 19h21M95 19h21M12 109h21M95 109h21" stroke="${hex(x.accent)}" stroke-width="3" opacity=".8"/>${ascendedFrame}${legendaryFrame}<g fill="url(#metal)" stroke="${hex(x.accent)}" stroke-width="3" stroke-linejoin="round">${shapes[x.part]}</g><circle cx="64" cy="58" r="7" fill="${hex(x.accent)}" stroke="${dark}" stroke-width="2"/></svg>\n`;
-  for (const dir of ['godot/assets/ui_art/art/items', 'public/art/items']) put(`${dir}/${x.id}.svg`, svg);
+  for (const dir of ['client/assets/ui_art/art/items', 'public/art/items']) put(`${dir}/${x.id}.svg`, svg);
 }
 
 // ---- server items rows: a new additive migration for pieces no migration inserts --------------------------------------------------------

@@ -125,7 +125,7 @@ func _process(dt: float) -> void:
 	]
 	label.text = "\n".join(lines)
 
-## "fx ..." row: the Vfx autoload's own node time (ms per frame over the window since the last paint). The old game's per-system tick split went with it.
+## "fx ..." row: the Vfx autoload's own node time (ms per frame over the window since the last paint).
 func _split_line() -> String:
 	var n := maxf(1.0, float(_frames_since_paint))
 	_frames_since_paint = 0

@@ -1,4 +1,4 @@
-// The crowd's presentation, a port of the view layer of godot/game (native/README.md "Drawing"). Sections: today's pure helpers, the creature
+// The crowd's presentation, the old game's view layer in C++ (native/README.md "Drawing"). Sections: the pure helpers, the creature
 // (DmCreature: clips, blends, strikes, flinch, the body layer), the views (DmEntityViews: death, corpses, shadows), then tick and draw.
 #include "crowd_view.h"
 
@@ -84,7 +84,7 @@ M3 rot_z(double a) {
 }
 } // namespace
 
-// ---------------------------------------------------------------------------------------------------------------- today's pure helpers
+// ---------------------------------------------------------------------------------------------------------------- the pure helpers
 
 double CrowdView::turn_toward(double p_cur, double p_target, double p_dt, double p_rate, double p_max_rate) {  // DmEntityViews.turn_toward
 	const double d = wrap_pi(p_target - p_cur);
@@ -919,7 +919,7 @@ void CrowdView::set_thrall_shadows(bool p_on) {
 	thrall_shadows = p_on;
 	for (View &v : views) {
 		if (v.kind == BK_THRALL) {
-			v.shadow = p_on;  // as a new thrall gets it (every thrall casts, as today)
+			v.shadow = p_on;  // as a new thrall gets it (every thrall casts)
 		}
 	}
 }

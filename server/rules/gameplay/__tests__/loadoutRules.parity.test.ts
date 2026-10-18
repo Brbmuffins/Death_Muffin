@@ -8,7 +8,7 @@ import { runeFits } from '../runeRules';
 import { checkParity, recorder } from './parity';
 
 /**
- * Loadout presets (godot/net/offline/dm_offline_loadout.gd) and cosmetic unlocks (dm_offline_cosmetics.gd): the offline backend's ports of
+ * Loadout presets (client/net/offline/dm_offline_loadout.gd) and cosmetic unlocks (dm_offline_cosmetics.gd): the offline backend's ports of
  * the rules the server enforces. Replayed by rules-combat (loadout_parity.json) and rules-gathering (cosmetics_parity.json).
  * Regenerate: UPDATE_LOADOUT_PARITY=1 / UPDATE_COSMETICS_PARITY=1 npx vitest run server/rules/gameplay/__tests__/loadoutRules.parity.test.ts
  */

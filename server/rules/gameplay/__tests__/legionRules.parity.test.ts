@@ -6,7 +6,7 @@ import { RUNE_BASE, isRuneSlot, ownedRunes, runeEquippedSlot, runeFits, runeSlot
 import { checkParity, recorder } from './parity';
 
 /**
- * The Legion kit bonus (godot/rules/combat/dm_legion.gd) and the rune socket rows (godot/rules/combat/dm_runes.gd).
+ * The Legion kit bonus (client/rules/combat/dm_legion.gd) and the rune socket rows (client/rules/combat/dm_runes.gd).
  * Replayed by the Godot suite rules-combat (legion_parity.json, runes_parity.json).
  * Regenerate: UPDATE_LEGION_PARITY=1 / UPDATE_RUNES_PARITY=1 npx vitest run server/rules/gameplay/__tests__/legionRules.parity.test.ts
  */

@@ -1,8 +1,6 @@
 class_name DmWarmup
 extends RefCounted
-## First-use hitch removal, shared by the warm-up (DmNextWarmup): what stays resident, which hero kits to drop, and the model list. Ported to the rebuilt client
-## (client/code.list "Ported"): the original also held the old game's own warm-up (`run`, its area tour and its rehearsal wave of DmSimEnemy bodies), which nothing
-## called since DmNextWarmup; it is not here.
+## First-use hitch removal, shared by the warm-up (DmNextWarmup): what stays resident, which hero kits to drop, and the model list.
 
 const MODELS := "res://assets/slice/models/"
 const COVER_TEXT := "Waking the dead..."

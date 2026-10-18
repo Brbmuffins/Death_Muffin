@@ -1,7 +1,7 @@
 class_name DmModels
 extends RefCounted
 ## GLB loading + the web game's height normalisation (AssetCache.model: scale to a target height, stand on the ground, centre on x/z).
-## GLBs are the web's models, dequantized by tools/godot/sync-slice-assets.mjs (Godot's importer rejects KHR_mesh_quantization).
+## GLBs are dequantized when they come into the game (server/death-muffin/discord-agent/build-art.sh: Godot's importer rejects KHR_mesh_quantization).
 
 const BASE := "res://assets/slice/"
 static var _info: Dictionary = {}

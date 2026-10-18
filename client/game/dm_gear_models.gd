@@ -1,6 +1,6 @@
 class_name DmGearModels
 extends RefCounted
-## The real (Tripo) models of necromancer gear and the table that says which item shows which one (godot/data/slice/necro_gear.json): the seven weapon
+## The real (Tripo) models of necromancer gear and the table that says which item shows which one (client/data/slice/necro_gear.json): the seven weapon
 ## kinds, the set mantles, the tier helms (and set helms), set weapons (`weapon_by_set_id`) and the legendary-set hero bodies. Every prop is one mesh with one
 ## material (one draw call). Weapon metal tiers (bone / iron / gold / hell / moon) are tint + glow variants of the one model, each built once and
 ## shared by every instance (`_mats`); nothing is allocated per frame.

@@ -2,8 +2,8 @@ class_name DmBenchmarkScreen
 extends Control
 ## Benchmark UI around DmBenchmark: a progress line over the running fight (Esc cancels), then the results panel (big avg fps and p95 ms per
 ## phase, the full table with a "vs last run" column, the budget section, Copy to clipboard, Back / Quit). Also prints the report to the log ("BENCHMARK" prefix), saves it,
-## records the run in DmBenchHistory and sends the queued runs to the benchmark history of the TEST server with `api` (online and logged in; else they wait). Ported to the
-## rebuilt client (client/code.list "Ported"): the budget section is new; the transport behind `api` refuses any address but the test server's (net/dm_config.gd).
+## records the run in DmBenchHistory and sends the queued runs to the benchmark history on the game's server with `api` (online and logged in; else they wait). The
+## transport behind `api` refuses any address but the live server's (net/dm_config.gd).
 ## `quit_on_close` (launch arg `--benchmark`): the closing button is "Quit" and quits the game (a headless run quits by itself once the report is out); otherwise `closed` is emitted (back to character select).
 
 signal closed
@@ -12,7 +12,7 @@ var quit_on_close := false
 var setup: Dictionary = DmBenchmark.STANDARD.duplicate()
 var warm_s := -1.0               ## > 0: overrides the length's warm-up / measured seconds (`--bench-warm=` / `--bench-measure=` smoke runs)
 var measure_s := -1.0
-var api: DmApi                   ## the logged-in online api (uploads, to the test server); null = the run is queued until a later session sends it
+var api: DmApi                   ## the logged-in online api (uploads, to the game's server); null = the run is queued until a later session sends it
 var baked_dir := ""              ## where the baked crowd models are ("" = the project's; tests)
 var uploaded := -1               ## runs the server accepted after this one (-1 = not tried yet)
 var runner: DmBenchmark

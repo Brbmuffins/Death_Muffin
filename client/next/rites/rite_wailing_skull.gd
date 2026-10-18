@@ -3,7 +3,7 @@ extends DmRiteModule
 ## then leaps to the nearest enemy not yet struck within 6.5 m, each leap x0.8 weaker. 3 leaps; a leap that kills earns another; never past 5 in all.
 ## Numbers: DmAbilities + WAILING_SKULL; every leap is a broadcast event (the skull is a visual `shot` per leap), the blow lands on the host on arrival.
 ## Visuals: DmRiteFx.skull_cast / skull_leap / skull_hit. A boss is a foe like any (the host's queries append it after the enemies).
-## On the combat core (client/code.list "Ported"): the blow is `c.deal` and its `killed` is known at once, so a leap that kills earns the extra leap as today.
+## On the combat core: the blow is `c.deal` and its `killed` is known at once, so a leap that kills earns the extra leap.
 
 const Y := 1.1
 

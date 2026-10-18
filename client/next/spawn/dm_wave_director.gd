@@ -1,7 +1,6 @@
 class_name DmWaveDirector
 extends Node
-## Host-side enemy waves for one hunting ground, generic over enemy def ids. Ported to the combat core (client/code.list "Ported"): the same pacing,
-## rosters, packs, elites, affix roll and scaling as the director of godot/next/spawn, but a body is made by `DmCoreHost.spawn_enemy` (the core owns
+## Host-side enemy waves for one hunting ground, generic over enemy def ids, on the combat core: a body is made by `DmCoreHost.spawn_enemy` (the core owns
 ## it from then on: no scene, no node, no spawner) and every query is an id.
 ##
 ## Pacing (simplified from the sim): a wave of `wave_size` every `wave_interval` s while a hero is in the area, up to `cap` alive.
@@ -13,7 +12,7 @@ signal procession(theme: Dictionary)    ## host: a themed wave (DmSimData.WAVE_T
 signal area_followed(id: String)        ## host: the director moved to the combat area the heroes are in
 signal surge_event(ev: Dictionary)      ## host: {t: surge | surgeCleared | surgeFailed, area, x, z, ...} (DmGraveSurge)
 
-## The defs the core's enemy brain runs (today: "has a scene at res://enemies/<id>.tscn"): the Hollow Graves' roster, the rat of the kennel
+## The defs the core's enemy brain runs: the Hollow Graves' roster, the rat of the kennel
 ## procession and the risen, the Ossuary's golem and deacon (so the whole Ossuary roster), the Drowned Nave's censer, acolyte, gargoyle, templar and wraith
 ## (so the whole Nave roster), the Weeping Seraph, Flagellant and Plague Doctor (so the Bell Sanctum, the Bone Coliseum and the Plague Cloister run their whole rosters)
 ## and the Cinder Pyre's and the Mourning Fen's cinder_husk, cinderhound, pyre_priest, slag_brute, bog_hag, drowned_sexton, fen_wisp and mire_leech (so the whole Pyre and Fen rosters).
@@ -21,7 +20,7 @@ signal surge_event(ev: Dictionary)      ## host: {t: surge | surgeCleared | surg
 const CORE_KINDS: Array[String] = ["robber", "hound", "penitent", "sac", "moth", "bat", "ghoul", "rat", "risen", "golem", "deacon", "censer", "acolyte", "gargoyle", "templar", "wraith",
 	"seraph", "flagellant", "plague_doctor", "cinder_husk", "pyre_priest", "cinderhound", "slag_brute", "bog_hag", "drowned_sexton", "fen_wisp", "mire_leech"]
 const BOSS_KINDS: Array[String] = ["niche"]   ## kinds only a boss makes (the Bone Abbess's Skull Niche: never in a wave's roster, always through `spawn`)
-const EMPTY_CLEAR_S := 15.0             ## no hero in the area this long -> the area's remaining enemies are sent away (today's)
+const EMPTY_CLEAR_S := 15.0             ## no hero in the area this long -> the area's remaining enemies are sent away
 const SPAWN_MIN := DmSimConsts.AGGRO_RANGE + 3.0   ## owner 2026-10-07: waves climb in outside aggro so the player sees them coming (+3: a group fans out 2.1 m)
 const SPAWN_MAX := 30.0                 ## farthest spawn distance (m)
 const SPAWNS_PER_TICK := 3              ## wave bodies made per physics tick: a 12-body wave takes 4 ticks
@@ -56,7 +55,7 @@ var _empty_t: float = 0.0
 var _base := [6.5, 9, 28]               ## the area's own interval / size / cap, before the tier
 var follow_areas := true                ## host: when no hero is in `area_id`, move to the combat area one is in (DmNextGame: every area has a roster)
 var surge: DmGraveSurge                 ## Grave Surges (next/areas/dm_grave_surge.gd), host; its clock runs from `_physics_process` while a hero is in a combat area
-var off: Dictionary = {}                ## defs the director leaves out as if the core did not run them (def id -> true): the parity scenario drops the Bellringers' censer, as today's side does
+var off: Dictionary = {}                ## defs the director leaves out as if the core did not run them (def id -> true; client/tests/core_kinds.gd leaves out the Bellringers' censer with it)
 var _first_wave := true                 ## the first wave of a visit is 1.3 x the area's wave size (the sim's spawn_wave first)
 var _wave_n: int = 0                    ## waves since arrival (processions start at PROCESSION.minWave)
 var _vanguard := false                  ## this wave carries the Elite Vanguard (every other wave): its first plain pick is an elite
@@ -330,7 +329,7 @@ func scaling_levels(heroes: Array) -> Array:
 ## the enemy counts as for level scaling; a boss's adds belong to the boss's area), depth (the Depths run: its level, and full Wave Speed ramp like the
 ## sim's instance), aggro / leash (metres: this body's own notice and chase distances, as the Depths give theirs; the core's every-body defaults when absent),
 ## affix_list (PackedStringArray of elite affixes; an elite without one rolls its own: the Omen's forced affix, else one of four, + the
-## Depths' extras). The affix roll is `DmAffixRoll.roll`, today's, from this director's random stream.
+## Depths' extras). The affix roll is `DmAffixRoll.roll`, from this director's random stream.
 func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false, mult: Dictionary = {}, over: Dictionary = {}) -> int:
 	var levels := scaling_levels(heroes)
 	var spawn_area := String(over.get("area", "")) if String(over.get("area", "")) != "" else area_id
@@ -406,7 +405,7 @@ func clear() -> void:
 	_pending.clear()
 
 
-## Drop the queued spawns that belong to one ground and send its living bodies away (today's director freed them: no death, corpse, credit or
+## Drop the queued spawns that belong to one ground and send its living bodies away (no death, corpse, credit or
 ## loot), so the global cap is free for the ground the heroes are on: when the director follows the heroes into another area, and when an area has
 ## been empty EMPTY_CLEAR_S. A body already dying finishes its fall; a boss is not in the core's table (the boss host's).
 func clear_area(area: String) -> void:

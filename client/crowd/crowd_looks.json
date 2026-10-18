@@ -1,5 +1,5 @@
 {
-  "about": "How the crowd dresses today's creatures: godot/game/dm_entity_views.gd (ENEMY_SLUG, ENEMY_FALLBACK, CASTERS, HOVER, LEGION, THRALL_SLUG, THRALL_LOOK, _enemy_opts, _make_thrall), ported as data. Colours are sRGB hex strings. client/crowd/README.md 'Driving the crowd'.",
+  "about": "How the crowd dresses the creatures: each enemy's and thrall's model, fallback, caster and hover looks, legion and thrall looks (the old game's entity views, as data). Colours are sRGB hex strings. client/crowd/README.md 'Driving the crowd'.",
   "enemy_model": {
     "robber": "grave_robber", "hound": "bone_hound", "penitent": "penitent", "sac": "carrion_sac", "deacon": "deacon", "risen": "skeleton_thrall",
     "censer": "censer_bearer", "wraith": "choir_wraith", "rat": "skull_rat", "golem": "bone_golem", "gargoyle": "belfry_gargoyle",
@@ -16,13 +16,13 @@
   },
   "casters": ["penitent", "deacon", "wraith", "censer", "moth", "seraph", "acolyte", "plague_doctor", "pyre_priest", "bog_hag", "fen_wisp"],
   "mist": ["wraith"],
-  "wobble_about": "DmEntityViews._fen_dead: the Mire Leech's slither (the root rolls and squashes with the clock and its id; a quarter as much standing still)",
+  "wobble_about": "the old game's _fen_dead: the Mire Leech's slither (the root rolls and squashes with the clock and its id; a quarter as much standing still)",
   "wobble": ["mire_leech"],
   "spectral_models_about": "DmCreature's spectral bodies (the wraith enemy, the Mourner's thralls): see-through at 0.55, no depth write, no shadow",
   "spectral_models": ["choir_wraith", "wraith_thrall"],
   "hover": {"wraith": 0.45},
   "enemy_tint": {"risen": "8a8078", "risen_fen": "7ab0a8"},
-  "enemy_glow_about": "DmEntityViews._enemy_opts: [emissive sRGB hex, emissive_intensity]; an elite's overrides the rest; the risen in the Fen use risen_fen",
+  "enemy_glow_about": "the old game's _enemy_opts: [emissive sRGB hex, emissive_intensity]; an elite's overrides the rest; the risen in the Fen use risen_fen",
   "enemy_glow": {"elite": ["4a1f8a", 0.14], "risen": ["2a3a18", 0.3], "risen_fen": ["1f8f86", 0.4], "wraith": ["9fb6d8", 0.35], "fen_wisp": ["7fe0d0", 0.9]},
   "legion_order": ["ossuary", "gravecaller", "rotweaver", "mourner"],
   "legion": {
@@ -42,19 +42,19 @@
     "colossus": {"tint": "ffffff", "emissive": "1f8f86", "glow": 0.1, "ring": 1.7}
   },
   "thrall_tint": {"default": "f4ecff", "wraith": "b9c4ff"},
-  "thrall_props_about": "DmEntityViews._make_thrall: the props each kind holds (DmGearProps builder, its argument, the bone, DmCreature.attach's dir and follow). Warriors and shieldbearers only under an armed legion (or none); archers and bone mages always. Baked as '<model>+<kind>' variants.",
+  "thrall_props_about": "the old game's _make_thrall: the props each kind holds (DmGearProps builder, its argument, the bone, DmCreature.attach's dir and follow). Warriors and shieldbearers only under an armed legion (or none); archers and bone mages always. Baked as '<model>+<kind>' variants.",
   "thrall_props": {
     "warrior": [{"build": "bone_sword", "bone": "R_Hand", "dir": [0, 1, 0.55], "follow": 0.6}, {"build": "round_shield", "arg": 0.32, "bone": "L_Hand", "dir": [0, 1, 0], "follow": 0.5}],
     "shieldbearer": [{"build": "bone_sword", "bone": "R_Hand", "dir": [0, 1, 0.55], "follow": 0.6}, {"build": "round_shield", "arg": 0.5, "bone": "L_Hand", "dir": [0, 1, 0], "follow": 0.5}],
     "archer": [{"build": "bone_bow", "bone": "L_Hand", "dir": [0, 1, 0], "follow": 0.5}],
     "bonemage": [{"build": "bone_staff", "bone": "R_Hand", "dir": [0, 1, 0.12], "follow": 0.15}]
   },
-  "thrall_glow_about": "DmEntityViews._make_thrall: the look's or the legion's emissive and glow, else default; the wraith's own; + empowered (not the wraith) and + champion",
+  "thrall_glow_about": "the old game's _make_thrall: the look's or the legion's emissive and glow, else default; the wraith's own; + empowered (not the wraith) and + champion",
   "thrall_glow": {"default": ["1f8f86", 0.18], "wraith": ["8f9ed1", 1.1], "empowered": 0.22, "champion": 0.35},
-  "thrall_rim_about": "DmEntityViews._make_thrall's friend rim (DmCreatureMat): the spirit ring's colour (SPELL_FX exhume.spirit, 0x6fe3c8) at THRALL_RIM_OWN for this player's thralls and THRALL_RIM_ALLY for another player's; a champion's is gold at 1.4",
+  "thrall_rim_about": "the old game's _make_thrall's friend rim (DmCreatureMat): the spirit ring's colour (SPELL_FX exhume.spirit, 0x6fe3c8) at THRALL_RIM_OWN for this player's thralls and THRALL_RIM_ALLY for another player's; a champion's is gold at 1.4",
   "thrall_rim": {"colour": "6fe3c8", "own": 0.9, "ally": 0.6, "champion_colour": "d9a441", "champion": 1.4},
   "thrall_scale": {"shieldbearer": 1.1},
   "thrall_hover": {"wraith": 0.25},
-  "wings_about": "DmEntityViews.WINGS by the model the def draws with (moth: shroud_moth, bat: tithe_bat, seraph: weeping_seraph); the unrigged baker writes the beat into a loop",
+  "wings_about": "the old game's WINGS by the model the def draws with (moth: shroud_moth, bat: tithe_bat, seraph: weeping_seraph); the unrigged baker writes the beat into a loop",
   "wings": {"shroud_moth": {"speed": 8.0, "amp": 0.55, "body": 0.16}, "tithe_bat": {"speed": 17.0, "amp": 0.75, "body": 0.22}, "weeping_seraph": {"speed": 3.2, "amp": 0.22, "body": 0.3}}
 }

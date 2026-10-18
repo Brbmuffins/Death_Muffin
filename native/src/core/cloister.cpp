@@ -1,11 +1,11 @@
-// The Bell Sanctum's and Plague Cloister's new kinds, ported from godot/enemies/kinds and states:
+// The Bell Sanctum's and Plague Cloister's new kinds, as the old game's enemy kinds and states made them:
 //   - the Weeping Seraph (dm_enemy_clst_seraph.gd): a hovering support body. Every cooldown it BLESSES (the `sanctified` status) up to WARD.maxTargets of the most wounded living
 //     bodies within WARD.range, all at once, and with nobody to bless it casts the curse (dm_enemy_clst_caster.gd, the Lich Acolyte's: BLOW_CURSE, in world.cpp) from range, keeping
 //     4 m away (the Deacon's walk, `engage` in world.cpp: dm_state_clst_kite.gd with [0, 0.5, 4, 0.7] is dm_state_cath_support.gd's numbers);
 //   - the Plague Doctor (dm_enemy_clst_caster.gd, attack "flask"): the cloister casters' walk (silence-aware, as the Acolyte's) and a lobbed flask, BLOW_FLASK: a ring at the aim fixed
 //     when the wind-up began (world.cpp begin_attack), then everything within PLAGUE_FLASK.radius of it is hit (kind toxic) and a toxic pool lingers (below);
 //   - the Flagellant (flagellant.tscn, the plain dm_enemy.gd) needs nothing here: frenzy below FRENZY.atFrac of its health is the status set's (world.cpp step_statuses).
-// Differences from today are listed in native/README.md.
+// Differences from the old game are noted in native/README.md.
 #include "world.h"
 
 #include <algorithm>

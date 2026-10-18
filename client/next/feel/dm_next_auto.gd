@@ -1,8 +1,8 @@
 class_name DmNextAutoCombat
 extends RefCounted
 ## Easy auto-combat on the rebuild: the shared decision code (DmAutoCombat.select_action / select_movement, DmAutoDodge, DmBossTelegraphs in game/)
-## fed by a small adapter over the combat core's bulk arrays (client/code.list "Ported"): no node per enemy exists, so the enemies are read from `DmCore.enemy_ids / enemy_positions /
-## enemy_states` (one native copy each, spawn order as before), the corpses from `corpse_ids / corpse_positions`, and what those arrays do not carry (radius, elite, health, a swing's
+## fed by a small adapter over the combat core's bulk arrays: no node per enemy exists, so the enemies are read from `DmCore.enemy_ids / enemy_positions /
+## enemy_states` (one native copy each, in spawn order), the corpses from `corpse_ids / corpse_positions`, and what those arrays do not carry (radius, elite, health, a swing's
 ## wind-up, a corpse's kind) from small tables kept by the core host's signals (`_facts`, `_corpse_facts`, `_zones`): each is written by an event, never read back from the core per creature.
 ## Local owner only; its output is the same intents as the keyboard: `DmNextInput.cast_at` (the hotbar seam -> request_cast) and `request_move_dir`.
 ##

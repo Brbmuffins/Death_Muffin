@@ -2,7 +2,6 @@
 // Repo hygiene check: docs, references and retired terms must not outlive what they point at.
 // See tools/hygiene/README.md. Plain Node, no dependencies.
 import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,7 +39,7 @@ const read = (f) => readFileSync(path.join(root, f), 'utf8');
 const lineOf = (text, idx) => text.slice(0, idx).split('\n').length;
 const exists = (p) => existsSync(path.join(root, p));
 
-const mdFiles = files.filter((f) => f.endsWith('.md') && !matches(['godot/tests/**'], f));
+const mdFiles = files.filter((f) => f.endsWith('.md') && !matches(['client/tests/**', 'godot/**'], f));   // godot/: the old game's frozen folder, deleted next (ROADMAP Phase 1)
 
 // Blank out fenced code blocks (keeping line numbers) when asked.
 function stripFences(text) {
@@ -67,15 +66,17 @@ for (const f of mdFiles) {
 }
 
 // b. Backticked repo paths.
-const ROOT_PREFIXES = ['godot/', 'server/', 'tools/', 'launcher/', 'docs/', '.github/', 'public/', 'art-manifest/'];
+const ROOT_PREFIXES = ['client/', 'native/', 'server/', 'tools/', 'launcher/', 'docs/', '.github/', 'public/', 'art-manifest/'];
 const rootFiles = new Set(files.filter((f) => !f.includes('/')));
 const looksLikePath = (s) => /^[A-Za-z0-9_.\-/]+$/.test(s);
 function resolvesAnywhere(p, docDir) {
   const cands = [p, path.posix.join(docDir, p)];
-  if (/^(tests|next|rules|data|session|front)(\/|$)/.test(p)) cands.push('godot/' + p);
+  if (/^(tests|next|rules|data|session|front)(\/|$)/.test(p)) cands.push('client/' + p);
   return cands.some((c) => exists(c));
 }
-for (const f of mdFiles) {
+// The decision log records what was true when each decision was made: its paths may name files that are gone since (config.historyDocs).
+const historyDocs = config.historyDocs || [];
+for (const f of mdFiles.filter((x) => !historyDocs.includes(x))) {
   const text = stripFences(read(f));
   const re = /`([^`\n]+)`/g;
   let m;
@@ -126,7 +127,7 @@ for (const t of config.terms) {
 
 // d. Test suite paths.
 const suiteRe = /(?:res:\/\/)?\btests\/([A-Za-z0-9_\-]+)\/([A-Za-z0-9_\-]+\.gd)\b|res:\/\/tests\/([A-Za-z0-9_\-]+)\//g;
-const suiteFiles = files.filter((f) => /\.(md|sh|yml)$/.test(f) && !matches(['godot/tests/**/fixtures/**', 'PATCH_NOTES.json', ...scanSkip.filter((g) => !g.startsWith('godot/tests'))], f));
+const suiteFiles = files.filter((f) => /\.(md|sh|yml)$/.test(f) && !historyDocs.includes(f) && !matches(['client/tests/**/fixtures/**', 'PATCH_NOTES.json', ...scanSkip.filter((g) => !g.startsWith('client/tests'))], f));
 for (const f of suiteFiles) {
   const text = read(f);
   let m;
@@ -135,11 +136,11 @@ for (const f of suiteFiles) {
     const after = text[m.index + m[0].length];
     if (/[*<{$]/.test(after || '') || /[*<{$]/.test(text[m.index - 1] || '')) continue;
     const tok = m[0].replace(/^res:\/\//, '');
-    // Skip when part of a longer path whose root is not godot (e.g. launcher/tests/..., server/x/tests/...).
+    // Skip when part of a longer path whose root is not the game (e.g. launcher/tests/..., server/x/tests/...).
     const before = text.slice(0, m.index);
     const lead = /([A-Za-z0-9_.\-/]*)$/.exec(before)[1];
-    if (lead && !lead.endsWith('godot/') && !m[0].startsWith('res://')) continue;
-    if (!exists('godot/' + tok)) report(f, lineOf(text, m.index), `test path does not exist: ${m[0]}`);
+    if (lead && !lead.endsWith('client/') && !m[0].startsWith('res://')) continue;
+    if (!exists('client/' + tok)) report(f, lineOf(text, m.index), `test path does not exist: ${m[0]}`);
   }
 }
 
@@ -153,10 +154,7 @@ for (const f of files) {
 // f. 3D textures import VRAM-compressed (Godot's detect_3d never triggers for glTF-extracted images or headless imports).
 const fixTextures = process.argv.includes('--fix-textures');
 const fixed = [];
-const tex3d = ['godot/assets/slice/models/', 'godot/assets/slice/art/textures/', 'godot/assets/fx/art/', 'godot/assets/fx/tex/',
-  'godot/assets/fx/binbun/tex/', 'godot/assets/fx/models/', 'godot/world_fx/assets/',
-  // the rebuilt client's copies (tools/rebuild/sync-assets.mjs seeds these imports; the same rule)
-  'client/assets/slice/models/', 'client/assets/slice/art/textures/', 'client/assets/fx/art/', 'client/assets/fx/tex/',
+const tex3d = ['client/assets/slice/models/', 'client/assets/slice/art/textures/', 'client/assets/fx/art/', 'client/assets/fx/tex/',
   'client/assets/fx/binbun/tex/', 'client/assets/fx/models/', 'client/world_fx/assets/'];
 for (const f of files) {
   if (!f.endsWith('.import') || !tex3d.some((d) => f.startsWith(d))) continue;
@@ -165,7 +163,7 @@ for (const f of files) {
   const isNormal = /(NormalGL|_n\.|normal)/i.test(f);
   const ok = /^compress\/mode=2$/m.test(text) && (!isNormal || /^compress\/normal_map=1$/m.test(text));
   if (ok) continue;
-  if (fixTextures) {   // --fix-textures: rewrite the .import (BPTC for colour, RGTC for normal maps); re-import with `godot --headless --path godot --import`
+  if (fixTextures) {   // --fix-textures: rewrite the .import (BPTC for colour, RGTC for normal maps); re-import with `godot --headless --path client --import`
     let t = text.replace(/^compress\/mode=\d+$/m, 'compress/mode=2').replace(/^compress\/high_quality=\w+$/m, `compress/high_quality=${isNormal ? 'false' : 'true'}`);
     if (isNormal) t = t.replace(/^compress\/normal_map=\d+$/m, 'compress/normal_map=1');
     writeFileSync(path.join(root, f), t);
@@ -179,7 +177,7 @@ for (const f of files) {
 // g. No calls inside GDScript assert(): release exports strip asserts together with their expression, so a call there never runs in a
 // shipped client (the co-op joiner's relay.join() did not, 2026-10-10). Tests may assert on calls; shipped code computes first, then asserts.
 for (const f of files) {
-  if (!(f.startsWith('godot/') || f.startsWith('client/')) || !f.endsWith('.gd') || f.includes('/tests/')) continue;
+  if (!f.startsWith('client/') || !f.endsWith('.gd') || f.includes('/tests/')) continue;
   const lines = read(f).split('\n');
   lines.forEach((l, i) => {
     const m = /^\s*assert\(([^,]*)/.exec(l);
@@ -187,23 +185,7 @@ for (const f of files) {
   });
 }
 
-// h. The rebuilt client's copies of today's code (DECISIONS B43, tools/rebuild/sync-code.mjs) are never edited in client/: each must still be
-// the content client/code.lock.json recorded. A live change in godot/ is not a violation here (the sync tool and the test build publish catch it).
-const codeLock = 'client/code.lock.json';
-if (exists(codeLock)) {
-  const lk = JSON.parse(read(codeLock));
-  const blob = (f) => { const b = readFileSync(path.join(root, f)); return createHash('sha1').update(`blob ${b.length}\0`).update(b).digest('hex'); };
-  for (const [rel, id] of Object.entries(lk.copied || {})) {
-    const f = `client/${rel}`;
-    if (!exists(f)) report(codeLock, 1, `copy ${f} is missing: run node tools/rebuild/sync-code.mjs`);
-    else if (blob(f) !== id) report(f, 1, `a copy of godot/${rel} was edited; change godot/ and sync, or port it (node tools/rebuild/sync-code.mjs --port ${rel})`);
-  }
-  for (const rel of Object.keys(lk.ported || {})) {
-    if (!exists(`client/${rel}`)) report(codeLock, 1, `ported client/${rel} is missing`);
-  }
-}
-
-if (fixed.length) console.log(`hygiene: fixed ${fixed.length} texture import(s); now run: godot --headless --path godot --import`);
+if (fixed.length) console.log(`hygiene: fixed ${fixed.length} texture import(s); now run: godot --headless --path client --import`);
 if (problems.length) {
   console.error(problems.join('\n'));
   console.error(`\nhygiene: ${problems.length} violation(s). See tools/hygiene/README.md.`);

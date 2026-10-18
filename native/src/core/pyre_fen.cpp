@@ -1,4 +1,4 @@
-// The Cinder Pyre's and the Mourning Fen's eight kinds, ported from godot/enemies/kinds (dm_enemy_pf_melee, dm_enemy_pf_flanker, dm_enemy_pf_caster, dm_enemy_pf_hazard,
+// The Cinder Pyre's and the Mourning Fen's eight kinds, as the old game's enemy kinds made them (dm_enemy_pf_melee, dm_enemy_pf_flanker, dm_enemy_pf_caster, dm_enemy_pf_hazard,
 // dm_pf_util) and the states dm_state_pf_hook_chase and dm_state_pf_lure_kite. The walk, the swing and the fall are in world.cpp beside the others; this file holds what is
 // theirs alone:
 //   - burning ground (DmPfUtil.ember_pool): the Cinder Husk's last embers, the Pyre Priest's coal and the Slag Brute's slam leave a zone of kind ember;
@@ -6,7 +6,7 @@
 //   - the Bog Hag's aim (hex_aim): the thickest knot of thralls within reach;
 //   - the Fen Wisp's retreat toward the open water (DmStatePfLureKite);
 //   - the Drowned Sexton's chain (DmStatePfHookChase, DmEnemyPfHazard.hook_ready, _hook_strike, DmPfUtil.pull).
-// What an enemy does to a hero besides damage (a chill, a root, a drag) is an event for GDScript (EV_TARGET_EFFECT), as a blow is. Differences from today are listed in native/README.md.
+// What an enemy does to a hero besides damage (a chill, a root, a drag) is an event for GDScript (EV_TARGET_EFFECT), as a blow is. Differences from the old game are noted in native/README.md.
 #include "world.h"
 
 #include <algorithm>

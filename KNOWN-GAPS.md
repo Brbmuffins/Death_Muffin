@@ -1,8 +1,7 @@
 # Known gaps
 
 Open gaps, verified against the code on `main`. The order they are worked in is [ROADMAP.md](ROADMAP.md). Remove an entry when it is closed.
-Since launch day (2026-10-18) the game is `client/`; a path below without a folder is the same in `client/` and in the old `godot/` (kept only until
-nothing depends on it, B57).
+A path below without a folder is under `client/`.
 
 ## Missing since launch day
 
@@ -11,7 +10,7 @@ nothing depends on it, B57).
 ## Performance
 
 The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say otherwise.
-- **Weaker PCs are not measured:** no GTX 970-class PC or laptop has run the rebuilt game's benchmark, so B39's floors are unproven.
+- **Weaker PCs are not measured:** no GTX 970-class PC or laptop has run the game's benchmark, so B39's floors are unproven.
 - **Spikes:** a rite's cast takes 2 to 4 ms in the tick it is cast (1.2 to 1.9 ms of it its effects: `DmRiteCaster._play_event`, the `Vfx`
   nodes); a big kill's event handlers 2 to 9 ms (`DmCoreHost._dispatch`: rewards, loot, the counsel); Bone Fan's pick in Easy auto combat
   (`DmAutoCombat._primary_target`) tests every pair of targets, up to 4,000 calls, about 6 ms (the Gravecaller's default loadout does not use it).
@@ -30,7 +29,7 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
 - **An armor set touches about five files** (`server/rules/content/legendarySets.ts` or armorSets.ts, setBonuses.json, necro_gear.json,
   view_models.json, assets_used.json; `tools/generate-armor-assets.mjs` writes the rest) and moves the tests that pin counts and loot digests,
   which the agent updates by hand.
-- The gear props' attachment rules (axes, size, grip point, anchor bone) live in the `_doc` of `godot/data/slice/necro_gear.json`, not on a
+- The gear props' attachment rules (axes, size, grip point, anchor bone) live in the `_doc` of `client/data/slice/necro_gear.json`, not on a
   standards page.
 
 ## Operations
@@ -49,39 +48,39 @@ player part of a gain until it is fixed; few real sessions ran on the gains save
 ## Disciplines
 
 - **Only the four necromancer disciplines and the Reaper exist.** `next/rites/dm_rite_registry.gd` holds the necromancer rites and the
-  Reaper's six; any other non-necro rite is refused `unavailable`. Character select greys out the other five
+  Reaper's nine; any other non-necro rite is refused `unavailable`. Character select greys out the other five
   (`DmCharacterBuild.is_playable`) and the backend only accepts classes 1-4 and 11 (`PLAYABLE_DISCIPLINE_INDICES`). Missing with them:
-  kit rites, monk beat meter, wraith nova on a charged cast, Bulwark (`DmPlayerRules` already honours `bulwarkUntil`).
-- **The Reaper is a first pass.** It has its own portrait but borrows the Mourner's hero model and existing rite icons, has no armor set of its
-  own, no runes and no signature (R) rite. Its soul wisps are drawn on the host only; a party member's soul
+  kit rites, monk beat meter, Bulwark (`DmPlayerRules` already honours `bulwarkUntil`).
+- **The Reaper is a first pass.** It has its own portrait but borrows the Mourner's hero model and existing rite icons, has no armor set but the legendary Soul Harbinger's Raiment
+  and no runes. Its soul wisps are drawn on the host only; a party member's soul
   count reaches their HUD by the caster state. Numbers (REAPER in `data/combat/abilities.json`) are a first tuning (2026-10-11 headless probe with Auto combat, level 20, no thralls: Scythe Sweep 52 damage a second on one foe and 276 on a pack of six, against the Mourner's 88 and 379; she makes up for it with 30% more health, 15% less damage taken and her leech), not yet playtested by a person.
 
 ## Combat and statuses
 
-- **Found by the rebuild, approved to fix** (Helix, 2026-10-16; the core already emits each one; ROADMAP polish list): toxic corpse pools
+- **Found while building the core, approved to fix** (Helix, 2026-10-16; the core already emits each one; ROADMAP polish list): toxic corpse pools
   always hit as at level 1 (nothing sets the area level); a fallen plague bearer's pool never appears and the Mourning Bell wraith's ally heal
   never happens (signals nobody listens to); statuses never change the blows a boss takes (`DmBoss.take_damage` skips the status set's
   damage-taken multiplier, and the brain's own Fracture is never fed: a Marrow Spear's Fracture or a Sanctify on the King does nothing).
 - **Easy auto combat parks the hero in pockets of tombstones:** it steers straight at the nearest enemy, with no path round the graves (found
-  by the seeded comparison, native/README.md "Proof of same game").
-- Shrouded suspension in the player's own Miasma, the Barrier decay, and boss-pool gaps for late joiners: see `client/next/status/README.md` and `client/next/bosses/README.md`.
+  when the core was compared with the old game, DECISIONS B50).
+- Barrier has no decay (`client/next/status/README.md`), and the pools of a boss that resets linger their remaining seconds (`client/next/bosses/README.md`).
 
 ## Built but never shown
 
-Looks and effects that exist in the code but no game scene wires up; the rebuilt game draws what the old one did until each is decided
+Looks and effects that exist in the code but no game scene wires up (the old game never showed them either); they stay out until each is decided
 (ROADMAP polish list).
-- A thrall never wears its Legion kit (the kit's armour tint on its chest and hands, the kit weapon's tier colour): the old `DmEntityViews`
+- A thrall never wears its Legion kit (the kit's armour tint on its chest and hands, the kit weapon's tier colour): the old per-creature view
   asked its host for `legion_kit_for`, which no host had.
 - A thrall never wears its discipline's legion look either (the Ossuary's sentinel, the Gravecaller's legionnaire, the Rotweaver's plague
   thrall, their tints and glows): no host gave `discipline_id_for`; the crowd keeps `CrowdView.set_owner_legion` and crowd_looks.json
-  `legions` for it.
+  `legion` for it.
 - The water's ripples (under the hero, the Mire Mother's rings, the Wisp's pulse) and the Prelate's candle groups: `DmEventFx.add_ripple` and
   `set_candle_group` call a `game.dressing` that no game scene sets (client/README.md "World dressing").
 - The Plague Doctor's flask leaves a 5 s toxic pool that hurts but is not drawn (`DmEnemyFx` draws only dust and ember zones).
 
 ## Look
 
-What still differs from the old game's look is in client/README.md "The look against today's game" ("Still not today's": effects on Low and
+What still differs from the old game's look is in client/README.md "The look on Forward+" ("Still different": effects on Low and
 Medium, the lifts, the Depths' walls, the hero's robe area by area, emission not converted, the Fen's bake); it is the look pass (ROADMAP
 polish list). Also:
 - Nightfall dims only the real-time ambient: lightmapped ground, walls and props keep their full ambient (a per-area dimming of the lightmaps
@@ -95,7 +94,6 @@ polish list). Also:
 - **One area per session, Depths solo:** `client/next/areas/README.md`, `client/next/depths/README.md`.
 - **Part of a joiner's state does not reach the host's sim:** the host builds the joiner's hero from the server's record (level, gear,
   set bonuses, affixes, boons, vows, upgrade tiers, rune sockets), but Colossus Mantle hooks are host-hero only; no Covenant Seal or Nightfall dim; a client cannot call Empowered bosses.
-- Client (non-host) peers get no full HUD feed beyond what `client/next/party/` provides (`client/next/hud/README.md`).
 - Chat is party chat in a party and local-only when solo.
 - **Friends show online only in the world:** character select and the launcher count as offline (the lobby link starts after loading).
 - A guest's waystone map lists its own account's open areas, not the host's world's (a jump to a sealed one is refused with the reason).
@@ -108,7 +106,7 @@ polish list). Also:
   heroes are adopted again (`DmCrowd.clear` forgets `owner_legion` and `owner_ally`).
 - A guest's core lists no zones (`DmCore.zones`): its zones arrive as events for its effects. Nothing reads them on a guest today.
 - A guest sees a Grave Surge only as the bodies that climb out of the crypt (the core's snapshot) and, once the host quells it, its offering: the
-  banner, the cracked crypt, the sounds and the tip are the host's window only (`DmAreaFlow` listens to the host's director); the old game was the same.
+  banner, the cracked crypt, the sounds and the tip are the host's window only (`DmAreaFlow` listens to the host's director).
 
 ## Gathering
 
@@ -124,10 +122,6 @@ polish list). Also:
 
 ## Tools and tests
 
-- **The Discord agent's checks and screenshots use the old game:** its checks run `tools/godot/run-all-tests.sh` and its screenshots
-  `server/death-muffin/discord-agent/shot-godot.sh` (the screenshot tool is in `client/` now, `client/tools/qa_shots.sh`, and the agent does not use it yet); the live game's suites run in GitHub CI after a ship
-  is pushed and published (ROADMAP Phase 1). Its "Try it" previews (`server/death-muffin/discord-agent/preview-godot.sh`) export `godot/`,
-  the old game, too.
 - `client/tests/game_scene.gd`'s node checks pass about every other run under load: the counsel's tip card (16 nodes, shown at the first
   Barrow Ghoul and dismissed on a wall-clock timer) is in the scene tree for part of the run.
 - The client's suites other than `world.gd` do not set `DM_SYNC_NAV`: under `--fixed-fps` a suite that enables a region (a seal, a baked
@@ -143,11 +137,11 @@ polish list). Also:
 - The Windows half of the combat core's crash note (the unhandled-exception filter and its stack walk, native/README.md "Crash notes") has
   not crashed on a real Windows PC yet; the Linux half is tested on every run. The team app's release crash check will cover it (ROADMAP Phase 1).
 - Quitting while models still load in the background aborted the old game on a 4-core PC (the CI runner, 2026-10-16); not checked in the
-  rebuilt game.
+  game since.
 
 ## Assets and effects
 
-Notes for the asset and effects rebuild (ROADMAP Phase 4):
+Notes for the asset and effects work (ROADMAP):
 - The baked crowd is 234 MB (positions 140, normals 70, level-of-detail meshes 23); each level of detail's mesh repeats the vertex arrays,
   where one array with Godot's own mesh LODs would share them.
 - The Bone Colossus's rim reads fuller than the old game's (a pose that differs, or the baked normals at its hard edges).
@@ -158,7 +152,9 @@ Notes for the asset and effects rebuild (ROADMAP Phase 4):
 ## Leftovers from the web era
 
 - Bit-exact web math (fdlibm, exact-double loading) is still used by the Depths floor generator, auto-combat and the DB loader: `client/sim/README.md`.
-- `tools/godot/sync-slice-assets.mjs` reads `godot/data/slice/assets_used.json`; the exporter that wrote it (`export-slice.ts`) is gone, so the list is now hand-maintained.
+- `client/data/slice/assets_used.json` (the models the game loads) is kept by hand: the exporter that wrote it (`export-slice.ts`) is gone.
+- A comment in `server/death-muffin/lobby/src/server.js` still names the relay script by the old game's path (`client/net/relay/dm_udp_relay.gd`
+  now): fix it with the next real lobby change (a comment edit alone would make the next release wait for a lobby restart).
 - The user:// folder (saved login and settings) is named after `config/name`: "Death Muffin (rebuild)" in `client/project.godot` (the old
   game's was "Death Muffin (Godot slice)"). Renaming it needs a migration that copies the folder. Players see "Death Muffin" (`main.gd` sets
   the window title; the exe product name is "Death Muffin").

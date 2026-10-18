@@ -1,17 +1,17 @@
 class_name DmGraphicsPreset
 extends RefCounted
-## Settings -> Graphics presets (Low / Medium / High / Ultra) of the rebuilt client on Forward+ (a port of godot/game/dm_graphics_preset.gd, client/code.list "Ported";
-## DECISIONS B45): one table, so DmNextPerf, the resolution governor, the benchmark and the tests read the same numbers. The setting value is the preset id, the same
-## ids as today's game, so a player's saved setting carries over; anything unknown becomes High (the default for new players).
-## What changed against today's table, and why (each a cost Forward+ handles differently from Compatibility):
+## Settings -> Graphics presets (Low / Medium / High / Ultra) of the rebuilt client on Forward+
+## (DECISIONS B45): one table, so DmNextPerf, the resolution governor, the benchmark and the tests read the same numbers. The setting value is the preset id, the same
+## ids as the old game's, so a player's saved setting carries over; anything unknown becomes High (the default for new players).
+## What changed against the old game's table, and why (each a cost Forward+ handles differently from Compatibility):
 ##   - no `lights`: the prop lights are baked into the area's lightmap (client/areas/<id>.lmbake) and Forward+ draws the rest in clusters, so every preset keeps them all;
 ##     no `prop_shadow` either (the props' shadows are in the bake).
 ##   - crowd shadows are the crowd's own policy (DmCrowd.set_shadow_policy: the nearest `casters` enemies cast, `casters_crowd` once the field is crowded, thralls when
-##     `thralls_cast`), not a node budget: same counts as today's DmCasterBudget.
+##     `thralls_cast`), not a node budget: same counts as the old game's DmCasterBudget.
 ##   - `ssao`: screen-space ambient occlusion, Forward+ only (0 off, 1 medium, 2 high): High and Ultra. Contact shadows where bodies stand and props meet the floor.
 ##   - the governor's lower resolutions are upscaled with FSR 1 (sharpened) instead of bilinear, which Compatibility could not do.
-## The brightness lift is Forward+'s own and belongs to the area, not to the preset (`DmWorldBuilder.AREA_LIFT`: one exposure multiplier per area, measured against today's game on the same camera, Ultra,
-## software Vulkan against software OpenGL; client/README.md "The look against today's game"). Every preset keeps every light (they are baked) and a preset changes nothing else the eye reads as light,
+## The brightness lift is Forward+'s own and belongs to the area, not to the preset (`DmWorldBuilder.AREA_LIFT`: one exposure multiplier per area, measured against the old game on the same camera, Ultra,
+## software Vulkan against software OpenGL; client/README.md "The look on Forward+"). Every preset keeps every light (they are baked) and a preset changes nothing else the eye reads as light,
 ## so Medium, High and Ultra share it (`lift` 1), except Low, whose moon casts no shadow (a little brighter): its factor is 0.96 of the area's.
 ##   shadows/bloom  moon shadow + the bloom glow         msaa   0 / 2 / 4 / 8 samples on the 3D view     aniso  anisotropic filtering level
 ##   floor          lowest 3D scale Auto resolution may drop to   fx   DmFx quality ("low" thins bursts and drops the Binbun layer)   binbun  the Binbun VFX layer
@@ -102,7 +102,7 @@ static func apply_render(vp: Viewport, id: Variant) -> void:
 	RenderingServer.directional_soft_shadow_filter_set_quality(soft_quality(int(p["soft"])))
 
 
-## The environment side: bloom (today's DmWfxBloom) and, on Forward+, screen-space ambient occlusion.
+## The environment side: bloom (DmWfxBloom) and, on Forward+, screen-space ambient occlusion.
 static func apply_environment(env: Environment, id: Variant) -> void:
 	var p := get_preset(id)
 	DmWfxBloom.apply(env, bool(p["bloom"]))

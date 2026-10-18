@@ -5,7 +5,7 @@ extends RefCounted
 ## .floor_kills, the roster DmSimDepthsRules.depth_roster, the pacing the sim's (first wave 1.4 s, 8 on the first wave, then depth_wave_size,
 ## a gap of depth_wave_gap_s, never more than DEPTHS.cap alive, only as many as the quota still needs). `plan_wave` returns what to spawn;
 ## DmDepths turns the orders into bodies of the combat core.
-## On the combat core (client/code.list "Ported"): `create / load_floor / descend` take the floor already `generate`d (DmDepths makes it on a worker thread, so the main thread
+## On the combat core: `create / load_floor / descend` take the floor already `generate`d (DmDepths makes it on a worker thread, so the main thread
 ## does not pay the generator's ~16 ms when a floor is entered).
 
 var seed: int = 0

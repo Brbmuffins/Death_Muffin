@@ -2,7 +2,7 @@ extends DmRiteModule
 ## Rot Lance, an LMB primary (level 6): a lance of rot flies 32 m/s down the line toward the target (range 14, free, 700 ms, power 0.8) and on arrival
 ## pierces the first 2 enemies in a 0.25 m half-width lane, +1 Withered stack each (cap from the discipline, Chain Plague lifts it), +4 essence once.
 ## Numbers: DmAbilities + ROT_LANCE + WITHERED (dps per stack x the blow); visuals: DmRiteFx.lance_cast / lance_hit.
-## On the combat core (client/code.list "Ported"): enemies are ids and DmFoe snapshots, the blow is `c.deal` (a kill is known at once), statuses are the core's (`c.apply_status`).
+## On the combat core: enemies are ids and DmFoe snapshots, the blow is `c.deal` (a kill is known at once), statuses are the core's (`c.apply_status`).
 
 const TARGET_Y := 1.0
 

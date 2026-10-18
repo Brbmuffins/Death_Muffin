@@ -1,7 +1,7 @@
 extends DmRiteModule
 ## Ivory Cleave (grimoire, level 4): a 120 degree crescent (half-angle 60, reach 3.6 + the enemy's radius) toward the cursor, resolved at once: power 1.7,
 ## +1 Fracture on everything it cuts (capped at 64 targets), 14 essence, 1.6 s. Numbers: DmAbilities + IVORY_CLEAVE; visuals: DmRiteFx.cleave.
-## On the combat core (client/code.list "Ported"): enemies are DmFoe snapshots from the core's radius query, the blow is `c.deal`, Fracture is the core's status.
+## On the combat core: enemies are DmFoe snapshots from the core's radius query, the blow is `c.deal`, Fracture is the core's status.
 
 const MAX_TARGETS := 64
 const SHOWN := 10   ## hit marks in the event (the sim floats at most 10 numbers)

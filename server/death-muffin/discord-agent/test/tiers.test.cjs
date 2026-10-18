@@ -130,43 +130,50 @@ test('GENERATED lists exactly the outputs of tools/build-server-rules.mjs plus t
 // ---------- godot mode tiers (cfg.tiers = godotTiers) ----------
 const gcfg = (() => { const f = require('path').join(require('fs').mkdtempSync(require('path').join(require('os').tmpdir(), 'dm-gt-')), 'c.json'); require('fs').writeFileSync(f, JSON.stringify({ mode: 'godot', baseBranch: 'godot-port' })); const c = loadConfig(f); c.ownerIds = ['111111111111111111']; c.project = cfg.project; return c; })();
 const gtier = (file, status = 'modify') => classifyDiff(status === 'add' ? dnew(file, ['x']) : d(file, ['a'], ['b']), gcfg).perFile[0].tier;
-test('godot tiers: gameplay is everything else under godot/', () => {
-  for (const f of ['godot/game/dm_game_combat.gd', 'godot/rules/combat/dm_damage.gd', 'godot/ui/panels_a/dm_vault.gd', 'godot/world/dm_fx.gd', 'godot/data/content/items.json', 'godot/data/loot/content.json', 'godot/audio/audio_music.gd', 'godot/tests/game/run.gd', 'godot/tests/rules-loot/run.gd', 'godot/sim/bosses/x.gd', 'godot/game_ui/dm_ui_settings.gd', 'godot/game/dm_settings.gd'])
+test('godot tiers: gameplay is everything else under client/', () => {
+  for (const f of ['client/game/dm_game_combat.gd', 'client/rules/combat/dm_damage.gd', 'client/ui/panels_a/dm_vault.gd', 'client/world/dm_fx.gd', 'client/data/content/items.json', 'client/data/loot/content.json', 'client/audio/audio_music.gd', 'client/tests/game/run.gd', 'client/tests/rules-loot/run.gd', 'client/sim/bosses/x.gd', 'client/game_ui/dm_ui_settings.gd', 'client/game/dm_settings.gd'])
     assert.equal(gtier(f), 'gameplay', f);
 });
-test('godot tiers: the offline backend, saves, login and net code of the real godot-port tree are all sensitive', () => {
-  const real = ['godot/net/dm_api.gd', 'godot/net/dm_mock_backend.gd', 'godot/net/dm_account_prefs.gd', 'godot/net/dm_http_transport.gd', 'godot/net/dm_config.gd', 'godot/net/dm_kill_reporter.gd',
-    'godot/net/offline/dm_offline_loadout.gd', 'godot/net/realtime/dm_rt_client.gd', 'godot/net/realtime/dm_rt_rejoin_store.gd', 'godot/net/relay/dm_relay_peer.gd', 'godot/net/relay/dm_lobby_client.gd',
-    'godot/front/dm_login_screen.gd', 'godot/front/dm_char_select_screen.gd', 'godot/front/dm_front_flow.gd',
-    'godot/game/dm_offline.gd', 'godot/game/dm_progress_sync.gd', 'godot/game/dm_game_coop.gd', 'godot/game/dm_gather_session.gd', 'godot/main/main.gd',
-    'godot/data/content/gameplay_authorityRules.json', 'godot/project.godot', 'godot/export_presets.cfg', 'godot/addons/x/plugin.gd', 'godot/backend/x.gd', 'godot/anything/my_online_mode.gd', 'godot/x/save_slots.gd',
-    'godot/rules/progression/progression.gd', 'godot/rules/progression/kill_chain.gd', 'godot/rules/progression/milestones.gd', 'godot/data/progression/content.json', 'godot/data/combat/progression.json',
-    'godot/data/content/gameplay_killCredit.json', 'godot/data/content/gameplay_goldSinkRules.json', 'godot/data/content/gameplay_vaultRules.json', 'godot/data/content/gameplay_laborRules.json', 'godot/data/content/gameplay_legionRules.json',
-    'godot/data/content/gameplay_milestones.json', 'godot/data/content/tradeGoods.json', 'godot/rules/gathering/gold_sink_rules.gd', 'godot/rules/inventory/vault_rules.gd', 'godot/rules/gathering/labor_rules.gd',
-    'godot/game/dm_game_rewards.gd', 'godot/rules/loot/depths_rewards.gd', 'godot/ui/panels_b/dm_acre_ledger.gd', 'godot/x/economy_rules.gd', 'godot/x/spend_gold.gd', 'godot/x/unlock_gate.gd', 'godot/x/seal_state.gd', 'godot/tests/rules-progression/run.gd',
-    'godot/tests/backend/run.gd', 'godot/tests/backend/net_part.gd', 'godot/tests/relay/run.gd', 'godot/tests/realtime/run.gd', 'godot/tests/next_front/run.gd', 'godot/bin/native.gdextension', 'godot/x/lib.dll', 'godot/x/b.pck'];
+test('godot tiers: the offline backend, saves, login and net code of the game are all sensitive', () => {
+  const real = ['client/net/dm_api.gd', 'client/net/dm_mock_backend.gd', 'client/net/dm_account_prefs.gd', 'client/net/dm_http_transport.gd', 'client/net/dm_config.gd', 'client/net/dm_kill_reporter.gd',
+    'client/net/offline/dm_offline_loadout.gd', 'client/net/realtime/dm_rt_client.gd', 'client/net/realtime/dm_rt_rejoin_store.gd', 'client/net/relay/dm_relay_peer.gd', 'client/net/relay/dm_lobby_client.gd',
+    'client/front/dm_login_screen.gd', 'client/front/dm_char_select_screen.gd', 'client/front/dm_front_flow.gd',
+    'client/game/dm_offline.gd', 'client/game/dm_progress_sync.gd', 'client/game/dm_game_coop.gd', 'client/game/dm_gather_session.gd', 'client/main/main.gd',
+    'client/data/content/gameplay_authorityRules.json', 'client/project.godot', 'client/export_presets.cfg', 'client/addons/x/plugin.gd', 'client/backend/x.gd', 'client/anything/my_online_mode.gd', 'client/x/save_slots.gd',
+    'client/rules/progression/progression.gd', 'client/rules/progression/kill_chain.gd', 'client/rules/progression/milestones.gd', 'client/data/progression/content.json', 'client/data/combat/progression.json',
+    'client/data/content/gameplay_killCredit.json', 'client/data/content/gameplay_goldSinkRules.json', 'client/data/content/gameplay_vaultRules.json', 'client/data/content/gameplay_laborRules.json', 'client/data/content/gameplay_legionRules.json',
+    'client/data/content/gameplay_milestones.json', 'client/data/content/tradeGoods.json', 'client/rules/gathering/gold_sink_rules.gd', 'client/rules/inventory/vault_rules.gd', 'client/rules/gathering/labor_rules.gd',
+    'client/game/dm_game_rewards.gd', 'client/rules/loot/depths_rewards.gd', 'client/ui/panels_b/dm_acre_ledger.gd', 'client/x/economy_rules.gd', 'client/x/spend_gold.gd', 'client/x/unlock_gate.gd', 'client/x/seal_state.gd', 'client/tests/rules-progression/run.gd',
+    'client/tests/backend/run.gd', 'client/tests/backend/net_part.gd', 'client/tests/relay/run.gd', 'client/tests/realtime/run.gd', 'client/tests/next_front/run.gd', 'client/bin/native.gdextension', 'client/x/lib.dll', 'client/x/b.pck'];
   for (const f of real) assert.equal(gtier(f), 'sensitive', f);
 });
 test('godot tiers: server, launcher, tools, CI, scripts, deploy and config files are sensitive; so is anything unmatched (the frozen web src/, root files)', () => {
-  for (const f of ['server/death-muffin/backend/server.js', 'launcher/src/main.ts', 'tools/godot/run-all-tests.sh', 'tools/godot/fixtures-loot.ts', '.github/workflows/ci.yml', 'godot/shoot.sh', 'godot/tests/x/run.sh', 'scripts/deploy-x', 'CLAUDE.md', '.claude/settings.json', '.env', 'godot/.env.local', '.gitignore',
+  for (const f of ['server/death-muffin/backend/server.js', 'launcher/src/main.ts', 'tools/godot/run-all-tests.sh', 'tools/godot/fixtures-loot.ts', '.github/workflows/ci.yml', 'client/shoot.sh', 'client/tests/x/run.sh', 'scripts/deploy-x', 'CLAUDE.md', '.claude/settings.json', '.env', 'client/.env.local', '.gitignore',
     'src/gameplay/a.ts', 'package.json', 'ROADMAP.md.txt', 'vite.config.ts', 'Inspiration ART/x.png'])
     assert.equal(gtier(f), 'sensitive', f);
 });
+test('godot tiers: the combat core and the files the art pack is fingerprinted by are sensitive', () => {
+  for (const f of ['native/src/core/world.cpp', 'native/SConstruct', 'native/README.md.bak', 'client/core/dm_core_host.gd', 'client/crowd/crowd_baker.gd', 'client/crowd/crowd_looks.json',
+    'client/tools/bake_crowd.gd', 'client/game/view_models.json', 'client/game/dm_creature.gd', 'client/game/dm_gear_props.gd', 'client/world/dm_models.gd', 'client/world/dm_animator.gd',
+    'client/main/qa_driver.gd', 'client/session/s.gd'])
+    assert.equal(gtier(f), 'sensitive', f);
+  assert.equal(gtier('native/README.md'), 'sensitive', 'a document inside a sensitive area is sensitive too');
+});
 test('godot tiers: docs, markdown and patch notes are casual (any content), but never inside a sensitive area', () => {
-  for (const f of ['docs/GRIND-LOOP.md', 'docs/anything.txt', 'README.md', 'ROADMAP.md', 'godot/README.md', 'godot/ui/onboarding/README.md', 'PATCH_NOTES.json'])
+  for (const f of ['docs/GRIND-LOOP.md', 'docs/anything.txt', 'README.md', 'ROADMAP.md', 'client/README.md', 'client/ui/onboarding/README.md', 'PATCH_NOTES.json'])
     assert.equal(gtier(f), 'casual', f);
   assert.equal(gtier('docs/new.md', 'add'), 'casual');
-  for (const f of ['server/README.md', 'tools/godot/README.md', 'godot/net/REALTIME.md', '.github/pull_request_template.md', 'godot/front/NOTES.md', 'godot/docs/save-format.md'])
+  for (const f of ['server/README.md', 'tools/godot/README.md', 'client/net/REALTIME.md', '.github/pull_request_template.md', 'client/front/NOTES.md', 'client/docs/save-format.md'])
     assert.equal(gtier(f), 'sensitive', f);
   // a mixed diff is as strict as its strictest file; docs + gameplay = gameplay, + net = sensitive
-  assert.equal(classifyDiff(d('godot/README.md', ['a'], ['b']) + d('godot/game/dm_game.gd', ['a'], ['b']), gcfg).tier, 'gameplay');
-  assert.equal(classifyDiff(d('godot/game/dm_game.gd', ['a'], ['b']) + d('godot/net/dm_api.gd', ['a'], ['b']), gcfg).tier, 'sensitive');
-  assert.equal(classifyDiff(d('godot/README.md', ['a'], ['b']), gcfg).tier, 'casual');
+  assert.equal(classifyDiff(d('client/README.md', ['a'], ['b']) + d('client/game/dm_game.gd', ['a'], ['b']), gcfg).tier, 'gameplay');
+  assert.equal(classifyDiff(d('client/game/dm_game.gd', ['a'], ['b']) + d('client/net/dm_api.gd', ['a'], ['b']), gcfg).tier, 'sensitive');
+  assert.equal(classifyDiff(d('client/README.md', ['a'], ['b']), gcfg).tier, 'casual');
 });
-test('godot tiers: forbidden paths keep the agent/deploy/.env/.claude rules and add godot/export_presets.cfg; web mode is unaffected by godotTiers', () => {
-  const f = classifyDiff(d('godot/export_presets.cfg', ['a'], ['b']) + d('server/death-muffin/discord-agent/ship.sh', ['a'], ['b']) + d('godot/ok.gd', ['a'], ['b']) + d('.claude/x.json', ['a'], ['b']) + d('tools/deploy-x.sh', ['a'], ['b']), gcfg);
-  assert.deepEqual(f.forbidden.sort(), ['.claude/x.json', 'godot/export_presets.cfg', 'server/death-muffin/discord-agent/ship.sh', 'tools/deploy-x.sh']);
-  assert.equal(classifyDiff(d('godot/game/dm_game.gd', ['a'], ['b']), cfg).perFile[0].tier, 'sensitive', 'web tiers: godot/ is unmatched, so sensitive');
+test('godot tiers: forbidden paths keep the agent/deploy/.env/.claude rules and add client/export_presets.cfg; web mode is unaffected by godotTiers', () => {
+  const f = classifyDiff(d('client/export_presets.cfg', ['a'], ['b']) + d('server/death-muffin/discord-agent/ship.sh', ['a'], ['b']) + d('client/ok.gd', ['a'], ['b']) + d('.claude/x.json', ['a'], ['b']) + d('tools/deploy-x.sh', ['a'], ['b']), gcfg);
+  assert.deepEqual(f.forbidden.sort(), ['.claude/x.json', 'client/export_presets.cfg', 'server/death-muffin/discord-agent/ship.sh', 'tools/deploy-x.sh']);
+  assert.equal(classifyDiff(d('client/game/dm_game.gd', ['a'], ['b']), cfg).perFile[0].tier, 'sensitive', 'web tiers: client/ is unmatched, so sensitive');
   assert.equal(classifyDiff(d('src/gameplay/a.ts', ['a'], ['b']), cfg).perFile[0].tier, 'gameplay');
   assert.deepEqual(loadConfig(null).forbiddenPaths.slice(0, 4), ['server/death-muffin/discord-agent/**', '**/deploy*.sh', '**/.env*', '.claude/**']);
 });

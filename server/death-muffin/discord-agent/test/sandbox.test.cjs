@@ -74,6 +74,12 @@ function verdict(W, name) {
 }
 const run = (W, script, args, extraEnv = {}) => spawnSync('bash', [path.join(DIR, script), ...args], { cwd: W.top, env: { ...W.env, ...extraEnv }, encoding: 'utf8', timeout: 180000 });
 const probeCmd = (name) => `bash "$TOP/.probe.sh" ${name}`;
+// Stand-ins for the game's preparation (client-prep.sh outside the sandbox, client-prep-in.sh inside: its sandboxed half, where a probe runs).
+const prepStubs = (W, inside = '') => {
+  W.w('.prep/prep.sh', 'echo "PREP core=cached bake=cached dir=/nowhere keys=a,b,c"\n');
+  W.w('.prep/prep-in.sh', `${inside}\n`);
+  return { DM_CLIENT_PREP: path.join(W.top, '.prep/prep.sh'), DM_CLIENT_PREP_IN: path.join(W.top, '.prep/prep-in.sh') };
+};
 
 test('sandbox: check.sh (tsc, vitest and npm scripts all run read-only except the worktree)', () => {
   const W = world(); try {
@@ -85,26 +91,24 @@ test('sandbox: check.sh (tsc, vitest and npm scripts all run read-only except th
   } finally { W.cleanup(); }
 });
 
-test('sandbox: check-godot.sh', () => {
+test('sandbox: check-godot.sh (the preparation and the suites)', () => {
   const W = world(); try {
-    W.w('tools/godot/gen-fixtures.sh', `${probeCmd('godot-gen')}\n`); W.w('tools/godot/run-all-tests.sh', `${probeCmd('godot-tests')}\nprintf "%-18s %-16s exit=%d  %s\\n" game run.gd 0 "1 passed"\n`);
-    const r = run(W, 'check-godot.sh', []); assert.equal(r.status, 0, r.stdout + r.stderr);
-    verdict(W, 'godot-gen'); verdict(W, 'godot-tests');
+    W.w('tools/rebuild/run-client-tests.sh', `[ "\${1:-}" = --list ] && { echo game; exit 0; }\n${probeCmd('godot-tests')}\nprintf "%-18s %-16s exit=%d  %s\\n" game game.gd 0 "1 passed"\n`);
+    const r = run(W, 'check-godot.sh', [], prepStubs(W, probeCmd('godot-prep'))); assert.equal(r.status, 0, r.stdout + r.stderr);
+    verdict(W, 'godot-prep'); verdict(W, 'godot-tests');
   } finally { W.cleanup(); }
 });
 
 test('sandbox: secret files listed in DM_SANDBOX_HIDE (and the runner secret next to sandbox-lib.sh) read as empty inside, and cannot be un-hidden', () => {
   const W = world(); try {
     const hidden = path.join(W.root, 'keys.local'); fs.writeFileSync(hidden, 'TRIPO_API_KEY=tsk_should_never_be_readable_in_a_sandbox\n');
-    W.w('godot/project.godot', 'x');
-    W.w('tools/godot/gen-fixtures.sh', `cat "${hidden}" > "$TOP/.hidden-read" 2>&1; echo "len=$(stat -c %s "${hidden}")" >> "$TOP/.hidden-read"
+    const stubs = prepStubs(W, `cat "${hidden}" > "$TOP/.hidden-read" 2>&1; echo "len=$(stat -c %s "${hidden}")" >> "$TOP/.hidden-read"
 mount -o remount,bind,rw "${hidden}" 2>/dev/null && echo REMOUNTED >> "$TOP/.hidden-read"
 umount "${hidden}" 2>/dev/null && echo UNMOUNTED >> "$TOP/.hidden-read"
 unshare -Um --map-current-user bash -c 'umount "${hidden}" 2>/dev/null && echo UNMOUNTED2' >> "$TOP/.hidden-read" 2>&1
-${probeCmd('hide')}
-`);
-    W.w('tools/godot/run-all-tests.sh', 'printf "%-18s %-16s exit=%d  %s\\n" game run.gd 0 "1 passed"\n');
-    const r = run(W, 'check-godot.sh', [], { DM_SANDBOX_HIDE: hidden }); assert.equal(r.status, 0, r.stdout + r.stderr);
+${probeCmd('hide')}`);
+    W.w('tools/rebuild/run-client-tests.sh', '[ "${1:-}" = --list ] && { echo game; exit 0; }\nprintf "%-18s %-16s exit=%d  %s\\n" game game.gd 0 "1 passed"\n');
+    const r = run(W, 'check-godot.sh', [], { DM_SANDBOX_HIDE: hidden, ...stubs }); assert.equal(r.status, 0, r.stdout + r.stderr);
     const seen = fs.readFileSync(path.join(W.top, '.hidden-read'), 'utf8');
     assert.ok(!/tsk_should_never/.test(seen), seen); assert.match(seen, /len=0/); assert.ok(!/REMOUNTED|UNMOUNTED/.test(seen), seen);
     assert.match(fs.readFileSync(hidden, 'utf8'), /tsk_should_never/, 'outside the sandbox the file is untouched');
@@ -129,12 +133,14 @@ test('sandbox: preview.sh (vite build)', () => {
   } finally { W.cleanup(); }
 });
 
-test('sandbox: preview-godot.sh (import + export)', () => {
+test('sandbox: preview-godot.sh (preparation + export + art pack)', () => {
   const W = world(); try {
-    const prev = path.join(W.root, 'preview'); fs.mkdirSync(prev); W.w('godot/project.godot', 'x');
-    W.w('.fake-godot', `#!/usr/bin/env bash\n${probeCmd('preview-godot')}\nfor a in "$@"; do out="$a"; done\ncase " $* " in *" --export-release "*) printf MZfake > "$out"; head -c 200000 /dev/zero > "\${out%.exe}.pck";; esac\n`, 0o755);
-    const r = run(W, 'preview-godot.sh', ['abc123'], { DM_PREVIEW_ROOT: prev, GODOT: path.join(W.top, '.fake-godot'), GODOT_TEMPLATES: path.join(W.top, '.templates') }); assert.equal(r.status, 0, r.stdout + r.stderr);
-    verdict(W, 'preview-godot');
+    const prev = path.join(W.root, 'preview'); fs.mkdirSync(prev); W.w('client/project.godot', 'x');
+    W.w('tools/godot/assets-pack.sh', `${probeCmd('preview-pack')}\nhead -c 1000 /dev/zero > "$2"\n`);
+    W.w('.fake-godot', `#!/usr/bin/env bash\n${probeCmd('preview-godot')}\nfor a in "$@"; do out="$a"; done\ncase " $* " in *" --export-release "*) printf MZfake > "$out"; head -c 200000 /dev/zero > "\${out%.exe}.pck"; printf MZdll > "$(dirname "$out")/libdmcore.windows.template_release.x86_64.dll";; esac\n`, 0o755);
+    const r = run(W, 'preview-godot.sh', ['abc123'], { DM_PREVIEW_ROOT: prev, GODOT: path.join(W.top, '.fake-godot'), GODOT_TEMPLATES: path.join(W.top, '.templates'),
+      CLIENT_MANIFEST: '/nonexistent/manifest.json', ...prepStubs(W, probeCmd('preview-prep')) }); assert.equal(r.status, 0, r.stdout + r.stderr);
+    verdict(W, 'preview-prep'); verdict(W, 'preview-godot'); verdict(W, 'preview-pack');
   } finally { W.cleanup(); }
 });
 
@@ -149,14 +155,12 @@ test('sandbox: shot.sh (dev server)', () => {
   } finally { W.cleanup(); }
 });
 
-test('sandbox: shot-godot.sh (import + render), then trusted labelling that refuses symlinks and non-PNGs', () => {
+test('sandbox: shot-godot.sh (preparation + render), then trusted labelling that refuses symlinks and non-PNGs', () => {
   const W = world(); try {
-    W.w('godot/project.godot', 'x'); W.w('.dm-shot.json', '{"shots":[{"name":"a"}]}');
-    W.w('.bin/xvfb-run', '#!/usr/bin/env bash\nshift 3\nexec "$@"\n', 0o755);
-    W.w('.fake-godot', `#!/usr/bin/env bash
-${probeCmd('shot-godot')}
-case " $* " in *" --import "*) mkdir -p godot/.godot/imported; exit 0;; esac
-for a in "$@"; do case "$a" in --shots=*) out="\${a#--shots=}";; esac; done
+    W.w('client/project.godot', 'x'); W.w('.dm-shot.json', '{"shots":[{"name":"a"}]}');
+    // the branch's own renderer (client/tools/qa_shots.sh <plan> <out> <class>), run inside the sandbox
+    W.w('client/tools/qa_shots.sh', `${probeCmd('shot-godot')}
+out="$2"
 python3 -c "
 import zlib,struct,sys
 def ch(t,d): c=struct.pack('>I',len(d))+t+d; return c+struct.pack('>I',zlib.crc32(t+d)&0xffffffff)
@@ -164,8 +168,9 @@ raw=b''.join(b'\\x00'+bytes((10,120,10))*640 for _ in range(400))
 open(sys.argv[1],'wb').write(b'\\x89PNG\\r\\n\\x1a\\n'+ch(b'IHDR',struct.pack('>IIBBBBB',640,400,8,2,0,0,0))+ch(b'IDAT',zlib.compress(raw))+ch(b'IEND',b''))" "$out/a.png"
 echo not-a-png > "$out/b.png"; ln -s /etc/passwd "$out/c.png"; mkdir "$out/d.png"
 exit 0
-`, 0o755);
-    const r = run(W, 'shot-godot.sh', [], { GODOT: path.join(W.top, '.fake-godot'), DM_BROWSER_LOCK: path.join(W.root, 'lock'), PATH: `${path.join(W.top, '.bin')}:${process.env.PATH}` });
+`);
+    const r = run(W, 'shot-godot.sh', [], { DM_BROWSER_LOCK: path.join(W.root, 'lock'), ...prepStubs(W, probeCmd('shot-prep')) });
+    verdict(W, 'shot-prep');
     assert.equal(r.status, 3, 'exit 3 = some raw image could not be labelled\n' + r.stdout + r.stderr);
     verdict(W, 'shot-godot');
     const out = path.join(W.top, '.dm-shots');
@@ -178,7 +183,7 @@ exit 0
 
 test('sandbox: shot-godot.sh refuses a symlinked .dm-shots and plan files outside the worktree', () => {
   const W = world(); try {
-    W.w('godot/project.godot', 'x'); W.w('.dm-shot.json', '{"shots":[{}]}');
+    W.w('client/project.godot', 'x'); W.w('.dm-shot.json', '{"shots":[{}]}');
     const victim = path.join(W.root, 'victim'); fs.mkdirSync(victim); fs.symlinkSync(victim, path.join(W.top, '.dm-shots'));
     const r = run(W, 'shot-godot.sh', [], { GODOT: '/bin/false', DM_BROWSER_LOCK: path.join(W.root, 'lock') });
     assert.equal(r.status, 2); assert.deepEqual(fs.readdirSync(victim), []);

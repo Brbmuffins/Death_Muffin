@@ -8,14 +8,14 @@
  *  - `uid`s are dropped (Godot regenerates them),
  *  - CompressedTexture2D sub-resources that only held a .ctex load_path become ext_resources of the copied PNG.
  *
- * Run: npx vite-node tools/godot/fx-binbun-rebuild.ts   (idempotent; writes godot/assets/fx/binbun/)
+ * Run: npx vite-node tools/godot/fx-binbun-rebuild.ts   (idempotent; writes client/assets/fx/binbun/)
  */
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { unlitHook } from './fx-binbun-hooks';
 
 const SRC = 'public/fx/binbun';
-const OUT = 'godot/assets/fx/binbun';
+const OUT = 'client/assets/fx/binbun';
 const RES = 'res://assets/fx/binbun';
 
 interface Section {

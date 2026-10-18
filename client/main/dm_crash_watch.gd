@@ -4,9 +4,9 @@ extends RefCounted
 ## shuts down normally (main.gd _exit_tree: window close, quit, benchmark end). A lock still there at the next start means the last run
 ## ended without shutting down: a crash, a freeze that was killed, or the PC going down. That run's log tail is kept in a pending file
 ## until a signed-in game can send it as a bug report (category "bug", context `crash: true`), which opens an #in-game-reports thread like
-## any player report. Dev builds never write the lock, so editor and test runs make no reports. In the rebuilt client the combat core also
+## any player report. Dev builds never write the lock, so editor and test runs make no reports. The combat core also
 ## writes a crash note while crashing (native/README.md "Crash notes": each stack frame's module and offset, which Godot's own log prints as
-## "???"); the report carries it first in the log and as `coreCrash`. The old game has no core, so it never finds a note.
+## "???"); the report carries it first in the log and as `coreCrash`.
 
 const LOCK := "user://session.lock"
 const PENDING := "user://crash_pending.json"

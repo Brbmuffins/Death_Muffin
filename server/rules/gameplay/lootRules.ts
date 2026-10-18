@@ -1,5 +1,5 @@
 /**
- * What a kill, a boss, a Grave Surge or a first kill drops: the server's copy of the Godot client's roll (godot/rules/loot/loot.gd,
+ * What a kill, a boss, a Grave Surge or a first kill drops: the server's copy of the Godot client's roll (client/rules/loot/loot.gd,
  * DmLoot), so the server can decide drops itself (server authority Phase 1, ROADMAP). Both must consume their random streams in exactly
  * the same order: the client rolls a drop the instant a kill lands from a server-issued stream (`dropStream`), and the server rolls the
  * same drop from the same stream when it is claimed. `lootRules.test.ts` writes the fixture the Godot suite `loot_parity` replays.

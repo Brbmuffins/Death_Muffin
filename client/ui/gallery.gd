@@ -1,6 +1,6 @@
 extends Control
-## UI kit gallery: every widget + both first panels, with stub data. Run interactively (`godot --path godot res://ui/gallery.tscn`)
-## or capture a page:  godot --path godot res://ui/gallery.tscn -- --page=widgets|settings|reliquary|tabbed|scrolled --out=/path.png [--w=1280 --h=800]
+## UI kit gallery: every widget + both first panels, with stub data. Run interactively (`godot --path client res://ui/gallery.tscn`)
+## or capture a page:  godot --path client res://ui/gallery.tscn -- --page=widgets|settings|reliquary|tabbed|scrolled --out=/path.png [--w=1280 --h=800]
 
 var _page_host: Control
 var _out := ""

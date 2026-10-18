@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Syncs the rebuilt client's assets, imports its project and rebuilds area scenes (client/areas/<id>.tscn) from godot/data/slice/world.json.
+# Imports the game's project and rebuilds area scenes (client/areas/<id>.tscn) from client/data/slice/world.json.
 #   tools/rebuild/build-areas.sh [area id ...]        default: graves
 # Run client/setup.sh once in the checkout first. Godot runs headless at low priority (the VPS also runs live games). Exit 1 when a listed
 # asset is missing or the converter fails; see client/README.md "Assets" and "Areas".
@@ -12,7 +12,6 @@ AREAS=("$@")
 import_project() { nice -n 10 "$GODOT" --headless --path "$ROOT/client" --import >/dev/null 2>&1 || true; }
 convert() { nice -n 10 "$GODOT" --headless --path "$ROOT/client" --script res://tools/build_area.gd -- "${AREAS[@]}"; }
 
-node "$ROOT/tools/rebuild/sync-assets.mjs"
 import_project
 rc=0
 convert || rc=$?

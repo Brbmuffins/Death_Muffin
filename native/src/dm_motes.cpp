@@ -81,7 +81,7 @@ static double mote_num(const Dictionary &p_o, const StringName &p_key, double p_
 	return double(p_o.get(p_key, p_default));
 }
 
-// DmFxRing.emit (today's godot/fx/dm_fx_ring.gd, Effects.ts EmitOptions): o has x y z count color spread speed up life size gravity drag shrink inward, each with today's default. The
+// DmFxRing.emit as the old game's dm_fx_ring.gd wrote it (Effects.ts EmitOptions): o has x y z count color spread speed up life size gravity drag shrink inward, each with its default. The
 // randf calls come in the order the GDScript made them (a, radius, height, speed, [heading], climb, life, size), each its own statement: the arguments of a call are not evaluated in a fixed order here.
 int64_t DmMotes::emit(const Dictionary &p_o) {
 	const MoteKeys &k = mote_keys();

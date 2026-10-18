@@ -1,26 +1,24 @@
 class_name DmEnemyFx
 extends Node
-## The visuals and sounds of the combat core's enemies: telegraphs, strikes, deaths, voices, zones and the affixes' one-off moments. Ported to the core
-## (client/code.list "Ported"): the same effects, colours and sounds as the node-based DmEnemyFx of godot/next/enemy_fx, through the same router
-## (DmEventFx, the Vfx and AudioDirector autoloads), but driven by the signals of DmCoreHost instead of by a watcher on every enemy node. No node, no
+## The visuals and sounds of the combat core's enemies: telegraphs, strikes, deaths, voices, zones and the affixes' one-off moments, through the router
+## (DmEventFx, the Vfx and AudioDirector autoloads), driven by the signals of DmCoreHost, not by a watcher on every enemy node. No node, no
 ## script and no signal connection exists per creature; what is remembered per creature is a few numbers in dictionaries keyed by id, only while it
 ## has something to play (a swing in its wind-up, a rise, a burrow, an elite's ring, its max health for the heavy-hit check).
 ##
 ## Exactly once per event: the host reads the core's event buffer once per tick. The impact of a swing is a timer started when its ATTACK event arrives
-## (the wind-up length comes with it) and cancelled by any state change of that creature (a stun, a death); it runs on the rendered frame clock, as the
-## old fx did. Telegraph shapes and colours come from DmEventFxTelegraph (the same module DmEventFx.handle uses), deaths and voices from DmEventFx.
-## No new effect ids, textures or sounds, so DmWarmup's existing pass covers everything (EFFECT_IDS lists the Binbun ids used, SFX_IDS the sounds).
+## (the wind-up length comes with it) and cancelled by any state change of that creature (a stun, a death); it runs on the rendered frame clock. Telegraph shapes and colours come from DmEventFxTelegraph (the same module DmEventFx.handle uses), deaths and voices from DmEventFx.
+## No new effect ids, textures or sounds, so DmNextWarmup's all-effects pass covers everything (EFFECT_IDS lists the Binbun ids used, SFX_IDS the sounds).
 ##
-## The corpses' marks are DmEntityViews' (`corpse_added` / `corpse_gone`): a faint pale ring under every fresh corpse for its 26 s (at most CORPSE_MARKS_MAX at once,
+## The corpses' marks (`corpse_added` / `corpse_gone`): a faint pale ring under every fresh corpse for its 26 s (at most CORPSE_MARKS_MAX at once,
 ## warm in the Fen), a violet one under a resonant corpse, a green disc under a toxic one for 5 s.
-## An affixed elite's standing tells are DmEntityViews._dress_affix / _tick_affix': per affix a ground mark that follows the drawn body (the bell's ring, the hunger's
+## An affixed elite's standing tells: per affix a ground mark that follows the drawn body (the bell's ring, the hunger's
 ## glow, the shroud's haze, the vengeful cracks) and, near the hero, its motes on the ambient tick (drool, embers, shroud smoke while the shroud is up).
-## Near the hero, on the same ambient tick, today's status tells (_tick_alive): marrow drips while it bleeds, frost motes while chilled, a priest-gold glint while
+## Near the hero, on the same ambient tick, the status tells: marrow drips while it bleeds, frost motes while chilled, a priest-gold glint while
 ## sanctified, rot while withered, bone dust while fractured, bronze motes while incensed, blood motes while frenzied (the Flagellant under half health); and the fliers' and the wraith's hover motes. The bodies looked at are
 ## only those with a status (`status_changed`) or that fly.
-## A body underground (a ghoul's BURROW and its eruption's wind-up) has today's dirt mound over it (`_mounds`, a node each: a few at most); a dying body raises
-## dust where it comes to rest (the crowd says when: `DmCrowd.take_landings`); a corpse that goes plays today's puff for why, and one Corpse Explosion bursts is
-## blown apart at once (`DmCrowd.shatter`). Every thrall stands on today's ground ring (`_thrall_rings`), the legion readable at a glance.
+## A body underground (a ghoul's BURROW and its eruption's wind-up) has a dirt mound over it (`_mounds`, a node each: a few at most); a dying body raises
+## dust where it comes to rest (the crowd says when: `DmCrowd.take_landings`); a corpse that goes plays a puff for why, and one Corpse Explosion bursts is
+## blown apart at once (`DmCrowd.shatter`). Every thrall stands on a ground ring (`_thrall_rings`), the legion readable at a glance.
 ## The Drowned Nave's kinds: the Censer Bearer's incense cloud (`censer_incense`, following the drawn body; the ring and smoke under it and the hasted bodies' motes are the
 ## status tells'), the Lich Acolyte's crimson reach ring (drawn while a thrall stands within Unbind's range) and its Unbind thread and sigil, the Templar's shield glance (a
 ## spark and a chime), the Choir Wraith's mist when it falls (it leaves no body) and the Gargoyle's dive and the wraith's scream (telegraphs of the router).
@@ -32,7 +30,7 @@ extends Node
 ## Not this node's: the shrouded body's fade (the crowd's alpha path: the body eases to 0.38 while the ward is up, `DmCrowd` flag BF_SHROUDED) and the elite's body glow (the crowd's glow
 ## palette); the shroud's smoke here follows the same ward (`view_info(id).veiled`: it stops while a Miasma covers the body and when the shroud is stripped).
 ## The Weeping Seraph's blessing is the Deacon's cue (`sanctify`, a thread and a halo per ally), the Plague Doctor's flask is the router's telegraph (a rot-green ring and the lobbed
-## flask, `flask`); its toxic pool has no visual of its own, as today (today's `DmEnemyFx` draws the dust and ember zones only).
+## flask, `flask`); its toxic pool has no visual of its own (only the dust and ember zones are drawn).
 
 const AMBIENT_S := 0.2
 const NEAR_X := 24.0               ## ambient motes only near the hero (DmEntityViews near_fx)
@@ -294,7 +292,7 @@ func _telegraph(kind: StringName, from_x: float, from_z: float, aim_x: float, ai
 	vfx.danger(_tele_call)
 
 
-## One-off cues, each a reliable event of the core (a guest draws them too). The Deacon's Sanctify is today's thread and halo (DmEventFx._sanctify; the blessed body's
+## One-off cues, each a reliable event of the core (a guest draws them too). The Deacon's Sanctify is a thread and a halo (DmEventFx._sanctify; the blessed body's
 ## motes are the status tells'): a pale gold line from the Deacon, where it stands, to the ally (the cue's place) and a ring that settles on it. The Templar's shield
 ## glance is a spark off its front and a small chime; the Lich Acolyte's Unbind is a thread from it to the fallen thrall's place, a sigil there for the delay and the
 ## raise sound. The core's other cues (slam, erupt, dig_in, scream) have no visual of their own: their telegraphs and states draw them.
@@ -468,7 +466,7 @@ func _on_died(id: int, def: String, _level: int, elite: bool, _area: String, _so
 
 
 func _on_removed(id: int) -> void:
-	_strikes.erase(id)   # a body that leaves alive (a boss's adds go with him) swings no more: today's slot went with its node
+	_strikes.erase(id)   # a body that leaves alive (a boss's adds go with him) swings no more
 	_health.erase(id)
 	_incense_off(id)
 	_mound_off(id)
@@ -533,7 +531,7 @@ func affix_marks() -> int:
 
 
 ## A dust cloud (the moth's), burning ground (a boss's coals, the firebreak and the embers, the coal's, the slag slam's, the Husk's embers) and a boss's rot pool: the router's zone visual.
-## The toxic pool of a burst corpse has no visual of its own today either (its aura is the corpse's), nor has a flask's (the Plague Doctor's): a boss's pool is the toxic one whose
+## The toxic pool of a burst corpse has no visual of its own (its aura is the corpse's), nor has a flask's (the Plague Doctor's): a boss's pool is the toxic one whose
 ## source is not a body of the core's table (a boss is an external of it, on a guest too); a corpse's has no source and a thrower's is its own body.
 func _on_zone(id: int, kind: int, source: int, x: float, z: float, radius: float, seconds: float) -> void:
 	var zk: StringName = DmCoreEvents.ZONE_KINDS[kind]
@@ -612,7 +610,7 @@ func _on_corpse_added(id: int, kind: int, _def: String, _elite: bool, area: Stri
 		_corpse_rings[id] = [_decal({"tex": "ring", "color": 0xc6a4ff, "x": x, "z": z, "r": 1.2, "duration": 26, "opacity": 0.6, "pulse": 3.0}), _clock + RING_MS, false]
 		stats["corpse_mark"] += 1
 		return
-	if corpse_marks(true) >= CORPSE_MARKS_MAX:   # the pale rings, counted by each ring's own end (today's counted handles, which only turn alive a frame later, so a wipe slipped past)
+	if corpse_marks(true) >= CORPSE_MARKS_MAX:   # the pale rings, counted by each ring's own end (counting handles would let a wipe slip past: they only turn alive a frame later)
 		return
 	var marsh := area == "fen"
 	_corpse_rings[id] = [_decal({"tex": "ring", "color": 0xffe6b0 if marsh else 0xd8cdf2, "x": x, "z": z, "r": (1.1 if marsh else 0.8) * maxf(1.0, scale), "duration": 26,
@@ -656,7 +654,7 @@ func _thrall_off(id: int) -> void:
 		_thrall_rings.erase(id)
 
 
-## A corpse goes (DmEntityViews._on_corpse_gone): its ring with it, and today's puff for why. `consumed`: someone took it (Exhume's spirit, the Litany, a raise,
+## A corpse goes: its ring with it, and a puff for why. `consumed`: someone took it (Exhume's spirit, the Litany, a raise,
 ## a hungry elite's meal, Corpse Explosion's burst, which blows the body apart at once: `DmCrowd.shatter`; the blast is the rite's); else it expired or burst by itself
 ## (a toxic corpse's rupture: rot).
 func _on_corpse_gone(id: int, reason: String, consumed := false) -> void:
@@ -710,8 +708,8 @@ func _decal(o: Dictionary) -> Variant:
 	return vfx.decal(o) if vfx != null else null
 
 
-## The affixes' one-off beats (DmAffixSet._burst, same numbers and sounds): the bell sounds, a corpse is eaten, the body bursts. `tell` is the bell's
-## wind-up (its ring is the toll telegraph), `unveil` the shroud lifting (its smoke stops; the haze under it stays, as today's).
+## The affixes' one-off beats (the old game's DmAffixSet._burst, same numbers and sounds): the bell sounds, a corpse is eaten, the body bursts. `tell` is the bell's
+## wind-up (its ring is the toll telegraph), `unveil` the shroud lifting (its smoke stops; the haze under it stays).
 func _on_affix_moment(id: int, moment: int, at_x: float, at_z: float, to_x: float, to_z: float, amount: float) -> void:
 	stats["moment"] += 1
 	match DmCoreEvents.AFFIX_MOMENTS[moment]:
@@ -752,8 +750,7 @@ func _sfx(id: String, x: float, z: float) -> void:
 
 ## Loading-time pre-warm (silent, ~0.3 s of effects at `at`, which should be in front of the camera): one of every telegraph shape, the
 ## spawn / death / eruption bursts, so their pooled slots, textures and shaders exist before the first fight.
-## Everything is an existing effect, so DmWarmup's all-effects pass (old game) already covers the Binbun scenes; the next game has no
-## DmWarmup, so DmNextGame calls this once at the end of start().
+## Everything is an existing effect, so DmNextWarmup's all-effects pass already covers the Binbun scenes; DmNextGame calls this once at the end of start().
 func warm(at: Vector3) -> void:
 	var quiet := fx.audio
 	fx.audio = null
@@ -975,7 +972,7 @@ func _reach_ring(id: int) -> void:
 		_reach[id] = null
 
 
-## A body's status tells near the hero (DmEntityViews._tick_alive, today's rates a second, here per ambient tick). Reads the core's packed records:
+## A body's status tells near the hero (rates are per second, rolled once per ambient tick). Reads the core's packed records:
 ## [status id, stacks, tenths of a second left (2 bytes)] per status, in DmStatusRules.IDS order.
 func _status_motes(id: int) -> void:
 	if not _body_xz(id) or absf(_bx - _px) > NEAR_X or absf(_bz - _pz) > NEAR_Z:
@@ -1011,7 +1008,7 @@ func _status_motes(id: int) -> void:
 			"incensed":
 				if randf() < AMBIENT_S * 3.0:
 					_mote(_bx, 1.2 * sc, _bz, _st("incensed", "bronze"), 0.4, 0.2, 0.6, 0.8, 0.14)
-			"frenzy":   # the Flagellant below half health sheds blood motes (DmEntityViews: hp below half, 5 a second)
+			"frenzy":   # the Flagellant below half health sheds blood motes (hp below half, 5 a second)
 				if randf() < AMBIENT_S * 5.0:
 					_mote(_bx, 1.1, _bz, 0x9a1b2a, 0.3, 0.4, 0.4, 0.5, 0.14, 6.0)
 
@@ -1044,8 +1041,8 @@ func _st(group: String, key: String) -> int:
 	return int((_status_fx.get(group, {}) as Dictionary).get(key, 0xffffff))
 
 
-## An affixed body's motes near the hero (DmEntityViews._tick_affix, at today's rates: drool 4, embers 3 and shroud smoke 2 a second, here per ambient tick; the smoke only while the
-## ward is up, as today's `target < 1.0`).
+## An affixed body's motes near the hero (drool 4, embers 3 and shroud smoke 2 a second, rolled once per ambient tick; the smoke only while the
+## ward is up).
 func _affix_motes(id: int) -> void:
 	var v: Dictionary = core_host.view.crowd.view_info(id)
 	if v.is_empty() or int(v["state"]) == DEAD:

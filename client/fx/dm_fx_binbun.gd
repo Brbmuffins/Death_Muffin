@@ -134,7 +134,7 @@ func preload_ids(ids: Array) -> void:
 		_scene(String(id))
 
 
-## Paths of the scenes behind `ids` (DmWarmup loads them on worker threads during the loading screen).
+## Paths of the scenes behind `ids` (DmNextWarmup loads them on worker threads during the loading screen).
 func scene_paths(ids: Array) -> Array:
 	var out: Array = []
 	for id in ids:
@@ -170,7 +170,7 @@ func warm(ids: Array, at: Vector3) -> Array:
 	return out
 
 
-## Restart warmed instances at `at` (DmWarmup runs one per lighting pass: an effect that finished its animation draws nothing).
+## Restart warmed instances at `at` (DmNextWarmup runs one per lighting pass: an effect that finished its animation draws nothing).
 func rewarm(insts: Array, at: Vector3) -> void:
 	for inst in insts:
 		var i2: Inst = inst

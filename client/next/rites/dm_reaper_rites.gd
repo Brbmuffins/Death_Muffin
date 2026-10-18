@@ -2,8 +2,8 @@ class_name DmReaperRites
 extends RefCounted
 ## What the Reaper's rites share (scythe_sweep, harvest_spin, reap, soul_burst, scythe_throw, wraith_walk): the cone / circle target pick, the dealing of
 ## one blow to every target with its hit marks, the soul bag, and the green visuals. Numbers: the REAPER constants (abilities.json) + DmAbilities.
-## On the combat core (client/code.list "Ported"): the targets are DmFoe snapshots from the core's radius query (`c.foes_in_radius`), a blow is `c.deal` (the
-## core applies the damage-taken multipliers today's DmStatusSet.hit did), as the Gravecaller's rites.
+## On the combat core: the targets are DmFoe snapshots from the core's radius query (`c.foes_in_radius`), a blow is `c.deal` (the
+## core applies the damage-taken multipliers), as the Gravecaller's rites.
 
 const GREEN := Color("6ee7a0")   ## the Reaper's colour: souls and her energy
 const DEEP := Color("1f7a52")

@@ -1,6 +1,6 @@
 class_name DmGraveSurge
 extends RefCounted
-## Grave Surges for the host's wave director, on the combat core (client/code.list "Ported"; the same rules and numbers as godot/next/areas/dm_grave_surge.gd: DmSimData.SURGE).
+## Grave Surges for the host's wave director, on the combat core (the rules and numbers are DmSimData.SURGE).
 ## Every SURGE interval (the first after firstDelayS) a crypt in the hero's combat area cracks open; three waves (waveAtS) of waveSize x
 ## waveSizeMult climb out of it; clear 80 % of what came within durationS and the crypt pays its offering (DmSessionRewards.on_surge_cleared).
 ## The director owns the clock: `update(dt, heroes)` while a hero is in the area, `reset()` when none is (a surge in an emptied area fails).

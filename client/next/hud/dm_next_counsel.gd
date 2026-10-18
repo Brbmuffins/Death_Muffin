@@ -2,11 +2,11 @@ class_name DmNextCounsel
 extends RefCounted
 ## Counsel facts for the slice : "busy" flags that hold tips back
 ## during a fight, and the state-based ctx the UI polls every 400 ms (DmCounselEvents.tick_calls). Allocates only on the poll.
-## Ported to the combat core (client/code.list "Ported"): today's counsel reads the director's enemy nodes, the corpse field and the hero's thrall host; this one asks the
+## On the combat core: the counsel asks the
 ## core, and only on the poll (every 400 ms, DmGameUi's timer): "three living dead within 9 m" is one radius query, the corpses within 7 m one more and, for each of
-## those, the living bodies within 3 m of it; the hero's thralls are `thrall_count`. No node, no per-creature call and no scan of the whole table. The facts are today's:
-## a body counts by the distance of its centre, a rising or burrowed one counts, a dead one does not (the core's radius queries measure to the edge, so a candidate is
-## confirmed by its centre). One more fact: `altar` is false, the build has no Altar of Ascension (DECISIONS B36), so the counsel does not send the player to one (ported DmCounselEvents.tick_calls).
+## those, the living bodies within 3 m of it; the hero's thralls are `thrall_count`. No node, no per-creature call and no scan of the whole table.
+## A body counts by the distance of its centre, a rising or burrowed one counts, a dead one does not (the core's radius queries measure to the edge, so a candidate is
+## confirmed by its centre). One more fact: `altar` is false, the build has no Altar of Ascension (DECISIONS B36), so the counsel does not send the player to one (DmCounselEvents.tick_calls).
 
 const BOSS_IDS := ["gravedigger", "abbess", "congregation", "saint", "regent", "mire"]
 const BUSY_MS := 4000.0

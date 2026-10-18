@@ -2,9 +2,8 @@ class_name DmBossView
 extends RefCounted
 ## Any boss's model (port of BossView in archive/legacy-web:src/graphics/Avatars.ts): one per boss id, created on first summon (the Prelate's is built at
 ## load). `sync(state: DmBossState, dt)` every frame, `hide()` after death / when the fight resets (fades out after 2.5 s), `dispose()`.
-## Model and colour come from BOSSES[id].modelSlug / .color (godot/data/content/bosses.json).
-## Ported to the rebuilt client (client/code.list "Ported"): the three motion helpers it took from DmEntityViews (the per-creature views the crowd replaces) are its own
-## statics at the end of the file, the same code; nothing else changed.
+## Model and colour come from BOSSES[id].modelSlug / .color (client/data/content/bosses.json).
+## Its motion helpers (`_turn_toward`, `_step_speed`, `_smooth_speed`) are its own statics at the end of the file.
 
 ## Seconds from the state flip to the swing's impact frame (the telegraphs run 0.9-1.4 s): the clip is timed to land there, then hands back to idle / walk.
 const BOSS_SLAM_IMPACT_S := 0.9
@@ -181,7 +180,7 @@ func dispose() -> void:
 		root.free()
 
 
-# ---- motion helpers (DmEntityViews' statics of the same names, unchanged)
+# ---- motion helpers
 
 static func _turn_toward(cur: float, target: float, dt: float, rate: float, max_rate: float = INF) -> float:
 	var d := target - cur

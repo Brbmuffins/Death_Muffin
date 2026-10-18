@@ -2,8 +2,8 @@ import type { AreaId } from './areas';
 
 /**
  * Legendary armor sets: one rare, build-defining set per necromancer discipline and the Reaper's (Soul Harbinger's Raiment,
- * its bonuses coded in godot/rules/combat/dm_reaper_set.gd). The pieces are built into
- * ARMOR_PIECES (armorSets.ts, collection 3); the bonuses are in godot/data/content/setBonuses.json; after a change run
+ * its bonuses coded in client/rules/combat/dm_reaper_set.gd). The pieces are built into
+ * ARMOR_PIECES (armorSets.ts, collection 3); the bonuses are in client/data/content/setBonuses.json; after a change run
  * tools/generate-armor-assets.mjs (client copies, icons, item migration); this file holds the names and the drop rules, which
  * are pure so the client (loot.ts) and the server's ground-rate ceiling (authorityRules.ts) read the same numbers.
  */

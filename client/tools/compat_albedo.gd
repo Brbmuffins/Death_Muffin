@@ -1,5 +1,5 @@
 extends SceneTree
-## Prints DmCompatAlbedo.TABLE for every textured, tinted material of the area converter (the floors, the walls and the gate posts of godot/data/slice/world.json, and the dark earth beyond the walls).
+## Prints DmCompatAlbedo.TABLE for every textured, tinted material of the area converter (the floors, the walls and the gate posts of client/data/slice/world.json, and the dark earth beyond the walls).
 ## Run: godot --headless --path client --script res://tools/compat_albedo.gd   and paste the lines into client/next/look/dm_compat_albedo.gd.
 
 const GATE_POST := ["stone_wall", "#8a8296"]

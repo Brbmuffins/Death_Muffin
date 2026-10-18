@@ -1,6 +1,6 @@
 class_name DmGameUi
 extends CanvasLayer
-## The in-world UI of the port (godot/GAME_CONTRACT.md): DmHud fed every frame from game.hud_state() + the UI-owned parts, every panel opened by the
+## The in-world UI: DmHud fed every frame from game.hud_state() + the UI-owned parts, every panel opened by the
 ## web's keys / menu buttons with real data from game.character / slots / progress, panel signals mapped to the DmApi calls their headers document and
 ## followed by game.refresh_*(), counsel tips from game.game_event, dialogue, Settings -> game.apply_settings.
 ## Ports how archive/legacy-web:src/scenes/WorldScene.ts and archive/legacy-web:src/ui/* wire the UI. Pure UI: all world state is read from `game`.

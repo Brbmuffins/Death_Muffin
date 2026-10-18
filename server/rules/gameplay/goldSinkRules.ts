@@ -53,7 +53,7 @@ export function reforgeProblem(inst: ItemInstanceData, index: number): string | 
   return null;
 }
 
-/** A fresh value for the affix: uniform over today's range. `rand` returns [0, 1). */
+/** A fresh value for the affix: uniform over the range the item level allows. `rand` returns [0, 1). */
 export function reforgeValue(affixId: string, ilvl: number, rand: () => number): number {
   const r = affixRange(affixId, ilvl);
   if (!r) throw new Error(`unknown affix ${affixId}`);

@@ -1,7 +1,7 @@
 class_name DmStatusRules
 extends RefCounted
-## The status rule table for the combat core (DmCore.load_status_defs), in wire order: a port of DmStatusSet.warm() (godot/next/status/
-## dm_status_set.gd) reading the same data files, so no number is retyped. Keys as DmStatusSet._defs plus "name".
+## The status rule table for the combat core (DmCore.load_status_defs), in wire order: the table of DmStatusSet.warm()
+## (client/next/status/dm_status_set.gd), built from the same data files, so no number is retyped. Keys as DmStatusSet._defs plus "name".
 
 const IDS: Array[String] = ["slow", "ward_slow", "chill", "root", "stun", "silence", "bleed", "withered", "fracture", "hex", "sanctified",
 	"incensed", "frenzy", "shrouded", "barrier", "wraithfire"]

@@ -1,6 +1,6 @@
 # Host-reported party sessions
 
-Godot rebuild decision D1: the host's game is authoritative for the *session*; the backend stays authoritative for anything of value.
+Decision D1 (DECISIONS.md): the host's game is authoritative for the *session*; the backend stays authoritative for anything of value.
 This is the backend API a host uses to report what its 1-4 members killed. Code: `party-sessions.cjs`; tables: `migrations/041-party-sessions.sql`;
 tests: `party-sessions.test.cjs` (fake DB `party-sessions-fake-db.cjs`). The routes answer 503 (`unavailable`) if the 041 tables are missing.
 

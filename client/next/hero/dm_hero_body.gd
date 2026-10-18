@@ -2,7 +2,7 @@ class_name DmHeroBody
 extends DmSessionBody
 ## The real hero as a session body: the DmAvatar model for the character's discipline, vitals (DmPlayerRules state, host-side), a
 ## navmesh-aware mover and the enemy target contract (group `dm_target`, `dm_alive()`).
-## Ported to the combat core (client/code.list "Ported"): the hero is an external entity of the core (`core_id`, registered by the game scene), so enemies
+## On the combat core: the hero is an external entity of the core (`core_id`, registered by the game scene), so enemies
 ## see it as a circle the core pushes them out of and need no collider; the blows of enemies arrive as the core's EV_TARGET_HIT events, with the enemy's
 ## id as the source (`take_damage`, `dm_take_enemy_hit`); the thralls a hero owns are counted by the core (`thrall_count`).
 ##
@@ -410,7 +410,7 @@ func _path_velocity(speed: float, delta: float) -> Vector3:
 
 func _respawn() -> void:
 	DmPlayerRules.revive(p)
-	teleport(game.respawn_point())   # today the Chapterhouse; the game scene says where a fallen hero gets up
+	teleport(game.respawn_point())   # the game scene says where a fallen hero gets up (the Chapterhouse)
 	_mirror_from_state()
 	respawned.emit(self)
 

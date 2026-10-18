@@ -2,7 +2,7 @@
 // The crowd's presentation (native/README.md "Drawing", client/crowd/README.md "Driving the crowd"): everything that makes the core's bodies
 // look alive, kept out of the simulation and free of Godot types. A feed of plain rows goes in once per tick (`tick`: the core's tables and hits,
 // or later a co-op snapshot), the instance buffer of every (model, level of detail, shadow) group comes out once per rendered frame (`draw`).
-// A port of the view layer of godot/game (dm_entity_views.gd, dm_creature.gd, DmAnimator): turn rate, smoothed ground speed, clip choice and
+// The old game's view layer (dm_entity_views.gd, dm_creature.gd, DmAnimator) in C++: turn rate, smoothed ground speed, clip choice and
 // stride-matched playback, strikes and flinches, blends, hit flash, knockback, rise, death settle and topple, corpses that keep a dying body.
 #include <cstdint>
 #include <string>
@@ -167,7 +167,7 @@ public:
 	double hitstop_scale = 1.0;  // the picture clock of a struck enemy (Vfx.hitstop_scale)
 	double champion_scale = 1.35;
 	int32_t shadow_casters = 12, crowded_casters = 8, crowded_at = 32;
-	bool thrall_shadows = true;  // thralls always cast, as today (DmCasterBudget: "the hero, thralls and bosses always cast")
+	bool thrall_shadows = true;  // thralls always cast (the old game's DmCasterBudget: "the hero, thralls and bosses always cast")
 	double focus_x = 0, focus_z = 0;  // the hero: the knock pushes away from it, shadows go to the nearest to it
 	uint64_t seed = 1;
 	int32_t reserve_rows = 0;  // rows every group starts with (and new models' groups): sized at loading so a wave never grows a MultiMesh
@@ -204,7 +204,7 @@ public:
 	int32_t view_count() const { return int32_t(views.size()) - int32_t(free_list.size()); }
 	const std::vector<View> &all_views() const { return views; }
 
-	// Today's pure helpers (dm_entity_views.gd, dm_animator.gd), public so the tests hold them against the GDScript.
+	// The pure helpers (the old game's dm_entity_views.gd and dm_animator.gd), public so the tests can hold them against GDScript mirrors.
 	static double turn_toward(double p_cur, double p_target, double p_dt, double p_rate, double p_max_rate);
 	static double smooth_speed(double p_prev, double p_sample, double p_dt, double p_tau);
 	static void knock_impulse(double p_frac, double p_mass, double p_dx, double p_dz, double &r_x, double &r_z);

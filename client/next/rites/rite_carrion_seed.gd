@@ -4,7 +4,7 @@ extends DmRiteModule
 ## the seed's damage (power x spell power at planting) and `withered` stacks (DmStatusSet). One seed per caster: planting another ends the old one.
 ## 18 essence, 6 s, unlocks at level 8. The seed fields live on the corpse's notes (`c.corpses().notes(id)`: seedOwner, seedDmg, seedCap, seedArmedAt, seedExpires, the
 ## last two on the caster's clock in ms); the scan runs at 10 Hz only while armed. Visuals: DmRiteFx.seeded / seed_burst. Events: `seeded`, `seedGone`, `seedBurst`
-## (all carry corpseId). On the combat core (client/code.list "Ported"): the corpse field, the enemies and the blows are the core's; a seed ends with its corpse.
+## (all carry corpseId). On the combat core: the corpse field, the enemies and the blows are the core's; a seed ends with its corpse.
 
 const SCAN_S := 0.1
 

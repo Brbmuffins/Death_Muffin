@@ -45,7 +45,7 @@ Env: `REPO` (default `/home/ubuntu/vps-handoffs/DeathMuffin/game`), `DM_HOME` (`
 |---|---|
 | 1 | Installed discord-agent files, art tools and systemd units vs the repo |
 | 2 | Live backend, gathering, necro-progress and lobby code vs the repo. Comments and blank lines are ignored; comment-only differences are a soft note, not drift |
-| 3 | Published client `rev` vs commits that change shipped client files (`godot/`, not tests or docs) merged after it |
+| 3 | Published client `rev` vs commits that change shipped game files (`client/` and `native/src/`, not tests, tools or docs) merged after it |
 | 4 | Extra remote/local branches and worktrees. `discord/*` jobs are listed as info and flagged after 7 days |
 | 5 | Uncommitted changes in the main checkout |
 | 6 | Unexpected files in the public docroot (allowed: the `server/death-muffin/site/` files plus `client`, `play`, `preview`; `play/` only `index.html`, `patch-notes.json`, `release-notes.json`) and secret-ish names |

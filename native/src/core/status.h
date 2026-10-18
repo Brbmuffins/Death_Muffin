@@ -1,6 +1,6 @@
 #pragma once
-// Statuses on one body: a port of DmStatusSet (godot/next/status/dm_status_set.gd). One step per 0.1 s of accumulated time (the step's dt is
-// the whole accumulator, so 7 ticks = 0.1167 s at 60 Hz), damage over time paid in 0.25 s lumps, records kept in insertion order (today's
+// Statuses on one body, the C++ form of DmStatusSet (client/next/status/dm_status_set.gd). One step per 0.1 s of accumulated time (the step's dt is
+// the whole accumulator, so 7 ticks = 0.1167 s at 60 Hz), damage over time paid in 0.25 s lumps, records kept in insertion order (DmStatusSet's
 // Dictionary order decides DoT lumps and expiry order). The rule table comes from GDScript (DmCore.load_status_defs), built from the same
 // data files DmStatusSet.warm() reads, so no number is retyped here.
 #include <cstdint>

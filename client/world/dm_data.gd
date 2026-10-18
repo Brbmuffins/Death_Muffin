@@ -1,6 +1,6 @@
 class_name DmData
 extends RefCounted
-## Loads the slice JSON (godot/data/slice/*.json; originally exported from the web game's TS).
+## Loads the slice JSON (client/data/slice/*.json; originally exported from the web game's TS).
 
 static var _cache: Dictionary = {}
 
@@ -9,7 +9,7 @@ static func load_json(name: String) -> Variant:
 		return _cache[name]
 	var v: Variant = DmDb.slice(name)
 	if v == null:
-		push_error("DmData: missing slice dataset %s (godot/data is committed; restore it from git)" % name)
+		push_error("DmData: missing slice dataset %s (client/data is committed; restore it from git)" % name)
 		return {}
 	_cache[name] = v
 	return v

@@ -1,6 +1,6 @@
 class_name DmPaData
 extends RefCounted
-## Loader + helpers for godot/data/panels_a/*.json (the Codex's computed
+## Loader + helpers for client/data/panels_a/*.json (the Codex's computed
 ## rows and the Gear Atlas model, originally exported from the web game's TS). Static cache; do not mutate what it returns.
 
 static func load_json(name: String) -> Dictionary:

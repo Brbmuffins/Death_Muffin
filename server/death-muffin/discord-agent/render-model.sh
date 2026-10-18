@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Review renders of built models, for the thread: render-model.sh <id> [<id> ...]   (1 to 6 ids; run from the worktree root after build-art.sh)
-# Each id is a model in this worktree: prop_<name> -> godot/assets/slice/models/props/<name>.glb, otherwise godot/assets/slice/models/<id>/character.glb
+# Each id is a model in this worktree: prop_<name> -> client/assets/slice/models/props/<name>.glb, otherwise client/assets/slice/models/<id>/character.glb
 # (existing models work too, e.g. to show an old piece next to a new one). Blender (Cycles, CPU, 4 threads, low samples) renders front / side / back of
 # each one inside the same sandbox as check-godot.sh (sandbox-lib.sh: no network, read-only filesystem, only the worktree writable), composes one sheet
 # (a row per model) and label-shot.py (trusted, outside the sandbox) burns "BRANCH PREVIEW · not live" in and writes .dm-shots/models-<first id>.png,
@@ -13,7 +13,7 @@ TOOLS=$(cd "$(dirname "$0")" && pwd)
 MODELS=""
 for ID in "$@"; do
   [[ "$ID" =~ ^[a-z0-9_]{3,40}$ ]] || { echo "bad id: $ID"; exit 2; }
-  case "$ID" in prop_*) REL="godot/assets/slice/models/props/${ID#prop_}.glb";; *) REL="godot/assets/slice/models/$ID/character.glb";; esac
+  case "$ID" in prop_*) REL="client/assets/slice/models/props/${ID#prop_}.glb";; *) REL="client/assets/slice/models/$ID/character.glb";; esac
   [ -f "$TOP/$REL" ] && [ ! -L "$TOP/$REL" ] || { echo "no model for $ID at $REL (run build-art.sh $ID first)"; exit 2; }
   MODELS="$MODELS $ID=$REL"
 done

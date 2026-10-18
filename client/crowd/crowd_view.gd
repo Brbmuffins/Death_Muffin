@@ -2,7 +2,7 @@ class_name CrowdView
 extends Node3D
 ## Draws the combat core's enemies and thralls as MultiMesh crowds (client/crowd/README.md "Driving the crowd"). One MultiMeshInstance3D per model, level
 ## of detail and shadow group, built from the baked models (CrowdVatData); no node and no script per creature. The core's `DmCrowd` does the work: this
-## node maps defs and thrall kinds to models like today's DmEntityViews (client/crowd/crowd_looks.json), calls `DmCrowd.sync(core)` right after each core
+## node maps defs and thrall kinds to models (client/crowd/crowd_looks.json), calls `DmCrowd.sync(core)` right after each core
 ## step and `DmCrowd.draw` every rendered frame.
 ##   var view := CrowdView.new()
 ##   world.add_child(view)
@@ -255,7 +255,7 @@ func _register_thralls() -> void:
 				"glow": glow, "glow_empowered": 0.0 if kind == "wraith" else float(tg.empowered)})
 
 
-## The model to draw `wanted` with: itself, else the rig fallback of today's game, else a baked model of the same rig, else any baked one.
+## The model to draw `wanted` with: itself, else its rig fallback (`enemy_fallback`), else a baked model of the same rig, else any baked one.
 ## Each substitution is listed once in `warnings`. Returns "" when nothing is baked at all.
 func _model_for(wanted: String, def: String) -> String:
 	if _baked.has(wanted):
@@ -263,7 +263,7 @@ func _model_for(wanted: String, def: String) -> String:
 	var fallback := ""
 	var chain: Array = []
 	if def != "" and _looks.enemy_fallback.has(def):
-		chain.append(String(_looks.enemy_fallback[def]))   # the rig today's game draws it with when its own model is missing
+		chain.append(String(_looks.enemy_fallback[def]))   # the rig it is drawn with when its own model is missing
 	if def != "":
 		var rig := String(_enemy_defs.get(def, {}).get("rig", ""))
 		for other in _looks.enemy_model:
@@ -352,7 +352,7 @@ func _slot(slug: String) -> int:
 	return slot
 
 
-## Whether a model's fade material culls back faces: today's fade variant does for the closed bodies (DmCreatureMat.CULL_BACK_SLUGS: a hand-prop variant "<model>+<kind>" is its body's),
+## Whether a model's fade material culls back faces: DmCreatureMat's fade variant does for the closed bodies (DmCreatureMat.CULL_BACK_SLUGS: a hand-prop variant "<model>+<kind>" is its body's),
 ## so the far side of a sinking golem does not show through the near one. The other models are two-sided, as their solid material is.
 static func fade_cull_back(slug: String) -> bool:
 	return DmCreatureMat.CULL_BACK_SLUGS.has(slug.split("+")[0])

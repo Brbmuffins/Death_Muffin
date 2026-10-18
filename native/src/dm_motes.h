@@ -1,7 +1,7 @@
 #pragma once
-// DmMotes: the per-frame loop of today's CPU particle ring (client/fx/dm_fx_ring.gd, a port of godot/fx/dm_fx_ring.gd and Effects.ts ParticleSystem) in C++.
+// DmMotes: the per-frame loop of the CPU particle ring (client/fx/dm_fx_ring.gd, a port of Effects.ts ParticleSystem) in C++.
 // The ring's motes live here as flat arrays; `emit` makes a burst's motes (each one's random start from the global generator, drawn in the order DmFxRing.emit drew them in
-// GDScript, so the stream and every number are today's: client/tests/fx_motes.gd) and DmFxRing (GDScript) owns the MultiMeshes. `step` ages, moves and fades every live mote exactly as the GDScript loop did (the same double-precision arithmetic, stored as
+// GDScript, so the stream and every number are the old ring's: client/tests/fx_motes.gd) and DmFxRing (GDScript) owns the MultiMeshes. `step` ages, moves and fades every live mote exactly as the GDScript loop did (the same double-precision arithmetic, stored as
 // floats) and writes the instance buffer of the ring that is drawn; `upload` hands it to the RenderingServer.
 #include <vector>
 

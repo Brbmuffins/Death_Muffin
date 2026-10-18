@@ -13,7 +13,7 @@ extends RefCounted
 ##   number key held      -> repeats once HOLD_MS old and the rite is ready
 ##   standing, mouse seen -> `stand_face`: the hero turns toward the cursor; Easy auto-combat is DmNextAutoCombat.
 ##
-## Ported to the combat core (client/code.list "Ported"): the attack target is the core's enemy id; its place and whether it can be hurt come from the caster's `foe` snapshot.
+## On the combat core: the attack target is the core's enemy id; its place and whether it can be hurt come from the caster's `foe` snapshot.
 ## A boss is a target like any enemy (the caster's `foe` says `boss`: its radius counts in the primary's range).
 
 const QUEUE_MS := 220.0       ## a cast refused for a lock / <= 220 ms of cooldown waits this long

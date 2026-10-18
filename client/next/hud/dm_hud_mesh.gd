@@ -5,7 +5,7 @@ extends RefCounted
 ## `submit(item)` (a mesh made now, inside `_draw`) or `to_mesh()` (an ArrayMesh made once for art that never changes; draw it with `draw_mesh`).
 ## Triangles are drawn in the order they were added, so translucent shapes blend as separate draws would have. The arrays are reused: `clear()` keeps their memory.
 
-const CIRCLE_SEGMENTS := 64   ## CanvasItem.draw_circle's own count: the shapes keep today's outline
+const CIRCLE_SEGMENTS := 64   ## CanvasItem.draw_circle's own count: the shapes keep its outline
 
 var pts := PackedVector2Array()
 var cols := PackedColorArray()

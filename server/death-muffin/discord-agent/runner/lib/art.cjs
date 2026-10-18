@@ -103,8 +103,8 @@ async function baseInfo(cfg, job) {
   const ls = async (args) => { const r = await G.git(cfg.repo, ['ls-tree', ...args], { allowFail: true }); return r.code === 0 ? r.out.split('\n').filter(Boolean) : []; };
   for (const n of await ls(['--name-only', ref])) if (/^[A-Za-z0-9_-]+\.png$/.test(n)) info.rootPngs.add(n);
   for (const n of await ls(['--name-only', ref, 'art-manifest/tripo-specs/'])) { const m = /([a-z0-9_]+)\.json$/.exec(n); if (m) info.existing.add(m[1]); }
-  for (const n of await ls(['--name-only', ref, 'godot/assets/slice/models/'])) { const m = /models\/([a-z0-9_]+)$/.exec(n); if (m && m[1] !== 'props') info.existing.add(m[1]); }
-  for (const n of await ls(['--name-only', ref, 'godot/assets/slice/models/props/'])) { const m = /props\/([a-z0-9_]+)\.glb$/.exec(n); if (m) info.existing.add(`prop_${m[1]}`), info.existing.add(m[1]); }
+  for (const n of await ls(['--name-only', ref, 'client/assets/slice/models/'])) { const m = /models\/([a-z0-9_]+)$/.exec(n); if (m && m[1] !== 'props') info.existing.add(m[1]); }
+  for (const n of await ls(['--name-only', ref, 'client/assets/slice/models/props/'])) { const m = /props\/([a-z0-9_]+)\.glb$/.exec(n); if (m) info.existing.add(`prop_${m[1]}`), info.existing.add(m[1]); }
   info.history = await loadCostHistory(cfg, ref);
   return info;
 }

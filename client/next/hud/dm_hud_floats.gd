@@ -1,7 +1,7 @@
 class_name DmHudFloats
 extends Control
 ## Floating combat text and words (`.cw-num`, DmFloatingNumber's looks and timings) with a fixed pool: a number is a row of data and two canvas items made once
-## (its outline and its fill), not a node, and nothing is created per hit. Today's DmFloatingNumber.spawn made a Label with three tweens for every number and freed it a
+## (its outline and its fill), not a node, and nothing is created per hit. DmFloatingNumber.spawn makes a Label with three tweens for every number and frees it a
 ## second later. Each number pops (0.7 to 1.2 to 1.0 times its size), drifts 46 px up and fades, exactly as the tweens did.
 ##
 ## The text is drawn into its two items once, when the number is added; a frame only moves them (a transform per item, an alpha in the fade). The items of one kind (one font

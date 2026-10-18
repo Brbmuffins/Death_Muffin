@@ -89,7 +89,7 @@ The launcher does not gate PLAY on `online`: the game enforces it at sign-in (`o
 
 ## Test build channel (team only, DECISIONS B38)
 
-The rebuild is played through a second channel that sits next to the normal game. Players never see it.
+Test builds are played through a second channel that sits next to the normal game. Players never see it.
 
 | | Normal game (`Live`) | Test build (`Test`) |
 |---|---|---|

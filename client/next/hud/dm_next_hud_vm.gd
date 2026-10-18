@@ -1,13 +1,13 @@
 class_name DmNextHudVm
 extends RefCounted
-## The HUD's view-model (godot/ui/hud/README.md schema) built from the combat core and the game scene's hero (client/code.list "Ported"). Today's builder reads
-## nodes (DmEnemy, DmThrallHost, DmCorpseField); this one reads the core's bulk arrays and a few queries, ONCE per HUD refresh (20 Hz), never per creature per frame:
+## The HUD's view-model (client/ui/hud/README.md schema) built from the combat core and the game scene's hero. It reads
+## the core's bulk arrays and a few queries, ONCE per HUD refresh (20 Hz), never per creature per frame:
 ##   - the target frame: one `enemy_info` and one `statuses` read for the one enemy under the cursor;
 ##   - the minimap's dots: `enemy_ids / enemy_positions / enemy_states`, `thrall_ids / thrall_positions`, `corpse_positions` (flat arrays, one pass each);
 ##   - the thrall count, places and how many are hurt: `thrall_count / thrall_places` and `thrall_owners / thrall_hp / thrall_states`;
 ##   - the "no corpse" dimming: one `corpses_in_radius` query around the hero;
-##   - cooldowns, essence and the cast state: the hero's caster (`DmRiteCaster`), as today;
-##   - the belt, the Kill Chain and the Omen: the game's progression and meta (DmNextBelt.rows, the member's DmKillChain, DmNextMeta.omen), as today.
+##   - cooldowns, essence and the cast state: the hero's caster (`DmRiteCaster`);
+##   - the belt, the Kill Chain and the Omen: the game's progression and meta (DmNextBelt.rows, the member's DmKillChain, DmNextMeta.omen).
 ## The minimap's dots are flat arrays (x, z and a flag per dot) rewritten in place, never a dictionary per creature. The host is the panels' adapter (DmNextUiHost): it keeps what
 ## the view-model needs besides the game (character, progression, the last targeted enemy, kills per area).
 
@@ -403,7 +403,7 @@ func _minimap(g: DmNextGame, b: DmHeroBody) -> Dictionary:
 			_areas.append({"id": id, "rect": a["rect"], "safe": a["safe"], "unlocked": false, "instance": a.get("instance", false)})
 		for d in DmContent.doors():
 			_doors.append({"rect": d["rect"], "open": false, "id": d["id"]})
-	# The world's seal state is what is unlocked / open (as today's builder's).
+	# The world's seal state is what is unlocked / open.
 	for a in _areas:
 		a["unlocked"] = g.world.unlocked.has(a["id"])
 	for d in _doors:

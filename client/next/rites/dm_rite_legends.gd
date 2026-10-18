@@ -3,8 +3,8 @@ extends RefCounted
 ## Requiem Wraiths (legendary set), HOST, one per caster, made only when the worn set has `corpseWisp` or `wraithNova` (DmRiteCaster._set_mods).
 ## 2 - `corpseWisp`: a corpse of yours consumed (Exhume, Litany, Offering, Mantle, Explosion...) raises a healing wisp for that many seconds (cap 3, a fourth
 ##     refreshes the soonest to expire); each heals 2 % max hp a second. 5 - `wraithNova`: a Soul Harvest cast makes every wisp and wraith thrall release a
-##     nova (r 3, spell power x the mod, at most 8 sources). Numbers: DmSimData.LEGEND. Ports sim_caster.on_corpse_consumed / _tick_wisps / _wraith_nova.
-## On the combat core (client/code.list "Ported"): the corpse field and the legion are the core's adapters (the consume event arrives with the tick's events),
+##     nova (r 3, spell power x the mod, at most 8 sources). Numbers: DmSimData.LEGEND. After the old game's sim_caster.on_corpse_consumed / _tick_wisps / _wraith_nova.
+## On the combat core: the corpse field and the legion are the core's adapters (the consume event arrives with the tick's events),
 ## a wraith thrall is an id, and the nova's blows are the hero's through `c.deal`.
 
 const ID := "black_litany"   ## its events are played by the litany module (the caster routes by rite id)

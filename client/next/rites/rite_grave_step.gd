@@ -4,7 +4,7 @@ extends DmRiteModule
 ## Numbers: DmAbilities.rite_damage + DmSimData.GRAVE_STEP / HEMORRHAGE. The move is host-authoritative: the body teleports (`body.teleport`, the point
 ## resolved onto the navmesh by `body.resolve_point`) and the position replicates through the session snapshots; clients snap (DmSessionBody.SNAP_JUMP)
 ## instead of gliding. Visuals: DmRiteFx.step_depart / step_arrive, both from the one event.
-## On the combat core (client/code.list "Ported"): the corpse field and the enemies are the core's; the burst is `c.deal` and the bleed the core's status.
+## On the combat core: the corpse field and the enemies are the core's; the burst is `c.deal` and the bleed the core's status.
 
 const MAX_HITS := 64
 const MAX_POPUPS := 12

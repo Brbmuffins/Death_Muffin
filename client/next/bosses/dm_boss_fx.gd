@@ -4,7 +4,7 @@ extends Node
 ## awaken / phase banners, telegraph shapes, impacts, the pits, the defeat; the sounds incl. `bossAwaken` which starts the AudioDirector boss
 ## bed). The host feeds it the brain's `t: "boss"` events (and broadcasts them to the other peers), so telegraph timing is the event's `ms`.
 ## The model/animation side is DmBossView, owned by each DmBoss.
-## Ported to the rebuilt client (client/code.list "Ported"): the toxic pool's picture (`pool_visual`, on a DmHostileZone node and a DmSimZone record) is not here: a boss's pools are
+## The toxic pool's picture is not here: a boss's pools are
 ## core zones, and DmEnemyFx draws them from the core's zone events (the Saint's rot, the Regent's coals), on every peer.
 
 ## What the router needs from its "game": the enemy-fx stub plus banner/toast/float sinks and the boss-view hide.

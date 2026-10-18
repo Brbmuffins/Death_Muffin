@@ -4,7 +4,7 @@ extends Node3D
 ## whole world, each drifting at its own velocity. Exactly the web's CPU rule: a puff more than 45 m (x) / 40 m (z) from the focus is moved
 ## to focus -+ 44 (x) / 39 (z) on the opposite side, so the far world's puffs pile onto the box edge and the density near the hero is the web's.
 ## One MultiMesh draw call. The 220-puff loop runs at 4 Hz (`STEP_SECONDS`) with the accumulated dt: drift is <= 0.35 m/s, so a step moves a puff 9 cm at most, under a puff's
-## own size of metres (today's ran every 4th frame, 15 times a second at 60 fps, and cost 4 times as much; client/code.list "Ported").
+## own size of metres (the old game's ran every 4th frame, 15 times a second at 60 fps, and cost 4 times as much).
 ## Puff world diameter = aSize (web gl_PointSize = aSize * scale / depth px); alpha = smoke.a * aAlpha * 1.4, colour 0x3d3350.
 
 const STEP_SECONDS := 0.25

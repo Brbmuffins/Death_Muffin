@@ -1,6 +1,6 @@
 extends Control
 ## panels_b gallery: every crafting / gathering / economy panel with mock data (DmPbMock). Interactive:
-##   godot --path godot res://ui/panels_b/gallery.tscn
+##   godot --path client res://ui/panels_b/gallery.tscn
 ## One page to a PNG:  ... -- --page=<name> --out=/path.png [--w=1280 --h=800] [--scroll=300]
 ## Pages: contracts garden labor skills forge cauldron kiln reforge report shelf salvage vault
 

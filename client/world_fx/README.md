@@ -21,7 +21,7 @@ Which piece each file draws; what each piece is, its count and what a frame pays
 - `dm_wfx_data.gd` reads the tables; `dm_wfx_quads.gd` builds one mesh of N camera-facing quads whose per-particle attributes ride in the vertex arrays (the weather's).
 
 ## Tests
-`client/tests/dressing.gd` (the pieces in the loaded areas, the stand-ins gone from the scenes, the area by event, the brazier fire's closed form against the old step, the mist's rate, the Binbun shaders' colour); the draw-call counts are `client/tests/draw_budget.gd`.
+`client/tests/dressing.gd` (the pieces in the loaded areas, the stand-ins gone from the scenes, the area by event, the brazier fire's closed form against a frame-by-frame step, the mist's rate, the Binbun shaders' colour); the draw-call counts are `client/tests/draw_budget.gd`.
 
 ## Known gaps
 - `add_ripple` / `is_wet` are only called from `client/game/dm_event_fx*.gd` through `DmEnemyFxHost.dressing`, which `DmNextGame` does not set, so enemy wading ripples and the Prelate's candle groups are not wired (KNOWN-GAPS "Built but never shown").

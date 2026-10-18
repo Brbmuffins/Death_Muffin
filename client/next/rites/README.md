@@ -18,8 +18,8 @@ bone_needle, bone_fan, rot_lance (primaries); miasma, marrow_spear, exhume, blac
 wailing_skull, ivory_cleave, bone_storm, soul_siphon, grave_step, veil_step, grave_frost, bone_prison, grave_hands, rally_dead; signatures
 ossuary_wall, command_rend, dirge, plague_bloom. Numbers come from the shared rules (`DmAbilities`, `DmSimData`, `DmCombatData`, `abilities.json`), not from the modules.
 
-How the rites sit on the combat core (the rites stay GDScript and call the core synchronously, so a kill resolves inside the cast; an enemy is an id or a `DmFoe` snapshot; the table of what a module uses where it used nodes; which files are ports) is
-client/README.md "The Gravecaller's rites"; what differs from the old game is native/README.md "Differences from today's game".
+How the rites sit on the combat core (the rites are GDScript and call the core synchronously, so a kill resolves inside the cast; an enemy is an id or a `DmFoe` snapshot; what a module reaches creatures through; where a rite meets the core) is
+client/README.md "The Gravecaller's rites".
 
 Other files: `dm_rite_hotbar.gd` (`DmRiteHotbar.rite_for_slot` / `wire(game)`: LMB = kit `defaultPrimary`, 1-4 = `defaultLoadout`, RMB = kit `rmb`,
 slot 6 / R = the discipline's signature at level 10), `dm_rite_gestures.gd` (cast gestures; the Reaper's rites play the Mourner rig's own combat clips, `DmAvatar.REAPER_CLIPS`: sweep / spin = `sweep`, reap = `slam`, throw = `flick`, wraith walk = `channel`, soul burst = `summon`, each timed so its release frame lands on the cast and played faster the shorter the rite's cooldown got, e.g. under haste), `dm_rite_legends.gd` (legendary-set effects),
@@ -56,8 +56,8 @@ slot 6 / R = the discipline's signature at level 10), `dm_rite_gestures.gd` (cas
 - Known deviation: a toxic Corpse Explosion's rot pool also bursts corpses for the Rotweaver (the original sim's did not).
 
 ## Tests
-`client/tests/rites.gd` casts every rite against the old game's formulas (table-driven with the copied rules code), the refusals, the synchronous-kill cases, the kit's hotbar and the click-to-attack chase, plays a fight, then the other three necromancers and the Reaper (a weapon line case and the runes included);
-`client/tests/core_status.gd` and `core_corpses.gd` / `core_thralls.gd` the core's half. Not covered in the client: the old game's separate runes suite (all 11 runes' numbers), its weapon-line odds and its sound coverage of all 25 rites.
+`client/tests/rites.gd` casts every rite (table-driven), the refusals, the synchronous-kill cases, the kit's hotbar and the click-to-attack chase, plays a fight, then the other three necromancers and the Reaper (a weapon line case and the runes included);
+`client/tests/core_status.gd` and `core_corpses.gd` / `core_thralls.gd` the core's half.
 
 ## Known gaps
 - The Legion Champion 5 rally mark (`spearRally`) has no event fx.

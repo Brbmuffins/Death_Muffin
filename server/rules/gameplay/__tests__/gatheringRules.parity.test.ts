@@ -18,7 +18,7 @@ import { checkParity, recorder } from './parity';
 
 /**
  * The gathering family: gatheringRules, salvageRules, goldSinkRules, laborRules, gardeningRules and contractRules, against
- * godot/rules/gathering/*.gd. Replayed by the Godot suite rules-gathering (<name>_parity.json). Seeded rolls use the loot drop stream
+ * client/rules/gathering/*.gd. Replayed by the Godot suite rules-gathering (<name>_parity.json). Seeded rolls use the loot drop stream
  * (DmDropStream) on both sides. Regenerate: UPDATE_<NAME>_PARITY=1 npx vitest run server/rules/gameplay/__tests__/gatheringRules.parity.test.ts
  * with NAME one of GATHER, SALVAGE, GOLD_SINK, LABOR, GARDEN, CONTRACTS.
  */

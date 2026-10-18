@@ -6,36 +6,34 @@ The combat core writes one buffer per frame; the GPU does the rest in the vertex
 
 ## Pieces
 
-- `client/crowd/crowd_baker.gd` (`CrowdBaker`): the baker. Loads a model's GLB straight from the asset folder (`godot/assets/slice/models/` until the
-  client has its own `assets/`, then `client/assets/`; it picks whichever exists), poses the skeleton for every frame of every clip the game
+- `client/crowd/crowd_baker.gd` (`CrowdBaker`): the baker. Loads a model's GLB straight from the asset folder (`client/assets/slice/models/`; `--assets=<folder holding slice/>` names another), poses the skeleton for every frame of every clip the game
   plays, skins every vertex on the CPU, and writes the files below. Headless, a few seconds per model.
 - `client/crowd/crowd_vat.gdshader`: the material. `client/crowd/crowd_vat_data.gd` (`CrowdVatData`): what a baked model loads as, plus the helpers that
   build its material and MultiMesh and pack the per-instance data.
 - `bash client/tools/bake_crowd.sh [enemy id or model slug ...]` (default: the Graves roster `robber hound penitent ghoul rat moth bat`, the Ossuary's `deacon bone_golem`, the Drowned Nave's `censer acolyte gargoyle templar wraith` (the wraith, an unrigged prop, is a still pose of a few KB), the Sanctum's and Cloister's `seraph flagellant plague_doctor`, the Cinder Pyre's and the Mourning Fen's `cinder_husk pyre_priest cinderhound slag_brute bog_hag drowned_sexton fen_wisp mire_leech`, the Bone Abbess's `niche` (a still pose too), and the thralls the rites raise: `skeleton_thrall thrall_legionnaire thrall_sentinel thrall_plague carrion_sac bone_colossus`, then the eight hand-prop variants; 6 to 14 MB a body, under 2 MB a variant): runs the baker at low priority.
   Output: `client/assets/crowd/baked/<model slug>/`; the whole roster is about 235 MB (positions 140, normals 70, meshes 23, tracks 0.5; 2026-10-17).
-- `client/tests/crowd_bake.gd`: the headless proof (below). `client/tests/crowd_smoke.gd`: the one rendered look (software GL). `client/tests/crowd_look_smoke.gd`: the crowd's thralls next to today's
-  skinned ones, in the world's own lighting, with the mean colour of each ("Differences from the creature material").
+- `client/tests/crowd_bake.gd`: the headless proof (below). `client/tests/crowd_smoke.gd`: the one rendered look (software GL). `client/tests/crowd_look_smoke.gd`: the crowd's thralls next to the same thralls
+  skinned as nodes, in the world's own lighting, with the mean colour of each ("Against the creature material").
 - `client/crowd/crowd_view.gd` (`CrowdView`): the node that draws the combat core's creatures, with `client/crowd/crowd_looks.json` (which model each enemy
   def and thrall kind is drawn with) and the C++ `DmCrowd` behind it: "Driving the crowd". Proof: `client/tests/crowd_view.gd`; look: `client/tests/crowd_view_smoke.gd`, and for the alpha path `client/tests/crowd_fade_smoke.gd` ("The alpha path").
 
-Baked files are **generated, not committed** (`client/assets/crowd/baked/` is ignored): the robber is 7 MB, so the baker belongs to the build, not the
+Baked files are **generated, not committed** (the baked folder is git-ignored): the robber is 7 MB, so the baker belongs to the build, not the
 repository. Run `bash client/tools/bake_crowd.sh` before a publish; the test bakes into a scratch folder by itself.
 
 ## What is baked
 
-The creature exactly as `godot/game/dm_creature.gd` puts it in the world: the height normalisation of `godot/world/dm_models.gd` (`analyze`), the row's yaw
-(`godot/game/view_models.json`), the clip preparation of `_prep_anims` and `_prep_clips` (loops, walk and run drift, Hip pinned). Feet at the origin, +Z
+The creature as `client/game/dm_creature.gd` puts it in the world: the height normalisation of `client/world/dm_models.gd` (`analyze`), the row's yaw
+(`client/game/view_models.json`), the clip preparation of `_prep_anims` and `_prep_clips` (loops, walk and run drift, Hip pinned). Feet at the origin, +Z
 forward, before the enemy's own `scale`. Clips are the ones `DmCreature` can play: idle, walk, run, attack and its variants, cast, hurt, death, dig, ...
 (its `FALLBACK` table, stored as `roles`: role -> clips). Per model one `model.tres` (clip table, roles, texture paths, bounds, and what the views play the
 clips with: per clip the whole source length, the second the blow lands and, for a death, the second the body comes to rest; the model row's stride),
 `pos.res`, `nrm.res` and `mesh_lod<N>.res`. A thrall variant (below) has `track.res` and its meshes instead of the two textures.
 
-**Unrigged models** (props today's creature shader animates: the moth, the bat, the choir wraith; `godot/game/dm_creature_mat.gd` wings) have no
-skeleton to pose. They bake one looping clip, `fly`: the shader's wing beat (`crowd_looks.json` `wings`, today's `DmEntityViews.WINGS`) written frame by frame,
-`CrowdBaker.FLAP_FRAMES` frames over one beat (2 pi / speed seconds), positions and normals; every role plays it (today the shader keeps beating through a
-fall; the body layer does the rest). A model without wings bakes a still pose. The crowd starts each body at its own point of the loop, as today's
-per-creature phase did. The Weeping Seraph is a rigged character (idle, cast, hurt, death) that today's shader also gives a wing beat (`wings` in `crowd_looks.json`
-lists it): the baker poses its clips and does not add the beat, so it hovers with still wings (native/README.md "Differences").
+**Unrigged models** (props the creature shader animates: the moth, the bat, the choir wraith; `client/game/dm_creature_mat.gd` wings) have no
+skeleton to pose. They bake one looping clip, `fly`: the shader's wing beat (`crowd_looks.json` `wings`) written frame by frame,
+`CrowdBaker.FLAP_FRAMES` frames over one beat (2 pi / speed seconds), positions and normals; every role plays it (the shader keeps beating through a
+fall; the body layer does the rest). A model without wings bakes a still pose. The crowd starts each body at its own point of the loop.
+The Weeping Seraph is a rigged character (idle, cast, hurt, death) that `wings` in `crowd_looks.json` also lists: the baker poses its clips and does not add the beat, so it hovers with still wings.
 
 - **Positions** `pos.res`: `ImageTexture`, RGBA8, one 32-bit texel per animation id and frame holding three integer codes over the bounds of every baked pose
   (`pos_lo`, `pos_step`, `pos_radix` of the model): `n = x + rx * (y + ry * z)`, position = `pos_lo` + code x `pos_step`. The baker picks the radices (`CrowdBaker.position_radix`)
@@ -69,8 +67,8 @@ Per instance (`MultiMesh.buffer`: 20 floats, 12 transform rows, 4 colour, 4 cust
 | `INSTANCE_CUSTOM.z`, `.w` | previous clip + blend weight below 1 (`pack_custom`), seconds into the previous clip; weight 0 = no blend |
 | `COLOR.rgb`, `COLOR.a` | linear tint; palette slot x 2 + hit flash 0..1 (the slot picks the body's glow from the material's `glow_palette` and its friend rim from `rim_palette`, 0 = the model's own glow and no rim; the flash is the game's emissive lerp, `0xfff0dc`, in eighths: exact in a half float up to slot 127, checked on Compatibility) |
 
-**Colours and the lift.** The material converts its colours as Compatibility does, so a body is as bright as today's (client/README.md "The look against today's game"): the tint (`COLOR.rgb`, `lin()` of a hex) multiplies the texel in
-sRGB numbers and the product is converted once (a body with no tint reads the texel as it is, nothing to convert), the glow, the rim and the hit flash are converted too (`dm_s2l`: a small glow is a twelfth of itself on today's side), and
+**Colours and the lift.** The material converts its colours as Compatibility does, so a body is as bright as a skinned creature (client/README.md "The look on Forward+"): the tint (`COLOR.rgb`, `lin()` of a hex) multiplies the texel in
+sRGB numbers and the product is converted once (a body with no tint reads the texel as it is, nothing to convert), the glow, the rim and the hit flash are converted too (`dm_s2l`: a small glow is a twelfth of itself on Compatibility's side), and
 the glTF's colour (`albedo_col`) is read as it is. The area's exposure lift is calibrated on the baked world and a body is not in the lightmap: albedo, specular and emission are divided by it (the global `dm_lift_inv`, set with the exposure
 by `DmWorldBuilder`). A body with no glow, flash or rim skips the conversion of its emission.
 
@@ -82,8 +80,7 @@ crowd". Set a `custom_aabb` on the MultiMesh itself so the engine does not re-me
 In the game scene `DmCoreHost` (`client/core/dm_core_host.gd`) owns the view: `auto_sync` off, `sync()` between the step and the events, one `take_events()` per tick (client/README.md "The game scene and the dev entry").
 
 `CrowdView` (a `Node3D`) draws the combat core's enemies and thralls as MultiMesh crowds: no node and no script per creature, no per-creature call across
-the core boundary. The view logic is C++ (`native/src/core/crowd_view.*`, free of Godot types, a port of `godot/game/dm_entity_views.gd`, `dm_creature.gd` and
-`dm_animator.gd`), reached through `DmCrowd` (`native/src/dm_crowd.*`), which reads the core and writes the MultiMeshes. It keeps its own state per creature, so nothing
+the core boundary. The view logic is C++ (`native/src/core/crowd_view.*`, free of Godot types), reached through `DmCrowd` (`native/src/dm_crowd.*`), which reads the core and writes the MultiMeshes. It keeps its own state per creature, so nothing
 presentational lives in the simulation (the core's tables are read in place, read only).
 
 ```
@@ -111,7 +108,7 @@ view.focus = hero_xz                                                # every tick
   crossing a level of detail back and forth does not rebuild the instance every few frames; it is a handful of node flips a second, no work for a group that stays as it is). `client/tests/crowd_view.gd`
   holds it, `client/tests/draw_budget.gd` counts what it saves (client/README.md "The draw budget"). Every group is sized for 128 instances at loading
   (`reserve`) and doubles when a crowd outgrows it, so a wave of one model does not grow a MultiMesh; a steady crowd never does. `DmCrowd.buffer(model, lod, shadow, fade)` returns
-  exactly what was uploaded (count x 20 floats), `stats()` the counters (bodies by kind, instances drawn, capacity, regrows, `faded` and `groups_faded`), `view_info(id)` one creature's view state, `take_landings()` where dying bodies came to rest since the last call (x, z, scale each: `DmEnemyFx` raises today's dust there), `shatter(corpse)` a corpse Corpse Explosion blew apart: its body goes at the next frame instead of sinking, `ground_at(id)` where a living body is drawn (`Vector3.INF` otherwise): the cheap read every frame for the rings and marks that follow a body.
+  exactly what was uploaded (count x 20 floats), `stats()` the counters (bodies by kind, instances drawn, capacity, regrows, `faded` and `groups_faded`), `view_info(id)` one creature's view state, `take_landings()` where dying bodies came to rest since the last call (x, z, scale each: `DmEnemyFx` raises the dust there), `shatter(corpse)` a corpse Corpse Explosion blew apart: its body goes at the next frame instead of sinking, `ground_at(id)` where a living body is drawn (`Vector3.INF` otherwise): the cheap read every frame for the rings and marks that follow a body.
 
 ### The rows
 
@@ -122,14 +119,14 @@ damaged events, so `sync(core)` draws it as it draws a host (`client/tests/core_
 | row | fields |
 |---|---|
 | body (8 ints, 11 floats) | id (unique over enemies and thralls), kind (0 enemy, 1 thrall), model (the slot `add_model` returned), state (the core's `EnemyState` or `ThrallState`), flags (elite, caster, inert, mist, flyer, diving, grounded), swing (a thrall's swing counter), def, glow (a slot of the glow palette of the crowd that made the row; 0 none); x, z, yaw, ground speed, seconds in the state, `action_s` (the seconds the state's one-shot is timed to: the wind-up, the dig, the 0.3 s recovery, a thrall's 0.12 s swing), scale, hover height, linear tint |
-| hit (4 floats) | id, damage this tick (summed), hp after, max hp: from the core's damaged events (a puppet core derives them from hp drops, as puppets do today) |
+| hit (4 floats) | id, damage this tick (summed), hp after, max hp: from the core's damaged events (a puppet core derives them from hp drops) |
 | corpse (4 ints, 7 floats) | id, model, def, glow; x, z, facing, scale, tint |
 
 A death is the body's state becoming `DEAD` (and the corpse row that follows), not a separate list.
 
 ### What each creature does
 
-Numbers are today's, from the file named; where the live game and `dm_entity_views.gd` differ, `native/README.md` "Differences from today's game" says which was taken.
+The numbers are `native/src/core/crowd_view.cpp`'s.
 
 - **Facing:** the displayed yaw turns toward the interpolated sim yaw with `turn_toward(rate 10, at most 9 rad/s)` (`ENEMY_TURN_RATE`). **Ground speed:** the core's speed this tick,
   smoothed with `smooth_speed` (tau 0.18); walking starts at the sim's pace.
@@ -139,30 +136,30 @@ Numbers are today's, from the file named; where the live game and `dm_entity_vie
   impact lands when the wind-up ends (`strike_timing`), HURT a flinch (the first 0.5 s of a hurt clip at 1.35x), DIG the dig clip over the dig time, DEAD the death clip held
   on its last frame. A Gargoyle's dive (flag `diving`, set while the swing winds up) plays the `dive` clip over the wind-up and a fifth more, with no lunge. A role the model lacks resolves like `DmCreature.FALLBACK` (the baked `roles`); variants (`attack2`, `hurt3`, `death2`) are picked from the body's own dice.
   The hound has no attack, hurt or death clip: it lunges and bites with the body, recoils, and tips over.
-- **Blends:** a change of clip blends the old pose out over today's fade times (loop changes 0.28 s, back from a one-shot 0.2 s, a strike 0.3 x the wind-up between 0.06 and 0.14 s,
+- **Blends:** a change of clip blends the old pose out over fixed fade times (loop changes 0.28 s, back from a one-shot 0.2 s, a strike 0.3 x the wind-up between 0.06 and 0.14 s,
   a flinch 0.09 s, a death 0.12 s, other one-shots 0.1 s). At most two clips blend; a third started mid-blend drops the oldest.
 - **Body layer** (`DmCreature._fx_step`, in the instance transform): a hit recoil (kick back, squash, roll, 0.3 s; smaller for taller bodies, once per flash), a strike's lunge
   (rock back, drive forward on the impact, settle) and the lean of the climb out of the ground.
-- **Hit flash:** 1 on a hit, then down by 6 per second (enemies) or 5 (thralls); drawn in eighths, as the game's emissive lerp. **Knock** (enemies only): `knock_impulse` away from the
+- **Hit flash:** 1 on a hit, then down by 6 per second (enemies) or 5 (thralls), and the killing blow leaves no flash on the body; drawn in eighths, as the game's emissive lerp. A recoil starts on every hit whose flash had fallen under 0.5, at any frame rate; a flinch plays when the core enters HURT, not on every flash. **Knock** (enemies only): `knock_impulse` away from the
   hero for a hit near the hero (24 x 20 m), a spring (`step_knock`) on the drawn position only.
 - **Rise:** RISING climbs from 0.9 x the model's height (thralls 1.8 m) below the ground over 1.1 s (thralls 0.9 s), leaning in. **Hover:** a def's `flying` height (or the
-  wraith's 0.45, a floating thrall's 0.25) with the bob of `DmEntityViews.sync`. A diving body (the Gargoyle; `DmEnemyGargoyle._process`) climbs over the mark for the first half of the
+  wraith's 0.45, a floating thrall's 0.25) with a small bob. A diving body (the Gargoyle) climbs over the mark for the first half of the
   wind-up (hover + 3 m x progress), drops onto it ((hover + 1.5) x (1 - 2 x (progress - 0.5))^2) and sits at 0.05 m (flag `grounded`) while it recovers. BURROW and ERUPT are underground: not drawn.
 - **Death:** the body keeps where it fell. A corpse of the same def within 1.2 m takes the dying body over (`CORPSE_ANIM_S` 6 s, `CORPSE_REST_S` 0.35 s: the clip stops 0.35 s
   after it has landed); with none, the body crumbles after 1.4 s. After the fall (the baked landing second, or the tip-over reaching 0.8 for a model with no death clip) it eases
   `SETTLE_DEPTH` 0.06 m into the ground (`settle_depth`). A corpse the core has no dying body for (the extra risen ones) is laid down at the end of its death clip. A body that
   leaves the tables, or a consumed corpse, sinks 1.3 m/s for 0.9 s, fading as it goes (opacity `1 - sink_t / 0.9`: "The alpha path"). A mist body (the wraith) sinks at once.
-- **Shadows** (`DmCasterBudget`, `DmEntityViews._shadow_lod`): every 10th frame the nearest 12 living enemies to the hero (8 once 32 are in the field) go into the shadow groups;
+- **Shadows:** every 10th frame the nearest 12 living enemies to the hero (8 once 32 are in the field) go into the shadow groups;
   thralls always cast, corpses and spectral bodies never, nor does a body that is see-through (it is in the fade group: "The alpha path"). `set_shadow_policy(casters, crowded casters, thralls cast)` changes the numbers (the graphics preset's; a change reaches the thralls already drawn).
   The Full Party's 8 enemies and 32 thralls cast: the thralls are 4 of 5 casting instances (`stats().casting_thralls`); "Crowd cost" has what that costs the shadow pass and how the benchmark switches it.
-- **Level of detail:** from the distance to the camera, `lod_distances` per model (the CrowdView default is 32 m and 60 m, a first guess for the test build). Beyond the baked
+- **Level of detail:** from the distance to the camera, `lod_distances` per model (the CrowdView default is 32 m and 60 m, a first guess). Beyond the baked
   levels the last one is drawn. The animation bands ("Crowd cost") start at the same two distances.
 - **Interpolation:** a body that moves more than 3 m in one tick (a teleport, a burrower surfacing) is drawn at its new place, not slid there.
 
 ### Crowd cost
 
 What the crowd costs a frame, and the four settings that cut it. All four are `CrowdView.setup` options (the game scene and the benchmark pass them through `DmCoreHost.setup`), `DmCrowd.settings()` says what is
-in force, and the benchmark's report records them (client/README.md "The benchmark"). The defaults are today's look: nothing near the hero changes (`client/tests/crowd_view.gd` writes the same bytes with the bands on or off).
+in force, and the benchmark's report records them (client/README.md "The benchmark"). The defaults keep the look: nothing near the hero changes (`client/tests/crowd_view.gd` writes the same bytes with the bands on or off).
 
 - **What was measured (the VPS, headless, the debug build the tests load, 2026-10-17):** a Full Party frame costs the crowd 30 to 50 us of CPU in `DmCrowd.draw` (104 bodies: 22 to 30 us in the views, 16 us in the buffer
   copies and the RenderingServer calls), under 0.3% of a 16.7 ms frame. The per-body work is the view logic (turn, legs, clip time, flash, knock, hover) and the 3 x 3 matrices of the instance row, about 0.2 us a body;
@@ -174,9 +171,9 @@ in force, and the benchmark's report records them (client/README.md "The benchma
   24 times a second from 32 m, 10 times a second from 60 m (the first two mesh levels' distances: a body that small on the screen is also drawn with a simpler mesh). Between its updates a body is **placed every frame**
   (the interpolation between ticks, so it glides) and its last row is written again with the new place in it; the clip time in that row steps at the band's rate, never ahead of the true time and behind it by about 1/24 s or 1/10 s at most (0.03 s and 0.09 s in the test).
   Time is never lost: a pose update advances every second since the last one. Rates are time-based with a per-body phase (from its id, no dice), so the updates spread over the frames, not all on one. A body in a swing, a
-  flinch, a recoil, the climb out of the ground (today's `DmCreature.busy`) or a Leech's slither is every frame whatever its band, a tick that changes a body's state, swing, hit or look catches its pose up to the present first and updates it on the next
-  frame, a hit stop puts every body back to every frame meanwhile, and a body coming back into view is brought up to date before it is drawn. Today's game throttles the same way (`animLod.ts`: 24 and 10 Hz; there from a box
-  around the hero, here from the camera, like the mesh levels). `stats()`: `band_near/mid/far` (living bodies per band), `pose_updates` (this frame), `pose_updates_total`; `view_info(id)`: `band`, `pose_updates`.
+  flinch, a recoil, the climb out of the ground (`DmCreature.busy`) or a Leech's slither is every frame whatever its band, a tick that changes a body's state, swing, hit or look catches its pose up to the present first and updates it on the next
+  frame, a hit stop puts every body back to every frame meanwhile, and a body coming back into view is brought up to date before it is drawn. The old game throttled the same way (`animLod.ts`: 24 and 10 Hz) from a box
+  around the hero; here the bands count from the camera, like the mesh levels. `stats()`: `band_near/mid/far` (living bodies per band), `pose_updates` (this frame), `pose_updates_total`; `view_info(id)`: `band`, `pose_updates`.
 - **Culling** (`CrowdView.cull`, on): `draw` takes the camera's view-projection matrix (`Camera3D.get_camera_projection() * Projection(get_camera_transform().affine_inverse())`: one argument, no call per creature) and a body
   whose bounding sphere is outside any of the six frustum planes is not written, so the groups' drawn range stays contiguous and the GPU never sees it. The sphere is about the feet and holds every baked pose
   (`CrowdVatData.bounding_radius()`: the farthest corner of the baked bounds, 3.4 m for the robber) at the body's scale, plus 0.75 m for the lunge and the squash. A body outside the view still animates, at the far rate,
@@ -197,56 +194,55 @@ in force, and the benchmark's report records them (client/README.md "The benchma
 
 ### The alpha path
 
-Two things make a body see-through, as today's `DmCreature.set_opacity` does with its fade variant of `DmCreatureMat` (blend_mix, depth_draw_never, `ALPHA = opacity`): a body that sinks away
-(a corpse the core no longer holds, a thrall 1.4 s after it fell, a body that left the rows, a wraith as it thins: opacity `max(0, 1 - sink_t / 0.9)`, `DmEntityViews.sync`) and a body under the
-Shrouded affix's ward (opacity eases toward 0.38 at `min(1, 6 dt)` a frame while the ward holds, back to 1 when it is down, and is 1 again where the body falls: `_tick_affix`, `_on_death`).
+Two things make a body see-through, as `DmCreature.set_opacity` does with its fade variant of `DmCreatureMat` (blend_mix, depth_draw_never, `ALPHA = opacity`): a body that sinks away
+(a corpse the core no longer holds, a thrall 1.4 s after it fell, a body that left the rows, a wraith as it thins: opacity `max(0, 1 - sink_t / 0.9)`) and a body under the
+Shrouded affix's ward (opacity eases toward 0.38 at `min(1, 6 dt)` a frame while the ward holds, back to 1 when it is down, and is 1 again where the body falls).
 
 - **One more group a model and level, used only while something fades.** A model has a third MultiMesh a level, `<model>_lod<N>_fade`, drawn with the fade shader (`CrowdVatData.fade_shader()`, the solid
   shader with `FADE` defined: `blend_mix, depth_draw_never`, `ALPHA` from the instance; the model's second material, `CrowdVatData.make_material(..., fade = true)`). A body is written there only
   while its opacity is under 1 and back in its plain or shadow group when it is solid, so a crowd of bodies sinking together is one group a model and level (a draw call each, in the main pass only), however
   many there are, and a fight with nothing fading draws no fade group at all (the group is hidden while it is empty, "Groups"). `client/tests/crowd_view.gd` counts it: 26 bodies of three models
   sinking draw 3 groups; `client/tests/draw_budget.gd` counts the fight's.
-- **No shadow.** A see-through body casts none (a ghost never did): a thrall leaves the shadow group when it begins to sink, and a shrouded elite does not cast while the ward is up. Today's bodies keep
-  casting their full shadow as they fade (listed in native/README.md "Differences").
+- **No shadow.** A see-through body casts none (a ghost never did): a thrall leaves the shadow group when it begins to sink, and a shrouded elite does not cast while the ward is up. (The old game's bodies kept
+  casting their full shadow as they faded.)
 - **The opacity rides in `INSTANCE_CUSTOM.x`**, the clip index: `clip + q / 64`, `q = round((1 - opacity) * 63)` (`CrowdVatData.pack_clip`); 0 is the clip index alone, which is what every solid group's x
   is. The fade shader reads `floor(x + 0.001)` for the clip and `1 - fraction * 64 / 63` for the opacity. No instance float is added (the buffer stays 20), the tint, the glow slot and the flash are
   untouched, and sixty-four steps are a 1.6% step in 0.9 s: invisible. Every clip index (0 to 15) with every step survives a half float (`crowd_bake.gd` rounds it through one).
 - **The solid case is unchanged.** A body at opacity 1 writes exactly the row it always did, in the group it was in. `client/tests/crowd_view.gd` draws the same rows with and without the ward and compares
   every float of the body's row but the opacity.
-- **The ward** is the core's: `DmCrowd.sync` sets the body flag `BF_SHROUDED` (256) on an enemy with the Shrouded affix and the `shrouded` status, the status `DmAffixSet`'s 10 Hz check puts on and
+- **The ward** is the core's: `DmCrowd.sync` sets the body flag `BF_SHROUDED` (256) on an enemy with the Shrouded affix and the `shrouded` status, the status the core's 10 Hz affix check puts on and
   takes off (a Miasma's `cover_miasma` lifts it for 350 ms, `strip_shroud` for good), so a guest's puppet draws it too. The view eases in `advance_live` (so it follows the animation band's step). The target is
-  the ward's state, as `DmStatusSet._visual_state` has it (0.38 while the `shrouded` status holds, 1 when it goes) at `_tick_affix`'s rate; `_tick_affix`'s own `slowT` branch never runs today
-  (native/README.md "Differences"). `view_info(id)` has `veiled`, `opacity` and `fade_q`; `DmEnemyFx` stops the shroud's smoke with the ward.
-- **Closed bodies cull their back faces in the fade pass**, as today's fade variant does (`DmCreatureMat.CULL_BACK_SLUGS`, `CrowdView.fade_cull_back`; the shader's `CULL_BACK` define,
+  the ward's state (0.38 while the `shrouded` status holds, 1 when it goes), eased at 6 a second both ways, so the body is solid while a Miasma covers it or it is stripped.
+  `view_info(id)` has `veiled`, `opacity` and `fade_q`; `DmEnemyFx` stops the shroud's smoke with the ward.
+- **Closed bodies cull their back faces in the fade pass**, as `DmCreatureMat`'s fade variant does (`DmCreatureMat.CULL_BACK_SLUGS`, `CrowdView.fade_cull_back`; the shader's `CULL_BACK` define,
   `CrowdVatData.fade_shader(true)`): a pass that writes no depth would show the far side of a golem through its near side. The open meshes (the robber, the skeleton, hair, cloth) are two-sided in both, so
-  their far side shows through, as it does today: in the rendered look (`client/tests/crowd_fade_smoke.gd`) a robber at 0.38 keeps 0.64 of a solid one's ink, not 0.38.
+  their far side shows through: in the rendered look (`client/tests/crowd_fade_smoke.gd`) a robber at 0.38 keeps 0.64 of a solid one's ink, not 0.38.
 - **A ghost** (`crowd_looks.json` `spectral_models`) has no fade group: its plain group's material is see-through already, so a ghost thinning away stays there and the opacity multiplies its 0.55
   (`ALPHA = SPECTRAL_OPACITY * opacity`). A model added with no fade group (an older caller of `DmCrowd.add_model`) keeps drawing a fading body solid in its plain group, as the crowd did.
 - **Warm-up:** `DmNextWarmup` feeds its rehearsal enemy rows with the ward up, so each model's fade group draws, and the alpha shader compiles, while the game loads.
-- Hand props of a thrall variant fade with the body (they are in the same MultiMesh); today's props are separate nodes that the creature's opacity does not reach.
+- Hand props of a thrall variant fade with the body (they are in the same MultiMesh).
 - **Rendered** (2026-10-17, `client/tests/crowd_fade_smoke.gd`, Compatibility on llvmpipe): the fade shader compiles and draws; a solid robber, one under the ward (0.38) and one sinking side by side
   show the see-through bodies with the ground through them and no shadow under them, the sinking one lower and paler (opacity 0.65 a third of the way in: 0.83 of its solid ink, 0.30 at 0.21), the one under the ward
   0.64 of a solid one's. Forward+ and Mobile have not run it; a real GPU's look is for Helix's PC.
 
 ### Models and looks
 
-`crowd_looks.json` is today's `dm_entity_views.gd` tables as data: the model of each enemy def (`ENEMY_SLUG`) and thrall kind (`THRALL_SLUG`), the legions' models and tints, the
+`crowd_looks.json` holds the looks as data: the model of each enemy def (`enemy_model`) and thrall kind (`thrall_model`), the legions' models and tints (`legion`), the
 thralls' own looks, the casters, the hover heights. `CrowdView.setup` turns them into `DmCrowd.set_enemy_look` and `set_thrall_look` (per kind and legion), loads each baked model it
-needs from `res://assets/crowd/baked/<slug>/` (the `baked_dir` option) and builds its nodes. A def whose model is not baked is drawn with the nearest one that is: the rig fallback of today's
-game, else a baked model of the same rig (`enemies.json` `rig`), else the skeleton, else any baked model; each substitution is listed once in `CrowdView.warnings` (and `push_warning`).
+needs from `res://assets/crowd/baked/<slug>/` (the `baked_dir` option) and builds its nodes. A def whose model is not baked is drawn with the nearest one that is: the rig fallback (`enemy_fallback`), else a baked model of the same rig (`enemies.json` `rig`), else the skeleton, else any baked model; each substitution is listed once in `CrowdView.warnings` (and `push_warning`).
 A model with no colour texture is drawn white, and one baked by another version of the baker (`CrowdVatData.format`) is listed too (bake again).
 
 ### Test of the views
 
-`godot --headless --path client --script res://tests/crowd_view.gd` (20 s, bakes the robber, the hound and the skeleton into a scratch folder): the pure helpers against mirrors of
-today's code on random inputs; the yaw, the speed, the clip of every state, the walk and run switch with its hysteresis and phase, the blends, the packing against
+`godot --headless --path client --script res://tests/crowd_view.gd` (20 s, bakes the robber, the hound and the skeleton into a scratch folder): the pure helpers against reference
+implementations on random inputs; the yaw, the speed, the clip of every state, the walk and run switch with its hysteresis and phase, the blends, the packing against
 `CrowdVatData`'s packers, the flash, the recoil and lunge poses, the knock spring, the rise, the hover, the death into a corpse (landing, settle, mixer stop, sinking), the hound's
 body-only moves, the shadow group and the level-of-detail split, interpolation; then a Full Party (72 enemies, 32 thralls) in a real `DmCore` through `CrowdView`: the events are
 left for `take_events`, a crowd fed only the rows draws the same buffers, the buffers do not grow in a steady crowd, and `draw()` and `sync()` times are printed. The crowd's cost: against the engine's own frustum planes
 on 240 random bodies (a body in view is always drawn, one beyond its sphere never, the drawn range packed, the counters adding up), a caster kept while its shadow falls in and culled when it does not, the thrall shadow
 counters, the bands' update rates on 120 frames (120, 48 and 21 pose updates; 30 bodies spread, at most 13 in a frame), the written time never ahead of the full-rate body's, a swing or a hit shown on the frame its
 tick says so, the same bytes near the hero with the bands on or off, and a body outside the view kept at the far rate and up to date on its way back; the alpha path ("The alpha path"): a corpse
-sinking at 1 - sink_t / 0.9 in the fade group and no other, a thrall leaving the shadow group for it, the ward's ease against today's formula frame by frame (and back, and solid where the body falls), the same rows with and
+sinking at 1 - sink_t / 0.9 in the fade group and no other, a thrall leaving the shadow group for it, the ward's ease against its formula frame by frame (and back, and solid where the body falls), the same rows with and
 without the ward equal but for the opacity, a far band reaching the same place, the fallbacks (a model with no fade group, a ghost's), and 26 bodies of three models sinking in 3 groups. The first rendered check
 of the whole path is `client/tests/crowd_view_smoke.gd` (Compatibility, llvmpipe; Mobile runs it the first time on a real GPU; Forward+ has run `crowd_look_smoke.gd` on the software Vulkan driver, 2026-10-17: the shader compiles and draws there).
 
@@ -262,17 +258,17 @@ Forward+ and Mobile run it the first time on a real GPU.
 
 ### Hand props
 
-A thrall that holds a weapon today (DmEntityViews._make_thrall: a warrior or shieldbearer under an armed legion or none, every archer and bone mage) is drawn with a
+A thrall that holds a weapon (a warrior or shieldbearer under an armed legion or none, every archer and bone mage) is drawn with a
 variant of its body, `<model>+<kind>` (`thrall_legionnaire+warrior`, `skeleton_thrall+archer` ...), baked by `bake_crowd.sh` after the plain bodies. The variant does not copy its
 body's animation: it **shares the plain body's `pos.res` and `nrm.res`** (its `model.tres` points at `baked/<model>/`; the baker bakes the plain body first when it is not there or is
 of another `format`, so one GPU texture serves the body and its variants) and adds only its props, a few hundred triangles and a transform track:
 
-- **Props are rigid meshes.** The baker builds today's props (`DmGearProps.bone_sword`, `round_shield`, `bone_bow`, `bone_staff`, from `crowd_looks.json` `thrall_props`: builder, bone, `dir`,
+- **Props are rigid meshes.** The baker builds the props (`DmGearProps.bone_sword`, `round_shield`, `bone_bow`, `bone_staff`, from `crowd_looks.json` `thrall_props`: builder, bone, `dir`,
   `follow`) and adds their triangles to the body's mesh in their own space (`VERTEX`, `NORMAL`), with `CUSTOM0.x` = which prop of the variant and `CUSTOM0.y` = their material part
-  (0 the body); the material reads the part's flat colour, metallic, roughness and emission from `part_albedo` / `part_pbr` / `part_emission` (`CrowdVatData`; no tint, flash or glow, as
-  today's props). One MultiMesh, one surface, one draw call a group, as the plain body: a variant is its own model as before, so the draw calls are today's.
+  (0 the body); the material reads the part's flat colour, metallic, roughness and emission from `part_albedo` / `part_pbr` / `part_emission` (`CrowdVatData`; no tint, flash or glow).
+  One MultiMesh, one surface, one draw call a group, as the plain body: a variant is its own model, so the draw calls are the plain body's.
 - **The track** `track.res`: `ImageTexture`, RGBAF (a few KB), one row per frame and three texels per prop: the rows of the prop's 3x4 matrix, translation in `w`. The baker places each prop every frame
-  the way `DmCreature.attach` holds it: calibrated on the idle pose where today's calibration runs (the body settled 0.25 s, then 4 frames: `PROP_CALIBRATE_S`), then the hand's rotation
+  the way `DmCreature.attach` holds it: calibrated on the idle pose where `DmCreature`'s calibration runs (the body settled 0.25 s, then 4 frames: `PROP_CALIBRATE_S`), then the hand's rotation
   times the calibrated one, its up pulled toward `dir` by 1 - `follow` (`CrowdBaker._prop_xforms`, the one formula the track and the test's reference share). The vertex shader blends the
   matrices of the two frames around the time, and of the two clips of a blend, with the same weights as the body's positions: linear in the matrix, so a prop vertex lands exactly where the
   straight line between its two placed positions does.
@@ -281,38 +277,37 @@ of another `format`, so one GPU texture serves the body and its variants) and ad
   than body frames (a warrior's attack: 128 against 114).
 - **Bounds** (`aabb`, the meshes' `custom_aabb`) hold the body and the props in every frame.
 
-CrowdView picks the variant when it is baked and says once when it is not (the plain body then). A variant never stands in for another model. Not today's: the props cast shadows with the body
-(today's never did), today recalibrates a prop that drifts 25 degrees and each thrall calibrates on its own moment (a shield can sit 20 to 40 degrees differently), and the kit weapon's tier colour is
-not applied (nor is it today's: "Differences from the creature material"). Side by side with today's in `crowd_look_smoke.gd` on Forward+ the props read the same (a dark blade, a black shield with its violet boss); on Compatibility a shield reads darker than today's
-(black where today's is a brown-grey disc), which is why a Compatibility column with props measures further from today's than one without.
+CrowdView picks the variant when it is baked and says once when it is not (the plain body then). A variant never stands in for another model. The props cast shadows with the body
+(a skinned creature's props never did), a prop is not recalibrated when it drifts (a skinned creature recalibrates one that drifts 25 degrees, and each calibrates on its own moment: a shield can sit 20 to 40 degrees differently), and the kit weapon's tier colour is
+not applied ("Against the creature material"). Side by side with the skinned thrall in `crowd_look_smoke.gd` on Forward+ the props read the same (a dark blade, a black shield with its violet boss); on Compatibility a shield reads darker
+(black where the skinned one is a brown-grey disc), which is why a Compatibility column with props measures further from the skinned thrall than one without.
 `client/tests/crowd_bake.gd` bakes `thrall_legionnaire+warrior` (and the plain body it shares, from nothing) and checks the files and the sharing, the parts, the calibration (each prop's up along its `dir`, held at the
-hand), and the shader's prop branch (mirrored line by line) against the fully placed props (`CrowdBaker._place_props`, today's formula on the true pose): at the first, middle and last frame of every clip (0.001 mm),
+hand), and the shader's prop branch (mirrored line by line) against the fully placed props (`CrowdBaker._place_props`, the formula on the true pose): at the first, middle and last frame of every clip (0.001 mm),
 at random times against the straight line between the two frames' placed props (0.000 mm, 0.2 mm allowed), against the true pose (the interpolation tolerance), and blended; `client/tests/crowd_view.gd` checks which thralls get a variant.
 
-## Differences from the creature material (`godot/game/dm_creature_mat.gd`)
+## Against the creature material (`client/game/dm_creature_mat.gd`)
 
-What the crowd draws as today's creature does (2026-10-17, measured in `client/tests/crowd_look_smoke.gd`: the same thralls skinned and drawn by the crowd in the Graves' lighting, Forward+ on the
-software Vulkan driver; the lighting alone, a thrall with no glow and no rim, comes within 5 levels of a colour channel of today's):
+What the crowd draws as a skinned creature does (2026-10-17, measured in `client/tests/crowd_look_smoke.gd`: the same thralls skinned and drawn by the crowd in the Graves' lighting, Forward+ on the
+software Vulkan driver; the lighting alone, a thrall with no glow and no rim, comes within 5 levels of a colour channel of the skinned one's):
 
-- **The model's factors.** Metallic and roughness 1, the glTF default of every crowd model (the ORM texture scales them; `crowd_bake.gd` reads each model's glTF material to prove it). The crowd had
-  metallic 0, so armour, helmets and bone read matt and silver, +38 levels brighter than today's over a thrall's pixels: the pale, flat look of the first test build.
+- **The model's factors.** Metallic and roughness 1, the glTF default of every crowd model (the ORM texture scales them; `crowd_bake.gd` reads each model's glTF material to prove it). With
+  metallic 0 armour, helmets and bone read matt and silver, +38 levels brighter over a thrall's pixels: a pale, flat look.
 - **The normal map**, drawn from the crowd mesh without tangents: the frame comes from the screen-space derivatives of the position and the UVs (`bumped()` in the shader: tangent along +U, bitangent along
   -V as Godot's own, z rebuilt from xy; `crowd_bake.gd` holds a line-by-line mirror to the expected frame). The texture is the glTF's `NormalGL` (`CrowdVatData.normal_path`, found by the baker; a bake
   from before it has none and is drawn without, until baked again). Costs one texture fetch and some arithmetic per fragment.
 - **The friend rim** (`rim += rim.rgb * strength * smoothstep(.35, .95, fresnel) * .9`, read from the geometric normal as DmCreatureMat reads it): a thrall's spirit colour (SPELL_FX `exhume.spirit`) at 0.9, at
-  0.6 for another player's thralls (`CrowdView.set_owner_ally`, set by `DmCoreHost` for every hero but the local one), gold at 1.4 for a champion (`crowd_looks.json` `thrall_rim`, today's THRALL_RIM_OWN,
-  THRALL_RIM_ALLY and a champion's). It rides the glow's palette slot, in `rim_palette`: **no instance data, no draw call and no material more.** A material per rim would split every thrall
+  0.6 for another player's thralls (`CrowdView.set_owner_ally`, set by `DmCoreHost` for every hero but the local one), gold at 1.4 for a champion (`crowd_looks.json` `thrall_rim`: own, ally and champion). It rides the glow's palette slot, in `rim_palette`: **no instance data, no draw call and no material more.** A material per rim would split every thrall
   model's groups by the rims in them (the Full Party in `crowd_view.gd`: 8 groups drawing, 10 split by rim); the palette (128 slots, 4 KB a material for both arrays) costs nothing per instance. A slot is
   a distinct glow and rim: a thrall look x empowered x champion x ally. The slot is part of a body's look, so a change (empowered, champion, its owner marked an ally) refreshes its pose row on the next frame whatever its animation band, and a culled body keeps it for when it is back in view.
-- **The Leech's slither** (`crowd_looks.json` `wobble`): the root rolls and the body squashes with the clock and the id, as DmEntityViews._fen_dead does (`BF_WOBBLE` in `native/src/core/crowd_view.cpp`).
+- **The Leech's slither** (`crowd_looks.json` `wobble`): the root rolls and the body squashes with the clock and the id (`BF_WOBBLE` in `native/src/core/crowd_view.cpp`).
 
-Not drawn, and why: the legion kit's armour tint and its weapon's tier colour. Today's game never draws them either: DmEntityViews asks its host for `legion_kit_for`, and no host has it, so a
-thrall is drawn plain. They need the gear regions baked per vertex (chest and hands, from the skin weights) and a kit per owner in the palette, and belong with whatever gives thralls a kit to show
-(KNOWN-GAPS "Built but never shown"). Nor the legions' own looks (the sentinel, legionnaire and plague thrall, their tints and glows): today's DmEntityViews asks its host for
-`discipline_id_for`, which no host has, so every thrall wears the default bone skeleton and teal glow; `DmCoreHost` gives the crowd no legion either (`set_owner_legion` is kept).
+Not drawn, and why: the legion kit's armour tint and its weapon's tier colour. The old game's per-creature view asked its host for `legion_kit_for` and no host had it, so a
+thrall was drawn plain, and nothing gives one a kit now. They need the gear regions baked per vertex (chest and hands, from the skin weights) and a kit per owner in the palette, and belong with whatever gives thralls a kit to show
+(KNOWN-GAPS "Built but never shown"). Nor the legions' own looks (the sentinel, legionnaire and plague thrall, their tints and glows): the old view asked its host for
+`discipline_id_for`, which no host had, so every thrall wears the default bone skeleton and teal glow; `DmCoreHost` gives the crowd no legion either (`set_owner_legion` is kept).
 
 A spectral model (`crowd_looks.json` `spectral_models`: the wraiths) gets the same shader with SPECTRAL defined (`CrowdVatData.spectral_shader`: 0.55 opacity, no depth write, as DmCreature's fade variant) and
-casts no shadow (a sinking body and the Shrouded ward are "The alpha path"); the per-body glow comes from the palette (`DmCrowd.glow_palette`, today's emissive colours and strengths from `crowd_looks.json`: an elite's purple, the risen's, a legion's thralls' with the
-empowered and champion boosts) that CrowdView pushes to every material when a new glow comes into play; two-sided like most of today's models. The procedural body layer (hit recoil, strike lunge, topple,
-rise from the ground) is not baked: `DmCrowd` writes it into the instance transform. A loop whose last key differs from its first (the robber's run, by 47 cm at the worst vertex) pops at its seam today;
+casts no shadow (a sinking body and the Shrouded ward are "The alpha path"); the per-body glow comes from the palette (`DmCrowd.glow_palette`, the emissive colours and strengths from `crowd_looks.json`: an elite's purple, the risen's, a legion's thralls' with the
+empowered and champion boosts) that CrowdView pushes to every material when a new glow comes into play; two-sided like most models. The procedural body layer (hit recoil, strike lunge, topple,
+rise from the ground) is not baked: `DmCrowd` writes it into the instance transform. A loop whose last key differs from its first (the robber's run, by 47 cm at the worst vertex) pops at its seam on a skinned creature;
 the baked clip blends across it.

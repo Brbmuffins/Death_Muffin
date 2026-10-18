@@ -1,14 +1,14 @@
 extends SceneTree
-## Proof for the code sync (DECISIONS B43, client/code.list): every script, scene, resource and shader copied from godot/ (client/code.lock.json)
-## loads in this project, and no copy mentions a per-creature class or path (those are replaced by the combat core and the crowd view; the files
-## that do are seams, left out in code.list). Run: godot --headless --path client --script res://tests/code_load.gd
-## Prints the counts and, as INFO, how many copied-scene dependencies are found by uid (assets imported here get new uids unless the seeded
-## .import carries the original's, see tools/rebuild/sync-assets.mjs). Exit 1 on any failure.
+## Every script, scene, resource, shader and JSON file of the game loads in this project (the folders the export ships: not tests/, tools/, dev/,
+## addons/ or assets/), and no file names a per-creature class or path of the old game (enemies, thralls, corpses and affixes run in the combat
+## core and are drawn by the crowd view). Run: godot --headless --path client --script res://tests/code_load.gd
+## Prints the counts and, as INFO, how many scene dependencies are found by uid. Exit 1 on any failure.
 
-const LOCK := "res://code.lock.json"
+## Folders that are not the game (the export's exclude filter, client/export_presets.cfg) or not code.
+const SKIP_DIRS := ["tests", "tools", "dev", "addons", "assets", "bin", "shots", "build", "areas"]
 
-## Class names of the per-creature systems code.list leaves out: enemies/ (DmEnemy, its states and kinds), next/thralls, next/corpses,
-## next/affixes, game/dm_entity_views.gd and the per-creature records of sim/. A copy must not name one, even in a string.
+## Class names of the old game's per-creature systems: enemies/ (DmEnemy, its states and kinds), next/thralls, next/corpses, next/affixes,
+## game/dm_entity_views.gd and the per-creature records of sim/. No file names one, even in a string.
 ## Two names came back with the game scene: DmStatusSet (next/status) is a plain copy again, for the status sets of heroes and bosses, which are
 ## external entities (B42); a ported file must never call it on an enemy or a thrall, whose statuses are the core's (`apply_status`). DmEnemyFx and
 ## DmEnemyFxHost (next/enemy_fx) are the event consumer that plays the core's telegraphs, strikes and deaths: a port, with no node per enemy.
@@ -21,41 +21,28 @@ const CREATURE_CLASSES := [
 	"DmStateDead", "DmStateDig", "DmStateEmerge", "DmStateErupt", "DmStateFlankChase", "DmStateFlee", "DmStateHurt", "DmStateIdle", "DmStateKite",
 	"DmStatePfHookChase", "DmStatePfLureKite", "DmStateReturn", "DmStateRising", "DmTargetDummy", "DmThrall", "DmThrallHost",
 ]
-## Their places: a copied scene or script that names one of these paths needs a creature system that is not here.
+## Their places: a scene or script that names one of these paths needs a creature system that is not here.
 const CREATURE_PATHS := [
 	"res://enemies/", "res://next/thralls/", "res://next/corpses/", "res://next/affixes/",
 	"res://game/dm_entity_views.gd", "res://sim/sim_enemy.gd", "res://sim/sim_thrall.gd", "res://sim/sim_corpse.gd", "res://sim/sim_zone.gd",
 ]
 
 var failures: Array[String] = []
-var counts := {"gd": 0, "tscn": 0, "tres": 0, "gdshader": 0, "json": 0, "other": 0}
+var counts := {"gd": 0, "tscn": 0, "tres": 0, "gdshader": 0, "json": 0}
 var uid_found := 0
 var uid_lost := 0
 
 
 func _init() -> void:
-	var lock = JSON.parse_string(FileAccess.get_file_as_string(LOCK))
-	if typeof(lock) != TYPE_DICTIONARY:
-		_fail("cannot read %s (run node tools/rebuild/sync-code.mjs)" % LOCK)
-		_finish()
-		return
 	var files: Array[String] = []
-	for rel in (lock.get("copied", {}) as Dictionary).keys():
-		files.append(rel)
-	for rel in (lock.get("ported", {}) as Dictionary).keys():
-		files.append(rel)
+	_walk("res://", files)
 	files.sort()
 	var pattern := _creature_regex()
 	var classes := _global_classes()
-	for rel in files:
-		var path := "res://" + rel
-		if not FileAccess.file_exists(path):
-			_fail("%s: listed in code.lock.json but missing" % rel)
-			continue
+	for path in files:
+		var rel := path.trim_prefix("res://")
 		var text := FileAccess.get_file_as_string(path)
 		var ext: String = rel.get_extension()
-		if ext == "uid":
-			continue
 		_check_creature_free(rel, text, ext, pattern)
 		match ext:
 			"gd":
@@ -73,13 +60,22 @@ func _init() -> void:
 				counts["json"] += 1
 				if JSON.parse_string(text) == null:
 					_fail("%s: not valid JSON" % rel)
-			_:
-				counts["other"] += 1
 	_finish()
 
 
+## Every .gd, .tscn, .tres, .gdshader and .json file under `dir`, outside SKIP_DIRS and the hidden folders.
+func _walk(dir: String, out: Array[String]) -> void:
+	for d in DirAccess.get_directories_at(dir):
+		if d.begins_with(".") or (dir == "res://" and d in SKIP_DIRS):
+			continue
+		_walk(dir.path_join(d), out)
+	for f in DirAccess.get_files_at(dir):
+		if f.get_extension() in ["gd", "tscn", "tres", "gdshader", "json"]:
+			out.append(dir.path_join(f))
+
+
 func _finish() -> void:
-	print("INFO code_load: %d scripts, %d scenes, %d resources, %d shaders, %d json, %d other copies" % [counts["gd"], counts["tscn"], counts["tres"], counts["gdshader"], counts["json"], counts["other"]])
+	print("INFO code_load: %d scripts, %d scenes, %d resources, %d shaders, %d json" % [counts["gd"], counts["tscn"], counts["tres"], counts["gdshader"], counts["json"]])
 	print("INFO code_load: dependencies found by uid %d, by text path only %d" % [uid_found, uid_lost])
 	if failures.is_empty():
 		print("PASS code_load")
@@ -119,12 +115,12 @@ func _global_classes() -> Dictionary:
 	return out
 
 
-## A copy names no per-creature class or path. Comments are not code (a `##` line may say what a class used to be); strings are.
+## No file names a per-creature class or path. Comments are not code (a `##` line may say what a class used to be); strings are.
 func _check_creature_free(rel: String, text: String, ext: String, re: RegEx) -> void:
 	var body := _strip_comments(text) if ext == "gd" else text
 	var m := re.search(body)
 	if m != null:
-		_fail("%s: names the per-creature '%s' (a seam: leave it out in client/code.list)" % [rel, m.get_string()])
+		_fail("%s: names the old game's per-creature '%s' (the combat core and the crowd view do that now)" % [rel, m.get_string()])
 
 
 ## Source with every `# ...` comment cut off, string-aware (a '#' inside quotes stays).

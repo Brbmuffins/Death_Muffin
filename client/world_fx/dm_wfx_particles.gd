@@ -1,6 +1,6 @@
 class_name DmWfxParticles
 extends Node3D
-## Effects.ts ParticleSystem as a ring of emission records that the vertex shader draws (a port of godot/world_fx/dm_wfx_particles.gd, client/code.list "Ported"). Today's
+## Effects.ts ParticleSystem as a ring of emission records that the vertex shader draws. The old game's
 ## GDScript stepped every live particle every frame (drag, gravity, the alpha envelope and the shrink, three RenderingServer calls a particle); here the CPU writes a particle ONCE,
 ## when it is emitted, and the shader works out its place, size and fade from its age: the same laws in closed form (the web's Euler step with drag d is v(t) = v0 e^-dt, and y also
 ## falls with the gravity g: p(t) = p0 + (v0 + g/d)(1 - e^-dt)/d - g t/d). The record lives in the instance: the transform's origin is the spawn point and its basis holds the launch

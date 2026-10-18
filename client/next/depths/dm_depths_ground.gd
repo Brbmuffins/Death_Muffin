@@ -3,7 +3,7 @@ extends Node
 ## The Depths floor as ground, made at run time: the picture (the lights builder's `build_depths_floor` / `clear_depths_floor`, the existing look, drawn into the world's
 ## `depths_root`) and the navmesh of THIS floor (one NavigationRegion3D, its mesh swapped per floor).
 ##
-## On the combat core (client/code.list "Ported"). The other areas are scenes built offline; a Depths floor is generated per run, so everything an area scene carries is
+## The other areas are scenes built offline; a Depths floor is generated per run, so everything an area scene carries is
 ## made here, in two steps so the hero never waits on a bake:
 ##   `prepare(f)`  bakes the floor's navmesh from its rooms, doors and obstacles on a worker thread (NavigationServer3D, the builder's settings) while the old floor still stands;
 ##   `show(f)`     swaps the picture, puts the baked mesh on the floor's region (on the navigation map) and hands the core its copy (DmNextWorld.attach_floor);

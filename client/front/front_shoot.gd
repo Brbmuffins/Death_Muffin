@@ -1,6 +1,6 @@
 extends Control
 ## Screenshot harness (mock backend only, never the live server):
-##   godot --path godot res://front/front_shoot.tscn -- --page=login|register|select|standalone --out=/path.png [--w=1280 --h=800]
+##   godot --path client res://front/front_shoot.tscn -- --page=login|register|select|standalone --out=/path.png [--w=1280 --h=800]
 
 func _ready() -> void:
 	var a := {}

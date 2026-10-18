@@ -3,7 +3,7 @@ extends DmBossWorld
 ## The world a DmBossBrain sees, answered from the live nodes of the slice (REBUILD D1: host only). One per DmBoss. Entities are plain
 ## Dictionaries as the brain expects; the player dictionaries are reused between ticks (`refresh()` once per tick, no per-tick allocation
 ## except for the brain's own events). Brain events go to `DmBossHost.on_brain_event`.
-## Ported to the combat core (client/code.list "Ported"): the adds a boss spawns are core bodies (`spawn_enemy` is the director's spawn through the core, the area set; a kind the
+## On the combat core: the adds a boss spawns are core bodies (`spawn_enemy` is the director's spawn through the core, the area set; a kind the
 ## core does not run yet is skipped, as a kind without a scene was), they leave with the boss through `DmCore.remove_enemy` (no death, no corpse, no credit), the thralls are the
 ## core's (`thrall_*`, a blow on one is `core.damage` with the boss as the source), the corpses are the core's field, a body's health is `DmCore.set_enemy_hp` (the Abbess's niches)
 ## and the pools (the Saint's rot, the Regent's coals) are core zones with the boss as their source (`DmCore.add_zone`, `DmCore.zones`).
@@ -308,8 +308,8 @@ func cover() -> Array:
 
 
 ## The Prelate's Echoes (Prelate Echoes I-III) are a vow of Ascension, which the rebuild does not have (DECISIONS B36): the world's vows are the neutral ones (DmNextMeta's `vow_fx`, no
-## `echoes`), so this is 0 whoever rang the bell. Today's reads the summoner's own saved vows; here a character who swore them on the account does not play them. The brain's Echoes code is
-## today's and replays (client/tests/boss_prelate.gd), ready for the redesigned Ascension.
+## `echoes`), so this is 0 whoever rang the bell: a character who swore them on the account does not play them. The brain's Echoes code stays and replays
+## (client/tests/boss_prelate.gd), ready for the redesigned Ascension.
 func echoes() -> int:
 	return int(host.vow_fx.get("echoes", 0))
 

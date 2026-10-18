@@ -3,10 +3,11 @@
 #
 #   publish-godot-client.sh <git-rev>
 #
-# 1. `git worktree add --detach` of <rev> into a scratch folder (removed on exit), copies in the flipbook sheets kept outside git
-#    (tools/godot/fx-sheets-sync.sh), imports the project and exports the "Windows Desktop" preset with Godot 4.7.2 (DeathMuffin.exe + DeathMuffin.pck).
+# 1. `git worktree add --detach` of <rev> into a scratch folder (removed on exit), runs its PREPARE (the combat core, the flipbook sheets kept outside
+#    git, the import, the crowd's bakes), imports the project and exports the "Windows Desktop" preset with Godot 4.7.2 (DeathMuffin.exe + DeathMuffin.pck).
 #    res://assets ships separately as DeathMuffin.assets.pck (tools/godot/assets-pack.sh, loaded by main/dm_packs.gd): it is fingerprinted
-#    (every file under godot/assets incl. the flipbook sheets, the export settings, the Godot version, the pack tools) and reused from
+#    (tools/godot/assets-fp.sh: every file under client/assets incl. the flipbook sheets, the crowd baker's inputs, the export settings, the Godot
+#    version, the pack tools) and reused from
 #    $WORK/assets-cache/<fingerprint>.pck while unchanged, so it keeps its SHA-256 and the launcher skips it. Godot's export is not
 #    byte-reproducible, so an unchanged pack must be reused, never rebuilt. A revision without assets-pack.sh ships one pck (rollbacks).
 # 2. Hashes every file (SHA-256) and copies them to $OUT_DIR/<version>/ (a folder per build, so a player who is mid-download of the
@@ -21,8 +22,7 @@
 # Served at https://muffindevelopment.com/death-muffin/client/ (static, see nginx-locations.conf).
 # Refuses a forward release while the live lobby differs from <rev>'s (run deploy-lobby.sh first; LOBBY_SKEW_OK=1 overrides).
 # Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2 FX_SHEETS LOBBY_DIR PREPARE SMOKE SYMBOLS_DIR SYMBOL_BUILDS
-# The game is client/ (the rebuild, DECISIONS B41) since launch day, 2026-10-18: its PREPARE and SMOKE steps (test-channel/prepare-rebuild.sh, smoke-rebuild.sh) run by
-# default. PROJECT=godot exports today's old game instead (launch-undo.sh restores the last old build without exporting one).
+# The game is client/ (DECISIONS B49): its PREPARE and SMOKE steps (test-channel/prepare-rebuild.sh, smoke-rebuild.sh) run by default.
 set -euo pipefail
 
 REV="${1:-}"
@@ -35,7 +35,7 @@ WORK="${WORK:-/home/ubuntu/death-muffin/deploy}"
 BASE_URL="${BASE_URL:-https://muffindevelopment.com/death-muffin/client}"
 KEEP_BUILDS="${KEEP_BUILDS:-2}"
 PRESET="Windows Desktop"
-PROJECT="${PROJECT:-client}"   # the Godot project folder in the repository
+PROJECT=client   # the Godot project folder in the repository
 DEFAULT_MESSAGE="Online opens soon"
 
 command -v python3 >/dev/null || { echo "python3 is required" >&2; exit 1; }
@@ -70,17 +70,13 @@ trap cleanup EXIT
 cleanup
 mkdir -p "$STAGE"
 # The game's build steps come from the revision being published (its scratch worktree), so a saved copy of this script (a ship's rollback) finds them too.
-if [ "$PROJECT" = client ]; then
-  PREPARE="${PREPARE-$WT/server/death-muffin/test-channel/prepare-rebuild.sh}"
-  SMOKE="${SMOKE-$WT/server/death-muffin/test-channel/smoke-rebuild.sh}"
-fi
+PREPARE="${PREPARE-$WT/server/death-muffin/test-channel/prepare-rebuild.sh}"
+SMOKE="${SMOKE-$WT/server/death-muffin/test-channel/smoke-rebuild.sh}"
 
 echo "== exporting $SHA as $VERSION"
 git -C "$REPO" worktree add -q --detach "$WT" "$SHA" >/dev/null 2>&1
 [ -f "$WT/$PROJECT/project.godot" ] || { echo "$SHA has no $PROJECT/project.godot" >&2; exit 1; }
 [ -f "$WT/$PROJECT/export_presets.cfg" ] || { echo "$SHA has no $PROJECT/export_presets.cfg (preset \"$PRESET\")" >&2; exit 1; }
-# The licensed flipbook sheets are not in git: copy them in before the import (fails if one is missing).
-[ "$PROJECT" != godot ] || [ ! -f "$WT/tools/godot/fx-sheets-sync.sh" ] || bash "$WT/tools/godot/fx-sheets-sync.sh" "$WT" >/dev/null   # the client takes its sheets in its PREPARE (sync-assets.mjs)
 # PREPARE=<script> (the test channel): adjusts the scratch worktree before the import, e.g. renderer and endpoints. Never the repository.
 [ -z "${PREPARE:-}" ] || bash "$PREPARE" "$WT" || { echo "prepare step failed: $PREPARE" >&2; exit 1; }
 "$GODOT" --headless --path "$WT/$PROJECT" --import >"$STAGE/import.log" 2>&1 || { tail -30 "$STAGE/import.log" >&2; echo "godot import failed" >&2; exit 1; }
@@ -88,15 +84,7 @@ git -C "$REPO" worktree add -q --detach "$WT" "$SHA" >/dev/null 2>&1
 rm -f "$STAGE/import.log" "$STAGE/export.log"
 if [ -f "$WT/tools/godot/assets-pack.sh" ]; then
   CACHE="$WORK/assets-cache"; mkdir -p "$CACHE"
-  FP=$( { [ "$PROJECT" = godot ] || echo "$PROJECT"   # godot/'s fingerprint stays what it was, so the live pack is still reused
-          # The crowd's bakes (client/assets/crowd/baked, generated: not byte-reproducible) count by their inputs, below, not their bytes.
-          (cd "$WT/$PROJECT" && find assets -path assets/crowd/baked -prune -o -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum)
-          # Every file the baker reads: its own, the creature, model, animator and hand-prop code it poses with, and the model rows.
-          [ "$PROJECT" = godot ] || (cd "$WT" && sha256sum client/crowd/crowd_baker.gd client/crowd/crowd_vat_data.gd client/crowd/crowd_looks.json \
-            client/tools/bake_crowd.gd client/tools/bake_crowd.sh client/game/dm_creature.gd client/game/dm_creature_mat.gd client/game/dm_gear_props.gd \
-            client/world/dm_models.gd client/world/dm_animator.gd client/game/view_models.json godot/game/view_models.json godot/data/content/enemies.json)
-          (cd "$WT" && sha256sum "$PROJECT/export_presets.cfg" "$PROJECT/project.godot" tools/godot/assets-pack.sh tools/godot/pck_extract.py tools/godot/pck_pack.gd)
-          "$GODOT" --version; } | sha256sum | cut -c1-16)
+  FP=$(bash "$WT/tools/godot/assets-fp.sh" "$WT" "$GODOT")
   if [ -s "$CACHE/$FP.pck" ]; then echo "== assets pack: unchanged ($FP), reused"
   else
     echo "== assets pack: building ($FP)"

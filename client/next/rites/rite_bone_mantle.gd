@@ -3,7 +3,7 @@ extends DmRiteModule
 ## corpse (never lowering the current one, held 6 s) while bone shards shred the enemies beside you every tickS. 25 essence, 15 s, unlocks at level 12.
 ## Numbers: DmAbilities.mantle_apply / mantle_shard_damage + DmSimData.BONE_MANTLE; the barrier goes on the body's DmPlayerRules vitals (the same
 ## state damage soaks through). Visuals: DmRiteFx.mantle (tethers, orbiting shards, ring).
-## On the combat core (client/code.list "Ported"): the corpse field is the core's (atomic consume), the shards are `c.deal` on the core's radius query.
+## On the combat core: the corpse field is the core's (atomic consume), the shards are `c.deal` on the core's radius query.
 
 const MAX_HITS := 64
 

@@ -7,16 +7,15 @@ extends Node
 ## bag in memory + the Capes & Pets panel's selection; a joiner from its own backend), applies it locally and sends it reliably through the
 ## host, which relays it and replays every known look to a joiner. Receivers apply it to the puppet's avatar; a body whose avatar is not built yet
 ## is dressed when it is (`dress`). Only what changed is rebuilt: set_equipment diffs per slot, and an unchanged part is not even passed on.
-## Ported to the rebuilt client (client/code.list "Ported"): the hovered-enemy ring of the hero's decals reads the combat core's enemy by id
-## (`game.core_host`); nothing else changed.
+## The hovered-enemy ring of the hero's decals reads the combat core's enemy by id (`game.core_host`).
 
 const PET_FAR := 35.0           ## a remote pet this far from the local hero animates at FAR_HZ (nobody can see it move)
 const FAR_HZ := 8.0
 const REPLAY_DELAY := 0.8       ## as DmNextGame.CASTER_DELAY: a joiner's spawner must have made the bodies before we talk about them
 const BODY_SLOTS := ["main_hand", "off_hand", "head", "chest", "legs", "hands", "feet"]
-## The hero's ring and contact shadow against today's (client/README.md "The look against today's game"): today's renderer blends a decal in the exposed, sRGB-encoded scene and Forward+ in linear light, so the same
-## ring reads wider and whiter here. The ring decals are drawn at RING_K of their opacity and the contact shadow at SHADOW_A (today's is 0.5), which puts the ring's peak where today's is (the Graves 195 against 195 to 221 in
-## three runs of today's game) and the pool inside it too. A calibration: measure again with the look probe's `ring=K/S` variants before changing either number.
+## The hero's ring and contact shadow against the old game's (client/README.md "The look on Forward+"): the old game's renderer blends a decal in the exposed, sRGB-encoded scene and Forward+ in linear light, so the same
+## ring reads wider and whiter here. The ring decals are drawn at RING_K of their opacity and the contact shadow at SHADOW_A (the old game's is 0.5), which puts the ring's peak where the old game's was (the Graves 195 against 195 to 221 in
+## three runs of the old game) and the pool inside it too. A calibration: measure again with the look probe's `ring=K/S` variants before changing either number.
 const RING_K := 0.4
 const SHADOW_A := 0.75
 
@@ -297,7 +296,7 @@ func _dress_ring(b: DmHeroBody) -> void:
 			"follow": func() -> Variant:
 				var gm: Variant = wg.get_ref()
 				var id: int = int(gm.aim_target_id()) if gm != null else 0
-				var info: Dictionary = gm.core_host.enemy_info(id) if id > 0 else {}   # the core's enemy, by id (client/code.list "Ported")
+				var info: Dictionary = gm.core_host.enemy_info(id) if id > 0 else {}   # the core's enemy, by id
 				if info.is_empty() or int(info["state"]) == DmCoreEvents.State.DEAD:
 					return null
 				var drawn: Vector3 = gm.core_host.view.crowd.ground_at(id) if gm.core_host.view != null else Vector3.INF   # the drawn body, every frame (a boss: its own place)

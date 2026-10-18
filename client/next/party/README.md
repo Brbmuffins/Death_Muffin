@@ -53,7 +53,7 @@ frame (and the UDP lane when it is up, DECISIONS B31); nothing else runs per fra
 
 ## Tests
 `client/tests/coop.gd` (a real local lobby and relay, a host and a guest in one process: the party flow, the connection, the fight, kills and rewards on the guest's account, the seals, refused versions), `client/tests/social.gd` (the Social window, a guest that is the real boot scene, friends) and
-`client/tests/value.gd` (a guest's account). Each needs `node` and `cd server/death-muffin/lobby && npm ci`, else it prints a skip line. Not covered in the client: separate processes with a full `DmMain` per player over the real relay (the old game's process-level lobby test).
+`client/tests/value.gd` (a guest's account). Each needs `node` and `cd server/death-muffin/lobby && npm ci`, else it prints a skip line.
 
 ## Known gaps
 - Not carried yet: first-kill trophies (remote members never get them), per-guest area / Depths. The guest's rune sockets for its rites come from the server's record of it.

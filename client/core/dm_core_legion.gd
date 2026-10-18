@@ -1,9 +1,9 @@
 class_name DmCoreLegion
 extends RefCounted
-## One hero's legion as the rites see it: what today's DmThrallHost gave a cast (raise from corpses, rally, Rend, sacrifice, who is near), answered by the
+## One hero's legion as the rites see it: what the old game's DmThrallHost gave a cast (raise from corpses, rally, Rend, sacrifice, who is near), answered by the
 ## combat core. The thralls themselves live in the core (brain, formation, swing, death) and are drawn by the crowd view; a thrall is an id here, never a node,
-## and `info(id)` is the core's record of it (`DmCore.thrall_info`). The numbers of a raise are still today's GDScript: `DmThralls.raise_stats / colossus_stats`
-## (client/code: the rules), handed to `DmCore.raise_thrall` with the cap. The corpse contract is DmCoreCorpses' (atomic consume), so a lost race is "gone".
+## and `info(id)` is the core's record of it (`DmCore.thrall_info`). The numbers of a raise are still GDScript: `DmThralls.raise_stats / colossus_stats`
+## (client/rules/combat/dm_thralls.gd), handed to `DmCore.raise_thrall` with the cap. The corpse contract is DmCoreCorpses' (atomic consume), so a lost race is "gone".
 ## Made by the caster (`DmRiteCaster.thralls()`); the hero's core id is read when it is needed (the body is registered with the core after it is made).
 
 signal raised(thrall_id: int, corpse: DmCoreCorpse)

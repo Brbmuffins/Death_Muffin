@@ -2,7 +2,7 @@
 # Puts the lobby's and the relay's code of a committed revision on the TEST lobby and relay and restarts them (the live ones are never touched).
 #   sync.sh [rev] [--no-restart]      default origin/main (of the shared checkout, like test-server/sync.sh)
 # The lobby is server/death-muffin/lobby (src, package files); the relay is server/death-muffin/relay (project.godot, relay_main.gd) with the client's copy of
-# dm_udp_relay.gd (client/net/relay, kept identical to the live game's by tools/rebuild/sync-code.mjs). A restart ends the parties running on the test lobby.
+# dm_udp_relay.gd (client/net/relay). A restart ends the parties running on the test lobby.
 set -euo pipefail
 REV="${1:-origin/main}"
 RESTART=1; [ "${2:-}" = "--no-restart" ] && RESTART=0

@@ -3,7 +3,7 @@ extends DmRiteModule
 ## touches takes spell power x 1.4 and is Chilled (3 s: -30% move, -25% attack speed, DmStatusSet `chill`); an enemy that was ALREADY Chilled shatters
 ## for x1.5. 20 essence, 4.5 s, level 7. Numbers: DmAbilities.rite_damage + DmSimData.GRAVE_FROST. Visuals: DmRiteFx.frost_cast / frost_hits.
 ## Deviation: a cursor on top of the caster casts along the body's facing (the sim's zero-length direction hits nothing).
-## On the combat core (client/code.list "Ported"): the cone reads the core's radius query, the blow is `c.deal`, Chill is the core's status (`has_status` for the shatter).
+## On the combat core: the cone reads the core's radius query, the blow is `c.deal`, Chill is the core's status (`has_status` for the shatter).
 
 const MAX_HITS := 64
 const SEEN_MAX := 14   ## the fx draw at most this many

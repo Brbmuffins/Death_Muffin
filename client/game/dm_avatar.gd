@@ -10,8 +10,7 @@ extends Node3D
 ##
 ## Use: var a := DmAvatar.new(); a.setup(world_root, "#a26bff", true, "hero_ossuary"); each frame a.update(dt, x, z, facing, moving, move_speed).
 ## `settings` = the game settings dictionary (reads hideHelm); call `DmAvatar.refresh_all()` when settings change.
-## Ported to the rebuilt client (client/code.list "Ported"): the three motion helpers it took from `DmEntityViews` (the per-creature view node the crowd
-## replaces) are its own statics now (`_turn_toward`, `_step_speed`, `_smooth_speed`, the same code); nothing else changed.
+## Its motion helpers are its own statics (`_turn_toward`, `_step_speed`, `_smooth_speed`).
 
 const HERO_TURN_RATE := 12.0
 const HERO_TURN_MAX := 13.0

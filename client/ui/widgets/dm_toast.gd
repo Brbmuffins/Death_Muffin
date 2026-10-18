@@ -2,7 +2,7 @@ class_name DmToast
 extends PanelContainer
 ## `.hud-toast`: a short message strip. kind: "" | "good" | "err" | "loot" | "loot_major" | "new_cue".
 ## Fades in 0.25 s, holds `hold_s`, fades out 0.5 s, then frees itself. Stack several in a VBoxContainer centred under the HUD top.
-## Ported (client/code.list): its panel is a 9-patch of the HUD atlas with the theme variation's colours (DmHudKit.plate).
+## Its panel is a 9-patch of the HUD atlas with the theme variation's colours (DmHudKit.plate).
 
 var hold_s: float = 8.0
 var kind: String = ""

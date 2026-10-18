@@ -1,10 +1,10 @@
 class_name DmCompatAlbedo
 extends RefCounted
-## Today's Compatibility renderer multiplies a material's colours in sRGB space and converts the PRODUCT to linear light at the end of the fragment shader
+## The Compatibility renderer (the old game's) multiplies a material's colours in sRGB space and converts the PRODUCT to linear light at the end of the fragment shader
 ## (scene.glsl: `albedo = srgb_to_linear(albedo)` after the material's albedo colour x texture x vertex colour); Forward+ converts each factor and multiplies in linear
 ## light. For a tinted dark texture (every floor, every wall: textures averaging 0.1 to 0.2 in sRGB, tints of 0.55 to 0.9) the first is 1.1 to 1.6 times brighter than the
 ## second, and the difference is where the eye reads the ground: a ground that is darker and has lost its red and green (the "darker, purple wash" of the first test builds).
-## The area converter lifts each such material's tint by the ratio measured on its texture, so the rebuilt ground has the albedo today's has (client/README.md "Areas").
+## The area converter lifts each such material's tint by the ratio measured on its texture, so the rebuilt ground has the albedo the old game's had (client/README.md "Areas").
 ## The ratios are per (texture, tint) and measured by `measure` on the texture's source image; `tests/areas.gd` measures them again and fails when a table entry is stale.
 
 const SAMPLES := 96   ## texels read along each side of the image (a stride): the same on every machine
@@ -74,7 +74,7 @@ static func lifted(color: Color, r: Vector3) -> Color:
 	return Color(_lin_back(minf(_lin(color.r) * r.x, 1.0)), _lin_back(minf(_lin(color.g) * r.y, 1.0)), _lin_back(minf(_lin(color.b) * r.z, 1.0)), color.a)
 
 
-## The background beyond everything (past the earth beyond the walls): today's Compatibility draws `background_color` as it is, (7, 6, 10) for #07060a, where Forward+ puts it through the exposure and
+## The background beyond everything (past the earth beyond the walls): Compatibility draws `background_color` as it is, (7, 6, 10) for #07060a, where Forward+ puts it through the exposure and
 ## the tonemapper like any other pixel (a black (1, 1, 3)). `void_color` is the colour that comes out of Forward+'s tonemap as `target` (an sRGB colour) at `exposure`: the fixed point of
 ## c = c x want / aces(c x exposure), which converges because the curve rises with each channel. The builder sets it whenever the exposure changes.
 const ACES_BIAS := 1.8

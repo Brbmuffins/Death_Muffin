@@ -2,7 +2,7 @@ class_name DmHudBrewChip
 extends Control
 ## `.brew-chip`: a 54x58 belt slot: key cap top-left, big glyph, label, sub line (count / seconds left / "+ add" / "none") and a
 ## bottom timer bar. States: on (active effect), empty (dashed + faint), cd (dimmed while its cooldown runs).
-## Ported (client/code.list): its rectangles, outlines and dashes come from the HUD atlas (DmHudKit.rect), on the chrome layer.
+## Its rectangles, outlines and dashes come from the HUD atlas (DmHudKit.rect), on the chrome layer.
 
 signal clicked(slot: String)
 signal dropped(slot: String, item_id: String)   ## a brew dragged from the Reliquary (BELT_DRAG_TYPE)

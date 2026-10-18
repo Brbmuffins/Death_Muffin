@@ -5,7 +5,7 @@ extends DmRiteModule
 ## circle that dies hands its stacks - 1 to its 2 nearest neighbours within 4.5 m). Legendary Plague Choir (`c.legend`): `miasmaSpreadsWithered` (a withered
 ## enemy that dies inside the circle spreads its stacks to the 3 nearest within 4 m) and `witheredBurstAt` (Chain Plague: an enemy reaching N stacks loses
 ## them and a fresh circle opens on it, at most 4 at once, 1 s apart per enemy). All of it is host state in `mem("miasma")`; the death hook is `withered_death`.
-## On the combat core (client/code.list "Ported"): the enemies are DmFoe snapshots from the core's radius query, Withered and the slow are the core's statuses (the hero is their
+## On the combat core: the enemies are DmFoe snapshots from the core's radius query, Withered and the slow are the core's statuses (the hero is their
 ## source, so his kills and DoT lumps are his), the Shrouded ward is lifted through `core.cover_miasma`, and what the enemy nodes carried as meta (contagious, the Chain Plague gap)
 ## is kept by enemy id in `mem("miasma")`. The death hook runs from the core's event buffer: at the end of the tick that killed the enemy, not inside the kill.
 

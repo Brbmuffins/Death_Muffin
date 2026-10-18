@@ -1,7 +1,7 @@
 extends SceneTree
 ## Bakes creature models for crowd drawing. Run through tools/bake_crowd.sh, or:
 ##   godot --headless --path client --script res://tools/bake_crowd.gd -- robber hound
-## Names are enemy ids (godot/data/content/enemies.json) or model slugs. Output: res://assets/crowd/baked/<model slug>/ (not committed).
+## Names are enemy ids (client/data/content/enemies.json) or model slugs. Output: res://assets/crowd/baked/<model slug>/ (not committed).
 ## Options: --out=res://assets/crowd/baked  --assets=<folder holding slice/>  --max-triangles=5000
 
 const CrowdBakerScript := preload("res://crowd/crowd_baker.gd")

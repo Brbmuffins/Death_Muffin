@@ -4,7 +4,7 @@ extends DmRiteModule
 ## 3 generations deep. 28 essence, 12 s, unlocks at level 10. Numbers: DmSimData.SIGNATURE.bloom + the def; the flowers follow sim_zones (friendly zone + tick_bloom_spread).
 ## Also here: the Rotweaver's passive (`miasma_bursts`, called by the caster while the `miasmaBurstsCorpses` mod is set): corpses lying in her Miasma burst.
 ## Visuals: DmRiteFx.bloom_*. Events: `cast`, `spread`, `burst`.
-## On the combat core (client/code.list "Ported"): the corpse field and the enemies are the core's (atomic consume, DmFoe snapshots, `c.deal`, the core's Withered and slow).
+## On the combat core: the corpse field and the enemies are the core's (atomic consume, DmFoe snapshots, `c.deal`, the core's Withered and slow).
 
 const SCAN_S := 0.1
 const PULSE_S := 1.0

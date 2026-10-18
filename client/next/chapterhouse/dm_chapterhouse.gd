@@ -7,8 +7,8 @@ extends Node
 ##
 ## Cost: one 10 Hz tick (hover / pending interact / prompt), a 5 Hz NPC refresh, and the per-frame NPC animation only for NPCs near the player
 ## (DmHubNpcs). Nothing runs per frame for an idle hub with the player far from everyone.
-## On the combat core (client/code.list "Ported"): the gates and navmesh regions are the area scenes' (DmNextWorld: `set_unlocked`, `gates`, `nav_regions`, the same
-## names as today's builder), the people exist when the Chapterhouse is loaded, and a waystone's jump recalls the hero's thralls through the core's legion.
+## On the combat core: the gates and navmesh regions are the area scenes' (DmNextWorld: `set_unlocked`, `gates`, `nav_regions`),
+## the people exist when the Chapterhouse is loaded, and a waystone's jump recalls the hero's thralls through the core's legion.
 
 signal npc_interact(npc_id: String)
 signal station_interact(station_id: String)

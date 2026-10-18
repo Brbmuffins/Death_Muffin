@@ -1,18 +1,17 @@
 class_name DmNextWorld
 extends Node3D
-## The game's world on the rebuilt client: the area scenes built offline from godot/data/slice/world.json (client/areas/<id>.tscn, built by
-## tools/rebuild/build-areas.sh) in place of the runtime `DmWorldBuilder` build that godot/next/next_world.gd makes. It gives the code that expects
-## today's world object the same small API: `area_at`, the navigation helpers (`nav_ready`, `nav_path`, `nav_closest`, `nav_clamp`), `enter_area`,
-## `update`, `camera_config`, the seals and doors of today's builder (`set_unlocked`, `set_door_open`, `gates`, `nav_regions`, `nav_links`), plus `nav_map()` for the
+## The game's world on the rebuilt client: the area scenes built offline from client/data/slice/world.json (client/areas/<id>.tscn, built by
+## tools/rebuild/build-areas.sh), not a runtime `DmWorldBuilder` build. Its small API: `area_at`, the navigation helpers (`nav_ready`, `nav_path`, `nav_closest`, `nav_clamp`), `enter_area`,
+## `update`, `camera_config`, the seals and doors (`set_unlocked`, `set_door_open`, `gates`, `nav_regions`, `nav_links`), plus `nav_map()` for the
 ## combat core and `spawn_point()` for the hero.
 ##
 ## What an area scene does not carry (client/README.md "Areas") is made here, for now, by a `DmWorldBuilder` used for its lights only: the
-## environment, fog, the moon and the rim light of the area, exactly as today's builder sets them (a later world scene owns them), and the dark earth beyond the walls (`build_outside`: one quad). The builder builds
+## environment, fog, the moon and the rim light of the area (a later world scene owns them), and the dark earth beyond the walls (`build_outside`: one quad). The builder builds
 ## no floor, wall or prop (`builder` is only that light holder, and carries `area_nodes` and `node_views` for the gathering views). The world dressing (`dressing`: ground mist, each area's
 ## weather, the stained-glass windows, the candle flames and brazier fire as sprites, the far silhouettes, the water; client/README.md "World dressing") is attached to the loaded areas
 ## with the lights. No streaming or occlusion yet.
 ##
-## Every area but the Depths exists by default, as today's builder builds them all; `build` takes a shorter list (tests: the Graves alone). A door lies in the scenes of
+## Every area but the Depths exists by default; `build` takes a shorter list (tests: the Graves alone). A door lies in the scenes of
 ## both its areas: the first one loaded keeps it, the other copy is dropped before it enters the tree. Gates start closed; `set_unlocked` opens a door when both of its
 ## areas are unlocked and loaded, and the area's own navmesh is on only while it is unlocked (the Graves' door to the Chapterhouse is always open).
 ##
@@ -25,18 +24,18 @@ signal door_opened(id: String)         ## a door rose (a seal broke here, or on 
 
 const AREA_DIR := "res://areas/"
 
-var builder: DmWorldBuilder            ## lights only (see above); not today's full builder
+var builder: DmWorldBuilder            ## lights only (see above): no floors, walls or props
 var focus: Node3D                      ## follows the local hero (the world dressing's anchor: the mist, the weather and the brazier fire follow it)
-var dressing: DmWorldDressing          ## today's world dressing on the loaded areas (null in a world built with no lights)
+var dressing: DmWorldDressing          ## the world dressing on the loaded areas (null in a world built with no lights)
 var build_ms: int = 0
 var bake_ms: int = 0                   ## the navmeshes are baked offline: 0
 var sync_ms: int = 0                   ## the first navigation-map sync (wait_nav_ready)
 var area_id: String = ""
 var loaded: Array[String] = []         ## area ids with a scene, in world order
-## Height of the baked navmesh above the floor, read when the map is ready. (Today it fed each enemy's NavigationAgent3D; the core steers its own bodies.)
+## Height of the baked navmesh above the floor, read when the map is ready. (The old game fed it to each enemy's NavigationAgent3D; the core steers its own bodies.)
 var nav_y: float = 0.0
 
-## Today's builder's seal state, same names (DmChapterhouse reads them): unlocked area ids, door id -> {bars, collider, open}, "area:<id>" / "door:<id>" ->
+## The seal state (DmChapterhouse reads it): unlocked area ids, door id -> {bars, collider, open}, "area:<id>" / "door:<id>" ->
 ## its NavigationRegion3D, door id -> its two NavigationLink3D.
 var unlocked: Dictionary = {}
 var gates: Dictionary = {}
@@ -124,7 +123,7 @@ func build(area_ids: Array = [], with_lights: bool = true) -> void:
 	build_ms = Time.get_ticks_msec() - t0
 
 
-## The two members of today's builder that the copied gathering views read (`DmNodeViews.setup`): `area_nodes` (area id -> its root) and `node_views` (gathering node
+## The two members of the builder that the gathering views read (`DmNodeViews.setup`): `area_nodes` (area id -> its root) and `node_views` (gathering node
 ## id -> its holder under the scene's `GatherNodes`), so a node swaps to its spent look on the area scene's own props.
 func _register_nodes() -> void:
 	for id: String in loaded:
@@ -206,7 +205,7 @@ func area_node(id: String) -> Node3D:
 	return _scenes.get(id)
 
 
-# ---- the instance (the Depths; today's DmWorldBuilder.open_instance) -----------------------------------------------------------
+# ---- the instance (the Depths) -----------------------------------------------------------
 
 ## A run opens the Depths: `area_at` answers "depths" inside its rect until it closes. Its floor's navmesh is the floor's own (`attach_floor`).
 func open_instance(id: String, open: bool) -> void:
@@ -234,7 +233,7 @@ func detach_floor() -> void:
 		_core.nav_replace_region(_core_floor, PackedVector3Array(), PackedInt32Array(), false)
 
 
-# ---- seals and doors (today's DmWorldBuilder.set_unlocked / set_door_open) -----------------------------------------------------
+# ---- seals and doors (set_unlocked / set_door_open) -----------------------------------------------------
 
 ## Seals: `areas` = the area ids whose seal is broken; an area with no seal is always unlocked. Only loaded areas count. `quiet`: the doors that open say nothing
 ## (`door_opened` stays silent): the state a game is given as it loads or as a guest joins, not a seal breaking in front of the player.
@@ -341,7 +340,7 @@ func bounds(pad: float = 12.0) -> Rect2:
 	return Rect2(lo - Vector2(pad, pad), hi - lo + Vector2(pad, pad) * 2.0)
 
 
-## Where a hero starts and a fallen one gets up: today's Chapterhouse return point (areas.json CHAPTERHOUSE_RETURN) when the Chapterhouse is loaded;
+## Where a hero starts and a fallen one gets up: the Chapterhouse return point (areas.json CHAPTERHOUSE_RETURN) when the Chapterhouse is loaded;
 ## otherwise (a test's world) a walkable point just inside the area's door to the Chapterhouse: the door's centre across, the area's edge facing it less 3 m.
 func spawn_point(id: String = "") -> Vector3:
 	if id == "" and has_area("chapterhouse"):
@@ -358,7 +357,7 @@ func spawn_point(id: String = "") -> Vector3:
 	return nav_closest(p) if nav_ready() else p
 
 
-## Today's `enter_area`: the lighting follows the hero into the area.
+## The lighting follows the hero into the area.
 func enter_area(id: String) -> void:
 	area_id = id
 	if builder != null:

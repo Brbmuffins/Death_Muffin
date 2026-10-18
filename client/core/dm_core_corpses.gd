@@ -1,6 +1,6 @@
 class_name DmCoreCorpses
 extends RefCounted
-## The corpse field as the rites see it (the contract of today's DmCorpseField that casts use), answered by the combat core: it lays, ages and removes
+## The corpse field as the rites see it (the contract of the old game's DmCorpseField that casts use), answered by the combat core: it lays, ages and removes
 ## corpses and decides who wins a consume. Every call is synchronous and the consume is atomic: two casters on one corpse, one winner.
 ##   pick_corpse(aim, pick_r, max_range, from_pos, area)   the corpse under the cursor (else the nearest to the caster within 7 m), or null
 ##   corpses_in_radius(pos, r, filter, area)               nearest first (the core's order), filtered in GDScript when a filter is given

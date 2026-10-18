@@ -2,7 +2,7 @@ extends DmRiteModule
 ## Dirge (the Mourner's signature, R): toll a 4 s funeral bell-song around you (radius 6, centred on the cast spot). Each second you and your allies' thralls mend (a flat
 ## spell power x 0.6 for players, 8 % of max health for thralls) and the enemies inside stay Silenced (1.2 s, refreshed at 4 Hz). 35 essence, 18 s, unlocks at level 10.
 ## Numbers: DmSimData.SIGNATURE.dirge + the def; the zone follows sim_zones.tick_dirge. Visuals: DmRiteFx.dirge_zone / dirge_pulse. Events: `cast`, `pulse`.
-## On the combat core (client/code.list "Ported"): the enemies are DmFoe snapshots and the silence the core's status; the thralls it mends are the core's (every legion standing
+## On the combat core: the enemies are DmFoe snapshots and the silence the core's status; the thralls it mends are the core's (every legion standing
 ## in it: `core.thralls_in_radius` with no owner), their health set through `set_thrall_stats`.
 
 const SCAN_S := 0.25

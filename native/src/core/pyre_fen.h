@@ -1,8 +1,8 @@
 #pragma once
-// The Cinder Pyre's and the Mourning Fen's eight kinds (pyre_fen.cpp), the "pf" family of godot/enemies/kinds: dm_enemy_pf_melee.gd (the Cinder Husk), dm_enemy_pf_flanker.gd
+// The Cinder Pyre's and the Mourning Fen's eight kinds (pyre_fen.cpp), the "pf" family of the old game's enemy kinds: dm_enemy_pf_melee.gd (the Cinder Husk), dm_enemy_pf_flanker.gd
 // (the Cinderhound and the Mire Leech), dm_enemy_pf_caster.gd (the Pyre Priest, the Bog Hag, the Fen Wisp), dm_enemy_pf_hazard.gd (the Slag Brute and the Drowned Sexton),
 // dm_pf_util.gd and the states dm_state_pf_hook_chase.gd and dm_state_pf_lure_kite.gd. These are the pieces world.h embeds; the brain's walk, swing and kill reach into
-// them from world.cpp. Differences from today are listed in native/README.md.
+// them from world.cpp. Differences from the old game are noted in native/README.md.
 #include <cstdint>
 
 namespace dm {
@@ -21,7 +21,7 @@ struct PfState {
 };
 
 // The numbers of the late areas' effects: enemies.json EMBER_BOLT, EMBER_DEATH and SLAG_POOL; fen.json HAG_HEX, WISP_PULSE, SEXTON_HOOK and FEN_LURE (HAG_HEX's thrallDamageMult is
-// LegionTuning's). The defaults are today's values so a core that loads nothing still plays; client/tests/core_kinds.gd asserts they equal what the data says.
+// LegionTuning's). The defaults repeat the data's values so a core that loads nothing still plays; client/tests/core_kinds.gd asserts they equal what the data says.
 struct PfTuning {
 	double ember_r = 1.7, ember_pool_s = 4.0, ember_pool_dps = 0.4;          // the Pyre Priest's coal and the pool it leaves
 	double death_r = 1.6, death_pool_s = 3.0, death_pool_dps = 0.3;          // the Cinder Husk's last embers

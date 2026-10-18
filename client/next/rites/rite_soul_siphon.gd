@@ -3,7 +3,7 @@ extends DmRiteModule
 ## spell power), heals you for 35 % of it and gives 2 essence a tick. It follows the enemy while you move and breaks when they get beyond 1.4 x the range (or
 ## die / you die). Numbers: DmAbilities + SOUL_SIPHON. Host: `mem("soul_siphon").tethers`; every peer draws the beams between the caster's body and the enemy
 ## (visual handles in the peer's own `mem(..).vis`) and ends them early on the host's `end` event. A boss is a foe like any (the host's queries append it after the enemies).
-## On the combat core (client/code.list "Ported"): the tether holds the enemy's core id, the blow is `c.deal`; the beam's far end follows the simulation's position.
+## On the combat core: the tether holds the enemy's core id, the blow is `c.deal`; the beam's far end follows the simulation's position.
 
 const Y := 1.1
 

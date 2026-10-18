@@ -3,8 +3,8 @@ extends DmWfxParticles
 ## Brazier fire (WorldView.update "Brazier fire near the focus" through Effects' additive ParticleSystem): every lit brazier within 30 m (x) /
 ## 28 m (z) of the focus sheds violet flame wisps (10/s, 70% 0x8a5cf0 else 0xc6a4ff, life 0.5 s, rising) and the odd amber ember (1.5/s,
 ## 0xe9a86b, life 1.2 s). Particle maths: DmWfxParticles. Braziers' lit flag follows the candle groups.
-## Ported (client/code.list): the emission is a 20 Hz tick (`STEP`, a probability of 10 * STEP and 1.5 * STEP a brazier each, the particle born a random part of the step ago) where the
-## web rolled the dice every frame, and a particle is written once (DmWfxParticles) where today's code stepped it every frame.
+## The emission is a 20 Hz tick (`STEP`, a probability of 10 * STEP and 1.5 * STEP a brazier each, the particle born a random part of the step ago) where the
+## web rolled the dice every frame, and a particle is written once (DmWfxParticles) where the old game's code stepped it every frame.
 
 const CAPACITY := 160
 const RANGE_X := 30.0

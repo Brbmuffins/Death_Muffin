@@ -4,7 +4,7 @@ extends Node
 ## Launch it with the dev-offline quick start (`--dev-offline --class=2`, or its alias `--world-demo`): the game scene (DmNextGame) as the test account `tester`; client/tools/qa_shots.sh renders it.
 ## Default: scripted fight in the Hollow Graves, a wave of the dead around the hero, the real rites cast at the nearest enemy; one
 ## screenshot a second (qa_NN.png); quits N seconds into the fight. With --shot-plan: the UI shot plan (main/qa_ui_shots.gd) instead of the fight.
-## Ported to the rebuilt client (client/code.list "Ported"): the fight reads and spawns through the combat core (enemies are ids: `core_host.enemies_in_radius`, `enemy_position`, `director.spawn`),
+## The fight reads and spawns through the combat core (enemies are ids: `core_host.enemies_in_radius`, `enemy_position`, `director.spawn`),
 ## the game is the boot's child `NextGame`, and a start that makes no game (no quick start, or the boot refused it) ends the run at once with a line saying so.
 
 const NO_GAME_S := 90.0   ## the boot makes the game node when the quick start begins; no node this long after the start = the launch had no `--class=N`

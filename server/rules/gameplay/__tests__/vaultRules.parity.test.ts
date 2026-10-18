@@ -6,7 +6,7 @@ import {
 import { checkParity, recorder } from './parity';
 
 /**
- * Vault, Reliquary sort and item use against godot/rules/inventory/vault_rules.gd. Replayed by the Godot suite rules-gathering
+ * Vault, Reliquary sort and item use against client/rules/inventory/vault_rules.gd. Replayed by the Godot suite rules-gathering
  * (vault_parity.json). Every case carries the item table it ran against. Regenerate:
  * UPDATE_VAULT_PARITY=1 npx vitest run server/rules/gameplay/__tests__/vaultRules.parity.test.ts
  */

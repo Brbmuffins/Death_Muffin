@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Checks the game's 3D models against today's budgets and rig rules, so a model that is too heavy, has extra materials, the wrong skeleton or
+// Checks the game's 3D models against their budgets and rig rules, so a model that is too heavy, has extra materials, the wrong skeleton or
 // missing combat clips cannot ship (ROADMAP Phase 1, the checks for War's content; the full budget table comes with Phase 2's tech art page).
 //   node tools/assets/check-models.mjs                   every model of the live game (client/assets/slice/models): CI
-//   node tools/assets/check-models.mjs --changed <base>  the models changed since <base>, in client/ or godot/ (the Discord agent's check)
+//   node tools/assets/check-models.mjs --changed <base>  the models changed since <base>, in client/ (the Discord agent's check)
 //   node tools/assets/check-models.mjs <glb ...>         only these files (repository paths, or absolute)
 // Exit 1 when a model breaks a rule (a hard cap, a material count, a skeleton, missing clips); a model over its target but under its cap is a
 // warning. Crowd creatures are left to the crowd baker, which enforces their 5,000-triangle budget (client/tests/crowd_bake.gd).
@@ -108,7 +108,7 @@ function liveModels() {
 function changedModels(base) {
   const git = (...a) => execFileSync('git', ['-C', ROOT, ...a], { encoding: 'utf8' }).split('\n');
   const files = [...git('diff', '--name-only', '--diff-filter=AM', base, '--', '*.glb'), ...git('ls-files', '--others', '--exclude-standard', '--', '*.glb')];
-  return [...new Set(files)].filter((f) => /^(client|godot)\/assets\//.test(f));
+  return [...new Set(files)].filter((f) => /^client\/assets\//.test(f));
 }
 
 function main() {

@@ -1,5 +1,5 @@
 extends Control
-## HUD gallery (own scene; the UI-kit gallery is untouched). godot --path godot res://ui/hud/hud_gallery.tscn -- --page=combat|boss|calm|death|events --out=/x.png
+## HUD gallery (own scene; the UI-kit gallery is untouched). godot --path client res://ui/hud/hud_gallery.tscn -- --page=combat|boss|calm|death|events --out=/x.png
 ## Pages are the mock view-models in dm_hud_mock.gd; "events" fires the one-shot calls (toasts, banner, floating numbers, chat).
 
 var hud: DmHud

@@ -3,7 +3,7 @@ extends DmRiteModule
 ## lane she passes through (1.6 m either side, plus the enemy's radius) burns in green flame (the `wraithfire` status, a Hemorrhage-style damage-over-time) for 5 s at power 0.7 a second, +15% a
 ## soul it costs (the bag's own +2% a soul is what is left in the bag). Host-authoritative like Veil Step: `body.phase_point`
 ## validates the way, `body.dash` glides the body (0.32 s). The lane is read once, at the cast, from where she started to where the dash ends.
-## On the combat core (client/code.list "Ported"): the lane's enemies are DmFoe snapshots (DmRiteModule.lane), the flame is the core's status (`c.apply_status`).
+## On the combat core: the lane's enemies are DmFoe snapshots (DmRiteModule.lane), the flame is the core's status (`c.apply_status`).
 
 
 const PHANTOM_ALPHA := 0.45   ## how see-through she is while rushing

@@ -1,13 +1,13 @@
 class_name DmRiteModule
 extends RefCounted
 ## One rite of the DmRiteCaster. A module is a shared, stateless singleton (see DmRiteRegistry): keep per-caster state in `c.mem(id)`, never in fields.
-## Subclass as `rite_<id>.gd`, set `id`, override what the rite needs, add ONE line to dm_rite_registry.gd. Recipe: godot/next/rites/README.md.
+## Subclass as `rite_<id>.gd`, set `id`, override what the rite needs, add ONE line to dm_rite_registry.gd. Recipe: client/next/rites/README.md.
 ##
 ## The caster does the shared work (owner / finite aim / DmAbilities.cast_check: dead, locked, busy, cooldown, essence / cost / events / state);
 ## the module does only what is particular to its rite.
 ##
-## Ported to the combat core (client/code.list "Ported"): enemies are ids (`DmFoe` snapshots), blows and statuses go through the caster (`c.deal`, `c.apply_status`),
-## and the geometry helpers below answer from the core's radius query with today's rules.
+## On the combat core: enemies are ids (`DmFoe` snapshots), blows and statuses go through the caster (`c.deal`, `c.apply_status`),
+## and the geometry helpers below answer from the core's radius query.
 
 var id: String = ""
 var steps: bool = false   ## true: `step` runs every host tick while the caster holds `mem(id)` state
@@ -39,7 +39,7 @@ func step(_c: DmRiteCaster, _dt: float) -> void:
 
 
 # ---- shared geometry for the targeted / line rites (host) ------------------------------------------------------------------------------------
-# Enemies are the core's (an id, or a DmFoe snapshot of it): the queries go through the core with today's rules (measured to the enemy's edge, spawn order,
+# Enemies are the core's (an id, or a DmFoe snapshot of it): the queries go through the core with these rules (measured to the enemy's edge, spawn order,
 # strict comparisons, the caps).
 
 ## The live enemy a rite is aimed at: the named one, else the nearest to the aim point within `radius` (input tolerance, not a game number).

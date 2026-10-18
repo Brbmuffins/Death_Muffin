@@ -4,9 +4,9 @@ extends DmRiteModule
 ## Weapon variants (DmWeaponLine loadout, as the original game): Staff = longer reach + the needle pierces the enemy behind its target; Wand = damage / cadence
 ## (apply_cast_cost); Sickle = every needle (volley and pierce included) adds a Withered stack; Scythe = no projectile, a melee arc (`_reap`) that takes the
 ## Splinters / Marrow-Tap runes (Volley is the needle's) and leaves a 1.2 s window in which a kill of one of its victims banks an extra soul (`reaped_souls`).
-## On the combat core (client/code.list "Ported"): the target is an id and a DmFoe snapshot, the blow is `c.deal` (the kill is known at once), the Sickle's Withered is
+## On the combat core: the target is an id and a DmFoe snapshot, the blow is `c.deal` (the kill is known at once), the Sickle's Withered is
 ## the core's status. A boss is a foe like any (the host's queries append it after the enemies, `DmFoe.boss`): the needle's range counts its radius, and the Scythe's arc
-## counts it separately with its own reach and one of the arc's hits, as today.
+## counts it separately with its own reach and one of the arc's hits.
 
 const SPEED := 26.0        ## sim_caster._fire_needle
 const TARGET_Y := 1.0

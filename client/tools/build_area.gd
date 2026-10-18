@@ -1,17 +1,17 @@
 extends SceneTree
-## Builds an area scene (client/areas/<id>.tscn) from godot/data/slice/world.json: the layout godot/world/world_builder.gd builds at runtime,
+## Builds an area scene (client/areas/<id>.tscn) from data/slice/world.json: the layout DmWorldBuilder (world/world_builder.gd) builds at runtime,
 ## written once, offline, with a baked navigation mesh, occluders and visibility ranges. One converter for every area.
 ##
 ##   godot --headless --path client --script res://tools/build_area.gd -- graves [more area ids] [--world=<file>] [--out=res://areas] [--lenient]
 ##
-## Normally run through tools/rebuild/build-areas.sh (it syncs the assets and imports first). Output, all deterministic:
+## Normally run through tools/rebuild/build-areas.sh (it imports first). Output, all deterministic:
 ##   <out>/<id>.tscn            the area
 ##   <out>/props/<model>.tscn   one prefab per prop or gathering-node model (the glTF, normalised to its height; small props get a visibility range)
-##   res://areas/common/ring.png, glow.png   the two generated decal textures (the live game draws them at start-up)
-## `--lenient` skips models whose files are not in client/assets (smoke runs on areas that are not synced yet) instead of failing.
+##   res://areas/common/ring.png, glow.png   the two generated decal textures (DmWorldBuilder draws them at start-up)
+## `--lenient` skips models whose files are not in client/assets instead of failing (smoke runs).
 ## Exit codes: 0 done, 1 failed, 3 wrote a generated texture that needs an import first (build-areas.sh imports and runs again).
 
-const DEFAULT_WORLD := "../godot/data/slice/world.json"
+const DEFAULT_WORLD := "data/slice/world.json"
 const DEFAULT_OUT := "res://areas"
 const COMMON_DIR := "res://areas/common"   # the generated decal textures, shared by every area (and by scratch runs with another --out)
 const ASSET_BASE := "res://assets/slice/"
@@ -119,7 +119,7 @@ func _tex(name: String) -> Texture2D:
 	if not _tex_cache.has(name):
 		var path := TEX % name
 		if not ResourceLoader.exists(path):
-			errors.append("texture missing: %s (add it to client/assets.list and run tools/rebuild/sync-assets.mjs)" % path)
+			errors.append("texture missing: %s (add it to client/assets)" % path)
 			_tex_cache[name] = null
 		else:
 			_tex_cache[name] = load(path)
@@ -162,7 +162,7 @@ func _nbox(b: Dictionary) -> Dictionary:
 
 
 # ---------------------------------------------------------------- generated decal textures
-## The two textures the live game draws at start-up (world_builder._ring_texture / _glow_texture), written as PNGs next to the areas.
+## The two textures DmWorldBuilder draws at start-up (`_ring_texture` / `_glow_texture`), written as PNGs next to the areas.
 func _ensure_common_textures() -> bool:
 	var dir := COMMON_DIR
 	DirAccess.make_dir_recursive_absolute(dir)
@@ -242,7 +242,7 @@ func _model(url: String, height: float, is_prop: bool) -> Dictionary:
 		if lenient:
 			skipped_models[url] = true
 		else:
-			errors.append("model missing: %s (add it to client/assets.list and run tools/rebuild/sync-assets.mjs)" % glb)
+			errors.append("model missing: %s (add it to client/assets)" % glb)
 		_models[key] = {}
 		return {}
 	var ps: PackedScene = load(glb)
@@ -402,7 +402,7 @@ func _build(id: String) -> void:
 ## surface takes from its lightmap instead of the environment, so the bake carries the same plain-colour hemisphere ambient DmWorldBuilder.set_area
 ## gives the area at runtime (same constants, the area's hemisphere factor included: the Acre's and the Wing's are brighter). The Environment's
 ## ambient colour is an sRGB colour, which the renderer converts to linear light; the bake takes `environment_custom_color` as it is, so it gets
-## the converted colour. The moon and the rim light stay real-time as today (they live in the game scene, outside this subtree; the Acre's and the
+## the converted colour. The moon and the rim light stay real-time (they live in the game scene, outside this subtree; the Acre's and the
 ## Wing's brighter moon is `DmWorldBuilder.set_area`'s). A bake made for this scene is picked up when `<id>.lmbake` sits next to it; a bake belongs
 ## to the scene it was made from.
 func _lightmap(parent: Node3D) -> void:
@@ -441,7 +441,7 @@ func _theme_mat(theme_key: String) -> StandardMaterial3D:
 		var m := StandardMaterial3D.new()
 		m.albedo_texture = _tex(f.tex)
 		m.texture_filter = SHARP
-		m.albedo_color = DmCompatAlbedo.tint(String(f.tex), _hex(f.color))   # today's albedo: client/next/look/dm_compat_albedo.gd
+		m.albedo_color = DmCompatAlbedo.tint(String(f.tex), _hex(f.color))   # the old game's albedo: client/next/look/dm_compat_albedo.gd
 		m.roughness = float(f.rough)
 		if f.has("glow"):
 			m.emission_enabled = true

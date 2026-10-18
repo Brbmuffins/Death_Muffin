@@ -2,8 +2,8 @@ class_name DmFxRing
 extends RefCounted
 ## Port of Effects.ts ParticleSystem: a CPU-simulated ring buffer of motes drawn as one MultiMesh of billboards per blend mode
 ## (additive "glow" ring of 3500, normal-blend "smoke" ring of 900). Same emit options, same alpha/size curves.
-## The rebuild's port (client/code.list "Ported"): the motes, their random starts and the per-frame loop are the combat core's `DmMotes` (C++, the same arithmetic and the same
-## randf stream: client/tests/fx_motes.gd compares the buffers with today's ring).
+## The motes, their random starts and the per-frame loop are the combat core's `DmMotes` (C++, the same arithmetic and the same
+## randf stream as the old GDScript ring: client/tests/fx_motes.gd compares the buffers).
 
 ## While at most SMALL_CAP motes are live only a small MultiMesh is drawn and uploaded (a full-ring buffer is 224 KB for the additive ring, and
 ## `MultiMesh.buffer` must always be the whole buffer). Both MultiMeshes are allocated once here and never resized; only visibility switches.

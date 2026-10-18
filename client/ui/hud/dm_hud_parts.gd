@@ -2,7 +2,7 @@ class_name DmHudParts
 extends RefCounted
 ## Tiny draw-only controls the HUD composes: diamond rows (thrall pips, upgrade milestone gems), the level badge, the screen-edge
 ## vignette, the "NEW" glow and the dark death wash.
-## Ported (client/code.list): vector shapes are triangle meshes (one draw call per widget, where each polygon, circle and outline was one) and rectangles come
+## Vector shapes are triangle meshes (one draw call per widget, where each polygon, circle and outline was one) and rectangles come
 ## from the HUD atlas (DmHudKit.rect), all on the z layers of DmHudKit.
 
 

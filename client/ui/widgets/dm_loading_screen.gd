@@ -1,6 +1,6 @@
 class_name DmLoadingScreen
 extends CanvasLayer
-## The one loading screen, shared by every loading moment from login to the first playable frame (the world build, DmWarmup's tour,
+## The one loading screen, shared by every loading moment from login to the first playable frame (the world build, DmNextWarmup's tour,
 ## DmGameUi's panel pre-build): the web's key-art splash (hooded necromancer raising skeletons before the cathedral), cover-fit, a dark
 ## gradient at the bottom, the status line and a progress bar in the game's fonts. One TextureRect + one gradient: nothing measurable per frame.
 ## Usage: `var ls := DmLoadingScreen.acquire(host, "text")` (returns the live one when a caller up the chain already showed it; `ls.owned`

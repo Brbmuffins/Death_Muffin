@@ -1,9 +1,8 @@
 class_name DmAffixRoll
 extends RefCounted
-## The director's roll of which elite affixes a new body gets: `DmAffixSet.roll` of today's game (godot/next/affixes/dm_affix_set.gd), unchanged. The
+## The director's roll of which elite affixes a new body gets: `DmAffixSet.roll` of the old game, unchanged. The
 ## rules the affixes then run by (the bell's ring and toll, Hungering's meals, the shroud, Vengeful's Risen) are in the combat core
-## (native/src/core/affixes.cpp); only the roll stays GDScript, so the director's random stream is the same as today's (native/README.md "Design").
-## When the roll changes in godot/, change it here.
+## (native/src/core/affixes.cpp); only the roll stays GDScript, so the director's random stream is the same as the old game's (native/README.md "Design").
 
 
 ## Which affixes a new body gets (the sim's spawn_enemy + spawn_at_breach). Elite: the Omen's affix when it forces one, else one of the four;

@@ -18,11 +18,11 @@ Tables (spell colours, presets, caps, catalog) are in `client/assets/fx/fx_data.
 - Effects are emission-heavy; the graphics preset owns the bloom (`DmWfxBloom`, client/README.md "Graphics presets"). `Vfx.binbun.gain` scales every Binbun shader's
   brightness (`dm_gain`); it stays 1 in the game (the gallery's `--gain` sets it).
 - Forward+ reads colours differently from the renderer these effects were built on: the particles' materials, the Fx layer's shaders and each Binbun shader's own `COLOR`
-  are converted so the effects look as before (client/README.md "The look against today's game").
+  are converted so the effects keep the look they were built with (client/README.md "The look on Forward+").
 - Decal render order = `render_priority` (friendly 2, hero 3, danger 4, particles 5, sprites/Binbun/beams 6). Do not give world transparent materials above 1.
 - After adding a `class_name`, run `godot --headless --path client --import` once.
-- Regenerating Binbun scenes: `tools/godot/fx-binbun-rebuild.ts`, `tools/godot/fx-sync-models.mjs` (need the private vendor packs, not in git); the client takes the result
-  through its asset list (client/README.md "Assets").
+- Regenerating Binbun scenes: `tools/godot/fx-binbun-rebuild.ts` rebuilds them from `public/fx/binbun/*.json` (the output of `tools/binbun-port.mjs`, which needs the private vendor packs, not in git) and writes `client/assets/fx/binbun/`;
+  `tools/godot/fx-binbun-unlit.ts` rewrites the committed shaders in place.
 
 ## API (all on the `Vfx` node)
 
@@ -60,8 +60,7 @@ Colours: `DmFxData.spell("miasma", "rot")` is `SPELL_FX.miasma.rot` (from `fx_da
 
 ## Flipbook sheets
 Animated sprite sheets from a licensed pack (ASSET_PIPELINE.md "Flipbook sheets"): greyscale intensity grids at
-`assets/fx/sheets/<id>.png`, **not in git**. `node tools/rebuild/sync-assets.mjs` copies them in from `~/death-muffin/private/fx-sheets/` (the lines under `fx/sheets/` of
-`client/assets.list`; run it once in a new worktree; client/README.md "Assets"); the client publish's prepare step (`server/death-muffin/test-channel/prepare-rebuild.sh`) runs it
+`assets/fx/sheets/<id>.png`, **not in git**. `bash tools/godot/fx-sheets-sync.sh` copies them in from `~/death-muffin/private/fx-sheets/` (run it once in a new worktree; client/README.md "Assets"); the client publish's prepare step (`server/death-muffin/test-channel/prepare-rebuild.sh`) runs it
 and fails if one is missing. A build made without the private folder (CI) has no sheets and draws the plain look.
 - Grid, frames, fps, loop: `fx_data.json` `sheets`, read by `DmFxData.sheet(id)`. Use the id as a texture name: `Vfx.flash({"tex": "hit_flash", ...})`
   plays the frames once over the flash's life at full size (fades the last quarter); `Vfx.decal({"tex": "summon_circle", ...})` plays once or,
@@ -79,7 +78,7 @@ partner effects at 0.35 alpha / 0.75 scale.
 ## Hot-path notes
 - `DmFxRing` owns two MultiMeshes per ring, both allocated once (full size and 256 motes, never resized). While <= 256 motes are live only the small one is drawn and uploaded
   (`MultiMesh.buffer` must be the whole buffer, so the 3500-mote ring cost 224 KB per frame even for a handful of motes); only visibility switches. The motes' random starts and their per-frame loop are
-  `DmMotes` (C++), proved float for float against the old GDScript ring.
+  `DmMotes` (C++).
 - Ground decals are records in `DmDecals` (C++): it ages, shapes and places them and writes each layer's instance buffer; `DmFxLayer` keeps the MultiMesh and its node (`show_count`, `grow`). `DmFxLayer.flush` still runs one loop per layer kind for the other kinds.
 - `Vfx.binbun` moves an effect's root only when it moved, tests a looping effect against the camera every third frame, and pushes fade and gain to its shaders only when they changed.
 - `_update_spikes` returns early (hiding once) when there are none.
@@ -99,9 +98,8 @@ GPUParticles3D trails and sub-emitters were unsupported (fire sparks render as p
 
 ## Gallery and tests
 - `godot --path client res://fx/gallery.tscn` (Left/Right page, R replay). Args after `--`: `--page=N --per=16 --out=file.png --t=0.6[,1.2] --ids=a,b --kind=binbun|prims --gain=1.0`.
-- `client/tests/fx_motes.gd` (the particle ring against the old ring, float for float) and `client/tests/fx_decals.gd` (the decals against the old ones: every drawn float, the counts, the handles and the cap of 160);
-  `client/tests/dressing.gd` holds the Binbun shaders' colour. Not covered in the client: that every Binbun scene instantiates and its length matches the converted data, the one-shot and looper caps, roles and the motif budget (the old game's fx suite).
-- Effect cost evaluation of the vendor packs: the harness is `client/fx/eval/eval_fx.gd`, run through `tools/godot/fx-eval-setup.sh` and `tools/godot/fx-eval-run.sh` (the vendor sources are private).
+- `client/tests/fx_motes.gd` (the particle ring: every float of its buffer) and `client/tests/fx_decals.gd` (the decals: every drawn float, the counts, the handles and the cap of 160);
+  `client/tests/dressing.gd` holds the Binbun shaders' colour.
 
 ## Known gaps
 KNOWN-GAPS.md "Performance" (pooled MultiMeshes with no instance, decals one draw call each, `DmFxBinbun.update` walking every live effect) and "Built but never shown" (the water's ripples, the Prelate's candle groups).

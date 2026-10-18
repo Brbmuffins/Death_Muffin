@@ -1,6 +1,6 @@
 class_name DmMain
 extends Node
-## Game entry (main scene) of the rebuilt client: a port of godot/main/main.gd (client/code.list "Ported"). Boot -> DmFrontFlow (login / discipline select) against the TEST
+## Game entry (main scene) of the rebuilt client. Boot -> DmFrontFlow (login / discipline select) against the TEST
 ## server (DmConfig.API_BASE: DECISIONS B38, the live server is never touched before launch day) -> DmNextGame with the chosen character, its bag and its progression.
 ## Only the four necromancer disciplines and the Reaper are playable (DmCharacterBuild.is_playable); a character of another discipline is sent to the discipline
 ## switch by the front flow.
@@ -12,15 +12,15 @@ extends Node
 ## `--benchmark`: runs the in-game benchmark straight away on an isolated offline game (DmBenchmark, no login; `--bench-room=`, `--bench-class=`, `--bench-size=`,
 ## `--bench-length=` pick the setup, default the Standard one, `--bench-warm=` / `--bench-measure=` shorten it, `--baked=<dir>` names the baked crowd models) and stays on the
 ## results screen with a Quit button (a headless run quits by itself). A room or class the benchmark does not list is refused with a message and exit code 2. Release builds then
-## send the run, to the TEST server, with the saved login, if any, unless `--bench-dir=<dir>` keeps the run's files (report, history, queue, last setup) in a folder of its own: a trial,
+## send the run, to the game's server, with the saved login, if any, unless `--bench-dir=<dir>` keeps the run's files (report, history, queue, last setup) in a folder of its own: a trial,
 ## which sends nothing. The character select screen's Benchmark button opens the setup window (DmBenchmarkSetup) first.
 ## `start_opts` (set before add_child; tests) are merged over DmNextGame.start's options.
 ##
-## Co-op as today's: the party's `join_ready` hands the solo game over to a guest game on the same lobby socket, and a guest whose session ended (or whose join failed) is
+## Co-op: the party's `join_ready` hands the solo game over to a guest game on the same lobby socket, and a guest whose session ended (or whose join failed) is
 ## put back in its own world with the reason on screen (client/README.md "Co-op on the core").
-## The panels' hand-overs as today's: Log out (final save, the token dropped, the login screen), Switch character (final save, the select screen with the same token) and a
+## The panels' hand-overs: Log out (final save, the token dropped, the login screen), Switch character (final save, the select screen with the same token) and a
 ## discipline change from the class panel (final save, the game restarts with the changed character).
-## The automatic crash report as today's (since launch day, 2026-10-18): a release build's lock (DmCrashWatch) still there at the next start sends the last run's crash
+## The automatic crash report (since launch day, 2026-10-18): a release build's lock (DmCrashWatch) still there at the next start sends the last run's crash
 ## as a bug report once the player is in an online world (`_send_crash_report`).
 
 const DEV_OFFLINE_DB := "user://dm_dev_offline_db.json"    ## --dev-offline testing backend (the same file the dev entry uses)
@@ -143,7 +143,7 @@ static func qa_wanted(args: PackedStringArray, mode_: String, debug_build: bool 
 
 
 ## Testing: the QA driver (main/qa_driver.gd) as the child Driver, which finds the game this boot makes. It is loaded here, by path, and never named: it names most of the game (compiling it took
-## every start about 5 s in today's game, which registered it as an autoload stub), so no other start pays for it. The project file registers no autoload for it: `client/project.godot` is an input
+## every start about 5 s in the old game, which registered it as an autoload stub), so no other start pays for it. The project file registers no autoload for it: `client/project.godot` is an input
 ## of the art pack's fingerprint.
 func start_qa() -> void:
 	var d: Node = load("res://main/qa_driver.gd").new()
@@ -217,7 +217,7 @@ func _open_benchmark_setup() -> void:
 	add_child(top)
 
 
-## The api the benchmark sends its runs with: the logged-in online one from the character select (the TEST server's: the transport refuses any other address, net/dm_config.gd);
+## The api the benchmark sends its runs with: the logged-in online one from the character select (the live server's: the transport refuses any other address, net/dm_config.gd);
 ## for `--benchmark` (no login screen) a release build's saved login. null (dev-offline, tests, debug builds, a trial with its own `--bench-dir=`, never logged in) = the run waits in
 ## DmBenchHistory's queue.
 func _bench_upload_api() -> DmApi:
@@ -290,7 +290,7 @@ static func token_username(token: String) -> String:
 	return "You"
 
 
-## What a character's build is made from, read from the server as today's game reads it (the HUD's bag load and DmProgressSync.connect_server): the bag's rows (worn gear,
+## What a character's build is made from, read from the server as the HUD's bag load and DmProgressSync.connect_server read it: the bag's rows (worn gear,
 ## set bonuses) and the progression (damage and legion tier, boons, vows). Reads only: nothing is written, imported or created. {ok, error, slots, local}. An older
 ## server without the progress route (404) plays with the base numbers; any other failure is the server's own player-readable error.
 static func load_build(api_: DmApi, character: Dictionary) -> Dictionary:
@@ -312,7 +312,7 @@ static func load_build(api_: DmApi, character: Dictionary) -> Dictionary:
 func _enter_world(character: Dictionary, session) -> void:
 	api = session
 	if mode == "online" and DmBenchHistory.pending_count() > 0:
-		DmBenchHistory.flush(api)   # benchmark runs that could not be sent before (no login, no network), to the test server; not awaited
+		DmBenchHistory.flush(api)   # benchmark runs that could not be sent before (no login, no network); not awaited
 	if flow != null:
 		flow.queue_free()
 		flow = null
@@ -330,7 +330,7 @@ func _enter_world(character: Dictionary, session) -> void:
 
 
 ## DmNextGame behind the same key-art loading screen (it paints before the synchronous world build; it fades out once the game is ready). A game that refuses to
-## start (an api that is not the test server's) is dropped and the login screen says why. `join`: {lobby} starts a guest game on that seated lobby socket (a refused or
+## start (an api that is not the live server's) is dropped and the login screen says why. `join`: {lobby} starts a guest game on that seated lobby socket (a refused or
 ## lost join lands the player in their own world again), {notice} is the line the new game shows on arrival.
 func _enter_next(character: Dictionary, loading: DmLoadingScreen, build: Dictionary, join: Dictionary = {}) -> void:
 	_build = build

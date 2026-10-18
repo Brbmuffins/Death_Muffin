@@ -1,7 +1,6 @@
 class_name DmNextParty
 extends Node
-## Child "Party" of DmNextGame (every peer, same NodePath: its RPCs live here). The lobby side of 2-player co-op on the rebuilt client (a port of godot/next/party/dm_next_party.gd,
-## client/code.list "Ported"): a public list of Open sessions, Closed (invite-only) parties, hosting that turns the running solo session into a hosted one, joining that hands the
+## Child "Party" of DmNextGame (every peer, same NodePath: its RPCs live here). The lobby side of 2-player co-op on the rebuilt client: a public list of Open sessions, Closed (invite-only) parties, hosting that turns the running solo session into a hosted one, joining that hands the
 ## player to the host's session, the roster / kick / Open-Closed controls, the guest's profile, and friends over the lobby (DECISIONS B18): presence, invites, asks to join.
 ## It talks to the TEST lobby and relay only (DmConfig.LOBBY_URL, DmConfig.allows_lobby_url / allows_relay): never the live ones before launch day (DECISIONS B38).
 ##
@@ -9,7 +8,7 @@ extends Node
 ##   Host   `host_session()` -> lobby `create` -> DmRelayPeer.host -> DmSession.swap_transport(relay): the world, the body and the fight stay; a guest comes in through the session's hello.
 ##   Guest  `join_*()` -> lobby `join` -> `join_ready(lobby, info)`: the shell starts a guest DmNextGame (`opts.lobby`) on that socket (README "Co-op on the core", "Joining").
 ##
-## Everything a panel shows comes from `view()` (the contract of today's party pane); `changed` fires on any change. Errors are one place (`ERROR_TEXT`, `CLOSE_TEXT`).
+## Everything a panel shows comes from `view()` (the contract of DmPartyPane); `changed` fires on any change. Errors are one place (`ERROR_TEXT`, `CLOSE_TEXT`).
 ## The friends list itself is DmNextFriends (the backend's friends routes, the Social window's Friends tab); a friendship it changes is announced through the lobby here (`friends_changed`).
 
 signal changed

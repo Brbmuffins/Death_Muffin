@@ -1,4 +1,4 @@
-// Elite affixes: the host rules of DmAffixSet (godot/next/affixes/dm_affix_set.gd), line for line. The look (rings, motes, the one-off bursts)
+// Elite affixes: the host rules of the old game's DmAffixSet, line for line. The look (rings, motes, the one-off bursts)
 // stays with the client, driven by EV_AFFIX_MOMENT and EV_TELEGRAPH. Rolling stays with the director (DmAffixSet.roll); spawn_enemy takes the list.
 #include "world.h"
 
@@ -24,8 +24,8 @@ void World::tick_affixes(int32_t p_slot, double p_dt) {
 	if (e.affixes & (1 << AF_BELL_TOLLED)) {
 		tick_bell(e, p_dt);
 	}
-	// The toll can kill a bursting thrall whose burst kills this body. Today the hunger check still runs then and can feed the dead body;
-	// the core stops at death (native/README.md "Differences").
+	// The toll can kill a bursting thrall whose burst kills this body. The old game's hunger check still ran then and could feed the dead body;
+	// the core stops at death (native/README.md "Affixes").
 	if ((e.affixes & (1 << AF_HUNGERING)) && e.state != DEAD) {
 		tick_hunger(e, p_dt);
 	}
@@ -38,7 +38,7 @@ void World::tick_bell(Enemy &e, double p_dt) {
 			e.toll_at = -1.0;
 			// DmEnemy.targets_within: every valid target (heroes, then living thralls) within r, flat, in doubles; then each is hit.
 			// Its own list: a thrall's death burst runs queries that reuse the shared scratch. The table never moves inside the tick
-			// (flush_spawns), so `e` holds even when that burst kills this body; the toll still sounds, as today.
+			// (flush_spawns), so `e` holds even when that burst kills this body; the toll still sounds.
 			const double r2 = tun.bell_r * tun.bell_r;
 			toll_hits.clear();
 			each_target([&](const Tgt &t) {
@@ -125,7 +125,7 @@ bool World::strip_shroud(int32_t p_slot) {
 	return true;
 }
 
-// Vengeful, inside the kill: the burst, then `risen` Risen on a 1.4 m ring at a random turn (the body's own stream; today an unseeded randf),
+// Vengeful, inside the kill: the burst, then `risen` Risen on a 1.4 m ring at a random turn (the body's own stream; the old game's was an unseeded randf),
 // snapped to the navmesh, at the body's level and hp/damage multipliers, in its area, rising. They join the table in flush_spawns().
 void World::vengeance(Enemy &e) {
 	affix_moment(e, AM_VENGEFUL, e.x, e.z, 0.0f, 0.0f, 1.8f);

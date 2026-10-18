@@ -1,6 +1,6 @@
 extends Node
 ## AudioDirector: the Godot port of archive/legacy-web:src/audio/Audio.ts (AudioEngine). Register as an autoload named "AudioDirector"
-## (project.godot: AudioDirector="*res://audio/audio_director.gd"). Public API is documented in godot/audio/README.md.
+## (project.godot: AudioDirector="*res://audio/audio_director.gd"). Public API is documented in client/audio/README.md.
 ##
 ## Buses (created at runtime, no bus layout file): Master <- Combat, Enemies, Thralls, Ui, Ambience, Music. Every sound plays on a
 ## pooled AudioStreamPlayer routed through a per-voice pan bus into its category bus. All maths (caps, thinning, repeats,

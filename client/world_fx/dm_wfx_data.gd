@@ -1,6 +1,6 @@
 class_name DmWfxData
 extends RefCounted
-## godot/data/world_fx/fx.json: windows, silhouettes, flames, mist, Atmosphere profiles, water inputs,
+## client/data/world_fx/fx.json: windows, silhouettes, flames, mist, Atmosphere profiles, water inputs,
 ## bloom, wing table. Everything the dressing draws comes from here; nothing is retyped.
 
 static var _d: Dictionary = {}

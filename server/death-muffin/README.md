@@ -1,6 +1,6 @@
 # Death Muffin server
 
-Backend and operations for Death Muffin. The game is the Godot client (`godot/`), online only; the Windows launcher is `launcher/windows`. Public site:
+Backend and operations for Death Muffin. The game is the Godot client (`client/`, with its combat core in `native/`), online only; the Windows launcher is `launcher/windows`. Public site:
 https://muffindevelopment.com/death-muffin/ (launcher download, patch notes, leaderboard, benchmarks).
 
 ## Services
@@ -9,9 +9,9 @@ https://muffindevelopment.com/death-muffin/ (launcher download, patch notes, lea
 |---|---|---|---|---|
 | Auth + game API | 5190 (127.0.0.1) | `backend/server.js` | `systemd/death-muffin-auth.service` | Express, MySQL database `death_muffin`, own `JWT_SECRET`. Health: `GET /health`, `GET /api/health` |
 | Lobby + packet relay | 5192 (127.0.0.1) | `lobby/` | `lobby/deathmuffin-lobby.service` | WebSocket session list and host-to-client relay for 1-4 player sessions; see `lobby/README.md` |
-| Test backend (rebuild) | 5194 (127.0.0.1) | the live backend's code | `test-server/death-muffin-auth-test.service` | Database `death_muffin_test`, own user and `JWT_SECRET`, copies of the team's accounts; public at `/death-muffin/test-api/`; see `test-server/README.md` |
-| Test lobby and relay (rebuild co-op) | 5195 (127.0.0.1), 5196/udp (public) | the live lobby's and relay's code, own copies | `test-server/coop/*.service` | Authenticate against the test backend; installed 2026-10-16 (Helix's OK); public at `/death-muffin/test-lobby/`; see `test-server/coop/README.md` |
-| UDP co-op relay | 5193/udp (public) | `relay/`, `godot/net/relay/dm_udp_relay.gd` | `relay/deathmuffin-relay.service` | ENet lane next to the lobby WebSocket, entered with a lobby ticket; see `relay/README.md` |
+| Test backend (test builds) | 5194 (127.0.0.1) | the live backend's code | `test-server/death-muffin-auth-test.service` | Database `death_muffin_test`, own user and `JWT_SECRET`, copies of the team's accounts; public at `/death-muffin/test-api/`; see `test-server/README.md` |
+| Test lobby and relay (test builds' co-op) | 5195 (127.0.0.1), 5196/udp (public) | the live lobby's and relay's code, own copies | `test-server/coop/*.service` | Authenticate against the test backend; installed 2026-10-16 (Helix's OK); public at `/death-muffin/test-lobby/`; see `test-server/coop/README.md` |
+| UDP co-op relay | 5193/udp (public) | `relay/`, `client/net/relay/dm_udp_relay.gd` | `relay/deathmuffin-relay.service` | ENet lane next to the lobby WebSocket, entered with a lobby ticket; see `relay/README.md` |
 
 Ports 5195-5199 are reserved for this project (:5191 is unused); 5195 and 5196 are the test lobby and relay.
 
@@ -38,11 +38,10 @@ Both services run as `ubuntu` from `/home/ubuntu/death-muffin/{backend,lobby}` (
 | `deploy-release.sh [--if-changed] [rev] [migration.sql ...]` | Deploys the **backend only** from a committed revision (default `HEAD`; refuses a rev that does not contain `origin/main` unless `ALLOW_BEHIND_MAIN=1`, which is how you roll back). Exports the rev with `git archive`, runs `npm run test:rules` and `npm run test:server`, dumps the database, writes a `ROLLBACK.sh`, applies every pending migration (`migrate.sh`, below; naming files is optional), copies the backend code to `/home/ubuntu/death-muffin/backend/`, restarts `death-muffin-auth`, checks health (a failure after the install runs `ROLLBACK.sh` on its own and exits 1), then runs `announce-release.sh` in QUIET mode (`NO_ANNOUNCE=1` skips it). `--if-changed` (no migrations named) exits doing nothing when every server file the rev installs is byte-identical to the installed copy and no migration is pending; the Discord agent's Godot ships run it that way before the client publish. Takes `~/death-muffin/deploy/.deploy.lock`. Does not publish the client and does not restart the lobby. |
 | `deploy-lobby.sh [--if-changed] [--wait MIN] [--force] [rev]` | Deploys the **lobby only** from a committed revision (default `HEAD`; refuses a rev that does not contain `origin/main` unless `ALLOW_BEHIND_MAIN=1`). Exports `server/death-muffin/lobby` with `git archive`, runs its tests and `node --check`, waits up to `--wait` minutes (default 30) for `/health` to show 0 sessions because a restart ends every party (exit 3 and nothing installed if it never empties; `--force` restarts anyway), backs up the installed copy with a `ROLLBACK.sh`, installs the lobby code, package files and README (`npm ci` only when the lockfile changed), restarts `deathmuffin-lobby` and checks `/health` (a failure after the install began runs `ROLLBACK.sh --force` on its own and exits 1). `--if-changed` exits doing nothing when the installed code and package files already match (a README-only change never restarts it); the Discord agent's Godot ships run it that way after the backend. Takes `~/death-muffin/deploy/.deploy.lock`. |
 | `publish-godot-client.sh <git-rev>` | Exports the `Windows Desktop` preset of the Godot project (Godot 4.7.2 at `/home/ubuntu/tools/godot/godot`) from a committed revision into `/var/www/death-muffin/client/<version>/`, then writes `manifest.json` last and atomically (SHA-256 of every file plus the `online` block, which is carried over from the live manifest). Keeps the newest two builds. `res://assets` ships as `DeathMuffin.assets.pck` (`tools/godot/assets-pack.sh`), reused from `~/death-muffin/deploy/assets-cache/` while its fingerprint (assets, export settings, Godot version, pack tools) is unchanged, so most releases change only `DeathMuffin.pck` (~14 MB) and the launcher keeps the rest. Keeps the combat core's debug symbols of each build in `~/death-muffin/symbols/<version>/` (the newest 40) for `tools/crash/symbolize.mjs` (native/README.md "Crash notes"). |
-| `launch-undo.sh [--check]` | Until the old game's code goes (DECISIONS B40, B49, B57): puts the last build of the old game (`godot/`, kept in `/home/ubuntu/death-muffin/launch-undo`) back as the live client. The backend, lobby and relay need nothing. |
 | `publish-launcher.sh <version>` | Makes a launcher release live for self-update (DECISIONS B33): takes `DeathMuffinLauncher.exe` from the GitHub release `launcher-v<version>` (built by `.github/workflows/launcher-windows.yml` from `main`), copies it to `/var/www/death-muffin/launcher/<version>/` and writes the launcher `manifest.json` (served at /death-muffin/launcher/) last and atomically (`version, url, size, sha256`). Refuses a version that is not newer than the live one (a rollback is the old code under a new version). Keeps the newest two. |
 | `set-online.sh on\|staff\|off ["message"]` | Edits only the `online` block of the live `manifest.json`: `on` = everyone, `staff` = staff accounts only, `off` = nobody (the message is shown as the lock). The launcher, the game and the lobby (if `DM_LOBBY_MANIFEST` is set) re-read it within about a minute; no release needed. |
 
-Test build channel and test backend for the rebuild (DECISIONS B38): [test-channel/README.md](test-channel/README.md), [test-server/README.md](test-server/README.md).
+Test build channel and test backend for test builds (DECISIONS B38, B53): [test-channel/README.md](test-channel/README.md), [test-server/README.md](test-server/README.md).
 
 ### Release flow
 
@@ -69,7 +68,7 @@ Real credentials, the initial schema and test accounts are not in Git.
 ## Shared rules
 
 `server/rules/` (TypeScript) is the server-side source of truth for content and rule tables; `npm run build:server-rules` bundles it into
-`backend/gathering/*-rules.cjs` and `server/vps-handoff/necro-progress/necro-rules.cjs`. Never edit those `.cjs` files by hand. See `rules/README.md`. The Godot port of the rules is `godot/rules/`.
+`backend/gathering/*-rules.cjs` and `server/vps-handoff/necro-progress/necro-rules.cjs`. Never edit those `.cjs` files by hand. See `rules/README.md`. The game's port of the rules is `client/rules/`.
 `server/vps-handoff/necro-progress/` holds the necromancer progression routes, store and schema, installed into `backend/necro-progress/` by `deploy-release.sh`.
 
 ## Server authority
@@ -141,7 +140,7 @@ The public page is `site/benchmarks.html` (`benchmarks.js`): filters (default: e
 ## Tests
 
 From the repository root: `npm run test:rules` (shared rules), `npm run test:server` (backend, necro-progress and freshness checks of the generated bundles). Lobby: `cd server/death-muffin/lobby && npm install && npm test`.
-Backend dependencies: `npm ci` inside `backend/`. The Godot suites are run by `tools/godot/run-all-tests.sh`.
+Backend dependencies: `npm ci` inside `backend/`. The Godot suites are run by `tools/rebuild/run-client-tests.sh`.
 
 ## Ops jobs
 

@@ -1,7 +1,7 @@
 # Audio sources
 
-Every audio file the game ships, with its origin and licence. The masters are in `public/audio/`; `tools/godot/sync-audio-assets.sh` copies them into
-`godot/assets/audio/` (Opus clips become WAV there because Godot cannot import Opus). Paths below are the `public/audio/` masters.
+Every audio file the game ships, with its origin and licence. The masters are in `public/audio/`; the game's copies are in `client/assets/audio/`
+(Opus clips became WAV there because Godot cannot import Opus). Paths below are the `public/audio/` masters.
 
 ## Policy
 
@@ -9,12 +9,12 @@ Game sound comes from one licensed library: **Epic Stock Media "Fantasy Game"** 
 owner (Muffin Development) holds the royalty-free licence; the clips are used in-game only. **The source library is not
 redistributed**: this repository contains only the short, trimmed, re-encoded clips the game plays (below), never the pack's
 WAVs, images, documents or demo track, and never a full-length original. Anything the pack has no fit for stays on the
-earlier sounds listed under "Kept" (Kenney CC0 bells, generated accents, WebAudio synthesis). Do not add other third-party
+earlier sounds listed under "Kept" (Kenney CC0 bells, generated accents, runtime synthesis). Do not add other third-party
 audio without recording its licence here.
 
 ## `public/audio/esm/` (the Epic Stock Media clips)
 
-- **What plays when** is the audio map in `godot/audio/audio_map.gd` (see `client/audio/README.md`). Clip names there are `folder/name` from the pack's own
+- **What plays when** is the audio map in `client/audio/audio_map.gd` (see `client/audio/README.md`). Clip names there are `folder/name` from the pack's own
   file list (`docs/audio/esm-fantasy-game-files.txt`, prefix stripped).
 - **Built** from the owner's copy of the pack (`/home/ubuntu/death-muffin/audio-src/fantasy-game`) by a script that is no longer in this repo
   (`tools/audio/build-esm.mjs`, see git history before 2026-10-09). The shipped files are the clips the map names (318 clips for 181 sounds). Per clip: mono, 48 kHz; leading silence trimmed; cut to the longest length any
@@ -45,7 +45,7 @@ The Kenney clips are CC0 1.0 (credit not required; "Kenney (kenney.nl)" given an
 The original five beds were generated in ffmpeg (no source recording): filtered noise,
 equal-power crossfaded tail-to-head into a seamless 12 s loop, a periodic swell on top,
 mono 24 kHz Ogg Vorbis. The engine varies loops per zone through playback rate, low-pass
-and gain (`godot/audio/audio_ambience.gd`).
+and gain (`client/audio/audio_ambience.gd`).
 
 | File | Recipe |
 |---|---|
@@ -57,9 +57,9 @@ and gain (`godot/audio/audio_ambience.gd`).
 
 `bed_rain.ogg` and `bed_flame.ogg` were generated for Death Muffin with ElevenLabs Sound Effects v2 on 2026-10-04 using the owner's paid Creator account. Their source MP3s and request metadata are kept privately under `/home/ubuntu/death-muffin/private/ambience-drafts/`; prompts are in `tools/audio/generate-eleven-ambience.mjs`. `tools/audio/prepare-eleven-ambience.mjs` makes compact 24 kHz mono Vorbis loops and limits peaks. Rain plays in the Graves, Cloister, and Fen; flames play at the Pyre and in the Alchemist's Wing. See the [Sound Effects API](https://elevenlabs.io/docs/api-reference/text-to-sound-effects/convert) and [ElevenLabs terms](https://elevenlabs.io/terms-of-use).
 
-## `public/audio/music/` -> `godot/assets/audio/music/` (original game score)
+## `public/audio/music/` -> `client/assets/audio/music/` (original game score)
 
-Five original instrumental cues were generated for Death Muffin with Eleven Music v2.5 on 2026-10-04 using the owner's paid Creator account. The prompts are in `tools/audio/generate-eleven-music.mjs`; original MP3s and request metadata are private in `/home/ubuntu/death-muffin/private/music-drafts/`. `tools/audio/prepare-eleven-music.mjs` makes 160 kbps MP3 game loops with a 5 s overlap and a consistent loudness target. The game streams one cue at a time, crossfades on area or boss changes, and has a separate Music slider (`godot/audio/`).
+Five original instrumental cues were generated for Death Muffin with Eleven Music v2.5 on 2026-10-04 using the owner's paid Creator account. The prompts are in `tools/audio/generate-eleven-music.mjs`; original MP3s and request metadata are private in `/home/ubuntu/death-muffin/private/music-drafts/`. `tools/audio/prepare-eleven-music.mjs` makes 160 kbps MP3 game loops with a 5 s overlap and a consistent loudness target. The game streams one cue at a time, crossfades on area or boss changes, and has a separate Music slider (`client/audio/`).
 
 | Shipped file | ElevenLabs song ID | Intended areas |
 |---|---|---|
@@ -71,7 +71,7 @@ Five original instrumental cues were generated for Death Muffin with Eleven Musi
 
 The owner confirmed on 2026-10-04 that Death Muffin is not currently monetized. ElevenLabs' [Music Model-Specific Terms](https://elevenlabs.io/eleven-music-model-specific-terms) exclude monetized games offered on more than one platform from Creator media rights, and list Creator as an individual-use plan. Recheck the distribution plan and rights before monetizing the game or transferring its music to an entity.
 
-## Discord agent sounds: `godot/assets/audio/eleven/`
+## Discord agent sounds: `client/assets/audio/eleven/`
 
 The Discord agent generates these with ElevenLabs (Sound Effects v2, or Eleven Music for music) on the owner's paid account, the account
 and terms of the beds and the score above (the music rights note above covers the agent's music too). The raw takes stay private and out of
@@ -80,11 +80,9 @@ levels the chosen take to the game's loudness (-20 LUFS, peaks at most -1.5 dBTP
 
 | File | Made | Spec |
 |---|---|---|
-| `godot/assets/audio/eleven/chat_ping.wav` | ElevenLabs Sound Effects, 2026-10-13 | [chat_ping.json](../audio-manifest/eleven/chat_ping.json) |
-| `godot/assets/audio/eleven/chat_toll.wav` | ElevenLabs Sound Effects, 2026-10-13 | [chat_toll.json](../audio-manifest/eleven/chat_toll.json) |
-| `godot/assets/audio/eleven/chat_ding.wav` | ElevenLabs Sound Effects, 2026-10-13 | [chat_ding.json](../audio-manifest/eleven/chat_ding.json) |
+| `client/assets/audio/eleven/chat_ding.wav` | ElevenLabs Sound Effects, 2026-10-13 | [chat_ding.json](../audio-manifest/eleven/chat_ding.json) |
 
-chat_ping and chat_toll are the party chat's earlier sounds, replaced by chat_ding the same day; nothing plays them.
+The specs `chat_ping.json` and `chat_toll.json` are the party chat's earlier sounds, replaced by chat_ding the same day; the game never shipped them.
 
 ## Removed: `public/audio/crossworlds/`
 
@@ -96,5 +94,5 @@ clips). Do not add recordings of unclear origin.
 
 ## Synthesised sound
 
-Sounds not listed above (fallbacks, tones, noise bursts, the low-health heartbeat) are generated at runtime by the audio engine in `godot/audio/`; there is no
-source file.
+The zone drones and the boss war-drum pulse are generated at runtime by the audio engine (`client/audio/audio_synth.gd`); there is no
+source file. No other sound is synthesised: an id with no clip is silent.

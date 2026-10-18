@@ -1,8 +1,8 @@
 class_name DmNextLoot
 extends Node
-## The local player's loot and bag on the rebuilt client (child "Loot" of DmNextGame; client-only, not a copy): the ground drops of this player's rewards
-## member and the bag they land in. Today's DmNextUiHost does this inside the panels' adapter; here it stands on its own, so value works before the panels
-## exist (the panels item's adapter reads `inventory` from here). The code is today's (DmNextUiHost's take, pickup, claim and rune-ownership paths):
+## The local player's loot and bag on the rebuilt client (child "Loot" of DmNextGame): the ground drops of this player's rewards
+## member and the bag they land in. It stands on its own, not inside the panels' adapter (DmNextUiHost), so value works before the panels
+## exist (the panels item's adapter reads `inventory` from here). It does the take, pickup, claim and rune-ownership paths of a drop:
 ##   - a click on a drop (DmNextInput: loot_click / loot_hover / loot_cancel) walks the hero there; the drop is taken on arrival (loot never flies);
 ##   - a drop from the member's tape is CLAIMED: the server rolls the same event and puts its own roll in the bag (`api.drops_claim`, DECISIONS B20); a piece a party member
 ##     dropped on the session's ground is picked up (`api.ground_pickup`: the first pickup wins, the party's other copies go);
@@ -283,7 +283,7 @@ func _loot_toast(it: Dictionary, meta: Dictionary) -> void:
 	event.emit("loot", {"name": nm, "qty": int(it.get("quantity", 1)), "rarity": DmLootView.rarity_of(it)})
 
 
-## What DmItemText compares a new piece against: the character, the bag and the build's discipline and legion (today's DmNextUiHost.stat_context).
+## What DmItemText compares a new piece against: the character, the bag and the build's discipline and legion.
 func _stat_context() -> Dictionary:
 	var b := game.build_for(game.session.get_my_id())
 	var local: Dictionary = game.progress.prog.local if game.progress != null else game.server_local

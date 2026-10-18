@@ -1,10 +1,9 @@
 # Death Muffin: agent rules
 
-Death Muffin is one game: the Godot 4 client in `client/` (the rebuild, live since 2026-10-18, DECISIONS B49), played online against
-`server/death-muffin/`. `godot/` is the old game, kept only until nothing depends on it (B57); most of `client/`'s GDScript is still synced
-from it (`tools/rebuild/sync-code.mjs`), so a fix to a copied file goes into `godot/` and is synced. Read
-[README.md](README.md) (layout, run, test, release), [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNOWN-GAPS.md](KNOWN-GAPS.md)
-and the README of any `godot/next/` system before changing it. Tag `archive/legacy-web` is the retired web game: history only, do not port from it.
+Death Muffin is one game: the Godot 4 client in `client/` with its C++ combat core in `native/` (live since 2026-10-18, DECISIONS B49), played
+online against `server/death-muffin/`. Read [README.md](README.md) (layout, run, test, release), [ROADMAP.md](ROADMAP.md),
+[DECISIONS.md](DECISIONS.md), [KNOWN-GAPS.md](KNOWN-GAPS.md) and the README of any system before changing it (client/README.md lists them).
+Tags `archive/legacy-web` (the retired web game) and `archive/old-game` (the first Godot game, B57) are history only: do not port from them.
 
 ## Your role: the game's expert
 
@@ -33,7 +32,7 @@ things the correct way."
 
 Never deploy, publish a client, or flip `set-online.sh` without passing checks for what you touched:
 
-- Commands for Godot, server, lobby and launcher tests: README.md "Tests". Run the one suite you touched while developing. Before a release (dev build, owner 2026-10-10): the suites the change can affect plus the smoke set (`tools/godot/run-all-tests.sh --only $(node tools/godot/affected-suites.mjs)`); the full set for backend deploys and for server, net, login/session/save or central changes.
+- Commands for Godot, server, lobby and launcher tests: README.md "Tests". Run the one suite you touched while developing. Before a release (dev build, owner 2026-10-10): the suites the change can affect plus the smoke set (`tools/rebuild/run-client-tests.sh --only $(node tools/rebuild/affected-suites.mjs | paste -sd, -)`); the full set for backend deploys and for server, net, login/session/save or central changes.
 - Backend deploys only through `deploy-release.sh`, the lobby only through `deploy-lobby.sh`, the client only through `publish-godot-client.sh` (README.md "Export, publish, deploy").
   Migrations must be additive and idempotent; `migrate.sh` records each applied file in `schema_migrations`, so never edit one that is applied (add a new file).
 - Shared VPS: run at most one rendered (software-GL) Godot or one headless browser at a time, and not the full suite in
@@ -74,10 +73,10 @@ Never deploy, publish a client, or flip `set-online.sh` without passing checks f
   to ROADMAP "Ideas" (dated, with the section it would belong to). Don't act on them. A ROADMAP item says what kind it is: Fix (what happens now and what it will be after), New (what
   it gives) or Decide (the question and Claude's recommendation).
 - Online is the default start. For tests and screenshots use `-- --dev-offline` (`--class=N` enters directly).
-- Godot GDScript: `class_name Dm*`, one source of truth for content in `godot/data` and `godot/rules`; no speculative
+- Godot GDScript: `class_name Dm*`, one source of truth for content in `client/data` and `client/rules`; no speculative
   abstraction; remove temporary code. Commit the `.import` files and `.uid` files Godot generates for new assets/scripts.
 - Rule sources are `server/rules/*.ts`; after editing run `npm run build:server-rules` and commit the regenerated `.cjs`.
-- Discipline indices 1 Ossuary, 2 Gravecaller, 3 Mourner, 4 Rotweaver are the playable set. `godot/data/combat/disciplines.json`
+- Discipline indices 1 Ossuary, 2 Gravecaller, 3 Mourner, 4 Rotweaver are the playable set. `client/data/combat/disciplines.json`
   (`by_index`), `server/rules/content/disciplines.ts` and `MAX_DISCIPLINE_INDEX` in `backend/server.js` must agree.
 
 ## Keeping it clean (owner, 2026-10-09: "I want to avoid having to do this again")

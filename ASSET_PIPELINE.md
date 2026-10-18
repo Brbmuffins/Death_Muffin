@@ -7,12 +7,12 @@ exists. Every generation step is scripted and resumable, and spend is reported p
 concept (Gemini)     art-src/concepts/<id>.png       <- art-manifest/gemini-jobs/*.json
   -> 3D + rig (Tripo) art-src/tripo/<id>/*.glb         <- art-manifest/tripo-specs/<id>.json
   -> build            public/models/<id>/character.glb   (props: public/models/props/<id>.glb)
-  -> sync into Godot  godot/assets/...                  (tools/godot/sync-*.sh|mjs)
-  -> import           godot --headless --path godot --import   (commit the .import files)
+  -> into the game    client/assets/...                 ("Into the game" below)
+  -> import           godot --headless --path client --import   (commit the .import files)
 ```
 
 `art-src/` holds raw outputs and is gitignored. `public/` is the optimized source store. `art-manifest/` is committed and records
-prompts, task ids and credits. `godot/assets/` is what the game loads.
+prompts, task ids and credits. `client/assets/` is what the game loads.
 
 ## Keys and spend
 
@@ -50,14 +50,16 @@ ignored:
 `node tools/tint-variants.mjs [base]`. Free animation: `node tools/blender.mjs` writes `anim_<name>.glb` from code (gaits,
 rig fixes, CC0 retargets); see `docs/BLENDER-PIPELINE.md`.
 
-## Sync into Godot
+## Into the game
 
-- UI and ability icons, omens, portraits, status icons: `tools/godot/sync-ui-art.sh`, `tools/godot/sync-game-art.sh`.
-- Audio: `tools/godot/sync-audio-assets.sh` (Opus to WAV; Godot cannot import Opus; Vorbis and MP3 are copied as is).
-- Models and textures: `tools/godot/sync-slice-assets.mjs` copies the files named in `godot/data/slice/assets_used.json`
-  into `godot/assets/slice/` and dequantizes the GLBs (Godot rejects `KHR_mesh_quantization`). See KNOWN-GAPS.md: the exporter
-  that wrote `assets_used.json` was removed, so edit that file by hand when you add a model. `tools/godot/fx-sync-models.mjs` does the same for FX models.
-- Then `godot --headless --path godot --import` and commit the generated `.import` files. Textures used in 3D (model textures, floors, FX sprites)
+The game's files are in `client/assets/` (committed; the masters of older art and sound stay in `public/`).
+- Models: `server/death-muffin/discord-agent/build-art.sh <id>` (the Discord agent's step, also usable by hand) runs `tools/build-characters.mjs`
+  and writes the GLB into `client/assets/slice/models/` dequantized (Godot rejects `KHR_mesh_quantization`). Add a new model's row to
+  `client/data/slice/assets_used.json` by hand (KNOWN-GAPS.md: the exporter that wrote it is gone).
+- Sounds: `server/death-muffin/discord-agent/build-sound.sh` (below). Older masters in `public/audio/` were converted once (Opus to WAV: Godot
+  cannot import Opus); a replacement goes into `client/assets/audio/` the same way.
+- Item icons: `tools/generate-armor-assets.mjs` writes the armor sets' icons; other UI art is copied into `client/assets/ui_art/` by hand.
+- Then `godot --headless --path client --import` and commit the generated `.import` files. Textures used in 3D (model textures, floors, FX sprites)
   must be VRAM Compressed: set `compress/mode=2` in their `.import` (normal maps `*NormalGL*` also `compress/normal_map=1`) and re-import; a fresh
   import is Lossless, and `npm run hygiene` fails until it is changed (`npm run hygiene -- --fix-textures` does it). UI art stays Lossless.
 
@@ -69,18 +71,18 @@ rig fixes, CC0 retargets); see `docs/BLENDER-PIPELINE.md`.
 From Discord, the dev agent asks for a sound effect or track with `audio-manifest/eleven/<id>.json` (the spec, committed); the runner generates it for the
 owner's sound users with no budget gate and records the cost (`server/death-muffin/discord-agent/README.md` "New sounds"). Raw takes land in
 `audio-src/eleven/<id>/` (gitignored); `build-sound.sh` levels the chosen take (-20 LUFS, peaks at most -1.5 dBTP), installs it as
-`godot/assets/audio/eleven/<id>.wav` (sfx) or `.mp3` (music) and writes its row in [docs/AUDIO-SOURCES.md](docs/AUDIO-SOURCES.md), the licence record.
+`client/assets/audio/eleven/<id>.wav` (sfx) or `.mp3` (music) and writes its row in [docs/AUDIO-SOURCES.md](docs/AUDIO-SOURCES.md), the licence record.
 
 ## Flipbook sheets (licensed, outside git)
 
 A few VFX sprite sheets come from the owner's licensed pack (`~/vps-handoffs/DeathMuffin/godot_vfx.zip`; godboyhappy ARCLIGHT /
 CLEAVE: commercial use, no credit, **not redistributable in a public repository**). Converted greyscale grids live in
 `~/death-muffin/private/fx-sheets/` (`<id>.png` + `.png.import`: lossless, mipmaps) and are listed in `fx_data.json` `sheets`;
-`godot/assets/fx/sheets/` is gitignored. How they are drawn and installed: `client/fx/README.md` "Flipbook sheets". Do not use the pack's
+`tools/godot/fx-sheets-sync.sh` copies them into a checkout (the sheets folder of the game's assets is gitignored). How they are drawn and installed: `client/fx/README.md` "Flipbook sheets". Do not use the pack's
 VESPER or REEBOO 3D scenes until their cost is measured: they need Forward+/Mobile or GPUParticles and were ruled out while players ran Compatibility (DECISIONS B12); the game is Forward+ since launch day (KNOWN-GAPS "Assets and effects").
 
 ## Verify
 
 After each paid batch run `node tools/ai/validate-animation.mjs art-src/tripo/<id>/anim_*.glb` and `validate-rig.mjs` (see `docs/TRIPO-ANIMATE-IN-PLACE.md`; `animate_in_place` needs no change).
 Open the asset in game with `-- --dev-offline --class=2`; the F3 overlay shows frame cost. A PBR Tripo material is mostly
-metallic: keep emissive boosts faint (0.15 or less) or models white out under bloom. Run the affected `godot/tests/` suites.
+metallic: keep emissive boosts faint (0.15 or less) or models white out under bloom. Run the suites the change can affect (`node tools/rebuild/affected-suites.mjs`; README.md "Tests").

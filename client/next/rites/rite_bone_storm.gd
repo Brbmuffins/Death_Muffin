@@ -3,7 +3,7 @@ extends DmRiteModule
 ## corpse under it (up to +3 s; the corpses are only counted, not consumed), drifts 2.2 m/s toward the nearest enemy within 9 m and every 0.4 s hits everything
 ## within r 2 (+ the enemy's radius). Numbers: DmAbilities.bone_storm_life_s + BONE_STORM. Host: `mem("bone_storm").storms`; every peer draws it following the
 ## host's tick events (the funnel drifts toward the last reported centre at the same 2.2 m/s, so it is smooth between ticks).
-## On the combat core (client/code.list "Ported"): the corpses are counted from the core's field, the enemies are DmFoe snapshots and the blow is `c.deal`.
+## On the combat core: the corpses are counted from the core's field, the enemies are DmFoe snapshots and the blow is `c.deal`.
 
 const MAX_TARGETS := 64
 

@@ -1,6 +1,6 @@
-# Test backend (the rebuild's test server)
+# Test backend (the test lane's server)
 
-A second Death Muffin backend for the rebuild's test build (DECISIONS B38): same server code as live, its own database
+A second Death Muffin backend for test builds (DECISIONS B38, B53): same server code as live, its own database
 (`death_muffin_test`, its own MySQL user `dm_test` that cannot see the live database), its own token signing key, so nothing played
 on it can touch a live character.
 
@@ -15,7 +15,7 @@ on it can touch a live character.
 - `copy-team.sh [username ...]`: refills the test database from live (only reads live): the live schema, every catalog table, the
   team's accounts with their characters and what belongs to them. Logs and history stay out. Replaces whatever was played on the
   test server since the last copy, except the test server's own benchmark runs (kept aside and put back). Run it when the team wants their latest live characters there.
-- `coop/`: the test lobby and relay for the rebuild's 2-player co-op (units, nginx location, setup and sync scripts, the install steps; installed 2026-10-16): [coop/README.md](coop/README.md).
+- `coop/`: the test lobby and relay for test builds' 2-player co-op (units, nginx location, setup and sync scripts, the install steps; installed 2026-10-16): [coop/README.md](coop/README.md).
 - `sync.sh [rev]`: copies the installed live backend's code over, applies pending migrations of `rev` (default `origin/main`) to the
   test database and restarts it. `deploy-release.sh` runs it after every live deploy (best effort), and the drift report flags a test
   backend that is down or on different code.

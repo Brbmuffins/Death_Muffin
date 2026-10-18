@@ -3,7 +3,7 @@ extends RefCounted
 ## Code-built props for worn gear and the thralls' hand props (port of archive/legacy-web:src/graphics/gearProps.ts + the gear.ts look helpers
 ## gearTier / weaponKind / offhandKind, plus EntityViews' boneSword / boneBow / boneStaff / roundShield). Every prop's +Y is its long
 ## axis with the grip at the origin, in world units. Weapons carry `meta("tip")` (a Node3D, the spell origin).
-## The baked `gear_*` / `gear_thrall_bow` / `gear_bone_staff` GLBs are NOT in godot/assets/slice (the slice sync never copied them):
+## The web's baked `gear_*` / `gear_thrall_bow` / `gear_bone_staff` GLBs are NOT in client/assets/slice:
 ## the code-built stand-ins (the web's own fallback while a GLB loads, or if it fails) are what shows.
 
 const TIERS := {

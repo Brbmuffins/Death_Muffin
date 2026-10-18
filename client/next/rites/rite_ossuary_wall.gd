@@ -1,9 +1,9 @@
 extends DmRiteModule
 ## Ossuary Wall (the Ossuary's signature, R): a 7 m x 0.8 m wall of fused bone across the cursor line for 6 s, centred on the aim (pulled back to 10 m), standing
 ## perpendicular to the line from you to it. 30 essence, 16 s, unlocks at level 10. Numbers: DmSimData.SIGNATURE.wall + the def (sim_signatures "wall").
-## On the combat core (client/code.list "Ported"): today the wall is a StaticBody3D on the physics layer enemies collide with plus a NavigationObstacle3D; here it is a core
-## obstacle (`DmCore.add_obstacle`, the same 7 m by 0.8 m box) that keeps the core's enemies out and holds them as today's collider did, while thralls and the hero pass
-## (native/README.md "Differences from today's game"). The ribs (DmRiteFx.wall_raise, a sibling node on every peer) are the look. Events: `raise`, `gone`.
+## On the combat core: the wall is a core
+## obstacle (`DmCore.add_obstacle`, a 7 m by 0.8 m box) that keeps the core's enemies out and holds them as a collider would, while thralls and the hero pass
+## (the old game's was a StaticBody3D on the physics layer enemies collide with plus a NavigationObstacle3D: client/README.md "The Gravecaller's rites"). The ribs (DmRiteFx.wall_raise, a sibling node on every peer) are the look. Events: `raise`, `gone`.
 
 
 func _init() -> void:

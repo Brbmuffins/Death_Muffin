@@ -5,8 +5,7 @@ loaders are thin typed wrappers over it. Production code reads `res://data/` onl
 (`client/core/dm_core_data.gd`, used by `DmCoreHost`), which reads the files the core needs straight from disk so a test can point it at another folder.
 Test and mock data does not live here.
 
-The JSON here is the source of truth and is edited by hand. Keep each fact in one place. The files are copies of the old game's (`client/code.list` "data"):
-client/README.md "Code from today's game" says how a change reaches them, and the hygiene check fails on an edited copy.
+The JSON here is the source of truth and is edited by hand. Keep each fact in one place.
 
 ## Datasets
 
@@ -28,7 +27,7 @@ client/README.md "Code from today's game" says how a change reaches them, and th
 ## The combat core's numbers
 No number is retyped in C++. `DmCoreData.load_all` (`client/core/dm_core_data.gd`) hands the core the enemy defs and tuning (`content/enemies.json`),
 the status rules (`content/abilities.json`, `statuses.json`, `enemies.json`), the legion tuning (`abilities.json`, `fen.json`, `statuses.json`, `gameplay_legendary.json`,
-`runes.json`, and `combat/enemies.json` for the damage scale) and the constants of `sim/sim_consts.gd`; the core's compiled-in defaults are the old values (native/README.md "Design",
+`runes.json`, and `combat/enemies.json` for the damage scale) and the constants of `sim/sim_consts.gd`; the core's compiled-in defaults equal these files (native/README.md "Design",
 "Numbers from data, not retyped"). The co-op messages carry a hash of the enemy defs and the numbers a puppet derives events from, so a guest on other data is refused
 (native/README.md "Co-op: snapshots, events and the puppet core").
 
@@ -41,6 +40,4 @@ the status rules (`content/abilities.json`, `statuses.json`, `enemies.json`), th
 `client/game/view_models.json` (creature model rows) and `client/assets/fx/fx_data.json` (effect tables).
 
 ## Tests
-`client/tests/code_load.gd` parses every JSON file; `client/tests/core_thralls.gd` holds the core's compiled-in defaults to these files. Not covered in the
-client: that every dataset loads through `DmDb`, nothing under `data/` is unregistered, no duplicates, the merged views match recorded digests, and nobody
-reads `data/` around `DmDb` (the old game's data suite checked these).
+`client/tests/code_load.gd` parses every JSON file; `client/tests/core_thralls.gd` holds the core's compiled-in defaults to these files.

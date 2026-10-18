@@ -8,7 +8,7 @@ Enemies and thralls are not drawn here: the crowd draws them (client/crowd/READM
 | Views | `dm_creature*.gd` (the hero, bosses, hub people, laborers and pets are skeleton nodes), `dm_avatar.gd`, `dm_boss_view.gd`, `dm_pet_view.gd`, `dm_npc_views.gd`, `dm_node_views.gd`, `dm_laborer_views.gd`, `dm_gear_props.gd`. Model rows come from `view_models.json` (the crowd's baker reads them too) |
 | Player | `dm_loadout.gd`, `dm_inventory.gd`, `dm_progress_sync.gd` (debounced saves to the backend) |
 | Combat helpers | `dm_auto_combat.gd` and `dm_auto_dodge.gd` (Easy auto combat's decisions: `client/next/feel/README.md`), `dm_boss_telegraphs.gd`, `dm_fdlibm_x.gd`, `dm_hitstop.gd`, `dm_rite_fx.gd` |
-| Leftovers | `dm_game_hud.gd`: only the static `DmGameHud.art(path)` icon helper and `interact_prompt` are in the client's copy (the HUD view-model is `DmNextHudVm`, shape in `client/ui/hud/README.md`). `dm_game_rewards.gd` is used only for its kill-range rule (`DmSessionRewards` keeps an instance); the rest of it and `dm_player.gd` are not called by the live game; live rewards are `client/next/rewards/` |
+| Leftovers | `dm_game_hud.gd`: only the static `DmGameHud.art(path)` icon helper and `interact_prompt` are used (the HUD view-model is `DmNextHudVm`, shape in `client/ui/hud/README.md`). `dm_game_rewards.gd` is used only for its kill-range rule (`DmSessionRewards` keeps an instance); the rest of it and `dm_player.gd` are not called by the game; live rewards are `client/next/rewards/` |
 | Gathering / labor | `dm_gather_loop.gd`, `dm_gather_session.gd`, `dm_skills.gd`, `dm_game_labor.gd` |
 | Settings / perf | `dm_settings.gd`, `dm_graphics_preset.gd`, `dm_resolution_governor.gd`, `dm_warmup.gd` |
 | Offline | `dm_offline.gd`: mock backend with the item catalogue, used by `-- --dev-offline` and by tests |
@@ -18,7 +18,7 @@ Only two subsets are reachable, each created with a reduced host: `client/next/e
 
 ## Creature rendering
 `DmCreatureMat` is the one creature shader of the skeleton nodes (the hero, bosses, hub people, laborers); the crowd's enemies and thralls use `client/crowd/crowd_vat.gdshader`, which takes the same colour rules
-(client/crowd/README.md "Differences from the creature material"; client/README.md "The look against today's game" for the colours and the exposure lift both divide out). Models in `CULL_BACK_SLUGS` (closed glTF bodies: under 2% open edges, winding agrees
+(client/crowd/README.md "Against the creature material"; client/README.md "The look on Forward+" for the colours and the exposure lift both divide out). Models in `CULL_BACK_SLUGS` (closed glTF bodies: under 2% open edges, winding agrees
 with the normals) render back-face culled; every other model, and every winged or spectral body, stays `cull_disabled` (hair cards, cloaks, open robes, thin cloth). Add a slug only after checking its mesh is closed.
 Only the nearest enemies cast into the moon shadow: the crowd's shadow policy (`DmCrowd.set_shadow_policy`, counts per preset in `DmGraphicsPreset`, applied by `DmNextPerf`; client/crowd/README.md "Crowd cost"); the hero and bosses always cast, thralls cast unless the preset has no shadows.
 The boss light and the shared Binbun flash light are `visible = false` while their energy is zero.
@@ -58,8 +58,6 @@ and by `flinch`), strike lunge timed to the clip's impact (`play_strike`; the ho
 ## Tests
 The client suites that exercise these classes through the game scene (client/README.md "Set up and test"): `client/tests/rites.gd` (the Reaper's set look: Soul Harbinger's hood, body and scythe), `auto_combat.gd`
 (Easy auto combat), `gathering.gd` (the gather loop, skills, laborers), `presets.gd` (the graphics presets), `rewards.gd` and `value.gd` (rewards), `panels.gd` (the Reliquary and the bag) and `game_scene.gd`.
-Not covered in the client: held-prop grips and clips, helm and mantle mounts and sizes, tint, rarity, element and set effects, the legendary body swap (the old game's gear-look suite) and the creature
-animation blends and procedural layer.
 
 ## Known gaps
 - See-through cutout: `DmNextWorld` switches the builder's `occlusion_enabled` off, so the wall and prop shaders (`client/world/dm_occ_*.gdshader`) cut nothing in any area or Depths floor

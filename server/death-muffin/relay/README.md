@@ -2,7 +2,7 @@
 
 `deathmuffin-relay`: co-op packets over ENet (UDP 5193) instead of the lobby WebSocket, so a lost movement packet no longer stalls the
 packets behind it (DECISIONS B31). Same star as the lobby relay: a client reaches only its host. The code is
-`godot/net/relay/dm_udp_relay.gd` (the relay) and `dm_udp_lane.gd` (a member's side, used by `DmRelayPeer`); this folder only runs it as
+`client/net/relay/dm_udp_relay.gd` (the relay) and `dm_udp_lane.gd` (a member's side, used by `DmRelayPeer`); this folder only runs it as
 a headless Godot process: `godot --headless --path <this folder> --script relay_main.gd`.
 
 - **Who may use it:** the lobby hands each member a ticket in `created` / `joined` (`relay: {addr, port, ticket}`, HMAC-SHA256 with the

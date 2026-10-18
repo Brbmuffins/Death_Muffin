@@ -4,7 +4,7 @@ extends DmRiteModule
 ## DmStatusSet `slow`). The corpses stay. 26 essence, 11 s, level 11. Numbers: DmAbilities.grave_hands (corpses, hands, dmg) + DmSimData.GRAVE_HANDS.
 ## Host zone state lives in `c.mem(id)["zones"]` (a tiny array, a rake every 0.5 s, nothing allocated between rakes); every peer keeps the fx handles
 ## in `c.mem(id)["fx"]` and drops them on the `end` event. Visuals: DmRiteFx.hands_start / hands_tick / hands_end.
-## On the combat core (client/code.list "Ported"): the corpses are counted from the core's field, the rake is `c.deal`, the slow the core's status.
+## On the combat core: the corpses are counted from the core's field, the rake is `c.deal`, the slow the core's status.
 
 const MAX_HITS := 64
 const POPUPS := 4

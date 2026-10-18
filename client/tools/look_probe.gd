@@ -1,23 +1,23 @@
 extends SceneTree
-## The look probe: today's game and the rebuilt client on the same camera, as numbers and pictures (client/README.md "The look against today's game"). NOT a pass/fail suite.
+## The look probe: the old game and the rebuilt client on the same camera, as numbers and pictures (client/README.md "The look on Forward+"). NOT a pass/fail suite.
 ## One script for BOTH projects, run on the VPS under the renderer lock, one run at a time (software GL, about 5 minutes each):
 ##   rebuilt client (Forward+, Vulkan on lavapipe):
 ##     VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json flock -w 900 /home/ubuntu/death-muffin/qa-browser.lock nice -n 10 xvfb-run -a -s "-screen 0 1280x720x24" timeout 600 \
 ##       /home/ubuntu/tools/godot/godot --rendering-method forward_plus --rendering-driver vulkan --resolution 1280x720 --path client --script res://tools/look_probe.gd -- --out=/abs/dir --tag=fwd
-##   today's game (Compatibility, OpenGL on llvmpipe; the script is read from the client's folder, nothing is copied; its start takes 3 to 4 minutes):
+##   the old game (a checkout of the tag archive/old-game: Compatibility, OpenGL on llvmpipe; the script is read from the client's folder, nothing is copied; its start takes 3 to 4 minutes):
 ##     flock -w 900 /home/ubuntu/death-muffin/qa-browser.lock nice -n 10 xvfb-run -a -s "-screen 0 1280x720x24" timeout 900 \
-##       /home/ubuntu/tools/godot/godot --rendering-method gl_compatibility --rendering-driver opengl3 --resolution 1280x720 --path godot --script /abs/path/client/tools/look_probe.gd -- --out=/abs/dir --tag=today --part=game
-## A plan of all twelve areas takes 5 to 12 minutes on the rebuilt client and 7 to 12 on today's game on a busy VPS (more with lift variants): raise `timeout` to 1500 (rebuilt) and 1800 (today's), one run at a time under the lock.
+##       /home/ubuntu/tools/godot/godot --rendering-method gl_compatibility --rendering-driver opengl3 --resolution 1280x720 --path <the checkout>/godot --script /abs/path/client/tools/look_probe.gd -- --out=/abs/dir --tag=old --part=game
+## A plan of all twelve areas takes 5 to 12 minutes on the rebuilt client and 7 to 12 on the old game on a busy VPS (more with lift variants): raise `timeout` to 1500 (rebuilt) and 1800 (old game), one run at a time under the lock.
 ## --part=game|calib|glow|both (default both), --plan="chapterhouse:base,nomoon;graves:base" (an area, then the variants to shoot: base, lift=1.5 (the rebuilt client at that exposure lift instead of the area's), unfix, unlift, unpool, nomoon, norim, noshadow, noglow, nossao, nofog, nodress: the world dressing off, before: what the first test builds drew: no dressing, a plain sphere at every light and the glow of the time),
 ## --frames=N (frames to wait after a change, 3), --warm=N (after the hero's move, 12). The game part starts the real game scene offline at Ultra with the hero at a fixed spot of each area,
-## saves <tag>_<area>_<variant>.png and prints a STAT line each (mean colour, luminance and its 10th, 50th and 90th percentile, the colour shares; the hero's own box left out) and a WSTAT line over the world region alone (today's frames carry the game's HUD, the rebuilt client's none: calibrate on WSTAT)
+## saves <tag>_<area>_<variant>.png and prints a STAT line each (mean colour, luminance and its 10th, 50th and 90th percentile, the colour shares; the hero's own box left out) and a WSTAT line over the world region alone (the old game's frames carry the game's HUD, the rebuilt client's none: calibrate on WSTAT)
 ## and an HSTAT line over HERO_BOX, the 24 px box on the hero's robe (the camera follows him: the same box in every frame, on both sides). The hero variants (the rebuilt client only): hnogear (the worn pieces' region and head tints off), hnoemis (the body's glow, rim and
 ## trim glow off), hnolantern, hgear (the hero in worn pieces' tints, to see the gear shader), noprops (the area's prop lights off), noamb (the environment's ambient off), glowthr (the glow's threshold times the
 ## exposure: Forward+ reads it after the exposure, Compatibility before it), crowd (24 enemies round the hero, the baked crowd needed: last in a plan, and slow on the software renderer, so a run of its own with a long timeout) and ring=K/S (the hero's ring decals at K times their opacity and his contact shadow at opacity S: DmHeroLook.RING_K and SHADOW_A). The calibration part
 ## shows one test object at a time on a grey plane under the game's environment (fog, specular, vertex colours, HDR, blends, emission) and prints a CAL2 line each: the same lines from both
 ## projects say where the renderers differ. `--part=glow --glow="<name>:<key>=<v>,<key>=<v>;<name>:..."` shoots the two bright things of the calibration (the HDR albedo quad, a small bright emission) under each glow setting of the
 ## list and prints a GLOW line each: the sRGB along the row through the thing, from its edge outwards (keys: lv the seven level weights "a/b/c/d/e/f/g", int, thr, scale, cap, strength, off=1 for no glow; an unnamed key keeps the game's `DmWfxBloom`
-## value); "game" is the game's own setting. Compare the lines with the same part run on today's game. The rebuilt-client-only variants (unfix, unlift, unpool) need next/look/dm_compat_albedo.gd and are skipped on today's game; `before` and the glow's keys other than `game` are for the rebuilt client too.
+## value); "game" is the game's own setting. Compare the lines with the same part run on the old game. The rebuilt-client-only variants (unfix, unlift, unpool) need next/look/dm_compat_albedo.gd and are skipped on the old game; `before` and the glow's keys other than `game` are for the rebuilt client too.
 
 
 const SPOTS := {
@@ -25,7 +25,7 @@ const SPOTS := {
 	"fen": Vector3(-42, 0, -80), "pyre": Vector3(90, 0, -116), "sanctum": Vector3(0, 0, -116), "acre": Vector3(-32, 0, 22), "alchemist_wing": Vector3(40, 0, 20),
 	"warren": Vector3(-52, 0, -30), "coliseum": Vector3(91, 0, -28), "cloister": Vector3(44, 0, -116),   # the centres of the other three areas (clear of props)
 }
-const WORLD_REGION := Rect2(0.12, 0.1, 0.66, 0.62)   # x .12 to .78, y .1 to .72 of the frame: no HUD in it, today's or the rebuilt client's
+const WORLD_REGION := Rect2(0.12, 0.1, 0.66, 0.62)   # x .12 to .78, y .1 to .72 of the frame: no HUD in it, the old game's or the rebuilt client's
 const HERO_BOX := Rect2i(628, 400, 24, 24)   # 1280x720: the hero's robe; the camera follows the hero, so he stands at the same place in every frame (scaled with the frame's width)
 var out := ""
 var tag := ""
@@ -58,14 +58,14 @@ func _frames(n: int) -> void:
 		await process_frame
 
 
-## The frame's stats twice: STAT over the whole frame, WSTAT over the world alone (WORLD_REGION), because today's frames carry the game's HUD and the rebuilt client's none, so a lift calibrated on STAT
+## The frame's stats twice: STAT over the whole frame, WSTAT over the world alone (WORLD_REGION), because the old game's frames carry the game's HUD and the rebuilt client's none, so a lift calibrated on STAT
 ## compares different pixels.
 func _stats(img: Image, label: String) -> void:
 	_stats_in(img, "STAT", label, Rect2(0.0, 0.0, 1.0, 1.0))
 	_stats_in(img, "WSTAT", label, WORLD_REGION)
 
 
-## The mean colour and luminance of HERO_BOX (the hero's robe: the same box on both sides; it reads one pose of a moving hero: the rebuilt numbers repeat to 5 %, today's own runs differ by up to a third).
+## The mean colour and luminance of HERO_BOX (the hero's robe: the same box on both sides; it reads one pose of a moving hero: the rebuilt numbers repeat to 5 %, the old game's own runs differ by up to a third).
 func _hstat(img: Image, label: String) -> void:
 	var k := float(img.get_width()) / 1280.0
 	var x0 := int(HERO_BOX.position.x * k)

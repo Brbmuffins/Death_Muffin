@@ -1,6 +1,6 @@
 class_name DmBenchFight
 extends RefCounted
-## The held test fight of the in-game benchmark (DmBenchmark), ported to the combat core (client/code.list "Ported"): an isolated offline game (DmOffline mock backend with an
+## The held test fight of the in-game benchmark (DmBenchmark), on the combat core: an isolated offline game (DmOffline mock backend with an
 ## in-memory db, nothing persisted, no network), a god-mode level-60 necromancer in the middle of an area on auto combat (Easy), enemies topped up by the wave director, thralls
 ## raised straight into the core and, in a Full Party fight, the room's boss held awake. `arm` + `upkeep` are the fight's rules. Enemies are ids in the core: counting, trimming and
 ## topping up read its bulk arrays and call `remove_enemy`, nothing walks nodes.

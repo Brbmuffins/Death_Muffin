@@ -3,7 +3,7 @@ extends DmRiteModule
 ## detonate_blast (radius 3 m, x resonantRadiusMult for resonant; damage = power x spell power, capped, x eliteDamageMult for elite corpses; toxic
 ## corpses leave a friendly rot pool that is a Miasma cloud by the same rules). 15 essence, 600 ms. The corpse goes only through the field's atomic
 ## consume ("burst": the body shatters), damage through `c.deal`. Visuals: DmRiteFx.detonated / rot_pool.
-## On the combat core (client/code.list "Ported"): the corpse field and the enemies are the core's; the blast reads the enemies' edge distance from the core's radius query.
+## On the combat core: the corpse field and the enemies are the core's; the blast reads the enemies' edge distance from the core's radius query.
 
 
 func _init() -> void:

@@ -6,7 +6,7 @@ extends DmRiteModule
 ## from the events: `release` (the burst and the circling wisps), `sync` (wisps that found a target fly off, the circle shrinks or grows), `hit`, `end`.
 ## Soul Harbinger's Raiment (DmReaperSet): 4 pieces turn the damage the wisps do into her barrier (`mem.shield` is what a cast gave; the next release takes it
 ## back first, so it refreshes instead of stacking); 5 pieces leave a Scythe Throw where each wisp lands (at most `soulScythes` at once).
-## On the combat core (client/code.list "Ported"): a wisp's prey is a DmFoe snapshot (the core's radius query, `c.foe` by id), a blow is `c.deal`.
+## On the combat core: a wisp's prey is a DmFoe snapshot (the core's radius query, `c.foe` by id), a blow is `c.deal`.
 
 const SPEED := 16.0       ## m/s a hunting soul flies
 const OUT_SPEED := 13.0   ## m/s the ring flies outward before any wisp locks on

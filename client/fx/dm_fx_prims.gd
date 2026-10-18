@@ -289,7 +289,7 @@ func _footprint_of(tex_name: String) -> String:
 	return "disc" if tex_name in ["disc", "glow", "sigil", "cracks"] else "quad"
 
 
-## Loading screen (DmWarmup): one short decal per texture x blend x order, and one flash per texture, at `at`, so every decal/sprite
+## Loading screen (DmNextWarmup): one short decal per texture x blend x order, and one flash per texture, at `at`, so every decal/sprite
 ## layer and its material exists and is drawn (compiled) before the first fight instead of on the first wave's cracks and rings.
 func warm_layers(at: Vector3) -> Array:
 	# Long-lived on purpose: warm-up frames take seconds while shaders compile, and a short decal expired before it was ever drawn.

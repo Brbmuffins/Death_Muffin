@@ -30,8 +30,8 @@ Every item says what kind it is:
 - **The rebuilt game is live** (launch day 2026-10-18, B49): the same game on a C++ combat core and Forward+ graphics. The biggest fight
   runs 3 to 4 times faster on Helix's PC (the Bell Sanctum's Full Party on Ultra: 61 to 224 fps); warbogar's PC plays it at 342 fps where the
   old game gave 41 in a lighter fight. The rebuild's record is B34-B50.
-- The old game's code goes as soon as nothing depends on it (Helix, 2026-10-18: the live build is solid; B57). Until then one command can
-  still put the old build back (`server/death-muffin/launch-undo.sh`); after it, a rollback goes to an earlier build of the new game.
+- The old game is retired (B57; its source is tag `archive/old-game`): a rollback publishes an earlier build of the game. Its frozen folder
+  `godot/` goes as soon as its last tests have moved (Phase 1).
 - Ascension (the Altar, vows and heat, Ashes, Covenant Boons) left on launch day and comes back redesigned in Phase 3 (B36). Players'
   saved Ascension data is kept.
 - **Now:** Phase 1, settling the launch.
@@ -69,20 +69,18 @@ the end of the undo window; B57).
   (each stack frame's module and offset, where Godot's log says "???"), the next start's automatic crash report carries it, every publish keeps
   that build's symbols, and `node tools/crash/symbolize.mjs <report id>` names the function and source line (native/README.md "Crash notes").
   The Windows half is confirmed on a real PC by the team app's crash check (KNOWN-GAPS "Stability").
-- [ ] **Fix: the Discord agent tests and photographs the old game.** Now: its proposals are checked with the old game's tests, its
-  before/after screenshots are rendered from the old game on the server, its "Try it" previews are builds of the old game, and it still
-  makes its changes in the old game's folder. After: every proposal is tested on the live game, its screenshots and previews are of the
-  live game (rendered on the server until the team app takes over the screenshots), and it makes its changes in the new game directly. (The screenshot tool and its driver are in `client/` since 2026-10-18,
-  `client/tools/qa_shots.sh`; the agent does not use them yet.)
+- [x] **Fix: the Discord agent tested and photographed the old game.** Done 2026-10-18: it makes its changes in the game (`client/`) directly;
+  every proposal is tested on the game (the quick check runs the suites the change can affect), with the combat core, the import and the
+  crowd's bakes taken from a cache built only from `main` (`server/death-muffin/discord-agent/client-prep.sh`), so a check does not rebuild them;
+  its screenshots are the game's, rendered on the server the way it plays (until the team app takes them over), and a "Try it" preview without
+  new art uses the art pack of the player's installed game instead of carrying its own 500 MB.
 - [x] **Fix: a document change from the Discord agent shipped a game update.** Done 2026-10-18: an approved change that touches only
   documents (Markdown files, docs/) goes to `main` and stops there, with no game build, deploy or notice, and the thread says so; when someone
   shares an idea the roadmap lacks, the agent offers to add it to "Ideas" with its section (server/death-muffin/discord-agent/README.md).
-- [ ] **Fix: two copies of the game's code** (as soon as the Discord agent works on the new game; B57). Now: the old game's folder `godot/` is still there, most of the new game's
-  scripts are copied from it, and the crowd and map tools, about 66 tool and server scripts and some tests still read it; the 31 short
-  system guides (how each system works and its known gaps) live only in `godot/`. After: the system guides move into `client/` first, then
-  `godot/` is deleted (an archive tag keeps its source), the new game owns its files, every tool and test reads the new game,
-  `server/death-muffin/launch-undo.sh` and the server paths only the old game used go, and README.md and CLAUDE.md describe one game; a
-  rollback goes to an earlier build of the new game.
+- [ ] **Fix: the old game's folder is still in the repository** (B57). Now: nothing uses `godot/` any more: the game owns its files, its
+  system guides are in `client/`, and every tool and the Discord agent work on the game. But a few of the old game's test suites still cover
+  code the game runs, and some of the game's suites read reference files from the folder. After: those suites run in `client/tests`, the
+  reference files move with them, and the folder is deleted (tag `archive/old-game` keeps its source).
 - [x] **Fix: War's content pipelines ran on trust, not on checks.** Done 2026-10-18: the Discord agent's check, and CI over every model,
   refuses a model over its cap (gear 4,000 triangles, props 6,000, heroes and other characters 20,000), with more than one material, gear
   with a skeleton, or a hero body without the shared skeleton and its combat clips (`tools/assets/check-models.mjs`); the tool that installs a

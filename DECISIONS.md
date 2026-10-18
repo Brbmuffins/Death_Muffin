@@ -265,7 +265,8 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 - **B57. The old game goes as soon as possible** (Helix, 2026-10-18: "nov 1 is irrelevent. we can do these things asap. no need ot wait.
   the currentl ive build is solid"). B40's two-week undo window ends early: Phase 1 runs as soon as possible, and the old game's code, its
   last build, `launch-undo.sh` and the server paths only it used go as soon as the Discord agent and the tools work on `client/` (the system
-  guides move first). An archive tag keeps the old game's source; from then on a rollback goes to an earlier build of the new game.
+  guides move first). An archive tag keeps the old game's source; from then on a rollback goes to an earlier build of the new game. Done on
+  2026-10-18: tag `archive/old-game`.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

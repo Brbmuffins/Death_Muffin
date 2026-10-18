@@ -21,7 +21,7 @@ extends Node
 ##
 ## A boss is an external of kind 1 whose brain stays GDScript (DmBoss, B42): `register_boss` gives it an id, the tick writes its place and whether it can be hurt, and the
 ## queries below answer for its id too, so a rite, the hover pick and a thrall's scan treat it as an enemy: `enemies_in_radius` / `foes_in_radius` append the living bosses
-## after the enemies (edge distance, its radius, as today), `enemy_info` / `foe` / `enemy_position` / `enemy_alive` / `enemy_radius` describe it, and `damage`,
+## after the enemies (edge distance, its radius), `enemy_info` / `foe` / `enemy_position` / `enemy_alive` / `enemy_radius` describe it, and `damage`,
 ## `apply_status`, `status_stacks` and `remove_status` go to the boss's brain and its own DmStatusSet (the core knows no status or health of a boss). Its thralls' blows
 ## come back as `thrall_hit_external`.
 
@@ -71,7 +71,7 @@ signal ticked(dt: float)
 var core: RefCounted                 ## DmCore
 var puppet := false                  ## a guest's core (set_puppet): the bodies are the host's, applied from the wire
 var view: CrowdView                  ## draws the core's creatures
-var data_dir := DEFAULT_DATA         ## where data/ (the JSON the core reads) is: this project, or the live game's folder in tests
+var data_dir := DEFAULT_DATA         ## where data/ (the JSON the core reads) is: this project (res://)
 var enemy_defs: Dictionary = {}      ## ENEMIES of data/content/enemies.json
 var corpses: DmCoreCorpses           ## the corpse field as the rites see it (pick, in radius, atomic consume), answered by the core
 ## Counters for tests and the F3 overlay: events dispatched, ticks stepped.
@@ -96,7 +96,7 @@ func _init() -> void:
 	process_physics_priority = PRIORITY
 
 
-## Builds the core and the crowd. `opts`: `data_dir` (res:// : this project's data/), `seed` (default: from the clock, like today's randomize()),
+## Builds the core and the crowd. `opts`: `data_dir` (res:// : this project's data/), `seed` (default: from the clock, like randomize()),
 ## `nav_map` (RID of the area's navigation map), `bounds` (Rect2: the area, with its door corridors), `view_parent` (Node3D the crowd's nodes go under),
 ## `baked_dir` / `assets_dir` (where the baked crowd models and their textures are; CrowdView's defaults otherwise), `lod_distances`, `reserve`, `cull`, `anim_lod`, `thrall_shadows`
 ## (the crowd's cost: CrowdView.setup, client/crowd/README.md "Crowd cost"), `wander` (idle wander, default on).
@@ -131,9 +131,9 @@ func setup(opts: Dictionary) -> void:
 # ---- heroes ------------------------------------------------------------------------------------------------------------------------
 
 ## Registers a hero body (a Node3D with `alive` and `discipline_id`) as an external of kind 0 and returns its core id. From now on its position and
-## alive flag are written every tick before the step. Its thralls wear today's look, whatever its discipline: today's DmEntityViews asks its host for
-## `discipline_id_for`, which no host of today's game has, so the legion looks (crowd_looks.json `legions`, `CrowdView.set_owner_legion`) never show there
-## and do not here (KNOWN-GAPS "Built but never shown").
+## alive flag are written every tick before the step. Its thralls wear the default look, whatever its discipline: the old game's DmEntityViews asked its host for
+## `discipline_id_for`, which no host had, so the legion looks (crowd_looks.json `legions`, `CrowdView.set_owner_legion`) never showed there
+## and do not show here (KNOWN-GAPS "Built but never shown").
 func register_hero(body: Node3D, radius := 0.4, weight := 1.0) -> int:
 	var id := int(core.add_external(0, radius, weight))
 	_heroes.append(body)
@@ -143,7 +143,7 @@ func register_hero(body: Node3D, radius := 0.4, weight := 1.0) -> int:
 
 
 ## Guest: a hero body of the session (any player's) is the host's external `core_id`: the ids in the core's events (the owner of a thrall, the source of a blow) name it; its
-## thralls wear today's look (register_hero). A second call moves the body to another id. Nothing is added to the core (a puppet has no externals).
+## thralls wear the default look (register_hero). A second call moves the body to another id. Nothing is added to the core (a puppet has no externals).
 func adopt_hero(body: Node3D, core_id: int) -> void:
 	var i := _heroes.find(body)
 	if i >= 0:
@@ -174,7 +174,7 @@ func unregister_hero(body: Node3D) -> void:
 	_mark_allies()
 
 
-## The thralls of every hero but this player's wear a weaker friend rim (today's `own == false`). This player's hero is a host's first registered one and a guest's focus body;
+## The thralls of every hero but this player's wear a weaker friend rim. This player's hero is a host's first registered one and a guest's focus body;
 ## until it is known every hero is this player's.
 func _mark_allies() -> void:
 	if view == null or not is_instance_valid(view):   # a body leaving as the scene closes
@@ -364,7 +364,7 @@ func _area(n: int) -> String:
 	return _names[key]
 
 
-# ---- queries the ported code needs (Vector3 on the ground plane <-> the core's Vector2; the core's API stays the source of truth) ----------
+# ---- queries the game's scripts need (Vector3 on the ground plane <-> the core's Vector2; the core's API stays the source of truth) ----------
 # Each one answers for a boss id too (above): the core's table has no boss in it.
 
 ## Living enemies whose edge is within `r` of `pos` (flat), in spawn order, then the living bosses (a boss counts from its edge, as the group scan did): ids.

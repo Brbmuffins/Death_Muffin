@@ -4,7 +4,7 @@ extends Control
 ## State flows in through ONE Dictionary: `hud.apply(vm)` (schema in ui/hud/README.md). One-shot things (toasts, banners, floating
 ## numbers, hit flash, chat lines) are method calls. Player intent flows out as signals; nothing here touches world/ or net/.
 ##
-## Ported to the rebuilt client (client/code.list "Ported"): same layout and look, drawn within a draw-call budget (client/README.md "The HUD's budget").
+## Drawn within a draw-call budget (client/README.md "The HUD's budget").
 ##   - Pieces: every readout group is a Control of its own with its own anchor and offset in `pieces` (id -> Control); `set_piece` moves and scales one
 ##     around the corner it is anchored to, `set_hud_scale` scales them all, `show_piece` hides one. Nothing else in the HUD depends on where a piece is.
 ##   - Drawing: panels are 9-patches, icons and rectangles come from one atlas, vector art is one mesh per widget, text sits on a z layer per (font, size),

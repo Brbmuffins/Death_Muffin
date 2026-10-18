@@ -349,7 +349,7 @@ func _physics_process(dt: float) -> void:
 		flush()
 
 
-## Today's per-frame rule for a floor's tall props (the lights builder's `update_shadow_cells`): a 12 m cell further than the shadow range from the hero stops casting the moon's
+## The per-frame rule for a floor's tall props (the lights builder's `update_shadow_cells`): a 12 m cell further than the shadow range from the hero stops casting the moon's
 ## shadow, checked every 0.25 s and a few cells a frame; the builder drops the cells of freed floors from its list as it walks it (nothing else in the rebuild calls it).
 func _shadow_cells(x: float, z: float, dt: float) -> void:
 	if game.world.builder != null:

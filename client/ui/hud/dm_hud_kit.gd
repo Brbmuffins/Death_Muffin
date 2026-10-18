@@ -1,9 +1,9 @@
 class_name DmHudKit
 extends RefCounted
 ## Small builders shared by the HUD widgets (labels with the web's text-shadow, panels, number formats). Pure helpers.
-## Ported to the rebuilt client (client/code.list "Ported"): the HUD draws from ONE texture and ONE z layer per kind of drawing, so it costs a handful of draw
+## The HUD draws from ONE texture and ONE z layer per kind of drawing, so it costs a handful of draw
 ## calls (client/README.md "The HUD's budget"). Panels are 9-patches of the atlas (DmHudAtlas.nine), icons are regions of it, rectangles are its white block, and
-## text sits on a z layer per (font, size) above the chrome and the vector art. What the player sees is the same.
+## text sits on a z layer per (font, size) above the chrome and the vector art.
 
 const ART := "res://ui/hud/art/"
 const SHADOW := Color(0, 0, 0, 1)
@@ -183,7 +183,7 @@ static func plate(bg: Color, border: Color = Color(0, 0, 0, 0), widths: Vector4 
 	return sb
 
 
-## The StyleBoxFlat itself (today's `style`: the copied panels still ask for one), for the few panels that need what a 9-patch cannot be (the hotbar's soft shadow).
+## The StyleBoxFlat itself (the panels still ask for one), for the few panels that need what a 9-patch cannot be (the hotbar's soft shadow).
 static func style(bg: Color, border: Color = Color(0, 0, 0, 0), widths: Vector4 = Vector4(1, 1, 1, 1), pad: Vector4 = Vector4(0, 0, 0, 0), radius: int = 0) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = bg

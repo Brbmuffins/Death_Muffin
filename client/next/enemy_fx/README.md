@@ -43,7 +43,7 @@ and the affixes' motes (drool, embers, shroud smoke while the shroud is up).
 
 ## Replication / lead time
 A guest's telegraph is derived from the snapshot's ATTACK edge: its place and aim are the snapshot's and its seconds are the wind-up less the age the snapshot showed, so the fill still lands with the blow. Snapshots come at 20 Hz: the budget is
-<= 50 ms of snapshot wait + one-way latency (native/README.md "Co-op: snapshots, events and the puppet core"; "A guest sees a change between snapshots once"). Cues, zones and affix moments travel as the core's reliable events.
+<= 50 ms of snapshot wait + one-way latency (native/README.md "Co-op: snapshots, events and the puppet core", "What a guest sees"). Cues, zones and affix moments travel as the core's reliable events.
 
 ## Cost / warm-up
 No new effects, textures or sounds: everything is existing Vfx decals/emitters/Binbun scenes and existing sound ids (`DmEnemyFx.EFFECT_IDS`, `SFX_IDS`), so `DmWarmup`'s all-effects pass covers it. Pools are Vfx's.

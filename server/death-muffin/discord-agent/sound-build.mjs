@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // The part of build-sound.sh that runs inside its sandbox: turns a raw ElevenLabs take into the game's file at the game's loudness and writes
 // its row in docs/AUDIO-SOURCES.md, the licence record.   node sound-build.mjs <id> <take> <sfx|music>   (from the worktree root)
-//   sfx    godot/assets/audio/eleven/<id>.wav   mono 16-bit 44.1 kHz (one-shots start for free as QOA, like esm/; see godot/audio/README.md)
-//   music  godot/assets/audio/eleven/<id>.mp3   stereo MP3 (Godot imports MP3); a take already at the target is copied as it is
+//   sfx    client/assets/audio/eleven/<id>.wav   mono 16-bit 44.1 kHz (one-shots start for free as QOA, like esm/; see client/audio/README.md)
+//   music  client/assets/audio/eleven/<id>.mp3   stereo MP3 (Godot imports MP3); a take already at the target is copied as it is
 // Loudness (EBU R128, measured with ffmpeg's loudnorm): every sound at -20 LUFS (the score's tracks measure -18.4 to -20.5, the pack's effects
 // -16 to -24), true peak at most -1.5 dBTP. A plain gain, never compression: a take whose peak would pass -1.5 dBTP stops at that peak and
 // stays quieter (the output says so); a take too quiet to measure is kept as generated. The game sets each sound's mix level (audioMap.json).
@@ -63,7 +63,7 @@ function main() {
     console.error('usage: sound-build.mjs <id> <take 1-4> <sfx|music>'); process.exit(2);
   }
   const src = `audio-src/eleven/${id}/v${take}.mp3`;
-  const dst = `godot/assets/audio/eleven/${id}.${kind === 'music' ? 'mp3' : 'wav'}`;
+  const dst = `client/assets/audio/eleven/${id}.${kind === 'music' ? 'mp3' : 'wav'}`;
   if (!existsSync(DOC) || lstatSync(DOC).isSymbolicLink()) throw new Error(`${DOC} is missing or a symlink`);
   mkdirSync(path.dirname(dst), { recursive: true });
   const tmp = mkdtempSync(path.join(os.tmpdir(), 'dmsound-'));

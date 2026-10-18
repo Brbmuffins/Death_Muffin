@@ -5,7 +5,7 @@ extends Node3D
 ## vertex shader from a seed + time and wraps around the focus. The CPU only touches the mesh when the area changes (cross-fade 1.6/s out,
 ## 0.8/s in, like the web). Profiles are in data/world_fx/fx.json; per-particle seeds replay the web's
 ## mulberry32(area.length * 977 + charCode(area[0])) call order exactly.
-## Ported (client/code.list): an area's particle mesh is built the first time the weather is asked for and kept (`_meshes`), so an area entry swaps a mesh instead of drawing three
+## An area's particle mesh is built the first time the weather is asked for and kept (`_meshes`), so an area entry swaps a mesh instead of drawing three
 ## hundred particles' attributes in GDScript (about 20 ms), and `warm(id)` builds the starting area's during loading.
 
 const SHADER_CODE := """

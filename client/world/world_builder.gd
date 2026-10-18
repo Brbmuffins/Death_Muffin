@@ -1,6 +1,6 @@
 class_name DmWorldBuilder
 extends Node3D
-## Builds the whole connected world from godot/data/slice/world.json (originally exported from the web game's TS):
+## Builds the whole connected world from client/data/slice/world.json (originally exported from the web game's TS):
 ## per-area floors, walls, props (MultiMesh + StaticBody3D colliders), gathering nodes, decals, water, light pools, gates, the Depths'
 ## sample floor, NPCs, one navigation region per area and per door corridor (NavigationLinks join them; doors/areas toggle at runtime),
 ## and the web renderer's look: ACES tonemap, hemisphere light, FogExp2 (approximated), moon + violet rim, per-area palettes.
@@ -22,12 +22,12 @@ const AMBIENT_LUMA_FLOOR := 0.3
 const AMBIENT_GROUND_MIX := 0.3
 const AMBIENT_MAX_BOOST := 2.4
 const POINT_K := 0.18
-## The Acre (the orchard) and the Alchemist Wing are lit brighter than every other area: today's DmGameRewards.tick_milestones scales the moon by 3.4 / 2.4 and 2.65 / 2.4 and the hemisphere by
+## The Acre (the orchard) and the Alchemist Wing are lit brighter than every other area: DmGameRewards.tick_milestones scales the moon by 3.4 / 2.4 and 2.65 / 2.4 and the hemisphere by
 ## 2.0 / 0.95 and 1.12 / 0.95 there. `set_area` applies them to the live lights, and the area converter (`client/tools/build_area.gd`) bakes the hemisphere's factor into the area's lightmap.
 const AREA_MOON_K := {"acre": 3.4 / 2.4, "alchemist_wing": 2.65 / 2.4}
 const AREA_HEMI_K := {"acre": 2.0 / 0.95, "alchemist_wing": 1.12 / 0.95}
-## The exposure lift of each area (Forward+'s own, on top of today's exposure; client/README.md "The look against today's game"): measured with `client/tools/look_probe.gd` against today's game on the same
-## camera (Ultra, the mean luminance of the world region), so that the rebuilt frame of every area is as bright as today's. One number for the whole game could not do it: the lightmap of each area carries
+## The exposure lift of each area (Forward+'s own, on top of the world's exposure; client/README.md "The look on Forward+"): measured with `client/tools/look_probe.gd` against the old game on the same
+## camera (Ultra, the mean luminance of the world region), so that the rebuilt frame of every area is as bright as the old game's. One number for the whole game could not do it: the lightmap of each area carries
 ## its own share of the light, so the areas differ by 0.8 to 2.1. `set_area` blends to the new area's lift (LIFT_BLEND, with the area's own easing of the exposure `area_exposure`); the preset's own factor (`DmGraphicsPreset`, `set_preset_lift`) multiplies it.
 const AREA_LIFT := {
 	"chapterhouse": 1.52, "acre": 1.11, "alchemist_wing": 2.08, "graves": 1.35, "warren": 1.35, "ossuary": 1.38,
@@ -184,7 +184,7 @@ func apply_occlusion(root: Node) -> void:
 
 func build(w: Dictionary) -> void:
 	world = w
-	# Test runs under --fixed-fps (tools/godot/run-all-tests.sh sets DM_SYNC_NAV=1): game time outruns the navigation server's worker thread,
+	# A suite under --fixed-fps sets DM_SYNC_NAV=1 (client/README.md "Set up and test"): game time outruns the navigation server's worker thread,
 	# so freshly enabled regions were not merged yet when a path was asked for (the hero stopped short, enemies never chased). Synchronous
 	# iterations merge once per physics step instead. Never set in the game.
 	if OS.get_environment("DM_SYNC_NAV") == "1" and is_inside_tree():
@@ -321,12 +321,12 @@ func _go_lift(lift: float, expo: float, snap: bool) -> void:
 		_lift_t = 0.0
 		set_process(true)
 
-var _void := Color.BLACK   # what today's Compatibility shows where nothing is drawn: the world's background colour, as it is
+var _void := Color.BLACK   # what Compatibility shows where nothing is drawn: the world's background colour, as it is
 
 func _apply_exposure() -> void:
 	if env != null:
 		env.tonemap_exposure = base_exposure * brightness * area_exposure * area_lift * preset_lift
-		# The lift is calibrated on the baked world; what is lit by the real-time lights alone (the creatures, the effects) divides it out in its shader, so it is as bright as today's.
+		# The lift is calibrated on the baked world; what is lit by the real-time lights alone (the creatures, the effects) divides it out in its shader, so it is as bright as the old game's.
 		lift_inv = 1.0 / (area_lift * preset_lift)
 		RenderingServer.global_shader_parameter_set(LIFT_INV_PARAM, lift_inv)
 		env.background_color = DmCompatAlbedo.void_color(_void, env.tonemap_exposure)   # Forward+ tonemaps the background like a pixel: this is the colour that comes out as `_void`

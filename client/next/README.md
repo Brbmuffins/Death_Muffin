@@ -4,8 +4,8 @@
 owns little logic. Solo is a 1-player `DmSession` hosted on an `OfflineMultiplayerPeer`; a party is the same code with more peers
 (no `if solo` in gameplay). It runs on the combat core: enemies, thralls, corpses and their statuses are the core's (native/README.md), drawn by the crowd
 (client/crowd/README.md), and no node and no script exists per creature: an enemy is an id. How the scene is put together, with the dev entry and its controls:
-client/README.md "The game scene and the dev entry". One README per system folder below; `client/next/look/` (`DmCompatAlbedo`, the area converter's tint table) is the client's own and is
-explained in client/README.md "The look against today's game".
+client/README.md "The game scene and the dev entry". One README per system folder below; `client/next/look/` (`DmCompatAlbedo`, the area converter's tint table) is
+explained in client/README.md "The look on Forward+".
 
 ## Launch
 - Players: the launcher starts the game; `DmMain` runs the front flow (`client/front/`) then `DmNextGame`. Launch arguments and the dev entry: client/README.md.
@@ -54,7 +54,6 @@ Puppets, remote bodies (snapshot-eased in `_process`) and `DmCameraRig` stay OFF
 - Every instant move calls `reset_physics_interpolation()` after the write (teleports, respawn, Grave/Veil Step fallbacks, boss relocation > `DmBoss.JUMP_M`); spawns reset in `_ready` / `_enter_tree`.
   A reset takes effect when the tick ends.
 - Visual children moved in `_process` under an interpolated body (the hover bob on `$Visual`) are sampled once per tick, which is invisible for a bob; do not add larger motion there.
-- Not covered in the client: smoothness between ticks, no smear after a teleport, which nodes interpolate (the old game's interpolation suite).
 
 ## Seams (all on `DmNextGame`)
 Rites (`DmRiteCaster`, `rites/`): attached as `Rites` to every body on every peer via `attach_caster(body)` (the host delays a joiner's by 0.8 s). `DmNextGame` is its `DmRiteWorld`:

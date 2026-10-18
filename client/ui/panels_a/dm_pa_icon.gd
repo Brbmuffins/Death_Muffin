@@ -1,6 +1,6 @@
 class_name DmPaIcon
 extends Control
-## A square art slot (ability icon, item icon, portrait). Loads `res://assets/<path>` when the file has been synced into the project;
+## A square art slot (ability icon, item icon, portrait). Loads `res://assets/<path>` when the file is in the project;
 ## until then it draws a stable placeholder tile (colour from the id, a glyph) so layouts and screenshots are honest about size.
 
 var path := ""

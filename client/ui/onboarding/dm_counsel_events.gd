@@ -175,8 +175,8 @@ static func calls(event_id: String, ctx: Dictionary = {}) -> Array:
 ## wave_affordable (waveCost != null && gold >= cost), thralls_mine, corpses_near (within 7 m), pack_on_corpse, family, level, total_kills,
 ## has_tool, has_belt_item, shards, boss_near: Array of boss ids whose summon object is within 12 m ("gravedigger","abbess","congregation","saint","regent","mire"),
 ## has_seal, area, cheapest_unlock (cost of the cheapest locked vow/boon; INF if none), boss_kills, ascension, ashes, gate_near (a closed door within 6 m).
-## Ported to the rebuilt client (client/code.list "Ported"): `altar` (default true, today's): false when the build has no Altar of Ascension (DECISIONS B36), which holds back the three
-## tips that send the player there (vows, altar_unlocks, boons). Nothing else changed.
+## `altar` (default true): false when the build has no Altar of Ascension (DECISIONS B36), which holds back the three
+## tips that send the player there (vows, altar_unlocks, boons).
 static func tick_calls(ctx: Dictionary) -> Array:
 	var ws := "WorldScene.ts:"
 	var out: Array = []

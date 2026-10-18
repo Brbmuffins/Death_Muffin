@@ -1,9 +1,9 @@
 #pragma once
-// DmDecals: the ground decals of the effects layer in C++ (client/fx/dm_fx_prims.gd's DecalTr and the DECAL half of client/fx/dm_fx_layer.gd, ported from godot/fx).
+// DmDecals: the ground decals of the effects layer in C++ (client/fx/dm_fx_prims.gd's DecalTr and the DECAL half of client/fx/dm_fx_layer.gd).
 // A decal is a record here, not two GDScript objects: `step` ages every decal, works out what it looks like now (size, turn, opacity, outline, where it follows) with the
 // arithmetic of DecalTr.update, operation for operation in doubles, and writes each layer's instance buffer (20 floats an instance: transform, tint, opacity / outline /
 // flipbook frame) and hands it to the RenderingServer. The effects layer (GDScript) still decides what a decal is made of, owns the layers' MultiMeshes and their nodes,
-// and keeps every other transient (flashes, beams, orbits, spikes); client/tests/fx_decals.gd compares the buffers with today's GDScript frame by frame.
+// and keeps every other transient (flashes, beams, orbits, spikes); client/tests/fx_decals.gd compares the buffers with the old GDScript decals frame by frame.
 #include <cstdint>
 #include <deque>
 #include <string>

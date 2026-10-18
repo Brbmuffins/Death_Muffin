@@ -49,9 +49,7 @@ HEAD_NOW=$(g -C "$REPO" rev-parse "refs/heads/$BRANCH") || { echo "RESULT: head-
 g -C "$REPO" worktree add -q --detach "$SW" "$OLD" || { echo "RESULT: worktree-failed"; exit 6; }
 cd "$SW"
 for rel in node_modules; do [ -d "$REPO/$rel" ] && ln -s "$REPO/$rel" "$SW/$rel"; done
-# Godot import cache from the main checkout (a fresh import takes ~70 s, a warm one ~14 s; Godot re-imports whatever changed). Checks only: the
-# client publish always imports from scratch in its own worktree.
-[ "$MODE" = godot ] && [ -d "$REPO/godot/.godot" ] && [ ! -e "$SW/godot/.godot" ] && cp -a "$REPO/godot/.godot" "$SW/godot/.godot" 2>/dev/null
+# (The game's build products, the combat core, the import and the crowd's bakes, come with the check: check-godot.sh runs client-prep.sh.)
 
 say "merging $BRANCH onto $BASE_BRANCH ${OLD:0:7}"
 if ! g merge -q --ff-only "$EXPECT_HEAD" >/dev/null 2>&1; then
@@ -69,19 +67,6 @@ say "re-checking the merged diff"
 GATE=$(node "$TOOLS/runner/ship-gate.cjs" "$CONFIG" "$SW" "$OLD" "$MAX_TIER" 2>&1); GRC=$?
 echo "$GATE"
 [ $GRC -eq 0 ] || { echo "RESULT: gate $(echo "$GATE" | tail -1)"; exit 8; }
-
-# Since launch day (2026-10-18, DECISIONS B49) the game is client/: what the agent changed in godot/ reaches it through the code and asset syncs, committed
-# on top of the merge (after the gate, which judges the agent's own change), so main's client/ is what gets published.
-if [ "$MODE" = godot ] && [ -f tools/rebuild/sync-code.mjs ] && [ -f tools/rebuild/sync-assets.mjs ]; then
-  say "syncing the change into client/"
-  if ! { node tools/rebuild/sync-code.mjs && node tools/rebuild/sync-assets.mjs --quiet; } >"$TOOLS/state/ship-$JOBID.sync.log" 2>&1; then
-    tail -5 "$TOOLS/state/ship-$JOBID.sync.log"; echo "RESULT: sync-failed"; exit 7
-  fi
-  if [ -n "$(g status --porcelain -- client)" ]; then
-    g add -- client && g commit -q -m "Sync client/ with $BRANCH (tools/rebuild/sync-code.mjs, sync-assets.mjs)" || { echo "RESULT: sync-failed commit"; exit 7; }
-    SHA=$(g rev-parse HEAD)
-  fi
-fi
 
 say "running tests on the merged tree"
 # Dev build (owner, 2026-10-10: tests were costing too much time): the ship runs the QUICK check (the suites the change can affect plus a smoke

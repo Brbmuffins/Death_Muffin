@@ -2,7 +2,7 @@ class_name DmLootData
 extends RefCounted
 ## Content the loot rules read (areas' loot tables, enemy gold/xp, item meta, armour sets, rune pools, reagent drops, ...).
 ## Originally exported from the web game's TS content modules.
-## Since the registry refactor this is DmDb.loot_view(): a projection of godot/data/content/* (no separate file), or set_content().
+## Since the registry refactor this is DmDb.loot_view(): a projection of client/data/content/* (no separate file), or set_content().
 
 
 static var _c: Dictionary = {}

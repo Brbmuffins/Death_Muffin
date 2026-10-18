@@ -1,7 +1,7 @@
-// The Crypt Deacon (godot/enemies/kinds/dm_enemy_deacon.gd): a robed caster that keeps its distance (the state is World::engage) and, whenever its cooldown
+// The Crypt Deacon (the old game's dm_enemy_deacon.gd): a robed caster that keeps its distance (the state is World::engage) and, whenever its cooldown
 // is up and it is not silenced, does the first of these, with or without a target: RAISE a corpse within 8 m (a wind-up channel, then the corpse is
 // consumed "raised" and a Risen stands on it), SANCTIFY the most wounded other ally in range, CURSE its target in range (the plain blow, World::begin_attack
-// and strike). The scan runs at the target-scan rate. Differences from today are listed in native/README.md.
+// and strike). The scan runs at the target-scan rate. Differences from the old game are noted in native/README.md.
 #include "world.h"
 
 namespace dm {

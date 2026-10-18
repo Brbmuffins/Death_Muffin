@@ -22,7 +22,7 @@ Cost: `tick` returns on its first line when there is no target / queue / held ke
 The shared decision code in `client/game/` (`DmAutoCombat.select_action / select_movement`, `DmAutoDodge`, `DmBossTelegraphs`), fed by an adapter over the combat core: the enemies by the bulk arrays
 (`enemy_ids / enemy_positions / enemy_states`, spawn order) and the facts the host's signals keep (radius, elite flag, health, wind-up, area), the corpses by `corpse_ids / corpse_positions` (within 40 m, at most 256), the
 legion's size from the core, the caster (`cooldown_left`, essence), the hostile dust clouds and toxic pools from the `zone` events and the boss's telegraphs (`DmBossFx.played`). Output = the keyboard's intents:
-`cast_at(slot, aim, enemy_id)` and `request_move_dir`. The decision code is ported for speed (native sorts, each field read once); the adapter, its cost and its proof against the old decisions are client/README.md "The benchmark" ("Easy auto combat").
+`cast_at(slot, aim, enemy_id)` and `request_move_dir`. The decision code is built for speed (native sorts, each field read once); the adapter and its cost are client/README.md "The benchmark" ("Easy auto combat").
 
 | rule | here |
 |---|---|
@@ -46,7 +46,7 @@ Standing mouse-aim: `DmCombatInput.stand_face` from the 10 Hz hover pick -> `ses
 
 ## Tests
 `client/tests/auto_combat.gd` (Easy auto combat: its golden cases, seeded Full Party fights for the necromancer's rites and the Reaper's, the movement), `client/tests/rites.gd` (the kit's hotbar, the click-to-attack chase, every rite's cast),
-`client/tests/hud.gd` (slot needs, floating number caps). Not covered in the client: the queued cast, held keys, Shift and standing aim, the cast cue count of every rite (the old game's feel and clarity suites).
+`client/tests/hud.gd` (slot needs, floating number caps).
 
 ## Known gaps
 - Auto-combat has no `DmNav` over the navmesh (the decision code's `clear_line` / path-around is skipped; the body's nav clamp slides it), so it parks the hero in pockets of tombstones (KNOWN-GAPS "Combat and statuses").

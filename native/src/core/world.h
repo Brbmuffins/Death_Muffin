@@ -1,7 +1,7 @@
 #pragma once
 // The core's tables and the enemy brain (native/README.md "Design"). Enemies live in spawn order: a slot only moves by stable
-// compaction when a dead body is removed, so slot order is spawn order and every scan keeps today's tie-breaks. The brain is a port of
-// godot/enemies (DmEnemy, its states and kinds) for the Graves roster, the Ossuary's golem and deacon, the Drowned Nave's five (censer, acolyte, gargoyle,
+// compaction when a dead body is removed, so slot order is spawn order and every scan keeps the old game's tie-breaks. The brain follows the
+// old game's enemy scripts (DmEnemy, its states and kinds; tag archive/old-game) for the Graves roster, the Ossuary's golem and deacon, the Drowned Nave's five (censer, acolyte, gargoyle,
 // templar, wraith: nave.cpp) and the Cinder Pyre's and the Mourning Fen's eight (pyre_fen.cpp); timers count in doubles the way the GDScript did. Thralls
 // (thralls.cpp) and corpses (corpses.cpp) live in the same World: heroes are enemies' targets first, then thralls in raise order.
 #include <cmath>
@@ -25,7 +25,7 @@
 
 namespace dm {
 
-// Wire ids of today's enemy states (godot/enemies/states/dm_enemy_state.gd): append only.
+// Wire ids of the enemy states (the old game's dm_enemy_state.gd): append only.
 enum EnemyState : int32_t { RISING = 0, IDLE, CHASE, ATTACK, HURT, RETURN, DEAD, FLEE, BURROW, ERUPT, DIG, EMERGE };
 enum Behavior : int32_t { B_MELEE = 0, B_FLANK, B_CASTER, B_HAZARD, B_SUPPORT };  // B_SUPPORT: the Crypt Deacon (DmEnemyDeacon, DmStateCathSupport)
 // BLOW_CURSE: the Lich Acolyte's homing curse (the plain reach, hit kind curse); BLOW_SCREAM: the Choir Wraith's ring at the aim; BLOW_DIVE: the Belfry Gargoyle's drop;
@@ -67,7 +67,7 @@ constexpr double WARD_RETRY_S = 0.25;
 constexpr double OVERLAP_EASE = 0.3, OVERLAP_MAX_STEP = 0.15;
 constexpr double SIDESTEP = 0.6;  // a body blocked head-on slides sideways at this share of its speed (World::separate)
 constexpr int32_t SEP_TOUCH_MAX = 16;  // neighbours one body's steering keeps clear of in a tick
-// DmAffixSet: the shroud check runs every LOOK_S; a Miasma cover holds 350 ms (today wall-clock, here game time); a hungry body that found
+// DmAffixSet: the shroud check runs every LOOK_S; a Miasma cover holds 350 ms (wall-clock in the old game, game time here); a hungry body that found
 // nothing to eat looks again 0.5 s later; Vengeful's Risen stand on a 1.4 m ring.
 constexpr double AFFIX_LOOK_S = 0.1, MIASMA_HOLD_S = 0.35, HUNGER_RETRY_S = 0.5, VENGEFUL_RING = 1.4;
 
@@ -96,8 +96,8 @@ struct Tuning {  // data/content/enemies.json blocks
 };
 
 // Thralls, corpses and the toxic pool. Numbers come from data (World::load in DmCore): content/{abilities,fen,statuses,gameplay_legendary,
-// runes}.json, combat/enemies.json, and the constants of godot/sim/sim_consts.gd, dm_corpse_field.gd and dm_thrall.gd. The defaults are
-// today's values so a core that loads nothing still plays; core_thralls.gd asserts they equal what the data says.
+// runes}.json, combat/enemies.json, and the constants of client/sim/sim_consts.gd and the old game's dm_corpse_field.gd and dm_thrall.gd. The defaults repeat
+// the data's values so a core that loads nothing still plays; core_thralls.gd asserts they equal what the data says.
 struct LegionTuning {
 	// DmSimConsts
 	double corpse_lifetime = 26.0, toxic_rupture = 5.0, thrall_leash = 13.0, thrall_teleport = 24.0, thrall_rise = 0.9;
@@ -204,7 +204,7 @@ struct Tgt {
 	double radius = 0.4, weight = 1.0;
 };
 
-struct Obstacle {  // a solid box enemies cannot enter (Ossuary Wall: today a StaticBody3D on the layer enemies collide with)
+struct Obstacle {  // a solid box enemies cannot enter (Ossuary Wall; the old game's was a StaticBody3D on the layer enemies collide with)
 	int32_t id = 0;
 	float x = 0, z = 0, ux = 1, uz = 0;  // centre, unit axis along its length
 	double half_len = 0.5, half_thick = 0.5;
@@ -241,7 +241,7 @@ struct World {
 	std::unordered_map<std::string, int32_t> area_index;
 	std::vector<Enemy> enemies;
 	std::unordered_map<int32_t, int32_t> enemy_slot;  // id -> slot
-	// Bodies born inside a kill (Vengeful's Risen): id, rolls and EV_ENEMY_SPAWNED happen at the kill in today's order, but the table only
+	// Bodies born inside a kill (Vengeful's Risen): id, rolls and EV_ENEMY_SPAWNED happen at the kill in the old game's order, but the table only
 	// grows in flush_spawns(), because a kill can happen while a caller holds an Enemy& (a DoT lump, a swing that kills a bursting thrall).
 	std::vector<Enemy> pending_spawns;
 	std::vector<External> externals;
@@ -269,7 +269,7 @@ struct World {
 	int32_t next_corpse_id = 1;
 	double corpse_time = 0, corpse_next_due = std::numeric_limits<double>::infinity(), corpse_life_mult = 1.0;
 	std::vector<std::string> reasons;      // corpse reasons by code (CorpseReason first, then interned)
-	std::vector<int32_t> area_levels;      // DmCorpseField.area_level per area id; today nothing sets it, so the toxic pool hurts as level 1
+	std::vector<int32_t> area_levels;      // DmCorpseField.area_level per area id; the old game never set it, so the toxic pool hurts as level 1
 	std::vector<int32_t> id_scratch;
 	std::vector<int32_t> toll_hits;   // the bell's targets (kept apart from id_scratch, which a burst inside the toll reuses)
 	std::vector<double> sep_scratch;  // thrall separation: pushed x, z per thrall
@@ -282,7 +282,7 @@ struct World {
 	int32_t area_id(const std::string &p_area);
 	void rebuild_grid();  // the grid over this tick's positions (step() and a puppet's step_puppet() end with it)
 	int32_t spawn_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, int32_t p_area, bool p_rising, int32_t p_affixes = 0);
-	// A solid box from a to b, `thickness` thick: enemies on the surface are kept out of it (thralls and heroes pass, as today's layers).
+	// A solid box from a to b, `thickness` thick: enemies on the surface are kept out of it (thralls and heroes pass).
 	int32_t add_obstacle(float p_ax, float p_az, float p_bx, float p_bz, double p_thickness);
 	bool remove_obstacle(int32_t p_id);
 	// Adds the bodies a kill queued. step() calls it last; DmCore calls it before returning from anything that can kill outside the tick.

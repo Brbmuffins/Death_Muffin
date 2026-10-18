@@ -4,7 +4,7 @@ extends DmRiteModule
 ## pulled back to 12 m, erupts a r 3 ring for x0.8), Impaling (stops at the first enemy: x1.5, roots it 1.5 s). The legendary `spearRally` mod marks the
 ## nearest enemy hit: the legion turns on it and hits it harder for LEGEND.rallyS. Numbers: DmAbilities.spear + DmRunes; visuals: DmRiteFx.spear_*.
 ## Soul Harvest: a charged cast arrives with intent["mult"] 1.5 (longer, wider line; the caster spent souls, not essence).
-## On the combat core (client/code.list "Ported"): enemies are ids and DmFoe snapshots, the blow is `c.deal` (a kill is known at once), statuses are the core's (`c.apply_status`), the legion is the core's (`c.thralls()`).
+## On the combat core: enemies are ids and DmFoe snapshots, the blow is `c.deal` (a kill is known at once), statuses are the core's (`c.apply_status`), the legion is the core's (`c.thralls()`).
 
 const SPEED := 48.0
 const Y := 0.3

@@ -1,19 +1,20 @@
-# Test lobby and relay (2-player co-op of the rebuilt client)
+# Test lobby and relay (2-player co-op of test builds)
 
-The rebuilt client's co-op (DECISIONS B38, B40; [client/README.md](../../../../client/README.md) "Co-op on the core") needs a lobby and a UDP relay of its own, next to the live ones and
-next to the test backend ([../README.md](../README.md)): the rebuild never talks to the live API, lobby or relay, and the live ones never see its sessions.
+A test build's co-op (DECISIONS B38, B40, B53; [client/README.md](../../../../client/README.md) "Co-op on the core") needs a lobby and a UDP relay of its own, next to the live ones and
+next to the test backend ([../README.md](../README.md)): a test build never talks to the live API, lobby or relay, and the live ones never see its sessions. The game since launch day uses the live ones and never reaches these
+(client/README.md "The API rule").
 
 | What | Where |
 |---|---|
 | Test lobby | `death-muffin-lobby-test` (unit here), 127.0.0.1:5195, the live lobby's code in `~/death-muffin/lobby-test/` |
 | Test relay | `death-muffin-relay-test` (unit here), UDP 5196 (public), the live relay's code in `~/death-muffin/relay-test/` |
-| Public lobby address | `wss://muffindevelopment.com/death-muffin/test-lobby/` (nginx location, `nginx-test-lobby.conf`); `DmConfig.LOBBY_URL` |
+| Public lobby address | `wss://muffindevelopment.com/death-muffin/test-lobby/` (nginx location, `nginx-test-lobby.conf`); the game's `DmConfig.TEST_PATHS` lists it among the addresses it never reaches |
 | Who may enter | accounts of the test backend only: the lobby verifies tokens with the test backend's `JWT_SECRET` (`ENV_FILE=~/death-muffin/backend-test/.env`), the relay's tickets are signed with it |
 | Friends, invites, asks | the lobby reads friend lists from the test backend (`DM_LOBBY_BACKEND=http://127.0.0.1:5194`): the copies of the team's accounts and their friendships |
 
 Ports 5195 and 5196 come from the range reserved for this project (5195-5199, `../../README.md`); nothing else uses them (`ss -ltnup`, 2026-10-16). Same code as live, no change to the live lobby or
-relay: the lobby is `server/death-muffin/lobby` and the relay `server/death-muffin/relay` with the client's copy of `dm_udp_relay.gd` (kept identical to the live game's by `tools/rebuild/sync-code.mjs`).
-The client takes a relay the lobby offers only on port 5196 (or on the same machine), so a lobby that handed out the live relay would be ignored (`DmConfig.allows_relay`).
+relay: the lobby is `server/death-muffin/lobby` and the relay `server/death-muffin/relay` with the client's `client/net/relay/dm_udp_relay.gd`.
+The game takes a relay the lobby offers only on port 5193 (or on the same machine) and refuses 5196 (`DmConfig.allows_relay`); a test build needs a config of its own.
 
 ## Files
 
@@ -37,7 +38,7 @@ The client takes a relay the lobby offers only on port 5196 (or on the same mach
 4. nginx: add `nginx-test-lobby.conf` to the `muffindevelopment` server block (next to `/death-muffin/lobby/`), mirror it in `../../nginx-locations.conf`, then `sudo nginx -t && sudo systemctl reload nginx`.
 5. `sudo systemctl start death-muffin-relay-test death-muffin-lobby-test`, then:
    - `curl -s http://127.0.0.1:5195/health` answers `{"ok":true,...}` and `journalctl -u death-muffin-relay-test` shows `listening on udp *:5196`;
-   - the test channel's build hosts and joins a party (client/README.md "Co-op on the core": the trial commands) with two of the team's accounts.
+   - a test build hosts and joins a party (client/README.md "Co-op on the core": the trial commands) with two of the team's accounts.
 6. Both units are in the service list of `server/death-muffin/ops/drift-report.sh`, so a down test lobby or relay is flagged (reinstall the ops jobs with `ops/install.sh` after changing it); an Uptime Kuma monitor is optional and, like every staging and test monitor, never linked to the live Discord notification.
 
 To undo it: `sudo systemctl disable --now death-muffin-lobby-test death-muffin-relay-test`, remove the two units, the drop-in, the nginx block and the firewall rule.

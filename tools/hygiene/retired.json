@@ -2,15 +2,14 @@
   "maxFileMB": 20,
   "bigFileAllow": [],
   "scanExclude": [
-    "godot/tests/**/fixtures/**",
-    "godot/data/**",
-    "godot/assets/**",
+    "godot/**",
     "client/data/**",
     "client/assets/**",
     "package-lock.json",
     "**/package-lock.json",
     "PATCH_NOTES.json",
-    "server/death-muffin/discord-agent/test/**"
+    "server/death-muffin/discord-agent/test/**",
+    "client/tests/**/fixtures/**"
   ],
   "terms": [
     {
@@ -304,5 +303,8 @@
     "ASSET_PIPELINE.md": [
       "godot/assets/fx/sheets/"
     ]
-  }
+  },
+  "historyDocs": [
+    "DECISIONS.md"
+  ]
 }

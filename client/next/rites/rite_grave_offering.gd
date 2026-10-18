@@ -2,7 +2,7 @@ extends DmRiteModule
 ## Grave Offering: burn the corpse nearest the cursor (2.5 m of the aim, 13 m range) into your own reserves. Free, 2 s, unlocks at level 2. The corpse goes
 ## through the field's atomic consume; an orb flies to you (14 m/s) and on arrival you gain DmSimData.GRAVE_OFFERING essence (+ resonant bonus, x elite)
 ## and maxHp x (healFrac + the corpseHeal mod). Paid once, on the host. Visuals: DmRiteFx.offering_*.
-## On the combat core (client/code.list "Ported"): the corpse field is the core's (`c.corpses()`).
+## On the combat core: the corpse field is the core's (`c.corpses()`).
 
 const SPEED := 14.0   ## sim_caster._offering projectile
 

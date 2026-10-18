@@ -3,15 +3,15 @@
 #   build-art.sh <id>      run from the worktree root, after the runner said the generation finished
 # Same sandbox as check-godot.sh (sandbox-lib.sh). Inside: tools/build-characters.mjs <id> (Tripo outputs in art-src/tripo/<id>/ -> public/models/...), then the
 # result is DEQUANTIZED (Godot's glTF importer rejects KHR_mesh_quantization) and copied into the Godot client:
-#   characters/creatures  public/models/<id>/character.glb      -> godot/assets/slice/models/<id>/character.glb
-#   props (id prop_<name>) public/models/props/<name>.glb        -> godot/assets/slice/models/props/<name>.glb
+#   characters/creatures  public/models/<id>/character.glb      -> client/assets/slice/models/<id>/character.glb
+#   props (id prop_<name>) public/models/props/<name>.glb        -> client/assets/slice/models/props/<name>.glb
 # Godot extracts textures and writes .import files the next time it imports the project (check-godot.sh does); commit those next to the model.
 set -uo pipefail
 ID=${1:-}
 [[ "$ID" =~ ^[a-z0-9_]{3,40}$ ]] || { echo "usage: build-art.sh <id>   (id = [a-z0-9_], the one that was generated)"; exit 2; }
 TOP=$(git rev-parse --show-toplevel) || exit 2
 [ -d "$TOP/art-src/tripo/$ID" ] && [ ! -L "$TOP/art-src/tripo/$ID" ] || { echo "nothing generated for $ID yet (no art-src/tripo/$ID)"; exit 2; }
-[ -f "$TOP/tools/build-characters.mjs" ] && [ -d "$TOP/godot" ] || { echo "this worktree has no tools/build-characters.mjs or godot/"; exit 2; }
+[ -f "$TOP/tools/build-characters.mjs" ] && [ -d "$TOP/client" ] || { echo "this worktree has no tools/build-characters.mjs or client/"; exit 2; }
 export DM_SANDBOX_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/sandbox-lib.sh"
 # Combat-trim source clips for a hero (build-characters.mjs COMBAT_TRIMS): the shared checkout's raw hero_gravecaller run, read-only in the sandbox.
 DM_TRIM_SOURCE="$(dirname "$(git -C "$TOP" rev-parse --path-format=absolute --git-common-dir)")/art-src/tripo/hero_gravecaller"
@@ -22,8 +22,8 @@ export DM_PAYLOAD='
   if ! node tools/build-characters.mjs "$ID" > /tmp/build.log 2>&1; then tail -25 /tmp/build.log; echo "build-characters failed"; exit 1; fi
   tail -5 /tmp/build.log
   case "$ID" in
-    prop_*) SRC="public/models/props/${ID#prop_}.glb"; DST="godot/assets/slice/models/props/${ID#prop_}.glb";;
-    *)      SRC="public/models/$ID/character.glb";      DST="godot/assets/slice/models/$ID/character.glb";;
+    prop_*) SRC="public/models/props/${ID#prop_}.glb"; DST="client/assets/slice/models/props/${ID#prop_}.glb";;
+    *)      SRC="public/models/$ID/character.glb";      DST="client/assets/slice/models/$ID/character.glb";;
   esac
   [ -f "$SRC" ] || { echo "the build did not produce $SRC"; exit 1; }
   mkdir -p "$(dirname "$DST")"

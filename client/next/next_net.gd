@@ -1,6 +1,6 @@
 class_name DmNextNet
 extends Node
-## 2-player co-op on the combat core (client/code.list "Ported"; client/README.md "Co-op on the core"): the three messages of the core and the few that stay GDScript, over
+## 2-player co-op on the combat core (client/README.md "Co-op on the core"): the three messages of the core and the few that stay GDScript, over
 ## the session's relay peer (DmRelayPeer: the lobby WebSocket, or the UDP lane when the relay offers one). One node `Net` at the same path on every peer.
 ##
 ## HOST -> GUEST (a guest is a roster member; nothing is sent to a peer that has not said hello, whose game may still be loading)
@@ -15,10 +15,10 @@ extends Node
 ##   baseline   `_rpc_baseline`   reliable, once to a new guest and again on request: `core.baseline()`, the whole present as records. The guest clears its presentation first.
 ##   heroes     `_rpc_heroes`     reliable: {peer id: the hero's external id in the host's core}, on every join and leave. The ids in the events (the owner of a thrall, the source of a
 ##              blow) are the host's; a guest's hero bodies adopt them (`DmCoreHost.adopt_hero`).
-##   vitals     `_rpc_vitals`     unreliable_ordered, 20 Hz: every hero's [hp, max, resource, resource max, alive], as today. A fall in a guest's own health is its `hurt` (the damage number,
-##              the flash and the sounds: DmHeroBody.apply_vitals); today's guest shows none of that.
+##   vitals     `_rpc_vitals`     unreliable_ordered, 20 Hz: every hero's [hp, max, resource, resource max, alive]. A fall in a guest's own health is its `hurt` (the damage number,
+##              the flash and the sounds: DmHeroBody.apply_vitals).
 ##   effect     `_rpc_effect`     reliable: an enemy dragged the guest's hero (`hero_effect`): the guest's "Dragged!" and camera shake. A chill and a root are statuses, which replicate.
-##   The hero positions are the session's own snapshot (DmSession, 20 Hz), the King's state and events are DmBossHost's, the rites' events DmRiteCaster's: all as today.
+##   The hero positions are the session's own snapshot (DmSession, 20 Hz), the King's state and events are DmBossHost's, the rites' events DmRiteCaster's.
 ## GUEST -> HOST: move intents (DmSession), `request_cast` (DmRiteCaster) and `_rpc_need_baseline` (a batch went missing). The host resolves a guest's rites on its core; the guest's
 ## thralls are the host's bodies, owned by the guest's hero external.
 ##
@@ -32,7 +32,7 @@ signal refused(reason: String)                 ## guest: the host's messages can
 const SEND_HZ := 20.0
 const PRIORITY := 150                          ## after the core's tick (DmCoreHost.PRIORITY 100): the snapshot shows the state this tick ended in
 ## The most bytes of core snapshot in one packet. A game packet is this + the RPC frame (about 20 B) + the relay's 6-byte header, and ENet sends up to about 1,364 B in one unfragmented
-## datagram (MTU 1,392); today's code stayed under 1,392 B per packet. 1,300 leaves room for the frame and for a longer node path.
+## datagram (MTU 1,392). 1,300 leaves room for the frame and for a longer node path.
 const PART_MAX := 1300
 const ASK_EVERY_MS := 1000                     ## a guest asks for a baseline at most this often
 

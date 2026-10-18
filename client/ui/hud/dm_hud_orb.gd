@@ -3,7 +3,7 @@ extends Control
 ## `.hud-orb`: 118 px liquid orb (health violet-plum, resource indigo, or recoloured by the class family's resource colour),
 ## a rippling surface, a glossy highlight, an optional bone "barrier" ring and the gold beat-pulse ring.
 ## Set `fill` (0..1) and the colours; `label` below is a separate node (see DmHudOrbWrap).
-## Ported (client/code.list): the orb is two triangle meshes, one behind (the dish, its rings, and the liquid body) and one in front (the ripple, the barrier and
+## The orb is two triangle meshes, one behind (the dish, its rings, and the liquid body) and one in front (the ripple, the barrier and
 ## beat rings, the gloss), so it costs two draw calls where it was drawn with sixteen circles, a polygon and three polylines. Same shapes, same colours.
 
 const SIZE := 118.0

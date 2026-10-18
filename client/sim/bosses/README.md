@@ -2,7 +2,7 @@
 
 Pure GDScript brains (no nodes, no autoloads) for Prelate, Gravedigger King, Bone Abbess, Drowned Congregation, Plague Saint,
 Cinder Regent and Mire Mother. Numbers come from `client/data/content/bosses.json`, `fen.json`, `abilities.json`, `difficulty.json`.
-The scene side is `client/next/bosses/`. They are the old game's brains, unchanged (a brain does not know what a combat core is: it asks its `DmBossWorld`), except the Plague Saint's.
+The scene side is `client/next/bosses/`. A brain does not know what a combat core is: it asks its `DmBossWorld` (the Plague Saint's asks for her doctors only, `enemies_of`).
 
 | file | role |
 |---|---|
@@ -23,8 +23,8 @@ for exact signatures. The live host adds `enemies_of(def)` (the rows of one kind
 `resume()`; Abbess also `niche_ids()` / `standing_niches()`, Congregation `covered(x, z)`.
 
 ## Tests
-- The recorded scenarios (44, frozen: no generator) are replayed through these brains on a fake world and compared tick by tick: the King's six by `client/tests/boss.gd`, the other six bosses' by their suites on `client/tests/boss_base.gd` (client/README.md "The bosses"). They are the old game's
-  recorded files, read from its test fixtures.
+- The recorded scenarios (44, frozen: no generator) are replayed through these brains on a fake world and compared tick by tick: the King's six by `client/tests/boss.gd`, the other six bosses' by their suites on `client/tests/boss_base.gd` (client/README.md "The bosses"). They are recordings of the web game's brains,
+  kept as test fixtures.
 - Scene-level behaviour on the core: the same suites, `client/tests/core_boss.gd` and `client/tests/coop_bosses.gd`.
 
 ## Notes

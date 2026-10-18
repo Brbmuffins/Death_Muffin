@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build DeathMuffin.assets.pck (everything under res://assets) for publish-godot-client.sh, from an imported checkout:
-#   bash tools/godot/assets-pack.sh <checkout>/godot <out.pck> [godot-binary]
+#   bash tools/godot/assets-pack.sh <checkout>/client <out.pck> [godot-binary]
 # 1. `--export-pack "Windows Assets"` (export_presets.cfg: include res://assets/*).
 # 2. Keeps only assets/, .godot/imported/ and .godot/exported/ entries: Godot also writes project.binary, the uid and script-class caches
 #    and the autoload scripts into every pack, and those change with every code change. Without them the pack depends on res://assets

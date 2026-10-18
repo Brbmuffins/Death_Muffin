@@ -1,13 +1,13 @@
 class_name DmNextPerf
 extends Node
-## The performance controls of the rebuilt client (a port of godot/next/perf/dm_next_perf.gd, client/code.list "Ported"; DECISIONS B45): graphics preset,
+## The performance controls of the rebuilt client (DECISIONS B45): graphics preset,
 ## render scale, fps cap, auto-resolution.
 ##   graphics        preset (DmGraphicsPreset: low / medium / high / ultra): moon shadows + reach + atlas + soft filter, bloom, ambient occlusion, the crowd's shadow
 ##                   policy, MSAA / anisotropy / mesh LOD on the viewport, Vfx.quality + Binbun, the governor's resolution floor (0.6 Low, 0.85 above)
 ##   brightness      Settings -> Brightness x the preset's lift factor (on the area's lift), as the builder's exposure multiplier;  ui_scale  Interface size (window content scale)
 ##   fps             Engine.max_fps (0 = uncapped);  vsync  display V-Sync on / off (live, windowed builds only)
 ##   auto_res        DmResolutionGovernor on the 3D view's scaling_3d_scale, upscaled with FSR 1 (the UI stays sharp); held through loads and area entries
-## Not today's: no moon-shadow caster poll (the crowd keeps its own nearest-casters budget, DmCrowd.set_shadow_policy), no prop-light count or prop shadow range
+## There is no moon-shadow caster poll (the crowd keeps its own nearest-casters budget, DmCrowd.set_shadow_policy), no prop-light count or prop shadow range
 ## (baked into the area's lightmap). `apply(settings)` runs at the game's start (DmNextGame: the player's settings file, read only, until the Settings panel comes
 ## with the panels) and whenever settings change.
 
@@ -61,7 +61,7 @@ func apply(s: Dictionary) -> void:
 			DmGraphicsPreset.apply_environment(b.env, preset)
 	var dressing: DmWorldDressing = world.get("dressing") if world != null else null
 	if dressing != null and dressing.atmosphere != null:
-		dressing.atmosphere.quality_low = String(gp["fx"]) == "low"   # the weather thins on Low, as today's
+		dressing.atmosphere.quality_low = String(gp["fx"]) == "low"   # the weather thins on Low
 	var host: Node = game.get("core_host") if game != null else null
 	var view: CrowdView = host.get("view") if host != null else null
 	if view != null and view.crowd != null:

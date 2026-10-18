@@ -39,7 +39,7 @@ var _mesh: Mesh
 var wake: Callable
 var live := false
 ## A decal layer's instances are kept by DmDecals (C++), which writes the buffer and hands it to the RenderingServer: `native_index` is the number it knows this layer by, and `show_count`
-## tells the layer how many instances were drawn. (Every other kind, and this class's own items and `flush`, work as today's.)
+## tells the layer how many instances were drawn. (Every other kind, and this class's own items and `flush`, stay GDScript.)
 var native_index := -1
 var _dec: DmDecals
 var _shown := false   # last state pushed to the MultiMesh / node (an empty layer is not re-pushed every frame)

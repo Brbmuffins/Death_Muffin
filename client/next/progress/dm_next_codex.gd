@@ -4,7 +4,7 @@ extends Node
 ## first time one stands within 40 m of the local hero (every spawn on every peer), a boss the moment it wakes, an area on entry (DmAreaFlow). The
 ## journal is the HUD's `ui.codex_journal` (the Codex panel's "the dead" and "the diocese" read it): each discovery is sent to it as the `codex` game
 ## event, and the set is kept per character in the local store (the web's CodexJournal lives in localStorage) so a relaunch remembers it.
-## The rebuild's port (client/code.list "Ported"): a spawn is the core host's `enemy_spawned` (an id, its def and place), not an enemy node.
+## A spawn is the core host's `enemy_spawned` (an id, its def and place), not an enemy node.
 
 signal discovered(kind: String, id: String)
 

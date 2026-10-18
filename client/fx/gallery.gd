@@ -1,6 +1,6 @@
 extends Node3D
 ## DmFx gallery: every Binbun effect (paged, same order/layout as the web's DEV `__cwDebug.vfxGallery(page)`) plus a page of the
-## procedural Effects.ts primitives. Interactive: `godot --path godot res://fx/gallery.tscn` (Left/Right = page, R = replay).
+## procedural Effects.ts primitives. Interactive: `godot --path client res://fx/gallery.tscn` (Left/Right = page, R = replay).
 ## Capture: `fx/shoot.sh <page> [out.png] [t1,t2,...]` (fixed 30 fps so frames are deterministic).
 ## Args after `--`: --page=N (0-based) --per=16 --out=file.png --t=0.6[,1.2] --ids=a,b --kind=binbun|prims --gain=1.0
 

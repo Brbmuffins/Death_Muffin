@@ -1,6 +1,6 @@
 # client/sim: shared sim data classes and pure helpers
 
-Pure classes `client/next/` uses: no nodes, no rendering. Positions are floats on the XZ plane. The per-creature records and the enemy brains of the old game are not here: the combat core owns enemies, thralls, corpses and zones (native/README.md "Design").
+Pure classes `client/next/` uses: no nodes, no rendering. Positions are floats on the XZ plane. There are no per-creature records or enemy brains here: the combat core owns enemies, thralls, corpses and zones (native/README.md "Design").
 
 | file | role |
 |---|---|
@@ -22,5 +22,4 @@ Data: `client/data/sim/world.json` (nav colliders, crypts, nodes, pew cover). Lo
   `"d:<16 hex digits>"` strings; `DmSimExact.decode` restores them.
 
 ## Tests
-`client/tests/depths.gd` plays the Depths' rules without a game (floors per seed, quota, pacing, rosters) and its floors in the game scene; `client/tests/boss.gd` and the other boss suites replay the brains. Not covered in the client: the old game's frozen golden fixtures for
-`DmNav`, the floor generator and the trig (no generator is left for them).
+`client/tests/depths.gd` plays the Depths' rules without a game (floors per seed, quota, pacing, rosters) and its floors in the game scene; `client/tests/boss.gd` and the other boss suites replay the brains.

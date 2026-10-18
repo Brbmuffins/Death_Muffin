@@ -1088,8 +1088,8 @@ function createRunner(cfgIn, opts = {}) {
       post({ threadId: job.threadId }, { content: `Done: ${res.files.length} take${res.files.length === 1 ? '' : 's'} of "${spec.id}"${partial}, ${fmtN(res.credits)} ElevenLabs credits. Have a listen below.\n${res.files.length > 1 ? 'Say which take you want (e.g. "take 2"), or ask for another go. ' : ''}The agent wires it in now; you get a normal proposal to approve.`, ...(files.length ? { files } : {}) });
       job.queue.push({ userId: 'runner', name: 'runner', role: 'runner', art: true, ts: now(), text:
         `The runner generated the sound "${spec.id}" (${spec.kind}, ${spec.duration_seconds} s): ${res.files.join(', ')} (git-ignored raw takes; never commit audio-src/). The takes were posted in the thread. ` +
-        `Next: unless the requester already picked a take, use take 1. Run ${cfg.toolsDir}/build-sound.sh ${spec.id} <take> (levels it and writes godot/assets/audio/eleven/${spec.id}.${spec.kind === 'music' ? 'mp3' : 'wav'} and its row in docs/AUDIO-SOURCES.md), ` +
-        `wire it in where the request asked (godot/audio/README.md: audioMap.json + the sample bank), commit ${S.SPEC_DIR}/${spec.id}.json, the asset and docs/AUDIO-SOURCES.md, run ${CHECK} (commit the .import file it writes), add a PATCH_NOTES.json item if players can hear it, and keep your reply short. ` +
+        `Next: unless the requester already picked a take, use take 1. Run ${cfg.toolsDir}/build-sound.sh ${spec.id} <take> (levels it and writes client/assets/audio/eleven/${spec.id}.${spec.kind === 'music' ? 'mp3' : 'wav'} and its row in docs/AUDIO-SOURCES.md), ` +
+        `wire it in where the request asked (client/audio/README.md: audioMap.json + the sample bank), commit ${S.SPEC_DIR}/${spec.id}.json, the asset and docs/AUDIO-SOURCES.md, run ${CHECK} (commit the .import file it writes), add a PATCH_NOTES.json item if players can hear it, and keep your reply short. ` +
         `If the requester later picks another take, rerun build-sound.sh with that take number.` });
       job.lastActive = now(); save();
     } finally {
@@ -1161,7 +1161,7 @@ function createRunner(cfgIn, opts = {}) {
       if (!failure) job.artRequest = null;
       const files = done.flatMap((i) => [i.conceptSha ? null : readImageFile(job, conceptRel(i.id), `concept-${i.id}.png`), readImageFile(job, `art-src/tripo/${i.id}/generate-preview.png`, `model-preview-${i.id}.png`)]).filter(Boolean);
       postImages(job, `Done: ${done.length === 1 ? `"${done[0].id}" is generated` : `${done.map((i) => i.id).join(', ')} are generated`}. ${failure ? '' : spentLine}\nThe agent now builds ${done.length === 1 ? 'it' : 'them'}, renders ${done.length === 1 ? 'it' : 'them'} and fits ${done.length === 1 ? 'it' : 'them'} in game; you will get pictures and a normal proposal to approve.`, files);
-      const wireOf = (i) => (i.kind === 'prop' ? `godot/assets/slice/models/props/${i.id.slice(5)}.glb` : `godot/assets/slice/models/${i.id}/character.glb`);
+      const wireOf = (i) => (i.kind === 'prop' ? `client/assets/slice/models/props/${i.id.slice(5)}.glb` : `client/assets/slice/models/${i.id}/character.glb`);
       const ids = done.map((i) => i.id);
       job.queue.push({ userId: 'runner', name: 'runner', role: 'runner', art: true, ts: now(), text:
         `The runner generated the approved model${ids.length > 1 ? 's' : ''} ${ids.map((i) => `"${i}"`).join(', ')} (it paid for ${ids.length > 1 ? 'them' : 'it'}; you never touch keys). For each <id>: art-src/concepts/<id>.png (concept), art-src/tripo/<id>/ (raw Tripo outputs), and the records art-manifest/tripo/<id>.json and art-manifest/images.json. ` +

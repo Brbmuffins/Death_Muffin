@@ -12,7 +12,7 @@ node tools/audio/generate-eleven-music.mjs chapterhouse --dry-run
 node tools/audio/generate-eleven-music.mjs chapterhouse
 ```
 
-Each live run requests one instrumental cue from `music_v2_5` and saves the MP3 plus its prompt, model, timestamp, and song ID in `/home/ubuntu/death-muffin/private/music-drafts/`. Review the cue for its musical fit, then use `node tools/audio/prepare-eleven-music.mjs <cue>` to encode a loop. Then run `tools/godot/sync-audio-assets.sh` to copy it into the Godot client (`godot/assets/audio/music/`), which has a Music slider and crossfades on area and boss changes (`godot/audio/`).
+Each live run requests one instrumental cue from `music_v2_5` and saves the MP3 plus its prompt, model, timestamp, and song ID in `/home/ubuntu/death-muffin/private/music-drafts/`. Review the cue for its musical fit, then use `node tools/audio/prepare-eleven-music.mjs <cue>` to encode a loop. Then copy it into the game (`client/assets/audio/music/`), which has a Music slider and crossfades on area and boss changes (`client/audio/`).
 
 ## Release rights
 

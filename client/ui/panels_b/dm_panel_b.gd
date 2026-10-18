@@ -4,7 +4,7 @@ extends VBoxContainer
 ## drive it without a window); `make_window()` wraps it in a DmWindow with the web's fixed header.
 ##
 ## Contract (same for every subclass): feed it plain Dictionaries (the shape of the server reply, see each file's header), listen to its
-## signals. It never calls the network: each signal's doc comment names the DmApi call (godot/net/dm_api.gd) the integrator makes, then
+## signals. It never calls the network: each signal's doc comment names the DmApi call (client/net/dm_api.gd) the integrator makes, then
 ## feeds the reply back in (and re-reads the bag when the action moves items, under the inventory "exclusive" guard like the web).
 
 signal close_requested

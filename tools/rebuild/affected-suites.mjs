@@ -1,31 +1,33 @@
 #!/usr/bin/env node
-// Which Godot test suites does a change affect? Used by the Discord dev agent's QUICK check (server/death-muffin/discord-agent/check-godot.sh).
-// Prints selectors for `tools/godot/run-all-tests.sh --only` one per line (a test dir name under godot/tests/), or `ALL`, or nothing (docs-only).
-//   node tools/godot/affected-suites.mjs [--base <ref>] [--files a,b,c | --files-from <file>] [--explain]
+// Which of the game's test suites does a change affect? Used by the Discord dev agent's QUICK check (server/death-muffin/discord-agent/check-godot.sh).
+// Prints suite names for `tools/rebuild/run-client-tests.sh --only`, one per line (client/tests/<name>.gd or client/tests/<name>/run.gd), or `ALL`,
+// or nothing (docs-only).
+//   node tools/rebuild/affected-suites.mjs [--base <ref>] [--files a,b,c | --files-from <file>] [--explain]
 // Base default: merge-base of HEAD and origin/main. The changed set is committed + uncommitted + untracked since the base.
-// Targeting: (a) a suite dir whose files changed; (b) suites whose .gd files reference a changed file by res:// path or class_name, also through
-// ONE level of non-test dependents (A.gd changed, B.gd uses A, a suite uses B); (c) changed godot/data files -> the scripts that read that
+// Targeting: (a) a suite whose own files changed; (b) suites whose .gd files reference a changed file by res:// path or class_name, also through
+// ONE level of non-test dependents (A.gd changed, B.gd uses A, a suite uses B); (c) changed client/data files -> the scripts that read that
 // dataset through DmDb (or by res:// path) count as changed; (d) always the SMOKE set. Too central or too broad -> ALL (rules in centralReason).
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-// Fast, broad suites run on every code change (in parallel, ~18 s: data 2 s, status 2 s, backend 12 s, next 18 s; times in tools/godot/suite-times.tsv).
-export const SMOKE = ['data', 'status', 'backend', 'next'];   // next_front (34 s, the login/front flow) runs when front or login code changes; not in every check (owner, 2026-10-10)
+// Fast, broad suites run on every code change: every script parses and loads (code_load), the combat core answers (core_smoke), the game scene
+// starts and plays a little (game_scene).
+export const SMOKE = ['code_load', 'core_smoke', 'game_scene'];
 export const MAX_GD_FILES = 40;
 export const MAX_SHARE = 0.6;
 
 const CENTRAL = [
-  /^godot\/project\.godot$/, /^godot\/export_presets\.cfg$/, /^export_presets\.cfg$/,
-  /^godot\/main\//, /^godot\/audio\/audio_director\.gd$/, /^godot\/fx\/dm_fx\.gd$/,
-  /^godot\/rules\/core\//, /^godot\/net\//, /^godot\/session\//, /^godot\/tests\/common\//,
-  /^tools\/godot\/(?!affected-suites\.mjs$|test\/)/, /^godot\/data\/content\/manifest\.json$/, /^godot\/ui\/theme\//,
+  /^client\/project\.godot$/, /^client\/export_presets\.cfg$/, /^native\//, /^client\/bin\//,
+  /^client\/main\//, /^client\/core\//, /^client\/audio\/audio_director\.gd$/, /^client\/fx\/dm_fx\.gd$/,
+  /^client\/rules\/core\//, /^client\/net\//, /^client\/session\//, /^client\/tests\/common\//,
+  /^tools\/rebuild\/(?!affected-suites\.mjs$|test\/)/, /^client\/data\/content\/manifest\.json$/, /^client\/ui\/theme\//,
 ];
 export function centralReason(f) { return CENTRAL.some((re) => re.test(f)) ? f : null; }
 // The API client and its offline mock grow by one function / route per backend feature. A change that only ADDS lines to them is not central:
 // it selects the suites (and one level of scripts) that use the added functions or routes. Any removed or edited line keeps them central.
-const ADDITIVE = [/^godot\/net\/dm_api\.gd$/, /^godot\/net\/dm_mock_backend\.gd$/];
+const ADDITIVE = [/^client\/net\/dm_api\.gd$/, /^client\/net\/dm_mock_backend\.gd$/];
 /** The names an add-only change to an ADDITIVE file introduces: `func x(` names and "/api/..." route strings. null = not add-only. */
 export function additiveNames(f, added) {
   if (!ADDITIVE.some((re) => re.test(f)) || !Array.isArray(added)) return null;
@@ -37,11 +39,11 @@ export function additiveNames(f, added) {
   return { words: [...words], fixed: [...fixed] };
 }
 
-const IGNORED = (f) => /\.(md|uid|import)$/.test(f) || !/^godot\//.test(f);   // docs, Godot bookkeeping, and everything outside godot/ (server/, docs/, ...)
+const IGNORED = (f) => /\.(md|uid|import)$/.test(f) || !/^(client|native)\//.test(f);   // docs, Godot bookkeeping, and everything outside the game (server/, docs/, ...)
 
-// DmDb accessor patterns for godot/data/<domain>/<name>.json (the consumers of that dataset)
+// DmDb accessor patterns for client/data/<domain>/<name>.json (the consumers of that dataset)
 export function dataPatterns(rel) {
-  const m = /^godot\/data\/([^/]+)\/([^/]+)\.json$/.exec(rel);
+  const m = /^client\/data\/([^/]+)\/([^/]+)\.json$/.exec(rel);
   if (!m) return null;
   const [, dom, name] = m;
   const lit = [`res://data/${dom}/${name}.json`, `"${dom}/${name}"`];
@@ -56,12 +58,12 @@ export function dataPatterns(rel) {
   return [...lit, ...acc];
 }
 
-/** ctx: { suites: string[] (test dirs that have run files), testsOnly(pats:{fixed:[],words:[]}) -> files, srcOnly(...) -> files, classNameOf(file) -> string|null,
+/** ctx: { suites: string[] (the runner's suite names), testsOnly(pats:{fixed:[],words:[]}) -> files, srcOnly(...) -> files, classNameOf(file) -> string|null,
  *  addedLines?(file) -> string[] | null (the lines a change adds when it removes none, else null) } */
 export function affected(changed, ctx) {
   const files = [...new Set(changed)].filter(Boolean);
-  const relevant = files.filter((f) => !IGNORED(f) || /^tools\/godot\//.test(f));
-  if (!relevant.length) return { all: false, selectors: [], why: 'no Godot-affecting files changed' };
+  const relevant = files.filter((f) => !IGNORED(f) || /^tools\/rebuild\//.test(f));
+  if (!relevant.length) return { all: false, selectors: [], why: 'no file the game is made of changed' };
   const additive = new Map();   // ADDITIVE file -> the names it adds (its users are found by those, not by its class name)
   for (const f of relevant) {
     const c = centralReason(f); if (!c) continue;
@@ -73,11 +75,12 @@ export function affected(changed, ctx) {
   if (gd.length > MAX_GD_FILES) return { all: true, why: `${gd.length} changed .gd files (> ${MAX_GD_FILES})` };
 
   const sel = new Set(SMOKE.filter((s) => ctx.suites.includes(s)));
-  // a content table changes the counts that godot/data/content/manifest.json records, and rules-core checks them all (2026-10-11: a sound
+  // a content table changes the counts that client/data/content/manifest.json records, and rules-core checks them all (2026-10-11: a sound
   // added to audioMap.json without the manifest count shipped on a quick check that never ran rules-core)
-  if (relevant.some((f) => /^godot\/data\/content\/[^/]+\.json$/.test(f)) && ctx.suites.includes('rules-core')) sel.add('rules-core');
+  if (relevant.some((f) => /^client\/data\/content\/[^/]+\.json$/.test(f)) && ctx.suites.includes('rules-core')) sel.add('rules-core');
   const direct = new Set();   // suites chosen because their own files changed
-  const suiteOf = (f) => { const m = /^godot\/tests\/([^/]+)\//.exec(f); return m ? m[1] : null; };
+  // client/tests/<name>.gd is a suite's script, client/tests/<name>/... a folder suite's files (helpers that no suite is named after select none)
+  const suiteOf = (f) => { const m = /^client\/tests\/([^/]+?)(?:\.gd|\/.*)$/.exec(f); return m ? m[1] : null; };
   for (const f of relevant) { const s = suiteOf(f); if (s && ctx.suites.includes(s)) { sel.add(s); direct.add(s); } }
 
   // what the rest of the code base refers to: changed non-test files (scripts, scenes, resources, assets, data)
@@ -86,13 +89,13 @@ export function affected(changed, ctx) {
     for (const f of list) {
       const dp = dataPatterns(f);
       if (dp) { dp.forEach((p) => fixed.add(p)); continue; }
-      fixed.add('res://' + f.replace(/^godot\//, ''));
+      fixed.add('res://' + f.replace(/^client\//, ''));
       const cn = f.endsWith('.gd') ? ctx.classNameOf(f) : null;
       if (cn) words.add(cn);
     }
     return { fixed: [...fixed], words: [...words] };
   };
-  const nonTest = relevant.filter((f) => !f.startsWith('godot/tests/'));
+  const nonTest = relevant.filter((f) => !f.startsWith('client/tests/'));
   const p1 = patsFor(relevant.filter((f) => !additive.has(f)));
   for (const a of additive.values()) { p1.fixed.push(...a.fixed); p1.words.push(...a.words); }
   const addSuites = (testFiles) => { for (const t of testFiles) { const s = suiteOf(t); if (s && ctx.suites.includes(s)) sel.add(s); } };
@@ -116,14 +119,10 @@ function git(args, cwd, ok = false) {
 }
 
 function buildCtx(top, base) {
-  const suites = [];
-  const tdir = path.join(top, 'godot/tests');
-  for (const d of fs.readdirSync(tdir, { withFileTypes: true })) {
-    if (!d.isDirectory()) continue;
-    const fs_ = fs.readdirSync(path.join(tdir, d.name));
-    if (fs_.some((n) => n === 'run.gd' || n === 'adapter_run.gd' || /_run\.gd$/.test(n))) suites.push(d.name);
-  }
-  suites.sort();
+  // the runner's suite list (tools/rebuild/run-client-tests.sh SUITES)
+  const runner = fs.readFileSync(path.join(top, 'tools/rebuild/run-client-tests.sh'), 'utf8');
+  const m = /^SUITES="([^"]*)"/m.exec(runner);
+  const suites = m ? m[1].split(/\s+/).filter(Boolean).sort() : [];
   const grep = (pats, spec) => {
     const out = new Set();
     const run = (list, extra) => {
@@ -146,8 +145,8 @@ function buildCtx(top, base) {
       if (lines.some((l) => l.startsWith('-'))) return null;
       return lines.filter((l) => l.startsWith('+')).map((l) => l.slice(1));
     },
-    testsOnly: (p) => grep(p, ['godot/tests']).filter((f) => /\.(gd|tscn|tres)$/.test(f)),
-    srcOnly: (p) => grep(p, ['godot', ':(exclude)godot/tests']).filter((f) => /\.(gd|tscn|tres)$/.test(f)),
+    testsOnly: (p) => grep(p, ['client/tests']).filter((f) => /\.(gd|tscn|tres)$/.test(f)),
+    srcOnly: (p) => grep(p, ['client', ':(exclude)client/tests']).filter((f) => /\.(gd|tscn|tres)$/.test(f)),
     classNameOf: (f) => {
       if (cn.has(f)) return cn.get(f);
       let v = null;

@@ -6,7 +6,7 @@ extends Node
 ##   difficulty  -> director (enemy hp / damage / elite chance), rewards (xp / gold / loot), bosses (brains)
 ##   omen        -> director (wave size, elites), every rewards member (reward / shard multipliers); the HUD chip
 ##   souls, chain: see below. `event(id, ctx)` is the game_event shape (DmNextUiHost forwards it to DmGameUi).
-## The rebuild's port (client/code.list "Ported"): a kill's enemy is a core id (the Scythe's reap window asks by id). Ascension is not in the rebuild (DECISIONS B36): the world runs without vows (`vow_fx` neutral, heat 0, so the rewards' rank is 0
+## A kill's enemy is a core id (the Scythe's reap window asks by id). Ascension is not in the rebuild (DECISIONS B36): the world runs without vows (`vow_fx` neutral, heat 0, so the rewards' rank is 0
 ## and the corpse lifetime the base one) and no Covenant Boon acts (the Bonded Dead do not rise); a character's saved Ascension data stays on the server, untouched.
 
 signal event(id: String, ctx: Dictionary)

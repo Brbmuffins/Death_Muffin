@@ -2,7 +2,7 @@ class_name DmProgression
 extends RefCounted
 ## Port of the pure state logic of archive/legacy-web:src/gameplay/progression.ts (the local progression state: XP/levels, gold, upgrade tiers,
 ## kills, seals, shards, vows, boons, Ascension). No networking: server-mode calls that the TS fires at the API are queued in
-## `outbox` for the net layer (godot/net) to send, in order, as {"type": ..., ...}. Persistence: connect `changed` and store
+## `outbox` for the net layer (client/net) to send, in order, as {"type": ..., ...}. Persistence: connect `changed` and store
 ## to_json(); load with DmProgression.new(character, saved_dict_or_null).
 ##
 ## `local` has the exact LocalProgress JSON shape of the TS / browser save. `character` = {level, experience, gold, ...}.

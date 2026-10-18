@@ -1,7 +1,7 @@
 extends SceneTree
 ## Builds res://ui/theme/dm_theme.tres from the web design tokens (archive/legacy-web:src/theme/tokens.css + ui.css + readability.css).
-## Run:  godot --headless --path godot --script res://ui/theme/build_theme.gd
-## (After the first checkout run `godot --headless --path godot --import` so the font files are imported.)
+## Run:  godot --headless --path client --script res://ui/theme/build_theme.gd
+## (After the first checkout run `godot --headless --path client --import` so the font files are imported.)
 ## The .tres is checked in; only re-run this when tokens change.
 
 const OUT := "res://ui/theme/dm_theme.tres"

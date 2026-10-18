@@ -34,22 +34,49 @@ While `check-godot.sh` runs it keeps
 `runner/core.cjs`). Both files are git-ignored. Model generation posts `🎨 Still generating "<id>"` with the minutes instead.
 The auth backend (`deploy-release.sh`) is not part of a ship; the owner runs it. The web-mode scripts in this folder (`check.sh`, `preview.sh`, `shot.sh`, `regen.sh`) are unused.
 
-**`check-godot.sh`**: the same sandbox as `check.sh` (`unshare -rnm`, loopback only, whole filesystem read-only, only the worktree writable, scratch tmpfs over
-`node_modules/.vite`), with `HOME` and the XDG dirs in a fresh `/tmp/dmgodot.*` (inside the sandbox's private /tmp) so Godot's `user://` never touches the real home. It runs
-`tools/godot/gen-fixtures.sh` only if the revision still has it (golden fixtures are committed on `main`), then `tools/godot/run-all-tests.sh` (one line per suite; `GODOT` defaults to `/home/ubuntu/tools/godot/godot`). The committed `godot/data/loot/content.json` is snapshotted and restored around the generator. While the suites run it writes `<done> <total>` to `.dm-check-progress` in the worktree (removed at the end) for the progress notes. It has two modes. **Quick** (default; the agent in its turn and the runner before a proposal): `tools/godot/affected-suites.mjs` picks the suites for the change (changed suite dirs; suites referencing a changed file by `res://` path or `class_name`, one level through non-test dependents; for changed `godot/data` files the scripts that load them, by path or DmDb accessor; plus a smoke set `data status backend next`, about 20 s; a `godot/data/content/*.json` change also runs `rules-core`, which checks the manifest counts) and `run-all-tests.sh --only <list>` runs them. It prints `ALL` (every suite) for central changes (`project.godot`, `export_presets.cfg`, autoloads, `godot/rules/core`, `godot/net` (except a change that only adds lines to `dm_api.gd` / `dm_mock_backend.gd`: that selects the suites using the added `func` names and `/api/...` routes, one level through dependents),
-`godot/session`, `godot/tests/common`, `tools/godot/*`), more than 40 changed `.gd` files, or more than 60% of suites selected; nothing for docs-only; a revision without the selector or `--only` also runs everything. **`--full`** (`ship.sh` passes it only for a sensitive-tier change; other ships run the quick check on the merged tree, dev build, owner 2026-10-10) runs every suite, about 2 minutes (8 at once, fewer when the machine is busy; a suite that fails in the pool is retried alone; each suite's time limit is 10x its usual time from `tools/godot/suite-times.tsv`, 4-30 min, and a suite that times out, `exit=124 timed out after ...`, is neither retried alone nor re-run). **`--rerun a,b`** runs hygiene plus exactly those suites, one at a time: when a check fails only 1-3 suites (nothing outside the suites), the runner (before a proposal; audit `flake-rerun`) and `ship.sh` re-run just those once before an agent turn is spent or the ship fails; a pass reads `... — passed (x passed on a re-run)`. The failure handed to the agent leaves out the passing suite lines. `DM_TEST_JOBS=N` adds `--jobs N`. The progress total is the number of selected suites. It ends with `GODOT TESTS: quick (14 suites) — 14 passed` or `GODOT TESTS: full (70 suites) — 70 passed` (`, N FAILED` on failure; `targeting fell back to all` is noted); the proposal's "Tests" field reads `quick check: N suites — ...`. It exits non-zero on any failing
-suite or step, and has a hard 85 minute limit. Before the suites it runs the repo hygiene check (`tools/hygiene/check.mjs`, the same `npm run hygiene` CI runs), so a proposal or ship with a stale doc link, missing path or retired term fails with `GODOT TESTS: repo hygiene FAILED`. A change that only touches Markdown files still gets the hygiene check but skips the suites (`GODOT TESTS: skipped, docs-only change`).
+**The game's build products** (`client-prep.sh`, `client-prep-in.sh`): a job's worktree has no combat core library, Godot import or crowd bakes (git does
+not hold them, and a fresh build takes minutes). `client-prep.sh <worktree> [--windows]` runs OUTSIDE the sandbox (called by `check-godot.sh`,
+`shot-godot.sh` and `preview-godot.sh`): it makes sure `~/death-muffin/client-cache/` (`DM_CLIENT_CACHE`) holds them for the job's base revision (where
+its branch left `origin/main`: approved code), building whatever is missing in a scratch worktree of that revision (core, import seeded from the newest
+cached one, bakes: about 7 minutes cold, once per change on `main`; then 0.2 s), keyed by the inputs (`native/`; `client/assets` + `project.godot`;
+the crowd baker's inputs). It never writes into the job's worktree and never builds a job's files, so a job cannot plant a library, an imported scene
+or a bake that another job loads. Its last line, `PREP core=<cached|build> bake=<cached|build> dir=... keys=...`, goes to `client-prep-in.sh`, which
+runs INSIDE the caller's sandbox: copies the cached core, import and bakes in, rebuilds the core when the job changed `native/` (on its own copy of
+godot-cpp in `.dm-native-cache/`, git-ignored; the shared one is read-only there) and the bakes when it changed their inputs, and imports.
+`DM_CLIENT_PREP` / `DM_CLIENT_PREP_IN` name stand-ins (tests).
 
-**`preview-godot.sh <jobid>`**: runner-only. Inside the same kind of sandbox it imports the project and exports the `Windows Desktop` preset from
-`godot/` (the installed export templates are linked read-only into the fresh `XDG_DATA_HOME`). Outside, it zips `DeathMuffin.exe`, `DeathMuffin.pck`,
-`Play Preview (offline).bat` (starts `-- --dev-offline`) and a README ("nothing saves to your real character") to `<previewRoot>/<jobid>/DeathMuffin-Preview-<jobid>-win64.zip` (mode 644, ~220 MB; job ids `^[0-9a-f]{6}$`, no symlinked root or destination,
-nothing else is left in that folder). The proposal's "Try it (Windows download)" field and `!preview` link to the zip; it is deleted with the job like
-any preview. The build takes about a minute, and the runner allows 40.
+**`check-godot.sh`**: the same sandbox as `check.sh` (`unshare -rnm`, loopback only, whole filesystem read-only, only the worktree writable, scratch tmpfs over
+`node_modules/.vite`), with `HOME` and the XDG dirs in a fresh `/tmp/dmgodot.*` (inside the sandbox's private /tmp) so Godot's `user://` never touches the real home. In order: the repo hygiene check
+(`tools/hygiene/check.mjs`, the same `npm run hygiene` CI runs: a stale doc link, missing path or retired term fails with `GODOT TESTS: repo hygiene FAILED`); a change
+that only touches Markdown files stops there (`GODOT TESTS: skipped, docs-only change`); the model check on the models the change adds or edits
+(`tools/assets/check-models.mjs --changed`); the game's build products (above; `GODOT TESTS: preparing the game FAILED` when they cannot be made); then
+`tools/rebuild/run-client-tests.sh` (one line per suite, `<suite> <file> exit=<code> <result>`; `GODOT` defaults to `/home/ubuntu/tools/godot/godot`). While the suites run it writes
+`<done> <total>` to `.dm-check-progress` in the worktree (removed at the end) for the progress notes. It has two modes. **Quick** (default; the agent in its turn and
+the runner before a proposal): `tools/rebuild/affected-suites.mjs` picks the suites for the change (changed suites; suites referencing a changed file by `res://` path or
+`class_name`, one level through non-test dependents; for changed `client/data` files the scripts that load them, by path or DmDb accessor; plus a smoke set
+`code_load core_smoke game_scene`; a `client/data/content/*.json` change also runs `rules-core`, which checks the manifest counts) and `run-client-tests.sh --only <list>`
+runs them. It prints `ALL` (every suite) for central changes (`project.godot`, `export_presets.cfg`, the combat core `native/`, `client/main`, `client/core`, `client/rules/core`,
+`client/net` (except a change that only adds lines to `dm_api.gd` / `dm_mock_backend.gd`: that selects the suites using the added `func` names and `/api/...` routes, one level
+through dependents), `client/session`, the shared test helpers, the runner), more than 40 changed `.gd` files, or more than 60% of suites selected; nothing for docs-only.
+**`--full`** (`ship.sh` passes it only for a sensitive-tier change; other ships run the quick check on the merged tree, dev build, owner 2026-10-10) runs every suite.
+**`--rerun a,b`** runs hygiene plus exactly those suites, one at a time: when a check fails only 1-3 suites (nothing outside the suites), the runner (before a proposal;
+audit `flake-rerun`) and `ship.sh` re-run just those once before an agent turn is spent or the ship fails; a pass reads `... — passed (x passed on a re-run)`. The failure
+handed to the agent leaves out the passing suite lines. `DM_TEST_JOBS=N` adds `--jobs N`. The progress total is the number of selected suites. It ends with
+`GODOT TESTS: quick (14 suites) — 14 passed` or `GODOT TESTS: full (70 suites) — 70 passed` (`, N FAILED` on failure; `targeting fell back to all` is noted); the proposal's
+"Tests" field reads `quick check: N suites — ...`. It exits non-zero on any failing suite or step, and has a hard 85 minute limit.
+
+**`preview-godot.sh <jobid>`**: runner-only. The game's build products with the Windows core (`client-prep.sh --windows`), then inside the same kind of sandbox the
+export of the `Windows Desktop` preset from `client/` (the installed export templates are linked read-only into the fresh `XDG_DATA_HOME`). The art: when nothing the
+art pack is made of (`tools/godot/assets-fp.sh --paths`, `main`'s copy) differs from the live build's revision (the client manifest's `rev`), the zip carries no pack
+and its `.bat` starts the game with the installed game's pack (`--assets-pack=%LOCALAPPDATA%\DeathMuffin\client\DeathMuffin.assets.pck`, and says to install the
+game first when it is missing); otherwise `tools/godot/assets-pack.sh` builds the branch's own pack into the zip (about 500 MB). Outside, it zips `DeathMuffin.exe`,
+`DeathMuffin.pck`, the core's DLL, the pack when there is one, `Play Preview (offline).bat` (starts `-- --dev-offline`) and a README ("nothing saves to your real
+character") to `<previewRoot>/<jobid>/DeathMuffin-Preview-<jobid>-win64.zip` (mode 644; job ids `^[0-9a-f]{6}$`, no symlinked root or destination, nothing else is
+left in that folder). The proposal's "Try it (Windows download)" field and `!preview` link to the zip; it is deleted with the job like any preview. The runner
+allows 40 minutes.
 
 **Godot ship** (`ship.sh`, `MODE=godot`), in order: deploy lock; fetch; check `EXPECT_HEAD`; scratch worktree at `origin/$BASE_BRANCH`; ff or no-ff merge (same
-conflict handling); ship gate on the merged diff with the godot tiers; **the client sync** (since launch day, 2026-10-18: `tools/rebuild/sync-code.mjs` and
-`sync-assets.mjs` copy the change into `client/`, the game players run, committed on top of the merge; `RESULT: sync-failed` stops the ship before anything is
-pushed); `check-godot.sh` on the merged tree; **rollback preparation, before anything is
+conflict handling); ship gate on the merged diff with the godot tiers; `check-godot.sh` on the merged tree; **rollback preparation, before anything is
 pushed**: read `rev` from the live client manifest (`clientManifest`, default `/var/www/death-muffin/client/manifest.json`; must be hex and in the repo,
 else `RESULT: backup-failed` and nothing changes), create `<deployDir>/backup-pre-release-godot-<UTC stamp>/`, save a fresh `git show
 origin/main:server/death-muffin/publish-godot-client.sh` there (a copy from `origin/main`, whatever `baseBranch` is) and write `ROLLBACK.sh`, which runs that saved
@@ -74,10 +101,11 @@ accepts only exact `backup-pre-release-godot-<yyyymmddThhmmssZ>` real directorie
 
 Tiers come from the diff's **files** (`runner/lib/tiers.cjs`, rules in `lib/config.cjs`), strictest file wins:
 Tiers (godot mode, `godotTiers`): casual = `docs/**`, `*.md`,
-`godot/**/*.md`, PATCH_NOTES.json (any content); gameplay = the rest of `godot/**`; sensitive = server, launcher, tools, CI, scripts, deploy, config,
-`project.godot`, `export_presets.cfg`, and the client's net/front(login)/backend code and anything named auth, session, online, save, offline,
+`client/**/*.md`, PATCH_NOTES.json (any content); gameplay = the rest of `client/**`; sensitive = server, launcher, tools, CI, scripts, deploy, config,
+the combat core (`native/`), `project.godot`, `export_presets.cfg`, `client/main`, `client/core`, the files the art pack is fingerprinted by
+(`client/crowd/`, the creature and model code), and the client's net/front(login)/session code and anything named auth, session, online, save, offline,
 progress_sync, coop, login, account, token, relay, lobby, realtime or mock_backend, plus native libraries, `addons/` and the net/relay/offline/realtime/
-online_local/front test suites, and the progression/economy authority mirrors (anything named progression, authority, ledger, economy, spend, kill*, gold_sink, vault/labor/legion rules, milestone, reward, unlock, seal, tradeGoods; `rules/progression/`, `data/progression/`); anything unmatched (root files) is sensitive. `forbiddenPaths` also lists `godot/export_presets.cfg`. Paths that would change the agent itself,
+online_local/front test suites, and the progression/economy authority mirrors (anything named progression, authority, ledger, economy, spend, kill*, gold_sink, vault/labor/legion rules, milestone, reward, unlock, seal, tradeGoods; `rules/progression/`, `data/progression/`); anything unmatched (root files) is sensitive. `forbiddenPaths` also lists `client/export_presets.cfg`. Paths that would change the agent itself,
 deploy scripts or `.env*` are refused outright (`forbiddenPaths`). `ship.sh` re-derives the tier from the merged diff under
 the deploy lock, so an approver can never ship above their tier.
 
@@ -176,7 +204,7 @@ approver ✅ ── owner or any full approver (self-approval allowed, like code
 runner     ── per model, in order: art-run.sh in the job's worktree: flock -> balance before -> gemini.mjs (skipped: the shown concept is reused; a concept that changed
               since it was shown is refused, one nobody saw is deleted and regenerated) -> tripo.mjs run --yes -> balance after. One ledger entry per model; a failure stops the
               set and offers the rest again. Posts Tripo's preview images and the REAL spend
-agent turn ── told the files are ready: build-art.sh <id> per model (sandboxed: tools/build-characters.mjs, then dequantize into godot/assets/slice/models/...), commits specs + records + GLB,
+agent turn ── told the files are ready: build-art.sh <id> per model (sandboxed: tools/build-characters.mjs, then dequantize into client/assets/slice/models/...), commits specs + records + GLB,
               check-godot.sh (adds .import/textures), render-model.sh <ids> (sandboxed Blender, front/side/back sheet, posted after the turn), wires the models in where asked,
               in-game shots of a hero wearing gear (shot plan "equip" + "view": "hero"), PATCH_NOTES, then the usual proposal / ✅ ship (art files make it a sensitive-tier proposal: full approvers only)
 ```
@@ -203,7 +231,7 @@ runner     ── runner/lib/sound.cjs validates (no extra fields; sfx 0.5-30 s,
               the owner authorized sound users to spend any amount of the ElevenLabs balance (2026-10-11).
               sound-run.mjs (trusted copy in the tools dir, ELEVENLABS_API_KEY in its env only) -> audio-src/eleven/<id>/v<n>.mp3 (git-ignored), takes posted in the thread
 agent turn ── build-sound.sh <id> <take> (sandboxed sound-build.mjs: levels the take to -20 LUFS, peaks at most -1.5 dBTP, a plain gain; sfx ->
-              godot/assets/audio/eleven/<id>.wav mono 16-bit, music -> .mp3; writes the sound's row in docs/AUDIO-SOURCES.md, the licence record),
+              client/assets/audio/eleven/<id>.wav mono 16-bit, music -> .mp3; writes the sound's row in docs/AUDIO-SOURCES.md, the licence record),
               wires it in, commits spec + asset + .import + docs/AUDIO-SOURCES.md, then the usual proposal / ✅ ship
 ```
 
@@ -243,17 +271,18 @@ Finished threads are archived so `#death-muffin` only lists live work (owner, 20
 3. `sudo systemctl enable --now death-muffin-discord-agent`, then `sudo systemctl restart muffin-discord`.
 
 Tests (not wired into test:server; ~1 min, needs git and `unshare`/`zip`/`unzip`): `node --test server/death-muffin/discord-agent/test/*.test.cjs`.
-The installer also copies `check-godot.sh`, `preview-godot.sh`, `shot-godot.sh`, `label-shot.py`, `render-model.sh`, `render-model.py`, `art-run.sh`, `build-art.sh` and `PROMPT-godot.md`, installs the trusted art tools to `art-tools/`, and creates an empty `tripo-budget.json` if there is none (never overwritten). The live `config.json` must say `"mode": "godot", "baseBranch": "main"`; edit it and restart the service to change.
+The installer also copies `check-godot.sh`, `client-prep.sh`, `client-prep-in.sh`, `preview-godot.sh`, `shot-godot.sh`, `label-shot.py`, `render-model.sh`, `render-model.py`, `art-run.sh`, `build-art.sh`, `build-sound.sh`, `sound-build.mjs` and `PROMPT-godot.md`, installs the trusted art tools to `art-tools/`, and creates an empty `tripo-budget.json` if there is none (never overwritten). The live `config.json` must say `"mode": "godot", "baseBranch": "main"`; edit it and restart the service to change.
 
 ## Screenshots
 Only on request (Helix, 2026-10-12): the agent renders when the request asks for a picture or someone says `!shot`, never by default (PROMPT-godot.md); a proposal without pictures has a "Screenshots" field offering `!shot`.
-`shot-godot.sh [plan.json]` (default `.dm-shot.json`; format in `godot/main/qa_ui_shots.gd` and `PROMPT-godot.md`: up to 4 shots of windows/tooltips or the hero wearing gear, `open` / `hover` / `area` / `clip` / `give` / `equip` / `discipline` / `view` / `turn` / `anim`) renders the branch's own client on the dev-offline demo hero with a fixed
-representative bag. Same sandbox as `check-godot.sh` (no network, read-only filesystem, only the worktree writable, private `/tmp` and a fresh HOME); inside it imports the project if `godot/.godot` is missing
-(first run in a fresh worktree, about a minute), then `xvfb-run godot --rendering-driver opengl3 -- --dev-offline --class=<plan discipline, default 2> --qa --shot-plan=... --shots=<worktree>/.dm-shots/.raw`. It takes the shared `qa-browser.lock` (one renderer on the VPS) and has a hard 15 minute limit
-(a run takes 1 to 5 minutes depending on load; it prints `render: cpu=.. wall=..`).
+`shot-godot.sh [plan.json]` (default `.dm-shot.json`; format in `client/main/qa_ui_shots.gd` and `PROMPT-godot.md`: up to 4 shots of windows/tooltips or the hero wearing gear, `open` / `hover` / `area` / `clip` / `give` / `equip` / `discipline` / `view` / `turn` / `anim`) renders the branch's own client on the dev-offline demo hero with a fixed
+representative bag. Same sandbox as `check-godot.sh` (no network, read-only filesystem, only the worktree writable, private `/tmp` and a fresh HOME), in two runs:
+the game's build products (`client-prep.sh`, above), then the branch's own `client/tools/qa_shots.sh <plan> <worktree>/.dm-shots/.raw <class>` (the plan's discipline,
+default 2): Forward+ on the software Vulkan driver under `xvfb-run`, falling back to OpenGL 3 with a line saying so. Only the rendering holds the shared
+`qa-browser.lock` (one renderer on the VPS), with a hard 15 minute limit (two shots take about 5 minutes).
 The label is burned in OUTSIDE the sandbox by `label-shot.py` (trusted code; Pillow): every raw PNG becomes `.dm-shots/<name>.png` with "BRANCH PREVIEW · not live · <branch>"; directory fds + `O_NOFOLLOW`, only real PNGs
 under 12 MB, names `[a-z0-9-]{1,40}.png`; anything else is skipped (exit 3) and nothing unlabelled is ever published, so a branch that edits the QA code cannot drop the label.
-The Godot side lives in the game repo (`godot/main/qa_ui_shots.gd`, inactive without `--qa`): **the branch the agent works on must contain it, i.e. it has to be merged into `main`**.
+The game's side is `client/main/qa_driver.gd` and `client/main/qa_ui_shots.gd`, started only by `--qa` / `--shot-plan=` on a dev-offline debug start.
 The agent is told (PROMPT-godot.md) to take pictures by default for visible changes (UI, windows, tooltips, HUD, visuals) and to skip them for logic/data/server work and pure Q&A.
 On a proposal (`propose()`), when the agent left a plan and fresh pictures, the runner renders the same plan on an unchanged scratch worktree of the base (`base-<jobid>`, removed afterwards) and attaches
 AFTER pictures right away (the embed image is the first). BEFORE pictures are off (owner, 2026-10-10: each was one more software-GL render in the shared queue); with `cfg.beforeShots: true`, the BEFORE/AFTER pairs for the first two pictures (`before-<name>.png`, then `<name>.png`) follow as a separate message once the base is rendered in the background, so a busy renderer never holds the job's slot. If the base cannot render (for instance it predates the QA shot-plan code) no pair message follows.

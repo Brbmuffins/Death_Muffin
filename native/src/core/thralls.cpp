@@ -2,10 +2,10 @@
 
 #include <algorithm>
 
-// The thrall brain is a port of DmThrall (godot/next/thralls/dm_thrall.gd); the legion bookkeeping (raise with make_room, formation seats,
-// separation, rally, sacrifice) ports the simulation parts of DmThrallHost (dm_thrall_host.gd) and DmThralls.make_room (rules/combat/dm_thralls.gd).
-// Stats arrive computed (DmThralls.raise_stats stays GDScript). Comments name the GDScript each piece mirrors; differences from today are
-// listed in native/README.md.
+// The thrall brain follows the old game's DmThrall (dm_thrall.gd); the legion bookkeeping (raise with make_room, formation seats,
+// separation, rally, sacrifice) follows the simulation parts of its DmThrallHost (dm_thrall_host.gd) and DmThralls.make_room (rules/combat/dm_thralls.gd).
+// Stats arrive computed (DmThralls.raise_stats stays GDScript). Comments name the GDScript each piece mirrors; differences from the old game are
+// noted in native/README.md.
 
 namespace dm {
 

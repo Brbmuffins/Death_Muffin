@@ -1,10 +1,10 @@
-// The Drowned Nave's five kinds, ported from godot/enemies/kinds and states (the walk, the blows and the Gargoyle's dive are in world.cpp beside the others):
+// The Drowned Nave's five kinds, as the old game's enemy kinds and states made them (the walk, the blows and the Gargoyle's dive are in world.cpp beside the others):
 //   - the Censer Bearer (dm_enemy_censer.gd): every second its incense hastes every living enemy within CENSER.radius (itself too): the `incensed` status;
 //   - the Lich Acolyte (dm_enemy_clst_acolyte.gd): UNBIND, a thrall of the player's that is KILLED near it is claimed and a Risen climbs out of its place a moment later;
 //   - the Bell-Sworn Templar (dm_enemy_clst_templar.gd): a blow from the front passes TEMPLAR_SHIELD.passThrough of its damage, unless it is Fractured;
 //   - the Belfry Gargoyle's sight line (dm_enemy_gargoyle.gd clear_line_to);
 //   - the Choir Wraith (dm_enemy_wraith.gd) is the caster set with a scream ring: world.cpp, begin_attack and strike.
-// Differences from today are listed in native/README.md.
+// Differences from the old game are noted in native/README.md.
 #include "world.h"
 
 #include <algorithm>
@@ -227,7 +227,7 @@ double World::shield(Enemy &e, int32_t p_source, double p_amount) {
 	return p_amount * tun.shield_pass;
 }
 
-// DmEnemyGargoyle.clear_line_to: no wall between the body and the point. Today a ray at hover height against the world's colliders; the core has no collision world, so a wall
+// DmEnemyGargoyle.clear_line_to: no wall between the body and the point. The old game cast a ray at hover height against the world's colliders; the core has no collision world, so a wall
 // is an obstacle (the Ossuary Wall) crossing the straight line, or a stretch of it off the navmesh (the navmesh is cut round walls and what stands in the way): the line is
 // sampled every LOS_STEP and a sample farther than LOS_NAV_PAD from the navmesh is a wall. Without a navmesh (a test arena) only obstacles count.
 bool World::line_clear(float p_ax, float p_az, float p_bx, float p_bz) {

@@ -4,7 +4,7 @@ extends VBoxContainer
 ## optional rune badge, plus the key cap under it ("1".."4", "RMB", "R", "LMB"). States: nores (dimmed), empowered (jade pulse),
 ## locked (grayscale + unlock level), alt (right-click action: ember accent + left rule).
 ## Driven by `apply(slot_dict)`; see ui/hud/README.md ("slots").
-## Ported (client/code.list): the icon and its greyed variants come from the HUD atlas (no shader material, so a dimmed slot costs no extra draw), the cooldown
+## The icon and its greyed variants come from the HUD atlas (no shader material, so a dimmed slot costs no extra draw), the cooldown
 ## sweep is a handful of triangles in one mesh (it was a polygon per 2 % of the sweep, up to 50 draw calls), and the border rectangles come from the atlas too,
 ## on the layers of DmHudKit: icon, then the sweep, then the borders over it, then the text.
 

@@ -30,7 +30,7 @@ The tip queue, cadence rules, card and glow that guide a new player. Tip text, k
 
 ## Tests
 `client/tests/counsel.gd` plays the counsel on the whole world as a new Gravecaller (the fight facts read two ways, every fact the creatures give the counsel once, each tip queued and shown once, the state-driven tips, the welcome and the Next-step box, the Prior,
-Show tips again, Don't show tips); `client/tests/hud.gd` the counsel's timers. Not covered in the client: the old game's 53 scripted event sequences replayed against recorded logs, the cadence decisions, text rendering and the event table (frozen fixtures, no generator).
+Show tips again, Don't show tips); `client/tests/hud.gd` the counsel's timers.
 
 ## Known gaps
 - Events defined in `DmCounselEvents` but never raised: `depths_solo`, `depths_floor`, `depths_affix`, `depths_chest`, `loadout_check`, `necro_weapon_changed`, `set_bonus_gained`, `omen_told`. The Altar's tips

@@ -8,8 +8,8 @@ const { execFileSync, spawnSync } = require('node:child_process');
 
 const SCRIPT = path.join(__dirname, '..', 'sound-build.mjs');
 const load = () => import(SCRIPT);
-const DOC = ['# Audio sources', '', '## Discord agent sounds: `godot/assets/audio/eleven/`', '', 'Intro.', '', '| File | Made | Spec |', '|---|---|---|',
-  '| `godot/assets/audio/eleven/old_one.wav` | ElevenLabs Sound Effects, 2026-10-13 | [old_one.json](../audio-manifest/eleven/old_one.json) |', '', 'A note.', '',
+const DOC = ['# Audio sources', '', '## Discord agent sounds: `client/assets/audio/eleven/`', '', 'Intro.', '', '| File | Made | Spec |', '|---|---|---|',
+  '| `client/assets/audio/eleven/old_one.wav` | ElevenLabs Sound Effects, 2026-10-13 | [old_one.json](../audio-manifest/eleven/old_one.json) |', '', 'A note.', '',
   '## Removed', '', '| File | Why |', '|---|---|', '| `x.ogg` | gone |', ''].join('\n');
 
 test('the gain brings a take to -20 LUFS and holds it at the -1.5 dBTP ceiling', async () => {
@@ -33,7 +33,7 @@ test('the loudnorm measurement is read from the JSON block at the end of ffmpeg 
 
 test('the row goes after the agent table\'s last row, and a rebuild replaces the sound\'s own row', async () => {
   const { recordRow } = await load();
-  const f = 'godot/assets/audio/eleven/new_one.wav';
+  const f = 'client/assets/audio/eleven/new_one.wav';
   const row = `| \`${f}\` | ElevenLabs Sound Effects, take 2, 2026-10-18 | [new_one.json](../audio-manifest/eleven/new_one.json) |`;
   const once = recordRow(DOC, f, row);
   const lines = once.split('\n');
@@ -59,15 +59,15 @@ test('a real take: built mono at -20 LUFS, a loud one held at the peak, the row 
     };
     take('quiet_bell', 2, 'sine=frequency=660:duration=1.5,volume=-28dB');
     const out = execFileSync('node', [SCRIPT, 'quiet_bell', '2', 'sfx'], { cwd: dir, encoding: 'utf8' });
-    assert.match(out, /BUILT: godot\/assets\/audio\/eleven\/quiet_bell\.wav/);
-    const wav = path.join(dir, 'godot', 'assets', 'audio', 'eleven', 'quiet_bell.wav');
+    assert.match(out, /BUILT: client\/assets\/audio\/eleven\/quiet_bell\.wav/);
+    const wav = path.join(dir, 'client', 'assets', 'audio', 'eleven', 'quiet_bell.wav');
     const probe = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=channels,sample_rate,codec_name', '-of', 'csv=p=0', wav], { encoding: 'utf8' }).trim();
     assert.strictEqual(probe, 'pcm_s16le,44100,1');
     const m = spawnSync('ffmpeg', ['-nostdin', '-hide_banner', '-i', wav, '-af', 'loudnorm=print_format=json', '-f', 'null', '-'], { encoding: 'utf8' }).stderr;
     const i = Number(/"input_i" : "(-?[\d.]+)"/.exec(m)[1]);
     assert.ok(Math.abs(i - -20) <= 0.6, `measured ${i} LUFS`);
     const doc = fs.readFileSync(path.join(dir, 'docs', 'AUDIO-SOURCES.md'), 'utf8');
-    assert.match(doc, /\| `godot\/assets\/audio\/eleven\/quiet_bell\.wav` \| ElevenLabs Sound Effects, take 2, \d{4}-\d\d-\d\d \| \[quiet_bell\.json\]\(\.\.\/audio-manifest\/eleven\/quiet_bell\.json\) \|/);
+    assert.match(doc, /\| `client\/assets\/audio\/eleven\/quiet_bell\.wav` \| ElevenLabs Sound Effects, take 2, \d{4}-\d\d-\d\d \| \[quiet_bell\.json\]\(\.\.\/audio-manifest\/eleven\/quiet_bell\.json\) \|/);
     // white noise at full scale has peaks far above its loudness: brought down to the target, never over the ceiling
     take('loud_hiss', 1, 'anoisesrc=color=white:amplitude=1:duration=1.2');
     const loud = execFileSync('node', [SCRIPT, 'loud_hiss', '1', 'sfx'], { cwd: dir, encoding: 'utf8' });
@@ -82,6 +82,6 @@ test('a missing licence record stops the build before anything is written', { sk
     const r = spawnSync('node', [SCRIPT, 'some_id', '1', 'sfx'], { cwd: dir, encoding: 'utf8' });
     assert.strictEqual(r.status, 1);
     assert.match(r.stderr, /docs\/AUDIO-SOURCES\.md is missing or a symlink/);
-    assert.ok(!fs.existsSync(path.join(dir, 'godot')));
+    assert.ok(!fs.existsSync(path.join(dir, 'client')));
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

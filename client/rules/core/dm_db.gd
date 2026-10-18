@@ -1,6 +1,6 @@
 class_name DmDb
 extends RefCounted
-## The one content registry: owns loading, caching and lookup of every dataset under res://data/ (see godot/data/README.md).
+## The one content registry: owns loading, caching and lookup of every dataset under res://data/ (see client/data/README.md).
 ## Static class, no autoload. The per-domain loaders (DmContent, DmCombatData, DmLootData, DmProgContent, DmGatherData, DmData (slice),
 ## DmPaData, DmWfxData, DmCounselData) are thin wrappers over this; new code should call DmDb directly.
 ##
