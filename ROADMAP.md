@@ -58,6 +58,10 @@ players' PCs.
   before/after screenshots are taken in the old game, so the team approves pictures of a game nobody plays, and the live game's tests run
   only after the change is out. After: every proposal is tested on the live game and shows the live game's screenshots before anyone
   approves it. (The screenshot tool and its driver come over to `client/`; the agent's check runs the client's suites.)
+- [ ] **Fix: a document change from the Discord agent ships a game update.** Now: every change the agent ships also publishes a new game
+  build, even when it only touches documents, so adding a line to this roadmap from Discord would send every player an update notice.
+  After: a change that touches only documents goes to `main` with no new build and no notice, and the agent adds a team member's idea to
+  "Ideas" (with its section) on an approver's ✅.
 - [ ] **Fix: nobody is told when the game's servers stop.** Now: only the database is watched; if the game's server, the lobby or the
   co-op relay stops, nobody knows until players notice. After: each one is watched every minute, and a failure posts to #build-alerts
   (KNOWN-GAPS "Operations").
@@ -310,9 +314,11 @@ Worked through beside the phases, top first. Each change is shown to the team wi
 
 ## Ideas
 
-Ideas and requests not planned yet, one line each with its date; each is sorted into a phase when that phase is planned. Bugs and gaps go
-to KNOWN-GAPS.md instead.
-- A hint for a party guest standing in a boss's rot (a guest's core lists no zones today; 2026-10-17).
+New ideas and requests from anyone land here first, one line each with its date and the section it would belong to. They wait here
+until the team says yes, because every unchecked item in a phase or the polish list is treated as approved work by every session. When a
+phase is planned, its ideas move into its checklist as Fix or New items (or straight away, when Helix says so). Bugs and gaps go to
+KNOWN-GAPS.md instead.
+- A hint for a party guest standing in a boss's rot (a guest's core lists no zones today). Section: polish list, co-op gaps. 2026-10-17.
 
 ## Done
 
