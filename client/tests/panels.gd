@@ -1,5 +1,5 @@
 extends SceneTree
-## Today's panels on the core (ROADMAP "The panels on the core", DECISIONS B46): the game scene with today's HUD and panels (DmGameUi on the ported DmNextUiHost), a dev
+## Today's panels on the core (DECISIONS B46): the game scene with today's HUD and panels (DmGameUi on the ported DmNextUiHost), a dev
 ## character on the local mock backend only (never a real server), headless. Checks:
 ##   - every panel this build warms opens and closes (DmGameUi.toggle_panel); the menu row's Reliquary button opens the Reliquary;
 ##   - the Reliquary: equipping the weapon in the bag is the server's (api.equip_item, the bag read back through the loot node) and the hero's build and worn look follow;

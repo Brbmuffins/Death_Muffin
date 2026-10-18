@@ -44,6 +44,13 @@ Never deploy, publish a client, or flip `set-online.sh` without passing checks f
 - **Performance first.** Measure before and after; no regression, no per-frame allocation in hot paths, no work added to
   `_process` that an event or timer can do, warm first-use shaders/effects during loading. Tests never assert wall-clock time (they may print it as
   INFO); performance is measured on real hardware (F3 overlay) and with deterministic counters in tests.
+- **Performance budgets** (B39; each has an automatic check or gets one in ROADMAP Phase 2). No frame rate to stop at, and nothing ships
+  slower than what it replaces. Floors for weaker PCs: a 2020-era laptop at Low never below 60 fps in normal play or 45 in the biggest fight;
+  a GTX 970-class PC at Medium never below 60 in the biggest fight. The biggest fight is the benchmark's Full Party fight (4 necromancers with
+  about 32 thralls, 72 enemies and a boss, all run by the host). In the headless Full Party fight on the VPS (the stand-in for a weaker
+  processor) the combat core takes at most 4 ms a tick and the rest of the main thread 4 ms a frame; the HUD at most 0.5 ms and 150 draw calls
+  on Helix's PC. Crowd models at most 5,000 triangles (the Bone Colossus 6,000) and 1024-pixel textures with levels of detail; the hero and
+  bosses at most 20,000 and 2048. Godot stays 4.7.2 until a deliberate, benchmarked upgrade.
 - **Polish over new content.** Finish and tune what exists (necromancer combat, loot and gear, the first hour) before adding.
 - **Necromancer focus.** The four necromancer disciplines are the baseline, joined by the Reaper (the first non-necromancer kit); the other five are greyed out and come later.
   Anything you add must be easy to find and understand on screen. Immersive, not overwhelming; capped, not cluttered.
@@ -62,8 +69,9 @@ Never deploy, publish a client, or flip `set-online.sh` without passing checks f
 
 ## Working conventions
 
-- **The rebuild is on** (ROADMAP "Now: the rebuild", DECISIONS B34-B42). The live client gets bug fixes, warbogar's armor sets and server
-  safety work only (B37); feature requests go to ROADMAP "After launch day". Rebuild work follows the ROADMAP checklist and its working rules.
+- **Work order** (ROADMAP.md, DECISIONS B50): bugs and crashes first, then the team's approved requests, then the next unchecked item of the
+  current phase and the polish list. Findings outside your task go in the same commit, a line each: a bug or gap to KNOWN-GAPS.md, an idea
+  to ROADMAP "Ideas". Don't act on them.
 - Online is the default start. For tests and screenshots use `-- --dev-offline` (`--class=N` enters directly).
 - Godot GDScript: `class_name Dm*`, one source of truth for content in `godot/data` and `godot/rules`; no speculative
   abstraction; remove temporary code. Commit the `.import` files and `.uid` files Godot generates for new assets/scripts.

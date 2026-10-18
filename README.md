@@ -4,7 +4,7 @@ A dark-fantasy action RPG. You play a necromancer: raise corpses as thralls, fig
 world (Chapterhouse, Sexton's Acre, Alchemist's Wing, Hollow Graves, Catacomb Warren, Marrow Ossuary, Drowned Nave, Bone
 Coliseum, Bell Sanctum, Plague Cloister, Cinder Pyre, Mourning Fen, and the Catacomb Depths), gather and craft, and chase gear.
 
-**One game, one client:** a Godot 4 client (`godot/`), played online against the Death Muffin backend. Four necromancer
+**One game, one client:** a Godot 4 client (`client/`, live since 2026-10-18; the old game in `godot/` stays until 2026-11-01), played online against the Death Muffin backend. Four necromancer
 disciplines are playable (Ossuary, Gravecaller, Mourner, Rotweaver), and so is the Reaper, a scythe fighter with a soul bag; the other
 five show greyed out as "Coming later".
 Parties of up to 4 join through a lobby and relay. Players get the game through the Windows launcher at
@@ -17,8 +17,8 @@ Where to read next: [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNO
 
 | Path | What |
 |---|---|
-| `godot/` | The Godot 4.7 project. Entry `main/main.gd` (`DmMain`) -> front flow (`front/`) -> `DmNextGame` (`next/next_game.gd`). `next/` holds the game systems (each folder has a README), `rules/` and `data/` the game rules and content, `session/` + `net/relay/` multiplayer, `enemies/` enemy scenes, `tests/` the headless suites |
-| `client/` | The rebuilt client (ROADMAP "Now: the rebuild"): its own Godot 4.7.2 project, Forward+, shipped only to the launcher's Test build channel until launch day and talking to the test server only ([client/README.md](client/README.md)) |
+| `client/` | The game (DECISIONS B49): its own Godot 4.7.2 project on Forward+ with the C++ combat core ([client/README.md](client/README.md)). Entry `main/main.gd` (`DmMain`) -> front flow (`front/`) -> `DmNextGame` (`next/next_game.gd`). `next/` holds the game systems (each folder has a README), `rules/` and `data/` the game rules and content, `session/` + `net/relay/` multiplayer, `core/` and `crowd/` the combat core's host and the crowd, `tests/` the headless suites |
+| `godot/` | The old game (Compatibility renderer, GDScript enemies), kept until 2026-11-01 for `server/death-muffin/launch-undo.sh` (DECISIONS B40). Most of `client/`'s GDScript, data and assets are still copies of its files: a fix to a copied file is made here and synced (CLAUDE.md). Same layout as `client/` (B43) with the old `enemies/` scenes; its suites are `godot/tests/` |
 | `native/` | The rebuilt client's C++ combat core (GDExtension), built into `client/bin/` by `native/build.sh` ([native/README.md](native/README.md)) |
 | `server/death-muffin/backend/` | Auth and game API on 127.0.0.1:5190 (accounts, characters, bag, loot, kill ledger, sessions). Plain Node `.cjs` + MySQL, migrations in `migrations/` |
 | `server/death-muffin/lobby/` | Lobby + packet relay (WebSocket), :5192 |

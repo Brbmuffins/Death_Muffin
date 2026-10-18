@@ -41,8 +41,8 @@ extends Node3D
 ## GATHERING (client/README.md "Gathering and the Acre"): `gather` (DmNextGather, a copy: the nodes of every area, hover and click, the loop that walks, works and batches to the backend, the skills) is a child of every
 ## peer at the same path (its depleted nodes reach a guest as RPCs); `acre` (DmNextAcre, ported: the visible Grave Laborers and the labor, garden and contract notices) is the host's, with the real HUD.
 ##
-## Off in this step, each until its ROADMAP item: the Covenant Seal's altar choice (a summon is the plain soul-shard one). `start` refuses any api whose base url is not the TEST server's
-## (DmConfig.allows_api_base: the local mock has none): the rebuilt client never plays against the live server before launch day (DECISIONS B38). It takes the
+## Not in it: the Covenant Seal's altar choice (Ascension, B36: a summon is the plain soul-shard one). `start` refuses any api whose base url DmConfig does not allow
+## (DmConfig.allows_api_base: the live server since launch day, B49; the local mock has none). It takes the
 ## character and its build from the front flow (`slots`, `local` below) until the progression and the bag have loaded theirs from the server.
 ##
 ##   var g: DmNextGame = load("res://next/next_game.tscn").instantiate(); add_child(g); await g.start(character, api, opts)

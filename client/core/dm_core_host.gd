@@ -133,7 +133,7 @@ func setup(opts: Dictionary) -> void:
 ## Registers a hero body (a Node3D with `alive` and `discipline_id`) as an external of kind 0 and returns its core id. From now on its position and
 ## alive flag are written every tick before the step. Its thralls wear today's look, whatever its discipline: today's DmEntityViews asks its host for
 ## `discipline_id_for`, which no host of today's game has, so the legion looks (crowd_looks.json `legions`, `CrowdView.set_owner_legion`) never show there
-## and do not here (ROADMAP "For review").
+## and do not here (KNOWN-GAPS "Built but never shown").
 func register_hero(body: Node3D, radius := 0.4, weight := 1.0) -> int:
 	var id := int(core.add_external(0, radius, weight))
 	_heroes.append(body)

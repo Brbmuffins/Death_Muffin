@@ -1,5 +1,5 @@
 extends SceneTree
-## The Gravedigger King on the combat core (ROADMAP: client layer, "The Gravedigger King's brain as an external entity"): the real offline game scene (client/next/next_game.tscn)
+## The Gravedigger King on the combat core (client/README.md "The bosses"): the real offline game scene (client/next/next_game.tscn)
 ## with a level-20 Gravecaller, no waves, headless. The King is today's DmBossHost / DmBoss / DmBossBrain, ported: his body is an external of the core (kind 1), his brain stays GDScript.
 ##   - the brain: today's gravedigger_* scenarios replay tick by tick through the client's copy of the brain (fixtures read from godot/tests/bosses);
 ##   - summoning: the rules of the Graves (far, unknown, busy, dead), key E at his grave, the awaken numbers and event; he is registered with the core (core_id, the host's records);

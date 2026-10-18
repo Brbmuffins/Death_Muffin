@@ -1,5 +1,5 @@
 extends SceneTree
-## The game scene on the core (ROADMAP: client layer, "The game scene on the core"): an offline solo run in the Hollow Graves, headless. It starts the real
+## The game scene on the core (client/README.md "The game scene and the dev entry"): an offline solo run in the Hollow Graves, headless. It starts the real
 ## scene (client/next/next_game.tscn) with a dev character on the local mock backend, plays 3600 physics ticks (60 s of game time; with the engine argument
 ## `--fixed-fps 60` they run as fast as the CPU allows, without it they take a minute) and checks:
 ##   - the wave director spawned waves through the core, up to the area's cap; every spawn event is a core body (ids, not nodes);

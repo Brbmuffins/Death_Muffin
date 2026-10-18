@@ -148,7 +148,7 @@ func _a_inventory() -> void:
 					for tag in NATIVE_STARTERS:
 						if src.contains(tag):
 							hits.append("%s (%s)" % [dir.path_join(f).trim_prefix(native + "/"), tag])
-		check(hits.is_empty(), "the combat core starts no thread (a core that runs think and move in parallel, ROADMAP \"The foundation\", comes through here: read it, then list it): %s" % ", ".join(hits))
+		check(hits.is_empty(), "the combat core starts no thread (a core that runs think and move in parallel, DECISIONS B42, comes through here: read it, then list it): %s" % ", ".join(hits))
 	else:
 		print("INFO threads: native/src not found next to the project: the core's source was not scanned")
 

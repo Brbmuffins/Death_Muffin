@@ -1,6 +1,6 @@
 # The rebuilt client
 
-The Death Muffin client, rebuilt (ROADMAP "Now: the rebuild", DECISIONS B34-B42): its own Godot 4.7.2 project, next to the old game in
+The Death Muffin client, rebuilt (DECISIONS B34-B50): its own Godot 4.7.2 project, next to the old game in
 `godot/`, which it never changes. Since launch day (2026-10-18, B49) this project is the game: `publish-godot-client.sh` publishes it to everyone; the
 launcher's Test build channel keeps its last test build.
 
@@ -91,7 +91,7 @@ uids keep working:
 - **Per-creature systems** (`enemies/`, `sim/sim_enemy|thrall|corpse|zone.gd`, `next/thralls|corpses|affixes`, `game/dm_entity_views.gd`): the combat core and the crowd view
   replace them (native/README.md "Design").
 - **Seams** (55 files at the start): a file outside those systems that names one of their classes or scenes: the rites, the bosses, the HUD's enemy reads, auto combat input, the benchmark
-  fight. Each line names what it uses. They are ported to the core in the later steps of the ROADMAP's client layer, and `--port` then moves them from the list into `code.lock.json`.
+  fight. Each line names what it uses. A seam is ported to the core in its own step, and `--port` then moves it from the list into `code.lock.json`.
   Ported already: the game scene, the director, the hero body and look, the input, the enemy fx, the avatar and the event fx; the Gravecaller's rites (the caster, the module base, the legends, the
   registry, 24 of the necromancer's 25 rites, the rite fx, the combat input; "The Gravecaller's rites"); the boss host, body, world, fx and view ("The bosses"); Easy auto combat, the benchmark
   with its screen, setup window and warm-up, and the boot's `--benchmark` and Benchmark button ("The benchmark"); the co-op pieces (`next/next_net.gd`, `next/party/dm_next_party.gd` and the session's hello;
@@ -147,7 +147,7 @@ wind-up), deaths, voices, dust clouds and burning ground and the affixes' bell, 
 
 Co-op and the Social window are in ("Co-op on the core"), value on the server ("Value on the server"), today's HUD and panels ("The HUD on the core"), the Reaper ("The Gravecaller's rites") and
 gathering with the Acre ("Gathering and the Acre").
-The Depths are in ("The Depths"). Off in this step, each until its ROADMAP item: the graphics governor and Grave Surges. The waves follow the heroes from area to area as today's: the director moves to
+The Depths are in ("The Depths"). Grave Surges are not in yet (KNOWN-GAPS "Missing since launch day"); the graphics governor is ("Graphics presets"). The waves follow the heroes from area to area as today's: the director moves to
 the combat area a hero stands in, and the ground left behind is cleared at once (its living bodies sent away through the core, no death or corpse), as is one nobody has stood in
 for 15 s. Easy auto combat is in and opens from Settings as today. `tests/world.gd` plays the whole world: seals, gates, walking from the Chapterhouse into the Warren, waystones,
 the recall, the waves following the hero. `native/README.md` "Differences from today's game" lists what behaves differently from today.
@@ -230,7 +230,7 @@ Flagellants and rats, the Regent's Cinder Husks, Pyre Priests and Cinderhounds, 
 
 ## The benchmark
 
-Today's in-game benchmark (`godot/next/perf/README.md` "Benchmark"), ported to the core: the same held fight in today's nine rooms with the four necromancers and the Reaper, so the Full Party fight can be measured in this client against today's game, room by room (ROADMAP Gates B and C).
+Today's in-game benchmark (`godot/next/perf/README.md` "Benchmark"), ported to the core: the same held fight in today's nine rooms with the four necromancers and the Reaper, so the Full Party fight can be measured in this client against today's game, room by room (the rebuild's Gates B and C, DECISIONS B50).
 
 ```
 bash client/tools/bake_crowd.sh                                                                                                    # once: the crowd models the fight draws (with none baked the crowd does no view work: about 0.6 ms a frame cheaper, and the report says so)
@@ -251,7 +251,7 @@ nice -n 10 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path clien
   (the one that sleeps in that room, `DmBenchFight.boss_of`, as today's: the Gravedigger King in the Graves, the Bone Abbess in the Ossuary, the Drowned Congregation in the Nave, the Bell-Sworn Prelate in the Sanctum, the Plague Saint in the Cloister, the Cinder Regent in the Pyre
   and the Mire Mother in the Fen; woken through the real summon, again after each defeat; the Warren and the Coliseum have none and run without, and the Setup line says so). On the core: the director spawns through `DmCoreHost.spawn_enemy`, `trim` removes the farthest extras with `remove_enemy` (no death, no corpse, no reward), the thralls are raised
   straight into the core without the cap, and every count is read from the core. `DmBenchFight` holds these rules.
-- **The report** is today's (the table, the hitch log, the render breakdown) with the core's name in its header, and a **budget section** that sets the ROADMAP's budgets against this run: the combat core's step, the crowd's sync and the
+- **The report** is today's (the table, the hitch log, the render breakdown) with the core's name in its header, and a **budget section** that sets the budgets (CLAUDE.md "Performance budgets", B39) against this run: the combat core's step, the crowd's sync and the
   event dispatch per 60 Hz tick (`DmCoreHost.measure`, on for the measured window only) against 4 ms; the rest of the main thread per frame (the frame less the core's share, ticks a frame times its tick) against 4 ms; the HUD's main-thread
   share against 0.5 ms (the same fight with the HUD off and on, eight times over, half a second each: a share below the printed spread, twice the standard error of the rounds, is noise) and its draw calls against 150 (from the render breakdown's HUD row, so on a PC with a renderer and a Full-length run).
   Each line says PASS or MISS. The budgets are set for the headless Full Party fight on the VPS; another size, or a rendered run (where the rest includes drawing), prints them as information. The numbers are not asserted by any test.
@@ -304,7 +304,7 @@ count, `DmDrawScene` (`next/perf/dm_draw_scene.gd`) the scene both build: the ro
 - **Identical meshes are instanced by the renderer:** the instances of one mesh, surface and material that a pass meets are ONE draw call. The Graves' 130 props as prefab instances cost 33 draw calls (15 in the main pass, 18 in the shadow
   passes); a mesh that stands once costs its surfaces, and so does a mesh that merges many props.
 - **A MultiMesh with no instance costs its draw calls all the same:** one in the main pass and one in each cascade it meets when it casts (+1 draw call in the main pass and +2 in the shadow passes when it casts, whether it holds 0 or 4 instances). A MultiMesh is never merged with another.
-- Occlusion culling (the Graves' occluders), the sky and the lights' own work are not counted: the model runs a few draws under the engine (the Graves' world from the camera's middle: 75 against 84 rendered; with the merged cell meshes of ROADMAP "Static batching" it was 105 against 107), so a budget is set a little over the model's number.
+- Occlusion culling (the Graves' occluders), the sky and the lights' own work are not counted: the model runs a few draws under the engine (the Graves' world from the camera's middle: 75 against 84 rendered; with the merged cell meshes that were tried and dropped ("Static batching is not in the areas" below) it was 105 against 107), so a budget is set a little over the model's number.
 
 **The benchmark's rows,** from those rules (the rows overlap: hiding the world takes its shadow draws too, and the Shadows row is every shadow draw, the crowd's too):
 
@@ -323,7 +323,7 @@ the frame its first instance is written and hidden once it has held none for hal
 the crowd of the Full Party costs 41 draw calls (17 main, 24 shadow) in the rendered run, 396 with every group shown, and the Graves' whole fight about 340 where it was 725 (with the batching out as well; the benchmark on Helix's PC will say). A model's first appearance
 shows a group the frame it is needed; the models share the crowd's shader, so that costs a material's uniform set and no compile (the warm-up draws every model once all the same).
 
-**Static batching is not in the areas** (ROADMAP "Static batching"): merging a cell's repeated props into one mesh was no saving in draw calls, because the instances it replaced were already one draw call per mesh and a cell mesh is unique.
+**Static batching is not in the areas** (measured 2026-10-17): merging a cell's repeated props into one mesh was no saving in draw calls, because the instances it replaced were already one draw call per mesh and a cell mesh is unique.
 The Graves' world from the camera's middle and four places round it, rendered (`tools/draw_measure.gd --compare=<another version of the room's scene>`): 107, 112, 112, 93 and 116 draw calls merged, 84, 94, 91, 80 and 99 as prefab
 instances (13 to 23 more merged; +30 on Helix's PC); the props alone 56 against 33; the merge saved objects (171 in the main and shadow passes to 129). The lightmap does not change the count (110 with it, 109 with it hidden). What cuts the
 world's draws further is fewer distinct meshes and materials, which is the asset rebuild's.
@@ -363,7 +363,7 @@ in the Graves' budget scene (`tests/draw_budget.gd`: `BUDGET_DRESSING` 8, none c
 `DmDrawModel` counts the dressing's pieces apart ("dressing:<piece>"). `--bench-dressing=off` (or `mist,water,...`) switches pieces off for a benchmark run and the report says which were off (`World dressing:`); the A/B is in "The benchmark".
 `tests/dressing.gd` is the suite.
 
-Not wired, as in today's game: `add_ripple` and `candle_group` are called through `DmEnemyFxHost.dressing`, which the game scene does not set, so the water has no ripples and the Prelate's candles do not gutter (ROADMAP "After launch day" → "For review").
+Not wired, as in today's game: `add_ripple` and `candle_group` are called through `DmEnemyFxHost.dressing`, which the game scene does not set, so the water has no ripples and the Prelate's candles do not gutter (KNOWN-GAPS "Built but never shown").
 
 ## The effects
 
@@ -467,9 +467,9 @@ lift of 1.0). `scene.glsl` shows where it comes from: Compatibility writes the e
 are today's (`tests/fx_decals.gd` proves them float for float), so the hero's decals are drawn at the strength that gives today's peak: the ring decals at `DmHeroLook.RING_K` = 0.4 of their opacity and the contact shadow at `SHADOW_A` = 0.75 (today's 0.5). Measured against the Graves, the Sanctum, the Warren and the Nave in the probe's `ring=K/S` variants (K 0.2 to 0.5, S 0.5 to 0.9): the peak is
 195, 190, 203 and 187 against today's 195 to 221, 200, 224 and 169, the pool inside the ring (the mean of the 8 to 20 px inside) 44 against 45 to 50 in the Graves; the width stays 7 px against 5 (6 at a fifth of the opacity), which only the blend would change. Every other blended effect keeps its linear blend: wider and whiter than today's by the same measure ("Still not today's").
 
-The Fen is the other way round: its baked ground is brighter than today's even at a lift of 1.1 (the mean 57.0 against 44.5, the darkest tenth 26 against 15), so the lift that matches the mean is 0.80, which leaves the ground's shadows lighter than today's (its hero is 0.87). All of this wants Helix's eye on his PC; the open causes are lines in ROADMAP "For review".
+The Fen is the other way round: its baked ground is brighter than today's even at a lift of 1.1 (the mean 57.0 against 44.5, the darkest tenth 26 against 15), so the lift that matches the mean is 0.80, which leaves the ground's shadows lighter than today's (its hero is 0.87). All of this wants Helix's eye on his PC; what is left is the look pass (KNOWN-GAPS "Look").
 
-**Still not today's** (each one a line in ROADMAP "Look pass"): the Depths' walls keep Forward+'s darker tint (its floor is lifted, `DmWorldBuilder._floor_mat`) and the Depths' lift is the old 1.2; Low and Medium: today's draw blended effects in sRGB space when bloom is off (an alpha sprite half-way over black: 131, with bloom on 205), Forward+ always blends
+**Still not today's** (the look pass on the ROADMAP's polish list): the Depths' walls keep Forward+'s darker tint (its floor is lifted, `DmWorldBuilder._floor_mat`) and the Depths' lift is the old 1.2; Low and Medium: today's draw blended effects in sRGB space when bloom is off (an alpha sprite half-way over black: 131, with bloom on 205), Forward+ always blends
 in linear light, and at Ultra too today's ring is thinner and dimmer than a linear blend of its decal ("The unbaked things"): only the hero's ring and shadow are scaled to it, every other blended effect (the rites' decals, the telegraphs, the particles) is wider and brighter here than today's;
 the gear props' emission (`StandardMaterial3D` with an energy: Compatibility converts the colour times the energy, Forward+ the colour) and the Binbun scenes' own shaders that write `EMISSION` are the same class as the creatures' and not converted, and the staff's light sprite takes the lift. The Chapterhouse's floor carries the candles' light in the new bake (warm pools by every candle, as today's), which the old bake did not.
 
@@ -480,7 +480,7 @@ table of `DmCompatAlbedo`.
 
 ## The seeded scenario
 
-Gate B's "same rules" proof (ROADMAP "Now: the rebuild", native/README.md "Proof of same game", which holds the tolerances and the results): `client/tools/parity_scenario.gd` plays one scenario in this client and writes its metrics as JSON, `godot/tests/parity/scenario.gd`
+Gate B's "same rules" proof (DECISIONS B50, native/README.md "Proof of same game", which holds the tolerances and the results): `client/tools/parity_scenario.gd` plays one scenario in this client and writes its metrics as JSON, `godot/tests/parity/scenario.gd`
 plays the same one in today's game, and `tools/rebuild/compare-scenarios.mjs` runs both, one Godot process at a time at `nice -n 10`, and prints kills, damage dealt, time to kill and thrall uptime side by side against the tolerances. Seeds 1 to 5 take about 6 minutes;
 `--seeds=1-20` takes about 23 and settles a close call. The scenario is the Hollow Graves with one Gravecaller at level 10 on the kit's default loadout, Easy difficulty and Easy auto combat on (the benchmark's adapter, on the physics clock), the director's normal waves and
 no rewards, for 180 s of game time. Everything is read from the host's signals and the caster's events; the game scene gets no code for it. By hand: `nice -n 10 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tools/parity_scenario.gd -- --seed=1 --seconds=180 --out=/tmp/client-1.json`
@@ -526,7 +526,7 @@ Settings did. The game scene takes `opts.hud_scale` and `opts.hud_layout`. There
 
 ### The HUD's budget
 
-DECISIONS B39: the HUD at most 0.5 ms and 150 draw calls on Helix's PC. Today's HUD was about 550 draw calls (the benchmark's Compatibility numbers: ROADMAP "Before numbers"). In Godot 4.7's canvas renderer
+DECISIONS B39: the HUD at most 0.5 ms and 150 draw calls on Helix's PC. Today's HUD was about 550 draw calls (the old game's benchmark on Compatibility, DECISIONS B50). In Godot 4.7's canvas renderer
 (`RendererCanvasRenderRD`) consecutive commands that share a texture and a kind are ONE draw call, and a rendered run measured what is not (Forward+ on lavapipe, 2026-10-16; `tools/hud_measure.gd --micro`):
 
 | drawn with | draw calls |
@@ -569,7 +569,7 @@ fight the model said about 500 for the game scene's HUD (the hotbar 188, the min
 *CPU.* The HUD's work on the main thread is of two kinds. **Per frame:** what animates (the orbs' ripple, 15 times a second, the floating numbers, the counsel's card, the cooldown edges and sweeps) and the panel host's clocks
 (counsel, guidance, cues). **Per refresh:** the view-model build and its apply, every 50 ms of **wall** time (`DmGameUi.HUD_INTERVAL_MS`, 20 Hz), so a refresh falls on every 12th frame of the VPS's 4 ms headless frame, every 5th
 of a 10 ms frame (Helix's 99 fps) and every 3rd at 60 fps. It costs about 1.5 ms in the Full Party fight (the caches cold: 0.4 ms hot in `tests/hud.gd`), which is 0.12 ms a frame on the VPS, 0.3 on a 10 ms frame and 0.5 at 60 fps:
-**the VPS's share leaves most of the refresh out**, and Helix's PC pays it in full (the ROADMAP's Helix's PC item measures it there).
+**the VPS's share leaves most of the refresh out**, and Helix's PC pays it in full (measured there on 2026-10-17: 0.07 to 0.08 ms, DECISIONS B50).
 
 What the share was and is, on this VPS in the Full Party fight (2026-10-17, main at d625161f; `--benchmark --bench-room=graves --bench-size=full_party --bench-class=2`, headless, `--fixed-fps 60`, a new character with its tips).
 The benchmark's own HUD readout is eight rounds of half a second (give or take 0.3 to 0.85 on a busy machine), too coarse to tell 0.45 from 0.55: five runs of each build alternated read **0.88 to 1.97 before (median 1.07) and
@@ -755,7 +755,7 @@ a gatherer's hand. Cycles worked in the last 8 s before the window closes or the
 
 ## Co-op on the core
 
-2-player co-op (ROADMAP "2-player co-op"; DECISIONS B22, B26-B28, B38, B40, B42) is today's session, relay and lobby with the combat core's messages on top. One player HOSTS: the real game runs on the host's core, as in a solo run, and the
+2-player co-op (DECISIONS B22, B26-B28, B38, B40, B42) is today's session, relay and lobby with the combat core's messages on top. One player HOSTS: the real game runs on the host's core, as in a solo run, and the
 party's other player is a GUEST: its game scene (`DmNextGame` joined, `is_guest`) holds a **puppet core** (`DmCoreHost.puppet`, `set_puppet(true)`) that shows what the host tells it. Up to 4 players fit the session; the proof is a host and one guest.
 
 | | HOST | GUEST |
@@ -994,7 +994,7 @@ generated at runtime and are not converted: "The Depths"). Output is determinist
   texel in the Chapterhouse, 0.84 x 0.65 m in the Graves and 0.6 m along a 40 m path (`client/addons/dm_bake/README.md` has the sizes). When
   `client/areas/<id>.lmbake` exists (a bake from `client/addons/dm_bake/README.md`) the converter points the node at it; an area without one has a `LightmapGI` with no data and is lit as "Without a bake" below says
   (all twelve areas have their bake since 2026-10-17: Helix's helper, one commit). The props stay instances of their prefab scenes: Forward+ and Mobile draw identical meshes instanced,
-  so merging them would add draw calls (ROADMAP "Static batching"). Occluders: tall walls (3 m, 4 m long) and large solid
+  so merging them would add draw calls ("Static batching is not in the areas"). Occluders: tall walls (3 m, 4 m long) and large solid
   box props (the mausoleums), shrunk so they never hide what is visible past them.
 
 **Without a bake** (an area whose `.lmbake` is missing) an area keeps its `LightmapGI` with no data: nothing is lightmapped, so the Environment's plain-colour ambient (the colour and energy today's game uses, the Acre's and the Wing's

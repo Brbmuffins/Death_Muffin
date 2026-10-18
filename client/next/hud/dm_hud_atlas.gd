@@ -3,7 +3,7 @@ extends RefCounted
 ## One runtime texture for everything flat or icon-like the HUD draws: the 9-patch panels and their borders, plain rectangles (a 2x2 white block), bar
 ## gradients, and every icon. The canvas renderer draws consecutive commands that share a texture as ONE draw call, so a HUD whose chrome all comes from this
 ## texture, and whose items sit on the same z layer (DmHudKit.Z_CHROME), costs a handful of draws instead of one per panel and per icon
-## (client/README.md "The HUD's budget"; ROADMAP: the new HUD).
+## (client/README.md "The HUD's budget").
 ##
 ## Regions are packed on demand with a one pixel extruded border (linear filtering never reads the next region). The image uploads once per frame, before the
 ## frame is drawn, when something was added. Nothing is created per frame: a style, an icon or a gradient is packed the first time it is asked for.

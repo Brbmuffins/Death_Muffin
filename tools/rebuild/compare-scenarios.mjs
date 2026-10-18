@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The seeded scenario comparison between today's game and the rebuilt client (ROADMAP Gate B, native/README.md "Proof of same game").
+// The seeded scenario comparison between today's game and the rebuilt client (native/README.md "Proof of same game").
 //
 //   node tools/rebuild/compare-scenarios.mjs [--seeds=1-5] [--seconds=180] [--level=10] [--difficulty=easy] [--discipline=2] [--area=graves] [--out=<dir>] [--from=<dir>] [--strict]
 //

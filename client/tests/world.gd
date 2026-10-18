@@ -1,5 +1,5 @@
 extends SceneTree
-## The whole world (ROADMAP "The other 12 areas as scenes ... moving between areas"): the game scene as a player gets it, every area but the Depths loaded,
+## The whole world (DECISIONS B47): the game scene as a player gets it, every area but the Depths loaded,
 ## offline on the local mock, headless. Checks:
 ##   - every area scene is in, each door once; the hero starts on the Chapterhouse's return point (3 m off it, as today's host) and the people stand in the hubs;
 ##   - the seals at the start of a new character: the hubs and the Graves open, their doors' gates up; every sealed area and the doors to it closed (gate down,

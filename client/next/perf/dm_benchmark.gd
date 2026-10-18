@@ -2,7 +2,7 @@ class_name DmBenchmark
 extends Node
 ## The in-game benchmark of the rebuilt client (character select "Benchmark" button, launch arg `--benchmark`), a port of godot/next/perf/dm_benchmark.gd
 ## (client/code.list "Ported"): the same held fight on every PC so builds and machines compare, and the same fight as today's game so the rebuild can be measured
-## against it (ROADMAP Gate B). An ISOLATED offline game (DmBenchFight: mock backend with an in-memory db, nothing persisted, no network); the player's settings
+## against it (Gate B, DECISIONS B50). An ISOLATED offline game (DmBenchFight: mock backend with an in-memory db, nothing persisted, no network); the player's settings
 ## file is only READ (graphics preset, fps cap for the report; the run itself is uncapped with V-Sync off).
 ## Setup (`configure`, the setup window DmBenchmarkSetup): room (ROOMS: today's nine combat areas), class (`class_indices`: the four necromancers and the Reaper), fight size (SIZES)
 ## and length (LENGTHS); STANDARD is the setup that compares PCs, today's. Fight: only the room's area is loaded, the room's own enemy kinds at the walkable point nearest its centre,
@@ -10,7 +10,7 @@ extends Node
 ## count, the room's boss held awake in a Full Party fight (BOSS_SIZES), fixed seed and camera zoom. Warm-up (not measured; the first frames compile shaders), then
 ## the measured window, then the HUD's share, then the render breakdown.
 ## What the creatures cost is the combat core's: `DmCoreHost.measure` times its step, the crowd's sync and the event dispatch per tick during the measured window, and the report's
-## budget section sets them (and the rest of the main thread) against the ROADMAP budgets (BUDGET_*).
+## budget section sets them (and the rest of the main thread) against the budgets (BUDGET_*, CLAUDE.md "Performance budgets").
 ## Per-frame cost: one float appended to a preallocated PackedFloat32Array plus a handful of engine counter reads, and DmFrameSplit's two signal callbacks and one `_process` (the physics
 ## and process parts of the frame); the fight upkeep (top-up, counts, progress text) runs at TICK_S. Wiring: `var b := DmBenchmark.new(); add_child(b); var r := await b.run()`; `progress(text)` fires ~1 Hz.
 ## Text report: `format_text(results)`; `save_text(text)` writes bench-<datetime>.txt into `dir` (user://benchmarks).
@@ -62,7 +62,7 @@ const SPAWN_MIN_M := 6.0        ## the benchmark's wave spawn distance (m from t
 const SPAWN_MAX_M := 14.0
 
 const BREAK_MEASURE_S := 5.0
-## The ROADMAP's budgets (B39; starting points, set in the test build): in the headless Full Party fight on the VPS, the combat core's step + the crowd's sync + the event
+## The budgets (B39, CLAUDE.md "Performance budgets"): in the headless Full Party fight on the VPS, the combat core's step + the crowd's sync + the event
 ## dispatch per 60 Hz tick, and the rest of the main thread per frame; on Helix's PC the HUD's main-thread cost per frame and its draw calls.
 const BUDGET_CORE_MS := 4.0
 const BUDGET_REST_MS := 4.0
@@ -982,7 +982,7 @@ static func verdict(value: float, budget: float) -> String:
 	return "PASS" if value <= budget else "MISS"
 
 
-## The report's budget section: what the combat core costs per tick and what the rest of the main thread costs per frame, each against its ROADMAP budget (BUDGET_*), and the
+## The report's budget section: what the combat core costs per tick and what the rest of the main thread costs per frame, each against its budget (BUDGET_*), and the
 ## HUD's share when the build has a HUD. The budgets are set for the headless Full Party fight on the VPS (a stand-in for a weaker processor); in another fight, or on a PC with
 ## a renderer, the lines are information (the rest then includes drawing). Empty when the run measured no phase.
 static func budget_lines(r: Dictionary) -> PackedStringArray:

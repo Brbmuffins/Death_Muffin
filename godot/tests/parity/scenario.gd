@@ -1,5 +1,5 @@
 extends SceneTree
-## The seeded scenario comparison, this side (ROADMAP Gate B, native/README.md "Proof of same game"): today's game plays the scenario below and writes its metrics as JSON.
+## The seeded scenario comparison, this side (native/README.md "Proof of same game"): today's game plays the scenario below and writes its metrics as JSON.
 ## `client/tools/parity_scenario.gd` plays the same scenario in the rebuilt client with the same arguments and the same keys; `tools/rebuild/compare-scenarios.mjs` runs both for
 ## several seeds and tabulates them. A probe like tests/perf/fight_breakdown.gd, not a suite (no run.gd: run-all-tests.sh does not pick it up).
 ##

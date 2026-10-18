@@ -1,5 +1,5 @@
 extends SceneTree
-## The seeded scenario comparison, this side (ROADMAP Gate B, native/README.md "Proof of same game"): the rebuilt client plays the scenario below and writes its metrics
+## The seeded scenario comparison, this side (native/README.md "Proof of same game"): the rebuilt client plays the scenario below and writes its metrics
 ## as JSON. `godot/tests/parity/scenario.gd` plays the same scenario in today's game with the same arguments and the same keys; `tools/rebuild/compare-scenarios.mjs` runs both
 ## for several seeds and tabulates them.
 ##

@@ -1,5 +1,5 @@
 extends SceneTree
-## The Gravecaller's rites on the combat core (ROADMAP: client layer, "The Gravecaller's rites ported to the core"): the real offline game scene (client/next/next_game.tscn)
+## The Gravecaller's rites on the combat core (client/README.md "The Gravecaller's rites"): the real offline game scene (client/next/next_game.tscn)
 ## with a level-20 Gravecaller, no waves, headless. Every rite (the necromancer's and the Reaper's) is cast at least once against core enemies (static: stunned, harmless, a huge health pool unless a case
 ## needs a kill) and its effect is compared with today's rules, computed here with the copied rules code (DmAbilities, DmThralls, DmSimData, DmCombatData ...), never literals:
 ##   - damage numbers (the first blow on each target = the rite's formula x the target's damage-taken multiplier, here 1), who was hit and who was not (lane, cone, circle, edge distance);

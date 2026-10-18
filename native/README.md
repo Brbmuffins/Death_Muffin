@@ -1,6 +1,6 @@
 # The combat core (C++)
 
-The combat core of the rebuilt client (ROADMAP "Now: the rebuild", DECISIONS B34, B42). It owns every enemy, thrall, corpse and
+The combat core of the rebuilt client (DECISIONS B34, B42, B50). It owns every enemy, thrall, corpse and
 status in flat arrays and steps them once per 60 Hz tick; GDScript (`client/`) owns the hero, rites, bosses, rewards, HUD and flow.
 Today's runtime it replaces is mapped in the private audit `~/vps-handoffs/DeathMuffin/audit/2026-10-16-combat-map.md`.
 
@@ -225,7 +225,7 @@ differences in the tolerance rows are the Ossuary's median time to kill (+9.7 %,
 
 Two things stay open, both inside the tolerances. **The Cinder Pyre reads about 5 % below today's in every kill and damage figure:** at forty seeds kills -5.9 % (noise +-6.4), hero damage -4.5 % (+-3.7), thrall damage -4.9 % (+-4.4), thralls raised -4.1 %, and
 the two halves of the seeds read alike (kills -5.4 % and -6.6 %). It is not the core's navmesh copy (twenty client runs without it read -7.2 %, -2.5 % and -4.7 %), not the navmesh itself (both maps give the same closest point for 4,000 points of the Pyre), not the waves' kinds, levels, elites or
-health (the first wave of a seed is the same on both sides); the cause is not found, and it is listed in ROADMAP "For review" for the Pyre's own comparison. **The hero's own hits are too few to judge** in the necromancers' scenarios (blows that hurt him a run, today / client: Ossuary 2.2 / 2.5, Mourner 4.1 / 2.1, Rotweaver 1.6 / 2.3, Sanctum 4.2 / 4.2, Pyre 6.2 / 7.8, Fen 17.2 / 18.6; the Mourner's
+health (the first wave of a seed is the same on both sides); the cause is not found; it is inside the tolerances and was not pursued after launch day (2026-10-18). **The hero's own hits are too few to judge** in the necromancers' scenarios (blows that hurt him a run, today / client: Ossuary 2.2 / 2.5, Mourner 4.1 / 2.1, Rotweaver 1.6 / 2.3, Sanctum 4.2 / 4.2, Pyre 6.2 / 7.8, Fen 17.2 / 18.6; the Mourner's
 is outside its noise band the other way from the rest): the Reaper, who stands in melee, is hit 23.3 / 23.4 times a run for 83 / 83 damage. No behaviour difference was found in any of them, so none is added to "Differences from today's game".
 
 ## Co-op: snapshots, events and the puppet core

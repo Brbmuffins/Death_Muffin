@@ -1,7 +1,7 @@
 # Crowd drawing (vertex-animation textures)
 
 Enemies and thralls are drawn in bulk: one MultiMesh per creature model and level of detail, every instance playing a clip baked into
-textures (ROADMAP "Now: the rebuild", [native/README.md](../../native/README.md) "Design"). The hero and bosses keep full skeletons.
+textures ([native/README.md](../../native/README.md) "Design", DECISIONS B34). The hero and bosses keep full skeletons.
 The combat core writes one buffer per frame; the GPU does the rest in the vertex shader.
 
 ## Pieces
@@ -308,7 +308,7 @@ software Vulkan driver; the lighting alone, a thrall with no glow and no rim, co
 
 Not drawn, and why: the legion kit's armour tint and its weapon's tier colour. Today's game never draws them either: DmEntityViews asks its host for `legion_kit_for`, and no host has it, so a
 thrall is drawn plain. They need the gear regions baked per vertex (chest and hands, from the skin weights) and a kit per owner in the palette, and belong with whatever gives thralls a kit to show
-(ROADMAP "After launch day"). Nor the legions' own looks (the sentinel, legionnaire and plague thrall, their tints and glows): today's DmEntityViews asks its host for
+(KNOWN-GAPS "Built but never shown"). Nor the legions' own looks (the sentinel, legionnaire and plague thrall, their tints and glows): today's DmEntityViews asks its host for
 `discipline_id_for`, which no host has, so every thrall wears the default bone skeleton and teal glow; `DmCoreHost` gives the crowd no legion either (`set_owner_legion` is kept).
 
 A spectral model (`crowd_looks.json` `spectral_models`: the wraiths) gets the same shader with SPECTRAL defined (`CrowdVatData.spectral_shader`: 0.55 opacity, no depth write, as DmCreature's fade variant) and

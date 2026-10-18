@@ -87,7 +87,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   same health and damage in every room. Bell Sanctum + Gravecaller + Standard + Full is the setup that compares PCs. Every finished run goes to
   the backend (`benchmark_runs`) and the site shows the history; only staff can delete runs.
 
-## Server authority (owner, 2026-10-13: "I don't want any important data going untrusted"; phases in ROADMAP.md)
+## Server authority (owner, 2026-10-13: "I don't want any important data going untrusted"; what is left: ROADMAP Phase 2)
 
 - **B19. Phase 0: closed doors and GM mode.** The backend takes no value it cannot back: the web-era reward routes are gone; adding an item
   by name, loading a client-made save and naming gear to roll are GM-mode only; a guard that cannot run refuses the write (503) instead of
@@ -120,7 +120,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   versions only go up. Our server instead of the GitHub API: no rate limit, a SHA-256 to check, and we choose when it goes live.
 - **B34. The rebuild** (Helix, 2026-10-16; "i want the game built correctly, have a strong, scalable, simple foundation"). The client is
   rebuilt underneath as the same game: same rules, numbers and timing, differences written down, improvements proposed, never slipped in.
-  Godot stays; the test build is the engine checkpoint (ROADMAP Gate B), the point where Unity would be reconsidered. Everything that runs
+  Godot stays; the test build is the engine checkpoint (Gate B, B50), the point where Unity would be reconsidered. Everything that runs
   for every creature every tick is a C++ GDExtension core (`native/`); the rest is GDScript (`client/`, B41). Nobody on the team writes code,
   so languages are chosen on merit, not on who can edit them. Replaces the step list of the old ROADMAP "Performance" section.
 - **B35. Forward+ on every PC preset** (Helix, 2026-10-16). One renderer on PC: presets turn extras on and off, never need a restart, and
@@ -132,14 +132,14 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   day, decides what it becomes. Heat leaves the party list, friends list and invites; the leaderboard ranks by boss kills, then total kills,
   then level. B26's heat rules end with it.
 - **B37. The live game during the rebuild** (Helix, 2026-10-16). Bug fixes, warbogar's armor sets (also checked in the rebuild) and server
-  safety work only. Feature requests go to ROADMAP "After launch day"; the Discord agent says so.
+  safety work only. Feature requests went to the ROADMAP for after launch day. Ended on launch day (B49); the order since is B50.
 - **B38. A separate test build for the rebuild** (Helix, 2026-10-16: "its a huge overhaul"; the one exception to builds going straight to
   main, B14). The rebuild's code lives on main in its own project (B41). The launcher gets a Test build switch that
   installs the test build next to the normal game and keeps it updated; it plays on a test server with copies of the team's accounts, so it
   can never touch live characters. Team only at first.
 - **B39. Performance without a goal to stop at** (Helix, 2026-10-16: "i want to get as MUCH performance as possible"). No frame-rate target;
   floors only for weaker PCs; nothing ships slower than what it replaces; Gate B needs at least twice today's speed in the Full Party fight.
-  Each system has a time budget and each model a size budget, checked automatically (numbers in ROADMAP). Godot stays 4.7.2 until a
+  Each system has a time budget and each model a size budget, checked automatically (numbers in CLAUDE.md "Performance budgets"). Godot stays 4.7.2 until a
   deliberate, benchmarked upgrade.
 - **B40. Ready for phones, and an undo for launch day** (Helix, 2026-10-16). From day one: textures also import in phone formats (a
   separate phone pack), every shader and effect runs on the Mobile renderer, the HUD is built from movable, scalable pieces, phones join co-op
@@ -191,13 +191,28 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   Compatibility renderer reads every vertex colour as sRGB and multiplies a material's colours in sRGB, Forward+ does both in linear light. The rebuilt client matches today's look by making
   Forward+ do what Compatibility does where it shows (the pools' and the particles' vertex colours as sRGB, the effects' shader colours converted, the floors' and walls' tints lifted by the
   measured ratio of their textures) and by an exposure lift calibrated per area (the bake carries each area's light differently, so no one number fits all twelve) instead of retuning each light, so the lights keep today's numbers (a fix that stays right when a light is
-  changed on both sides). What is still not today's, and the bake's colour space, are listed in client/README.md "The look against today's game" and ROADMAP "Look pass".
+  changed on both sides). What is still not today's, and the bake's colour space, are listed in client/README.md "The look against today's game"; the look pass is on the ROADMAP's polish list (B50).
 - **B49. Launch day** (Helix, 2026-10-18: "launch", twice, the second time after hearing that the look pass, Gate D, was not done). `client/` is the
   game: its endpoints are the live server's (`net/dm_config.gd`; B38 turned round, the build never reaches the test server), `publish-godot-client.sh`
   exports it by default, and the test channel keeps its last test build. The look pass's two open items (effects on Low and Medium, Helix's sign-off
-  of every area) moved to ROADMAP "After launch day". Until 2026-11-01 (B40) `server/death-muffin/launch-undo.sh` puts the last old build back and the
-  backend keeps accepting it. The Discord agent's ships are paused (its config forbids every path) until it builds `client/`. After the window
+  of every area) moved to the ROADMAP's polish list (B50). Until 2026-11-01 (B40) `server/death-muffin/launch-undo.sh` puts the last old build back and the
+  backend keeps accepting it. The Discord agent ships `client/`: its change in `godot/` is synced into `client/` before the push (65754b47). After the window
   `godot/` and the paths only it used go.
+- **B50. The roadmap after launch** (Helix, 2026-10-18: "building systems, frameworks, pipelines, code upgrades, rules/guidelines/standards/requirements,
+  organization, updated documentation now and then working on lore, classes, quests, maps later ... you structure this project"; the structure is
+  Claude's call). ROADMAP.md runs one phase at a time (settle the launch, foundation, Ascension redesigned, new content) beside always-on work:
+  bugs and crashes first, the team's requests through the Discord agent as before, and a polish list. A bigger new feature goes to ROADMAP
+  "Ideas" until its phase is planned; a bug or gap goes to KNOWN-GAPS.md. Each kind of new content gets its toolkit (reusable parts and a recipe)
+  together with its first content, not before (no speculative abstraction). The performance budgets moved to CLAUDE.md. Replaces B37.
+  The rebuild's record, which the ROADMAP held as checklists (git keeps them): Gate A (the old game on Forward+ runs on Helix's PC) passed
+  2026-10-16. Gate B, the engine checkpoint: the Full Party fight in the Hollow Graves at 3.1 times the old game's speed on Helix's PC
+  (RTX 4070 SUPER, 1440p Ultra: 77 to 242 fps, p95 18.1 to 5.1 ms) and 4.6 times in the VPS processor test (14.9 to 3.2 ms a frame), the rule
+  tests and the seeded scenario comparison inside their tolerances (native/README.md "Proof of same game"). Gate C: every rule test holds,
+  Helix's playtest found no issue against the old game, nothing slower (the Bell Sanctum's Full Party on Helix's PC: Low 594, High 343, Ultra
+  224 fps against the old game's 61 on Ultra; warbogar's PC, i7-8700K and Arc B580 at 1080p High: 342 fps against the old game's 41 in the
+  lighter Standard fight), co-op on two real PCs (Helix and warbogar, 2026-10-18). The old HUD was about 550 of the old game's 800 draw calls;
+  the new one 117 to 120 and 0.07 ms on Helix's PC. Open at launch: a weaker PC's benchmark (ROADMAP Phase 1, play reports) and Gate D, the
+  look pass (ROADMAP polish list).
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

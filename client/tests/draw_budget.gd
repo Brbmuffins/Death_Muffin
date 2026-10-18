@@ -1,5 +1,5 @@
 extends SceneTree
-## The 3D draw-call budget (ROADMAP "Now: the rebuild", client/README.md "The draw budget"): the draw calls of the Graves' Full Party fight, counted from data (`DmDrawModel`) in a scene a
+## The 3D draw-call budget (client/README.md "The draw budget"): the draw calls of the Graves' Full Party fight, counted from data (`DmDrawModel`) in a scene a
 ## headless run can build (`DmDrawScene`: the Graves' area scene, the game's camera, the Ultra preset's moon, 72 enemies and four necromancers' thralls on the combat core). A draw call
 ## is what the budget counts and a headless run draws nothing, so the test counts what Forward+ would issue: an object per instance the camera sees (or a moon cascade, for a caster), a
 ## draw per surface, identical meshes instanced into one draw, and a MultiMesh costing its draws whether or not it holds an instance. It proves:

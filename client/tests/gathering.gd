@@ -1,5 +1,5 @@
 extends SceneTree
-## Gathering and the Acre on the core (ROADMAP "The Depths and gathering"; client/README.md "Gathering and the Acre"): the whole world as a player gets it (every area but the
+## Gathering and the Acre on the core (client/README.md "Gathering and the Acre"): the whole world as a player gets it (every area but the
 ## Depths), offline on the local mock backend (never a real server), headless, with a game clock the mock follows. Checks:
 ##   - the nodes: all 68 of world.json are in the area scenes under `GatherNodes`, each registered with the gathering views; the three spent models load; the game scene made the
 ##     gather node (and the Acre's glue with the real HUD) and the panels this build warms include the Acre ledger's;

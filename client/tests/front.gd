@@ -1,5 +1,5 @@
 extends SceneTree
-## The front flow of the rebuilt client (ROADMAP: client layer, "Login to the test server and character select"), headless. The real boot scene (main/main.tscn, DmMain) runs
+## The front flow of the rebuilt client (client/README.md "The API rule"), headless. The real boot scene (main/main.tscn, DmMain) runs
 ## the real front flow (login, character select, the online gate) and the real game scene, with an api that is the real DmApi (its default base url) over a recording
 ## transport that answers from today's mock backend. Nothing here uses a real account, a real token or the live server. It checks:
 ##   - the boot reaches the login screen, sends nothing yet, and logs no error;

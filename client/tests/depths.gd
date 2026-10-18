@@ -1,5 +1,5 @@
 extends SceneTree
-## The Catacomb Depths on the combat core (ROADMAP "The Depths and gathering"; client/README.md "The Depths"): the game scene as a player gets it (the whole world, the HUD), offline on the
+## The Catacomb Depths on the combat core (client/README.md "The Depths"): the game scene as a player gets it (the whole world, the HUD), offline on the
 ## local mock, headless. Today's tests/next_depths replayed on the core. Checks:
 ##   A the rules, no game: floors per seed (sound, deterministic, a chest every fifth depth), quota, pacing, affixes, rosters (and the kinds the core does not run yet left out), levels,
 ##     the first wave, the stair opening once, the loot ground by depth;

@@ -1,7 +1,7 @@
 extends SceneTree
-## The in-game benchmark on the combat core (ROADMAP: "The Full Party fight in the new client", Gate B, and "The benchmark's other rooms", Gate C), headless: `godot --headless --path client --script res://tests/benchmark.gd`.
+## The in-game benchmark on the combat core (the rebuild's Gates B and C, DECISIONS B50; client/README.md "The benchmark"), headless: `godot --headless --path client --script res://tests/benchmark.gd`.
 ## Short runs of the real thing, deterministic checks only (timings are printed as INFO and never asserted):
-##   - the setup: sizes, today's nine rooms and five classes, the Bell Sanctum as the Standard room, today's enemy health, the budgets are the ROADMAP's, a room or class the benchmark does not list is refused with a plain message;
+##   - the setup: sizes, today's nine rooms and five classes, the Bell Sanctum as the Standard room, today's enemy health, the budgets are B39's, a room or class the benchmark does not list is refused with a plain message;
 ##   - the fight is set up as the setup says: 72 enemies held (the farthest extras trimmed without a death), 32 thralls, the Gravedigger King awake, the fixed seed, every enemy on
 ##     the standard health, the hero holding the centre, no node per creature;
 ##   - every room: a short Full Party run boots only that room's area, the hero stands on its floor, the director holds the room's whole roster on the core, the enemies that spawn are the room's, the report names the room, and
@@ -122,7 +122,7 @@ func the_setup() -> void:
 		var roster: Array = DmContent.area(room)["enemies"]
 		rooms_ok = rooms_ok and every.has(room) and not roster.is_empty() and roster.all(func(e: Dictionary) -> bool: return DmWaveDirector.runs_on_core(String(e["id"])))
 	check(rooms_ok and not DmBenchmark.ROOMS.has("depths"), "every room is an area the world loads and the core runs its whole roster (the Depths stays out)")
-	check(DmBenchmark.BUDGET_CORE_MS == 4.0 and DmBenchmark.BUDGET_REST_MS == 4.0 and DmBenchmark.BUDGET_HUD_MS == 0.5 and DmBenchmark.BUDGET_HUD_DRAWS == 150, "the budgets are the ROADMAP's: core 4 ms, rest 4 ms, HUD 0.5 ms and 150 draws")
+	check(DmBenchmark.BUDGET_CORE_MS == 4.0 and DmBenchmark.BUDGET_REST_MS == 4.0 and DmBenchmark.BUDGET_HUD_MS == 0.5 and DmBenchmark.BUDGET_HUD_DRAWS == 150, "the budgets are B39's: core 4 ms, rest 4 ms, HUD 0.5 ms and 150 draws")
 	check(DmBenchmark.normalize_setup({"room": "nowhere", "discipline": 7, "size": "huge"}) == DmBenchmark.STANDARD, "unknown picks fall back to the Standard setup")
 	check(DmBenchmark.normalize_setup({"room": "fen", "discipline": 11})["room"] == "fen" and DmBenchmark.normalize_setup({"room": "fen", "discipline": 11})["discipline"] == 11 and DmBenchmark.normalize_setup({"room": "depths"})["room"] == "sanctum"
 		and DmBenchmark.normalize_setup({"discipline": 5})["discipline"] == 2, "a listed room and class are taken; the Depths and a greyed-out class fall back to the Standard room and class")

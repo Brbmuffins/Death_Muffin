@@ -64,7 +64,7 @@ func _test_model(slug: String) -> void:
 		slug, r.source_triangles, str(r.triangles), r.vertices, r.anim_vertices, r.frames, data.clip_names.size(), str(r.texture),
 		float(r.pos_bytes + r.nrm_bytes) / 1048576.0, r.seconds])
 
-	# Budgets (ROADMAP "Performance rules"): crowd models at most 5,000 triangles (Baker.MAX_TRIANGLES_OF: the Bone Colossus 6,000) and 1024-pixel textures.
+	# Budgets (CLAUDE.md "Performance budgets", B39): crowd models at most 5,000 triangles (Baker.MAX_TRIANGLES_OF: the Bone Colossus 6,000) and 1024-pixel textures.
 	check(data.lod_triangles.size() >= 1 and data.lod_triangles[0] <= Baker.max_triangles_of(slug) and not r.over_budget, "%s: level 0 within %d triangles" % [slug, Baker.max_triangles_of(slug)])
 	for l in range(1, data.lod_triangles.size()):
 		check(data.lod_triangles[l] < data.lod_triangles[l - 1], "%s: levels of detail shrink" % slug)

@@ -273,6 +273,16 @@
       "allow": [
         "tools/hygiene/**"
       ]
+    },
+    {
+      "id": "roadmap-rebuild-sections",
+      "pattern": "ROADMAP[^\\n]{0,12}(\"(Now: the rebuild|After launch day|For review|Before numbers|Look pass|Static batching|Performance rules|The live game during the rebuild|2-player co-op)\"|Gates? [A-D]\\b|'s client layer|: client layer)",
+      "reason": "ROADMAP.md was restructured on 2026-10-18 (DECISIONS B50): the rebuild's checklist and its sections are gone (git keeps them); bugs and gaps are in KNOWN-GAPS.md, ideas in ROADMAP \"Ideas\", the performance budgets in CLAUDE.md; client/crowd/crowd_baker.gd (and client/project.godot's header) keep their old pointer until their next real change: both feed the assets pack's fingerprint (publish-godot-client.sh), so a comment edit alone would make every player download the art again",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**",
+        "client/crowd/crowd_baker.gd"
+      ]
     }
   ],
   "allowPaths": {

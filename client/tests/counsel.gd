@@ -1,5 +1,5 @@
 extends SceneTree
-## The counsel and the first hour on the combat core (ROADMAP "Tips, onboarding and sound on the core's events"; client/README.md "Tips and onboarding"): the game scene as a player gets it
+## The counsel and the first hour on the combat core (client/README.md "Tips and onboarding"): the game scene as a player gets it
 ## (the whole world but the Depths, today's HUD and panels, a new Gravecaller at level 1), headless. Checked:
 ##   - the counsel's host side (DmNextCounsel) asks the core for its facts: three living dead within 9 m of the hero make a fight (by the distance of their centres; a rising body counts, a dead
 ##     one does not), the corpses within 7 m, a pack of three on a corpse, the thralls he owns; against a brute-force reading of the core's tables over seeded random placements, the boundary
