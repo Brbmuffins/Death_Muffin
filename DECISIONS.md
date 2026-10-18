@@ -212,6 +212,9 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   needed for every session to build the team's ideas consistently, the roadmap gained the layer above the standards (the game vision, who
   decides what, a one-page spec for every feature, a playtest routine), the rules reaching every session by themselves (CLAUDE.md, recipes
   as Claude Code skills), a catalogue of what exists, rules for changing live content, and Phase 1's alerts and off-site backups.
+  A full review the same day added team lanes with "in progress" marks and a plain-words team guide, an automatic secret scan, test
+  runs that skip the game suites for document-only pushes, a watch on the server's packages, the Ultra Low decision of B35, the move of the
+  31 system guides before 2026-11-01, the remaining co-op and first-hour gaps, and a list of the risks we carry.
   The rebuild's record, which the ROADMAP held as checklists (git keeps them): Gate A (the old game on Forward+ runs on Helix's PC) passed
   2026-10-16. Gate B, the engine checkpoint: the Full Party fight in the Hollow Graves at 3.1 times the old game's speed on Helix's PC
   (RTX 4070 SUPER, 1440p Ultra: 77 to 242 fps, p95 18.1 to 5.1 ms) and 4.6 times in the VPS processor test (14.9 to 3.2 ms a frame), the rule
