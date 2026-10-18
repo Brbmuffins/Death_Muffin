@@ -54,6 +54,7 @@ overlay, T waystone travel in the Chapterhouse, G auto-combat. F9 breaks all sea
 ## Tests
 
 ```
+tools/rebuild/run-client-tests.sh --jobs 3   # the game's suites (client/, live since 2026-10-18), after client/setup.sh and client/tools/bake_crowd.sh; one line per suite
 tools/godot/run-all-tests.sh        # every godot/tests/*/ suite headless, --jobs N at once (default $DM_TEST_JOBS or 8, keep <= 8); one line per suite as it finishes, non-zero exit on any failure; ~2 min for all 71 (--fixed-fps 60 except the real-time groups; slowest first by tools/godot/suite-times.tsv, refresh it with --times <file>)
 tools/godot/run-all-tests.sh --only enemies,next_hud/run.gd   # just those dirs/files (--list prints the selection, unknown name exits 2); --jobs 1 = strictly serial
 npm run test:rules                  # shared rules (vitest, server/rules)

@@ -87,3 +87,56 @@ jobs:
       # Every suite, in parallel (tools/godot/run-all-tests.sh: one line per suite, retries a pool failure once alone, exit 1 on failure).
       - name: Godot suites
         run: GODOT=~/godot-bin/godot bash tools/godot/run-all-tests.sh --jobs 4
+
+  # The game players run since launch day (client/, DECISIONS B49): the combat core is built (Linux), the project imported, the crowd baked, then every suite.
+  client:
+    name: Game client tests (client/)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GODOT: /home/runner/godot-bin/godot
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot binary
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/godot-bin
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64
+
+      - name: Download Godot ${{ env.GODOT_VERSION }}
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot-bin
+          curl -fsSL -o /tmp/godot.zip \
+            "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d ~/godot-bin
+          mv ~/godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64 ~/godot-bin/godot
+          chmod +x ~/godot-bin/godot
+
+      # godot-cpp compiles once per pinned commit (about 6 minutes); native/build.sh keeps it in ~/death-muffin/native-cache.
+      - name: Cache godot-cpp
+        uses: actions/cache@v4
+        with:
+          path: ~/death-muffin/native-cache
+          key: godot-cpp-${{ hashFiles('native/build.sh') }}-linux
+
+      - name: Build tools
+        run: pip install --user scons
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Lobby dependencies
+        run: npm ci --prefix server/death-muffin/lobby
+
+      - name: Combat core, import and core smoke
+        run: bash client/setup.sh
+
+      - name: Bake the crowd's models
+        run: bash client/tools/bake_crowd.sh
+
+      # Every suite, three side by side (tools/rebuild/run-client-tests.sh: one line per suite, retries up to three failures once alone, exit 1 on failure).
+      - name: Client suites
+        run: bash tools/rebuild/run-client-tests.sh --jobs 3

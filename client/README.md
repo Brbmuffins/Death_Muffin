@@ -17,6 +17,7 @@ launcher's Test build channel keeps its last test build.
 
 ```
 bash client/setup.sh                                                       # builds the core for Linux, imports, runs the smoke test
+bash client/tools/bake_crowd.sh && tools/rebuild/run-client-tests.sh --jobs 3   # the crowd's models, then every suite (one line each; GitHub CI's "Game client tests" job runs the same)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/core_smoke.gd   # the core loads and answers
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/core_kinds.gd   # the kinds the other areas add, against today's rules: the Ossuary's golem (slam) and deacon (keep-away, curse, raise, Sanctify, silence), the Drowned Nave's censer (incense), acolyte (curse, Unbind), gargoyle (dive), templar (shield) and wraith (scream), the Sanctum's and Cloister's seraph (curse, ward), plague doctor (flask, pool) and flagellant (frenzy), and the Cinder Pyre's and the Mourning Fen's husk (embers), priest (coal), hound, slag brute (slam pool), hag (hex), leech, wisp (pulse, lure) and sexton (chain), their co-op wire, the rosters, seeded replays
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/crowd_bake.gd    # the crowd baker and shader (bakes into a scratch folder)
