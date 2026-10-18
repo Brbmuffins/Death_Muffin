@@ -10,7 +10,7 @@ const { run } = require('./gitops.cjs');
 
 const GENERATED = [
   'server/vps-handoff/necro-progress/necro-rules.cjs',
-  ...['gathering', 'garden', 'cosmetic', 'labor', 'contract', 'salvage', 'affix', 'authority', 'kill', 'vault', 'legion', 'gold-sink', 'rune', 'loadout']
+  ...['gathering', 'garden', 'cosmetic', 'labor', 'contract', 'salvage', 'affix', 'authority', 'kill', 'vault', 'legion', 'gold-sink', 'rune', 'loadout', 'loot']
     .map((n) => `server/death-muffin/backend/gathering/${n}-rules.cjs`),
   'docs/LOOT-TABLES.md',
 ];

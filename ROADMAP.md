@@ -377,6 +377,7 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
 - [x] The endpoints: `client/net/dm_config.gd` names the live API, manifest, lobby and relay; `client/tests/front.gd` pins them and refuses the test server.
 - [x] The rebuilt client published to everyone (`publish-godot-client.sh`, which exports `client/` by default): 20261018.035843-2b88467, 2026-10-18 04:07 UTC, announced (PATCH_NOTES.json "Rebuilt from the Bones").
 - [x] The Discord agent ships `client/` (2026-10-18, 65754b47): its change in `godot/` is synced into `client/` before the push; its prompt keeps it off the rebuild's own ("ported") files.
+- [ ] The game's suites in GitHub CI: `client/` is live, but CI still runs only `godot/`'s suites and the backend's (the combat core has to build there first).
 - [ ] 2026-11-01, the end of B40's undo window: `godot/` and the paths only it used go (the copies become the client's own files), and `launch-undo.sh` with them.
 
 **Working rules for the rebuild.**
