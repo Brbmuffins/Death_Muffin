@@ -56,15 +56,17 @@ players' PCs.
   its "Try it" previews are builds of the old game too, so the team approves pictures of a game nobody plays. After: every proposal is
   tested on the live game, its screenshots come from a team PC through the team PC helper below (the server's slower pictures only when
   no PC is available, marked as such), and its previews are the live game. (The screenshot tool and its driver come over to `client/`.)
-- [ ] **New: the team PC helper, in the launcher** (needs Muffins' OK: launcher changes reach every player's launcher). Jobs that need a real
+- [ ] **New: the team PC helper, in the launcher** (Helix, 2026-10-18: approved, for the accounts of War, Muffins and Helix only; B54). Jobs that need a real
   graphics card or Windows, which the server does not have, run on team PCs; the server keeps everything with keys or passwords and
-  everything that changes the live game, and checks each result before using it. Each person turns it on for their own PC and picks the
-  job types it takes. When a job comes in, a small box says what it is and how heavy ("Screenshots of a change, about 1 minute": Run now /
+  everything that changes the live game, and checks each result before using it. Only those three accounts can turn it on: they sign in to
+  it in the launcher, and the server's job routes accept only them (hiding the option is not the protection). Each of them turns it on for
+  their own PC and picks the job types it takes. When a job comes in, a small box says what it is and how heavy ("Screenshots of a change, about 1 minute": Run now /
   Not now / Pause 2 hours), and without an answer it runs by itself after 5 minutes, except while Death Muffin or another full-screen game
   or movie is running (Windows hides the question then, and a party's host runs the whole party's fight) or a laptop is on battery: then it
   waits for a yes or for the game to close. It never takes the keyboard or mouse, runs at low priority and stops if the game starts; it
   uses its own folder and plays offline (never the player's game, settings or account), runs only builds and kits our server made, and
-  uploads only its results. Each PC can also run without asking (War's spare Alienware, with his OK) or only on a yes. Its job types,
+  uploads only its results. Each PC can also run without asking (War's spare Alienware, if he sets it) or only on a yes. A new launcher reaches every player, so the
+  release that carries the helper goes out only after it is tested and Helix gives the final OK. Its job types,
   in order:
   - Screenshots of a proposal on Low and Ultra, posted to the thread by our server (the item above).
   - Benchmarks for every release on a fast PC and on the Alienware's GTX 970 (the weak-PC floor of B39), on the benchmarks page; a

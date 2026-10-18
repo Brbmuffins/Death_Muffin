@@ -232,6 +232,15 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   changes (Ascension, a new class, the map revamp): they go to the launcher's test channel and the test server first and the team plays
   them there; small fixes and everyday requests still go straight to main and live (B14). A test build reaches only the test server and
   the live build only the live one.
+- **B54. The team PC helper, for the team's accounts only** (Helix, 2026-10-18: "Lets move forward with it but only allow War, muffins and
+  helix accounts access to the feature on the launcher"; Helix holds the owner's authority for the project). The launcher gets a helper
+  that runs jobs needing a real graphics card on team PCs: screenshots of proposals, benchmarks, the stutter test, a release crash check and
+  lighting bakes (ROADMAP Phase 1). Only the accounts of brbmuffins, Helix and warbogar can use it: they sign in to it in the launcher and
+  the server's job routes accept only those accounts (a list on the server), so hiding the option is not the protection. It asks before a
+  job and runs by itself after 5 minutes without an answer, but never while Death Muffin or another full-screen game or movie is running or
+  a laptop is on battery; it runs only builds and kits the server made, plays offline in its own folder, and uploads only results. Keys,
+  passwords and anything that changes the live game stay on the server. A launcher release reaches every player, so it ships after tests
+  and Helix's final OK.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking
