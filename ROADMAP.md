@@ -51,9 +51,6 @@ first public release (B52); big changes get a test lane (B53); off-site backups 
 
 Goal: the new game has everything the old one had, it is the only game, it is safe if something breaks, and we can see how it runs on
 players' PCs.
-- [ ] **Fix: Grave Surges are missing.** Now: since launch day no Grave Surge ever starts (they were left out of the rebuild). After: as in
-  the old game, after about 100 seconds in a combat area a crypt bursts open nearby, three waves climb out, and clearing them pays the surge
-  reward; the surge tip shows again. (Port `godot/next/areas/dm_grave_surge.gd` onto the combat core.)
 - [ ] **Fix: the Discord agent tests and photographs the old game.** Now: its proposals are checked with the old game's tests and its
   before/after screenshots are taken in the old game, so the team approves pictures of a game nobody plays, and the live game's tests run
   only after the change is out. After: every proposal is tested on the live game and shows the live game's screenshots before anyone
@@ -62,6 +59,15 @@ players' PCs.
   build, even when it only touches documents, so adding a line to this roadmap from Discord would send every player an update notice.
   After: a change that touches only documents goes to `main` with no new build and no notice, and the agent adds a team member's idea to
   "Ideas" (with its section) on an approver's ✅.
+- [ ] **Fix: War's content pipelines run on trust, not on checks.** Now: armor sets, models and sounds come out right because the
+  Discord agent follows a long set of written steps, and nothing checks the result. The agent may ask Tripo for up to 14,000 triangles for
+  any model (so far every gear piece is under 3,500 and every hero body about 12,000 or less); new sounds are not matched in loudness and are
+  left out of the licence record. After (ahead of Phase 2's full checks): the agent's check refuses a model over its budget, with more than
+  one material or a different skeleton, and a hero body without its combat clips; the tools bring every new sound to the same loudness and
+  write it into the licence record (KNOWN-GAPS "Content pipelines").
+- [ ] **Fix: Grave Surges are missing.** Now: since launch day no Grave Surge ever starts (they were left out of the rebuild). After: as in
+  the old game, after about 100 seconds in a combat area a crypt bursts open nearby, three waves climb out, and clearing them pays the surge
+  reward; the surge tip shows again. (Port `godot/next/areas/dm_grave_surge.gd` onto the combat core.)
 - [ ] **Fix: nobody is told when the game's servers stop.** Now: only the database is watched; if the game's server, the lobby or the
   co-op relay stops, nobody knows until players notice. After: each one is watched every minute, and a failure posts to #build-alerts
   (KNOWN-GAPS "Operations").

@@ -27,6 +27,22 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
   draw call each (the Graves: 23); a crowd body outside the view that casts a shadow is drawn in the main pass too (a shadows-only MultiMesh
   would send it to the shadow map alone; worth it only if Helix's PC shows a cost).
 
+## Content pipelines
+
+- **Nothing checks a new model.** The Discord agent asks Tripo for 300 to 14,000 triangles (`face_limit`) whatever the model is; the results so
+  far fit ASSET_PIPELINE.md's budgets (24 gear props at 3,488 triangles or fewer with one material each; nine hero bodies at 8,780 to 12,056
+  triangles, one material and the shared 41-bone biped skeleton; measured 2026-10-18) because the agent follows its prompt, not because of a
+  check. A hero body also needs the combat clips (`tools/build-characters.mjs`: `NECRO_HEROES` and `hero_leg_*`); `hero_reaper` once shipped
+  without them.
+- **New sounds are not loudness-matched or recorded.** `server/death-muffin/discord-agent/build-sound.sh` converts a take to mono 16-bit
+  44.1 kHz WAV with no loudness normalization; the Discord agent's sounds (chat_ding, chat_ping, chat_toll) are missing from
+  `docs/AUDIO-SOURCES.md`, the licence record (their specs are in audio-manifest/eleven/).
+- **An armor set touches about five files** (`server/rules/content/legendarySets.ts` or armorSets.ts, setBonuses.json, necro_gear.json,
+  view_models.json, assets_used.json; `tools/generate-armor-assets.mjs` writes the rest) and moves the tests that pin counts and loot digests,
+  which the agent updates by hand.
+- The gear props' attachment rules (axes, size, grip point, anchor bone) live in the `_doc` of `godot/data/slice/necro_gear.json`, not on a
+  standards page.
+
 ## Operations
 
 - **The game's services are not watched.** Uptime Kuma watches only the database's port (monitor 7, MySQL); `death-muffin-auth` (:5190),
