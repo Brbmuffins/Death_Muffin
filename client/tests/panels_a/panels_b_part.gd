@@ -479,9 +479,7 @@ func _t_reforge() -> void:
 	var c2 := DmGoldSink.reforge_cost(22.0, "epic", 2, 2)
 	_check(c2 > expect_cost, "each reforge costs more")
 	_check(r.shown["affixes"][0]["button"] == "Reforge · %sg" % DmPb.num(c2) or r.shown["affixes"][0]["button"] == "Maxed", "price follows the reforge count")
-	if r.ask_buttons[0].disabled:
-		_check(true, "maxed roll cannot be reforged")
-	else:
+	if not r.ask_buttons[0].disabled:
 		r.ask_buttons[0].pressed.emit()
 		await _frames(3)
 		_check(r.shown["confirm_text"].begins_with("Re-roll ") and r.shown["confirm_text"].contains(DmPb.num(c2)), "confirm line with price")

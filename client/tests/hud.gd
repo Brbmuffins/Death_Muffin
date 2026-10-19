@@ -17,7 +17,6 @@ extends SceneTree
 ##   - the per-frame work kept small ("The HUD's budget", CPU): a NEW glow's and an empowered slot's pulse and a cast flash fade a layer drawn once (no redraw per frame, the same
 ##     strength at every instant), a rite on cooldown changes its text and sweep and nothing else, a mesh appended again at the same place is one array copy, the readouts are applied
 ##     by section (a moving Kill Chain meter does not apply the belt), the counsel's timers wait for the earliest one due.
-## Prints INFO costs: the view-model build and apply (the refresh), per frame at the 20 Hz refresh, the minimap's dots, and a frame with the HUD against one without.
 ## Gets the robber and the hound into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd). Run: godot --headless --path client --script res://tests/hud.gd  (--fixed-fps 60 before --path is faster)
 
 const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
@@ -124,7 +123,6 @@ func _initialize() -> void:
 	await layers()
 	await per_frame_work()
 	await draw_model()
-	await costs()
 	await keys_and_click()
 	await boss_plate()
 	check(errlog.errors.is_empty(), "no script or engine errors in the log (%d: %s)" % [errlog.errors.size(), str(errlog.errors.slice(0, 3))])
@@ -386,7 +384,6 @@ func minimap_dots() -> void:
 	h.refresh()
 	check(corpses > 0 and h.last_vm()["minimap"]["corpses"].size() == int(core.corpse_count()) * 4, "eaten corpses are gone from the map")
 	# the click on the map: its centre is the hero, and a click on walkable ground asks the hero to walk there
-	check(DmHudMinimap.world_point(Vector2(95, 95), 10.0, 20.0) == Vector2(10.0, 20.0), "the centre of the map is the hero")
 	var map: Dictionary = h.last_vm()["minimap"]
 	check(DmHudMinimap.walkable(hero.position.x, hero.position.z, map) and not DmHudMinimap.walkable(hero.position.x + 500.0, hero.position.z, map), "ground in the loaded area is walkable, beyond it is not")
 	var walked := [Vector2.INF]
@@ -397,6 +394,13 @@ func minimap_dots() -> void:
 	click.position = Vector2(2.0 + 95.0 + 20.0, 2.0 + 95.0)
 	hud.minimap._gui_input(click)
 	check(walked[0] != Vector2.INF and near(walked[0].x, hero.position.x + 20.0 / DmHudMinimap.SCALE, 0.05), "a click on the map names the ground under it (%s)" % str(walked[0]))
+	click.position = Vector2(2.0 + 95.0, 2.0 + 95.0)
+	hud.minimap._gui_input(click)
+	check(near(walked[0].x, hero.position.x, 0.05) and near(walked[0].y, hero.position.z, 0.05), "the centre of the map is the hero")
+	walked[0] = Vector2.INF
+	click.position = Vector2(2.0, 2.0)   # a corner of the square map: outside the disc
+	hud.minimap._gui_input(click)
+	check(walked[0] == Vector2.INF, "a click outside the disc names nothing")
 	var travel := [Vector2.INF]
 	h.game.input.clicked_move.connect(func(p: Vector3) -> void: travel[0] = Vector2(p.x, p.z))
 	hud.navigate.emit(hero.position.x + 3.0, hero.position.z)
@@ -1248,53 +1252,3 @@ func _redraw_all(n: Node) -> void:
 		(n as CanvasItem).queue_redraw()
 	for c in n.get_children():
 		_redraw_all(c)
-
-
-# ------------------------------------------------------------------------------------------------------------------ costs (INFO only)
-
-func costs() -> void:
-	# a Full Party-like crowd for the numbers
-	var made := PackedInt32Array()
-	for i in 72:
-		var a := float(i) / 72.0 * TAU
-		made.append(host.spawn_enemy("robber" if i % 3 != 0 else "hound", hero.position + Vector3(cos(a), 0.0, sin(a)) * (10.0 + float(i % 5) * 1.5), 1, 1000.0, 0.0, i % 24 == 5, "graves", false))
-	for i in 32:
-		var base: Array = THRALL_BASE["warrior"]
-		core.raise_thrall({"kind": "warrior", "hp": 1.0e6, "maxHp": 1.0e6, "damage": 0.0, "attackInterval": base[1], "range": base[0], "speed": base[2], "empowered": false,
-			"champion": false, "allyHeal": 0.0}, hero.core_id, Vector2(hero.position.x + float(i % 10) - 5.0, hero.position.z + 2.0 + float(i / 10)), 0.0, 40.0)
-	await ticks(10)
-	var n := 200
-	var build := 0
-	var apply := 0
-	for i in n:
-		var t1 := Time.get_ticks_usec()
-		var d := h.vm.build()
-		var t2 := Time.get_ticks_usec()
-		hud.apply(d)
-		var t3 := Time.get_ticks_usec()
-		build += t2 - t1
-		apply += t3 - t2
-	print("INFO the refresh (view-model build %.0f us + apply %.0f us) with 72 enemies, 32 thralls: %.0f us; at 20 Hz that is %.0f us per frame at 60 fps" % [
-		float(build) / n, float(apply) / n, float(build + apply) / n, float(build + apply) / n * 20.0 / 60.0])
-	# a frame with the HUD against one without (A B A B), headless: no drawing, but every redraw callback and process runs
-	var with_hud := 0
-	var without := 0
-	for round_ in 3:
-		for on in [true, false]:
-			h.process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
-			h.visible = on
-			await process_frame
-			var t0 := Time.get_ticks_usec()
-			for f in 60:
-				await process_frame
-			var us := Time.get_ticks_usec() - t0
-			if on:
-				with_hud += us
-			else:
-				without += us
-	h.process_mode = Node.PROCESS_MODE_INHERIT
-	h.visible = true
-	print("INFO a frame with the HUD %.0f us, without %.0f us (the difference, %.0f us, is the HUD's per-frame work here, headless)" % [float(with_hud) / 180.0, float(without) / 180.0, float(with_hud - without) / 180.0])
-	for id in made:
-		if host.enemy_alive(id):
-			host.damage(id, 1.0e9, hero.core_id, false)

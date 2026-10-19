@@ -111,9 +111,7 @@ func _run() -> void:
 	await api.necro_import_local(cid, {"ascension": 0, "ashes": 400, "shards": 40, "totalKills": 30, "bossKills": 0, "areaKills": {"graves": 30}, "boons": {}})
 	g = load("res://next/next_game.tscn").instantiate()
 	root.add_child(g)
-	var t0 := Time.get_ticks_msec()
 	await g.start((await api.load_or_create_character(2)).data, api, {"dressing": false, "persist": false, "waves": false, "audio": false, "hud": true, "store": DmCounselStore.new("")})
-	print("start %d ms (panels warm %d ms)" % [Time.get_ticks_msec() - t0, g.ui.warm_ms])
 	ui = g.ui
 	h = g.ui_host
 	h.sfx.connect(func(n: String) -> void: sounds.append(n))

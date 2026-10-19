@@ -494,20 +494,6 @@ func _the_facts_against_a_brute_force_reading() -> void:
 		host.spawn_enemy("robber", Vector3(cp3.x + 2.8, 0.0, cp3.y + 0.1 * float(i)), 1, 1.0, 1.0, false, "graves", true)
 	check(h.counsel_tick_ctx()["pack_on_corpse"], "...and at 2.8 m they are")
 	_clear()
-	# the cost of a poll in a crowd: 72 bodies around him and 30 corpses within 7 m, none of them a pack (the worst case: every corpse is asked)
-	for i in 72:
-		var a4 := float(i) * 2.399963
-		var r4 := 8.0 + float(i % 6) * 0.8
-		_spawn("robber", Vector3(cos(a4) * r4, 0.0, sin(a4) * r4))
-	for i in 30:
-		var a5 := float(i) * 2.399963
-		core.corpse_add(Vector2(hp.x + cos(a5) * 6.5, hp.y + sin(a5) * 6.5), "normal", "robber", false, 0.0, 1.0, "graves")
-	var t0 := Time.get_ticks_usec()
-	for i in 200:
-		h.counsel_tick_ctx()
-	var poll_ms := float(Time.get_ticks_usec() - t0) / 200000.0
-	print("INFO counsel poll: %.3f ms (72 bodies, 30 corpses near; every 400 ms)" % poll_ms)
-	_clear()
 	await ticks(2)
 
 

@@ -186,7 +186,6 @@ func _more(game: DmMockGame, ui: DmGameUi) -> void:
 	sp.changed.emit("no_tips", false)
 	_check(ui.counsel.tips_enabled, "no_tips off re-enables the counsel")
 	sp.action.emit("reset_tips")
-	_check(true, "reset_tips runs")
 	ui.counsel.tips_disabled.emit()
 	_check(game.settings["no_tips"] == true, "counsel 'Don't show tips' stores no_tips")
 	ui.update_setting({"no_tips": false})
