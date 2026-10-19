@@ -453,10 +453,12 @@ function runFfmpeg({ ffmpeg, args, cwd, timeoutMs, spawn = childProcess.spawn, n
 
 // ── Routes ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Did this PC decline the job? `result` is the job's result column (JSON or text): { declines: [{ pcId, reason, at }] }. */
+/** Did this PC say "Not now" to the job? `result` is the job's result column (JSON or text): { declines: [{ pcId, reason, at }] }. Only `not_now`
+ *  keeps a job from that PC for good; `busy` (another job was running) and `paused` only meant "not at that moment" (2026-10-19: a job offered while
+ *  Helix's PC ran its release checks was declined as busy and, with one team PC, never offered again). */
 function declinedBy(result, pcId) {
   const r = asJson(result);
-  return isObject(r) && Array.isArray(r.declines) && r.declines.some((d) => isObject(d) && d.pcId === pcId);
+  return isObject(r) && Array.isArray(r.declines) && r.declines.some((d) => isObject(d) && d.pcId === pcId && d.reason === 'not_now');
 }
 
 const STATUS_WORDS = {

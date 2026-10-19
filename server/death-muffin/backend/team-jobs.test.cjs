@@ -829,7 +829,7 @@ test('decline records why, keeps the job queued for the other PCs and one entry 
   });
 });
 
-test('the heartbeat does not offer a PC a job it declined, whatever the reason; the other PCs still get it', async () => {
+test('the heartbeat does not offer a PC a job it said Not now to; busy and paused only meant not then; the other PCs still get it', async () => {
   await withHarness(async (h) => {
     const first = await h.makeJob({ title: 'first' });
     const second = await h.makeJob({ title: 'second' });
@@ -840,7 +840,11 @@ test('the heartbeat does not offer a PC a job it declined, whatever the reason; 
     assert.strictEqual((await offerOf({ accountId: HELIX })).id, first, 'the other PCs are still offered the first');
     assert.strictEqual((await offerOf({ accountId: WAR })).id, first);
     await h.call('POST /api/team/jobs/:id/decline', { params: { id: second }, body: { pcId: PC_A, reason: 'paused' } });
-    assert.strictEqual(await offerOf({ accountId: MUFFINS }), null, 'every job declined: nothing to offer');
+    assert.strictEqual((await offerOf({ accountId: MUFFINS })).id, second, 'paused only meant not then: offered again');
+    await h.call('POST /api/team/jobs/:id/decline', { params: { id: second }, body: { pcId: PC_A, reason: 'busy' } });
+    assert.strictEqual((await offerOf({ accountId: MUFFINS })).id, second, 'busy only meant not then: offered again');
+    await h.call('POST /api/team/jobs/:id/decline', { params: { id: second }, body: { pcId: PC_A, reason: 'not_now' } });
+    assert.strictEqual(await offerOf({ accountId: MUFFINS }), null, 'every job said Not now to: nothing to offer');
     assert.strictEqual((await offerOf({ accountId: HELIX })).id, first);
     // a PC is not an account: the same account's other PC is offered what its first PC declined
     const a2 = (await h.call('POST /api/team/heartbeat', { body: beat({ pcId: PC_A2 }), pcId: PC_A2 })).body.data.offer;
@@ -848,7 +852,7 @@ test('the heartbeat does not offer a PC a job it declined, whatever the reason; 
     // declining is not a lock: the PC may still claim a job it declined, and a claimed job is offered to nobody
     assert.strictEqual((await h.call('POST /api/team/jobs/:id/claim', { params: { id: first }, body: { pcId: PC_A } })).statusCode, 200);
     assert.strictEqual((await offerOf({ accountId: HELIX })).id, second);
-    h.jobs.find((j) => j.id === second).result = JSON.stringify({ declines: [{ pcId: PC_B, reason: 'busy', at: 'x' }, null, 'junk'] });   // a damaged result still reads
+    h.jobs.find((j) => j.id === second).result = JSON.stringify({ declines: [{ pcId: PC_B, reason: 'not_now', at: 'x' }, null, 'junk'] });   // a damaged result still reads
     assert.strictEqual(await offerOf({ accountId: HELIX }), null);
     assert.strictEqual((await offerOf({ accountId: WAR })).id, second);
   });
@@ -1686,7 +1690,7 @@ test('the heartbeat offers shots before bench before any other kind, then the ol
     assert.strictEqual((await offered({ accountId: WAR, pcId: PC_W, body: beat({ pcId: PC_W }) })).id, shots1);
     await h.call('POST /api/team/jobs/:id/claim', { params: { id: shots1 }, body: { pcId: PC_A } });
     assert.strictEqual((await offered({ accountId: HELIX, pcId: PC_B, body: beat({ pcId: PC_B }) })).id, shots0, 'a claimed job is not offered again');
-    await h.call('POST /api/team/jobs/:id/decline', { params: { id: shots0 }, body: { pcId: PC_A, reason: 'busy' } });
+    await h.call('POST /api/team/jobs/:id/decline', { params: { id: shots0 }, body: { pcId: PC_A, reason: 'not_now' } });
     assert.strictEqual((await offered()).id, bench1, 'shots declined by this PC: the next kind');
     await h.call('POST /api/team/jobs/:id/claim', { params: { id: bench1 }, body: { pcId: PC_A } });
     assert.strictEqual((await offered()).id, bench2, 'then the untargeted bench, never the helix PC\'s');
@@ -2367,7 +2371,7 @@ test('a job this PC may not take does not end its hold: one for another PC, or o
   });
   await withHarness({ mount: { waitUnitMs: 60 } }, async (h) => {
     const declined = await h.makeJob();
-    await h.call('POST /api/team/jobs/:id/decline', { params: { id: declined }, body: { pcId: PC_A, reason: 'busy' } });
+    await h.call('POST /api/team/jobs/:id/decline', { params: { id: declined }, body: { pcId: PC_A, reason: 'not_now' } });
     const p = held(h, { wait: 2 });
     await sleepMs(20);
     await h.makeJob({ title: 'another shots job' });   // a new job: this is news
