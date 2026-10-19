@@ -1,4 +1,4 @@
-# The game's setup: tools/check/prep.sh
+# Testing: the game's setup and the CI gate
 
 Every checkout of the game needs things git does not hold before a test, a screenshot or a build can run. `tools/check/prep.sh` is the one
 script that makes them, for every caller: a session's worktree, the Discord agent's jobs (`server/death-muffin/discord-agent/README.md`),
@@ -12,6 +12,18 @@ bash tools/check/prep.sh --keys                # the cache keys of this checkout
 bash tools/check/prep.sh --warm <rev>          # fill the cache for <rev> from a scratch worktree of it (nothing to do when it is all cached)
 node --test tools/check/test/*.test.mjs        # its tests, and ci.sh's (a throwaway repository with stand-ins, a stand-in GitHub; also in CI)
 ```
+
+## Where tests run
+
+| When | What runs | Where |
+|---|---|---|
+| Working on a change | the suites it touches (`tools/rebuild/run-client-tests.sh --only`, `node tools/rebuild/affected-suites.mjs` lists them) | the VPS |
+| Every push to any branch | the backend, lobby and rules tests, hygiene, the model check, these scripts' tests, the Discord agent's tests and every game suite over six machines (about 3 minutes; documents only: no game suites) | GitHub CI |
+| Before a merge, deploy or publish | `ci.sh wait <rev>`: the deploy and publish scripts refuse a revision CI has not passed | CI's verdict |
+| A Discord agent proposal | nothing while it is a draft; on 🧪 CI on its branch, on ✅ CI on the merged change; 1 to 3 suites that fail only in CI get one re-run here | CI, then the VPS |
+| Every client publish | a free team PC starts the release build and quits it while loading (`server/death-muffin/team-gate.sh`, B61) | a team PC |
+| Before live, when the shipper asks | install, screens, stutter, benchmark, soak beside the live build (`server/death-muffin/team-check.sh`, B62) | a team PC |
+| GitHub down | the full set here (`run-client-tests.sh`), `DM_CI_GATE=off`, and the agent's `ciGate: false` | the VPS |
 
 ## The pieces
 

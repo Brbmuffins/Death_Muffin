@@ -35,7 +35,7 @@ Never deploy, publish a client, or flip `set-online.sh` without passing checks f
 - Commands for Godot, server, lobby and launcher tests: README.md "Tests". Set up a new worktree with `tools/check/prep.sh` (seconds when
   cached) and run the one suite you touched while developing.
 - **CI is the gate, for every change, sessions and the Discord agent alike** (DECISIONS B59, tools/check/README.md): rebase on `origin/main`,
-  push your branch, and wait for `tools/check/ci.sh wait <rev>` (every suite, the backend and lobby tests, hygiene, about 8 minutes). Only a
+  push your branch, and wait for `tools/check/ci.sh wait <rev>` (every suite, the backend and lobby tests, hygiene, about 4 minutes). Only a
   revision whose files CI passed is merged, deployed or published: fast-forward `main` to it (`git push origin <rev>:main`, the verdict
   carries over), and if `main` moved in the meantime, rebase and wait again. Only when GitHub is down, run the full set here
   (`tools/rebuild/run-client-tests.sh`).

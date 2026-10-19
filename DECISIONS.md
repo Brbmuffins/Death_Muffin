@@ -273,6 +273,15 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   all in Phase 1 (ROADMAP "New: the team app", in that order), built one after another once app 0.2.0 has landed. Every job asks the same
   way (the box and the PC's mode), benchmarks included. Claude's recommendation was the same list with the screen sizes and the soak
   test in Phase 2; Helix wanted them now.
+- **B59. One setup, and CI as the one gate, for sessions and the Discord agent alike** (Helix, 2026-10-19: "the way we do testing for
+  sessions and discord agents is a mess", then "start"; Claude's design). Every checkout (a session's worktree, an agent job, a CI machine,
+  a publish) gets the combat core, Godot's import, the crowd's bakes and the lobby's packages from one setup, `tools/check/prep.sh`, through
+  one cache keyed by what each is made of; nothing made from uncommitted files or inside the agent's sandbox is stored. CI runs every suite
+  on every branch push, split over six machines, and a run on `main` is never cancelled. A change is merged, deployed or published only once
+  CI passed its exact files (`tools/check/ci.sh`); the VPS runs single suites while working, and the full set only when GitHub is down.
+  Approvals that wait for a ship still go out together: they merge as one tree that CI tests once. Tests compare the game's data with
+  itself, never typed totals or tuning values (a spell War added broke a count; a typed spell speed broke War's faster Haunting Wraith). Replaces the morning's rule (444da1ad: wait about 20 minutes for CI with a
+  local quick check beside it) and the agent's own preparation and cache.
 - **B60. A Windows release build ends its own process after the game's shutdown** (Claude, 2026-10-19, with Helix's crash files). The
   release engine's last teardown crashes on Windows after every quit, the benchmark's and a player's alike (0xC0000374 heap corruption or
   0xC0000005 at the same engine code; the debug engine with the same pack, art and combat core closes cleanly; KNOWN-GAPS "Stability"). Once
@@ -319,15 +328,6 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   test), reviewed like any change, and usable in that change's videos at once; the runner needs no change. Free-form scripts were turned down: a
   script can do anything a program can on the team PC that records it, a word only what the recorder allows. Also from Helix the same evening
   ("@ war its his thread"): a proposal tags the person who started the thread, not whoever asked last.
-- **B59. One setup, and CI as the one gate, for sessions and the Discord agent alike** (Helix, 2026-10-19: "the way we do testing for
-  sessions and discord agents is a mess", then "start"; Claude's design). Every checkout (a session's worktree, an agent job, a CI machine,
-  a publish) gets the combat core, Godot's import, the crowd's bakes and the lobby's packages from one setup, `tools/check/prep.sh`, through
-  one cache keyed by what each is made of; nothing made from uncommitted files or inside the agent's sandbox is stored. CI runs every suite
-  on every branch push, split over six machines, and a run on `main` is never cancelled. A change is merged, deployed or published only once
-  CI passed its exact files (`tools/check/ci.sh`); the VPS runs single suites while working, and the full set only when GitHub is down.
-  Approvals that wait for a ship still go out together: they merge as one tree that CI tests once. Tests compare the game's data with
-  itself, never typed totals or tuning values (a spell War added broke a count; a typed spell speed broke War's faster Haunting Wraith). Replaces the morning's rule (444da1ad: wait about 20 minutes for CI with a
-  local quick check beside it) and the agent's own preparation and cache.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

@@ -47,7 +47,7 @@ One short README per system folder: how the system works and its known gaps (thi
 
 ```
 bash tools/check/prep.sh                               # in every new checkout or worktree, and after switching branches: the core for Linux, the import, the crowd's baked models, the lobby's packages (tools/check/README.md)
-tools/rebuild/run-client-tests.sh                      # every suite, 8 side by side, one line each (GitHub CI's "Game client tests" jobs run them split over three machines, `--shard 1/3` to `3/3`, 3 at once each)
+tools/rebuild/run-client-tests.sh                      # every suite, 8 side by side, one line each (GitHub CI's "Game client tests" jobs run them split over six machines, `--shard 1/6` to `6/6`, 3 at once each)
 tools/rebuild/run-client-tests.sh --only surge,value   # just those
 node tools/rebuild/affected-suites.mjs                 # the suites a change can affect, plus the smoke set (--explain says why)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/<suite>.gd   # one suite by hand
@@ -61,7 +61,7 @@ total or a tuning value, so adding content or retuning never breaks it (CLAUDE.m
 
 A new suite goes into `SUITES` in `tools/rebuild/run-client-tests.sh` (and into `PACED` if it plays game time): `npm run hygiene` fails on a suite file the list does not name, a listed name with no file, and a `PACED`, `LANE` or `WAITING` name that is not a suite; a helper that is not a suite goes in `notSuites` in `tools/hygiene/retired.json`.
 
-A suite passes with exit 0, a `PASS` line and no `SCRIPT ERROR` in its log. The runner gives every suite its own user folders, so suites can run side by side, and runs up to three failures again alone. The paced suites
+A suite passes with exit 0, a `PASS` line and no `SCRIPT ERROR` in its log. The runner gives every suite its own user folders, so suites can run side by side, and runs up to five failures again alone at the end. The paced suites
 (`PACED` in the runner) play game time faster than real time: by hand they take `--fixed-fps 60` before `--path` (`game_scene`, `rites` and `boss` run faster that way too). Most suites that draw creatures bake the models they need into a scratch folder.
 Run `tools/check/prep.sh` in every new checkout or worktree (it lists the extension before the first import; see the script): a script run in a project that was never imported hangs.
 
@@ -233,7 +233,7 @@ godot --path client -- --dev-offline --class=2 --qa --shot-plan=/abs/plan.json -
 ### Clips and tune
 
 A team PC can also record short videos of a rite in use, and run the game with some data numbers changed: the pictures of "which of these three speeds do you like best?". Both are QA runs, honoured where the QA tools start (`DmMain.qa_wanted`: a debug build on the dev-offline
-backend with `--qa`, `--shot-plan=` or `--clip-plan=`); a release export, an online start and a launch without a QA flag ignore every flag below. Start the engine with `--fixed-fps 30`: one frame is then 1/30 s of game time, however long drawing and reading it back takes.
+backend with `--qa`, `--shot-plan=` or `--clip-plan=`); a release export, an online start and a launch without a QA flag ignore every flag below. Start the engine with `--fixed-fps N` and the same `--clip-fps=N` (30 by default; the team app records at 60): one frame is then 1/N s of game time, however long drawing and reading it back takes.
 
 ```
 godot --fixed-fps 30 --path client -- --dev-offline --class=11 --clip-plan=/abs/plan.json --clips=/abs/dir [--tune=/abs/tune.json] [--preset=high]    # a team PC's line, with the window rules of the shot runs

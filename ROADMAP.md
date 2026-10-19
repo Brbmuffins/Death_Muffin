@@ -34,7 +34,7 @@ Every item says what kind it is:
 - **Now: Phase 1, settling the launch.** Done: alerts when a server stops, Grave Surges back, crash reports that point inside the combat
   core, the Discord agent working on the live game, document-only changes that ship no update, checks for War's content, play reports,
   shaders baked into every release, the old game's folder deleted (its tests moved to the game), and the team app's first job (pictures on a
-  real graphics card, proven on Helix's PC) and its other jobs (B58: release benchmarks and release checks, clips and "pick one", before and after,
+  real graphics card, proven on Helix's PC) and its other jobs (B58, B62: checks of a revision before it goes live, clips and "pick one", before and after,
   pictures without `!shot`), and a free team PC starting every release before players get it (B61). Left: War's PCs on the team app, the
   stutter fixes the checks turn up on a weaker card, and the Ultra Low decision once the numbers are in.
 - Ascension (the Altar, vows and heat, Ashes, Covenant Boons) left on launch day and comes back redesigned in Phase 3 (B36). Players'
@@ -42,7 +42,8 @@ Every item says what kind it is:
 
 ## Waiting on Helix
 
-Nothing right now. Answered on 2026-10-18: the code stays public until 1.0 and goes private, with the game's files encrypted, for that
+One open question: whether the Discord agent runs the team PCs' checks as tests at 🧪 and ✅ (built, on hold; Phase 1, the team app, with Claude's
+recommendation). Answered on 2026-10-18: the code stays public until 1.0 and goes private, with the game's files encrypted, for that
 first public release (B52); big changes get a test lane (B53); off-site backups go to a cloud storage bucket later (B51); the team PC
 helper is a separate team app for War, Muffins and Helix (B54, B55); the roadmap is slimmed as Claude advised (B56); the old game's code
 goes as soon as nothing depends on it (B57).
@@ -149,8 +150,8 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   Alienware, if he sets it) or only on a yes. Every job asks the same way, benchmarks included (Helix, 2026-10-19). Its jobs, in this order
   (B58: all of them in Phase 1):
   - Screenshots of a proposal on Low and Ultra, posted to the thread by our server. Live since 2026-10-19 and proven on Helix's PC that
-    night (0.1.1: four pictures in 40 s of play; 0.1.0 could not start the game and reported no graphics card). They come beside the
-    server's pictures until they have proven themselves.
+    night (0.1.1: four pictures in 40 s of play; 0.1.0 could not start the game and reported no graphics card). With a team PC online they
+    replace the server's pictures; with none, the server renders them on `!shot`.
   - Benchmarks of a release build on a team PC (a fast PC, War's Intel Arc, the Alienware's GTX 970: the weak-PC floor of B39), on the
     benchmarks page marked as team runs. A benchmark starts once the PC has been left alone, and a run disturbed halfway is thrown out
     and retried, so its numbers are honest. Built 2026-10-19 with app 0.2.0 (now a step of the checks below), which also brought silent runs, screenshot runs that never show a window, a fresh folder for every run, cancels that
@@ -159,8 +160,8 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   - Built 2026-10-19 with app 0.3.0 (one release for all of these, B58):
     - Pictures without `!shot`: with a team PC online, the Discord agent writes a shot plan for every visible change and the team PC
       renders it, before and after side by side (the unchanged game and the change), on Low and Ultra.
-    - Clips and "pick one": a few seconds of a spell or effect recorded by the game itself (30 frames per game second, only the spell,
-      not the loading), posted as videos; for a choice (War's Haunting Wraith at three speeds) each option is numbered and the thread
+    - Clips and "pick one": a few seconds of a spell or effect recorded by the game itself (1920x1080 at 60 frames a second since app 0.4.5, made into an mp4 on the
+      team PC; only the spell, not the loading), posted as videos; for a choice (War's Haunting Wraith at three speeds) each option is numbered and the thread
       asks which one. Model previews are clips too: the new piece worn by a hero, turning.
     - Scripted clips (B64, 2026-10-19): a clip can set its scene up and say what happens when, with the words of the game's own list
       (`client/main/qa_clip_steps.json`: the HUD on screen, mortal or harmful stand-ins, the Reaper's souls, no top-up, casts at set times).
@@ -172,9 +173,11 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
       the revision, runs the chosen steps on a team PC (with `--compare` the live build first, on the same PC, so every number reads live
       build -> this change) and writes a summary and contact sheets for whoever asked: a session posts them to a new thread or a DM (it
       asks the person which). Approval never waits for them.
-    - Next (after ubuntu-f2's agent change is on main): the Discord agent runs these checks as tests at its test runs (🧪 / `!test` and
-      the ship's own CI): a pass posts nothing, a failure is fixed and tested again, and the thread hears only what needs a person's
-      review (before and after pictures of a visible change, a choice, a problem it could not fix).
+    - Decide: the Discord agent runs these checks as tests at its test runs (🧪 / `!test` and the ship's own CI): a pass posts nothing, a
+      failure is fixed and tested again, and the thread hears only what needs a person's review (before and after pictures of a visible
+      change, a choice, a problem it could not fix). Built on the server's side, on hold for Helix. Claude's recommendation: `screens` with
+      `--compare` only for changes to windows or the HUD, `stutter` only when a rite changes; the benchmark and the soak stay a session's,
+      on request (they hold a PC for 5 to 35 minutes).
     - Jobs reach a PC within about a second (the PC's check-in waits on the server).
   - Proven on Helix's PC (RTX 4070 SUPER) on 2026-10-19 with apps 0.3.1 to 0.3.9: a full release check with every step (24 pictures at
     their exact sizes, the stutter test, the benchmark at Low 691 and Medium 597 fps with no hitches, 30 minutes of soak with flat memory).
@@ -502,6 +505,10 @@ KNOWN-GAPS.md instead.
 - The party session on each drop (a column on `character_drop_events` set from the claim's session id) and the XP and gold a member earns in
   a session on its `party_session_members` row, so the play reports' server numbers get drops per hour and an exact XP and gold per
   session instead of the progress saves' time window. Section: Phase 2, track D. 2026-10-18.
+- `publish-teamapp.sh <version>`, like `publish-launcher.sh`: builds the team app from a revision CI passed, keeps the newest two versions in
+  the public folder and writes `version.json` last (today a hand recipe in teamapp/README.md). Section: Phase 1, the team app. 2026-10-19.
+- Split the Discord agent runner's `runner/core.cjs` (about 2,000 lines) by job: pictures and videos, ships, threads, so each change to it is
+  smaller and its reinstall and practice run less risky. Section: Phase 2, track E. 2026-10-19.
 
 ## Done
 

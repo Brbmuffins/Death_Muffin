@@ -73,6 +73,27 @@ hygiene, model check and every game suite on every push to every branch, and is 
 Tests never assert wall-clock time: timing figures print as `INFO perf:` lines. FPS is judged on real hardware (F3 overlay);
 suites only check deterministic counters.
 
+## How a change reaches players
+
+Three systems carry every change; Claude sessions on the server use the same gate as the agent.
+
+```
+the team ── Discord thread ── Muffin Core bot ── runner (VPS) ── Claude in a sandbox, on its own branch
+                                                   ├─ push the branch, wait for CI ────── GitHub CI (every push to every branch: the one gate)
+                                                   ├─ picture and video jobs ──────────── backend team routes ── team app on the team's PCs
+                                                   └─ on ✅: ship.sh ── CI on the merge ── deploy-release.sh --if-changed
+                                                                     └─ publish-godot-client.sh (a free team PC starts the build first) ── players' launcher
+```
+
+- **The Discord agent** ([server/death-muffin/discord-agent/README.md](server/death-muffin/discord-agent/README.md)): someone asks in a thread, Claude
+  makes the change on its own branch in a sandbox, and the proposal is a draft; 🧪 tests it, an approver's ✅ tests and ships it.
+- **Testing** ([tools/check/README.md](tools/check/README.md)): `tools/check/prep.sh` sets up any checkout, GitHub CI runs everything on every push,
+  and `tools/check/ci.sh` reads its verdict; nothing is merged, deployed or published without a pass.
+- **The team app** ([teamapp/README.md](teamapp/README.md); its server side is "Team jobs" in [server/death-muffin/README.md](server/death-muffin/README.md)):
+  runs what needs a real graphics card on the team's PCs: before and after pictures and short videos for proposals, the start of every release
+  before players get it, and `server/death-muffin/team-check.sh` checks of a revision when whoever ships it asks.
+- The ops jobs ([server/death-muffin/ops/README.md](server/death-muffin/ops/README.md)) watch the live services and post to #build-alerts.
+
 ## Export, publish, deploy
 
 Client publish, backend deploy and the online gate are separate; none runs on its own. Only from a committed revision with

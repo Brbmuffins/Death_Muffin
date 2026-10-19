@@ -32,8 +32,10 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
 ## Content pipelines
 
 - **An armor set touches about five files** (`server/rules/content/legendarySets.ts` or armorSets.ts, setBonuses.json, necro_gear.json,
-  view_models.json, assets_used.json; `tools/generate-armor-assets.mjs` writes the rest) and moves the tests that pin counts and loot digests,
-  which the agent updates by hand.
+  view_models.json, assets_used.json; `tools/generate-armor-assets.mjs` writes the rest) and breaks two tests the agent then edits by hand:
+  the `data` suite's digests of the loot and progression views (`client/tests/data/run.gd`) and the loot rules' golden fixtures
+  (`client/tests/rules_loot/fixtures`). That goes against B59 (adding content never breaks a test); comparing the views with their sources
+  and regenerating the fixtures would close it (found 2026-10-19).
 - The gear props' attachment rules (axes, size, grip point, anchor bone) live in the `_doc` of `client/data/slice/necro_gear.json`, not on a
   standards page.
 
@@ -42,6 +44,14 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
 - **Backups stay on this server.** `server/death-muffin/ops/backup-db.sh` writes the nightly dumps to `~/death-muffin/backups/db/` on the
   same VPS; the raw art sources (`art-src/`, gitignored), the private effect sheets and keys (`~/death-muffin/private/`), the licensed packs
   and the services' `.env` files exist only here. ROADMAP Later: a cloud storage bucket (B51).
+- **The nightly drift report posts false alarms** (found 2026-10-19): check 6 (`server/death-muffin/ops/drift-report.sh`) does not know the team
+  app's folders (`teamapp/`, `team-files/` in the docroot) and calls every `.zip` in the docroot secret-ish, so the team app's and the bake kit's
+  downloads make each night's #build-alerts post 20 or more lines long, which buries real drift.
+- **The team app's old versions pile up** in `/var/www/death-muffin/teamapp/` (19 versions and their zips on 2026-10-19): publishing is the
+  hand recipe in teamapp/README.md "Publishing a version", and nothing prunes old ones (the launcher and the client keep two).
+- **The shared checkout lags behind `main`** (`/home/ubuntu/vps-handoffs/DeathMuffin/game`, 364 commits behind on 2026-10-19, from before
+  launch): sessions and the agent work from `origin/main`, so nothing fast-forwards it, and anyone who opens it reads the old game's
+  CLAUDE.md and READMEs. The drift report checks only that it has no uncommitted changes. The agent links its `node_modules` from there.
 
 ## Server authority
 
@@ -143,6 +153,9 @@ polish list). Also:
   answers true for them. Nothing shows it today (character select and the benchmark list from `PLAYABLE_DISCIPLINES`).
 - `launcher/tests/LauncherTests.csproj` does not load in `dotnet build`: its XML comment contains `--project` ("XML comment cannot contain '--'"); CI does not
   build it, so `launcher/tests/run-local.sh` is the only way its tests run (found 2026-10-19).
+- **The Discord agent still carries the retired web mode** (found 2026-10-19): the runner's defaults are `mode: "web"`, `baseBranch: "master"`
+  (`runner/lib/config.cjs`; the live config sets both), `check.sh`, `preview.sh`, `shot.sh`, `regen.sh`, `shoot.cjs` and `PROMPT.md` are unused, and
+  `ship.sh` keeps a web deploy and a mobile-branch step (every ship audits `mobile-result` skipped).
 - `discord-agent/preview-godot.sh --team` still carries its own copy of the newest-6 clean-up of the preview folders in `team-files`; `server/death-muffin/team-files-prune.sh` is the shared rule it
   should call (found 2026-10-19).
 - `npm run typecheck` fails on six errors in the rules' parity tests (`server/rules/gameplay/__tests__/legionRules.parity.test.ts`, `necroRules.parity.test.ts`, `vaultRules.parity.test.ts`: fixture rows typed looser than the rule functions take); CI does not run it, so it went unnoticed (found 2026-10-19).
