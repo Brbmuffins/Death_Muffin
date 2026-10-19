@@ -1616,6 +1616,10 @@ func _reaper_class() -> void:
 	cast("scythe_sweep", at(14.0))
 	await ticks(3)
 	check(core.enemy_info(weak).is_empty() or float(core.enemy_info(weak)["hp"]) <= 0.0, "reaper: the sweep kills the weak robber")
+	for _i in 900:   # the soul is banked when its wisp reaches her
+		if souls() >= 6:
+			break
+		await g.get_tree().process_frame
 	check(souls() == 6, "reaper: the kill banks one soul in her bag (%d)" % souls())
 
 

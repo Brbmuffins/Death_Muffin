@@ -291,6 +291,10 @@ func _run() -> void:
 	events.clear()
 	g.rewards.on_kill({"def": "robber", "area": "graves", "level": 5.0, "elite": false, "x": b.position.x, "z": b.position.z, "killer": b})
 	g.rewards.on_kill({"def": "robber", "area": "graves", "level": 5.0, "elite": false, "x": b.position.x, "z": b.position.z, "killer": null})
+	for _i in 900:   # a soul is banked when its wisp reaches her (it loops round the corpse first)
+		if int(b.p["souls"]) >= 2:
+			break
+		await g.get_tree().process_frame
 	var rhs: Dictionary = g.ui_host.hud_state()
 	check(int(b.p["souls"]) == 2 and int(rhs["souls"]) == 2 and bool(rhs["soul_bag"]) and int(rhs["souls_max"]) == 30, "every enemy that dies near her banks one soul, whoever struck it, and the HUD reads the bag 2 / 30")
 	check(String(rhs["resource_label"]) == "Soul Bag" and String(rhs["resource_color"]) == "#6ee7a0", "the HUD names her green resource the Soul Bag")
@@ -300,6 +304,10 @@ func _run() -> void:
 	b.p["souls"] = 29
 	for i in 3:
 		g.rewards.on_kill({"def": "robber", "area": "graves", "level": 5.0, "elite": false, "x": b.position.x, "z": b.position.z, "killer": b})
+	for _i in 900:
+		if int(b.p["souls"]) >= 30:
+			break
+		await g.get_tree().process_frame
 	check(int(b.p["souls"]) == 30 and not event_ids().has("souls_charged"), "the bag holds 30 and a full bag never charges Soul Harvest")
 	await close()
 	print("%d passed, %d failed" % [passed, failed])
