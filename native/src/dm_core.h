@@ -162,6 +162,10 @@ public:
 	godot::PackedInt32Array enemy_states() const;
 	godot::PackedFloat32Array enemy_ground_speeds() const;  // m/s each enemy walked this tick (walk/run clips)
 	godot::Dictionary enemy_info(int64_t p_id) const;  // one enemy (HUD target frame, tests); empty when gone
+	// One field of an enemy without building the record (`enemy_info` makes 25 entries, about 8 us): what the game asks many times a frame.
+	int64_t enemy_state(int64_t p_id) const;           // its state; -1 when gone
+	godot::Vector2 enemy_pos(int64_t p_id) const;      // where it stands (the record's `pos`); (INF, INF) when gone
+	double enemy_radius(int64_t p_id) const;           // the record's `radius`; 0 when gone
 	godot::Dictionary unbind_info(int64_t p_id) const;  // a Lich Acolyte's claims (tests): cooldown, watch (seconds to its next look), pending [seconds left, x, z], unbound (Risen ids), seen (thrall ids in connection order); empty for any other body
 	// Thralls in raise order (dead bodies stay 1.4 s, state DEAD).
 	int64_t thrall_total() const;

@@ -76,6 +76,12 @@ func _init() -> void:
 				and int(rows[k + 5]) == info["state"] and (rows[k + 6] != 0.0) == info["elite"] and int(rows[k + 7]) == info["level"] \
 				and c.def_name(int(rows[k + 8])) == info["def"] and c.area_name(int(rows[k + 9])) == info["area"]
 		check(same, "foes_in_radius%s equals enemies_in_radius with each record's numbers (%d foes)" % [str(q), ids.size()])
+	# the one-field reads give the record's own values, and the gone values for an id the core does not know
+	var fields_same := true
+	for id in [a, b, g, far]:
+		var info: Dictionary = c.enemy_info(id)
+		fields_same = fields_same and c.enemy_state(id) == int(info["state"]) and c.enemy_pos(id) == info["pos"] and c.enemy_radius(id) == float(info["radius"])
+	check(fields_same and c.enemy_state(999999) == -1 and is_inf(c.enemy_pos(999999).x) and c.enemy_radius(999999) == 0.0, "enemy_state / enemy_pos / enemy_radius are the record's values; -1, INF and 0 when gone")
 	var gi: Dictionary = c.enemy_info(g)
 	check(is_equal_approx(gi["max_hp"], 430.0 * 3.6) and is_equal_approx(gi["damage"], 26.0 * 1.5) and is_equal_approx(gi["radius"], 1.375), "elite stats x3.6 hp, x1.5 damage, x1.25 radius")
 	var sp: float = c.enemy_info(a)["speed"]

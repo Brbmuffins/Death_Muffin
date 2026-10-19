@@ -148,6 +148,9 @@ void DmCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("enemy_states"), &DmCore::enemy_states);
 	ClassDB::bind_method(D_METHOD("enemy_ground_speeds"), &DmCore::enemy_ground_speeds);
 	ClassDB::bind_method(D_METHOD("enemy_info", "id"), &DmCore::enemy_info);
+	ClassDB::bind_method(D_METHOD("enemy_state", "id"), &DmCore::enemy_state);
+	ClassDB::bind_method(D_METHOD("enemy_pos", "id"), &DmCore::enemy_pos);
+	ClassDB::bind_method(D_METHOD("enemy_radius", "id"), &DmCore::enemy_radius);
 	ClassDB::bind_method(D_METHOD("unbind_info", "id"), &DmCore::unbind_info);
 	ClassDB::bind_method(D_METHOD("thrall_total"), &DmCore::thrall_total);
 	ClassDB::bind_method(D_METHOD("thrall_ids"), &DmCore::thrall_ids);
@@ -168,7 +171,7 @@ void DmCore::_bind_methods() {
 }
 
 String DmCore::version() const {
-	return "dmcore 0.16";
+	return "dmcore 0.17";
 }
 
 int64_t DmCore::checksum(int64_t p_count) const {
@@ -963,6 +966,25 @@ PackedFloat32Array DmCore::enemy_ground_speeds() const {
 		a.set(int64_t(i), float(world.enemies[i].ground_speed));
 	}
 	return a;
+}
+
+int64_t DmCore::enemy_state(int64_t p_id) const {
+	auto it = world.enemy_slot.find(int32_t(p_id));
+	return it == world.enemy_slot.end() ? -1 : int64_t(world.enemies[it->second].state);
+}
+
+Vector2 DmCore::enemy_pos(int64_t p_id) const {
+	auto it = world.enemy_slot.find(int32_t(p_id));
+	if (it == world.enemy_slot.end()) {
+		return Vector2(INFINITY, INFINITY);
+	}
+	const dm::Enemy &e = world.enemies[it->second];
+	return Vector2(e.x, e.z);
+}
+
+double DmCore::enemy_radius(int64_t p_id) const {
+	auto it = world.enemy_slot.find(int32_t(p_id));
+	return it == world.enemy_slot.end() ? 0.0 : double(world.enemies[it->second].radius);
 }
 
 Dictionary DmCore::enemy_info(int64_t p_id) const {

@@ -386,24 +386,32 @@ func enemy_info(id: int) -> Dictionary:
 	return core.enemy_info(id)
 
 
-## True while the enemy exists and is not dead.
+## True while the enemy exists and is not dead. (These three read one field of the core, not the 25-entry record: they are asked many times a frame.)
 func enemy_alive(id: int) -> bool:
-	var info := enemy_info(id)
-	return not info.is_empty() and int(info["state"]) != DmCoreEvents.State.DEAD
+	if not _bosses.is_empty() and boss_for(id) != null:
+		var info := enemy_info(id)
+		return not info.is_empty() and int(info["state"]) != DmCoreEvents.State.DEAD
+	var s: int = core.enemy_state(id)
+	return s >= 0 and s != DmCoreEvents.State.DEAD
 
 
 ## Where the enemy stands (the sim position, not the drawn one); Vector3.INF when it is gone.
 func enemy_position(id: int) -> Vector3:
-	var info := enemy_info(id)
-	if info.is_empty():
-		return Vector3.INF
-	var p: Vector2 = info["pos"]
-	return Vector3(p.x, 0.0, p.y)
+	if not _bosses.is_empty() and boss_for(id) != null:
+		var info := enemy_info(id)
+		if info.is_empty():
+			return Vector3.INF
+		var bp: Vector2 = info["pos"]
+		return Vector3(bp.x, 0.0, bp.y)
+	var p: Vector2 = core.enemy_pos(id)
+	return Vector3.INF if is_inf(p.x) else Vector3(p.x, 0.0, p.y)
 
 
 func enemy_radius(id: int) -> float:
-	var info := enemy_info(id)
-	return float(info["radius"]) if not info.is_empty() else 0.0
+	if not _bosses.is_empty() and boss_for(id) != null:
+		var info := enemy_info(id)
+		return float(info["radius"]) if not info.is_empty() else 0.0
+	return core.enemy_radius(id)
 
 
 ## One enemy as a cast sees it (a snapshot; null when it is gone). Allocates: for casts and the HUD, never for every creature every tick.

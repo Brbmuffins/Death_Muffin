@@ -17,8 +17,9 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
 - **Spikes:** a rite's cast takes 2 to 4 ms in the tick it is cast (1.2 to 1.9 ms of it its effects: `DmRiteCaster._play_event`, the `Vfx`
   nodes); a big kill's event handlers 2 to 9 ms (`DmCoreHost._dispatch`: rewards, loot, the counsel); Bone Fan's pick in Easy auto combat
   (`DmAutoCombat._primary_target`) tests every pair of targets, up to 4,000 calls, about 6 ms (the Gravecaller's default loadout does not use it).
-- **Per-frame waste:** `DmCore.enemy_info` builds a 25-entry Dictionary (8 us) and is called 14 times a frame (the HUD's target frame, the
-  event handlers, the rites' single reads); Easy auto combat's gather (`DmNextAutoCombat._gather`, ten times a second, 0.4 to 0.75 ms) copies
+- **Per-frame waste:** `DmCore.enemy_info` builds a 25-entry Dictionary (7 us) and is still called several times a frame by the HUD's target
+  frame and the effect handlers (`DmEnemyFx`, some for one field); the host's `enemy_alive`, `enemy_position` and `enemy_radius` read one field
+  of the core since 2026-10-19 (`DmCore.enemy_state` / `enemy_pos` / `enemy_radius`, 0.3 us); Easy auto combat's gather (`DmNextAutoCombat._gather`, ten times a second, 0.4 to 0.75 ms) copies
   every body in range into a row that `select_action` copies again; `DmFxBinbun.update` walks every live effect every frame (the Pyre's 56:
   about 0.2 ms); the Gear Atlas verdicts (`DmUiPanelsA.tick`, about 0.3 s of a worker) are worked out again after every quiet 0.8 s of the bag,
   so loot keeps a core busy through a fight even with the Atlas closed.
