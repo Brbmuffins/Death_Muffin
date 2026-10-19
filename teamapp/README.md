@@ -102,6 +102,12 @@ renames the running exe to `.old`, moves the new one in, starts it and closes; t
 or three failures, show a balloon and the app keeps running. The workflow artifact is not published anywhere: putting a build in that folder of the site is a
 separate, manual step from a committed revision.
 
+**Publishing a version** (on the VPS, from a committed revision; first published 2026-10-19 as 0.1.0): raise `<Version>` in `DeathMuffinTeam.csproj`, then
+`git archive <rev> teamapp | tar -x -C <scratch>` and `dotnet build <scratch>/teamapp/windows/DeathMuffinTeam.csproj -c Release` (the .NET 8 SDK at
+`/home/ubuntu/porchlite/.dotnet`; it builds the net48 exe on Linux); copy `DeathMuffinTeam.exe` and `.exe.config` to `/var/www/death-muffin/teamapp/<version>/`,
+write `DeathMuffinTeam-<version>.zip` (the two files and a README.txt) beside it for first installs, and replace the site's `version.json` in that folder with the new
+`{version, url, sha256, size}` last: the installed apps update within the hour.
+
 ## Build and test
 
 ```
