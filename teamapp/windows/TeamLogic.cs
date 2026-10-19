@@ -108,6 +108,19 @@ namespace DeathMuffinTeam
             return elapsed >= AutoRunAfter ? OfferDecision.Run : OfferDecision.Ask;
         }
 
+        /// <summary>
+        /// A listed job's second line: who started the Discord thread it came from and the thread's name ("War · Bigger skull pile"; either alone when only one is known), and
+        /// "takes the whole screen" for a job with a benchmark. "" when there is nothing to say.
+        /// </summary>
+        public static string JobWho(string requestedBy, string thread, bool wholeScreen)
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrEmpty(requestedBy)) parts.Add(requestedBy);
+            if (!string.IsNullOrEmpty(thread)) parts.Add(thread);
+            if (wholeScreen) parts.Add("takes the whole screen");
+            return string.Join(" · ", parts);
+        }
+
         /// <summary>The notice's words while AFK mode is on, and its button.</summary>
         public const string AfkText = "AFK mode on: jobs run right away";
         public const string AfkEndText = "End AFK mode";
@@ -315,12 +328,14 @@ namespace DeathMuffinTeam
     internal sealed class PcState
     {
         public bool GameRunning, Fullscreen, OnBattery, Busy, Paused;
+        /// <summary>The tray's Run benchmarks (the server shows it; a release check's benchmark is skipped on a PC with it off).</summary>
+        public bool Benchmarks = true;
 
         public Dictionary<string, object> ToJson()
         {
             return new Dictionary<string, object>
             {
-                { "gameRunning", GameRunning }, { "fullscreen", Fullscreen }, { "onBattery", OnBattery }, { "busy", Busy }, { "paused", Paused },
+                { "gameRunning", GameRunning }, { "fullscreen", Fullscreen }, { "onBattery", OnBattery }, { "busy", Busy }, { "paused", Paused }, { "benchmarks", Benchmarks },
             };
         }
     }

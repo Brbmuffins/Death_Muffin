@@ -71,6 +71,9 @@ namespace DeathMuffinTeam
         public int SampleMs = 1000;
         public int BenchTries = 3;
         public QuietRules Rules = new QuietRules();
+        /// <summary>The tray's Run benchmarks: false makes a `release` job skip its benchmark step (reported as skipped, not failed). Null: always on.</summary>
+        public Func<bool> BenchmarksAllowed;
+        public const string BenchSkipped = "Skipped: benchmarks are off on this PC (the team app's tray menu, Run benchmarks).";
         /// <summary>Where a screenshot job's game window goes (`--position X,Y`, outside every monitor: Platform computes it from the virtual screen each time, JobPlan.OffscreenPosition); null leaves it to Godot.</summary>
         public Func<string> ShotsPosition;
         /// <summary>The same for a window of a given width (a `release` job's screens step: 1920 to 3840 wide): the window must start left of every monitor by its own width. Null: <see cref="ShotsPosition"/> for all.</summary>
@@ -524,6 +527,12 @@ namespace DeathMuffinTeam
             {
                 string step = plan.Steps[i];
                 ct.ThrowIfCancellationRequested();
+                if (step == "bench" && BenchmarksAllowed != null && !BenchmarksAllowed())
+                {
+                    note("step bench skipped: benchmarks are off on this PC");
+                    steps.Add(new StepReport { Step = step, Ok = true, Skipped = true, Error = BenchSkipped });
+                    continue;
+                }
                 CheckPlayer(0);
                 progress("Release checks, step " + (i + 1) + " of " + plan.Steps.Count + ": " + step);
                 note("step " + step + " begins");

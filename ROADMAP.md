@@ -140,8 +140,8 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   Windows app, installed only on the three team PCs, with the launcher's look and its own automatic updates; a bug in it can be fixed in
   minutes and never reaches players. It runs jobs that need a real graphics card, which the server does not have; the server keeps
   everything with keys or passwords and everything that changes the live game, and checks each result before using it. Only those three
-  accounts can sign in to it, and the server's job routes accept only them. When a job comes in, a small box says what it is and how heavy
-  ("Screenshots of a change, about 1 minute": Run now / Not now / Pause 2 hours), and without an answer it runs by itself after 5 minutes,
+  accounts can sign in to it, and the server's job routes accept only them. When jobs come in, a small box lists them, oldest first, with how heavy each is
+  and whose Discord thread it came from (pick one: Run now / Not now / Pause 2 hours), and without an answer the picked one runs by itself after 5 minutes,
   except while Death Muffin or another full-screen game or movie is running (Windows hides the question then, and a party's host runs the
   whole party's fight) or a laptop is on battery: then it waits for a yes or for the game to close. It never takes the keyboard or mouse,
   runs at low priority (a benchmark at normal priority, once the PC has been left alone) and stops if the game starts; it uses its own folder and plays offline (never the player's game, settings or

@@ -79,7 +79,8 @@ for f in common gemini tripo; do compare_exact "tools/ai/$f.mjs" "$DM/discord-ag
 compare_exact "$SRC/death-muffin-discord-agent.service" /etc/systemd/system/death-muffin-discord-agent.service "systemd death-muffin-discord-agent.service"
 # the ops jobs themselves (this script included: an installed copy left behind once kept reporting a retired agent)
 for f in drift-report.sh backup-db.sh launcher-release-notice.sh health-watch.mjs; do compare_exact "server/death-muffin/ops/$f" "$DM/ops/$f" "ops/$f"; done
-for u in death-muffin-drift-report.service death-muffin-drift-report.timer death-muffin-db-backup.service death-muffin-db-backup.timer death-muffin-launcher-notice.service death-muffin-launcher-notice.timer death-muffin-health-watch.service death-muffin-health-watch.timer; do
+compare_exact server/death-muffin/team-files-prune.sh "$DM/ops/team-files-prune.sh" "ops/team-files-prune.sh"   # the nightly team-prune job's copy (the script lives beside team-check.sh)
+for u in death-muffin-drift-report.service death-muffin-drift-report.timer death-muffin-db-backup.service death-muffin-db-backup.timer death-muffin-launcher-notice.service death-muffin-launcher-notice.timer death-muffin-health-watch.service death-muffin-health-watch.timer death-muffin-team-prune.service death-muffin-team-prune.timer; do
   compare_exact "server/death-muffin/ops/$u" "/etc/systemd/system/$u" "systemd $u"; done
 compare_exact server/death-muffin/ops/git-pre-push.sh "$(git -C "$REPO" rev-parse --path-format=absolute --git-common-dir)/hooks/pre-push" "git pre-push hook"
 
@@ -192,6 +193,11 @@ if [ "${DKB:-0}" -gt $((2 * 1024 * 1024)) ]; then
   BREAK=$(cd "$DM/deploy" && ls -1 | sed -E 's/-[0-9a-f]{7,}.*//; s/[0-9]{8}T[0-9]{6}Z.*//; s/\.(png|log|json|cjs|sh)$/ (file)/' | sort | uniq -c | sort -rn | head -6 | awk '{c=$1; $1=""; printf "%s%s x%s", (NR>1?", ":""), substr($0,2), c}')
   drift "deploy/ holds $(du -sh "$DM/deploy" | cut -f1) (over 2 GB): $BREAK"
 fi
+# The team PCs' builds and results: cleaned by the nightly team-prune job (team-files-prune.sh) and the backend (results 14 days after a job): growth past these means a clean-up stopped
+TFKB=$(du -sk "$WWW/team-files" 2>/dev/null | cut -f1); TRKB=$(du -sk "$DM/team-results" 2>/dev/null | cut -f1)
+info "team-files/ size: $(du -sh "$WWW/team-files" 2>/dev/null | cut -f1), team-results/ size: $(du -sh "$DM/team-results" 2>/dev/null | cut -f1)"
+[ "${TFKB:-0}" -gt $((10 * 1024 * 1024)) ] && drift "team-files/ holds $(du -sh "$WWW/team-files" | cut -f1) (over 10 GB): is the death-muffin-team-prune timer running?"
+[ "${TRKB:-0}" -gt $((5 * 1024 * 1024)) ] && drift "team-results/ holds $(du -sh "$DM/team-results" | cut -f1) (over 5 GB): the backend removes a job's results 14 days after it finished, when a new job is made"
 OLD=$(find "$DM/deploy" -maxdepth 1 -name 'backup-pre-release-*' -mtime +30 2>/dev/null | wc -l)
 [ "$OLD" -gt 0 ] && note "$OLD backup-pre-release-* folder(s) in deploy/ older than 30 days; consider pruning (this script never prunes)"
 

@@ -348,7 +348,7 @@ online the pictures need no `!shot` and come as BEFORE and AFTER pairs:
    (`preview-godot.sh <jobid> --team`: a debug export, the live art pack hard-linked when the art is unchanged, files under `/var/www/death-muffin/team-files/<random>/`) and, when the
    branch has commits, the unchanged game too (a scratch worktree `teambase-<jobid>` at `job.base`, built the same way, removed afterwards, 25 minute limit). It queues ONE `shots` job,
    "Pictures of a change (before and after), about 3 minutes", whose payload carries `builds: [{label: "before", files}, {label: "after", files}]` instead of `files`, the shot plan and
-   the presets Low and Ultra; the app runs every preset on each build, shares the files both builds have (same hash) and uploads `<label>_<preset>_<shot>.png`. The runner checks the job
+   the presets Low and Ultra, with `requestedBy` and `thread` (the thread starter's name and the thread's name, which the team app's job list shows; a clip job carries them too); the app runs every preset on each build, shares the files both builds have (same hash) and uploads `<label>_<preset>_<shot>.png`. The runner checks the job
    every 20 s for up to 45 minutes and cancels it when a newer proposal, a discard or a thread delete makes the answer pointless.
 4. **The thread** gets, a preset at a time (Low, then Ultra) and in the plan's order, each shot as a pair: BEFORE (the game as it is now), then AFTER (this change), at most two pairs a
    post and 20 MB (a post Discord refuses is lost), a pair never split. Every picture is labelled by `label-shot.py` like the server's ("BRANCH PREVIEW · not live · <branch>": the base branch's name on BEFORE, the job's branch on

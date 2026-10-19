@@ -1,0 +1,9 @@
+[Unit]
+Description=Death Muffin nightly team-files clean-up (server/death-muffin/team-files-prune.sh)
+
+[Service]
+Type=oneshot
+User=ubuntu
+Nice=10
+# Installed copy (outside the repo checkout): ops/install.sh copies it to /home/ubuntu/death-muffin/ops/.
+ExecStart=/home/ubuntu/death-muffin/ops/team-files-prune.sh /var/www/death-muffin/team-files

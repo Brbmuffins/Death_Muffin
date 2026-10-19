@@ -643,7 +643,8 @@ namespace DeathMuffinTeam.Tests
             T.Eq(MiniJson.Str(hbBody, "gpu").Length, 120, "heartbeat caps the gpu name at 120");
             var st = MiniJson.Obj(hbBody, "state");
             T.Ok(MiniJson.Bool(st, "gameRunning") && !MiniJson.Bool(st, "fullscreen") && MiniJson.Bool(st, "onBattery") && !MiniJson.Bool(st, "busy") && MiniJson.Bool(st, "paused"), "heartbeat state flags");
-            T.Eq(st.Count, 5, "heartbeat state has exactly the five contract keys");
+            T.Ok(MiniJson.Bool(st, "benchmarks"), "heartbeat state says benchmarks are on (the default)");
+            T.Eq(st.Count, 6, "heartbeat state has exactly the six contract keys");
             var offer = TeamApi.ParseOffer(hb);
             T.Ok(offer != null && offer.Id == "ab12cd34ef56" && offer.Kind == "shots" && offer.WeightS == 60 && offer.Title == "Screenshots of a change", "heartbeat offer is read");
             tr.Respond = r => new HttpReply { Status = 200, Body = "{\"success\":true,\"data\":{\"serverTime\":\"x\",\"offer\":null}}" };

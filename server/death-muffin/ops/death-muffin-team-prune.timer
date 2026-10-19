@@ -1,0 +1,10 @@
+[Unit]
+Description=Nightly Death Muffin team-files clean-up (the team PCs' build folders)
+
+[Timer]
+OnCalendar=*-*-* 04:45:00 UTC
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

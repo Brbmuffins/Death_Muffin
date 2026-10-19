@@ -1,4 +1,4 @@
-# Ops: health watch, nightly DB backup, nightly drift report, launcher release notice, pre-push hook
+# Ops: health watch, nightly DB backup, nightly team-files clean-up, nightly drift report, launcher release notice, pre-push hook
 
 Install or update all of it from a committed revision: `server/death-muffin/ops/install.sh [rev]` (copies the scripts to
 `/home/ubuntu/death-muffin/ops/`, installs the units, enables the timers, and stops and removes a retired job: the release checks report, `death-muffin-team-report`, B62). Never edit the installed copies.
@@ -28,6 +28,13 @@ prints what it would post and changes nothing; the env overrides are in the scri
 `~/death-muffin/backups/db/daily/` (newest 14), plus the first dump of each week in `weekly/` (8) and each month in `monthly/` (12).
 Restore: `gunzip -c <file> | sudo mysql <db>` (into a scratch DB first if unsure).
 
+## Nightly team-files clean-up
+
+`team-files-prune.sh` (timer `death-muffin-team-prune`, 04:45 UTC; the script lives beside `team-check.sh`, which also runs it after a check) applies the team-files folder's rules to
+`/var/www/death-muffin/team-files/` every night, so the team PCs' builds never pile up on a day without a release check: the newest 6 preview builds stay, and a `check-`, `gate-`, `release-`
+or `bench-` folder older than 4 days goes (the rules are in the script's header and `server/death-muffin/README.md`). The team PCs' results (`~/death-muffin/team-results/`) are the backend's:
+it removes a job's folder 14 days after the job finished. The drift report's check 8 says when either grows past its limit.
+
 ## Nightly drift report (timer `death-muffin-drift-report`, daily 05:00 UTC, after the 04:30 backup; full report in the journal, and a #build-alerts post only when something drifted)
 
 `drift-report.sh` compares the Death Muffin deployment on this VPS with `origin/main` and lists leftovers. It is read-only: it never changes, deletes, restarts or pushes anything (it only runs `git fetch`).
@@ -50,7 +57,7 @@ Env: `REPO` (default `/home/ubuntu/vps-handoffs/DeathMuffin/game`), `DM_HOME` (`
 | 5 | Uncommitted changes in the main checkout |
 | 6 | Unexpected files in the public docroot (allowed: the `server/death-muffin/site/` files plus `client`, `play`, `preview`; `play/` only `index.html`, `patch-notes.json`, `release-notes.json`) and secret-ish names |
 | 7 | Services active, auth `/health` |
-| 8 | Disk over 85%, size of `wt/` and `deploy/` (`deploy/` over 2 GB is drift, with a breakdown), old `backup-pre-release-*` folders (never pruned) |
+| 8 | Disk over 85%, size of `wt/` and `deploy/` (`deploy/` over 2 GB is drift, with a breakdown), old `backup-pre-release-*` folders (never pruned), the team PCs' `team-files/` (over 10 GB is drift) and `team-results/` (over 5 GB) |
 | 9 | Newest file in `~/death-muffin/backups/db/` missing or older than 36 h |
 | 10 | The GitHub token `tools/check/ci.sh` sends (`~/death-muffin/private/github-api-token`, `GH_TOKEN_FILE` overrides; `GH_API` the API address): drift when the file is missing, GitHub refuses it (401), or its expiry (`github-authentication-token-expiration`) is under 14 days away; the post says in plain words that Muffins (brbmuffins, the repo owner) makes a new one on github.com (Settings, Developer settings, Fine-grained tokens, "Public repositories (read-only)") and DMs it to Muffin Core. The call is GitHub's free `rate_limit`; the token is sent on stdin, never printed (test: `server/death-muffin/ops/drift-token.test.cjs`) |
 

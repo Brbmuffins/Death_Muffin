@@ -96,23 +96,28 @@ namespace DeathMuffinTeam
         public static ApiResult Local(string error) { return new ApiResult { Error = error }; }
     }
 
-    /// <summary>How one step of a `release` job went, as `done` and `fail` report it: the step's name, whether it worked, why not, and how long it took (for `install`, the milliseconds to the game's first screen).</summary>
+    /// <summary>How one step of a `release` job went, as `done` and `fail` report it: the step's name, whether it worked, why not, and how long it took (for `install`, the milliseconds to the game's first screen).
+    /// <see cref="Skipped"/>: left out on purpose (a benchmark on a PC with benchmarks off), with Ok true and the reason in Error.</summary>
     internal sealed class StepReport
     {
         public string Step = "";
         public bool Ok;
+        public bool Skipped;
         public string Error = "";
         public long Ms;
 
         public Dictionary<string, object> ToJson()
         {
             var d = new Dictionary<string, object> { { "step", Step }, { "ok", Ok } };
+            if (Skipped) d["skipped"] = true;
             if (Error.Length > 0) d["error"] = TextClip.Head(Error, 400);
             d["ms"] = Ms;
             return d;
         }
     }
 
+    /// <summary>A job this PC may take: the heartbeat's offer, or one of its `queue` (the job list in the box). <see cref="RequestedBy"/> and <see cref="Thread"/>: who started the Discord thread it came
+    /// from and the thread's name ("" when it came another way); <see cref="Steps"/>: a release job's steps (empty when the server did not say).</summary>
     internal sealed class Offer
     {
         public string Id = "";
@@ -120,15 +125,33 @@ namespace DeathMuffinTeam
         public string Title = "";
         public int WeightS;
         public string ExpiresAt = "";
+        public string RequestedBy = "";
+        public string Thread = "";
+        public List<string> Steps = new List<string>();
+
+        /// <summary>A benchmark and nothing else: a `bench` job, or a release job whose only step is the benchmark (left alone while benchmarks are off on this PC).</summary>
+        public bool BenchmarkOnly { get { return Kind == JobPlan.BenchKind || (Kind == JobPlan.ReleaseKind && Steps.Count > 0 && Steps.TrueForAll(x => x == "bench")); } }
+
+        /// <summary>A job with a benchmark in it (it takes the whole screen for a while).</summary>
+        public bool HasBenchmark { get { return Kind == JobPlan.BenchKind || (Kind == JobPlan.ReleaseKind && Steps.Contains("bench")); } }
     }
 
-    /// <summary>A job of the heartbeat's `queue`: one this PC would be offered, in the server's order (the AFK notice lists them).</summary>
+    /// <summary>A job of the heartbeat's `queue`: one this PC may take, oldest first (the box lists them, the AFK notice too).</summary>
     internal sealed class QueuedJob
     {
         public string Id = "";
         public string Kind = "";
         public string Title = "";
         public int WeightS;
+        public string ExpiresAt = "";
+        public string RequestedBy = "";
+        public string Thread = "";
+        public List<string> Steps = new List<string>();
+
+        public Offer ToOffer()
+        {
+            return new Offer { Id = Id, Kind = Kind, Title = Title, WeightS = WeightS, ExpiresAt = ExpiresAt, RequestedBy = RequestedBy, Thread = Thread, Steps = new List<string>(Steps) };
+        }
     }
 
     internal sealed class ClaimedJob
@@ -372,6 +395,9 @@ namespace DeathMuffinTeam
             };
         }
 
+        /// <summary>Did the heartbeat bring a `queue` at all (a server from before 0.4.1's notice sends none: the offer is then the only job known)?</summary>
+        public static bool HasQueue(ApiResult heartbeat) { return MiniJson.Arr(heartbeat == null ? null : heartbeat.Data, "queue") != null; }
+
         /// <summary>The heartbeat's `queue`, in order, at most <see cref="MaxQueue"/> (a server from before it, or a bad entry, gives nothing for it).</summary>
         public static List<QueuedJob> ParseQueue(ApiResult heartbeat)
         {
@@ -384,7 +410,14 @@ namespace DeathMuffinTeam
                 if (d == null || jobs.Count >= MaxQueue) continue;
                 string id = MiniJson.Str(d, "id");
                 if (!JobIdRe.IsMatch(id)) continue;
-                jobs.Add(new QueuedJob { Id = id, Kind = MiniJson.Str(d, "kind"), Title = MiniJson.Str(d, "title"), WeightS = (int)Math.Max(0, Math.Min(86400, MiniJson.Int(d, "weightS") ?? 0)) });
+                var steps = new List<string>();
+                var rawSteps = MiniJson.Arr(d, "steps");
+                if (rawSteps != null) foreach (object x in rawSteps) { string n = x as string; if (n != null && n.Length > 0 && n.Length <= 20) steps.Add(n); }
+                jobs.Add(new QueuedJob
+                {
+                    Id = id, Kind = MiniJson.Str(d, "kind"), Title = MiniJson.Str(d, "title"), WeightS = (int)Math.Max(0, Math.Min(86400, MiniJson.Int(d, "weightS") ?? 0)),
+                    ExpiresAt = MiniJson.Str(d, "expiresAt"), RequestedBy = TextClip.Head(MiniJson.Str(d, "requestedBy"), 64), Thread = TextClip.Head(MiniJson.Str(d, "thread"), 120), Steps = steps,
+                });
             }
             return jobs;
         }

@@ -8,7 +8,7 @@
 #                     own folder when it ends, so only one a killed run left is here; removed once older than <release-days> (default 4) days, whatever else is in
 #                     the root. release-<24 hex> and bench-<24 hex>, the names of the release checks' folders before B62, follow the same rule.
 #
-# Anything else in the root is left alone. Prints nothing; exit 2 for a missing, symlinked or unreadable root or a count that is not a number.
+# Run by team-check.sh after each check and every night by the ops job death-muffin-team-prune (ops/README.md). Anything else in the root is left alone. Prints nothing; exit 2 for a missing, symlinked or unreadable root or a count that is not a number.
 # preview-godot.sh --team still carries its own copy of the first rule (the same find line): it should call this script instead.
 set -euo pipefail
 ROOT="${1:-}"

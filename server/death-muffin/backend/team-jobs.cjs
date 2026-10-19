@@ -2,7 +2,8 @@
 /**
  * Team jobs (ROADMAP Phase 1, "New: the team app"; DECISIONS B54, B55): jobs that need a real graphics card run on the three team PCs (War,
  * Muffins, Helix) in a small Windows app. This server queues a job, one PC claims it, uploads its result files and finishes it; the Discord
- * agent's runner (same machine) creates jobs and reads the results. Tables team_members, team_pcs, team_jobs, migration 057 (team_jobs.target_pc, migration 058; team_jobs.reported_at, migration 059).
+ * agent's runner (same machine) creates jobs and reads the results. Tables team_members, team_pcs, team_jobs, migration 057 (team_jobs.target_pc, migration 058; team_jobs.reported_at, migration 059;
+ * team_jobs.requested_by and thread_name, migration 060).
  * Job kinds: `shots` (pictures of a proposal, uploaded as PNG files), `release` (the release checks of a new client on a team PC: one job, steps run in order, each step's
  * result uploaded as a `<step>.json` file beside the screens' PNGs as it finishes, then `done` with how each step went; the reporter reads them with the internal list route),
  * `clip` (short videos of a change: the PC uploads motion-JPEG files, and `done` turns each into an
@@ -18,28 +19,28 @@
  *   POST /api/team/login                       { username, password, pcId, pcName } -> { success, data: { token, expiresAt, accountId, username } }
  *   POST /api/team/logout                      revokes the token it came with -> { success }
  *   GET  /api/team/me                          -> { success, data: { accountId, username } }
- *   POST /api/team/heartbeat                   the PC's state (+ optional `wait`, 0..25 seconds, default 0) -> { success, data: { serverTime, offer, cancel, queue } }   offer: null or the oldest queued job
+ *   POST /api/team/heartbeat                   the PC's state (+ optional `wait`, 0..25 seconds, default 0; state.benchmarks false = the member switched benchmarks off on that PC) -> { success, data: { serverTime, offer, cancel, queue } }   offer: null or the oldest queued job
  *                                              of the first kind in KIND_ORDER that has one (shots, then clip, then bench, then any other kind) that this PC has not declined; cancel: the ids of jobs this PC claimed that were cancelled in the last 10 minutes (the
- *                                              app stops the one it runs and ignores the rest); queue: the jobs this PC would be offered, in that order and the offer first, at most 20, each
- *                                              { id, kind, title, weightS } (the app's AFK notice lists them). With `wait` > 0 the request is held (long poll) while there is nothing to say:
+ *                                              app stops the one it runs and ignores the rest); queue: the jobs this PC may take, oldest first (Helix 2026-10-19: the app's job list shows the first 10 oldest to newest), at most 20, each
+ *                                              { id, kind, title, weightS, expiresAt, requestedBy?, thread?, steps? } (requestedBy and thread: who started the Discord thread the job came from and its name; steps: a release job's steps). With `wait` > 0 the request is held (long poll) while there is nothing to say:
  *                                              no offer for this PC and no cancel it has not been told, until a job this PC may take is queued (the runner creates one, or a
  *                                              running job goes back to the queue), one it runs is cancelled, or `wait` runs out; then it answers as it always does. The PC is
  *                                              stored at the start of the request. At most 10 requests of an account are held at once (more are answered at once, as with 0)
  *   POST /api/team/jobs/:id/claim              { pcId } -> { success, data: { id, kind, title, payload } }   409 `taken` when another PC got it first; a job made
  *                                              with a target PC is offered to and claimed by that PC only (403 `not_your_job` for another)
- *   POST /api/team/jobs/:id/decline            { pcId, reason } -> { success }   the job stays queued for the other PCs and is not offered to this one again
+ *   POST /api/team/jobs/:id/decline            { pcId, reason } -> { success }   the job stays queued for the other PCs; not_now keeps it from this PC for good (the app's Not now no longer sends it: it hides the list for 30 minutes)
  *   PUT  /api/team/jobs/:id/files/:name        one file as the raw body, 40 a job (120 for a release job): a PNG (`image/png`, at most 20 MB; not for a clip job), for a clip job only a
  *                                              motion-JPEG clip (`<name>.mjpeg`, `video/x-motion-jpeg`, at most 48 MB, starting with a JPEG picture), for a release job only a step's
  *                                              result (`<name>.json`, `application/json`, at most 1 MB, valid JSON) -> { success, data: { name, bytes, width, height } } (no size for a JSON file)
  *   POST /api/team/jobs/:id/done               shots: { files, log, timings }; clip: { files: [the uploaded .mjpeg names], log, timings }, which turns each clip into
  *                                              <name>.mp4 (ffmpeg, below) and keeps the mp4 only; release: { steps: [{ step, ok, error?, ms? }], files: [uploaded .png/.json names],
- *                                              runs?: [the bench step's benchmark payloads, as for bench], log, timings }; bench: { runs: [the benchmark payloads DmApi.post_benchmark sends, at most 6, each at
+ *                                              runs?: [the bench step's benchmark payloads, as for bench], log, timings } (a step the PC skipped, a benchmark with benchmarks off there, is { step, ok: true, skipped: true, error }); bench: { runs: [the benchmark payloads DmApi.post_benchmark sends, at most 6, each at
  *                                              most 64 KB of JSON], log, timings } -> { success, data: { id, status } }. A bench run that does not validate (the words
  *                                              of POST /api/benchmarks) fails the job with those words and answers 400 with them. The body may be up to 1 MB (this
  *                                              route reads its own: server.js leaves it to it, DONE_BODY_MAX); a bigger one is 413 `too_large`
  *   POST /api/team/jobs/:id/fail               { error, log, steps? } -> { success, data: { id, status } }   (`steps` as in a release job's done: what the PC finished before it stopped)
  * The runner (loopback only, and X-Team-Secret equal to the contents of TEAM_SECRET_FILE; anything else answers 404):
- *   POST /internal/team/jobs                   { kind, title, weightS, payload, ttlS, targetPc?, supersede? } -> { success, data: { id, superseded? } }   (also removes the
+ *   POST /internal/team/jobs                   { kind, title, weightS, payload, ttlS, targetPc?, supersede?, requestedBy?, thread? } -> { success, data: { id, superseded? } }   (also removes the
  *                                              result folders of jobs that finished more than 14 days ago); supersede: true (needs targetPc) cancels this kind's
  *                                              other QUEUED jobs for that PC once the new one is stored (a running job is never touched)
  *   GET  /internal/team/jobs?kind=&status=&unreported=1&limit=   the rows as the one below returns each (files with absolute paths included), `{ jobs: [...] }`, oldest finish first:
@@ -108,7 +109,9 @@ const QUIET_MINUTES = 3;
 const SEEN_MINUTES = 2;
 const DECLINES_MAX = 20;
 const OPEN_JOBS_MAX = 50;                 // queued + running jobs the runner may have at once
-const QUEUE_SHOWN = 20;                   // the heartbeat's `queue`: at most this many of the jobs this PC would be offered
+const QUEUE_SHOWN = 20;                   // the heartbeat's `queue`: at most this many of the jobs this PC may take
+const REQUESTED_BY_MAX = 64;              // team_jobs.requested_by
+const THREAD_MAX = 120;                   // team_jobs.thread_name
 const TTL_DEFAULT_S = 3600;
 const TTL_MIN_S = 60;
 const TTL_MAX_S = 7 * 86400;
@@ -148,6 +151,10 @@ const isObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);
 /** A trimmed, control-free, length-capped string ('' for anything that is not a string). Tabs and line breaks become a space first. */
 const text = (v, max) => (typeof v === 'string' ? v.replace(/[\t\n\r]+/g, ' ').replace(HIDDEN, '').trim().slice(0, max).trim() : '');
+// Emoji and their joiners, skin tones, variation selectors, keycaps and tag characters (a thread's name carries the agent's status marks: ✅ 🧪 ⚠).
+const EMOJI = /[\p{Extended_Pictographic}\p{Regional_Indicator}\u{1F3FB}-\u{1F3FF}\u{FE0E}\u{FE0F}\u{20E3}\u{200D}\u{E0020}-\u{E007F}]/gu;
+/** text() without emojis, the spaces they leave closed up (Helix 2026-10-19: a thread's name "without the emojis"). */
+const plain = (v, max) => (typeof v === 'string' ? text(v.replace(EMOJI, ' ').replace(/\s{2,}/g, ' '), max) : '');
 const clampInt = (v, lo, hi) => (finite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : null);
 const asJson = (v) => {
   if (v == null) return null;
@@ -192,7 +199,7 @@ function parseHeartbeat(body) {
     pc: {
       pcId, name: text(b.name, 64), version: text(b.version, 32), gpu: text(b.gpu, 120),
       mode: MODES.includes(b.mode) ? b.mode : 'ask',
-      state: { gameRunning: s.gameRunning === true, fullscreen: s.fullscreen === true, onBattery: s.onBattery === true, busy: s.busy === true, paused: s.paused === true },
+      state: { gameRunning: s.gameRunning === true, fullscreen: s.fullscreen === true, onBattery: s.onBattery === true, busy: s.busy === true, paused: s.paused === true, benchmarks: s.benchmarks !== false },
     },
   };
 }
@@ -204,7 +211,8 @@ function parseWait(req) {
   return Number.isFinite(n) && n > 0 ? Math.min(WAIT_MAX_S, n) : 0;
 }
 
-/** Validate the runner's new job (`targetPc`: the one PC that may take it, optional; `supersede`: also cancel the PC's other queued jobs of its kind). Returns { error } or { job }. */
+/** Validate the runner's new job (`targetPc`: the one PC that may take it, optional; `supersede`: also cancel the PC's other queued jobs of its kind; `requestedBy` and `thread`:
+ *  who started the Discord thread it came from and the thread's name, optional, emojis dropped). Returns { error } or { job }. */
 function parseNewJob(body) {
   const b = isObject(body) ? body : {};
   const kind = typeof b.kind === 'string' ? b.kind.trim() : '';
@@ -222,7 +230,9 @@ function parseNewJob(body) {
   const supersede = b.supersede === true;   // replace this kind's queued jobs for the same PC (a newer release's benchmark makes the older one pointless)
   if (b.supersede !== undefined && typeof b.supersede !== 'boolean') return { error: 'supersede must be true or false.' };
   if (supersede && targetPc === null) return { error: 'A job that supersedes others needs a target PC (the PC whose queued jobs of this kind it replaces).' };
-  return { job: { kind, title, weightS: clampInt(b.weightS, 0, WEIGHT_MAX_S) ?? 60, payload, ttlS: clampInt(b.ttlS, TTL_MIN_S, TTL_MAX_S) ?? TTL_DEFAULT_S, targetPc, supersede } };
+  const requestedBy = plain(b.requestedBy, REQUESTED_BY_MAX) || null;
+  const thread = plain(b.thread, THREAD_MAX) || null;
+  return { job: { kind, title, weightS: clampInt(b.weightS, 0, WEIGHT_MAX_S) ?? 60, payload, ttlS: clampInt(b.ttlS, TTL_MIN_S, TTL_MAX_S) ?? TTL_DEFAULT_S, targetPc, supersede, requestedBy, thread } };
 }
 
 /**
@@ -295,6 +305,7 @@ function cleanSteps(raw) {
     }
     if (steps.some((x) => x.step === s.step)) return { error: `The step ${s.step} is listed twice.` };
     const out = { step: s.step, ok: s.ok };
+    if (s.skipped === true) out.skipped = true;   // the PC did not run it on purpose (a benchmark with benchmarks off there)
     const error = text(s.error, ERROR_MAX);
     if (error) out.error = error;
     if (finite(s.ms)) out.ms = Math.min(86_400_000, Math.max(0, Math.round(s.ms)));
@@ -455,6 +466,16 @@ function runFfmpeg({ ffmpeg, args, cwd, timeoutMs, spawn = childProcess.spawn, n
 
 // ── Routes ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
+/** One job of a heartbeat's `queue`: what the app's job list shows (who asked and the thread, when the agent said; a release job's steps, so a PC with benchmarks off can leave a benchmark-only check alone). */
+function queueEntry(r) {
+  const e = { id: String(r.id), kind: String(r.kind), title: String(r.title), weightS: Number(r.weight_s), expiresAt: isoOf(r.expires_ts) };
+  if (r.requested_by) e.requestedBy = String(r.requested_by);
+  if (r.thread_name) e.thread = String(r.thread_name);
+  const steps = asJson(r.steps);
+  if (Array.isArray(steps)) e.steps = steps.filter((x) => STEP_NAMES.includes(x));
+  return e;
+}
+
 /** Did this PC say "Not now" to the job? `result` is the job's result column (JSON or text): { declines: [{ pcId, reason, at }] }. Only `not_now`
  *  keeps a job from that PC for good; `busy` (another job was running) and `paused` only meant "not at that moment" (2026-10-19: a job offered while
  *  Helix's PC ran its release checks was declined as busy and, with one team PC, never offered again). */
@@ -599,7 +620,8 @@ module.exports = function mountTeamJobs(app, pool, {
     await sweep();
     // The oldest queued job of the first kind that has one (KIND_ORDER) that this PC has not declined and that is not meant for another PC. At most OPEN_JOBS_MAX jobs are queued, so the list is every one of them.
     const [rows] = await pool.execute(
-      `SELECT id, kind, title, weight_s, result, UNIX_TIMESTAMP(expires_at) AS expires_ts FROM team_jobs
+      `SELECT id, kind, title, weight_s, result, UNIX_TIMESTAMP(expires_at) AS expires_ts, UNIX_TIMESTAMP(created_at) AS created_ts, requested_by, thread_name,
+              CASE WHEN kind = '${KIND_RELEASE}' THEN JSON_EXTRACT(payload, '$.steps') END AS steps FROM team_jobs
         WHERE status = 'queued' AND expires_at > NOW() AND (target_pc IS NULL OR target_pc = ?) ORDER BY ${KIND_RANK_SQL} ASC, created_at ASC, id ASC LIMIT ${OPEN_JOBS_MAX}`, [pcId]);
     const j = rows.find((r) => !declinedBy(r.result, pcId));
     const offer = j ? { id: String(j.id), kind: String(j.kind), title: String(j.title), weightS: Number(j.weight_s), expiresAt: isoOf(j.expires_ts) } : null;
@@ -607,9 +629,10 @@ module.exports = function mountTeamJobs(app, pool, {
     const [cancelled] = await pool.execute(
       `SELECT id FROM team_jobs WHERE status = 'cancelled' AND claimed_account = ? AND claimed_pc = ? AND finished_at > NOW() - INTERVAL ? MINUTE
         ORDER BY finished_at DESC, id ASC LIMIT ${CANCELS_MAX}`, [account, pcId, CANCEL_MINUTES]);
-    // The queue this PC would be offered, in order (the app's AFK notice lists it, Helix 2026-10-19): the offer first, at most QUEUE_SHOWN.
-    const queue = rows.filter((r) => !declinedBy(r.result, pcId)).slice(0, QUEUE_SHOWN)
-      .map((r) => ({ id: String(r.id), kind: String(r.kind), title: String(r.title), weightS: Number(r.weight_s) }));
+    // The jobs this PC may take, oldest first (the app's job list and AFK notice, Helix 2026-10-19), at most QUEUE_SHOWN.
+    const queue = rows.filter((r) => !declinedBy(r.result, pcId))
+      .sort((a, b) => Number(a.created_ts) - Number(b.created_ts) || String(a.id).localeCompare(String(b.id))).slice(0, QUEUE_SHOWN)
+      .map(queueEntry);
     return { offer, cancel: cancelled.map((c) => String(c.id)), queue };
   }
   /** Something to say right now: an offer, or a cancel this PC has not been told yet (a held heartbeat does not end for a cancel it already knows: the list keeps it for 10 minutes). */
@@ -1092,7 +1115,7 @@ module.exports = function mountTeamJobs(app, pool, {
   };
   const internalRoute = (what, fn) => route(what, async (req, res) => { await sweep(); await fn(req, res); });
 
-  const JOB_COLS = `id, kind, title, weight_s, payload, status, target_pc, UNIX_TIMESTAMP(created_at) AS created_ts, UNIX_TIMESTAMP(expires_at) AS expires_ts, claimed_account, claimed_pc,
+  const JOB_COLS = `id, kind, title, weight_s, payload, status, target_pc, requested_by, thread_name, UNIX_TIMESTAMP(created_at) AS created_ts, UNIX_TIMESTAMP(expires_at) AS expires_ts, claimed_account, claimed_pc,
     UNIX_TIMESTAMP(claimed_at) AS claimed_ts, UNIX_TIMESTAMP(heartbeat_at) AS heartbeat_ts, UNIX_TIMESTAMP(finished_at) AS finished_ts, UNIX_TIMESTAMP(reported_at) AS reported_ts, result, error, tries`;
 
   /**
@@ -1137,8 +1160,8 @@ module.exports = function mountTeamJobs(app, pool, {
       const id = crypto.randomBytes(6).toString('hex');
       try {
         await pool.execute(
-          "INSERT INTO team_jobs (id, kind, title, weight_s, payload, status, created_at, expires_at, target_pc) VALUES (?, ?, ?, ?, ?, 'queued', NOW(3), NOW() + INTERVAL ? SECOND, ?)",
-          [id, j.kind, j.title, j.weightS, j.payload, j.ttlS, j.targetPc]);
+          "INSERT INTO team_jobs (id, kind, title, weight_s, payload, status, created_at, expires_at, target_pc, requested_by, thread_name) VALUES (?, ?, ?, ?, ?, 'queued', NOW(3), NOW() + INTERVAL ? SECOND, ?, ?, ?)",
+          [id, j.kind, j.title, j.weightS, j.payload, j.ttlS, j.targetPc, j.requestedBy, j.thread]);
         if (!j.supersede) { wake(); return res.json({ success: true, data: { id } }); }
         // The new job is stored: now the PC's older queued jobs of this kind are pointless (never a running one).
         const [replaced] = await pool.execute(
@@ -1158,7 +1181,7 @@ module.exports = function mountTeamJobs(app, pool, {
     const files = (await listFiles(resultsDir, id)).map((f) => ({ ...f, path: path.join(path.resolve(resultsDir), id, f.name) }));
     return {
       id, kind: String(j.kind), title: String(j.title), weightS: Number(j.weight_s), payload: asJson(j.payload) || {}, status: String(j.status), tries: Number(j.tries),
-      targetPc: j.target_pc == null ? null : String(j.target_pc), createdAt: isoOf(j.created_ts), expiresAt: isoOf(j.expires_ts), claimedAccount: j.claimed_account == null ? null : Number(j.claimed_account), claimedPc: j.claimed_pc == null ? null : String(j.claimed_pc),
+      targetPc: j.target_pc == null ? null : String(j.target_pc), requestedBy: j.requested_by == null ? null : String(j.requested_by), thread: j.thread_name == null ? null : String(j.thread_name), createdAt: isoOf(j.created_ts), expiresAt: isoOf(j.expires_ts), claimedAccount: j.claimed_account == null ? null : Number(j.claimed_account), claimedPc: j.claimed_pc == null ? null : String(j.claimed_pc),
       claimedAt: isoOf(j.claimed_ts), heartbeatAt: isoOf(j.heartbeat_ts), finishedAt: isoOf(j.finished_ts), reportedAt: isoOf(j.reported_ts),
       result: asJson(j.result), error: j.error == null ? null : String(j.error), files,
     };

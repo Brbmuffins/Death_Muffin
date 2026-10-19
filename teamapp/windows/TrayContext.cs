@@ -11,7 +11,7 @@ namespace DeathMuffinTeam
 {
     /// <summary>
     /// The app is a tray icon: no window of its own. This wires the real pieces (Windows platform, DPAPI, the server, the game process) to the TeamController and
-    /// shows its answers: the tray menu (status, Run now, Pause 2 hours, Mode, sign in/out, start with Windows, folder, Quit), the offer box and balloons.
+    /// shows its answers: the tray menu (status, Show jobs, Pause 2 hours, Mode, Run benchmarks, Allow AFK mode, sign in/out, start with Windows, folder, Quit), the offer box and balloons.
     /// </summary>
     internal sealed class TrayContext : ApplicationContext, ITeamUi
     {
@@ -30,7 +30,9 @@ namespace DeathMuffinTeam
         readonly Timer updateTimer = new Timer { Interval = 30 * 1000 };
 
         readonly ToolStripMenuItem statusItem = new ToolStripMenuItem("Starting...") { Enabled = false };
-        readonly ToolStripMenuItem runItem = new ToolStripMenuItem("Run now");
+        readonly ToolStripMenuItem showItem = new ToolStripMenuItem("Show jobs");   // a job runs only from the box (Helix 2026-10-19); this brings the box back
+        readonly ToolStripMenuItem benchItem = new ToolStripMenuItem("Run benchmarks") { CheckOnClick = true };
+        readonly ToolStripMenuItem afkAllowItem = new ToolStripMenuItem("Allow AFK mode") { CheckOnClick = true };
         readonly ToolStripMenuItem pauseItem = new ToolStripMenuItem("Pause 2 hours");
         readonly ToolStripMenuItem afkItem = new ToolStripMenuItem(TeamLogic.AfkEndText) { Visible = false };
         readonly ToolStripMenuItem afkShowItem = new ToolStripMenuItem(TeamLogic.AfkShowText) { Visible = false };
@@ -60,7 +62,8 @@ namespace DeathMuffinTeam
             var platform = new WindowsPlatform(TeamSettings.Root);
             DisplayWatch.Start();   // is the screen on? (a benchmark run with it off is noted)
             var probe = new WindowsPcProbe(platform);   // one reader for both: the controller reads while a benchmark waits, the runner while a job runs
-            var runner = new JobRunner(api, folders, new FileFetcher(FileFetcher.CreateClient(Program.Version)), new ProcessGameHost(Native.TendGameWindow, platform.Launched), platform, Native.TryHardLink, probe) { ShotsPosition = Native.OffscreenPosition, WindowPosition = Native.OffscreenPositionFor, CrashRecord = Native.CrashRecord };
+            var runner = new JobRunner(api, folders, new FileFetcher(FileFetcher.CreateClient(Program.Version)), new ProcessGameHost(Native.TendGameWindow, platform.Launched), platform, Native.TryHardLink, probe)
+                { ShotsPosition = Native.OffscreenPosition, WindowPosition = Native.OffscreenPositionFor, CrashRecord = Native.CrashRecord, BenchmarksAllowed = () => settings.RunBenchmarks };
             controller = new TeamController(api, settings, () => settings.Save(protector), platform, runner, this, () => DateTime.UtcNow,
                 Program.Version, Environment.MachineName, new Uri(TeamUrls.SiteBase), log.Line, probe);
 
@@ -95,7 +98,9 @@ namespace DeathMuffinTeam
                 modeItems[i] = item;
                 modeMenu.DropDownItems.Add(item);
             }
-            runItem.Click += (s, e) => Guard(controller.RunNowAsync());
+            showItem.Click += (s, e) => Guard(controller.ShowJobsAsync());
+            benchItem.Click += (s, e) => Guard(controller.SetRunBenchmarksAsync(benchItem.Checked));
+            afkAllowItem.Click += (s, e) => controller.SetAfkAllowed(afkAllowItem.Checked);
             pauseItem.Click += (s, e) => Guard(controller.TogglePauseAsync());
             afkItem.Click += (s, e) => controller.EndAfk();
             afkShowItem.Click += (s, e) => OnUi(() => { afkHidden = false; afkShowItem.Visible = false; if (afkBox != null && !afkBox.Visible) { afkBox.PlaceInCorner(); afkBox.Show(); } });
@@ -124,7 +129,7 @@ namespace DeathMuffinTeam
             menu.Items.AddRange(new ToolStripItem[]
             {
                 statusItem, new ToolStripMenuItem("Death Muffin Team " + Program.Version) { Enabled = false }, new ToolStripSeparator(),
-                runItem, pauseItem, afkItem, afkShowItem, modeMenu, new ToolStripSeparator(),
+                showItem, pauseItem, afkItem, afkShowItem, modeMenu, benchItem, afkAllowItem, new ToolStripSeparator(),
                 signItem, startupItem, folderItem, logItem, new ToolStripSeparator(), quitItem,
             });
             menu.Opening += (s, e) => RefreshMenu();
@@ -144,7 +149,10 @@ namespace DeathMuffinTeam
             pauseItem.Text = controller.IsPaused ? "Resume" : "Pause 2 hours";
             signItem.Text = controller.SignedIn ? "Sign out" : "Sign in...";
             signItem.Enabled = !controller.IsBusy;
-            runItem.Enabled = controller.SignedIn && !controller.IsBusy;
+            showItem.Enabled = controller.SignedIn && !controller.IsBusy && controller.JobsAvailable > 0;
+            showItem.Text = controller.JobsAvailable > 0 ? "Show jobs (" + controller.JobsAvailable + ")" : "Show jobs";
+            benchItem.Checked = controller.RunBenchmarks;
+            afkAllowItem.Checked = controller.AfkAllowed;
             startupItem.Checked = StartupEntry.IsOn();
         }
 
@@ -173,6 +181,7 @@ namespace DeathMuffinTeam
                 {
                     box = new OfferBox();
                     box.Answered += a => Guard(controller.AnswerAsync(a));
+                    box.Chosen += id => controller.Choose(id);
                 }
                 box.Apply(view);
                 if (!box.Visible)

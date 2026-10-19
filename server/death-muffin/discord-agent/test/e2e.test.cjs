@@ -1317,6 +1317,7 @@ test('godot mode: team pictures need no !shot: nobody online = the server render
     assert.ok(t2.thread.sent.indexOf(low) < t2.thread.sent.indexOf(ultra), 'Low comes before Ultra');
     const job = B.jobs[0].body;
     assert.equal(job.kind, 'shots'); assert.equal(job.title, 'Pictures of a change (before and after), about 3 minutes'); assert.equal(job.weightS, 180);
+    assert.equal(job.requestedBy, 'Helix', 'the team app lists who started the thread'); assert.equal(job.thread, j2.title || undefined, 'and the thread\'s name');
     assert.deepEqual(job.payload.builds.map((b) => b.label), ['before', 'after']); assert.equal(job.payload.files, undefined);
     assert.ok(job.payload.builds.every((b) => b.files[0].name === 'DeathMuffin.pck'));
     assert.deepEqual(job.payload.presets, ['low', 'ultra']); assert.deepEqual(job.payload.args, ['--dev-offline', '--class=2', '--qa']); assert.equal(job.payload.plan.shots.length, 2);

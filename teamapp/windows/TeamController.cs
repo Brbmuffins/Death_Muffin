@@ -10,15 +10,30 @@ namespace DeathMuffinTeam
     /// <summary>Colour of the tray status: Ok green, Busy violet, Warn orange.</summary>
     internal enum StatusLevel { Ok, Busy, Warn }
 
-    /// <summary>What the offer box shows.</summary>
+    /// <summary>One job in the box's list.</summary>
+    internal sealed class OfferRow
+    {
+        public string Id = "";
+        /// <summary>"Screenshots of a change, about 2 minutes".</summary>
+        public string Text = "";
+        /// <summary>Who asked and the Discord thread ("War · Bigger skull pile"), "" when the job came another way; " · takes the whole screen" for a job with a benchmark.</summary>
+        public string Who = "";
+        public bool Selected;
+    }
+
+    /// <summary>What the offer box shows: the jobs this PC may take (the first <see cref="TeamController.RowsShown"/>, oldest first), the one that runs selected.</summary>
     internal sealed class OfferView
     {
-        /// <summary>"Screenshots of a change, about 1 minute"; "Short videos of a change, about 3 minutes" for a clip job.</summary>
+        /// <summary>The selected job: "Screenshots of a change, about 1 minute"; "Short videos of a change, about 3 minutes" for a clip job.</summary>
         public string Text = "";
-        /// <summary>"Runs by itself in 4:12", or "Runs when you say yes" (mode: only on a yes).</summary>
+        /// <summary>"Runs by itself in 4:12" ("The selected job runs by itself in 4:12" with several), or "Runs when you say yes" (mode: only on a yes).</summary>
         public string Countdown = "";
-        /// <summary>A job kind's own words (a benchmark: it starts once the PC is quiet, normal priority, a touch restarts it), or "".</summary>
+        /// <summary>The selected job kind's own words (a benchmark: it starts once the PC is quiet, takes the whole screen, normal priority), or "".</summary>
         public string Note = "";
+        /// <summary>The jobs listed, the selected one marked.</summary>
+        public List<OfferRow> Rows = new List<OfferRow>();
+        /// <summary>Jobs waiting past the listed ones (they are listed as the first ones are done).</summary>
+        public int More;
     }
 
     /// <summary>The screen side of the app. TrayContext is the real one; tests use a recorder.</summary>
@@ -91,7 +106,13 @@ namespace DeathMuffinTeam
         /// <summary>A claim of a waiting benchmark that failed for another reason than "gone" is tried again after this long.</summary>
         public static readonly TimeSpan BenchClaimRetry = TimeSpan.FromSeconds(30);
 
-        Offer current;
+        /// <summary>The box lists at most this many jobs, oldest first (Helix 2026-10-19).</summary>
+        public const int RowsShown = 10;
+
+        Offer current;          // the job the box is about: the one chosen in the list, else the oldest
+        string chosenId;        // the job the person picked in the list (null: the oldest), until it runs or the box goes
+        List<Offer> available = new List<Offer>();   // the jobs this PC may take (the server's list, a waiting benchmark and, with benchmarks off, benchmark-only jobs left out)
+        List<Offer> listed = new List<Offer>();      // what the box lists: the available jobs minus those put off with Not now
         OfferAnswer answer = OfferAnswer.None;
         DateTime? shownAt;
         string lastDecision = "";   // the offer's last decision, logged when it changes (app.log: why a box did or did not show, why a job ran)
@@ -142,6 +163,10 @@ namespace DeathMuffinTeam
         public bool IsAfk { get { return afk; } }
         /// <summary>The benchmark that was accepted and waits for a quiet PC (not claimed, still queued on the server), or null.</summary>
         public Offer WaitingBench { get { return waitingBench; } }
+        /// <summary>How many jobs this PC may take now, those put off with Not now included (the tray's Show jobs is greyed out at 0).</summary>
+        public int JobsAvailable { get { return available.Count; } }
+        public bool RunBenchmarks { get { return settings.RunBenchmarks; } }
+        public bool AfkAllowed { get { return settings.AfkAllowed; } }
 
         // ---- Start and sign-in ---------------------------------------------------------------------------------------------------
 
@@ -230,6 +255,7 @@ namespace DeathMuffinTeam
                 OnBattery = platform.OnBattery(),
                 Busy = running,
                 Paused = settings.IsPaused(utcNow()),
+                Benchmarks = settings.RunBenchmarks,
             };
         }
 
@@ -298,13 +324,11 @@ namespace DeathMuffinTeam
                 lock (jobsGate) queue = TeamApi.ParseQueue(r);
                 PublishJobs();
                 Offer offer = TeamApi.ParseOffer(r);
-                offer = AboutWaitingBench(offer);
                 DateTime now = utcNow();
-                if (offer != null && snoozed.ContainsKey(offer.Id))
-                {
-                    if (snoozed[offer.Id] > now) offer = null;
-                    else snoozed.Remove(offer.Id);
-                }
+                available = AboutWaitingBench(JobsOf(r, offer), TeamApi.HasQueue(r));
+                if (!settings.RunBenchmarks) available.RemoveAll(j => j.BenchmarkOnly);
+                listed = available.FindAll(j => !Snoozed(j.Id, now));
+                if (offer != null && Snoozed(offer.Id, now)) offer = null;
                 if (running)
                 {
                     // A second job offered while one runs: say so once; the job stays queued for the other PCs.
@@ -313,15 +337,7 @@ namespace DeathMuffinTeam
                         await api.DeclineAsync(offer.Id, settings.PcId, "busy", CancellationToken.None).ConfigureAwait(true);
                     return;
                 }
-                if (offer == null) ClearOffer();
-                else if (current == null || current.Id != offer.Id)
-                {
-                    current = offer;
-                    answer = OfferAnswer.None;
-                    shownAt = null;
-                    lastDecision = "";
-                    log("offered: " + offer.Id + " " + offer.Kind + " \"" + offer.Title + "\"");
-                }
+                Pick();
                 UpdateIdleStatus();
                 return;
             }
@@ -338,17 +354,55 @@ namespace DeathMuffinTeam
             if (!running) SetStatus(r.Error, StatusLevel.Warn);
         }
 
-        /// <summary>
-        /// What the heartbeat's offer means for a benchmark that is waiting. The server offers the oldest queued job this PC has not declined, so the waiting benchmark (never declined, still
-        /// queued) is offered again and again: that is no new question, and no answer is wanted. An offer of nothing, or of another benchmark, means it is no longer queued (cancelled, expired or
-        /// taken): it is dropped. A screenshot job offered ahead of it is handled as usual.
-        /// </summary>
-        Offer AboutWaitingBench(Offer offer)
+        /// <summary>The jobs a heartbeat says this PC may take, oldest first: its `queue` (with the offer's expiry where an entry lacks one), or, from a server that sends no list, its offer alone.</summary>
+        static List<Offer> JobsOf(ApiResult r, Offer offer)
         {
-            if (waitingBench == null) return offer;
-            if (offer != null && offer.Id == waitingBench.Id) return null;
-            if (offer == null || offer.Kind == JobPlan.BenchKind) { DropWaitingBench(); benchGone = true; SetStatus(BenchGoneText, StatusLevel.Ok); }
-            return offer;
+            if (!TeamApi.HasQueue(r)) return offer == null ? new List<Offer>() : new List<Offer> { offer };
+            var jobs = TeamApi.ParseQueue(r).ConvertAll(q => q.ToOffer());
+            if (offer != null) foreach (Offer j in jobs) if (j.Id == offer.Id && j.ExpiresAt.Length == 0) j.ExpiresAt = offer.ExpiresAt;
+            return jobs;
+        }
+
+        bool Snoozed(string id, DateTime now)
+        {
+            DateTime until;
+            if (!snoozed.TryGetValue(id, out until)) return false;
+            if (until > now) return true;
+            snoozed.Remove(id);
+            return false;
+        }
+
+        /// <summary>
+        /// The job the box is about: the one picked in the list while it is still there, else the oldest. When it changes by itself (the picked job was taken or ended), the box starts its own
+        /// 5 minutes again; a pick in the list (<see cref="Choose"/>) keeps the countdown. No job: the box goes.
+        /// </summary>
+        void Pick()
+        {
+            if (listed.Count == 0) { ClearOffer(); return; }
+            Offer pick = listed.Find(j => j.Id == chosenId) ?? listed[0];
+            if (pick.Id != chosenId) chosenId = null;
+            if (current != null && current.Id == pick.Id) { current = pick; return; }
+            current = pick;
+            answer = OfferAnswer.None;
+            shownAt = null;
+            lastDecision = "";
+            log("offered: " + pick.Id + " " + pick.Kind + " \"" + pick.Title + "\"" + (listed.Count > 1 ? " (" + listed.Count + " jobs listed)" : ""));
+        }
+
+        /// <summary>
+        /// What the heartbeat's jobs mean for a benchmark that is waiting. It stays queued on the server (never declined), so it is listed again and again: that is no new question, and it is taken out of
+        /// the list. When it is no longer listed (cancelled, expired or taken) it is dropped: from a server that sends the list, when it is not in a list that is not full; from one that sends only an
+        /// offer, when the offer is nothing or another benchmark (a screenshot job offered ahead of it is handled as usual).
+        /// </summary>
+        List<Offer> AboutWaitingBench(List<Offer> jobs, bool hasQueue)
+        {
+            if (waitingBench == null) return jobs;
+            string id = waitingBench.Id;
+            bool there = jobs.Exists(j => j.Id == id);
+            bool gone = hasQueue ? !there && jobs.Count < TeamApi.MaxQueue : jobs.Count == 0 || (jobs[0].Id != id && jobs[0].Kind == JobPlan.BenchKind);
+            if (gone) { DropWaitingBench(); benchGone = true; SetStatus(BenchGoneText, StatusLevel.Ok); }
+            jobs.RemoveAll(j => j.Id == id);
+            return jobs;
         }
 
         /// <summary>Forgets the waiting benchmark (gone from the server, claimed by nobody, or the member signed out).</summary>
@@ -393,6 +447,7 @@ namespace DeathMuffinTeam
         {
             if (current != null && lastDecision != "") log("offer " + current.Id + ": cleared");
             current = null;
+            chosenId = null;
             answer = OfferAnswer.None;
             lastDecision = "";
             if (shownAt.HasValue) ui.HideOffer();
@@ -435,7 +490,7 @@ namespace DeathMuffinTeam
                 switch (d)
                 {
                     case OfferDecision.Run:
-                        if (TeamLogic.EntersAfk(settings.Mode, answer, elapsed, d, afk)) EnterAfk();
+                        if (settings.AfkAllowed && TeamLogic.EntersAfk(settings.Mode, answer, elapsed, d, afk)) EnterAfk();
                         if (offer.Kind == JobPlan.BenchKind) AcceptBench(offer);
                         else await RunOfferAsync(offer, false).ConfigureAwait(true);
                         break;
@@ -539,31 +594,53 @@ namespace DeathMuffinTeam
         OfferView View(Offer offer, TimeSpan shownFor)
         {
             var v = new OfferView { Text = TeamLogic.OfferText(offer.Kind, offer.Title, offer.WeightS), Note = TeamLogic.OfferNote(offer.Kind) };
-            v.Countdown = settings.Mode == OfferMode.Ask ? "Runs by itself in " + TeamLogic.Clock(TeamLogic.AutoRunAfter - shownFor) : "Runs when you say yes";
+            for (int i = 0; i < listed.Count && i < RowsShown; i++)
+            {
+                Offer j = listed[i];
+                v.Rows.Add(new OfferRow { Id = j.Id, Text = TeamLogic.OfferText(j.Kind, j.Title, j.WeightS), Who = TeamLogic.JobWho(j.RequestedBy, j.Thread, j.HasBenchmark), Selected = j.Id == offer.Id });
+            }
+            v.More = Math.Max(0, listed.Count - RowsShown);
+            v.Countdown = settings.Mode == OfferMode.Ask ? (v.Rows.Count > 1 ? "The selected job runs by itself in " : "Runs by itself in ") + TeamLogic.Clock(TeamLogic.AutoRunAfter - shownFor) : "Runs when you say yes";
             return v;
+        }
+
+        /// <summary>The person picked a job in the box's list: it is the one Run now (or the countdown) runs. Ignored while a job runs or for a job no longer listed.</summary>
+        public void Choose(string id)
+        {
+            if (running || current == null || id == null) return;
+            Offer pick = listed.Find(j => j.Id == id);
+            if (pick == null) return;
+            chosenId = id;
+            if (current.Id == id) return;
+            current = pick;
+            answer = OfferAnswer.None;
+            lastDecision = "";
+            log("chosen: " + id + " " + pick.Kind + " \"" + pick.Title + "\"");
+            if (shownAt.HasValue) ui.ShowOffer(View(current, utcNow() - shownAt.Value));
         }
 
         async Task DeclineAsync(Offer offer, string reason, DateTime now)
         {
-            bool notNow = reason == "not_now";
-            if (notNow || sentDeclines.Add(offer.Id + "|" + reason))
+            if (reason == "not_now")
+            {
+                // Not now puts off every listed job for 30 minutes, here only (Helix 2026-10-19): the server is not told, so nothing is refused for good, and Show jobs brings them back sooner.
+                foreach (Offer j in listed) snoozed[j.Id] = now + SnoozeAfterNotNow;
+                snoozed[offer.Id] = now + SnoozeAfterNotNow;
+                log("not now: " + listed.Count + " job(s) put off for " + (int)SnoozeAfterNotNow.TotalMinutes + " minutes");
+                listed.Clear();
+                ClearOffer();
+                UpdateIdleStatus();
+                return;
+            }
+            if (sentDeclines.Add(offer.Id + "|" + reason))
             {
                 await api.DeclineAsync(offer.Id, settings.PcId, reason, CancellationToken.None).ConfigureAwait(true);
                 log("declined " + offer.Id + " (" + reason + ")");
             }
-            if (notNow)
-            {
-                snoozed[offer.Id] = now + SnoozeAfterNotNow;
-                ClearOffer();
-                UpdateIdleStatus();
-            }
-            else
-            {
-                // Paused: the box stays hidden and the job stays offered, to be looked at again when the pause ends.
-                if (shownAt.HasValue) { shownAt = null; ui.HideOffer(); }
-                answer = OfferAnswer.None;
-                SetStatus("Paused until " + settings.PausedUntilUtc.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture), StatusLevel.Warn);
-            }
+            // Paused: the box stays hidden and the job stays offered, to be looked at again when the pause ends.
+            if (shownAt.HasValue) { shownAt = null; ui.HideOffer(); }
+            answer = OfferAnswer.None;
+            SetStatus("Paused until " + settings.PausedUntilUtc.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture), StatusLevel.Warn);
         }
 
         /// <summary>The person's answer in the box.</summary>
@@ -581,22 +658,53 @@ namespace DeathMuffinTeam
             await EvaluateAsync().ConfigureAwait(true);
         }
 
-        /// <summary>Tray: Run now. Ends a pause, asks the server for a job and runs it without asking (a yes).</summary>
-        public async Task RunNowAsync()
+        /// <summary>
+        /// Tray: Show jobs. The box again, with every job this PC may take (those put off with Not now too) and its own 5 minutes; the person is here, so a pause and AFK mode end. A job runs only from the
+        /// box (Helix 2026-10-19: the tray has no Run now).
+        /// </summary>
+        public async Task ShowJobsAsync()
         {
             if (!signedIn || stopped) return;
-            if (running) { ui.Notify("A job is running", "The app is already working on a job.", false); return; }
+            if (running) { ui.Notify("A job is running", "The list of jobs comes back when it is done.", false); return; }
+            snoozed.Clear();
             if (settings.IsPaused(utcNow())) { settings.PausedUntilUtc = DateTime.MinValue; save(); }
+            LeaveAfk("the person opened the list of jobs");
+            ClearOffer();
             await HeartbeatAsync().ConfigureAwait(true);
-            if (current == null && !running)
+            if (running) return;
+            if (current == null)
             {
                 if (waitingBench != null) ui.Notify("A benchmark is waiting", "It starts once other programs have used little of the processor for a minute.", false);
-                else ui.Notify("Nothing to run", "No jobs are waiting right now.", false);
+                else ui.Notify("No jobs", "No jobs are waiting right now.", false);
                 return;
             }
-            if (running) return;
-            answer = OfferAnswer.Yes;
             await EvaluateAsync().ConfigureAwait(true);
+        }
+
+        /// <summary>Tray: Run benchmarks. Off: benchmark-only jobs are left alone (not refused: another PC, or this one later, takes them), a benchmark waiting for a quiet PC is let go, and a release
+        /// check skips its benchmark step (JobRunner). The server hears it with the heartbeat sent now.</summary>
+        public async Task SetRunBenchmarksAsync(bool on)
+        {
+            settings.RunBenchmarks = on;
+            save();
+            log("run benchmarks: " + (on ? "on" : "off"));
+            if (!on)
+            {
+                DropWaitingBench();
+                if (current != null && current.BenchmarkOnly) ClearOffer();
+                UpdateIdleStatus();
+            }
+            await HeartbeatAsync().ConfigureAwait(true);
+            if (current != null) await EvaluateAsync().ConfigureAwait(true);
+        }
+
+        /// <summary>Tray: Allow AFK mode. Off: a box that runs out still runs its job, but AFK mode never starts, so the next job asks again; switching it off ends AFK mode.</summary>
+        public void SetAfkAllowed(bool on)
+        {
+            settings.AfkAllowed = on;
+            save();
+            log("allow AFK mode: " + (on ? "on" : "off"));
+            if (!on) LeaveAfk("AFK mode was switched off in the tray");
         }
 
         /// <summary>Tray: Pause 2 hours, or Resume.</summary>

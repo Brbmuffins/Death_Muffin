@@ -15,8 +15,11 @@ Only the accounts on the server's team list (a table the server's team routes re
 
 ## What it promises
 
-- **It asks first.** A job comes with a small box ("Screenshots of a change, about 1 minute"; "Short videos of a change, about 3 minutes" for a clip job: Run now / Not now / Pause 2 hours). With no answer
-  it runs by itself after 5 minutes (mode Ask).
+- **It asks first.** Jobs come with a small box that lists the first 10 jobs this PC may take, oldest first (Helix 2026-10-19): each with what it is and how long it takes ("Screenshots of a change, about
+  2 minutes"), and on a second line who started the Discord thread it came from and the thread's name, without emojis ("War · Bigger skull pile"; the Discord agent sends both), plus "takes the whole screen"
+  for a job with a benchmark; "and N more" when more wait. The oldest is picked; a click on another picks that one (the box still never takes the focus). **Run now** runs the picked job only, **Not now**
+  hides the box for 30 minutes (nothing is refused: the jobs stay this PC's to take, and the tray's Show jobs brings the box back sooner), **Pause 2 hours**. With no answer the picked job runs by itself
+  after 5 minutes (mode Ask), and the next job gets a box of its own.
 - **It never gets in the way.** It waits (no box, no run) while a full-screen app is running (a game, a film, a presentation; Windows hides
   questions then), while Death Muffin is open (a party's host runs the whole party's fight) or while a laptop is on battery, until that ends or
   you say yes. The box is shown without taking the focus, stays on top of other windows like a notification (never over a game: a job waits while one runs),
@@ -46,7 +49,10 @@ Only the accounts on the server's team list (a table the server's team routes re
   the game made, as `<preset>_<shot>.png` (`<build>_<preset>_<shot>.png` with two builds), the clips it recorded, as `<variant>_<clip>.mjpeg`, and sends a benchmark's runs only from the files the game wrote in the setup's own folder.
 - **A job that is refused stays no job.** If the server will not accept a finished job (`done` answered with an error), the app tells it the job failed, with the server's own reason, so a job never stays "running" on the server
   (this PC's heartbeat would keep it alive for ever).
-- **A pause stays a pause.** Pause 2 hours declines jobs for 2 hours (the server is told). Run now ends it.
+- **A pause stays a pause.** Pause 2 hours declines jobs for 2 hours (the server is told). Resume, or the tray's Show jobs, ends it.
+- **Benchmarks only when you want them.** The tray's **Run benchmarks** (on by default, saved on the PC): off, this PC leaves benchmark-only jobs alone (not refused: another PC, or this one
+  once it is back on, takes them), lets go of a benchmark waiting for a quiet PC, and runs a release check's other steps with its benchmark step reported "skipped" (not failed). The server sees the
+  switch in the PC's state (`benchmarks`), so whoever queues release checks can pick a PC that runs them.
 
 ## Modes (tray menu, Mode)
 
@@ -65,13 +71,16 @@ the tray menu gets **End AFK mode** while it is on. While it is on, every new of
 full-screen app running, the battery and a pause hold a job back, and a benchmark still waits for a quiet PC. It ends when you press the button or the menu item, by itself when you start Death Muffin or a
 full-screen app comes up (you are back; while a job runs only Death Muffin counts, because a job's own window can read as full screen on a small screen), and when you pause, change the mode or sign out.
 The next offer then shows the box with its 5 minutes again. Run without asking and Only on a yes never enter it, a yes (Run now) is not AFK, and it is not saved: a restart starts with it off.
+The tray's **Allow AFK mode** (on by default, saved) switches it off: a box that runs out still runs its job, but the next job asks again; switching it off ends AFK mode. The tray's Show jobs ends it too.
 The decisions are `TeamLogic.Decide` (which takes the flag), `EntersAfk` and `AfkEndReason`.
 
 ## The tray menu
 
-The status line (what it is doing), **Run now** (ask the server for a job and run it, even when something above would wait: it is a yes),
-**Pause 2 hours** / **Resume**, **End AFK mode** (only while AFK mode is on), **Show AFK notice** (only after Hide), **Mode**, **Sign in** / **Sign out** (not while a job runs), **Start with Windows** (this user only), **Open the app's folder**,
-**Open the last job's log**, **Quit**. Balloons are for the answer to a click (Run now with nothing waiting), a failed or refused job, being signed out
+The status line (what it is doing), **Show jobs (N)** (the box again with every job this PC may take, those put off with Not now included, and its own 5 minutes; it ends a pause and AFK mode;
+greyed out while nothing waits or a job runs: a job runs only from the box, Helix 2026-10-19),
+**Pause 2 hours** / **Resume**, **End AFK mode** (only while AFK mode is on), **Show AFK notice** (only after Hide), **Mode**, **Run benchmarks** and **Allow AFK mode** (switches, on by default, saved),
+**Sign in** / **Sign out** (not while a job runs), **Start with Windows** (this user only), **Open the app's folder**,
+**Open the last job's log**, **Quit**. Balloons are for the answer to a click (Show jobs with nothing waiting), a failed or refused job, being signed out
 and a newer version that could not be installed.
 
 ## Signing in
@@ -97,11 +106,12 @@ That sign-in **never touches the game's session**, so it cannot stop a game you 
    none after an answer with news (an offer the PC had not seen, a cancel of the job it runs) or after a held answer; at least 5 seconds between two heartbeats when an answer had nothing new and came
    back at once (a server that does not hold requests, an offer waiting for a yes, a cancel list the PC already knows), so the server is never asked in a tight loop; after a failed heartbeat 5 s, then 15 s, then 30 s every time, starting over after an answer.
    Signed out (or the app stopped), the loop only looks once a second whether the PC has signed in again. A sign-in, a mode change and a finished job send one heartbeat at once that asks for an answer at once (`wait` 0).
-2. The offer is decided by `TeamLogic.Decide` (`teamapp/windows/TeamLogic.cs`): ask, run, wait or decline, from the mode, your answer, how long the box
+2. The jobs this PC may take are the heartbeat's `queue` (oldest first, with who asked, the thread and a release job's steps; a server that sends none: its offer alone), less a benchmark already
+   accepted and, with Run benchmarks off, the benchmark-only ones. The box is about the picked job, else the oldest; when that one goes (taken by another PC, cancelled) the next one gets the box's
+   5 minutes afresh. Its fate is decided by `TeamLogic.Decide` (`teamapp/windows/TeamLogic.cs`): ask, run, wait or decline, from the mode, your answer, how long the box
    has been up, and the exceptions above. The 5 minutes count from when the box is shown, so a wait never uses them up.
-3. **Not now** declines the job for this PC (the job stays queued for the others, and the server skips it for this PC) and the app does not ask about it again for
-   30 minutes either. **Pause** declines it once with
-   the reason `paused`. A job whose kind this version cannot run is declined once and the status asks for a newer app.
+3. **Not now** puts every listed job off for 30 minutes, on this PC only: the server is not told, so nothing is refused for good. **Pause** declines the picked job once with
+   the reason `paused`. A job whose kind this version cannot run is declined once (`not_now`, for good on this PC) and the status asks for a newer app.
 4. A yes (or the 5 minutes, or auto mode) claims the job. If another PC got it first, the app lets it go. A benchmark is accepted and claimed later (see "The benchmark job").
 5. The payload is checked (`JobPlan.cs`, by the job's kind). `shots`: the files (`DeathMuffinDebug.exe` with `DeathMuffinDebug.pck` beside it, `DeathMuffin.assets.pck` and the core library),
    the shot plan, the presets (low, medium, high, ultra) and the game options; or, instead of `files`, a `builds` list of a `before` and an `after` build, each with its own files. `clip`: see "The clip job" below.
@@ -164,7 +174,7 @@ under the member's account, marked as team-PC runs. The numbers only mean someth
   "The benchmark on Low was disturbed 3 times (...), so no numbers were sent. Keep other programs and Death Muffin closed while it runs." A full-screen app is not a disturbance during a run (the benchmark's own window is one).
 - **The result.** The last entry of each setup's `pending.json` (the payload the game would send, at most 64 KB; a cancelled one is no result) goes into **done** as `runs`, in setup order, all in one call:
   a setup that fails fails the job and nothing is sent. The server checks each run as it checks one a player sent and marks it as a team-PC run.
-- **It asks first, like every job.** A benchmark is offered in the same box (Run now / Not now / Pause 2 hours), under the same modes and the same exceptions (`TeamLogic.Decide`: Ask accepts by itself after 5 minutes
+- **It asks first, like every job.** A benchmark is listed in the same box (Run now / Not now / Pause 2 hours; with the tray's Run benchmarks off it is not listed at all), under the same modes and the same exceptions (`TeamLogic.Decide`: Ask accepts by itself after 5 minutes
   unless a game, a full-screen app or the battery is in the way, Run without asking, Only on a yes). The quiet wait above starts only after the yes (or the automatic start), and the box says so: "It starts once other programs
   have used little of the processor for a minute, takes the whole screen and runs at normal priority. A busy processor restarts it."
 
@@ -273,10 +283,14 @@ long poll against the live server through nginx (a held heartbeat ending at once
 (`GetLastInputInfo`) counting a key or the mouse and nothing the app or the game does; the game really running at normal priority (Task Manager, Details) and the job refused when Windows will
 not allow it; the benchmark's window full screen at the screen's resolution and in front with the focus (a window picked over it staying picked), and not counting as input; the release build honouring `--bench-quit`, `--bench-dir` and `--bench-preset` (exit codes 0, 1, 2) and leaving
 `pending.json`; a disturbed run on a real PC (a busy program started during it) being discarded and retried; the box's note; and one whole benchmark job against the server, including a screenshot job interleaved with a waiting benchmark (the controller reads the PC on the interface thread once a second). Also on a real PC: `--audio-driver Dummy` really silent (loading screen and game), a screenshot job's window really never seen (no boot splash, no taskbar button: it starts minimized from `override.cfg`
-and is restored left of every monitor; the pictures still taken, at their exact sizes: Godot and the driver draw a window that is off screen), a cancel in the heartbeat reply stopping a running game; the AFK notice (shown without taking the keyboard or the focus, End AFK mode working from it and from the tray menu).
+and is restored left of every monitor; the pictures still taken, at their exact sizes: Godot and the driver draw a window that is off screen), a cancel in the heartbeat reply stopping a running game; the AFK notice (shown without taking the keyboard or the focus, End AFK mode working from it and from the tray menu); the box's job list (a click on a row picks it without taking the keyboard
+or the focus, the box growing with the list and staying in its corner).
 
 ### Changelog
 
+- **0.4.4** (2026-10-19) - Helix's job list: the box lists the first 10 jobs oldest first, each with who started its Discord thread and the thread's name (without emojis), and a click picks the one Run now
+  runs; Not now hides the box for 30 minutes instead of refusing the job for good; the tray's Run now became **Show jobs** (a job runs only from the box); the tray's **Run benchmarks** (off: benchmark-only
+  jobs are left alone and a release check's benchmark step is skipped) and **Allow AFK mode** (off: a box that runs out runs its job, the next one asks again). The heartbeat says whether benchmarks are on.
 - **0.4.3** (2026-10-19) - Benchmarks run full screen, windowed (Godot's `--fullscreen`: borderless over the whole screen at its own resolution) and in front with the focus, instead of a
   1600x900 window sent behind every other window (Helix: "run only benchmarks in fullscreen-windowed in the foreground"; the taskbar button flashed and the window was never seen). Runs from
   now on are at the screen's resolution: compare them with each other, not with the 1600x900 runs before. Every other run stays hidden.
