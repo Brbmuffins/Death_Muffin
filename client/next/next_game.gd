@@ -417,6 +417,7 @@ func _start_hud() -> void:
 		if a != null:
 			a.play_sfx(n))
 	await ui.warm()
+	ui_host.vm.warm_icons()   # the bar's greyed rites (a slot greys when its rite cannot be cast: baked now, not in the fight)
 	if codex != null:
 		codex.seed_ui()
 	if belt() != null:

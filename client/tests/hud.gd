@@ -3,7 +3,7 @@ extends SceneTree
 ## reads the core correctly and keeps to its pools:
 ##   - the target frame: name, hp, elite, affix chips and statuses (`core.statuses(id)` bytes) of the enemy a cast was aimed at, held for 4 s, gone with the enemy;
 ##   - the minimap: its dot lists equal the core's tables (living enemies, elites flagged, thralls, corpses) and the MultiMesh draws them;
-##   - the hotbar: cooldowns after a cast, essence, locked rites, the "no corpse" and "no legion" dimming from the corpses near the hero and the legion;
+##   - the hotbar: cooldowns after a cast, essence, locked rites, the "no corpse" and "no legion" dimming from the corpses near the hero and the legion, every grey baked on loading;
 ##   - the thrall count, the pips and the red ones; XP and level; the area name and banner; the death veil;
 ##   - the floating numbers: the caps (14 hit, 5 dot, 6 thrall, 22 total, crits 4 past), the events that make them (a caster's hit number, a DoT lump, a thrall's blow), the
 ##     timeline of one number, expiry;
@@ -256,10 +256,12 @@ func hotbar_and_cooldowns() -> void:
 	check(left > 0.0 and near(float(s0["left_ms"]), left, 1.0) and float(s0["total_ms"]) >= float(s0["left_ms"]), "after a cast the slot carries the caster's cooldown (%.0f of %.0f ms)" % [left, s0["total_ms"]])
 	check(hud._slots[0]._cdtext.text != "" and DmHudSlot.cd_pct(left, float(s0["total_ms"])) > 0, "the slot shows the seconds and a sweep ('%s')" % hud._slots[0]._cdtext.text)
 	check(float(h.last_vm()["essence"]) < hero.resource_max or float(s0["cost"]) == 0.0, "the cast spent essence (the orb follows)")
+	var packed := DmHudAtlas.used_pixels()
 	hero.resource = 0.0
 	h.refresh()
 	var s1: Dictionary = h.last_vm()["slots"][0]
 	check(not bool(s1["affordable"]) and hud._slots[0]._dim == DmHudAtlas.DIM_HARD, "without essence the slot dims (the greyed variant of its icon)")
+	check(DmHudAtlas.used_pixels() == packed, "the greyed icons were baked on loading (DmNextHudVm.warm_icons): dimming every slot bakes nothing in the fight (%d -> %d px)" % [packed, DmHudAtlas.used_pixels()])
 	hero.resource = hero.resource_max
 	h.refresh()
 	await process_frame
@@ -273,7 +275,9 @@ func corpse_and_legion_dimming() -> void:
 	for id in core.corpse_ids():
 		core.corpse_consume(id, hero.owner_peer, "consumed")
 	await ticks(2)
+	var packed := DmHudAtlas.used_pixels()
 	h.refresh()
+	check(DmHudAtlas.used_pixels() == packed, "the \"no corpse\" grey was baked on loading too (%d -> %d px)" % [packed, DmHudAtlas.used_pixels()])
 	var s: Dictionary = h.last_vm()["slots"][exhume]
 	check(s["needs"] == "corpse" and hud._slots[exhume].needs == "corpse" and hud._slots[exhume]._dim == DmHudAtlas.DIM_SOFT, "no corpse near the hero: Exhume says so and is dimmed")
 	check(hud._slots[exhume]._need.text == "no corpse", "the slot's note: '%s'" % hud._slots[exhume]._need.text)

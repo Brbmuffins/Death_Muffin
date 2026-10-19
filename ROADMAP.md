@@ -105,8 +105,12 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   next time its art changes), and since 2026-10-19 a test fails when play draws a material the loading screen never drew
   (`client/tests/warm_coverage.gd`: every rite of the five disciplines, a fight, a boss, waves, loot, worn gear and pets); it found nine
   gaps (a dropped item's icon, name and light, and six pieces of worn gear and pets) and the warm-up now draws them. The test cannot see
-  lighting variants, presets other than High, the other areas and bosses, UI panels, death and respawn, or other players' effects. After:
-  the team app's stutter test confirms it on a real graphics card once it runs.
+  lighting variants, presets other than High, the other areas and bosses, UI panels, death and respawn, or other players' effects. The team
+  app's stutter test ran on Helix's RTX 4070 SUPER on 2026-10-19 (every rite of the five classes once, High): p99 2.8 ms, the worst frame 40 ms
+  on the Reaper's Soul Burst, which was the bar greying six spells at once (fixed the same day: the greyed icons are baked on loading); five
+  casts went over 8 ms (Ossuary Wall 14, Grave Frost 10, Ivory Cleave 9, Exhume 8), and the casts still compiled 395 shader pipelines, the same
+  ones again in every new game (Soul Siphon 18 each time). After: the warm-up also draws what those casts compile, a new game compiles nothing
+  the one before it did, and the next stutter test shows no cast over 8 ms.
 - [x] **New: play reports.** Done 2026-10-19: when a play session ends (log out, switch character, quit; a crash is sent at the next start) the
   game sends a small summary: average, p99 and worst frame times, hitches, the graphics preset and card, time and deaths per area, and where
   the session ended (nothing personal). The site's play reports page shows them per release, beside the server's own numbers over the same
