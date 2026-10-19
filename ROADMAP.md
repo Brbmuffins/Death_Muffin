@@ -116,7 +116,7 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   on the Reaper's Soul Burst, which was the bar greying six spells at once (fixed the same day: the greyed icons are baked on loading); five
   casts went over 8 ms (Ossuary Wall 14, Grave Frost 10, Ivory Cleave 9, Exhume 8), and the casts still compiled 395 shader pipelines, the same
   ones again in every new game (Soul Siphon 18 each time). The two runs after the fix (releases 1852fe7 and 578df6f, 2026-10-19) had no cast
-  over 8 ms (worst 6.6 and 6.5 ms, p99 2.4 ms) and still about 400 compilations, which Godot builds in the background, so on that card they no
+  over 8 ms (worst 6.6 and 6.5 ms, p99 2.4 ms; the third, of b0b717a, one: the Mourner's Bone Needle at 12.9 ms, 5.6 the run before) and still about 400 compilations, which Godot builds in the background, so on that card they no
   longer show as hitches; a weaker card (War's GTX 970) is the open question. The repeats are not materials freed and made again (a material
   made again does not compile again in Godot 4.7.2: a small test on the server's software renderer, 2026-10-19). Since 2026-10-19 the stutter test
   counts each kind of compilation apart, and #build-alerts says how many ran in the background, so the next runs show which ones make a frame wait.
@@ -164,14 +164,16 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   - Proven on Helix's PC (RTX 4070 SUPER) on 2026-10-19 with apps 0.3.1 to 0.3.9: a full release check with every step (24 pictures at
     their exact sizes, the stutter test, the benchmark at Low 691 and Medium 597 fps with no hitches, 30 minutes of soak with flat memory).
     Its first finding was a real bug: the Windows release build crashed while closing, after every quit; since 2026-10-19 it ends its own
-    process once its shutdown is done (B60; the cause inside the engine is in KNOWN-GAPS "Stability"). The app updates itself between jobs,
+    process once its shutdown is done (B60; the cause inside the engine is in KNOWN-GAPS "Stability"), and the next release check passed
+    every step with no crash (Low 676, Medium 639 fps). The app updates itself between jobs,
     so a check never runs on an old app.
   - Still to do: War's PCs (the Intel Arc and the Alienware's GTX 970) have not signed in to the app yet, so the release checks and
     benchmarks cover one graphics card; the weak-PC floor (B39) and the Ultra Low decision below wait on them.
   - Fix: a release that does not start on Windows reached players before any team PC tried it (the server's boot test runs the Linux build).
     Done 2026-10-19 (B61): before the switch to a new build, a free team PC starts it to the first screen and quits one while it loads
     (about 10 seconds); if the game fails there, the build is not published and the publish says why. No free PC, or none taking it within
-    2.5 minutes, lets the release go out as before (`server/death-muffin/team-gate.sh`; README "Pre-release check").
+    2.5 minutes, lets the release go out as before (`server/death-muffin/team-gate.sh`; README "Pre-release check"). Proven on Helix's PC
+    the same day: taken after 5 seconds, passed in 14.
   - With the art rebuild (Phase 4): lighting bakes on the strongest graphics card available instead of by hand, the result coming back as
     a proposal.
   - Later: a co-op test between two team PCs.
