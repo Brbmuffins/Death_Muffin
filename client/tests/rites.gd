@@ -337,9 +337,27 @@ func raise_at(pos: Vector3, kind := "normal", enemy := "robber", elite := false)
 
 func the_catalogue() -> void:
 	var ids := DmRiteRegistry.ids()
-	check(ids.size() == 35, "the registry holds the necromancer's 25 rites and the Reaper's 10 (%d)" % ids.size())
-	for reaper in ["scythe_sweep", "scythe_throw", "reap", "wraith_walk", "soul_burst", "harvest_spin", "unleash_souls", "soul_harvest", "scythe_weave", "haunting_wraith"]:
-		check(DmRiteRegistry.has(reaper), "the Reaper's %s is registered" % reaper)
+	# The rites of every playable class's kit, read from the data (hotbar, grimoire, primaries, RMB, signatures), never a typed count:
+	# a new spell or a newly playable class needs no edit here.
+	var families := {}
+	for d in (DmCombatData.disciplines()["disciplines"] as Dictionary).values():
+		if DmCharacterBuild.is_playable(float(d["classIndex"])):
+			families[String(d["family"])] = true
+	var want := {}
+	for fam in families:
+		var kit: Dictionary = DmContent.kit(String(fam))
+		for key in ["hotbar", "grimoire", "primaries"]:
+			for r in kit.get(key, []):
+				want[String(r)] = fam
+		if kit.has("rmb"):
+			want[String(kit["rmb"])] = fam
+		for r in (kit.get("signatures", {}) as Dictionary).values():
+			want[String(r)] = fam
+	check(not want.is_empty() and ids.size() == want.size(), "the registry holds exactly the playable kits' %d rites (%d registered)" % [want.size(), ids.size()])
+	for rite in want:
+		check(DmRiteRegistry.has(rite), "the %s kit's %s is registered" % [want[rite], rite])
+	for rite in ids:
+		check(want.has(String(rite)), "the registered %s is in a playable class's kit" % rite)
 	for rite in ids:
 		check(DmRiteRegistry.module(rite) != null and DmRiteRegistry.module(rite).id == rite, "%s has its module" % rite)
 	check(DmRiteCaster.WITHERED_WIRE == DmStatusSet.IDS.find(&"withered"), "the caster reads Withered by its wire id")

@@ -2,8 +2,8 @@
 
 `DmRiteCaster` (`dm_rite_caster.gd`) is a Node named `Rites`, a child of every player body on every peer (same NodePath, because RPCs resolve by path).
 It is the shared plumbing: intent RPC, owner / cooldown / essence validation through `DmAbilities`, event broadcast, once-per-peer playback, state
-replication. **Each rite is its own module** `rite_<id>.gd` (a `DmRiteModule`), listed with one line in `dm_rite_registry.gd`. 35 rites are registered; the last ten
-are the Reaper's (family `reaper`, class 11; shared helpers in `dm_reaper_rites.gd`): scythe_sweep (LMB), scythe_throw, reap, wraith_walk,
+replication. **Each rite is its own module** `rite_<id>.gd` (a `DmRiteModule`), listed with one line in `dm_rite_registry.gd`; every rite of a playable class's kit is registered (the `rites` suite
+compares the registry with the kits in the data). The Reaper's are (family `reaper`, class 11; shared helpers in `dm_reaper_rites.gd`): scythe_sweep (LMB), scythe_throw, reap, wraith_walk,
 soul_burst (keys 1-4), harvest_spin (RMB) and unleash_souls (R, her kit's signature: 1 soul and then the rest of the bag become homing wisps that strike the enemy nearest
 to each and circle her while there is none; host state `mem("unleash_souls").wisps`; the Reaper's armor set Soul Harbinger's Raiment, `DmReaperSet`, adds rite keys to her mods
 while worn: 2 pieces `scytheRadiusMult` 2 for scythe_throw, 4 pieces `soulShield` (the wisps' damage becomes barrier, refreshed by the next release), 5 pieces `soulScythes` 15 (a scythe_throw left where each wisp lands); its pieces are the legendary items `leg_soul_harbingers_<part>`, `server/rules/content/legendarySets.ts`).

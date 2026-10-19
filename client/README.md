@@ -78,7 +78,7 @@ Run `client/setup.sh` in every new checkout or worktree (it lists the extension 
 | `draw_budget` | the 3D draw calls of the Graves' Full Party counted from data: the crowd shows only the groups that hold instances, the world and the whole stay inside their budgets, and 24 bodies sinking with three shrouded elites cost the crowd two draw calls more ("The draw budget"; about a minute) |
 | `game_scene` | the game scene on the core: 60 s of an offline run in the Graves |
 | `warm_coverage` | the warm-up covers what play uses: every material of the five disciplines' hotbars and kits, a fight, the boss, waves, loot, hurt and healed, worn gear and pets is one the loading screen drew; each gap is printed with its node and rite (about a minute; `next/perf/README.md`) |
-| `rites` | the necromancers' 25 rites on the core and the Reaper's, a fight (90 s of game time; "The Gravecaller's rites") |
+| `rites` | every rite of the playable kits (the necromancers' and the Reaper's) on the core, a fight (90 s of game time; "The Gravecaller's rites") |
 | `boss` | the Gravedigger King on the core: his brain replayed against recorded scenarios, his fight, the thralls, the rites, his defeat and a new summon |
 | `boss_abbess`, `boss_congregation`, `boss_prelate`, `boss_saint`, `boss_regent`, `boss_mire` | the six other bosses, one suite each on `boss_base.gd`: the recorded scenarios replayed, the summon at its altar, its fight by hand, thralls, rites, wipe, defeat and rewards, the real clock (about 30 s each; "The bosses") |
 | `boss_meta` | the Covenant Seal's Empowered call and the boss key prompt on the mock backend, the first-kill trophies, a bound summon |
@@ -309,7 +309,7 @@ bodies a tick, the core's deaths, the offering). It prints INFO lines: what a wa
 ## The Gravecaller's rites
 
 The rites (`next/rites/`, DECISIONS B42) are GDScript and call the core synchronously: a rite damages with `core.damage(id, amount, source)` and reads `{dealt, killed}` at once, so Wailing Skull's
-extra leap on a kill, Bone Prison skipping the dead and the Litany's loops resolve inside the cast. `next/rites/` has the necromancer's 25 rites and the Reaper's ten (her shared helper `DmReaperRites`: the cone and circle pick, the blow with its life steal, the soul bag).
+extra leap on a kill, Bone Prison skipping the dead and the Litany's loops resolve inside the cast. `next/rites/` has every rite of the necromancer's and the Reaper's kits (her shared helper `DmReaperRites`: the cone and circle pick, the blow with its life steal, the soul bag).
 The registry lists all 35; a rite with no module (the five later classes') is refused `unavailable`. `DmNextGame.attach_caster` gives the hero his `Rites` node (a `DmRiteCaster`; the game scene is its `DmRiteWorld`) and `DmRiteHotbar.wire`
 connects the input. The numbers (spell power, cooldowns, costs, runes) are `DmAbilities`, `DmSimData` and `abilities.json`; the thralls' stats `DmThralls.raise_stats / colossus_stats`.
 
