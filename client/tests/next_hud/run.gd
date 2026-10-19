@@ -134,6 +134,7 @@ func _run() -> void:
 	b.heal(1e6)
 	events.clear()
 	var needle_before := caster.cooldown_left("bone_needle")
+	var drawn_before: int = hud.float_layer.drawn
 	g.input.hotbar.emit(0, g.core_host.enemy_position(foe), foe)
 	await ticks(2)
 	check(caster.cooldown_left("bone_needle") > needle_before, "LMB casts bone_needle")
@@ -146,7 +147,7 @@ func _run() -> void:
 		await process_frame
 	check(hud.vm.get("target") != null or not alive.call(), "target frame in the HUD vm (empty only once the target died)")
 	check(await until(func() -> bool: return not floats("hit").is_empty() or not floats("crit").is_empty(), 4.0), "a rite hit floats a damage number")
-	check(hud.float_layer.alive > 0, "the number is drawn on the HUD float layer (a pool: DmHudFloats)")
+	check(hud.float_layer.drawn > drawn_before, "the number is drawn on the HUD float layer (a pool: DmHudFloats)")
 	# ---- player damage
 	events.clear()
 	var hp0 := b.hp
