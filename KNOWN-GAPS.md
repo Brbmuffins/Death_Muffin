@@ -148,6 +148,13 @@ polish list). Also:
 - A suite that skips shows as `no result line` in `tools/rebuild/run-client-tests.sh` (coop, coop_bosses and social print `<suite>: SKIPPED`, which
   the runner does not read), so a check's failure does not say why; and `check-godot.sh`'s summary counts the re-runs again (24 suites with 3
   failing showed as "27 suites, 6 FAILED").
+- The automatic one-time re-run of 1-3 failing suites (the Discord agent's runner, `failedSuites` in `server/death-muffin/discord-agent/runner/core.cjs`,
+  and `ship.sh`) reads only suite names without `/`. A failing `relay/udp_run` or `perf/first_frame_run` alone gets no re-run; worse, when
+  another suite fails beside it and passes its re-run, the check counts as passed with the nested suite still failing (found 2026-10-19).
+- `client/tests/next_clarity`, `next_combat_odds` and `data` hard-code the number of rites and of combat abilities, `next_combat_odds` keeps
+  its own table of each rite's sounds, and nothing updates the counts in `client/data/content/manifest.json` (rules-core) for a new rite, so
+  every new spell fails four suites until they are edited by hand (War's Haunting Wraith, the 35th rite, failed its ship on 2026-10-19 on
+  those counts alone).
 
 ## Stability
 

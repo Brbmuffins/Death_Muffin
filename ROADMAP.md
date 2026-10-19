@@ -76,7 +76,9 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   its screenshots are the game's, rendered on the server the way it plays (until the team app takes them over), and a "Try it" preview without
   new art uses the art pack of the player's installed game instead of carrying its own 500 MB. Fixed 2026-10-19: the co-op and friends
   suites (coop, coop_bosses, social) start the real lobby, which a job's copy of the game could not run without the lobby's packages, so
-  every check that picked them failed (War's Haunting Wraith, three times on 2026-10-18); the check now brings those packages in.
+  every check that picked them failed (War's Haunting Wraith, three times on 2026-10-18); the check now brings those packages in. Fixed
+  2026-10-19: a round ran its whole check twice, about 20 minutes each (the agent in its turn, then the runner before the proposal); the
+  agent now runs only the suites it names (`check-godot.sh --rerun`), and the whole check is the runner's.
 - [x] **Fix: a document change from the Discord agent shipped a game update.** Done 2026-10-18: an approved change that touches only
   documents (Markdown files, docs/) goes to `main` and stops there, with no game build, deploy or notice, and the thread says so; when someone
   shares an idea the roadmap lacks, the agent offers to add it to "Ideas" with its section (server/death-muffin/discord-agent/README.md).

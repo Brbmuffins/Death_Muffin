@@ -1063,6 +1063,8 @@ test('godot mode: a suite that fails once is re-run alone before an agent turn i
   const a2 = fs.readFileSync(path.join(w2.cfg.stateDir, 'audit.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
   assert.ok(a2.some((e) => e.event === 'flake-rerun' && e.ok === false));
   const vf = a2.find((e) => e.event === 'verify-failed'); assert.match(vf.why, /next_bosses .*exit=1[\s\S]*FAIL boss phase timing/); assert.doesNotMatch(vf.why, /exit=0/);
+  const j2 = Object.values(w2.runner.jobs()).find((j) => j.threadId === t2.id);   // the fix-up turn names the agent's command (the whole check is the runner's)
+  assert.match(fs.readFileSync(path.join(j2.worktree, '.fake-calls'), 'utf8'), / fixup-rerun$/m);
 });
 
 test('failedSuites: 1-3 failing suite lines re-run, anything else does not', () => {
@@ -1122,11 +1124,12 @@ test('godot mode: !shot is available, the agent may run shot-godot.sh (not shot.
   const { claudeArgs, systemPrompt } = require('../runner/lib/agent.cjs');
   const a = claudeArgs(w.cfg, j); const rest = a.slice(a.indexOf('--allowedTools') + 1); const allowed = rest.slice(0, rest.findIndex((x) => x.startsWith('--')) >>> 0);
   const wt = `/${j.worktree}/**`;
-  assert.deepEqual(allowed, [`Read(${wt})`, `Edit(${wt})`, `Write(${wt})`, `Glob(${wt})`, `Grep(${wt})`, `Bash(${w.tools}/agit *)`, `Bash(${w.tools}/check-godot.sh)`,
+  assert.deepEqual(allowed, [`Read(${wt})`, `Edit(${wt})`, `Write(${wt})`, `Glob(${wt})`, `Grep(${wt})`, `Bash(${w.tools}/agit *)`, `Bash(${w.tools}/check-godot.sh --rerun *)`,
     `Bash(${w.tools}/shot-godot.sh)`, `Bash(${w.tools}/shot-godot.sh *)`, `Bash(${w.tools}/build-art.sh *)`, `Bash(${w.tools}/render-model.sh *)`, `Bash(${w.tools}/build-sound.sh *)`, 'WebSearch', ...w.cfg.webDocDomains.map((h) => `WebFetch(domain:${h})`)]);
   assert.ok(!allowed.includes('Read') && !allowed.includes('WebFetch'), 'no bare (any-path / any-host) grants');
+  assert.ok(!allowed.includes(`Bash(${w.tools}/check-godot.sh)`), 'the whole check is the runner\'s: the agent names its suites');
   assert.ok(j.worktree && path.isAbsolute(j.worktree));
-  const sp = systemPrompt(w.cfg, j); assert.match(sp, /origin\/godot-port/); assert.ok(sp.includes(`${w.tools}/check-godot.sh`) && sp.includes(`${w.tools}/shot-godot.sh`) && !sp.includes('__TOOLS__') && !/shot\.sh/.test(sp));
+  const sp = systemPrompt(w.cfg, j); assert.match(sp, /origin\/godot-port/); assert.ok(sp.includes(`${w.tools}/check-godot.sh --rerun <suite>`) && sp.includes(`${w.tools}/shot-godot.sh`) && !sp.includes('__TOOLS__') && !/shot\.sh/.test(sp));
   assert.match(sp, /at most 4|Never more than 4/); assert.match(sp, /BRANCH PREVIEW/); assert.match(sp, /Only when asked/); assert.match(sp, /Do NOT take screenshots by default/);
   // web mode is unchanged
   const wa = makeWorld(); const wj = { ...j, model: 'sonnet' }; const wargs = claudeArgs(wa.cfg, wj);

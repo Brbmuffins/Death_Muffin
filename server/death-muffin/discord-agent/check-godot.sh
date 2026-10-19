@@ -7,19 +7,20 @@
 # (tools/assets/check-models.mjs), the game's build products (client-prep.sh outside the sandbox from the trusted cache, client-prep-in.sh inside: the combat
 # core, the import, the crowd's bakes; what the change touched is rebuilt), then tools/rebuild/run-client-tests.sh (one line per suite: the game's suites,
 # client/tests). Prints per-suite lines and a final "GODOT TESTS: ..." line; exit 1 if any suite or step fails.
-# Two modes. QUICK (default; the agent in-turn and the runner before a proposal): hygiene + only the suites the change can affect
+# Two modes. QUICK (default; the runner before a proposal): hygiene + only the suites the change can affect
 # (tools/rebuild/affected-suites.mjs: changed suites, suites referencing a changed file, a small smoke set; ALL when the change is too central or too wide),
 # run through `run-all-tests.sh --only`. FULL (`--full`; ship.sh before publishing): hygiene + every suite, about 9 minutes. Summary line:
 # "GODOT TESTS: quick (14 suites) — 14 passed" / "GODOT TESTS: full (101 suites) — 101 passed" (", N FAILED" appended on failure).
-# RERUN (`--rerun a,b`; the runner and ship.sh, once, for the few suites a check just failed): hygiene + exactly those suites, one at a time. A suite
-# that fails under load (another ship's client export) passes here and costs no agent turn; a real failure fails again.
+# RERUN (`--rerun a,b`; the runner and ship.sh, once, for the few suites a check just failed; the agent, the only way it may run the check, for the
+# suites it needs): hygiene + exactly those suites, one at a time. A suite that fails under load (another ship's client export) passes here and costs no
+# agent turn; a real failure fails again. Names are suites of client/tests (`rites`, `next_front`, `relay/udp_run`): letters, digits, `_`, `-`, `/`.
 # Run from the worktree root (the agent's cwd). Env: GODOT (default /home/ubuntu/tools/godot/godot), DM_TEST_JOBS (optional: passed as --jobs N), DM_CLIENT_CACHE (client-prep.sh),
 # DM_CLIENT_PREP / DM_CLIENT_PREP_IN (tests: stand-ins for client-prep.sh and client-prep-in.sh).
 set -uo pipefail
 MODE=quick
 RERUN=""
 while [ $# -gt 0 ]; do case "$1" in --full) MODE=full;; --quick) MODE=quick;;
-  --rerun) [[ "${2:-}" =~ ^[A-Za-z0-9_-]+(,[A-Za-z0-9_-]+)*$ ]] || { echo "usage: check-godot.sh --rerun suite[,suite...]" >&2; exit 2; }; MODE=rerun; RERUN="$2"; shift;;
+  --rerun) [[ "${2:-}" =~ ^[A-Za-z0-9_/-]+(,[A-Za-z0-9_/-]+)*$ ]] || { echo "usage: check-godot.sh --rerun suite[,suite...]" >&2; exit 2; }; MODE=rerun; RERUN="$2"; shift;;
   *) echo "usage: check-godot.sh [--quick|--full|--rerun a,b]" >&2; exit 2;; esac; shift; done
 export MODE RERUN
 TOP=$(git rev-parse --show-toplevel) || exit 2

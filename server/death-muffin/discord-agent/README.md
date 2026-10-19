@@ -22,7 +22,7 @@ The live config must say `"mode": "godot", "baseBranch": "main"` (a restart pick
 retired web mode and defaults to `mode: "web"`, `baseBranch: "master"`. `baseBranch` must match `^[A-Za-z0-9._/-]+$` (not start with `-`, contain `..`, `//`, end in `/` or `.lock`);
 a bad value or mode makes the runner refuse to start. It is used for the worktree base (`origin/<baseBranch>`), `!sync`, the ship merge and push, messages and the compare link.
 
-In godot mode: tests `check-godot.sh` (agent, runner and ship.sh) · preview `preview-godot.sh` (a Windows `.zip`) · screenshots `shot-godot.sh` / `!shot`
+In godot mode: tests `check-godot.sh` (runner and ship.sh; the agent only `--rerun <suites>`) · preview `preview-godot.sh` (a Windows `.zip`) · screenshots `shot-godot.sh` / `!shot`
 · prompt `PROMPT-godot.md` · tier rules `godotTiers` (picked into `cfg.tiers` by `loadConfig`) · ship: merge, check-godot, backup + `ROLLBACK.sh`, push,
 `publish-godot-client.sh` · rollback folder `backup-pre-release-godot-<stamp>`.
 
@@ -62,7 +62,10 @@ through dependents), `client/session`, the shared test helpers, the runner), mor
 **`--full`** (`ship.sh` passes it only for a sensitive-tier change; other ships run the quick check on the merged tree, dev build, owner 2026-10-10) runs every suite.
 **`--rerun a,b`** runs hygiene plus exactly those suites, one at a time: when a check fails only 1-3 suites (nothing outside the suites), the runner (before a proposal;
 audit `flake-rerun`) and `ship.sh` re-run just those once before an agent turn is spent or the ship fails; a pass reads `... — passed (x passed on a re-run)`. The failure
-handed to the agent leaves out the passing suite lines. `DM_TEST_JOBS=N` adds `--jobs N`. The progress total is the number of selected suites. It ends with
+handed to the agent leaves out the passing suite lines. The agent may run the check only this way, naming the suites it needs
+(`Bash(<tools>/check-godot.sh --rerun *)`; a name is a suite of `client/tests`, `/` allowed, no dots): to debug the suites the runner reported failing, or the
+test it wrote. The whole quick check is the runner's, after the turn, so a round runs it once; the fix-up turn names the command, and art and sound imports use `--rerun code_load`.
+`DM_TEST_JOBS=N` adds `--jobs N`. The progress total is the number of selected suites. It ends with
 `GODOT TESTS: quick (14 suites) — 14 passed` or `GODOT TESTS: full (70 suites) — 70 passed` (`, N FAILED` on failure; `targeting fell back to all` is noted); the proposal's
 "Tests" field reads `quick check: N suites — ...`. It exits non-zero on any failing suite or step, and has a hard 85 minute limit.
 
@@ -144,8 +147,8 @@ the thread is told no game update went out, the ships log records `type: docs`).
 other down. A job's check gets the import from the trusted cache (`client-prep.sh`); the client publish still imports from scratch.
 A message sent while a turn runs is handled by the next turn, and the finished turn posts no proposal for the outdated state (audit `proposal-skipped`), so one proposal comes with everything. Screenshot runs (`shot-godot.sh`, `--qa --shot-plan`) skip the game's start-up warm-up (software GL: 192 s -> 41 s per start).
 A reply to an open proposal that changes nothing (a thank-you, a question) is answered, and the proposal stays as it is: same commit and clean
-workspace means no new checks, preview or re-post (`proposal-kept` in the audit log), and ✅ works right away. The prompt also tells the agent not to
-run `check-godot.sh` for such messages.
+workspace means no new checks, preview or re-post (`proposal-kept` in the audit log), and ✅ works right away. The prompt also tells the agent to run
+no check for such messages.
 Rollback undoes the live release only; revert the commit on the base branch afterwards.
 
 ## Safety summary
@@ -158,7 +161,7 @@ Rollback undoes the live release only; revert the commit on the base branch afte
   `test/sandbox.test.cjs` runs each real script with stand-in tools that try to write `/var/www/death-muffin/client`, `/opt/*`, `/game`, `/home/ubuntu`,
   a sibling worktree and the host `/tmp`, after trying to remount `/` and its parents rw, umount `/tmp` and `/dev/shm`, and unshare again. `/proc`, `/sys`, `/dev` stay as they are (kernel views, root-owned); `/dev/shm` is private.
 - AI box: `claude -p --restricted --permission-mode dontAsk`, tools = Read/Edit/Write/Glob/Grep + `agit` (filtered git) +
-  `check-godot.sh` and `shot-godot.sh` (unshare -rnm: no network, home read-only except the worktree). No push, no deploy, no secrets in its env.
+  `check-godot.sh --rerun <suites>` and `shot-godot.sh` (unshare -rnm: no network, home read-only except the worktree). No push, no deploy, no secrets in its env.
 - Discord's 2000-character limit: agent replies are split across messages (code blocks kept balanced) and anything over ~4 messages is a preview plus `reply.md` (`runner/lib/discordText.cjs`). A long paste arrives as Discord's `message.txt`; the adapter reads text attachments from Discord's CDN only (≤100 KB each, ≤60,000 characters in all) into the person's message.
 - Person text is wrapped as data (`<request from=… role=…>`, role from config); rules cannot be changed by messages.
 - Runner redacts every outgoing string and audit field; mentions are disabled (no post tags anyone).
@@ -171,7 +174,7 @@ Rollback undoes the live release only; revert the commit on the base branch afte
 
 - `maxConcurrentJobs` (1-3, live: 3) lets several threads work at once, so one person's long request does not queue everyone else. Ships
   still go one at a time behind the deploy lock. Git commands that hit a lock file another job is holding retry a few times (gitops.cjs).
-- The full check runs about 2 min (suites in parallel) (sensitive ships only; proposals and the agent get the quick check, a few minutes). The agent's `claude -p` gets `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` and a 55-minute Bash limit (turn limit 60 min, check-godot.sh hard limit 85 min)
+- The full check runs about 2 min (suites in parallel) (sensitive ships only; proposals get the quick check, the agent only the suites it names). The agent's `claude -p` gets `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` and a 55-minute Bash limit (turn limit 60 min, check-godot.sh hard limit 85 min)
   (`BASH_DEFAULT_TIMEOUT_MS`/`BASH_MAX_TIMEOUT_MS`), so the check call simply blocks until it finishes. `sleep`, `pgrep`, `ps`, `watch` and the like are on
   `--disallowedTools`. Why: a backgrounded check plus an agent-written `pgrep` wait loop matched itself and hung a job (and the queue) for 35 minutes.
 

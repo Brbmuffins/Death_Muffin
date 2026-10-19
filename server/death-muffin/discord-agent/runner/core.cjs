@@ -71,6 +71,8 @@ function createRunner(cfgIn, opts = {}) {
   const now = opts.now || (() => Date.now());
   const BB = cfg.baseBranch || 'master', GODOT = cfg.mode === 'godot';   // loadConfig validates both; raw test configs fall back to web/master
   const CHECK = GODOT ? 'check-godot.sh' : 'check.sh';
+  // What the agent itself runs (godot): only named suites (agent.cjs); code_load is the quickest one that also gives Godot's import of new art or audio.
+  const IMPORT_CHECK = GODOT ? `${cfg.toolsDir}/check-godot.sh --rerun code_load` : CHECK;
   fs.mkdirSync(cfg.stateDir, { recursive: true });
   const audit = createAudit(path.join(cfg.stateDir, 'audit.jsonl'));
   const auth = createAuth(cfg, now);
@@ -769,7 +771,9 @@ function createRunner(cfgIn, opts = {}) {
       audit.log('verify-failed', { job: job.id, why: v.why });
       if (!v.fixable || attempt >= 2) { say(job, `I could not get this into a shippable state: ${clip(v.why, 900)}\nNothing was proposed. Tell me how to proceed or react ❌ / say !discard.`); job.status = 'idle'; return; }
       // the fix-up turn is internal (audit: verify-failed); no thread post (owner, 2026-10-10: fewer thread posts)
-      const r = await agentTurn(job, `The automatic review failed. Fix this, make sure ${CHECK} passes, and commit:\n${v.why}`);
+      const r = await agentTurn(job, GODOT
+        ? `The automatic review failed. Fix this and commit. To see a failing suite again, run ${cfg.toolsDir}/check-godot.sh --rerun <suite>[,<suite>] (only those suites); the runner runs the whole check again after your turn:\n${v.why}`
+        : `The automatic review failed. Fix this, make sure ${CHECK} passes, and commit:\n${v.why}`);
       if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return; }
       if (r.error) { say(job, (r.budgetOut ? r.error : `The agent hit an error: ${clip(redactText(r.error), 300)}`)); job.status = 'idle'; return; }
       postNewShots(job);
@@ -1170,7 +1174,7 @@ function createRunner(cfgIn, opts = {}) {
       job.queue.push({ userId: 'runner', name: 'runner', role: 'runner', art: true, ts: now(), text:
         `The runner generated the sound "${spec.id}" (${spec.kind}, ${spec.duration_seconds} s): ${res.files.join(', ')} (git-ignored raw takes; never commit audio-src/). The takes were posted in the thread. ` +
         `Next: unless the requester already picked a take, use take 1. Run ${cfg.toolsDir}/build-sound.sh ${spec.id} <take> (levels it and writes client/assets/audio/eleven/${spec.id}.${spec.kind === 'music' ? 'mp3' : 'wav'} and its row in docs/AUDIO-SOURCES.md), ` +
-        `wire it in where the request asked (client/audio/README.md: audioMap.json + the sample bank), commit ${S.SPEC_DIR}/${spec.id}.json, the asset and docs/AUDIO-SOURCES.md, run ${CHECK} (commit the .import file it writes), add a PATCH_NOTES.json item if players can hear it, and keep your reply short. ` +
+        `wire it in where the request asked (client/audio/README.md: audioMap.json + the sample bank), commit ${S.SPEC_DIR}/${spec.id}.json, the asset and docs/AUDIO-SOURCES.md, run ${IMPORT_CHECK} (commit the .import file it writes), add a PATCH_NOTES.json item if players can hear it, and keep your reply short. ` +
         `If the requester later picks another take, rerun build-sound.sh with that take number.` });
       job.lastActive = now(); save();
     } finally {
@@ -1247,7 +1251,7 @@ function createRunner(cfgIn, opts = {}) {
       job.queue.push({ userId: 'runner', name: 'runner', role: 'runner', art: true, ts: now(), text:
         `The runner generated the approved model${ids.length > 1 ? 's' : ''} ${ids.map((i) => `"${i}"`).join(', ')} (it paid for ${ids.length > 1 ? 'them' : 'it'}; you never touch keys). For each <id>: art-src/concepts/<id>.png (concept), art-src/tripo/<id>/ (raw Tripo outputs), and the records art-manifest/tripo/<id>.json and art-manifest/images.json. ` +
         `art-src/ is git-ignored: do not commit it. Next, for each id (one command per call): run ${cfg.toolsDir}/build-art.sh <id> (builds the GLB and installs it at ${ids.map((i, n) => wireOf(done[n])).join(', ')}), read what it prints, then commit the specs (art-manifest/gemini-jobs/<id>.json, art-manifest/tripo-specs/<id>.json), the two records, and the GLB. ` +
-        `Run ${CHECK}: Godot's import writes the .import file and extracted textures next to the model; commit those too (agit status shows them). Then run ${cfg.toolsDir}/render-model.sh ${ids.join(' ')} and Read the sheet it writes (it is posted in the thread). Wire the model${ids.length > 1 ? 's' : ''} into the game only as the request asked; ` +
+        `Run ${IMPORT_CHECK}: Godot's import writes the .import file and extracted textures next to the model; commit those too (agit status shows them). Then run ${cfg.toolsDir}/render-model.sh ${ids.join(' ')} and Read the sheet it writes (it is posted in the thread). Wire the model${ids.length > 1 ? 's' : ''} into the game only as the request asked; ` +
         `for gear (helms, mantles, weapons, set looks) take in-game screenshots of the hero wearing it (shot plan with "equip" and "view": "hero", front and back) and check them. Add a PATCH_NOTES.json item if players can see it, and keep your reply short.` });
       job.lastActive = now(); save();
     } finally {
