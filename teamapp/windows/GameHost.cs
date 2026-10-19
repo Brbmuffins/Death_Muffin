@@ -50,10 +50,12 @@ namespace DeathMuffinTeam
     internal sealed class ProcessGameHost : IGameHost
     {
         readonly Action<int, System.Drawing.Point?> tend;
+        readonly Action<int> started;
 
         /// <param name="tend">Called with the game's process id on every poll (the window tamer on Windows), and with the spot outside every monitor the
         /// window must stay at when the run is one nobody should see (it was started with `--position`; a benchmark is not); null for none.</param>
-        public ProcessGameHost(Action<int, System.Drawing.Point?> tend = null) { this.tend = tend; }
+        /// <param name="started">Called with each game's process id the moment it starts (the platform remembers the app's own games: never the player's).</param>
+        public ProcessGameHost(Action<int, System.Drawing.Point?> tend = null, Action<int> started = null) { this.tend = tend; this.started = started; }
 
         /// <summary>The `--position X,Y` the run was started with, or null (the window may be seen: a benchmark).</summary>
         static System.Drawing.Point? HiddenSpot(List<string> args)
@@ -87,6 +89,7 @@ namespace DeathMuffinTeam
             p.OutputDataReceived += (s, e) => { if (e.Data != null) buffer.Add(e.Data); };
             p.ErrorDataReceived += (s, e) => { if (e.Data != null) buffer.Add(e.Data); };
             p.Start();
+            if (started != null) started(p.Id);
             bool prioritySet = true;
             try { p.PriorityClass = l.Priority; } catch (Exception) { prioritySet = false; }
             if (!prioritySet && l.Priority == ProcessPriorityClass.Normal && !p.HasExited)

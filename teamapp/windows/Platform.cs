@@ -66,14 +66,38 @@ namespace DeathMuffinTeam
 
         public bool GameRunning() { return RunningGames(null).Count > 0; }
 
-        /// <summary>True when the process runs from under the app's own folder (a job's game). A process whose path cannot be read counts as the player's.</summary>
+        readonly Dictionary<int, DateTime> launched = new Dictionary<int, DateTime>();   // process id -> when the app started it (UTC)
+
+        /// <summary>A game the app itself started (ProcessGameHost): it is never the player's, even while it closes and Windows no longer gives its path.</summary>
+        public void Launched(int pid) { lock (launched) launched[pid] = DateTime.UtcNow; }
+
+        /// <summary>True when <paramref name="p"/> is a game the app started: its id is one the app launched and it started then (Windows reuses ids, so a player's
+        /// later game with an old id is not ours); a process whose start time cannot be read any more (it is closing) with such an id is ours.</summary>
+        bool LaunchedByUs(Process p)
+        {
+            DateTime at;
+            lock (launched) if (!launched.TryGetValue(p.Id, out at)) return false;
+            try { return Math.Abs((p.StartTime.ToUniversalTime() - at).TotalSeconds) < 30; }
+            catch (Exception) { return true; }
+        }
+
+        /// <summary>True when the process is a game the app started, or runs from under the app's own folder (a job's game). A process whose path cannot be
+        /// read otherwise counts as the player's.</summary>
         bool IsOurs(Process p)
         {
+            if (LaunchedByUs(p)) return true;   // 2026-10-19: a closing benchmark game ("path unreadable") threw Helix's benchmark away
             // QueryFullProcessImageName, not p.MainModule: reading the modules fails for a moment while a game is still starting (ERROR_PARTIAL_COPY),
             // and a failure here counts as the player's game (2026-10-19: Helix's release benchmark was thrown away three times as "Death Muffin was started"
             // by its own game). An unreadable path still counts as the player's: the safe side when it really is theirs.
             string path = Native.ImagePath(p.Id);
             return path != null && path.StartsWith(ownRoot, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>True when the process has already ended (it can still be listed for a moment); false when that cannot be read.</summary>
+        static bool Exited(Process p)
+        {
+            try { return p.HasExited; }
+            catch (Exception) { return false; }
         }
 
         /// <summary>The player's games, the job's own game <paramref name="jobPid"/> left out (the benchmark's disturbance check).</summary>
@@ -92,7 +116,7 @@ namespace DeathMuffinTeam
                 {
                     try
                     {
-                        if ((!exclude.HasValue || p.Id != exclude.Value) && !IsOurs(p))
+                        if ((!exclude.HasValue || p.Id != exclude.Value) && !Exited(p) && !IsOurs(p))
                         {
                             ids.Add(p.Id);
                             lastSeen = name + ".exe pid " + p.Id + " at " + (Native.ImagePath(p.Id) ?? "(path unreadable)") + " (the app's folder: " + ownRoot + ")";

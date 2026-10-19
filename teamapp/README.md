@@ -151,7 +151,8 @@ under the member's account, marked as team-PC runs. The numbers only mean someth
 - **Quiet again before each setup.** The files are downloaded after the claim, and before each setup the runner reads the PC the same way and waits for a quiet minute again. While it waits the status says
   what is in the way. It waits until the job's life ends (the offer's expiry, 3 days), then fails with "The PC never went quiet for long enough: ...".
 - **A disturbed run** is thrown away. While the game runs the app keeps reading the PC; the run is disturbed by a key or the mouse after it started, by the other programs (every process but
-  the game) using more than 20% of the CPU on average over any 30 s of it (judged once the run is 10 s old), by the player starting Death Muffin or by the cable being pulled. The game is closed,
+  the game) using more than 20% of the CPU on average over any 30 s of it (judged once the run is 10 s old), by the player starting Death Muffin (a `DeathMuffin` or `DeathMuffinDebug`
+  process that the app did not start, that runs from outside the app's folder and has not ended; one whose path Windows will not give counts as the player's) or by the cable being pulled. The game is closed,
   the setup's `bench-<i>` folder and the run's APPDATA are deleted, the app waits for a quiet minute again and starts the setup over: at most 3 tries a setup, then the job fails with
   "The benchmark on Low was disturbed 3 times (...), so no numbers were sent. Leave the PC alone while it runs." A full-screen app is not a disturbance during a run (on a small screen the game's own 1600x900 window may count as one).
 - **The result.** The last entry of each setup's `pending.json` (the payload the game would send, at most 64 KB; a cancelled one is no result) goes into **done** as `runs`, in setup order, all in one call:
@@ -269,6 +270,8 @@ monitor (and the pictures still taken: Godot and the driver draw a window that i
 
 ### Changelog
 
+- **0.3.4** (2026-10-19) - The games the app starts are remembered and never counted as the player's, and a game that has already ended is not counted at all:
+  a benchmark game closing (Windows no longer gives its path then) threw Helix's release benchmark away as "Death Muffin was started".
 - **0.3.3** (2026-10-19) - A run nobody should see (everything but a benchmark) has its window moved outside every monitor within about 10 ms of appearing, kept there, and given no taskbar button (Helix: the Godot splash popped up, then hid).
 - **0.3.2** (2026-10-19) - The release checks' screens pass the plan's class to the debug build (`--class=N`; without it no game started and every size ended with code 2), and the job log names the process a benchmark or a job counted as the player's game (name, id, path), to find why the job's own game was taken for the player's.
 - **0.3.1** (2026-10-19) - The AFK notice stays on top while AFK mode is on, with a Hide button (AFK mode stays on; the tray's Show AFK notice brings it back; Helix's ask).
