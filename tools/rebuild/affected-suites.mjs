@@ -85,8 +85,8 @@ export function affected(changed, ctx) {
   if (gd.length > MAX_GD_FILES) return { all: true, why: `${gd.length} changed .gd files (> ${MAX_GD_FILES})` };
 
   const sel = new Set(SMOKE.filter((s) => ctx.suites.includes(s)));
-  // a content table change runs rules-core, which reads every content table and the manifest's list of them
-  if (relevant.some((f) => /^client\/data\/content\/[^/]+\.json$/.test(f)) && ctx.suites.includes('rules-core')) sel.add('rules-core');
+  // a content table change runs rules_core, which reads every content table and the manifest's list of them
+  if (relevant.some((f) => /^client\/data\/content\/[^/]+\.json$/.test(f)) && ctx.suites.includes('rules_core')) sel.add('rules_core');
   for (const [re, suite] of FORCED) if (relevant.some((f) => re.test(f)) && ctx.suites.includes(suite)) sel.add(suite);
   const direct = new Set();   // suites chosen because their own files changed
   // client/tests/<name>.gd is a suite's script, client/tests/<name>/... a folder's files: they select the folder's suites (<name> and its runners

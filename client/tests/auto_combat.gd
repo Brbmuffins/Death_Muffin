@@ -4,7 +4,7 @@ extends SceneTree
 ##   - seeded Full-Party-sized contexts (sixty-odd enemies in reach, corpses of every kind, boss or none, random cooldowns, essence, hurt, souls and thralls; stacked enemies for equal
 ##     distances) for the necromancer's rites and the Reaper's: the port's choice must equal the reference's, every rule of the list reached;
 ##   - the movement (`select_movement`) on seeded rooms, memory included.
-## The frozen web game's golden cases are replayed on the port by tests/game/autocombat_run.gd (the one home of them). Run: godot --headless --path client --script res://tests/auto_combat.gd
+## The frozen web game's golden cases are replayed on the port by tests/auto_combat_fixtures/run.gd (the one home of them). Run: godot --headless --path client --script res://tests/auto_combat.gd
 
 const TODAY := "res://tests/fixtures/old_game/game/dm_auto_combat.gd.txt"   ## the old game's decision code, kept as text
 const RITES := ["bone_needle", "bone_fan", "exhume", "grave_offering", "rally_dead", "carrion_seed", "bone_mantle", "black_litany", "corpse_explosion", "ivory_cleave", "miasma", "bone_prison",

@@ -7,7 +7,7 @@ import { checkParity, recorder } from './parity';
 
 /**
  * The Legion kit bonus (client/rules/combat/dm_legion.gd) and the rune socket rows (client/rules/combat/dm_runes.gd).
- * Replayed by the Godot suite rules-combat (legion_parity.json, runes_parity.json).
+ * Replayed by the Godot suite rules_combat (legion_parity.json, runes_parity.json).
  * Regenerate: UPDATE_LEGION_PARITY=1 / UPDATE_RUNES_PARITY=1 npx vitest run server/rules/gameplay/__tests__/legionRules.parity.test.ts
  */
 describe('legion and rune parity', () => {
@@ -44,7 +44,7 @@ describe('legion and rune parity', () => {
     r.add('legionBonus', [{ weapon: null, armor: null }, 0], () => legionBonus({ weapon: null, armor: null }, 0));
     r.add('legionBonus', [{ weapon: w[0], armor: null }, 2], () => legionBonus({ weapon: w[0], armor: null }, 2));
     r.add('legionBonus', [{ weapon: a[0], armor: w[0] }, 2], () => legionBonus({ weapon: a[0], armor: w[0] }, 2));
-    checkParity('rules-combat', 'legion', 'LEGION', r.cases);
+    checkParity('rules_combat', 'legion', 'LEGION', r.cases);
   });
 
   it('runes_parity.json is current', () => {
@@ -73,6 +73,6 @@ describe('legion and rune parity', () => {
     r.add('socketsOf', [rows], () => socketsOf(rows));
     r.add('ownedRunes', [rows], () => ownedRunes(rows));
     r.add('ownedRunes', [[]], () => ownedRunes([]));
-    checkParity('rules-combat', 'runes', 'RUNES', r.cases);
+    checkParity('rules_combat', 'runes', 'RUNES', r.cases);
   });
 });

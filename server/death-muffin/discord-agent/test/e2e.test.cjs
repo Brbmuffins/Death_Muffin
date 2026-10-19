@@ -1122,7 +1122,7 @@ test('failedSuites: 1-3 failing suite lines re-run, anything else does not', () 
   assert.deepEqual(failedSuites('a  run.gd  exit=0  1 passed\nnext_bosses  run.gd  exit=1  x\n    FAIL y\nGODOT TESTS: quick (2 suites) — 1 passed, 1 FAILED'), ['next_bosses']);
   assert.deepEqual(failedSuites('a  r.gd  exit=1\nb  r.gd  exit=2\nc  r.gd  exit=1\nd  r.gd  exit=1'), []);
   // folder runners are suites too, and every failure must be on a line: a count below the summary's means no re-run (it would pass the rest)
-  assert.deepEqual(failedSuites('relay/udp_run  relay/udp_run.gd  exit=1  x\nGODOT TESTS: quick (9 suites) — 8 passed, 1 FAILED'), ['relay/udp_run']);
+  assert.deepEqual(failedSuites('relay/udp  relay/udp.gd  exit=1  x\nGODOT TESTS: quick (9 suites) — 8 passed, 1 FAILED'), ['relay/udp']);
   assert.deepEqual(failedSuites('a  a.gd  exit=1  x\nGODOT TESTS: quick (9 suites) — 7 passed, 2 FAILED'), []);
   assert.deepEqual(failedSuites('GODOT TESTS: repo hygiene FAILED (npm run hygiene)'), []);
   assert.deepEqual(failedSuites('a  r.gd  exit=124\nGODOT TESTS: timed out after 85 minutes'), []);

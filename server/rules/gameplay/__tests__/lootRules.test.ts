@@ -10,11 +10,11 @@ import { LEGENDARY_SET_IDS, legendaryItemId } from '../../content/legendarySets'
 import { EVENT_STREAMS, dropStream, eventStreams, rollBoss, rollBossRune, rollEvent, rollFirstKillItem, rollGearInstances, rollKill, rollSurgeItem, type DropKind } from '../lootRules';
 
 /**
- * The parity fixture: seeded rolls of every kind, written here and replayed by the Godot suite rules-loot (loot_parity_part.gd) through
+ * The parity fixture: seeded rolls of every kind, written here and replayed by the Godot suite rules_loot (loot_parity_part.gd) through
  * DmLoot + DmDropStream. The client and the server must roll the same drop from the same stream (ROADMAP, authority Phase 1).
  * After a deliberate loot change on both sides: UPDATE_LOOT_PARITY=1 npx vitest run server/rules/gameplay/__tests__/lootRules.test.ts
  */
-const FIXTURE = path.resolve(__dirname, '../../../../client/tests/rules-loot/fixtures/loot_parity.json');
+const FIXTURE = path.resolve(__dirname, '../../../../client/tests/rules_loot/fixtures/loot_parity.json');
 
 type Words = [number, number, number, number];
 function buildCases() {

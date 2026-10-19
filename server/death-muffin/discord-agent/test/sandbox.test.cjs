@@ -98,7 +98,7 @@ test('sandbox: check-godot.sh (the preparation and the suites)', () => {
   } finally { W.cleanup(); }
 });
 
-test('check-godot.sh prepares the worktree inside the sandbox (prep.sh --read-only), and the suites use what it put there (the lobby\'s packages for coop, coop_bosses and next_lobby/ui_run)', () => {
+test('check-godot.sh prepares the worktree inside the sandbox (prep.sh --read-only), and the suites use what it put there (the lobby\'s packages for coop, coop_bosses and lobby/ui)', () => {
   const W = world(); try {
     W.w('tools/rebuild/run-client-tests.sh', '[ "${1:-}" = --list ] && { echo game; exit 0; }\nr=$(cat server/death-muffin/lobby/node_modules/ws/index.js)\nprintf "%-18s %-16s exit=%d  %s\\n" game game.gd 0 "$r"\n');
     const inside = 'mkdir -p server/death-muffin/lobby/node_modules/ws && echo LOBBY_WS_OK > server/death-muffin/lobby/node_modules/ws/index.js';

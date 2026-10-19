@@ -16,16 +16,16 @@ stream on both sides (`DmDropStream`). After a deliberate change made on both si
 
 | Fixture (`client/tests/<suite>/fixtures/`) | Test (`gameplay/__tests__/`) | `<NAME>` | GDScript port |
 |---|---|---|---|
-| `rules-loot/loot_parity.json` | `lootRules.test.ts` | `LOOT` | `rules/loot/loot.gd`, `drop_stream.gd` |
-| `rules-loot/affix_parity.json` | `affixRules.parity.test.ts` | `AFFIX` | `rules/loot/affix_rules.gd` |
-| `rules-combat/kill_parity.json` | `killRules.parity.test.ts` | `KILL` | `dm_enemy_stats.gd` (kill XP / gold, New Blood) |
-| `rules-combat/legion_parity.json`, `runes_parity.json` | `legionRules.parity.test.ts` | `LEGION`, `RUNES` | `dm_legion.gd`, `dm_runes.gd` |
-| `rules-combat/loadout_parity.json` | `loadoutRules.parity.test.ts` | `LOADOUT` | `net/offline/dm_offline_loadout.gd` |
-| `rules-progression/xp_parity.json` | `killRules.parity.test.ts` | `XP` | `progression.gd` (level curve, `carry_xp` up to the 999 cap) |
-| `rules-progression/necro_parity.json`, `upgrades_parity.json`, `kill_chain_parity.json` | `necroRules.parity.test.ts` | `NECRO`, `UPGRADES`, `KILL_CHAIN` | `necro_rules.gd`, `ascension.gd`, `DmUpgrades`, `kill_chain.gd` |
-| `rules-gathering/{gather,salvage,gold_sink,labor,garden,contracts}_parity.json` | `gatheringRules.parity.test.ts` | `GATHER`, `SALVAGE`, `GOLD_SINK`, `LABOR`, `GARDEN`, `CONTRACTS` | `rules/gathering/*.gd` |
-| `rules-gathering/vault_parity.json` | `vaultRules.parity.test.ts` | `VAULT` | `rules/inventory/vault_rules.gd` |
-| `rules-gathering/cosmetics_parity.json` | `loadoutRules.parity.test.ts` | `COSMETICS` | `net/offline/dm_offline_cosmetics.gd` |
+| `rules_loot/loot_parity.json` | `lootRules.test.ts` | `LOOT` | `rules/loot/loot.gd`, `drop_stream.gd` |
+| `rules_loot/affix_parity.json` | `affixRules.parity.test.ts` | `AFFIX` | `rules/loot/affix_rules.gd` |
+| `rules_combat/kill_parity.json` | `killRules.parity.test.ts` | `KILL` | `dm_enemy_stats.gd` (kill XP / gold, New Blood) |
+| `rules_combat/legion_parity.json`, `runes_parity.json` | `legionRules.parity.test.ts` | `LEGION`, `RUNES` | `dm_legion.gd`, `dm_runes.gd` |
+| `rules_combat/loadout_parity.json` | `loadoutRules.parity.test.ts` | `LOADOUT` | `net/offline/dm_offline_loadout.gd` |
+| `rules_progression/xp_parity.json` | `killRules.parity.test.ts` | `XP` | `progression.gd` (level curve, `carry_xp` up to the 999 cap) |
+| `rules_progression/necro_parity.json`, `upgrades_parity.json`, `kill_chain_parity.json` | `necroRules.parity.test.ts` | `NECRO`, `UPGRADES`, `KILL_CHAIN` | `necro_rules.gd`, `ascension.gd`, `DmUpgrades`, `kill_chain.gd` |
+| `rules_gathering/{gather,salvage,gold_sink,labor,garden,contracts}_parity.json` | `gatheringRules.parity.test.ts` | `GATHER`, `SALVAGE`, `GOLD_SINK`, `LABOR`, `GARDEN`, `CONTRACTS` | `rules/gathering/*.gd` |
+| `rules_gathering/vault_parity.json` | `vaultRules.parity.test.ts` | `VAULT` | `rules/inventory/vault_rules.gd` |
+| `rules_gathering/cosmetics_parity.json` | `loadoutRules.parity.test.ts` | `COSMETICS` | `net/offline/dm_offline_cosmetics.gd` |
 
 The shared pieces are `gameplay/__tests__/parity.ts` (case recorder and fixture check) and `dm_parity_part.gd` (the replay base, in the suites' shared test folder;
 each suite's `parity_part.gd` maps a case's `fn` to its port). Rules with no GDScript counterpart (`multCaps`, `ceilingsFor`, the kill ledger)

@@ -77,7 +77,7 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   crowd's bakes taken from a cache built only from `main` (today `tools/check/prep.sh --warm`), so a check does not rebuild them;
   its screenshots are the game's, rendered on the server the way it plays (until the team app takes them over), and a "Try it" preview without
   new art uses the art pack of the player's installed game instead of carrying its own 500 MB. Fixed 2026-10-19: the co-op and friends
-  suites (coop, coop_bosses, next_lobby) start the real lobby, which a job's copy of the game could not run without the lobby's packages, so
+  suites (coop, coop_bosses, lobby) start the real lobby, which a job's copy of the game could not run without the lobby's packages, so
   every check that picked them failed (War's Haunting Wraith, three times on 2026-10-18); the check now brings those packages in. Fixed
   2026-10-19: a round ran its whole check twice, about 20 minutes each (the agent in its turn, then the runner before the proposal); the
   agent now runs only the suites it names (`check-godot.sh --rerun`), and the whole check is the runner's.

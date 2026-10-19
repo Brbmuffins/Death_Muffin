@@ -7,7 +7,7 @@ A path below without a folder is under `client/`.
 
 - Ascension (the Altar, vows and heat, Ashes, Covenant Boons) left on purpose (B36; ROADMAP Phase 3).
 - **Ascension leftovers still on screen** (the suite audit, 2026-10-19). Decide: the Chapterhouse's Altar still opens the Ascension panel
-  (`client/tests/chapterhouse/run.gd` checks that it does) and the party and friends rows still show Heat (`client/tests/next_lobby/ui_run.gd`),
+  (`client/tests/chapterhouse/run.gd` checks that it does) and the party and friends rows still show Heat (`client/tests/lobby/ui.gd`),
   although B36 leaves Ascension out until its redesign. Claude's recommendation: hide both until Phase 3 brings the new Ascension.
 
 ## Performance
@@ -150,7 +150,7 @@ polish list). Also:
   change under `launcher/`, a README included (same version, so no launcher update and no notice; it happened on 2026-10-18).
 - `client/tests/game_scene.gd`'s node checks pass about every other run under load: the counsel's tip card (16 nodes, shown at the first
   Barrow Ghoul and dismissed on a wall-clock timer) is in the scene tree for part of the run.
-- The warm-up's residency (what `DmWarmup.hold` keeps, the hero kits it lets go) and its cold-load checks cannot run headless: `client/next/perf/dm_next_warmup.gd` skips its threaded loads there, so the ported `next_perfctl` leaves them out; judge them on a real window.
+- The warm-up's residency (what `DmWarmup.hold` keeps, the hero kits it lets go) and its cold-load checks cannot run headless: `client/next/perf/dm_next_warmup.gd` skips its threaded loads there, so the ported `perf_controls` leaves them out; judge them on a real window.
 - The benchmark: a level-up during the fight refreshes the god-mode hero from the throwaway character's real level, so the held fight changes
   as that character levels; the held Full Party keeps the pack in view and within 32 m, so the crowd's culling and animation bands barely
   engage (1 of 148 bodies culled); its report's budget section is labelled "Budgets (ROADMAP", but the budgets are in CLAUDE.md (B39).

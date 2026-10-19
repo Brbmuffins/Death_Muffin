@@ -94,10 +94,10 @@ test('wait follows a run to its end, and gives up with exit 2 when no run comes'
 test('failed names the game suites from the annotations of the failing jobs, each once', async () => {
   const W = await world(); try {
     W.state.checkRuns[W.two] = [{ id: 11, conclusion: 'failure' }, { id: 12, conclusion: 'success' }, { id: 13, conclusion: 'failure' }];
-    W.state.annotations[11] = [{ title: 'client suite rites failed', message: 'FAIL rites' }, { title: 'client suite relay/udp_run failed', message: 'x' }, { title: '', message: 'Process completed with exit code 1.' }];
+    W.state.annotations[11] = [{ title: 'client suite rites failed', message: 'FAIL rites' }, { title: 'client suite relay/udp failed', message: 'x' }, { title: '', message: 'Process completed with exit code 1.' }];
     W.state.annotations[13] = [{ title: 'client suite rites failed', message: 'again' }];
     W.state.annotations[12] = [{ title: 'client suite hud failed', message: 'from a passing job: ignored' }];
-    assert.deepEqual((await W.ci('failed', W.two)).out.split('\n'), ['rites', 'relay/udp_run']);
+    assert.deepEqual((await W.ci('failed', W.two)).out.split('\n'), ['rites', 'relay/udp']);
   } finally { W.cleanup(); }
 });
 

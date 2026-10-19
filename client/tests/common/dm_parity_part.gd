@@ -2,7 +2,7 @@ extends "res://tests/common/dm_suite_part.gd"
 ## Base of a client / server parity replay. The server's vitest (server/rules/gameplay/__tests__/*.parity.test.ts) writes
 ## fixtures/<name>_parity.json = {"cases": [{fn, in, out}]} from the TypeScript rules; a subclass names the fixtures and implements
 ## call_fn(fn, args), which runs the GDScript port. Numbers match within 1e-9 (int and float alike), everything else exactly.
-## Subclasses: tests/rules-*/parity_part.gd. The TS side: server/rules/README.md "Parity fixtures".
+## Subclasses: tests/rules_*/parity_part.gd. The TS side: server/rules/README.md "Parity fixtures".
 
 var passed := 0
 var failed := 0
@@ -10,7 +10,7 @@ var _shown := 0
 var _cur := ""
 
 
-## [[suite fixture dir, fixture name], ...], e.g. [["rules-combat", "kill"]].
+## [[suite fixture dir, fixture name], ...], e.g. [["rules_combat", "kill"]].
 func fixtures() -> Array:
 	return []
 

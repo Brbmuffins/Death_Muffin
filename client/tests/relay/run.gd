@@ -12,7 +12,7 @@ var fail_count := 0
 var pids: Array = []
 var tmp := ""
 var port := 0
-## udp_run.gd: the same session with the UDP relay (DmUdpRelay, in this process) offered by the lobby; the clients must end up on it.
+## udp.gd: the same session with the UDP relay (DmUdpRelay, in this process) offered by the lobby; the clients must end up on it.
 var udp_mode := false
 var relay: DmUdpRelay
 

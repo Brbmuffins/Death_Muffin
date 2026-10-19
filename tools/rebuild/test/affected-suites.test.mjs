@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { affected, SMOKE, dataPatterns, centralReason, FORCED } from '../affected-suites.mjs';
 
-const suites = ['code_load', 'core_smoke', 'game_scene', 'rules-core', 'front', 'enemies', 'loot_view', 'gear', 'hud', 'fx', 'world', 'sim', 'thralls', 'rites', 'spells', 'ui', 'game', 'backend'];
+const suites = ['code_load', 'core_smoke', 'game_scene', 'rules_core', 'front', 'enemies', 'loot_view', 'gear', 'hud', 'fx', 'world', 'sim', 'thralls', 'rites', 'spells', 'ui', 'game', 'backend'];
 // tests: [suite-file, text]; src: [file, text]; classes: file -> class_name
 function mk({ tests = [], src = [], classes = {} } = {}) {
   const hit = (list, p) => list.filter(([, t]) => p.fixed.some((x) => t.includes(x)) || p.words.some((w) => new RegExp(`\\b${w}\\b`).test(t))).map(([f]) => f);
@@ -40,9 +40,9 @@ test('a suite split into a family (benchmark, benchmark_rooms, ...): any file of
   assert.deepEqual(sel(affected(['client/tests/hud.gd'], ctx)), [...new Set([...SMOKE, 'hud'])].sort(), 'other suites are not part of it');
 });
 test('a folder with several runners: a file in it selects every runner of that folder', () => {
-  const ctx = { ...mk(), suites: [...suites, 'next_lobby', 'next_lobby/ui_run', 'next_lobby/proc_run', 'relay/udp_run'] };
-  assert.deepEqual(sel(affected(['client/tests/next_lobby/helpers.gd'], ctx)), [...new Set([...SMOKE, 'next_lobby', 'next_lobby/proc_run', 'next_lobby/ui_run'])].sort());
-  assert.deepEqual(sel(affected(['client/tests/relay/udp_run.gd'], ctx)), [...new Set([...SMOKE, 'relay/udp_run'])].sort());
+  const ctx = { ...mk(), suites: [...suites, 'lobby', 'lobby/ui', 'lobby/processes', 'relay/udp'] };
+  assert.deepEqual(sel(affected(['client/tests/lobby/helpers.gd'], ctx)), [...new Set([...SMOKE, 'lobby', 'lobby/processes', 'lobby/ui'])].sort());
+  assert.deepEqual(sel(affected(['client/tests/relay/udp.gd'], ctx)), [...new Set([...SMOKE, 'relay/udp'])].sort());
 });
 test('a script is found by res:// path and by class_name in tests', () => {
   const ctx = mk({
@@ -99,9 +99,9 @@ test('an add-only change to the API client or mock selects the users of the adde
   assert.equal(affected(['client/net/dm_api.gd'], { ...ctx, addedLines: () => null }).all, true);
   assert.equal(affected(['client/net/dm_config.gd'], ctx).all, true);
 });
-test('a content table change also runs rules-core (it reads every content table)', () => {
-  assert.ok(sel(affected(['client/data/content/audioMap.json'], mk())).includes('rules-core'));
-  assert.ok(!sel(affected(['client/hud/x.gd'], mk())).includes('rules-core'));
+test('a content table change also runs rules_core (it reads every content table)', () => {
+  assert.ok(sel(affected(['client/data/content/audioMap.json'], mk())).includes('rules_core'));
+  assert.ok(!sel(affected(['client/hud/x.gd'], mk())).includes('rules_core'));
 });
 
 test('the rites, the combat data and the spell card select the spells suite whatever the references say', () => {

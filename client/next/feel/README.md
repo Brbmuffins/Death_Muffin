@@ -46,7 +46,7 @@ Standing mouse-aim: `DmCombatInput.stand_face` from the 10 Hz hover pick -> `ses
 
 ## Tests
 `client/tests/auto_combat.gd` (Easy auto combat: seeded Full Party fights for the necromancer's rites and the Reaper's, the movement), `client/tests/rites.gd` (the kit's hotbar, the click-to-attack chase, every rite's cast),
-`client/tests/hud.gd` (slot needs, floating number caps), `client/tests/next_combat_odds/run.gd` (every rite's sounds and its visible and audible cue at the press), `client/tests/next_clarity/run.gd` (the number cap, slot needs, thrall pips).
+`client/tests/hud.gd` (slot needs, floating number caps), `client/tests/combat_odds/run.gd` (every rite's sounds and its visible and audible cue at the press), `client/tests/combat_clarity/run.gd` (the number cap, slot needs, thrall pips).
 
 ## Known gaps
 - Auto-combat has no `DmNav` over the navmesh (the decision code's `clear_line` / path-around is skipped; the body's nav clamp slides it), so it parks the hero in pockets of tombstones (KNOWN-GAPS "Combat and statuses").

@@ -9,7 +9,7 @@ extends SceneTree
 ##
 ## Checked, in the order of the run:
 ##   - the party flow: the host makes a Closed party; the guest joins by its code (the solo game is handed over to a guest game as the
-##     shell would); the codes, the invites, the asks, the chat and the roster are checked in tests/next_lobby;
+##     shell would); the codes, the invites, the asks, the chat and the roster are checked in tests/lobby;
 ##   - the connection: a guest game with a puppet core and no director, both on the UDP lane, the hero ids the host gave (the guest's hero is an external of the HOST's core);
 ##   - the waves: the guest's puppet shows the host's bodies: the live body sets are the same ids and every position is the host's at the snapshot's tick within the wire's
 ##     1 cm quantization, in a still moment and again in the Full Party's fight; in the fight the counts follow within the send interval;
@@ -515,7 +515,7 @@ func connection() -> void:
 	check(udp, "both ends moved to the UDP lane (host to guest: %s, guest to host: %s)" % [h.party._relay.lane_to(2), g.party._relay.lane_to(1)])
 	check(int(relay.stats["attached"]) >= 2, "the test relay holds both lanes (%s)" % str(relay.stats))
 	await until(func() -> bool: return int(gb_h.character.get("level", 0)) == 14 and int(g.party.levels.get(2, 0)) == 14, 5.0)
-	check(gb_h.discipline_id == "gravecaller", "the guest's profile reached the host: its hero is a Gravecaller there (%s; its level is checked in next_lobby/run.gd)" % gb_h.character)
+	check(gb_h.discipline_id == "gravecaller", "the guest's profile reached the host: its hero is a Gravecaller there (%s; its level is checked in lobby/run.gd)" % gb_h.character)
 	for gm in [h, g]:
 		var rows: Array = gm.ui_host.hud_state()["party"]
 		var ok_rows := rows.size() == 2
@@ -1033,7 +1033,7 @@ func guest_window() -> void:
 func guest_account() -> void:
 	var gcid := int(accounts["joiner"]["ch"]["id"])
 	var gm: DmRewardsMember = h.rewards.members.get(gcid)
-	await until(func() -> bool: return g.joiner != null and g.joiner.backend_ok and gm.blocked == "" and gm.joined and h.remote_builds.has(gb_h.owner_peer), 5.0)   # (the member, its backend join and the build are checked in next_lobby/run.gd)
+	await until(func() -> bool: return g.joiner != null and g.joiner.backend_ok and gm.blocked == "" and gm.joined and h.remote_builds.has(gb_h.owner_peer), 5.0)   # (the member, its backend join and the build are checked in lobby/run.gd)
 	check(g.world.unlocked.keys() == h.world.unlocked.keys() and g.world.unlocked.has("graves"), "the guest's open areas are the host's (%s)" % str(g.world.unlocked.keys()))
 	check(g.rewards == null and g.my_member() == g.joiner.member and g.loot != null and g.ui_host.prog == g.joiner.prog and g.belt() == g.loot.guest_belt,
 		"the guest's member, bag, belt and HUD are its own account's")
@@ -1050,7 +1050,7 @@ func guest_account() -> void:
 		h.core_host.damage(id, 1.0e6, hb.core_id)
 	await ticks(3)
 	check(int(gm.stats["kills_earned"]) >= 3, "the guest's member earned the host's kills near it (%d)" % int(gm.stats["kills_earned"]))
-	await until(func() -> bool: return g.joiner.drops_received > drops0, 4.0)   # (that the drops reach the guest is checked in next_lobby/run.gd)
+	await until(func() -> bool: return g.joiner.drops_received > drops0, 4.0)   # (that the drops reach the guest is checked in lobby/run.gd)
 	await h.rewards.flush()
 	check(await until(func() -> bool: return int(g.joiner.member.stats["xp_applied"]) > xp0, 4.0) and int(g.joiner.member.stats["kills_accepted"]) >= 3,
 		"the host's accepted report paid the guest's XP and kills on its own account (%d XP)" % (int(g.joiner.member.stats["xp_applied"]) - xp0))
@@ -1419,4 +1419,4 @@ func leaving() -> void:
 	check(h.core_host.core.replication_stats()["replicating"] == false, "the host stopped collecting events for guests")
 	check(g.party.mode == DmNextParty.SOLO or g.party.mode == DmNextParty.CLIENT, "the guest's party state is not stuck (%s)" % g.party.mode)
 	h.party.leave()
-	await ticks(2)   # (that the host plays on solo is checked in next_lobby/run.gd)
+	await ticks(2)   # (that the host plays on solo is checked in lobby/run.gd)

@@ -230,7 +230,7 @@
       "reason": "the client never saves or edits its bag (DECISIONS B25): bag changes are server operations (bag-ops.cjs and the other bag routes)",
       "allow": [
         "tools/hygiene/**",
-        "client/tests/next_bag/run.gd"
+        "client/tests/bag/run.gd"
       ]
     },
     {
@@ -373,6 +373,51 @@
       "id": "social-suite",
       "pattern": "tests/social\\.gd|coop_bosses,? (and )?social\\b|--only social\\b",
       "reason": "the social suite was merged 2026-10-19 into next_lobby/ui_run (Part D: the real boot scene as the joining player)",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "suite-names-next",
+      "pattern": "((?<!godot/)tests/|PASS |FAIL |`|--only[^\\n]*\\b)next_(bag|loot|hero_look|progress|boss_meta|playtest|perfctl|autocombat|feel|spawn_aggro|meta|brews_affix|runes|clarity|combat_odds|glue|affixes|online_gate)\\b",
+      "reason": "test suites renamed 2026-10-19 to the system they protect (no next_ prefix): next_bag -> bag, next_boss_meta -> boss_track, next_playtest -> playtest_regressions, next_perfctl -> perf_controls, next_autocombat -> auto_combat_play, next_feel -> combat_feel, next_meta -> meta_systems, next_brews_affix -> brews_affixes, next_clarity -> combat_clarity, next_glue -> integration, and the rest by dropping the prefix (client/README.md 'Suite names')",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "suite-names-next-lobby",
+      "pattern": "\\bnext_lobby\\b",
+      "reason": "test suite folder next_lobby renamed 2026-10-19 to lobby (runners lobby/ui and lobby/processes, were ui_run and proc_run)",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "suite-names-rules",
+      "pattern": "(tests/|PASS |FAIL |`|'|\"|--only[^\\n]*\\b)rules-(core|combat|gathering|loot|progression)\\b|\\brules-(core|combat|gathering|loot|progression)/",
+      "reason": "fixture suites renamed 2026-10-19 from rules-<area> to rules_<area> (snake_case, client/README.md 'Suite names')",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "suite-names-game",
+      "pattern": "tests/game/|\\bgame/(units|anim|autocombat|regress)_run\\b|\\b(units|autocombat|regress)_run\\.gd|\\banim_run\\.gd|\\b(ui|proc|udp)_run\\.gd|\\brelay/udp_run\\b",
+      "reason": "the first game's tests/game folder is gone (2026-10-19): units_run -> gathering_labor, anim_run -> creature_anim, autocombat_run -> auto_combat_fixtures, regress_run -> regressions; relay/udp_run -> relay/udp",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "suite-names-misc",
+      "pattern": "tests/(panels_a|ui_parity)\\b|\\bui_parity\\b|(PASS |FAIL |--only[^\\n]*\\b)panels_a\\b",
+      "reason": "test suites renamed 2026-10-19: panels_a -> panel_data, ui_parity -> ui_details (the game's own ui/panels_a folder keeps its name)",
       "allow": [
         "DECISIONS.md",
         "tools/hygiene/**"

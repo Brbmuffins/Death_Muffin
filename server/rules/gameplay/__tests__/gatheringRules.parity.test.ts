@@ -18,7 +18,7 @@ import { checkParity, recorder } from './parity';
 
 /**
  * The gathering family: gatheringRules, salvageRules, goldSinkRules, laborRules, gardeningRules and contractRules, against
- * client/rules/gathering/*.gd. Replayed by the Godot suite rules-gathering (<name>_parity.json). Seeded rolls use the loot drop stream
+ * client/rules/gathering/*.gd. Replayed by the Godot suite rules_gathering (<name>_parity.json). Seeded rolls use the loot drop stream
  * (DmDropStream) on both sides. Regenerate: UPDATE_<NAME>_PARITY=1 npx vitest run server/rules/gameplay/__tests__/gatheringRules.parity.test.ts
  * with NAME one of GATHER, SALVAGE, GOLD_SINK, LABOR, GARDEN, CONTRACTS.
  */
@@ -92,7 +92,7 @@ describe('gathering family parity', () => {
       Array.from({ length: BAG_SLOTS - 2 }, (_, i) => ({ slot: i + 1, itemId: 'potion', qty: 20 })), [{ slot: 5, itemId: 'potion', qty: 3 }],
     ];
     for (const bag of bags) for (const g of grantSets) r.add('placeItems', [bag, g, stacks], () => placeItems(bag, g, (id) => stacks[id] ?? 1));
-    checkParity('rules-gathering', 'gather', 'GATHER', r.cases);
+    checkParity('rules_gathering', 'gather', 'GATHER', r.cases);
   });
 
   it('salvage_parity.json is current', () => {
@@ -123,7 +123,7 @@ describe('gathering family parity', () => {
     const lists = [[{ item_id: 'a', quantity: 1 }, { item_id: 'b', quantity: 2 }], [{ item_id: 'a', quantity: 4 }], []];
     r.add('mergeGrants', [lists], () => mergeGrants(lists));
     r.add('mergeGrants', [[]], () => mergeGrants([]));
-    checkParity('rules-gathering', 'salvage', 'SALVAGE', r.cases);
+    checkParity('rules_gathering', 'salvage', 'SALVAGE', r.cases);
   });
 
   it('gold_sink_parity.json is current', () => {
@@ -154,7 +154,7 @@ describe('gathering family parity', () => {
     }
     for (const b of EMPOWERABLE) r.add('empowerGold', [BOSSES[b].shards], () => empowerGold(b));
     for (const l of [1, 2, 10, 33, 99, 250]) r.add('empoweredLevel', [l], () => empoweredLevel(l));
-    checkParity('rules-gathering', 'gold_sink', 'GOLD_SINK', r.cases);
+    checkParity('rules_gathering', 'gold_sink', 'GOLD_SINK', r.cases);
   });
 
   it('labor_parity.json is current', () => {
@@ -181,7 +181,7 @@ describe('gathering family parity', () => {
       }
     }
     for (const parts of [['a'], ['mining', 3, 99], ['x', 'y', 'z', 1700000000000], [0], ['']]) r.add('hashSeed', [parts], () => hashSeed(...parts));
-    checkParity('rules-gathering', 'labor', 'LABOR', r.cases);
+    checkParity('rules_gathering', 'labor', 'LABOR', r.cases);
   });
 
   it('garden_parity.json is current', () => {
@@ -207,7 +207,7 @@ describe('gathering family parity', () => {
     r.add('plantBlocker', [PLOTS[0].id, 'nope', 50, null, now], () => plantBlocker(plotDef(PLOTS[0].id), 'nope', 50, null, now));
     for (const ms of [0, 1, 999, 1000, 1001, 59_000, 60_000, 61_000, 3_599_000, 3_600_000, 4_800_000, 90_000_000, -50]) r.add('remainingText', [ms], () => remainingText(ms));
     void _plots;
-    checkParity('rules-gathering', 'garden', 'GARDEN', r.cases);
+    checkParity('rules_gathering', 'garden', 'GARDEN', r.cases);
   });
 
   it('contracts_parity.json is current', () => {
@@ -231,6 +231,6 @@ describe('gathering family parity', () => {
     }
     const streaks: [string[], string][] = [[[], '2026-10-15'], [['2026-10-15'], '2026-10-15'], [['2026-10-14', '2026-10-13'], '2026-10-15'], [['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15'], '2026-10-15'], [['2026-10-10'], '2026-10-15'], [['2026-02-28', '2026-03-01'], '2026-03-01']];
     for (const [d, t] of streaks) r.add('streakOf', [d, t], () => streakOf(d, t));
-    checkParity('rules-gathering', 'contracts', 'CONTRACTS', r.cases);
+    checkParity('rules_gathering', 'contracts', 'CONTRACTS', r.cases);
   });
 });

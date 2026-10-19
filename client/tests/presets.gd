@@ -9,7 +9,7 @@ extends SceneTree
 ##   - each preset applied to a real game scene: the moon's shadow, reach, splits and atlas, the soft filter, bloom, ambient occlusion, MSAA, anisotropy and mesh LOD
 ##     on the viewport, the effects quality, the governor's floor; and the crowd's shadow policy: with 30 robbers round the hero the shadow groups hold the preset's
 ##     nearest casters (Low none), the thralls cast from Medium up;
-##   - (the governor's stream of slow and fast frames is tests/next_perfctl's);
+##   - (the governor's stream of slow and fast frames is tests/perf_controls's);
 ##   - ZERO script errors or engine errors in the log.
 ## Gets the robber and the legionnaire into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd). Run: godot --headless --fixed-fps 60 --path client --script res://tests/presets.gd
 

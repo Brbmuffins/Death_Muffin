@@ -47,23 +47,23 @@ cd "$(dirname "$0")/../.."
 SUITES="core_smoke core_api core_enemies core_status core_corpses core_thralls core_affixes core_coop code_load areas crowd_bake crowd_view game_scene rites spells boss hud front coop
 benchmark benchmark_rooms benchmark_classes benchmark_launch benchmark_flags presets rewards value fx_motes panels world core_kinds gathering counsel sound depths auto_combat draw_budget dressing fx_decals threads coop_bosses core_boss crash_note qa_shots
 boss_abbess boss_congregation boss_prelate boss_saint boss_regent boss_mire boss_meta surge play_report warm_coverage
-rules-combat rules-core rules-gathering rules-loot rules-progression data dialogue gear sim audio loot_view panels_a bosses onboarding fx world_builder world_fx game_ui ui ui_parity gear_look
-next_online_gate session relay relay/udp_run backend chapterhouse next_bag next_loot next_hero_look next_progress
-next_boss_meta next_playtest status game/units_run game/anim_run game/autocombat_run game/regress_run next_perfctl next_autocombat next_feel next_spawn_aggro
-next_lobby next_lobby/ui_run next_lobby/proc_run next_meta hud_actions next_brews_affix next_runes next_clarity next_combat_odds next_glue next_affixes interp enemy_fx"
+rules_combat rules_core rules_gathering rules_loot rules_progression data dialogue gear sim audio loot_view panel_data bosses onboarding fx world_builder world_fx game_ui ui ui_details gear_look
+online_gate session relay relay/udp backend chapterhouse bag loot hero_look progress
+boss_track playtest_regressions status gathering_labor creature_anim auto_combat_fixtures regressions perf_controls auto_combat_play combat_feel spawn_aggro
+lobby lobby/ui lobby/processes meta_systems hud_actions brews_affixes runes combat_clarity combat_odds integration affixes interp enemy_fx"
 # game_scene, rites, boss, presets and benchmark are paced too (2026-10-19: 147 -> 28 s, 175 -> 51 s, 64 -> 40 s, 287 -> 180 s on the VPS).
-# The suites after `warm_coverage` came from the first game's tests (B57). ui, chapterhouse, next_autocombat, next_feel, next_affixes and interp keep real time
-# (they measure it), and so do session, relay and next_lobby (real sockets and child processes).
+# The suites after `warm_coverage` came from the first game's tests (B57). ui, chapterhouse, auto_combat_play, combat_feel, affixes and interp keep real time
+# (they measure it), and so do session, relay and lobby (real sockets and child processes).
 PACED=" game_scene rites spells boss presets benchmark benchmark_rooms benchmark_classes benchmark_launch benchmark_flags front hud coop value panels world gathering counsel sound depths boss_abbess boss_congregation boss_prelate boss_saint boss_regent boss_mire boss_meta dressing coop_bosses qa_shots surge warm_coverage \
- rules-combat rules-core rules-gathering rules-loot rules-progression data dialogue gear sim audio loot_view panels_a bosses onboarding fx world_builder world_fx game_ui ui_parity gear_look \
- next_online_gate backend next_bag next_loot next_hero_look next_progress next_boss_meta next_playtest \
- status game/units_run game/anim_run game/autocombat_run game/regress_run next_perfctl next_spawn_aggro next_meta hud_actions next_brews_affix next_runes next_clarity next_combat_odds next_glue enemy_fx "
-# LANE: the suites that wait on real sockets and child processes in real time (session, relay and next_lobby talk to peers and the lobby;
-# coop, coop_bosses and next_lobby/ui_run start the real lobby service, node, and wait for it). One after another beside the pool.
-LANE=" session relay relay/udp_run next_lobby next_lobby/ui_run next_lobby/proc_run coop coop_bosses "
+ rules_combat rules_core rules_gathering rules_loot rules_progression data dialogue gear sim audio loot_view panel_data bosses onboarding fx world_builder world_fx game_ui ui_details gear_look \
+ online_gate backend bag loot hero_look progress boss_track playtest_regressions \
+ status gathering_labor creature_anim auto_combat_fixtures regressions perf_controls spawn_aggro meta_systems hud_actions brews_affixes runes combat_clarity combat_odds integration enemy_fx "
+# LANE: the suites that wait on real sockets and child processes in real time (session, relay and lobby talk to peers and the lobby;
+# coop, coop_bosses and lobby/ui start the real lobby service, node, and wait for it). One after another beside the pool.
+LANE=" session relay relay/udp lobby lobby/ui lobby/processes coop coop_bosses "
 # Of those, the ones that mostly wait on sockets keep normal priority (the rest of a run is at nice 10), so a busy machine does not starve their
-# real-time waits (2026-10-19: next_lobby failed at load 20 at nice 10 and passed alone; coop, coop_bosses and next_lobby/ui_run wait on the real lobby too).
-WAITING=" session relay relay/udp_run next_lobby next_lobby/ui_run next_lobby/proc_run coop coop_bosses "
+# real-time waits (2026-10-19: lobby failed at load 20 at nice 10 and passed alone; coop, coop_bosses and lobby/ui wait on the real lobby too).
+WAITING=" session relay relay/udp lobby lobby/ui lobby/processes coop coop_bosses "
 TIMES_FILE=tools/rebuild/suite-times.tsv
 [ -z "$ONLY" ] || SUITES="${ONLY//,/ }"
 # The script of a suite, under client/tests: <name>.gd, else <name>/run.gd; a name with a slash is one runner of a folder (<folder>/<runner>.gd).

@@ -50,12 +50,12 @@ A job that changes the lobby's `package-lock.json` gets a plain line that its pa
 (`tools/hygiene/check.mjs`, the same `npm run hygiene` CI runs: a stale doc link, missing path or retired term fails with `GODOT TESTS: repo hygiene FAILED`); a change
 that only touches Markdown files stops there (`GODOT TESTS: skipped, docs-only change`); the model check on the models the change adds or edits
 (`tools/assets/check-models.mjs --changed`); the game's build products (above; `GODOT TESTS: preparing the game FAILED` when they cannot be made; before the sandbox it also
-links the lobby's packages (the main checkout's lobby `node_modules`) into a worktree that has none, since coop, coop_bosses and next_lobby/ui_run start the real lobby); then
+links the lobby's packages (the main checkout's lobby `node_modules`) into a worktree that has none, since coop, coop_bosses and lobby/ui start the real lobby); then
 `tools/rebuild/run-client-tests.sh` (one line per suite, `<suite> <file> exit=<code> <result>`; `GODOT` defaults to `/home/ubuntu/tools/godot/godot`; suites side by side, 8 by
 default and fewer on a busy machine, the slowest first, the real-socket suites in a lane of their own, each failure once more alone: its header). While the suites run it writes
 `<done> <total>` to `.dm-check-progress` in the worktree (removed at the end) for the progress notes. It has two modes. **Quick** (default; the runner before a proposal): `tools/rebuild/affected-suites.mjs` picks the suites for the change (changed suites; suites referencing a changed file by `res://` path or
 `class_name`, one level through non-test dependents; for changed `client/data` files the scripts that load them, by path or DmDb accessor; plus a smoke set
-`code_load core_smoke game_scene`; a `client/data/content/*.json` change also runs `rules-core`, which reads every content table) and `run-client-tests.sh --only <list>`
+`code_load core_smoke game_scene`; a `client/data/content/*.json` change also runs `rules_core`, which reads every content table) and `run-client-tests.sh --only <list>`
 runs them. It prints `ALL` (every suite) for central changes (`project.godot`, `export_presets.cfg`, the combat core `native/`, `client/main`, `client/core`, `client/rules/core`,
 `client/net` (except a change that only adds lines to `dm_api.gd` / `dm_mock_backend.gd`: that selects the suites using the added `func` names and `/api/...` routes, one level
 through dependents), `client/session`, the shared test helpers, the runner), more than 40 changed `.gd` files, or more than 60% of suites selected; nothing for docs-only.
@@ -75,7 +75,7 @@ the same tree skips its tests; a conflict is undone (`pre-sync` with `ok: false`
 or bullets. **After a failed check** (`cfg.baseCheck: false` turns it off) the failing suites, at most 6, run with `--rerun` on a clean copy of the base
 (`<worktreeRoot>/basecheck-<job>`, removed after; audit `base-check`). Any that fail there too stop the job with "⚠ Not this change: ... fail on main without
 this change too" (audit `infra-failed`): nothing is proposed and no repair turn is spent, since no change in the job can fix the test setup or main. The
-automatic re-run of 1-3 failing suites (the runner's `failedSuites`, and `ship.sh`) reads every suite line, folder runners such as `relay/udp_run` too, and
+automatic re-run of 1-3 failing suites (the runner's `failedSuites`, and `ship.sh`) reads every suite line, folder runners such as `relay/udp` too, and
 is skipped when those lines do not account for the summary's `N FAILED`, so a failure it cannot name never rides on another suite's passing re-run.
 
 **`preview-godot.sh <jobid>`**: runner-only. The game's build products with the Windows core (`prep.sh --warm --windows`), then inside the same kind of sandbox the

@@ -171,7 +171,7 @@ func _run() -> void:
 	var drop_item := item_of_type(["weapon", "chest_armor"], "common")
 	m.loot_view.item(b.position + Vector3(3, 0, 0), {"item_id": drop_item, "quantity": 1})
 	# (the drop, coin and shard sounds are the loot node's own calls into the AudioDirector, not the adapter's `sfx` signal, and the director reports only the sounds it
-	# synthesizes: they are not counted here; the floats of a fight are tests/next_loot's)
+	# synthesizes: they are not counted here; the floats of a fight are tests/loot's)
 	sounds.clear()
 	m.loot_view.gold(b.position, 25)
 	m.loot_view.shard(b.position, 1)

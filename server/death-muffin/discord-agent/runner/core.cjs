@@ -70,7 +70,7 @@ function failedSuites(out) {
   if (n && Number(n[1]) !== bad.length) return [];
   return bad.length >= 1 && bad.length <= 3 ? bad : [];
 }
-// The suites a check's output names as failing (`<suite> <script> exit=<n>`, n > 0; a suite may be a folder runner such as `relay/udp_run`).
+// The suites a check's output names as failing (`<suite> <script> exit=<n>`, n > 0; a suite may be a folder runner such as `relay/udp`).
 function suitesFailing(out) { return [...new Set([...String(out).matchAll(/^([A-Za-z0-9_/-]+)\s+\S+\s+exit=([1-9]\d*)/gm)].map((m) => m[1]))]; }
 const fmtList = (a, n) => (a.length > n ? a.slice(0, n).join('\n') + `\n… +${a.length - n} more` : a.join('\n'));
 

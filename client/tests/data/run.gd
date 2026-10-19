@@ -64,7 +64,7 @@ func _initialize() -> void:
 	ok(not DmDb.exists("loot/content"), "loot/content.json must not exist (projection of content/*)")
 	ok(not DmDb.exists("progression/content"), "progression/content.json must not exist (projection of content/*)")
 	ok(not DmDb.exists("panels_a/sheet_sample"), "sample/mock data belongs under tests/")
-	ok(FileAccess.file_exists("res://tests/panels_a/sheet_sample.json"), "sheet_sample moved to tests/panels_a")
+	ok(FileAccess.file_exists("res://tests/panel_data/sheet_sample.json"), "sheet_sample moved to tests/panel_data")
 	var cp: Dictionary = DmDb.raw("combat/progression")
 	for k in ["vows", "boons", "ascension", "chain", "wave_milestones", "stat_effects", "damage_upgrade"]:
 		ok(not cp.has(k), "combat/progression.json must not re-carry content/ fact: " + k)

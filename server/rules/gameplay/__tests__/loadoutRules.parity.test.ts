@@ -9,7 +9,7 @@ import { checkParity, recorder } from './parity';
 
 /**
  * Loadout presets (client/net/offline/dm_offline_loadout.gd) and cosmetic unlocks (dm_offline_cosmetics.gd): the offline backend's ports of
- * the rules the server enforces. Replayed by rules-combat (loadout_parity.json) and rules-gathering (cosmetics_parity.json).
+ * the rules the server enforces. Replayed by rules_combat (loadout_parity.json) and rules_gathering (cosmetics_parity.json).
  * Regenerate: UPDATE_LOADOUT_PARITY=1 / UPDATE_COSMETICS_PARITY=1 npx vitest run server/rules/gameplay/__tests__/loadoutRules.parity.test.ts
  */
 function rng(seed: number) {
@@ -38,7 +38,7 @@ describe('loadout and cosmetics parity', () => {
       }
       r.add('capeUnlocked', ['cape_nope', lv], () => capeUnlocked('cape_nope', lv));
     }
-    checkParity('rules-gathering', 'cosmetics', 'COSMETICS', r.cases);
+    checkParity('rules_gathering', 'cosmetics', 'COSMETICS', r.cases);
   });
 
   it('loadout_parity.json is current', () => {
@@ -93,6 +93,6 @@ describe('loadout and cosmetics parity', () => {
       r.add('applyLoadout', [rows, TABLE, preset, learned], () => applyLoadout(rows, info, preset as never, new Set(learned)));
     }
     void gearIds;
-    checkParity('rules-combat', 'loadout', 'LOADOUT', r.cases);
+    checkParity('rules_combat', 'loadout', 'LOADOUT', r.cases);
   });
 });
