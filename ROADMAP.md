@@ -90,6 +90,12 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   too the thread is told plainly, with no repair turn. The automatic re-run could pass a check with a folder suite still failing → it reads
   every suite and counts against the summary. Three tests named the number of spells or abilities → they compare the spell registry with the
   spell files and the two ability tables with each other.
+- [x] **Fix: testing was slow, and sessions and the Discord agent each did it their own way** (B59). Done 2026-10-19. Now → after: four
+  separate setups built the game for every checkout (about 7 minutes for a new worktree) → one setup with one shared cache (about 15
+  seconds); CI took 20 to 24 minutes and sessions waited for it while the agent shipped on its own quick check → CI runs every suite on
+  every push in about 4 minutes and is the one gate for everyone, the deploy and publish scripts included; approvals that wait for a ship
+  still go out together, now with one CI run for all of them; tests that broke when a spell or an area was added compare the game's data
+  with itself instead.
 - [x] **Fix: a document change from the Discord agent shipped a game update.** Done 2026-10-18: an approved change that touches only
   documents (Markdown files, docs/) goes to `main` and stops there, with no game build, deploy or notice, and the thread says so; when someone
   shares an idea the roadmap lacks, the agent offers to add it to "Ideas" with its section (server/death-muffin/discord-agent/README.md).
@@ -261,7 +267,8 @@ budgets for every kind of asset, and checks for everything but models.
   every other copy (client data, server rules, the server's item rows), and the build fails if a copy is out of date.
 - [ ] **New: automatic checks for every new asset and content entry.** Models already get triangles, materials, the skeleton and the
   combat clips checked (Phase 1); still to add for models: texture sizes, bones, levels of detail, scale and pivot, a source and licence record. For data: required fields, ids that exist, numbers inside the
-  balance sheet. They run before every push, in the Discord agent's check and in CI, and replace today's tests that pin counts. It gives:
+  balance sheet. They run before every push, in the Discord agent's check and in CI (the tests that pinned counts already compare the data
+  with itself, B59). It gives:
   an over-budget model, a missing clip or a broken item cannot ship.
 - [ ] **New: the rules reach every Claude by themselves.** CLAUDE.md, which every session reads first, points to the docs map; each recipe
   is also a Claude Code skill that loads by itself when a session is asked to do that job (sessions on the server and the Discord agent
@@ -294,9 +301,9 @@ budgets for every kind of asset, and checks for everything but models.
 
 - [ ] **New: an automatic secret scan.** The repository is public and many sessions push to it, but only a scan each session runs by hand
   keeps keys and passwords out. After: every push is scanned before it leaves the server and again in CI, and one with a secret is refused.
-- [ ] **Fix: a document-only push runs every test.** Now: each push to `main` runs all the suites (about 20 minutes), even when only a
-  document changed. After: a push that changes only documents runs the document checks; game changes run everything, as now. This also
-  keeps the free test minutes in reach once the code goes private for 1.0.
+- [x] **Fix: a document-only push runs every test.** Done 2026-10-19 (B59): each push to `main` ran all the suites (about 20 minutes), even
+  when only a document changed → a push that changes only documents runs the document checks; game changes run everything, on six
+  machines with the build products from the cache (about 4 minutes).
 - [ ] **New: a security watch on the server's packages.** The game's server, lobby and relay use outside code packages that get security
   fixes. After: a weekly check lists packages with known holes, and they are updated on purpose, tested, like any change.
 - [ ] **Fix: untyped code is allowed.** Now: GDScript without types still loads (under 1 % of the game's code), so some mistakes only
@@ -305,7 +312,8 @@ budgets for every kind of asset, and checks for everything but models.
   rewards and loot 2 to 9 ms (measured on the VPS: a small hitch on a weaker PC), some code repeats work every frame, and some effects draw
   while empty. After: each one inside its budget, fixed and measured one at a time, the hitches first (KNOWN-GAPS "Performance").
 - [ ] **Fix: some test suites fail at random.** Now: a few suites fail now and then under load or on timing (KNOWN-GAPS "Tools and
-  tests"), so a red CI does not always mean a real problem. After: every suite passes every time, and red means broken.
+  tests"; `next_hud` and `qa_shots` fixed 2026-10-19), so a red CI does not always mean a real problem, and with CI as the gate (B59) a
+  random failure blocks a ship. After: every suite passes every time, and red means broken.
 - [ ] **Fix: leftovers from the web game.** Now: parts of the code still copy the old web game's exact math, and an asset list is kept by
   hand. After: plain Godot code and generated lists (KNOWN-GAPS "Leftovers from the web era").
 - [ ] **Fix: docs too long to read.** Now: `client/README.md` is 175 KB (its comparisons with the old game are gone since 2026-10-18, but

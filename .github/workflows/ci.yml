@@ -18,6 +18,29 @@ env:
   GODOT_VERSION: 4.7.2-stable
 
 jobs:
+  # What the push changes against main (against the previous main on a push to main): only documents (Markdown, docs/) skip the game's
+  # suites, and the verdict is the backend job's checks (hygiene included). Anything else, or a base that cannot be found, runs everything.
+  scope:
+    name: What changed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      game: ${{ steps.s.outputs.game }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          filter: blob:none
+      - id: s
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          base=$(git merge-base HEAD origin/main 2>/dev/null || true)
+          [ "$base" != "$(git rev-parse HEAD)" ] || base="$BEFORE"
+          if [ -n "$base" ] && git cat-file -e "$base^{commit}" 2>/dev/null && ! git diff --name-only "$base" HEAD | grep -qvE '(\.md$|^docs/)'; then
+            echo "documents only since ${base:0:12}: the game's suites are skipped"; echo game=false >> "$GITHUB_OUTPUT"
+          else echo game=true >> "$GITHUB_OUTPUT"; fi
+
   server:
     name: Backend + lobby tests
     runs-on: ubuntu-24.04   # pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19 (GitHub notice), a move to make on purpose
@@ -60,6 +83,8 @@ jobs:
   # The game (client/, DECISIONS B49): its build products from the cache (or built), then every suite.
   client:
     name: Game client tests (${{ matrix.shard }}/6)
+    needs: scope
+    if: needs.scope.outputs.game == 'true'
     # The suites split in six by their recorded times (run-client-tests.sh --shard), six machines side by side; each takes the build products
     # from the cache, so a machine more costs about a minute of set-up, not the 14 minutes of building them.
     strategy:

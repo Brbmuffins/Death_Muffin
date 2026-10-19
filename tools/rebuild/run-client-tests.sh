@@ -62,8 +62,8 @@ PACED=" game_scene rites boss presets benchmark front hud coop value panels worl
 # coop, coop_bosses and social start the real lobby service, node, and wait for it). One after another beside the pool.
 LANE=" session relay relay/udp_run next_lobby next_lobby/ui_run next_lobby/proc_run coop coop_bosses social "
 # Of those, the ones that mostly wait on sockets keep normal priority (the rest of a run is at nice 10), so a busy machine does not starve their
-# real-time waits (2026-10-19: next_lobby failed at load 20 at nice 10 and passed alone).
-WAITING=" session relay relay/udp_run next_lobby next_lobby/ui_run next_lobby/proc_run "
+# real-time waits (2026-10-19: next_lobby failed at load 20 at nice 10 and passed alone; coop, coop_bosses and social wait on the real lobby too).
+WAITING=" session relay relay/udp_run next_lobby next_lobby/ui_run next_lobby/proc_run coop coop_bosses social "
 TIMES_FILE=tools/rebuild/suite-times.tsv
 [ -z "$ONLY" ] || SUITES="${ONLY//,/ }"
 # The script of a suite, under client/tests: <name>.gd, else <name>/run.gd; a name with a slash is one runner of a folder (<folder>/<runner>.gd).

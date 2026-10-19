@@ -52,7 +52,8 @@ The last line says what happened, for scripts and logs:
 ## CI is the gate
 
 GitHub CI (`.github/workflows/ci.yml`) runs on every push to every branch: the backend and lobby tests, hygiene, the model check, this
-script's tests, and every game suite split over six machines by their recorded times. A run on `main` is never cancelled; a newer push to a
+script's tests, and every game suite split over six machines by their recorded times (a push that changes only documents, Markdown or
+`docs/`, skips the game's suites). A run on `main` is never cancelled; a newer push to a
 branch replaces that branch's older run. Nothing is merged, deployed or published until CI passed it (DECISIONS B59, CLAUDE.md):
 
 ```
