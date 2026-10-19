@@ -129,7 +129,7 @@ async function setup(t, { backend = {}, hook = {} } = {}) {
   const ctx = { dir, state, be, wh, results, statePath: path.join(dir, 'ops/state/team-report.json'), nextId: 1 };
   ctx.env = (extra = {}) => ({
     PATH: process.env.PATH, HOME: dir, RUNTIME: dir, HOOK_FILE: path.join(dir, 'private/hook.url'), STATE: ctx.statePath, DM_TEAM_API: be.url, DM_TEAM_SECRET_FILE: path.join(dir, 'secret'),
-    DM_TEAM_RESULTS: results, NOW_MS: String(T0 + 2 * HOUR), PYTHONUSERBASE: PY_USER, ...extra,
+    DM_TEAM_RESULTS: results, NOW_MS: String(T0 + 2 * HOUR), PYTHONUSERBASE: PY_USER, LIVE_DIR: path.join(dir, 'live'), ...extra,
   });
   ctx.run = (extra = {}, args = []) => new Promise((resolve) => {
     const child = spawn('bash', [SCRIPT, ...args], { env: ctx.env(extra) });
@@ -156,10 +156,11 @@ function addJob(ctx, spec = {}) {
     for (const [w, h] of spec.resolutions || RESOLUTIONS) for (const scaled of [false, true]) SHOTS.forEach((shot, si) => put(`${w}x${h}${scaled ? '_s1-5' : ''}_${shot}.png`, png(32, 18, colourOf(pcIndex, scaled, si))));
   }
   for (const [name, data] of Object.entries(spec.files || {})) put(name, data);
+  if (spec.live !== false) fs.mkdirSync(path.join(ctx.dir, 'live', spec.version || V), { recursive: true });   // the version went live (the client's folder)
   const status = spec.status || 'done';
   const done = status === 'done' || status === 'failed';
   const job = {
-    id, kind: 'release', title: `Release checks of ${spec.version || V}`, weightS: 2400, status, tries: 0, targetPc: spec.pc || PC_A,
+    id, kind: 'release', title: spec.title || `Release checks of ${spec.version || V}`, weightS: 2400, status, tries: 0, targetPc: spec.pc || PC_A,
     payload: { version: spec.version || V, rev: 'abcdef123456', files: [], steps: spec.steps || STEPS, setups: [], soak: { minutes: 30 }, args: [] },
     createdAt: iso(spec.created ?? T0), expiresAt: iso((spec.created ?? T0) + 3 * 24 * HOUR), claimedAccount: done || status === 'running' ? 1 : null, claimedPc: done || status === 'running' ? (spec.pc || PC_A) : null,
     finishedAt: done ? iso((spec.created ?? T0) + HOUR) : null, reportedAt: null, error: spec.error ?? null,
@@ -393,6 +394,31 @@ test('unreadable results do not stop the report: bad JSON, a file outside the jo
   assert.strictEqual(r.code, 0, r.out);
   const lines = ctx.wh.posts[0].json.embeds[0].fields[0].value.split('\n');
   assert.deepStrictEqual(lines, ['✓ install: booted', '✓ quit while loading: exits cleanly', '✓ screens: ok', '✓ stutter: ok', '✓ bench: ok', '✓ soak: 30 min']);
+});
+
+test('only builds that went live are posted (Helix 2026-10-19): a hand-queued check, a test build and a second check of a posted release and PC are marked without a post', async (t) => {
+  const ctx = await setup(t);
+  const hand = addJob(ctx, { ...passing(), title: `Benchmark check of ${V}` });
+  const test = addJob(ctx, { ...passing(), version: '20261019.155145-b0b717a', live: false });
+  let r = await ctx.run();
+  assert.strictEqual(r.code, 0, r.out);
+  assert.strictEqual(ctx.wh.posts.length, 0, 'nothing posted');
+  assert.deepStrictEqual(reportedIds(ctx).sort(), [hand.id, test.id].sort(), 'both are marked, so they are never posted later');
+  const real = addJob(ctx, passing());
+  r = await ctx.run();
+  assert.strictEqual(ctx.wh.posts.length, 1, 'the live release\'s own check is posted: ' + r.out);
+  const again = addJob(ctx, passing());   // a session re-ran the release's checks on the same PC
+  r = await ctx.run();
+  assert.strictEqual(ctx.wh.posts.length, 1, 'a re-run of a posted release and PC is not posted again');
+  assert.ok(reportedIds(ctx).includes(real.id) && reportedIds(ctx).includes(again.id), 'and both are marked');
+});
+
+test('a hand-queued check still open does not hold back a live release\'s post', async (t) => {
+  const ctx = await setup(t);
+  addJob(ctx, passing());
+  addJob(ctx, { title: `Benchmark check of ${V}`, status: 'running', pc: PC_H });
+  const r = await ctx.run();
+  assert.strictEqual(ctx.wh.posts.length, 1, 'posted without waiting for the hand-queued job: ' + r.out);
 });
 
 test('two releases in one run are two messages, the older first, each with its own jobs', async (t) => {

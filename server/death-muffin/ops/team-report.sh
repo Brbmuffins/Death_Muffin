@@ -10,13 +10,16 @@
 #     while loading worked, the screens' count, the p50/p99 frame times and the 3 worst rites of the stutter run, the bench fps per setup, the soak's growth);
 #   - per resolution a contact sheet of the screens (Pillow; rows = PC and UI scale, columns = the shots), at most 4 images, each under 5 MB;
 #   - PCs whose job is still queued or running when the 24 hours pass are named as waiting; their results follow in a "late results" message when they finish.
+# Only builds that went live are posted (Helix, 2026-10-19: "only builds that are pushed to live should be posted to the build alerts"): a job counts when the release hook
+# queued it (its title is "Release checks of <version>"), its version is a folder of the live client (LIVE_DIR), and no job of that version and PC was posted before. Anything
+# else (a session's own re-run, a benchmark-only check, a test build that never went live) is marked reported without a post, and an open one never holds a release back.
 # Then each reported job is marked (POST /internal/team/jobs/<id>/reported). The numbers come from the job's own result files (the folder named in the job's `files`, which
 # must be <team results>/<job id>/ itself and are read without following a link): <step>.json and the screens' PNGs, plus the step list the PC sent with `done`.
 # A job whose mark failed after the post went out is only marked again next time (the state file remembers what was posted), never posted twice.
 # A backend that has no such route (404) or no table yet (503) is not an error: nothing happens, quietly. The webhook file is read, never printed (nor its address in any message).
 # Env (all optional; tests override): RUNTIME (/home/ubuntu/death-muffin), HOOK_FILE ($RUNTIME/private/discord-build-alerts-webhook.url, #build-alerts), STATE
 #      ($RUNTIME/ops/state/team-report.json), DM_TEAM_API (http://127.0.0.1:5190), DM_TEAM_SECRET_FILE (the runner's secret), DM_TEAM_RESULTS ($RUNTIME/team-results),
-#      WAIT_HOURS (24), SHEET_MAX_BYTES (5 MB, one contact sheet), NOW_MS.
+#      WAIT_HOURS (24), SHEET_MAX_BYTES (5 MB, one contact sheet), NOW_MS, LIVE_DIR (/var/www/death-muffin/client: the live builds' folders).
 set -uo pipefail
 command -v python3 >/dev/null || { echo "team report: python3 is required" >&2; exit 1; }
 exec python3 - "$@" <<'PY'
@@ -28,6 +31,7 @@ RUNTIME = env("RUNTIME") or "/home/ubuntu/death-muffin"
 API = env("DM_TEAM_API") or "http://127.0.0.1:5190"
 SECRET_FILE = env("DM_TEAM_SECRET_FILE") or "/home/ubuntu/death-muffin/discord-agent/secret"
 RESULTS = os.path.abspath(env("DM_TEAM_RESULTS") or RUNTIME + "/team-results")
+LIVE_DIR = env("LIVE_DIR") or "/var/www/death-muffin/client"
 HOOK_FILE = env("HOOK_FILE") or RUNTIME + "/private/discord-build-alerts-webhook.url"
 STATE = env("STATE") or RUNTIME + "/ops/state/team-report.json"
 WAIT_S = float(env("WAIT_HOURS") or 24) * 3600
@@ -499,19 +503,36 @@ def load_state():
     try:
         with open(STATE) as f:
             s = json.load(f)
-        return {"jobs": dict(s.get("jobs", {})), "versions": dict(s.get("versions", {}))}
+        return {"jobs": dict(s.get("jobs", {})), "versions": dict(s.get("versions", {})), "pcs": dict(s.get("pcs", {}))}
     except (OSError, ValueError, AttributeError, TypeError):
-        return {"jobs": {}, "versions": {}}
+        return {"jobs": {}, "versions": {}, "pcs": {}}
 
 
 def save_state(state):
     keep = lambda d, n: dict(sorted(d.items(), key=lambda kv: kv[1])[-n:])
-    out = {"jobs": keep(state["jobs"], 300), "versions": keep(state["versions"], 60)}
+    out = {"jobs": keep(state["jobs"], 300), "versions": keep(state["versions"], 60), "pcs": keep(state["pcs"], 300)}
     os.makedirs(os.path.dirname(STATE), exist_ok=True)
     tmp = STATE + ".tmp"
     with open(tmp, "w") as f:
         json.dump(out, f)
     os.replace(tmp, STATE)
+
+
+def pc_of(job):
+    return str(job.get("claimedPc") or job.get("targetPc") or "")
+
+
+def hook_job(job):
+    """Queued by the release hook (team-release.sh), not by hand: only those are a release's checks."""
+    return str(job.get("title") or "").startswith("Release checks of ")
+
+
+def went_live(version):
+    """The version is a build of the live client (its folder in LIVE_DIR), not a test build."""
+    if not version or "/" in version or version.startswith("."):
+        return False
+    path = os.path.join(LIVE_DIR, version)
+    return os.path.isdir(path) and not os.path.islink(path)
 
 
 def main():
@@ -556,6 +577,19 @@ def main():
     if posted_before and not DRY:
         mark(posted_before)
     finished = [j for j in finished if j["id"] not in state["jobs"]]
+    # only a live build's own checks are posted, one job per release and PC (the oldest): the rest is marked without a post
+    kept, quiet, seen = [], [], set(state["pcs"])
+    for j in sorted(finished, key=lambda j: when(j.get("createdAt")) or NOW):
+        key = "%s|%s" % (version_of(j), pc_of(j))
+        if hook_job(j) and went_live(version_of(j)) and key not in seen:
+            seen.add(key)
+            kept.append(j)
+        else:
+            quiet.append(j)
+    if quiet and not DRY:
+        n = mark([j["id"] for j in quiet])
+        say("not posted (not a live release's own check, or one of its PC was posted already): %d job%s marked reported" % (n, "" if n == 1 else "s"))
+    finished = kept
     if not finished:
         for n in failures_note:
             say(n)
@@ -579,7 +613,7 @@ def main():
     hook = None
     for version in order:
         group = groups[version]
-        waiting = None if waiting_all is None else [j for j in waiting_all if version_of(j) == version]
+        waiting = None if waiting_all is None else [j for j in waiting_all if version_of(j) == version and hook_job(j)]
         first = min(when(j.get("createdAt")) or NOW for j in group + (waiting or []))
         if not ((waiting is not None and not waiting) or NOW - first >= WAIT_S):
             continue   # another PC is still working on this release (and 24 hours have not passed)
@@ -608,6 +642,7 @@ def main():
         now_iso = datetime.fromtimestamp(NOW, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         for j in group:
             state["jobs"][j["id"]] = now_iso
+            state["pcs"]["%s|%s" % (version, pc_of(j))] = now_iso
         state["versions"][version] = now_iso
         save_state(state)
         marked = mark([j["id"] for j in group])
