@@ -979,6 +979,16 @@ func _the_notices() -> void:
 
 ## What was gathered and made is the server's: the next launch of the same character has the levels, the XP and the items again, and every node fresh.
 func _relaunch() -> void:
+	# leaving or closing mid-gather: a cycle the loop has not sent yet goes with the game's flush (no stop() first; the server may still refuse it on its budget)
+	var posts: Array = []
+	var post: Callable = g.gather.loop.hooks["post"]
+	g.gather.loop.hooks["post"] = func(type: String, actions: int, keepalive: bool, afk_now: bool) -> DmResult:
+		posts.append([type, actions])
+		return await post.call(type, actions, keepalive, afk_now)
+	g.gather.loop._queue["coffin_oak"] = int(g.gather.loop._queue.get("coffin_oak", 0)) + 1
+	await g.flush_all()
+	g.gather.loop.hooks["post"] = post
+	check(g.gather.loop._queued_total() == 0 and posts.has(["coffin_oak", 1]), "leaving mid-gather: the cycle not yet sent goes to the server with the game's flush (%s)" % str(posts))
 	g.gather.loop.stop("moved")
 	await g.flush_all()
 	await g.gather.load_professions()

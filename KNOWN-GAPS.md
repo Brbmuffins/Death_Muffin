@@ -115,10 +115,6 @@ polish list). Also:
 - A guest sees a Grave Surge only as the bodies that climb out of the crypt (the core's snapshot) and, once the host quells it, its offering: the
   banner, the cracked crypt, the sounds and the tip are the host's window only (`DmAreaFlow` listens to the host's director).
 
-## Gathering
-
-- Cycles gathered in the last 8 s before the player leaves or closes the window are never sent (`flush_all` does not flush the gather loop).
-
 ## UI
 
 - **The Next-step box no longer pings the minimap:** `client/next/hud/dm_next_hud_vm.gd` sets `_map["ping"] = null` where the old game pointed it at the suggestion's target (elsewhere, or marked pingInPlace), yet Settings still offers "Point to it on the minimap" (found porting the Acre's tests).

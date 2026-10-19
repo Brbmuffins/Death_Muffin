@@ -1,7 +1,7 @@
 # client/next/gathering: gathering and professions
 
 `DmNextGather` (child `Gather` of `DmNextGame`, same path on every peer) wires gathering into DmNextGame. It adds no rules:
-`DmGatherLoop` (walk -> work -> batch -> adopt the server's answer), `DmGathering` (timings, yields, success chance, XP curve, blockers, Auto's next node),
+`DmGatherLoop` (walk -> work -> batch -> adopt the server's answer; the batch the loop has not sent yet goes with the game's `flush_all` when the player leaves or closes the window), `DmGathering` (timings, yields, success chance, XP curve, blockers, Auto's next node),
 `DmSkills`, `DmNodeViews` (hover / selected ring, progress arc under the hero, spent look), `DmGatherSession` (AFK report) (all in `client/game/`) are used as they are.
 How it plays on the area scenes (a cycle, the server call and its refusals, the stops, AFK, the Acre's panels and notices, the laborers, cost and gaps) is client/README.md "Gathering and the Acre"; this guide keeps the numbers of the world and who owns what.
 
@@ -26,5 +26,4 @@ Nothing is built, fetched or updated outside the Acre (`set_active(area == "acre
 
 ## Known gaps
 - Remote players do not see a gatherer's tool / gesture or the host's laborers; clients cannot start gathering (above).
-- Cycles worked in the last 8 s before the player leaves or closes the window are never sent (KNOWN-GAPS "Gathering").
 - The laborer models are first built on the first Acre visit; `DmNextWarmup` does not draw them yet (rendered cost unmeasured). A node's spent look is built at run time and lit by the real-time light, not the bake; never looked at on a GPU.
