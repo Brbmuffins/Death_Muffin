@@ -54,6 +54,9 @@ node tools/rebuild/affected-suites.mjs                 # the suites a change can
 bash client/tools/coop_local.sh                        # a local lobby and relay for a trial with two game windows (prints the commands; "Co-op on the core")
 ```
 
+**Numbers in tests.** A test reads the game's numbers from the data (`DmAbilities`, `DmCombatData`, the content tables) and never types a
+total or a tuning value, so adding content or retuning never breaks it (CLAUDE.md, DECISIONS B59).
+
 **Suite names.** A suite is named after the system it protects, in snake_case, as a player or the code would call that system: `<system>` (`hud`, `gathering`, `spells`), `<system>_<part>` when one system has several suites (`boss_mire`, `benchmark_rooms`), `core_<part>` for the combat core's own suites and `rules_<area>` for the shared rules' fixtures. A suite with more than one runner is a folder, and each runner is named after what it runs (`lobby/ui`, `relay/udp`). Names carry no history (no `next_`, `game/` or `perf/`, which came from the first game's folders): a renamed or deleted suite's old name is retired in `tools/hygiene/retired.json`.
 
 A new suite goes into `SUITES` in `tools/rebuild/run-client-tests.sh` (and into `PACED` if it plays game time): `npm run hygiene` fails on a suite file the list does not name, a listed name with no file, and a `PACED`, `LANE` or `WAITING` name that is not a suite; a helper that is not a suite goes in `notSuites` in `tools/hygiene/retired.json`.
