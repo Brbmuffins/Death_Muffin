@@ -63,6 +63,50 @@ namespace DeathMuffinTeam.Tests
             BenchWaitingEnds();
             AfkMode();
             ServerCancel();
+            JobsForTheAfkNotice();
+        }
+
+        static Dictionary<string, object> Queued(string id, string kind, string title, double weightS)
+        {
+            return new Dictionary<string, object> { { "id", id }, { "kind", kind }, { "title", title }, { "weightS", weightS } };
+        }
+
+        static string Lines(CtlRig r) { return string.Join("|", r.Ui.JobLines); }
+
+        /// <summary>Helix 2026-10-19: the AFK notice shows what runs (with its step) and the queue, from the heartbeat's `queue`.</summary>
+        static void JobsForTheAfkNotice()
+        {
+            var r = new CtlRig();
+            r.Start();
+            T.Eq(Lines(r), "Nothing is running|Nothing is queued", "nothing to do: the notice says so");
+            var queue = new List<object> { Queued("job000000001", "shots", "Screenshots of a change", 60), Queued("job000000002", "release", "Release checks of 20261019.1", 2400) };
+            r.Api.Heartbeat = () =>
+            {
+                var a = FakeApi.OfferReply("job000000001");
+                a.Data["queue"] = queue;
+                return a;
+            };
+            r.Beat();
+            T.Eq(Lines(r), "Nothing is running|Queued: 2|· Screenshots of a change, about 1 minute|· Release checks of 20261019.1, about 40 minutes", "the queue, in the server's order, with how long each takes");
+            r.Eval();
+            r.Runner.Gate = new TaskCompletionSource<int>();
+            Task run = r.C.AnswerAsync(OfferAnswer.Yes);
+            for (int i = 0; i < 200 && !Lines(r).Contains("running job000000001"); i++) Thread.Sleep(10);
+            T.Eq(Lines(r), "Running: Screenshots of a change|   running job000000001|Queued: 1|· Release checks of 20261019.1, about 40 minutes", "the running job and its latest step, and it is not queued twice");
+            r.Runner.Gate.SetResult(0);
+            Util.Wait(run);
+            T.Eq(Lines(r), "Nothing is running|Queued: 1|· Release checks of 20261019.1, about 40 minutes", "a finished job leaves the list at once");
+            var many = new List<object>();
+            for (int i = 0; i < 6; i++) many.Add(Queued("job00000001" + i, "shots", "", 30));
+            r.Api.Heartbeat = () => FakeApi.Ok(new Dictionary<string, object> { { "serverTime", "x" }, { "offer", null }, { "queue", many } });
+            r.Beat();
+            T.Eq(Lines(r), "Nothing is running|Queued: 6|· Screenshots of a change, less than a minute|· Screenshots of a change, less than a minute|· Screenshots of a change, less than a minute|· and 3 more", "three named, then how many more; a job without a title gets its kind's words");
+            int updates = r.Ui.JobUpdates;
+            r.Beat();
+            T.Eq(r.Ui.JobUpdates, updates, "the same lines are not sent again");
+            r.Api.Heartbeat = () => FakeApi.Ok(new Dictionary<string, object> { { "serverTime", "x" }, { "offer", null } });
+            r.Beat();
+            T.Eq(Lines(r), "Nothing is running|Nothing is queued", "a server without the list (or an empty one) means nothing queued");
         }
 
         static void Starting()

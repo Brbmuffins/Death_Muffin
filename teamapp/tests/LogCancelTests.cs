@@ -15,6 +15,7 @@ namespace DeathMuffinTeam.Tests
         {
             GodotLogTests();
             CancelParseTests();
+            QueueParseTests();
             RunnerCancelTests();
         }
 
@@ -127,6 +128,24 @@ namespace DeathMuffinTeam.Tests
             T.Eq(TeamApi.ParseCancel(FakeApi.Ok(new Dictionary<string, object>())).Count, 0, "no list");
             T.Eq(TeamApi.ParseCancel(FakeApi.Ok(new Dictionary<string, object> { { "cancel", "ab12cd34ef56" } })).Count, 0, "a list that is text");
             T.Eq(TeamApi.ParseCancel(null).Count, 0, "no answer");
+        }
+
+        // ---- The heartbeat's `queue` (the AFK notice) ---------------------------------------------------------------------------------------
+
+        static void QueueParseTests()
+        {
+            var good = new Dictionary<string, object> { { "id", "ab12cd34ef56" }, { "kind", "release" }, { "title", "Release checks of v" }, { "weightS", 2400.0 } };
+            var list = TeamApi.ParseQueue(FakeApi.Ok(new Dictionary<string, object> { { "queue", new List<object> { good, "text", null, new Dictionary<string, object> { { "id", "../x" } }, new Dictionary<string, object> { { "id", "ok1" }, { "weightS", 1e9 } } } } }));
+            T.Eq(list.Count, 2, "the entries with a job id are read, the rest ignored");
+            T.Ok(list[0].Id == "ab12cd34ef56" && list[0].Kind == "release" && list[0].Title == "Release checks of v" && list[0].WeightS == 2400, "id, kind, title and weight");
+            T.Eq(list[1].WeightS, 86400, "a weight is held to a day");
+            var many = new List<object>();
+            for (int i = 0; i < 30; i++) many.Add(new Dictionary<string, object> { { "id", "job" + i } });
+            T.Eq(TeamApi.ParseQueue(FakeApi.Ok(new Dictionary<string, object> { { "queue", many } })).Count, TeamApi.MaxQueue, "at most 20 are kept");
+            T.Eq(TeamApi.ParseQueue(FakeApi.Ok(new Dictionary<string, object>())).Count, 0, "a server from before the list");
+            T.Eq(TeamApi.ParseQueue(null).Count, 0, "no answer");
+            T.Eq(string.Join("|", TeamLogic.AfkJobLines(null, null, null, "bench0000001", "", new List<QueuedJob> { new QueuedJob { Id = "bench0000001", Kind = "bench" } })),
+                "Waiting for a quiet PC: Benchmark of the new release|Nothing is queued", "a benchmark waiting for a quiet PC is named once, not as queued too");
         }
 
         // ---- The runner stops and drops a cancelled job ---------------------------------------------------------------------------------

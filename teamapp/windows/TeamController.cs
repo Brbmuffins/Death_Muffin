@@ -36,6 +36,8 @@ namespace DeathMuffinTeam
         void Stopped(string message);
         /// <summary>AFK mode on or off: a small persistent notice ("AFK mode on: jobs run right away", End AFK mode) and a tray menu item while it is on. Neither takes the focus.</summary>
         void SetAfk(bool on);
+        /// <summary>What runs and what is queued, as the AFK notice's lines (TeamLogic.AfkJobLines); called from any thread, only when the lines change.</summary>
+        void SetJobs(IList<string> lines);
     }
 
     /// <summary>What the app asks about this PC (the controller uses a stand-in in tests).</summary>
@@ -293,6 +295,8 @@ namespace DeathMuffinTeam
                 if (!signedIn) return;   // signed out while this heartbeat was on its way
                 offline = false;
                 if (running && runningJobId != null && TeamApi.ParseCancel(r).Contains(runningJobId)) CancelRunningJob();
+                lock (jobsGate) queue = TeamApi.ParseQueue(r);
+                PublishJobs();
                 Offer offer = TeamApi.ParseOffer(r);
                 offer = AboutWaitingBench(offer);
                 DateTime now = utcNow();
@@ -355,6 +359,7 @@ namespace DeathMuffinTeam
             waitingBench = null;
             benchSamples.Clear();
             benchPrimed = false;
+            PublishJobs();
         }
 
         /// <summary>The server cancelled the job this PC is running (its heartbeat reply lists it): the runner stops the game and drops the job without telling the server anything.</summary>
@@ -494,6 +499,7 @@ namespace DeathMuffinTeam
         void AcceptBench(Offer offer)
         {
             waitingBench = offer;
+            PublishJobs();
             ClearOffer();
             benchSamples.Clear();
             benchPrimed = false;
@@ -623,6 +629,8 @@ namespace DeathMuffinTeam
         {
             running = true;
             runningJobId = offer.Id;
+            lock (jobsGate) { runningId = offer.Id; runningTitle = offer.Title; runningKind = offer.Kind; runningStep = ""; }
+            PublishJobs();
             cancelRequested = false;
             if (!fromWaiting)
             {
@@ -649,7 +657,7 @@ namespace DeathMuffinTeam
                 ClaimedJob job = TeamApi.ParseClaim(claim);
                 if (job == null)
                 {
-                    if (fromWaiting) { waitingBench = offer; benchRetryAt = utcNow() + BenchClaimRetry; }   // still queued: tried again soon
+                    if (fromWaiting) { waitingBench = offer; benchRetryAt = utcNow() + BenchClaimRetry; PublishJobs(); }   // still queued: tried again soon
                     else snoozed[offer.Id] = utcNow() + TimeSpan.FromMinutes(5);
                     ClearOffer();
                     SetStatus(claim.Ok ? "The server's job could not be read" : claim.Error, StatusLevel.Warn);
@@ -675,7 +683,7 @@ namespace DeathMuffinTeam
                 CancellationToken token = runCts.Token, cancelled = cancelCts.Token;
                 string jobId = job.Id;
                 RunResult result;
-                try { result = await Task.Run(() => runner.RunAsync(jobId, plan, p => SetStatus(p, StatusLevel.Busy), token, cancelled)).ConfigureAwait(true); }
+                try { result = await Task.Run(() => runner.RunAsync(jobId, plan, p => { SetStatus(p, StatusLevel.Busy); SetRunningStep(p); }, token, cancelled)).ConfigureAwait(true); }
                 catch (Exception ex)
                 {
                     // The runner reports its own failures; this is a bug in the app. The job is failed so the server does not wait for it.
@@ -708,6 +716,12 @@ namespace DeathMuffinTeam
             {
                 running = false;
                 runningJobId = null;
+                lock (jobsGate)
+                {
+                    queue.RemoveAll(q => q.Id == offer.Id);   // (the server's list still had it until the next heartbeat)
+                    runningId = null; runningTitle = null; runningKind = null; runningStep = null;
+                }
+                PublishJobs();
                 runCts = null;
                 cancelCts = null;
                 cancelRequested = false;
@@ -752,6 +766,35 @@ namespace DeathMuffinTeam
         }
 
         readonly object statusGate = new object();
+
+        // ---- The AFK notice's job lines (what runs, what is queued) -----------------------------------------------------------------------
+
+        readonly object jobsGate = new object();
+        List<QueuedJob> queue = new List<QueuedJob>();
+        string runningId, runningTitle, runningKind, runningStep, lastJobs;
+
+        /// <summary>The running job's latest step (the runner's progress, from its thread).</summary>
+        void SetRunningStep(string step)
+        {
+            lock (jobsGate) runningStep = step;
+            PublishJobs();
+        }
+
+        /// <summary>Tells the screen what runs and what is queued (TeamLogic.AfkJobLines), only when the lines changed. Any thread.</summary>
+        void PublishJobs()
+        {
+            List<string> lines;
+            lock (jobsGate)
+            {
+                Offer waiting = waitingBench;
+                lines = TeamLogic.AfkJobLines(runningId, string.IsNullOrEmpty(runningTitle) ? TeamLogic.DefaultTitle(runningKind ?? "") : runningTitle, runningStep,
+                    waiting == null ? null : waiting.Id, waiting == null ? null : waiting.Title, queue);
+                string key = string.Join("\n", lines);
+                if (key == lastJobs) return;
+                lastJobs = key;
+            }
+            ui.SetJobs(lines);
+        }
 
         /// <summary>The one way to change the status (the runner's progress comes from another thread): the screen hears only about changes.</summary>
         void SetStatus(string text, StatusLevel level)

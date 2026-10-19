@@ -1,12 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 
 namespace DeathMuffinTeam
 {
     /// <summary>
-    /// The small notice that stays up while AFK mode is on: "AFK mode on: jobs run right away" and a button, End AFK mode. Like the offer box it never takes the keyboard or the focus: shown without
-    /// activation, no-activate window style, not topmost, no taskbar button, and its button does not ask for focus. It sits in the bottom-right corner of the work area.
+    /// The small notice that stays up while AFK mode is on: "AFK mode on: jobs run right away", what runs and what is queued (<see cref="SetJobs"/>, Helix 2026-10-19), and the buttons End AFK mode
+    /// and Hide. Like the offer box it never takes the keyboard or the focus: shown without activation, no-activate window style, no taskbar button, and its buttons do not ask for focus. It sits
+    /// in the bottom-right corner of the work area and grows upwards with its lines.
     /// </summary>
     internal sealed class AfkNotice : Form
     {
@@ -32,11 +34,44 @@ namespace DeathMuffinTeam
 
             var heading = new Label { Text = "DEATH MUFFIN TEAM", Font = new Font("Segoe UI", 8.5f, FontStyle.Bold), ForeColor = Art.Gold, BackColor = Color.Transparent, AutoSize = false, Bounds = new Rectangle(18, 12, 344, 18) };
             var text = new Label { Text = TeamLogic.AfkText, Font = new Font("Segoe UI", 10.5f), ForeColor = Art.Ink, BackColor = Color.Transparent, AutoSize = false, AutoEllipsis = true, Bounds = new Rectangle(18, 32, 344, 22) };
-            var end = new RuneButton(TeamLogic.AfkEndText, false) { Bounds = new Rectangle(18, 56, 140, 28), TakesFocus = false, TabStop = false, Font = Font };
+            end = new RuneButton(TeamLogic.AfkEndText, false) { Bounds = new Rectangle(18, 56, 140, 28), TakesFocus = false, TabStop = false, Font = Font };
             end.Click += (s, e) => { var h = Ended; if (h != null) h(); };
-            var hide = new RuneButton(TeamLogic.AfkHideText, false) { Bounds = new Rectangle(168, 56, 90, 28), TakesFocus = false, TabStop = false, Font = Font };
+            hide = new RuneButton(TeamLogic.AfkHideText, false) { Bounds = new Rectangle(168, 56, 90, 28), TakesFocus = false, TabStop = false, Font = Font };
             hide.Click += (s, e) => { var h = HideRequested; if (h != null) h(); };
             Controls.AddRange(new Control[] { heading, text, end, hide });
+        }
+
+        const int LinesTop = 56, LineHeight = 18, MaxLines = 8;
+        readonly RuneButton end, hide;
+        readonly List<Label> lineLabels = new List<Label>();
+
+        /// <summary>What runs and what is queued, a line each (TeamLogic.AfkJobLines; at most 8, a long one ends in "..."). The buttons move below them and the notice keeps its bottom-right corner.</summary>
+        public void SetJobs(IList<string> lines)
+        {
+            int n = lines == null ? 0 : Math.Min(lines.Count, MaxLines);
+            while (lineLabels.Count < n)
+            {
+                var l = new Label { Font = Font, ForeColor = Art.Ink, BackColor = Color.Transparent, AutoSize = false, AutoEllipsis = true, UseMnemonic = false };
+                lineLabels.Add(l);
+                Controls.Add(l);
+            }
+            for (int i = 0; i < lineLabels.Count; i++)
+            {
+                Label l = lineLabels[i];
+                l.Visible = i < n;
+                if (i >= n) continue;
+                string t = lines[i] ?? "";
+                l.Text = t;
+                l.ForeColor = t.StartsWith("Running", StringComparison.Ordinal) || t.StartsWith("Queued", StringComparison.Ordinal) || t.StartsWith("Waiting", StringComparison.Ordinal) ? Art.Gold : Art.Ink;
+                l.Bounds = new Rectangle(18, LinesTop + i * LineHeight, 344, LineHeight);
+            }
+            int buttons = LinesTop + n * LineHeight + (n > 0 ? 6 : 0);
+            end.Top = buttons;
+            hide.Top = buttons;
+            int bottom = Bottom;
+            ClientSize = new Size(ClientSize.Width, buttons + 28 + 8);
+            if (Visible) Top = bottom - Height;   // grows upwards: the corner stays where it was
+            Invalidate();
         }
 
         protected override bool ShowWithoutActivation { get { return true; } }

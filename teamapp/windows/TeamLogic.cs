@@ -113,6 +113,41 @@ namespace DeathMuffinTeam
         public const string AfkEndText = "End AFK mode";
         public const string AfkHideText = "Hide";
         public const string AfkShowText = "Show AFK notice";
+        /// <summary>How many queued jobs the AFK notice names before "and N more".</summary>
+        public const int AfkQueueShown = 3;
+
+        /// <summary>
+        /// The AFK notice's job lines (Helix 2026-10-19: "display what the current job queue is and which one is currently running"): "Running: &lt;title&gt;" with the job's latest step on the
+        /// next line, or "Waiting for a quiet PC: &lt;title&gt;" for an accepted benchmark, or "Nothing is running"; then "Queued: N" and the first <see cref="AfkQueueShown"/> as
+        /// "· &lt;title&gt;, about N minutes" with "· and N more" after them, or "Nothing is queued". A queued job that is the running or the waiting one is not listed twice.
+        /// </summary>
+        public static List<string> AfkJobLines(string runningId, string runningTitle, string runningStep, string waitingId, string waitingTitle, IList<QueuedJob> queue)
+        {
+            var lines = new List<string>();
+            bool isRunning = !string.IsNullOrEmpty(runningId);
+            if (isRunning)
+            {
+                lines.Add("Running: " + Name(runningTitle, ""));
+                if (!string.IsNullOrEmpty(runningStep)) lines.Add("   " + runningStep);
+            }
+            if (!string.IsNullOrEmpty(waitingId)) lines.Add("Waiting for a quiet PC: " + Name(waitingTitle, JobPlan.BenchKind));
+            if (!isRunning && string.IsNullOrEmpty(waitingId)) lines.Add("Nothing is running");
+            var rest = new List<QueuedJob>();
+            if (queue != null)
+                foreach (QueuedJob q in queue)
+                    if (q != null && q.Id != runningId && q.Id != waitingId) rest.Add(q);
+            if (rest.Count == 0) { lines.Add("Nothing is queued"); return lines; }
+            lines.Add("Queued: " + rest.Count + (rest.Count >= TeamApi.MaxQueue ? " or more" : ""));
+            for (int i = 0; i < rest.Count && i < AfkQueueShown; i++) lines.Add("· " + OfferText(rest[i].Kind, rest[i].Title, rest[i].WeightS));
+            if (rest.Count > AfkQueueShown) lines.Add("· and " + (rest.Count - AfkQueueShown) + " more");
+            return lines;
+        }
+
+        static string Name(string title, string kind)
+        {
+            title = (title ?? "").Trim();
+            return title.Length > 0 ? title : DefaultTitle(kind);
+        }
 
         /// <summary>
         /// True when this decision switches AFK mode on: mode ask, nobody answered, the box has been up its five minutes and the job runs by itself. A yes (Run now), the other modes (they never ask, or never

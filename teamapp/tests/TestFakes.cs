@@ -385,6 +385,10 @@ namespace DeathMuffinTeam.Tests
         public bool Afk;
         public readonly List<bool> AfkChanges = new List<bool>();
         public void SetAfk(bool on) { Afk = on; AfkChanges.Add(on); }
+        public List<string> JobLines = new List<string>();
+        public int JobUpdates;
+        readonly object jobsLock = new object();
+        public void SetJobs(IList<string> lines) { lock (jobsLock) { JobLines = new List<string>(lines); JobUpdates++; } }
     }
 
     sealed class FakeRunner : IJobRunner

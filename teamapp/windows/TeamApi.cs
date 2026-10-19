@@ -122,6 +122,15 @@ namespace DeathMuffinTeam
         public string ExpiresAt = "";
     }
 
+    /// <summary>A job of the heartbeat's `queue`: one this PC would be offered, in the server's order (the AFK notice lists them).</summary>
+    internal sealed class QueuedJob
+    {
+        public string Id = "";
+        public string Kind = "";
+        public string Title = "";
+        public int WeightS;
+    }
+
     internal sealed class ClaimedJob
     {
         public string Id = "";
@@ -362,6 +371,26 @@ namespace DeathMuffinTeam
                 ExpiresAt = MiniJson.Str(o, "expiresAt"),
             };
         }
+
+        /// <summary>The heartbeat's `queue`, in order, at most <see cref="MaxQueue"/> (a server from before it, or a bad entry, gives nothing for it).</summary>
+        public static List<QueuedJob> ParseQueue(ApiResult heartbeat)
+        {
+            var jobs = new List<QueuedJob>();
+            var list = MiniJson.Arr(heartbeat == null ? null : heartbeat.Data, "queue");
+            if (list == null) return jobs;
+            foreach (object o in list)
+            {
+                var d = o as Dictionary<string, object>;
+                if (d == null || jobs.Count >= MaxQueue) continue;
+                string id = MiniJson.Str(d, "id");
+                if (!JobIdRe.IsMatch(id)) continue;
+                jobs.Add(new QueuedJob { Id = id, Kind = MiniJson.Str(d, "kind"), Title = MiniJson.Str(d, "title"), WeightS = (int)Math.Max(0, Math.Min(86400, MiniJson.Int(d, "weightS") ?? 0)) });
+            }
+            return jobs;
+        }
+
+        /// <summary>The most queued jobs the app keeps from a heartbeat (the server sends at most 20).</summary>
+        public const int MaxQueue = 20;
 
         /// <summary>The heartbeat's `cancel`: the ids of jobs this PC is running that the server has cancelled (nothing to report, or a bad entry, gives nothing for it).</summary>
         public static List<string> ParseCancel(ApiResult heartbeat)

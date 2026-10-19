@@ -54,7 +54,7 @@ Only the accounts on the server's team list (a table the server's team routes re
 The server stores each PC's mode, so the Discord agent can see which PCs may take a job.
 
 **AFK mode** (mode Ask only). When a box's 5 minutes run out with nobody answering and the job runs by itself, the app takes it that you are away and switches AFK mode on. A small notice stays in the
-screen corner ("AFK mode on: jobs run right away", an **End AFK mode** button and a **Hide** button; it stays on top of everything while it is up, never takes the focus and has no
+screen corner ("AFK mode on: jobs run right away", what runs and what is queued, an **End AFK mode** button and a **Hide** button; it stays on top of everything while it is up, never takes the focus and has no
 taskbar button; Hide puts the notice away and AFK mode stays on, until the tray's **Show AFK notice** or the next AFK mode shows it again), the tray status says AFK mode and
 the tray menu gets **End AFK mode** while it is on. While it is on, every new offer (screenshots or a benchmark) runs straight away, with no box and no 5-minute wait. The waits stay: Death Muffin or a
 full-screen app running, the battery and a pause hold a job back, and a benchmark still waits for a quiet PC. It ends when you press the button or the menu item, by itself when you start Death Muffin or a
@@ -272,6 +272,8 @@ monitor (and the pictures still taken: Godot and the driver draw a window that i
 
 ### Changelog
 
+- **0.4.1** (2026-10-19) - The AFK notice lists what runs (the job and its latest step, or a benchmark waiting for a quiet PC) and the queue this PC would be
+  offered (how many, the first three with how long each takes, then "and N more"), from the heartbeat's new `queue` (Helix's ask); an older server sends none and the notice says nothing is queued.
 - **0.4.0** (2026-10-19) - The app listens for the PC's screen going to sleep (Windows' display-state notification, a hidden window): a benchmark run says
   in the job log, and the release check's summary in `screenOffS`, how long the screen was off (Helix: are numbers from a dark screen right?).
 - **0.3.9** (2026-10-19) - A benchmark game that crashes after it saved its numbers keeps them (the step fails, naming the crash code and the faulting module

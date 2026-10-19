@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -193,6 +194,7 @@ namespace DeathMuffinTeam
                     if (afkBox == null)
                     {
                         afkBox = new AfkNotice();
+                        afkBox.SetJobs(jobLines);
                         afkBox.Ended += () => controller.EndAfk();
                         afkBox.HideRequested += () => { afkHidden = true; afkBox.Hide(); afkShowItem.Visible = true; };
                     }
@@ -209,6 +211,17 @@ namespace DeathMuffinTeam
                     afkShowItem.Visible = false;
                     if (afkBox != null) afkBox.Hide();
                 }
+            });
+        }
+
+        IList<string> jobLines = new List<string>();
+
+        public void SetJobs(IList<string> lines)
+        {
+            OnUi(() =>
+            {
+                jobLines = lines;
+                if (afkBox != null) afkBox.SetJobs(lines);
             });
         }
 

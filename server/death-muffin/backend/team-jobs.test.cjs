@@ -740,6 +740,25 @@ test('the heartbeat offers the oldest queued job that has not expired, to any te
   });
 });
 
+test('the heartbeat lists the queue this PC would be offered, the offer first: no running, expired, declined or other PC\'s job, at most 20', async () => {
+  await withHarness(async (h) => {
+    const empty = await h.call('POST /api/team/heartbeat', { body: beat() });
+    assert.deepStrictEqual(empty.body.data.queue, [], 'nothing queued: an empty list, always present');
+    const running = await h.runningJob({ over: { title: 'running here' } });
+    const a = await h.makeJob({ title: 'first', weightS: 60 });
+    const b = await h.makeJob({ title: 'second', weightS: 2400, kind: 'release', targetPc: PC_A });
+    const theirs = await h.makeJob({ title: 'for War\'s PC', targetPc: PC_W });
+    const declined = await h.makeJob({ title: 'not now' });
+    await h.call('POST /api/team/jobs/:id/decline', { params: { id: declined }, body: { pcId: PC_A, reason: 'not_now' } });
+    const r = await h.call('POST /api/team/heartbeat', { body: beat() });
+    assert.deepStrictEqual(r.body.data.queue, [{ id: a, kind: 'shots', title: 'first', weightS: 60 }, { id: b, kind: 'release', title: 'second', weightS: 2400 }]);
+    assert.strictEqual(r.body.data.offer.id, r.body.data.queue[0].id, 'the offer is the queue\'s first');
+    assert.ok(![running, theirs, declined].some((id) => r.body.data.queue.some((q) => q.id === id)));
+    for (let i = 0; i < 25; i += 1) await h.makeJob({ title: `more ${i}` });
+    assert.strictEqual((await h.call('POST /api/team/heartbeat', { body: beat() })).body.data.queue.length, 20);
+  });
+});
+
 // ── Claim, decline ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
 test('claim answers the job and the second claim is 409 taken (also when both race)', async () => {
@@ -1521,7 +1540,7 @@ test('the heartbeat names the jobs this PC claimed that were cancelled in the la
     h.advance(20_000);
     const mine = await h.call('POST /api/team/heartbeat', { body: beat() });
     assert.deepStrictEqual(mine.body.data.cancel, [running], 'its own cancelled job only (not another PC\'s, not one that was never claimed)');
-    assert.deepStrictEqual(Object.keys(mine.body.data).sort(), ['cancel', 'offer', 'serverTime']);
+    assert.deepStrictEqual(Object.keys(mine.body.data).sort(), ['cancel', 'offer', 'queue', 'serverTime']);
     assert.deepStrictEqual((await h.call('POST /api/team/heartbeat', { body: beat({ pcId: PC_B }), accountId: HELIX })).body.data.cancel, [second]);
     assert.deepStrictEqual((await h.call('POST /api/team/heartbeat', { body: beat({ pcId: PC_W }), accountId: WAR })).body.data.cancel, [], 'a PC that ran nothing hears nothing');
     assert.deepStrictEqual((await h.call('POST /api/team/heartbeat', { body: beat({ pcId: PC_A2 }), pcId: PC_A2 })).body.data.cancel, [], 'nor another PC of the same account');

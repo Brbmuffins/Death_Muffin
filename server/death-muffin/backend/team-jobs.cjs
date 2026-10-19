@@ -18,9 +18,10 @@
  *   POST /api/team/login                       { username, password, pcId, pcName } -> { success, data: { token, expiresAt, accountId, username } }
  *   POST /api/team/logout                      revokes the token it came with -> { success }
  *   GET  /api/team/me                          -> { success, data: { accountId, username } }
- *   POST /api/team/heartbeat                   the PC's state (+ optional `wait`, 0..25 seconds, default 0) -> { success, data: { serverTime, offer, cancel } }   offer: null or the oldest queued job
+ *   POST /api/team/heartbeat                   the PC's state (+ optional `wait`, 0..25 seconds, default 0) -> { success, data: { serverTime, offer, cancel, queue } }   offer: null or the oldest queued job
  *                                              of the first kind in KIND_ORDER that has one (shots, then clip, then bench, then any other kind) that this PC has not declined; cancel: the ids of jobs this PC claimed that were cancelled in the last 10 minutes (the
- *                                              app stops the one it runs and ignores the rest). With `wait` > 0 the request is held (long poll) while there is nothing to say:
+ *                                              app stops the one it runs and ignores the rest); queue: the jobs this PC would be offered, in that order and the offer first, at most 20, each
+ *                                              { id, kind, title, weightS } (the app's AFK notice lists them). With `wait` > 0 the request is held (long poll) while there is nothing to say:
  *                                              no offer for this PC and no cancel it has not been told, until a job this PC may take is queued (the runner creates one, or a
  *                                              running job goes back to the queue), one it runs is cancelled, or `wait` runs out; then it answers as it always does. The PC is
  *                                              stored at the start of the request. At most 10 requests of an account are held at once (more are answered at once, as with 0)
@@ -107,6 +108,7 @@ const QUIET_MINUTES = 3;
 const SEEN_MINUTES = 2;
 const DECLINES_MAX = 20;
 const OPEN_JOBS_MAX = 50;                 // queued + running jobs the runner may have at once
+const QUEUE_SHOWN = 20;                   // the heartbeat's `queue`: at most this many of the jobs this PC would be offered
 const TTL_DEFAULT_S = 3600;
 const TTL_MIN_S = 60;
 const TTL_MAX_S = 7 * 86400;
@@ -605,7 +607,10 @@ module.exports = function mountTeamJobs(app, pool, {
     const [cancelled] = await pool.execute(
       `SELECT id FROM team_jobs WHERE status = 'cancelled' AND claimed_account = ? AND claimed_pc = ? AND finished_at > NOW() - INTERVAL ? MINUTE
         ORDER BY finished_at DESC, id ASC LIMIT ${CANCELS_MAX}`, [account, pcId, CANCEL_MINUTES]);
-    return { offer, cancel: cancelled.map((c) => String(c.id)) };
+    // The queue this PC would be offered, in order (the app's AFK notice lists it, Helix 2026-10-19): the offer first, at most QUEUE_SHOWN.
+    const queue = rows.filter((r) => !declinedBy(r.result, pcId)).slice(0, QUEUE_SHOWN)
+      .map((r) => ({ id: String(r.id), kind: String(r.kind), title: String(r.title), weightS: Number(r.weight_s) }));
+    return { offer, cancel: cancelled.map((c) => String(c.id)), queue };
   }
   /** Something to say right now: an offer, or a cancel this PC has not been told yet (a held heartbeat does not end for a cancel it already knows: the list keeps it for 10 minutes). */
   const hasNews = (answer, key) => !!answer.offer || answer.cancel.some((id) => !(told.get(key) || new Set()).has(id));
@@ -690,7 +695,7 @@ module.exports = function mountTeamJobs(app, pool, {
         }
       }
       told.set(key, new Set(answer.cancel));
-      res.json({ success: true, data: { serverTime: new Date().toISOString(), offer: answer.offer, cancel: answer.cancel } });
+      res.json({ success: true, data: { serverTime: new Date().toISOString(), offer: answer.offer, cancel: answer.cancel, queue: answer.queue } });
     } finally {
       if (waiter) waiter.close();
     }
