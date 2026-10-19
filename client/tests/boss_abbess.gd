@@ -1,7 +1,7 @@
 extends "res://tests/boss_base.gd"
 ## The Bone Abbess on the combat core (the Marrow Ossuary's boss; archive/old-game:godot/tests/next_bosses/abbess_part.gd on today's game, the same numbers and timing). Her four Skull Niches are core bodies of
 ## the new `niche` kind (native/src/core/niche.cpp) whose health she sets (`DmCore.set_enemy_hp`), her Bone Communion eats the core's corpses (`devoured`).
-##   - her recorded scenarios replay through the client's copy of the brain; the generic parts (boss_base.gd): the summon at the Reliquary (3 soul shards), thralls, rites, wipe, defeat, rewards;
+##   - her recorded scenarios are replayed by tests/bosses (not here); the generic parts (boss_base.gd): the summon at the Reliquary (3 soul shards), thralls, rites, wipe, defeat, rewards;
 ##   - the awaken: four niches at the four ABBESS_NICHE_SPOTS, each 7 % of her health, Ossuary enemies, standing after the rise; Grasp, Lance (from a standing niche, a side attack) and
 ##     Ossuary Chorus (spokes; the hero between two spokes is spared, a thrall on one is hurt) at today's ticks and numbers;
 ##   - a niche breaking: 4 % of her health, a Fracture stack, the nicheBreak event, no kill credit; her regeneration while one stands; a rite hits a niche; with none standing no Lance and no regen;
@@ -16,7 +16,6 @@ func _config() -> void:
 	boss_id = "abbess"
 	load_areas = ["ossuary"]
 	bakes = ["thrall_legionnaire", "skull_niche", "grave_robber"]
-	replay_count = 6
 
 
 ## Her niches are enemies the thralls attack and hit instead of her: they break first (each one tearing at her, as always).

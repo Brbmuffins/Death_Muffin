@@ -2,7 +2,7 @@ extends "res://tests/boss_base.gd"
 ## The Mire Mother on the combat core (the Mourning Fen's boss; archive/old-game:godot/tests/next_bosses/mire_part.gd on today's game, the same numbers and timing). She sinks under a hummock (an external of
 ## the core that is not alive for its queries while she is under: thralls let go, rites and the pick find nothing), her Drowned Rite raises a Risen from every corpse of the Fen (the core's
 ## corpse field, `raised`) and her Drowned Hands root a wading hero.
-##   - her recorded scenarios replay through the client's copy of the brain (the corpses rite among them); the generic parts (boss_base.gd): the summon at the Mire Altar (7 soul shards), thralls,
+##   - her recorded scenarios are replayed by tests/bosses (not here) (the corpses rite among them); the generic parts (boss_base.gd): the summon at the Mire Altar (7 soul shards), thralls,
 ##     rites, wipe, defeat, rewards;
 ##   - Maul, Drowned Hands (only whoever wades the open water, root 1 s; a hummock is safe) and Surface at today's ticks and numbers: she hunts the hummock you stand on 65 % of the time, slips under
 ##     at once (sunk: awake, not hittable, a blow and a stun refused, absent from the rite world, thralls let go, still the active boss and still "busy"), the ripple ring, the eruption under whoever
@@ -20,7 +20,6 @@ func _config() -> void:
 	boss_id = "mire"
 	load_areas = ["fen"]
 	bakes = ["thrall_legionnaire", "skeleton_thrall", "mire_leech", "bog_hag"]
-	replay_count = 6
 
 
 func adds(def_id := "") -> Array:

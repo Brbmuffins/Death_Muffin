@@ -2,7 +2,7 @@ extends SceneTree
 ## Headless: godot --headless --path client --script res://tests/bosses/run.gd
 ## Replays every scenario in tests/bosses/fixtures (*.json.gz, captured from the real TS BossBrain; committed answer keys) through the
 ## GDScript brains and compares, per tick: the boss state, the ordered world-call log (events, spawns, pools, removals) and the
-## entities left in the world. First mismatch per scenario is reported.
+## entities left in the world. First mismatch per scenario is reported. The one place the recorded scenarios are replayed (boss.gd and the boss_* suites do not).
 
 const FX := "res://tests/bosses/fixtures/"
 const Brains := preload("res://sim/bosses/boss_brains.gd")
@@ -27,6 +27,9 @@ func _init() -> void:
 		quit(1)
 		return
 	files.sort()
+	# every boss of the data has recorded scenarios (the six boss_* suites and boss.gd used to count their own)
+	for id in Brains.BOSS_IDS:
+		ok(files.any(func(f: String) -> bool: return f.begins_with(String(id) + "_")), "recorded scenarios exist for %s" % id)
 	_test_factory()
 	_test_nav_chase()
 	for f in files:

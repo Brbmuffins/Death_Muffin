@@ -383,7 +383,7 @@ the boss's soul shards from the summoner's progression (the Prelate's bell throu
 the first-kill bonus and trophy once, the entry of the backend's report; the Prelate has no trophy: its kill is the run's tally). The boss score follows the local hero while he is in its area. The dev entry's `--boss` starts the hero at the
 King's grave, grants the shards and wakes him.
 
-**Tests.** `client/tests/boss.gd` is the King's proof: his six recorded scenarios replayed tick by tick through the brain, the summon rules, the awaken numbers, his attacks and phases stepped
+**Tests.** `client/tests/boss.gd` is the King's proof, on `boss_base.gd` like the other six (the summon rules, the awaken numbers, thralls, rites, wipe, defeat and rewards are the base's; every boss's recorded scenarios are replayed once, by `tests/bosses/run.gd`): the King's own are his attacks and phases stepped
 by hand with the data's numbers and timing (sweep, Burial, phases, ghouls on the rim, the elite, the pits, the double sweep, the blows on the hero and on a thrall), the wipe (adds leave silently), thralls (the edge rule,
 `thrall_hit_external`, credit, `alive` false while he cannot be hurt), the rites (edge distance, order, lane, cone, circle, the needle's range, the Scythe's arc, the Spear's rally, Fan, Lance, statuses, stun), the defeat events, a second summon, a
 fight on the real clock and the net state round trip. The other six have a suite each on `client/tests/boss_base.gd` (`boss_abbess|congregation|prelate|saint|regent|mire.gd`): their recorded scenarios (44 with the King's six, 8 for the Prelate

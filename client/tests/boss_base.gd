@@ -3,8 +3,8 @@ extends SceneTree
 ## the Covenant Seal suite (boss_meta.gd). A suite extends this file, names its boss in `_config()` and writes `run_suite()` from the generic parts below and its boss's own fight.
 ## Each boss is the real game scene (client/next/next_game.tscn) of a level-20 Gravecaller on the local mock, headless, with the boss's own area loaded and no waves: today's DmBossHost /
 ## DmBoss / DmBossBrain, ported (client/README.md "The bosses"): the body is an external of the combat core (kind 1), the brain is GDScript and its world is the core.
+## The recorded scenarios of the bosses' brains (tests/bosses/fixtures, captured from the TS brain) are replayed once, for every boss, by tests/bosses/run.gd.
 ## The generic parts every boss gets (what archive/old-game:godot/tests/next_bosses/harness.gd checked of each boss, on the core):
-##   - `t_replays`: the boss's recorded scenarios (tests/bosses/fixtures, captured from the TS brain) replayed tick by tick through this project's copy of the brain;
 ##   - `t_summon`: the hub's prompt at the site, the refusals (far, unknown, dead, shards: none spent), key E, the boss's price, busy, the awaken numbers, its registration with the core;
 ##   - `t_thralls`: a thrall picks the boss by the edge rule, its blows reach the brain with the owner's credit, the boss's blows reach the thrall through the core;
 ##   - `t_rites`: the rites' queries see it, Bone Needle's range counts its radius and its blow goes to the brain, a stun staggers it once;
@@ -17,7 +17,6 @@ extends SceneTree
 const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://boss_test"
 const DT := 1.0 / 60.0
-const FIXTURES := "res://tests/bosses/"   ## the recorded scenarios (tests/bosses/fixtures, captured from the TS brain; tests/bosses replays them too), replayed on this project's copy of the brains
 
 
 class ErrorLog:
@@ -92,7 +91,6 @@ class Stub:
 var boss_id := ""
 var load_areas: Array = []                    ## the areas the game scene loads (the boss's own)
 var bakes: Array = ["thrall_legionnaire"]     ## the crowd models to bake into the scratch folder first (model slugs): the adds the boss calls, the thrall
-var replay_count := 6                         ## the recorded scenarios of this boss in tests/bosses/fixtures
 var start_opts := {}                          ## extra options for the game scene
 var mock_clock: Array = []                    ## [ms]: when given, the mock backend's clock is this (the Seal's prize wants the fight to have lasted a while)
 
@@ -191,8 +189,6 @@ func _initialize() -> void:
 		if not r.ok:
 			quit(1)
 			return
-	if replay_count > 0:
-		t_replays()
 	await boot()
 	await run_suite()
 	await finish()
@@ -484,125 +480,6 @@ func awaken_hp_ok(base_hp: float) -> bool:
 	var diff: Dictionary = DmContent.get_export("difficulty", "DIFFICULTIES")["medium"]
 	var want: float = base_hp * (1.0 + 0.22 * (float(boss.brain.state["level"]) - 1.0)) * float(diff["enemyHpMult"])
 	return near(boss.max_hp, want) and boss.hp == boss.max_hp
-
-
-# ------------------------------------------------------------------------------------------------------------------------ the brain, replayed
-
-## Today's recorded scenarios of this boss (tests/bosses/fixtures, captured from the TS brain) through this project's copy of the brain, tick by tick, on today's fake world.
-func t_replays() -> void:
-	var dir := FIXTURES
-	var fake = load(dir.path_join("fake_world.gd"))
-	var diff = load(dir.path_join("deep_diff.gd"))
-	check(fake != null and diff != null, "today's fake world and diff helper are readable (%s)" % dir)
-	if fake == null or diff == null:
-		return
-	var files: Array = []
-	var d := DirAccess.open(dir.path_join("fixtures"))
-	if d != null:
-		for f in d.get_files():
-			if f.begins_with(boss_id + "_") and f.ends_with(".json.gz"):
-				files.append(f)
-	files.sort()
-	check(files.size() == replay_count, "the %s's %d recorded scenarios are there (%d)" % [boss_id, replay_count, files.size()])
-	var ticks_total := 0
-	for f in files:
-		ticks_total += _replay(dir.path_join("fixtures").path_join(f), fake, diff)
-	print("INFO %s replays: %d scenarios, %d ticks compared, boss state, world calls and entities every tick" % [boss_id, files.size(), ticks_total])
-
-
-func _replay(path: String, fake, diff) -> int:
-	var fx: Dictionary = JSON.parse_string(PackedByteArray(FileAccess.get_file_as_bytes(path)).decompress_dynamic(-1, FileAccess.COMPRESSION_GZIP).get_string_from_utf8())
-	var w = fake.new(int(fx["seed"]) + 1, fx["difficulty"], int(fx["level"]))
-	w.echoes_n = int(fx["echoes"])
-	w.cover_boxes = fx["cover"].duplicate(true)
-	var brain: RefCounted = DmBossBrains.make(w, fx["boss"])
-	var expect_world: Dictionary = {}
-	var n := 0
-	for tk in fx["ticks"]:
-		w.log = []
-		for o in tk["ops"]:
-			_apply(w, brain, o)
-		w.time += float(tk["dt"])
-		w.expire_zones()
-		brain.update(float(tk["dt"]))
-		if tk.has("world"):
-			expect_world = tk["world"]
-		var msg: String = diff.diff(_boss_snap(brain), tk["boss"], "boss")
-		if msg == "":
-			msg = diff.diff(w.log, tk["log"], "log")
-		if msg == "":
-			msg = diff.diff(_world_snap(w), expect_world, "world")
-		if msg == "":
-			msg = diff.diff(w.time, tk["time"], "time")
-		n += 1
-		if msg != "":
-			check(false, "%s tick %d: %s" % [fx["name"], int(tk["t"]), msg])
-			return n
-	check(true, "replay " + String(fx["name"]))
-	return n
-
-
-func _apply(w, brain, o: Dictionary) -> void:
-	match o["op"]:
-		"awaken":
-			brain.awaken(o["by"], o["empowered"])
-		"damage":
-			brain.damage(float(o["amount"]), o["by"], int(o["fracture"]))
-		"stagger":
-			brain.stagger(float(o["seconds"]))
-		"resume":
-			brain.resume()
-		"set_players":
-			w.player_list = []
-			for p in o["players"]:
-				w.player_list.append({"id": p["id"], "x": float(p["x"]), "z": float(p["z"]), "alive": p["alive"], "area": p["area"]})
-		"kill_enemy":
-			var e: Dictionary = w.enemy_get(int(o["id"]))
-			if not e.is_empty():
-				e["hp"] = 0.0
-				e["state"] = "dead"
-		"del_enemy":
-			w.enemy_map.erase(int(o["id"]))
-		"add_enemy":
-			w.enemy_map[int(o["id"])] = {"id": int(o["id"]), "def": o["def"], "area": o["area"], "x": float(o["x"]), "z": float(o["z"]), "elite": false, "hp": float(o["hp"]), "max_hp": float(o["hp"]), "state": "idle"}
-		"add_corpse":
-			w.corpse_map[int(o["id"])] = {"id": int(o["id"]), "area": o["area"], "x": float(o["x"]), "z": float(o["z"])}
-		"del_corpse":
-			w.corpse_map.erase(int(o["id"]))
-		"add_thrall":
-			w.thrall_map[int(o["id"])] = {"id": int(o["id"]), "x": float(o["x"]), "z": float(o["z"]), "hp": float(o["hp"]), "max_hp": float(o["hp"]), "flash": 0.0, "state": "idle"}
-		"set_boss":
-			for k in o["fields"]:
-				brain.state[k] = o["fields"][k]
-		"set_cover":
-			w.cover_boxes = o["boxes"].duplicate(true)
-		_:
-			check(false, "unknown replay op " + str(o["op"]))
-
-
-func _boss_snap(b) -> Dictionary:
-	var s: Dictionary = b.state
-	var out := {}
-	for k in ["active", "x", "z", "facing", "hp", "maxHp", "phase", "state", "stateT", "flash", "fracture", "fractureT", "withered", "witheredT", "witheredDps", "level"]:
-		out[k] = s[k]
-	out["empowered"] = bool(s.get("empowered", false))
-	return out
-
-
-func _ents(m: Dictionary) -> Array:
-	var out: Array = []
-	for e in m.values():
-		out.append({"id": e["id"], "hp": e["hp"], "maxHp": e["max_hp"], "state": e["state"], "x": e["x"], "z": e["z"]})
-	out.sort_custom(func(a, b): return a["id"] < b["id"])
-	return out
-
-
-func _world_snap(w) -> Dictionary:
-	var corpses: Array = w.corpse_map.keys()
-	corpses.sort()
-	var zones: Array = w.zone_map.keys()
-	zones.sort()
-	return {"enemies": _ents(w.enemy_map), "thralls": _ents(w.thrall_map), "corpses": corpses, "zones": zones}
 
 
 # ------------------------------------------------------------------------------------------------------------------------ summoning
