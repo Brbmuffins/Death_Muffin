@@ -1,11 +1,11 @@
 # Seconds per suite from a full run side by side (tools/rebuild/run-client-tests.sh --times <file>, 8 at once on the VPS, 2026-10-19); refresh after adding or reshaping suites.
-287	benchmark
-175	rites
-147	game_scene
+180	benchmark
+51	rites
+28	game_scene
 76	coop
 71	coop_bosses
 68	warm_coverage
-64	boss
+40	boss
 53	boss_prelate
 52	next_autocombat
 52	boss_mire
