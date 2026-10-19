@@ -1,6 +1,6 @@
 extends SceneTree
-## Loot on the rebuilt client (rework 2026-10-12; the loot node DmNextLoot holds what today's DmNextUiHost did): click to pick up (walking over takes nothing), runes into the bag with a chat line / shards when
-## known, the legendary chat line, gold + shards coalesce into one float, the bag-full toast, expiry blink, near-labels, item spacing.
+## Loot on the rebuilt client (rework 2026-10-12; the loot node DmNextLoot holds what today's DmNextUiHost did): click to pick up, runes into the bag with a chat line (a rune the character
+## has does not drop), the legendary chat line, gold + shards coalesce into one float, the bag-full toast, expiry blink, near-labels, item spacing.
 ## godot --headless --path client --script res://tests/next_loot/run.gd
 
 var passed := 0
@@ -130,15 +130,14 @@ func _run() -> void:
 	events.clear()
 
 	var rarity_of := DmLootView.rarity_of(gear)
-	# ---- items: walking over one takes nothing; a click walks the hero there and takes it with the pickup's feedback
+	# ---- items: a click walks the hero there and takes it with the pickup's feedback (walking over one takes nothing, and the click is taken: value.gd D)
 	events.clear()
 	var n0: int = h.slots.size()
 	lv.drop(gear, b.position + Vector3(0.4, 0, 0), true)
 	for i in 10:
 		await physics_frame
-	check(lv.count() == 1 and h.slots.size() == n0, "standing on a drop takes nothing")
-	var at: Vector2 = g.camera.unproject_position(lv._drops[0]["node"].global_position + Vector3(0, 0.7, 0))
-	check(g.loot.loot_click(at), "a click on the drop's icon starts a pickup")
+	var at: Vector2 = g.camera.unproject_position(lv._drops[0]["node"].global_position + Vector3(0, 0.7, 0))   # (that standing on it takes nothing and a click picks it: value.gd D)
+	g.loot.loot_click(at)
 	check(await until(func() -> bool: return h.slots.size() == n0 + 1, 4.0), "the hero reaches it and it goes into the bag (%d -> %d)" % [n0, h.slots.size()])
 	check(lv.count() == 0 and ids("loot").size() == 1 and ids("collected").size() == 1, "the pickup raises the loot toast + counsel fact")
 	check(not g.loot.loot_click(at), "nothing left to click there")
