@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: ['**']
   pull_request:
     branches: [main]
 
@@ -54,7 +54,10 @@ jobs:
       - name: Lobby tests
         run: npm test --prefix server/death-muffin/lobby
 
-  # The game (client/, DECISIONS B49): the combat core is built (Linux), the project imported, the crowd baked, then every suite.
+      - name: The game's setup (tools/check/prep.sh, on a throwaway repository)
+        run: node --test tools/check/test/*.test.mjs
+
+  # The game (client/, DECISIONS B49): its build products from the cache (or built), then every suite.
   client:
     name: Game client tests (${{ matrix.shard }}/3)
     # The suites split in three by their recorded times (run-client-tests.sh --shard), three machines side by side: about a third of the wait.
@@ -86,27 +89,75 @@ jobs:
           mv ~/godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64 ~/godot-bin/godot
           chmod +x ~/godot-bin/godot
 
-      # godot-cpp compiles once per pinned commit (about 6 minutes); native/build.sh keeps it in ~/death-muffin/native-cache.
+      # The game's build products through its one setup (tools/check/prep.sh, tools/check/README.md): the combat core, Godot's import and the
+      # crowd's bakes, each restored by its key (what it is made of) and built only when that changed; one folder per kind (DM_PREP_SLOTS).
+      # The first shard saves what it had to build. godot-cpp (about 6 minutes) and scons are only needed when the combat core is rebuilt.
+      - name: Cache keys
+        id: keys
+        run: bash tools/check/prep.sh --keys >> "$GITHUB_OUTPUT"
+
+      - name: Restore the combat core
+        id: core
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/ci-cache/core
+          key: ${{ steps.keys.outputs.core }}
+
+      - name: Restore Godot's import
+        id: import
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/ci-cache/import
+          key: ${{ steps.keys.outputs.import }}
+          restore-keys: import-
+
+      - name: Restore the crowd's bakes
+        id: bake
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/ci-cache/bake
+          key: ${{ steps.keys.outputs.bake }}
+
       - name: Cache godot-cpp
+        if: steps.core.outputs.cache-hit != 'true'
         uses: actions/cache@v4
         with:
           path: ~/death-muffin/native-cache
           key: godot-cpp-${{ hashFiles('native/build.sh') }}-linux
 
       - name: Build tools
+        if: steps.core.outputs.cache-hit != 'true'
         run: pip install --user scons
 
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Lobby dependencies
-        run: npm ci --prefix server/death-muffin/lobby
 
-      - name: Combat core, import and core smoke
-        run: bash client/setup.sh
+      - name: Prepare the game (tools/check/prep.sh)
+        env:
+          DM_PREP_SLOTS: /home/runner/ci-cache
+        run: bash tools/check/prep.sh
 
-      - name: Bake the crowd's models
-        run: bash client/tools/bake_crowd.sh
+      - name: Save the combat core
+        if: matrix.shard == 1 && steps.core.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/ci-cache/core
+          key: ${{ steps.keys.outputs.core }}
+
+      - name: Save Godot's import
+        if: matrix.shard == 1 && steps.import.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/ci-cache/import
+          key: ${{ steps.keys.outputs.import }}
+
+      - name: Save the crowd's bakes
+        if: matrix.shard == 1 && steps.bake.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/ci-cache/bake
+          key: ${{ steps.keys.outputs.bake }}
 
       # Every suite, three side by side (tools/rebuild/run-client-tests.sh: one line per suite, the slowest first, each failure (up to five) once more alone, exit 1 on failure).
       - name: Client suites

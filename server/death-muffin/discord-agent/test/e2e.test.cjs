@@ -1585,16 +1585,15 @@ test('check-godot.sh: sandboxed run, the game prepared first, per-suite lines, s
   // stand-ins for the game's preparation: outside (prints the line the real one prints), inside the sandbox (records HOME/XDG and whether the network is reachable)
   // (in the worktree, git-excluded: the sandbox has a private /tmp, so a stand-in under the host's /tmp would not be there)
   const P = path.join(T, '.prep'); fs.mkdirSync(P); fs.appendFileSync(path.join(T, '.git/info/exclude'), '.prep/\n.prep-seen\n.env-seen\n.net-seen\n.progress-start\n.args-seen\n');
-  fs.writeFileSync(path.join(P, 'prep.sh'), '[ -z "${PREP_FAIL:-}" ] || { echo "cache build exploded"; exit 1; }\necho "PREP core=cached bake=cached dir=/nowhere keys=a,b,c"\n');
-  fs.writeFileSync(path.join(P, 'prep-in.sh'), 'echo "prep-in: $PREP_CORE $PREP_BAKE $PREP_KEYS" > .prep-seen\necho "$HOME $XDG_DATA_HOME $XDG_CONFIG_HOME $XDG_CACHE_HOME" > .env-seen\n(timeout 2 bash -c "exec 3<>/dev/tcp/1.1.1.1/53" 2>/dev/null && echo NET > .net-seen) || echo nonet > .net-seen\n[ -z "${PREP_IN_FAIL:-}" ] || { echo "import exploded"; exit 1; }\n');
+  fs.writeFileSync(path.join(P, 'prep.sh'), 'case " $* " in *" --warm "*) [ -z "${PREP_FAIL:-}" ] || { echo "cache build exploded"; exit 1; }; echo "PREP warm 0123456789ab: cached"; exit 0;; esac\necho "prep-in: $*" > .prep-seen\necho "$HOME $XDG_DATA_HOME $XDG_CONFIG_HOME $XDG_CACHE_HOME" > .env-seen\n(timeout 2 bash -c "exec 3<>/dev/tcp/1.1.1.1/53" 2>/dev/null && echo NET > .net-seen) || echo nonet > .net-seen\n[ -z "${PREP_IN_FAIL:-}" ] || { echo "import exploded"; exit 1; }\n');
   wr('tools/rebuild/run-client-tests.sh', '[ "${1:-}" = --list ] && { echo game; echo rules; exit 0; }\ncat .dm-check-progress > .progress-start\nprintf "%-18s %-16s exit=%d  %s\\n" game game.gd 0 "30 passed"\nprintf "%-18s %-16s exit=%d  %s\\n" rules rules.gd ${FAIL_SUITE:-0} "5 passed"\n[ -z "${FAIL_SUITE:-}" ]\n');
   const script = path.join(__dirname, '..', 'check-godot.sh');
-  const base = { DM_CLIENT_PREP: path.join(P, 'prep.sh'), DM_CLIENT_PREP_IN: path.join(P, 'prep-in.sh') };
+  const base = { DM_PREP: path.join(P, 'prep.sh') };
   const run = (env, args = []) => spawnSync('bash', [script, ...args], { cwd: T, encoding: 'utf8', env: { ...process.env, ...base, ...env }, timeout: 120000 });
   const ok = run({});
   assert.equal(ok.status, 0, ok.stdout + ok.stderr);
   assert.match(ok.stdout, /game +game\.gd +exit=0 +30 passed/); assert.match(ok.stdout, /^GODOT TESTS: quick \(2 suites, targeting fell back to all\) — 2 passed$/m);
-  assert.equal(fs.readFileSync(path.join(T, '.prep-seen'), 'utf8').trim(), 'prep-in: cached cached a,b,c', 'the outside line reaches the sandboxed half');
+  assert.match(fs.readFileSync(path.join(T, '.prep-seen'), 'utf8').trim(), /^prep-in: --read-only \S+$/, 'the sandboxed half prepares the worktree read-only');
   assert.equal(fs.readFileSync(path.join(T, '.net-seen'), 'utf8').trim(), 'nonet');
   assert.equal(fs.readFileSync(path.join(T, '.progress-start'), 'utf8').trim(), '0 2', 'progress file exists while suites run, with the runner\'s count');
   assert.ok(!fs.existsSync(path.join(T, '.dm-check-progress')), 'progress file removed after the run');
@@ -1603,8 +1602,7 @@ test('check-godot.sh: sandboxed run, the game prepared first, per-suite lines, s
   assert.ok(!fs.existsSync(env[0]), 'scratch lives in the sandbox private /tmp, not on the host');
   const bad = run({ FAIL_SUITE: '1' });
   assert.equal(bad.status, 1); assert.match(bad.stdout, /^GODOT TESTS: quick \(2 suites, targeting fell back to all\) — 1 passed, 1 FAILED$/m);
-  const pf = run({ PREP_FAIL: '1' }); assert.equal(pf.status, 1); assert.match(pf.stdout, /cache build exploded/); assert.match(pf.stdout, /^GODOT TESTS: preparing the game FAILED \(client-prep\.sh\)$/m);
-  const pif = run({ PREP_IN_FAIL: '1' }); assert.equal(pif.status, 1); assert.match(pif.stdout, /import exploded/); assert.match(pif.stdout, /^GODOT TESTS: preparing the game FAILED \(client-prep-in\.sh\)$/m);
+  const pif = run({ PREP_IN_FAIL: '1' }); assert.equal(pif.status, 1); assert.match(pif.stdout, /import exploded/); assert.match(pif.stdout, /^GODOT TESTS: preparing the game FAILED \(prep\.sh --read-only\)$/m);
   assert.doesNotMatch(pif.stdout, /exit=0/, 'no suite runs on a failed preparation');
   // repo hygiene (npm run hygiene) runs first, inside the sandbox; a violation fails the check before any suite
   wr('tools/hygiene/check.mjs', 'if (process.env.HYG_FAIL) { console.log("docs/x.md:3: broken link"); process.exit(1); }\nconsole.log("hygiene: OK");\n');
@@ -1614,6 +1612,8 @@ test('check-godot.sh: sandboxed run, the game prepared first, per-suite lines, s
   // docs-only change: no preparation, suites skipped, hygiene still enforced
   execFileSync('git', ['-C', T, 'add', '-A']); execFileSync('git', ['-C', T, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'base']);
   execFileSync('git', ['-C', T, 'update-ref', 'refs/remotes/origin/main', 'HEAD']);
+  // with a base revision the cache is filled from it outside the sandbox first (prep.sh --warm), and a failure there stops the check
+  const pf = run({ PREP_FAIL: '1' }); assert.equal(pf.status, 1); assert.match(pf.stdout, /cache build exploded/); assert.match(pf.stdout, /^GODOT TESTS: preparing the game FAILED \(prep\.sh --warm\)$/m);
   wr('docs/new.md', '# new\n'); fs.rmSync(path.join(T, '.prep-seen'));
   const dh = run({ HYG_FAIL: '1' }); assert.equal(dh.status, 1); assert.match(dh.stdout, /^GODOT TESTS: repo hygiene FAILED/m);
   const dok = run({ PREP_FAIL: '1' }); assert.equal(dok.status, 0, dok.stdout + dok.stderr); assert.match(dok.stdout, /^GODOT TESTS: skipped, docs-only change \(1 Markdown files\)$/m);
@@ -1644,7 +1644,7 @@ test('check-godot.sh waits for the shared test slot (~/death-muffin/test-slot.lo
   const T = path.join(R, 'wt'); execFileSync('git', ['init', '-q', T]);
   fs.mkdirSync(path.join(T, 'tools/rebuild'), { recursive: true });
   fs.writeFileSync(path.join(T, 'tools/rebuild/run-client-tests.sh'), '[ "${1:-}" = --list ] && { echo a; exit 0; }\nprintf "%-18s %-16s exit=%d  %s\\n" a a.gd 0 "1 passed"\n');
-  fs.writeFileSync(path.join(tools, 'client-prep.sh'), 'echo "PREP core=cached bake=cached dir=/nowhere keys=a,b,c"\n'); fs.writeFileSync(path.join(tools, 'client-prep-in.sh'), 'true\n');
+  fs.writeFileSync(path.join(tools, 'prep.sh'), 'true\n');
   const holder = spawn('flock', [path.join(R, 'test-slot.lock'), 'sleep', '3'], { stdio: 'ignore' });
   const t0 = Date.now(); spawnSync('sleep', ['0.3']);
   const r = spawnSync('bash', [path.join(tools, 'check-godot.sh'), '--full'], { cwd: T, encoding: 'utf8', timeout: 60000 });
@@ -1671,12 +1671,12 @@ test('preview-godot.sh: refuses bad job ids / missing or symlinked root; with a 
   // stand-ins (in the worktree, git-excluded: the sandbox has a private /tmp): the preparation, and godot: --export-release "<preset>" <out> writes a fake
   // MZ exe, a big pck and the core's DLL, and records its environment
   fs.appendFileSync(path.join(repo, '.git/info/exclude'), '.prep/\n.fake-godot\n.godot-calls.log\n.dm-preview/\n');
-  wr('.prep/prep.sh', 'echo "PREP core=cached bake=cached dir=/nowhere keys=a,b,c"\n'); wr('.prep/prep-in.sh', 'echo "prep-in windows=${DM_PREP_WINDOWS:-}" >> .godot-calls.log\n');
+  wr('.prep/prep.sh', 'case " $* " in *" --warm "*) exit 0;; esac\ncase " $* " in *" --windows "*) w=1;; *) w=;; esac\necho "prep-in windows=$w" >> .godot-calls.log\n');
   const fake = path.join(repo, '.fake-godot'); fs.mkdirSync(path.join(T, 'templates'));
   fs.writeFileSync(fake, '#!/usr/bin/env bash\necho "$HOME|$XDG_DATA_HOME|$*" >> ' + path.join(repo, '.godot-calls.log') + '\nif [ "$3" = "--export-release" ] || [ "$4" = "--export-release" ]; then for a in "$@"; do out="$a"; done; printf MZfake > "$out"; head -c 200000 /dev/zero > "${out%.exe}.pck"; touch "${out%.exe}.console.exe"; printf MZdll > "$(dirname "$out")/libdmcore.windows.template_release.x86_64.dll"; fi\n', { mode: 0o755 });
   const manifest = path.join(T, 'manifest.json');
   const env = { ...process.env, DM_PREVIEW_ROOT: root, DM_PREVIEW_TITLE: 'Fix <b>the</b>\nbell', GODOT: fake, GODOT_TEMPLATES: path.join(T, 'templates'),
-    DM_CLIENT_PREP: path.join(repo, '.prep/prep.sh'), DM_CLIENT_PREP_IN: path.join(repo, '.prep/prep-in.sh'), CLIENT_MANIFEST: manifest };
+    DM_PREP: path.join(repo, '.prep/prep.sh'), CLIENT_MANIFEST: manifest };
   const zipOf = (id) => path.join(root, id, `DeathMuffin-Preview-${id}-win64.zip`);
   const list = (zip) => execFileSync('unzip', ['-Z1', zip]).toString().split('\n').filter(Boolean).sort();
   // the art is the live build's (the manifest names this revision): no pack, the .bat uses the installed game's

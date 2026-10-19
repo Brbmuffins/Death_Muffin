@@ -46,8 +46,7 @@ One short README per system folder: how the system works and its known gaps (thi
 ## Set up and test
 
 ```
-bash client/setup.sh                                   # once in every new checkout or worktree, and after switching branches: builds the core for Linux, imports, runs the smoke test
-bash client/tools/bake_crowd.sh                        # the crowd's baked models (the baked folder is generated, not committed): a publish, a benchmark and any run you look at need them
+bash tools/check/prep.sh                               # in every new checkout or worktree, and after switching branches: the core for Linux, the import, the crowd's baked models, the lobby's packages (tools/check/README.md)
 tools/rebuild/run-client-tests.sh                      # every suite, 8 side by side, one line each (GitHub CI's "Game client tests" jobs run them split over three machines, `--shard 1/3` to `3/3`, 3 at once each)
 tools/rebuild/run-client-tests.sh --only surge,value   # just those
 node tools/rebuild/affected-suites.mjs                 # the suites a change can affect, plus the smoke set (--explain says why)
@@ -57,7 +56,7 @@ bash client/tools/coop_local.sh                        # a local lobby and relay
 
 A suite passes with exit 0, a `PASS` line and no `SCRIPT ERROR` in its log. The runner gives every suite its own user folders, so suites can run side by side, and runs up to three failures again alone. The paced suites
 (`PACED` in the runner) play game time faster than real time: by hand they take `--fixed-fps 60` before `--path` (`game_scene`, `rites` and `boss` run faster that way too). Most suites that draw creatures bake the models they need into a scratch folder.
-Run `client/setup.sh` in every new checkout or worktree (it lists the extension before the first import; see the script): a script run in a project that was never imported hangs.
+Run `tools/check/prep.sh` in every new checkout or worktree (it lists the extension before the first import; see the script): a script run in a project that was never imported hangs.
 
 | Suite | What it checks |
 |---|---|
@@ -150,8 +149,7 @@ with the character the front flow chose on the live server (below) or, from `dev
 no server**: the backend is `DmOffline.make_mock` (accounts in this project's own `user://dm_dev_offline_db.json`) and has no base url. `DmNextGame.start` refuses any api whose base url is not the live API's or empty (the mock): "The API rule".
 
 ```
-bash client/setup.sh                                   # once per checkout: builds the core, imports
-bash client/tools/bake_crowd.sh                        # once: bakes the robber, the hound and the thralls (without them nothing is drawn; the other defs borrow these)
+bash tools/check/prep.sh                               # once per checkout: the core, the import, the crowd's baked models (without them nothing is drawn)
 /home/ubuntu/tools/godot/godot --path client            # the boot: login and character select on the live server, then the game (below)
 /home/ubuntu/tools/godot/godot --path client -- --dev-offline --class=1             # the same boot with the local mock backend and no network at all: straight into the whole world as `tester` (--seed=N --no-waves --baked=<dir> too)
 /home/ubuntu/tools/godot/godot --path client res://dev/dm_dev_entry.tscn           # the dev entry: the Graves alone, the Gravecaller at level 10, the HUD, waves. He fights with the rites (controls below)
@@ -214,7 +212,7 @@ godot --path client -- --dev-offline --class=2 --qa --shot-plan=/abs/plan.json -
   combat: eight of the Graves' robbers are made in a fan 6 to 9 m ahead of the hero and, every 0.4 s, the hero casts at the nearest with its health and resource topped up, the pack made up again when it thins. Without it a dev-offline start's waves are still climbing out 18 m away after four seconds (measured: twelve enemies
   alive, none on screen, nothing cast or hit); with it at four seconds eight or more enemies are on screen, the nearest 1.4 m away, and the hero has cast eleven times and hit five.
 - **Script:** Forward+ on the software Vulkan driver (lavapipe), `xvfb-run`, `nice -n 10`, one renderer at a time (it waits up to 15 minutes for `qa-browser.lock`), 10 minutes at most, a scratch user folder. If Vulkan cannot start, the
-  run is repeated on OpenGL 3 and a line says the pictures use the fallback renderer (not the game's look). It needs `client/setup.sh` once per checkout (the baked crowd only for a plan with enemies). Two shots took 4 min 43 s on
+  run is repeated on OpenGL 3 and a line says the pictures use the fallback renderer (not the game's look). It needs `tools/check/prep.sh` once per checkout (the baked crowd only for a plan with enemies). Two shots took 4 min 43 s on
   2026-10-18, most of it the world's start. `DM_QA_LOG=<file>` keeps godot's log; `--help` lists the rest.
 - **Test:** `tests/qa_shots.gd` (headless, about 110 s): the plan, a plan's set-up on the game scene, the scripted fight, the preset flag (where it counts, the loan that is never saved, a game scene started on it), the clip plan, the frame writer, the tune and a clip recorded on a Reaper's game scene ("Clips and tune"), the release checks' flags and short runs ("Release checks"), real headless launches, and the script against a stand-in for godot (the fallback, the lock, the time limit).
 

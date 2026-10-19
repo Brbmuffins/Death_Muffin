@@ -296,6 +296,24 @@
         "DECISIONS.md",
         "tools/hygiene/**"
       ]
+    },
+    {
+      "id": "client-setup-sh",
+      "pattern": "client/setup\\.sh",
+      "reason": "replaced 2026-10-19 by tools/check/prep.sh, the game's one setup (tools/check/README.md)",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "client-prep",
+      "pattern": "client-prep(-in)?\\.sh|client-cache|DM_CLIENT_CACHE|DM_CLIENT_PREP",
+      "reason": "the Discord agent's own prep and cache, replaced 2026-10-19 by tools/check/prep.sh (--warm / --read-only) and ~/death-muffin/build-cache",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
     }
   ],
   "allowPaths": {

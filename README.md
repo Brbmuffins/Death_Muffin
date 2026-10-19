@@ -37,8 +37,8 @@ Where to read next: [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNO
 Godot 4.7.2 is at `/home/ubuntu/tools/godot/godot` (`GODOT` env var overrides it in the scripts). The renderer is Forward+.
 
 ```
-bash client/setup.sh                              # first time and after switching branches: builds the combat core (Linux) and imports
-bash client/tools/bake_crowd.sh                   # the crowd's baked models (not committed), to see enemies and thralls
+bash tools/check/prep.sh                          # first time and after switching branches: the combat core, the import, the crowd's baked models and the
+                                                  # lobby's packages, from the shared cache when nothing they are made of changed (tools/check/README.md)
 godot --path client                               # normal start: online, needs the live server
 godot --path client -- --dev-offline              # testing only: local accounts in user://dm_dev_offline_db.json, no server
 godot --path client -- --dev-offline --class=2    # skip the front flow, enter as account "tester" (1 Ossuary ... 4 Rotweaver, 11 Reaper)
@@ -53,7 +53,7 @@ rendered runs use the software Vulkan driver and `xvfb-run`, one at a time.
 ## Tests
 
 ```
-tools/rebuild/run-client-tests.sh                 # every game suite (client/tests: <name>.gd or a folder <name>/run.gd), 8 side by side (fewer on a busy machine), after client/setup.sh and client/tools/bake_crowd.sh; one line per suite
+tools/rebuild/run-client-tests.sh                 # every game suite (client/tests: <name>.gd or a folder <name>/run.gd), 8 side by side (fewer on a busy machine), after tools/check/prep.sh; one line per suite
 tools/rebuild/run-client-tests.sh --only surge,value   # just those
 node tools/rebuild/affected-suites.mjs            # the suites a change can affect, plus the smoke set (the Discord agent's quick check; --explain says why)
 npm run test:rules                                # shared rules (vitest, server/rules), with the client parity fixtures

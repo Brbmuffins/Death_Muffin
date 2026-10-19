@@ -4,8 +4,8 @@
 # filesystem read-only (Godot binary, node_modules, the repo's .git stay readable), a private /tmp, only the worktree writable. HOME and the XDG dirs are a fresh temp dir, so Godot's
 # user:// (saves, settings) can never touch the real home. Hard limit 85 minutes for the whole run (the full suite outgrew 40 min on 2026-10-09).
 # Inside: the repo hygiene check (tools/hygiene/check.mjs = npm run hygiene, also on docs-only changes), the model check on the models the change adds or edits
-# (tools/assets/check-models.mjs), the game's build products (client-prep.sh outside the sandbox from the trusted cache, client-prep-in.sh inside: the combat
-# core, the import, the crowd's bakes; what the change touched is rebuilt), then tools/rebuild/run-client-tests.sh (one line per suite: the game's suites,
+# (tools/assets/check-models.mjs), the game's build products (the combat core, the import, the crowd's bakes, the lobby's packages; tools/check/prep.sh: `--warm` of the base revision outside the sandbox fills the shared cache from approved code only, `--read-only` inside copies it in and builds only what the change touched),
+# then tools/rebuild/run-client-tests.sh (one line per suite: the game's suites,
 # client/tests). Prints per-suite lines and a final "GODOT TESTS: ..." line; exit 1 if any suite or step fails.
 # Two modes. QUICK (default; the runner before a proposal): hygiene + only the suites the change can affect
 # (tools/rebuild/affected-suites.mjs: changed suites, suites referencing a changed file, a small smoke set; ALL when the change is too central or too wide),
@@ -14,8 +14,8 @@
 # RERUN (`--rerun a,b`; the runner and ship.sh, once, for the few suites a check just failed; the agent, the only way it may run the check, for the
 # suites it needs): hygiene + exactly those suites, one at a time. A suite that fails under load (another ship's client export) passes here and costs no
 # agent turn; a real failure fails again. Names are suites of client/tests (`rites`, `next_front`, `relay/udp_run`): letters, digits, `_`, `-`, `/`.
-# Run from the worktree root (the agent's cwd). Env: GODOT (default /home/ubuntu/tools/godot/godot), DM_TEST_JOBS (optional: passed as --jobs N), DM_CLIENT_CACHE (client-prep.sh),
-# DM_CLIENT_PREP / DM_CLIENT_PREP_IN (tests: stand-ins for client-prep.sh and client-prep-in.sh).
+# Run from the worktree root (the agent's cwd). Env: GODOT (default /home/ubuntu/tools/godot/godot), DM_TEST_JOBS (optional: passed as --jobs N), DM_BUILD_CACHE (prep.sh),
+# DM_PREP (tests: a stand-in for prep.sh).
 set -uo pipefail
 MODE=quick
 RERUN=""
@@ -26,11 +26,6 @@ export MODE RERUN
 TOP=$(git rev-parse --show-toplevel) || exit 2
 NM=$(readlink -f "$TOP/node_modules" 2>/dev/null || true)
 [ -n "$NM" ] && { mkdir -p "$NM/.vite" 2>/dev/null || true; }   # vitest keeps its results cache here; the sandbox puts a scratch tmpfs over it
-# The lobby's packages (ws, jsonwebtoken): coop, coop_bosses and social start the real lobby and skip without them, which counts as a failure.
-# A worktree has none (git does not hold them), so they are linked from the main checkout, as the runner links the root node_modules.
-LOBBY_NM=server/death-muffin/lobby/node_modules
-MAIN=$(dirname "$(git -C "$TOP" rev-parse --path-format=absolute --git-common-dir)")
-[ -e "$TOP/$LOBBY_NM" ] || [ ! -d "$MAIN/$LOBBY_NM" ] || [ ! -d "$TOP/${LOBBY_NM%/*}" ] || ln -s "$MAIN/$LOBBY_NM" "$TOP/$LOBBY_NM"
 # A change that only touches Markdown files cannot affect the game: skip the suites (owner 2026-10-09: a docs-only audit branch timed
 # out the 40-min suite three times and never got proposed), but still run the hygiene check (broken links and stale paths live in docs).
 # Compares the working tree (committed + uncommitted + untracked) with where the branch left the base branch; any other file, or a base
@@ -46,12 +41,13 @@ if [ -n "$MB" ]; then
   fi
 fi
 export DOCS_ONLY MB
-# The game's build products: the trusted cache is made ready outside the sandbox (client-prep.sh); the copy, and whatever this change rebuilt, inside.
+# The game's build products: the shared cache is filled outside the sandbox for the base revision (approved code: a job can never plant a
+# library, an import or a bake that another job then loads); the copy, and whatever this change rebuilt, inside (prep.sh --read-only).
 TOOLS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -z "$DOCS_ONLY" ]; then
-  PREP=$(bash "${DM_CLIENT_PREP:-$TOOLS/client-prep.sh}" "$TOP" 2>&1 | tail -1)
-  [[ "$PREP" =~ ^PREP\ core=(cached|build)\ bake=(cached|build)\ dir=([^\ ]+)\ keys=([a-z0-9,-]+)$ ]] || { echo "$PREP"; echo "GODOT TESTS: preparing the game FAILED (client-prep.sh)"; exit 1; }
-  export PREP_CORE=${BASH_REMATCH[1]} PREP_BAKE=${BASH_REMATCH[2]} PREP_DIR=${BASH_REMATCH[3]} PREP_KEYS=${BASH_REMATCH[4]}
+export DM_PREP="${DM_PREP:-$TOOLS/prep.sh}"
+if [ -z "$DOCS_ONLY" ] && [ -n "$MB" ]; then
+  if ! PREP=$(bash "$DM_PREP" --warm "$MB" "$TOP" 2>&1); then echo "$PREP" | tail -20; echo "GODOT TESTS: preparing the game FAILED (prep.sh --warm)"; exit 1; fi
+  echo "$PREP" | tail -1
 fi
 export TOOLS
 export DM_SANDBOX_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/sandbox-lib.sh"
@@ -74,7 +70,7 @@ export DM_PAYLOAD='
     if ! node tools/assets/check-models.mjs --changed "$MB" > "$SCR/models.log" 2>&1; then cat "$SCR/models.log"; echo "GODOT TESTS: model check FAILED (tools/assets/check-models.mjs)"; exit 1; fi
     cat "$SCR/models.log"; fi
   echo "== build products of the game"
-  bash "${DM_CLIENT_PREP_IN:-$TOOLS/client-prep-in.sh}" || { echo "GODOT TESTS: preparing the game FAILED (client-prep-in.sh)"; exit 1; }
+  bash "$DM_PREP" --read-only "$TOP" || { echo "GODOT TESTS: preparing the game FAILED (prep.sh --read-only)"; exit 1; }
   RUNNER=tools/rebuild/run-client-tests.sh
   ARGS=(); LABEL="$MODE"; NOTE=""
   if [ "$MODE" = quick ]; then

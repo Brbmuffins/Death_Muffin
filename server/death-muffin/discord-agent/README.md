@@ -34,16 +34,16 @@ While `check-godot.sh` runs it keeps
 `runner/core.cjs`). Both files are git-ignored. Model generation posts `🎨 Still generating "<id>"` with the minutes instead.
 The auth backend (`deploy-release.sh`) is not part of a ship; the owner runs it. The web-mode scripts in this folder (`check.sh`, `preview.sh`, `shot.sh`, `regen.sh`) are unused.
 
-**The game's build products** (`client-prep.sh`, `client-prep-in.sh`): a job's worktree has no combat core library, Godot import or crowd bakes (git does
-not hold them, and a fresh build takes minutes). `client-prep.sh <worktree> [--windows]` runs OUTSIDE the sandbox (called by `check-godot.sh`,
-`shot-godot.sh` and `preview-godot.sh`): it makes sure `~/death-muffin/client-cache/` (`DM_CLIENT_CACHE`) holds them for the job's base revision (where
-its branch left `origin/main`: approved code), building whatever is missing in a scratch worktree of that revision (core, import seeded from the newest
-cached one, bakes: about 7 minutes cold, once per change on `main`; then 0.2 s), keyed by the inputs (`native/`; `client/assets` + `project.godot`;
-the crowd baker's inputs). It never writes into the job's worktree and never builds a job's files, so a job cannot plant a library, an imported scene
-or a bake that another job loads. Its last line, `PREP core=<cached|build> bake=<cached|build> dir=... keys=...`, goes to `client-prep-in.sh`, which
-runs INSIDE the caller's sandbox: copies the cached core, import and bakes in, rebuilds the core when the job changed `native/` (on its own copy of
-godot-cpp in `.dm-native-cache/`, git-ignored; the shared one is read-only there) and the bakes when it changed their inputs, and imports.
-`DM_CLIENT_PREP` / `DM_CLIENT_PREP_IN` name stand-ins (tests).
+**The game's build products** (`tools/check/prep.sh`, installed here as `prep.sh`; the game's one setup, tools/check/README.md): a job's worktree has
+no combat core library, Godot import, crowd bakes or lobby packages (git does not hold them, and a fresh build takes minutes). `prep.sh --warm <base>
+<worktree> [--windows]` runs OUTSIDE the sandbox (called by `check-godot.sh`, `shot-godot.sh` and `preview-godot.sh`): it makes sure the shared cache
+`~/death-muffin/build-cache/` (`DM_BUILD_CACHE`) holds them for the job's base revision (where its branch left `origin/main`: approved code), building
+whatever is missing in a scratch worktree of that revision with that revision's own `prep.sh`; with everything cached it only checks the keys. It never
+writes into the job's worktree and never builds a job's files, so a job cannot plant a library, an imported scene or a bake that another job loads.
+Inside the caller's sandbox, `prep.sh --read-only <worktree>` copies in what is cached for the job's own inputs, so only what the job changed is
+rebuilt there (the core on its own copy of godot-cpp in `.dm-native-cache/`, git-ignored; the shared one is read-only), stores nothing, and imports.
+A job that changes the lobby's `package-lock.json` gets a plain line that its packages are not cached (the sandbox cannot download them).
+`DM_PREP` names a stand-in (tests).
 
 **`check-godot.sh`**: the same sandbox as `check.sh` (`unshare -rnm`, loopback only, whole filesystem read-only, only the worktree writable, scratch tmpfs over
 `node_modules/.vite`), with `HOME` and the XDG dirs in a fresh `/tmp/dmgodot.*` (inside the sandbox's private /tmp) so Godot's `user://` never touches the real home. In order: the repo hygiene check
@@ -78,7 +78,7 @@ this change too" (audit `infra-failed`): nothing is proposed and no repair turn 
 automatic re-run of 1-3 failing suites (the runner's `failedSuites`, and `ship.sh`) reads every suite line, folder runners such as `relay/udp_run` too, and
 is skipped when those lines do not account for the summary's `N FAILED`, so a failure it cannot name never rides on another suite's passing re-run.
 
-**`preview-godot.sh <jobid>`**: runner-only. The game's build products with the Windows core (`client-prep.sh --windows`), then inside the same kind of sandbox the
+**`preview-godot.sh <jobid>`**: runner-only. The game's build products with the Windows core (`prep.sh --warm --windows`), then inside the same kind of sandbox the
 export of the `Windows Desktop` preset from `client/` (the installed export templates are linked read-only into the fresh `XDG_DATA_HOME`). The art: when nothing the
 art pack is made of (`tools/godot/assets-fp.sh --paths`, `main`'s copy) differs from the live build's revision (the client manifest's `rev`), the zip carries no pack
 and its `.bat` starts the game with the installed game's pack (`--assets-pack=%LOCALAPPDATA%\DeathMuffin\client\DeathMuffin.assets.pck`, and says to install the
@@ -153,7 +153,7 @@ its notice lists both changes under both titles, and the waiting thread gets "�
 that touches only Markdown files and `docs/` is pushed and stops there: no backend or lobby deploy, no client publish, no release notice (`RESULT: docs`;
 the thread is told no game update went out, the ships log records `type: docs`). **One test run at a time:** `check-godot.sh` takes
 `~/death-muffin/test-slot.lock` (shared with the ship; created by the installer) and waits for it, so parallel jobs no longer slow each
-other down. A job's check gets the import from the trusted cache (`client-prep.sh`); the client publish still imports from scratch.
+other down. A job's check gets the import from the shared cache (`prep.sh`), and so does the client publish.
 A message sent while a turn runs is handled by the next turn, and the finished turn posts no proposal for the outdated state (audit `proposal-skipped`), so one proposal comes with everything. Screenshot runs (`shot-godot.sh`, `--qa --shot-plan`) skip the game's start-up warm-up (software GL: 192 s -> 41 s per start).
 A reply to an open proposal that changes nothing (a thank-you, a question) is answered, and the proposal stays as it is: same commit and clean
 workspace means no new checks, preview or re-post (`proposal-kept` in the audit log), and ✅ works right away. The prompt also tells the agent to run
@@ -284,13 +284,13 @@ Finished threads are archived so `#death-muffin` only lists live work (owner, 20
 3. `sudo systemctl enable --now death-muffin-discord-agent`, then `sudo systemctl restart muffin-discord`.
 
 Tests (not wired into test:server; ~1 min, needs git and `unshare`/`zip`/`unzip`): `node --test server/death-muffin/discord-agent/test/*.test.cjs`.
-The installer also copies `check-godot.sh`, `client-prep.sh`, `client-prep-in.sh`, `preview-godot.sh`, `shot-godot.sh`, `label-shot.py`, `render-model.sh`, `render-model.py`, `art-run.sh`, `build-art.sh`, `build-sound.sh`, `sound-build.mjs` and `PROMPT-godot.md`, installs the trusted art tools to `art-tools/`, and creates an empty `tripo-budget.json` if there is none (never overwritten). The live `config.json` must say `"mode": "godot", "baseBranch": "main"`; edit it and restart the service to change.
+The installer also copies `check-godot.sh`, `tools/check/prep.sh` (as `prep.sh`), `preview-godot.sh`, `shot-godot.sh`, `label-shot.py`, `render-model.sh`, `render-model.py`, `art-run.sh`, `build-art.sh`, `build-sound.sh`, `sound-build.mjs` and `PROMPT-godot.md`, installs the trusted art tools to `art-tools/`, and creates an empty `tripo-budget.json` if there is none (never overwritten). The live `config.json` must say `"mode": "godot", "baseBranch": "main"`; edit it and restart the service to change.
 
 ## Screenshots
 **With a team PC online, pictures are automatic** (Helix, 2026-10-19: "no need to require !shot"; "Team PC pictures" below): the agent writes a shot plan for every visible change and the team PC renders it. **With none, only on request** (Helix, 2026-10-12): the agent renders on the server when the request asks for a picture or someone says `!shot`, never by default (PROMPT-godot.md); a proposal without pictures has a "Screenshots" field offering `!shot`.
 `shot-godot.sh [plan.json]` (default `.dm-shot.json`; format in `client/main/qa_ui_shots.gd` and `PROMPT-godot.md`: up to 4 shots of windows/tooltips or the hero wearing gear, `open` / `hover` / `area` / `clip` / `give` / `equip` / `discipline` / `view` / `turn` / `anim`) renders the branch's own client on the dev-offline demo hero with a fixed
 representative bag. Same sandbox as `check-godot.sh` (no network, read-only filesystem, only the worktree writable, private `/tmp` and a fresh HOME), in two runs:
-the game's build products (`client-prep.sh`, above), then the branch's own `client/tools/qa_shots.sh <plan> <worktree>/.dm-shots/.raw <class>` (the plan's discipline,
+the game's build products (`prep.sh`, above), then the branch's own `client/tools/qa_shots.sh <plan> <worktree>/.dm-shots/.raw <class>` (the plan's discipline,
 default 2): Forward+ on the software Vulkan driver under `xvfb-run`, falling back to OpenGL 3 with a line saying so. Only the rendering holds the shared
 `qa-browser.lock` (one renderer on the VPS), with a hard 15 minute limit (two shots take about 5 minutes).
 The label is burned in OUTSIDE the sandbox by `label-shot.py` (trusted code; Pillow): every raw PNG becomes `.dm-shots/<name>.png` with "BRANCH PREVIEW · not live · <branch>"; directory fds + `O_NOFOLLOW`, only real PNGs

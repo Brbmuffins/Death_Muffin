@@ -7,7 +7,7 @@
 # `-- --dev-offline --class=N --qa --shot-plan=<plan> --shots=<out_dir>`.
 # Forward+ (the renderer the game plays on) on the software Vulkan driver (lavapipe: the VPS has no GPU). If Vulkan cannot start, the run is repeated on the OpenGL 3 fallback and a line says so:
 # the pictures then have Compatibility's look, not the game's. One renderer at a time across every agent (the shared qa-browser.lock: it waits up to 15 minutes for it), at `nice -n 10`, and at most
-# 10 minutes once it has the lock. Needs `bash client/setup.sh` once per checkout (the combat core and the import); `bash client/tools/bake_crowd.sh` once to see enemies and thralls in a plan that shows them.
+# 10 minutes once it has the lock. Needs `bash tools/check/prep.sh` once per checkout (the combat core, the import and the crowd's baked models, without which a plan's enemies and thralls are not drawn).
 # Exit code: godot's (0 the pictures are there, 1 a shot failed, 2 the plan or the launch is wrong); 124 timed out, 75 the lock was not free in time.
 # Env: GODOT (default /home/ubuntu/tools/godot/godot), DM_BROWSER_LOCK, DM_QA_LIMIT (seconds, default 600), DM_QA_ICD (the lavapipe ICD file), DM_QA_FALLBACK=force|never (the other renderer; tests),
 # DM_QA_LOG=<file> (keeps godot's whole log of the run there: the script itself shows only the game's QA-SHOTS lines and its errors), DM_QA_LOCKED=1 (the caller holds the renderer lock already: it is not taken again).
@@ -95,7 +95,7 @@ CLASS=${3:-}
 [ "$(stat -c %s "$PLAN")" -le 65536 ] || { echo "qa_shots: the plan file is too big" >&2; exit 2; }
 [ -f "$PROJECT/project.godot" ] || { echo "qa_shots: no project at $PROJECT" >&2; exit 2; }
 if ! ls "$PROJECT"/bin/libdmcore.linux.*.so > /dev/null 2>&1 || [ ! -d "$PROJECT/.godot/imported" ]; then
-  echo "qa_shots: this checkout is not set up: run 'bash client/setup.sh' once (it builds the combat core and imports the project)" >&2
+  echo "qa_shots: this checkout is not set up: run 'bash tools/check/prep.sh' once (the combat core, the import and the crowd's models)" >&2
   exit 2
 fi
 [ -x "$GODOT" ] || { echo "qa_shots: no godot at $GODOT (GODOT=...)" >&2; exit 2; }
@@ -117,7 +117,7 @@ PY
 )
 fi
 case "$CLASS" in [0-9]|[0-9][0-9]) ;; *) echo "qa_shots: the class must be a number (1-4 or 11), not '$CLASS'" >&2; exit 2;; esac
-[ -d "$PROJECT/assets/crowd/baked" ] || echo "qa_shots: note: the crowd's models are not baked (bash client/tools/bake_crowd.sh): enemies and thralls would not be drawn"
+[ -d "$PROJECT/assets/crowd/baked" ] || echo "qa_shots: note: the crowd's models are not baked (bash tools/check/prep.sh): enemies and thralls would not be drawn"
 
 if [ "${DM_QA_LOCKED:-}" = 1 ]; then
   timeout -k 20 "$LIMIT" bash "$SELF" --render "$PLAN" "$OUT" "$CLASS"

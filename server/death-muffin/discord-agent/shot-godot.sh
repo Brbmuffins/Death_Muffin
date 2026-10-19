@@ -4,13 +4,13 @@
 # a plan "discipline" (ossuary|gravecaller|mourner|rotweaver|reaper, or the class number) picks the necromancer: it is mapped here to `--class=N`, default 2).
 # Same sandbox as check-godot.sh (sandbox-lib.sh): fresh user/network/mount namespaces, no network (loopback only), the WHOLE filesystem read-only, a private /tmp,
 # only the worktree writable; HOME and the XDG dirs are a fresh temp dir so Godot's user:// never touches the real home. Two sandboxed runs: the game's build
-# products (client-prep.sh outside, then client-prep-in.sh: the combat core, the import, the crowd's bakes), then the branch's own client/tools/qa_shots.sh
+# products (prep.sh --warm of the base revision outside, then prep.sh --read-only inside: the combat core, the import, the crowd's bakes), then the branch's own client/tools/qa_shots.sh
 # (Forward+ on the software Vulkan driver, the OpenGL 3 fallback with a line saying so) writes raw PNGs to <worktree>/.dm-shots/.raw/. Outside the sandbox
 # (this script, trusted code), label-shot.py burns "BRANCH PREVIEW · not live · <branch>" into every one and writes <worktree>/.dm-shots/<name>.png (an image
 # that could not be labelled is never published). One renderer at a time across all agents (the shared qa-browser.lock, held for the rendering only), and a
 # hard 15 minute limit on it.
-# Env: GODOT (default /home/ubuntu/tools/godot/godot), DM_BROWSER_LOCK, DM_SHOT_LABEL_PY (tests), DM_CLIENT_CACHE (client-prep.sh), DM_CLIENT_PREP /
-# DM_CLIENT_PREP_IN (tests: stand-ins for client-prep.sh and client-prep-in.sh).
+# Env: GODOT (default /home/ubuntu/tools/godot/godot), DM_BROWSER_LOCK, DM_SHOT_LABEL_PY (tests), DM_BUILD_CACHE (prep.sh), DM_PREP
+# (tests: a stand-in for prep.sh).
 set -uo pipefail
 TOP=$(git rev-parse --show-toplevel) || exit 2
 TOOLS=$(cd "$(dirname "$0")" && pwd)
@@ -41,9 +41,10 @@ RAW="$TOP/.dm-shots/.raw"
 [ -L "$TOP/.dm-shots" ] && { echo ".dm-shots must not be a symlink"; exit 2; }
 rm -rf "$RAW" 2>/dev/null; mkdir -p "$RAW" || exit 2
 # the game's build products: the cache outside (trusted), the copy and whatever this branch changed inside the sandbox
-PREP=$(bash "${DM_CLIENT_PREP:-$TOOLS/client-prep.sh}" "$TOP" | tail -1)
-[[ "$PREP" =~ ^PREP\ core=(cached|build)\ bake=(cached|build)\ dir=([^\ ]+)\ keys=([a-z0-9,-]+)$ ]] || { echo "client-prep failed: $PREP"; exit 1; }
-export PREP_CORE=${BASH_REMATCH[1]} PREP_BAKE=${BASH_REMATCH[2]} PREP_DIR=${BASH_REMATCH[3]} PREP_KEYS=${BASH_REMATCH[4]}
+export DM_PREP="${DM_PREP:-$TOOLS/prep.sh}"
+# (never filled from the job's own code: without a base revision the sandbox builds what is missing and stores nothing)
+MB=$(git -C "$TOP" merge-base HEAD "origin/${BASE_BRANCH:-main}" 2>/dev/null) || MB=
+if [ -n "$MB" ]; then PREP=$(bash "$DM_PREP" --warm "$MB" "$TOP" 2>&1) || { echo "$PREP" | tail -20; echo "preparing the game for the pictures failed (prep.sh --warm)"; rm -rf "$RAW"; exit 1; }; fi
 sandboxed() {   # $1 = the payload; the sandbox's own scratch folder and user folders
   DM_PAYLOAD='
   set -uo pipefail
@@ -53,7 +54,7 @@ sandboxed() {   # $1 = the payload; the sandbox's own scratch folder and user fo
   cd "$TOP"
   '"$1" timeout -k 20 "$2" unshare -rnm bash -c '. "$DM_SANDBOX_LIB"; dm_sandbox_run'
 }
-sandboxed 'bash "${DM_CLIENT_PREP_IN:-$TOOLS/client-prep-in.sh}"' 1500 || { echo "preparing the game for the pictures failed"; rm -rf "$RAW"; exit 1; }
+sandboxed 'bash "$DM_PREP" --read-only "$TOP"' 1500 || { echo "preparing the game for the pictures failed"; rm -rf "$RAW"; exit 1; }
 exec 6>>"$LOCK"
 flock -w 900 6 || { echo "the renderer stayed busy for 15 minutes (another agent's pictures)"; rm -rf "$RAW"; exit 1; }
 sandboxed 'echo "== rendering"; DM_QA_LOCKED=1 DM_QA_LIMIT=840 bash client/tools/qa_shots.sh "$TOP/$FILE" "$TOP/.dm-shots/.raw" "$DM_SHOT_CLASS"' 900

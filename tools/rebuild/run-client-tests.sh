@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The game's (client/) test suites. Run client/setup.sh and client/tools/bake_crowd.sh first (the combat core, the import, the crowd's baked models).
+# The game's (client/) test suites. Run tools/check/prep.sh first (the combat core, the import, the crowd's baked models, the lobby's packages).
 #   tools/rebuild/run-client-tests.sh [--jobs N] [--only a,b] [--shard I/N] [--list] [--times <out.tsv>]
 #   --jobs N        suites at once (default $DM_TEST_JOBS or 8; 1 = one after another, in list order, no retries). Off GitHub the count is capped by
 #                   the free cores (half of them, at least 2), so a run never piles onto a busy VPS (live game servers share it).

@@ -74,7 +74,7 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   The Windows half is confirmed on a real PC by the team app's crash check (KNOWN-GAPS "Stability").
 - [x] **Fix: the Discord agent tested and photographed the old game.** Done 2026-10-18: it makes its changes in the game (`client/`) directly;
   every proposal is tested on the game (the quick check runs the suites the change can affect), with the combat core, the import and the
-  crowd's bakes taken from a cache built only from `main` (`server/death-muffin/discord-agent/client-prep.sh`), so a check does not rebuild them;
+  crowd's bakes taken from a cache built only from `main` (today `tools/check/prep.sh --warm`), so a check does not rebuild them;
   its screenshots are the game's, rendered on the server the way it plays (until the team app takes them over), and a "Try it" preview without
   new art uses the art pack of the player's installed game instead of carrying its own 500 MB. Fixed 2026-10-19: the co-op and friends
   suites (coop, coop_bosses, social) start the real lobby, which a job's copy of the game could not run without the lobby's packages, so

@@ -49,7 +49,7 @@ HEAD_NOW=$(g -C "$REPO" rev-parse "refs/heads/$BRANCH") || { echo "RESULT: head-
 g -C "$REPO" worktree add -q --detach "$SW" "$OLD" || { echo "RESULT: worktree-failed"; exit 6; }
 cd "$SW"
 for rel in node_modules; do [ -d "$REPO/$rel" ] && ln -s "$REPO/$rel" "$SW/$rel"; done
-# (The game's build products, the combat core, the import and the crowd's bakes, come with the check: check-godot.sh runs client-prep.sh.)
+# (The game's build products, the combat core, the import and the crowd's bakes, come with the check: check-godot.sh runs prep.sh.)
 
 say "merging $BRANCH onto $BASE_BRANCH ${OLD:0:7}"
 if ! g merge -q --ff-only "$EXPECT_HEAD" >/dev/null 2>&1; then

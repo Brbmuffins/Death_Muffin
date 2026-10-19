@@ -139,10 +139,6 @@ polish list). Also:
   engage (1 of 148 bodies culled); its report's budget section is labelled "Budgets (ROADMAP", but the budgets are in CLAUDE.md (B39).
 - The draw model counts the rendered Graves a few draws under the engine, but Helix's World row is about 40 over the same stage: the real
   fight draws what the model's stage does not (the hero's place, the effects, the boss).
-- The Discord agent's check links the lobby's packages from the main checkout (`server/death-muffin/discord-agent/check-godot.sh`), and
-  nothing updates them there: after a change to `server/death-muffin/lobby/package-lock.json`, a job's co-op suites run on the old packages
-  until someone runs `npm ci` in that folder (`server/death-muffin/deploy-lobby.sh` updates only the live lobby). Caching them by the lockfile in
-  `server/death-muffin/discord-agent/client-prep.sh`, like the combat core, would keep them current.
 - `client/data/content/manifest.json`'s counts are kept by hand: a new entry in a content table fails rules-core until its count is raised
   (rules-core names each; the Discord agent's prompt says so). Only `tools/generate-armor-assets.mjs` updates them by itself.
 - `--tune=` (`client/README.md` "Clips and tune") changes only numbers the data files hold, and most rites keep some in their scripts (Miasma's flight speed, Unleash Souls' three speeds, the Haunting Wraith's damage tick, ...), so a team PC cannot show variants of those until each moves into its rite's row of

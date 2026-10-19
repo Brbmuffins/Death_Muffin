@@ -313,7 +313,7 @@ An elite carries some of four affixes, a bit mask on its body (the spawn event c
   (the format's constants and a core's co-op counters), `snapshot` (the 20 Hz message, both ways), `reliable` (event batches and the baseline, both ways) and `puppet` (a guest's step, snapshot
   records and reliable records).
 - Tests: the `core_*` suites, `crowd_view.gd`, `game_scene.gd` and the co-op suites (client/README.md "Set up and test"). Run
-  `bash client/setup.sh` first in a fresh checkout: a script run in a
+  `bash tools/check/prep.sh` first in a fresh checkout: a script run in a
   project that was never imported hangs.
 - `SConstruct`: builds into `client/bin/libdmcore.<platform>.<target>.<arch>.<ext>`.
 - `build.sh`: links godot-cpp into native's thirdparty folder (not committed) from one shared cache per commit
