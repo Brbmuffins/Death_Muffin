@@ -34,11 +34,9 @@
 12	next_clarity
 22	gathering
 19	chapterhouse
-17	counsel
-17	next_polish
+18	counsel
 17	next_meta
 16	next_loot
-17	next_hud
 16	surge
 16	next_playtest
 16	next_glue
@@ -110,3 +108,4 @@
 1	core_corpses
 1	core_api
 1	core_affixes
+19	hud_actions

@@ -48,16 +48,16 @@ SUITES="core_smoke core_api core_enemies core_status core_corpses core_thralls c
 benchmark benchmark_rooms benchmark_classes benchmark_launch benchmark_flags social presets rewards value fx_motes panels world core_kinds gathering counsel sound depths auto_combat draw_budget dressing fx_decals threads coop_bosses core_boss crash_note qa_shots
 boss_abbess boss_congregation boss_prelate boss_saint boss_regent boss_mire boss_meta surge play_report warm_coverage
 rules-combat rules-core rules-gathering rules-loot rules-progression data dialogue gear sim audio loot_view panels_a bosses onboarding fx world_builder world_fx game_ui ui ui_parity gear_look
-next_online_gate session relay relay/udp_run backend chapterhouse next_bag next_loot next_hero_look next_front next_polish perf/first_frame_run next_progress
-next_boss_meta next_hud next_playtest status game/units_run game/anim_run game/autocombat_run game/regress_run next_perfctl next_autocombat next_feel next_spawn_aggro
-next_lobby next_lobby/ui_run next_lobby/proc_run next_meta next_hud_counsel next_brews_affix next_runes next_clarity next_combat_odds next_glue next_affixes interp enemy_fx"
+next_online_gate session relay relay/udp_run backend chapterhouse next_bag next_loot next_hero_look next_progress
+next_boss_meta next_playtest status game/units_run game/anim_run game/autocombat_run game/regress_run next_perfctl next_autocombat next_feel next_spawn_aggro
+next_lobby next_lobby/ui_run next_lobby/proc_run next_meta hud_actions next_brews_affix next_runes next_clarity next_combat_odds next_glue next_affixes interp enemy_fx"
 # game_scene, rites, boss, presets and benchmark are paced too (2026-10-19: 147 -> 28 s, 175 -> 51 s, 64 -> 40 s, 287 -> 180 s on the VPS).
 # The suites after `warm_coverage` came from the first game's tests (B57). ui, chapterhouse, next_autocombat, next_feel, next_affixes and interp keep real time
 # (they measure it), and so do session, relay and next_lobby (real sockets and child processes).
 PACED=" game_scene rites spells boss presets benchmark benchmark_rooms benchmark_classes benchmark_launch benchmark_flags front hud coop value panels world gathering counsel sound depths boss_abbess boss_congregation boss_prelate boss_saint boss_regent boss_mire boss_meta dressing coop_bosses qa_shots surge warm_coverage \
  rules-combat rules-core rules-gathering rules-loot rules-progression data dialogue gear sim audio loot_view panels_a bosses onboarding fx world_builder world_fx game_ui ui_parity gear_look \
- next_online_gate backend next_bag next_loot next_hero_look next_front next_polish perf/first_frame_run next_progress next_boss_meta next_hud next_playtest \
- status game/units_run game/anim_run game/autocombat_run game/regress_run next_perfctl next_spawn_aggro next_meta next_hud_counsel next_brews_affix next_runes next_clarity next_combat_odds next_glue enemy_fx "
+ next_online_gate backend next_bag next_loot next_hero_look next_progress next_boss_meta next_playtest \
+ status game/units_run game/anim_run game/autocombat_run game/regress_run next_perfctl next_spawn_aggro next_meta hud_actions next_brews_affix next_runes next_clarity next_combat_odds next_glue enemy_fx "
 # LANE: the suites that wait on real sockets and child processes in real time (session, relay and next_lobby talk to peers and the lobby;
 # coop, coop_bosses and social start the real lobby service, node, and wait for it). One after another beside the pool.
 LANE=" session relay relay/udp_run next_lobby next_lobby/ui_run next_lobby/proc_run coop coop_bosses social "
