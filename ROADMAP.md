@@ -156,7 +156,13 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
       minute); the results go to #build-alerts, grouped by graphics card, which gives every card maker the team owns (NVIDIA, Intel Arc,
       the GTX 970 once War's PCs run the app).
     - Jobs reach a PC within about a second (the PC's check-in waits on the server).
-  - Still to do: the crash and install checks run right after a release, not yet before it goes live (a crash should stop the release:
+  - Proven on Helix's PC (RTX 4070 SUPER) on 2026-10-19 with apps 0.3.1 to 0.3.9: a full release check with every step (24 pictures at
+    their exact sizes, the stutter test, the benchmark at Low 691 and Medium 597 fps with no hitches, 30 minutes of soak with flat memory).
+    Its first finding is a real bug: the release build crashes while closing after the benchmark (KNOWN-GAPS "Stability"). The app
+    updates itself between jobs, so a check never runs on an old app.
+  - Still to do: War's PCs (the Intel Arc and the Alienware's GTX 970) have not signed in to the app yet, so the release checks and
+    benchmarks cover one graphics card; the weak-PC floor (B39) and the Ultra Low decision below wait on them.
+  - Also still to do: the crash and install checks run right after a release, not yet before it goes live (a crash should stop the release:
     that needs the test channel's build to go through the team PCs first).
   - With the art rebuild (Phase 4): lighting bakes on the strongest graphics card available instead of by hand, the result coming back as
     a proposal.
