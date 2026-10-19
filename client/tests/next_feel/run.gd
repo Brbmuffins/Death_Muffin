@@ -276,8 +276,7 @@ func _run() -> void:
 	await until(func() -> bool: return int(core.enemy_info(elite2)["state"]) != DmCoreEvents.State.RISING, 6.0)
 	host.damage(elite2, 1e9, hero.core_id)
 	await ticks(10)
-	# Not checked here: "reduce_motion disables hitstop". The client's game scene never sets `hitstopper.disabled` (client/next/next_game.gd:104 did: `ui_host.settings["reduce_motion"]`),
-	# so an elite death still asks for its micro-freeze under Reduce motion: a regression, reported with this port.
+	check(g.hitstopper.count == hs1, "G: under reduce_motion an elite death freezes nothing (%d hitstops granted)" % (g.hitstopper.count - hs1))
 	check(g.camera.reduced_motion, "G: reduce_motion reaches the camera, so rite shake is dropped")
 	g.ui_host.settings_store.update({"reduce_motion": false})
 	var tr0: float = g.camera._trauma

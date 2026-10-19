@@ -64,7 +64,6 @@ player part of a gain until it is fixed; few real sessions ran on the gains save
   always hit as at level 1 (nothing sets the area level); a fallen plague bearer's pool never appears and the Mourning Bell wraith's ally heal
   never happens (signals nobody listens to); statuses never change the blows a boss takes (`DmBoss.take_damage` skips the status set's
   damage-taken multiplier, and the brain's own Fracture is never fed: a Marrow Spear's Fracture or a Sanctify on the King does nothing).
-- **Reduce motion no longer turns off the hitstop:** `client/next/next_game.gd` never sets `hitstopper.disabled` (the old game's did, from Settings' `reduce_motion`), so an elite's death still freezes the frame with it on (found porting the `next_feel` suite).
 - **Easy auto combat parks the hero in pockets of tombstones:** it steers straight at the nearest enemy, with no path round the graves (found
   when the core was compared with the old game, DECISIONS B50).
 - Barrier has no decay (`client/next/status/README.md`), and the pools of a boss that resets linger their remaining seconds (`client/next/bosses/README.md`).

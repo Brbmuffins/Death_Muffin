@@ -434,6 +434,7 @@ func _apply_settings_side_effects() -> void:
 		shell.perf.apply(settings)
 	if shell.camera != null:
 		shell.camera.reduced_motion = bool(settings["reduce_motion"])
+	shell.hitstopper.disabled = func() -> bool: return bool(settings["reduce_motion"])   # Reduce motion: no freeze on heavy hits and elite deaths either
 
 
 func set_auto_combat(on: bool) -> void:
