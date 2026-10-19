@@ -944,6 +944,31 @@ namespace DeathMuffinTeam.Tests
                 T.Eq(string.Join(",", rig.Api.FailSteps.Select(s => s.Step)), "install", "the steps reported are the ones that were finished and uploaded");
                 T.Eq(rig.Host.Launches.Count, 2, "nothing runs after it");
             }
+            // the game crashes while closing after a finished benchmark (Helix's PC, 2026-10-19: 0xC0000374): the numbers are sent, the step fails naming the crash and what Windows recorded
+            using (var rig = new Rig())
+            {
+                Rig_Boot(rig);
+                var plain = ReleaseGame();
+                rig.Host.Behaviour = (l, dir) => { int? code = plain(l, dir); return StepOf(l) == "bench" ? -1073740940 : code; };
+                rig.Runner.CrashRecord = pid => "Windows: faulting module ntdll.dll, offset 0x00000000000ff1c9";
+                var res = rig.Run("relH00000010", rig.ReleasePlan(p => { p["steps"] = new List<object> { "bench", "stutter" }; p["setups"] = new List<object> { BenchTests.Setup("low") }; }));
+                T.Ok(res.Ok, "the job ends: " + res.Error);
+                var bench = StepIn(rig.Api.DoneSteps, "bench");
+                T.Ok(!bench.Ok && bench.Error.Contains("crashed while closing") && bench.Error.Contains("0xC0000374, heap corruption") && bench.Error.Contains("ntdll.dll"), "the bench step fails, naming the crash: " + bench.Error);
+                T.Eq(rig.Api.DoneRuns == null ? 0 : rig.Api.DoneRuns.Count, 1, "and its numbers are sent");
+                T.Eq(rig.Host.Launches.Count(l => StepOf(l) == "bench"), 1, "a crash while closing is no reason to run it again");
+                T.Ok(StepIn(rig.Api.DoneSteps, "stutter").Ok, "the next step runs");
+                T.Has(Encoding.UTF8.GetString(Uploaded(rig, "bench.json")), "\"crashes\"", "bench.json lists the crash");
+            }
+            // ... and a crash before the numbers were saved fails the step with no numbers
+            using (var rig = new Rig())
+            {
+                Rig_Boot(rig);
+                rig.Host.Behaviour = ReleaseGame((step, l) => step == "bench" ? -1073741819 : (int?)null);
+                var res = rig.Run("relH00000011", rig.ReleasePlan(p => { p["steps"] = new List<object> { "bench" }; p["setups"] = new List<object> { BenchTests.Setup("low") }; }));
+                T.Eq(StepIn(rig.Api.DoneSteps, "bench").Error, "The game crashed on Low (0xC0000005, access violation) before the benchmark was done.", "a crash during the run says so in plain words");
+                T.Eq(rig.Api.DoneRuns == null ? 0 : rig.Api.DoneRuns.Count, 0, "no numbers");
+            }
             // the server will not take a picture: its step fails and the job goes on (Helix's 3840x2160 fight picture was over the limit, 2026-10-19)
             using (var rig = new Rig())
             {

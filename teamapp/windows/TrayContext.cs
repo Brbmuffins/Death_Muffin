@@ -58,7 +58,7 @@ namespace DeathMuffinTeam
             var api = new TeamApi(transport, new Uri(TeamUrls.ApiBase));
             var platform = new WindowsPlatform(TeamSettings.Root);
             var probe = new WindowsPcProbe(platform);   // one reader for both: the controller reads while a benchmark waits, the runner while a job runs
-            var runner = new JobRunner(api, folders, new FileFetcher(FileFetcher.CreateClient(Program.Version)), new ProcessGameHost(Native.TendGameWindow, platform.Launched), platform, Native.TryHardLink, probe) { ShotsPosition = Native.OffscreenPosition, WindowPosition = Native.OffscreenPositionFor };
+            var runner = new JobRunner(api, folders, new FileFetcher(FileFetcher.CreateClient(Program.Version)), new ProcessGameHost(Native.TendGameWindow, platform.Launched), platform, Native.TryHardLink, probe) { ShotsPosition = Native.OffscreenPosition, WindowPosition = Native.OffscreenPositionFor, CrashRecord = Native.CrashRecord };
             controller = new TeamController(api, settings, () => settings.Save(protector), platform, runner, this, () => DateTime.UtcNow,
                 Program.Version, Environment.MachineName, new Uri(TeamUrls.SiteBase), log.Line, probe);
 

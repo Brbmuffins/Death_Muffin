@@ -378,6 +378,47 @@ namespace DeathMuffinTeam
             finally { CloseHandle(snap); }
         }
 
+        /// <summary>What Windows recorded about a crashed process <paramref name="pid"/>: the Application log's "Application Error" event (id 1000) for it, as
+        /// "Windows: faulting module X, offset Y" (readable without admin rights); "" when there is none within 10 seconds or the log cannot be read. For a heap
+        /// corruption the module is mostly ntdll.dll (where it was noticed, not who did it); for other crashes it names the culprit.</summary>
+        public static string CrashRecord(int pid)
+        {
+            for (int attempt = 0; attempt < 5; attempt++)
+            {
+                try
+                {
+                    using (var log = new EventLog("Application"))
+                    {
+                        EventLogEntryCollection entries = log.Entries;
+                        DateTime since = DateTime.Now.AddMinutes(-10);
+                        for (int i = entries.Count - 1, seen = 0; i >= 0 && seen < 300; i--, seen++)
+                        {
+                            EventLogEntry e = entries[i];
+                            if (e.TimeGenerated < since) break;
+                            if (e.InstanceId != 1000 || e.Source != "Application Error") continue;
+                            string m = e.Message ?? "";
+                            System.Text.RegularExpressions.Match id = System.Text.RegularExpressions.Regex.Match(m, @"process id:\s*0x([0-9a-fA-F]+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                            int got;
+                            if (!id.Success || !int.TryParse(id.Groups[1].Value, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out got) || got != pid) continue;
+                            return "Windows: faulting module " + Field(m, "Faulting module name:") + ", offset " + Field(m, "Fault offset:");
+                        }
+                    }
+                }
+                catch (Exception) { return ""; }
+                System.Threading.Thread.Sleep(2000);   // Windows writes the event while it handles the crash: it can come a moment after the exit
+            }
+            return "";
+        }
+
+        static string Field(string message, string label)
+        {
+            int i = message.IndexOf(label, StringComparison.OrdinalIgnoreCase);
+            if (i < 0) return "?";
+            int start = i + label.Length, end = start;
+            while (end < message.Length && message[end] != ',' && message[end] != '\r' && message[end] != '\n') end++;
+            return message.Substring(start, end - start).Trim();
+        }
+
         /// <summary>A process's exe path (works from the start of its life and across 32/64-bit), or null.</summary>
         public static string ImagePath(int pid)
         {

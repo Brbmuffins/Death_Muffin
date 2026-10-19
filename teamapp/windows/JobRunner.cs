@@ -868,6 +868,11 @@ namespace DeathMuffinTeam
             var clock = new Stopwatch();
             var runs = await CollectBenchRunsAsync(jobId, plan, gameDir, QuietDeadline(plan), no, clock, note, progress, ct).ConfigureAwait(false);
             var o = new StepOutcome { Runs = runs, Ms = (long)clock.ElapsedMilliseconds };
+            if (closeCrashes.Count > 0)
+            {
+                o.Ok = false;   // the numbers count, the crash is the release's own failure
+                o.Error = "The game crashed while closing after the benchmark (" + string.Join("; ", closeCrashes) + "); its numbers were sent.";
+            }
             var summary = new List<object>();
             foreach (var run in runs)
             {
@@ -880,8 +885,9 @@ namespace DeathMuffinTeam
                 }
                 summary.Add(row);
             }
-            string text = MiniJson.Write(new Dictionary<string, object> { { "step", "bench" }, { "ok", true }, { "summary", summary }, { "runs", runs } });
-            if (Encoding.UTF8.GetByteCount(text) > MaxStepResultBytes) text = MiniJson.Write(new Dictionary<string, object> { { "step", "bench" }, { "ok", true }, { "summary", summary } });
+            var crashes = new List<object>(closeCrashes);
+            string text = MiniJson.Write(new Dictionary<string, object> { { "step", "bench" }, { "ok", o.Ok }, { "error", o.Error }, { "crashes", crashes }, { "summary", summary }, { "runs", runs } });
+            if (Encoding.UTF8.GetByteCount(text) > MaxStepResultBytes) text = MiniJson.Write(new Dictionary<string, object> { { "step", "bench" }, { "ok", o.Ok }, { "error", o.Error }, { "crashes", crashes }, { "summary", summary } });
             o.Json = Utf8(text);
             return o;
         }
@@ -999,6 +1005,7 @@ namespace DeathMuffinTeam
             DateTime deadline = plan.ExpiresAtUtc ?? DateTime.UtcNow + QuietWaitLimit;
             var runClock = new Stopwatch();
             var runs = await CollectBenchRunsAsync(jobId, plan, folders.GameDir(jobId), deadline, new RunNumbers(), runClock, note, progress, ct).ConfigureAwait(false);
+            if (closeCrashes.Count > 0) note("the game crashed while closing after the benchmark (" + string.Join("; ", closeCrashes) + "); its numbers are sent");
             result.RunS = runClock.Elapsed.TotalSeconds;
             note("finished: " + runs.Count + " run(s), download " + result.DownloadS.ToString("0.0", CultureInfo.InvariantCulture) + " s, run " + result.RunS.ToString("0.0", CultureInfo.InvariantCulture) + " s");
             string text = Snapshot(log);
@@ -1031,6 +1038,7 @@ namespace DeathMuffinTeam
         async Task<List<Dictionary<string, object>>> CollectBenchRunsAsync(string jobId, JobPlan plan, string gameDir, DateTime deadline, RunNumbers runNo, Stopwatch runClock, Action<string> note, Action<string> progress, CancellationToken ct)
         {
             var runs = new List<Dictionary<string, object>>();
+            closeCrashes.Clear();
             for (int i = 0; i < plan.Setups.Count; i++)
             {
                 BenchSetup setup = plan.Setups[i];
@@ -1123,7 +1131,7 @@ namespace DeathMuffinTeam
             try { proc = host.Start(launch); }
             catch (Exception ex) { throw new JobFailure("The game could not be started for " + label + ": " + ex.Message); }
             string failure = null, disturbed = "";
-            int exit = 0;
+            int exit = 0, gamePid = proc.Id;
             var samples = new List<PcSample>();
             using (proc)
             {
@@ -1160,8 +1168,34 @@ namespace DeathMuffinTeam
             }
             if (disturbed.Length > 0) return disturbed;
             if (failure != null) { AppendGodotLog(appData, note); throw new JobFailure(failure); }
+            if (exit < 0)
+            {
+                // a Windows crash code: what Windows recorded, and whether the run's numbers were saved before it (Helix's PC, 2026-10-19: the release build crashed while
+                // closing after a finished benchmark, 0xC0000374)
+                string why = CrashText(exit, CrashRecord(gamePid));
+                note(label + ": the game crashed (" + why + ")");
+                Dictionary<string, object> saved;
+                string unread;
+                if (JobPlan.TryReadBenchRun(benchDir, label, out saved, out unread)) { closeCrashes.Add(label + ": " + why); return ""; }
+                AppendGodotLog(appData, note);
+                throw new JobFailure("The game crashed on " + label + " (" + why + ") before the benchmark was done.");
+            }
             if (exit != 0) { AppendGodotLog(appData, note); throw new JobFailure(BenchExitText(exit, label)); }
             return "";
+        }
+
+        /// <summary>Benchmark runs of this job whose numbers were saved and then the game crashed (while closing): the runs are sent, the crash is reported beside them.</summary>
+        readonly List<string> closeCrashes = new List<string>();
+
+        /// <summary>What Windows recorded about a crashed game process (its event log's faulting module and offset), or ""; the tray app reads the Application log, tests stand in.</summary>
+        public Func<int, string> CrashRecord = pid => "";
+
+        /// <summary>A crash exit code in words: "0xC0000374, heap corruption" and what Windows recorded.</summary>
+        static string CrashText(int exit, string record)
+        {
+            uint code = unchecked((uint)exit);
+            string name = code == 0xC0000374 ? "heap corruption" : code == 0xC0000005 ? "access violation" : code == 0xC0000409 ? "stack buffer overrun" : code == 0xC00000FD ? "stack overflow" : "a crash";
+            return "0x" + code.ToString("X8", CultureInfo.InvariantCulture) + ", " + name + (string.IsNullOrEmpty(record) ? "" : "; " + record);
         }
 
         /// <summary>What the game's exit code says (main.gd: 0 a run was recorded, 1 it was cancelled or failed, 2 a setup it refuses).</summary>
