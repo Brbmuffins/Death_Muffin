@@ -293,7 +293,7 @@ func _no_loss_on_refusal() -> void:
 
 
 ## A contract reward obeys the item's stack cap like contracts.cjs addToBag: a second Copper Ring opens its own slot (a 2-stack was refused by every later
-## inventory save, so the bag never reached the server and a Workbench reforge found "nothing in that slot": next_acre_guide flaked on the reward roll).
+## inventory save, so the bag never reached the server and a Workbench reforge found "nothing in that slot": the chapterhouse suite flaked on the reward roll).
 func _repair_stacks() -> void:
 	var mock: DmMockBackend = _session()[0]
 	var acc := {"slots": [{"slot_index": 0, "item_id": "ring_copper", "quantity": 3, "equipped": 0}, {"slot_index": 1, "item_id": "log_oak", "quantity": 5, "equipped": 0}]}

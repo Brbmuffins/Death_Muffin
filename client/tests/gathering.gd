@@ -12,6 +12,8 @@ extends SceneTree
 ##   - the Acre: AFK from the Skills tab (only in the Acre, the report on stopping), the Grave Laborers (up to four pooled models, built on the first visit, none outside the Acre), their
 ##     hover card and the click that opens the Laborers, a collection (gold, the chronicle, the report under the laborer), the garden (plant, harvest, the notices), a contract, and the
 ##     guidance feeds the Sexton and the Next box read;
+##   - the rest of the loop and the Acre: every node has parts, a yield from its type's range and a free stand spot; each skill's find and XP; a success from out of reach is ignored; the
+##     Sawpit's plank from gathered logs; the notices of a full laborer and a ready plot; a relaunch keeps the results; the Next box's state and its full-bag suggestion;
 ##   - ZERO script errors or engine errors in the log.
 ## Run: godot --headless --fixed-fps 60 --path client --script res://tests/gathering.gd
 
@@ -21,6 +23,26 @@ class ErrorLog:
 	func _log_error(function: String, file: String, line: int, code: String, rationale: String, _editor_notify: bool, error_type: int, _backtraces: Array[ScriptBacktrace]) -> void:
 		if error_type != Logger.ERROR_TYPE_WARNING:
 			errors.append("%s:%d %s %s %s" % [file, line, function, code, rationale])
+
+
+## A backend answer the test controls (the notice rules read the labor / garden / contract views through the Acre's `api`).
+class StubApi extends RefCounted:
+	var labor: Dictionary = {}
+	var garden: Dictionary = {}
+	var contracts: Dictionary = {}
+	var real: DmApi
+
+	func get_labor(_id: int) -> DmResult:
+		return DmResult.success(labor.duplicate(true))
+
+	func get_garden(_id: int) -> DmResult:
+		return DmResult.success(garden.duplicate(true))
+
+	func get_contracts(_id: int) -> DmResult:
+		return DmResult.success(contracts.duplicate(true))
+
+	func get_professions(id: int) -> DmResult:
+		return await real.get_professions(id)
 
 
 const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
@@ -88,13 +110,7 @@ func _main() -> void:
 	var heard := DmUiConfig.guidance_path(int(ch.data["id"]))   # (what the people have said to this character id in an earlier run of this test)
 	if FileAccess.file_exists(heard):
 		DirAccess.remove_absolute(heard)
-	g = load("res://next/next_game.tscn").instantiate()
-	g.name = "NextGame"
-	root.add_child(g)
-	await g.start(ch.data, api, {"name": "tester", "hud": true, "audio": false, "seed": 20261017, "waves": false, "wander": false, "persist": false, "baked_dir": OUT})
-	hero = g.local_body()
-	g.ui_host.game_event.connect(func(id: String, ctx: Dictionary) -> void: events.append([id, ctx]))
-	g.gather.loop.hooks["now"] = func() -> float: return float(game_ms())   # the loop's 8 s batches and backoffs follow the game's clock too
+	await _launch(ch.data)
 	_the_nodes()
 	await _hover_and_click()
 	await _every_node()
@@ -106,6 +122,10 @@ func _main() -> void:
 	await _afk()
 	await _the_laborers()
 	await _the_garden_and_contracts()
+	await _host_rules()
+	await _the_notices()
+	await _relaunch()
+	await _guidance()
 	for e in errlog.errors:
 		printerr("ERROR in log: " + e)
 	check(errlog.errors.is_empty(), "no script or engine errors in the log (%d)" % errlog.errors.size())
@@ -114,6 +134,18 @@ func _main() -> void:
 
 
 # ------------------------------------------------------------------------------------------------------------------ helpers
+
+## Starts the game for this character (the first launch, and the relaunch that proves the results were kept).
+func _launch(character: Dictionary) -> void:
+	g = load("res://next/next_game.tscn").instantiate()
+	g.name = "NextGame"
+	root.add_child(g)
+	await g.start(character, api, {"name": "tester", "hud": true, "audio": false, "seed": 20261017, "waves": false, "wander": false, "persist": false, "baked_dir": OUT})
+	hero = g.local_body()
+	events.clear()
+	g.ui_host.game_event.connect(func(id: String, ctx: Dictionary) -> void: events.append([id, ctx]))
+	g.gather.loop.hooks["now"] = func() -> float: return float(game_ms())   # the loop's 8 s batches and backoffs follow the game's clock too
+
 
 func _acc() -> Dictionary:
 	return mock.db["accounts"][username]
@@ -190,6 +222,28 @@ func _the_nodes() -> void:
 	for m: String in spent:
 		parts_ok = parts_ok and not DmModels.prop_parts(m, float(spent[m])).is_empty()
 	check(spent.size() == 3 and parts_ok, "the %d spent models (stump, ore and dug grave) load" % spent.size())
+	var rules_nodes: Dictionary = DmGatherData.nodes()
+	var bare: Array = []
+	var bad_yield: Array = []
+	for n: Dictionary in data:
+		var prop: Node3D = b.node_views.get(String(n["id"]))
+		if prop == null or prop.get_child_count() == 0 or not rules_nodes.has(n["type"]):
+			bare.append(n["id"])
+		var yl: Array = DmGathering.node_def(String(n["type"]))["yields"]
+		var rich := DmCombatData.truthy(n.get("rich"))
+		var lo := roundf(float(yl[0]) * DmGathering.RICH_YIELD) if rich else float(yl[0])
+		var hi := roundf(float(yl[1]) * DmGathering.RICH_YIELD) if rich else float(yl[1])
+		var left := float(g.gather._remaining[n["id"]])
+		if left < lo or left > hi:
+			bad_yield.append("%s %d not in %d..%d" % [n["id"], int(left), int(lo), int(hi)])
+	check(bare.is_empty(), "every node has its model parts in the world and a type the rules know (not: %s)" % str(bare))
+	check(bad_yield.is_empty(), "every node holds a yield rolled from its type's range (a rich one x1.5) (not: %s)" % str(bad_yield))
+	var no_spot: Array = []
+	for skill: String in DmGathering.GATHER_SKILLS:
+		for nd in DmGathering.nodes_for_skill(skill):
+			if not g.gather.nodes.values().any(func(n: Dictionary) -> bool: return n["type"] == nd["id"] and n["area"] == "acre"):
+				no_spot.append("%s %s (level %d)" % [skill, nd["id"], int(nd["level"])])
+	check(no_spot.is_empty(), "every node type the Skills tab offers for AFK has a spot in the Acre, the only AFK area (not: %s)" % str(no_spot))
 	check(g.acre != null and g.acre.views != null and g.acre.labor != null, "the Acre's glue is up on the host with the real HUD (laborers, notices)")
 	for p in ["professions", "garden", "labor", "contracts"]:
 		check(g.ui.warm_panels.has(p) and g.ui.window_for(p) != null, "the %s panel is built and warmed" % p)
@@ -213,18 +267,11 @@ func _hover_and_click() -> void:
 	check(g.gather.hover == null and not g.gather.views._hover.visible and not g.ui.hud.node_tip_box.visible, "the cursor away: no ring, no card")
 	g.gather.hover_at(at, true)
 	check(g.gather.hover == null, "a station or person under the cursor wins the hover")
-	# cost: nothing is built by hovering, and an idle frame of the gather node and the Acre's glue is a few microseconds
+	# nothing is built by hovering
 	var nodes0 := int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
-	var t0 := Time.get_ticks_usec()
 	for i in 200:
 		g.gather.hover_at(at if i % 2 == 0 else Vector2(2.0, 2.0), false)
-	var hover_us := float(Time.get_ticks_usec() - t0) / 200.0
 	check(int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)) == nodes0, "hovering builds no node (%d nodes)" % nodes0)
-	t0 = Time.get_ticks_usec()
-	for i in 2000:
-		g.gather._process(1.0 / 60.0)
-		g.acre._process(1.0 / 60.0)
-	print("INFO gathering: an idle frame of the gather node and the Acre's glue costs %.2f us (a node pick for the cursor %.0f us, ten times a second)" % [float(Time.get_ticks_usec() - t0) / 2000.0, hover_us])
 
 
 # ------------------------------------------------------------------------------------------------------------------ every node
@@ -279,7 +326,13 @@ func _every_node() -> void:
 	check(bad_hover.is_empty(), "every node's ring shows when its place is under the cursor (not: %s)" % str(bad_hover))
 	check(bad_card.is_empty(), "every node's card names it, its XP and what it gives (not: %s)" % str(bad_card))
 	check(bad_click.is_empty() and started > 0 and refused > 0, "a click starts the work or is refused in the rules' words: %d started, %d refused by level, in %s (not: %s)" % [started, refused, str(by_area), str(bad_click)])
-	print("INFO gathering: %d nodes hovered and clicked: %d start the work, %d are refused for the skill's level" % [by_area.values().reduce(func(a: int, b: int) -> int: return a + b, 0), started, refused])
+	var nav := DmNextGather.NavShim.new()
+	nav.world = g.world
+	var unreachable: Array = []
+	for n: Dictionary in DmData.world()["nodes"]:
+		if DmGathering.stand_spot(nav.blocked, n, 0.0, 0.0).is_empty():
+			unreachable.append(n["id"])
+	check(unreachable.is_empty(), "every node has a free stand spot on the navmesh of its area (without: %s)" % str(unreachable))
 	g.chapterhouse.apply_seals()
 	await ticks(3)
 	check(g.world.unlocked.size() == 4, "(the seals are back)")
@@ -541,6 +594,20 @@ func _the_server_decides() -> void:
 	check(not hands.is_empty() and String(hands[-1][1]["text"]) == "Your hands are spent for this hour. Rest, then gather again." and _server_qty("log_oak") == logs2 and loop._queue.is_empty(),
 		"a spent hour is refused in the server's words, nothing is paid and the cycles are dropped (%s)" % (str(hands[-1][1]["text"]) if not hands.is_empty() else ""))
 	ledger["hourActions"] = 0
+	jump_ms += 60_000
+	var cid := int(g.character["id"])
+	var none: DmResult = await api.gather(cid, "coffin_oak", 0, false)
+	check(not none.ok and none.error == "Nothing to gather", "no cycles: refused in the server's words (%s)" % none.error)
+	var gated_type := ""
+	for n: Dictionary in g.gather.nodes.values():
+		var nd := DmGathering.node_def(String(n["type"]))
+		if int(nd["level"]) >= 25 and String(nd["skill"]) == "gravedigging":
+			gated_type = String(n["type"])
+			break
+	var row_level := int(_prof("gravedigging").get("skill_level", 1))
+	var words := DmGathering.gather_blocker(gated_type, row_level)
+	var gated: DmResult = await api.gather(cid, gated_type, 3, false)
+	check(words != "" and not gated.ok and gated.error == words, "the level gate also holds on the server: '%s'" % gated.error)
 	mock.rng = server_rolls_default
 	jump_ms += 60_000
 
@@ -667,6 +734,9 @@ func _the_laborers() -> void:
 	var l: DmLaborerViews.Laborer = views.byslot[0]
 	var at: Vector2 = g.camera.unproject_position(Vector3(float(l.spot["x"]), 1.0, float(l.spot["z"])))
 	check(g.acre.pick_laborer(at, 52.0) == 0, "the laborer under the cursor is found by the screen pick")
+	check(g.acre.pick_laborer(at + Vector2(400, 400), 52.0) == -1, "...and none far from it")
+	await until(func() -> bool: return views.debug().any(func(d: Dictionary) -> bool: return d["mode"] == "work"), 60 * 6)
+	check(views.debug().any(func(d: Dictionary) -> bool: return d["visible"] and d["mode"] == "work"), "laborers work their posts (%s)" % str(views.debug().map(func(d: Dictionary) -> String: return str(d["mode"]))))
 	g.gather.hover_at(at, false)
 	check(g.gather.hover == null and views.hover_slot == 0 and g.ui.hud.node_tip_box.visible, "a laborer nearer than a node wins the hover: no node ring, his card shows")
 	var tip := views.tip(0)
@@ -676,10 +746,6 @@ func _the_laborers() -> void:
 	g.input._primary_click(at)
 	check(g.ui.is_open("labor"), "a click on a laborer opens the Laborers (H)")
 	g.ui.close_panels()
-	var t0 := Time.get_ticks_usec()
-	for i in 200:
-		g.gather.hover_at(at, false)
-	print("INFO gathering: a pick with a laborer under the cursor (his card each time) costs %.0f us" % (float(Time.get_ticks_usec() - t0) / 200.0))
 	# away: his models stay, nothing runs
 	await _go(_node_pos(_node("graves_0")))
 	await ticks(5)
@@ -785,7 +851,231 @@ func _the_garden_and_contracts() -> void:
 	var paid := int(_acc()["character"]["gold"]) - gold0
 	check(paid == int(c["rewardGold"]) and int(g.character["gold"]) == int(_acc()["character"]["gold"]), "the order is filled: the server paid %dg and the purse is the server's" % paid)
 	check(int(g.ui.contract_summary["open"]) == open0 - 1 and int(g.ui_host.prog.chronicle.view()["life"].get("contracts", 0)) == 1, "one order fewer on the board, one in the Chronicle")
+	check(int(g.ui.guidance_state()["contracts"]["open"]) == int(g.ui.contract_summary["open"]), "the guidance's summary follows the delivery")
 	g.ui.close_panels()
 	# the Next box's feeds
 	for sk in DmGathering.SKILL_IDS:
 		check(int(g.ui.skills.get(sk, 1)) == g.gather.skills.level(sk), "the guidance's %s level is the client's (%d)" % [sk, g.gather.skills.level(sk)])
+
+
+# ------------------------------------------------------------------------------------------------------------------ the host's rules, the skills and the Sawpit
+
+func _toast_has(part: String) -> bool:
+	return events.any(func(e: Array) -> bool: return e[0] == "toast" and String(e[1]["text"]).contains(part))
+
+
+## The host spends a node only for a hero in reach; a plain node comes back after its own respawn time; each gathering skill pays its own find and XP through the server; and the
+## logs gathered here go into the Sawpit's plank.
+func _host_rules() -> void:
+	var gt := g.gather
+	var plain: Dictionary = {}
+	for n: Dictionary in gt.nodes.values():
+		if n["type"] == "coffin_oak" and n["area"] == "acre" and not DmCombatData.truthy(n.get("rich")):
+			plain = n
+			break
+	var id := String(plain["id"])
+	gt.loop.stop("moved")
+	await _go(_node_pos(plain))
+	gt._remaining[id] = 1.0
+	hero.teleport(g.world.nav_clamp(Vector3(float(plain["x"]) + 20.0, 0.0, float(plain["z"]))))
+	await ticks(3)
+	gt._apply_success(id)
+	check(gt.node_live(id), "a success from out of reach is ignored (the host's check)")
+	await _go(_node_pos(plain))
+	gt._remaining[id] = 1.0
+	gt._apply_success(id)
+	var respawn_s := float(DmGathering.node_def("coffin_oak")["respawnS"])
+	check(gt.depleted.has(id) and absf(float(gt._respawn_at[id]) - gt._clock - respawn_s) < 0.5, "a plain node respawns in its own %d s (respawnS)" % int(respawn_s))
+	gt._respawn_at[id] = 0.0
+	gt._respawn_due()
+	# one success of each other gathering skill, through the server's batch: its find in both bags and the node's XP
+	mock.rng = func() -> float: return 0.0
+	for ty in ["seam_copper", "pool_still", "grave_pauper"]:
+		var dd := DmGathering.node_def(ty)
+		var item := String(dd["item"])
+		var q0 := _server_qty(item)
+		var x0 := _xp_total(String(dd["skill"]))
+		jump_ms += 60_000
+		await _send(ty, 1)
+		check(_server_qty(item) > q0 and _bag_qty(item) == _server_qty(item), "%s: its %s is in the server's bag and in ours" % [ty, item])
+		check(_xp_total(String(dd["skill"])) - x0 == int(dd["xp"]), "%s: %s XP +%d" % [ty, dd["skill"], int(dd["xp"])])
+	# gather -> craft: three logs of the server's, the Sawpit's panel, one plank
+	jump_ms += 60_000
+	await _send("coffin_oak", 3)
+	g.ui.close_panels()
+	var sawpit: Dictionary = g.chapterhouse.interactables.filter(func(it: Dictionary) -> bool: return it["kind"] == "sawpit")[0]
+	await _go(Vector3(float(sawpit["x"]) + 1.2, 0.0, float(sawpit["z"])))   # a station window closes when the hero is a few steps away from it
+	g.chapterhouse.interact(sawpit)
+	await ticks(3)
+	var forge: DmForgePanel = g.ui.pb.forges.get("sawpit")
+	check(forge != null and forge.visible, "the Sawpit panel opens")
+	var planks0: int = g.ui_host.inventory.count("plank_oak")
+	var logs0: int = g.ui_host.inventory.count("log_oak")
+	forge.craft_requested.emit("mill_oak_plank", 1)
+	await until(func() -> bool: return g.ui_host.inventory.count("plank_oak") > planks0, 60 * 4)
+	check(g.ui_host.inventory.count("plank_oak") == planks0 + 1 and g.ui_host.inventory.count("log_oak") == logs0 - 3, "craft: 3 gathered logs -> 1 plank (the bag shows %d planks, %d logs)" % [g.ui_host.inventory.count("plank_oak"), g.ui_host.inventory.count("log_oak")])
+	g.ui.close_panels()
+	mock.rng = server_rolls_default
+
+
+# ------------------------------------------------------------------------------------------------------------------ the notices
+
+## The labor and garden notices read the backend's views: a stub answers with the real shapes (a full laborer is announced once until it is emptied; a ready plot once).
+func _the_notices() -> void:
+	var cid := int(g.character["id"])
+	await _go(_area_mid("acre"))
+	var stub := StubApi.new()
+	stub.real = api
+	var lv: Dictionary = (await api.get_labor(cid)).data.duplicate(true)
+	var s0: Dictionary = {}
+	for sv: Dictionary in lv["slots"]:
+		if sv.get("nodeType") != null and String(sv["nodeType"]) != "":
+			s0 = sv
+			break
+	check(not s0.is_empty(), "a laborer holds a post")
+	for sv: Dictionary in lv["slots"]:
+		sv["capped"] = false
+		sv["estItems"] = 0
+		sv["elapsedMs"] = 0.0
+	s0["elapsedMs"] = 40.0 * 60000.0
+	s0["estItems"] = 1234
+	s0["capped"] = false
+	stub.labor = lv
+	stub.garden = (await api.get_garden(cid)).data.duplicate(true)
+	stub.contracts = (await api.get_contracts(cid)).data.duplicate(true)
+	var acre := g.acre
+	var real_api: Variant = acre.api
+	acre.api = stub
+	events.clear()
+	await acre.labor.check_labor(true)
+	check(_toast_has("Your laborers have gathered about 1,234 finds (H)"), "arrival: a laborer with 30+ minutes of work reports its finds")
+	await ticks(2)
+	check(g.ui.guidance_state()["contracts"] != null and int(g.ui.guidance_state()["contracts"]["total"]) == (stub.contracts["contracts"] as Array).size(), "the contract summary feeds the guidance")
+	events.clear()
+	s0["capped"] = true
+	await acre.labor.check_labor(false)
+	check(_toast_has("A laborer has filled up"), "a full laborer is announced")
+	events.clear()
+	await acre.labor.check_labor(false)
+	check(not _toast_has("filled up"), "...once, not on every check")
+	s0["capped"] = false
+	await acre.labor.check_labor(false)
+	s0["capped"] = true
+	events.clear()
+	await acre.labor.check_labor(false)
+	check(_toast_has("A laborer has filled up"), "...and again after it was emptied")
+	var plots: Array = stub.garden["plots"]
+	plots[0]["state"] = "ready"
+	events.clear()
+	await acre.labor.check_garden(false)
+	check(_toast_has("ready in your garden (U)"), "a plot coming ready is announced")
+	events.clear()
+	await acre.labor.check_garden(false)
+	check(not _toast_has("ready in your garden"), "...once")
+	acre.api = real_api
+
+
+# ------------------------------------------------------------------------------------------------------------------ a relaunch
+
+## What was gathered and made is the server's: the next launch of the same character has the levels, the XP and the items again, and every node fresh.
+func _relaunch() -> void:
+	g.gather.loop.stop("moved")
+	await g.flush_all()
+	await g.gather.load_professions()
+	var want_wood: Dictionary = g.gather.skills.get_skill("woodcutting")
+	var want_mining := int(g.gather.skills.get_skill("mining")["xp"])
+	var want_planks: int = g.ui_host.inventory.count("plank_oak")
+	await g.leave()
+	g.queue_free()
+	await process_frame
+	await _launch((await api.load_or_create_character(2)).data)
+	var back_prof := {}
+	for row: Dictionary in (await api.get_professions(int(g.character["id"]))).data:
+		back_prof[row["profession_id"]] = row
+	check(g.gather.skills.get_skill("woodcutting") == want_wood and int(back_prof["woodcutting"]["skill_level"]) == int(want_wood["level"]), "relaunch: Woodcutting level %d + XP %d kept" % [int(want_wood["level"]), int(want_wood["xp"])])
+	check(int(g.gather.skills.get_skill("mining")["xp"]) == want_mining, "relaunch: Mining XP kept")
+	check(want_planks >= 1 and g.ui_host.inventory.count("plank_oak") == want_planks and g.ui_host.inventory.count("ore_copper") >= 1, "relaunch: gathered / crafted items are in the bag")
+	check(g.gather.depleted.is_empty() and g.gather.nodes.size() == DmData.world()["nodes"].size(), "relaunch: nodes are fresh (state is a session thing)")
+
+
+# ------------------------------------------------------------------------------------------------------------------ the Next box
+
+## What the first-hour guidance reads (DmGameUi.guidance_state), and the Next box on a full bag.
+func _guidance() -> void:
+	var ui := g.ui
+	var h := g.ui_host
+	var cid := int(g.character["id"])
+	await _go(_area_mid("acre"))
+	var st := ui.guidance_state()
+	check(int(st["level"]) == int(h.character["level"]) and st["area"] == "acre" and int(st["bagSize"]) == 48, "state: level / area / bag size %s" % str([st["level"], h.character["level"], st["area"], st["bagSize"]]))
+	check(st["unlocked"] == h.progress["unlocked"] and int(st["totalKills"]) == int(h.progress["totalKills"]), "state: seals and kills come from the progression")
+	var ak0 := int(st["areaKills"].get("graves", 0))
+	var m: DmRewardsMember = g.rewards.members[cid]
+	for i in 30:   # (a hero past the first steps)
+		m.prog.record_kill("graves")
+	check(int(ui.guidance_state()["areaKills"].get("graves", 0)) == ak0 + 30, "state: kills count in areaKills at once")
+	check(not st["prelateThisRun"], "state: the Prelate is not slain yet")
+	h.progress["run"]["prelateKills"] = 1   # (the backend clamps a recorded kill by the pending summons; the state just reads it)
+	check(ui.guidance_state()["prelateThisRun"], "state: a Prelate kill reaches prelateThisRun")
+	check(ui.guidance_state()["bossesBeaten"].is_empty(), "state: no area boss beaten yet")
+	g.chron.claim_trophy("gravedigger")
+	check(ui.guidance_state()["bossesBeaten"] == ["gravedigger"], "state: a first kill reaches bossesBeaten (the backend's trophy)")
+	g.chron.claim_trophy("gravedigger")
+	check(ui.guidance_state()["bossesBeaten"] == ["gravedigger"], "state: ...and only once")
+	# a level gained gathering is in the state without opening the Professions panel
+	var rows: Array = (await api.get_professions(cid)).data.duplicate(true)
+	var lvl_before := int(ui.guidance_state()["skills"].get("woodcutting", 1))
+	for row: Dictionary in rows:
+		if row["profession_id"] == "woodcutting":
+			row["skill_level"] = lvl_before + 3
+	g.gather.skills.adopt(rows)
+	check(int(ui.guidance_state()["skills"]["woodcutting"]) == lvl_before + 3, "state: a gathering level reaches the skills (%d)" % (lvl_before + 3))
+	# the first brew
+	var brew := ""
+	for bid in DmContent.brews():
+		if String(DmContent.brews()[bid].get("slot", "")) == "elixir":
+			brew = String(bid)
+			break
+	events.clear()
+	await DmTestBag.give(h.inventory, {"item_id": brew, "quantity": 2})
+	await h.inventory.flush()
+	await h.refresh_inventory()
+	h.set_belt("elixir", brew)
+	h.use_belt("elixir")
+	check(_event_ids().has("brew_drunk"), "drinking a brew raises brew_drunk (the counsel's first-brew tip)")
+	# a full bag: the Next box suggests the Bone Grinder; a dismissal holds while the state is unchanged; the setting clears the box
+	await _go(Vector3(0.0, 0.0, 18.0))
+	var junk: Array = []
+	for iid in DmContent.items():
+		if String(DmContent.items()[iid].get("type", "")) in ["weapon", "chest_armor", "helm", "boots"] and String(DmContent.items()[iid].get("rarity", "")) == "common":
+			junk.append(String(iid))
+	var need := 48 - int(ui.guidance_state()["bagUsed"])
+	for i in need:
+		await DmTestBag.give(h.inventory, {"item_id": junk[i % junk.size()], "quantity": 1})
+	await h.inventory.flush()
+	await h.refresh_inventory()
+	check(int(ui.guidance_state()["bagUsed"]) >= 44, "the bag is nearly full (%d / 48)" % int(ui.guidance_state()["bagUsed"]))
+	check(await until(func() -> bool: return ui.guidance_hud.current != null and String(ui.guidance_hud.current["id"]) == "bag-full", 60 * 3), "the Next box suggests the Bone Grinder with a full bag")
+	var shown_id := String(ui.guidance_hud.current["id"]) if ui.guidance_hud.current != null else ""
+	ui.guidance_hud.dismiss()
+	await ticks(2)
+	ui._guide_t = 0.0
+	await until(func() -> bool: return ui._guide_t > 0.0, 60 * 2)
+	check(ui.guidance_hud.current == null or String(ui.guidance_hud.current["id"]) != shown_id, "dismissing the Next box holds while the state is unchanged")
+	h.settings_store.values["guidance"] = false
+	await until(func() -> bool: return ui.guidance_hud.current == null, 60 * 3)
+	check(ui.guidance_hud.current == null, "...and turning the guidance off clears the Next box")
+	h.settings_store.values["guidance"] = true
+	# the junk is sold by the server (a client never takes items out of its bag on its own, DECISIONS B25)
+	var lines: Array = []
+	for s in h.slots:
+		if int(s["slot_index"]) < 48 and int(s.get("equipped", 0)) == 0 and String(DmContent.item(String(s["item_id"])).get("type", "")) in ["weapon", "chest_armor", "helm", "boots"]:
+			lines.append({"slot_index": int(s["slot_index"]), "quantity": int(s["quantity"])})
+	var sold: DmResult = await h.sell_items(lines)
+	check(sold.ok, "the junk is sold (%s)" % sold.error)
+	await h.refresh_inventory()
+	var left := 0
+	for s in h.slots:
+		if int(s["slot_index"]) < 48 and int(s.get("equipped", 0)) == 0 and String(DmContent.item(String(s["item_id"])).get("type", "")) in ["weapon", "chest_armor", "helm", "boots"]:
+			left += 1
+	check(left == 0 and int(ui.guidance_state()["bagUsed"]) <= 48 - lines.size(), "the bag was cleared of the junk (%d left, %d of 48 used)" % [left, int(ui.guidance_state()["bagUsed"])])

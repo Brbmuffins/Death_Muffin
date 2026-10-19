@@ -18,7 +18,7 @@
       "allow": [
         "DECISIONS.md",
         "tools/hygiene/**",
-        "client/tests/next_acre_guide/run.gd",
+        "client/tests/chapterhouse/run.gd",
         "server/death-muffin/discord-agent/runner/lib/config.cjs",
         "client/next/hud/dm_next_ui_host.gd"
       ]
@@ -301,6 +301,15 @@
       "id": "client-setup-sh",
       "pattern": "client/setup\\.sh",
       "reason": "replaced 2026-10-19 by tools/check/prep.sh, the game's one setup (tools/check/README.md)",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "merged-test-suites",
+      "pattern": "\\b(next_gathering|next_acre_guide)\\b",
+      "reason": "test suites merged into gathering and chapterhouse 2026-10-19 (every check kept once); run those",
       "allow": [
         "DECISIONS.md",
         "tools/hygiene/**"

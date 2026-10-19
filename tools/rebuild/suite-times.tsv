@@ -31,13 +31,11 @@
 21	game/regress_run
 20	world
 20	next_hero_look
-20	next_gathering
 19	game_scene
 19	next_progress
 19	next_clarity
-19	next_acre_guide
-18	gathering
-18	chapterhouse
+22	gathering
+19	chapterhouse
 17	counsel
 17	next_polish
 17	next_meta
