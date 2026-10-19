@@ -90,7 +90,14 @@ namespace DeathMuffinTeam
                 catch (Exception) { continue; }
                 foreach (Process p in list)
                 {
-                    try { if ((!exclude.HasValue || p.Id != exclude.Value) && !IsOurs(p)) ids.Add(p.Id); }
+                    try
+                    {
+                        if ((!exclude.HasValue || p.Id != exclude.Value) && !IsOurs(p))
+                        {
+                            ids.Add(p.Id);
+                            lastSeen = name + ".exe pid " + p.Id + " at " + (Native.ImagePath(p.Id) ?? "(path unreadable)") + " (the app's folder: " + ownRoot + ")";
+                        }
+                    }
                     finally { p.Dispose(); }
                 }
             }
@@ -105,6 +112,9 @@ namespace DeathMuffinTeam
             baseline.Clear();
             foreach (int id in RunningGames(null)) baseline.Add(id);
         }
+
+        volatile string lastSeen = "";
+        public string LastSeen { get { return lastSeen; } }
 
         public bool PlayerStarted(int ownPid)
         {

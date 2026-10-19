@@ -304,6 +304,7 @@ namespace DeathMuffinTeam.Tests
         public int Begins;
         public void Begin() { Begins++; }
         public bool PlayerStarted(int ownPid) { return Started; }
+        public string LastSeen { get { return Started ? "DeathMuffin.exe pid 1 at C:/Games/DeathMuffin.exe" : ""; } }
     }
 
     /// <summary>

@@ -269,6 +269,7 @@ monitor (and the pictures still taken: Godot and the driver draw a window that i
 
 ### Changelog
 
+- **0.3.2** (2026-10-19) - The release checks' screens pass the plan's class to the debug build (`--class=N`; without it no game started and every size ended with code 2), and the job log names the process a benchmark or a job counted as the player's game (name, id, path), to find why the job's own game was taken for the player's.
 - **0.3.1** (2026-10-19) - The AFK notice stays on top while AFK mode is on, with a Hide button (AFK mode stays on; the tray's Show AFK notice brings it back; Helix's ask).
 - **0.3.0** (2026-10-19) - The `clip` job (short videos of a change: one game run for each variant with its own tune, the engine's `--fixed-fps 30`, the clips uploaded as `<variant>_<clip>.mjpeg` for the server to turn into mp4s) and a `shots` job with a `before` and an `after`
   build (files both share are downloaded once, pictures uploaded as `<build>_<preset>_<shot>.png`), and `resolutions` for screenshots at the four standard window sizes (`<preset>_<w>x<h>_<shot>.png`). The `release` job: the release checks of a new client (install, quit-while-loading, screens, stutter, bench, soak),

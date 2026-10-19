@@ -209,9 +209,10 @@ namespace DeathMuffinTeam.Tests
             var big = new ScreenSize { Width = 3840, Height = 2160 };
             var a = plan.ScreensCommandArgs(big, "1.5", planFile, dir);
             T.Eq(string.Join("|", a),
-                "--windowed|--resolution|3840x2160|--audio-driver|Dummy|--|--dev-offline|--shot-plan=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/plan.json|--shots=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/out/screens/3840x2160_s1-5|--preset=high|--ui-scale=1.5",
+                "--windowed|--resolution|3840x2160|--audio-driver|Dummy|--|--dev-offline|--class=2|--shot-plan=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/plan.json|--shots=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/out/screens/3840x2160_s1-5|--preset=high|--ui-scale=1.5",
                 "screens: the debug build at the window size, the plan, the pictures' folder, the preset and the UI scale");
             T.Ok(!plan.ScreensCommandArgs(big, "", planFile, dir).Any(x => x.StartsWith("--ui-scale")), "the default UI scale passes no --ui-scale");
+            T.Ok(plan.ScreensCommandArgs(big, "", planFile, dir).Count(x => x.StartsWith("--class=")) == 1, "the debug build is told its class once (without it no game starts and the QA driver gives up)");
             T.Eq(string.Join(" ", plan.ScreensCommandArgs(big, "", "p", "s", "-3940,0").Take(8)), "--windowed --resolution 3840x2160 --audio-driver Dummy --position -3940,0 --", "the window is outside every monitor");
             var withOptions = ValidPayload(); withOptions["args"] = new List<object> { "--class=2", "--qa" };
             JobPlan p2; Parse(withOptions, out p2, out error);

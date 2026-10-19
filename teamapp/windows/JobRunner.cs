@@ -111,6 +111,7 @@ namespace DeathMuffinTeam
         {
             var log = new StringBuilder();
             Action<string> note = s => { lock (log) log.Append(DateTime.UtcNow.ToString("HH:mm:ss", CultureInfo.InvariantCulture)).Append(' ').Append(s).Append('\n'); };
+            currentNote = note;   // CheckPlayer writes what it counted as the player's game into this job's log
             var result = new RunResult();
             string error = null;
             bool cancelled = false;
@@ -307,9 +308,11 @@ namespace DeathMuffinTeam
             return string.Join(",", names);
         }
 
+        Action<string> currentNote;
+
         void CheckPlayer(int ownPid)
         {
-            if (watch.PlayerStarted(ownPid)) throw new JobStopped("stopped: the game started");
+            if (watch.PlayerStarted(ownPid)) { var n = currentNote; if (n != null) n("counted as the player's game: " + watch.LastSeen); throw new JobStopped("stopped: the game started"); }
         }
 
         /// <summary>
@@ -378,7 +381,7 @@ namespace DeathMuffinTeam
                     while (!proc.HasExited)
                     {
                         if (ct.IsCancellationRequested) throw new OperationCanceledException(ct);
-                        if (watch.PlayerStarted(proc.Id)) { failure = "stopped: the game started"; break; }
+                        if (watch.PlayerStarted(proc.Id)) { note("counted as the player's game: " + watch.LastSeen); failure = "stopped: the game started"; break; }
                         if (sw.Elapsed > RunLimit) { failure = "The game took longer than " + Limit(RunLimit) + " on " + label + " and was stopped."; break; }
                         proc.Tend();
                         await Task.Delay(PollMs, ct).ConfigureAwait(false);
@@ -970,7 +973,7 @@ namespace DeathMuffinTeam
                 if (m.Output.Length > 0) note("game output (" + label + "):\n" + TextClip.Tail(m.Output, 16000));
                 note(label + ": the game ran " + m.Elapsed.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture) + " s" + (playerStarted ? ", stopped: the game started" : m.TimedOut ? ", over its limit" : ", exit code " + m.Exit));
             }
-            if (playerStarted) throw new JobStopped("stopped: the game started");
+            if (playerStarted) { note("counted as the player's game: " + watch.LastSeen); throw new JobStopped("stopped: the game started"); }
             return m;
         }
 
@@ -1038,7 +1041,7 @@ namespace DeathMuffinTeam
                     try { disturbed = await RunBenchGameAsync(plan, setup, label, benchDir, gameDir, appData, localAppData, note, ct).ConfigureAwait(false); }
                     finally { runClock.Stop(); }
                     if (disturbed.Length == 0) break;
-                    note(label + ": the run was disturbed (" + disturbed + ") and thrown away");
+                    note(label + ": the run was disturbed (" + disturbed + ") and thrown away" + (disturbed.Contains("Death Muffin") && watch.LastSeen.Length > 0 ? " [counted as the player's game: " + watch.LastSeen + "]" : ""));
                     await ResetDirAsync(benchDir, ct).ConfigureAwait(false);
                     if (attempt >= BenchTries)
                         throw new JobFailure("The benchmark on " + label + " was disturbed " + BenchTries + " times (" + disturbed + "), so no numbers were sent. Leave the PC alone while it runs.");

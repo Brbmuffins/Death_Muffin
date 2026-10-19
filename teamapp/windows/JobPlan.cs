@@ -162,6 +162,10 @@ namespace DeathMuffinTeam
         public List<ScreenSize> ScreenSizes = new List<ScreenSize>();
         public List<string> UiScales = new List<string>();
         public string ScreensPreset = "high";
+        /// <summary>`release`, `screens`: the class the debug build's quick start enters with (`--class=N`, from the plan's `discipline`; Gravecaller when it names none):
+        /// without it a debug build makes no game and its QA driver gives up after 90 s (2026-10-19: Helix's first release checks, every size exit 2).</summary>
+        public int ScreensClass = 2;
+        static readonly System.Collections.Generic.Dictionary<string, int> ClassOf = new System.Collections.Generic.Dictionary<string, int> { { "ossuary", 1 }, { "gravecaller", 2 }, { "mourner", 3 }, { "rotweaver", 4 }, { "reaper", 11 } };
         /// <summary>`release`, `soak`: how many minutes the game's `--soak` scenario runs.</summary>
         public int SoakMinutes = DefaultSoakMinutes;
         /// <summary>`bench`, and the `bench` step of a `release` job: the runs, in order.</summary>
@@ -400,6 +404,9 @@ namespace DeathMuffinTeam
                 p.PlanJson = MiniJson.Write(plan0);
                 if (Encoding.UTF8.GetByteCount(p.PlanJson) > MaxPlanBytes) { error = "The shot plan is too big."; return false; }
                 p.PlanShots = shots.Count;
+                int cls;
+                string disc = (MiniJson.Str(plan0, "discipline") ?? "").ToLowerInvariant().Replace("hero_", "");
+                if (ClassOf.TryGetValue(disc, out cls)) p.ScreensClass = cls;
                 var sizes = MiniJson.Arr(screens, "resolutions");
                 var texts = new List<string>();
                 if (sizes == null || sizes.Count == 0) texts.AddRange(DefaultResolutions);
@@ -703,6 +710,7 @@ namespace DeathMuffinTeam
         {
             var a = WindowArgs(position, false, size.Text);
             a.AddRange(DebugArgs());
+            if (!a.Exists(x => x.StartsWith("--class=", StringComparison.Ordinal))) a.Add("--class=" + ScreensClass.ToString(CultureInfo.InvariantCulture));
             a.Add("--shot-plan=" + Slashes(planFile));
             a.Add("--shots=" + Slashes(shotsDir));
             a.Add("--preset=" + ScreensPreset);

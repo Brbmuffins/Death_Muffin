@@ -43,6 +43,8 @@ namespace DeathMuffinTeam
         void Begin();
         /// <summary>True when a Death Muffin process that was not there at Begin, and is not the job's own game (<paramref name="ownPid"/>), is running.</summary>
         bool PlayerStarted(int ownPid);
+        /// <summary>What the last check counted as the player's game (name, process id, its exe path, the app's own folder), for the job log; "" when none.</summary>
+        string LastSeen { get; }
     }
 
     internal sealed class ProcessGameHost : IGameHost
