@@ -17,6 +17,12 @@ __pycache__/
 launcher/windows/bin/
 launcher/windows/obj/
 
+# team app build output
+teamapp/windows/bin/
+teamapp/windows/obj/
+teamapp/tests/bin/
+teamapp/tests/obj/
+
 # The first game's folder, deleted 2026-10-19 (DECISIONS B57; tag archive/old-game). Older checkouts can still hold its build files and its copy
 # of the licensed flipbook sheets there, which must never be committed.
 /godot/

@@ -1897,6 +1897,17 @@ require('./play-reports.cjs')(app, pool, {
     message: { success: false, code: 'rate_limited', error: 'Too many play reports at once. Please try again in a minute.' },
   }),
 });
+// Team jobs: the team app's job queue (War, Muffins, Helix) and the Discord agent's runner (/internal/team/..., this machine only). The app signs in with its own team token
+// (POST /api/team/login: the same password check and login rate limiter as /login, but it never claims the account's game session, so signing in does not
+// end the player's game and the game's session rule never refuses the app); every other app route is limited per account, 120 calls a minute.
+require('./team-jobs.cjs')(app, pool, {
+  loginLimiter,
+  comparePassword: (password, hash) => bcrypt.compare(password, hash),
+  limiter: rateLimit({
+    windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => `acct:${req.user.accountId}`,
+    message: { success: false, code: 'rate_limited', error: 'Too many team calls at once. Please try again in a minute.' },
+  }),
+});
 // Per account, not per IP: the lobby reads every player's list from 127.0.0.1 (presence), with that player's own token.
 require('./friends.cjs')(app, pool, { requireAuth: requireJWT, limiter: rateLimit({ windowMs: 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => `acct:${req.user.accountId}` }) });
 require('./discipline.cjs')(app, pool, { verifyJWT, formatCharacter, getGearLoadout, invalidateLeaderboard, maxIndex: MAX_DISCIPLINE_INDEX, playable: PLAYABLE_DISCIPLINE_INDICES });

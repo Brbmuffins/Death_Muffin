@@ -123,6 +123,9 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 		shell.loot.learned_runes_changed.connect(learned_runes_changed.emit)
 	settings_store = DmSettings.new(DmSettings.FILE, persist)
 	settings_store.set_active_character(hero_id, character.get("auto_combat_allowed", false) == true)
+	var qa_preset := String(shell.opts.get("qa_preset", ""))   # a QA run's --preset= (DmMain.qa_preset): in force for this run, never saved
+	if qa_preset != "":
+		settings_store.session_set("graphics", qa_preset, false)
 	settings_store.changed.connect(func(_v: Dictionary) -> void: _apply_settings_side_effects())
 	dev_account = _is_dev_account()   # old DmGame.setup: dev_access = dev_account and the Settings toggle; everything that reads it follows below
 	dev_access = dev_account and bool(settings["dev_access"])

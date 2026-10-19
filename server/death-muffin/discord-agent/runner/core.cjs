@@ -830,6 +830,7 @@ function createRunner(cfgIn, opts = {}) {
     // BEFORE pictures (the unchanged base rendered with the same shot plan) only when switched on: each is one more software-GL render
     // in the shared renderer queue (owner, 2026-10-10: "skip making before photos"). cfg.beforeShots: true brings them back.
     if (GODOT && shots.length && cfg.beforeShots === true) postBeforeAfter(job, head, shots.slice(0, 2));
+    if (GODOT && shots.length && cfg.teamShots !== false) teamShots(job, head);
     carryApproval(job);
   }
   // A ship that hit a merge conflict was synced by the runner; when the resolved change is still the approved one (same files or fewer, tier
@@ -859,6 +860,87 @@ function createRunner(cfgIn, opts = {}) {
       const files = []; for (const a of pairs) { const b = befores.find((x) => x.for === a.name); if (b) { files.push({ name: b.name, b64: b.b64 }); files.push(a); } }
       if (files.length) post({ threadId: job.threadId }, { content: 'Before / after for the proposal above: each pair is BEFORE (the game as it is now), then AFTER (this change). Rendered on the offline demo character; not the live game.', files });
     }).catch(() => {}).finally(() => beforeBusy.delete(job.id));
+  }
+
+  // ---------- team PC pictures (teamapp/README.md; server/death-muffin/README.md "Team jobs") ----------
+  // After a proposal whose pictures came from a shot plan: when a team PC is online, a debug build of the branch (preview-godot.sh --team; teamBuildCmd in
+  // tests) goes to it as a `shots` job through the backend's /internal/team routes, and its Low and Ultra pictures (a real graphics card, unlike the
+  // server's software renderer) follow in the thread. Best effort, in the background: no team PC online = no job; a failed build or job is audited only;
+  // a newer proposal or a discard cancels it.
+  const TEAM_CLASSES = { ossuary: 1, gravecaller: 2, mourner: 3, rotweaver: 4, reaper: 11 };
+  const teamBusy = new Set();
+  async function teamCall(method, p, body) {
+    if (!cfg.teamApi) return null;
+    let secret = ''; try { secret = fs.readFileSync(cfg.secretFile, 'utf8').trim(); } catch { return null; }
+    try {
+      const r = await fetch(`${String(cfg.teamApi).replace(/\/$/, '')}/internal/team${p}`, {
+        method, headers: { 'content-type': 'application/json', 'x-team-secret': secret }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(15000) });
+      const j = await r.json().catch(() => null);
+      return j && j.success ? j.data : null;
+    } catch { return null; }
+  }
+  async function teamShots(job, head) {
+    if (!cfg.teamApi || teamBusy.has(job.id) || !job.worktree) return;
+    let plan = null; try { plan = JSON.parse(fs.readFileSync(path.join(job.worktree, '.dm-shot.json'), 'utf8')); } catch { return; }
+    if (!plan || typeof plan !== 'object' || Array.isArray(plan)) return;
+    const online = await teamCall('GET', '/pcs');
+    if (!online || !Array.isArray(online.pcs) || !online.pcs.length) return;
+    teamBusy.add(job.id);
+    const stale = () => !job.proposal || job.proposal.head !== head || ['discarded', 'deleted'].includes(job.status);
+    const fail = (why, extra = {}) => audit.log('team-shots', { job: job.id, ok: false, why: clip(why, 300), ...extra });
+    try {
+      const env = { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' };
+      const b = cfg.teamBuildCmd
+        ? await G.run('bash', ['-c', cfg.teamBuildCmd, 'team', job.id], { cwd: job.worktree, env, timeoutMs: 15 * 60000 })
+        : await G.run(path.join(cfg.toolsDir, 'preview-godot.sh'), [job.id, '--team'], { cwd: job.worktree, env, timeoutMs: 40 * 60000 });
+      const line = String(b.out || '').split('\n').reverse().find((l) => l.startsWith('TEAMFILES: '));
+      let files = null; try { files = line ? JSON.parse(line.slice('TEAMFILES: '.length)) : null; } catch { files = null; }
+      if (b.code !== 0 || b.timedOut || !Array.isArray(files)) return fail(b.timedOut ? 'the team build took too long' : redactText(String((b.out || '') + (b.err || '')).trim().split('\n').slice(-3).join(' ') || `exit ${b.code}`));
+      if (stale()) return;
+      const disc = typeof plan.discipline === 'string' ? TEAM_CLASSES[plan.discipline.toLowerCase().replace(/^hero_/, '')] : plan.discipline;
+      const cls = Object.values(TEAM_CLASSES).includes(disc) ? disc : 2;
+      const made = await teamCall('POST', '/jobs', { kind: 'shots', title: 'Screenshots of a change, about 2 minutes', weightS: 120, ttlS: 30 * 60,
+        payload: { rev: head.slice(0, 12), godotVersion: '4.7.2.stable', files, plan, presets: ['low', 'ultra'], args: ['--dev-offline', `--class=${cls}`, '--qa'] } });
+      if (!made || !made.id) return fail('the backend did not take the job');
+      audit.log('team-shots', { job: job.id, teamJob: made.id, queued: true, pcs: online.pcs.length });
+      let t = null;
+      for (let i = 0, n = Math.ceil((35 * 60000) / (cfg.teamPollMs || 20000)); i < n; i++) {
+        await sleep(cfg.teamPollMs || 20000);
+        if (stale()) { await teamCall('POST', `/jobs/${made.id}/cancel`); return; }
+        t = await teamCall('GET', `/jobs/${made.id}`);
+        if (t && ['done', 'failed', 'expired', 'cancelled'].includes(t.status)) break;
+      }
+      if (!t || t.status !== 'done') {
+        if (!t || ['queued', 'running'].includes(t.status)) await teamCall('POST', `/jobs/${made.id}/cancel`);
+        return fail(t && t.error ? t.error : `the team job ended ${t ? t.status : 'without an answer'}`, { teamJob: made.id });
+      }
+      if (stale()) return;
+      const dir = path.join(path.resolve(cfg.teamResultsDir), made.id);
+      const rank = (n) => (n.startsWith('low') ? 0 : n.startsWith('ultra') ? 1 : 2);
+      const chosen = (Array.isArray(t.files) ? t.files : [])
+        .filter((f) => f && /^[a-z0-9][a-z0-9_-]{0,39}\.png$/.test(String(f.name)) && path.dirname(path.resolve(String(f.path))) === dir)
+        .map((f) => String(f.name).replace(/_/g, '-'));
+      // the same label as the server's pictures ("BRANCH PREVIEW · not live · <branch>"), burned in by the trusted label-shot.py: it reads
+      // <dir>/.dm-shots/.raw and writes <dir>/.dm-shots/<name>.png, and nothing it did not label is posted
+      const lab = fs.mkdtempSync(path.join(require('os').tmpdir(), 'dm-team-shots-'));
+      let pics = [];
+      try {
+        fs.mkdirSync(path.join(lab, '.dm-shots', '.raw'), { recursive: true });
+        for (const n of chosen) { try { fs.copyFileSync(path.join(dir, n.replace(/-/g, '_')), path.join(lab, '.dm-shots', '.raw', n)); } catch { /* listed but gone */ } }
+        await G.run(cfg.teamLabelCmd ? 'bash' : 'python3', cfg.teamLabelCmd ? ['-c', cfg.teamLabelCmd, 'label', lab, job.branch] : [path.join(cfg.toolsDir, 'label-shot.py'), lab, job.branch],
+          { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: 2 * 60000 });
+        pics = chosen.sort((a, b) => rank(a) - rank(b) || (a < b ? -1 : 1))
+          .map((n) => { try { const f = path.join(lab, '.dm-shots', n); const st = fs.lstatSync(f); return st.isFile() && st.size <= SHOT_MAX_BYTES ? { name: safeName(n), b64: fs.readFileSync(f).toString('base64') } : null; } catch { return null; } })
+          .filter(Boolean);
+      } finally { fs.rmSync(lab, { recursive: true, force: true }); }
+      if (!pics.length) return fail('the team job finished without pictures that could be labelled', { teamJob: made.id });
+      const pc = online.pcs.find((x) => x.pcId === t.claimedPc) || {};
+      const who = [pc.username ? `${pc.username}'s PC` : 'a team PC', pc.gpu].filter(Boolean).join(', ');
+      audit.log('team-shots', { job: job.id, teamJob: made.id, ok: true, pictures: pics.length });
+      for (let i = 0; i < pics.length; i += SHOTS_PER_POST) {
+        post({ threadId: job.threadId }, { content: i === 0 ? `📸 The same pictures on a real graphics card (${clip(who, 120)}), Low then Ultra · branch preview, not live` : '📸 (more)', files: pics.slice(i, i + SHOTS_PER_POST) });
+      }
+    } catch (e) { fail(e && e.message ? e.message : String(e)); } finally { teamBusy.delete(job.id); }
   }
 
   // ---------- model generation: request -> estimate -> ✅ -> Gemini + Tripo run by the runner -> the agent builds and commits the result ----------

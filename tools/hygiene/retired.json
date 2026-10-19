@@ -279,7 +279,7 @@
     },
     {
       "id": "old-game-folder",
-      "pattern": "(?<![\\w.:-])(?<!\\w/)godot/",
+      "pattern": "(?<![\\w.:-])(?<!\\w/)godot/(?!app_userdata\\b)",
       "reason": "the first Godot game's folder, deleted 2026-10-19 (B57): the game is client/; name a file of it as archive/old-game:godot/<path>",
       "allow": [
         "DECISIONS.md",

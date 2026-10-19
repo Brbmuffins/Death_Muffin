@@ -112,6 +112,8 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   account), runs only builds and kits our server made, and uploads only its results. Each PC can also run without asking (War's spare
   Alienware, if he sets it) or only on a yes. Its jobs, each added when it is needed:
   - First: screenshots of a proposal on Low and Ultra, posted to the thread by our server (they replace the server's slower pictures).
+    Built 2026-10-19 (`teamapp/`, the backend's team jobs, the Discord agent's team pictures): it runs once the three PCs have it installed,
+    and its pictures come beside the server's until it has proven itself on them.
   - Soon after: benchmarks for every release on a fast PC and on the Alienware's GTX 970 (the weak-PC floor of B39), on the benchmarks
     page. A benchmark waits until nothing else is loading the PC, and a run disturbed halfway is thrown out and retried, so its numbers are
     honest.

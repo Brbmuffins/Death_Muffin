@@ -9,6 +9,9 @@ extends Node
 ## as the dev entry (dev/dm_dev_entry.tscn, which stays the way to a crowd or a screenshot); `--world-demo` is an alias of `--dev-offline --class=2`.
 ## `--boot-smoke`: reach the first screen, print "BOOT OK <screen>" and quit (the test channel's publish check).
 ## `--qa` / `--shot-plan=<plan.json>` (with `--shots=<dir>`, `--seconds=N`; dev-offline runs only): the QA tools beside the game, the scripted fight or the shot plan of a proposal (`start_qa`, client/README.md "Screenshots for proposals").
+## `--preset=<low|medium|high|ultra>` (only where the QA tools start, `qa_preset`): that graphics preset is in force from the game's start, as if chosen in Settings, and is never saved to the player's settings
+## (a team PC's screenshots of a proposal on Low and Ultra); an unknown value is ignored with a printed warning.
+## A QA run also never takes the keyboard or the mouse from the person at the PC (`quiet_window`: no focus, mouse events pass through), so a team PC can run it while its owner works.
 ## `--benchmark`: runs the in-game benchmark straight away on an isolated offline game (DmBenchmark, no login; `--bench-room=`, `--bench-class=`, `--bench-size=`,
 ## `--bench-length=` pick the setup, default the Standard one, `--bench-warm=` / `--bench-measure=` shorten it, `--baked=<dir>` names the baked crowd models) and stays on the
 ## results screen with a Quit button (a headless run quits by itself). A room or class the benchmark does not list is refused with a message and exit code 2. Release builds then
@@ -93,6 +96,11 @@ func _ready() -> void:
 			start_opts["waves"] = false
 	if qa_wanted(args, mode):
 		start_qa()
+		quiet_window(get_window())
+		print("QA-SHOTS window: takes no focus and passes the mouse through (asked of the %s display)" % DisplayServer.get_name())
+		var preset := qa_preset(args, mode)
+		if preset != "":
+			start_opts["qa_preset"] = preset   # DmNextGame applies it before the world is built; DmSettings keeps it out of the player's file
 	if api != null:
 		pass   # injected (tests)
 	elif mode == "dev_offline":
@@ -148,6 +156,32 @@ static func qa_wanted(args: PackedStringArray, mode_: String, debug_build: bool 
 		if a == "--qa" or a.begins_with("--shot-plan="):
 			return true
 	return false
+
+
+## Testing: a QA run never takes the keyboard or the mouse from the person at the PC (the team app runs it on a team member's own computer, while they work): the main window takes no
+## focus (DisplayServer.WINDOW_FLAG_NO_FOCUS, a Window's `unfocusable`) and lets mouse events through to what is under it (WINDOW_FLAG_MOUSE_PASSTHROUGH, `mouse_passthrough`). Called only where the QA tools start
+## (`qa_wanted`), so a player's window is never touched. The shot plan opens windows through the HUD's own calls and fakes its hover (`DmTip.test_mouse`), so it needs no real mouse. A headless run has no window to configure:
+## only the call path can be tested there (tests/qa_shots.gd).
+static func quiet_window(win: Window) -> void:
+	if win == null:
+		return
+	win.unfocusable = true
+	win.mouse_passthrough = true
+
+
+## Testing: the graphics preset a QA run asks for with `--preset=<low|medium|high|ultra>`, "" for none. Honoured only where the QA tools start (`qa_wanted`: a debug build on the dev-offline backend), so a release
+## export and an online start ignore it whatever the line says. An unknown value is ignored, with a warning line. It is applied before the game scene starts and is never saved (DmSettings.session_set).
+static func qa_preset(args: PackedStringArray, mode_: String, debug_build: bool = OS.is_debug_build()) -> String:
+	if not qa_wanted(args, mode_, debug_build):
+		return ""
+	for a in args:
+		if a.begins_with("--preset="):
+			var id := a.substr(9)
+			if id in DmGraphicsPreset.IDS:
+				return id
+			print("QA-SHOTS warning: --preset=%s ignored (it must be %s); the game keeps the graphics setting it has." % [id, ", ".join(DmGraphicsPreset.IDS)])
+			return ""
+	return ""
 
 
 ## Testing: the QA driver (main/qa_driver.gd) as the child Driver, which finds the game this boot makes. It is loaded here, by path, and never named: it names most of the game (compiling it took

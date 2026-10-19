@@ -66,7 +66,7 @@ for (const f of mdFiles) {
 }
 
 // b. Backticked repo paths.
-const ROOT_PREFIXES = ['client/', 'native/', 'server/', 'tools/', 'launcher/', 'docs/', '.github/', 'public/', 'art-manifest/'];
+const ROOT_PREFIXES = ['client/', 'native/', 'server/', 'tools/', 'launcher/', 'teamapp/', 'docs/', '.github/', 'public/', 'art-manifest/'];
 const rootFiles = new Set(files.filter((f) => !f.includes('/')));
 const looksLikePath = (s) => /^[A-Za-z0-9_.\-/]+$/.test(s);
 function resolvesAnywhere(p, docDir) {

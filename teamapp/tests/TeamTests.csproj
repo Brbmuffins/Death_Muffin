@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Logic tests for the team app's pure code (offer decision, job plan, settings, server calls, downloads, job runner, controller, self-update). Runs on Linux and Windows:
+       dotnet run in this folder, or run-local.sh when only a .NET 8 runtime and a Roslyn csc.dll are available. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <RootNamespace>DeathMuffinTeam.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\windows\Json.cs" />
+    <Compile Include="..\windows\TeamLogic.cs" />
+    <Compile Include="..\windows\JobPlan.cs" />
+    <Compile Include="..\windows\Settings.cs" />
+    <Compile Include="..\windows\TeamApi.cs" />
+    <Compile Include="..\windows\TeamFolders.cs" />
+    <Compile Include="..\windows\FileFetcher.cs" />
+    <Compile Include="..\windows\GameHost.cs" />
+    <Compile Include="..\windows\JobRunner.cs" />
+    <Compile Include="..\windows\SelfUpdate.cs" />
+    <Compile Include="..\windows\TeamController.cs" />
+  </ItemGroup>
+</Project>

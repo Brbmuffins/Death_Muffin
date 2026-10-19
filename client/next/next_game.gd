@@ -170,7 +170,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	perf.name = "Perf"
 	perf.game = self
 	add_child(perf)
-	perf.apply(opts.get("settings", _player_settings()))   # the crowd exists: its shadow policy is part of the preset
+	perf.apply(_start_settings())   # the crowd exists: its shadow policy is part of the preset
 	enemy_fx = DmEnemyFx.new()
 	enemy_fx.name = "EnemyFx"
 	enemy_fx.player_pos = func() -> Vector3: return local_body().global_position if local_body() != null else camera.global_position
@@ -595,6 +595,18 @@ func _enter(pos: Vector3) -> void:
 ## them comes with the panels). A bare scene (tests): High's defaults.
 func _player_settings() -> Dictionary:
 	return DmSettings.new(DmSettings.FILE, true).values if opts.get("hud", false) == true else {}
+
+
+## What the game starts with: `opts.settings` (tests) or the player's own, with a QA run's graphics preset on top (`opts.qa_preset`, from `--preset=`, DmMain.qa_preset). The preset is in force
+## for the run only: the UI host's DmSettings holds it on loan (`session_set`) and never writes it.
+func _start_settings() -> Dictionary:
+	var s: Dictionary = opts["settings"] if opts.has("settings") else _player_settings()
+	var preset := String(opts.get("qa_preset", ""))
+	if preset == "":
+		return s
+	s = s.duplicate()
+	s["graphics"] = preset
+	return s
 
 
 # ---- update notice (since launch day 2026-10-18) -----------------------------------------------------------------------

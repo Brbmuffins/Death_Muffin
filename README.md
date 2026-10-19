@@ -26,6 +26,7 @@ Where to read next: [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNO
 | `server/death-muffin/site/` | The launcher download page |
 | `server/death-muffin/` (scripts) | `publish-godot-client.sh`, `set-online.sh`, `deploy-release.sh`, `announce-release.sh`, nginx and systemd files |
 | `launcher/windows/` | The Windows launcher (.NET Framework 4.8, version in `DeathMuffinLauncher.csproj`). See its README |
+| `teamapp/` | The team app (DECISIONS B54, B55): a Windows tray app for the three team PCs that runs jobs needing a real graphics card (screenshots of a proposal on Low and Ultra first), with its own updates; `teamapp/windows/` the app, `teamapp/tests/` its tests ([teamapp/README.md](teamapp/README.md)) |
 | `tools/` | `tools/rebuild/` the game's test runner, suite selector and area builder; `tools/godot/` the release's art pack tools; `tools/assets/` the model check; `tools/ai/` Gemini and Tripo generation; `tools/blender*`, `tools/audio/`, SQL generators |
 | `public/`, `art-manifest/` | Source art, models and audio (the masters of what is in `client/assets/`); generation records |
 | `PATCH_NOTES.json` | Player-facing patch notes, newest first; published to the launcher and site by `announce-release.sh` |
@@ -62,6 +63,8 @@ npm run typecheck                                 # tsc --noEmit
 npm run hygiene                                   # stale docs and paths, retired terms, big files, texture imports
 npm run check:models                              # every model's budget, materials, skeleton and clips
 launcher/tests/run-local.sh                       # launcher logic tests
+teamapp/tests/run-local.sh                        # team app logic tests (a local file server and a stand-in game; no Windows)
+teamapp/tests/compile-check.sh                    # the whole team app, UI included, compiled against the .NET Framework 4.8 reference assemblies
 ```
 
 Run one suite: `godot --headless --path client --script res://tests/<name>.gd`. CI (`.github/workflows/ci.yml`) runs the backend, lobby,

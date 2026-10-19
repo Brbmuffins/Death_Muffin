@@ -6,7 +6,7 @@ Output is one `file:line: message` per violation; exit 0 prints a one-line OK.
 Checks (`check.mjs`, config in `retired.json`):
 
 1. Relative Markdown links in tracked `*.md` (not `client/tests/**`) resolve.
-2. Backticked repo paths in tracked `*.md` (starting `client/ native/ server/ tools/ launcher/ docs/ .github/ public/ art-manifest/`, a root file, or `tests/` / `next/` meaning `client/...`) exist. Globs, placeholders, `/abs`, `~/` paths are skipped. `DECISIONS.md` records what was true when each decision was made, so its paths may name files that are gone (`historyDocs` in `retired.json`).
+2. Backticked repo paths in tracked `*.md` (starting `client/ native/ server/ tools/ launcher/ teamapp/ docs/ .github/ public/ art-manifest/`, a root file, or `tests/` / `next/` meaning `client/...`) exist. Globs, placeholders, `/abs`, `~/` paths are skipped. `DECISIONS.md` records what was true when each decision was made, so its paths may name files that are gone (`historyDocs` in `retired.json`).
 3. Retired terms (`terms` in `retired.json`) do not appear in scanned text files (`*.md *.sh *.cjs *.mjs *.js *.ts *.gd *.yml *.json`, minus `scanExclude`).
 4. `res://tests/<suite>/<file>.gd` and `tests/<suite>/<file>.gd` paths named in docs and scripts exist under `client/`.
 5. No tracked file is larger than `maxFileMB` (20) unless listed in `bigFileAllow`.

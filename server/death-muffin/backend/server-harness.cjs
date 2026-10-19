@@ -13,13 +13,13 @@
 const Module = require('module');
 const path = require('path');
 
-function loadServer({ pool, env = {} }) {
+function loadServer({ pool, env = {}, bcrypt: bcryptStub = { hash: async () => 'hash', compare: async () => true } }) {
   const routes = new Map();
   const uses = [];
   const noop = () => {};
   const stubs = {
     dotenv: { config: noop },
-    bcrypt: { hash: async () => 'hash', compare: async () => true },
+    bcrypt: bcryptStub,
     jsonwebtoken: {
       // Like the real library, an `expiresIn: undefined` option is an error, not "no expiry".
       sign: (claims, _secret, opts = {}) => {
@@ -34,7 +34,7 @@ function loadServer({ pool, env = {} }) {
     'express-rate-limit': () => (_req, _res, next) => next(),
     express: Object.assign(
       () => {
-        const add = (method) => (route, ...chain) => routes.set(`${method} ${route}`, chain);
+        const add = (method) => (route, ...chain) => { for (const r of [].concat(route)) routes.set(`${method} ${r}`, chain); };   // a module may mount one handler on several paths
         return { use: (...fns) => uses.push(...fns), set: noop, listen: noop, get: add('GET'), post: add('POST'), patch: add('PATCH'), put: add('PUT'), delete: add('DELETE') };
       },
       { json: () => noop },

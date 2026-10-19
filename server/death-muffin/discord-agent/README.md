@@ -287,6 +287,13 @@ The agent is told (PROMPT-godot.md) to take pictures by default for visible chan
 On a proposal (`propose()`), when the agent left a plan and fresh pictures, the runner renders the same plan on an unchanged scratch worktree of the base (`base-<jobid>`, removed afterwards) and attaches
 AFTER pictures right away (the embed image is the first). BEFORE pictures are off (owner, 2026-10-10: each was one more software-GL render in the shared queue); with `cfg.beforeShots: true`, the BEFORE/AFTER pairs for the first two pictures (`before-<name>.png`, then `<name>.png`) follow as a separate message once the base is rendered in the background, so a busy renderer never holds the job's slot. If the base cannot render (for instance it predates the QA shot-plan code) no pair message follows.
 
+**Team PC pictures** (teamapp/README.md; the backend's "Team jobs" in server/death-muffin/README.md): after a proposal that carries pictures, when a team PC is
+online (`/internal/team/pcs`), the runner builds the branch for it (`preview-godot.sh <jobid> --team`: a debug export, the live art pack hard-linked when the
+art is unchanged, files under `/var/www/death-muffin/team-files/<random>/`), queues a `shots` job with the same shot plan on Low and Ultra, checks it every
+20 s for up to 35 minutes, and posts the returned pictures, labelled by `label-shot.py` like its own, as "The same pictures on a real graphics card (<who>,
+<card>), Low then Ultra". Best effort and in the background: no team PC online means no build; a failed build or job is only audited (`team-shots`); a
+newer proposal or a discard cancels the job. `cfg.teamShots: false` turns it off; `cfg.teamApi` is the backend it calls (with the runner's secret).
+
 ## Playable preview
 Godot mode builds the Windows zip (`preview-godot.sh`, see above) only on request: the proposal's "Try it" field says to use `!preview` (owner, 2026-10-10:
 44 previews were built in a day and none was downloaded; each is a full import + export). `cfg.previewOnProposal: true` brings back building one with every

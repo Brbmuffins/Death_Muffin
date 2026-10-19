@@ -22,6 +22,8 @@ var character_id: int = -1
 var auto_combat_allowed: bool = false
 ## false in tests: nothing is written to disk.
 var persist: bool = true
+## Settings on loan for this run (`session_set`: a QA run's `--preset=`): key -> the value the player has stored. `values` reads the loan, `_save` writes the stored value.
+var _loan: Dictionary = {}
 
 
 static func defaults() -> Dictionary:
@@ -109,8 +111,23 @@ func set_active_character(id: int, allowed: bool = false) -> void:
 	changed.emit(values)
 
 
+## A QA run's `--preset=<id>` (DmMain.qa_preset): `key` reads as `value` for this run, as if chosen in Settings, but is never written: the player's file keeps what they stored.
+## An explicit change of the same key (a different value in `update`) is the player's choice and is saved as usual. `announce` = false while the game is still being built.
+func session_set(key: String, value: Variant, announce: bool = true) -> void:
+	if not _loan.has(key):
+		_loan[key] = values[key]
+	values[key] = value
+	if announce:
+		changed.emit(values)
+
+
 func update(patch: Dictionary) -> void:
 	patch = patch.duplicate()
+	for k in _loan.keys():   # the Settings panel hands back every key: only a different value is a choice of the player's
+		if patch.has(k) and patch[k] != values[k]:
+			_loan.erase(k)
+		else:
+			patch.erase(k)
 	if patch.has("difficulty") and not patch.has("auto_combat"):
 		patch["auto_combat"] = auto_combat_allowed and patch["difficulty"] == "easy"
 	var diff: String = str(patch.get("difficulty", values["difficulty"]))
@@ -129,7 +146,9 @@ func _save() -> void:
 		return
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f:
-		f.store_string(JSON.stringify(values))
+		var stored := values.duplicate()
+		stored.merge(_loan, true)   # a loan is never saved
+		f.store_string(JSON.stringify(stored))
 	if character_id >= 0:
 		var g := FileAccess.open(PLAY_FILE % character_id, FileAccess.WRITE)
 		if g:

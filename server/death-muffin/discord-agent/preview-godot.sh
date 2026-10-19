@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Playable preview of a proposal, Godot mode: preview-godot.sh <jobid>   (run by the RUNNER from the job's worktree, never by the AI).
+# Playable preview of a proposal, Godot mode: preview-godot.sh <jobid> [--team]   (run by the RUNNER from the job's worktree, never by the AI).
 # 1. The game's build products: client-prep.sh --windows (the trusted cache, built from the base revision), then inside the same sandbox as
 #    check-godot.sh (no network, the whole filesystem read-only via sandbox-lib.sh, private /tmp, only the worktree writable, fresh HOME / XDG dirs so
 #    Godot's user:// never touches the real home; the installed export templates are re-exposed read-only through XDG_DATA_HOME): client-prep-in.sh
@@ -11,20 +11,28 @@
 # 3. Outside the sandbox: zip the build with "Play Preview (offline).bat" (DeathMuffin.exe -- --dev-offline: local testing backend, nothing saves to a
 #    real character) and a README, and write it as <previewRoot>/<jobid>/DeathMuffin-Preview-<jobid>-win64.zip (644). Refuses any jobid that is
 #    not 6 hex chars, a missing or symlinked preview root, and a symlinked destination; never writes outside <previewRoot>/<jobid>.
-# Env: DM_PREVIEW_ROOT (default /var/www/death-muffin/preview), DM_PREVIEW_TITLE (README text), GODOT (default /home/ubuntu/tools/godot/godot),
+# --team: the build for a team PC's screenshot job (teamapp/README.md) instead of a zip: a DEBUG export (the QA tools start only in debug builds),
+#   its files (DeathMuffinDebug.exe, DeathMuffin.pck, the core's DLL, DeathMuffin.assets.pck: the live pack hard-linked from the live client's folder
+#   when the art is the live build's, else the branch's own) in <team root>/<32 random hex>/ (the newest 6 kept), and a last line
+#   `TEAMFILES: <json list of {name, url, sha256, bytes, cacheKey?}>` for the job's payload.
+# Env: DM_TEAM_ROOT (default /var/www/death-muffin/team-files), DM_TEAM_URL (default https://muffindevelopment.com/death-muffin/team-files),
+#      DM_PREVIEW_ROOT (default /var/www/death-muffin/preview), DM_PREVIEW_TITLE (README text), GODOT (default /home/ubuntu/tools/godot/godot),
 #      GODOT_TEMPLATES (default /home/ubuntu/.local/share/godot/export_templates), CLIENT_MANIFEST (the live build's, default
 #      /var/www/death-muffin/client/manifest.json), DM_CLIENT_CACHE (client-prep.sh), DM_CLIENT_PREP / DM_CLIENT_PREP_IN (tests: stand-ins).
 set -euo pipefail
 JOB=${1:-}
 [[ "$JOB" =~ ^[0-9a-f]{6}$ ]] || { echo "bad job id"; exit 2; }
+TEAM=""; [ "${2:-}" = --team ] && TEAM=1
 ROOT=${DM_PREVIEW_ROOT:-/var/www/death-muffin/preview}
+[ -z "$TEAM" ] || ROOT=${DM_TEAM_ROOT:-/var/www/death-muffin/team-files}
 export GODOT=${GODOT:-/home/ubuntu/tools/godot/godot}
 export GODOT_TEMPLATES=${GODOT_TEMPLATES:-/home/ubuntu/.local/share/godot/export_templates}
 [ -d "$ROOT" ] && [ ! -L "$ROOT" ] || { echo "preview root $ROOT is missing"; exit 2; }
 [ -x "$GODOT" ] || { echo "Godot not found at $GODOT"; exit 2; }
 TOP=$(git rev-parse --show-toplevel)
 [ -f "$TOP/client/project.godot" ] || { echo "this branch has no client/project.godot"; exit 2; }
-OUT="$TOP/.dm-preview"
+OUT="$TOP/.dm-preview"; [ -z "$TEAM" ] || OUT="$TOP/.dm-preview/team"
+EXPORT=--export-release; EXE=DeathMuffin.exe; [ -z "$TEAM" ] || { EXPORT=--export-debug; EXE=DeathMuffinDebug.exe; }
 SCR=$(mktemp -d /tmp/dmprevg.XXXXXX)
 trap 'rm -rf "$SCR"' EXIT
 TOOLS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -40,7 +48,7 @@ fi
 PREP=$(bash "${DM_CLIENT_PREP:-$TOOLS/client-prep.sh}" "$TOP" --windows | tail -1)
 [[ "$PREP" =~ ^PREP\ core=(cached|build)\ bake=(cached|build)\ dir=([^\ ]+)\ keys=([a-z0-9,-]+)$ ]] || { echo "client-prep failed: $PREP"; exit 1; }
 export PREP_CORE=${BASH_REMATCH[1]} PREP_BAKE=${BASH_REMATCH[2]} PREP_DIR=${BASH_REMATCH[3]} PREP_KEYS=${BASH_REMATCH[4]} DM_PREP_WINDOWS=1
-export TOP OUT SAME_ART
+export TOP OUT SAME_ART EXPORT EXE
 rm -rf "$OUT"; mkdir -p "$OUT"
 export DM_PAYLOAD='
   set -euo pipefail
@@ -50,7 +58,7 @@ export DM_PAYLOAD='
   ln -s "$GODOT_TEMPLATES" "$XDG_DATA_HOME/godot/export_templates"
   cd "$TOP"
   bash "${DM_CLIENT_PREP_IN:-$TOOLS/client-prep-in.sh}"
-  "$GODOT" --headless --path client --export-release "Windows Desktop" "$OUT/DeathMuffin.exe" > "$SCR/export.log" 2>&1 || { tail -15 "$SCR/export.log"; echo "godot export failed"; exit 1; }
+  "$GODOT" --headless --path client "$EXPORT" "Windows Desktop" "$OUT/$EXE" > "$SCR/export.log" 2>&1 || { tail -15 "$SCR/export.log"; echo "godot export failed"; exit 1; }
   if [ -z "$SAME_ART" ]; then
     echo "the art differs from the live build: the preview carries its own pack"
     bash tools/godot/assets-pack.sh "$TOP/client" "$OUT/DeathMuffin.assets.pck" "$GODOT" > "$SCR/assets.log" 2>&1 || { tail -15 "$SCR/assets.log"; echo "assets pack failed"; exit 1; }
@@ -58,12 +66,57 @@ export DM_PAYLOAD='
 '   # the sandboxed work; run by dm_sandbox_run inside the nested namespace (sandbox-lib.sh)
 timeout -k 30 1800 unshare -rnm bash -c '. "$DM_SANDBOX_LIB"; dm_sandbox_run' || { echo "preview build failed"; exit 1; }
 rm -f "$OUT"/*.console.exe
-[ -s "$OUT/DeathMuffin.exe" ] && [ "$(head -c2 "$OUT/DeathMuffin.exe")" = "MZ" ] || { echo "export produced no Windows executable"; exit 1; }
+[ -z "$TEAM" ] || mv -f "$OUT/DeathMuffinDebug.pck" "$OUT/DeathMuffin.pck" 2>/dev/null || true   # the team app runs it with --main-pack DeathMuffin.pck
+[ -s "$OUT/$EXE" ] && [ "$(head -c2 "$OUT/$EXE")" = "MZ" ] || { echo "export produced no Windows executable"; exit 1; }
 [ "$(stat -c %s "$OUT/DeathMuffin.pck" 2>/dev/null || echo 0)" -gt 100000 ] || { echo "export produced no usable DeathMuffin.pck"; exit 1; }
 # launcher + readme (title: printable ASCII only, one line; it is text in a readme, never part of the .bat)
 TITLE=$(printf '%s' "${DM_PREVIEW_TITLE:-this change}" | tr -c '[:print:]' ' ' | tr -s ' ' | cut -c1-120)
 DLL=libdmcore.windows.template_release.x86_64.dll
 [ -s "$OUT/$DLL" ] || { echo "export produced no $DLL (the combat core)"; exit 1; }
+if [ -n "$TEAM" ]; then
+  MANIFEST=${CLIENT_MANIFEST:-/var/www/death-muffin/client/manifest.json}
+  DIR=$(head -c16 /dev/urandom | od -An -tx1 | tr -d ' \n')
+  DEST="$ROOT/$DIR"
+  mkdir -m 755 "$DEST"
+  for f in DeathMuffinDebug.exe DeathMuffin.pck "$DLL"; do install -m 644 "$OUT/$f" "$DEST/$f"; done
+  ART_SHA=""
+  if [ -f "$OUT/DeathMuffin.assets.pck" ]; then
+    install -m 644 "$OUT/DeathMuffin.assets.pck" "$DEST/DeathMuffin.assets.pck"
+  else   # the live pack (the manifest's sha256: no 500 MB re-hash), linked from the live client's version folder
+    read -r LIVE_PACK ART_SHA < <(python3 - "$MANIFEST" <<'PY'
+import json, os, sys
+m = json.load(open(sys.argv[1]))
+f = next(x for x in m["files"] if x["path"] == "DeathMuffin.assets.pck")
+print(os.path.join(os.path.dirname(sys.argv[1]), m["version"], "DeathMuffin.assets.pck"), f["sha256"])
+PY
+)
+    [ -s "$LIVE_PACK" ] || { echo "the live art pack is missing ($LIVE_PACK)"; exit 1; }
+    ln "$LIVE_PACK" "$DEST/DeathMuffin.assets.pck" 2>/dev/null || install -m 644 "$LIVE_PACK" "$DEST/DeathMuffin.assets.pck"
+  fi
+  find "$ROOT" -mindepth 1 -maxdepth 1 -type d -regextype posix-extended -regex '.*/[0-9a-f]{32}' -printf '%T@ %p\n' | sort -rn | tail -n +7 | cut -d' ' -f2- | xargs -r rm -rf --
+  python3 - "$DEST" "${DM_TEAM_URL:-https://muffindevelopment.com/death-muffin/team-files}/$DIR" "$ART_SHA" "$DLL" <<'PY'
+import hashlib, json, os, sys
+dest, base, art_sha, dll = sys.argv[1:5]
+def sha(p):
+    h = hashlib.sha256()
+    with open(p, "rb") as f:
+        for b in iter(lambda: f.read(1 << 20), b""):
+            h.update(b)
+    return h.hexdigest()
+out = []
+for name in ("DeathMuffinDebug.exe", "DeathMuffin.pck", dll, "DeathMuffin.assets.pck"):
+    p = os.path.join(dest, name)
+    s = art_sha if (name == "DeathMuffin.assets.pck" and art_sha) else sha(p)
+    e = {"name": name, "url": base + "/" + name, "sha256": s, "bytes": os.path.getsize(p)}
+    if name == "DeathMuffinDebug.exe":
+        e["cacheKey"] = "godot-debug-" + s[:16]   # the debug template: the same every build until Godot changes
+    if name == "DeathMuffin.assets.pck":
+        e["cacheKey"] = "assets-" + s[:16]        # ~500 MB: downloaded once per pack
+    out.append(e)
+print("TEAMFILES: " + json.dumps(out, separators=(",", ":")))
+PY
+  exit 0
+fi
 if [ -f "$OUT/DeathMuffin.assets.pck" ]; then
   printf '@echo off\r\ncd /d "%%~dp0"\r\nDeathMuffin.exe -- --dev-offline\r\n' > "$OUT/Play Preview (offline).bat"
 else   # the live game's art: the launcher's install (Settings.InstallDir: %LOCALAPPDATA%\DeathMuffin\client)

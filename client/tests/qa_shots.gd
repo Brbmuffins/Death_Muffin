@@ -8,7 +8,12 @@ extends SceneTree
 ##     (an unknown id and an item that cannot be worn skipped), the hero's look and the set look at three pieces, the hero healed; per shot the windows (the Reliquary and its tooltip of an item, the Vault in the
 ##     Chapterhouse), the area the hero stands in, the game view (HUD hidden) and the hero close-up (HUD and windows away, the close-up camera, the turn, the pose frozen) and all of it put back after the picture;
 ##   - the scripted fight of the driver on the combat core: a pack of the dead arrives (through the core, as ids) and the rites are cast at the nearest one;
-##   - a real launch (`godot --headless -- --dev-offline --class=2 --qa --shot-plan=...`): the boot starts the driver, which runs the plan and says there is no picture to take without a renderer;
+##   - a QA run takes no focus and no mouse (`DmMain.quiet_window`: the main window's `unfocusable` and `mouse_passthrough`): the flags on a window of its own, and in a real launch the boot's line saying it asked for them
+##     (a headless run has no window to configure, so only the call path is tested), and none from a launch without the QA flags;
+##   - a real launch (`godot --headless -- --dev-offline --class=2 --qa --shot-plan=... --preset=ultra`): the boot starts the driver, which runs the plan, says the run's preset and that there is no picture to take without a renderer,
+##     and leaves the settings file it found as it was;
+##   - `--preset=<low|medium|high|ultra>`: honoured only where the QA tools start (`DmMain.qa_preset`: not online, not in a release build, not without --qa or --shot-plan=), an unknown value ignored with a warning; the
+##     game scene starts with that preset (the HUD's settings too) and DmSettings holds it on loan: never written to the player's file, written back as the player stored it, an explicit different choice saved as usual;
 ##   - tools/qa_shots.sh with a stand-in for godot (nothing is rendered): Forward+ on the software Vulkan driver with the dev-offline launch line, a scratch user folder and the renderer lock held; the OpenGL 3 fallback
 ##     with its line when Vulkan cannot start or is not installed or godot chose OpenGL 3 itself, and none when Vulkan ran and a shot failed; the class from the plan's discipline; the time limit and the scratch folder gone after it; bad arguments;
 ##   - ZERO script errors or engine errors in the log.
@@ -56,6 +61,8 @@ func _main() -> void:
 	boot_hook()
 	await scene_setup()
 	await scripted_fight()
+	settings_loan()
+	await preset_on_game()
 	real_launch()
 	script_flow()
 	for e in errlog.errors:
@@ -148,6 +155,23 @@ func boot_hook() -> void:
 	check(not DmMain.qa_wanted(qa, "dev_offline", false), "never in a release build")
 	check(DmMain.mode_for(qa, false) == "online" and not DmMain.qa_wanted(qa, DmMain.mode_for(qa, false), false), "a release export ignores --dev-offline, so the flags start nothing")
 	check(DmMain.qa_wanted(qa, DmMain.mode_for(qa, true), true), "a debug build's mode for these flags is the one that starts them")
+	var with_preset := PackedStringArray(["--dev-offline", "--class=2", "--qa", "--preset=low"])
+	check(DmMain.qa_preset(with_preset, "dev_offline", true) == "low" and DmMain.qa_preset(PackedStringArray(["--dev-offline", "--shot-plan=/x.json", "--preset=ultra"]), "dev_offline", true) == "ultra",
+		"--preset= is honoured in a QA run (--qa or --shot-plan=)")
+	for id in DmGraphicsPreset.IDS:
+		check(DmMain.qa_preset(PackedStringArray(["--dev-offline", "--qa", "--preset=" + id]), "dev_offline", true) == id, "--preset=%s is a preset" % id)
+	check(DmMain.qa_preset(PackedStringArray(["--dev-offline", "--class=2", "--preset=low"]), "dev_offline", true) == "", "ignored without --qa or --shot-plan=")
+	check(DmMain.qa_preset(with_preset, "online", true) == "" and DmMain.qa_preset(with_preset, "test", true) == "" and DmMain.qa_preset(with_preset, "benchmark", true) == "", "ignored on an online start, a test's and the benchmark's")
+	check(DmMain.qa_preset(with_preset, "dev_offline", false) == "" and DmMain.qa_preset(with_preset, DmMain.mode_for(with_preset, false), false) == "", "ignored in a release build, which does not even start the dev-offline backend")
+	check(DmMain.qa_preset(PackedStringArray(["--dev-offline", "--qa"]), "dev_offline", true) == "", "no flag, no preset: the player's own setting is the game's")
+	for bad in ["--preset=", "--preset=max", "--preset=LOW", "--preset=low ", "--preset=1", "--preset"]:
+		check(DmMain.qa_preset(PackedStringArray(["--dev-offline", "--qa", bad]), "dev_offline", true) == "", "an unknown value (%s) is ignored" % bad)
+	var win := Window.new()   # a window of its own: the flags a QA run puts on the main window, read back from the node (a headless display server has none to read)
+	check(not win.unfocusable and not win.mouse_passthrough, "a window takes focus and the mouse by default")
+	DmMain.quiet_window(win)
+	check(win.unfocusable and win.mouse_passthrough, "the QA run's window takes no focus and passes the mouse through")
+	DmMain.quiet_window(null)
+	win.free()
 	var m := DmMain.new()
 	m.start_qa()
 	var d := m.get_node_or_null("Driver")
@@ -322,6 +346,83 @@ func scripted_fight() -> void:
 	qa.free()
 
 
+# ------------------------------------------------------------------------------------------------------------------ the preset flag
+
+func _read_json(path: String) -> Dictionary:
+	var raw: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	return raw if typeof(raw) == TYPE_DICTIONARY else {}
+
+
+## DmSettings.session_set: the preset reads as chosen, and what the player stored is what stays in their file.
+func settings_loan() -> void:
+	var path := ProjectSettings.globalize_path(OUT.path_join("loan_settings.json"))
+	var stored := DmSettings.defaults()
+	stored["graphics"] = "medium"
+	stored["graphics_chosen"] = true
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	f.store_string(JSON.stringify(stored))
+	f.close()
+	var s := DmSettings.new(path, true)
+	var seen := [0]
+	s.changed.connect(func(_v: Dictionary) -> void: seen[0] += 1)
+	check(s.values["graphics"] == "medium", "the player's file is read (medium)")
+	s.session_set("graphics", "ultra", false)
+	check(s.values["graphics"] == "ultra" and seen[0] == 0, "the loan reads as the preset, and says nothing while the game is built")
+	s.update({"brightness": 1.1})
+	var saved := _read_json(path)
+	check(saved.get("graphics") == "medium" and absf(float(saved.get("brightness", 0.0)) - 1.1) < 0.001 and bool(saved.get("graphics_chosen")), "another setting is saved, and the file still holds the player's medium, not the loan")
+	check(s.values["graphics"] == "ultra" and seen[0] == 1, "the game keeps reading the preset after that save")
+	var echo := s.values.duplicate()   # the Settings panel hands every key back
+	echo["vol_master"] = 0.3
+	s.update(echo)
+	saved = _read_json(path)
+	check(saved.get("graphics") == "medium" and absf(float(saved.get("vol_master", 0.0)) - 0.3) < 0.001 and s.values["graphics"] == "ultra", "a whole-dictionary update with the loan's own value saves the others and still not the loan")
+	s.session_set("graphics", "low")
+	check(s.values["graphics"] == "low" and seen[0] == 3, "a second loan replaces the first and announces itself")
+	s.update({"brightness": 1.2})
+	check(_read_json(path).get("graphics") == "medium", "and the player's value is still what is saved")
+	s.update({"graphics": "high"})
+	saved = _read_json(path)
+	check(s.values["graphics"] == "high" and saved.get("graphics") == "high" and bool(saved.get("graphics_chosen")), "choosing another preset in Settings is the player's own choice: it is saved")
+	s.update({"brightness": 1.0})
+	check(s.values["graphics"] == "high" and _read_json(path).get("graphics") == "high", "and the loan is over")
+	var again := DmSettings.new(path, true)
+	check(again.values["graphics"] == "high", "the next start reads what the player chose")
+	var fresh := DmSettings.new(ProjectSettings.globalize_path(OUT.path_join("loan_none.json")), true)
+	fresh.session_set("graphics", "low", false)
+	check(not FileAccess.file_exists(ProjectSettings.globalize_path(OUT.path_join("loan_none.json"))), "a loan alone writes no file")
+	fresh.update({"fps": 30})
+	check(_read_json(ProjectSettings.globalize_path(OUT.path_join("loan_none.json"))).get("graphics") == DmGraphicsPreset.DEFAULT, "and a file made after it holds the default, not the preset")
+
+
+## The game scene with `opts.qa_preset` (what DmMain puts in start_opts): the preset is in force from the start, the HUD's settings read it, and it is on loan, not stored.
+func preset_on_game() -> void:
+	g.process_mode = Node.PROCESS_MODE_DISABLED
+	g.queue_free()
+	await process_frame
+	var mock := DmOffline.make_mock("")
+	var api := DmOffline.make_api(mock)
+	var reg := await api.register("qapreset%d" % (Time.get_ticks_usec() % 100000), "q@example.com", "pw1234")
+	api.set_token(reg.data["token"])
+	var ch := await api.load_or_create_character(2)
+	var p: DmNextGame = load("res://next/next_game.tscn").instantiate()
+	p.name = "NextGame"
+	root.add_child(p)
+	await p.start(ch.data, api, {"areas": ["graves"], "name": "tester", "hud": true, "audio": false, "seed": 20261016, "waves": false, "wander": false, "persist": false, "settings": {"graphics": "high"}, "qa_preset": "low"})
+	check(p.ready_ and p.perf != null and p.ui_host != null, "the game starts with the flag's preset")
+	check(p.perf.preset == "low", "the preset in force is the flag's (low), not the setting the game was given (high): %s" % p.perf.preset)
+	check(String(p.ui_host.settings["graphics"]) == "low", "the HUD's settings read the preset too, so the Settings window shows it and nothing puts the old one back")
+	var low: Dictionary = DmGraphicsPreset.get_preset("low")
+	var vp := p.get_viewport()
+	check(p.world.builder.moon.shadow_enabled == bool(low["shadows"]) and not p.world.builder.moon.shadow_enabled and is_equal_approx(p.perf.governor.floor_scale, float(low["floor"]))
+		and vp.msaa_3d == DmGraphicsPreset.msaa_mode(int(low["msaa"])), "and the scene is Low's: no moon shadow, Low's resolution floor")
+	p.ui_host.settings_store.update({"brightness": 1.0})
+	check(p.perf.preset == "low", "a later settings change keeps the preset")
+	p.process_mode = Node.PROCESS_MODE_DISABLED
+	p.queue_free()
+	await process_frame
+
+
 # ------------------------------------------------------------------------------------------------------------------ a real launch
 
 ## `godot --headless -- --dev-offline --class=2 --no-waves --qa --shot-plan=... --shots=...` as the script starts it, without a renderer: the boot starts the driver, which runs the plan.
@@ -333,9 +434,16 @@ func real_launch() -> void:
 	f.close()
 	var data := ProjectSettings.globalize_path(OUT.path_join("launch_xdg"))
 	DirAccess.make_dir_recursive_absolute(data)
+	# the player's settings file the launch finds (the child's user folder is under its XDG_DATA_HOME): medium, chosen
+	var user_dir := data.path_join("godot/app_userdata").path_join(String(ProjectSettings.get_setting("application/config/name")))
+	DirAccess.make_dir_recursive_absolute(user_dir)
+	var settings_file := user_dir.path_join("dm_settings_v2.json")
+	var sf := FileAccess.open(settings_file, FileAccess.WRITE)
+	sf.store_string('{"graphics":"medium","graphics_chosen":true}')
+	sf.close()
 	var out: Array = []
 	var code := OS.execute("env", ["XDG_DATA_HOME=" + data, "XDG_CONFIG_HOME=" + data, OS.get_executable_path(), "--headless", "--fixed-fps", "60", "--path", ProjectSettings.globalize_path("res://"), "--",
-		"--dev-offline", "--class=2", "--no-waves", "--qa", "--shot-plan=" + plan_file, "--shots=" + shots], out, true)
+		"--dev-offline", "--class=2", "--no-waves", "--qa", "--shot-plan=" + plan_file, "--shots=" + shots, "--preset=ultra"], out, true)
 	var text := "\n".join(PackedStringArray(out))
 	check(code == 1, "a launch with no renderer ends with exit code 1, its pictures missing (%d)" % code)
 	check(text.contains("QA-SHOTS shot FAILED " + shots + "/bag.png") and text.contains("QA-SHOTS shot FAILED " + shots + "/hero.png") and text.contains("QA-SHOTS shot FAILED " + shots + "/away.png"), "the boot started the driver, which ran the three shots of the plan")
@@ -343,6 +451,16 @@ func real_launch() -> void:
 	check(text.contains("QA-SHOTS window did not open: vault (the Vault opens only in the Chapterhouse") and text.count("QA-SHOTS window did not open") == 1, "a window that does not open (the Vault in the Graves) is said, once")
 	check(not text.contains("SCRIPT ERROR") and not text.contains("Parse Error"), "no script error in the launch")
 	check(DirAccess.get_files_at(shots).is_empty(), "no picture was written")
+	check(text.contains("QA-SHOTS preset ultra ") and not text.contains("QA-SHOTS warning"), "the driver says the run has the flag's preset (ultra), with no warning")
+	check(text.contains("QA-SHOTS window: takes no focus and passes the mouse through"), "the boot put the QA run's window on no focus and mouse passthrough (the call path: a headless run has no window to configure)")
+	# a launch without the QA flags (a debug build reaching its first screen) leaves the window alone
+	var plain: Array = []
+	var plain_code := OS.execute("env", ["XDG_DATA_HOME=" + data, "XDG_CONFIG_HOME=" + data, OS.get_executable_path(), "--headless", "--fixed-fps", "60", "--path", ProjectSettings.globalize_path("res://"), "--",
+		"--dev-offline", "--boot-smoke", "--preset=low"], plain, true)
+	var plain_text := "\n".join(PackedStringArray(plain))
+	check(plain_code == 0 and plain_text.contains("BOOT OK") and not plain_text.contains("QA-SHOTS"), "a launch without --qa or --shot-plan= starts none of it (no window line, no preset, even with --preset=): it reaches its first screen (%d)" % plain_code)
+	check(FileAccess.file_exists(user_dir.path_join("dm_dev_offline_db.json")), "(the launch's user folder is the one the settings file was put in: its offline backend saved there)")
+	check(FileAccess.file_exists(settings_file) and FileAccess.get_file_as_string(settings_file) == '{"graphics":"medium","graphics_chosen":true}', "and the player's settings file is as the launch found it: nothing was saved")
 
 
 # ------------------------------------------------------------------------------------------------------------------ the script

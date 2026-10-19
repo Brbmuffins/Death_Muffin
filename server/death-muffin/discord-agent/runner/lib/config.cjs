@@ -47,6 +47,12 @@ const DEFAULTS = {
   // Playable preview of each proposal (offline edition build, see preview.sh). previewCmd (tests) replaces preview.sh.
   previewRoot: '/var/www/death-muffin/preview',
   previewUrl: 'https://muffindevelopment.com/death-muffin/preview/',
+  // Team PC pictures (godot mode): after a proposal with pictures, a team PC online renders the same shot plan on Low and Ultra (teamShots: false = off).
+  // teamApi: the backend the runner reaches /internal/team on ('' = off); teamResultsDir: where the backend keeps the uploaded pictures; teamBuildCmd and
+  // teamLabelCmd (tests) replace preview-godot.sh --team and label-shot.py; teamPollMs: how often the job is checked.
+  teamShots: true,
+  teamApi: 'http://127.0.0.1:5190',
+  teamResultsDir: '/home/ubuntu/death-muffin/team-results',
   // After a PC ship goes live, ship.sh best-effort merges master into this branch and publishes phones + the offline edition (empty = off).
   mobileBranch: 'mobile',
   mobileDeployScript: 'server/death-muffin/deploy-mobile.sh',

@@ -15,6 +15,8 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
+# team-jobs.cjs stores the team app's result pictures here (README "Team jobs"); the folder must exist before the service starts, `-` lets it start without
+ReadWritePaths=-/home/ubuntu/death-muffin/team-results
 
 [Install]
 WantedBy=multi-user.target

@@ -195,17 +195,26 @@ tooltip, dresses the hero in gear and saves one PNG a shot. The driver is `main/
 ```
 bash client/tools/qa_shots.sh <plan.json> <out_dir> [class]                                         # on the VPS: PNGs in <out_dir>/<shot name>.png; class 1-4 or 11, default the plan's `discipline`, else 2
 godot --path client -- --dev-offline --class=2 --qa --shot-plan=/abs/plan.json --shots=/abs/dir    # the launch line itself (it needs a screen); --qa alone plays a scripted fight in the Graves (--seconds=N)
+godot --path client -- --dev-offline --class=2 --qa --shot-plan=/abs/plan.json --shots=/abs/dir --preset=low    # the same on the Low preset (low, medium, high or ultra), as a team PC takes a proposal's pictures
 ```
 
 - **Launch:** `DmMain.start_qa` starts the driver (its child `Driver`) for `--qa` or `--shot-plan=` on a `--dev-offline` start of a debug build only (`DmMain.qa_wanted`; a release export ignores `--dev-offline`). It is loaded by path,
   so no other start compiles it, and the project file lists no autoload for it: `client/project.godot` is an input of the art pack's fingerprint, and an edit there makes every player download the art again. `--shots=<dir>`
   defaults to `shots/` in the repository (ignored by git). Lines start with `QA-SHOTS`; exit code 0 = every picture written, 1 = one was not (a headless run draws nothing), 2 = a refused plan or no game.
+- **Preset:** `--preset=<low|medium|high|ultra>` puts the run on that graphics preset from the game's start, as if it had been chosen in Settings (the team app takes a proposal's pictures on Low and on Ultra). It is honoured only where
+  the QA tools start (`DmMain.qa_preset`: a debug build on the dev-offline backend with `--qa` or `--shot-plan=`); an online start, a release export or a launch without those flags ignores it, and an unknown value is ignored with a
+  `QA-SHOTS warning:` line. The preset is never saved: the game scene takes it from `opts.qa_preset`, and the HUD's `DmSettings` holds it on loan (`session_set`), so the player's settings file keeps what the player stored (only an explicit
+  different choice in Settings is saved). The driver prints `QA-SHOTS preset <id>` once the game is up.
+- **No keyboard, no mouse:** a QA run never takes either from the person at the PC (a team PC runs it while its owner works): the boot sets the main window to take no focus (`unfocusable`, `WINDOW_FLAG_NO_FOCUS`) and to pass
+  mouse events through (`mouse_passthrough`, `WINDOW_FLAG_MOUSE_PASSTHROUGH`) in `DmMain.quiet_window`, only where the QA tools start, and says so in a `QA-SHOTS window:` line. The plan needs no real mouse (it opens windows through the
+  HUD's own calls and fakes its hover). A headless run has no window to configure, so the test checks the call path (the flags on a window of its own, the boot's line, no line without the QA flags), not that Windows honours them; that is
+  confirmed on a team PC.
 - **Plan:** the agent's (`server/death-muffin/discord-agent/PROMPT-godot.md` "Screenshots"; the header of `main/qa_ui_shots.gd`). `DmQaUiShots` cuts a run into `prepare` (the bag, the gear worn), `stage` (area, windows, view, tooltip) and
   `capture` (the picture, its crop), so a plan's set-up is tested without a renderer.
 - **Script:** Forward+ on the software Vulkan driver (lavapipe), `xvfb-run`, `nice -n 10`, one renderer at a time (it waits up to 15 minutes for `qa-browser.lock`), 10 minutes at most, a scratch user folder. If Vulkan cannot start, the
   run is repeated on OpenGL 3 and a line says the pictures use the fallback renderer (not the game's look). It needs `client/setup.sh` once per checkout (the baked crowd only for a plan with enemies). Two shots took 4 min 43 s on
   2026-10-18, most of it the world's start. `DM_QA_LOG=<file>` keeps godot's log; `--help` lists the rest.
-- **Test:** `tests/qa_shots.gd` (headless, about 30 s): the plan, a plan's set-up on the game scene, the scripted fight, a real headless launch, and the script against a stand-in for godot (the fallback, the lock, the time limit).
+- **Test:** `tests/qa_shots.gd` (headless, about 30 s): the plan, a plan's set-up on the game scene, the scripted fight, the preset flag (where it counts, the loan that is never saved, a game scene started on it), a real headless launch, and the script against a stand-in for godot (the fallback, the lock, the time limit).
 
 ## Grave Surges
 

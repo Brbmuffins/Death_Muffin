@@ -1161,6 +1161,59 @@ test('godot mode (beforeShots on): the proposal goes out at once with the AFTER 
   assert.deepEqual(p2.payload.files.map((f) => f.name), ['a.png']); assert.ok(!p2.payload.embeds[0].fields.some((f) => f.name === 'Pictures'));
 });
 
+test('godot mode: a team PC online renders the proposal\'s shot plan on Low and Ultra through the backend\'s internal team routes; nobody online = no build', async () => {
+  const http = require('http'), os = require('os');
+  const results = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-team-'));
+  const secretFile = path.join(results, 'secret'); fs.writeFileSync(secretFile, 'test-team-secret-0123456789');
+  const seen = [], jobs = {}; let pcs = [];
+  const srv = http.createServer((req, res) => {
+    let body = ''; req.on('data', (c) => { body += c; });
+    req.on('end', () => {
+      seen.push({ line: `${req.method} ${req.url}`, secret: req.headers['x-team-secret'] });
+      const send = (data) => { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ success: true, data })); };
+      if (req.url === '/internal/team/pcs') return send({ pcs });
+      if (req.method === 'POST' && req.url === '/internal/team/jobs') {
+        const id = 'abcdef012345'; jobs[id] = JSON.parse(body);
+        fs.mkdirSync(path.join(results, id), { recursive: true });
+        for (const n of ['ultra_a.png', 'low_a.png']) fs.writeFileSync(path.join(results, id, n), `PNG-${n}`);
+        return send({ id });
+      }
+      const m = /^\/internal\/team\/jobs\/([0-9a-f]{12})$/.exec(req.url);
+      if (m) return send({ id: m[1], status: 'done', claimedPc: 'pc-war-0001', files: ['ultra_a.png', 'low_a.png', '../evil.png'].map((n) => ({ name: n, path: path.join(results, m[1], n) })) });
+      res.statusCode = 404; res.end('{}');
+    });
+  });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  try {
+    const marker = path.join(results, 'built');
+    const w = godotWorld({ teamApi: `http://127.0.0.1:${srv.address().port}`, teamResultsDir: results, secretFile, teamPollMs: 50,
+      teamLabelCmd: 'cd "$1/.dm-shots" && for f in .raw/*.png; do { printf "LABELLED:"; cat "$f"; } > "$(basename "$f")"; done',
+      teamBuildCmd: `echo "$1" >> ${marker}; echo 'TEAMFILES: [{"name":"DeathMuffin.pck","url":"https://example.test/death-muffin/team-files/x/DeathMuffin.pck","sha256":"${'a'.repeat(64)}","bytes":1}]'` });
+    const d = makeDiscord(w.runner);
+    // nobody online: the runner asks, then builds nothing
+    const t1 = await request(d, IDS.HELIX, 'GD-GAMEPLAY SHOT-PNG make it faster and show it');
+    await waitProposal(d, t1.thread);
+    await until(() => seen.some((x) => x.line === 'GET /internal/team/pcs'), d.ad);
+    await until(() => !Object.values(w.runner.jobs())[0].running, d.ad);
+    assert.ok(!fs.existsSync(marker), 'no team build without a team PC');
+    // a team PC online: the build, the job, then the pictures (Low first; a path outside the job's results folder is dropped)
+    pcs = [{ pcId: 'pc-war-0001', username: 'bogar1', name: 'WAR-PC', gpu: 'Intel Arc B580', mode: 'ask', state: {} }];
+    const t2 = await request(d, IDS.HELIX, 'GD-DOC SHOT-PNG clarify the readme and show it');
+    await waitProposal(d, t2.thread);
+    const pic = await until(() => t2.thread.sent.find((m) => m.payload && /real graphics card/.test(m.payload.content || '')), d.ad);
+    assert.deepEqual(pic.payload.files.map((f) => f.name), ['low-a.png', 'ultra-a.png']);
+    assert.equal(pic.payload.files[0].attachment.toString(), 'LABELLED:PNG-low_a.png', 'posted only after the label step');
+    assert.match(pic.payload.content, /bogar1's PC, Intel Arc B580/);
+    const job = jobs.abcdef012345;
+    assert.equal(job.kind, 'shots'); assert.deepEqual(job.payload.presets, ['low', 'ultra']);
+    assert.deepEqual(job.payload.args, ['--dev-offline', '--class=2', '--qa']);
+    assert.equal(job.payload.files[0].name, 'DeathMuffin.pck'); assert.equal(typeof job.payload.plan, 'object');
+    assert.equal(fs.readFileSync(marker, 'utf8').trim(), Object.values(w.runner.jobs()).find((j) => j.threadId === t2.thread.id).id, 'built once, for the job with a PC online');
+    assert.ok(seen.every((x) => x.secret === 'test-team-secret-0123456789'), 'every call carries the secret');
+    assert.match(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /"event":"team-shots".*"ok":true/);
+  } finally { srv.close(); }
+});
+
 test('godot mode: if the live client revision cannot be read, nothing is pushed or published and no backup is left; a first publish (no manifest) goes live with no rollback', async () => {
   const w = godotWorld(); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY faster');

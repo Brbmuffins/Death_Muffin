@@ -1,6 +1,7 @@
 extends Node
 ## QA driver, started by the boot (`DmMain.start_qa`, a child named Driver) only for a dev-offline run with `-- --qa` or `-- --shot-plan`: a release export never honours a testing flag, and no other start
-## compiles this script (it names most of the game). Inactive unless the game is started with user args:  -- --qa [--shots=<dir>] [--seconds=N] [--shot-plan=<plan.json>]
+## compiles this script (it names most of the game). Inactive unless the game is started with user args:  -- --qa [--shots=<dir>] [--seconds=N] [--shot-plan=<plan.json>] [--preset=<low|medium|high|ultra>]
+## (`--preset=` is read by the boot, `DmMain.qa_preset`, and applied by the game scene; the driver only says which preset the run has.)
 ## Launch it with the dev-offline quick start (`--dev-offline --class=2`, or its alias `--world-demo`): the game scene (DmNextGame) as the test account `tester`; client/tools/qa_shots.sh renders it.
 ## Default: scripted fight in the Hollow Graves, a wave of the dead around the hero, the real rites cast at the nearest enemy; one
 ## screenshot a second (qa_NN.png); quits N seconds into the fight. With --shot-plan: the UI shot plan (main/qa_ui_shots.gd) instead of the fight.
@@ -51,6 +52,8 @@ func _process(dt: float) -> void:
 		_game_seen = true
 		if nm.ready_:
 			nxt = nm
+			if nm.opts.has("qa_preset"):   # `--preset=` (DmMain.qa_preset): the line the team app's log shows, and the test reads
+				print("QA-SHOTS preset %s (from --preset=, never saved to the player's settings)" % nm.perf.preset)
 			if plan_path == "":
 				t = 0.0   # the fight's clock (its steps, its shots, `seconds`) starts with the game: a slow start no longer spends it
 	elif _game_seen or t > NO_GAME_S:

@@ -1,0 +1,67 @@
+name: Windows team app
+
+# The team app (teamapp/, DECISIONS B54/B55) is for the three team PCs only. This workflow runs its logic tests and builds the zip as a workflow artifact:
+# it publishes nothing (no release, nothing on the game's site). Putting a build where the app's self-update finds it is a separate, manual step.
+on:
+  push:
+    paths:
+      - 'teamapp/**'
+      - '.github/workflows/teamapp-windows.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Logic tests
+        run: dotnet run --project teamapp/tests -c Release
+
+  build:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Read app version
+        id: ver
+        shell: pwsh
+        run: |
+          [xml]$proj = Get-Content teamapp/windows/DeathMuffinTeam.csproj
+          $v = ($proj.Project.PropertyGroup | Where-Object { $_.Version } | Select-Object -First 1).Version
+          if (-not $v) { throw 'No <Version> in DeathMuffinTeam.csproj' }
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Build (Release)
+        run: dotnet build teamapp/windows/DeathMuffinTeam.csproj -c Release
+
+      - name: Package zip
+        shell: pwsh
+        run: |
+          $out = 'teamapp/windows/bin/Release/net48'
+          $stage = 'teamapp-stage'
+          New-Item -ItemType Directory -Force $stage | Out-Null
+          Copy-Item "$out/DeathMuffinTeam.exe" $stage
+          Copy-Item "$out/DeathMuffinTeam.exe.config" $stage -ErrorAction SilentlyContinue
+          Copy-Item teamapp/README.md $stage/README.md
+          Compress-Archive -Path "$stage/*" -DestinationPath DeathMuffinTeam-win-x64.zip -Force
+          (Get-Item DeathMuffinTeam-win-x64.zip).Length
+
+      # An artifact of this run only: not a GitHub release, and nothing players can see.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DeathMuffinTeam-${{ steps.ver.outputs.version }}-win-x64
+          path: DeathMuffinTeam-win-x64.zip
+          retention-days: 30

@@ -1,0 +1,336 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace DeathMuffinTeam.Tests
+{
+    /// <summary>The test harness: Ok / Eq count passes and failures, Done prints the total.</summary>
+    static class T
+    {
+        static int pass, fail;
+        public static void Ok(bool c, string name) { if (c) pass++; else { fail++; Console.WriteLine("FAIL: " + name); } }
+        public static void Eq<X>(X a, X b, string name) { Ok(Equals(a, b), name + " (got " + Show(a) + ", want " + Show(b) + ")"); }
+        public static void Has(string text, string part, string name) { Ok(text != null && text.Contains(part), name + " (\"" + part + "\" not in \"" + Cut(text) + "\")"); }
+        public static void Throws<E>(Action a, string name) where E : Exception
+        {
+            try { a(); Ok(false, name + " (no exception)"); }
+            catch (Exception ex)
+            {
+                Exception inner = ex is AggregateException ? ((AggregateException)ex).Flatten().InnerExceptions.FirstOrDefault() : ex;
+                Ok(inner is E, name + (inner is E ? "" : " (got " + (inner == null ? "nothing" : inner.GetType().Name) + ")"));
+            }
+        }
+        static string Show(object o) { return o == null ? "null" : Cut(o.ToString()); }
+        static string Cut(string s) { s = s ?? "null"; return s.Length > 300 ? s.Substring(0, 300) + "..." : s; }
+        public static int Done() { Console.WriteLine(pass + " passed, " + fail + " failed"); return fail == 0 ? 0 : 1; }
+    }
+
+    static class Util
+    {
+        public static string Sha(byte[] b) { using (var s = SHA256.Create()) return string.Concat(s.ComputeHash(b).Select(x => x.ToString("x2"))); }
+        public static byte[] Blob(int n, int seed) { var r = new Random(seed); var b = new byte[n]; r.NextBytes(b); return b; }
+        public static string TempDir(string tag)
+        {
+            string d = Path.Combine(Path.GetTempPath(), "dmteam-test-" + tag + "-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+            Directory.CreateDirectory(d);
+            return d;
+        }
+        public static void Rm(string dir) { try { Directory.Delete(dir, true); } catch (Exception) { } }
+
+        /// <summary>A valid PNG signature plus an IHDR (not a real picture: the server's checks are not under test here).</summary>
+        public static byte[] FakePng(int seed)
+        {
+            var b = new byte[200];
+            new Random(seed).NextBytes(b);
+            byte[] sig = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+            Array.Copy(sig, b, 8);
+            return b;
+        }
+
+        public static R Wait<R>(Task<R> t) { if (!t.Wait(TimeSpan.FromSeconds(60))) throw new TimeoutException("a test step took more than 60 s"); return t.Result; }
+        public static void Wait(Task t) { if (!t.Wait(TimeSpan.FromSeconds(60))) throw new TimeoutException("a test step took more than 60 s"); }
+    }
+
+    // A file server with Range support and fault injection (the launcher's tests' server, under the job files' path).
+    sealed class TestServer : IDisposable
+    {
+        public readonly HttpListener L = new HttpListener();
+        public readonly Uri SiteBase;
+        public readonly string FilesBase;
+        public readonly Dictionary<string, byte[]> Files = new Dictionary<string, byte[]>();
+        public readonly List<string> RangeHeaders = new List<string>();
+        public readonly Dictionary<string, int> Hits = new Dictionary<string, int>();
+        public readonly Dictionary<string, int> DropFirstAfter = new Dictionary<string, int>();
+        public readonly Dictionary<string, int> CorruptFirst = new Dictionary<string, int>();
+        public bool AlwaysCorrupt;
+        public bool IgnoreRange;
+
+        public TestServer()
+        {
+            int port;
+            using (var s = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0)) { s.Start(); port = ((IPEndPoint)s.LocalEndpoint).Port; s.Stop(); }
+            SiteBase = new Uri("http://127.0.0.1:" + port + "/death-muffin/");
+            FilesBase = SiteBase + "team-files/";
+            L.Prefixes.Add("http://127.0.0.1:" + port + "/");
+            L.Start();
+            Task.Run(Loop);
+        }
+
+        /// <summary>Publishes bytes at team-files/&lt;folder&gt;/&lt;name&gt; and returns its payload entry.</summary>
+        public Dictionary<string, object> Publish(string folder, string name, byte[] data, string cacheKey = null)
+        {
+            Files["death-muffin/team-files/" + folder + "/" + name] = data;
+            var d = new Dictionary<string, object> { { "name", name }, { "url", FilesBase + folder + "/" + name }, { "sha256", Util.Sha(data) }, { "bytes", (double)data.Length } };
+            if (cacheKey != null) d["cacheKey"] = cacheKey;
+            return d;
+        }
+
+        public int HitsFor(string pathPart) { lock (Hits) return Hits.Where(h => h.Key.Contains(pathPart)).Sum(h => h.Value); }
+
+        async Task Loop()
+        {
+            while (L.IsListening)
+            {
+                HttpListenerContext c;
+                try { c = await L.GetContextAsync(); } catch (Exception) { return; }
+                var ignored = Task.Run(() => Handle(c));
+            }
+        }
+
+        void Handle(HttpListenerContext c)
+        {
+            string path = c.Request.Url.AbsolutePath.TrimStart('/');
+            try
+            {
+                byte[] data;
+                lock (Hits) { Hits[path] = Hits.ContainsKey(path) ? Hits[path] + 1 : 1; }
+                if (!Files.TryGetValue(path, out data)) { c.Response.StatusCode = 404; c.Response.Close(); return; }
+                int hit; lock (Hits) hit = Hits[path];
+                string range = c.Request.Headers["Range"];
+                if (range != null) lock (RangeHeaders) RangeHeaders.Add(path + " " + range);
+                long start = 0;
+                if (range != null && !IgnoreRange && range.StartsWith("bytes=") && range.EndsWith("-")) start = long.Parse(range.Substring(6, range.Length - 7));
+                byte[] body = data.Skip((int)start).ToArray();
+                if (AlwaysCorrupt || (CorruptFirst.ContainsKey(path) && hit <= CorruptFirst[path])) body = body.Select(b => (byte)(b ^ 0xFF)).ToArray();
+                c.Response.StatusCode = start > 0 ? 206 : 200;
+                c.Response.ContentLength64 = body.Length;
+                if (DropFirstAfter.ContainsKey(path) && hit == 1)
+                {
+                    int n = DropFirstAfter[path];
+                    c.Response.OutputStream.Write(body, 0, n);
+                    c.Response.OutputStream.Flush();
+                    c.Response.Abort();
+                    return;
+                }
+                c.Response.OutputStream.Write(body, 0, body.Length);
+                c.Response.Close();
+            }
+            catch (Exception) { try { c.Response.Abort(); } catch (Exception) { } }
+        }
+
+        public void Dispose() { try { L.Stop(); L.Close(); } catch (Exception) { } }
+    }
+
+    // ---- The server's team routes, as a stand-in the tests script ------------------------------------------------------------------
+
+    sealed class FakeApi : ITeamApi
+    {
+        public string Token { get; set; }
+        public readonly List<string> Calls = new List<string>();
+        public readonly List<string> Uploaded = new List<string>();
+        public readonly Dictionary<string, byte[]> UploadedBytes = new Dictionary<string, byte[]>();
+        public string DoneLog, FailLog, FailError, DoneJob, FailJob;
+        public IList<string> DoneFiles;
+        public double DoneDownloadS, DoneRunS;
+        public readonly List<string> Declines = new List<string>();
+        public PcState LastState;
+        public OfferMode LastMode;
+        public string LastPcId, LastName, LastVersion, LastGpu, LastClaimToken, LastLoginUser, LastLoginPassword, LastLoginPcId, LastLoginPcName;
+
+        public Func<ApiResult> Login = () => Ok(new Dictionary<string, object> { { "token", "tok-1" }, { "expiresAt", "2027-01-17T12:00:00Z" }, { "accountId", 100.0 }, { "username", "Helix" } });
+        public Func<ApiResult> Logout = () => Ok(new Dictionary<string, object>());
+        public Func<ApiResult> Heartbeat = () => Ok(new Dictionary<string, object> { { "serverTime", "2026-10-19T12:00:00Z" }, { "offer", null } });
+        public Func<string, ApiResult> Claim = id => Ok(new Dictionary<string, object> { { "id", id }, { "kind", "shots" }, { "title", "t" }, { "payload", new Dictionary<string, object>() } });
+        public Func<string, ApiResult> Upload = name => Ok(new Dictionary<string, object> { { "name", name } });
+        public Func<ApiResult> Done = () => Ok(new Dictionary<string, object>());
+        public Func<ApiResult> Fail = () => Ok(new Dictionary<string, object>());
+
+        public static ApiResult Ok(Dictionary<string, object> data) { return new ApiResult { Ok = true, Status = 200, Data = data }; }
+        public static ApiResult Err(int status, string code, string error) { return new ApiResult { Ok = false, Status = status, Code = code, Error = error }; }
+        public static ApiResult NetErr() { return new ApiResult { Ok = false, Network = true, Error = "Could not reach the server. Check the internet connection." }; }
+
+        public static ApiResult OfferReply(string id, string kind = "shots", string title = "Screenshots of a change", int weightS = 60)
+        {
+            return Ok(new Dictionary<string, object>
+            {
+                { "serverTime", "2026-10-19T12:00:00Z" },
+                { "offer", new Dictionary<string, object> { { "id", id }, { "kind", kind }, { "title", title }, { "weightS", (double)weightS }, { "expiresAt", "2026-10-19T13:00:00Z" } } },
+            });
+        }
+
+        void Log(string s) { lock (Calls) Calls.Add(s); }
+        public int Count(string prefix) { lock (Calls) return Calls.Count(c => c.StartsWith(prefix)); }
+
+        public Task<ApiResult> LoginAsync(string u, string p, string pcId, string pcName, CancellationToken ct)
+        {
+            Log("login " + u); LastLoginUser = u; LastLoginPassword = p; LastLoginPcId = pcId; LastLoginPcName = pcName;
+            return Task.FromResult(Login());
+        }
+        public Task<ApiResult> LogoutAsync(CancellationToken ct) { Log("logout " + Token); return Task.FromResult(Logout()); }
+        public Task<ApiResult> HeartbeatAsync(string pcId, string name, string version, string gpu, OfferMode mode, PcState state, CancellationToken ct)
+        {
+            Log("heartbeat"); LastPcId = pcId; LastName = name; LastVersion = version; LastGpu = gpu; LastMode = mode; LastState = state;
+            return Task.FromResult(Heartbeat());
+        }
+        public Task<ApiResult> ClaimAsync(string jobId, string pcId, CancellationToken ct) { Log("claim " + jobId); LastClaimToken = Token; return Task.FromResult(Claim(jobId)); }
+        public Task<ApiResult> DeclineAsync(string jobId, string pcId, string reason, CancellationToken ct) { Log("decline " + jobId + " " + reason); lock (Declines) Declines.Add(jobId + ":" + reason); return Task.FromResult(Ok(new Dictionary<string, object>())); }
+        public Task<ApiResult> UploadAsync(string jobId, string name, byte[] png, CancellationToken ct)
+        {
+            Log("upload " + name);
+            var r = Upload(name);
+            if (r.Ok) { lock (Uploaded) { Uploaded.Add(name); UploadedBytes[name] = png; } }
+            return Task.FromResult(r);
+        }
+        public Task<ApiResult> DoneAsync(string jobId, IList<string> files, string log, double downloadS, double runS, CancellationToken ct)
+        {
+            Log("done " + jobId); DoneJob = jobId; DoneFiles = files.ToList(); DoneLog = log; DoneDownloadS = downloadS; DoneRunS = runS;
+            return Task.FromResult(Done());
+        }
+        public Task<ApiResult> FailAsync(string jobId, string error, string log, CancellationToken ct)
+        {
+            Log("fail " + jobId); FailJob = jobId; FailError = error; FailLog = log;
+            return Task.FromResult(Fail());
+        }
+    }
+
+    // ---- The game, as a stand-in that writes pictures ---------------------------------------------------------------------------------
+
+    sealed class FakeGameHost : IGameHost
+    {
+        public readonly List<GameLaunch> Launches = new List<GameLaunch>();
+        /// <summary>What a run does: gets the launch and its shots folder; returns the exit code, or null to keep running until killed.</summary>
+        public Func<GameLaunch, string, int?> Behaviour;
+        public bool ThrowOnStart;
+        public int Killed;
+        static int nextPid = 5000;
+
+        public FakeGameHost() { Behaviour = (l, dir) => { File.WriteAllBytes(Path.Combine(dir, "bag-open.png"), Util.FakePng(1)); File.WriteAllBytes(Path.Combine(dir, "hero view.png"), Util.FakePng(2)); return 0; }; }
+
+        public static string ShotsDir(GameLaunch l)
+        {
+            string a = l.Args.First(x => x.StartsWith("--shots="));
+            return a.Substring("--shots=".Length);
+        }
+
+        public static string Preset(GameLaunch l) { return l.Args.First(x => x.StartsWith("--preset=")).Substring("--preset=".Length); }
+
+        public IGameProcess Start(GameLaunch l)
+        {
+            if (ThrowOnStart) throw new InvalidOperationException("Access is denied");
+            lock (Launches) Launches.Add(l);
+            string dir = ShotsDir(l);
+            Directory.CreateDirectory(dir);
+            int? code = Behaviour(l, dir);
+            return new FakeProcess(this, Interlocked.Increment(ref nextPid), code);
+        }
+
+        sealed class FakeProcess : IGameProcess
+        {
+            readonly FakeGameHost host;
+            readonly int? code;
+            bool killed;
+            public FakeProcess(FakeGameHost host, int pid, int? code) { this.host = host; Id = pid; this.code = code; }
+            public int Id { get; private set; }
+            public bool HasExited { get { return killed || code.HasValue; } }
+            public int ExitCode { get { return killed ? -1 : code ?? -1; } }
+            public void Kill() { if (!killed) { killed = true; host.Killed++; } }
+            public void Tend() { }
+            public string Output() { return "QA-SHOTS fake game output"; }
+            public void Dispose() { }
+        }
+    }
+
+    sealed class FakeWatch : IPlayerGameWatch
+    {
+        public volatile bool Started;
+        public int Begins;
+        public void Begin() { Begins++; }
+        public bool PlayerStarted(int ownPid) { return Started; }
+    }
+
+    sealed class FakeProtector : ITokenProtector
+    {
+        public bool Fail;
+        public string Protect(string plain) { return Convert.ToBase64String(Encoding.UTF8.GetBytes("protected:" + plain)); }
+        public string Unprotect(string text)
+        {
+            if (Fail) return null;
+            try
+            {
+                string s = Encoding.UTF8.GetString(Convert.FromBase64String(text));
+                return s.StartsWith("protected:") ? s.Substring("protected:".Length) : null;
+            }
+            catch (FormatException) { return null; }
+        }
+    }
+
+    sealed class FakePlatform : ITeamPlatform
+    {
+        public bool IsFullscreen, IsGame, IsBattery;
+        public string Gpu = "NVIDIA GeForce GTX 970";
+        public bool Fullscreen() { return IsFullscreen; }
+        public bool OnBattery() { return IsBattery; }
+        public bool GameRunning() { return IsGame; }
+        public string GpuName() { return Gpu; }
+    }
+
+    sealed class FakeUi : ITeamUi
+    {
+        public readonly List<string> Events = new List<string>();
+        public readonly List<OfferView> Shown = new List<OfferView>();
+        public string Status = "";
+        public StatusLevel Level;
+        public bool BoxVisible;
+        public string SignInReason; public bool SignInOpenNow; public int SignInCalls;
+        public string StoppedMessage;
+        public readonly List<string> Notices = new List<string>();
+
+        public void ShowOffer(OfferView v) { BoxVisible = true; Shown.Add(v); Events.Add("show"); }
+        public void HideOffer() { BoxVisible = false; Events.Add("hide"); }
+        public void SetStatus(string text, StatusLevel level) { Status = text; Level = level; }
+        public void Notify(string title, string text, bool error) { Notices.Add(title + ": " + text); }
+        public void NeedSignIn(string reason, bool openNow) { SignInReason = reason; SignInOpenNow = openNow; SignInCalls++; }
+        public void Stopped(string message) { StoppedMessage = message; }
+    }
+
+    sealed class FakeRunner : IJobRunner
+    {
+        public readonly List<string> Ran = new List<string>();
+        public JobPlan LastPlan;
+        public RunResult Result = new RunResult { Ok = true, Files = new List<string> { "low_a.png" } };
+        public TaskCompletionSource<int> Gate;
+        public CancellationToken LastToken;
+        public Exception Throw;
+
+        public async Task<RunResult> RunAsync(string jobId, JobPlan plan, Action<string> progress, CancellationToken ct)
+        {
+            Ran.Add(jobId);
+            LastPlan = plan;
+            LastToken = ct;
+            progress("running " + jobId);
+            if (Throw != null) throw Throw;
+            if (Gate != null)
+            {
+                var done = await Task.WhenAny(Gate.Task, Task.Delay(Timeout.Infinite, ct)).ConfigureAwait(false);
+                if (ct.IsCancellationRequested) return new RunResult { Ok = false, Error = "stopped: the team app was closed" };
+            }
+            return Result;
+        }
+    }
+}
