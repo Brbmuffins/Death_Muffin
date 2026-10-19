@@ -48,3 +48,27 @@ The last line says what happened, for scripts and logs:
   that changes the lobby's lockfile gets a plain line that its packages are not cached (the sandbox cannot download them).
 - **An import made with the licensed flipbook sheets present** (copied into the effects' sheets folder by a publish,
   `tools/godot/fx-sheets-sync.sh`): the sheets stay out of the shared cache.
+
+## CI is the gate
+
+GitHub CI (`.github/workflows/ci.yml`) runs on every push to every branch: the backend and lobby tests, hygiene, the model check, this
+script's tests, and every game suite split over six machines by their recorded times. A run on `main` is never cancelled; a newer push to a
+branch replaces that branch's older run. Nothing is merged, deployed or published until CI passed it (DECISIONS B59, CLAUDE.md):
+
+```
+tools/check/ci.sh status <rev>                 # passed | failed | pending | none, and the run's link
+tools/check/ci.sh wait <rev> [<minutes>]       # waits (default 60): exit 0 passed, 1 failed or cancelled, 2 no run or out of time
+tools/check/ci.sh failed <rev>                 # the game suites that failed (one per line)
+```
+
+- **A verdict belongs to the files, not the commit.** A run of any commit with exactly the same tree counts, so a fast-forward of `main`, a
+  re-push or a merge that changed nothing never waits for CI again.
+- **One copy of the recent runs for the whole machine** (`~/death-muffin/ci-status/`), refreshed with conditional requests: once a minute
+  without a token (GitHub allows 60 calls an hour), every 15 s with a read-only token in `~/death-muffin/private/github-api-token`.
+- **`deploy-release.sh` and `publish-godot-client.sh` refuse a revision CI has not passed** (judged by that revision's own `ci.sh`; a revision
+  from before the gate has none, so a rollback to an older build still works). While GitHub is down, `DM_CI_GATE=off` deploys or publishes
+  anyway and says so, after the full set ran here (`tools/rebuild/run-client-tests.sh`).
+- **The Discord agent** waits for CI on its proposal's branch instead of checking locally (1 to 3 suites that fail only there get one re-run
+  here), and its ship waits for CI on the merged change before it takes the deploy lock. Approvals that wait for a ship go out with it: one
+  merge, one CI run, one publish; a batch CI fails is shipped one change at a time, so the change that breaks it is the one that comes back.
+  While GitHub is down its config's `ciGate: false` brings back the local check (server/death-muffin/discord-agent/README.md).

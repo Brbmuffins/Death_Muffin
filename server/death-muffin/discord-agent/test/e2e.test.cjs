@@ -2021,3 +2021,59 @@ test('godot mode: a queued ship whose branch moved on is dropped with a note, no
   await until(() => texts(b).some((t) => /Not shipped from the queue: the change moved on/.test(t)), d.ad, 60000);
   assert.equal(shipsLog(w).length, 1);
 });
+
+// ---------- the CI gate (DECISIONS B59): GitHub CI's verdict instead of the local check, and approvals that wait for a ship go out as one ----------
+const { execFileSync } = require('child_process');
+const ciCalls = (w) => { try { return fs.readFileSync(path.join(w.tools, 'ci.calls'), 'utf8').split('\n').filter(Boolean); } catch { return []; } };
+const localChecks = (w) => { try { return fs.readFileSync(path.join(w.tools, 'check-godot.calls'), 'utf8').split('\n'); } catch { return []; } };
+test('CI gate: a proposal pushes its branch and waits for CI on its exact revision; no local check runs; the proposal says CI passed', async () => {
+  const w = godotWorld({ ciGate: true }); const d = makeDiscord(w.runner);
+  const a = (await request(d, IDS.HELIX, 'GD-GAMEPLAY faster')).thread; const pa = await waitProposal(d, a);
+  const job = Object.values(w.runner.jobs()).find((j) => j.threadId === a.id);
+  assert.ok(ciCalls(w).includes(`wait ${job.proposal.head} 50`), 'CI was asked about the proposal\'s revision: ' + ciCalls(w).join(' | '));
+  assert.equal(execFileSync('git', ['-C', w.origin, 'rev-parse', `refs/heads/${job.branch}`], { encoding: 'utf8' }).trim(), job.proposal.head, 'the branch CI tests is on origin');
+  assert.ok(!localChecks(w).some((l) => l === '' ? false : !/^--rerun /.test(l)), 'no local quick or full check: ' + localChecks(w).join(' | '));
+  assert.match(JSON.stringify(pa.payload), /CI — every suite passed/);
+  await d.react(pa, IDS.HELIX, '✅');
+  await until(() => texts(a).some((t) => /Live\. Release/.test(t)), d.ad);
+  assert.ok(ciCalls(w).filter((c) => c.startsWith('wait ')).length >= 2, 'the ship asked CI too (the same files: the proposal\'s verdict)');
+  assert.equal(deploys(w).length, 1);
+});
+test('CI gate: a suite that fails only on CI gets one re-run here before an agent turn, at the proposal and at the ship', async () => {
+  const w = godotWorld({ ciGate: true }); const d = makeDiscord(w.runner);
+  fs.writeFileSync(path.join(w.tools, 'CIFAIL'), '');   // CI fails every revision on `game`; the local re-run passes
+  const a = (await request(d, IDS.HELIX, 'GD-GAMEPLAY faster')).thread; const pa = await waitProposal(d, a);
+  assert.match(JSON.stringify(pa.payload), /CI — passed \(game passed on a re-run\)/);
+  assert.ok(localChecks(w).includes('--rerun game'));
+  await d.react(pa, IDS.HELIX, '✅');
+  await until(() => texts(a).some((t) => /Live\. Release/.test(t)), d.ad);
+});
+test('CI gate: approvals that wait for a ship go out together: one merge, one CI run, one publish, and every thread is told it is live', async () => {
+  const w = godotWorld({ ciGate: true }); const d = makeDiscord(w.runner);
+  const { a, b, c } = await threeApproved(w, d);   // a ships at once; b and c are approved while it runs
+  await until(() => texts(b).some((t) => /Live\. Release/.test(t)) && texts(c).some((t) => /Live\. Release/.test(t)), d.ad);
+  assert.ok(texts(a).some((t) => /Live\. Release/.test(t)));
+  assert.equal(deploys(w).length, 2, 'two publishes for three approvals (a, then b and c together): ' + deploys(w).join(' | '));
+  assert.ok(texts(b).concat(texts(c)).some((t) => /Shipping together with/.test(t)));
+  const jb = Object.values(w.runner.jobs()).find((j) => j.threadId === b.id); const jc = Object.values(w.runner.jobs()).find((j) => j.threadId === c.id);
+  await until(() => jb.status === 'shipped' && jc.status === 'shipped', d.ad);
+  assert.equal(jb.proposal.shipSha, jc.proposal.shipSha, 'one release for both');
+  const main = execFileSync('git', ['-C', w.origin, 'show', 'godot-port:client/net/dm_api.gd'], { encoding: 'utf8' }) + execFileSync('git', ['-C', w.origin, 'show', 'godot-port:client/ui/menu.gd'], { encoding: 'utf8' });
+  assert.match(main, /url=2/); assert.match(main, /title=2/);
+  assert.ok(shipsLog(w).some((s) => s.batchedWith), 'the batch member is in the ships log');
+  assert.ok(!execFileSync('git', ['-C', w.origin, 'branch', '--list', 'ship/*'], { encoding: 'utf8' }).trim(), 'the ship/<job> branch CI tested is removed');
+});
+test('CI gate: a batch that fails CI ships one change at a time, so only the change that breaks it comes back', async () => {
+  const w = godotWorld({ ciGate: true }); const d = makeDiscord(w.runner);
+  // an interaction bug: each change passes on its own, the two together fail (4 suites: too many for a re-run here)
+  fs.writeFileSync(path.join(w.tools, 'CIFAIL'), 'client/ui/menu.gd:title=2\nclient/net/dm_api.gd:url=2\n');
+  fs.writeFileSync(path.join(w.tools, 'CIFAIL_SUITES'), 'game\nrules\nhud\nmenu\n');
+  const { a, b, c } = await threeApproved(w, d);
+  await until(() => texts(b).some((t) => /Live\. Release/.test(t)), d.ad);
+  await until(() => texts(c).some((t) => /Not live: tests failed/.test(t)), d.ad);
+  assert.ok(texts(a).some((t) => /Live\. Release/.test(t)));
+  assert.ok(texts(b).concat(texts(c)).some((t) => /could not ship as one/.test(t)), 'both threads hear why they ship on their own');
+  assert.equal(deploys(w).length, 2, 'a, then b alone: ' + deploys(w).join(' | '));
+  const main = execFileSync('git', ['-C', w.origin, 'show', 'godot-port:client/net/dm_api.gd'], { encoding: 'utf8' });
+  assert.match(main, /url=1/, 'the breaking change did not reach the base branch');
+});

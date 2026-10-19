@@ -12,6 +12,11 @@
 # The Godot publish itself is tried up to 3 times (PUBLISH_RETRY_SLEEPS, default "30 90") before deploy-failed: one-off Godot import crashes heal by themselves.
 # MODE=web (default): deploy-release.sh, then the best-effort mobile step. MODE=godot: check-godot.sh, and the Godot client is published with
 # publish-godot-client.sh after a ROLLBACK.sh for the revision that is live now has been written (see the godot block below). No mobile step.
+# CI_GATE=1 (godot; DECISIONS B59): GitHub CI is the test instead of check-godot.sh. The merged tree is CI's verdict on the proposal when it is the
+# same files; otherwise it is pushed as ship/<job> and CI tests it (CI_SCRIPT, default $TOOLS/ci.sh). The deploy lock is taken only after CI passed,
+# so the wait never blocks another deploy, and the base branch must not have moved meanwhile ("RESULT: master-moved"). BATCH (with CI_GATE): more
+# approved changes, one "<job> <branch> <head> <max tier>" per line, merged after this one, each gated by its own approver's tier; one CI run and one
+# publish for all of them ("BATCH: <job>" for each one the push carried; "RESULT: conflict-batch|gate-batch <job> ..." when one of them stops it).
 set -uo pipefail
 : "${REPO:?}" "${WT_ROOT:?}" "${JOBID:?}" "${LOCK:?}" "${TOOLS:?}" "${CONFIG:?}"
 PUBLISH_ONLY="${PUBLISH_ONLY:-}"
@@ -27,10 +32,15 @@ MODE="${MODE:-web}"
 g() { git -c core.hooksPath=/dev/null "$@"; }
 say() { echo "STEP: $*"; }
 
-exec 9>"$LOCK"
-say "waiting for the deploy lock"
-flock -w "${LOCK_WAIT:-1800}" 9 || { echo "RESULT: lock-timeout"; exit 3; }
-export DEPLOY_LOCK_HELD=1          # deploy-release.sh must not try to take the lock we already hold
+CI_GATE="${CI_GATE:-}"; [ "$MODE" = godot ] && [ -z "$PUBLISH_ONLY" ] || CI_GATE=""
+take_lock() {
+  exec 9>"$LOCK"
+  say "waiting for the deploy lock"
+  flock -w "${LOCK_WAIT:-1800}" 9 || { echo "RESULT: lock-timeout"; exit 3; }
+  export DEPLOY_LOCK_HELD=1          # deploy-release.sh must not try to take the lock we already hold
+}
+[ -n "$CI_GATE" ] || take_lock     # with the CI gate: after CI passed (below)
+drop_ship_branch() { [ -z "$CI_GATE" ] || g -C "$REPO" push -q origin --delete "ship/$JOBID" >/dev/null 2>&1 || true; }
 
 SW="$WT_ROOT/ship-$JOBID"
 cleanup() { g -C "$REPO" worktree remove --force "$SW" >/dev/null 2>&1 || rm -rf "$SW"; g -C "$REPO" worktree prune >/dev/null 2>&1; }
@@ -68,6 +78,51 @@ GATE=$(node "$TOOLS/runner/ship-gate.cjs" "$CONFIG" "$SW" "$OLD" "$MAX_TIER" 2>&
 echo "$GATE"
 [ $GRC -eq 0 ] || { echo "RESULT: gate $(echo "$GATE" | tail -1)"; exit 8; }
 
+# the other approved changes of the batch, each merged and gated on its own diff with its own approver's tier
+BATCHED=""
+if [ -n "$CI_GATE" ] && [ -n "${BATCH:-}" ]; then
+  while read -r BID BBR BHEAD BTIER; do
+    [ -n "$BID" ] || continue
+    [[ "$BID" =~ ^[A-Za-z0-9-]+$ && "$BBR" =~ ^[A-Za-z0-9._/-]+$ && "$BBR" != -* && "$BHEAD" =~ ^[0-9a-f]{40}$ && "$BTIER" =~ ^[a-z]+$ ]] || { echo "RESULT: bad-config batch entry"; exit 2; }
+    BNOW=$(g -C "$REPO" rev-parse -q --verify "refs/heads/$BBR") || { echo "RESULT: head-moved $BID branch missing"; exit 5; }
+    [ "$BNOW" = "$BHEAD" ] || { echo "RESULT: head-moved $BID $BNOW"; exit 5; }
+    PREV=$(g rev-parse HEAD)
+    say "merging $BBR ($BID) into the batch"
+    if ! g merge -q --no-ff -m "Merge $BBR" "$BHEAD" >/dev/null 2>&1; then
+      FILES=$(g diff --name-only --diff-filter=U | head -10 | paste -sd, -); g merge --abort >/dev/null 2>&1
+      echo "RESULT: conflict-batch $BID ${FILES}"; exit 7
+    fi
+    BG=$(node "$TOOLS/runner/ship-gate.cjs" "$CONFIG" "$SW" "$PREV" "$BTIER" 2>&1) || { echo "$BG"; echo "RESULT: gate-batch $BID $(echo "$BG" | tail -1)"; exit 8; }
+    BATCHED="$BATCHED $BID"
+  done <<<"$BATCH"
+  SHA=$(g rev-parse HEAD)
+fi
+
+if [ -n "$CI_GATE" ]; then
+  CIS="${CI_SCRIPT:-$TOOLS/ci.sh}"; TL="$TOOLS/state/ship-$JOBID.tests.log"; : >"$TL"
+  if [ -z "$BATCHED" ] && [ "$(g rev-parse HEAD^{tree})" = "$(g rev-parse "$EXPECT_HEAD^{tree}")" ]; then
+    CIREV="$EXPECT_HEAD"; say "CI: the merged tree is exactly the proposal's"
+  else
+    CIREV="$SHA"; say "pushing the merged change for CI (ship/$JOBID)"
+    g push -q -f origin "HEAD:refs/heads/ship/$JOBID" >/dev/null 2>&1 || { echo "RESULT: master-moved (ship/$JOBID could not be pushed)"; exit 10; }
+  fi
+  say "waiting for CI on ${CIREV:0:12}"
+  CIOUT=$(bash "$CIS" wait "$CIREV" "${CI_WAIT_MIN:-50}" 2>&1); CIRC=$?
+  echo "CI: $(echo "$CIOUT" | tail -1)" | tee -a "$TL"
+  if [ $CIRC -eq 1 ]; then
+    FAILED=$(bash "$CIS" failed "$CIREV" 2>/dev/null | grep -E '^[A-Za-z0-9_/-]+$' | sort -u || true)
+    # 1-3 failing suites get one re-run here (GitHub's machines are shared too), as the runner does before a proposal; anything else stops the ship
+    if [ -n "$FAILED" ] && [ "$(echo "$FAILED" | grep -c .)" -le 3 ] && { echo "== re-running $(echo $FAILED) here"; "$TOOLS/check-godot.sh" --rerun "$(echo "$FAILED" | paste -sd, -)"; } >>"$TL" 2>&1; then
+      echo "tests: $(echo $FAILED) failed on CI and passed on a re-run here"
+    else
+      for f in $FAILED; do echo "$f (CI) exit=1"; done
+      drop_ship_branch; echo "RESULT: tests-failed CI on ${CIREV:0:12}: $(echo "$CIOUT" | tail -1)"; exit 9
+    fi
+  elif [ $CIRC -ne 0 ]; then drop_ship_branch; echo "RESULT: ci-unavailable $(echo "$CIOUT" | tail -1)"; exit 9; fi
+  take_lock
+  g -C "$REPO" fetch -q origin || { drop_ship_branch; echo "RESULT: fetch-failed"; exit 4; }
+  [ "$(g -C "$REPO" rev-parse "origin/$BASE_BRANCH")" = "$OLD" ] || { drop_ship_branch; echo "RESULT: master-moved"; exit 10; }
+else
 say "running tests on the merged tree"
 # Dev build (owner, 2026-10-10: tests were costing too much time): the ship runs the QUICK check (the suites the change can affect plus a smoke
 # set) on the merged tree; only a sensitive-tier change (server, net, login/session/save, scripts) gets the FULL suite.
@@ -90,6 +145,7 @@ elif ! "$CHECK" "${CHECK_ARGS[@]}" >"$TOOLS/state/ship-$JOBID.tests.log" 2>&1; t
     echo "tests: $(echo $FLAKY) failed once and passed on a re-run"
   else grep -vE ' exit=0 ' "$TL" | tail -25; echo "RESULT: tests-failed"; exit 9; fi
 fi
+fi   # (end of the local check; CI_GATE uses CI's verdict instead)
 fi   # (end of the normal ship's merge/gate/tests; PUBLISH_ONLY skips them: that commit was tested and pushed by the ship that failed to publish)
 
 # ---- godot: get the rollback ready BEFORE anything is pushed or published (a failure here leaves everything as it was) ----
@@ -132,8 +188,10 @@ fi
 
 if [ -z "$PUBLISH_ONLY" ]; then
 say "pushing $BASE_BRANCH"
-if ! g push -q origin "HEAD:refs/heads/$BASE_BRANCH" 2>/tmp/ship-push.$$; then tail -3 /tmp/ship-push.$$; rm -f /tmp/ship-push.$$; [ -n "$BK" ] && abandon_backup; echo "RESULT: master-moved"; exit 10; fi
+if ! g push -q origin "HEAD:refs/heads/$BASE_BRANCH" 2>/tmp/ship-push.$$; then tail -3 /tmp/ship-push.$$; rm -f /tmp/ship-push.$$; [ -n "$BK" ] && abandon_backup; drop_ship_branch; echo "RESULT: master-moved"; exit 10; fi
 rm -f /tmp/ship-push.$$
+drop_ship_branch
+for b in $BATCHED; do echo "BATCH: $b"; done
 fi
 if [ -n "$DOCS_ONLY" ]; then echo "RESULT: docs ${SHA:0:12}"; exit 0; fi   # documents only: nothing to deploy or publish
 if [ "$MODE" = godot ] && [ -n "$DEFER" ]; then echo "RESULT: merged ${SHA:0:12}"; exit 0; fi   # the next ship (or the runner) publishes it

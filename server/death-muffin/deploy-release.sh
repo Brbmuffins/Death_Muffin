@@ -59,6 +59,17 @@ if [ -z "${ALLOW_BEHIND_MAIN:-}" ]; then
     echo "Refusing to deploy $SHA: it does not contain origin/main ($(git -C "$REPO" rev-parse --short=12 origin/main)). Rebase onto main first (or ALLOW_BEHIND_MAIN=1 for a deliberate rollback)." >&2
     exit 1
   fi
+  # The CI gate (DECISIONS B59): only a revision whose files GitHub CI passed is deployed, judged by that revision's own tools/check/ci.sh
+  # (a revision from before the gate has none). DM_CI_GATE=off only while GitHub is down; a deliberate rollback (ALLOW_BEHIND_MAIN) skips it.
+  if git -C "$REPO" cat-file -e "$SHA:tools/check/ci.sh" 2>/dev/null; then
+    if [ "${DM_CI_GATE:-}" = off ]; then echo "CI gate: off (DM_CI_GATE=off), deploying $SHA without CI's verdict"
+    else
+      CIS=$(mktemp); git -C "$REPO" show "$SHA:tools/check/ci.sh" > "$CIS"
+      V=$(cd "$REPO" && bash "$CIS" status "$SHA" 2>&1 | tail -1); rm -f "$CIS"
+      [ "${V%% *}" = passed ] || { echo "Refusing to deploy $SHA: GitHub CI has not passed it ($V). Push it and wait for tools/check/ci.sh wait $SHA (DM_CI_GATE=off only while GitHub is down)." >&2; exit 1; }
+      echo "CI: passed ($V)"
+    fi
+  fi
 fi
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 CAND="$RUNTIME/deploy/candidate-$SHA"

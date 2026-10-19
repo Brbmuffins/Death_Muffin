@@ -11,9 +11,9 @@ Discord #death-muffin ── Muffin Core bot (user `muffin`, /opt/muffin/discord
 Runner (user `ubuntu`, ~/death-muffin/discord-agent/runner/server.cjs, port 4321)
    allow-list · approver gate · rate limits · audit.jsonl · job queue · tier classifier · proposal builder
    ├─ per request: git worktree + branch discord/<id> from origin/{baseBranch} (`main`), `claude -p` (sandboxed, --resume within a round)
-   ├─ verify (runner code, not the AI): latest base merged in · commits clean · no Co-Authored-By · forbidden paths · secret scan · generated files re-derived · check-godot.sh · tier
+   ├─ verify (runner code, not the AI): latest base merged in · commits clean · no Co-Authored-By · forbidden paths · secret scan · generated files re-derived · GitHub CI on the pushed branch (`ci.sh`; `check-godot.sh` with `ciGate: false`) · tier
    ├─ propose: push branch, embed with tier / files / tests / migrations / compare link, ✅ ❌
-   └─ ship.sh (only after an approver's ✅): deploy lock · merge onto {baseBranch} · re-gate · re-test (skipped when the merged tree is the proposal's) · push · publish-godot-client.sh (deferred when another approved ship waits)
+   └─ ship.sh (only after an approver's ✅): merge onto {baseBranch}, with every other waiting approval (one batch) · re-gate each · CI on the merged change (none needed when it is the proposal's files) · deploy lock · push · publish-godot-client.sh
 ```
 
 ## Mode and branch (`mode` and `baseBranch` in `config.json`, owner-edited)
@@ -22,7 +22,7 @@ The live config must say `"mode": "godot", "baseBranch": "main"` (a restart pick
 retired web mode and defaults to `mode: "web"`, `baseBranch: "master"`. `baseBranch` must match `^[A-Za-z0-9._/-]+$` (not start with `-`, contain `..`, `//`, end in `/` or `.lock`);
 a bad value or mode makes the runner refuse to start. It is used for the worktree base (`origin/<baseBranch>`), `!sync`, the ship merge and push, messages and the compare link.
 
-In godot mode: tests `check-godot.sh` (runner and ship.sh; the agent only `--rerun <suites>`) · preview `preview-godot.sh` (a Windows `.zip`) · screenshots `shot-godot.sh` / `!shot` (or a team PC, no `!shot`)
+In godot mode: tests GitHub CI through `ci.sh` (`tools/check/ci.sh`, installed here; `check-godot.sh` for a re-run of 1-3 suites, the agent's `--rerun <suites>`, and everything with `ciGate: false`) · preview `preview-godot.sh` (a Windows `.zip`) · screenshots `shot-godot.sh` / `!shot` (or a team PC, no `!shot`)
 · prompt `PROMPT-godot.md` · tier rules `godotTiers` (picked into `cfg.tiers` by `loadConfig`) · ship: merge, check-godot, backup + `ROLLBACK.sh`, push,
 `publish-godot-client.sh` · rollback folder `backup-pre-release-godot-<stamp>`.
 
@@ -145,7 +145,19 @@ approval (audit `approved` with `carried: true`; the thread names the files). Ot
 (`carry-refused`). At most 2 carried syncs per human approval. If the base branch moved during the push itself (`master-moved`, nothing
 changed on the branch), the ship is queued again by itself (`auto-reship`, at most twice per proposal).
 
-**Ship speed (owner, 2026-10-10).** The ship's re-test is skipped when the merged tree is exactly the proposal's (main did not move since), which already
+**The CI gate (DECISIONS B59; `ciGate`, default on in godot mode).** `verify` pushes the job's branch and waits for GitHub CI's verdict on its exact
+files (`ci.sh wait <head>`, audit `ci-check`): every suite, the backend and lobby tests, hygiene and the model check; the proposal's "Tests" reads
+`CI — every suite passed (<run link>)`. Failing suites come back from the run's annotations as `<suite> (CI) exit=1` lines, so 1-3 of them get one
+re-run here (`check-godot.sh --rerun`) and the clean-base check works as before; CI failing outside the suites runs the local check to say what it
+is; no verdict at all (GitHub down, `ci-unavailable`) runs the full set here. The ship merges, gates, then takes CI's verdict: on the proposal when the
+merged tree is the same files, else on the merged change pushed as `ship/<job>` (removed afterwards); 1-3 failing suites get one re-run here. Only
+then it takes the deploy lock (the wait never blocks another deploy) and pushes, if the base branch did not move meanwhile (`master-moved`, shipped
+again by itself). **Batch:** approvals that wait for a ship go out with the next one (`BATCH`): each merged and gated with its own approver's tier,
+one CI run, one push, one publish, every thread told it is live (the ships log's `batchedWith`). A batch that cannot ship as one (CI failed, a
+conflict or a gate between its changes; audit `batch-split`) is queued again one change at a time (`solo`), so the one that breaks it comes back
+with the reason. While GitHub is down the owner sets `ciGate: false` in `config.json`: the local check and the backlog below come back.
+
+**Ship speed (owner, 2026-10-10; with `ciGate: false`).** The ship's re-test is skipped when the merged tree is exactly the proposal's (main did not move since), which already
 passed the same quick check; a sensitive change still runs the full suite. **Backlog:** when another approved ship is waiting, the current one merges, tests
 and pushes but does not publish (`DEFER_PUBLISH=1`, `RESULT: merged`; the thread is told it goes live with the next publish). The next publish carries it:
 its notice lists both changes under both titles, and the waiting thread gets "🚀 Live" and closes (`healOtherPublishes`, logged in the ships log with

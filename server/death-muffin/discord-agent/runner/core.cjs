@@ -790,7 +790,7 @@ function createRunner(cfgIn, opts = {}) {
     if (secrets.length) return { ok: false, fixable: true, why: `The secret scan flagged ${secrets.map((s) => s.file).join(', ')}. Remove anything secret-like from the change.` };
     const migrations = G.migrationsFrom(files);
     if (migrations.length && !cfg.allowMigrations) return { ok: false, fixable: false, why: 'This change adds a database migration, which is switched off for this agent.' };
-    let t = await (opts.runChecks || runChecks)(job);
+    let t = await (GODOT && cfg.ciGate ? (opts.ciCheck || ciCheck) : (opts.runChecks || runChecks))(job);
     // A few suites failing (often under load from another ship's client export, even after run-all-tests.sh retried them alone) get ONE more run of
     // just those suites before an agent turn is spent on them. A real failure fails again and goes to the agent as before.
     const flaky = !t.ok && GODOT ? failedSuites(t.tail) : [];
@@ -806,6 +806,33 @@ function createRunner(cfgIn, opts = {}) {
     }
     if (!t.ok) return { ok: false, fixable: true, why: `${CHECK} failed:\n${t.tail}`, tests: t };
     return { ok: true, files, cls, migrations, tests: t, diff, commits };
+  }
+  // Godot with the CI gate (DECISIONS B59): the branch is pushed and GitHub CI's verdict on its exact files is the check (every suite, the backend
+  // and lobby tests, hygiene, the model check). Failing suites come back as the "<suite> <script> exit=1" lines the local check prints, so the
+  // one re-run of a few flaky ones (here) and the clean-base check work as before. CI failing outside the suites: the check here says what it is.
+  // No verdict at all (GitHub down, no run, out of time): the full set here instead (CLAUDE.md).
+  async function ciCheck(job) {
+    const head = await G.head(job.worktree);
+    try { await (opts.pushBranch || G.pushBranch)(cfg, job); } catch (e) { return { ok: false, tail: `The branch could not be pushed for CI: ${clip(e.message, 200)}`, summary: 'CI — the branch could not be pushed' }; }
+    const ci = (args, ms) => G.run('bash', [cfg.ciScript, ...args], { cwd: job.worktree, env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: ms, onSpawn: (pr) => checkProcs.set(job.id, pr) });
+    let r;
+    try { r = await ci(['wait', head, '50'], 55 * 60000); } finally { checkProcs.delete(job.id); }
+    const last = String(r.out || '').trim().split('\n').pop() || ''; const url = (/https?:\/\/\S+/.exec(last) || [''])[0];
+    audit.log('ci-check', { job: job.id, head, code: r.code, url });
+    if (r.code === 0 && !r.timedOut) return { ok: true, tail: '', summary: `CI — every suite passed${url ? ` (${url})` : ''}` };
+    if (r.code === 1) {
+      const f = await ci(['failed', head], 120000);
+      const suites = String(f.out || '').split('\n').map((x) => x.trim()).filter((x) => /^[A-Za-z0-9_/-]+$/.test(x));
+      if (!suites.length) {
+        const t = await runChecks(job);
+        return t.ok ? { ok: false, tail: `CI failed outside the game suites (the backend or lobby tests, hygiene or the model check), and the check here passed: ${url}`, summary: 'CI — FAILED outside the game suites' }
+          : { ...t, summary: `CI FAILED; here: ${t.summary}` };
+      }
+      return { ok: false, tail: [...suites.map((x) => `${x} (CI) exit=1`), `GODOT TESTS: CI (${url}) — ${suites.length} FAILED`].join('\n'), summary: `CI — ${suites.length} FAILED (${suites.join(', ')})` };
+    }
+    audit.log('ci-unavailable', { job: job.id, head, code: r.code });
+    const t = await runChecks(job, ['--full']);
+    return { ...t, summary: `${t.summary} (no verdict from GitHub CI: the full set ran here)` };
   }
   async function runChecks(job, args = []) {
     let r;
@@ -1553,8 +1580,8 @@ function createRunner(cfgIn, opts = {}) {
   function spawnScript(script, env, onLine) {
     return G.run('bash', [script, ...(env.__ARGS || [])], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 60 * 60000 });
   }
-  function startShip(job, approverId) {
-    ship(job, approverId).catch((e) => { setBusy(false); say(job, `Ship crashed: ${e.message}`); audit.log('ship-error', { job: job.id, error: e.message }); if (job.status === 'shipping') { job.status = job.proposal ? 'proposed' : 'idle'; save(); pump(); } })
+  function startShip(job, approverId, batch = []) {
+    ship(job, approverId, batch).catch((e) => { setBusy(false); say(job, `Ship crashed: ${e.message}`); audit.log('ship-error', { job: job.id, error: e.message }); if (job.status === 'shipping') { job.status = job.proposal ? 'proposed' : 'idle'; save(); pump(); } })
       .finally(() => { if (job.deleteRequested) cleanupDeleted(job).then(() => pump()); });
   }
   // Ships merged with DEFER_PUBLISH (another approved ship was waiting): pushed to the base branch, not yet in a published client. The next publish
@@ -1563,11 +1590,14 @@ function createRunner(cfgIn, opts = {}) {
   const releaseTitle = (...titles) => redactText([...deferredJobs().map((j) => j.publishFailed.proposal && j.publishFailed.proposal.title), ...titles].filter(Boolean).filter((t, i, a) => a.indexOf(t) === i).join(' · ')).slice(0, 120);
   // Approved ships waiting for the deploy, oldest approval first (job.shipQueued survives a runner restart in jobs.json).
   function shipQueue() { return Object.values(jobs).filter((j) => j.shipQueued).sort((a, b) => a.shipQueued.at - b.shipQueued.at); }
-  // Ships the oldest queued job that is still exactly what was approved; anything that changed while waiting is dropped with a note.
+  // Ships the oldest queued job that is still exactly what was approved; anything that changed while waiting is dropped with a note. With the CI
+  // gate every other ready approval goes out with it (DECISIONS B59): one merge, one CI run on the combined tree, one publish. `solo` marks the
+  // changes of a batch that could not ship as one: each then ships on its own, so the one that breaks it is the one that comes back.
   function drainShipQueue() {
     if (shipBusy) return;
+    const ready = [];
     for (const job of shipQueue()) {
-      const q = job.shipQueued; job.shipQueued = null; save();
+      const q = job.shipQueued;
       const p = job.proposal;
       const gone = goneThread(job.threadId) || job.deleteRequested || ['discarded', 'deleted', 'shipped'].includes(job.status);
       const why = gone ? 'gone'
@@ -1575,30 +1605,79 @@ function createRunner(cfgIn, opts = {}) {
         : !auth.canApprove(q.approverId, p.tier) ? `${nameOf(q.approverId)} can no longer ship this tier`
         : (!auth.isFull(q.approverId) && auth.shipsToday(q.approverId, readShips()) >= cfg.casualShipsPerDay) ? `that is today's limit of ${cfg.casualShipsPerDay} ships for ${nameOf(q.approverId)}`
         : null;
-      if (why) { audit.log('ship-queue-dropped', { job: job.id, why }); if (!gone) say(job, `Not shipped from the queue: ${why}.`); continue; }
-      audit.log('ship-dequeued', { job: job.id, approver: q.approverId });
-      startShip(job, q.approverId);
+      if (why) { job.shipQueued = null; save(); audit.log('ship-queue-dropped', { job: job.id, why }); if (!gone) say(job, `Not shipped from the queue: ${why}.`); continue; }
+      ready.push({ job, q });
+      if (!(GODOT && cfg.ciGate)) break;   // without the CI gate one ship at a time, the rest stay queued (and see it as waiting: DEFER_PUBLISH)
+    }
+    if (ready.length) {
+      const [lead, ...rest] = ready;
+      const batch = GODOT && cfg.ciGate && !lead.q.solo ? rest.filter((x) => !x.q.solo) : [];
+      const ids = batch.length ? [lead, ...batch].map((x) => x.job.id) : undefined;
+      for (const x of [lead, ...batch]) { x.job.shipQueued = null; audit.log('ship-dequeued', { job: x.job.id, approver: x.q.approverId, ...(ids ? { batch: ids } : {}) }); }
+      save();
+      startShip(lead.job, lead.q.approverId, batch.map((x) => ({ job: x.job, approverId: x.q.approverId })));
       return;
     }
     const d = deferredJobs(); const last = d[d.length - 1];   // nothing left to ship: publish what the batch merged
     if (last && !last.deleteRequested) retryPublish(last, null).catch((e) => { setBusy(false); say(last, `Publish crashed: ${e.message}`); });
   }
-  async function ship(job, approverId) {
+  async function ship(job, approverId, batch = []) {
     setBusy(true, `ship ${job.id}`); job.status = 'shipping'; save();
     const p = job.proposal;
-    const defer = GODOT && shipQueue().some((j) => j !== job);   // another approved ship waits: merge now, one publish for the batch
-    say(job, `Approved by ${nameOf(approverId)}. Shipping: taking the deploy lock, merging onto ${BB}, re-testing, deploying. This takes a few minutes.`);
+    const CI = GODOT && cfg.ciGate;
+    // without the CI gate: another approved ship waits, so merge now and leave the publish to the last one (with it, the batch below does that)
+    const defer = GODOT && !CI && shipQueue().some((j) => j !== job);
+    const titles = [p.title || job.title, ...batch.map((b) => b.job.proposal.title || b.job.title)];
+    say(job, batch.length
+      ? `Approved by ${nameOf(approverId)}. Shipping together with ${batch.length} other approved change${batch.length > 1 ? 's' : ''} (${batch.map((b) => `\`${b.job.id}\``).join(', ')}): one merge onto ${BB}, one CI run, one update for players.`
+      : `Approved by ${nameOf(approverId)}. Shipping: merging onto ${BB}, ${CI ? 'CI on the merged change' : 're-testing'}, deploying. This takes a few minutes.`);
+    for (const b of batch) {
+      b.job.status = 'shipping';
+      say(b.job, `Approved by ${nameOf(b.approverId)}. Shipping together with \`${job.id}\`${batch.length > 1 ? ` and ${batch.length - 1} more` : ''}: one merge onto ${BB}, one CI run, one update for players.`);
+    }
+    save();
+    const migrations = [...new Set([...p.migrations, ...batch.flatMap((b) => b.job.proposal.migrations || [])])];
     const env = { REPO: cfg.repo, WT_ROOT: cfg.worktreeRoot, BRANCH: job.branch, JOBID: job.id, EXPECT_HEAD: p.head, LOCK: lockFile, TOOLS: cfg.toolsDir, CONFIG: cfg.__file || path.join(cfg.toolsDir, 'config.json'),
-      RELEASE_TITLE: releaseTitle(p.title || job.title),   // #build-alerts notice title: the proposal's title (else the thread's name), joined with any batched ships' titles
+      RELEASE_TITLE: releaseTitle(...titles),   // #build-alerts notice title: the proposal's title (else the thread's name), joined with any batched ships' titles
       ...(defer ? { DEFER_PUBLISH: '1' } : {}),
-      MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: p.migrations.join(' '), BASE_BRANCH: BB, MODE: GODOT ? 'godot' : 'web', DEPLOY_DIR: cfg.deployDir, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.backendDeployCmd ? { BACKEND_DEPLOY_CMD: cfg.backendDeployCmd } : {}), ...(cfg.lobbyDeployCmd ? { LOBBY_DEPLOY_CMD: cfg.lobbyDeployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}),
+      ...(CI ? { CI_GATE: '1', CI_SCRIPT: cfg.ciScript } : {}),
+      ...(batch.length ? { BATCH: batch.map((b) => `${b.job.id} ${b.job.branch} ${b.job.proposal.head} ${auth.maxTier(b.approverId) || 'casual'}`).join('\n') } : {}),
+      MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: migrations.join(' '), BASE_BRANCH: BB, MODE: GODOT ? 'godot' : 'web', DEPLOY_DIR: cfg.deployDir, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.backendDeployCmd ? { BACKEND_DEPLOY_CMD: cfg.backendDeployCmd } : {}), ...(cfg.lobbyDeployCmd ? { LOBBY_DEPLOY_CMD: cfg.lobbyDeployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}),
       MOBILE_BRANCH: cfg.mobileBranch === undefined ? 'mobile' : String(cfg.mobileBranch), ...(cfg.mobileDeployScript ? { MOBILE_DEPLOY_SCRIPT: cfg.mobileDeployScript } : {}), ...(cfg.mobileDeployCmd ? { MOBILE_DEPLOY_CMD: cfg.mobileDeployCmd } : {}) };
     let r;
     try { r = await G.run('bash', [path.join(cfg.toolsDir, 'ship.sh')], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 150 * 60000 }); }
     finally { setBusy(false); }
     const out = r.out + r.err; const m = /^RESULT: (\S+)\s*(.*)$/m.exec(out); const kind = m ? m[1] : 'crashed'; const detail = m ? m[2] : '';
-    audit.log('ship-result', { job: job.id, kind, detail, approver: approverId });
+    audit.log('ship-result', { job: job.id, kind, detail, approver: approverId, ...(batch.length ? { batch: batch.map((b) => b.job.id) } : {}) });
     const tail = clip(out.trim().split('\n').slice(-12).join('\n'), 900);
+    if (batch.length) {
+      const merged = new Set([...out.matchAll(/^BATCH: (\S+)$/gm)].map((m) => m[1]));
+      if (kind === 'live' || kind === 'docs') {
+        const [sha, rb] = detail.split(' ');
+        for (const b of batch) if (merged.has(b.job.id)) await shippedWith(b.job, b.approverId, kind, sha, rb, job);
+      } else if (kind === 'deploy-failed' && merged.size) {
+        // pushed with the lead but not published yet: the lead's publish retry carries them (healOtherPublishes closes their threads then)
+        const sha = (detail.split(' ')[0] || '').trim();
+        for (const b of batch) if (merged.has(b.job.id)) {
+          b.job.publishFailed = { sha, proposal: b.job.proposal, approverId: String(b.approverId), at: now(), autoRetried: false, messageId: null, deferred: true };
+          b.job.status = 'idle'; b.job.proposal = null;
+          say(b.job, `Merged into ${BB} with \`${job.id}\`, but publishing the game failed; it goes live with that publish's retry.`);
+        }
+        save();
+      } else {
+        // Nothing reached the base branch: each change ships again, on its own unless only the timing failed, so a change that
+        // breaks the batch is the one that comes back.
+        const again = ['master-moved', 'lock-timeout'].includes(kind) ? {} : { solo: true };
+        for (const x of [{ job, approverId }, ...batch]) {
+          if (x.job.deleteRequested || !x.job.proposal) continue;
+          x.job.status = 'proposed'; x.job.shipQueued = { approverId: String(x.approverId), head: x.job.proposal.head, at: now(), ...again };
+          say(x.job, again.solo ? `The changes approved together could not ship as one (${kind}${detail ? `: ${clip(detail, 200)}` : ''}). Each now ships on its own, so whichever breaks it comes back with the reason.`
+            : `${BB} moved or the deploy was busy, so nothing was pushed. Shipping again by itself.`);
+        }
+        audit.log('batch-split', { job: job.id, kind, batch: batch.map((b) => b.job.id), solo: !!again.solo }); save();
+        setTimeout(() => drainShipQueue(), 0); return;
+      }
+    }
     if (kind === 'merged') {   // DEFER_PUBLISH: on the base branch, live with the next publish
       const sha = detail.split(' ')[0];
       job.publishFailed = { sha, proposal: p, approverId: String(approverId), at: now(), autoRetried: false, messageId: null, deferred: true };
@@ -1642,6 +1721,7 @@ function createRunner(cfgIn, opts = {}) {
       'master-moved': `${BB} moved while I was deploying; nothing was pushed. React ✅ again or say !sync.`,
       'backup-failed': `I could not prepare a rollback for the Godot client, so nothing was pushed or published (${detail}). Ask the owner to look, then react ✅ again.`,
       'lock-timeout': 'another deploy held the lock for too long; nothing was changed. React ✅ again later.',
+      'ci-unavailable': `GitHub CI gave no verdict on the merged change (${detail || 'it may be down'}); nothing was pushed. React ✅ again later. While GitHub is down, the owner can switch the agent to the local check (ciGate false in its config).`,
       'sync-failed': `copying the change into the game (client/) failed, so nothing was pushed or published (${detail}). Ask the owner to look, then react ✅ again.\n${tail}`,
       'deploy-failed': `${BB} was pushed but the deploy script FAILED. The owner should look now.\n${tail}`,
     }[kind] || `unexpected failure (${kind}).\n${tail}`;
@@ -1674,9 +1754,20 @@ function createRunner(cfgIn, opts = {}) {
     }
     say(job, `❌ Not live: ${why}`);
     if (kind === 'deploy-failed' || kind === 'crashed') ownerPing(pingTarget(job), `Deploy problem for \`${job.id}\`: ${kind}. Check ${cfg.toolsDir}/state/ship-${job.id}.deploy.log`);
-    job.status = ['master-moved', 'lock-timeout', 'backup-failed'].includes(kind) ? 'proposed' : 'idle';
+    job.status = ['master-moved', 'lock-timeout', 'backup-failed', 'ci-unavailable'].includes(kind) ? 'proposed' : 'idle';
     if (job.status === 'idle') job.proposal = null;
     save(); pump();   // a message that arrived during the ship is handled on this same branch
+  }
+
+  // A change that went out in another approval's batch (DECISIONS B59): the same ending as its own ship.
+  async function shippedWith(j, approverId, kind, sha, rb, lead) {
+    const pj = j.proposal;
+    logShip({ type: kind, jobId: j.id, sha, approverId: String(approverId), approverName: nameOf(approverId), tier: pj.tier, title: pj.title, rollback: kind === 'live' && rb && rb !== 'none' ? rb : null, batchedWith: lead.id });
+    j.status = 'shipped'; j.proposal = { ...pj, shipSha: sha }; (j.history = j.history || []).push({ round: j.round || 1, branch: j.branch, shipSha: sha, title: pj.title, at: new Date(now()).toISOString() }); save(); syncName(j);
+    say(j, kind === 'docs' ? `✅ Merged into ${BB} as \`${sha}\` with \`${lead.id}\`. It only changes documents, so no game update went out. Keep going here for the next change.`
+      : `🚀 Live. Release \`${sha}\` (with \`${lead.id}\`) is on ${BB} and deployed. Thanks, ${nameOf(j.creatorId)}.\nPlayers get it in the Windows launcher on next start.`);
+    if (j.queue.length && !j.deleteRequested) await beginRound(j);
+    else { await G.removeJobArtifacts(cfg, j); j.worktree = null; save(); }
   }
 
   // ---------- failed client publish: automatic + manual retry (godot) ----------

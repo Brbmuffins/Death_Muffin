@@ -15,7 +15,9 @@ for f in $(git -C "$REPO" ls-tree -r --name-only "$REV" -- "$SRC/runner" | sed "
 done
 # The game's one setup (tools/check/README.md): the trusted copy the checks, pictures and previews run outside and inside the sandbox.
 git -C "$REPO" show "$REV:tools/check/prep.sh" > "$DEST/prep.sh"
-chmod 755 "$DEST/prep.sh"
+# and the CI gate (DECISIONS B59): GitHub CI's verdict on a proposal and on a ship's merged tree
+git -C "$REPO" show "$REV:tools/check/ci.sh" > "$DEST/ci.sh"
+chmod 755 "$DEST/prep.sh" "$DEST/ci.sh"
 chmod 755 "$DEST/ship.sh" "$DEST/rollback.sh" "$DEST/check.sh" "$DEST/check-godot.sh" "$DEST/regen.sh" "$DEST/shot.sh" "$DEST/shot-godot.sh" "$DEST/label-shot.py" "$DEST/render-model.sh" "$DEST/art-run.sh" "$DEST/build-art.sh" "$DEST/build-sound.sh" "$DEST/preview.sh" "$DEST/preview-godot.sh" "$DEST/agit" "$DEST/wait-for-ship.sh"
 # Model generation (Gemini concept -> Tripo): TRUSTED copies of the three tools, run by the runner (art-run.sh) with the API keys, never the ones in a worktree (the agent can edit those).
 # They get their own copy of sharp and its dependencies, so nothing the agent can write through a worktree symlink is ever loaded by a process that holds keys.

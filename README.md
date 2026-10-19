@@ -55,7 +55,8 @@ rendered runs use the software Vulkan driver and `xvfb-run`, one at a time.
 ```
 tools/rebuild/run-client-tests.sh                 # every game suite (client/tests: <name>.gd or a folder <name>/run.gd), 8 side by side (fewer on a busy machine), after tools/check/prep.sh; one line per suite
 tools/rebuild/run-client-tests.sh --only surge,value   # just those
-node tools/rebuild/affected-suites.mjs            # the suites a change can affect, plus the smoke set (the Discord agent's quick check; --explain says why)
+node tools/rebuild/affected-suites.mjs            # the suites a change can affect, plus the smoke set (a quick run here while working; --explain says why)
+tools/check/ci.sh wait <rev>                      # GitHub CI's verdict on a pushed revision (the gate before any merge, deploy or publish; tools/check/README.md)
 npm run test:rules                                # shared rules (vitest, server/rules), with the client parity fixtures
 npm run test:server                               # backend suites (node --test)
 npm test --prefix server/death-muffin/lobby       # lobby + relay (run `npm ci --prefix server/death-muffin/lobby` once)
@@ -68,7 +69,7 @@ teamapp/tests/compile-check.sh                    # the whole team app, UI inclu
 ```
 
 Run one suite: `godot --headless --path client --script res://tests/<name>.gd`. CI (`.github/workflows/ci.yml`) runs the backend, lobby,
-hygiene, model check and every game suite on `main`.
+hygiene, model check and every game suite on every push to every branch, and is the gate (CLAUDE.md).
 Tests never assert wall-clock time: timing figures print as `INFO perf:` lines. FPS is judged on real hardware (F3 overlay);
 suites only check deterministic counters.
 

@@ -127,7 +127,13 @@ const DEFAULTS = {
   },
   // Paths the agent may never touch (proposal refused, not even for the owner to approve): secrets, and the agent's own rules/deploy scripts.
   // They are still "sensitive" if the owner removes them from this list and makes the change by hand.
-  forbiddenPaths: ['server/death-muffin/discord-agent/**', '**/deploy*.sh', '**/.env*', '.claude/**', 'client/export_presets.cfg'],
+  // The CI that grades a change and the game's setup and gate (tools/check/) are never the agent's to change (DECISIONS B59).
+  forbiddenPaths: ['server/death-muffin/discord-agent/**', '**/deploy*.sh', '**/.env*', '.claude/**', 'client/export_presets.cfg', '.github/**', 'tools/check/**'],
+  // godot: GitHub CI is the gate (DECISIONS B59): a proposal waits for CI's verdict on its branch, a ship for CI on the merged tree (approvals that
+  // wait for a ship go out with it, one CI run and one publish), through ciScript (tools/check/ci.sh, installed beside the runner; null = there).
+  // false = the fallback while GitHub is down: the local check (check-godot.sh) as before.
+  ciGate: true,
+  ciScript: null,
 };
 function merge(a, b) {
   if (Array.isArray(a) || typeof a !== 'object' || a === null) return b === undefined ? a : b;
@@ -154,6 +160,8 @@ function loadConfig(file) {
   if (!['web', 'godot'].includes(c.mode)) throw new Error(`Invalid mode: ${JSON.stringify(c.mode)}; must be 'web' or 'godot'`);
   // Everything downstream (classifier, ship gate) reads cfg.tiers, so the mode picks the rule set here once.
   if (c.mode === 'godot') c.tiers = c.godotTiers;
+  c.ciGate = c.mode === 'godot' && c.ciGate !== false;
+  if (!c.ciScript) c.ciScript = require('path').join(c.toolsDir, 'ci.sh');
   return c;
 }
 module.exports = { loadConfig, DEFAULTS };

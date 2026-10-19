@@ -80,6 +80,17 @@ SMOKE="${SMOKE-$WT/server/death-muffin/test-channel/smoke-rebuild.sh}"
 echo "== exporting $SHA as $VERSION"
 git -C "$REPO" worktree add -q --detach "$WT" "$SHA" >/dev/null 2>&1
 [ -f "$WT/$PROJECT/project.godot" ] || { echo "$SHA has no $PROJECT/project.godot" >&2; exit 1; }
+# The CI gate (DECISIONS B59): players only get a revision whose files GitHub CI passed, judged by that revision's own tools/check/ci.sh (a
+# revision from before the gate, such as an older build a rollback republishes, has none). Only for the live folder; DM_CI_GATE=off only while
+# GitHub is down.
+if [ "$OUT_DIR" = /var/www/death-muffin/client ] && [ -f "$WT/tools/check/ci.sh" ]; then
+  if [ "${DM_CI_GATE:-}" = off ]; then echo "== CI gate: off (DM_CI_GATE=off), publishing $SHA without CI's verdict"
+  else
+    V=$(cd "$WT" && bash tools/check/ci.sh status "$SHA" 2>&1 | tail -1)
+    [ "${V%% *}" = passed ] || { echo "Refusing to publish $SHA: GitHub CI has not passed it ($V). Push it and wait for tools/check/ci.sh wait $SHA (DM_CI_GATE=off only while GitHub is down)." >&2; exit 1; }
+    echo "== CI: passed ($V)"
+  fi
+fi
 [ -f "$WT/$PROJECT/export_presets.cfg" ] || { echo "$SHA has no $PROJECT/export_presets.cfg (preset \"$PRESET\")" >&2; exit 1; }
 # PREPARE=<script> (the test channel): adjusts the scratch worktree before the import, e.g. renderer and endpoints. Never the repository.
 [ -z "${PREPARE:-}" ] || bash "$PREPARE" "$WT" || { echo "prepare step failed: $PREPARE" >&2; exit 1; }

@@ -6,6 +6,9 @@ A path below without a folder is under `client/`.
 ## Missing since launch day
 
 - Ascension (the Altar, vows and heat, Ashes, Covenant Boons) left on purpose (B36; ROADMAP Phase 3).
+- **Ascension leftovers still on screen** (the suite audit, 2026-10-19). Decide: the Chapterhouse's Altar still opens the Ascension panel
+  (`client/tests/chapterhouse/run.gd` checks that it does) and the party and friends rows still show Heat (`client/tests/next_lobby/ui_run.gd`),
+  although B36 leaves Ascension out until its redesign. Claude's recommendation: hide both until Phase 3 brings the new Ascension.
 
 ## Performance
 
