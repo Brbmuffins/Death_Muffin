@@ -9,7 +9,7 @@
 # client/tests). Prints per-suite lines and a final "GODOT TESTS: ..." line; exit 1 if any suite or step fails.
 # Two modes. QUICK (default; the runner before a proposal): hygiene + only the suites the change can affect
 # (tools/rebuild/affected-suites.mjs: changed suites, suites referencing a changed file, a small smoke set; ALL when the change is too central or too wide),
-# run through `run-all-tests.sh --only`. FULL (`--full`; ship.sh before publishing): hygiene + every suite, about 9 minutes. Summary line:
+# run through `tools/rebuild/run-client-tests.sh --only` (side by side, 8 by default; DM_TEST_JOBS overrides). FULL (`--full`; ship.sh for a sensitive change): hygiene + every suite. Summary line:
 # "GODOT TESTS: quick (14 suites) — 14 passed" / "GODOT TESTS: full (101 suites) — 101 passed" (", N FAILED" appended on failure).
 # RERUN (`--rerun a,b`; the runner and ship.sh, once, for the few suites a check just failed; the agent, the only way it may run the check, for the
 # suites it needs): hygiene + exactly those suites, one at a time. A suite that fails under load (another ship's client export) passes here and costs no

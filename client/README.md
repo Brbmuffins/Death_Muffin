@@ -48,7 +48,7 @@ One short README per system folder: how the system works and its known gaps (thi
 ```
 bash client/setup.sh                                   # once in every new checkout or worktree, and after switching branches: builds the core for Linux, imports, runs the smoke test
 bash client/tools/bake_crowd.sh                        # the crowd's baked models (the baked folder is generated, not committed): a publish, a benchmark and any run you look at need them
-tools/rebuild/run-client-tests.sh --jobs 3             # every suite, one line each (GitHub CI's "Game client tests" job runs the same)
+tools/rebuild/run-client-tests.sh                      # every suite, 8 side by side, one line each (GitHub CI's "Game client tests" job runs the same, 3 at once)
 tools/rebuild/run-client-tests.sh --only surge,value   # just those
 node tools/rebuild/affected-suites.mjs                 # the suites a change can affect, plus the smoke set (--explain says why)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/<suite>.gd   # one suite by hand
@@ -111,7 +111,7 @@ Rendered, not headless (software GL, one run at a time; the header of each has i
 `crowd_look_smoke` (the crowd's thralls beside the same thralls skinned as nodes, in the Graves' lighting, with the mean colour of each: Forward+ and Compatibility) and `crowd_fade_smoke` (the alpha path: a solid robber beside one under the Shrouded ward and one sinking away, measured by pixels;
 client/crowd/README.md "The alpha path").
 
-A suite that asks for paths in a region enabled moments before (a seal broken, a floor baked) sets `DM_SYNC_NAV` first (`OS.set_environment("DM_SYNC_NAV", "1")` in `_initialize`, as `tests/world.gd` does):
+`tools/rebuild/run-client-tests.sh` sets `DM_SYNC_NAV=1` for every suite it runs under `--fixed-fps`; a suite that asks for paths in a region enabled moments before (a seal broken, a floor baked) also sets it itself (`OS.set_environment("DM_SYNC_NAV", "1")` in `_initialize`, as `tests/world.gd` does), so it holds when run by hand:
 the navigation server merges a new region on a worker thread of its own and a game under `--fixed-fps` outruns it on a loaded machine, so a path asked before the merge ends on the nearest ground
 that is merged and a body walks away from where it was sent. The variable makes the merges synchronous, in step with game time (never set in the game).
 

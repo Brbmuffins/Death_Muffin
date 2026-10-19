@@ -53,7 +53,7 @@ rendered runs use the software Vulkan driver and `xvfb-run`, one at a time.
 ## Tests
 
 ```
-tools/rebuild/run-client-tests.sh --jobs 3        # every game suite (client/tests: <name>.gd or a folder <name>/run.gd), after client/setup.sh and client/tools/bake_crowd.sh; one line per suite
+tools/rebuild/run-client-tests.sh                 # every game suite (client/tests: <name>.gd or a folder <name>/run.gd), 8 side by side (fewer on a busy machine), after client/setup.sh and client/tools/bake_crowd.sh; one line per suite
 tools/rebuild/run-client-tests.sh --only surge,value   # just those
 node tools/rebuild/affected-suites.mjs            # the suites a change can affect, plus the smoke set (the Discord agent's quick check; --explain says why)
 npm run test:rules                                # shared rules (vitest, server/rules), with the client parity fixtures

@@ -61,9 +61,15 @@ function progressNote({ status, check, mins }) {
 // fixtures, a timeout, nothing ran). Otherwise [].
 function failedSuites(out) {
   if (/GODOT TESTS: (repo hygiene|fixture generation|timed out|.*no suites ran)/.test(out) || / exit=124 /.test(out)) return [];   // a suite timeout is a wait that never ends, not load
-  const bad = [...new Set([...String(out).matchAll(/^([A-Za-z0-9_-]+)\s+\S+\s+exit=([1-9]\d*)/gm)].map((m) => m[1]))];
+  const bad = suitesFailing(out);
+  // Every failure must be one of these lines, or the others' re-run would pass the check with it still failing (2026-10-19: names with a `/`
+  // were not read): a count that differs from the summary's "N FAILED" means no re-run.
+  const n = /GODOT TESTS: .*?(\d+) FAILED/.exec(String(out));
+  if (n && Number(n[1]) !== bad.length) return [];
   return bad.length >= 1 && bad.length <= 3 ? bad : [];
 }
+// The suites a check's output names as failing (`<suite> <script> exit=<n>`, n > 0; a suite may be a folder runner such as `relay/udp_run`).
+function suitesFailing(out) { return [...new Set([...String(out).matchAll(/^([A-Za-z0-9_/-]+)\s+\S+\s+exit=([1-9]\d*)/gm)].map((m) => m[1]))]; }
 const fmtList = (a, n) => (a.length > n ? a.slice(0, n).join('\n') + `\n… +${a.length - n} more` : a.join('\n'));
 
 function createRunner(cfgIn, opts = {}) {
@@ -700,10 +706,44 @@ function createRunner(cfgIn, opts = {}) {
     return (await G.head(job.worktree)) === p.head;
   }
 
+  // Godot mode: the check runs on the branch with the latest base branch merged in, so it tests what a ship would merge (2026-10-19: War's job,
+  // checked against the main it started from, passed and then failed at ship on suites main had gained since). A clean merge is committed on
+  // the branch and the job's work is measured from the new base (as !sync does); a conflict is undone and left to the ship's own sync.
+  async function syncBeforeCheck(job) {
+    const wt = job.worktree;
+    await G.git(cfg.repo, ['fetch', '-q', 'origin'], { allowFail: true });
+    const tip = (await G.git(cfg.repo, ['rev-parse', `origin/${BB}`], { allowFail: true })).out.trim();
+    if (!tip || tip === job.base) return;
+    if ((await G.git(wt, ['merge-base', '--is-ancestor', tip, 'HEAD'], { allowFail: true })).code === 0) { job.base = tip; save(); return; }
+    const m = await G.git(wt, ['merge', '--no-edit', '-m', `Merge ${BB} into ${job.branch} before the check`, tip], { allowFail: true });
+    if (m.code !== 0) { await G.git(wt, ['merge', '--abort'], { allowFail: true }); audit.log('pre-sync', { job: job.id, ok: false, tip }); return; }
+    job.base = tip; save();
+    audit.log('pre-sync', { job: job.id, ok: true, tip });
+  }
+  // Godot mode, after a failed check: the failing suites (at most 6) run on a clean copy of the base. Any that fail there too are not this
+  // change's: the test setup or the base branch is broken, and no agent turn can fix it (2026-10-18: three full checks and two repair turns
+  // went on co-op suites that could not start the lobby in any job). Never throws: { failing: [...] } ([] = unknown, the agent gets it as before).
+  async function baseCheck(job, suites) {
+    const dir = path.join(cfg.worktreeRoot, `basecheck-${job.id}`);
+    try {
+      await G.git(cfg.repo, ['worktree', 'add', '-q', '--detach', '-f', dir, job.base]);
+      const nm = path.join(cfg.repo, 'node_modules');
+      if (fs.existsSync(nm)) { try { fs.symlinkSync(nm, path.join(dir, 'node_modules')); } catch { /* exists */ } }
+      let r;
+      try { r = await G.run(path.join(cfg.toolsDir, CHECK), ['--rerun', suites.join(',')], { cwd: dir, env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: 60 * 60000, onSpawn: (p) => checkProcs.set(job.id, p) }); }
+      finally { checkProcs.delete(job.id); }
+      const failing = r.timedOut ? [] : suitesFailing(r.out + r.err).filter((s) => suites.includes(s));
+      audit.log('base-check', { job: job.id, base: job.base, suites, failing });
+      return { failing };
+    } catch (e) { audit.log('base-check', { job: job.id, error: clip(e.message, 200) }); return { failing: [] }; }
+    finally { await G.git(cfg.repo, ['worktree', 'remove', '--force', dir], { allowFail: true }); try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ } }
+  }
+
   // Verify -> (fix-up turns) -> propose. Everything here is deterministic runner code, not the model.
   async function verify(job) {
     const wt = job.worktree;
     if (await G.mergeInProgress(wt) || await G.isDirty(wt)) return { ok: false, fixable: true, why: 'There are uncommitted changes (or an unfinished merge). Stage explicit paths with agit add and commit with agit commit -m "<one plain sentence>".' };
+    if (GODOT && cfg.syncBeforeCheck !== false) await (opts.syncBeforeCheck || syncBeforeCheck)(job);
     let commits = await G.commitsSince(wt, job.base);
     if (commits.some((c) => /^\s*co-authored-by:/im.test(c.body))) {
       await G.git(wt, ['filter-branch', '-f', '--msg-filter', "sed '/^[Cc]o-[Aa]uthored-[Bb]y:/d'", `${job.base}..HEAD`], { allowFail: true });
@@ -730,6 +770,11 @@ function createRunner(cfgIn, opts = {}) {
       const r = await (opts.runChecks || runChecks)(job, ['--rerun', flaky.join(',')]);
       audit.log('flake-rerun', { job: job.id, suites: flaky, ok: r.ok });
       if (r.ok) t = { ...t, ok: true, summary: `${t.summary.replace(/ — .*$/, '')} — passed (${flaky.join(', ')} passed on a re-run)` };
+    }
+    if (!t.ok && GODOT && cfg.baseCheck !== false) {
+      const failing = suitesFailing(t.tail).slice(0, 6);
+      const b = failing.length ? await (opts.baseCheck || baseCheck)(job, failing) : { failing: [] };
+      if (b.failing.length) return { ok: false, fixable: false, infra: b.failing, why: `${CHECK} failed:\n${t.tail}`, tests: t };
     }
     if (!t.ok) return { ok: false, fixable: true, why: `${CHECK} failed:\n${t.tail}`, tests: t };
     return { ok: true, files, cls, migrations, tests: t, diff, commits };
@@ -769,6 +814,11 @@ function createRunner(cfgIn, opts = {}) {
       if (v.ok && v.empty) { job.status = 'idle'; job.proposal = null; return; }
       if (v.ok) return propose(job, v, result);
       audit.log('verify-failed', { job: job.id, why: v.why });
+      if (v.infra) {
+        audit.log('infra-failed', { job: job.id, suites: v.infra });
+        say(job, `⚠ Not this change: ${v.infra.join(', ')} ${v.infra.length > 1 ? 'fail' : 'fails'} on ${BB} without this change too, so the test setup (or ${BB} itself) is broken. Nothing was proposed and no fix was attempted. Say "try again" once it is fixed.`);
+        job.status = 'idle'; return;
+      }
       if (!v.fixable || attempt >= 2) { say(job, `I could not get this into a shippable state: ${clip(v.why, 900)}\nNothing was proposed. Tell me how to proceed or react ❌ / say !discard.`); job.status = 'idle'; return; }
       // the fix-up turn is internal (audit: verify-failed); no thread post (owner, 2026-10-10: fewer thread posts)
       const r = await agentTurn(job, GODOT
@@ -785,7 +835,7 @@ function createRunner(cfgIn, opts = {}) {
     const head = await G.head(job.worktree);
     try { await (opts.pushBranch || G.pushBranch)(cfg, job); } catch (e) { say(job, `I could not push the branch to GitHub: ${clip(e.message, 300)}`); job.status = 'idle'; return; }
     const tier = v.cls.tier;
-    const subjects = v.commits.map((c) => c.subject).reverse();   // oldest first
+    const subjects = v.commits.filter((c) => !/^Merge\b/.test(c.subject)).map((c) => c.subject).reverse();   // oldest first; merges of the base are not the job's work
     // A turn that changed nothing (a question, a "what if") writes no result: keep the title of the proposal it re-posts, and otherwise fall
     // back to the NEWEST commit, which describes the change as it is now (2026-10-04: a re-post said "button" after it became a checkbox).
     const same = job.proposal && job.proposal.head === head ? job.proposal : null;

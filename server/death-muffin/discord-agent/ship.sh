@@ -80,8 +80,11 @@ elif ! "$CHECK" "${CHECK_ARGS[@]}" >"$TOOLS/state/ship-$JOBID.tests.log" 2>&1; t
   # godot: 1-3 failing suites (and nothing failing outside the suites) get one re-run of just those, as the runner does before a proposal
   TL="$TOOLS/state/ship-$JOBID.tests.log"; FLAKY=""
   if [ "$MODE" = godot ] && ! grep -qE 'GODOT TESTS: (repo hygiene|fixture generation|timed out|.*no suites ran)| exit=124 ' "$TL"; then
-    FLAKY=$(grep -oE '^[A-Za-z0-9_-]+ +[^ ]+ +exit=[1-9][0-9]*' "$TL" | awk '{print $1}' | sort -u)
+    FLAKY=$(grep -oE '^[A-Za-z0-9_/-]+ +[^ ]+ +exit=[1-9][0-9]*' "$TL" | awk '{print $1}' | sort -u)
     [ "$(echo "$FLAKY" | grep -c .)" -le 3 ] || FLAKY=""
+    # every failure must be one of these lines (the summary's "N FAILED"), or the others' re-run would pass the ship with it still failing
+    NF=$(grep -oE 'GODOT TESTS: .* ([0-9]+) FAILED' "$TL" | tail -1 | grep -oE '[0-9]+ FAILED' | grep -oE '[0-9]+')
+    [ -z "$NF" ] || [ "$NF" -eq "$(echo "$FLAKY" | grep -c .)" ] || FLAKY=""
   fi
   if [ -n "$FLAKY" ] && { echo "== re-running $(echo $FLAKY)"; "$CHECK" --rerun "$(echo "$FLAKY" | paste -sd, -)"; } >>"$TL" 2>&1; then
     echo "tests: $(echo $FLAKY) failed once and passed on a re-run"

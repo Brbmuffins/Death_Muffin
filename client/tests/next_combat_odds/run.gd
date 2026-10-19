@@ -5,7 +5,7 @@ extends SceneTree
 ##   A  player-side Bone Ward / Colossus guard: stat-based on hit exactly as the old game's DmPlayerRules / DmGameCombat.on_hurt (no timed status exists there either)
 ##   B  bosses ignore slow / root / chill like the old game's boss controller (the brain owns speed; only stun is capped, see DmBoss.stun)
 ##   C  the necromancer's primary weapon variants (staff pierce, sickle Withered, scythe arc) and the Splinters / Volley / Marrow-Tap runes on them
-##   D  rite sound coverage: every one of the 35 rites plays the sounds the old game's DmAbilitySystem played (REF_SOUNDS: a table recorded from it before it was removed; the Reaper's are new)
+##   D  rite sound coverage: every registered rite (the registry lists exactly the rite_<id>.gd files) plays the sounds the old game's DmAbilitySystem played (REF_SOUNDS: a table recorded from it before it was removed; the Reaper's are new)
 ##   E  cost: scythe swings and piercing needles over a crowd
 
 const TICK := 1.0 / 60.0
@@ -611,19 +611,35 @@ func _new_sounds(id: String) -> Dictionary:
 const OPTIONAL := ["boneHit", "needleHit", "soulRelease", "tollSmall", "toll", "burst", "corpseExplode", "seedBurst"]
 
 
+## The rite modules on disk (client/next/rites/rite_<id>.gd), sorted: the registry must list exactly these (a new rite = a file + a registry line).
+static func rite_files() -> Array:
+	var out: Array = []
+	for f: String in DirAccess.get_files_at("res://next/rites"):
+		if f.begins_with("rite_") and f.ends_with(".gd"):
+			out.append(f.trim_prefix("rite_").trim_suffix(".gd"))
+	out.sort()
+	return out
+
+
+static func sorted(a: Array) -> Array:
+	var b := a.duplicate()
+	b.sort()
+	return b
+
+
 func _sounds() -> void:
 	var rites: Array = DmRiteRegistry.ids()
-	check(rites.size() == 35, "D: 35 rites are registered (%d)" % rites.size())
+	check(not rites.is_empty() and sorted(rites) == rite_files(), "D: every rite file is registered, and only those (%d rites)" % rites.size())
 	var missing: Array = []
 	var extra: Array = []
 	for id: String in rites:
 		var got := await _new_sounds(id)
-		var rs: Array = REF_SOUNDS[id]
+		var rs: Array = REF_SOUNDS.get(id, [])   # a rite newer than the table: it only has to make a sound
 		var ns: Array = got["sfx"] + got["loops"].map(func(l: String) -> String: return "loop:" + l)
 		var lost := rs.filter(func(s: String) -> bool: return not ns.has(s) and not OPTIONAL.has(s))
 		var gained := ns.filter(func(s: String) -> bool: return not rs.has(s) and not OPTIONAL.has(s))
 		print("SFX %-18s old=%s new=%s%s" % [id, str(rs), str(ns), ("" if got["why"].is_empty() else "  REJECTED " + str(got["why"]))])
-		check(got["why"].is_empty() and not rs.is_empty(), "D: %s casts on the rebuild (rejected: %s) and makes sound" % [id, str(got["why"])])
+		check(got["why"].is_empty() and not ns.is_empty(), "D: %s casts on the rebuild (rejected: %s) and makes sound" % [id, str(got["why"])])
 		check(lost.is_empty(), "D: %s - the rebuild plays every sound the old client did (missing %s)" % [id, str(lost)])
 		if not lost.is_empty():
 			missing.append([id, lost])

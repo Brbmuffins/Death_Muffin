@@ -102,6 +102,6 @@ jobs:
       - name: Bake the crowd's models
         run: bash client/tools/bake_crowd.sh
 
-      # Every suite, three side by side (tools/rebuild/run-client-tests.sh: one line per suite, retries up to three failures once alone, exit 1 on failure).
+      # Every suite, three side by side (tools/rebuild/run-client-tests.sh: one line per suite, the slowest first, each failure (up to five) once more alone, exit 1 on failure).
       - name: Client suites
         run: bash tools/rebuild/run-client-tests.sh --jobs 3

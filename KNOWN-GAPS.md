@@ -134,8 +134,6 @@ polish list). Also:
 - `client/tests/game_scene.gd`'s node checks pass about every other run under load: the counsel's tip card (16 nodes, shown at the first
   Barrow Ghoul and dismissed on a wall-clock timer) is in the scene tree for part of the run.
 - The warm-up's residency (what `DmWarmup.hold` keeps, the hero kits it lets go) and its cold-load checks cannot run headless: `client/next/perf/dm_next_warmup.gd` skips its threaded loads there, so the ported `next_perfctl` leaves them out; judge them on a real window.
-- The client's suites other than `world.gd` do not set `DM_SYNC_NAV`: under `--fixed-fps` a suite that enables a region (a seal, a baked
-  Depths floor) and then relies on bodies walking may get a path from a navigation map that has not merged it yet.
 - The benchmark: a level-up during the fight refreshes the god-mode hero from the throwaway character's real level, so the held fight changes
   as that character levels; the held Full Party keeps the pack in view and within 32 m, so the crowd's culling and animation bands barely
   engage (1 of 148 bodies culled); its report's budget section is labelled "Budgets (ROADMAP", but the budgets are in CLAUDE.md (B39).
@@ -145,16 +143,10 @@ polish list). Also:
   nothing updates them there: after a change to `server/death-muffin/lobby/package-lock.json`, a job's co-op suites run on the old packages
   until someone runs `npm ci` in that folder (`server/death-muffin/deploy-lobby.sh` updates only the live lobby). Caching them by the lockfile in
   `server/death-muffin/discord-agent/client-prep.sh`, like the combat core, would keep them current.
-- A suite that skips shows as `no result line` in `tools/rebuild/run-client-tests.sh` (coop, coop_bosses and social print `<suite>: SKIPPED`, which
-  the runner does not read), so a check's failure does not say why; and `check-godot.sh`'s summary counts the re-runs again (24 suites with 3
-  failing showed as "27 suites, 6 FAILED").
-- The automatic one-time re-run of 1-3 failing suites (the Discord agent's runner, `failedSuites` in `server/death-muffin/discord-agent/runner/core.cjs`,
-  and `ship.sh`) reads only suite names without `/`. A failing `relay/udp_run` or `perf/first_frame_run` alone gets no re-run; worse, when
-  another suite fails beside it and passes its re-run, the check counts as passed with the nested suite still failing (found 2026-10-19).
-- `client/tests/next_clarity`, `next_combat_odds` and `data` hard-code the number of rites and of combat abilities, `next_combat_odds` keeps
-  its own table of each rite's sounds, and nothing updates the counts in `client/data/content/manifest.json` (rules-core) for a new rite, so
-  every new spell fails four suites until they are edited by hand (War's Haunting Wraith, the 35th rite, failed its ship on 2026-10-19 on
-  those counts alone).
+- `client/data/content/manifest.json`'s counts are kept by hand: a new entry in a content table fails rules-core until its count is raised
+  (rules-core names each; the Discord agent's prompt says so). Only `tools/generate-armor-assets.mjs` updates them by itself.
+- `next_hud` fails one check when it runs beside other suites at load 9 (twice on 2026-10-19) and passes alone; the test runner re-runs it alone,
+  so nothing fails, but the check is load-sensitive.
 
 ## Stability
 

@@ -11,7 +11,7 @@ Discord #death-muffin ── Muffin Core bot (user `muffin`, /opt/muffin/discord
 Runner (user `ubuntu`, ~/death-muffin/discord-agent/runner/server.cjs, port 4321)
    allow-list · approver gate · rate limits · audit.jsonl · job queue · tier classifier · proposal builder
    ├─ per request: git worktree + branch discord/<id> from origin/{baseBranch} (`main`), `claude -p` (sandboxed, --resume within a round)
-   ├─ verify (runner code, not the AI): commits clean · no Co-Authored-By · forbidden paths · secret scan · generated files re-derived · check-godot.sh · tier
+   ├─ verify (runner code, not the AI): latest base merged in · commits clean · no Co-Authored-By · forbidden paths · secret scan · generated files re-derived · check-godot.sh · tier
    ├─ propose: push branch, embed with tier / files / tests / migrations / compare link, ✅ ❌
    └─ ship.sh (only after an approver's ✅): deploy lock · merge onto {baseBranch} · re-gate · re-test (skipped when the merged tree is the proposal's) · push · publish-godot-client.sh (deferred when another approved ship waits)
 ```
@@ -51,9 +51,9 @@ godot-cpp in `.dm-native-cache/`, git-ignored; the shared one is read-only there
 that only touches Markdown files stops there (`GODOT TESTS: skipped, docs-only change`); the model check on the models the change adds or edits
 (`tools/assets/check-models.mjs --changed`); the game's build products (above; `GODOT TESTS: preparing the game FAILED` when they cannot be made; before the sandbox it also
 links the lobby's packages (the main checkout's lobby `node_modules`) into a worktree that has none, since coop, coop_bosses and social start the real lobby); then
-`tools/rebuild/run-client-tests.sh` (one line per suite, `<suite> <file> exit=<code> <result>`; `GODOT` defaults to `/home/ubuntu/tools/godot/godot`). While the suites run it writes
-`<done> <total>` to `.dm-check-progress` in the worktree (removed at the end) for the progress notes. It has two modes. **Quick** (default; the agent in its turn and
-the runner before a proposal): `tools/rebuild/affected-suites.mjs` picks the suites for the change (changed suites; suites referencing a changed file by `res://` path or
+`tools/rebuild/run-client-tests.sh` (one line per suite, `<suite> <file> exit=<code> <result>`; `GODOT` defaults to `/home/ubuntu/tools/godot/godot`; suites side by side, 8 by
+default and fewer on a busy machine, the slowest first, the real-socket suites in a lane of their own, each failure once more alone: its header). While the suites run it writes
+`<done> <total>` to `.dm-check-progress` in the worktree (removed at the end) for the progress notes. It has two modes. **Quick** (default; the runner before a proposal): `tools/rebuild/affected-suites.mjs` picks the suites for the change (changed suites; suites referencing a changed file by `res://` path or
 `class_name`, one level through non-test dependents; for changed `client/data` files the scripts that load them, by path or DmDb accessor; plus a smoke set
 `code_load core_smoke game_scene`; a `client/data/content/*.json` change also runs `rules-core`, which checks the manifest counts) and `run-client-tests.sh --only <list>`
 runs them. It prints `ALL` (every suite) for central changes (`project.godot`, `export_presets.cfg`, the combat core `native/`, `client/main`, `client/core`, `client/rules/core`,
@@ -68,6 +68,15 @@ test it wrote. The whole quick check is the runner's, after the turn, so a round
 `DM_TEST_JOBS=N` adds `--jobs N`. The progress total is the number of selected suites. It ends with
 `GODOT TESTS: quick (14 suites) — 14 passed` or `GODOT TESTS: full (70 suites) — 70 passed` (`, N FAILED` on failure; `targeting fell back to all` is noted); the proposal's
 "Tests" field reads `quick check: N suites — ...`. It exits non-zero on any failing suite or step, and has a hard 85 minute limit.
+
+**Before the check** (godot mode; `cfg.syncBeforeCheck: false` turns it off) the runner merges the latest base branch into the job's branch (a commit
+`Merge main into discord/<job> before the check`, audit `pre-sync`) and measures the job's work from it, so the check tests what a ship would merge and a ship of
+the same tree skips its tests; a conflict is undone (`pre-sync` with `ok: false`) and left to the ship's own sync. Merge commits never become a proposal's title
+or bullets. **After a failed check** (`cfg.baseCheck: false` turns it off) the failing suites, at most 6, run with `--rerun` on a clean copy of the base
+(`<worktreeRoot>/basecheck-<job>`, removed after; audit `base-check`). Any that fail there too stop the job with "⚠ Not this change: ... fail on main without
+this change too" (audit `infra-failed`): nothing is proposed and no repair turn is spent, since no change in the job can fix the test setup or main. The
+automatic re-run of 1-3 failing suites (the runner's `failedSuites`, and `ship.sh`) reads every suite line, folder runners such as `relay/udp_run` too, and
+is skipped when those lines do not account for the summary's `N FAILED`, so a failure it cannot name never rides on another suite's passing re-run.
 
 **`preview-godot.sh <jobid>`**: runner-only. The game's build products with the Windows core (`client-prep.sh --windows`), then inside the same kind of sandbox the
 export of the `Windows Desktop` preset from `client/` (the installed export templates are linked read-only into the fresh `XDG_DATA_HOME`). The art: when nothing the
@@ -174,7 +183,8 @@ Rollback undoes the live release only; revert the commit on the base branch afte
 
 - `maxConcurrentJobs` (1-3, live: 3) lets several threads work at once, so one person's long request does not queue everyone else. Ships
   still go one at a time behind the deploy lock. Git commands that hit a lock file another job is holding retry a few times (gitops.cjs).
-- The full check runs about 2 min (suites in parallel) (sensitive ships only; proposals get the quick check, the agent only the suites it names). The agent's `claude -p` gets `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` and a 55-minute Bash limit (turn limit 60 min, check-godot.sh hard limit 85 min)
+- All 112 suites take about 6 to 7 minutes side by side (the full check, sensitive ships only); the quick check of a spell-sized change (42 suites, co-op
+  included) about 5 minutes end to end, prep and hygiene included (2026-10-19); the agent runs only the suites it names. The agent's `claude -p` gets `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` and a 55-minute Bash limit (turn limit 60 min, check-godot.sh hard limit 85 min)
   (`BASH_DEFAULT_TIMEOUT_MS`/`BASH_MAX_TIMEOUT_MS`), so the check call simply blocks until it finishes. `sleep`, `pgrep`, `ps`, `watch` and the like are on
   `--disallowedTools`. Why: a backgrounded check plus an agent-written `pgrep` wait loop matched itself and hung a job (and the queue) for 35 minutes.
 

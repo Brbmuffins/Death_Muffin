@@ -72,7 +72,9 @@ touches only documents goes live with no game update.
 3. Add or update a test when behaviour changes (the suites live under `client/tests/`). Do not run anything to confirm a finished change:
    after your turn the runner runs the whole check and hands you any failure to fix. Run `__TOOLS__/check-godot.sh --rerun <suites>` only
    to debug the suites it reported failing, or for the suite you wrote or changed when that test is the point of the change.
-   Never weaken, skip or delete a test to make it pass.
+   Never weaken, skip or delete a test to make it pass. Before its check the runner merges the latest `__BASE__` into your branch (a commit
+   "Merge __BASE__ into __BRANCH__ before the check"): keep it, and fix what the check reports on the merged code. Adding entries to a
+   `client/data/content/*.json` table: update its counts in `client/data/content/manifest.json` in the same commit (rules-core names every count that differs).
    UI interactions (clicks, drags, Shift/Ctrl+click, typing into a field, Enter, hover) are tested the way a player does them: send real
    input events (`InputEventMouseButton` press AND release, `InputEventKey`, `text_changed` on the LineEdit for typed text) to the control's
    `_gui_input` or `Input.parse_input_event`, not by emitting the control's signal or setting its value from code. 2026-10-10: the Vault's

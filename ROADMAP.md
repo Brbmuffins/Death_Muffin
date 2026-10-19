@@ -79,6 +79,15 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   every check that picked them failed (War's Haunting Wraith, three times on 2026-10-18); the check now brings those packages in. Fixed
   2026-10-19: a round ran its whole check twice, about 20 minutes each (the agent in its turn, then the runner before the proposal); the
   agent now runs only the suites it names (`check-godot.sh --rerun`), and the whole check is the runner's.
+- [x] **Fix: the Discord agent's checks were slow and failed late, or for reasons outside the change.** Done 2026-10-19. Now → after: the
+  game's suites ran one at a time (the old game's runner ran 8 at once; that was lost in the switch), so a check took 20 to 35 minutes → side by
+  side again, the slowest first, the lobby and relay suites in a lane of their own, each failure once more alone (all 112 suites in about 6.5
+  minutes; a spell-sized change's check about 5 minutes end to end, co-op included). A job was checked against the main it started from, so
+  suites main had gained failed only at ship → the check runs with the latest main merged into the branch, and a ship of the same code skips
+  its tests. A broken test setup cost repair turns and an hour of checks → the failing suites run on clean main first, and if they fail there
+  too the thread is told plainly, with no repair turn. The automatic re-run could pass a check with a folder suite still failing → it reads
+  every suite and counts against the summary. Three tests named the number of spells or abilities → they compare the spell registry with the
+  spell files and the two ability tables with each other.
 - [x] **Fix: a document change from the Discord agent shipped a game update.** Done 2026-10-18: an approved change that touches only
   documents (Markdown files, docs/) goes to `main` and stops there, with no game build, deploy or notice, and the thread says so; when someone
   shares an idea the roadmap lacks, the agent offers to add it to "Ideas" with its section (server/death-muffin/discord-agent/README.md).

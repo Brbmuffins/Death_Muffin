@@ -1035,9 +1035,10 @@ test('godot mode: a lobby that stays busy (exit 3) stops the ship before the cli
   assert.ok(!fs.existsSync(path.join(w.deploy, 'deploys.log')), 'the client was not published');
 });
 
-// A check-godot.sh stand-in whose quick check fails one suite; `--rerun` passes unless REALFAIL exists. Calls are logged next to it.
-const flakyCheck = (w) => fs.writeFileSync(path.join(w.tools, 'check-godot.sh'), '#!/usr/bin/env bash\nD=$(dirname "$0"); echo "$*" >> "$D/check-godot.calls"\n' +
-  'if [ "${1:-}" = --rerun ]; then [ -e "$D/REALFAIL" ] && { echo "next_bosses        run.gd           exit=1  1 passed, 1 failed"; echo "GODOT TESTS: rerun (1 suites) — 0 passed, 1 FAILED"; exit 1; }; echo "GODOT TESTS: rerun (1 suites) — 1 passed"; exit 0; fi\n' +
+// A check-godot.sh stand-in whose quick check fails one suite; `--rerun` passes unless REALFAIL exists (on the job's branch; on the runner's clean
+// copy of the base, basecheck-<job>, only when BASEFAIL exists too). Calls are logged next to it ("base" marks a call from the clean copy).
+const flakyCheck = (w) => fs.writeFileSync(path.join(w.tools, 'check-godot.sh'), '#!/usr/bin/env bash\nD=$(dirname "$0"); case "$PWD" in */basecheck-*) B=base;; *) B=;; esac; echo "$* $B" | sed "s/ $//" >> "$D/check-godot.calls"\n' +
+  'if [ "${1:-}" = --rerun ]; then [ -e "$D/REALFAIL" ] && { [ -z "$B" ] || [ -e "$D/BASEFAIL" ]; } && { echo "next_bosses        run.gd           exit=1  1 passed, 1 failed"; echo "GODOT TESTS: rerun (1 suites) — 0 passed, 1 FAILED"; exit 1; }; echo "GODOT TESTS: rerun (1 suites) — 1 passed"; exit 0; fi\n' +
   'echo "data               run.gd           exit=0  9 passed, 0 failed"; echo "next_bosses        run.gd           exit=1  722 passed, 1 failed"; echo "    FAIL boss phase timing"; echo "GODOT TESTS: quick (2 suites) — 1 passed, 1 FAILED"; exit 1\n', { mode: 0o755 });
 
 test('godot mode: a suite that fails once is re-run alone before an agent turn is spent; a real failure still goes to the agent', async () => {
@@ -1065,12 +1066,64 @@ test('godot mode: a suite that fails once is re-run alone before an agent turn i
   const vf = a2.find((e) => e.event === 'verify-failed'); assert.match(vf.why, /next_bosses .*exit=1[\s\S]*FAIL boss phase timing/); assert.doesNotMatch(vf.why, /exit=0/);
   const j2 = Object.values(w2.runner.jobs()).find((j) => j.threadId === t2.id);   // the fix-up turn names the agent's command (the whole check is the runner's)
   assert.match(fs.readFileSync(path.join(j2.worktree, '.fake-calls'), 'utf8'), / fixup-rerun$/m);
+  // before any fix-up turn the failing suite ran on a clean copy of the base, passed there, and the copy is gone
+  assert.ok(fs.readFileSync(path.join(w2.tools, 'check-godot.calls'), 'utf8').split('\n').includes('--rerun next_bosses base'));
+  assert.ok(a2.some((e) => e.event === 'base-check' && e.failing.length === 0));
+  assert.ok(!fs.existsSync(path.join(w2.cfg.worktreeRoot, `basecheck-${j2.id}`)));
+});
+
+test('godot mode: suites that fail on the clean base too stop the job with a plain line, and no agent turn is spent on them', async () => {
+  const w = godotWorld(); flakyCheck(w); for (const f of ['REALFAIL', 'BASEFAIL']) fs.writeFileSync(path.join(w.tools, f), ''); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY faster');
+  await until(() => texts(thread).some((t) => /Not this change: next_bosses fails on godot-port without this change too/.test(t)), d.ad);
+  const job = Object.values(w.runner.jobs()).find((j) => j.threadId === thread.id);
+  assert.equal(job.status, 'idle'); assert.equal(proposalOf(thread), undefined);
+  assert.doesNotMatch(fs.readFileSync(path.join(job.worktree, '.fake-calls'), 'utf8'), /fixup/, 'no repair turn');
+  const a = fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  assert.ok(a.some((e) => e.event === 'infra-failed' && e.suites.join() === 'next_bosses'));
+  assert.ok(!texts(thread).some((t) => /could not get this into a shippable state/.test(t)));
+});
+
+test('godot mode: the check runs on the branch with the latest base merged in, so a ship of the same tree is not tested again; a conflict leaves the branch as it was', async () => {
+  const w = godotWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY faster');
+  await waitProposal(d, thread);
+  const job = Object.values(w.runner.jobs()).find((j) => j.threadId === thread.id);
+  // the base moves (someone else's commit), then the request changes: the next check merges the base in first
+  sh(w.repo, 'checkout', '-q', 'godot-port'); fs.writeFileSync(path.join(w.repo, 'client/README.md'), 'moved on main'); sh(w.repo, 'commit', '-q', '-am', 'someone else'); sh(w.repo, 'push', '-q', 'origin', 'godot-port');
+  const tip = remoteHead(w, 'godot-port'); const n0 = proposals(thread).length;
+  await d.say(thread, IDS.HELIX, 'GD-UI and rename the menu');
+  await until(() => proposals(thread).length > n0, d.ad);
+  const p = proposals(thread)[proposals(thread).length - 1];
+  assert.equal(job.base, tip, 'the job is measured from the merged base');
+  sh(job.worktree, 'merge-base', '--is-ancestor', tip, 'HEAD');   // throws unless the branch holds the base's new commit
+  assert.match(p.payload.embeds[0].fields[0].value, /^Gameplay/, 'the base branch\'s own change is not counted as the job\'s');
+  assert.doesNotMatch(p.payload.embeds[0].title, /^Merge/);
+  assert.ok(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8').split('\n').some((l) => /"event":"pre-sync"/.test(l) && /"ok":true/.test(l)));
+  assert.deepEqual(await d.react(p, IDS.HELIX, '✅'), []);
+  await until(() => texts(thread).some((t) => /Live\. Release/.test(t)), d.ad);
+  assert.match(fs.readFileSync(path.join(w.tools, 'state', `ship-${job.id}.tests.log`), 'utf8'), /skipped, the merged tree is exactly the proposal's/);
+  // a conflicting base change: the merge is undone, the branch is untouched, and the proposal still comes (the ship's own sync deals with it)
+  const w2 = godotWorld(); const d2 = makeDiscord(w2.runner);
+  const { thread: t2 } = await request(d2, IDS.HELIX, 'GD-GAMEPLAY faster');
+  await waitProposal(d2, t2);
+  const j2 = Object.values(w2.runner.jobs()).find((j) => j.threadId === t2.id); const base2 = j2.base;
+  sh(w2.repo, 'checkout', '-q', 'godot-port'); fs.writeFileSync(path.join(w2.repo, 'client/ui/menu.gd'), 'title=main'); sh(w2.repo, 'commit', '-q', '-am', 'menu on main'); sh(w2.repo, 'push', '-q', 'origin', 'godot-port');
+  const m0 = proposals(t2).length;
+  await d2.say(t2, IDS.HELIX, 'GD-UI and rename the menu');
+  await until(() => proposals(t2).length > m0, d2.ad);
+  assert.equal(j2.base, base2, 'no merge, so the base is unchanged');
+  assert.equal(sh(j2.worktree, 'status', '--porcelain'), '');
+  assert.ok(fs.readFileSync(path.join(w2.cfg.stateDir, 'audit.jsonl'), 'utf8').split('\n').some((l) => /"event":"pre-sync"/.test(l) && /"ok":false/.test(l)));
 });
 
 test('failedSuites: 1-3 failing suite lines re-run, anything else does not', () => {
   const { failedSuites } = require('../runner/core.cjs');
   assert.deepEqual(failedSuites('a  run.gd  exit=0  1 passed\nnext_bosses  run.gd  exit=1  x\n    FAIL y\nGODOT TESTS: quick (2 suites) — 1 passed, 1 FAILED'), ['next_bosses']);
   assert.deepEqual(failedSuites('a  r.gd  exit=1\nb  r.gd  exit=2\nc  r.gd  exit=1\nd  r.gd  exit=1'), []);
+  // folder runners are suites too, and every failure must be on a line: a count below the summary's means no re-run (it would pass the rest)
+  assert.deepEqual(failedSuites('relay/udp_run  relay/udp_run.gd  exit=1  x\nGODOT TESTS: quick (9 suites) — 8 passed, 1 FAILED'), ['relay/udp_run']);
+  assert.deepEqual(failedSuites('a  a.gd  exit=1  x\nGODOT TESTS: quick (9 suites) — 7 passed, 2 FAILED'), []);
   assert.deepEqual(failedSuites('GODOT TESTS: repo hygiene FAILED (npm run hygiene)'), []);
   assert.deepEqual(failedSuites('a  r.gd  exit=124\nGODOT TESTS: timed out after 85 minutes'), []);
   assert.deepEqual(failedSuites('next_gathering     run.gd           exit=124  timed out after 240s (usually 18.9s): a wait in the suite never ended\nGODOT TESTS: quick (5 suites) — 4 passed, 1 FAILED'), [], 'a suite timeout is not re-run');
