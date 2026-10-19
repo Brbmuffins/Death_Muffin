@@ -1,0 +1,9 @@
+[Unit]
+Description=Death Muffin nightly fast-forward of the shared checkout to origin/main (server/death-muffin/ops/sync-checkout.sh)
+
+[Service]
+Type=oneshot
+User=ubuntu
+Nice=10
+# Installed copy (outside the repo checkout): ops/install.sh copies it to /home/ubuntu/death-muffin/ops/.
+ExecStart=/home/ubuntu/death-muffin/ops/sync-checkout.sh

@@ -44,14 +44,6 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
 - **Backups stay on this server.** `server/death-muffin/ops/backup-db.sh` writes the nightly dumps to `~/death-muffin/backups/db/` on the
   same VPS; the raw art sources (`art-src/`, gitignored), the private effect sheets and keys (`~/death-muffin/private/`), the licensed packs
   and the services' `.env` files exist only here. ROADMAP Later: a cloud storage bucket (B51).
-- **The nightly drift report posts false alarms** (found 2026-10-19): check 6 (`server/death-muffin/ops/drift-report.sh`) does not know the team
-  app's folders (`teamapp/`, `team-files/` in the docroot) and calls every `.zip` in the docroot secret-ish, so the team app's and the bake kit's
-  downloads make each night's #build-alerts post 20 or more lines long, which buries real drift.
-- **The team app's old versions pile up** in `/var/www/death-muffin/teamapp/` (19 versions and their zips on 2026-10-19): publishing is the
-  hand recipe in teamapp/README.md "Publishing a version", and nothing prunes old ones (the launcher and the client keep two).
-- **The shared checkout lags behind `main`** (`/home/ubuntu/vps-handoffs/DeathMuffin/game`, 364 commits behind on 2026-10-19, from before
-  launch): sessions and the agent work from `origin/main`, so nothing fast-forwards it, and anyone who opens it reads the old game's
-  CLAUDE.md and READMEs. The drift report checks only that it has no uncommitted changes. The agent links its `node_modules` from there.
 
 ## Server authority
 

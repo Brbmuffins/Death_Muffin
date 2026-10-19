@@ -505,8 +505,6 @@ KNOWN-GAPS.md instead.
 - The party session on each drop (a column on `character_drop_events` set from the claim's session id) and the XP and gold a member earns in
   a session on its `party_session_members` row, so the play reports' server numbers get drops per hour and an exact XP and gold per
   session instead of the progress saves' time window. Section: Phase 2, track D. 2026-10-18.
-- `publish-teamapp.sh <version>`, like `publish-launcher.sh`: builds the team app from a revision CI passed, keeps the newest two versions in
-  the public folder and writes `version.json` last (today a hand recipe in teamapp/README.md). Section: Phase 1, the team app. 2026-10-19.
 - Split the Discord agent runner's `runner/core.cjs` (about 2,000 lines) by job: pictures and videos, ships, threads, so each change to it is
   smaller and its reinstall and practice run less risky. Section: Phase 2, track E. 2026-10-19.
 

@@ -1,4 +1,4 @@
-# Ops: health watch, nightly DB backup, nightly team-files clean-up, nightly drift report, launcher release notice, pre-push hook
+# Ops: health watch, nightly DB backup, nightly team-files clean-up, nightly checkout sync, nightly drift report, launcher release notice, pre-push hook
 
 Install or update all of it from a committed revision: `server/death-muffin/ops/install.sh [rev]` (copies the scripts to
 `/home/ubuntu/death-muffin/ops/`, installs the units, enables the timers, and stops and removes a retired job: the release checks report, `death-muffin-team-report`, B62). Never edit the installed copies.
@@ -28,6 +28,13 @@ prints what it would post and changes nothing; the env overrides are in the scri
 `~/death-muffin/backups/db/daily/` (newest 14), plus the first dump of each week in `weekly/` (8) and each month in `monthly/` (12).
 Restore: `gunzip -c <file> | sudo mysql <db>` (into a scratch DB first if unsure).
 
+## Nightly checkout sync (timer `death-muffin-checkout-sync`, 04:55 UTC)
+
+`sync-checkout.sh` fast-forwards the shared checkout (`/home/ubuntu/vps-handoffs/DeathMuffin/game`, `REPO`) to `origin/main`. Sessions and the Discord agent work
+in worktrees off `origin/main` and push from there, so nothing else moves it, and whoever opens it should read the game as it is. It changes nothing when the
+checkout is not on `main`, has uncommitted or untracked changes, or a Discord agent ship is running, and says why in its journal; the drift report's check 5
+then reports it behind.
+
 ## Nightly team-files clean-up
 
 `team-files-prune.sh` (timer `death-muffin-team-prune`, 04:45 UTC; the script lives beside `team-check.sh`, which also runs it after a check) applies the team-files folder's rules to
@@ -54,8 +61,8 @@ Env: `REPO` (default `/home/ubuntu/vps-handoffs/DeathMuffin/game`), `DM_HOME` (`
 | 2 | Live backend, gathering, necro-progress and lobby code vs the repo. Comments and blank lines are ignored; comment-only differences are a soft note, not drift |
 | 3 | Published client `rev` vs commits that change shipped game files (`client/` and `native/src/`, not tests, tools or docs) merged after it |
 | 4 | Extra remote/local branches and worktrees. `discord/*` jobs are listed as info and flagged after 7 days |
-| 5 | Uncommitted changes in the main checkout |
-| 6 | Unexpected files in the public docroot (allowed: the `server/death-muffin/site/` files plus `client`, `play`, `preview`; `play/` only `index.html`, `patch-notes.json`, `release-notes.json`) and secret-ish names |
+| 5 | The shared checkout: uncommitted changes, not on `main`, or behind `origin/main` (the nightly checkout sync could not fast-forward it) |
+| 6 | Unexpected files in the public docroot (allowed: the `server/death-muffin/site/` files plus `bake-kit`, `client`, `client-test`, `launcher`, `play`, `preview`, `team-files`, `teamapp`; `play/` only `index.html`, `patch-notes.json`, `release-notes.json`), secret-ish names (the team app's, the bake kit's and the preview builds' zips excepted), and more than two team app versions |
 | 7 | Services active, auth `/health` |
 | 8 | Disk over 85%, size of `wt/` and `deploy/` (`deploy/` over 2 GB is drift, with a breakdown), old `backup-pre-release-*` folders (never pruned), the team PCs' `team-files/` (over 10 GB is drift) and `team-results/` (over 5 GB) |
 | 9 | Newest file in `~/death-muffin/backups/db/` missing or older than 36 h |

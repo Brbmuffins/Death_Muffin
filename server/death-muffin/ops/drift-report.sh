@@ -78,9 +78,9 @@ compare_exact tools/check/ci.sh "$DM/discord-agent/ci.sh" "discord-agent/ci.sh"
 for f in common gemini tripo; do compare_exact "tools/ai/$f.mjs" "$DM/discord-agent/art-tools/tools/ai/$f.mjs" "discord-agent/art-tools/tools/ai/$f.mjs"; done
 compare_exact "$SRC/death-muffin-discord-agent.service" /etc/systemd/system/death-muffin-discord-agent.service "systemd death-muffin-discord-agent.service"
 # the ops jobs themselves (this script included: an installed copy left behind once kept reporting a retired agent)
-for f in drift-report.sh backup-db.sh launcher-release-notice.sh health-watch.mjs; do compare_exact "server/death-muffin/ops/$f" "$DM/ops/$f" "ops/$f"; done
+for f in drift-report.sh backup-db.sh launcher-release-notice.sh health-watch.mjs sync-checkout.sh; do compare_exact "server/death-muffin/ops/$f" "$DM/ops/$f" "ops/$f"; done
 compare_exact server/death-muffin/team-files-prune.sh "$DM/ops/team-files-prune.sh" "ops/team-files-prune.sh"   # the nightly team-prune job's copy (the script lives beside team-check.sh)
-for u in death-muffin-drift-report.service death-muffin-drift-report.timer death-muffin-db-backup.service death-muffin-db-backup.timer death-muffin-launcher-notice.service death-muffin-launcher-notice.timer death-muffin-health-watch.service death-muffin-health-watch.timer death-muffin-team-prune.service death-muffin-team-prune.timer; do
+for u in death-muffin-drift-report.service death-muffin-drift-report.timer death-muffin-db-backup.service death-muffin-db-backup.timer death-muffin-launcher-notice.service death-muffin-launcher-notice.timer death-muffin-health-watch.service death-muffin-health-watch.timer death-muffin-team-prune.service death-muffin-team-prune.timer death-muffin-checkout-sync.service death-muffin-checkout-sync.timer; do
   compare_exact "server/death-muffin/ops/$u" "/etc/systemd/system/$u" "systemd $u"; done
 compare_exact server/death-muffin/ops/git-pre-push.sh "$(git -C "$REPO" rev-parse --path-format=absolute --git-common-dir)/hooks/pre-push" "git pre-push hook"
 
@@ -160,15 +160,22 @@ for d in "$(dirname "$REPO")"/wt/*/; do [ -d "$d" ] || continue
 section "5. Main checkout"
 ST="$(g status --porcelain)"
 if [ -n "$ST" ]; then drift "uncommitted changes in $REPO ($(echo "$ST" | wc -l) path(s)): $(echo "$ST" | head -3 | tr '\n' ';')"; fi
+# the nightly checkout sync (sync-checkout.sh, 04:55) fast-forwards it; behind here means that job could not (a branch, local changes, a ship)
+BR="$(g branch --show-current)"; BEHIND="$(g rev-list --count HEAD.."$REV" 2>/dev/null || echo '?')"
+[ "$BR" = main ] || drift "$REPO is on '${BR:-a detached HEAD}', not main"
+[ "$BEHIND" = 0 ] || drift "$REPO is $BEHIND commit(s) behind $REV: its files are not the game's (journalctl -u death-muffin-checkout-sync says why)"
 
 # 6. Docroot
 section "6. Public docroot $WWW"
-EXP=" bake-kit client client-test launcher play preview $(g ls-tree --name-only "$REV" -- server/death-muffin/site/ | sed 's#.*/##' | tr '\n' ' ')"
+EXP=" bake-kit client client-test launcher play preview team-files teamapp $(g ls-tree --name-only "$REV" -- server/death-muffin/site/ | sed 's#.*/##' | tr '\n' ' ')"
 for e in "$WWW"/* "$WWW"/.[!.]*; do [ -e "$e" ] || continue; n="$(basename "$e")"
   case "$EXP" in *" $n "*) ;; *) drift "unexpected top-level entry: $n";; esac; done
 if [ -d "$WWW/play" ]; then for e in "$WWW/play"/* "$WWW/play"/.[!.]*; do [ -e "$e" ] || continue; n="$(basename "$e")"
   case "$n" in index.html|patch-notes.json|release-notes.json) ;; *) drift "unexpected file in play/: $n";; esac; done; fi
-while IFS= read -r f; do drift "secret-ish file in docroot: ${f#$WWW/}"; done < <(find "$WWW" \( -iname '*.env' -o -iname '.env*' -o -iname '*.sql' -o -iname '*.zip' -o -iname '*.bak' -o \( -iname '*.txt' \( -iname '*key*' -o -iname '*token*' \) \) \) 2>/dev/null)
+# the downloads the site serves on purpose are not secret-ish: the team app's zips, the bake kit, the agent's preview builds
+while IFS= read -r f; do drift "secret-ish file in docroot: ${f#$WWW/}"; done < <(find "$WWW" -not -path "$WWW/teamapp/DeathMuffinTeam-*.zip" -not -path "$WWW/bake-kit/kit-*.zip" -not -path "$WWW/preview/*/DeathMuffin-Preview-*-win64.zip" \( -iname '*.env' -o -iname '.env*' -o -iname '*.sql' -o -iname '*.zip' -o -iname '*.bak' -o \( -iname '*.txt' \( -iname '*key*' -o -iname '*token*' \) \) \) 2>/dev/null)
+TV=$(find "$WWW/teamapp" -mindepth 1 -maxdepth 1 -type d -regex '.*/[0-9]+\.[0-9]+\.[0-9]+' 2>/dev/null | wc -l)
+[ "$TV" -le 2 ] || drift "teamapp/ holds $TV versions (publish-teamapp.sh keeps the newest 2: server/death-muffin/publish-teamapp.sh --prune)"
 
 # 7. Services
 section "7. Services"
