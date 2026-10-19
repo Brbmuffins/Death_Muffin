@@ -25,12 +25,21 @@ EVERY=60; [ ${#auth[@]} -eq 0 ] || EVERY=15; EVERY="${DM_CI_EVERY:-$EVERY}"   # 
 refresh() {
   exec 8>"$CACHE/.lock"; flock -w 60 8 || return 0
   if [ -s "$CACHE/runs.json" ] && [ $(( $(date +%s) - $(stat -c %Y "$CACHE/runs.json") )) -lt "$EVERY" ]; then flock -u 8; return 0; fi
+  # GitHub's limit used up: no request until it resets (asking again would not help), and say so once a minute at most
+  local until; until=$(cat "$CACHE/limited" 2>/dev/null || echo 0)
+  if [ "$(date +%s)" -lt "$until" ]; then
+    [ -n "$(find "$CACHE/limited" -mmin -1 2>/dev/null)" ] || { echo "ci.sh: GitHub's API limit is used up until $(date -u -d "@$until" +%H:%M) UTC (60 calls an hour without a token, see tools/check/README.md); the answer can be up to that old" >&2; touch "$CACHE/limited"; }
+    flock -u 8; return 0
+  fi
   local hdr=(); [ ! -s "$CACHE/etag" ] || [ ! -s "$CACHE/runs.json" ] || hdr=(-H "If-None-Match: $(cat "$CACHE/etag")")
-  local code
+  local code reset
   code=$(curl -s -m 30 -o "$CACHE/.new" -D "$CACHE/.hdr" -w '%{http_code}' "${auth[@]}" "${hdr[@]}" -H 'Accept: application/vnd.github+json' "$API/actions/runs?per_page=60" || echo 000)
   if [ "$code" = 200 ]; then
     mv "$CACHE/.new" "$CACHE/runs.json"; grep -i '^etag:' "$CACHE/.hdr" | cut -d' ' -f2- | tr -d '\r' > "$CACHE/etag" || true
   elif [ "$code" = 304 ]; then touch "$CACHE/runs.json"
+  elif [ "$code" = 403 ] || [ "$code" = 429 ]; then
+    reset=$(grep -i '^x-ratelimit-reset:' "$CACHE/.hdr" | tr -dc '0-9')
+    if [ -n "$reset" ]; then echo "$reset" > "$CACHE/limited"; echo "ci.sh: GitHub's API limit is used up until $(date -u -d "@$reset" +%H:%M) UTC; the answer can be up to that old" >&2; fi
   fi
   rm -f "$CACHE/.new" "$CACHE/.hdr"; flock -u 8
 }

@@ -31,6 +31,7 @@ async function world() {
     if (u.pathname === '/repos/o/r/actions/runs') {
       const sha = u.searchParams.get('head_sha');
       if (sha) return send(200, { workflow_runs: state.runs.filter((r) => r.head_sha === sha) });
+      if (state.limited) return send(403, { message: 'API rate limit exceeded' }, { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) + 3600) });
       if (req.headers['if-none-match'] === state.etag) return send(304);
       return send(200, { workflow_runs: state.runs }, { etag: state.etag });
     }
@@ -107,5 +108,18 @@ test('the recent runs are one shared copy, refreshed with a conditional request 
     const lists = W.state.hits.filter((h) => h.startsWith('GET /repos/o/r/actions/runs?per_page'));
     assert.equal(lists.length, 2); assert.match(lists[1], / v1$/, 'the second refresh asks only whether it changed');
     assert.equal((await W.ci('status', W.one)).out, 'passed https://github.test/runs/1', 'the kept copy still answers after a 304');
+  } finally { W.cleanup(); }
+});
+
+test('with the GitHub API limit used up it says until when, keeps answering from the last copy, and does not ask again before the reset', async () => {
+  const W = await world(); try {
+    W.state.runs = [W.run(1, W.one, 'completed', 'success')];
+    assert.equal((await W.ci('status', W.one)).out, 'passed https://github.test/runs/1');
+    W.state.limited = true; W.state.etag = 'v9';
+    const r = await W.ci('status', W.one);
+    assert.match(r.out, /API limit is used up until \d\d:\d\d UTC/); assert.match(r.out, /passed https:\/\/github\.test\/runs\/1$/);
+    const before = W.state.hits.length;
+    await W.ci('status', W.one); await W.ci('status', W.same);
+    assert.equal(W.state.hits.filter((h, i) => i >= before && h.includes('per_page')).length, 0, 'no list request until the reset');
   } finally { W.cleanup(); }
 });
