@@ -154,11 +154,7 @@ func _governor() -> void:
 
 
 func _warmup() -> void:
-	var t0 := Time.get_ticks_msec()
 	var g := await _game({"dressing": true, "hud": false, "persist": false, "waves": false, "warmup": true})
-	var ms := Time.get_ticks_msec() - t0
-	var vfx := root.get_node("/root/Vfx")
-	print("warm-up: %d ms (%d bodies, %d effects, %d crowd rows) of a %d ms start" % [DmNextWarmup.last_ms, DmNextWarmup.models, DmNextWarmup.effects, DmNextWarmup.crowd_rows, ms])
 	check(DmNextWarmup.models > 0 and DmNextWarmup.effects > 0 and DmNextWarmup.crowd_rows > 0, "warm-up: ran (%d bodies, %d effects, %d crowd rows)" % [DmNextWarmup.models, DmNextWarmup.effects, DmNextWarmup.crowd_rows])
 	check(g.get_node_or_null("WarmupStage") == null and g.local_body() != null and g.is_processing(), "warm-up: stage removed, game processing again")
 	var home := g.local_body().global_position

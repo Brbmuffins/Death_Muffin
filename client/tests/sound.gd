@@ -480,12 +480,6 @@ func _the_fight_against_today() -> void:
 	for p in proxy.plays:
 		if OWN.has(p[0]):
 			got[p[0]] = int(got.get(p[0], 0)) + 1
-	var kinds := {}
-	for e: Dictionary in evs:
-		kinds[e["k"]] = int(kinds.get(e["k"], 0)) + 1
-	print("INFO the fight's events: ", kinds)
-	print("INFO the cues it played: ", got)
-	print("INFO what today's code plays (least / most): ", lo, " / ", hi)
 	var names := {}
 	for n in lo:
 		names[n] = true
