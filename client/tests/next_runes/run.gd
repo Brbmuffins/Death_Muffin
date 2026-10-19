@@ -223,9 +223,6 @@ func _run() -> void:
 	# =================================================================== C: legendary mods
 	await _legends()
 
-	# =================================================================== E: cost
-	await _cost()
-
 	print("%d passed, %d failed" % [passed, failed])
 	print("%s next_runes %d checks%s" % ["PASS" if failed == 0 else "FAIL", passed + failed, "" if failed == 0 else " (%d failed)" % failed])
 	quit(1 if failed > 0 else 0)
@@ -733,55 +730,3 @@ func _requiem_wraiths() -> void:
 	check(loss(e1) >= nova_amt * 0.99 and loss(e2) == 0.0, "C: ...hitting what stands within %.0f m of a wisp (%.1f / %.1f)" % [float(L["novaR"]), loss(e1), loss(e2)])
 	await strip()
 	check(float(caster.mods["corpseWisp"]) == 0.0, "C: Requiem Wraiths leaves with the set")
-
-
-# ---------------------------------------------------------------------------------------------------------------------------- cost
-
-func _cost() -> void:
-	reset()
-	await wear("plague_choir")
-	var fc := DmFrameCost.attach(g)
-	for k in 12:
-		foe(Vector3(-6 + k, 0, -30 - (k % 3)))
-	await frames(30)
-	fc.reset()
-	for i in 90:
-		await process_frame
-	var idle := fc.median_ms()
-	caster.set_runes({"miasma": "rune_contagion", "bone_needle": "rune_volley"})
-	await frames(10)
-	fc.reset()
-	for i in 120:
-		if i % 40 == 0:
-			caster.p["cooldowns"].clear()
-			caster.p["castUntil"] = 0.0
-			caster.request_cast("miasma", Vector3(0, 0, -29), -1)
-		if i % 3 == 0:
-			caster.p["cooldowns"].erase("bone_needle")
-			caster.p["castUntil"] = 0.0
-			caster.request_cast("bone_needle", pos_of(foes[i % foes.size()]), eid(foes[i % foes.size()]))
-		await process_frame
-	var med := fc.median_ms()
-	print("COST 12 soaking enemies idle: median frame %.2f ms; with a Contagion circle + Plague Choir + volley needles: median %.2f ms (p95 %.2f, worst %.2f)" % [idle, med, fc.p95_ms(), fc.worst_ms()])
-	perf_info(med < idle + 6.0 and med < 25.0, "E: a Contagion circle + Plague Choir + volleys over 12 enemies adds %.2f ms a frame (%.2f vs %.2f idle; budget +6 ms, shared VPS)" % [med - idle, med, idle])
-	# the gear-change path itself (no UI): re-reading the build + legend + hit hook
-	var t := Time.get_ticks_usec()
-	for i in 50:
-		g.progress.refresh_stats()
-	var per := (Time.get_ticks_usec() - t) / 50000.0
-	print("COST progress.refresh_stats (build + caster + legend + legion + HUD) with a legendary set: %.2f ms each" % per)
-	perf_info(per < 15.0, "E: a gear change re-reads the build in %.2f ms (budget 15)" % per)
-	var a0 := Time.get_ticks_usec()
-	for i in 2000:
-		caster._set_mods(caster.mods)
-	var legend_us := (Time.get_ticks_usec() - a0) / 2000.0
-	print("COST legend resolve (_set_mods) alone: %.1f us" % legend_us)
-	perf_info(legend_us < 200.0, "E: resolving the legend is %.1f us, once per gear change, never per tick" % legend_us)
-	await strip()
-	fc.queue_free()
-
-
-## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
-## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
-func perf_info(cond: bool, what: String) -> void:
-	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

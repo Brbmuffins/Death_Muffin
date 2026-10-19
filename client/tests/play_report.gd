@@ -749,10 +749,6 @@ func cost() -> void:
 	var n := 200000
 	var t0 := Time.get_ticks_usec()
 	for i in n:
-		pass
-	var empty_ns := float(Time.get_ticks_usec() - t0) * 1000.0 / n
-	t0 = Time.get_ticks_usec()
-	for i in n:
 		r.frame(16.0 + float(i % 7))
 	var frame_ns := float(Time.get_ticks_usec() - t0) * 1000.0 / n
 	t0 = Time.get_ticks_usec()
@@ -762,12 +758,7 @@ func cost() -> void:
 	var objects_after := int(Performance.get_monitor(Performance.OBJECT_COUNT))
 	check(objects_after == objects_before, "400,000 frames made no object (%d before, %d after)" % [objects_before, objects_after])
 	check(r.count > n, "the frames were counted")
-	print("INFO play_report: the cost of one frame: frame() %.0f ns, the whole _process %.0f ns (an empty loop is %.0f ns; %d allocated bytes over 400,000 frames, GDScript on this machine)" % [frame_ns - empty_ns, proc_ns - empty_ns, empty_ns, int(Performance.get_monitor(Performance.MEMORY_STATIC)) - mem_before])
-	r.autosave = true
-	t0 = Time.get_ticks_usec()
-	for i in 100:
-		r.save_live()
-	print("INFO play_report: one autosave (snapshot + file write) %.0f us" % (float(Time.get_ticks_usec() - t0) / 100.0))
+	print("INFO play_report: the cost of one frame: frame() %.0f ns, the whole _process %.0f ns (%d allocated bytes over 400,000 frames, GDScript on this machine)" % [frame_ns, proc_ns, int(Performance.get_monitor(Performance.MEMORY_STATIC)) - mem_before])
 	r.queue_free()
 
 

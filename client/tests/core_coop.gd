@@ -1062,10 +1062,6 @@ func full_party() -> void:
 	var pup := make_puppet()
 	var snap_sizes := PackedInt32Array()
 	var rel_total := 0
-	var t_snap := PackedFloat64Array()
-	var t_rel := PackedFloat64Array()
-	var t_apply_snap := PackedFloat64Array()
-	var t_apply_rel := PackedFloat64Array()
 	var speeds := {}
 	var last_at := {}
 	var party_ticks := 0
@@ -1094,23 +1090,13 @@ func full_party() -> void:
 			held_host = message_buffers(host)
 			held_pup = message_buffers(pup)
 		if tick % 3 == 0:
-			var t0 := Time.get_ticks_usec()
 			var snap: PackedByteArray = host.snapshot(tick)
-			var t1 := Time.get_ticks_usec()
 			var rel: PackedByteArray = host.take_reliable()
-			var t2 := Time.get_ticks_usec()
 			if rel.size() > 0:
 				pup.apply_reliable(rel)
-			var t3 := Time.get_ticks_usec()
 			pup.apply_snapshot(snap)
-			var t4 := Time.get_ticks_usec()
 			events(pup)
 			if tick > 300:
-				t_snap.append(t1 - t0)
-				t_rel.append(t2 - t1)
-				if rel.size() > 0:
-					t_apply_rel.append(t3 - t2)
-				t_apply_snap.append(t4 - t3)
 				rel_total += rel.size()
 				snap_sizes.append(snap.size())
 				var live_e := alive_enemies(host).size()
@@ -1127,7 +1113,6 @@ func full_party() -> void:
 	var secs := float(party_ticks) / 20.0
 	print("INFO Full Party (72 enemies, 32 thralls, a continuous fight): snapshot %d B on average, %d B smallest, %d B largest; budget %d B" % [total / snap_sizes.size(), smallest, biggest, BUDGET_BYTES])
 	print("INFO Full Party bandwidth at 20 Hz: snapshots %.1f KB/s, reliable events %.2f KB/s (%d B in %.0f s), together %.1f KB/s" % [float(total) / secs / 1024.0, float(rel_total) / secs / 1024.0, rel_total, secs, float(total + rel_total) / secs / 1024.0])
-	print("INFO Full Party times (per send, 104 bodies): build snapshot %s, take_reliable %s, apply batch %s, apply snapshot %s" % [timing(t_snap), timing(t_rel), timing(t_apply_rel), timing(t_apply_snap)])
 	check(maxed > 40, "the fight held the Full Party for %d sends" % maxed)
 	check(held_host > 0 and held_pup >= 0 and message_buffers(host) == held_host and message_buffers(pup) == held_pup, "the message and event buffers did not grow over the last 900 ticks of the fight: nothing allocated per tick (host %d B, guest %d B held)" % [held_host, held_pup])
 	check(biggest < BUDGET_BYTES, "every Full Party snapshot fits the budget: largest %d B < %d B" % [biggest, BUDGET_BYTES])
@@ -1225,14 +1210,3 @@ func message_buffers(c: RefCounted) -> int:
 	for i in 6:
 		sum += int(parts[i])
 	return sum
-
-
-func timing(v: PackedFloat64Array) -> String:
-	if v.is_empty():
-		return "-"
-	var s := v.duplicate()
-	s.sort()
-	var sum := 0.0
-	for x in s:
-		sum += x
-	return "mean %.0f us, p95 %.0f us, max %.0f us" % [sum / s.size(), s[int(s.size() * 0.95)], s[s.size() - 1]]

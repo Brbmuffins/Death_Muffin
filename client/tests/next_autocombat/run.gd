@@ -180,7 +180,6 @@ func _run() -> void:
 	check(await until(func() -> bool: return Vector2(hero.position.x - zone.x, hero.position.z - zone.z).length() > out_r + 0.2, 4.0), "D: it steps out of a hostile pool (%.1f m from its centre)" % Vector2(hero.position.x - zone.x, hero.position.z - zone.z).length())
 	host.zone_gone.emit(777)
 	await ticks(30)
-	check(not hero.has_target and absf(hero.move_dir.length()) < 0.01 or true, "D: settled")
 	var bhost: DmBossHost = g.bosses
 	bhost.fx.play({"t": "boss", "kind": "toll", "boss": "prelate", "x": 5.0, "z": 5.0, "ms": 2000.0, "r": 4.0})
 	var tl := auto.telegraphs.active(DmNextAutoCombat.clock_ms())   # the adapter's clock is the physics ticks' milliseconds (dm_next_auto.gd), not the wall clock
@@ -265,7 +264,7 @@ func _run() -> void:
 	check(g.camera._trauma == tr0, "G: reduce_motion still drops the shake")
 	g.camera.reduced_motion = false
 
-	# ---- H: cost
+	# ---- H: decisions are throttled
 	clear_foes()
 	await ticks(3)
 	reset_hero(base)
@@ -273,50 +272,12 @@ func _run() -> void:
 		foe(base + Vector3(float(i % 5) * 2.0 - 4.0, 0, -9.0 - float(i / 5) * 2.0))
 	for i in 20:
 		host.corpses.add_corpse(base.x + float(i) - 10.0, base.z + 4.0, "normal", "robber", false, 0.0, 1.0, "graves")
-	var fc := DmFrameCost.attach(root)
-	store.update({"auto_combat": false})
-	await ticks(5)
-	fc.reset()
-	await ticks(180)
-	var med_off := fc.median_ms()
-	var worst_off := fc.worst_ms()
 	store.update({"auto_combat": true})
-	await ticks(240)   # the first casts of each rite pay their one-off effect set-up (not auto-combat's cost): measure the steady state
-	fc.reset()
+	await ticks(240)   # the first casts of each rite pay their one-off effect set-up: count the steady state
 	var st0: Dictionary = auto.stats.duplicate()
 	await ticks(180)
-	var med_on := fc.median_ms()
-	var worst_on := fc.worst_ms()
 	var decisions: int = auto.stats["actions"] - int(st0["actions"])
-	# the adapter + decision alone, 200 times (one decision = fill + select_action + select_movement)
-	var b := hero
-	var t_g := 0
-	var t_a := 0
-	var t_m := 0
-	for i in 200:
-		var u0 := Time.get_ticks_usec()
-		var ctx := auto._fill(b, caster, b.position, float(i))
-		var u1 := Time.get_ticks_usec()
-		DmAutoCombat.select_action(ctx)
-		var u2 := Time.get_ticks_usec()
-		DmAutoCombat.select_movement(ctx, auto.mem, float(i) * 100.0, 0.1)
-		t_g += u1 - u0
-		t_a += u2 - u1
-		t_m += Time.get_ticks_usec() - u2
-	var decide_us := float(t_g + t_a + t_m) / 200.0
-	print("perf: gather+fill %.0f us, select_action %.0f us, select_movement %.0f us" % [t_g / 200.0, t_a / 200.0, t_m / 200.0])
-	var idle0 := Time.get_ticks_usec()
-	store.update({"auto_combat": false})
-	for i in 20000:
-		auto._next_move = 1e18
-		auto.tick(float(i))
-	var idle_us := float(Time.get_ticks_usec() - idle0) / 20000.0
-	print("perf: frame median off %.2f ms / on %.2f ms (worst on %.1f ms, off %.1f ms), %d decisions in 3 s, one decision %.0f us (14 enemies, 20 corpses), idle tick %.3f us" % [med_off, med_on, worst_on, worst_off, decisions, decide_us, idle_us])
-	perf_info(med_on < med_off + 1.5 and med_on < 12.0, "H: frame median %.2f ms with auto-combat vs %.2f off" % [med_on, med_off])
-	perf_info(worst_on < 120.0, "H: worst frame %.1f ms" % worst_on)
 	check(decisions > 5 and decisions < 25, "H: decisions are throttled (%d in 3 s, ~every %.0f ms)" % [decisions, ACT_MS()])
-	perf_info(decide_us < 4000.0, "H: one decision %.0f us" % decide_us)
-	perf_info(idle_us < 2.0, "H: tick between decisions %.3f us" % idle_us)
 
 	# ---- I: the Reaper plays too (a second game, her own account)
 	var arena := Vector3(0, 0, -6)   # open ground near the start (the Graves' far end has walls the walk catches on)
@@ -373,9 +334,3 @@ func _run() -> void:
 
 func ACT_MS() -> float:
 	return DmNextAutoCombat.ACT_MS
-
-
-## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
-## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
-func perf_info(cond: bool, what: String) -> void:
-	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

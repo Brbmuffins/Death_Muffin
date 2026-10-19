@@ -150,12 +150,9 @@ func _rules() -> void:
 	check(node["type"] == "seam_tin", "post node: same type")
 	check(L.post_node(acre_nodes, "seam_tin", 3)["type"] == "seam_tin", "post node: slot wraps over same-type nodes")
 	check(L.post_node(acre_nodes, "no_such", 0).is_empty(), "post node: unknown type")
-	check(L.post_node(acre_nodes, "wheat", 0).is_empty() or true, "post node: no crash for missing skill nodes")
 	check(L.post_node(acre_nodes, "drowned_lotus", 0)["type"] == "drowned_lotus", "post node: a level 45 gravedigging post works the Acre's own Drowned Lotus (2026-10-12)")
 	var no_lotus: Array = acre_nodes.filter(func(n: Dictionary) -> bool: return n["type"] != "drowned_lotus")
 	check(L.post_node(no_lotus, "drowned_lotus", 0)["type"] == "grave_crypt", "post node: a post whose type is not in the area is worked at the closest lower tier, not the first")
-	var herb := L.post_node(acre_nodes, "nightshade", 0)
-	check(herb.is_empty() or DmContent.get_export("gameplay_gatheringRules", "NODES")[herb["type"]]["skill"] == "alchemy" or true, "post node: fallback tolerant")
 	var rect: Dictionary = {}
 	rect = w["areas"]["acre"]["rect"]
 	var blockers: Array = []
@@ -352,7 +349,6 @@ func _glue() -> void:
 	host.toasts.clear()
 	gl2.update(3.0)
 	await _frames(1)
-	check(host.toasts.is_empty() or true, "armed on ready_")
 	gl2.update(1.5)
 	await _frames(2)
 	check(host.toasts.any(func(t: Array) -> bool: return t[0].contains("garden")) and not host.toasts.any(func(t: Array) -> bool: return t[0].contains("laborers")), "garden first check at 4 s, labor not yet")

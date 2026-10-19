@@ -3,7 +3,7 @@ extends SceneTree
 ## as text (tests/fixtures/old_game/fx/dm_fx_ring.gd.txt, so Godot never parses it) and compiled at run time (its class_name line dropped). Both rings get the same bursts (the same randf stream:
 ## the global seed is set before each emit on each side) and the same frame times (60 Hz, 144 Hz, hitches), through the ring's wrap-around and the switch
 ## between the small and the full MultiMesh; after every update the live count, the drawn count and every float of the drawn buffer must be EQUAL.
-## Prints INFO: the update's time per frame on both sides with about 3,000 live motes. Run: godot --headless --path client --script res://tests/fx_motes.gd
+## Run: godot --headless --path client --script res://tests/fx_motes.gd
 
 const TODAY := "res://tests/fixtures/old_game/fx/dm_fx_ring.gd.txt"   ## the old game's ring, kept as text
 
@@ -34,7 +34,6 @@ func _main() -> void:
 	var tex := ImageTexture.create_from_image(Image.create(4, 4, false, Image.FORMAT_RGBA8))
 	for cfg in [[3500, true, "the additive ring (3,500)"], [900, false, "the smoke ring (900)"]]:
 		_compare(today, int(cfg[0]), bool(cfg[1]), tex, String(cfg[2]))
-	_timing(today, tex)
 	_end()
 
 
@@ -120,25 +119,3 @@ static func _free(r: Object) -> void:
 		var n: Node = r.get(k)
 		if n != null:
 			n.free()
-
-
-## INFO: today's GDScript loop against the C++ one, about 3,000 live motes in the additive ring.
-func _timing(today: GDScript, tex: Texture2D) -> void:
-	var ref: Object = today.new(3500, tex, true)
-	var port := DmFxRing.new(3500, tex, true)
-	var o := {"x": 0.0, "y": 1.0, "z": 0.0, "count": 3000, "color": Color(0.8, 0.9, 1.0), "spread": 2.0, "speed": 2.0, "life": 9.0, "size": 0.3}
-	seed(7)
-	ref.call("emit", o)
-	seed(7)
-	port.emit(o)
-	var us := [0, 0]
-	for f in 120:
-		var t0 := Time.get_ticks_usec()
-		ref.call("update", 1.0 / 60.0)
-		var t1 := Time.get_ticks_usec()
-		port.update(1.0 / 60.0)
-		us[0] += t1 - t0
-		us[1] += Time.get_ticks_usec() - t1
-	print("INFO fx_motes: one update with %d live motes: today's %.3f ms, the port's %.3f ms" % [port.active(), us[0] / 120000.0, us[1] / 120000.0])
-	_free(ref)
-	_free(port)

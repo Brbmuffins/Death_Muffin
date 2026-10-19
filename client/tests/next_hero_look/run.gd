@@ -41,12 +41,6 @@ func until(cond: Callable, limit_s: float) -> bool:
 	return cond.call()
 
 
-func ms(f: Callable) -> float:
-	var t := Time.get_ticks_usec()
-	f.call()
-	return (Time.get_ticks_usec() - t) / 1000.0
-
-
 func _worn(av: DmAvatar, slot: String) -> Variant:
 	return av._worn.get(slot)
 
@@ -73,7 +67,6 @@ func _run() -> void:
 	await until(func() -> bool: return b.avatar != null, 3.0)
 	check(look != null and b.avatar != null, "the Look node exists and the hero has an avatar")
 	check(b.avatar.lantern != null, "the local hero carries the lantern")
-	var fc := DmFrameCost.attach(g)
 
 	# ---- the Reaper holds her scythe model by default; other classes keep the skull staff
 	var ra := DmAvatar.new()
@@ -144,36 +137,6 @@ func _run() -> void:
 	check(b.avatar.body_slug == base_body, "G: taking one piece off gives the hero's own body back")
 	await g.ui.inv.toggle_equip(row.call("leg_legion_unburied_head"))
 	await g.ui.inv.toggle_equip(row.call("leg_legion_unburied_chest"))
-	# (the set pieces from before are still on; the bag is as the perf section below expects)
-
-	# ---- perf: a pet + full gear frame, an equip change
-	await g.ui.inv.toggle_equip(row.call("set_gravecaller_legs"))
-	await ticks(30)
-	fc.reset()
-	await ticks(30)   # timing is INFO only: a short window still runs the dressed-hero frame path
-	var with_look := fc.median_ms()
-	look.set_process(false)
-	fc.reset()
-	await ticks(30)   # timing is INFO only: a short window still runs the dressed-hero frame path
-	var without_pet := fc.median_ms()
-	look.set_process(true)
-	print("perf: frame median %.2f ms with pet+gear+cape, %.2f ms with the pet frozen (pet update ~%.2f ms)" % [with_look, without_pet, maxf(0.0, with_look - without_pet)])
-	perf_info(with_look < 14.0 and fc.worst_ms() < 150.0, "D: a dressed hero with a pet: frame median %.2f ms under 14, worst %.1f ms under 150" % [with_look, fc.worst_ms()])
-	var pu := ms(func() -> void:
-		for i in 300:
-			pet.update(DT, b.position.x, b.position.z, 0.0))
-	print("perf: pet update %.4f ms each" % (pu / 300.0))
-	perf_info(pu / 300.0 < 0.5, "D: one pet update costs %.4f ms (under 0.5)" % (pu / 300.0))
-	var items: Dictionary = {"main_hand": {"item_id": "sword_copper", "rarity": "common"}}
-	var eq_ms := ms(func() -> void:
-		b.avatar.set_equipment({}))
-	var eq2_ms := ms(func() -> void:
-		b.avatar.set_equipment({"main_hand": {"item_id": "sword_copper", "rarity": "common"}, "chest": {"item_id": "set_gravecaller_chest", "rarity": "uncommon"}}))
-	print("perf: equip change: unequip all %.2f ms, re-equip sword + chest %.2f ms" % [eq_ms, eq2_ms])
-	perf_info(eq_ms < 40.0 and eq2_ms < 40.0, "D: an equip change costs %.2f / %.2f ms (under 40)" % [eq_ms, eq2_ms])
-	look.set_gear_from_slots(g.ui_host.inventory.slots)   # restore the bag's look (the direct set_equipment above bypassed the diff)
-	b.avatar.set_equipment(DmHeroLook_items(look.looks[1]))
-
 	# ---- leaving: no pet left behind
 	var pet_root: Node3D = pet.c.root
 	var api0 := api
@@ -187,13 +150,6 @@ func _run() -> void:
 	print("%d passed, %d failed" % [passed, failed])
 	print("%s next_hero_look %d checks%s" % ["PASS" if failed == 0 else "FAIL", passed + failed, "" if failed == 0 else " (%d failed)" % failed])
 	quit(1 if failed > 0 else 0)
-
-
-func DmHeroLook_items(d: Dictionary) -> Dictionary:
-	var items := {}
-	for slot in d["g"]:
-		items[slot] = {"item_id": d["g"][slot][0], "rarity": d["g"][slot][1]}
-	return items
 
 
 func _replication(api0: DmApi, ch: Dictionary) -> void:
@@ -270,9 +226,3 @@ func _replication(api0: DmApi, ch: Dictionary) -> void:
 	hg.queue_free()
 	cg.queue_free()
 	await ticks(3)
-
-
-## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
-## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
-func perf_info(cond: bool, what: String) -> void:
-	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

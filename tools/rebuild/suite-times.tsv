@@ -3,7 +3,7 @@
 68	warm_coverage
 56	front
 53	spells
-52	next_autocombat
+46	next_autocombat
 48	next_lobby/proc_run
 47	benchmark_launch
 45	coop
@@ -12,9 +12,9 @@
 41	benchmark_rooms
 26	next_lobby
 12	boss_meta
-34	next_feel
+29	next_feel
 33	benchmark_classes
-32	next_runes
+26	next_runes
 30	crowd_bake
 29	depths
 27	next_boss_meta
@@ -24,12 +24,12 @@
 27	benchmark
 41	next_lobby/ui_run
 21	next_combat_odds
-23	play_report
+22	play_report
 21	game/regress_run
 20	world
-20	next_hero_look
+18	next_hero_look
 19	game_scene
-19	next_progress
+17	next_progress
 12	next_clarity
 22	gathering
 19	chapterhouse
@@ -44,7 +44,7 @@
 15	next_spawn_aggro
 12	boss
 14	panels
-14	next_brews_affix
+13	next_brews_affix
 14	next_bag
 11	boss_prelate
 11	boss_regent

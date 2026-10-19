@@ -104,26 +104,5 @@ func _c_chips(g: DmNextGame) -> void:
 	ok(core.strip_shroud(id), "C: the core strips the shroud (Last Light / a Warden sweep)")
 	var t3: Dictionary = hv._target()
 	ok((t3["affixes"] as Array).size() == 1 and t3["affixes"][0]["id"] == "hungering", "C: a stripped shroud drops its chip")
-	# cost of the held-target read: no allocation of the chip array, just the dictionary the HUD wants
-	var n := 20000
-	var t := Time.get_ticks_usec()
-	for i in n:
-		hv._affix_chips(id, PackedStringArray(["hungering"]), "")
-	var per := float(Time.get_ticks_usec() - t) / float(n)
-	print("PERF chips cached read %.3f us/call" % per)
-	perf_info(per < 2.0, "C: cached chip read under 2 us (%.3f)" % per)
-	# a real held-target frame: the HUD (20 Hz) reads the target every apply
-	var fc := DmFrameCost.attach(root)
-	var end := Engine.get_physics_frames() + 180
-	while Engine.get_physics_frames() < end:
-		await physics_frame
-	print("PERF held elite target (1 chip) frame median %.2f ms p95 %.2f ms over %d frames" % [fc.pct(0.5), fc.pct(0.95), fc.samples()])
-	fc.queue_free()
 	h._target_until = 0.0
 	host.remove_enemy(id)
-
-
-## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
-## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
-func perf_info(cond: bool, what: String) -> void:
-	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

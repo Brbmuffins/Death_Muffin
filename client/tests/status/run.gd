@@ -263,36 +263,15 @@ func _misc(h: Node) -> void:
 
 
 func _perf(h: Node) -> void:
-	var sets: Array = []
-	var ds: Array = []
-	for i in 30:
-		var d := _dummy(h, "P%d" % i)
-		d.hp = 1.0e9
-		var s := DmStatusSet.of(d)
-		s.apply(&"chill", null, 1, 1.0e6)
-		s.apply(&"bleed", null, 1, 1.0e6, {"dps": 3.0})
-		s.apply(&"withered", null, 1, 1.0e6, {"dps": 2.0, "cap": 3.0})
-		sets.append(s)
-		ds.append(d)
-	var n := 200
-	var t0 := Time.get_ticks_usec()
-	for k in n:
-		for s in sets:
-			(s as DmStatusSet)._step(0.1)
-	var per_tick := float(Time.get_ticks_usec() - t0) / n / 30.0
-	# re-applying every frame (a cloud refreshing its slow on 30 enemies) must be cheap too
-	t0 = Time.get_ticks_usec()
-	for k in n:
-		for s in sets:
-			(s as DmStatusSet).apply(&"chill", null, 1, 1.0e6)
-	var per_apply := float(Time.get_ticks_usec() - t0) / n / 30.0
-	var bytes: int = (sets[0] as DmStatusSet).encode().size()
-	print("PERF: step %.2f us/set (30 sets x 3 statuses; per 0.1 s tick: %.1f us total), refresh-apply %.2f us, wire %d bytes for 3 statuses" % [per_tick, per_tick * 30.0, per_apply, bytes])
-	perf_info(per_tick * 30.0 < 2000.0, "perf: 30 enemies x 3 statuses ticks in < 2 ms per 0.1 s step (%.0f us)" % (per_tick * 30.0))
-	perf_info(per_apply < 20.0, "perf: a refresh-apply costs < 20 us (%.2f)" % per_apply)
+	var d := _dummy(h, "P0")
+	d.hp = 1.0e9
+	var s := DmStatusSet.of(d)
+	s.apply(&"chill", null, 1, 1.0e6)
+	s.apply(&"bleed", null, 1, 1.0e6, {"dps": 3.0})
+	s.apply(&"withered", null, 1, 1.0e6, {"dps": 2.0, "cap": 3.0})
+	var bytes: int = s.encode().size()
 	ok(bytes == 12, "wire: 4 bytes per status")
-	for d in ds:
-		d.queue_free()
+	d.queue_free()
 
 
 # ---- replication: in-process ENet host + client ------------------------------------------------------------------------------------------
@@ -350,9 +329,3 @@ func _wait(cond: Callable, timeout := 6.0) -> bool:
 			return true
 		await create_timer(0.05).timeout
 	return cond.call()
-
-
-## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
-## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
-func perf_info(cond: bool, what: String) -> void:
-	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

@@ -223,18 +223,6 @@ func _run() -> void:
 	await ticks(60)
 	check(await until(func() -> bool: return p.psync.state == "saved" or p.psync.state == "dirty", 3.0), "save state is sane")
 
-	# ---- save cost (write-behind: no frame is blocked on the backend)
-	var t0 := Time.get_ticks_usec()
-	for i in 200:
-		p.prog.add_gold(1.0)
-	var add_us := Time.get_ticks_usec() - t0
-	t0 = Time.get_ticks_usec()
-	p.psync.flush()   # returns at its first await: what the calling frame pays for a save
-	var flush_us := Time.get_ticks_usec() - t0
-	await until(func() -> bool: return p.psync.state == "saved", 3.0)
-	print("save cost: 200 add_gold %d us (%.1f us each), flush call %d us" % [add_us, add_us / 200.0, flush_us])
-	perf_info(add_us < 50000 and flush_us < 20000, "a pickup is ~free and a save call returns at once (write-behind): %d us per 200 pickups, %d us per flush" % [add_us, flush_us])
-
 	# ---- relaunch: the same character comes back
 	await p.flush_all()
 	var want := {"level": int(ch["level"]), "xp": int(ch["experience"]), "gold": int(ch["gold"]), "shards": int(p.prog.local["shards"]),
@@ -263,9 +251,3 @@ func _run() -> void:
 	print("%d passed, %d failed" % [passed, failed])
 	print("%s next_progress %d checks%s" % ["PASS" if failed == 0 else "FAIL", passed + failed, "" if failed == 0 else " (%d failed)" % failed])
 	quit(1 if failed > 0 else 0)
-
-
-## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
-## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
-func perf_info(cond: bool, what: String) -> void:
-	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

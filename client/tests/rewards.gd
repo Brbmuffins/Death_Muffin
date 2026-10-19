@@ -457,7 +457,6 @@ func _t_end() -> void:
 	_kill(_robber(shell, Vector3(2, 0, 4)), hero)
 	ok(m.stats["kills_earned"] == 2, "no rewards after the session ended")
 	await r.end_session()
-	ok(true, "ending twice is harmless")
 	var rep: DmResult = await u[0].session_report(r.session_id, 50, [{"characterId": u[1], "groups": [], "bosses": []}])
 	ok(not rep.ok, "reports after the end are refused")
 	# a session that cannot open (no backend): the node degrades without crashing

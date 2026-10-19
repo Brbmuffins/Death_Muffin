@@ -1752,23 +1752,16 @@ func full_party() -> void:
 			seen_champion = true
 	check(seen_champion, "a champion thrall is drawn 1.35x")
 	glows(view, crowd, core, ids, heroes)
-	# the time draw() takes: Full Party, the core stepping, one tick and one frame each
-	var us := PackedFloat64Array()
-	var sync_us := PackedFloat64Array()
+	# Full Party, the core stepping, one tick and one frame each
 	var regrows0: int = crowd.stats().regrows
 	var same := true
 	var rows_seen := 0
 	var states := {}
 	for f in 300:
 		core.step(DT)
-		var t0 := Time.get_ticks_usec()
 		view.sync()
-		var t1 := Time.get_ticks_usec()
 		var alpha := float(f % 4) / 4.0
 		crowd.draw(DT, alpha, CAM)
-		var t2 := Time.get_ticks_usec()
-		sync_us.append(t1 - t0)
-		us.append(t2 - t1)
 		clock_ms += DT * 1000.0
 		var lf: Dictionary = crowd.last_feed()
 		guest.sync_rows(lf.body_ints, lf.body_floats, lf.hits, lf.corpse_ints, lf.corpse_floats)
@@ -1784,16 +1777,6 @@ func full_party() -> void:
 	check(same and rows_seen > 1500, "a crowd fed the same rows (a co-op guest's snapshots) draws the same buffers (%d instance rows compared)" % rows_seen)
 	check(states.has("walk") and states.has("idle") and states.keys().any(func(k: String) -> bool: return k.begins_with("attack") and k.ends_with("*")), "the party fights: %s" % str(states.keys()))
 	print("INFO the Full Party run grew the buffers %d times (a new peak in a group)" % (crowd.stats().regrows - regrows0))
-	us.sort()
-	sync_us.sort()
-	var sum := 0.0
-	var ssum := 0.0
-	for v in us:
-		sum += v
-	for v in sync_us:
-		ssum += v
-	print("INFO draw(): Full Party (%d bodies, %d drawn) over %d frames: mean %.0f us, p95 %.0f us, max %.0f us" % [crowd.stats().bodies, crowd.stats().drawn, us.size(), sum / us.size(), us[int(us.size() * 0.95)], us[us.size() - 1]])
-	print("INFO sync(): mean %.0f us, p95 %.0f us (the core's whole budget is 4000 us a frame)" % [ssum / sync_us.size(), sync_us[int(sync_us.size() * 0.95)]])
 	# a steady crowd: the same bodies for 300 frames (no tick, the frame time and interpolation changing): the buffers do not grow
 	var before: Dictionary = crowd.stats()
 	for f in 300:

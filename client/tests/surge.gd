@@ -197,39 +197,21 @@ func _kill(ids: Array, n: int) -> int:
 	return died
 
 
-## The wall time of an ordinary physics tick here, in ms (the median of 12): what a tick that makes a wave's bodies is compared with (INFO only).
-func _idle_tick_ms() -> float:
-	var ms: Array = []
-	for _i in 12:
-		var t0 := Time.get_ticks_usec()
-		await ticks(1)
-		ms.append((Time.get_ticks_usec() - t0) / 1000.0)
-	ms.sort()
-	return float(ms[ms.size() / 2])
-
-
-## The surge's `update(dt)` that brings a wave (timed, INFO only), then the ticks that make it: until the director's queue is empty and one tick more (the last bodies' spawn events).
-## {by_update: bodies the update itself made, queued, update_ms, made: [bodies made in each tick], tick_ms: [each tick's wall time], dispatch_ms: [each tick's core event dispatch]}.
+## The surge's `update(dt)` that brings a wave, then the ticks that make it: until the director's queue is empty and one tick more (the last bodies' spawn events).
+## {by_update: bodies the update itself made, queued, made: [bodies made in each tick]}.
 func _wave_over_ticks(dt: float) -> Dictionary:
 	var total0 := host.enemy_total()
-	var t0 := Time.get_ticks_usec()
 	d.surge.update(dt, [hero])
-	var out := {"update_ms": (Time.get_ticks_usec() - t0) / 1000.0, "by_update": host.enemy_total() - total0, "queued": d.pending_count(), "made": [], "tick_ms": [], "dispatch_ms": []}
-	host.measure = true
+	var out := {"by_update": host.enemy_total() - total0, "queued": d.pending_count(), "made": []}
 	var spare := false
 	for _i in 16:
 		var before := host.enemy_total()
-		host.dispatch_us = 0
-		var t1 := Time.get_ticks_usec()
 		await ticks(1)
-		(out["tick_ms"] as Array).append((Time.get_ticks_usec() - t1) / 1000.0)
 		(out["made"] as Array).append(host.enemy_total() - before)
-		(out["dispatch_ms"] as Array).append(host.dispatch_us / 1000.0)
 		if d.pending_count() == 0:
 			if spare:
 				break
 			spare = true
-	host.measure = false
 	return out
 
 
@@ -238,10 +220,6 @@ func _sum(a: Array) -> int:
 	for x in a:
 		t += int(x)
 	return t
-
-
-func _ms(a: Array) -> String:
-	return " / ".join(a.map(func(x: float) -> String: return "%.1f" % x))
 
 
 # ------------------------------------------------------------------------------------------------------------------ A
@@ -321,7 +299,6 @@ func _d_three_waves() -> void:
 	var s := d.surge
 	await _clear()
 	var crypt := Vector3(float(sev[0]["x"]), 0.0, float(sev[0]["z"]))
-	var idle := await _idle_tick_ms()
 	waves.clear()
 	s.update(1.4, [hero])
 	check(s.waves_spawned == 0 and s.spawned == 0 and d.pending_count() == 0 and host.enemy_total() == 0, "1.4 s: nothing has climbed out yet, nothing is queued")
@@ -340,9 +317,6 @@ func _d_three_waves() -> void:
 		var made: Array = c["made"]
 		check(int(c["by_update"]) == 0 and int(c["queued"]) == want and _sum(made) == want and (made.max() as int) == per_tick and made.filter(func(n: int) -> bool: return n > 0).size() == ceili(float(want) / per_tick),
 			"wave %d: the update makes no body, queues %d, and the ticks make them %d at most a tick (%s)" % [w + 1, want, per_tick, str(made)])
-		var busy: Array = made.filter(func(n: int) -> bool: return n > 0)
-		print("INFO surge: wave %d of %d: queued by the surge's update in %.2f ms, made over %d ticks (%s a tick); the ticks, one more for the last events, took %s ms (an idle tick here %.1f ms) and dispatched the core's spawn events in %s ms"
-			% [w + 1, want, c["update_ms"], busy.size(), ", ".join(busy.map(str)), _ms(c["tick_ms"]), idle, _ms(c["dispatch_ms"])])
 	var roster: Array = d.kinds.map(func(k: Dictionary) -> String: return String(k["id"]))
 	var near := 0
 	var rising := 0
