@@ -77,7 +77,7 @@ SCREEN_PLAN = {"discipline": "gravecaller", "shots": [
     {"name": "spellbook", "open": ["spellbook"]},
     {"name": "vault", "open": ["vault"], "area": "chapterhouse"},
     {"name": "map", "open": ["map"]},
-    {"name": "hud-fight", "area": "graves", "wait_ms": 4000},
+    {"name": "hud-fight", "area": "graves", "wait_ms": 4000, "fight": True},
 ]}
 TITLE = "Release checks of %s"   # no duration in the title: the app adds ", about N minutes" from the weight
 WEIGHT_S = 2400                  # about 40 minutes: install, quit while loading, the screens, the stutter run, the two benchmarks and a 30-minute soak

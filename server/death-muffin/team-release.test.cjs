@@ -191,7 +191,7 @@ function assertShotPlan(plan) {
   assert.ok(windows.includes('bag') && windows.includes('vault') && windows.includes('spellbook') && bagItems.includes('staff_moon') && areas.includes('graves') && maxWait >= 4000, 'the plan format\'s own lists were read');
   assert.deepStrictEqual(Object.keys(plan).sort(), ['discipline', 'shots']);
   assert.deepStrictEqual(plan.shots.map((s) => s.name), ['bag-tooltip', 'character-sheet', 'spellbook', 'vault', 'map', 'hud-fight'], 'the standard shots: the bag with an item card, the character sheet, the spellbook, the vault, the map and the HUD in a fight');
-  const known = new Set(['name', 'open', 'hover', 'area', 'wait_ms', 'clip', 'view', 'turn', 'anim']);
+  const known = new Set(['name', 'open', 'hover', 'area', 'wait_ms', 'clip', 'view', 'turn', 'anim', 'fight']);
   for (const s of plan.shots) {
     assert.ok(Object.keys(s).every((k) => known.has(k)), `${s.name}: only keys the plan format has`);
     assert.match(s.name, /^[a-z0-9-]{1,40}$/);

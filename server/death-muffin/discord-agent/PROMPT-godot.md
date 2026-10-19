@@ -192,15 +192,18 @@ With no team PC online, say which value you would pick and ask in words; do not 
 What you do (nothing is changed yet; the runner records the options by overriding the game's data):
 1. Find what the change itself reads. Open the code that runs the rite or effect, find the `DmDb` data file and the keys it reads (grep `DmDb.` in the files
    that implement it; data files are under `client/data/`, and `combat/abilities` means `client/data/combat/abilities.json`) and read the current values. Only keys that
-   already exist can be set: the game refuses an unknown path or key, and the recording fails.
+   already exist can be set: the game refuses an unknown path or key, and the recording fails. A tune follows the file's own nesting from its top
+   (`client/data/combat/abilities.json` keeps each rite under `abilities`, so a rite's key is `{"combat/abilities": {"abilities": {"<rite>": {"<key>": value}}}}`).
+   Clip plan words: `at` `pack` (enemies bunched 8 m ahead) or `ahead` (a line from 4 m, 2.5 m apart); `camera` `follow`, `wide` (the widest zoom)
+   or `turntable`; at most 4 clips, 1 to 8 s, 0 to 12 enemies. Make a clip long enough for the slowest option to finish.
 2. Write `.dm-clip.json` in the worktree root (never commit it; the runner reads it and removes it):
 
 ```json
 {"plan": {"discipline": "reaper",
-          "clips": [{"name": "wraith", "area": "graves", "cast": "haunting_wraith", "at": "pack", "enemies": 6, "seconds": 5, "camera": "follow"}]},
- "variants": [{"label": "slow", "title": "slow (speed 4)", "tune": {"combat/abilities": {"haunting_wraith": {"speed": 4}}}},
-              {"label": "now", "title": "as it is now (speed 8)", "tune": {"combat/abilities": {"haunting_wraith": {"speed": 8}}}},
-              {"label": "fast", "title": "fast (speed 14)", "tune": {"combat/abilities": {"haunting_wraith": {"speed": 14}}}}]}
+          "clips": [{"name": "wraith", "area": "graves", "cast": "haunting_wraith", "at": "ahead", "enemies": 6, "seconds": 8, "camera": "follow"}]},
+ "variants": [{"label": "slow", "title": "slow (speed 2.0)", "tune": {"combat/abilities": {"abilities": {"haunting_wraith": {"speed": 2.0}}}}},
+              {"label": "now", "title": "as it is now (speed 3.5)", "tune": {"combat/abilities": {"abilities": {"haunting_wraith": {"speed": 3.5}}}}},
+              {"label": "fast", "title": "fast (speed 6.0)", "tune": {"combat/abilities": {"abilities": {"haunting_wraith": {"speed": 6.0}}}}}]}
 ```
 
 3. Reply in one or two lines: what the options are and why. Do not ask which one people like: after the videos the runner posts each one numbered
