@@ -428,8 +428,8 @@ namespace DeathMuffinTeam.Tests
             JobPlan shots; JobPlan.TryParse(Program.ValidPayload(), Site, out shots, out error);
             var big = new ScreenSize { Width = 3840, Height = 2160 };
             T.Eq(string.Join(" ", shots.CommandArgs("low", "p", "s", "-3940,0", big).Take(8)), "--windowed --resolution 3840x2160 --audio-driver Dummy --position -3940,0 --", "the window size is the one asked for, outside every monitor");
-            T.Eq(string.Join("|", shots.CommandArgs("low", "p", "s", null, big).Skip(5)), string.Join("|", shots.CommandArgs("low", "p", "s").Skip(5)), "everything after -- is the same");
-            T.Eq(shots.CommandArgs("low", "p", "s")[2], "1600x900", "with no size, 1600x900 as ever");
+            T.Eq(string.Join("|", shots.CommandArgs("low", "p", "s", null, big).Skip(5)), string.Join("|", shots.CommandArgs("low", "p", "s").Skip(5)).Replace("--qa-window=1920x1080", "--qa-window=3840x2160"), "everything after -- is the same but the window the game sizes itself to");
+            T.Eq(shots.CommandArgs("low", "p", "s")[2] + " " + shots.CommandArgs("low", "p", "s").Last(), "1920x1080 --qa-window=1920x1080", "with no size, 1080p (Helix 2026-10-19)");
             T.Eq(JobPlan.UploadName("low_1920x1080", "hero-front.png"), "low_1920x1080_hero-front.png", "`<preset>_<w>x<h>_<shot>.png`");
             T.Eq(JobPlan.UploadName("before_ultra_3440x1440", "hero-front.png"), "before_ultra_3440x1440_hero-front.png", "`<build>_<preset>_<w>x<h>_<shot>.png`");
             var png = new Regex("^[a-z0-9_-]{1,60}\\.png$");
@@ -998,7 +998,7 @@ namespace DeathMuffinTeam.Tests
             {
                 T.Ok(rig.Run("resA00000005", rig.Plan(new[] { "low" })).Ok, "a job with no window sizes runs");
                 T.Eq(string.Join(",", rig.Api.Uploaded), "low_bag-open.png,low_hero_view.png", "pictures are <preset>_<shot>.png");
-                T.Eq(rig.Host.Launches[0].Args[2], "1600x900", "in the 1600x900 window");
+                T.Eq(rig.Host.Launches[0].Args[2], "1920x1080", "in the 1080p window");
             }
         }
 

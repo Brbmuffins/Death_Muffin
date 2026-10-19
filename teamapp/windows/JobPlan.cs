@@ -116,6 +116,9 @@ namespace DeathMuffinTeam
         /// <summary>The server takes a run of at most this many bytes of JSON.</summary>
         public const int MaxRunBytes = 64 * 1024;
         public const string Resolution = "1600x900";
+        /// <summary>A screenshots job's window when the job names no sizes (Helix 2026-10-19: pictures at 1080p).</summary>
+        public const string ShotResolution = "1920x1080";
+        public const int ShotWidth = 1920;
         public const int MaxFiles = 12;
         public const int MaxArgs = 16;
         public const long MaxFileBytes = 8L << 30;
@@ -662,16 +665,19 @@ namespace DeathMuffinTeam
         }
 
         /// <summary>
-        /// The game's arguments for one preset: `--windowed --resolution 1600x900 --audio-driver Dummy [--position X,Y] -- <options> --shot-plan=<file> --shots=<dir> --preset=<preset>`. Paths use "/".
+        /// The game's arguments for one preset: `--windowed --resolution 1920x1080 --audio-driver Dummy [--position X,Y] -- <options> --shot-plan=<file> --shots=<dir> --preset=<preset> --qa-window=1920x1080`
+        /// (1080p unless the job names a <paramref name="size"/>: then that size, both times). Paths use "/".
         /// <paramref name="position"/> (see <see cref="OffscreenPosition"/>) keeps the window off every monitor; null leaves it where Godot puts it.
         /// </summary>
         public List<string> CommandArgs(string preset, string planFile, string shotsDir, string position = null, ScreenSize size = null)
         {
-            var a = WindowArgs(position, false, size == null ? Resolution : size.Text);
+            string wh = size == null ? ShotResolution : size.Text;
+            var a = WindowArgs(position, false, wh);
             a.AddRange(Args);
             a.Add("--shot-plan=" + Slashes(planFile));
             a.Add("--shots=" + Slashes(shotsDir));
             a.Add("--preset=" + preset);
+            a.Add("--qa-window=" + wh);   // the game sizes its window to this past the screen (a 1080p monitor has no room for a 1080-high inside and a title bar)
             return a;
         }
 

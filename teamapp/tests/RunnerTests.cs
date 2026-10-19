@@ -531,7 +531,7 @@ namespace DeathMuffinTeam.Tests
                 foreach (var l in rig.Host.Launches)
                 {
                     int sep = l.Args.IndexOf("--");
-                    T.Eq(string.Join(" ", l.Args.Take(sep)), "--windowed --resolution 1600x900 --audio-driver Dummy --position -3620,-200", "each screenshot run: windowed, silent, off every monitor, all ahead of --");
+                    T.Eq(string.Join(" ", l.Args.Take(sep)), "--windowed --resolution 1920x1080 --audio-driver Dummy --position -3620,-200", "each screenshot run: windowed at 1080p, silent, off every monitor, all ahead of --");
                     T.Ok(!l.Args.Skip(sep).Any(a => a.StartsWith("--position") || a.StartsWith("--audio-driver")), "and nothing of it is passed after --");
                 }
             }
@@ -545,9 +545,17 @@ namespace DeathMuffinTeam.Tests
             }
             using (var rig = new Rig())
             {
+                // a 1080p picture window (the default since 0.4.7) gets a spot left of every monitor by its own 1920 px
+                var widths = new List<int>();
+                rig.Runner.WindowPosition = w => { widths.Add(w); return "-2020,0"; };
+                rig.Run("jobW00000006", rig.Plan(new[] { "low" }));
+                T.Ok(widths.SequenceEqual(new[] { 1920 }) && rig.Host.Launches[0].Args.Contains("-2020,0") && rig.Host.Launches[0].Args.Last() == "--qa-window=1920x1080", "a 1920-wide spot, and the game sizes its window to 1920x1080");
+            }
+            using (var rig = new Rig())
+            {
                 rig.Run("jobW00000003", rig.Plan(new[] { "low" }));
                 var args = rig.Host.Launches[0].Args;
-                T.Ok(!args.Contains("--position") && string.Join(" ", args.Take(5)) == "--windowed --resolution 1600x900 --audio-driver Dummy", "without a position source the window is left to Godot, still silent");
+                T.Ok(!args.Contains("--position") && string.Join(" ", args.Take(5)) == "--windowed --resolution 1920x1080 --audio-driver Dummy", "without a position source the window is left to Godot, still silent");
             }
             using (var rig = new Rig())
             {

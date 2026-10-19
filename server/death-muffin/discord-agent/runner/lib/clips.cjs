@@ -30,7 +30,7 @@ const CAMERAS = ['follow', 'wide', 'turntable'];
 const STEPS_FILE = 'client/main/qa_clip_steps.json';
 const MAX_SETUP = 12, MAX_STEPS = 24;
 const WORD_RE = /^[a-z][a-z0-9_]{0,23}$/, ENEMY_RE = /^[a-z0-9_]{1,40}$/;
-// The screen sizes a shot plan may ask for (a team PC renders each shot at every size listed; with none the game's standard 1600x900 is used).
+// The screen sizes a shot plan may ask for (a team PC renders each shot at every size listed; with none the team app's standard 1920x1080 is used).
 const RESOLUTIONS = ['1920x1080', '2560x1440', '3840x2160', '3440x1440'];
 const TUNE_KEY_RE = /^[A-Za-z0-9_][A-Za-z0-9_./-]{0,79}$/;
 const BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);

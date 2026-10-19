@@ -169,7 +169,7 @@ Read them. The plan:
   `"view": "game"` is the normal game camera with the HUD hidden. Without `view` the shot is the normal screen, as before.
 - A plan holds at most 4 shots; for more angles run a second plan (change `.dm-shot.json`, run the script again).
 - `"resolutions"` (at the top of the plan, only with a team PC online): the screen sizes the team PC renders every shot at, from `1920x1080`, `2560x1440`, `3840x2160` and
-  `3440x1440` (at most 4, each once; without it only the standard 1600x900 is rendered). For UI changes (a window, a tooltip, the HUD, anything that sits against a screen edge or
+  `3440x1440` (at most 4, each once; without it only the standard 1920x1080 is rendered). For UI changes (a window, a tooltip, the HUD, anything that sits against a screen edge or
   scales with the screen) ask for several: all four for a new window or a HUD change, one or two for a small tweak. Leave it out for how the hero, gear or a spell looks and
   whenever no team PC is online (the server renders the standard size only). A list that is not allowed is dropped and the thread says so. More sizes mean more pictures, so
   with many shots and sizes the team PC renders Ultra only.

@@ -119,8 +119,8 @@ That sign-in **never touches the game's session**, so it cannot stop a game you 
 6. The files are downloaded into the job's folder with a SHA-256 check, resuming a half download. Files with a `cacheKey` (the art pack, about 500 MB, and the
    Godot debug build, about 90 MB) are kept in `cache\<cacheKey>\` and reused by later jobs without a download; the job's game folder gets a hard link
    to them (a copy when Windows refuses).
-7. For each preset it starts `DeathMuffinDebug.exe --windowed --resolution 1600x900 --audio-driver Dummy --position <X,Y> -- --dev-offline <options> --shot-plan=<plan.json>
-   --shots=<job>/out/<preset> --preset=<preset>`, one preset after the other, at most 10 minutes each, each with its own empty APPDATA and LOCALAPPDATA.
+7. For each preset it starts `DeathMuffinDebug.exe --windowed --resolution 1920x1080 --audio-driver Dummy --position <X,Y> -- --dev-offline <options> --shot-plan=<plan.json>
+   --shots=<job>/out/<preset> --preset=<preset> --qa-window=1920x1080` (1080p, Helix 2026-10-19; `--qa-window` lets the game size its window past a 1080p screen, and the position leaves room for a 1920-wide window), one preset after the other, at most 10 minutes each, each with its own empty APPDATA and LOCALAPPDATA.
 8. It uploads every picture as `<preset>_<shot>.png` (at most 40, each at most 20 MB), then reports **done** with the file names, the log and the timings.
    Any failure (a download that does not match, the game stopping with an error or making no pictures, the 10 minutes, a refused upload) reports **fail** with
    a readable sentence and the end of the log. What it keeps of the game's output and of Godot's own log leaves out Godot's exit report (a debug build's list of what it never freed:
@@ -136,8 +136,8 @@ once and placed (hard link, else copy) in the second build's folder (the art pac
 build, the before build first, and uploads `<label>_<preset>_<shot>.png` (`before_low_hero.png`, `after_low_hero.png`). A run's pictures are in `out\<build>\<preset>\`. With more pictures than the server takes (40) every
 (build, preset) run keeps the same number of its first pictures, so the pairs stay pairs.
 
-**Window sizes** (`resolutions`). A screenshots payload may carry `resolutions`: one to four of `1920x1080`, `2560x1440`, `3840x2160` and `3440x1440` (anything else is refused; none: the one 1600x900 window as ever). The app runs
-each preset on each build at each size (`--resolution WxH`, the window outside every monitor by its own width, silent), puts a run's pictures in `out\[<build>\]<preset>\<WxH>\` and uploads `<build>_<preset>_<w>x<h>_<shot>.png`
+**Window sizes** (`resolutions`). A screenshots payload may carry `resolutions`: one to four of `1920x1080`, `2560x1440`, `3840x2160` and `3440x1440` (anything else is refused; none: the one 1920x1080 window). The app runs
+each preset on each build at each size (`--resolution WxH` and `--qa-window=WxH`, the window outside every monitor by its own width, silent), puts a run's pictures in `out\[<build>\]<preset>\<WxH>\` and uploads `<build>_<preset>_<w>x<h>_<shot>.png`
 (`<preset>_<w>x<h>_<shot>.png` with no builds). Over 40 pictures every (build, preset, size) run keeps the same number of its first pictures. A size larger than the monitor may be held to the screen's by Windows: the app notes in the
 log when the pictures are not the size asked for.
 
@@ -291,6 +291,8 @@ or the focus, the box growing with the list and staying in its corner).
 
 ### Changelog
 
+- **0.4.7** (2026-10-19) - Screenshots at 1080p (Helix): a screenshots job that names no sizes runs the game at 1920x1080 instead of 1600x900, and every picture run passes `--qa-window` with its size, so a
+  1080p (or smaller) screen no longer cuts the window's height; its spot outside every monitor leaves room for its width.
 - **0.4.6** (2026-10-19) - The tray menu shows a tick beside Run benchmarks, Allow AFK mode and Start with Windows when they are on (the menu had no check column, so on and off looked the same; Helix).
 - **0.4.5** (2026-10-19) - Videos at 1080p and 60 frames a second (Helix): a clip run is 1920x1080 at `--fixed-fps 60` with `--clip-fps=60 --clip-width=1920 --qa-window=1920x1080`, and this PC makes each clip's mp4
   with ffmpeg (downloaded once from the game's team-files, 105 MB, kept in the cache) and uploads only the mp4 (a few MB instead of about 150 MB of motion JPEG). The motion-JPEG upload is gone from the app.

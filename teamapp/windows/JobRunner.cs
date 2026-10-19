@@ -178,7 +178,7 @@ namespace DeathMuffinTeam
                             Directory.CreateDirectory(shotsDir);
                             foreach (string old in Directory.GetFiles(shotsDir, "*.png")) File.Delete(old);   // a picture left by an earlier try is not this run's
                             progress("Taking pictures on " + label + " (" + runNo + " of " + runTotal + ")");
-                            string position = size != null ? PositionFor(size.Width) : ShotsPosition == null ? null : ShotsPosition();
+                            string position = PositionFor(size != null ? size.Width : JobPlan.ShotWidth);
                             runClock.Start();
                             try { await RunGameAsync(plan.CommandArgs(preset, planPath, shotsDir, position, size), JobPlan.GameExe, label, gameDir, appData, localAppData, "took every picture", null, note, ct).ConfigureAwait(false); }
                             finally { runClock.Stop(); }

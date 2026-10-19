@@ -409,25 +409,25 @@ namespace DeathMuffinTeam.Tests
             string shots = "C:\\Users\\Test User\\AppData\\Local\\DeathMuffinTeam\\jobs\\q7x2k9ab\\out\\low";
             var a = plan.CommandArgs("low", planFile, shots);
             T.Eq(string.Join("|", a),
-                "--windowed|--resolution|1600x900|--audio-driver|Dummy|--|--dev-offline|--class=2|--qa|--shot-plan=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/plan.json|--shots=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/out/low|--preset=low",
-                "command arguments for low (the contract's line)");
-            T.Eq(plan.CommandArgs("ultra", planFile, shots.Replace("low", "ultra")).Last(), "--preset=ultra", "command arguments for ultra");
+                "--windowed|--resolution|1920x1080|--audio-driver|Dummy|--|--dev-offline|--class=2|--qa|--shot-plan=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/plan.json|--shots=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/out/low|--preset=low|--qa-window=1920x1080",
+                "command arguments for low (the contract's line: 1080p, Helix 2026-10-19, the window sized past the screen when it must be)");
+            T.Ok(plan.CommandArgs("ultra", planFile, shots.Replace("low", "ultra")).Contains("--preset=ultra"), "command arguments for ultra");
             T.Eq(plan.CommandLine("low", "C:\\j\\plan.json", "C:\\j\\out\\low"),
-                "--windowed --resolution 1600x900 --audio-driver Dummy -- --dev-offline --class=2 --qa --shot-plan=C:/j/plan.json --shots=C:/j/out/low --preset=low",
+                "--windowed --resolution 1920x1080 --audio-driver Dummy -- --dev-offline --class=2 --qa --shot-plan=C:/j/plan.json --shots=C:/j/out/low --preset=low --qa-window=1920x1080",
                 "command line without spaces needs no quotes");
             string line = plan.CommandLine("low", planFile, shots);
             T.Has(line, "\"--shot-plan=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/plan.json\"", "a path with a space is quoted");
             T.Eq(string.Join("|", ParseWinArgs(line)), string.Join("|", a), "the command line reads back as the same arguments");
             T.Eq(plan.CommandArgs("low", "p", "s").IndexOf("--"), 5, "everything for the game comes after --");
-            T.Eq(string.Join(" ", a.Take(5)), "--windowed --resolution 1600x900 --audio-driver Dummy", "the game is silent: the Dummy audio driver still mixes, so its cost stays real");
+            T.Eq(string.Join(" ", a.Take(5)), "--windowed --resolution 1920x1080 --audio-driver Dummy", "the game is silent: the Dummy audio driver still mixes, so its cost stays real");
 
             // screenshot jobs keep the window outside every monitor
             var off = plan.CommandArgs("low", planFile, shots, "-1700,0");
-            T.Eq(string.Join(" ", off.Take(8)), "--windowed --resolution 1600x900 --audio-driver Dummy --position -1700,0 --", "--position goes ahead of --, after the audio driver");
+            T.Eq(string.Join(" ", off.Take(8)), "--windowed --resolution 1920x1080 --audio-driver Dummy --position -1700,0 --", "--position goes ahead of --, after the audio driver");
             T.Eq(off.IndexOf("--"), 7, "and everything for the game still comes after --");
             T.Eq(string.Join("|", off.Skip(8)), string.Join("|", a.Skip(6)), "the game's own options are the same");
             T.Eq(plan.CommandLine("low", "C:\\j\\plan.json", "C:\\j\\out\\low", "-3620,-200"),
-                "--windowed --resolution 1600x900 --audio-driver Dummy --position -3620,-200 -- --dev-offline --class=2 --qa --shot-plan=C:/j/plan.json --shots=C:/j/out/low --preset=low", "the command line with a position");
+                "--windowed --resolution 1920x1080 --audio-driver Dummy --position -3620,-200 -- --dev-offline --class=2 --qa --shot-plan=C:/j/plan.json --shots=C:/j/out/low --preset=low --qa-window=1920x1080", "the command line with a position");
             T.Ok(!a.Contains("--position") && !plan.CommandArgs("low", "p", "s", "").Contains("--position"), "no position given, none is set");
             T.Eq(ParseWinArgs(plan.CommandLine("low", planFile, shots, "-1700,0")).Count(x => x == "-1700,0"), 1, "a negative position is one argument");
 

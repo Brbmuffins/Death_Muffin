@@ -353,7 +353,7 @@ online the pictures need no `!shot` and come as BEFORE and AFTER pairs:
 4. **The thread** gets, a preset at a time (Low, then Ultra) and in the plan's order, each shot as a pair: BEFORE (the game as it is now), then AFTER (this change), at most two pairs a
    post and 20 MB (a post Discord refuses is lost), a pair never split. Every picture is labelled by `label-shot.py` like the server's ("BRANCH PREVIEW · not live · <branch>": the base branch's name on BEFORE, the job's branch on
    AFTER) and posted only after the label step; names are `before-low-<shot>.png` / `after-low-<shot>.png`, and the post says whose PC and card made them (`bogar1's PC, Intel Arc B580`).
-5. **Screen sizes.** A shot plan may carry `resolutions`: up to 4 different sizes from `1920x1080`, `2560x1440`, `3840x2160` and `3440x1440` (default: only the standard 1600x900), which
+5. **Screen sizes.** A shot plan may carry `resolutions`: up to 4 different sizes from `1920x1080`, `2560x1440`, `3840x2160` and `3440x1440` (default: only the standard 1920x1080, team app 0.4.7), which
    the prompt asks for on UI changes (windows, tooltips, the HUD). `readShotPlan` (`runner/lib/clips.cjs`) checks the list: a list that is not allowed is dropped and the first post says so
    ("The screen sizes asked for were not usable ..., so the standard size was used"). A valid list stays in the plan the app gets and is also set beside it as the payload's `resolutions`;
    the app runs every size and the pictures keep their size in the name (`before-low-1920x1080-a.png`). A job holds at most 40 pictures (builds x presets x shots x sizes): over that the
