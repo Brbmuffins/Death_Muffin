@@ -110,6 +110,9 @@ function repo(root, preview = 'fake') {
   const c1 = git(dir, 'rev-parse', '--short=12', 'HEAD');
   const add = ['server/death-muffin/team-release.sh', 'server/death-muffin/team-files-prune.sh'];
   for (const f of add) fs.copyFileSync(path.join(HERE, path.basename(f)), path.join(dir, f));
+  fs.mkdirSync(path.join(dir, 'tools/check'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'tools/check/prep.sh'), '#!/usr/bin/env bash\n');   // the revision's setup script (its path is handed to the build)
+  add.push('tools/check/prep.sh');
   if (preview !== 'none') {
     fs.writeFileSync(path.join(dir, 'server/death-muffin/discord-agent/preview-godot.sh'), preview === 'old' ? OLD_PREVIEW : FAKE_PREVIEW);
     add.push('server/death-muffin/discord-agent/preview-godot.sh');
@@ -451,6 +454,18 @@ test('DM_TEAM_PREVIEW names another preview-godot.sh than the revision\'s own', 
     assert.strictEqual(r.code, 0, r.out);
     assert.match(r.out, /with the debug build/);
     assertClean(w, 'override');
+  });
+});
+
+test('the debug build is handed the revision\'s own setup script (DM_PREP: tools/check/prep.sh of the worktree, not beside preview-godot.sh)', async () => {
+  await withWorld({ world: { preview: 'none' } }, async (w, backend) => {
+    const own = path.join(w.root, 'own-preview.sh');
+    const seen = path.join(w.root, 'prep-seen');
+    fs.writeFileSync(own, FAKE_PREVIEW.replace('TOP=$(git rev-parse --show-toplevel)', 'TOP=$(git rev-parse --show-toplevel)\n[ -f "${DM_PREP:-}" ] && echo "$DM_PREP" > ' + JSON.stringify(seen)));
+    const r = await release(w, backend, VERSION, { DM_TEAM_PREVIEW: own });
+    assert.strictEqual(r.code, 0, r.out);
+    assert.match(fs.readFileSync(seen, 'utf8').trim(), /\/tools\/check\/prep\.sh$/, 'an existing prep.sh of the worktree');
+    assertClean(w, 'prep');
   });
 });
 

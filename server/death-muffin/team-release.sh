@@ -13,7 +13,8 @@
 #    from the newest-6 rule of the preview builds' 32-hex folders, so a burst of previews never takes the files of a check that is still waiting.
 # 4. Builds the DEBUG export of the same revision (the screens, stutter and soak steps need the QA tools, which start only in a debug build): a scratch worktree of
 #    the revision, then its own `discord-agent/preview-godot.sh <6 hex> --team` there under `nice -n 10` (a limit of 25 minutes; the whole process group is stopped
-#    at it), then the worktree is removed. preview-godot.sh makes <team root>/<32 hex>/ and ends with a `TEAMFILES: [...]` line; that folder is moved to
+#    at it), with DM_PREP set to the worktree's own tools/check/prep.sh (preview-godot.sh looks beside itself, where only the agent's installed copy has one),
+#    then the worktree is removed. preview-godot.sh makes <team root>/<32 hex>/ and ends with a `TEAMFILES: [...]` line; that folder is moved to
 #    <release folder>/debug/ (so it ages out with the release and never counts among the preview builds) and the addresses are rewritten. If the build fails or
 #    this revision's preview-godot.sh has no --team, the jobs go without the steps that need it (and a lighter weight).
 # 5. Queues one `release` job per PC through POST /internal/team/jobs: targeted at that PC (it is offered to and claimed by that PC only), time to live 3 days,
@@ -169,6 +170,9 @@ def build_debug(rev, dest):
             return None, "this revision's preview-godot.sh has no --team"
         say("building the debug export of %s (preview-godot.sh --team, nice %s, at most %d s)" % (rev[:12], nice_level, build_timeout))
         child_env = dict(os.environ, DM_TEAM_ROOT=root, DM_TEAM_URL=base_url, CLIENT_MANIFEST=manifest_path)
+        prep = os.path.join(wt, "tools/check/prep.sh")   # the revision's own setup script: preview-godot.sh looks beside itself (the agent's installed copy has one there, a worktree does not)
+        if "DM_PREP" not in child_env and os.path.isfile(prep):
+            child_env["DM_PREP"] = prep
         proc = subprocess.Popen(["nice", "-n", nice_level, "bash", script, secrets.token_hex(3), "--team"], cwd=wt, env=child_env, stdin=subprocess.DEVNULL,
                                 stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         try:
