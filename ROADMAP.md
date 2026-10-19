@@ -171,8 +171,7 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
       asks the person which). Approval never waits for them.
     - Next (after ubuntu-f2's agent change is on main): the Discord agent runs these checks as tests at its test runs (🧪 / `!test` and
       the ship's own CI): a pass posts nothing, a failure is fixed and tested again, and the thread hears only what needs a person's
-      review (before and after pictures of a visible change, a choice, a problem it could not fix). Its BEFORE pictures become the live
-      build's (they are main where the branch started today, which can hold unreleased changes).
+      review (before and after pictures of a visible change, a choice, a problem it could not fix).
     - Jobs reach a PC within about a second (the PC's check-in waits on the server).
   - Proven on Helix's PC (RTX 4070 SUPER) on 2026-10-19 with apps 0.3.1 to 0.3.9: a full release check with every step (24 pictures at
     their exact sizes, the stutter test, the benchmark at Low 691 and Medium 597 fps with no hitches, 30 minutes of soak with flat memory).
