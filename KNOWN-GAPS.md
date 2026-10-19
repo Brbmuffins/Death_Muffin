@@ -127,6 +127,11 @@ polish list). Also:
 
 ## Tools and tests
 
+- **Game code that nothing in the game calls** (found by the suite consolidation, 2026-10-19; their tests are gone): 17 of
+  `DmAudioHooks`' static one-liners in `client/main/audio_hooks.gd` (`click`, `error`, `panel_open`, `panel_close`, `needle_cast`,
+  `needle_hit`, `enemy_windup`, `enemy_strike`, `enemy_died`, `hero_hurt`, `thrall_raised`, `thrall_hit`, `thrall_died`, `loot_drop`,
+  `loot_collected`, `gather_cycle`, `boss_music`; the class itself is used), `DmHudMinimap.world_point` (the click handler computes the
+  point itself) and `DmGameUi._can_ascend`. Delete them with the next change in those files.
 - **A team app test fails now and then** (2026-10-19, 1 run in 3 on the VPS): `teamapp/tests/LogCancelTests.cs` "and the exit report is not", which reads a real
   process's filtered output right after it exits; the next two runs passed.
 - **Typed lists in game code that a new boss or area must be added to by hand** (found by the content-count pass, 2026-10-19): `DmBossHost`'s
