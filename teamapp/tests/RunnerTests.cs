@@ -650,7 +650,7 @@ namespace DeathMuffinTeam.Tests
                 int gameReads = 0;
                 rig.Probe.Script = (n, t, pid) =>
                 {
-                    bool player = pid > 0 && rig.Host.Launches.Count == 1 && ++gameReads == 3;
+                    bool player = pid > 0 && rig.Host.Launches.Count == 1 && ++gameReads >= 3;   // started during the first run, and it stays open
                     return new PcSample { CpuTotal = 3 + (pid > 0 ? 40 : 0), CpuGame = pid > 0 ? 40 : 0, PlayerGame = player };
                 };
                 rig.Host.Behaviour = (l, dir) =>

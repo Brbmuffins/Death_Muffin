@@ -49,6 +49,10 @@ namespace DeathMuffinTeam
         public double OthersCpuPct = 20;
         public TimeSpan OthersWindow = TimeSpan.FromSeconds(30);
         public TimeSpan OthersMinSpan = TimeSpan.FromSeconds(10);
+        /// <summary>During a run the player's Death Muffin counts once it was seen in this many readings in a row (about as many seconds): a real game stays open, and
+        /// a process that is listed for a moment (Helix's PC, 2026-10-19: a "DeathMuffin.exe" whose path Windows would not give, at the end of every benchmark run) is not
+        /// the player starting the game.</summary>
+        public int PlayerReadings = 3;
     }
 
     internal static class Quiet
@@ -90,7 +94,7 @@ namespace DeathMuffinTeam
         }
 
         /// <summary>
-        /// "" when a run that started at <paramref name="runStart"/> (the reader's clock) was left alone, else why it was disturbed: the player started Death Muffin, the PC
+        /// "" when a run that started at <paramref name="runStart"/> (the reader's clock) was left alone, else why it was disturbed: the player started Death Muffin (seen in <see cref="QuietRules.PlayerReadings"/> readings in a row), the PC
         /// went on battery, or the other processes used more than 20% of the CPU on average (over any 30 s of the run, or the
         /// whole run while it is shorter; the run must be 10 s old before this counts).
         /// </summary>
@@ -98,9 +102,11 @@ namespace DeathMuffinTeam
         {
             var run = new List<PcSample>();
             foreach (PcSample s in samples) if (s.At >= runStart) run.Add(s);
+            int player = 0;
             foreach (PcSample s in run)
             {
-                if (s.PlayerGame) return "Death Muffin was started";
+                player = s.PlayerGame ? player + 1 : 0;
+                if (player >= r.PlayerReadings) return "Death Muffin was started";
                 if (s.OnBattery) return "the PC went on battery";
             }
             for (int e = 0; e < run.Count; e++)

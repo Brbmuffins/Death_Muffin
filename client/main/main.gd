@@ -12,6 +12,7 @@ extends Node
 ## screen within 60 s prints `BOOT FAIL ...` and quits with exit code 1 (`_boot_check`). With `--quit-while-loading` (also release-safe, and read only with `--boot-check`) it quits with the art pack's models still loading on the
 ## worker threads (the case that crashed the old game on 4-core PCs), after `QUIT-WHILE-LOADING <n> of <m> loads in flight`; the team app's `quit-loading` step checks the exit code 0 and that DmCrashWatch left no crash report.
 ## `--qa` / `--shot-plan=<plan.json>` (with `--shots=<dir>`, `--seconds=N`; dev-offline runs only): the QA tools beside the game, the scripted fight or the shot plan of a proposal (`start_qa`, client/README.md "Screenshots for proposals").
+## `--qa-window=WxH` (only where the QA tools start): the window takes that size even when the screen is smaller (`full_size_window`; the team app's screens step sends it).
 ## `--clip-plan=<plan.json> --clips=<dir>` (the same QA runs, engine started `--fixed-fps 30`): short video clips of a rite in use, 30 frames per game second as `<name>.mjpeg` (DmQaClips, client/README.md "Clips and tune").
 ## `--tune=<data.json>` (only where the QA tools start, `qa_tune`): data overrides for this run, merged into the game's data before anything reads it (DmQaTune); an unknown file, key or type is refused with a printed line and exit code 2.
 ## `--preset=<low|medium|high|ultra>` (only where the QA tools start, `qa_preset`): that graphics preset is in force from the game's start, as if chosen in Settings, and is never saved to the player's settings
@@ -119,7 +120,7 @@ func _ready() -> void:
 				return
 		quiet_window(get_window())
 		print("QA-SHOTS window: takes no focus and passes the mouse through (asked of the %s display)" % DisplayServer.get_name())
-		full_size_window(get_window(), asked_resolution(OS.get_cmdline_args()))
+		full_size_window(get_window(), qa_window(args))
 		var scenario := qa_scenario(args, mode)
 		if scenario != "":
 			_run_qa_scenario(scenario, args)   # its own games, no front flow, and the run ends with its exit code
@@ -273,9 +274,10 @@ static func quiet_window(win: Window) -> void:
 	win.mouse_passthrough = true
 
 
-## Testing: a QA run's window at the size the engine was asked for (`--resolution WxH`), even taller or wider than the PC's screen. Windows holds a window to the screen
-## unless the window names a larger maximum (Godot passes `max_size` on as the window's largest tracking size), so the maximum is set to the asked size and the size
-## applied again: the team PC's 2560x1440, 3440x1440 and 3840x2160 pictures came out 1421 high on a 1440p screen (2026-10-19). Called only where the QA tools start.
+## Testing: a QA run's window at the size it asks for (`--qa-window=WxH` after `--`; the team app sends it beside the engine's `--resolution`, which Godot keeps
+## out of the arguments a game can read), even taller or wider than the PC's screen. Windows holds a window to the screen unless the window names a larger maximum
+## (Godot passes `max_size` on as the window's largest tracking size), so the maximum is set to the asked size and the size applied again: the team PC's 2560x1440,
+## 3440x1440 and 3840x2160 pictures came out 1421 high on a 1440p screen (2026-10-19). Called only where the QA tools start.
 static func full_size_window(win: Window, want: Vector2i) -> void:
 	if win == null or want == Vector2i.ZERO or win.size == want or DisplayServer.get_name() == "headless":
 		return
@@ -284,12 +286,15 @@ static func full_size_window(win: Window, want: Vector2i) -> void:
 	print("QA-SHOTS window: %dx%d asked, %dx%d now" % [want.x, want.y, win.size.x, win.size.y])
 
 
-## The engine's `--resolution WxH` among the command line's arguments, Vector2i.ZERO when there is none or it does not read.
-static func asked_resolution(engine_args: PackedStringArray) -> Vector2i:
-	var i := engine_args.find("--resolution")
-	if i < 0 or i + 1 >= engine_args.size():
+## The `--qa-window=WxH` among the game's arguments, Vector2i.ZERO when there is none or it does not read.
+static func qa_window(user_args: PackedStringArray) -> Vector2i:
+	var v := ""
+	for a in user_args:
+		if a.begins_with("--qa-window="):
+			v = a.trim_prefix("--qa-window=")
+	if v == "":
 		return Vector2i.ZERO
-	var wh := engine_args[i + 1].split("x")
+	var wh := v.split("x")
 	if wh.size() != 2 or not wh[0].is_valid_int() or not wh[1].is_valid_int() or int(wh[0]) <= 0 or int(wh[1]) <= 0:
 		return Vector2i.ZERO
 	return Vector2i(int(wh[0]), int(wh[1]))

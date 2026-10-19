@@ -715,6 +715,7 @@ namespace DeathMuffinTeam
             a.Add("--shots=" + Slashes(shotsDir));
             a.Add("--preset=" + ScreensPreset);
             if (!string.IsNullOrEmpty(uiScale)) a.Add("--ui-scale=" + uiScale);
+            a.Add("--qa-window=" + size.Text);   // the game cannot read the engine's --resolution; it sizes its window past the screen from this
             return a;
         }
 

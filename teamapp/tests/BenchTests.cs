@@ -279,7 +279,11 @@ namespace DeathMuffinTeam.Tests
             T.Eq(Dist(new List<PcSample> { S(50, player: true), S(101) }), "", "readings from before the run are not the run's");
 
             // the PC's state
-            T.Eq(Dist(Run(101, 140, t => S(t, player: t == 120))), "Death Muffin was started", "the player starts Death Muffin during the run");
+            T.Eq(Dist(Run(101, 140, t => S(t, player: t >= 120))), "Death Muffin was started", "the player starts Death Muffin during the run (and it stays open)");
+            T.Eq(Dist(Run(101, 140, t => S(t, player: t >= 120 && t <= 121))), "", "a Death Muffin listed for two readings is not the player's game (it was gone again)");
+            T.Eq(Dist(Run(101, 140, t => S(t, player: t == 120 || t == 122 || t == 124))), "", "three readings apart are not in a row");
+            T.Eq(Dist(Run(101, 140, t => S(t, player: t >= 120 && t <= 122))), "Death Muffin was started", "three in a row are");
+            T.Eq(new QuietRules().PlayerReadings, 3, "three readings");
             T.Eq(Dist(Run(101, 140, t => S(t, battery: t == 120))), "the PC went on battery", "the cable is pulled during the run");
             T.Eq(Dist(Run(101, 140, t => S(t, full: true))), "", "a full-screen app is not a disturbance (the game's own window may count as one on a small screen)");
 

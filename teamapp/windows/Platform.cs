@@ -93,6 +93,14 @@ namespace DeathMuffinTeam
             return path != null && path.StartsWith(ownRoot, StringComparison.OrdinalIgnoreCase);
         }
 
+        bool WasLaunched(int pid) { lock (launched) return launched.ContainsKey(pid); }
+
+        static string StartedAt(Process p)
+        {
+            try { return p.StartTime.ToUniversalTime().ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) + " UTC"; }
+            catch (Exception) { return "(time unreadable)"; }
+        }
+
         /// <summary>True when the process has already ended (it can still be listed for a moment); false when that cannot be read.</summary>
         static bool Exited(Process p)
         {
@@ -119,7 +127,8 @@ namespace DeathMuffinTeam
                         if ((!exclude.HasValue || p.Id != exclude.Value) && !Exited(p) && !IsOurs(p))
                         {
                             ids.Add(p.Id);
-                            lastSeen = name + ".exe pid " + p.Id + " at " + (Native.ImagePath(p.Id) ?? "(path unreadable)") + " (the app's folder: " + ownRoot + ")";
+                            lastSeen = name + ".exe pid " + p.Id + " at " + (Native.ImagePath(p.Id) ?? "(path unreadable)") + " (" + Native.ParentOf(p.Id) + ", started " + StartedAt(p)
+                                + ", " + (WasLaunched(p.Id) ? "an id the app launched" : "not an id the app launched") + "; the app's folder: " + ownRoot + ")";
                         }
                     }
                     finally { p.Dispose(); }
@@ -131,20 +140,45 @@ namespace DeathMuffinTeam
         // ---- IPlayerGameWatch --------------------------------------------------------------------------------------------------------
         readonly HashSet<int> baseline = new HashSet<int>();
 
+        readonly Dictionary<int, DateTime> seenSince = new Dictionary<int, DateTime>();   // a new game's id -> when it was first seen (UTC)
+
+        /// <summary>A newly seen game counts as the player's once it has stayed open this long: a real game does; a "DeathMuffin.exe" listed for a moment does not
+        /// (Helix's PC, 2026-10-19: one at the end of every benchmark run stopped the whole release check before its soak).</summary>
+        public static readonly TimeSpan PlayerStays = TimeSpan.FromSeconds(3);
+
         public void Begin()
         {
-            baseline.Clear();
-            foreach (int id in RunningGames(null)) baseline.Add(id);
+            lock (seenSince)
+            {
+                baseline.Clear();
+                seenSince.Clear();
+                foreach (int id in RunningGames(null)) baseline.Add(id);
+            }
         }
 
         volatile string lastSeen = "";
         public string LastSeen { get { return lastSeen; } }
 
+        /// <summary>True when a game that was not running at <see cref="Begin"/> (and is not the job's own) has been open for <see cref="PlayerStays"/>: the first
+        /// sighting only starts the clock, so a check made once (between two steps) is answered by the next ones.</summary>
         public bool PlayerStarted(int ownPid)
         {
-            foreach (int id in RunningGames(ownPid > 0 ? (int?)ownPid : null))
-                if (!baseline.Contains(id)) return true;
-            return false;
+            DateTime now = DateTime.UtcNow;
+            lock (seenSince)
+            {
+                var current = new HashSet<int>();
+                bool started = false;
+                foreach (int id in RunningGames(ownPid > 0 ? (int?)ownPid : null))
+                {
+                    if (baseline.Contains(id)) continue;
+                    current.Add(id);
+                    DateTime since;
+                    if (!seenSince.TryGetValue(id, out since)) seenSince[id] = since = now;
+                    if (now - since >= PlayerStays) started = true;
+                }
+                foreach (int id in new List<int>(seenSince.Keys)) if (!current.Contains(id)) seenSince.Remove(id);
+                return started;
+            }
         }
 
         // ---- The graphics card's name ---------------------------------------------------------------------------------------------------
@@ -303,6 +337,47 @@ namespace DeathMuffinTeam
         [DllImport("kernel32.dll", SetLastError = true)] static extern IntPtr OpenProcess(uint access, bool inherit, int pid);
         [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] static extern bool QueryFullProcessImageName(IntPtr h, int flags, System.Text.StringBuilder name, ref int size);
+        const uint Th32csSnapProcess = 0x2;
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        struct ProcessEntry32
+        {
+            public uint dwSize, cntUsage, th32ProcessID;
+            public IntPtr th32DefaultHeapID;
+            public uint th32ModuleID, cntThreads, th32ParentProcessID;
+            public int pcPriClassBase;
+            public uint dwFlags;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string szExeFile;
+        }
+        [DllImport("kernel32.dll", SetLastError = true)] static extern IntPtr CreateToolhelp32Snapshot(uint flags, uint pid);
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, EntryPoint = "Process32FirstW")] static extern bool Process32First(IntPtr snap, ref ProcessEntry32 e);
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, EntryPoint = "Process32NextW")] static extern bool Process32Next(IntPtr snap, ref ProcessEntry32 e);
+
+        /// <summary>For the job log: which process started <paramref name="pid"/> ("parent explorer.exe pid 1234"), from the process list (no handle on the process
+        /// itself is needed, so it works for one whose path Windows will not give); "not listed" or "?" when it cannot be told.</summary>
+        public static string ParentOf(int pid)
+        {
+            IntPtr snap = CreateToolhelp32Snapshot(Th32csSnapProcess, 0);
+            if (snap == IntPtr.Zero || snap == new IntPtr(-1)) return "?";
+            try
+            {
+                var e = new ProcessEntry32 { dwSize = (uint)Marshal.SizeOf(typeof(ProcessEntry32)) };
+                var names = new Dictionary<uint, string>();
+                uint parent = 0;
+                bool found = false;
+                if (Process32First(snap, ref e))
+                    do
+                    {
+                        names[e.th32ProcessID] = e.szExeFile;
+                        if (e.th32ProcessID == (uint)pid) { parent = e.th32ParentProcessID; found = true; }
+                    } while (Process32Next(snap, ref e));
+                if (!found) return "not listed";
+                string pn;
+                return "parent " + (names.TryGetValue(parent, out pn) ? pn : "(ended)") + " pid " + parent;
+            }
+            catch (Exception) { return "?"; }
+            finally { CloseHandle(snap); }
+        }
+
         /// <summary>A process's exe path (works from the start of its life and across 32/64-bit), or null.</summary>
         public static string ImagePath(int pid)
         {

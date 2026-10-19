@@ -11,7 +11,8 @@ extends SceneTree
 ##     cast at and hit, on screen at the end of the wait;
 ##   - a QA run takes no focus and no mouse (`DmMain.quiet_window`: the main window's `unfocusable` and `mouse_passthrough`): the flags on a window of its own, and in a real launch the boot's line saying it asked for them
 ##     (a headless run has no window to configure, so only the call path is tested), and none from a launch without the QA flags; its window at the asked `--resolution` even when
-##     the screen is smaller (`DmMain.full_size_window`: the size read from the engine's arguments; the sizing itself needs a real display, a team PC's screens step);
+##     the screen is smaller (`DmMain.full_size_window`: the size read from `--qa-window=`, since the engine's own `--resolution` never reaches the game; the sizing itself
+##     needs a real display, a team PC's screens step);
 ##   - a real launch (`godot --headless -- --dev-offline --class=2 --qa --shot-plan=... --preset=ultra`): the boot starts the driver, which runs the plan, says the run's preset and that there is no picture to take without a renderer,
 ##     and leaves the settings file it found as it was;
 ##   - `--preset=<low|medium|high|ultra>`: honoured only where the QA tools start (`DmMain.qa_preset`: not online, not in a release build, not without --qa or --shot-plan=), an unknown value ignored with a warning; the
@@ -207,10 +208,12 @@ func boot_hook() -> void:
 	check(win.unfocusable and win.mouse_passthrough, "the QA run's window takes no focus and passes the mouse through")
 	DmMain.quiet_window(null)
 	win.free()
-	check(DmMain.asked_resolution(PackedStringArray(["--windowed", "--resolution", "3840x2160", "--position", "-32000,-32000"])) == Vector2i(3840, 2160)
-		and DmMain.asked_resolution(PackedStringArray(["--windowed"])) == Vector2i.ZERO and DmMain.asked_resolution(PackedStringArray(["--resolution"])) == Vector2i.ZERO
-		and DmMain.asked_resolution(PackedStringArray(["--resolution", "big"])) == Vector2i.ZERO and DmMain.asked_resolution(PackedStringArray(["--resolution", "0x1440"])) == Vector2i.ZERO,
-		"the engine's --resolution WxH is read for the QA window (none, a missing or a bad value: none)")
+	check(DmMain.qa_window(PackedStringArray(["--dev-offline", "--qa-window=3840x2160", "--shots=/x"])) == Vector2i(3840, 2160)
+		and DmMain.qa_window(PackedStringArray(["--dev-offline"])) == Vector2i.ZERO and DmMain.qa_window(PackedStringArray(["--qa-window="])) == Vector2i.ZERO
+		and DmMain.qa_window(PackedStringArray(["--qa-window=big"])) == Vector2i.ZERO and DmMain.qa_window(PackedStringArray(["--qa-window=0x1440"])) == Vector2i.ZERO,
+		"--qa-window=WxH is read for the QA window (none, an empty or a bad value: none)")
+	check(not OS.get_cmdline_args().has("--fixed-fps") and not OS.get_cmdline_args().has("--headless"),
+		"Godot keeps its own options out of the arguments a game reads (why the size comes as --qa-window, not from --resolution): %s" % str(OS.get_cmdline_args()))
 	DmMain.full_size_window(null, Vector2i(3840, 2160))
 	DmMain.full_size_window(root, Vector2i.ZERO)   # (a headless display has no window to size: only the call path)
 	var m := DmMain.new()

@@ -209,8 +209,8 @@ namespace DeathMuffinTeam.Tests
             var big = new ScreenSize { Width = 3840, Height = 2160 };
             var a = plan.ScreensCommandArgs(big, "1.5", planFile, dir);
             T.Eq(string.Join("|", a),
-                "--windowed|--resolution|3840x2160|--audio-driver|Dummy|--|--dev-offline|--class=2|--shot-plan=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/plan.json|--shots=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/out/screens/3840x2160_s1-5|--preset=high|--ui-scale=1.5",
-                "screens: the debug build at the window size, the plan, the pictures' folder, the preset and the UI scale");
+                "--windowed|--resolution|3840x2160|--audio-driver|Dummy|--|--dev-offline|--class=2|--shot-plan=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/plan.json|--shots=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/out/screens/3840x2160_s1-5|--preset=high|--ui-scale=1.5|--qa-window=3840x2160",
+                "screens: the debug build at the window size, the plan, the pictures' folder, the preset, the UI scale and the window size again for the game (it cannot read --resolution)");
             T.Ok(!plan.ScreensCommandArgs(big, "", planFile, dir).Any(x => x.StartsWith("--ui-scale")), "the default UI scale passes no --ui-scale");
             T.Ok(plan.ScreensCommandArgs(big, "", planFile, dir).Count(x => x.StartsWith("--class=")) == 1, "the debug build is told its class once (without it no game starts and the QA driver gives up)");
             T.Eq(string.Join(" ", plan.ScreensCommandArgs(big, "", "p", "s", "-3940,0").Take(8)), "--windowed --resolution 3840x2160 --audio-driver Dummy --position -3940,0 --", "the window is outside every monitor");
@@ -885,7 +885,7 @@ namespace DeathMuffinTeam.Tests
                 int gameReads = 0;
                 rig.Probe.Script = (n, t, pid) =>
                 {
-                    bool player = pid > 0 && rig.Host.Launches.Count == 1 && ++gameReads == 3;   // the player starts the game during the first run
+                    bool player = pid > 0 && rig.Host.Launches.Count == 1 && ++gameReads >= 3;   // the player starts the game during the first run (and it stays open)
                     return new PcSample { CpuTotal = 3 + (pid > 0 ? 40 : 0), CpuGame = pid > 0 ? 40 : 0, PlayerGame = player };
                 };
                 rig.Host.Behaviour = ReleaseGame((step, l) =>
@@ -905,7 +905,7 @@ namespace DeathMuffinTeam.Tests
                 int gameReads = 0;
                 rig.Probe.Script = (n, t, pid) =>
                 {
-                    bool player = pid > 0 && ++gameReads % 3 == 0;   // every run is disturbed
+                    bool player = pid > 0 && ++gameReads >= 3;   // every run is disturbed (the game stays open)
                     return new PcSample { CpuTotal = 3 + (pid > 0 ? 40 : 0), CpuGame = pid > 0 ? 40 : 0, PlayerGame = player };
                 };
                 rig.Host.Behaviour = ReleaseGame((step, l) => { rig.Host.RunPolls = step == "bench" ? 100000 : 0; return null; });

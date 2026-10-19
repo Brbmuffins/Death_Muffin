@@ -153,7 +153,8 @@ under the member's account, marked as team-PC runs. The numbers only mean someth
   what is in the way. It waits until the job's life ends (the offer's expiry, 3 days), then fails with "The PC never went quiet for long enough: ...".
 - **A disturbed run** is thrown away. While the game runs the app keeps reading the PC; the run is disturbed by the other programs (every process but
   the game) using more than 20% of the CPU on average over any 30 s of it (judged once the run is 10 s old), by the player starting Death Muffin (a `DeathMuffin` or `DeathMuffinDebug`
-  process that the app did not start, that runs from outside the app's folder and has not ended; one whose path Windows will not give counts as the player's) or by the cable being pulled. The game is closed,
+  process that the app did not start, that runs from outside the app's folder and has not ended, seen in 3 readings in a row: a real game stays open; one whose path
+  Windows will not give counts as the player's, and the job log names it with its parent process and start time) or by the cable being pulled. The game is closed,
   the setup's `bench-<i>` folder and the run's APPDATA are deleted, the app waits for a quiet minute again and starts the setup over: at most 3 tries a setup, then the job fails with
   "The benchmark on Low was disturbed 3 times (...), so no numbers were sent. Keep other programs and Death Muffin closed while it runs." A full-screen app is not a disturbance during a run (on a small screen the game's own 1600x900 window may count as one).
 - **The result.** The last entry of each setup's `pending.json` (the payload the game would send, at most 64 KB; a cancelled one is no result) goes into **done** as `runs`, in setup order, all in one call:
@@ -199,7 +200,7 @@ results of all PCs as one report per release in #build-alerts. The payload (`Tea
 |---|---|---|---|
 | `install` | the RELEASE exe: `DeathMuffin.exe --windowed --resolution 1600x900 --audio-driver Dummy [--position X,Y] -- --boot-check`, below normal priority, 90 s | `install.json`: ok, `bootMs` (the game's `BOOT OK <ms>`), exit code, download seconds, the files | exit 0 and a `BOOT OK <ms>` line; the step's `ms` is the game's boot time |
 | `quit-loading` | the same with `--quit-while-loading`, 20 s | `quit-loading.json`: ok, exit code, seconds, `crashReport`, `crashFiles` | exit 0 within 20 s and no `session.lock`, `crash_pending.json` or `core_crash_note.txt` (DmCrashWatch's files) left under the run's APPDATA |
-| `screens` | the debug build, one run for each window size at the default UI scale and at each `uiScales` value: `--resolution WxH ... -- --dev-offline --shot-plan=<plan> --shots=<dir> --preset=<preset> [--ui-scale=<v>]`, below normal priority, off-screen and silent, 10 minutes a run | `<w>x<h>[_s<scale>]_<shot>.png` (a dot in a scale is a dash: `s1-5`) and `screens.json`: each run's size, scale, pictures, exit code and the size the pictures really are | every run exits 0 with pictures of the size asked for |
+| `screens` | the debug build, one run for each window size at the default UI scale and at each `uiScales` value: `--resolution WxH ... -- --dev-offline --shot-plan=<plan> --shots=<dir> --preset=<preset> [--ui-scale=<v>] --qa-window=WxH` (the size again for the game, which cannot read `--resolution`), below normal priority, off-screen and silent, 10 minutes a run | `<w>x<h>[_s<scale>]_<shot>.png` (a dot in a scale is a dash: `s1-5`) and `screens.json`: each run's size, scale, pictures, exit code and the size the pictures really are | every run exits 0 with pictures of the size asked for |
 | `stutter` | the debug build: `-- --dev-offline --stutter --stutter-out=<dir>`, below normal priority, 30 minutes | `stutter.json`: the game's JSON as it wrote it (any other `*.json` in the folder if it did not use that name) | exit 0 and a result that is JSON (at most 1 MB) |
 | `bench` | the release build's benchmark setups as the `bench` job runs them (normal priority, a quiet minute first, a touched PC throws a run out and retries, 3 tries) | `bench.json`: a summary of each run's numbers and the runs; the runs also go to the server in `done` for the public benchmarks page (source `team`) | every setup gives a run |
 | `soak` | the debug build: `-- --dev-offline --soak=<minutes> --soak-out=<dir>`, at **normal** priority after a quiet minute; the PC is read every second but nothing that happens to it throws the run out (a key, the mouse, other programs, the battery are noted); Death Muffin starting stops the whole job; the limit is the minutes plus 15 | `soak.json`: the game's JSON as written; `soak-notes.json` (when something was noted) | exit 0 and a result that is JSON |
@@ -208,7 +209,7 @@ The bench and the soak wait up to 4 hours (or the job's life) for the PC to be l
 `--quit-while-loading`, `--stutter`, `--stutter-out`, `--soak`, `--soak-out` and `--ui-scale` are the app's (a payload may not pass them). **What the game is assumed to do** (client side, wave 3): print `BOOT OK <ms>` at its first
 screen and quit 0; quit itself while loading; write the stutter and soak JSON into the folder the flag names; take `--ui-scale`; honour `--resolution` as the window size. The app reads the scenarios' JSON as opaque and uploads it. A
 release job is not declined for being busy (it is queued for this PC alone); the box says the game starts several times and that the benchmark and the soak want the PC left alone; the tray says "N of M release check step(s) passed".
-If the player starts Death Muffin, or the app closes, the job fails with the steps it had finished (`fail` carries them) and their result files stay on the server for the report.
+If the player starts Death Muffin (a game that has stayed open 3 s: one listed for a moment is not the player's), or the app closes, the job fails with the steps it had finished (`fail` carries them) and their result files stay on the server for the report.
 
 ## Folders (`%LOCALAPPDATA%\DeathMuffinTeam\`)
 
@@ -271,6 +272,9 @@ monitor (and the pictures still taken: Godot and the driver draw a window that i
 
 ### Changelog
 
+- **0.3.6** (2026-10-19) - The release checks' screens send the size to the game as `--qa-window=WxH` too (Godot keeps `--resolution` from the game, so the
+  game could not take a size past the screen); the player's Death Muffin disturbs a benchmark run only when seen in 3 readings in a row (Helix's benchmark was still
+  thrown away on 0.3.4 by a "DeathMuffin.exe" listed for a moment at the end of each run), and the job log names such a process's parent and start time; between steps and in every job a new game counts only once it has stayed open 3 s (the same process stopped the whole release check before its soak).
 - **0.3.5** (2026-10-19) - The keyboard and mouse no longer hold a benchmark back or throw a run out (Helix: the PC may be in use); other programs' CPU, the
   battery, a full-screen app before the start and the player's own Death Muffin still do, and the box and the tray say so.
 - **0.3.4** (2026-10-19) - The games the app starts are remembered and never counted as the player's, and a game that has already ended is not counted at all:
