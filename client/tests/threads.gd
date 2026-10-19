@@ -26,6 +26,7 @@ const LISTED := {
 	"audio/audio_samples.gd": ["load_threaded_request"],
 	"game/dm_gear_models.gd": ["load_threaded_request"],
 	"game_ui/dm_ui_panels_a.gd": ["WorkerThreadPool.add_task"],
+	"main/main.gd": ["load_threaded_request"],
 	"next/depths/dm_depths.gd": ["WorkerThreadPool.add_task"],
 	"next/depths/dm_depths_ground.gd": ["bake_from_source_geometry_data_async"],
 	"next/perf/dm_next_warmup.gd": ["load_threaded_request"],
