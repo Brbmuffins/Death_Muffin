@@ -929,7 +929,7 @@ namespace DeathMuffinTeam.Tests
                 File.WriteAllText(exe, "#!/bin/bash\necho \"APPDATA=$APPDATA\"\necho \"LOCALAPPDATA=$LOCALAPPDATA\"\necho \"PWD=$PWD\"\nfor a in \"$@\"; do echo \"ARG[$a]\"; done\necho oops >&2\nexit ${EXIT_CODE:-3}\n");
                 File.SetUnixFileMode(exe, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
                 var tended = new List<string>();
-                var host = new ProcessGameHost((pid, spot, size) => { lock (tended) tended.Add(spot + "|" + size); });
+                var host = new ProcessGameHost((pid, wish) => { lock (tended) tended.Add(wish.ToString()); });
                 var launch = new GameLaunch { ExePath = exe, WorkingDir = game, AppData = Path.Combine(dir, "appdata"), LocalAppData = Path.Combine(dir, "local appdata"), Args = new List<string> { "--windowed", "--", "--shot-plan=/tmp/a b/plan.json", "--preset=low" } };
                 IGameProcess p;
                 using (p = host.Start(launch))
@@ -960,7 +960,7 @@ namespace DeathMuffinTeam.Tests
                     p.Tend();
                     T.Has(p.Output(), "CFG[; Written by the Death Muffin team app", "a hidden run's game finds override.cfg beside its exe");
                     T.Has(p.Output(), "[display]||window/size/mode=1|]", "and it asks Godot for a minimized window");
-                    lock (tended) T.Ok(tended.Count > 0 && tended.All(t => t == "{X=-3940,Y=0}|{Width=3840, Height=2160}"), "the tamer gets the spot and the size the game asks for: " + string.Join(";", tended));
+                    lock (tended) T.Ok(tended.Count > 0 && tended.All(t => t == "hidden at -3940,0, 3840x2160"), "the tamer gets the spot and the size the game asks for: " + string.Join(";", tended));
                 }
                 using (p = host.Start(launch))
                 {
@@ -976,10 +976,11 @@ namespace DeathMuffinTeam.Tests
                 }
                 T.Ok(GameOverride.Prepare(game, true) && File.ReadAllText(cfg) == GameOverride.MinimizedText, "Prepare writes the file for a hidden run");
                 T.Ok(!GameOverride.Prepare(game, false) && !File.Exists(cfg), "and removes it for any other");
-                T.Eq(ProcessGameHost.WindowSize(new List<string> { "--resolution", "1600x900", "--", "--qa-window=2560x1440" }), (System.Drawing.Size?)new System.Drawing.Size(2560, 1440), "the size the game asks for comes first");
-                T.Eq(ProcessGameHost.WindowSize(new List<string> { "--windowed", "--resolution", "1600x900", "--position", "-1700,0", "--", "--boot-check" }), (System.Drawing.Size?)new System.Drawing.Size(1600, 900), "else the engine's --resolution");
-                T.Ok(ProcessGameHost.WindowSize(new List<string> { "--windowed", "--", "--resolution", "1600x900" }) == null && ProcessGameHost.WindowSize(new List<string> { "--qa-window=big" }) == null
-                    && ProcessGameHost.WindowSize(new List<string> { "--qa-window=0x900" }) == null && ProcessGameHost.WindowSize(new List<string>()) == null, "none asked (a --resolution after -- is the game's), or one that does not read: no size");
+                T.Eq(WindowWish.From(new List<string> { "--resolution", "1600x900", "--position", "-1700,0", "--", "--qa-window=2560x1440" }).ToString(), "hidden at -1700,0, 2560x1440", "the size the game asks for comes first");
+                T.Eq(WindowWish.From(new List<string> { "--windowed", "--resolution", "1600x900", "--position", "-1700,0", "--", "--boot-check" }).ToString(), "hidden at -1700,0, 1600x900", "else the engine's --resolution");
+                T.Eq(WindowWish.From(new List<string> { "--fullscreen", "--audio-driver", "Dummy", "--", "--benchmark" }).ToString(), "in front", "a full-screen run (a benchmark) is brought in front");
+                T.Eq(WindowWish.From(new List<string> { "--windowed", "--", "--resolution", "1600x900", "--position", "-1700,0", "--fullscreen" }).ToString(), "left alone", "the game's own options (after --) say nothing about the window");
+                T.Eq(WindowWish.From(new List<string> { "--qa-window=big", "--resolution", "0x900" }).ToString() + "|" + WindowWish.From(new List<string>()).ToString(), "left alone|left alone", "a size that does not read: none");
                 // a game that does not stop: Kill ends it
                 File.WriteAllText(exe, "#!/bin/bash\nsleep 60\n");
                 using (p = host.Start(launch))

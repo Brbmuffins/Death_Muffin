@@ -229,12 +229,12 @@ namespace DeathMuffinTeam
 
         /// <summary>
         /// The offer box's note for a job kind. A release job's checks start the game several times; its benchmark and soak steps wait for a quiet PC. A benchmark is offered like any job (the same box, modes and exceptions); the note says what happens after the yes: it starts only once the PC has been left
-        /// alone for a minute, runs at normal priority (a lower one would skew the numbers) and starts over if the keyboard or mouse is touched. "" for the others.
+        /// alone for a minute, takes the whole screen (full screen, in front), runs at normal priority (a lower one would skew the numbers) and starts over if other programs keep the processor busy. "" for the others.
         /// </summary>
         public static string OfferNote(string kind)
         {
-            if (kind == JobPlan.ReleaseKind) return "The game starts several times, off screen and silent. The benchmark and the soak test wait until other programs have used little of the processor for a minute, and run at normal priority.";
-            return kind == JobPlan.BenchKind ? "It starts once other programs have used little of the processor for a minute, and runs at normal priority. You can keep using the PC; a busy processor restarts it." : "";
+            if (kind == JobPlan.ReleaseKind) return "The game starts several times, off screen and silent; the benchmark takes the whole screen. The benchmark and the soak test wait until other programs have used little of the processor for a minute, and run at normal priority.";
+            return kind == JobPlan.BenchKind ? "It starts once other programs have used little of the processor for a minute, takes the whole screen and runs at normal priority. A busy processor restarts it." : "";
         }
 
         /// <summary>"4:12" for the box's countdown.</summary>

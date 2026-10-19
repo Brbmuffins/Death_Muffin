@@ -544,12 +544,16 @@ namespace DeathMuffinTeam
         [DllImport("user32.dll")] static extern bool GetWindowPlacement(IntPtr hWnd, ref WindowPlacement wp);
         [DllImport("user32.dll")] static extern bool SetWindowPlacement(IntPtr hWnd, ref WindowPlacement wp);
         [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);   // Windows 10 1607 and later
+        [DllImport("user32.dll")] static extern bool AttachThreadInput(uint attach, uint attachTo, bool on);
+        [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+        [DllImport("user32.dll")] static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam, uint flags, uint timeoutMs, out IntPtr result);
+        const uint WM_NULL = 0, SMTO_ABORTIFHUNG = 0x2;
         [StructLayout(LayoutKind.Sequential)] struct Rect { public int Left, Top, Right, Bottom; }
         [StructLayout(LayoutKind.Sequential)] struct Pt { public int X, Y; }
         [StructLayout(LayoutKind.Sequential)] struct WindowPlacement { public int Length, Flags, ShowCmd; public Pt MinPosition, MaxPosition; public Rect NormalPosition; }
-        const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOZORDER = 0x4, SWP_NOACTIVATE = 0x10;
+        const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOZORDER = 0x4, SWP_NOACTIVATE = 0x10, SWP_SHOWWINDOW = 0x40;
         const int SW_HIDE = 0, SW_SHOWNOACTIVATE = 4;
-        static readonly IntPtr HWND_BOTTOM = new IntPtr(1);
+        static readonly IntPtr HWND_TOP = IntPtr.Zero, HWND_BOTTOM = new IntPtr(1);
         static readonly IntPtr DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = new IntPtr(-4);
 
         [ComImport, Guid("56FDF342-FD6D-11d0-958A-006097C9A090"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -571,20 +575,25 @@ namespace DeathMuffinTeam
 
         static readonly object TameGate = new object();
         static readonly HashSet<IntPtr> Tamed = new HashSet<IntPtr>();
+        static readonly Dictionary<IntPtr, int> FrontFrom = new Dictionary<IntPtr, int>();   // a benchmark window: when it was first seen (Environment.TickCount), until it had the focus
+        static readonly HashSet<IntPtr> Fronted = new HashSet<IntPtr>();
         static int tamedPid;
         static IntPtr persons = IntPtr.Zero;
 
         /// <summary>
         /// Best effort, called every poll while the game runs. A window of the game is marked "no activate" so a click never gives it the keyboard, and sent to the bottom of the stack;
         /// if it did become the active window, the window the person was using gets it back. Windows' own rule that a background process cannot take the foreground does most of the work;
-        /// this covers the rest. A run nobody should see (<paramref name="hiddenAt"/>) starts minimized (GameOverride) and is restored outside every monitor (<see cref="RestoreOffscreen"/>),
-        /// again whenever it is found minimized (a minimized Godot window does not draw), then kept there. Each call into the game's window waits until Godot answers.
+        /// this covers the rest. A run nobody should see (WindowWish.HiddenAt) starts minimized (GameOverride) and is restored outside every monitor (<see cref="RestoreOffscreen"/>),
+        /// again whenever it is found minimized (a minimized Godot window does not draw), then kept there. A benchmark (WindowWish.InFront, full screen) is the opposite: brought in front with
+        /// the focus (<see cref="BringToFront"/>) and otherwise left alone. Each call into the game's window waits until Godot answers.
         /// </summary>
-        public static void TendGameWindow(int pid, System.Drawing.Point? hiddenAt, System.Drawing.Size? clientSize)
+        public static void TendGameWindow(int pid, WindowWish wish)
         {
+            System.Drawing.Point? hiddenAt = wish.HiddenAt;
+            System.Drawing.Size? clientSize = wish.ClientSize;
             lock (TameGate)
             {
-                if (tamedPid != pid) { tamedPid = pid; Tamed.Clear(); }
+                if (tamedPid != pid) { tamedPid = pid; Tamed.Clear(); FrontFrom.Clear(); Fronted.Clear(); }
                 IntPtr fg = GetForegroundWindow();
                 uint fgOwner;
                 GetWindowThreadProcessId(fg, out fgOwner);
@@ -600,6 +609,11 @@ namespace DeathMuffinTeam
                 foreach (IntPtr h in windows)
                 {
                     bool fresh = Tamed.Add(h);
+                    if (wish.InFront)
+                    {
+                        BringToFront(h);
+                        continue;
+                    }
                     if (hiddenAt.HasValue && IsIconic(h)) RestoreOffscreen(h, hiddenAt.Value, clientSize);
                     else if (fresh)
                     {
@@ -618,6 +632,33 @@ namespace DeathMuffinTeam
                     if (fg == h && persons != IntPtr.Zero) SetForegroundWindow(persons);
                 }
             }
+        }
+
+        /// <summary>
+        /// A benchmark's window in front of everything with the focus, tried from the moment it appears for 15 s, until it has had the focus once; after that it is left alone, so a window the
+        /// person picks over it stays picked. Windows does not let a program in the background hand out the focus, so this thread joins the input of the window in front for the moment of the
+        /// switch (AttachThreadInput: the app sends no keys or clicks). Only once the game answers (WM_NULL within 50 ms): a call into a game still starting would wait, joined to the person's window.
+        /// </summary>
+        static void BringToFront(IntPtr h)
+        {
+            if (Fronted.Contains(h)) return;
+            IntPtr fg = GetForegroundWindow();
+            if (fg == h) { Fronted.Add(h); return; }
+            int seen;
+            if (!FrontFrom.TryGetValue(h, out seen)) FrontFrom[h] = seen = Environment.TickCount;
+            if (unchecked(Environment.TickCount - seen) > 15000) return;
+            IntPtr answer;
+            if (SendMessageTimeout(h, WM_NULL, IntPtr.Zero, IntPtr.Zero, SMTO_ABORTIFHUNG, 50, out answer) == IntPtr.Zero) return;
+            uint ignored, me = GetCurrentThreadId();
+            uint fgThread = fg == IntPtr.Zero ? 0 : GetWindowThreadProcessId(fg, out ignored);
+            bool joined = fgThread != 0 && fgThread != me && AttachThreadInput(me, fgThread, true);
+            try
+            {
+                SetWindowPos(h, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+                SetForegroundWindow(h);
+            }
+            finally { if (joined) AttachThreadInput(me, fgThread, false); }
+            if (GetForegroundWindow() == h) Fronted.Add(h);
         }
 
         /// <summary>

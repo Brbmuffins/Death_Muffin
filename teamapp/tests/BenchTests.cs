@@ -170,18 +170,19 @@ namespace DeathMuffinTeam.Tests
             string dir = "C:\\Users\\Test User\\AppData\\Local\\DeathMuffinTeam\\jobs\\q7x2k9ab\\bench-1";
             var a = plan.BenchCommandArgs(plan.Setups[0], dir);
             T.Eq(string.Join("|", a),
-                "--windowed|--resolution|1600x900|--audio-driver|Dummy|--|--benchmark|--bench-room=graves|--bench-class=2|--bench-size=full_party|--bench-length=full|--bench-preset=low|--bench-dir=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/bench-1|--bench-quit",
+                "--fullscreen|--audio-driver|Dummy|--|--benchmark|--bench-room=graves|--bench-class=2|--bench-size=full_party|--bench-length=full|--bench-preset=low|--bench-dir=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/bench-1|--bench-quit",
                 "the benchmark's arguments for the first setup (the contract's line, no --main-pack)");
             T.Ok(!a.Contains("--main-pack") && !a.Contains("--dev-offline"), "no --main-pack (the release template refuses it) and no --dev-offline");
             T.Eq(plan.BenchCommandArgs(plan.Setups[1], "C:\\j\\bench-2").Last(), "--bench-quit", "--bench-quit ends it");
             T.Has(string.Join(" ", plan.BenchCommandArgs(plan.Setups[1], "C:\\j\\bench-2")), "--bench-preset=medium --bench-dir=C:/j/bench-2", "the second setup's preset and folder");
             T.Eq(plan.BenchCommandLine(plan.Setups[1], "C:\\j\\bench-2"),
-                "--windowed --resolution 1600x900 --audio-driver Dummy -- --benchmark --bench-room=graves --bench-class=2 --bench-size=full_party --bench-length=full --bench-preset=medium --bench-dir=C:/j/bench-2 --bench-quit",
+                "--fullscreen --audio-driver Dummy -- --benchmark --bench-room=graves --bench-class=2 --bench-size=full_party --bench-length=full --bench-preset=medium --bench-dir=C:/j/bench-2 --bench-quit",
                 "the command line without spaces needs no quotes");
             T.Has(plan.BenchCommandLine(plan.Setups[0], dir), "\"--bench-dir=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/bench-1\"", "a folder with a space is quoted");
-            T.Eq(plan.BenchCommandArgs(plan.Setups[0], "x").IndexOf("--"), 5, "everything for the game comes after --");
-            T.Ok(!a.Contains("--position"), "a benchmark's window stays on screen: no --position");
-            T.Eq(string.Join(" ", a.Take(5)), "--windowed --resolution 1600x900 --audio-driver Dummy", "a benchmark is silent too: the Dummy audio driver still mixes, so the CPU cost is real");
+            T.Eq(plan.BenchCommandArgs(plan.Setups[0], "x").IndexOf("--"), 3, "everything for the game comes after --");
+            T.Ok(!a.Contains("--position") && !a.Contains("--windowed") && !a.Contains("--resolution"), "a benchmark's window is on screen, full screen at the screen's own resolution: no --position, --windowed or --resolution");
+            T.Eq(string.Join(" ", a.Take(3)), "--fullscreen --audio-driver Dummy", "full screen, windowed (Helix), and silent too: the Dummy audio driver still mixes, so the CPU cost is real");
+            T.Eq(WindowWish.From(a).ToString(), "in front", "the window tamer brings a benchmark's window in front");
 
             var p = ValidPayload(); p["args"] = new List<object> { "--bench-warm=5" };
             JobPlan.TryParse(JobPlan.BenchKind, p, Site, out plan, out error);

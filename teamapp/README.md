@@ -27,8 +27,11 @@ Only the accounts on the server's team list (a table the server's team routes re
   whatever `--position` says, and shows its boot splash there for the second or two before it answers the app), with its taskbar button taken away at once. As soon as Godot answers, the app
   restores it at the size the run asks for (Godot does not draw a minimized window) 1700 px left of the virtual screen (every monitor together, the `--position` it was started with), outside every monitor,
   with no taskbar button. Any other run starts with the file removed. The window is also marked "no activate" and sent to the bottom of the window stack, and if it did become the active
-  window the window you were using gets the focus back; Windows itself does not let a background program take the foreground. A benchmark's window stays on screen (the PC is idle
-  by then, and a desktop compositor may treat an off-screen window differently).
+  window the window you were using gets the focus back; Windows itself does not let a background program take the foreground.
+- **A benchmark takes the whole screen** (Helix, 2026-10-19: "run only benchmarks in fullscreen-windowed in the foreground"): Godot's `--fullscreen`, a borderless window over the whole screen at
+  its own resolution (the display mode is not changed; each run records its resolution), brought in front of everything with the focus once the game answers. For that switch the app joins the
+  input of the window in front for a moment (Windows lets no background program hand out the focus otherwise; the app still sends no keys or clicks). It tries for 15 s after the window appears
+  and stops once the window has had the focus, so a window you pick over it stays picked. The box says it takes the whole screen.
 - **Low priority.** The app and the game a screenshot or clip job starts run below normal priority. A benchmark's game runs at **normal** priority (a lower one would skew the numbers), and
   the box says so.
 - **It stops for you.** If you start Death Muffin while a screenshot or clip job runs, the job's game is closed and the job is reported as
@@ -138,8 +141,8 @@ under the member's account, marked as team-PC runs. The numbers only mean someth
   `libdmcore.windows.template_release.x86_64.dll`; `setups` are 1 to 6 objects with a preset (low, medium, high, ultra), a room (a lower-case word), a class (1 to 20), a size
   (light, standard, heavy, full_party) and a length (quick or full: the lengths the game knows; any other word is refused, because the game would run its full length without saying so). `args` may
   add game options the app does not set itself.
-- **The command**, once per setup: `DeathMuffin.exe --windowed --resolution 1600x900 --audio-driver Dummy -- --benchmark --bench-room=<room> --bench-class=<n> --bench-size=<size> --bench-length=<length> --bench-preset=<preset>
-  --bench-dir=<job>\bench-<i> --bench-quit`, at normal priority, at most 15 minutes. With `--bench-dir` the game sends nothing: it leaves the run in `bench-<i>\pending.json` and quits by itself (exit code 0
+- **The command**, once per setup: `DeathMuffin.exe --fullscreen --audio-driver Dummy -- --benchmark --bench-room=<room> --bench-class=<n> --bench-size=<size> --bench-length=<length> --bench-preset=<preset>
+  --bench-dir=<job>\bench-<i> --bench-quit`, full screen in front ("A benchmark takes the whole screen" above), at normal priority, at most 15 minutes. With `--bench-dir` the game sends nothing: it leaves the run in `bench-<i>\pending.json` and quits by itself (exit code 0
   when a run was recorded, 1 when it was cancelled or failed, 2 for a setup it refuses).
 - **Accepted, not claimed.** After a yes (or the automatic start) the benchmark is kept in the app as accepted and waiting, and **not claimed**: it stays queued on the server (targeted at this PC, so
   nobody else can take it). The PC is not busy meanwhile: heartbeats go on and a screenshot job offered now is handled as usual. One job runs at a time, so the waiting benchmark pauses while a
@@ -158,12 +161,12 @@ under the member's account, marked as team-PC runs. The numbers only mean someth
   process that the app did not start, that runs from outside the app's folder and has not ended, seen in 3 readings in a row: a real game stays open; one whose path
   Windows will not give counts as the player's, and the job log names it with its parent process and start time) or by the cable being pulled. The game is closed,
   the setup's `bench-<i>` folder and the run's APPDATA are deleted, the app waits for a quiet minute again and starts the setup over: at most 3 tries a setup, then the job fails with
-  "The benchmark on Low was disturbed 3 times (...), so no numbers were sent. Keep other programs and Death Muffin closed while it runs." A full-screen app is not a disturbance during a run (on a small screen the game's own 1600x900 window may count as one).
+  "The benchmark on Low was disturbed 3 times (...), so no numbers were sent. Keep other programs and Death Muffin closed while it runs." A full-screen app is not a disturbance during a run (the benchmark's own window is one).
 - **The result.** The last entry of each setup's `pending.json` (the payload the game would send, at most 64 KB; a cancelled one is no result) goes into **done** as `runs`, in setup order, all in one call:
   a setup that fails fails the job and nothing is sent. The server checks each run as it checks one a player sent and marks it as a team-PC run.
 - **It asks first, like every job.** A benchmark is offered in the same box (Run now / Not now / Pause 2 hours), under the same modes and the same exceptions (`TeamLogic.Decide`: Ask accepts by itself after 5 minutes
   unless a game, a full-screen app or the battery is in the way, Run without asking, Only on a yes). The quiet wait above starts only after the yes (or the automatic start), and the box says so: "It starts once other programs
-  have used little of the processor for a minute, and runs at normal priority. You can keep using the PC; a busy processor restarts it."
+  have used little of the processor for a minute, takes the whole screen and runs at normal priority. A busy processor restarts it."
 
 ## The clip job (`clip`)
 
@@ -210,7 +213,7 @@ results up for whoever asked (the Discord agent's thread, or a session's thread 
 The bench and the soak wait up to 4 hours (or the job's life) for the PC to be left alone, then fail their step and the next one runs. Every run of the game has its own empty `APPDATA`/`LOCALAPPDATA`. The flags `--boot-check`,
 `--quit-while-loading`, `--stutter`, `--stutter-out`, `--soak`, `--soak-out` and `--ui-scale` are the app's (a payload may not pass them). **What the game is assumed to do** (client side, wave 3): print `BOOT OK <ms>` at its first
 screen and quit 0; quit itself while loading; write the stutter and soak JSON into the folder the flag names; take `--ui-scale`; honour `--resolution` as the window size. The app reads the scenarios' JSON as opaque and uploads it. A
-release job is not declined for being busy (it is queued for this PC alone); the box says the game starts several times and that the benchmark and the soak want the PC left alone; the tray says "N of M release check step(s) passed".
+release job is not declined for being busy (it is queued for this PC alone); the box says the game starts several times, that the benchmark takes the whole screen and that the benchmark and the soak want the PC left alone; the tray says "N of M release check step(s) passed".
 If the player starts Death Muffin (a game that has stayed open 3 s: one listed for a moment is not the player's), or the app closes, the job fails with the steps it had finished (`fail` carries them) and their result files stay on the server for the report.
 
 ## Folders (`%LOCALAPPDATA%\DeathMuffinTeam\`)
@@ -268,12 +271,15 @@ job folder; `APPDATA` and `LOCALAPPDATA` reaching Godot; `--preset` honoured by 
 screenshot job against the server. For the release job: the release exe printing `BOOT OK <ms>` and quitting 0 with `--boot-check`, quitting itself with `--quit-while-loading` and leaving no `session.lock`; the debug build honouring `--stutter`/`--soak`/`--ui-scale`, writing their JSON where the flags say, and a 3840x2160 window off-screen on a 1080p monitor (Windows may hold it to the screen's size: the log and `screens.json` then say the pictures are smaller); a whole 40-minute job against the server and the report in #build-alerts; the soak at normal priority while the PC is touched. For the clip job: `--fixed-fps 30` honoured by the debug build with the window outside every monitor (the clips still recorded, at 30 frames per game second), the clip and tune files the game reads, a 20 to 40 MB upload on a home connection inside the 6 minutes, and the server's mp4 coming back in the thread. The
 long poll against the live server through nginx (a held heartbeat ending at once for an offer, the cancel reaching a running game within a second). For the benchmark job: the total CPU reading (`GetSystemTimes`) against Task Manager and the game's share (its process's CPU time); the idle time
 (`GetLastInputInfo`) counting a key or the mouse and nothing the app or the game does; the game really running at normal priority (Task Manager, Details) and the job refused when Windows will
-not allow it; the game's window not counting as a full-screen app or as input; the release build honouring `--bench-quit`, `--bench-dir` and `--bench-preset` (exit codes 0, 1, 2) and leaving
+not allow it; the benchmark's window full screen at the screen's resolution and in front with the focus (a window picked over it staying picked), and not counting as input; the release build honouring `--bench-quit`, `--bench-dir` and `--bench-preset` (exit codes 0, 1, 2) and leaving
 `pending.json`; a disturbed run on a real PC (a busy program started during it) being discarded and retried; the box's note; and one whole benchmark job against the server, including a screenshot job interleaved with a waiting benchmark (the controller reads the PC on the interface thread once a second). Also on a real PC: `--audio-driver Dummy` really silent (loading screen and game), a screenshot job's window really never seen (no boot splash, no taskbar button: it starts minimized from `override.cfg`
 and is restored left of every monitor; the pictures still taken, at their exact sizes: Godot and the driver draw a window that is off screen), a cancel in the heartbeat reply stopping a running game; the AFK notice (shown without taking the keyboard or the focus, End AFK mode working from it and from the tray menu).
 
 ### Changelog
 
+- **0.4.3** (2026-10-19) - Benchmarks run full screen, windowed (Godot's `--fullscreen`: borderless over the whole screen at its own resolution) and in front with the focus, instead of a
+  1600x900 window sent behind every other window (Helix: "run only benchmarks in fullscreen-windowed in the foreground"; the taskbar button flashed and the window was never seen). Runs from
+  now on are at the screen's resolution: compare them with each other, not with the 1600x900 runs before. Every other run stays hidden.
 - **0.4.2** (2026-10-19) - A run nobody should see starts its window minimized (an `override.cfg` beside the job's game exe) and is restored outside every monitor once Godot answers,
   at the size the run asks for (`--qa-window`, else `--resolution`, set in real pixels): Godot puts a new window partly on a monitor whatever `--position` says and answers nothing until its first frame,
   so 0.3.3's 10 ms watch could only move it a second or two later (Helix: the Godot splash still showed for a couple of seconds). The minimized window's taskbar button goes at once.
