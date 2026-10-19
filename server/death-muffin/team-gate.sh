@@ -2,7 +2,7 @@
 # The pre-release check (ROADMAP Phase 1, the team app: "the crash and install checks as a gate before a release goes live"; DECISIONS B61). publish-godot-client.sh
 # runs it after the boot smoke and before the switch to the new build: a team PC downloads the release's own Windows files, starts the game to its first screen
 # and quits it while it loads (the `install` and `quit-loading` steps of the release job, about 10 seconds of the PC's time). A step that fails on the PC stops
-# the publish; no PC that can take it, no answer in time or a job the PC gave up lets it go on (the release checks after it is live still run).
+# the publish; no PC that can take it, no answer in time or a job the PC gave up lets it go on.
 #
 #   team-gate.sh <stage folder> <version> <rev>
 #
@@ -13,15 +13,15 @@
 #    <team root>/gate-<24 random hex>/ (a copy where a link is not possible).
 # 3. Queues ONE `release` job for whichever team PC takes it first (no target PC): title "Pre-release check of <version>", weight 60, time to live 15 minutes,
 #    payload { version, rev, godotVersion, builds: [{ label: "release", files: [{ name, url, sha256, bytes, cacheKey? }] }], steps: ["install", "quit-loading"],
-#    args: [] } (the shape teamapp/windows/JobPlan.cs ParseRelease reads; the exe and the art pack carry the same cacheKeys as team-release.sh's, so a PC keeps them).
+#    args: [] } (the shape teamapp/windows/JobPlan.cs ParseRelease reads; the exe and the art pack carry the same cacheKeys as team-check.sh's, so a PC keeps them).
 # 4. Waits for a claim (DM_GATE_CLAIM_S, 150 seconds: a PC that runs without asking or in AFK mode takes it within seconds) and then for the end (DM_GATE_RUN_S,
 #    420 seconds, which covers a new 500 MB art pack), reading the job every DM_GATE_POLL_S seconds (3).
 # 5. The verdict, one line: done with every step passed: "passed", exit 0. A step where the game itself failed (the app's error begins "The game ": it did not
 #    reach its first screen, stopped with an error code, never said BOOT OK, did not quit, or left a crash report): "FAILED" with the step's error and the PC's
 #    graphics card, exit 10 (the only code that stops the publish). A step that failed for another reason (the download) is no verdict. Not claimed in time, out of time, or the job failed, was cancelled or expired without step results:
 #    "no verdict", exit 0. Any failure of this script itself (the backend, the secret, the files) prints a line and exits 0: the gate never stops a release
-#    for its own trouble. Whatever the verdict, a job still queued or running is cancelled, the job is marked reported (it is never posted to #build-alerts:
-#    only live builds are, ops/team-report.sh) and the folder is removed.
+#    for its own trouble. Whatever the verdict, a job still queued or running is cancelled, the job is marked reported (the publish prints the verdict; nothing is
+#    posted) and the folder is removed.
 # Env (tests override): DM_TEAM_ROOT (/var/www/death-muffin/team-files), DM_TEAM_URL (https://muffindevelopment.com/death-muffin/team-files), DM_TEAM_API
 #      (http://127.0.0.1:5190), DM_TEAM_SECRET_FILE (/home/ubuntu/death-muffin/discord-agent/secret), DM_GATE_CLAIM_S, DM_GATE_RUN_S, DM_GATE_POLL_S.
 set -uo pipefail
@@ -44,7 +44,7 @@ DLL = "libdmcore.windows.template_release.x86_64.dll"
 NEEDED = ["DeathMuffin.exe", "DeathMuffin.pck", DLL]
 OPTIONAL = ["DeathMuffin.assets.pck"]
 STEPS = ["install", "quit-loading"]
-GODOT_VERSION = "4.7.2.stable"   # as team-release.sh
+GODOT_VERSION = "4.7.2.stable"   # as team-check.sh
 TITLE = "Pre-release check of %s"
 WEIGHT_S = 60
 TTL_S = 900

@@ -259,7 +259,7 @@ godot --fixed-fps 30 --path client -- --dev-offline --class=11 --clip-plan=/abs/
 
 ### Release checks
 
-The team app's `release` job (after every client release) runs these on each team PC; they are the game's side of its steps. Two flags work in every build, and only quit; the rest are QA flags (`DmMain.qa_wanted`: a debug build on the dev-offline backend), which a release build, an online start
+The team app's `release` job (a revision's checks before it goes live, when its shipper asks: `server/death-muffin/team-check.sh`, B62; and the publish's 14-second pre-release check) runs these on a team PC; they are the game's side of its steps. Two flags work in every build, and only quit; the rest are QA flags (`DmMain.qa_wanted`: a debug build on the dev-offline backend), which a release build, an online start
 and a launch without a QA flag ignore.
 
 - **`--boot-check`** (every build; `install` step): the game boots to its first screen (the login, or the character select of a saved login), prints `BOOT OK <ms>` (ms since the engine started, the art pack's mount included) and `BOOT screen <name>`, and quits with exit code 0. No first screen in 60 s prints

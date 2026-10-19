@@ -128,7 +128,7 @@ log when the pictures are not the size asked for.
 
 ## The benchmark job (`bench`)
 
-After each client release the server offers every team PC a benchmark of the **release** build ("Benchmark of the new release, about 6 minutes"): the game's own benchmark
+A `bench` job is a benchmark of a **release** build ("Benchmark of the new release, about 6 minutes"; the server no longer queues one by itself: the benchmark is a step of the `release` job a shipper asks for, and a `bench` job made by hand still runs): the game's own benchmark
 ([client/README.md "The benchmark"](../client/README.md)) on one to six setups, each a graphics preset, a room, a class, a fight size and a length. The runs land on the public benchmarks page
 under the member's account, marked as team-PC runs. The numbers only mean something if the PC was left alone, so the app is strict:
 
@@ -186,9 +186,9 @@ not accept the finished job: ..."). A request of 40 s is a heartbeat, one of 6 m
 
 ## The release job (`release`)
 
-"Release checks of <version>, about 40 minutes": after every client release each team PC gets one job that checks the release on a real PC. It is one box and one claim; the steps run in this order, each step's result is
-uploaded the moment it finishes (so a PC that stops halfway has still reported what it did), a step that fails is a result and does not stop the next one (a picture the server will not take, too big or refused, fails its step and is left out), and at the end `done` says how each step went. The server posts the
-results of all PCs as one report per release in #build-alerts. The payload (`TeamLogic`/`JobPlan.ParseRelease`):
+"Checks of <revision>" (or "Checks of the live build <version>"; the box adds how long): a revision's checks on a real PC BEFORE it goes live, asked for by whoever ships it (the server's `team-check.sh`, B62; the publish's own 14-second pre-release check is one too, "Pre-release check of <version>"). It is one box and one claim; the steps run in this order, each step's result is
+uploaded the moment it finishes (so a PC that stops halfway has still reported what it did), a step that fails is a result and does not stop the next one (a picture the server will not take, too big or refused, fails its step and is left out), and at the end `done` says how each step went. The server writes the
+results up for whoever asked (the Discord agent's thread, or a session's thread or DM). The payload (`TeamLogic`/`JobPlan.ParseRelease`):
 
 - `builds`: `[{label: "release", files}, {label: "debug", files}]`, the same file entries as any job. The **release** build is `DeathMuffin.exe`, `DeathMuffin.pck`, the core's DLL and `DeathMuffin.assets.pck` (what the launcher installs);
   the **debug** build of the same revision is `DeathMuffinDebug.exe` and `DeathMuffinDebug.pck` (and the art pack and core library, shared with the release build and downloaded once). Each build is fetched into its own folder

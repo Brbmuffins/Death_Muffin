@@ -1513,7 +1513,7 @@ test('godot mode: the agent prompt explains team pictures and clips, the help li
   const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY faster'); await waitProposal(d, thread); B.close();
   const j = jobOf(w, thread), sp = systemPrompt(w.cfg, j);
   for (const re of [/A team PC is online/, /Pictures from a team PC follow|BEFORE and AFTER pairs/, /do NOT run `[^`]*shot-godot\.sh`/, /## Clips and choices/, /\.dm-clip\.json/, /Which do you like best\? Reply with its number/, /`!clips`/, /Do NOT take screenshots by default/,
-    /"resolutions"[\s\S]*1920x1080[\s\S]*3440x1440/, /"turntable"/, /Model previews/, /"equip"/, /Release checks \(you never run or start them\)[\s\S]*#build-alerts/]) assert.match(sp, re);
+    /"resolutions"[\s\S]*1920x1080[\s\S]*3440x1440/, /"turntable"/, /Model previews/, /"equip"/, /Release checks \(you never run or start them\)[\s\S]*BEFORE it goes live[\s\S]*Nothing checks a release\s+after it is live/]) assert.match(sp, re);
   assert.ok(!sp.includes('__TOOLS__'));
   const help = await d.say(thread, IDS.HELIX, '!help'); assert.match(help.replies[0].content, /!clips \(record the last short videos again on a team PC\)/);
   const args = claudeArgs(w.cfg, j), allowed = args.slice(args.indexOf('--allowedTools') + 1); assert.ok(!allowed.some((x) => /preview-godot|clip|team/i.test(x)), 'the agent gets no team tool: the runner does all of it');

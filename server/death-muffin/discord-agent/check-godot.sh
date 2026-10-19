@@ -44,7 +44,7 @@ export DOCS_ONLY MB
 # The game's build products: the shared cache is filled outside the sandbox for the base revision (approved code: a job can never plant a
 # library, an import or a bake that another job then loads); the copy, and whatever this change rebuilt, inside (prep.sh --read-only).
 TOOLS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# the installed agent keeps its trusted copy beside this script; run from a checkout (team-release.sh), the checkout's own one
+# the installed agent keeps its trusted copy beside this script; run from a checkout (team-check.sh), the checkout's own one
 DM_PREP="${DM_PREP:-$TOOLS/prep.sh}"; [ -f "$DM_PREP" ] || DM_PREP="$(cd "$TOOLS/../../.." && pwd)/tools/check/prep.sh"; export DM_PREP
 if [ -z "$DOCS_ONLY" ] && [ -n "$MB" ]; then
   if ! PREP=$(bash "$DM_PREP" --warm "$MB" "$TOP" 2>&1); then echo "$PREP" | tail -20; echo "GODOT TESTS: preparing the game FAILED (prep.sh --warm)"; exit 1; fi

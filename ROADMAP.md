@@ -143,10 +143,9 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   - Screenshots of a proposal on Low and Ultra, posted to the thread by our server. Live since 2026-10-19 and proven on Helix's PC that
     night (0.1.1: four pictures in 40 s of play; 0.1.0 could not start the game and reported no graphics card). They come beside the
     server's pictures until they have proven themselves.
-  - Benchmarks of every release on each team PC (a fast PC, War's Intel Arc, the Alienware's GTX 970: the weak-PC floor of B39), on the
+  - Benchmarks of a release build on a team PC (a fast PC, War's Intel Arc, the Alienware's GTX 970: the weak-PC floor of B39), on the
     benchmarks page marked as team runs. A benchmark starts once the PC has been left alone, and a run disturbed halfway is thrown out
-    and retried, so its numbers are honest. Built 2026-10-19 with app 0.2.0 (queued by every client publish, one per team PC seen in the
-    last 14 days), which also brought silent runs, screenshot runs that never show a window, a fresh folder for every run, cancels that
+    and retried, so its numbers are honest. Built 2026-10-19 with app 0.2.0 (now a step of the checks below), which also brought silent runs, screenshot runs that never show a window, a fresh folder for every run, cancels that
     reach the PC within 30 s, and AFK mode (Helix's design: once a job ran by itself because nobody answered, the next jobs run without
     the 5-minute wait until the person ends it or starts a game).
   - Built 2026-10-19 with app 0.3.0 (one release for all of these, B58):
@@ -155,11 +154,16 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
     - Clips and "pick one": a few seconds of a spell or effect recorded by the game itself (30 frames per game second, only the spell,
       not the loading), posted as videos; for a choice (War's Haunting Wraith at three speeds) each option is numbered and the thread
       asks which one. Model previews are clips too: the new piece worn by a hero, turning.
-    - Release checks after every client release, one job per team PC: a fresh install and boot, quitting while loading (the old 4-core
-      crash), the windows and HUD at 1080p, 1440p, 4K and ultrawide and the largest UI size, the stutter test (every rite of every
-      discipline, each cast's worst frame and pipeline compilations), the benchmark, and a 30-minute soak (memory and frame times per
-      minute); the results go to #build-alerts, grouped by graphics card, which gives every card maker the team owns (NVIDIA, Intel Arc,
-      the GTX 970 once War's PCs run the app).
+    - Release checks: a fresh install and boot, quitting while loading (the old 4-core crash), the windows and HUD at 1080p, 1440p, 4K
+      and ultrawide and the largest UI size, the stutter test (every rite of every discipline, each cast's worst frame and pipeline
+      compilations), the benchmark, and a 30-minute soak (memory and frame times per minute). Since B62 (Helix, 2026-10-19) they run
+      BEFORE a release, when its shipper asks, never after it: `server/death-muffin/team-check.sh <rev> --checks ... [--compare]` builds
+      the revision, runs the chosen steps on a team PC (with `--compare` the live build first, on the same PC, so every number reads live
+      build -> this change) and writes a summary and contact sheets for whoever asked: a session posts them to a new thread or a DM (it
+      asks the person which). Approval never waits for them.
+    - Next (after ubuntu-f2's agent change is on main): the Discord agent asks for these checks at its test runs (🧪 / `!test` and the
+      ship's own CI) and on request, and posts them in its thread; its BEFORE pictures become the live build's (they are main where
+      the branch started today, which can hold unreleased changes).
     - Jobs reach a PC within about a second (the PC's check-in waits on the server).
   - Proven on Helix's PC (RTX 4070 SUPER) on 2026-10-19 with apps 0.3.1 to 0.3.9: a full release check with every step (24 pictures at
     their exact sizes, the stutter test, the benchmark at Low 691 and Medium 597 fps with no hitches, 30 minutes of soak with flat memory).

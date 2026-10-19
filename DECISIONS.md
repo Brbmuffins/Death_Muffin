@@ -285,8 +285,17 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   start this build's own files to the first screen and quit one while it loads (about 10 seconds; `team-gate.sh`). If the game fails there
   (does not start, stops with an error, or leaves a crash report) the build is not published, and the publish says why. If no PC is free
   (off, paused, in a game, on battery, or busy with a release check), none takes it within 2.5 minutes, or the PC gives up for its own reasons
-  (a download, the player starting the game), the release goes out as before, and the full release checks after it still run. Releases are
-  never held hostage by a PC being off; the cost is at most about 3 minutes a release, usually seconds.
+  (a download, the player starting the game), the release goes out as before. Releases are never held hostage by a PC being off; the cost
+  is at most about 3 minutes a release, usually seconds.
+- **B62. The team PCs check a change before it goes live, when its shipper asks, never after** (Helix, 2026-10-19: "we do not need to be
+  running release checks every time we push something to live... we use it before we push something to live"; then "go, no waiting for
+  checks"). Replaces B58's release checks after every client release (a 40-minute job on each team PC, posted to #build-alerts), which
+  held the PC after each release and reported after players already had the build. Now `team-check.sh` builds a revision (its release
+  build through the publish's own steps, publishing nothing, and its debug build), runs the steps its shipper picks on a team PC (with
+  `--compare` the live build first on the same PC, so the numbers read live build -> this change) and writes a summary and contact sheets
+  for whoever asked: the Discord agent posts them in its thread (at its test runs and on request), a session posts them to a new thread or
+  a DM after asking the person which. Approving a change never waits for them; the publish's 14-second check (B61) is the one automatic
+  check, and it runs before the switch. #build-alerts gets release notices and server alerts only.
 - **B59. One setup, and CI as the one gate, for sessions and the Discord agent alike** (Helix, 2026-10-19: "the way we do testing for
   sessions and discord agents is a mess", then "start"; Claude's design). Every checkout (a session's worktree, an agent job, a CI machine,
   a publish) gets the combat core, Godot's import, the crowd's bakes and the lobby's packages from one setup, `tools/check/prep.sh`, through

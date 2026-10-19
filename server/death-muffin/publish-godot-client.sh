@@ -2,6 +2,8 @@
 # Publish the Godot Windows client for the launcher, from a COMMITTED revision (never the working tree).
 #
 #   publish-godot-client.sh <git-rev>
+#   EXPORT_ONLY=<dir> publish-godot-client.sh <git-rev>     the release build only, for a team PC's checks before it goes live (team-check.sh): steps 1 and the boot smoke,
+#                                                         then the files are copied to <dir> and nothing is published (no CI gate, no lobby check, no pre-release check)
 #
 # 1. `git worktree add --detach` of <rev> into a scratch folder (removed on exit), runs its PREPARE (the combat core, the flipbook sheets kept outside
 #    git, the import, the crowd's bakes), imports the project and exports the "Windows Desktop" preset with Godot 4.7.2 (DeathMuffin.exe + DeathMuffin.pck).
@@ -20,14 +22,11 @@
 #    A first publish starts locked. Devs flip it with set-online.sh.
 # 4. Keeps the newest two build folders (the previous one covers launchers that are mid-download).
 # 5. announce-release.sh: launcher news + patch notes, the #build-alerts notice, fixed bug reports released (skipped for a rollback).
-# 6. team-release.sh: the team PCs' release checks of this release, one `release` job per team PC seen in the last 14 days, after a debug build of the revision
-#    (README.md "Team jobs"). Best effort: a failure prints a line and never fails the publish; it runs inside the publish under nice -n 10 and says how long it took.
-#    Only for the live folder (/var/www/death-muffin/client: the test channel and tests publish elsewhere; TEAM_RELEASE=1 forces it, NO_TEAM_RELEASE=1 skips it) and
-#    never for a rollback (a revision that is not newer than the build that was live). The publish lock is let go before it, so a rollback never waits for it.
+# The team PCs' longer checks (screens, stutter, benchmark, soak) run BEFORE a release, when its shipper asks (team-check.sh, DECISIONS B62), never after it.
 #
 # Served at https://muffindevelopment.com/death-muffin/client/ (static, see nginx-locations.conf).
 # Refuses a forward release while the live lobby differs from <rev>'s (run deploy-lobby.sh first; LOBBY_SKEW_OK=1 overrides).
-# Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2 FX_SHEETS LOBBY_DIR PREPARE SMOKE SYMBOLS_DIR SYMBOL_BUILDS TEAM_GATE TEAM_RELEASE NO_TEAM_RELEASE
+# Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2 FX_SHEETS LOBBY_DIR PREPARE SMOKE SYMBOLS_DIR SYMBOL_BUILDS TEAM_GATE EXPORT_ONLY
 # The game is client/ (DECISIONS B49): its PREPARE and SMOKE steps (test-channel/prepare-rebuild.sh, smoke-rebuild.sh) run by default.
 set -euo pipefail
 
@@ -56,7 +55,7 @@ flock -w 600 9 || { echo "another client publish holds $WORK/.publish-client.loc
 # The live lobby must already run what <rev> has (deploy-lobby.sh first): a client can depend on new lobby messages, and a skipped lobby
 # deploy fails silently. Only for a forward release (<rev> contains origin/main): a rollback to an older client keeps the newer lobby.
 LOBBY_DIR="${LOBBY_DIR:-/home/ubuntu/death-muffin/lobby}"
-if [ -d "$LOBBY_DIR/src" ] && [ -z "${LOBBY_SKEW_OK:-}" ] && git -C "$REPO" merge-base --is-ancestor origin/main "$SHA" 2>/dev/null; then
+if [ -z "${EXPORT_ONLY:-}" ] && [ -d "$LOBBY_DIR/src" ] && [ -z "${LOBBY_SKEW_OK:-}" ] && git -C "$REPO" merge-base --is-ancestor origin/main "$SHA" 2>/dev/null; then
   for f in $(git -C "$REPO" ls-tree --name-only "$SHA" server/death-muffin/lobby/src/ | grep -E '\.js$'); do
     git -C "$REPO" show "$SHA:$f" | cmp -s - "$LOBBY_DIR/src/$(basename "$f")" ||
       { echo "Refusing to publish $SHA: the live lobby differs from it ($(basename "$f")). Run deploy-lobby.sh $SHA first (LOBBY_SKEW_OK=1 publishes anyway)." >&2; exit 1; }
@@ -85,7 +84,7 @@ git -C "$REPO" worktree add -q --detach "$WT" "$SHA" >/dev/null 2>&1
 # The CI gate (DECISIONS B59): players only get a revision whose files GitHub CI passed, judged by that revision's own tools/check/ci.sh (a
 # revision from before the gate, such as an older build a rollback republishes, has none). Only for the live folder; DM_CI_GATE=off only while
 # GitHub is down.
-if [ "$OUT_DIR" = /var/www/death-muffin/client ] && [ -f "$WT/tools/check/ci.sh" ]; then
+if [ -z "${EXPORT_ONLY:-}" ] && [ "$OUT_DIR" = /var/www/death-muffin/client ] && [ -f "$WT/tools/check/ci.sh" ]; then
   if [ "${DM_CI_GATE:-}" = off ]; then echo "== CI gate: off (DM_CI_GATE=off), publishing $SHA without CI's verdict"
   else
     V=$(cd "$WT" && bash tools/check/ci.sh status "$SHA" 2>&1 | tail -1)
@@ -126,6 +125,14 @@ fi
 # SMOKE=<script> (the test channel): boots an exported copy of the build before anything is published (test-channel/smoke-rebuild.sh).
 [ -z "${SMOKE:-}" ] || { bash "$SMOKE" "$WT/$PROJECT" "$STAGE" || { echo "boot smoke failed: $SMOKE" >&2; exit 1; }; took "boot smoke"; }
 
+# EXPORT_ONLY=<dir>: the release build for a team PC's checks (team-check.sh): copied out, nothing published.
+if [ -n "${EXPORT_ONLY:-}" ]; then
+  mkdir -p "$EXPORT_ONLY"
+  cp -lf "$STAGE"/* "$EXPORT_ONLY"/ 2>/dev/null || cp -f "$STAGE"/* "$EXPORT_ONLY"/   # (hard links: the stage goes when this ends)
+  echo "== exported $SHA to $EXPORT_ONLY (nothing published)"
+  exit 0
+fi
+
 # Carry the online lock over from the manifest that is live now (locked on a first publish or if the old one is unreadable).
 ONLINE_JSON=$(python3 - "$OUT_DIR/manifest.json" "$DEFAULT_MESSAGE" <<'PY'
 import json, sys
@@ -141,7 +148,7 @@ print(json.dumps({"enabled": enabled, "staff": staff, "message": message}))
 PY
 )
 
-# The revision that is live now (before the switch below): a rollback gets no pre-release check and no release checks (the team release hook at the end).
+# The revision that is live now (before the switch below): a rollback gets no pre-release check.
 PREV_REV=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get("rev", ""))' "$OUT_DIR/manifest.json" 2>/dev/null || true)
 [[ "$PREV_REV" =~ ^[0-9a-f]{7,40}$ ]] || PREV_REV=""
 
@@ -224,25 +231,3 @@ if [ -z "${NO_ANNOUNCE:-}" ]; then
   else echo "release notes: $SHA has no announce-release.sh (older revision): skipped"; fi
   rm -f "$ANN"
 fi
-
-# --- team release hook ---
-# The team PCs' release checks of this release: team-release.sh from the published revision itself (with the clean-up rule it shares), one `release` job per team PC seen
-# lately, after a debug build of the revision (preview-godot.sh --team: minutes of work, under nice, inside this publish; the last line says how long the hook took).
-# Best effort: a failure prints a line and never fails the publish (a run of more than 30 minutes is stopped). Everything that needed the publish lock is done, so it is let
-# go first: a rollback publish must never wait for this, and team-release.sh checks the live manifest still names this build before it queues anything.
-LIVE_OUT=/var/www/death-muffin/client
-if [ -z "${NO_TEAM_RELEASE:-}" ] && { [ "$OUT_DIR" = "$LIVE_OUT" ] || [ -n "${TEAM_RELEASE:-}" ]; }; then
-  if [ -n "$PREV_REV" ] && git -C "$REPO" cat-file -e "$PREV_REV^{commit}" 2>/dev/null && ! git -C "$REPO" merge-base --is-ancestor "$PREV_REV" "$SHA" 2>/dev/null; then
-    echo "team release: $SHA is not newer than the build that was live ($PREV_REV): skipped (rollback?)"
-  else
-    TB=$(mktemp -d)
-    if git -C "$REPO" archive "$SHA" server/death-muffin/team-release.sh server/death-muffin/team-files-prune.sh 2>/dev/null | tar -x -C "$TB" 2>/dev/null; then
-      exec 9>&-
-      HOOK_T0=$SECONDS
-      DM_TEAM_REPO="$REPO" DM_TEAM_WORK="${WORK:-}" timeout -k 10 1800 bash "$TB/server/death-muffin/team-release.sh" "$VERSION" || echo "team release: failed (the publish itself is fine)"
-      echo "team release: the hook took $((SECONDS - HOOK_T0)) s"
-    else echo "team release: $SHA has no team-release.sh (older revision): skipped"; fi
-    rm -rf "$TB"
-  fi
-fi
-# --- end team release hook ---

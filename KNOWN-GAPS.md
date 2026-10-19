@@ -128,10 +128,10 @@ polish list). Also:
   `offline_load`, `offline_versions`, `offline_restore`, `offline_sync_stats` and `get_patch_notes`, `DmGatherLoop.api_post`, the forge
   panel's `set_bonus_claimed`, `DmStatusSet.is_stunned` and `is_silenced`, and the creature's `set_rise` (only tests use `recycle_reset`).
   Delete them with the next change in those files.
-- **The pre-release check is skipped while the team PC runs a release check** (B61, 2026-10-19): a release check holds its PC for about 40
-  minutes, so with Helix's PC the only one signed in, a release within 40 minutes of the one before goes live without a PC starting it
-  first (the publish says so), and in the app's "Ask" mode it needs a click within 2.5 minutes (AFK mode and "Run without asking" take it at
-  once). The app's offer box still describes it with the release checks' note (benchmark and soak), which it does not run.
+- **The pre-release check is skipped while the team PC runs a long check** (B61, 2026-10-19): a shipper's checks (`team-check.sh`, B62) can
+  hold the PC for minutes, and with Helix's PC the only one signed in, a release then goes live without a PC starting it first (the publish
+  says so); in the app's "Ask" mode it needs a click within 2.5 minutes (AFK mode and "Run without asking" take it at once). The app's offer
+  box describes every `release` job with the full checks' note (benchmark and soak), whatever steps it has.
 - **A team app test fails now and then** (2026-10-19, 1 run in 3 on the VPS): `teamapp/tests/LogCancelTests.cs` "and the exit report is not", which reads a real
   process's filtered output right after it exits; the next two runs passed.
 - **Typed lists in game code that a new boss or area must be added to by hand** (found by the content-count pass, 2026-10-19): `DmBossHost`'s

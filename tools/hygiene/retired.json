@@ -422,6 +422,26 @@
         "DECISIONS.md",
         "tools/hygiene/**"
       ]
+    },
+    {
+      "id": "team-release-hook",
+      "pattern": "team-release\\.(sh|test\\.cjs)|\\bNO_TEAM_RELEASE\\b|\\bTEAM_RELEASE\\b|DM_TEAM_RELEASE_DAYS|\\bDM_TEAM_DAYS\\b",
+      "reason": "the team PCs' release checks after every client release (team-release.sh, the publish's hook) became checks before a release when its shipper asks (team-check.sh, B62), 2026-10-19",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "team-report",
+      "pattern": "team-report\\.(sh|test\\.cjs|json)|death-muffin-team-report",
+      "reason": "the release checks report to #build-alerts went with B62 (2026-10-19): a check's results go where its shipper asked; ops/install.sh removes the installed job",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**",
+        "server/death-muffin/ops/install.sh",
+        "server/death-muffin/ops/README.md"
+      ]
     }
   ],
   "allowPaths": {
