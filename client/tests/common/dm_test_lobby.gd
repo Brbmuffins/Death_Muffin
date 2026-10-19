@@ -37,7 +37,7 @@ func token(account_id: int, username: String) -> String:
 	return RelayTestJwt.mint(SECRET, account_id, username)
 
 
-## Wait until the service answers a TCP connect (it takes ~200 ms to start).
+## Wait until the service answers a TCP connect (it takes ~200 ms to start) and is still running a moment later (false when its port was taken by another process).
 func wait_ready(tree: SceneTree, timeout_s: float = 10.0) -> bool:
 	var t0 := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - t0 < timeout_s * 1000.0:
@@ -51,7 +51,10 @@ func wait_ready(tree: SceneTree, timeout_s: float = 10.0) -> bool:
 			var up := c.get_status() == StreamPeerTCP.STATUS_CONNECTED
 			c.disconnect_from_host()
 			if up:
-				return true
+				# the port was free when it was picked, not necessarily when node bound it: if another process took it meanwhile, node exits on EADDRINUSE and
+				# this connect reached the stranger. Our service answers only while it is still running a moment after the first answer.
+				await tree.create_timer(0.25).timeout
+				return OS.is_process_running(pid)
 		await tree.create_timer(0.1).timeout
 	return false
 

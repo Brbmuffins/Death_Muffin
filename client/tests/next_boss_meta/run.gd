@@ -257,35 +257,10 @@ func part_milestones() -> void:
 	await close()
 
 
-# ---- cost ------------------------------------------------------------------------------------------------------------------------------------
+# ---- idle ------------------------------------------------------------------------------------------------------------------------------------
 
+## (The timing figures of this part were report-only and are gone: real performance is judged on real hardware, F3 overlay.)
 func part_perf() -> void:
 	await launch()
-	var n := 5000
-	var t0 := Time.get_ticks_usec()
-	for i in n:
-		g.chron._process(DT)
-	var chron_us := float(Time.get_ticks_usec() - t0) / n
-	t0 = Time.get_ticks_usec()
-	for i in n:
-		g.codex._on_spawn(1, "robber", 1, false, "graves", 0, 0.0, 0.0, 1.0)   # a kind already in the journal: one dictionary lookup
-	var codex_us := float(Time.get_ticks_usec() - t0) / n
-	t0 = Time.get_ticks_usec()
-	for i in n:
-		g.milestones.on_tier(0.0)
-	var tier_us := float(Time.get_ticks_usec() - t0) / n
-	print("perf: chronicle tick %.2f us, codex spawn %.2f us, milestone tier call %.2f us (idle: %s)" % [chron_us, codex_us, tier_us, str(not g.milestones.is_processing())])
-	perf_info(chron_us < 50.0 and codex_us < 50.0 and tier_us < 100.0, "P: the per-frame / per-spawn cost stays tiny")
 	check(not g.milestones.is_processing(), "P: the Nightfall easing is idle when there is nothing to ease")
 	await close()
-
-
-## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
-## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
-
-
-func perf_info(cond: bool, what: String) -> void:
-	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])
-
-
-## Fund (or drain) the character as play would: the change counts as earned, so the next gains save gives it to the backend too (DECISIONS B23).

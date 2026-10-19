@@ -317,7 +317,9 @@ func start_services() -> bool:
 			var up := c.get_status() == StreamPeerTCP.STATUS_CONNECTED
 			c.disconnect_from_host()
 			if up:
-				return true
+				# the port was free when it was picked, not necessarily when node bound it: a lobby that exited (port taken meanwhile) is no lobby
+				OS.delay_msec(250)   # real time, as above
+				return OS.is_process_running(lobby_pid)
 		OS.delay_msec(100)
 		await process_frame
 	return false

@@ -4,6 +4,7 @@ extends SceneTree
 ##   godot --headless --path client --script res://tests/next_lobby/run.gd
 ## A solo untouched . hosting a running solo session . listing / join by id / join by code . every lobby error text . open / closed . kick .
 ## a full session . the joiner's backend session, XP and loot on its own account . a dropped client / a dropped host leave both sides clean.
+## (What hosting costs in packets and bytes is checked with separate processes in proc_run.gd.)
 
 const DT := 1.0 / 60.0
 
@@ -100,7 +101,6 @@ func _run() -> void:
 	ch_j = await _account(api_j, "joiner", 2)
 	await _part_solo_and_errors()
 	await _part_host_join()
-	await _part_cost()
 	lobby.stop()
 	print("%d passed, %d failed" % [passed, failed])
 	print("%s next_lobby %d checks%s" % ["PASS" if failed == 0 else "FAIL", passed + failed, "" if failed == 0 else " (%d failed)" % failed])
@@ -634,62 +634,6 @@ func _part_drops() -> void:
 	await ticks(2)
 
 
-# ---- the cost of hosting: frame time with 25 chasing enemies, solo, then hosted with a joiner (both games in THIS process, so the hosted number is an upper bound)
-
-func _frame_median(g: DmNextGame, hb: DmHeroBody, n: int) -> Array:
-	var fc := DmFrameCost.attach(root)
-	await ticks(5)
-	fc.reset()
-	for i in n:
-		await physics_frame
-		hb.heal(1e6)
-	fc.queue_free()
-	return [fc.median_ms(), fc.p95_ms(), fc.worst_busy_ms()]
-
-
-func _part_cost() -> void:
-	var b := _branch()
-	var g := await _game(b, ch_h, api_h, _opts({"world": true, "name": "hostess", "lobby_token": lobby.token(103, "hostess")}))
-	var hb := g.local_body()
-	hb.teleport(Vector3(0, 0, -16))
-	g.director.enabled = false
-	await ticks(5)
-	for i in 25:
-		g.director.spawn("robber", Vector3(sin(i * 0.5) * 11.0, 0.0, -16.0 + cos(i * 0.5) * 11.0), [hb])
-	await ticks(60)
-	var solo: Array = await _frame_median(g, hb, 150)
-	g.party.host_session("Cost Crypt", true)
-	await until(func() -> bool: return g.party.mode == DmNextParty.HOST, 8.0)
-	# the hosting itself: nothing per frame except the relay peer's poll
-	var empty: Array = await _frame_median(g, hb, 150)
-	var jb := _branch()
-	var jsolo := await _game(jb, ch_j, api_j, _opts({"name": "joiner", "lobby_token": lobby.token(104, "joiner")}))
-	var ready := [null]
-	jsolo.party.join_ready.connect(func(l: DmLobbyClient, i: Dictionary) -> void: ready[0] = [l, i])
-	jsolo.party.join_by_code(g.party.code)
-	await until(func() -> bool: return ready[0] != null, 8.0)
-	var jg := await _join_as_client(jsolo, jb, ch_j, api_j, ready[0][0], {"world": true})
-	await until(func() -> bool: return jg.session.is_active() and g.session.get_roster().size() == 2, 12.0)
-	await ticks(60)
-	var lob := g.party.lobby
-	var o0 := lob.bytes_out
-	var p0 := lob.packets_out
-	var t0 := Time.get_ticks_msec()
-	var hosted: Array = await _frame_median(g, hb, 150)
-	var secs := float(Time.get_ticks_msec() - t0) / 1000.0
-	print("COST frame median ms (p95 / worst busy): solo %.2f (%.2f / %.1f); hosting, nobody joined %.2f (%.2f / %.1f); hosted with a joiner in this process %.2f (%.2f / %.1f); host -> relay %.1f KB/s %.0f packets/s" % [solo[0], solo[1], solo[2], empty[0], empty[1], empty[2], hosted[0], hosted[1], hosted[2], float(lob.bytes_out - o0) / secs / 1024.0, float(lob.packets_out - p0) / secs])
-	perf_info(empty[0] < solo[0] * 1.25 + 0.6, "cost: hosting with nobody joined costs ~nothing per frame (%.2f vs %.2f ms)" % [empty[0], solo[0]])
-	perf_info(hosted[0] < solo[0] * 1.8 + 3.0, "cost: hosted with a joiner stays near the solo cost (%.2f vs %.2f ms)" % [hosted[0], solo[0]])
-	check(float(lob.packets_out - p0) / secs < 400.0 and float(lob.bytes_out - o0) / secs < 300.0 * 1024.0, "cost: under 400 packets/s and 300 KB/s to the relay with 25 enemies")
-	await jg.leave()
-	await g.leave()
-	g.queue_free()
-	jg.queue_free()
-	b.queue_free()
-	jb.queue_free()
-	await ticks(3)
-
-
 # ---- helpers ----------------------------------------------------------------------------------------------------------------------------------
 
 ## A bare lobby client (a bystander) for what the lobby shows to others.
@@ -710,9 +654,3 @@ func _poll_until(c: DmLobbyClient, cond: Callable, limit_s: float = 6.0) -> bool
 			return true
 		await create_timer(0.03).timeout
 	return cond.call()
-
-
-## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
-## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
-func perf_info(cond: bool, what: String) -> void:
-	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])
