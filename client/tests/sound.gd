@@ -14,7 +14,7 @@ extends SceneTree
 ##     the gate sound when a seal breaks (once per opening, at the door's centre, not before the hooks' first frame), the boss score while the King is awake;
 ##   - ZERO script errors or engine errors in the log.
 ## What the counts leave out: pictures and the sounds other systems own (rites, loot, panels: tests/rites.gd, value.gd, panels.gd). The hero stands still and cannot fall in the fight.
-## Bakes the robber and the hound into a scratch folder first. Run: godot --headless --fixed-fps 60 --path client --script res://tests/sound.gd   (--fixed-fps 60 makes the fight run as fast as the CPU allows and keeps frames and ticks together)
+## Gets the robber and the hound into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd). Run: godot --headless --fixed-fps 60 --path client --script res://tests/sound.gd  (--fixed-fps 60 makes the fight run as fast as the CPU allows and keeps frames and ticks together)
 
 class ErrorLog:
 	extends Logger
@@ -138,6 +138,7 @@ class FakeMain:
 		add_child(world)
 
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://sound_test"
 const BAKE := ["grave_robber", "bone_hound"]
 const RISING := DmCoreEvents.State.RISING
@@ -193,7 +194,7 @@ func _main() -> void:
 	DmUiConfig.dir = ""   # in-memory stores: the run reads and leaves nothing in the user folder
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 	DmSimData.ensure()
 	real = root.get_node("AudioDirector")

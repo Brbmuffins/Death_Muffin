@@ -16,8 +16,9 @@ extends SceneTree
 ##   - an unreachable or failing server shows today's player-readable error (login, a stored login at boot, and the bag failing to load);
 ##   - the offline dev entry still works: a dev character on the local mock, no base url, no transport, no request;
 ##   - ZERO script errors or engine errors in the log (the one the transport logs for the refused live address is expected and counted).
-## Bakes the robber and the hound into a scratch folder first (about 20 s). Run: godot --headless --path client --script res://tests/front.gd
+## Gets the robber and the hound into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd). Run: godot --headless --path client --script res://tests/front.gd
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://front_test"
 const BAKE := ["grave_robber", "bone_hound"]
 ## What this build talks to (the literals, so a change of net/dm_config.gd cannot move the test with it; also read from tests/fixtures/old_game/net/dm_config.gd.txt below) and what it never may:
@@ -104,7 +105,7 @@ func _run() -> void:
 	OS.add_logger(errlog)
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			quit(1)

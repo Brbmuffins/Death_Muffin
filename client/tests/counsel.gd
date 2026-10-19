@@ -11,7 +11,7 @@ extends SceneTree
 ##   - the first hour: `world_entered` once as the game opens (the welcome tip, no signature or grimoire tip at level 1), the Next-step box, the Prior's greeting and advice from the live
 ##     guidance state, the HUD's progressive reveal, the first entry of an area, "Show tips again" and "Don't show tips";
 ##   - no node per creature (the node count does not move with the crowd or the polls) and ZERO script errors or engine errors in the log.
-## Bakes the robber and the hound into a scratch folder first. Run: godot --headless --fixed-fps 60 --path client --script res://tests/counsel.gd   (--fixed-fps 60 runs the 400 ms polls and the tips' seconds as fast as the CPU allows)
+## Gets the robber and the hound into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd). Run: godot --headless --fixed-fps 60 --path client --script res://tests/counsel.gd  (--fixed-fps 60 runs the 400 ms polls and the tips' seconds as fast as the CPU allows)
 
 class ErrorLog:
 	extends Logger
@@ -22,6 +22,7 @@ class ErrorLog:
 			errors.append("%s:%d %s %s %s" % [file, line, function, code, rationale])
 
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://counsel_test"
 const BAKE := ["grave_robber", "bone_hound"]
 const TICK_KEYS := ["wave_affordable", "thralls_mine", "corpses_near", "pack_on_corpse", "family", "level", "total_kills", "has_tool", "has_belt_item", "shards", "boss_near", "has_seal",
@@ -99,7 +100,7 @@ func _main() -> void:
 	DmUiConfig.dir = ""   # in-memory stores: the run reads and leaves nothing in the user folder, and every tip is new
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 	DmSimData.ensure()
 	rng.seed = 20261017

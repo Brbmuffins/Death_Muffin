@@ -13,9 +13,10 @@ extends SceneTree
 ##   - he dies: the defeat events (the brain's `defeated`, the host's `defeated` signal, `died`, the sound), the adds that stood by him are gone without dying, he can be woken again;
 ##   - a fight on the real clock (the brain on the engine's physics ticks, the host's tick, the core's events) with no script or engine error; the net state round trip (the co-op step's seam).
 ## The other six bosses have their own suites (boss_abbess.gd ... boss_mire.gd on boss_base.gd) and the Covenant Seal's Empowered call is boss_meta.gd. ZERO script errors or engine errors in the log (an OS Logger counts them).
-## Bakes the robber, the hound and the Gravecaller's legionnaire into a scratch folder first (a few seconds). Run: godot --headless --path client --script res://tests/boss.gd
+## Gets the robber, the hound and the Gravecaller's legionnaire into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd). Run: godot --headless --path client --script res://tests/boss.gd
 ## It plays about 60 s of game time: with the engine argument `--fixed-fps 60` before `--path` it runs faster than real time.
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://boss_test"
 const BAKE := ["grave_robber", "bone_hound", "thrall_legionnaire"]
 const DT := 1.0 / 60.0
@@ -153,7 +154,7 @@ func _initialize() -> void:
 	OS.add_logger(errlog)
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			quit(1)

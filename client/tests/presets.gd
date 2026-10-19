@@ -11,8 +11,9 @@ extends SceneTree
 ##     nearest casters (Low none), the thralls cast from Medium up;
 ##   - the governor: slow frames step the 3D scale down to the preset's floor, upscaled with FSR 1, and full speed brings it back to full size with no upscaler;
 ##   - ZERO script errors or engine errors in the log.
-## Bakes the robber and the legionnaire into a scratch folder first (about 15 s). Run: godot --headless --fixed-fps 60 --path client --script res://tests/presets.gd
+## Gets the robber and the legionnaire into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd). Run: godot --headless --fixed-fps 60 --path client --script res://tests/presets.gd
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://presets_test"
 const BAKE := ["grave_robber", "thrall_legionnaire"]
 
@@ -53,7 +54,7 @@ func _run() -> void:
 	OS.add_logger(errlog)
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 	table()
 	var mock := DmOffline.make_mock("")

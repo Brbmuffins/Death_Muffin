@@ -11,9 +11,10 @@ extends SceneTree
 ##   - `t_wipe`: everyone gone -> it resets (no reward) and its adds leave the core silently; it can be woken again;
 ##   - `t_defeat`: a lethal blow -> the defeat events, the sound, the rewards (the first-kill bonus once, the report entry, the drops, the XP), the adds gone, a second kill is no first kill;
 ##   - `t_real_clock`: the brain on the engine's ticks fights with no engine error; `t_net_state`: the co-op step's state round trip.
-## ZERO script errors or engine errors in the log (an OS Logger counts them). Bakes the crowd models a suite names into a scratch folder first (a few seconds each).
+## ZERO script errors or engine errors in the log (an OS Logger counts them). Gets the crowd models a suite names into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd).
 ## The by-hand step (`step`) runs the boss's brain and the core's tick once per 1/60 s, the order of the engine's (boss at priority 0, then the core host).
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://boss_test"
 const DT := 1.0 / 60.0
 const FIXTURES := "res://tests/bosses/"   ## the recorded scenarios (tests/bosses/fixtures, captured from the TS brain; tests/bosses replays them too), replayed on this project's copy of the brains
@@ -185,7 +186,7 @@ func _initialize() -> void:
 	_config()
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in bakes:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			quit(1)

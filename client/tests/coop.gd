@@ -34,9 +34,10 @@ extends SceneTree
 ##   - the Full Party (72 enemies, 32 thralls, a continuous fight): no packet over 1,392 bytes; the bandwidth and packet rate against the relay's limits (INFO);
 ##   - a leaving guest leaves a clean host (its legion goes, the collecting stops);
 ##   - ZERO script errors or engine errors in the log (an OS Logger counts them; warnings are not errors).
-## Bakes the robber, the hound and the legionnaire into a scratch folder first (about 25 s). Run (about a minute with --fixed-fps 60):
+## Gets the robber, the hound and the legionnaire into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd). Run (about a minute with --fixed-fps 60):
 ##   godot --headless --fixed-fps 60 --path client --script res://tests/coop.gd
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://coop_test"
 const BAKE := ["grave_robber", "bone_hound", "thrall_legionnaire"]
 const SECRET := "coop-test-secret-not-a-real-one"
@@ -399,7 +400,7 @@ func _run() -> void:
 		quit(0)
 		return
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			stop_services()

@@ -37,6 +37,7 @@ class ErrorLog:
 			errors.append("%s:%d %s %s %s" % [file, line, function, code, rationale])
 
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://world_test"
 const BAKE := ["grave_robber", "bone_hound"]
 
@@ -77,7 +78,7 @@ func _initialize() -> void:
 func _main() -> void:
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 	DmSimData.ensure()
 	var mock := DmOffline.make_mock("")

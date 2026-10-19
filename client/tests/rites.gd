@@ -11,9 +11,10 @@ extends SceneTree
 ##   - a short full fight where the hero clears a wave of sixteen with rites, with thralls raised, rallied and sacrificed on the way;
 ##   - the other three necromancers and the Reaper, each a real character in a fresh game (t_disciplines, t_reaper);
 ##   - ZERO script errors or engine errors in the log (an OS Logger counts them; warnings are not errors).
-## Bakes the robber, the hound and the Gravecaller's legionnaire into a scratch folder first (a few seconds). Run: godot --headless --path client --script res://tests/rites.gd
+## Gets the robber, the hound and the Gravecaller's legionnaire into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd). Run: godot --headless --path client --script res://tests/rites.gd
 ## It plays about 90 s of game time: it takes that long in real time, and about 30 s with the engine argument `--fixed-fps 60` before `--path`.
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://rites_test"
 const BAKE := ["grave_robber", "bone_hound", "thrall_legionnaire"]
 const BIG := 1000.0   ## health multiplier of a target that must survive the case
@@ -86,7 +87,7 @@ func _initialize() -> void:
 	t0_msec = Time.get_ticks_msec()
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			quit(1)

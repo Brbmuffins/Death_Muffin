@@ -9,10 +9,10 @@ extends SceneTree
 ## and the time draw() takes (INFO only); the crowd's cost (README "Crowd cost"): bodies outside the camera's view not written (against the engine's own frustum planes, the drawn
 ## range packed, a caster kept while its shadow falls in), the animation bands (poses worked out per second per band, the same bytes near the hero), the shadow counters;
 ## and the alpha path (README "The alpha path"): a sinking body and a shrouded one drawn in the model's fade group at today's opacity, nothing else about their rows changed.
-## Bakes the models it needs into a scratch folder (about 25 s).
+## Gets the models it needs into a scratch folder (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd).
 ## Run: godot --headless --path client --script res://tests/crowd_view.gd
 
-const Baker := preload("res://crowd/crowd_baker.gd")
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://crowd_view_test"
 const SLUGS := ["grave_robber", "bone_hound", "skeleton_thrall"]
 const DT := 1.0 / 60.0
@@ -312,7 +312,7 @@ func _initialize() -> void:
 	live_assets = ProjectSettings.globalize_path("res://assets")
 	rows_path = ProjectSettings.globalize_path("res://game/view_models.json")
 	for slug in SLUGS:
-		var r: Dictionary = Baker.bake(root, slug, OUT.path_join(slug), {"assets_dir": live_assets, "rows_path": rows_path})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"assets_dir": live_assets, "rows_path": rows_path})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			quit(1)
@@ -2022,7 +2022,7 @@ func rims(view: CrowdView, crowd: RefCounted, core: RefCounted, enemy_ids: Array
 ## Thralls with hand props (DmEntityViews._make_thrall): a warrior with no legion or an armed one is drawn with the "<model>+warrior" variant when it is baked;
 ## a Rotweaver's (unarmed legion) stays bare; a kind whose variant is not baked keeps its plain body and says so once. A variant is never a stand-in for another model.
 func armed_variants() -> void:
-	var r: Dictionary = Baker.bake(root, "skeleton_thrall+warrior", OUT.path_join("skeleton_thrall+warrior"), {"assets_dir": live_assets, "rows_path": rows_path})
+	var r: Dictionary = DmTestBake.bake(root, "skeleton_thrall+warrior", OUT.path_join("skeleton_thrall+warrior"), {"assets_dir": live_assets, "rows_path": rows_path})
 	check(r.ok, "bake skeleton_thrall+warrior: %s" % r.get("error", ""))
 	if not r.ok:
 		return
@@ -2065,7 +2065,7 @@ func armed_variants() -> void:
 	check(int(view.crowd.view_info(t_rot).model) != int(slots["skeleton_thrall+warrior"]), "a Rotweaver's warrior is bare: its legion is unarmed")
 	view.queue_free()
 	# the Mourner's wraiths: a spectral model is see-through (the SPECTRAL shader) and never casts into the moon's shadow
-	var rw: Dictionary = Baker.bake(root, "wraith_thrall", OUT.path_join("wraith_thrall"), {"assets_dir": live_assets, "rows_path": rows_path})
+	var rw: Dictionary = DmTestBake.bake(root, "wraith_thrall", OUT.path_join("wraith_thrall"), {"assets_dir": live_assets, "rows_path": rows_path})
 	check(rw.ok, "bake wraith_thrall: %s" % rw.get("error", ""))
 	if not rw.ok:
 		return

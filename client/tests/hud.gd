@@ -15,8 +15,9 @@ extends SceneTree
 ##     strength at every instant), a rite on cooldown changes its text and sweep and nothing else, a mesh appended again at the same place is one array copy, the readouts are applied
 ##     by section (a moving Kill Chain meter does not apply the belt), the counsel's timers wait for the earliest one due.
 ## Prints INFO costs: the view-model build and apply (the refresh), per frame at the 20 Hz refresh, the minimap's dots, and a frame with the HUD against one without.
-## Bakes the robber and the hound into a scratch folder first (about 20 s). Run: godot --headless --path client --script res://tests/hud.gd   (--fixed-fps 60 before --path is faster)
+## Gets the robber and the hound into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd). Run: godot --headless --path client --script res://tests/hud.gd  (--fixed-fps 60 before --path is faster)
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://hud_test"
 const BAKE := ["grave_robber", "bone_hound"]
 const THRALL_BASE := {"warrior": [1.3, 1.0, 5.6], "hound": [1.2, 0.7, 7.2], "archer": [7.5, 1.3, 5.4]}
@@ -73,7 +74,7 @@ func _initialize() -> void:
 	atlas_and_helpers()
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			quit(1)

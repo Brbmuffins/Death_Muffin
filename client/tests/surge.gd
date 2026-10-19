@@ -28,6 +28,7 @@ class ErrorLog:
 			errors.append("%s:%d %s %s %s" % [file, line, function, code, rationale])
 
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://surge_test"
 const BAKE := ["grave_robber", "bone_hound"]
 ## Where the hero stands in the Graves, at its door: four of its five crypts are 9 to 30 m from him (the fifth, (-16.45, -28.23), is 33 m away).
@@ -80,7 +81,7 @@ func _initialize() -> void:
 func _main() -> void:
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug))
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug))
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 	DmSimData.ensure()
 	var mock := DmOffline.make_mock("")

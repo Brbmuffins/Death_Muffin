@@ -17,9 +17,10 @@ extends SceneTree
 ##   - the scene refuses an api that is not the test server's and no HTTP request node exists;
 ##   - ZERO script errors or engine errors in the log (an OS Logger counts them; warnings are not errors).
 ## Prints INFO timings: the host's step, crowd sync and event dispatch per tick, and the crowd's draw per rendered frame, with about 70 enemies.
-## Bakes the robber and the hound into a scratch folder first (about 20 s). Run: godot --headless --path client --script res://tests/game_scene.gd
+## Gets the robber and the hound into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd). Run: godot --headless --path client --script res://tests/game_scene.gd
 ## Faster: godot --headless --fixed-fps 60 --path client --script res://tests/game_scene.gd
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://game_scene_test"
 const RUN_TICKS := 3600
 const BAKE := ["grave_robber", "bone_hound"]
@@ -102,7 +103,7 @@ func _initialize() -> void:
 	OS.add_logger(errlog)
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			quit(1)
