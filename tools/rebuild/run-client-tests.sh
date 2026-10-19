@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # The game's (client/) test suites. Run client/setup.sh and client/tools/bake_crowd.sh first (the combat core, the import, the crowd's baked models).
-#   tools/rebuild/run-client-tests.sh [--jobs N] [--only a,b] [--list] [--times <out.tsv>]
+#   tools/rebuild/run-client-tests.sh [--jobs N] [--only a,b] [--shard I/N] [--list] [--times <out.tsv>]
 #   --jobs N        suites at once (default $DM_TEST_JOBS or 8; 1 = one after another, in list order, no retries). Off GitHub the count is capped by
 #                   the free cores (half of them, at least 2), so a run never piles onto a busy VPS (live game servers share it).
 #   --only a,b      just those suites.  --list  print the selected suites and run nothing.
+#   --shard I/N     this machine's share when N machines split the suites (CI's game jobs): the suites, slowest first by suite-times.tsv,
+#                   each go to the share with the least time so far, so every share takes about as long; every machine computes the same split.
 #   --times <file>  also write each suite's time (seconds <tab> suite, slowest first): refresh tools/rebuild/suite-times.tsv with a full run's file
 #                   after adding or reshaping suites (the pool's start order and the time limits come from it).
 # A suite is a file client/tests/<name>.gd, a folder client/tests/<name>/run.gd (its parts and fixtures beside it), or one runner of a folder,
@@ -23,13 +25,15 @@ set -uo pipefail
 GODOT="${GODOT:-/home/ubuntu/tools/godot/godot}"
 JOBS="${DM_TEST_JOBS:-8}"
 ONLY=""
+SHARD=""
 LIST=""
 TIMES_OUT=""
-usage() { echo "usage: $0 [--jobs N] [--only a,b] [--list] [--times <out.tsv>]" >&2; exit 2; }
+usage() { echo "usage: $0 [--jobs N] [--only a,b] [--shard I/N] [--list] [--times <out.tsv>]" >&2; exit 2; }
 while [ $# -gt 0 ]; do
   case "$1" in
     --jobs) [ $# -ge 2 ] || usage; JOBS="$2"; shift ;;
     --only) [ $# -ge 2 ] || usage; ONLY="$2"; shift ;;
+    --shard) [ $# -ge 2 ] || usage; SHARD="$2"; shift ;;
     --list) LIST=1 ;;
     --times) [ $# -ge 2 ] || usage; TIMES_OUT="$2"; shift ;;
     *) usage ;;
@@ -69,6 +73,11 @@ script_of() {
   esac
 }
 for s in $SUITES; do [ -f "client/tests/$(script_of "$s")" ] || { echo "no suite client/tests/$(script_of "$s")" >&2; exit 2; }; done
+if [ -n "$SHARD" ]; then
+  [[ "$SHARD" =~ ^([1-9][0-9]*)/([1-9][0-9]*)$ ]] && [ "${BASH_REMATCH[1]}" -le "${BASH_REMATCH[2]}" ] || { echo "bad --shard: $SHARD (I/N, 1 <= I <= N)" >&2; exit 2; }
+  SUITES=$(for s in $SUITES; do t=$(awk -F'\t' -v s="$s" '$2 == s { print $1; exit }' "$TIMES_FILE" 2>/dev/null); echo "${t:-9999} $s"; done |
+    sort -k1,1nr -k2,2 | awk -v i="${BASH_REMATCH[1]}" -v n="${BASH_REMATCH[2]}" '{ b = 1; for (k = 2; k <= n; k++) if (tot[k] < tot[b]) b = k; tot[b] += $1; if (b == i) print $2 }' | tr '\n' ' ')
+fi
 if [ -n "$LIST" ]; then printf '%s\n' $SUITES; exit 0; fi
 LOG="${KEEP_LOGS:-$(mktemp -d)}"
 mkdir -p "$LOG"

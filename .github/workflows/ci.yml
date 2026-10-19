@@ -55,7 +55,12 @@ jobs:
 
   # The game (client/, DECISIONS B49): the combat core is built (Linux), the project imported, the crowd baked, then every suite.
   client:
-    name: Game client tests
+    name: Game client tests (${{ matrix.shard }}/3)
+    # The suites split in three by their recorded times (run-client-tests.sh --shard), three machines side by side: about a third of the wait.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     runs-on: ubuntu-24.04   # pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19 (GitHub notice), a move to make on purpose
     timeout-minutes: 60
     env:
@@ -104,4 +109,4 @@ jobs:
 
       # Every suite, three side by side (tools/rebuild/run-client-tests.sh: one line per suite, the slowest first, each failure (up to five) once more alone, exit 1 on failure).
       - name: Client suites
-        run: bash tools/rebuild/run-client-tests.sh --jobs 3
+        run: bash tools/rebuild/run-client-tests.sh --jobs 3 --shard ${{ matrix.shard }}/3

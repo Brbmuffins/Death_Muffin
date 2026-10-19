@@ -32,7 +32,8 @@ things the correct way."
 
 Never deploy, publish a client, or flip `set-online.sh` without passing checks for what you touched:
 
-- Commands for Godot, server, lobby and launcher tests: README.md "Tests". Run the one suite you touched while developing. Before a release (dev build, owner 2026-10-10): the suites the change can affect plus the smoke set (`tools/rebuild/run-client-tests.sh --only $(node tools/rebuild/affected-suites.mjs | paste -sd, -)`); the full set for backend deploys and for server, net, login/session/save or central changes.
+- Commands for Godot, server, lobby and launcher tests: README.md "Tests". Run the one suite you touched while developing. Before a release (dev build, owner 2026-10-10): the suites the change can affect plus the smoke set (`tools/rebuild/run-client-tests.sh --only $(node tools/rebuild/affected-suites.mjs | paste -sd, -)`); the full set for backend deploys and for server, net, login/session/save or central changes. The full set is CI's: push, then deploy
+  or publish only once CI is green on that revision (its game suites run split over three machines); run it here only when CI cannot.
 - Backend deploys only through `deploy-release.sh`, the lobby only through `deploy-lobby.sh`, the client only through `publish-godot-client.sh` (README.md "Export, publish, deploy").
   Migrations must be additive and idempotent; `migrate.sh` records each applied file in `schema_migrations`, so never edit one that is applied (add a new file).
 - Shared VPS: run at most one rendered (software-GL) Godot or one headless browser at a time, and not the full suite in

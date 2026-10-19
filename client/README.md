@@ -48,7 +48,7 @@ One short README per system folder: how the system works and its known gaps (thi
 ```
 bash client/setup.sh                                   # once in every new checkout or worktree, and after switching branches: builds the core for Linux, imports, runs the smoke test
 bash client/tools/bake_crowd.sh                        # the crowd's baked models (the baked folder is generated, not committed): a publish, a benchmark and any run you look at need them
-tools/rebuild/run-client-tests.sh                      # every suite, 8 side by side, one line each (GitHub CI's "Game client tests" job runs the same, 3 at once)
+tools/rebuild/run-client-tests.sh                      # every suite, 8 side by side, one line each (GitHub CI's "Game client tests" jobs run them split over three machines, `--shard 1/3` to `3/3`, 3 at once each)
 tools/rebuild/run-client-tests.sh --only surge,value   # just those
 node tools/rebuild/affected-suites.mjs                 # the suites a change can affect, plus the smoke set (--explain says why)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/<suite>.gd   # one suite by hand
