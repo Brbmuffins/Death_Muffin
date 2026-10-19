@@ -537,14 +537,25 @@ namespace DeathMuffinTeam
                 note("step " + step + (o.Ok ? " passed" : " FAILED: " + o.Error) + " (" + (o.Ms / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " s)");
 
                 // the step's pictures, its other files and its result, now (not at the end)
-                int shown = 0;
+                int shown = 0, refused = 0;
                 foreach (var pic in o.Pictures)
                 {
                     ct.ThrowIfCancellationRequested();
                     progress("Uploading " + step + " pictures (" + (++shown) + " of " + o.Pictures.Count + ")");
-                    await UploadOneAsync(jobId, pic.Value, File.ReadAllBytes(pic.Key), "picture", JobPlan.MaxUploadBytes, note, ct).ConfigureAwait(false);
-                    uploaded.Add(pic.Value);
+                    try
+                    {
+                        await UploadOneAsync(jobId, pic.Value, File.ReadAllBytes(pic.Key), "picture", JobPlan.MaxUploadBytes, note, ct).ConfigureAwait(false);
+                        uploaded.Add(pic.Value);
+                    }
+                    catch (JobStopped) { throw; }
+                    catch (JobFailure jf)
+                    {
+                        // a picture too big or refused fails its step, not the job: the next steps still run (Helix's 3840x2160 fight picture, 2026-10-19)
+                        note(jf.Message);
+                        if (refused++ == 0) { o.Error = o.Ok ? jf.Message : o.Error + " " + jf.Message; o.Ok = false; }
+                    }
                 }
+                if (refused > 1) o.Error += " (" + refused + " pictures were not sent)";
                 foreach (var extra in o.Extra)
                 {
                     await UploadOneAsync(jobId, extra.Key, extra.Value, "result", MaxStepResultBytes, note, ct).ConfigureAwait(false);

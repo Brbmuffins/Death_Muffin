@@ -399,9 +399,10 @@ namespace DeathMuffinTeam.Tests
             }
             using (var rig = new Rig())
             {
-                rig.Host.Behaviour = (l, dir) => { File.WriteAllBytes(Path.Combine(dir, "huge.png"), new byte[(8 << 20) + 1]); return 0; };
+                rig.Host.Behaviour = (l, dir) => { File.WriteAllBytes(Path.Combine(dir, "huge.png"), new byte[JobPlan.MaxUploadBytes + 1]); return 0; };
                 var res = rig.Run("jobF00000015", rig.Plan(new[] { "low" }));
-                T.Ok(!res.Ok && res.Error.Contains("too big"), "a picture over 8 MB fails the job: " + res.Error);
+                T.Ok(!res.Ok && res.Error.Contains("too big"), "a picture over the server's limit fails a screenshot job: " + res.Error);
+                T.Eq(JobPlan.MaxUploadBytes, 20 << 20, "the limit is the server's: 20 MB a picture");
             }
         }
 

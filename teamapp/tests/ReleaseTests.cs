@@ -944,6 +944,23 @@ namespace DeathMuffinTeam.Tests
                 T.Eq(string.Join(",", rig.Api.FailSteps.Select(s => s.Step)), "install", "the steps reported are the ones that were finished and uploaded");
                 T.Eq(rig.Host.Launches.Count, 2, "nothing runs after it");
             }
+            // the server will not take a picture: its step fails and the job goes on (Helix's 3840x2160 fight picture was over the limit, 2026-10-19)
+            using (var rig = new Rig())
+            {
+                Rig_Boot(rig);
+                rig.Host.Behaviour = ReleaseGame();
+                string refused = null;
+                rig.Api.Upload = name =>
+                {
+                    if (name.EndsWith(".png") && (refused == null || refused == name)) { refused = name; return FakeApi.Err(413, "too_big", "That picture is too big."); }
+                    return FakeApi.Ok(new Dictionary<string, object>());
+                };
+                var res = rig.Run("relH00000009", rig.ReleasePlan());
+                T.Ok(res.Ok, "the job ends: " + res.Error);
+                T.Ok(refused != null && !StepIn(rig.Api.DoneSteps, "screens").Ok && StepIn(rig.Api.DoneSteps, "screens").Error.Contains("did not take the picture " + refused), "the screens step failed, saying which picture: " + StepIn(rig.Api.DoneSteps, "screens").Error);
+                T.Ok(StepIn(rig.Api.DoneSteps, "stutter").Ok && rig.Api.DoneSteps.Any(s => s.Step == "soak"), "and the steps after it still ran");
+                T.Ok(!rig.Api.DoneFiles.Contains(refused) && rig.Api.DoneFiles.Contains("screens.json"), "done lists the pictures that were sent, and the step's result");
+            }
             // done is refused: the job is failed with the server's reason and the steps
             using (var rig = new Rig())
             {

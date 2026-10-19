@@ -107,7 +107,7 @@ namespace DeathMuffinTeam
         public const int MaxPlanBytes = 65536;
         /// <summary>The server keeps at most this many pictures a job.</summary>
         public const int MaxUploads = 40;
-        public const int MaxUploadBytes = 8 << 20;
+        public const int MaxUploadBytes = 20 << 20;   // the server's limit for a picture (a busy 3840x2160 PNG passes 8 MB)
 
         public static readonly string[] KnownPresets = { "low", "medium", "high", "ultra" };
         /// <summary>The labels a `shots` job's builds may have (the pictures of the first are the "before").</summary>

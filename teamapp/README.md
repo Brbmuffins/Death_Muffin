@@ -106,7 +106,7 @@ That sign-in **never touches the game's session**, so it cannot stop a game you 
    to them (a copy when Windows refuses).
 7. For each preset it starts `DeathMuffinDebug.exe --windowed --resolution 1600x900 --audio-driver Dummy --position <X,Y> -- --dev-offline <options> --shot-plan=<plan.json>
    --shots=<job>/out/<preset> --preset=<preset>`, one preset after the other, at most 10 minutes each, each with its own empty APPDATA and LOCALAPPDATA.
-8. It uploads every picture as `<preset>_<shot>.png` (at most 40, each at most 8 MB), then reports **done** with the file names, the log and the timings.
+8. It uploads every picture as `<preset>_<shot>.png` (at most 40, each at most 20 MB), then reports **done** with the file names, the log and the timings.
    Any failure (a download that does not match, the game stopping with an error or making no pictures, the 10 minutes, a refused upload) reports **fail** with
    a readable sentence and the end of the log. What it keeps of the game's output and of Godot's own log leaves out Godot's exit report (a debug build's list of what it never freed:
    "... were leaked at exit", "... were never freed", "Leaked instance dependency", "ObjectDB instances were leaked", "resources still in use", each with the "at:" line under it) and nothing else:
@@ -187,7 +187,7 @@ not accept the finished job: ..."). A request of 40 s is a heartbeat, one of 6 m
 ## The release job (`release`)
 
 "Release checks of <version>, about 40 minutes": after every client release each team PC gets one job that checks the release on a real PC. It is one box and one claim; the steps run in this order, each step's result is
-uploaded the moment it finishes (so a PC that stops halfway has still reported what it did), a step that fails is a result and does not stop the next one, and at the end `done` says how each step went. The server posts the
+uploaded the moment it finishes (so a PC that stops halfway has still reported what it did), a step that fails is a result and does not stop the next one (a picture the server will not take, too big or refused, fails its step and is left out), and at the end `done` says how each step went. The server posts the
 results of all PCs as one report per release in #build-alerts. The payload (`TeamLogic`/`JobPlan.ParseRelease`):
 
 - `builds`: `[{label: "release", files}, {label: "debug", files}]`, the same file entries as any job. The **release** build is `DeathMuffin.exe`, `DeathMuffin.pck`, the core's DLL and `DeathMuffin.assets.pck` (what the launcher installs);
@@ -272,6 +272,8 @@ monitor (and the pictures still taken: Godot and the driver draw a window that i
 
 ### Changelog
 
+- **0.3.8** (2026-10-19) - A picture may be 20 MB (the server's new limit; a busy 3840x2160 picture passed 8 MB), and in a release check a picture the server will not
+  take fails its step instead of the whole job (Helix's run stopped there before the stutter, benchmark and soak steps).
 - **0.3.7** (2026-10-19) - The update check also runs right after each job ends and when a job is offered, so a new app is in place before the next job (Helix's
   release checks twice ran on the version before, which the 15-minute check had skipped while a job ran).
 - **0.3.6** (2026-10-19) - The release checks' screens send the size to the game as `--qa-window=WxH` too (Godot keeps `--resolution` from the game, so the

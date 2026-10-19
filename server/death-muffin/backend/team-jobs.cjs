@@ -27,7 +27,7 @@
  *   POST /api/team/jobs/:id/claim              { pcId } -> { success, data: { id, kind, title, payload } }   409 `taken` when another PC got it first; a job made
  *                                              with a target PC is offered to and claimed by that PC only (403 `not_your_job` for another)
  *   POST /api/team/jobs/:id/decline            { pcId, reason } -> { success }   the job stays queued for the other PCs and is not offered to this one again
- *   PUT  /api/team/jobs/:id/files/:name        one file as the raw body, 40 a job (120 for a release job): a PNG (`image/png`, at most 8 MB; not for a clip job), for a clip job only a
+ *   PUT  /api/team/jobs/:id/files/:name        one file as the raw body, 40 a job (120 for a release job): a PNG (`image/png`, at most 20 MB; not for a clip job), for a clip job only a
  *                                              motion-JPEG clip (`<name>.mjpeg`, `video/x-motion-jpeg`, at most 48 MB, starting with a JPEG picture), for a release job only a step's
  *                                              result (`<name>.json`, `application/json`, at most 1 MB, valid JSON) -> { success, data: { name, bytes, width, height } } (no size for a JSON file)
  *   POST /api/team/jobs/:id/done               shots: { files, log, timings }; clip: { files: [the uploaded .mjpeg names], log, timings }, which turns each clip into
@@ -69,7 +69,7 @@ const { parseRun, saveRun, DAILY_CAP_ERROR } = require('./benchmarks.cjs');
 
 const DEFAULT_RESULTS_DIR = '/home/ubuntu/death-muffin/team-results';
 const DEFAULT_SECRET_FILE = '/home/ubuntu/death-muffin/discord-agent/secret';
-const FILE_MAX_BYTES = 8 * 1024 * 1024;
+const FILE_MAX_BYTES = 20 * 1024 * 1024;   // a picture: a busy 3840x2160 PNG passes 8 MB (Helix's release check, 2026-10-19)
 const CLIP_MAX_BYTES = 48 * 1024 * 1024;  // one motion-JPEG clip (the game writes at most 4 clips of 8 s a variant, about 25 MB each at the most)
 const MP4_MAX_BYTES = 8 * 1000 * 1000;    // the mp4 must be under this (Discord's 8 MB for the bot, counted the careful way: 8,000,000 bytes is under 8 MiB too)
 const CLIP_CRF = 26;
