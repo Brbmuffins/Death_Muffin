@@ -19,7 +19,9 @@ Only the accounts on the server's team list (a table the server's team routes re
   it runs by itself after 5 minutes (mode Ask).
 - **It never gets in the way.** It waits (no box, no run) while a full-screen app is running (a game, a film, a presentation; Windows hides
   questions then), while Death Muffin is open (a party's host runs the whole party's fight) or while a laptop is on battery, until that ends or
-  you say yes. The box is shown without taking the focus, is not topmost, has no taskbar button and its buttons do not ask for the keyboard.
+  you say yes. The box is shown without taking the focus, stays on top of other windows like a notification (never over a game: a job waits while one runs),
+  comes with a tray balloon, has no taskbar button and its buttons do not ask for the keyboard. Every change in what the app decides about an offer, and every
+  box shown, is written to `app.log` (why it shows, waits or runs).
   The app never sends keys or mouse clicks. **Silent:** the game runs with `--audio-driver Dummy` (Godot still mixes, so the CPU cost stays real, but nothing is heard).
   **A screenshot job's game window is never seen:** it is started at its normal size (Godot does not draw a minimized window) with `--position` 1700 px left of the virtual screen
   (every monitor together), outside every monitor. As a fallback the window is also marked "no activate" and sent to the bottom of the window stack, and if it did become the active
@@ -50,7 +52,7 @@ Only the accounts on the server's team list (a table the server's team routes re
 The server stores each PC's mode, so the Discord agent can see which PCs may take a job.
 
 **AFK mode** (mode Ask only). When a box's 5 minutes run out with nobody answering and the job runs by itself, the app takes it that you are away and switches AFK mode on. A small notice stays in the
-screen corner ("AFK mode on: jobs run right away" and an **End AFK mode** button; like the offer box it never takes the focus, is not topmost and has no taskbar button), the tray status says AFK mode and
+screen corner ("AFK mode on: jobs run right away" and an **End AFK mode** button; it never takes the focus, is not topmost (it stays up for a long time) and has no taskbar button), the tray status says AFK mode and
 the tray menu gets **End AFK mode** while it is on. While it is on, every new offer (screenshots or a benchmark) runs straight away, with no box and no 5-minute wait. The waits stay: Death Muffin or a
 full-screen app running, the battery and a pause hold a job back, and a benchmark still waits for a quiet PC. It ends when you press the button or the menu item, by itself when you start Death Muffin or a
 full-screen app comes up (you are back; while a job runs only Death Muffin counts, because a job's own window can read as full screen on a small screen), and when you pause, change the mode or sign out.

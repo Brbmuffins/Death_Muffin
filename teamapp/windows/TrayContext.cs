@@ -170,6 +170,7 @@ namespace DeathMuffinTeam
                 {
                     box.PlaceInCorner();
                     box.Show();   // OfferBox.ShowWithoutActivation: the keyboard and the focus stay where they were
+                    log.Line("box shown at " + box.Bounds + " (screen " + Screen.PrimaryScreen.WorkingArea + "), visible " + box.Visible + ", handle " + box.IsHandleCreated);
                 }
             });
         }

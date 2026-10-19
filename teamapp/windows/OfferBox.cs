@@ -27,7 +27,7 @@ namespace DeathMuffinTeam
         {
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
-            TopMost = false;
+            TopMost = true;   // a notification: on top of other windows (never over a game: jobs wait while one runs), and it still never takes focus
             StartPosition = FormStartPosition.Manual;
             ClientSize = new Size(380, BaseHeight);
             BackColor = Art.Bg;

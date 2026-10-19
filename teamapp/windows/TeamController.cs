@@ -92,6 +92,7 @@ namespace DeathMuffinTeam
         Offer current;
         OfferAnswer answer = OfferAnswer.None;
         DateTime? shownAt;
+        string lastDecision = "";   // the offer's last decision, logged when it changes (app.log: why a box did or did not show, why a job ran)
         readonly Dictionary<string, DateTime> snoozed = new Dictionary<string, DateTime>();
         readonly HashSet<string> sentDeclines = new HashSet<string>();
         bool running, heartbeating, evaluating, signedIn, stopped, offline, afk;
@@ -272,6 +273,7 @@ namespace DeathMuffinTeam
                     current = offer;
                     answer = OfferAnswer.None;
                     shownAt = null;
+                    lastDecision = "";
                     log("offered: " + offer.Id + " " + offer.Kind + " \"" + offer.Title + "\"");
                 }
                 UpdateIdleStatus();
@@ -342,8 +344,10 @@ namespace DeathMuffinTeam
 
         void ClearOffer()
         {
+            if (current != null && lastDecision != "") log("offer " + current.Id + ": cleared");
             current = null;
             answer = OfferAnswer.None;
+            lastDecision = "";
             if (shownAt.HasValue) ui.HideOffer();
             shownAt = null;
         }
@@ -374,6 +378,13 @@ namespace DeathMuffinTeam
                 bool fullscreen = platform.Fullscreen(), game = platform.GameRunning(), battery = platform.OnBattery();
                 TimeSpan elapsed = shownAt.HasValue ? now - shownAt.Value : TimeSpan.Zero;
                 OfferDecision d = TeamLogic.Decide(settings.Mode, answer, elapsed, fullscreen, game, battery, paused, afk);
+                string why = d + (d == OfferDecision.Wait ? " (" + TeamLogic.WaitReason(fullscreen, game, battery) + ")" : "") + " mode " + settings.Mode + (afk ? " afk" : "")
+                    + (paused ? " paused" : "") + (answer != OfferAnswer.None ? " answer " + answer : "");
+                if (why != lastDecision)
+                {
+                    lastDecision = why;
+                    log("offer " + offer.Id + ": " + why + ", " + (int)elapsed.TotalSeconds + " s since the box");
+                }
                 switch (d)
                 {
                     case OfferDecision.Run:
@@ -382,7 +393,11 @@ namespace DeathMuffinTeam
                         else await RunOfferAsync(offer, false).ConfigureAwait(true);
                         break;
                     case OfferDecision.Ask:
-                        if (!shownAt.HasValue) shownAt = now;
+                        if (!shownAt.HasValue)
+                        {
+                            shownAt = now;
+                            ui.Notify("Job offered", TeamLogic.OfferText(offer.Title, offer.WeightS), false);   // the tray balloon too: a second way to see it
+                        }
                         ui.ShowOffer(View(offer, now - shownAt.Value));
                         SetStatus("Job offered: " + TeamLogic.OfferText(offer.Title, offer.WeightS), StatusLevel.Busy);
                         break;
