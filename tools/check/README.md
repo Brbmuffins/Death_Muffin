@@ -63,7 +63,8 @@ tools/check/ci.sh failed <rev>                 # the game suites that failed (on
 ```
 
 - **A verdict belongs to the files, not the commit.** A run of any commit with exactly the same tree counts, so a fast-forward of `main`, a
-  re-push or a merge that changed nothing never waits for CI again.
+  re-push or a merge that changed nothing never waits for CI again. To retry a red run that was a flake, push a new commit with the same
+  files (`git commit --amend --no-edit`, then push): `wait` gives that commit's own run five minutes to appear and follows it.
 - **One copy of the recent runs for the whole machine** (`~/death-muffin/ci-status/`), refreshed with conditional requests: once a minute
   without a token (GitHub allows 60 calls an hour), every 15 s with a read-only token in `~/death-muffin/private/github-api-token`.
 - **`deploy-release.sh` and `publish-godot-client.sh` refuse a revision CI has not passed** (judged by that revision's own `ci.sh`; a revision

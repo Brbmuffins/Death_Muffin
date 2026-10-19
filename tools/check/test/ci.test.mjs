@@ -51,7 +51,7 @@ async function world() {
     p.on('close', (code) => resolve({ code, out: out.trim() }));
   });
   const run = (id, sha, status, conclusion) => ({ id, name: 'CI', head_sha: sha, status, conclusion, html_url: `https://github.test/runs/${id}` });
-  return { root, repo, one, same, two, state, ci, run, cleanup: () => { server.close(); fs.rmSync(root, { recursive: true, force: true }); } };
+  return { root, repo, one, same, two, state, ci, run, api: env.DM_GITHUB_API, cleanup: () => { server.close(); fs.rmSync(root, { recursive: true, force: true }); } };
 }
 
 test('a verdict belongs to the files: a passed run of another commit with the same tree passes this one; different files do not', async () => {
@@ -121,5 +121,23 @@ test('with the GitHub API limit used up it says until when, keeps answering from
     const before = W.state.hits.length;
     await W.ci('status', W.one); await W.ci('status', W.same);
     assert.equal(W.state.hits.filter((h, i) => i >= before && h.includes('per_page')).length, 0, 'no list request until the reset');
+  } finally { W.cleanup(); }
+});
+
+test('a red run of another commit with the same files waits for this commit\'s own run (a re-push to retry a flake), and stands when none comes', async () => {
+  const W = await world(); try {
+    W.state.runs = [W.run(7, W.one, 'completed', 'failure')];
+    const waiting = W.ci('wait', W.same, '1');   // `same` has the same tree as `one`, pushed again to retry
+    await new Promise((r) => setTimeout(r, 700));
+    W.state.runs = [W.run(7, W.one, 'completed', 'failure'), W.run(8, W.same, 'completed', 'success')]; W.state.etag = 'v7';
+    const r = await waiting;
+    assert.equal(r.code, 0, r.out); assert.match(r.out, /^passed .*runs\/8$/);
+    W.state.runs = [W.run(7, W.one, 'completed', 'failure')]; W.state.etag = 'v8';
+    const t0 = Date.now();
+    const n = await new Promise((resolve) => {
+      const p = spawn('bash', [CI, 'wait', W.same, '1'], { cwd: W.repo, env: { ...process.env, DM_GITHUB_API: W.api, DM_GITHUB_REPO: 'o/r', DM_CI_CACHE: path.join(W.root, 'cache2'), DM_GITHUB_TOKEN_FILE: path.join(W.root, 'no-token'), DM_CI_EVERY: '0', DM_CI_POLL: '0.2', DM_CI_OWN_WAIT: '2' } });
+      let out = ''; p.stdout.on('data', (d) => { out += d; }); p.on('close', (code) => resolve({ code, out: out.trim() }));
+    });
+    assert.equal(n.code, 1); assert.match(n.out, /another commit with these files/); assert.ok(Date.now() - t0 >= 1000, 'it gave the own run its time first');
   } finally { W.cleanup(); }
 });

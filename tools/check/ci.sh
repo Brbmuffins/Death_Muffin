@@ -50,7 +50,7 @@ verdict() {
   local f="$CACHE/runs.json" out
   [ -s "$f" ] || { echo "none -"; return; }
   # The runs of the same tree: fetch is not needed for a commit we have; one we do not have cannot be compared (left out).
-  out=$(python3 - "$f" "$TREE" <<'PY'
+  out=$(python3 - "$f" "$TREE" "$SHA" <<'PY'
 import json, subprocess, sys
 runs = [r for r in json.load(open(sys.argv[1])).get("workflow_runs", []) if r.get("name") == "CI"]
 tree = sys.argv[2]
@@ -59,12 +59,13 @@ def tree_of(sha):
     return p.stdout.strip() if p.returncode == 0 else ""
 same = [r for r in runs if tree_of(r["head_sha"]) == tree]
 if not same: print("none -"); sys.exit()
+own = any(r["head_sha"] == sys.argv[3] for r in same)
 ok = [r for r in same if r["status"] == "completed" and r["conclusion"] == "success"]
 if ok: print("passed", ok[0]["html_url"]); sys.exit()
 live = [r for r in same if r["status"] != "completed"]
 if live: print("pending", live[0]["html_url"]); sys.exit()
 bad = [r for r in same if r["conclusion"] not in ("cancelled", "skipped")]
-print(("failed " + bad[0]["html_url"]) if bad else ("cancelled " + same[0]["html_url"]))
+print(("failed " + bad[0]["html_url"]) if bad else ("cancelled " + same[0]["html_url"]), "" if own else "(another commit with these files)")
 PY
 )
   if [ "${out%% *}" = none ]; then
@@ -85,12 +86,14 @@ print(("passed " + ok[0]["html_url"]) if ok else ("pending " + live[0]["html_url
 case "$CMD" in
   status) verdict ;;
   wait)
-    MIN="${3:-60}"; END=$(( $(date +%s) + MIN * 60 )); seen_none=0
+    MIN="${3:-60}"; START=$(date +%s); END=$(( START + MIN * 60 )); seen_none=0
     while :; do
       v=$(verdict); s="${v%% *}"
       case "$s" in
         passed) echo "$v"; exit 0 ;;
-        failed|cancelled) echo "$v"; exit 1 ;;
+        failed|cancelled)
+          # from another commit with these files while this one's own run can still appear (a re-push to retry a flake): give it 5 minutes
+          if [[ "$v" == *"(another commit with these files)"* ]] && [ $(( $(date +%s) - START )) -lt "${DM_CI_OWN_WAIT:-300}" ]; then :; else echo "$v"; exit 1; fi ;;
         none) seen_none=$((seen_none + 1)) ;;
       esac
       # a run appears a few seconds after a push; ten minutes without one means none is coming
