@@ -32,10 +32,12 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
 ## Content pipelines
 
 - **An armor set touches about five files** (`server/rules/content/legendarySets.ts` or armorSets.ts, setBonuses.json, necro_gear.json,
-  view_models.json, assets_used.json; `tools/generate-armor-assets.mjs` writes the rest) and breaks two tests the agent then edits by hand:
-  the `data` suite's digests of the loot and progression views (`client/tests/data/run.gd`) and the loot rules' golden fixtures
-  (`client/tests/rules_loot/fixtures`). That goes against B59 (adding content never breaks a test); comparing the views with their sources
-  and regenerating the fixtures would close it (found 2026-10-19).
+  view_models.json, assets_used.json; `tools/generate-armor-assets.mjs` writes the rest).
+- **The Discord agent cannot run the generators an armor set needs** (found 2026-10-19): PROMPT-godot.md tells it to run
+  `node tools/generate-armor-assets.mjs`, `npm run build:server-rules` and, for the loot rules' recorded answers,
+  `UPDATE_LOOT_PARITY=1 npx vitest run server/rules/gameplay/__tests__/`, but its only commands are `agit`, `check-godot.sh --rerun` and the art and
+  shot scripts (`runner/lib/agent.cjs`), so a set from a thread needs a session to run them. Decide: let it run one sandboxed script that runs all
+  three (no network, only its worktree writable, like its checks). Claude's recommendation: yes.
 - The gear props' attachment rules (axes, size, grip point, anchor bone) live in the `_doc` of `client/data/slice/necro_gear.json`, not on a
   standards page.
 

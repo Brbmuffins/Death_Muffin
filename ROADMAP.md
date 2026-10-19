@@ -362,6 +362,9 @@ budgets for every kind of asset, and checks for everything but models.
   history kept in git and DECISIONS.
 - [ ] **New: one map of the docs:** which page holds which rule (the vision, How we work, the three standards pages, the pipelines, the
   recipes, each system), so the Discord agent and every session find the rule before they build.
+- [ ] **Fix: the Discord agent still carries the retired web game's mode** (KNOWN-GAPS "Tools and tests"). Now: the runner's defaults, five
+  scripts and a phone step belong to the web game, and about 70 of the agent's 126 end-to-end tests still run in that mode. After: the game is
+  its only mode, those tests run against it, and the web scripts are deleted and retired.
 - [ ] **Fix: the repository after the old game's folder went.** Now: leftovers of the two-game setup. After: each top-level folder has one stated
   purpose, nothing is left over, and README.md's layout is true.
 

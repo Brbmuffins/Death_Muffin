@@ -313,9 +313,9 @@ migration to the live database, deploys the backend and publishes the client. Th
 - *Everything else follows from those two:* run `node tools/generate-armor-assets.mjs` (it refreshes every client data copy, the content manifest, the
   inventory icons and writes the new `server/death-muffin/backend/migrations/NNN-armor-<set>.sql` with the item rows), then `npm run build:server-rules`.
   Commit all of it, including the new `.sql`, the icons and the `.import` files Godot writes for them.
-- *Tests that pin the loot tables* (the data suite's loot view and progression digests; the loot rules' golden fixtures, whose legendary picks
-  move when the set list grows; KNOWN-GAPS "Content pipelines") are expected to fail after a new set. Recompute a digest or fixture only where the
-  set change explains the difference (a legendary pick changing to another set id, nothing else), and say so in the summary.
+- *The loot rules' recorded answers* (`client/tests/rules_loot/fixtures`: the legendary picks, boss rolls and the drop parity fixture) are the server
+  rules' answers, so a new legendary set moves some of them and CI fails until they are remade from the rules with
+  `UPDATE_LOOT_PARITY=1 npx vitest run server/rules/gameplay/__tests__/`. Never edit them by hand.
 - *Look* (`client/data/slice/necro_gear.json`, read by `client/game/dm_gear_models.gd` and `client/game/dm_avatar.gd`): `mantle_by_set_id.<setId>` (worn chest
   piece shows it), `helm_by_tier.<setId>` (its head piece shows its own helm), `weapon_by_set_id.<setId>` `{kind, prop, pieces}` (weapons of that kind show
   the set's prop from that many pieces; the Reaper's scythe), `legendary_hero_by_set_id` (a whole rigged body at 3+ pieces; the Reaper takes only her own
