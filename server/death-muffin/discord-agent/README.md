@@ -1,8 +1,8 @@
 # Death Muffin Discord dev agent
 
 @mention the Muffin Core bot in `#death-muffin`, describe feedback or an idea, and it works it out in a thread: answers
-questions from the code, or makes a change on its own branch, proves tests pass, and posts a short proposal. An approver's ✅
-ships it. Nothing the AI says can ship, push or deploy.
+questions from the code, or makes a change on its own branch and posts a short proposal (a draft: rounds of back and forth wait for no
+tests). 🧪 runs every test on it; an approver's ✅ tests it and ships it. Nothing the AI says can ship, push or deploy.
 
 ```
 Discord #death-muffin ── Muffin Core bot (user `muffin`, /opt/muffin/discord/{bot,dm-agent}.js)    dumb transport, no authority
@@ -11,8 +11,8 @@ Discord #death-muffin ── Muffin Core bot (user `muffin`, /opt/muffin/discord
 Runner (user `ubuntu`, ~/death-muffin/discord-agent/runner/server.cjs, port 4321)
    allow-list · approver gate · rate limits · audit.jsonl · job queue · tier classifier · proposal builder
    ├─ per request: git worktree + branch discord/<id> from origin/{baseBranch} (`main`), `claude -p` (sandboxed, --resume within a round)
-   ├─ verify (runner code, not the AI): latest base merged in · commits clean · no Co-Authored-By · forbidden paths · secret scan · generated files re-derived · GitHub CI on the pushed branch (`ci.sh`; `check-godot.sh` with `ciGate: false`) · tier
-   ├─ propose: push branch, embed with tier / files / tests / migrations / compare link, ✅ ❌
+   ├─ verify (runner code, not the AI): latest base merged in · commits clean · no Co-Authored-By · forbidden paths · secret scan · generated files re-derived · GitHub CI on the pushed branch (`ci.sh`; `check-godot.sh` with `ciGate: false`) on 🧪 / `!test` and before a ship (every round with `drafts: false`) · tier
+   ├─ propose: push branch, embed with tier / files / tests / migrations / compare link, ✅ 🧪 ❌ (✅ ❌ once tested)
    └─ ship.sh (only after an approver's ✅): merge onto {baseBranch}, with every other waiting approval (one batch) · re-gate each · CI on the merged change (none needed when it is the proposal's files) · deploy lock · push · publish-godot-client.sh
 ```
 
@@ -128,7 +128,7 @@ the runner re-checks it: a proposal that moved on (new round or head), an approv
 drops it from the queue with a note in the thread.
 
 ## Chat commands (in the thread, handled by the runner, not the AI)
-`!status` · `!credits` (your model-generation budget) · `!shot` (screenshot of the change) · `!clips` (record the last short videos again on a team PC) · `!cancel` · `!discard` (or ❌, or plain words like "discard this" / "you can discard this as a test") · `!sync` (merge the latest base branch, agent resolves conflicts) · `!model opus|sonnet|haiku`
+`!status` · `!credits` (your model-generation budget) · `!shot` (screenshot of the change) · `!clips` (record the last short videos again on a team PC) · `!cancel` · `!test` (or 🧪: every test on the open change, nothing ships) · `!discard` (or ❌ and ❌ again on the question it asks, or plain words like "discard this" / "you can discard this as a test") · `!sync` (merge the latest base branch, agent resolves conflicts) · `!model opus|sonnet|haiku`
 (full approvers; "use opus" in a message works too) · `rollback` (mention in channel or thread): runs the newest deploy
 backup's ROLLBACK.sh under the lock. Owner/full approvers any time, limited approvers only if their ship is the latest.
 
@@ -157,8 +157,20 @@ one CI run, one push, one publish, every thread told it is live (the ships log's
 conflict or a gate between its changes; audit `batch-split`) is queued again one change at a time (`solo`), so the one that breaks it comes back
 with the reason. While GitHub is down the owner sets `ciGate: false` in `config.json`: the local check and the backlog below come back.
 
+**Drafts (Helix, 2026-10-19: "i dont see the point of doing any tests until the idea i have is actually built out"; `drafts`, default on with the
+CI gate, off without it).** A round runs every gate but the tests and is proposed at once, marked "Not tested yet", with ✅ 🧪 ❌ (audit `proposal`
+with `draft: true`); its push starts CI in the background, and nobody waits for it. 🧪 or `!test` (anyone the agent works for; audit
+`test-requested`) queues a test run as a job step (`job.testing`): `verify` with the tests on, which merges the latest base in, waits for CI and
+does the re-run and clean-base checks above. A pass on the proposed commit marks that proposal tested where it stands (`test-passed`, the thread
+says so; ✅ then ships without waiting again); a failure says so and gets the agent's fix-up turns, and a tested proposal follows that needs a
+fresh ✅. ✅ on a draft ships it: the ship's CI wait is the test (the proposal's own run when the merged tree is the same files), and ship.sh's local
+check never skips an untested proposal (`PROPOSAL_UNTESTED`). A ship whose tests fail (`ship-tests-failed`) says so, and the same test run follows
+(`repost`): the agent fixes it and a tested proposal comes back for one more ✅; suites that fail on the base too stop it with "⚠ Not this change".
+❌ on a proposal asks first ("Discard this change?", audit `discard-asked`), and ❌ on that question discards (`discard-confirmed`); a typed
+`!discard` or "discard this" does not ask.
+
 **Ship speed (owner, 2026-10-10; with `ciGate: false`).** The ship's re-test is skipped when the merged tree is exactly the proposal's (main did not move since), which already
-passed the same quick check; a sensitive change still runs the full suite. **Backlog:** when another approved ship is waiting, the current one merges, tests
+passed the same quick check (never for a draft); a sensitive change still runs the full suite. **Backlog:** when another approved ship is waiting, the current one merges, tests
 and pushes but does not publish (`DEFER_PUBLISH=1`, `RESULT: merged`; the thread is told it goes live with the next publish). The next publish carries it:
 its notice lists both changes under both titles, and the waiting thread gets "🚀 Live" and closes (`healOtherPublishes`, logged in the ships log with
 `batchedWith`). If nothing else ships, the runner publishes the merged one by itself (`drainShipQueue`). **Documents only (2026-10-18):** a change
@@ -295,7 +307,16 @@ Finished threads are archived so `#death-muffin` only lists live work (owner, 20
 2. `bash install-bot.sh <rev>` (sudo): `/opt/muffin/discord/dm-agent.js`, patched `bot.js` (backup kept), `/opt/muffin/dm-agent.env`. When the live `bot.js` already loads `./dm-agent` but carries other hooks too (the Hammy Xchange agent patches the same file from its own repo), it leaves `bot.js` alone and updates only the adapter and env (old adapter backed up); a `bot.js` without the hook is refused as before.
 3. `sudo systemctl enable --now death-muffin-discord-agent`, then `sudo systemctl restart muffin-discord`.
 
-Tests (not wired into test:server; ~1 min, needs git and `unshare`/`zip`/`unzip`): `node --test server/death-muffin/discord-agent/test/*.test.cjs`.
+Tests (part of CI's backend job; about 2 minutes, need git, `unshare`, `zip` and `unzip`): `node --test server/death-muffin/discord-agent/test/*.test.cjs`.
+
+**Practice run** (Helix, 2026-10-19: so a promoted test build or a reinstall cannot break the agent unnoticed): after every `install-runner.sh`
+and every test build that goes live, with the agent restarted and idle, run `node ~/death-muffin/discord-agent/runner/canary.cjs` before it takes
+requests (about 4 minutes). It drives the installed runner and the live Discord adapter with a fake Discord (nothing is posted) and a stand-in for
+`claude` (one harmless commit, no AI cost) through a whole proposal on the real repo: the installed copies equal `main`, the live agent is idle,
+request -> thread -> worktree -> gates -> pushed branch -> a draft proposal with ✅ 🧪 ❌, the agent's own check in its sandbox
+(`check-godot.sh --rerun code_load`), 🧪 -> GitHub CI on the branch -> "Tests passed", then `!discard` removes the branch and the workspace. It
+never ships. One `CANARY <step> ok|FAILED` line per step, then `CANARY PASSED` (exit 0) or `CANARY FAILED: <step>` (exit 1). A trial before a
+merge: `DEST=<dir> NO_SYSTEMD=1 bash install-runner.sh <rev>`, then `node <dir>/runner/canary.cjs --rev <rev> --adapter <repo>/server/death-muffin/discord-agent/bot/dm-agent.cjs`.
 The installer also copies `check-godot.sh`, `tools/check/prep.sh` (as `prep.sh`), `preview-godot.sh`, `shot-godot.sh`, `label-shot.py`, `render-model.sh`, `render-model.py`, `art-run.sh`, `build-art.sh`, `build-sound.sh`, `sound-build.mjs` and `PROMPT-godot.md`, installs the trusted art tools to `art-tools/`, and creates an empty `tripo-budget.json` if there is none (never overwritten). The live `config.json` must say `"mode": "godot", "baseBranch": "main"`; edit it and restart the service to change.
 
 ## Screenshots

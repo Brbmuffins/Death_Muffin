@@ -43,6 +43,7 @@ jobs:
 
   server:
     name: Backend + lobby tests
+    needs: scope
     runs-on: ubuntu-24.04   # pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19 (GitHub notice), a move to make on purpose
     timeout-minutes: 15
     steps:
@@ -83,6 +84,7 @@ jobs:
       # The Discord agent's own tests (about 220, a minute): they need git, zip/unzip and `unshare`. ubuntu-24.04 blocks unprivileged user
       # namespaces through AppArmor, so allow them first (this runner is thrown away after the job).
       - name: Discord agent tests
+        if: needs.scope.outputs.game == 'true'   # a push of documents only cannot break them (about 2 minutes saved on each)
         run: |
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           # the sandbox makes every mount read-only, then mounts a tmpfs over /tmp; libmount then fails to update its table in /run/mount

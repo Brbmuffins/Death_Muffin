@@ -134,6 +134,10 @@ const DEFAULTS = {
   // false = the fallback while GitHub is down: the local check (check-godot.sh) as before.
   ciGate: true,
   ciScript: null,
+  // godot with the CI gate: proposals are drafts (Helix, 2026-10-19: "i dont see the point of doing any tests until the idea i have is actually
+  // built out"). A round is proposed without waiting for tests (the push still starts CI in the background); 🧪 or `!test` runs them on the open
+  // change, and ✅ ships only after CI passed what ships (ship.sh). false = every proposal waits for CI first, as before.
+  drafts: true,
 };
 function merge(a, b) {
   if (Array.isArray(a) || typeof a !== 'object' || a === null) return b === undefined ? a : b;
@@ -162,6 +166,7 @@ function loadConfig(file) {
   if (c.mode === 'godot') c.tiers = c.godotTiers;
   c.ciGate = c.mode === 'godot' && c.ciGate !== false;
   if (!c.ciScript) c.ciScript = require('path').join(c.toolsDir, 'ci.sh');
+  c.drafts = c.ciGate && c.drafts !== false;   // drafts need CI: without it (GitHub down) every proposal is checked here first
   return c;
 }
 module.exports = { loadConfig, DEFAULTS };

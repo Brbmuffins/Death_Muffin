@@ -13,7 +13,7 @@
 # MODE=web (default): deploy-release.sh, then the best-effort mobile step. MODE=godot: check-godot.sh, and the Godot client is published with
 # publish-godot-client.sh after a ROLLBACK.sh for the revision that is live now has been written (see the godot block below). No mobile step.
 # CI_GATE=1 (godot; DECISIONS B59): GitHub CI is the test instead of check-godot.sh. The merged tree is CI's verdict on the proposal when it is the
-# same files; otherwise it is pushed as ship/<job> and CI tests it (CI_SCRIPT, default $TOOLS/ci.sh). The deploy lock is taken only after CI passed,
+# same files (for a draft, the run its push started); otherwise it is pushed as ship/<job> and CI tests it (CI_SCRIPT, default $TOOLS/ci.sh). The deploy lock is taken only after CI passed,
 # so the wait never blocks another deploy, and the base branch must not have moved meanwhile ("RESULT: master-moved"). BATCH (with CI_GATE): more
 # approved changes, one "<job> <branch> <head> <max tier>" per line, merged after this one, each gated by its own approver's tier; one CI run and one
 # publish for all of them ("BATCH: <job>" for each one the push carried; "RESULT: conflict-batch|gate-batch <job> ..." when one of them stops it).
@@ -128,8 +128,8 @@ say "running tests on the merged tree"
 # set) on the merged tree; only a sensitive-tier change (server, net, login/session/save, scripts) gets the FULL suite.
 CHECK="$TOOLS/check.sh"; CHECK_ARGS=(); [ "$MODE" = godot ] && { CHECK="$TOOLS/check-godot.sh"; case "$GATE" in *"GATE: ok (sensitive)"*) CHECK_ARGS=(--full);; esac; }
 # Nothing new to test: the merged tree is exactly the proposal's (main did not move since), and that passed the same quick check. A sensitive
-# change still runs its full suite.
-if [ "$MODE" = godot ] && [ ${#CHECK_ARGS[@]} -eq 0 ] && [ "$(g rev-parse HEAD^{tree})" = "$(g rev-parse "$EXPECT_HEAD^{tree}")" ]; then
+# change still runs its full suite, and so does a draft (PROPOSAL_UNTESTED: proposed with the CI gate on, which never tested it).
+if [ "$MODE" = godot ] && [ ${#CHECK_ARGS[@]} -eq 0 ] && [ -z "${PROPOSAL_UNTESTED:-}" ] && [ "$(g rev-parse HEAD^{tree})" = "$(g rev-parse "$EXPECT_HEAD^{tree}")" ]; then
   echo "tests: skipped, the merged tree is exactly the proposal's, which passed its check" | tee "$TOOLS/state/ship-$JOBID.tests.log"
 elif ! "$CHECK" "${CHECK_ARGS[@]}" >"$TOOLS/state/ship-$JOBID.tests.log" 2>&1; then
   # godot: 1-3 failing suites (and nothing failing outside the suites) get one re-run of just those, as the runner does before a proposal

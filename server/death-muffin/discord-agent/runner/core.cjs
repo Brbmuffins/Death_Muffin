@@ -354,6 +354,11 @@ function createRunner(cfgIn, opts = {}) {
       case 'discard':
         if (!auth.canDiscard(msg.userId, job, job.proposal && job.proposal.tier)) return { action: 'reply', text: 'Only the person who started this, or the owner, can discard.' };
         discard(job, msg.userId).catch((e) => say(job, `Discard failed: ${e.message}`)); return { action: 'accepted' };
+      case 'test': {
+        if (!auth.isAllowed(msg.userId)) return { action: 'ignore' };
+        const why = requestTest(job, msg.userId);
+        return why ? { action: 'reply', text: why } : { action: 'accepted' };
+      }
       case 'shot':
         if (job.turns >= cfg.maxTurnsPerJob) return { action: 'reply', text: 'This thread has hit its turn limit. Start a new request in the channel.' };
         // shotCmd: with a team PC online processJob swaps this for the team wording (the plan only; the team PC renders it)
@@ -412,7 +417,7 @@ function createRunner(cfgIn, opts = {}) {
       }
       case 'sync':
         job.queue.push({ ...msg, text: '(sync request)', sync: true }); save(); pump(); return { action: 'accepted' };
-      default: return { action: 'reply', text: `Commands: !status, !credits (your model and sound budgets), !model <name> (owner), !cancel, !discard, !shot (screenshot of the change), !clips (record the last short videos again on a team PC), !preview (build a playable preview), !report [number] (in-game bug reports), !sync, !retry (a failed client publish), rollback (approvers).` };
+      default: return { action: 'reply', text: `Commands: !status, !credits (your model and sound budgets), !model <name> (owner), !cancel, !discard, !test (every test on the open change, nothing ships), !shot (screenshot of the change), !clips (record the last short videos again on a team PC), !preview (build a playable preview), !report [number] (in-game bug reports), !sync, !retry (a failed client publish), rollback (approvers).` };
     }
   }
 
@@ -455,6 +460,16 @@ function createRunner(cfgIn, opts = {}) {
       return requestRetry(job, String(ev.userId)) ? { action: 'accepted' } : { action: 'remove_reaction' };
     }
     if (job && art && !goneThread(job.threadId) && job.artRequest && job.artRequest.messageId && job.artRequest.messageId === ev.messageId) return handleArtReaction(job, ev);
+    // ❌ on the "Discard this change?" question confirms it (anyone who may discard; the question goes stale with the next proposal)
+    if (job && !goneThread(job.threadId) && job.discardAsk && job.discardAsk.messageId && job.discardAsk.messageId === ev.messageId) {
+      if (ev.emoji !== '❌') return { action: 'ignore' };
+      if (!auth.canDiscard(String(ev.userId), job, job.proposal && job.proposal.tier)) return { action: 'remove_reaction' };
+      job.discardAsk = null; save();
+      if (['shipping', 'shipped', 'discarded'].includes(job.status)) return { action: 'ignore' };
+      audit.log('discard-confirmed', { userId: String(ev.userId), job: job.id });
+      discard(job, String(ev.userId)).catch((e) => say(job, `Discard failed: ${e.message}`));
+      return { action: 'accepted' };
+    }
     if (!job || goneThread(job.threadId) || !job.proposal || job.proposal.messageId !== ev.messageId) return { action: 'ignore' };
     const uid = String(ev.userId); const p = job.proposal;
     if (ev.emoji === '✅') {
@@ -465,11 +480,12 @@ function createRunner(cfgIn, opts = {}) {
         if (!job.lastRefusalAt || now() - job.lastRefusalAt > 60000) { job.lastRefusalAt = now(); say(job, `Only ${who} can ship this one (${p.tier} tier).`); }
         return { action: 'remove_reaction' };
       }
-      if (job.status !== 'proposed' || !p.testsOk) {
+      if (job.status !== 'proposed' || !(p.testsOk || p.draft)) {
         audit.log('approve-refused', { userId: uid, job: job.id, why: `status ${job.status}` });
         // A silently removed ✅ looked like a missed click (2026-10-11: reacted again and again). Say why once a minute, except while it ships
         // (the ✅ that started it already counts).
-        const why = { running: 'I am still working on a newer version of this change; react ✅ on the new proposal when it posts.', generating: 'A model is still generating for this thread; react ✅ on the proposal that follows.' }[job.status];
+        const why = job.testing ? 'The tests are running on this change right now; react ✅ again when they finish (a few minutes).'
+          : { running: 'I am still working on a newer version of this change; react ✅ on the new proposal when it posts.', generating: 'A model is still generating for this thread; react ✅ on the proposal that follows.' }[job.status];
         if (why && (!job.lastRefusalAt || now() - job.lastRefusalAt > 60000)) { job.lastRefusalAt = now(); say(job, why); }
         return { action: 'remove_reaction' };
       }
@@ -493,10 +509,23 @@ function createRunner(cfgIn, opts = {}) {
       startShip(job, uid);
       return { action: 'accepted' };
     }
+    if (ev.emoji === '🧪') {
+      if (!auth.isAllowed(uid)) return { action: 'remove_reaction' };
+      const why = requestTest(job, uid);
+      if (!why) return { action: 'accepted' };
+      if (!job.lastRefusalAt || now() - job.lastRefusalAt > 60000) { job.lastRefusalAt = now(); say(job, why); }
+      return { action: 'remove_reaction' };
+    }
     if (ev.emoji === '❌') {
       if (!auth.canDiscard(uid, job, p.tier)) return { action: 'remove_reaction' };
       if (['shipping', 'shipped', 'discarded'].includes(job.status)) return { action: 'ignore' };
-      discard(job, uid).catch((e) => say(job, `Discard failed: ${e.message}`));
+      // One tap could throw away a long back-and-forth (Helix, 2026-10-19), so ❌ on a proposal asks once, on a message of its own; a typed
+      // !discard or "discard this" does not ask.
+      if (job.discardAsk && now() - job.discardAsk.at < 10 * 60000) return { action: 'accepted' };
+      job.discardAsk = { at: now(), by: uid, messageId: null }; save();
+      audit.log('discard-asked', { userId: uid, job: job.id });
+      post({ threadId: job.threadId }, { content: 'Discard this change? Its branch and everything on it are deleted and cannot be brought back. React ❌ on this message to confirm; anything else keeps it.', reactions: ['❌'] },
+        (res) => { if (res.messageId && job.discardAsk) { job.discardAsk.messageId = String(res.messageId); save(); } });
       return { action: 'accepted' };
     }
     return { action: 'ignore' };
@@ -510,7 +539,7 @@ function createRunner(cfgIn, opts = {}) {
       stopStep(job);
       say(job, 'Discarding as soon as the current step stops.'); save(); return;
     }
-    job.discardRequested = null;
+    job.discardRequested = null; job.discardAsk = null;
     audit.log('discarded', { job: job.id, userId: String(byId) });
     job.artRequest = null;
     await G.removeJobArtifacts(cfg, job);
@@ -582,7 +611,8 @@ function createRunner(cfgIn, opts = {}) {
     job.queuedNotice = false;
     const msgs = job.queue.splice(0); save();
     const sync = msgs.some((m) => m.sync);
-    let real = msgs.filter((m) => !m.sync && !m.art);
+    const test = msgs.some((m) => m.test); const repost = msgs.some((m) => m.test && m.repost);
+    let real = msgs.filter((m) => !m.sync && !m.art && !m.test);
     let extra = '';
     if (job.roundNote) { extra = job.roundNote; job.roundNote = null; }
     if (job.bugReportId && !job.sessionId && real.length) {   // a report thread: every fresh session gets the report itself
@@ -639,7 +669,8 @@ function createRunner(cfgIn, opts = {}) {
       if (st && st !== status) { status = st; pendingStatus = true; }
       if (pendingStatus && (!lastStatusPost || now() - lastStatusPost >= statusEvery)) { pendingStatus = false; lastStatusPost = now(); say(job, note()); }
     }, cfg.tickMs || 8000); ticker.unref();
-    try { await runJob(job, real, extra); } finally { clearInterval(ticker); syncName(job); }
+    if (test) job.testing = true;
+    try { await runJob(job, real, extra, { test, repost }); } finally { job.testing = false; clearInterval(ticker); syncName(job); }
   }
   // ---------- screenshots (<worktree>/.dm-shots/*.png, written by the agent via shot.sh) ----------
   function listShots(job) {
@@ -709,7 +740,7 @@ function createRunner(cfgIn, opts = {}) {
     finally { await G.git(cfg.repo, ['worktree', 'remove', '--force', dir], { allowFail: true }); try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ } }
   }
 
-  async function runJob(job, real, extra) {
+  async function runJob(job, real, extra, o = {}) {
     let r = null;
     if (real.length || extra) r = await agentTurn(job, buildPrompt(real, extra));
     if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return; }
@@ -724,7 +755,7 @@ function createRunner(cfgIn, opts = {}) {
     if (art && await artStage(job)) return;       // a model request is waiting for an approver (or was refused): nothing to verify or propose yet
     if (sound && await soundStage(job)) return;   // a sound is being generated (or was refused): the agent continues once the takes exist
     if (GODOT && await clipStage(job)) return;    // short videos of the options are on their way to a team PC: people pick one before any change is proposed
-    await afterTurn(job, readResult(job.worktree));
+    await afterTurn(job, readResult(job.worktree), o);
   }
 
   async function unchangedProposal(job) {
@@ -767,8 +798,9 @@ function createRunner(cfgIn, opts = {}) {
     finally { await G.git(cfg.repo, ['worktree', 'remove', '--force', dir], { allowFail: true }); try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ } }
   }
 
-  // Verify -> (fix-up turns) -> propose. Everything here is deterministic runner code, not the model.
-  async function verify(job) {
+  // Verify -> (fix-up turns) -> propose. Everything here is deterministic runner code, not the model. `tests: false` (a draft round, cfg.drafts):
+  // every gate but the tests; they run on 🧪 / !test and before any ship.
+  async function verify(job, { tests = true } = {}) {
     const wt = job.worktree;
     if (await G.mergeInProgress(wt) || await G.isDirty(wt)) return { ok: false, fixable: true, why: 'There are uncommitted changes (or an unfinished merge). Stage explicit paths with agit add and commit with agit commit -m "<one plain sentence>".' };
     if (GODOT && cfg.syncBeforeCheck !== false) await (opts.syncBeforeCheck || syncBeforeCheck)(job);
@@ -790,6 +822,7 @@ function createRunner(cfgIn, opts = {}) {
     if (secrets.length) return { ok: false, fixable: true, why: `The secret scan flagged ${secrets.map((s) => s.file).join(', ')}. Remove anything secret-like from the change.` };
     const migrations = G.migrationsFrom(files);
     if (migrations.length && !cfg.allowMigrations) return { ok: false, fixable: false, why: 'This change adds a database migration, which is switched off for this agent.' };
+    if (!tests) return { ok: true, files, cls, migrations, tests: { ok: null, summary: 'not tested yet' }, untested: true, diff, commits };
     let t = await (GODOT && cfg.ciGate ? (opts.ciCheck || ciCheck) : (opts.runChecks || runChecks))(job);
     // A few suites failing (often under load from another ship's client export, even after run-all-tests.sh retried them alone) get ONE more run of
     // just those suites before an agent turn is spent on them. A real failure fails again and goes to the agent as before.
@@ -847,7 +880,10 @@ function createRunner(cfgIn, opts = {}) {
     return { ok: r.code === 0 && !r.timedOut, tail: out.trim().split('\n').filter((l) => !(GODOT && / exit=0 /.test(l))).slice(-30).join('\n'), summary: sum || (r.code === 0 ? (GODOT ? 'Godot test suites passed' : 'typecheck + client + server tests passed') : 'failed') };
   }
 
-  async function afterTurn(job, result) {
+  // o.test: a test run (🧪 / !test, or CI failed what a ship would have shipped; o.repost then): the tests run on the change as it is, and a pass
+  // of the proposed commit marks that proposal tested where it stands instead of posting it again.
+  async function afterTurn(job, result, o = {}) {
+    const testRun = !!o.test;
     // A message that arrived during the turn changes the request: no proposal for the outdated state (owner, 2026-10-10: a stale proposal
     // with fresh screenshots came first, then the one with the new change). The next turn starts right away and proposes once, with both.
     if (job.queue.some((m) => !m.art)) {
@@ -856,23 +892,29 @@ function createRunner(cfgIn, opts = {}) {
     }
     // A turn that changed nothing (a thank-you, a question, a "what if") leaves the open proposal exactly as it was: same commit, clean
     // workspace. Its checks already passed for that commit, so nothing is re-checked, re-built or re-posted, and it can be approved at once.
-    if (await unchangedProposal(job)) {
+    if (!testRun && await unchangedProposal(job)) {
       job.status = 'proposed'; save(); syncName(job);
       audit.log('proposal-kept', { job: job.id, head: job.proposal.head });
-      say(job, 'Nothing changed, so the proposal above still stands (already checked). React ✅ on it to ship.');
+      say(job, job.proposal.testsOk ? 'Nothing changed, so the proposal above still stands (already checked). React ✅ on it to ship.'
+        : 'Nothing changed, so the proposal above still stands. React 🧪 to test it, or ✅ to test and ship it.');
       if (job.shotAsked) { job.shotAsked = false; teamShots(job, job.proposal.head, { forced: true }); }   // `!shot` with a team PC online: pictures of the proposal
       return;
     }
+    const tests = testRun || !cfg.drafts;
     for (let attempt = 0; ; attempt++) {
       if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return; }
-      const v = await verify(job);
+      const v = await verify(job, { tests });
       if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return; }
       if (v.ok && v.empty) {
         job.status = 'idle'; job.proposal = null;
         if (job.shotAsked) { job.shotAsked = false; teamShots(job, await G.head(job.worktree), { proposal: false, forced: true }); }   // `!shot` with nothing changed: the game as it is
         return;
       }
-      if (v.ok) return propose(job, v, result);
+      if (v.ok) {
+        const p = job.proposal;
+        if (testRun && !o.repost && p && p.messageId && !v.untested && p.head === await G.head(job.worktree)) return markTested(job, v);
+        return propose(job, v, result || (p ? { title: p.title, summary: p.summary, risk: p.risk } : null));
+      }
       audit.log('verify-failed', { job: job.id, why: v.why });
       if (v.infra) {
         audit.log('infra-failed', { job: job.id, suites: v.infra });
@@ -880,7 +922,8 @@ function createRunner(cfgIn, opts = {}) {
         job.status = 'idle'; return;
       }
       if (!v.fixable || attempt >= 2) { say(job, `I could not get this into a shippable state: ${clip(v.why, 900)}\nNothing was proposed. Tell me how to proceed or react ❌ / say !discard.`); job.status = 'idle'; return; }
-      // the fix-up turn is internal (audit: verify-failed); no thread post (owner, 2026-10-10: fewer thread posts)
+      // the fix-up turn is internal (audit: verify-failed); no thread post (owner, 2026-10-10: fewer thread posts), except for a test someone asked for
+      if (testRun && attempt === 0) say(job, `🧪 The tests failed (${clip((v.tests && v.tests.summary) || 'the review failed', 200)}). Fixing it; a tested version follows.`);
       const r = await agentTurn(job, GODOT
         ? `The automatic review failed. Fix this and commit. To see a failing suite again, run ${cfg.toolsDir}/check-godot.sh --rerun <suite>[,<suite>] (only those suites); the runner runs the whole check again after your turn:\n${v.why}`
         : `The automatic review failed. Fix this, make sure ${CHECK} passes, and commit:\n${v.why}`);
@@ -889,6 +932,29 @@ function createRunner(cfgIn, opts = {}) {
       postNewShots(job);
       result = readResult(job.worktree) || result;
     }
+  }
+
+  // A test run passed on exactly the proposed commit: the open proposal is tested now, and ✅ on it ships without waiting for CI again.
+  function markTested(job, v) {
+    const p = job.proposal;
+    p.testsOk = true; p.draft = false; p.tested = v.tests.summary; job.status = 'proposed'; save(); syncName(job);
+    audit.log('test-passed', { job: job.id, head: p.head });
+    say(job, `🧪 Tests passed: ${v.tests.summary}. React ✅ on the proposal above to ship it.`);
+  }
+  // 🧪 / !test (Helix, 2026-10-19): every test on the open change, nothing shipped. The run is a queued step (processJob), so it takes a job slot,
+  // can be cancelled and never overlaps a turn. Returns a line to say instead when there is nothing to start.
+  function requestTest(job, uid) {
+    const p = job.proposal;
+    if (job.status === 'shipping' || job.shipQueued) return 'This change is approved already: the tests run as part of its ship.';
+    if (job.testing || job.queue.some((m) => m.test)) return 'The tests are already running on this change.';
+    if (job.running) return 'I am still working on a newer version of this change; react 🧪 on the proposal that follows.';
+    if (!p || job.status !== 'proposed') return 'There is no open change to test yet.';
+    if (p.testsOk) return `Already tested: ${p.tested || 'every suite passed'}. React ✅ on the proposal to ship it.`;
+    job.queue.push({ userId: String(uid), name: nameOf(uid), role: auth.roleOf(uid) || 'member', text: '(test request)', messageId: null, ts: now(), test: true });
+    job.lastActive = now(); save();
+    audit.log('test-requested', { userId: String(uid), job: job.id, head: p.head });
+    say(job, '🧪 Testing this change: every suite on GitHub CI (a few minutes). Nothing ships.');
+    pump(); return null;
   }
 
   async function propose(job, v, result) {
@@ -912,12 +978,12 @@ function createRunner(cfgIn, opts = {}) {
       fields: [
         { name: 'Review tier', value: tierLabel(tier, cfg) + (tier === 'sensitive' ? '\n⚠ touches ' + [...new Set(v.cls.perFile.filter((f) => f.tier === 'sensitive').map((f) => f.path))].slice(0, 4).join(', ') : ''), inline: false },
         { name: `Files (${v.files.length})`, value: '```\n' + fmtList(fileLines, 10) + '\n```', inline: false },
-        { name: 'Tests', value: `✅ ${v.tests.summary}`, inline: true },
+        { name: 'Tests', value: v.untested ? '🧪 Not tested yet. React 🧪 to run every test, or ✅ to test and ship.' : `✅ ${v.tests.summary}`, inline: !v.untested },
         { name: 'Migrations', value: v.migrations.length ? v.migrations.map((m) => `\`${m}\``).join('\n') : 'none', inline: true },
         ...(warn.length ? [{ name: 'Heads-up for the reviewer', value: fmtList(warn.map((w) => `• ${w}`), 6), inline: false }] : []),
         { name: 'Exact diff', value: `[${job.branch} on GitHub](${url}) · ${v.commits.length} commit(s)`, inline: false },
       ],
-      footer: { text: `✅ ship (${owner.join(' / ')}) · ❌ discard · reply to keep iterating · ${job.id}` },
+      footer: { text: `✅ ${v.untested ? 'test and ship' : 'ship'} (${owner.join(' / ')}) · ${v.untested ? '🧪 test · ' : ''}❌ discard · reply to keep iterating · ${job.id}` },
     };
     // Godot: the Windows preview is built only on request (owner, 2026-10-10: 44 built in a day, none downloaded; each is a full import + export).
     const onRequest = GODOT && cfg.previewOnProposal !== true;
@@ -929,9 +995,9 @@ function createRunner(cfgIn, opts = {}) {
       : { name: 'Preview build failed', value: `${pv.why}\nThe proposal is still valid; review the diff, or say !preview to retry.`, inline: false };
     embed.fields.splice(embed.fields.length - 1, 0, previewField);
     for (const f of embed.fields) f.value = clip(f.value, 1024);   // Discord: field value <= 1024 chars (whole embed <= 6000; the caps above keep it well under)
-    job.proposal = { messageId: null, head, base: job.base, tier, title, summary: Array.isArray(result && result.summary) ? result.summary : null, risk: (result && result.risk) || null, files: v.files.map((f) => f.path), migrations: v.migrations, testsOk: true, createdAt: new Date(now()).toISOString() };
-    job.status = 'proposed'; job.autoReships = 0; save(); syncName(job);
-    audit.log('proposal', { job: job.id, tier, head, files: v.files.length, migrations: v.migrations.join(',') });
+    job.proposal = { messageId: null, head, base: job.base, tier, title, summary: Array.isArray(result && result.summary) ? result.summary : null, risk: (result && result.risk) || null, files: v.files.map((f) => f.path), migrations: v.migrations, testsOk: !v.untested, draft: !!v.untested, tested: v.untested ? null : v.tests.summary, createdAt: new Date(now()).toISOString() };
+    job.status = 'proposed'; job.autoReships = 0; job.discardAsk = null; save(); syncName(job);
+    audit.log('proposal', { job: job.id, tier, head, files: v.files.length, migrations: v.migrations.join(','), ...(v.untested ? { draft: true } : {}) });
     const committedAt = Number((await G.git(job.worktree, ['log', '-1', '--format=%ct'], { allowFail: true })).out.trim()) * 1000 || 0;
     const shots = proposalShots(job, committedAt);
     // Team PC pictures: with a shot plan in the worktree and a team PC online now, the proposal goes out without server pictures and says they follow. The plan
@@ -944,7 +1010,7 @@ function createRunner(cfgIn, opts = {}) {
     // screenshots only on request (Helix, 2026-10-12): a proposal without pictures offers them
     else if (GODOT && !shots.length) embed.fields.splice(embed.fields.length - 1, 0, { name: 'Screenshots', value: 'None taken. Say `!shot` to see this change.', inline: false });
     // no ping when the original approval is about to carry (it ships by itself; carryApproval pings if it cannot)
-    post({ threadId: job.threadId }, { ...(job.carryApproval ? {} : pingRequester(job)), embed, ...(shots.length ? { files: shots } : {}), reactions: ['✅', '❌'] }, (res) => { if (res.messageId && job.proposal && job.proposal.head === head) { job.proposal.messageId = String(res.messageId); save(); } });
+    post({ threadId: job.threadId }, { ...(job.carryApproval ? {} : pingRequester(job)), embed, ...(shots.length ? { files: shots } : {}), reactions: v.untested ? ['✅', '🧪', '❌'] : ['✅', '❌'] }, (res) => { if (res.messageId && job.proposal && job.proposal.head === head) { job.proposal.messageId = String(res.messageId); save(); } });
     // BEFORE pictures come after, in the background: rendering waits for the shared renderer lock (other renders can hold it for many
     // minutes), and a job waiting on it kept its slot and blocked other requests (2026-10-10). The pair is posted as a follow-up.
     // BEFORE pictures (the unchanged base rendered with the same shot plan) only when switched on: each is one more software-GL render
@@ -1601,7 +1667,7 @@ function createRunner(cfgIn, opts = {}) {
       const p = job.proposal;
       const gone = goneThread(job.threadId) || job.deleteRequested || ['discarded', 'deleted', 'shipped'].includes(job.status);
       const why = gone ? 'gone'
-        : (job.running || job.status !== 'proposed' || !p || !p.testsOk || p.head !== q.head) ? 'the change moved on while it waited in the queue. Approve the new proposal when it comes'
+        : (job.running || job.status !== 'proposed' || !p || !(p.testsOk || p.draft) || p.head !== q.head) ? 'the change moved on while it waited in the queue. Approve the new proposal when it comes'
         : !auth.canApprove(q.approverId, p.tier) ? `${nameOf(q.approverId)} can no longer ship this tier`
         : (!auth.isFull(q.approverId) && auth.shipsToday(q.approverId, readShips()) >= cfg.casualShipsPerDay) ? `that is today's limit of ${cfg.casualShipsPerDay} ships for ${nameOf(q.approverId)}`
         : null;
@@ -1640,6 +1706,7 @@ function createRunner(cfgIn, opts = {}) {
     const env = { REPO: cfg.repo, WT_ROOT: cfg.worktreeRoot, BRANCH: job.branch, JOBID: job.id, EXPECT_HEAD: p.head, LOCK: lockFile, TOOLS: cfg.toolsDir, CONFIG: cfg.__file || path.join(cfg.toolsDir, 'config.json'),
       RELEASE_TITLE: releaseTitle(...titles),   // #build-alerts notice title: the proposal's title (else the thread's name), joined with any batched ships' titles
       ...(defer ? { DEFER_PUBLISH: '1' } : {}),
+      ...(p.testsOk ? {} : { PROPOSAL_UNTESTED: '1' }),   // a draft: the local check (no CI gate) may not skip the merged tree as already tested
       ...(CI ? { CI_GATE: '1', CI_SCRIPT: cfg.ciScript } : {}),
       ...(batch.length ? { BATCH: batch.map((b) => `${b.job.id} ${b.job.branch} ${b.job.proposal.head} ${auth.maxTier(b.approverId) || 'casual'}`).join('\n') } : {}),
       MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: migrations.join(' '), BASE_BRANCH: BB, MODE: GODOT ? 'godot' : 'web', DEPLOY_DIR: cfg.deployDir, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.backendDeployCmd ? { BACKEND_DEPLOY_CMD: cfg.backendDeployCmd } : {}), ...(cfg.lobbyDeployCmd ? { LOBBY_DEPLOY_CMD: cfg.lobbyDeployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}),
@@ -1751,6 +1818,15 @@ function createRunner(cfgIn, opts = {}) {
       job.shipQueued = { approverId: String(approverId), head: p.head, at: now() };
       say(job, `${BB} moved while I was shipping, so nothing was pushed. Shipping it again by itself.`);
       audit.log('auto-reship', { job: job.id, n: job.autoReships }); save(); return;   // drainShipQueue picks it up (the deploy is free)
+    }
+    // The tests failed on what would ship (Helix, 2026-10-19: drafts are tested at ✅): the agent fixes it and a tested proposal comes back for one
+    // more ✅. The test run merges the latest base in and starts from CI's verdict, so suites that fail on the base too stop it with a plain line.
+    if (kind === 'tests-failed' && GODOT && !job.deleteRequested && job.worktree && fs.existsSync(job.worktree)) {
+      const failing = suitesFailing(out);
+      say(job, `❌ Not live: the tests failed on what would ship${failing.length ? ` (${failing.slice(0, 6).join(', ')})` : ''}. Fixing it now; a tested version follows for one more ✅.`);
+      job.status = 'idle'; p.testsOk = false; p.draft = false;
+      job.queue.push({ userId: String(approverId), name: nameOf(approverId), role: auth.roleOf(approverId) || 'approver', text: '(test after a failed ship)', messageId: null, ts: now(), test: true, repost: true });
+      audit.log('ship-tests-failed', { job: job.id, suites: failing }); save(); pump(); return;
     }
     say(job, `❌ Not live: ${why}`);
     if (kind === 'deploy-failed' || kind === 'crashed') ownerPing(pingTarget(job), `Deploy problem for \`${job.id}\`: ${kind}. Check ${cfg.toolsDir}/state/ship-${job.id}.deploy.log`);

@@ -132,6 +132,8 @@ polish list). Also:
   hold the PC for minutes, and with Helix's PC the only one signed in, a release then goes live without a PC starting it first (the publish
   says so); in the app's "Ask" mode it needs a click within 2.5 minutes (AFK mode and "Run without asking" take it at once). The app's offer
   box describes every `release` job with the full checks' note (benchmark and soak), whatever steps it has.
+- **The lobby suite failed once in a full run on the VPS** (2026-10-19): it expected "the host ended the party" and got "Co-op data mismatch:
+  the host's enemy and status tables differ"; it passes alone and in CI. Likely two suites reaching each other's local lobby at the same time.
 - **A team app test fails now and then** (2026-10-19, 1 run in 3 on the VPS): `teamapp/tests/LogCancelTests.cs` "and the exit report is not", which reads a real
   process's filtered output right after it exits; the next two runs passed.
 - **Typed lists in game code that a new boss or area must be added to by hand** (found by the content-count pass, 2026-10-19): `DmBossHost`'s

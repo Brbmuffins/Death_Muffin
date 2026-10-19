@@ -98,6 +98,8 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
     if (fs.existsSync('CONFLICT-ADD')) { fs.rmSync('CONFLICT-ADD'); fs.writeFileSync('src/extra.ts', 'x=1\n'); git('add', '--', 'src/extra.ts'); }
     git('commit', '-q', '--no-edit'); text = 'Resolved the merge.';
   }
+  // the runner's fix-up turn after the `speedtest` suite failed (tests of drafts, 🧪 and failed ships): the speed comes down to what the test allows
+  else if (/automatic review failed/.test(p) && /speedtest \(CI\) exit=1/.test(p)) { edit('client/game/a.gd', 'speed=9', 'speed=7', 'Keep the speed inside what the speed test allows'); text = 'Fixed the speed test.'; }
   else if (/GD-GAMEPLAY/.test(p)) { edit('client/game/a.gd', 'speed=1', 'speed=9', 'Faster movement'); ready('Faster movement', ['speed 9']); text = 'Done.'; }
   else if (/GD-NET/.test(p)) { edit('client/net/dm_api.gd', 'url=1', 'url=2', 'Change the api url'); ready('Api url', ['url 2']); text = 'Done.'; }
   else if (/GD-UI/.test(p)) { edit('client/ui/menu.gd', 'title=1', 'title=2', 'Rename the menu title'); ready('Menu title', ['title 2']); text = 'Done.'; }

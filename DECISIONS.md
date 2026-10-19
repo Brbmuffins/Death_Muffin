@@ -299,6 +299,19 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   (before and after pictures of a visible change, a choice, a problem the agent could not fix). Approving a change never waits for them;
   the publish's 14-second check (B61) is the one automatic check, and it runs before the switch. #build-alerts gets release notices and
   server alerts only.
+- **B63. Discord agent proposals are drafts; the tests run when someone asks or ships, and the next big change cannot break testing unnoticed**
+  (Helix, 2026-10-19: "we need to make sure the discord agent and tests dont break again the next time we make a test build and push it to
+  live", "if i have to wait for tests to run between every single itteration its going to take forever", then "start"; Claude's design).
+  Replaces B59's "a proposal waits for CI". A round of back and forth is proposed at once, marked "Not tested yet", with three reactions: ✅
+  tests it and ships it, 🧪 (or `!test`) runs every test without shipping, ❌ discards it after asking once (one tap could throw away hours of
+  work). Every push still starts CI in the background, so ✅ and 🧪 often find the answer waiting. Nothing untested ships: the ship waits for CI
+  on exactly what goes live (B59), and when those tests fail the agent fixes it and a tested proposal comes back for one more ✅ (a fix made to
+  pass a test can change how something plays, so someone sees it first). Without the CI gate (GitHub down) every proposal is tested first, as
+  before. So that a promoted test build (B53) or a reinstall cannot break testing or the agent unnoticed (the 2026-10-18 launch did both): CI
+  fails when a suite file is missing from the suite list, when a path the agent's rules name no longer exists, or when a workflow asks for a
+  paid or self-hosted machine; the agent's own tests run in CI; an expired GitHub token falls back to the slower limit, and the nightly
+  drift report warns two weeks before it expires; and after every reinstall and every test build that goes live, the agent's practice run
+  (`runner/canary.cjs`) takes a harmless change through the whole path with a fake Discord before the agent takes requests.
 - **B59. One setup, and CI as the one gate, for sessions and the Discord agent alike** (Helix, 2026-10-19: "the way we do testing for
   sessions and discord agents is a mess", then "start"; Claude's design). Every checkout (a session's worktree, an agent job, a CI machine,
   a publish) gets the combat core, Godot's import, the crowd's bakes and the lobby's packages from one setup, `tools/check/prep.sh`, through

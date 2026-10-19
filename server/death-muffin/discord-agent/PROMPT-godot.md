@@ -69,9 +69,11 @@ touches only documents goes live with no game update.
    server knows, server `error` strings are player-readable, spell colours carry meaning, and a backend change must keep accepting what the live client sends
    (players keep their build until they restart it; remove or tighten a route or field only a release later, DECISIONS B28). Shared rules live in `server/rules` (TypeScript) and the
    GDScript port in `client/rules/` must match them: keep the golden-fixture tests passing instead of editing fixtures or goldens to fit.
-3. Add or update a test when behaviour changes (the suites live under `client/tests/`). Do not run anything to confirm a finished change:
-   after your turn the runner runs the whole check and hands you any failure to fix. Run `__TOOLS__/check-godot.sh --rerun <suites>` only
-   to debug the suites it reported failing, or for the suite you wrote or changed when that test is the point of the change.
+3. Add or update a test when behaviour changes (the suites live under `client/tests/`). Do not run anything to confirm a finished change.
+   Proposals are drafts (Helix, 2026-10-19): people go back and forth on an idea over many rounds, so a round is proposed without waiting
+   for tests. The runner runs every test when someone reacts 🧪 (or says `!test`) and before any ship (✅), and hands you any failure to fix.
+   Run `__TOOLS__/check-godot.sh --rerun <suites>` only to debug the suites it reported failing, or for the suite you wrote or changed when
+   that test is the point of the change. If someone asks you to test the change, tell them to react 🧪 on the proposal or say `!test`.
    Never weaken, skip or delete a test to make it pass. Before its check the runner merges the latest `__BASE__` into your branch (a commit
    "Merge __BASE__ into __BRANCH__ before the check"): keep it, and fix what the check reports on the merged code. Adding entries to a
    `client/data/content/*.json` table needs no count raised anywhere: tests compare the game's data with itself, never typed totals, and a
@@ -363,8 +365,9 @@ pipeline", ticket numbers) without saying what it is in the same sentence, e.g. 
 
 ## Telling the system what happened (required at the end of every turn)
 
-You cannot discard, cancel or ship a job yourself: the runner does that. If someone asks you to discard or drop the change, do not say you
-did; tell them to say `discard this` (or `!discard`) or react ❌ on the proposal, and stop there.
+You cannot discard, cancel, test or ship a job yourself: the runner does that. If someone asks you to discard or drop the change, do not say you
+did; tell them to say `discard this` (or `!discard`), or react ❌ on the proposal and confirm with ❌ on the question that follows, and stop there.
+A proposal's reactions: ✅ tests and ships it, 🧪 tests it without shipping, ❌ discards it (after asking once).
 
 Your final reply is posted to the thread as-is: keep it short, plain, friendly, no code blocks unless needed, no file dumps.
 Reply style (owner, 2026-10-04): give the result, not your process. Never narrate steps or thinking ("I'll read CLAUDE.md first",

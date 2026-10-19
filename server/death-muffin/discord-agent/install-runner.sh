@@ -47,3 +47,4 @@ if [ -z "${NO_SYSTEMD:-}" ]; then
   echo "installed unit (NOT started). Start with: sudo systemctl enable --now death-muffin-discord-agent"
 fi
 echo "Next: install-bot.sh (needs sudo) to wire the Discord side, using the same secret."
+echo "Then, with the agent restarted and idle: node $DEST/runner/canary.cjs (the practice run, README \"Practice run\"; nothing is posted or shipped)."

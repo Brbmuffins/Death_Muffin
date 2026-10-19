@@ -96,6 +96,14 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   every push in about 4 minutes and is the one gate for everyone, the deploy and publish scripts included; approvals that wait for a ship
   still go out together, now with one CI run for all of them; tests that broke when a spell or an area was added compare the game's data
   with itself instead.
+- [x] **Fix: the Discord agent made people wait for tests between every round** (B63). Done 2026-10-19. Now → after: each round of back and
+  forth waited about 3 minutes for CI before its proposal → rounds are drafts, proposed at once; 🧪 tests on request and ✅ tests and ships; a
+  ship whose tests fail comes back fixed for one more ✅; ❌ asks before it throws the work away.
+- [x] **Fix: the next test build could break testing and the Discord agent again unnoticed** (B63). Done 2026-10-19. Now → after: a new suite
+  nobody listed never ran → CI fails until it is listed; the agent's own tests ran only by hand → in CI; a renamed folder silently dropped its
+  protection from the agent's rules → CI fails until the rules follow; nothing stopped a workflow from asking for a paid GitHub machine → CI
+  refuses it; an expired GitHub token left the checks stuck → they carry on without it, and the nightly report warns two weeks ahead; the
+  first real request was the only test of a reinstalled agent → its practice run proves it end to end first.
 - [x] **Fix: a document change from the Discord agent shipped a game update.** Done 2026-10-18: an approved change that touches only
   documents (Markdown files, docs/) goes to `main` and stops there, with no game build, deploy or notice, and the thread says so; when someone
   shares an idea the roadmap lacks, the agent offers to add it to "Ideas" with its section (server/death-muffin/discord-agent/README.md).
@@ -231,8 +239,10 @@ writing) plus one "How we work" page; CLAUDE.md points every session to them.
   test server and its lobby and relay still exist, but since launch day the game only talks to the live server, so no new test build can
   be made. After: a big change (Ascension, a new class, the map revamp) is published to the test channel first, from `main` or a
   short-lived branch, built so it reaches only the test server (and the live build only the live one); the test server's copies of the
-  team's accounts are refreshed when asked; the team plays it there before it goes live. Small fixes and everyday requests still go
-  straight to live.
+  team's accounts are refreshed when asked; the team plays it there before it goes live, and one script puts it live: it checks that CI
+  passed the merged files, waits for the Discord agent to be idle and holds the deploy lock, deploys and publishes, reinstalls the agent if
+  its files changed, and requires a clean drift report and the agent's practice run, stopping at the first failure (B63). Small fixes and
+  everyday requests still go straight to live.
 - [ ] **Decide + New: Ascension's one-page plan,** written with Helix through "From idea to shipped", so Phase 3 starts building the day
   this phase ends: what the Altar, vows and heat, Ashes and Covenant Boons become, and the co-op rules (today a guest's Prelate kill counts
   for the host).
@@ -449,7 +459,8 @@ Worked through beside the phases, top first. Each change is shown to the team wi
   get an email address and password recovery (none exist today); chat gets reporting and moderation; a privacy policy and terms; a signed
   launcher and game so Windows does not warn new players; a review of the servers' capacity and of cheating; a licence check of every asset
   against how the game is offered (Tripo models, ElevenLabs sounds and music, the sound and effect packs); the test runs fitted to the paid
-  minutes of a private repository; and a store or download page.
+  minutes of a private repository (about $80 to $115 a month at the 2026-10-19 pace; first an Actions budget of $0 with "Stop usage", and the
+  drafts' background CI runs off, B63); and a store or download page.
 - Not planned: dedicated or VPS-hosted game sessions and host migration (the hybrid model stays, owner 2026-10-15; D6), translations, mod
   support.
 

@@ -1,5 +1,5 @@
 'use strict';
-// Death Muffin dev-agent adapter for the Muffin Core Discord bot. A dumb transport: it forwards @mentions / thread messages / ✅❌ reactions
+// Death Muffin dev-agent adapter for the Muffin Core Discord bot. A dumb transport: it forwards @mentions / thread messages / ✅🧪❌ reactions
 // in the configured channels (#death-muffin, and #in-game-reports for in-game bug reports) to the loopback runner and posts whatever the runner asks
 // it to post, including opening a thread for each new bug report. All decisions (allow-list, approver
 // gate, tiers, rate limits) live in the runner; the bot holds no authority and no secret except the shared runner secret.
@@ -99,7 +99,7 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
       if (!user || user.bot) return;
       if (reaction.partial) await reaction.fetch();
       if (reaction.message.partial) await reaction.message.fetch();
-      const emoji = reaction.emoji && reaction.emoji.name; if (emoji !== '✅' && emoji !== '❌') return;
+      const emoji = reaction.emoji && reaction.emoji.name; if (!['✅', '🧪', '❌'].includes(emoji)) return;
       const m = reaction.message; if (!m.author || m.author.id !== botId()) return;
       const ch = m.channel; if (!(typeof ch.isThread === 'function' && ch.isThread())) return;
       if (!await ours(ch.parentId)) return;
