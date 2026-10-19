@@ -21,8 +21,7 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
   frame and the effect handlers (`DmEnemyFx`, some for one field); the host's `enemy_alive`, `enemy_position` and `enemy_radius` read one field
   of the core since 2026-10-19 (`DmCore.enemy_state` / `enemy_pos` / `enemy_radius`, 0.3 us); Easy auto combat's gather (`DmNextAutoCombat._gather`, ten times a second, 0.4 to 0.75 ms) copies
   every body in range into a row that `select_action` copies again; `DmFxBinbun.update` walks every live effect every frame (the Pyre's 56:
-  about 0.2 ms); the Gear Atlas verdicts (`DmUiPanelsA.tick`, about 0.3 s of a worker) are worked out again after every quiet 0.8 s of the bag,
-  so loot keeps a core busy through a fight even with the Atlas closed.
+  about 0.2 ms).
 - **Draw calls:** `Vfx` (`DmFxRuntime`) leaves some pooled MultiMeshes visible with no instance (4 of its 20 in a Full Party fight), a draw
   call each: the spikes, grave hands and bone shards of `DmFxPrims` (the decal layers and the particle rings hide when empty). Their being drawn
   empty is also what builds their pipelines on the loading screen, as the warm-up never shows them: hiding them needs the warm-up to draw each

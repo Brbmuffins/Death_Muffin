@@ -398,6 +398,17 @@ func panels(cid: int) -> void:
 	check(ui.is_open("codex") and shown().contains("the dead") and shown().contains("gear atlas"), "Codex opens with its sections")
 	await open("atlas")
 	check(ui.is_open("atlas") and shown().length() > 20, "Atlas opens with the gear data")
+	# its verdicts are worked out again in the background after the bag changes, but never during a fight (a core stays the game's)
+	var fight := [true]
+	ui.pa.in_fight = func() -> bool: return fight[0]
+	ui.pa._atlas_key = -1   # (the gear "changed": a recompute is due)
+	ui.pa.atlas_dirty()
+	var t_end := Time.get_ticks_msec() + 1500
+	while Time.get_ticks_msec() < t_end:
+		await process_frame
+	check(not ui.pa.atlas_idle() and ui.pa._atlas_task < 0, "in a fight the Atlas's verdicts wait: no worker started (%d)" % ui.pa._atlas_task)
+	fight[0] = false
+	check(await until(func() -> bool: return ui.pa.atlas_idle() and ui.pa._atlas_task >= 0, 5.0), "after the fight they are worked out")
 	await open("map")
 	check(ui.is_open("map") and (shown().contains("hollow graves") or shown().contains("chapterhouse")), "Waystone map opens with the unlocked areas")
 
