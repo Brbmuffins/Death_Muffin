@@ -47,9 +47,10 @@ const DEFAULTS = {
   // Playable preview of each proposal (offline edition build, see preview.sh). previewCmd (tests) replaces preview.sh.
   previewRoot: '/var/www/death-muffin/preview',
   previewUrl: 'https://muffindevelopment.com/death-muffin/preview/',
-  // Team PC pictures (godot mode): after a proposal with pictures, a team PC online renders the same shot plan on Low and Ultra (teamShots: false = off).
-  // teamApi: the backend the runner reaches /internal/team on ('' = off); teamResultsDir: where the backend keeps the uploaded pictures; teamBuildCmd and
-  // teamLabelCmd (tests) replace preview-godot.sh --team and label-shot.py; teamPollMs: how often the job is checked.
+  // Team PC pictures and short videos (godot mode): with a team PC online the agent writes a shot plan instead of rendering, and the team PC renders it
+  // after the proposal on Low and Ultra, before and after; it also records the agent's clips (teamShots: false = off for both).
+  // teamApi: the backend the runner reaches /internal/team on ('' = off); teamResultsDir: where the backend keeps the uploaded pictures and videos; teamBuildCmd and
+  // teamLabelCmd (tests) replace preview-godot.sh --team and label-shot.py; teamPollMs: how often a job is checked.
   teamShots: true,
   teamApi: 'http://127.0.0.1:5190',
   teamResultsDir: '/home/ubuntu/death-muffin/team-results',

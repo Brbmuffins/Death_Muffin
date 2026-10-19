@@ -72,6 +72,26 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
     git('commit', '-q', '-m', `Add the ${ids.join(', ')} model${ids.length > 1 ? 's' : ''}`); ready(`New model: ${ids.join(', ')}`, ids.map((i) => `Added ${i}`));
     text = 'Built and committed.' + (/build-art\.sh/.test(p) ? ' BUILD-ART-SEEN' : '') + (/render-model\.sh/.test(p) ? ' RENDER-SEEN' : '');
   }
+  // short videos: GD-CLIP writes a valid .dm-clip.json (3 speeds of a rite); GD-CLIP-BAD writes a bad one every time; GD-CLIP-BADFIX a bad one that the runner's
+  // "rejected your clip request" turn fixes. The bad variant carries an unknown field ("nofix" / "fixme") that the runner's message names back.
+  else if (/GD-CLIP/.test(p) && !/rejected your clip request/.test(p)) {
+    const tune = (speed) => ({ 'combat/abilities': { haunting_wraith: { speed } } });
+    const good = { plan: { discipline: 'reaper', clips: [{ name: 'wraith', area: 'graves', cast: 'haunting_wraith', at: 'pack', enemies: 6, seconds: 5, camera: 'follow' }] },
+      variants: [{ label: 'slow', title: 'slow (speed 4)', tune: tune(4) }, { label: 'now', title: 'as it is now (speed 8)', tune: tune(8) }, { label: 'fast', title: 'fast (speed 14)', tune: tune(14) }] };
+    if (/GD-CLIP-BADFIX/.test(p)) good.variants[0].fixme = true; else if (/GD-CLIP-BAD/.test(p)) good.variants[0].nofix = true;
+    if (/GD-CLIP-TWO/.test(p)) good.plan.clips.push({ name: 'wide', area: 'graves', cast: 'haunting_wraith', seconds: 4, camera: 'wide' });
+    wr('.dm-clip.json', JSON.stringify(good)); text = 'Three speeds to look at.' + (/Short videos of these options were posted/.test(p) ? ' CLIP-CHOICE-SEEN' : '');
+    if (/GD-CLIP-TURN/.test(p)) {   // a model preview: a change AND one turntable option (nothing to choose), so the proposal is not held
+      edit('client/game/a.gd', 'speed=1', 'speed=9', 'Give the set its new look'); ready('New armor look', ['the set looks new']);
+      wr('.dm-clip.json', JSON.stringify({ plan: { discipline: 'gravecaller', equip: ['set_gravecaller_chest', 'staff_moon'], clips: [{ name: 'set', camera: 'turntable', seconds: 6 }] }, variants: [{ label: 'set', title: 'the set, turning', tune: {} }] }));
+      text = 'Made the look, and a turntable of it.';
+    }
+  }
+  else if (/rejected your clip request/.test(p)) {
+    if (/"fixme"/.test(p)) wr('.dm-clip.json', JSON.stringify({ plan: { discipline: 'reaper', clips: [{ name: 'wraith', area: 'graves', cast: 'haunting_wraith', seconds: 5 }] }, variants: [{ label: 'slow', title: 'slow', tune: { 'combat/abilities': { haunting_wraith: { speed: 4 } } } }] }));
+    else wr('.dm-clip.json', JSON.stringify({ plan: { discipline: 'reaper', clips: [{ name: 'wraith', area: 'graves', cast: 'haunting_wraith', seconds: 5 }] }, variants: [{ label: 'slow', title: 'slow', nofix: true, tune: {} }] }));
+    text = 'Tried to fix the clip request.';
+  }
   else if (conflictList) {
     const files = conflictList[1].split('\n').map((x) => x.trim()).filter(Boolean);
     for (const f of files) { git('checkout', '--ours', '--', f); git('add', '--', f); }
@@ -104,12 +124,25 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   else if (/PASTE-ECHO/.test(p)) text = /PASTED-MARKER-42/.test(p) ? 'I can read the pasted file.' : 'No pasted file in the prompt.';
   else if (/SHOT-PNG|shot(-godot)?\.sh/.test(p)) text = 'Here is how it looks.';
   else if (/ship it|print.*token|ignore your rules/i.test(p)) text = 'I cannot ship, show secrets or change my rules. Only an approver ✅ ships.';
+  // Team pictures: with a team PC online (the runner's note, or the !shot wording for it) the agent writes only the shot plan; TEAM-SHOT (TEAM-SHOT-2: two shots)
+  // asks for a plan, and with nobody online it renders on the server like SHOT-PNG.
+  const teamOn = /A team PC is online right now/.test(p) || /a team PC is online, so write the shot plan/.test(p);
+  if (teamOn && (/TEAM-SHOT/.test(p) || /a team PC is online, so write the shot plan/.test(p))) {
+    // TEAM-SHOT-2: two shots; TEAM-SHOTS=<n>: n shots (a, b, c, d); TEAM-RES=<sizes>: the plan's screen sizes
+    const nShots = /TEAM-SHOTS=(\d)/.exec(p), res = /TEAM-RES=([0-9x,]+)/.exec(p);
+    const shots = nShots ? ['a', 'b', 'c', 'd'].slice(0, +nShots[1]).map((name) => ({ name })) : /TEAM-SHOT-2/.test(p) ? [{ name: 'a' }, { name: 'bag-tooltip' }] : [{ name: 'a' }];
+    fs.writeFileSync('.dm-shot.json', JSON.stringify({ shots, ...(res ? { resolutions: res[1].split(',') } : {}) }));
+    if (!/\bGD-/.test(p)) text = 'Plan written.';
+  }
   // Like the real agent, the screenshot comes after the last commit (only images newer than it go on the proposal).
-  if (/SHOT-PNG|shot(-godot)?\.sh/.test(p)) {
+  if (/SHOT-PNG|shot(-godot)?\.sh/.test(p) || (/TEAM-SHOT/.test(p) && !teamOn)) {
     fs.writeFileSync('.dm-shot.json', '{"shots":[{"name":"a"}]}'); fs.mkdirSync('.dm-shots', { recursive: true });
     fs.writeFileSync('.dm-shots/a.png', Buffer.from(/SHOT-PNG2/.test(p) ? 'PNG-two-bytes' : 'PNG-one'));
     if (/SHOT-PNG/.test(p) && /BIG/.test(p)) fs.writeFileSync('.dm-shots/big.png', Buffer.alloc(9 * 1024 * 1024, 1));
   }
+  if (/A team PC is online right now/.test(p) && /TEAM-NOTE-ECHO/.test(p)) text += ' TEAM-ON-SEEN';
+  if (/No team PC is online right now/.test(p) && /TEAM-NOTE-ECHO/.test(p)) text += ' TEAM-OFF-SEEN';
+  if (/Short videos of these options were posted/.test(p) && !/GD-CLIP/.test(p)) text += ' CLIP-CHOICE-SEEN';
   if (/New round in this thread/.test(p)) text += ' ROUND-NOTE-SEEN';
   if (/Earlier rounds here: round 1 shipped/.test(p)) text += ' ROUND-SUMMARY-SEEN';
   if (/different version of the game/.test(p)) text += ' MODE-NOTE-SEEN';

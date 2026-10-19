@@ -22,7 +22,7 @@ The live config must say `"mode": "godot", "baseBranch": "main"` (a restart pick
 retired web mode and defaults to `mode: "web"`, `baseBranch: "master"`. `baseBranch` must match `^[A-Za-z0-9._/-]+$` (not start with `-`, contain `..`, `//`, end in `/` or `.lock`);
 a bad value or mode makes the runner refuse to start. It is used for the worktree base (`origin/<baseBranch>`), `!sync`, the ship merge and push, messages and the compare link.
 
-In godot mode: tests `check-godot.sh` (runner and ship.sh; the agent only `--rerun <suites>`) · preview `preview-godot.sh` (a Windows `.zip`) · screenshots `shot-godot.sh` / `!shot`
+In godot mode: tests `check-godot.sh` (runner and ship.sh; the agent only `--rerun <suites>`) · preview `preview-godot.sh` (a Windows `.zip`) · screenshots `shot-godot.sh` / `!shot` (or a team PC, no `!shot`)
 · prompt `PROMPT-godot.md` · tier rules `godotTiers` (picked into `cfg.tiers` by `loadConfig`) · ship: merge, check-godot, backup + `ROLLBACK.sh`, push,
 `publish-godot-client.sh` · rollback folder `backup-pre-release-godot-<stamp>`.
 
@@ -128,7 +128,7 @@ the runner re-checks it: a proposal that moved on (new round or head), an approv
 drops it from the queue with a note in the thread.
 
 ## Chat commands (in the thread, handled by the runner, not the AI)
-`!status` · `!credits` (your model-generation budget) · `!shot` (screenshot of the change) · `!cancel` · `!discard` (or ❌, or plain words like "discard this" / "you can discard this as a test") · `!sync` (merge the latest base branch, agent resolves conflicts) · `!model opus|sonnet|haiku`
+`!status` · `!credits` (your model-generation budget) · `!shot` (screenshot of the change) · `!clips` (record the last short videos again on a team PC) · `!cancel` · `!discard` (or ❌, or plain words like "discard this" / "you can discard this as a test") · `!sync` (merge the latest base branch, agent resolves conflicts) · `!model opus|sonnet|haiku`
 (full approvers; "use opus" in a message works too) · `rollback` (mention in channel or thread): runs the newest deploy
 backup's ROLLBACK.sh under the lock. Owner/full approvers any time, limited approvers only if their ship is the latest.
 
@@ -287,7 +287,7 @@ Tests (not wired into test:server; ~1 min, needs git and `unshare`/`zip`/`unzip`
 The installer also copies `check-godot.sh`, `client-prep.sh`, `client-prep-in.sh`, `preview-godot.sh`, `shot-godot.sh`, `label-shot.py`, `render-model.sh`, `render-model.py`, `art-run.sh`, `build-art.sh`, `build-sound.sh`, `sound-build.mjs` and `PROMPT-godot.md`, installs the trusted art tools to `art-tools/`, and creates an empty `tripo-budget.json` if there is none (never overwritten). The live `config.json` must say `"mode": "godot", "baseBranch": "main"`; edit it and restart the service to change.
 
 ## Screenshots
-Only on request (Helix, 2026-10-12): the agent renders when the request asks for a picture or someone says `!shot`, never by default (PROMPT-godot.md); a proposal without pictures has a "Screenshots" field offering `!shot`.
+**With a team PC online, pictures are automatic** (Helix, 2026-10-19: "no need to require !shot"; "Team PC pictures" below): the agent writes a shot plan for every visible change and the team PC renders it. **With none, only on request** (Helix, 2026-10-12): the agent renders on the server when the request asks for a picture or someone says `!shot`, never by default (PROMPT-godot.md); a proposal without pictures has a "Screenshots" field offering `!shot`.
 `shot-godot.sh [plan.json]` (default `.dm-shot.json`; format in `client/main/qa_ui_shots.gd` and `PROMPT-godot.md`: up to 4 shots of windows/tooltips or the hero wearing gear, `open` / `hover` / `area` / `clip` / `give` / `equip` / `discipline` / `view` / `turn` / `anim`) renders the branch's own client on the dev-offline demo hero with a fixed
 representative bag. Same sandbox as `check-godot.sh` (no network, read-only filesystem, only the worktree writable, private `/tmp` and a fresh HOME), in two runs:
 the game's build products (`client-prep.sh`, above), then the branch's own `client/tools/qa_shots.sh <plan> <worktree>/.dm-shots/.raw <class>` (the plan's discipline,
@@ -300,12 +300,77 @@ The agent is told (PROMPT-godot.md) to take pictures by default for visible chan
 On a proposal (`propose()`), when the agent left a plan and fresh pictures, the runner renders the same plan on an unchanged scratch worktree of the base (`base-<jobid>`, removed afterwards) and attaches
 AFTER pictures right away (the embed image is the first). BEFORE pictures are off (owner, 2026-10-10: each was one more software-GL render in the shared queue); with `cfg.beforeShots: true`, the BEFORE/AFTER pairs for the first two pictures (`before-<name>.png`, then `<name>.png`) follow as a separate message once the base is rendered in the background, so a busy renderer never holds the job's slot. If the base cannot render (for instance it predates the QA shot-plan code) no pair message follows.
 
-**Team PC pictures** (teamapp/README.md; the backend's "Team jobs" in server/death-muffin/README.md): after a proposal that carries pictures, when a team PC is
-online (`/internal/team/pcs`), the runner builds the branch for it (`preview-godot.sh <jobid> --team`: a debug export, the live art pack hard-linked when the
-art is unchanged, files under `/var/www/death-muffin/team-files/<random>/`), queues a `shots` job with the same shot plan on Low and Ultra, checks it every
-20 s for up to 35 minutes, and posts the returned pictures, labelled by `label-shot.py` like its own, as "The same pictures on a real graphics card (<who>,
-<card>), Low then Ultra". Best effort and in the background: no team PC online means no build; a failed build or job is only audited (`team-shots`); a
-newer proposal or a discard cancels the job. `cfg.teamShots: false` turns it off; `cfg.teamApi` is the backend it calls (with the runner's secret).
+**Team PC pictures** (teamapp/README.md; the backend's "Team jobs" in server/death-muffin/README.md). A team PC (War's, Muffins' or Helix's) has a real graphics card, so with one
+online the pictures need no `!shot` and come as BEFORE and AFTER pairs:
+
+1. **The turn starts.** For every message that reaches the agent the runner asks the backend who is online (`GET /internal/team/pcs`: PCs seen in the last 2 minutes, a paused one
+   left out because it declines every job). With one, the message gets a note ("A team PC is online right now ...") and the agent writes a shot plan (`.dm-shot.json`, PROMPT-godot.md
+   "Screenshots") for every change players can see and renders nothing itself; a plan left by an earlier turn is deleted first, since it described an earlier change. With none, a note says
+   so and everything is as before: pictures only on request (`!shot`), rendered on the server. `!shot` with a team PC online asks the agent for the plan only. The runner remembers the answer
+   for the turn (`job.teamTurn`, `job.shotAsked`); a sync or fix-up turn asks nothing and sends no pictures.
+2. **The proposal** goes out without server pictures. When the worktree has a plan and a PC is still online, its "Screenshots" field says "Pictures from a team PC follow" ("More pictures"
+   when the agent rendered some on the server anyway; a plan with no PC left only offers `!shot`). A `!shot` on an open proposal (nothing changed) or on no proposal at all sends the plan
+   for the current head the same way and says so in the thread.
+3. **Before and after** (`teamShots` in `runner/core.cjs`, in the background; `cfg.teamShots: false` turns all of it off). The runner builds the branch for the team PC
+   (`preview-godot.sh <jobid> --team`: a debug export, the live art pack hard-linked when the art is unchanged, files under `/var/www/death-muffin/team-files/<random>/`) and, when the
+   branch has commits, the unchanged game too (a scratch worktree `teambase-<jobid>` at `job.base`, built the same way, removed afterwards, 25 minute limit). It queues ONE `shots` job,
+   "Pictures of a change (before and after), about 3 minutes", whose payload carries `builds: [{label: "before", files}, {label: "after", files}]` instead of `files`, the shot plan and
+   the presets Low and Ultra; the app runs every preset on each build, shares the files both builds have (same hash) and uploads `<label>_<preset>_<shot>.png`. The runner checks the job
+   every 20 s for up to 45 minutes and cancels it when a newer proposal, a discard or a thread delete makes the answer pointless.
+4. **The thread** gets, a preset at a time (Low, then Ultra) and in the plan's order, each shot as a pair: BEFORE (the game as it is now), then AFTER (this change), at most two pairs a
+   post and 20 MB (a post Discord refuses is lost), a pair never split. Every picture is labelled by `label-shot.py` like the server's ("BRANCH PREVIEW · not live · <branch>": the base branch's name on BEFORE, the job's branch on
+   AFTER) and posted only after the label step; names are `before-low-<shot>.png` / `after-low-<shot>.png`, and the post says whose PC and card made them (`bogar1's PC, Intel Arc B580`).
+5. **Screen sizes.** A shot plan may carry `resolutions`: up to 4 different sizes from `1920x1080`, `2560x1440`, `3840x2160` and `3440x1440` (default: only the standard 1600x900), which
+   the prompt asks for on UI changes (windows, tooltips, the HUD). `readShotPlan` (`runner/lib/clips.cjs`) checks the list: a list that is not allowed is dropped and the first post says so
+   ("The screen sizes asked for were not usable ..., so the standard size was used"). A valid list stays in the plan the app gets and is also set beside it as the payload's `resolutions`;
+   the app runs every size and the pictures keep their size in the name (`before-low-1920x1080-a.png`). A job holds at most 40 pictures (builds x presets x shots x sizes): over that the
+   job renders Ultra only, and when it is still too many the BEFORE pictures go; the first post says which.
+6. **Fallbacks, all best effort.** The base would not build, or the branch has no commits of its own: one job with one build (`files`, "Screenshots of a change, about 2 minutes") and AFTER
+   pictures only, flat as before ("Low then Ultra"; the post says there is no BEFORE). The pair's job fails (the plan uses a window or item only the change has, which the unchanged game
+   cannot run): the same plan is asked again as one build, once. No team PC online by the time the proposal is posted: the server-rendered picture on request, as before. A failed build or
+   job is audited (`team-shots`) and, when the proposal said pictures follow, said in the thread in one line ("⚠ No pictures from a team PC this time (<reason>). Say `!shot` to ask again.").
+   Nothing here widens an approval: the team PC only renders, a human still ✅.
+
+`cfg.teamApi` is the backend the runner calls (with the runner's secret), `cfg.teamResultsDir` where it keeps the uploaded files (the runner only reads files it lists for the job, inside
+that job's folder), `cfg.teamPollMs` how often a job is checked. Tests replace the build and label steps with `cfg.teamBuildCmd` / `cfg.teamLabelCmd` and run against a fake backend
+(`test/e2e.test.cjs`: `teamBackend`).
+
+## Clips and choices (short videos, "pick one")
+
+`runner/lib/clips.cjs`, `clipStage` in `runner/core.cjs`. When a request is about how something moves or looks in motion (speed, size,
+timing, colour), or the agent wants the requester to choose between a few values, it writes `.dm-clip.json` instead of changing anything (PROMPT-godot.md "Clips and choices"; only when a
+team PC is online):
+
+```json
+{"plan": {"discipline": "reaper", "clips": [{"name": "wraith", "area": "graves", "cast": "haunting_wraith", "at": "pack", "enemies": 6, "seconds": 5, "camera": "follow"}]},
+ "variants": [{"label": "slow", "title": "slow (speed 4)", "tune": {"combat/abilities": {"haunting_wraith": {"speed": 4}}}}, {"label": "fast", "title": "fast (speed 14)", "tune": {"combat/abilities": {"haunting_wraith": {"speed": 14}}}}]}
+```
+
+- **The runner validates it before anything is sent** (`readClipRequest`): at most 32 KB, a regular file; the plan is the game's clip plan (`--clip-plan`: discipline, an optional `equip`
+  (1 to 12 item ids the hero wears for every clip), 1 to 4 clips of at most 8 seconds, each `name`, `cast` (the rite; a turntable clip needs none), `area` (default graves), `at` pack or
+  ahead, `enemies` 0 to 12, `seconds` (default 5), `camera` follow, wide or turntable, an optional `equip` that replaces the plan's list for that clip, and no other field); 1 to 4 variants with a unique `label` (lowercase letters, digits,
+  dashes, at most 24), a `title` of at most 60 characters and a `tune` (the game's data overrides, `{"<DmDb path>": {<nested keys>: <value>}}`: values only text, numbers and true/false, at most 64,
+  at most 6 levels deep; the game itself refuses a key that does not exist, so a typo fails loudly). A bad file goes back to the agent to fix, twice; then the thread gets one readable line
+  ("I could not make the short videos: variant 1 has an unknown field ...") and the turn carries on without. The file is removed whatever the answer.
+- **The job.** With a team PC online (none: "Short videos need a team PC online, and none is right now ... Say `!clips` once a team PC is on"; the request is kept), the runner builds the branch for
+  it as above and queues a `clip` job, "Short videos of a change: N options, about M minutes" (M from the clips' seconds: each option is one game run), payload `{rev, godotVersion, files, plan,
+  variants: [{label, tune}], presets: ["high"], args}`. The app runs the game once per variant and uploads `<label>_<clip>.mjpeg`; the backend turns each into `<label>_<clip>.mp4` (under
+  8 MB, Discord's limit for the bot). The turn ends at once (no proposal; the slot is free) and the waiting goes on in the background, for up to 45 minutes.
+- **The thread** gets each video as its own post (one at a time, each sent before the next is queued, so a few large videos never pile up in memory) numbered by option, "1 · slow (speed 4)" (and the clip's name when an option has several clips), then "Recorded on <who> with the offline demo
+  character on this branch (not the live game). Which do you like best? Reply with its number." A video over 8 MB or missing is named in that last post instead.
+- **Model previews** (a new or changed armor set, weapon or helm; PROMPT-godot.md "Clips and choices"): ONE variant with an empty tune and a clip with `camera: "turntable"` and the gear in
+  `equip`, so the requester sees the piece turning on a hero in the game's own lighting. With a single option nothing is a choice: the video is posted under its title (no number, no
+  question, no `job.clipAsk`) and the turn is **not** held back: its proposal goes out as usual (the team build is made before the check, a couple of minutes) and the video follows it.
+- **The reply is a normal message.** The agent's next turn starts with a note listing the options' values as people saw them (so a fresh session knows what "the second one" was), and it applies
+  the chosen values as a normal change: data or code the change really reads (a tune only existed for the recording), tests, commit, proposal (with a shot plan when visible). The proposal clears
+  the question (`job.clipAsk`).
+- **`!clips`** records the last request again (`job.lastClip`, kept across restarts; also after "no team PC online"): same plan and options, the branch as it is now.
+
+## Release checks (not the agent's)
+
+After every client release each team PC runs the release checks by itself (install and boot, quitting while the art loads, the standard screens at four sizes, a stutter pass over every rite,
+the benchmark, a soak; teamapp/README.md, server/death-muffin/README.md "Team jobs") and the results are posted to #build-alerts, one report per release, grouped by graphics card. The agent
+neither starts nor reads them (it has no tool for it and the runner queues no such job): PROMPT-godot.md only tells it they exist and where to point people.
 
 ## Playable preview
 Godot mode builds the Windows zip (`preview-godot.sh`, see above) only on request: the proposal's "Try it" field says to use `!preview` (owner, 2026-10-10:

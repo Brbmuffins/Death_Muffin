@@ -102,6 +102,23 @@ touches only documents goes live with no game update.
 
 ## Screenshots
 
+Pictures come from one of two places, and the message tells you which: a note in square brackets before the request says whether a team PC is online.
+
+**A team PC is online** (the note starts `[A team PC is online right now`; Helix, 2026-10-19: "no need to require !shot"). A team PC (War's, Muffins' or Helix's)
+has a real graphics card, so pictures need no `!shot`:
+- For every change players can SEE (windows, tooltips, the HUD, the hero's look and gear, how a spell or effect looks, a number shown on screen) write the plan
+  to `.dm-shot.json` as described below and do NOT run `__TOOLS__/shot-godot.sh` or render anything yourself. Skip the plan for
+  changes nobody can see (logic, data behind the scenes, server work, docs) and for pure Q&A. If someone says to skip pictures, write no plan.
+- After your proposal the runner builds your branch AND the unchanged game, a team PC renders the same plan on both (Low and Ultra) and the thread gets
+  BEFORE and AFTER pairs; the proposal says "Pictures from a team PC follow". You will not see them, so make the plan show exactly the change: the window
+  or hero view that proves it, with `give` / `equip` / `area` set up so it appears. Keep it to what the plan format below offers (a window or item only your
+  change adds cannot be shown BEFORE: that picture is then AFTER only).
+- `!shot` still works: with a team PC online the message asks you for a plan only, and the runner sends it for the current change.
+- New models and gear: the Blender sheet (`render-model.sh`) is still yours to make and check; their in-game shots are a plan like any other (the pictures
+  follow the proposal, so check fit and scale from the sheet).
+
+**No team PC is online** (the note says so): the rules below apply, with the server rendering on request.
+
 Only when asked (Helix, 2026-10-12: "the agent should ask if a screenshot is required before attempting one"). Renders share one renderer on
 the VPS and can wait many minutes behind other work, so:
 - Do NOT take screenshots by default, not even for visible changes. Propose without them; every proposal without pictures tells people they
@@ -146,6 +163,11 @@ Read them. The plan:
   camera, 180 shows the back and mantle; default 25, a front three-quarter); `"anim"`: `idle`, `run` or `cast` poses the hero, frozen after a short settle.
   `"view": "game"` is the normal game camera with the HUD hidden. Without `view` the shot is the normal screen, as before.
 - A plan holds at most 4 shots; for more angles run a second plan (change `.dm-shot.json`, run the script again).
+- `"resolutions"` (at the top of the plan, only with a team PC online): the screen sizes the team PC renders every shot at, from `1920x1080`, `2560x1440`, `3840x2160` and
+  `3440x1440` (at most 4, each once; without it only the standard 1600x900 is rendered). For UI changes (a window, a tooltip, the HUD, anything that sits against a screen edge or
+  scales with the screen) ask for several: all four for a new window or a HUD change, one or two for a small tweak. Leave it out for how the hero, gear or a spell looks and
+  whenever no team PC is online (the server renders the standard size only). A list that is not allowed is dropped and the thread says so. More sizes mean more pictures, so
+  with many shots and sizes the team PC renders Ultra only.
 - If a plan error is printed (unknown window and the like), fix the plan and run it again once.
 
 A set worn, seen from the front and the back:
@@ -155,6 +177,58 @@ A set worn, seen from the front and the back:
  "equip": ["set_gravecaller_chest", "set_gravecaller_legs", "set_gravecaller_hands", "helm_gold", "staff_moon"],
  "shots": [{"name": "set-front", "view": "hero", "turn": 0}, {"name": "set-back", "view": "hero", "turn": 180}]}
 ```
+
+## Clips and choices (short videos, "pick one")
+
+Only when the note before the request says a team PC is online. A team PC can record short silent videos of the game, so a question about how something
+MOVES or looks in motion (how fast or far a spell travels, how big, how long, which colour) is answered with options people watch and choose from instead of
+guessing numbers (Helix, 2026-10-19: War wanted the Haunting Wraith at another speed; "take 3 short videos of the spell at different speeds and ask what he likes best").
+
+When to offer: the request is about how something moves or looks in motion, or you want the requester to choose between a few values, and each value is a
+number, text or true/false in the game's data. Do not offer it for a question with one clear answer, for layout (use pictures) or for sound (the videos have none).
+A new or changed model (an armor set, a weapon, a helm) always gets a turntable clip (Model previews, below), which is not a question.
+With no team PC online, say which value you would pick and ask in words; do not write the file.
+
+What you do (nothing is changed yet; the runner records the options by overriding the game's data):
+1. Find what the change itself reads. Open the code that runs the rite or effect, find the `DmDb` data file and the keys it reads (grep `DmDb.` in the files
+   that implement it; data files are under `client/data/`, and `combat/abilities` means `client/data/combat/abilities.json`) and read the current values. Only keys that
+   already exist can be set: the game refuses an unknown path or key, and the recording fails.
+2. Write `.dm-clip.json` in the worktree root (never commit it; the runner reads it and removes it):
+
+```json
+{"plan": {"discipline": "reaper",
+          "clips": [{"name": "wraith", "area": "graves", "cast": "haunting_wraith", "at": "pack", "enemies": 6, "seconds": 5, "camera": "follow"}]},
+ "variants": [{"label": "slow", "title": "slow (speed 4)", "tune": {"combat/abilities": {"haunting_wraith": {"speed": 4}}}},
+              {"label": "now", "title": "as it is now (speed 8)", "tune": {"combat/abilities": {"haunting_wraith": {"speed": 8}}}},
+              {"label": "fast", "title": "fast (speed 14)", "tune": {"combat/abilities": {"haunting_wraith": {"speed": 14}}}}]}
+```
+
+3. Reply in one or two lines: what the options are and why. Do not ask which one people like: after the videos the runner posts each one numbered
+   ("1 · slow (speed 4)") and asks "Which do you like best? Reply with its number." No proposal comes yet.
+4. The answer (a number, a name, "the slow one", or other values) arrives as the next message, with a note listing the options' values. Then make the choice a
+   NORMAL change: put the chosen values into the data or code the change really reads (a tune only exists for the recording), add the test, commit, PATCH_NOTES, and
+   propose as usual (with a shot plan when it is visible). If they want other values, write a new `.dm-clip.json`.
+
+**Model previews (no choice).** For a new or changed model (an armor set, a weapon, a helm) write `.dm-clip.json` with ONE variant (an empty `tune` is fine) and a
+turntable clip: the hero stands in the game's own lighting wearing the `equip` items and the camera turns around them. A turntable casts nothing, so it needs no `cast`, `at` or `enemies`.
+
+```json
+{"plan": {"discipline": "gravecaller", "equip": ["set_gravecaller_chest", "set_gravecaller_legs", "staff_moon"],
+          "clips": [{"name": "set", "camera": "turntable", "seconds": 6}]},
+ "variants": [{"label": "set", "title": "the set, turning", "tune": {}}]}
+```
+
+With one option nothing is asked: your proposal goes out as usual and the video follows it. `equip` (1 to 12 item ids from `client/data/content`, the same ids the shot plan's `equip` uses)
+may sit at the top of the plan, for every clip, or on a clip, where it replaces the plan's list for that clip (one clip for the armor, another for the weapon). Gear that is
+not in the game's data yet cannot be worn: a model preview is for pieces already wired in.
+
+What the runner checks (a mistake comes back to you to fix, twice): `plan.discipline` is ossuary, gravecaller, mourner, rotweaver or reaper; 1 to 4 clips, each
+`{name (lowercase letters, digits, dashes), area (an area id such as graves; the Hollow Graves when left out), cast (the rite's id; a "turntable" clip may leave it out), at ("pack": the cast goes at the dummy enemies,
+"ahead": at the ground in front of the hero), enemies (0 to 12), seconds (above 0, at most 8; 5 when left out), camera ("follow" the hero, "wide", or "turntable"), equip (item ids)}` and no other field
+(the plan may also carry `equip`); 1 to 4 variants, each `{label (lowercase letters,
+digits, dashes, at most 24), title (what people read under the video, at most 60 characters: say the value), tune}`; a tune is `{"<data path>": {<nested keys>: <value>}}` with
+numbers, text or true/false only (no lists), at most 64 values, key names of letters, digits and `_ . / -`; the whole file at most 32 KB. Videos show the offline demo
+character on this branch; an option that is today's value (an empty `{}` tune is fine too) helps people compare. People can say `!clips` to record the last request again.
 
 ## Making new models and armor sets (concepts -> 3D -> renders -> in game)
 
@@ -191,7 +265,9 @@ then commit the two spec files, `art-manifest/tripo/<id>.json`, `art-manifest/im
 runner posts after your turn. Read it; if a piece came out wrong, say so plainly. Wire the models into the game only where the request asked.
 
 **4. In game.** For gear, take screenshots of a hero wearing it (Screenshots: `"equip"`, `"view": "hero"`, front and `"turn": 180` for the back; `"discipline"`
-for another necromancer) even though screenshots are otherwise only on request, check them, and fix fit or scale before you propose.
+for another necromancer) even though screenshots are otherwise only on request, check them, and fix fit or scale before you propose. With a team PC online
+write that plan instead of rendering it (Screenshots above): the pictures follow the proposal. Also write a turntable clip of the piece (Clips and choices, "Model
+previews") so the requester sees it turning on a hero in the game's own lighting.
 
 **5. A new armor set, start to finish (you do all of it; nobody else has to step in).** A set someone designs with you (names, bonuses, models) is
 not done until it can drop and be worn in the live game. One proposal carries the whole thing; an approver's ✅ ships it, and the ship applies the new
@@ -242,7 +318,13 @@ then the usual proposal. `audio-src/` is git-ignored raw output: never commit it
 
 When you finish a change, the system itself builds a playable preview of your branch and puts the download link on the proposal: a Windows
 build of your branch (a preview, not the live game). You do not build or run it; if someone asks
-how to try a change, tell them the link is on the proposal ("Try it"), or that `!preview` rebuilds it. Pictures are taken only on request (Screenshots section above).
+how to try a change, tell them the link is on the proposal ("Try it"), or that `!preview` rebuilds it. Pictures: automatic from a team PC when one is online,
+otherwise only on request (Screenshots section above).
+
+Release checks (you never run or start them): after every client release each team PC runs the game's own checks by itself: installing and booting the release,
+quitting while the art loads, the standard screens at four screen sizes, a stutter pass over every rite of every discipline, the benchmark and a long soak. The results are
+posted to #build-alerts, one report per release, grouped by graphics card; you cannot read that channel. When someone asks whether a release runs well on big or wide screens or
+weak cards, or whether a spell stutters, point them to the latest report there and do not promise results.
 
 Rounds: a thread can continue after a change ships. You may be told "Your previous change shipped and is live. You are on a
 fresh branch from the latest __BASE__": then that earlier change is already in the code you read (do not redo it), and the new request

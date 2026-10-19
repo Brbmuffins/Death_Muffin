@@ -1217,57 +1217,320 @@ test('godot mode (beforeShots on): the proposal goes out at once with the AFTER 
   assert.deepEqual(p2.payload.files.map((f) => f.name), ['a.png']); assert.ok(!p2.payload.embeds[0].fields.some((f) => f.name === 'Pictures'));
 });
 
-test('godot mode: a team PC online renders the proposal\'s shot plan on Low and Ultra through the backend\'s internal team routes; nobody online = no build', async () => {
+// ---------- team PCs: a fake of the backend's /internal/team routes (a PC list, queued jobs, results written to a folder) ----------
+// shots jobs answer with `<preset>_<shot>.png` (one build) or `<before|after>_<preset>_<shot>.png` (builds), clip jobs with `<label>_<clip>.mp4`; failPaired makes a
+// job with two builds fail (the unchanged game cannot run the plan). The runner's only way in is the HTTP routes (a secret header), as on the VPS.
+async function teamBackend(opts = {}) {
   const http = require('http'), os = require('os');
   const results = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-team-'));
   const secretFile = path.join(results, 'secret'); fs.writeFileSync(secretFile, 'test-team-secret-0123456789');
-  const seen = [], jobs = {}; let pcs = [];
+  const B = { results, secretFile, seen: [], jobs: [], cancelled: [], pcs: opts.pcs || [], failPaired: !!opts.failPaired, url: '', close: () => srv.close() };
   const srv = http.createServer((req, res) => {
     let body = ''; req.on('data', (c) => { body += c; });
     req.on('end', () => {
-      seen.push({ line: `${req.method} ${req.url}`, secret: req.headers['x-team-secret'] });
+      B.seen.push({ line: `${req.method} ${req.url}`, secret: req.headers['x-team-secret'] });
       const send = (data) => { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ success: true, data })); };
-      if (req.url === '/internal/team/pcs') return send({ pcs });
+      if (req.url === '/internal/team/pcs') return send({ pcs: B.pcs });
       if (req.method === 'POST' && req.url === '/internal/team/jobs') {
-        const id = 'abcdef012345'; jobs[id] = JSON.parse(body);
+        const b = JSON.parse(body), id = 'abcdef0123' + (B.jobs.length + 16).toString(16).padStart(2, '0'), p = b.payload || {}, names = [];
+        if (b.kind === 'shots') for (const label of (p.builds ? p.builds.map((x) => x.label) : [''])) for (const preset of p.presets) for (const res of (p.plan.resolutions || [''])) for (const s of p.plan.shots) names.push(`${[label, preset, res, String(s.name).toLowerCase()].filter(Boolean).join('_')}.png`);
+        if (b.kind === 'clip') for (const v of p.variants) for (const c of p.plan.clips) names.push(`${v.label}_${c.name}.mp4`);
+        const failed = !!(p.builds && B.failPaired);
         fs.mkdirSync(path.join(results, id), { recursive: true });
-        for (const n of ['ultra_a.png', 'low_a.png']) fs.writeFileSync(path.join(results, id, n), `PNG-${n}`);
+        if (!failed) for (const n of names) fs.writeFileSync(path.join(results, id, n), Buffer.concat([Buffer.from(`${n.endsWith('.mp4') ? 'MP4' : 'PNG'}-${n}`), Buffer.alloc(opts.fileBytes || 0, 1)]));
+        B.jobs.push({ id, body: b, status: failed ? 'failed' : 'done', error: failed ? 'the game stopped: the plan does not run' : null, names });
         return send({ id });
       }
-      const m = /^\/internal\/team\/jobs\/([0-9a-f]{12})$/.exec(req.url);
-      if (m) return send({ id: m[1], status: 'done', claimedPc: 'pc-war-0001', files: ['ultra_a.png', 'low_a.png', '../evil.png'].map((n) => ({ name: n, path: path.join(results, m[1], n) })) });
+      let m = /^\/internal\/team\/jobs\/([0-9a-f]{12})\/cancel$/.exec(req.url);
+      if (m) { B.cancelled.push(m[1]); return send({ id: m[1], status: 'cancelled' }); }
+      m = /^\/internal\/team\/jobs\/([0-9a-f]{12})$/.exec(req.url);
+      const job = m && B.jobs.find((j) => j.id === m[1]);
+      if (job) return send({ id: job.id, status: job.status, error: job.error, claimedPc: 'pc-war-0001', files: [...job.names, '../evil.png'].map((n) => ({ name: n, path: path.join(results, job.id, n) })) });
       res.statusCode = 404; res.end('{}');
     });
   });
   await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  B.url = `http://127.0.0.1:${srv.address().port}`;
+  return B;
+}
+const PC_WAR = { pcId: 'pc-war-0001', username: 'bogar1', name: 'WAR-PC', gpu: 'Intel Arc B580', mode: 'ask', state: {} };
+// A world wired to a fake backend. The team build is a stand-in that notes where it ran (the job's worktree, or the scratch worktree at the base: `teambase-<id>`) and
+// fails there when a NOBASEBUILD file exists; the label step writes the branch it was given into each picture.
+function teamWorld(B, over = {}) {
+  const marker = path.join(B.results, 'built'), nobase = path.join(B.results, 'NOBASEBUILD');
+  const w = godotWorld({ teamApi: B.url, teamResultsDir: B.results, secretFile: B.secretFile, teamPollMs: 40,
+    teamLabelCmd: 'cd "$1/.dm-shots" && for f in .raw/*.png; do { printf "LABELLED[%s]:" "$2"; cat "$f"; } > "$(basename "$f")"; done',
+    teamBuildCmd: `echo "$PWD" >> ${marker}; if [ -e ${nobase} ]; then case "$PWD" in */teambase-*) echo "the base would not build"; exit 1;; esac; fi; echo 'TEAMFILES: [{"name":"DeathMuffin.pck","url":"https://example.test/death-muffin/team-files/x/DeathMuffin.pck","sha256":"${'a'.repeat(64)}","bytes":1}]'`,
+    ...over });
+  w.marker = marker; w.nobase = nobase; w.builtIn = () => (fs.existsSync(marker) ? fs.readFileSync(marker, 'utf8').trim().split('\n') : []);
+  return w;
+}
+const jobOf = (w, thread) => Object.values(w.runner.jobs()).find((j) => j.threadId === thread.id);
+const withFiles = (thread, re) => thread.sent.filter((m) => m.payload && m.payload.files && m.payload.files.some((f) => re.test(f.name)));
+const idle = (w, d, thread) => until(() => { const j = jobOf(w, thread); return j && !j.running && j.queue.length === 0; }, d.ad);
+
+test('godot mode: team pictures need no !shot: nobody online = the server renders on request as before; a team PC online = the agent writes only a plan and the BEFORE/AFTER pairs follow the proposal', async () => {
+  const B = await teamBackend();
   try {
-    const marker = path.join(results, 'built');
-    const w = godotWorld({ teamApi: `http://127.0.0.1:${srv.address().port}`, teamResultsDir: results, secretFile, teamPollMs: 50,
-      teamLabelCmd: 'cd "$1/.dm-shots" && for f in .raw/*.png; do { printf "LABELLED:"; cat "$f"; } > "$(basename "$f")"; done',
-      teamBuildCmd: `echo "$1" >> ${marker}; echo 'TEAMFILES: [{"name":"DeathMuffin.pck","url":"https://example.test/death-muffin/team-files/x/DeathMuffin.pck","sha256":"${'a'.repeat(64)}","bytes":1}]'` });
-    const d = makeDiscord(w.runner);
-    // nobody online: the runner asks, then builds nothing
-    const t1 = await request(d, IDS.HELIX, 'GD-GAMEPLAY SHOT-PNG make it faster and show it');
+    const w = teamWorld(B); const d = makeDiscord(w.runner);
+    // nobody online: the turn is told so, the agent renders on the server, the proposal carries that picture and nothing is built for a team PC
+    const t1 = await request(d, IDS.HELIX, 'GD-UI TEAM-SHOT TEAM-NOTE-ECHO make it visible and show it');
+    const p1 = await waitProposal(d, t1.thread);
+    await idle(w, d, t1.thread);
+    assert.ok(texts(t1.thread).some((t) => /TEAM-OFF-SEEN/.test(t)), 'the turn was told no team PC is online');
+    assert.deepEqual(p1.payload.files.map((f) => f.name), ['a.png']); assert.ok(!p1.payload.embeds[0].fields.some((f) => /team PC/.test(f.value)));
+    assert.deepEqual(w.builtIn(), [], 'no team build without a team PC'); assert.equal(B.jobs.length, 0);
+    assert.ok(B.seen.some((x) => x.line === 'GET /internal/team/pcs'), 'the online check runs as the turn starts');
+    // a paused PC takes no job: it is not "online"
+    B.pcs = [{ ...PC_WAR, state: { paused: true } }];
+    const tp = await request(d, IDS.HELIX, 'GD-DOC TEAM-SHOT TEAM-NOTE-ECHO clarify the readme');
+    await waitProposal(d, tp.thread); await idle(w, d, tp.thread);
+    assert.ok(texts(tp.thread).some((t) => /TEAM-OFF-SEEN/.test(t)) && B.jobs.length === 0, 'a paused PC counts as offline');
+    // a team PC online: the plan only (no server picture), the proposal says pictures follow, then BEFORE and AFTER per shot and preset
+    B.pcs = [PC_WAR];
+    const t2 = await request(d, IDS.HELIX, 'GD-GAMEPLAY TEAM-SHOT-2 TEAM-NOTE-ECHO make it faster and show it');
+    const p2 = await waitProposal(d, t2.thread); const j2 = jobOf(w, t2.thread);
+    assert.ok(texts(t2.thread).some((t) => /TEAM-ON-SEEN/.test(t)), 'the turn was told a team PC is online');
+    assert.equal(p2.payload.files, undefined, 'no server picture');
+    assert.ok(!fs.existsSync(path.join(j2.worktree, '.dm-shots')), 'nothing was rendered on the server');
+    assert.match(field(p2, 'Screenshots'), /^Pictures from a team PC follow/);
+    const low = await until(() => withFiles(t2.thread, /^before-low-/)[0], d.ad);
+    assert.deepEqual(low.payload.files.map((f) => f.name), ['before-low-a.png', 'after-low-a.png', 'before-low-bag-tooltip.png', 'after-low-bag-tooltip.png'], 'BEFORE then AFTER per shot, in the plan\'s order');
+    assert.match(low.payload.content, /Low on a real graphics card \(bogar1's PC, Intel Arc B580\).*BEFORE.*then AFTER/);
+    assert.equal(low.payload.files[0].attachment.toString(), 'LABELLED[godot-port]:PNG-before_low_a.png', 'BEFORE is labelled with the base branch');
+    assert.equal(low.payload.files[1].attachment.toString(), `LABELLED[${j2.branch}]:PNG-after_low_a.png`, 'AFTER is labelled with the job\'s branch');
+    const ultra = await until(() => withFiles(t2.thread, /^before-ultra-/)[0], d.ad);
+    assert.deepEqual(ultra.payload.files.map((f) => f.name), ['before-ultra-a.png', 'after-ultra-a.png', 'before-ultra-bag-tooltip.png', 'after-ultra-bag-tooltip.png']);
+    assert.ok(t2.thread.sent.indexOf(low) < t2.thread.sent.indexOf(ultra), 'Low comes before Ultra');
+    const job = B.jobs[0].body;
+    assert.equal(job.kind, 'shots'); assert.equal(job.title, 'Pictures of a change (before and after), about 3 minutes'); assert.equal(job.weightS, 180);
+    assert.deepEqual(job.payload.builds.map((b) => b.label), ['before', 'after']); assert.equal(job.payload.files, undefined);
+    assert.ok(job.payload.builds.every((b) => b.files[0].name === 'DeathMuffin.pck'));
+    assert.deepEqual(job.payload.presets, ['low', 'ultra']); assert.deepEqual(job.payload.args, ['--dev-offline', '--class=2', '--qa']); assert.equal(job.payload.plan.shots.length, 2);
+    const built = w.builtIn(); assert.equal(built.length, 2, 'the branch and the unchanged base were built');
+    assert.equal(fs.realpathSync(built[0]), fs.realpathSync(j2.worktree)); assert.match(built[1], new RegExp(`/teambase-${j2.id}$`), 'the base is built in a scratch worktree at job.base');
+    await until(() => !fs.existsSync(path.join(w.cfg.worktreeRoot, `teambase-${j2.id}`)), d.ad);
+    assert.ok(!sh(w.repo, 'worktree', 'list').includes('teambase-'), 'the scratch worktree is removed');
+    assert.ok(B.seen.every((x) => x.secret === 'test-team-secret-0123456789'), 'every call carries the secret');
+    assert.match(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /"event":"team-shots".*"ok":true.*"paired":true/);
+  } finally { B.close(); }
+});
+
+test('godot mode: a base that cannot be built, or a plan the unchanged game cannot run, still gets the AFTER pictures', async () => {
+  const B = await teamBackend({ pcs: [PC_WAR] });
+  try {
+    const w = teamWorld(B); const d = makeDiscord(w.runner);
+    // the base would not build: one job with one build (`files`), AFTER only, and the thread says why there is no BEFORE
+    fs.writeFileSync(w.nobase, '');
+    const t1 = await request(d, IDS.HELIX, 'GD-UI TEAM-SHOT make the title bigger and show it');
     await waitProposal(d, t1.thread);
-    await until(() => seen.some((x) => x.line === 'GET /internal/team/pcs'), d.ad);
-    await until(() => !Object.values(w.runner.jobs())[0].running, d.ad);
-    assert.ok(!fs.existsSync(marker), 'no team build without a team PC');
-    // a team PC online: the build, the job, then the pictures (Low first; a path outside the job's results folder is dropped)
-    pcs = [{ pcId: 'pc-war-0001', username: 'bogar1', name: 'WAR-PC', gpu: 'Intel Arc B580', mode: 'ask', state: {} }];
-    const t2 = await request(d, IDS.HELIX, 'GD-DOC SHOT-PNG clarify the readme and show it');
-    await waitProposal(d, t2.thread);
-    const pic = await until(() => t2.thread.sent.find((m) => m.payload && /real graphics card/.test(m.payload.content || '')), d.ad);
+    const pic = await until(() => withFiles(t1.thread, /^low-a/)[0], d.ad);
     assert.deepEqual(pic.payload.files.map((f) => f.name), ['low-a.png', 'ultra-a.png']);
-    assert.equal(pic.payload.files[0].attachment.toString(), 'LABELLED:PNG-low_a.png', 'posted only after the label step');
-    assert.match(pic.payload.content, /bogar1's PC, Intel Arc B580/);
-    const job = jobs.abcdef012345;
-    assert.equal(job.kind, 'shots'); assert.deepEqual(job.payload.presets, ['low', 'ultra']);
-    assert.deepEqual(job.payload.args, ['--dev-offline', '--class=2', '--qa']);
-    assert.equal(job.payload.files[0].name, 'DeathMuffin.pck'); assert.equal(typeof job.payload.plan, 'object');
-    assert.equal(fs.readFileSync(marker, 'utf8').trim(), Object.values(w.runner.jobs()).find((j) => j.threadId === t2.thread.id).id, 'built once, for the job with a PC online');
-    assert.ok(seen.every((x) => x.secret === 'test-team-secret-0123456789'), 'every call carries the secret');
-    assert.match(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /"event":"team-shots".*"ok":true/);
-  } finally { srv.close(); }
+    assert.equal(pic.payload.files[0].attachment.toString(), `LABELLED[${jobOf(w, t1.thread).branch}]:PNG-low_a.png`);
+    assert.match(pic.payload.content, /real graphics card \(bogar1's PC, Intel Arc B580\), Low then Ultra \(no BEFORE pictures this time\)/);
+    const j1 = B.jobs[0].body; assert.equal(j1.payload.builds, undefined); assert.equal(j1.payload.files[0].name, 'DeathMuffin.pck'); assert.equal(j1.title, 'Screenshots of a change, about 2 minutes');
+    fs.rmSync(w.nobase); fs.rmSync(w.marker);
+    // both builds fine, but the pair's job fails (the plan names something only the change has): the runner asks again for the AFTER pictures alone
+    B.failPaired = true; const before = B.jobs.length;
+    const t2 = await request(d, IDS.HELIX, 'GD-DOC TEAM-SHOT clarify the readme and show it');
+    await waitProposal(d, t2.thread);
+    const pic2 = await until(() => withFiles(t2.thread, /^low-a/)[0], d.ad);
+    assert.deepEqual(pic2.payload.files.map((f) => f.name), ['low-a.png', 'ultra-a.png']);
+    assert.equal(B.jobs.length, before + 2, 'the failed pair, then the single build');
+    assert.ok(B.jobs[before].body.payload.builds && !B.jobs[before + 1].body.payload.builds);
+    assert.match(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /"retry":true/);
+  } finally { B.close(); }
+});
+
+test('godot mode: !shot with a team PC online asks the agent for a plan only and the pictures of the open proposal follow; without a plan nothing is sent', async () => {
+  const B = await teamBackend({ pcs: [PC_WAR] });
+  try {
+    const w = teamWorld(B); const d = makeDiscord(w.runner);
+    const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY make it faster');   // no plan: nothing visible to show
+    const p = await waitProposal(d, thread); await idle(w, d, thread);
+    assert.match(field(p, 'Screenshots'), /None taken/); assert.equal(B.jobs.length, 0);
+    await d.say(thread, IDS.HELIX, '!shot');
+    const pair = await until(() => withFiles(thread, /^before-low-a/)[0], d.ad);
+    assert.deepEqual(pair.payload.files.map((f) => f.name), ['before-low-a.png', 'after-low-a.png']);
+    assert.ok(texts(thread).some((t) => /^Nothing changed, so the proposal above still stands/.test(t)));
+    assert.ok(texts(thread).some((t) => /^Pictures from a team PC follow in a few minutes \(before and after\)/.test(t)));
+    assert.equal(B.jobs.length, 1); assert.equal(B.jobs[0].body.payload.rev, jobOf(w, thread).proposal.head.slice(0, 12));
+    // a thank-you afterwards sends nothing new (the plan was cleared as the turn started, and nothing changed)
+    await idle(w, d, thread);
+    await d.say(thread, IDS.HELIX, 'thanks, looks good'); await idle(w, d, thread);
+    assert.equal(B.jobs.length, 1);
+  } finally { B.close(); }
+});
+
+test('godot mode: short videos: a team PC records the options, the thread gets them numbered and the question, the reply is a normal change; !clips records the last request again', async () => {
+  const B = await teamBackend({ pcs: [PC_WAR] });
+  try {
+    const w = teamWorld(B); const d = makeDiscord(w.runner);
+    const { thread } = await request(d, IDS.HELIX, 'GD-CLIP the Haunting Wraith: try other speeds');
+    await until(() => texts(thread).some((t) => /^Which do you like best\? Reply with its number\./m.test(t)), d.ad);
+    await idle(w, d, thread);
+    const vids = thread.sent.filter((m) => m.payload && m.payload.files && /\.mp4$/.test(m.payload.files[0].name));
+    assert.deepEqual(vids.map((m) => m.payload.content), ['1 · slow (speed 4)', '2 · as it is now (speed 8)', '3 · fast (speed 14)']);
+    assert.deepEqual(vids.map((m) => m.payload.files[0].name), ['1-slow-wraith.mp4', '2-now-wraith.mp4', '3-fast-wraith.mp4']);
+    assert.equal(vids[0].payload.files[0].attachment.toString(), 'MP4-slow_wraith.mp4');
+    const ask = thread.sent.find((m) => /Which do you like best\?/.test(m.payload.content || ''));
+    assert.match(ask.payload.content, /Recorded on bogar1's PC, Intel Arc B580/); assert.ok(thread.sent.indexOf(ask) > thread.sent.indexOf(vids[2]), 'the question comes after the videos');
+    assert.equal(proposalOf(thread), undefined, 'no proposal yet: the options come first');
+    const job = jobOf(w, thread);
+    assert.equal(job.status, 'idle'); assert.ok(!fs.existsSync(path.join(job.worktree, '.dm-clip.json')), 'the runner removed the request');
+    const c = B.jobs[0].body;
+    assert.equal(c.kind, 'clip'); assert.equal(c.title, 'Short videos of a change: 3 options, about 4 minutes'); assert.equal(c.weightS, 240);
+    assert.deepEqual(c.payload.variants, [{ label: 'slow', tune: { 'combat/abilities': { haunting_wraith: { speed: 4 } } } }, { label: 'now', tune: { 'combat/abilities': { haunting_wraith: { speed: 8 } } } }, { label: 'fast', tune: { 'combat/abilities': { haunting_wraith: { speed: 14 } } } }]);
+    assert.deepEqual(c.payload.presets, ['high']); assert.deepEqual(c.payload.args, ['--dev-offline', '--class=11', '--qa']); assert.equal(c.payload.plan.discipline, 'reaper'); assert.equal(c.payload.files[0].name, 'DeathMuffin.pck');
+    assert.deepEqual(w.builtIn().map((x) => fs.realpathSync(x)), [fs.realpathSync(job.worktree)], 'one build, of the branch');
+    // !clips sends the same request again
+    await d.say(thread, IDS.HELIX, '!clips');
+    await until(() => B.jobs.length === 2 && thread.sent.filter((m) => /^3 · fast/.test(m.payload.content || '')).length === 2, d.ad);
+    assert.deepEqual(B.jobs[1].body.payload.variants, c.payload.variants); assert.equal(B.jobs[1].body.kind, 'clip');
+    await idle(w, d, thread);
+    // the reply is a normal message: the agent is told what the options were, applies the choice as a change and proposes
+    await d.say(thread, IDS.HELIX, 'GD-GAMEPLAY the second one please');
+    const p = await waitProposal(d, thread);
+    assert.ok(texts(thread).some((t) => /CLIP-CHOICE-SEEN/.test(t)), 'the agent got the options\' values with the reply');
+    assert.match(field(p, 'Exact diff'), /1 commit/); assert.equal(job.clipAsk, null, 'a proposal settles the question');
+    assert.equal(B.jobs.length, 2, 'the proposal sent no more clip jobs');
+  } finally { B.close(); }
+});
+
+test('godot mode: short videos with no team PC online say so and carry on; !clips records them once a PC is on; two clips per option are posted per option', async () => {
+  const B = await teamBackend({ pcs: [] });
+  try {
+    const w = teamWorld(B); const d = makeDiscord(w.runner);
+    const { thread } = await request(d, IDS.HELIX, 'GD-CLIP-TWO try other speeds');
+    await until(() => texts(thread).some((t) => /Short videos need a team PC online, and none is right now/.test(t)), d.ad);
+    await idle(w, d, thread);
+    assert.equal(B.jobs.length, 0); assert.deepEqual(w.builtIn(), []); assert.equal(proposalOf(thread), undefined);
+    assert.ok(jobOf(w, thread).lastClip, 'the request is kept for !clips');
+    B.pcs = [PC_WAR];
+    await d.say(thread, IDS.HELIX, '!clips');
+    await until(() => texts(thread).some((t) => /^Which do you like best\?/m.test(t)), d.ad);
+    const vids = thread.sent.filter((m) => m.payload && m.payload.files && /\.mp4$/.test(m.payload.files[0].name));
+    assert.deepEqual(vids.map((m) => m.payload.content), ['1 · slow (speed 4) · wraith', '1 · slow (speed 4) · wide', '2 · as it is now (speed 8) · wraith', '2 · as it is now (speed 8) · wide', '3 · fast (speed 14) · wraith', '3 · fast (speed 14) · wide']);
+    assert.equal(B.jobs[0].body.title, 'Short videos of a change: 3 options, about 4 minutes');
+    // a thread that never asked has nothing to record again
+    const t2 = await request(d, IDS.HELIX, 'where is player speed defined?');
+    await until(() => texts(t2.thread).some((t) => /answer is in/.test(t)), d.ad); await idle(w, d, t2.thread);
+    const none = await d.say(t2.thread, IDS.HELIX, '!clips');
+    assert.match(none.replies[0].content, /There is no short-video request in this thread yet/); assert.equal(B.jobs.length, 1);
+  } finally { B.close(); }
+});
+
+test('godot mode: an invalid .dm-clip.json goes back to the agent to fix (twice), then the thread gets a readable line; a fixed one records', async () => {
+  const B = await teamBackend({ pcs: [PC_WAR] });
+  try {
+    const w = teamWorld(B); const d = makeDiscord(w.runner);
+    const t1 = await request(d, IDS.HELIX, 'GD-CLIP-BAD try other speeds');
+    const line = await until(() => texts(t1.thread).find((t) => /^I could not make the short videos/.test(t)), d.ad);
+    assert.match(line, /variant 1 has an unknown field "nofix"/); assert.match(line, /Nothing was recorded\./);
+    await idle(w, d, t1.thread);
+    assert.equal(B.jobs.length, 0, 'nothing is sent to a team PC'); assert.deepEqual(w.builtIn(), []);
+    const calls = fs.readFileSync(path.join(jobOf(w, t1.thread).worktree, '.fake-calls'), 'utf8').trim().split('\n');
+    assert.equal(calls.length, 3, 'the turn and two repair turns, then the line');
+    assert.ok(!fs.existsSync(path.join(jobOf(w, t1.thread).worktree, '.dm-clip.json')), 'the bad request is removed');
+    const t2 = await request(d, IDS.HELIX, 'GD-CLIP-BADFIX try other speeds');
+    const one = await until(() => withFiles(t2.thread, /\.mp4$/)[0], d.ad);
+    assert.equal(B.jobs.length, 1); assert.equal(B.jobs[0].body.title, 'Short videos of a change: 1 option, about 2 minutes');
+    assert.equal(one.payload.content, 'slow', 'one option is a preview: no number');
+    await idle(w, d, t2.thread);
+    assert.ok(!texts(t2.thread).some((t) => /^I could not make/.test(t)));
+    assert.ok(!texts(t2.thread).some((t) => /Which do you like best/.test(t)), 'with one option there is nothing to pick');
+  } finally { B.close(); }
+});
+
+test('godot mode: a model preview is one turntable clip with the gear the hero wears: no question, and the proposal is not held back', async () => {
+  const B = await teamBackend({ pcs: [PC_WAR] });
+  try {
+    const w = teamWorld(B); const d = makeDiscord(w.runner);
+    const { thread } = await request(d, IDS.HELIX, 'GD-CLIP-TURN show the new armor turning');
+    const p = await waitProposal(d, thread);
+    const vid = await until(() => withFiles(thread, /\.mp4$/)[0], d.ad);
+    assert.equal(vid.payload.content, 'the set, turning'); assert.equal(vid.payload.files[0].name, 'set-set.mp4');
+    await idle(w, d, thread);
+    const c = B.jobs[0].body;
+    assert.equal(c.kind, 'clip'); assert.equal(c.title, 'Short videos of a change: 1 option, about 2 minutes');
+    assert.deepEqual(c.payload.plan, { discipline: 'gravecaller', equip: ['set_gravecaller_chest', 'staff_moon'], clips: [{ name: 'set', camera: 'turntable', seconds: 6 }] });
+    assert.deepEqual(c.payload.variants, [{ label: 'set', tune: {} }]); assert.deepEqual(c.payload.args, ['--dev-offline', '--class=2', '--qa']);
+    assert.ok(!texts(thread).some((t) => /Which do you like best/.test(t)), 'one option: nothing to pick');
+    const job = jobOf(w, thread); assert.ok(!job.clipAsk, 'no question is waiting'); assert.equal(job.status, 'proposed');
+    assert.match(field(p, 'Exact diff'), /1 commit/);
+    assert.ok(texts(thread).some((t) => /^Recorded on bogar1's PC/.test(t)), 'the video says whose PC made it');
+  } finally { B.close(); }
+});
+
+test('godot mode: a shot plan may ask for screen sizes: they go to the team PC, an unusable list is dropped with a note, and a job never holds more pictures than the backend takes', async () => {
+  const B = await teamBackend({ pcs: [PC_WAR] });
+  try {
+    const w = teamWorld(B); const d = makeDiscord(w.runner);
+    // two sizes: every shot at both, BEFORE then AFTER, in the payload (also beside the plan) and in the thread
+    const t1 = await request(d, IDS.HELIX, 'GD-UI TEAM-SHOT TEAM-RES=1920x1080,3840x2160 make the window wider');
+    await waitProposal(d, t1.thread);
+    const low = await until(() => withFiles(t1.thread, /^before-low-/)[0], d.ad);
+    assert.deepEqual(low.payload.files.map((f) => f.name), ['before-low-1920x1080-a.png', 'after-low-1920x1080-a.png', 'before-low-3840x2160-a.png', 'after-low-3840x2160-a.png']);
+    const j1 = B.jobs[0].body.payload; assert.deepEqual(j1.resolutions, ['1920x1080', '3840x2160']); assert.deepEqual(j1.plan.resolutions, ['1920x1080', '3840x2160']); assert.deepEqual(j1.presets, ['low', 'ultra']);
+    await until(() => withFiles(t1.thread, /^before-ultra-/)[0], d.ad); await idle(w, d, t1.thread);
+    // a size that is not on the list: the standard size is used and the thread says so
+    const t2 = await request(d, IDS.HELIX, 'GD-DOC TEAM-SHOT TEAM-RES=800x600,1920x1080 clarify the readme');
+    await waitProposal(d, t2.thread);
+    const low2 = await until(() => withFiles(t2.thread, /^before-low-/)[0], d.ad);
+    assert.deepEqual(low2.payload.files.map((f) => f.name), ['before-low-a.png', 'after-low-a.png']);
+    assert.match(low2.payload.content, /The screen sizes asked for were not usable \("resolutions" must be 1 to 4 different sizes from 1920x1080, 2560x1440, 3840x2160, 3440x1440\), so the standard size was used\./);
+    const j2 = B.jobs[B.jobs.length - 1].body.payload; assert.equal(j2.resolutions, undefined); assert.equal(j2.plan.resolutions, undefined);
+    await until(() => withFiles(t2.thread, /^before-ultra-/)[0], d.ad); await idle(w, d, t2.thread);
+    // 4 shots at 4 sizes with both builds and both presets would be 64 pictures (the backend takes 40 a job): Ultra alone, 32
+    const before = B.jobs.length;
+    const t3 = await request(d, IDS.HELIX, 'GD-GAMEPLAY TEAM-SHOT TEAM-SHOTS=4 TEAM-RES=1920x1080,2560x1440,3840x2160,3440x1440 rework the HUD');
+    await waitProposal(d, t3.thread);
+    const ultra = () => t3.thread.sent.flatMap((m) => (m.payload && m.payload.files ? m.payload.files.map((f) => f.name) : [])).filter((n) => /^(before|after)-ultra-/.test(n));
+    await until(() => ultra().length === 32, d.ad);
+    const j3 = B.jobs[before]; assert.deepEqual(j3.body.payload.presets, ['ultra']); assert.equal(j3.names.length, 32); assert.deepEqual(j3.body.payload.builds.map((b) => b.label), ['before', 'after']);
+    assert.match(withFiles(t3.thread, /^before-ultra-/)[0].payload.content, /Only Ultra was rendered/);
+    assert.equal(withFiles(t3.thread, /-low-/).length, 0, 'no Low pictures');
+  } finally { B.close(); }
+});
+
+test('godot mode: team pictures are posted in parts that stay under Discord\'s size limit, and a BEFORE/AFTER pair is never split', async () => {
+  const B = await teamBackend({ pcs: [PC_WAR], fileBytes: 6 * 1024 * 1024 });
+  try {
+    const w = teamWorld(B); const d = makeDiscord(w.runner);
+    const { thread } = await request(d, IDS.HELIX, 'GD-UI TEAM-SHOT-2 make the title bigger');
+    await waitProposal(d, thread);
+    await until(() => withFiles(thread, /^after-ultra-bag-tooltip/)[0], d.ad);
+    const low = withFiles(thread, /-low-/);
+    assert.deepEqual(low.map((m) => m.payload.files.map((f) => f.name)), [['before-low-a.png', 'after-low-a.png'], ['before-low-bag-tooltip.png', 'after-low-bag-tooltip.png']], '4 files of 6 MB would be 24 MB in one post: two posts of one pair each');
+    assert.ok(low.every((m) => m.payload.files.reduce((n, f) => n + f.attachment.length, 0) <= 20 * 1024 * 1024));
+    assert.match(low[1].payload.content, /^📸 Low \(more\)/);
+  } finally { B.close(); }
+});
+
+test('godot mode: the agent prompt explains team pictures and clips, the help lists !clips, and the agent still runs only the names it was allowed', async () => {
+  const B = await teamBackend(); const w = teamWorld(B); const d = makeDiscord(w.runner);
+  const { systemPrompt, claudeArgs } = require('../runner/lib/agent.cjs');
+  const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY faster'); await waitProposal(d, thread); B.close();
+  const j = jobOf(w, thread), sp = systemPrompt(w.cfg, j);
+  for (const re of [/A team PC is online/, /Pictures from a team PC follow|BEFORE and AFTER pairs/, /do NOT run `[^`]*shot-godot\.sh`/, /## Clips and choices/, /\.dm-clip\.json/, /Which do you like best\? Reply with its number/, /`!clips`/, /Do NOT take screenshots by default/,
+    /"resolutions"[\s\S]*1920x1080[\s\S]*3440x1440/, /"turntable"/, /Model previews/, /"equip"/, /Release checks \(you never run or start them\)[\s\S]*#build-alerts/]) assert.match(sp, re);
+  assert.ok(!sp.includes('__TOOLS__'));
+  const help = await d.say(thread, IDS.HELIX, '!help'); assert.match(help.replies[0].content, /!clips \(record the last short videos again on a team PC\)/);
+  const args = claudeArgs(w.cfg, j), allowed = args.slice(args.indexOf('--allowedTools') + 1); assert.ok(!allowed.some((x) => /preview-godot|clip|team/i.test(x)), 'the agent gets no team tool: the runner does all of it');
+});
+
+test('godot mode: short videos with the team app off, or a failed team build, say so in the thread', async () => {
+  const B = await teamBackend({ pcs: [PC_WAR] });
+  try {
+    const off = teamWorld(B, { teamShots: false }); const d0 = makeDiscord(off.runner);
+    const t0 = await request(d0, IDS.HELIX, 'GD-CLIP try other speeds');
+    await until(() => texts(t0.thread).some((t) => /Short videos need the team app/.test(t)), d0.ad);
+    assert.equal(B.jobs.length, 0); assert.ok(!B.seen.some((x) => x.line === 'GET /internal/team/pcs'), 'team off: the backend is never asked');
+    const w = teamWorld(B, { teamBuildCmd: 'echo "the export failed"; exit 1' }); const d = makeDiscord(w.runner);
+    const t1 = await request(d, IDS.HELIX, 'GD-CLIP try other speeds');
+    await until(() => texts(t1.thread).some((t) => /No short videos this time \(the game could not be built for the team PC: the export failed\)/.test(t)), d.ad);
+    assert.equal(B.jobs.length, 0);
+  } finally { B.close(); }
 });
 
 test('godot mode: if the live client revision cannot be read, nothing is pushed or published and no backup is left; a first publish (no manifest) goes live with no rollback', async () => {
