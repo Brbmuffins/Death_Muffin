@@ -133,6 +133,13 @@ polish list). Also:
   engage (1 of 148 bodies culled); its report's budget section is labelled "Budgets (ROADMAP", but the budgets are in CLAUDE.md (B39).
 - The draw model counts the rendered Graves a few draws under the engine, but Helix's World row is about 40 over the same stage: the real
   fight draws what the model's stage does not (the hero's place, the effects, the boss).
+- The Discord agent's check links the lobby's packages from the main checkout (`server/death-muffin/discord-agent/check-godot.sh`), and
+  nothing updates them there: after a change to `server/death-muffin/lobby/package-lock.json`, a job's co-op suites run on the old packages
+  until someone runs `npm ci` in that folder (`server/death-muffin/deploy-lobby.sh` updates only the live lobby). Caching them by the lockfile in
+  `server/death-muffin/discord-agent/client-prep.sh`, like the combat core, would keep them current.
+- A suite that skips shows as `no result line` in `tools/rebuild/run-client-tests.sh` (coop, coop_bosses and social print `<suite>: SKIPPED`, which
+  the runner does not read), so a check's failure does not say why; and `check-godot.sh`'s summary counts the re-runs again (24 suites with 3
+  failing showed as "27 suites, 6 FAILED").
 
 ## Stability
 
