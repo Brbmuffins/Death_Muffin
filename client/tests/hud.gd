@@ -652,8 +652,13 @@ func keys_and_click() -> void:
 		await ticks(120)
 		feed.clear()
 		g.input._unhandled_input(key_ev)
-		await ticks(2)
-		check(floats_of("info").any(func(e: Dictionary) -> bool: return String(e["ctx"]["text"]).find("not ready") >= 0), "cooldown rejection shows a float: %s" % [floats_of("info").map(func(e: Dictionary) -> String: return e["ctx"]["text"])])
+		# the float comes with the HUD's next refresh, which runs on a REAL-time interval (20 a second): under --fixed-fps a fast machine plays
+		# dozens of frames before it, so wait in real time (up to 2 s), as the 20 Hz cadence check below does
+		var not_ready := func() -> bool: return floats_of("info").any(func(e: Dictionary) -> bool: return String(e["ctx"]["text"]).find("not ready") >= 0)
+		var t_end_nr := Time.get_ticks_msec() + 2000
+		while not not_ready.call() and Time.get_ticks_msec() < t_end_nr:
+			await process_frame
+		check(not_ready.call(), "cooldown rejection shows a float: %s" % [floats_of("info").map(func(e: Dictionary) -> String: return e["ctx"]["text"])])
 	# a click on the bar's primary slot casts it at an enemy, and the hit number is drawn on the HUD's float layer
 	var foe: int = host.spawn_enemy("robber", hero.position + Vector3(0, 0, -4), 1, 1000.0, 0.0, false, "graves", false)
 	await ticks(30)
