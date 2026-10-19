@@ -34,8 +34,9 @@ Every item says what kind it is:
 - **Now: Phase 1, settling the launch.** Done: alerts when a server stops, Grave Surges back, crash reports that point inside the combat
   core, the Discord agent working on the live game, document-only changes that ship no update, checks for War's content, play reports,
   shaders baked into every release, the old game's folder deleted (its tests moved to the game), and the team app's first job (pictures on a
-  real graphics card, proven on Helix's PC). Left: the team app's other jobs (B58: benchmarks, clips, before and after, the stutter test,
-  the crash, install and screen-size checks, every card maker, a soak test, model previews) and the Ultra Low decision once the numbers are in.
+  real graphics card, proven on Helix's PC) and its other jobs (B58: release benchmarks and release checks, clips and "pick one", before and after,
+  pictures without `!shot`). Left: the crash and install checks as a gate before a release goes live, the stutter fixes the checks turn up, and the
+  Ultra Low decision once the numbers are in.
 - Ascension (the Altar, vows and heat, Ashes, Covenant Boons) left on launch day and comes back redesigned in Phase 3 (B36). Players'
   saved Ascension data is kept.
 
@@ -133,20 +134,20 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
     last 14 days), which also brought silent runs, screenshot runs that never show a window, a fresh folder for every run, cancels that
     reach the PC within 30 s, and AFK mode (Helix's design: once a job ran by itself because nobody answered, the next jobs run without
     the 5-minute wait until the person ends it or starts a game).
-  - Short clips of a change: the same plan recorded as a few seconds of video (Godot's Movie Maker), posted to the thread; spells and
-    effects are judged moving, not frozen.
-  - Before and after: every visual proposal's pictures also on the unchanged game, side by side (the server's own "before" pictures
-    were switched off because each took minutes).
-  - The stutter test (every rite and effect played on a real graphics card, each first-use hitch reported).
-  - A release crash check (a release candidate plays a few minutes on two different graphics cards, and quits while still loading, which
-    crashed the old game on 4-core PCs, before it goes live; a crash stops the release).
-  - A fresh-install check: before a release is announced, a team PC installs it from scratch the way the launcher does and starts it.
-  - The screen sizes: each release's windows and HUD at 1080p, 1440p, 4K and ultrawide and at every UI scale (the item tooltip's
-    squeezed stat names, found by a team PC's picture on 2026-10-19, is the kind of bug it catches).
-  - Every graphics card maker: each release's pictures and benchmark on NVIDIA, Intel Arc and the old GTX 970 (driver-specific bugs).
-  - A soak test: a release candidate plays itself (auto combat) for 30 minutes while memory and frame times are recorded (leaks and slow
-    creep that a short run cannot show).
-  - Model previews: a new model (War's armor sets) on a hero in the game's own lighting, turning and animated, on a real graphics card.
+  - Built 2026-10-19 with app 0.3.0 (one release for all of these, B58):
+    - Pictures without `!shot`: with a team PC online, the Discord agent writes a shot plan for every visible change and the team PC
+      renders it, before and after side by side (the unchanged game and the change), on Low and Ultra.
+    - Clips and "pick one": a few seconds of a spell or effect recorded by the game itself (30 frames per game second, only the spell,
+      not the loading), posted as videos; for a choice (War's Haunting Wraith at three speeds) each option is numbered and the thread
+      asks which one. Model previews are clips too: the new piece worn by a hero, turning.
+    - Release checks after every client release, one job per team PC: a fresh install and boot, quitting while loading (the old 4-core
+      crash), the windows and HUD at 1080p, 1440p, 4K and ultrawide and the largest UI size, the stutter test (every rite of every
+      discipline, each cast's worst frame and pipeline compilations), the benchmark, and a 30-minute soak (memory and frame times per
+      minute); the results go to #build-alerts, grouped by graphics card, which gives every card maker the team owns (NVIDIA, Intel Arc,
+      the GTX 970 once War's PCs run the app).
+    - Jobs reach a PC within about a second (the PC's check-in waits on the server).
+  - Still to do: the crash and install checks run right after a release, not yet before it goes live (a crash should stop the release:
+    that needs the test channel's build to go through the team PCs first).
   - With the art rebuild (Phase 4): lighting bakes on the strongest graphics card available instead of by hand, the result coming back as
     a proposal.
   - Later: a co-op test between two team PCs.
