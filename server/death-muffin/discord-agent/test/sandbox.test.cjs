@@ -99,6 +99,22 @@ test('sandbox: check-godot.sh (the preparation and the suites)', () => {
   } finally { W.cleanup(); }
 });
 
+test('check-godot.sh links the main checkout\'s lobby packages into a worktree that has none (coop, coop_bosses and social start the real lobby)', () => {
+  const W = world(); try {
+    W.w('server/death-muffin/lobby/package.json', '{}\n');
+    W.w('tools/rebuild/run-client-tests.sh', '[ "${1:-}" = --list ] && { echo game; exit 0; }\nr=$(cat server/death-muffin/lobby/node_modules/ws/index.js)\nprintf "%-18s %-16s exit=%d  %s\\n" game game.gd 0 "$r"\n');
+    execFileSync('git', ['-C', W.top, 'add', '-A']);
+    execFileSync('git', ['-C', W.top, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'base']);
+    W.w('server/death-muffin/lobby/node_modules/ws/index.js', 'LOBBY_WS_OK\n');   // the main checkout's install (git does not hold it)
+    const wt = path.join(W.root, 'job-wt');
+    execFileSync('git', ['-C', W.top, 'worktree', 'add', '-q', '--detach', wt]);
+    const r = spawnSync('bash', [path.join(DIR, 'check-godot.sh')], { cwd: wt, env: { ...W.env, ...prepStubs(W) }, encoding: 'utf8', timeout: 180000 });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.equal(fs.readlinkSync(path.join(wt, 'server/death-muffin/lobby/node_modules')), path.join(W.top, 'server/death-muffin/lobby/node_modules'));
+    assert.match(r.stdout, /LOBBY_WS_OK/, 'the suites read the linked packages inside the sandbox');
+  } finally { W.cleanup(); }
+});
+
 test('sandbox: secret files listed in DM_SANDBOX_HIDE (and the runner secret next to sandbox-lib.sh) read as empty inside, and cannot be un-hidden', () => {
   const W = world(); try {
     const hidden = path.join(W.root, 'keys.local'); fs.writeFileSync(hidden, 'TRIPO_API_KEY=tsk_should_never_be_readable_in_a_sandbox\n');

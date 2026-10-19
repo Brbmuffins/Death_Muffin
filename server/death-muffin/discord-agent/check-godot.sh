@@ -25,6 +25,11 @@ export MODE RERUN
 TOP=$(git rev-parse --show-toplevel) || exit 2
 NM=$(readlink -f "$TOP/node_modules" 2>/dev/null || true)
 [ -n "$NM" ] && { mkdir -p "$NM/.vite" 2>/dev/null || true; }   # vitest keeps its results cache here; the sandbox puts a scratch tmpfs over it
+# The lobby's packages (ws, jsonwebtoken): coop, coop_bosses and social start the real lobby and skip without them, which counts as a failure.
+# A worktree has none (git does not hold them), so they are linked from the main checkout, as the runner links the root node_modules.
+LOBBY_NM=server/death-muffin/lobby/node_modules
+MAIN=$(dirname "$(git -C "$TOP" rev-parse --path-format=absolute --git-common-dir)")
+[ -e "$TOP/$LOBBY_NM" ] || [ ! -d "$MAIN/$LOBBY_NM" ] || [ ! -d "$TOP/${LOBBY_NM%/*}" ] || ln -s "$MAIN/$LOBBY_NM" "$TOP/$LOBBY_NM"
 # A change that only touches Markdown files cannot affect the game: skip the suites (owner 2026-10-09: a docs-only audit branch timed
 # out the 40-min suite three times and never got proposed), but still run the hygiene check (broken links and stale paths live in docs).
 # Compares the working tree (committed + uncommitted + untracked) with where the branch left the base branch; any other file, or a base
