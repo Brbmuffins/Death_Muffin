@@ -78,7 +78,7 @@ That sign-in **never touches the game's session**, so it cannot stop a game you 
 6. The files are downloaded into the job's folder with a SHA-256 check, resuming a half download. Files with a `cacheKey` (the art pack, about 500 MB, and the
    Godot debug build, about 90 MB) are kept in `cache\<cacheKey>\` and reused by later jobs without a download; the job's game folder gets a hard link
    to them (a copy when Windows refuses).
-7. For each preset it starts `DeathMuffinDebug.exe --main-pack DeathMuffin.pck --windowed --resolution 1600x900 -- --dev-offline <options> --shot-plan=<plan.json>
+7. For each preset it starts `DeathMuffinDebug.exe --windowed --resolution 1600x900 -- --dev-offline <options> --shot-plan=<plan.json>
    --shots=<job>/out/<preset> --preset=<preset>`, one preset after the other, at most 10 minutes each.
 8. It uploads every picture as `<preset>_<shot>.png` (at most 40, each at most 8 MB), then reports **done** with the file names, the log and the timings.
    Any failure (a download that does not match, the game stopping with an error or making no pictures, the 10 minutes, a refused upload) reports **fail** with
@@ -96,7 +96,7 @@ That sign-in **never touches the game's session**, so it cannot stop a game you 
 
 ## Updating itself
 
-The app reads `https://muffindevelopment.com/death-muffin/teamapp/version.json` (`{version, url, sha256}`, `size` optional) every hour. For a newer version it
+The app reads `https://muffindevelopment.com/death-muffin/teamapp/version.json` (`{version, url, sha256}`, `size` optional) 30 seconds after it starts and then every 15 minutes. For a newer version it
 does what the launcher does ([launcher/windows/SelfUpdate.cs](../launcher/windows/SelfUpdate.cs)): downloads `DeathMuffinTeam.exe.new` next to itself, checks the SHA-256,
 renames the running exe to `.old`, moves the new one in, starts it and closes; the new copy removes `.old`. Never while a job runs. A folder it cannot write to,
 or three failures, show a balloon and the app keeps running. The workflow artifact is not published anywhere: putting a build in that folder of the site is a

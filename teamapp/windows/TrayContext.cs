@@ -61,7 +61,7 @@ namespace DeathMuffinTeam
 
             heartbeatTimer.Tick += (s, e) => Guard(controller.HeartbeatAsync());
             evaluateTimer.Tick += (s, e) => Guard(controller.EvaluateAsync());
-            updateTimer.Tick += (s, e) => { updateTimer.Interval = 60 * 60 * 1000; Guard(CheckUpdateAsync()); };
+            updateTimer.Tick += (s, e) => { updateTimer.Interval = 15 * 60 * 1000; Guard(CheckUpdateAsync()); };
             heartbeatTimer.Start();
             evaluateTimer.Start();
             updateTimer.Start();

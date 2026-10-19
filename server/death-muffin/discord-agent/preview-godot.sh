@@ -12,7 +12,7 @@
 #    real character) and a README, and write it as <previewRoot>/<jobid>/DeathMuffin-Preview-<jobid>-win64.zip (644). Refuses any jobid that is
 #    not 6 hex chars, a missing or symlinked preview root, and a symlinked destination; never writes outside <previewRoot>/<jobid>.
 # --team: the build for a team PC's screenshot job (teamapp/README.md) instead of a zip: a DEBUG export (the QA tools start only in debug builds),
-#   its files (DeathMuffinDebug.exe, DeathMuffin.pck, the core's DLL, DeathMuffin.assets.pck: the live pack hard-linked from the live client's folder
+#   its files (DeathMuffinDebug.exe, DeathMuffinDebug.pck, the core's DLL, DeathMuffin.assets.pck: the live pack hard-linked from the live client's folder
 #   when the art is the live build's, else the branch's own) in <team root>/<32 random hex>/ (the newest 6 kept), and a last line
 #   `TEAMFILES: <json list of {name, url, sha256, bytes, cacheKey?}>` for the job's payload.
 # Env: DM_TEAM_ROOT (default /var/www/death-muffin/team-files), DM_TEAM_URL (default https://muffindevelopment.com/death-muffin/team-files),
@@ -66,9 +66,9 @@ export DM_PAYLOAD='
 '   # the sandboxed work; run by dm_sandbox_run inside the nested namespace (sandbox-lib.sh)
 timeout -k 30 1800 unshare -rnm bash -c '. "$DM_SANDBOX_LIB"; dm_sandbox_run' || { echo "preview build failed"; exit 1; }
 rm -f "$OUT"/*.console.exe
-[ -z "$TEAM" ] || mv -f "$OUT/DeathMuffinDebug.pck" "$OUT/DeathMuffin.pck" 2>/dev/null || true   # the team app runs it with --main-pack DeathMuffin.pck
 [ -s "$OUT/$EXE" ] && [ "$(head -c2 "$OUT/$EXE")" = "MZ" ] || { echo "export produced no Windows executable"; exit 1; }
-[ "$(stat -c %s "$OUT/DeathMuffin.pck" 2>/dev/null || echo 0)" -gt 100000 ] || { echo "export produced no usable DeathMuffin.pck"; exit 1; }
+PCK="${EXE%.exe}.pck"   # Godot loads "<exe name>.pck" beside the exe (export builds refuse --main-pack)
+[ "$(stat -c %s "$OUT/$PCK" 2>/dev/null || echo 0)" -gt 100000 ] || { echo "export produced no usable $PCK"; exit 1; }
 # launcher + readme (title: printable ASCII only, one line; it is text in a readme, never part of the .bat)
 TITLE=$(printf '%s' "${DM_PREVIEW_TITLE:-this change}" | tr -c '[:print:]' ' ' | tr -s ' ' | cut -c1-120)
 DLL=libdmcore.windows.template_release.x86_64.dll
@@ -78,7 +78,7 @@ if [ -n "$TEAM" ]; then
   DIR=$(head -c16 /dev/urandom | od -An -tx1 | tr -d ' \n')
   DEST="$ROOT/$DIR"
   mkdir -m 755 "$DEST"
-  for f in DeathMuffinDebug.exe DeathMuffin.pck "$DLL"; do install -m 644 "$OUT/$f" "$DEST/$f"; done
+  for f in DeathMuffinDebug.exe DeathMuffinDebug.pck "$DLL"; do install -m 644 "$OUT/$f" "$DEST/$f"; done
   ART_SHA=""
   if [ -f "$OUT/DeathMuffin.assets.pck" ]; then
     install -m 644 "$OUT/DeathMuffin.assets.pck" "$DEST/DeathMuffin.assets.pck"
@@ -104,7 +104,7 @@ def sha(p):
             h.update(b)
     return h.hexdigest()
 out = []
-for name in ("DeathMuffinDebug.exe", "DeathMuffin.pck", dll, "DeathMuffin.assets.pck"):
+for name in ("DeathMuffinDebug.exe", "DeathMuffinDebug.pck", dll, "DeathMuffin.assets.pck"):
     p = os.path.join(dest, name)
     s = art_sha if (name == "DeathMuffin.assets.pck" and art_sha) else sha(p)
     e = {"name": name, "url": base + "/" + name, "sha256": s, "bytes": os.path.getsize(p)}

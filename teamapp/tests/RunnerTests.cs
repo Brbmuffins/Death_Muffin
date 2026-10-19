@@ -43,7 +43,7 @@ namespace DeathMuffinTeam.Tests
         {
             string folder = "job" + (++n) + "x";
             var files = new List<object>();
-            files.Add(publishMain ? Srv.Publish(folder, "DeathMuffin.pck", Util.Blob(5000, 30 + n)) : Program.File_("DeathMuffin.pck", url: Srv.FilesBase + folder + "/DeathMuffin.pck", sha: new string('a', 64), bytes: 10.0));
+            files.Add(publishMain ? Srv.Publish(folder, "DeathMuffinDebug.pck", Util.Blob(5000, 30 + n)) : Program.File_("DeathMuffinDebug.pck", url: Srv.FilesBase + folder + "/DeathMuffinDebug.pck", sha: new string('a', 64), bytes: 10.0));
             files.Add(Srv.Publish(folder, "DeathMuffin.assets.pck", art ?? Art, artKey));
             files.Add(Srv.Publish(folder, "libdmcore.windows.template_release.x86_64.dll", Dll));
             files.Add(Srv.Publish(folder, "DeathMuffinDebug.exe", Godot, "godot-debug-4.7.2"));
@@ -114,7 +114,7 @@ namespace DeathMuffinTeam.Tests
                 T.Has(rig.Api.DoneLog, "downloaded DeathMuffin.assets.pck", "and what was downloaded");
                 T.Ok(rig.Api.DoneDownloadS >= 0 && rig.Api.DoneRunS >= 0, "timings are reported");
                 T.Eq(res.Files.Count, 4, "the result lists the files");
-                T.Ok(progress.Any(p => p.StartsWith("Downloading DeathMuffin.pck")) && progress.Any(p => p == "Taking pictures on Low (1 of 2)") && progress.Any(p => p == "Taking pictures on Ultra (2 of 2)") && progress.Any(p => p == "Uploading pictures (4 of 4)"), "progress tells what is happening");
+                T.Ok(progress.Any(p => p.StartsWith("Downloading DeathMuffinDebug.pck")) && progress.Any(p => p == "Taking pictures on Low (1 of 2)") && progress.Any(p => p == "Taking pictures on Ultra (2 of 2)") && progress.Any(p => p == "Uploading pictures (4 of 4)"), "progress tells what is happening");
                 T.Eq(rig.Watch.Begins, 1, "the player's games are noted once, when the job starts");
                 T.Ok(File.Exists(rig.Folders.LogFile(id)) && File.ReadAllText(rig.Folders.LogFile(id)).Contains("finished: 4 picture(s)"), "job.log is written");
                 T.Eq(rig.Links.Count, 2, "the cached files are linked into the game folder");
@@ -132,7 +132,7 @@ namespace DeathMuffinTeam.Tests
                 T.Ok(rig.Run("jobB00000002", plan2).Ok, "second job");
                 T.Eq(rig.Srv.HitsFor(rig.Folder(2) + "/DeathMuffin.assets.pck"), 0, "the second job does not download the art pack again");
                 T.Eq(rig.Srv.HitsFor(rig.Folder(2) + "/DeathMuffinDebug.exe"), 0, "nor the Godot template");
-                T.Eq(rig.Srv.HitsFor(rig.Folder(2) + "/DeathMuffin.pck"), 1, "but the main pack, which is the job's own");
+                T.Eq(rig.Srv.HitsFor(rig.Folder(2) + "/DeathMuffinDebug.pck"), 1, "but the main pack, which is the job's own");
                 T.Eq(rig.Srv.HitsFor(rig.Folder(2) + "/libdmcore"), 1, "and the core library");
                 T.Ok(Hashing.Verify(Path.Combine(rig.Folders.GameDir("jobB00000002"), "DeathMuffin.assets.pck"), rig.Art.Length, Util.Sha(rig.Art)), "the reused art pack is in the second job's game folder");
                 T.Has(rig.Api.DoneLog, "kept from an earlier job: DeathMuffin.assets.pck", "the log says it was reused");
@@ -167,9 +167,9 @@ namespace DeathMuffinTeam.Tests
                 var plan = rig.Plan();
                 // the same job id run twice (the server put it back): files already in place are not downloaded again
                 T.Ok(rig.Run("jobD00000001", plan).Ok, "a job");
-                int hits = rig.Srv.HitsFor("/DeathMuffin.pck");
+                int hits = rig.Srv.HitsFor("/DeathMuffinDebug.pck");
                 T.Ok(rig.Run("jobD00000001", plan).Ok, "the same job again");
-                T.Eq(rig.Srv.HitsFor("/DeathMuffin.pck"), hits, "files already in the job's folder are kept");
+                T.Eq(rig.Srv.HitsFor("/DeathMuffinDebug.pck"), hits, "files already in the job's folder are kept");
             }
         }
 
@@ -230,7 +230,7 @@ namespace DeathMuffinTeam.Tests
             {
                 // a file that is not on the server
                 var res = rig.Run("jobF00000006", rig.Plan(publishMain: false));
-                T.Ok(!res.Ok && res.Error.Contains("Could not download DeathMuffin.pck") && res.Error.Contains("HTTP 404"), "a missing download fails readably: " + res.Error);
+                T.Ok(!res.Ok && res.Error.Contains("Could not download DeathMuffinDebug.pck") && res.Error.Contains("HTTP 404"), "a missing download fails readably: " + res.Error);
                 T.Eq(rig.Host.Launches.Count, 0, "the game does not start without its files");
                 T.Eq(rig.Api.Count("fail"), 1, "fail is called for a failed download");
             }
@@ -323,7 +323,7 @@ namespace DeathMuffinTeam.Tests
                 var res = rig.Run("jobL00000003", rig.Plan());
                 T.Eq(res.Error, "stopped: the game started", "a game started before the job's files are fetched stops it too");
                 T.Eq(rig.Host.Launches.Count, 0, "the job's game never starts");
-                T.Eq(rig.Srv.HitsFor("DeathMuffin.pck"), 0, "and nothing is downloaded");
+                T.Eq(rig.Srv.HitsFor("DeathMuffinDebug.pck"), 0, "and nothing is downloaded");
             }
             using (var rig = new Rig())
             {

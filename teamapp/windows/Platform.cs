@@ -111,30 +111,64 @@ namespace DeathMuffinTeam
 
         public string GpuName()
         {
+            // The display adapters Windows lists (EnumDisplayDevices: no admin rights, no WMI); the registry's display class as a fallback, one
+            // entry at a time (one entry that cannot be opened must not hide the others: 0.1.0 reported nothing on Helix's PC).
+            var names = new List<string>();
             try
             {
-                var names = new List<string>();
-                using (RegistryKey cls = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11cd-b6bb-00a0c91d1e40}"))
+                for (uint i = 0; i < 16; i++)
                 {
-                    if (cls == null) return "";
-                    foreach (string sub in cls.GetSubKeyNames())
+                    var d = new Native.DisplayDevice();
+                    d.cb = Marshal.SizeOf(typeof(Native.DisplayDevice));
+                    if (!Native.EnumDisplayDevices(null, i, ref d, 0)) break;
+                    string n = (d.DeviceString ?? "").Trim();
+                    if (n.Length > 0 && !names.Contains(n) && (d.StateFlags & Native.DisplayDeviceMirroring) == 0) names.Add(n);
+                }
+            }
+            catch (Exception) { }
+            if (names.Count == 0)
+            {
+                try
+                {
+                    using (RegistryKey cls = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11cd-b6bb-00a0c91d1e40}"))
                     {
-                        if (sub.Length != 4) continue;
-                        using (RegistryKey k = cls.OpenSubKey(sub))
-                        {
-                            string desc = k == null ? null : k.GetValue("DriverDesc") as string;
-                            if (!string.IsNullOrWhiteSpace(desc) && !names.Contains(desc.Trim())) names.Add(desc.Trim());
-                        }
+                        if (cls != null)
+                            foreach (string sub in cls.GetSubKeyNames())
+                            {
+                                if (sub.Length != 4) continue;
+                                try
+                                {
+                                    using (RegistryKey k = cls.OpenSubKey(sub))
+                                    {
+                                        string desc = k == null ? null : k.GetValue("DriverDesc") as string;
+                                        if (!string.IsNullOrWhiteSpace(desc) && !names.Contains(desc.Trim())) names.Add(desc.Trim());
+                                    }
+                                }
+                                catch (Exception) { }
+                            }
                     }
                 }
-                return string.Join(" + ", names);
+                catch (Exception) { }
             }
-            catch (Exception) { return ""; }
+            return string.Join(" + ", names);
         }
     }
 
     internal static class Native
     {
+        public const int DisplayDeviceMirroring = 0x8;
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        public struct DisplayDevice
+        {
+            public int cb;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string DeviceName;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string DeviceString;
+            public int StateFlags;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string DeviceID;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string DeviceKey;
+        }
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern bool EnumDisplayDevices(string lpDevice, uint iDevNum, ref DisplayDevice lpDisplayDevice, uint dwFlags);
+
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         static extern bool CreateHardLink(string newFileName, string existingFileName, IntPtr securityAttributes);
 

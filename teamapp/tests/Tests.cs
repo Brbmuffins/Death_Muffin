@@ -160,7 +160,7 @@ namespace DeathMuffinTeam.Tests
             return new Dictionary<string, object>
             {
                 { "rev", "0123456789ab" }, { "godotVersion", "4.7.2.stable" },
-                { "files", new List<object> { File_("DeathMuffin.pck"), File_("DeathMuffin.assets.pck", "assets-0f3a9c"), File_("libdmcore.windows.template_release.x86_64.dll"), File_("DeathMuffinDebug.exe", "godot-debug-4.7.2") } },
+                { "files", new List<object> { File_("DeathMuffinDebug.pck"), File_("DeathMuffin.assets.pck", "assets-0f3a9c"), File_("libdmcore.windows.template_release.x86_64.dll"), File_("DeathMuffinDebug.exe", "godot-debug-4.7.2") } },
                 { "plan", new Dictionary<string, object> { { "bag", "demo" }, { "discipline", "gravecaller" }, { "shots", new List<object> {
                     new Dictionary<string, object> { { "name", "bag-open" }, { "open", "bag" } }, new Dictionary<string, object> { { "name", "hero-front" }, { "view", "hero" } } } } } },
                 { "presets", new List<object> { "low", "ultra" } },
@@ -195,8 +195,8 @@ namespace DeathMuffinTeam.Tests
             T.Eq(plan.PlanShots, 2, "plan shot count");
             T.Eq(plan.FileNamed("DeathMuffin.assets.pck").CacheKey, "assets-0f3a9c", "cache key kept");
             T.Eq(plan.FileNamed("DeathMuffinDebug.exe").CacheKey, "godot-debug-4.7.2", "godot cache key kept");
-            T.Ok(!plan.FileNamed("DeathMuffin.pck").IsCached, "the main pack is not cached");
-            T.Eq(plan.FileNamed("deathmuffin.pck").Name, "DeathMuffin.pck", "file lookup ignores case");
+            T.Ok(!plan.FileNamed("DeathMuffinDebug.pck").IsCached, "the main pack is not cached");
+            T.Eq(plan.FileNamed("deathmuffindebug.pck").Name, "DeathMuffinDebug.pck", "file lookup ignores case");
             T.Eq(plan.Args[0], "--dev-offline", "args keep dev-offline first");
             T.Eq(string.Join(" ", plan.Args), "--dev-offline --class=2 --qa", "args as sent");
             var round = MiniJson.TryObject(plan.PlanJson);
@@ -230,8 +230,8 @@ namespace DeathMuffinTeam.Tests
             Reject(p => Files(p).Add(File_("nul.pck", url: GoodUrl)), "Windows device name");
             Reject(p => Files(p).Add(File_("COM1", url: GoodUrl)), "Windows device name COM1");
             Reject(p => Files(p).Add(File_(new string('a', 81), url: GoodUrl)), "name too long");
-            Reject(p => Files(p).Add(File_("DEATHMUFFIN.PCK", url: GoodUrl)), "same name in another case", "twice");
-            Reject(p => Files(p).Add(File_("DeathMuffin.pck", url: GoodUrl)), "same name twice", "twice");
+            Reject(p => Files(p).Add(File_("DEATHMUFFINDEBUG.PCK", url: GoodUrl)), "same name in another case", "twice");
+            Reject(p => Files(p).Add(File_("DeathMuffinDebug.pck", url: GoodUrl)), "same name twice", "twice");
             // files: checksum, size, cache key
             Reject(p => Files(p).Add(File_("a.dll", sha: "xyz")), "bad sha256", "checksum");
             Reject(p => Files(p).Add(File_("a.dll", sha: new string('g', 64))), "non-hex sha256");
@@ -267,10 +267,10 @@ namespace DeathMuffinTeam.Tests
             Reject(p => p.Remove("files"), "no files", "no files");
             Reject(p => p["files"] = new List<object>(), "empty files");
             Reject(p => p["files"] = "files", "files as text");
-            Reject(p => Files(p).Add("DeathMuffin.pck"), "a file entry that is text");
+            Reject(p => Files(p).Add("DeathMuffinDebug.pck"), "a file entry that is text");
             Reject(p => { for (int i = 0; i < 12; i++) Files(p).Add(File_("extra" + i + ".dll")); }, "too many files", "too many");
             Reject(p => Files(p).RemoveAll(f => (string)((Dictionary<string, object>)f)["name"] == "DeathMuffinDebug.exe"), "no game exe", "DeathMuffinDebug.exe");
-            Reject(p => Files(p).RemoveAll(f => (string)((Dictionary<string, object>)f)["name"] == "DeathMuffin.pck"), "no main pack", "DeathMuffin.pck");
+            Reject(p => Files(p).RemoveAll(f => (string)((Dictionary<string, object>)f)["name"] == "DeathMuffinDebug.pck"), "no main pack", "DeathMuffinDebug.pck");
             // revision, version
             Reject(p => p["rev"] = "not-a-rev", "bad rev");
             Reject(p => p["godotVersion"] = "4.7.2 && calc", "bad godot version");
@@ -358,16 +358,16 @@ namespace DeathMuffinTeam.Tests
             string shots = "C:\\Users\\Test User\\AppData\\Local\\DeathMuffinTeam\\jobs\\q7x2k9ab\\out\\low";
             var a = plan.CommandArgs("low", planFile, shots);
             T.Eq(string.Join("|", a),
-                "--main-pack|DeathMuffin.pck|--windowed|--resolution|1600x900|--|--dev-offline|--class=2|--qa|--shot-plan=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/plan.json|--shots=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/out/low|--preset=low",
+                "--windowed|--resolution|1600x900|--|--dev-offline|--class=2|--qa|--shot-plan=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/plan.json|--shots=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/out/low|--preset=low",
                 "command arguments for low (the contract's line)");
             T.Eq(plan.CommandArgs("ultra", planFile, shots.Replace("low", "ultra")).Last(), "--preset=ultra", "command arguments for ultra");
             T.Eq(plan.CommandLine("low", "C:\\j\\plan.json", "C:\\j\\out\\low"),
-                "--main-pack DeathMuffin.pck --windowed --resolution 1600x900 -- --dev-offline --class=2 --qa --shot-plan=C:/j/plan.json --shots=C:/j/out/low --preset=low",
+                "--windowed --resolution 1600x900 -- --dev-offline --class=2 --qa --shot-plan=C:/j/plan.json --shots=C:/j/out/low --preset=low",
                 "command line without spaces needs no quotes");
             string line = plan.CommandLine("low", planFile, shots);
             T.Has(line, "\"--shot-plan=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/plan.json\"", "a path with a space is quoted");
             T.Eq(string.Join("|", ParseWinArgs(line)), string.Join("|", a), "the command line reads back as the same arguments");
-            T.Eq(plan.CommandArgs("low", "p", "s").IndexOf("--"), 5, "everything for the game comes after --");
+            T.Eq(plan.CommandArgs("low", "p", "s").IndexOf("--"), 3, "everything for the game comes after --");
 
             T.Eq(CommandLineText.Quote("plain"), "plain", "quote: plain");
             T.Eq(CommandLineText.Quote(""), "\"\"", "quote: empty");
@@ -854,7 +854,7 @@ namespace DeathMuffinTeam.Tests
                 File.WriteAllText(exe, "#!/bin/bash\necho \"APPDATA=$APPDATA\"\necho \"LOCALAPPDATA=$LOCALAPPDATA\"\necho \"PWD=$PWD\"\nfor a in \"$@\"; do echo \"ARG[$a]\"; done\necho oops >&2\nexit ${EXIT_CODE:-3}\n");
                 File.SetUnixFileMode(exe, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
                 var host = new ProcessGameHost(pid => { });
-                var launch = new GameLaunch { ExePath = exe, WorkingDir = game, AppData = Path.Combine(dir, "appdata"), LocalAppData = Path.Combine(dir, "local appdata"), Args = new List<string> { "--main-pack", "DeathMuffin.pck", "--", "--shot-plan=/tmp/a b/plan.json", "--preset=low" } };
+                var launch = new GameLaunch { ExePath = exe, WorkingDir = game, AppData = Path.Combine(dir, "appdata"), LocalAppData = Path.Combine(dir, "local appdata"), Args = new List<string> { "--windowed", "--", "--shot-plan=/tmp/a b/plan.json", "--preset=low" } };
                 IGameProcess p;
                 using (p = host.Start(launch))
                 {
@@ -868,7 +868,7 @@ namespace DeathMuffinTeam.Tests
                     T.Has(o, "LOCALAPPDATA=" + Path.Combine(dir, "local appdata"), "LOCALAPPDATA points into the job folder (a path with a space)");
                     T.Has(o, "PWD=" + game, "the game starts in its own folder");
                     T.Has(o, "ARG[--shot-plan=/tmp/a b/plan.json]", "an argument with a space stays one argument");
-                    T.Has(o, "ARG[--main-pack]", "arguments are passed");
+                    T.Has(o, "ARG[--windowed]", "arguments are passed");
                     T.Has(o, "oops", "standard error is captured too");
                 }
                 // a game that does not stop: Kill ends it

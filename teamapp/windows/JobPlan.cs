@@ -29,7 +29,7 @@ namespace DeathMuffinTeam
         public const string Kind = "shots";
         /// <summary>The debug build of Godot a job downloads, and the game's code pack it is started with: both must be in every job.</summary>
         public const string GameExe = "DeathMuffinDebug.exe";
-        public const string MainPack = "DeathMuffin.pck";
+        public const string MainPack = "DeathMuffinDebug.pck";   // Godot loads "<exe name>.pck" from the exe's folder by itself: export builds refuse --main-pack
         public const string Resolution = "1600x900";
         public const int MaxFiles = 12;
         public const int MaxArgs = 16;
@@ -173,10 +173,10 @@ namespace DeathMuffinTeam
 
         // ---- The command line ------------------------------------------------------------------------------------------------------
 
-        /// <summary>The game's arguments for one preset: `--main-pack DeathMuffin.pck --windowed --resolution 1600x900 -- <options> --shot-plan=<file> --shots=<dir> --preset=<preset>`. Paths use "/".</summary>
+        /// <summary>The game's arguments for one preset: `--windowed --resolution 1600x900 -- <options> --shot-plan=<file> --shots=<dir> --preset=<preset>`. Paths use "/".</summary>
         public List<string> CommandArgs(string preset, string planFile, string shotsDir)
         {
-            var a = new List<string> { "--main-pack", MainPack, "--windowed", "--resolution", Resolution, "--" };
+            var a = new List<string> { "--windowed", "--resolution", Resolution, "--" };
             a.AddRange(Args);
             a.Add("--shot-plan=" + Slashes(planFile));
             a.Add("--shots=" + Slashes(shotsDir));
