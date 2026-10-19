@@ -3,7 +3,8 @@
     "date": "2026-10-19",
     "title": "Small Fixes",
     "items": [
-      "Item tooltips no longer squeeze a stat's name down to one letter per line when its explanation is long."
+      "Item tooltips no longer squeeze a stat's name down to one letter per line when its explanation is long.",
+      "The Reaper's soul bag now fills when a soul actually reaches her, not the moment an enemy dies."
     ]
   },
   {

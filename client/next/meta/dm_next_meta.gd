@@ -158,12 +158,14 @@ func _on_kill_earned(cid: int, _def: String, at: Vector3) -> void:
 		_bank_reaper_soul(b, at)
 
 
-## The Reaper's soul bag: the soul is banked at once (until the bag is full); its wisp loops round the dead enemy for a second, then flies to her.
+## The Reaper's soul bag: the soul's wisp loops round the dead enemy for a second, then flies to her, and the soul is banked when it reaches her
+## (without visuals there is no wisp, so it is banked at once). A full bag takes no soul.
 func _bank_reaper_soul(b: DmHeroBody, at: Vector3) -> void:
-	if b.p.is_empty() or not b.alive or DmPlayerRules.bag_add(b.p, 1) == 0:
+	if b.p.is_empty() or not b.alive or int(b.p["souls"]) >= int(b.p["soulsMax"]):
 		return
 	var vfx := get_node_or_null("/root/Vfx")
 	if vfx == null or not shell._visual:
+		DmPlayerRules.bag_add(b.p, 1)
 		return
 	if _soul_fx == null:
 		_soul_fx = DmRiteFx.with_autoloads()
@@ -175,7 +177,11 @@ func _bank_reaper_soul(b: DmHeroBody, at: Vector3) -> void:
 		var hero: Node3D = bw.get_ref() as Node3D
 		return Vector3(hero.global_position.x, 1.2, hero.global_position.z) if hero != null else null,
 		9.0, 0.0, "sprite", DmReaperRites.GREEN, {"tex": "skull", "size": 0.7, "hover": SOUL_HOVER_S, "hover_r": 1.0,
-			"on_arrive": func(pos: Vector3) -> void: fx.emit(pos.x, pos.y, pos.z, 6, DmReaperRites.GREEN, 0.25, 1.4, 0.8, 0.4, 0.18)})
+			"on_arrive": func(pos: Vector3) -> void:
+				var hero: DmHeroBody = bw.get_ref() as DmHeroBody
+				if hero != null and hero.alive and not hero.p.is_empty():
+					DmPlayerRules.bag_add(hero.p, 1)
+				fx.emit(pos.x, pos.y, pos.z, 6, DmReaperRites.GREEN, 0.25, 1.4, 0.8, 0.4, 0.18)})
 
 
 func _float(b: Node3D, y: float, text: String, kind: String) -> void:

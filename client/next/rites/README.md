@@ -8,7 +8,7 @@ soul_burst (keys 1-4), harvest_spin (RMB) and unleash_souls (R, her kit's signat
 to each and circle her while there is none; host state `mem("unleash_souls").wisps`; the Reaper's armor set Soul Harbinger's Raiment, `DmReaperSet`, adds rite keys to her mods
 while worn: 2 pieces `scytheRadiusMult` 2 for scythe_throw, 4 pieces `soulShield` (the wisps' damage becomes barrier, refreshed by the next release), 5 pieces `soulScythes` 15 (a scythe_throw left where each wisp lands); its pieces are the legendary items `leg_soul_harbingers_<part>`, `server/rules/content/legendarySets.ts`).
 Her soul bag is her only resource (the HUD's energy orb shows it; `p["resource"]` is an inert full bar): `p["souls"]` (size `soulsMax` 30, 10 at the start),
-filled one soul per enemy that dies near her (`DmNextMeta._bank_reaper_soul` on `kill_earned`, the wisp loops round the corpse for a second and then flies to her),
+filled one soul per enemy that dies near her (`DmNextMeta._bank_reaper_soul` on `kill_earned`, the wisp loops round the corpse for a second and then flies to her; the soul is banked when it arrives),
 worth +2% rite damage a soul in `DmAbilities.sp`. Every rite but scythe_sweep has a `soulCost` in abilities.json that `DmAbilities.cast_check` (refusal `souls`) and
 `apply_cast_cost` take (throw 3, reap 5, wraith_walk 4, harvest_spin 2, soul_burst 6 and then the rest of the bag); reap, wraith_walk and soul_burst add damage per soul paid. She fights in melee without thralls, so `DmPlayerRules.take_damage`
 cuts her damage taken (REAPER `damageTakenMult`) and refuses every blow while `p["phasedUntil"]` (Wraith Walk's rush) runs, and `DmReaperRites.strike` heals her
