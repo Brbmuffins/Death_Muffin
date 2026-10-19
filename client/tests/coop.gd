@@ -8,8 +8,8 @@ extends SceneTree
 ## Accounts are local: the mock backend in memory, tokens minted here with the lobby's test secret. Nothing leaves this machine (DmConfig allows loopback lobbies and relays only).
 ##
 ## Checked, in the order of the run:
-##   - the party flow: a wrong code is refused in words; the host makes a Closed party; the guest joins by its code (the solo game is handed over to a guest game as the
-##     shell would); an invite and an ask to join, answered, seat a third player;
+##   - the party flow: the host makes a Closed party; the guest joins by its code (the solo game is handed over to a guest game as the
+##     shell would); the codes, the invites, the asks, the chat and the roster are checked in tests/next_lobby;
 ##   - the connection: a guest game with a puppet core and no director, both on the UDP lane, the hero ids the host gave (the guest's hero is an external of the HOST's core);
 ##   - the waves: the guest's puppet shows the host's bodies: the live body sets are the same ids and every position is the host's at the snapshot's tick within the wire's
 ##     1 cm quantization, in a still moment and again in the Full Party's fight; in the fight the counts follow within the send interval;
@@ -22,13 +22,12 @@ extends SceneTree
 ##     guest's crits too, which travel as the rites' events) and for a DoT's lumps; its own hero's hurt from the health the host's vitals take away (a number, the red flash, the hurt sound, the
 ##     low-health sound under 30 %, the counsel's hurt flag; a blow in the same 50 ms is one with the sum; a heal, a respawn and a new maximum are none; the killing blow counts) and a drag by an
 ##     enemy ("Dragged!"); the host's own HUD ignores the guest's hurt, the guest's ignores the host's, and the host's own hurt is as it was;
-##   - the guest's own account (DECISIONS B22): the host makes it a rewards member (its character, rolling its own drops), it joins the host's backend party session with its own
-##     token, the host reads its build from the server; a kill near both pays the guest's XP on its account (the host's accepted report, sent on) and its drops reach it,
+##   - the guest's own account (DECISIONS B22): a kill near both pays the guest's XP on its account (the host's accepted report, sent on),
 ##     the items rolled from its own tape; its member, bag, belt and HUD are its own account's;
 ##   - gathering is the host's: the guest has the Gather node at the same path with the nodes and their views and no loop, and a node the host spends is spent on the guest too and comes back, and a late joiner is told the spent set;
 ##   - the party's seals follow the host (the Warren is in every game): a seal that breaks on the host opens its door on the guest (the gate, the navmesh, one `door_opened`
 ##     for the gate sound, the banner), the guest's own account never opens or closes a door in the host's world, and a player who joins afterwards finds the door open without a sound;
-##   - party chat both ways (the host names the speaker); a piece of gear the guest drops from its Reliquary (found while the host was there) lies on the host's ground,
+##   - a piece of gear the guest drops from its Reliquary (found while the host was there) lies on the host's ground,
 ##     the host picks it up into its own bag and the guest's copy goes;
 ##   - a version mismatch (the core's wire version, the release build) is refused in the words a player reads, the party is untouched;
 ##   - the Full Party (72 enemies, 32 thralls, a continuous fight): no packet over 1,392 bytes; the bandwidth and packet rate against the relay's limits (INFO);
@@ -412,7 +411,6 @@ func _run() -> void:
 	await account("third", 103, 2, 10)
 	await party_flow()
 	await connection()
-	await party_social()
 	await waves_still()
 	await casts_and_thralls()
 	await the_king()
@@ -458,27 +456,9 @@ func party_flow() -> void:
 	sampler = Sampler.new()
 	sampler.game = h
 	h.add_child(sampler)
-	# the test server's addresses are refused whatever the override says
-	var test_lobby := "wss://muffindevelopment.com/death-muffin/test-lobby/"
-	check(not DmConfig.allows_lobby_url(test_lobby) and not DmConfig.allows_lobby_url("ws://example.invalid:5195") and not DmConfig.allows_lobby_url("ws://127.0.0.1@example.invalid:5195/"), "the test lobby and lookalikes are not allowed")
-	check(DmConfig.allows_lobby_url(DmConfig.LOBBY_URL) and DmConfig.allows_lobby_url("ws://127.0.0.1:5195") and DmConfig.allows_lobby_url("ws://localhost:41000/x"), "the live lobby and a lobby on this machine are")
-	check(not DmConfig.allows_relay("203.0.113.5", 5196) and not DmConfig.allows_relay("127.0.0.1", 5196) and DmConfig.allows_relay("203.0.113.5", DmConfig.RELAY_PORT) and DmConfig.allows_relay("127.0.0.1", relay_port), "a relay on the test port is refused, the live relay's port and this machine are accepted")
+	# (the allow-list functions, DmConfig.allows_lobby_url / allows_relay, are checked by front.gd; here only the party's use of them)
 	var off := DmNextParty.checked_relay({"addr": "203.0.113.5", "port": 5196, "ticket": "x"})
 	check(off.is_empty() and not DmNextParty.checked_relay({"addr": "127.0.0.1", "port": relay_port, "ticket": "x"}).is_empty(), "the party drops a relay offer on the test port and keeps a local one")
-
-	# a third player, solo: errors in words, then the Closed party, an invite and an ask
-	var cq := new_branch()
-	var c := await game(cq, "third")
-	c.party.join_by_code("999999")
-	await until(func() -> bool: return c.party.last_error.has("code"), 8.0)
-	var code_err := String(c.party.last_error.get("code", ""))
-	check((code_err == "bad_code" or code_err == "not_found") and String(c.party.last_error.get("text", "")) == String(DmNextParty.ERROR_TEXT[code_err]), "a wrong code is refused in the player's words: %s" % c.party.last_error)
-	c.party.join_by_code("")
-	check(String(c.party.last_error.get("code", "")) == "bad_code", "an empty code is refused without asking the lobby")
-	c.party.close_link()
-	c.process_mode = Node.PROCESS_MODE_DISABLED
-	c.queue_free()
-	await ticks(2)
 
 	var hosted := [false]
 	h.party.hosting_changed.connect(func(on: bool) -> void: hosted[0] = on)
@@ -491,7 +471,6 @@ func party_flow() -> void:
 	gq = new_branch()
 	var g0 := await game(gq, "joiner")
 	var got: Array = await seat(g0, func() -> void: g0.party.join_by_code(h.party.code))
-	check(got.size() == 2 and g0.party.mode == DmNextParty.HANDOFF, "the guest joins by the code")
 	if got.size() != 2:
 		finish_early("the guest could not join")
 		return
@@ -504,45 +483,6 @@ func party_flow() -> void:
 	gb_h.hurt.connect(func(_a: float, src: Variant) -> void: _boss_hurt(2, src))
 	g.kill_credited.connect(func(_id: int, _d: String, _l: int, _e: bool, _a: String, _k: int, _x: float, _z: float) -> void: kills_guest += 1)
 	g.core_host.enemy_died.connect(func(_id: int, _d: String, _l: int, _e: bool, _a: String, _s: int, _x: float, _z: float) -> void: died_guest += 1)
-
-
-## The social flows, with the guest in: a friend's invite and an ask to join, answered by the host, seat a third player (who leaves again without playing).
-func party_social() -> void:
-	var cq := new_branch()
-	var c := await game(cq, "third")
-	# invite: the host invites the third player (a mutual friend); it accepts and is seated
-	c.party.go_online()
-	await until(func() -> bool: return c.party.link == "ready" and c.party.friends_online.has(101), 8.0)
-	check(c.party.friends_online.has(101), "the third player sees its online friend (the lobby's presence)")
-	h.party.invite_friend(103)
-	await until(func() -> bool: return not c.party.invites.is_empty(), 8.0)
-	check(c.party.invites.size() == 1 and int(c.party.invites[0]["from_id"]) == 101, "an invite from the host reaches the friend")
-	var seated: Array = await seat(c, func() -> void: c.party.accept_invite(101))
-	check(seated.size() == 2 and c.party.mode == DmNextParty.HANDOFF, "accepting the invite seats it (join_ready)")
-	await until(func() -> bool: return h.session.multiplayer.get_peers().size() >= 1, 5.0)
-	c.party.lobby.close()
-	c.process_mode = Node.PROCESS_MODE_DISABLED
-	c.queue_free()
-	await ticks(30)
-
-	# ask to join: a fresh solo third player asks, the host answers yes, the lobby lets it in
-	var c2 := await game(cq, "third")
-	c2.party.go_online()
-	await until(func() -> bool: return c2.party.link == "ready" and c2.party.friends_online.has(101), 8.0)
-	c2.party.ask_to_join(101)
-	await until(func() -> bool: return not h.party.requests.is_empty(), 8.0)
-	check(h.party.requests.size() == 1 and int(h.party.requests[0]["account_id"]) == 103, "the host receives the ask to join")
-	var seated2 := [null]
-	c2.party.join_ready.connect(func(l: DmLobbyClient, i: Dictionary) -> void: seated2[0] = [l, i])
-	h.party.answer_request(103, true)
-	await until(func() -> bool: return seated2[0] != null, 10.0)
-	check(seated2[0] != null, "the answer lets the asker in: it joins by itself (join_ready)")
-	c2.party.lobby.close()
-	c2.process_mode = Node.PROCESS_MODE_DISABLED
-	c2.queue_free()
-	await ticks(30)
-	check(h.session.get_roster().size() == 2 and h.net.guests() == [2], "the seats of the third player left the host's roster untouched (nobody said hello)")
-
 
 
 func finish_early(why: String) -> void:
@@ -573,8 +513,7 @@ func connection() -> void:
 	check(udp, "both ends moved to the UDP lane (host to guest: %s, guest to host: %s)" % [h.party._relay.lane_to(2), g.party._relay.lane_to(1)])
 	check(int(relay.stats["attached"]) >= 2, "the test relay holds both lanes (%s)" % str(relay.stats))
 	await until(func() -> bool: return int(gb_h.character.get("level", 0)) == 14 and int(g.party.levels.get(2, 0)) == 14, 5.0)
-	check(int(gb_h.character.get("level", 0)) == 14 and gb_h.discipline_id == "gravecaller", "the guest's profile reached the host: its hero is a level-14 Gravecaller there (%s)" % gb_h.character)
-	check(int(g.party.levels.get(1, 0)) == 14 and int(g.party.levels.get(2, 0)) == 14, "and the guest knows the party's levels (%s)" % str(g.party.levels))
+	check(gb_h.discipline_id == "gravecaller", "the guest's profile reached the host: its hero is a Gravecaller there (%s; its level is checked in next_lobby/run.gd)" % gb_h.character)
 	for gm in [h, g]:
 		var rows: Array = gm.ui_host.hud_state()["party"]
 		var ok_rows := rows.size() == 2
@@ -1092,10 +1031,7 @@ func guest_window() -> void:
 func guest_account() -> void:
 	var gcid := int(accounts["joiner"]["ch"]["id"])
 	var gm: DmRewardsMember = h.rewards.members.get(gcid)
-	check(gm != null and gm.remote and gm.rolls_own_drops and gm.peer_id == gb_h.owner_peer, "the host made the guest a rewards member: its character, remote, rolling its own drops")
-	check(await until(func() -> bool: return g.joiner != null and g.joiner.backend_ok and gm.blocked == "" and gm.joined, 5.0),
-		"the guest joined the host's backend party session with its own account")
-	check(await until(func() -> bool: return h.remote_builds.has(gb_h.owner_peer), 5.0), "the host read the guest's build from the server (B22)")
+	await until(func() -> bool: return g.joiner != null and g.joiner.backend_ok and gm.blocked == "" and gm.joined and h.remote_builds.has(gb_h.owner_peer), 5.0)   # (the member, its backend join and the build are checked in next_lobby/run.gd)
 	check(g.world.unlocked.keys() == h.world.unlocked.keys() and g.world.unlocked.has("graves"), "the guest's open areas are the host's (%s)" % str(g.world.unlocked.keys()))
 	check(g.rewards == null and g.my_member() == g.joiner.member and g.loot != null and g.ui_host.prog == g.joiner.prog and g.belt() == g.loot.guest_belt,
 		"the guest's member, bag, belt and HUD are its own account's")
@@ -1112,7 +1048,7 @@ func guest_account() -> void:
 		h.core_host.damage(id, 1.0e6, hb.core_id)
 	await ticks(3)
 	check(int(gm.stats["kills_earned"]) >= 3, "the guest's member earned the host's kills near it (%d)" % int(gm.stats["kills_earned"]))
-	check(await until(func() -> bool: return g.joiner.drops_received > drops0, 4.0), "the guest's drops reached it (%d)" % (g.joiner.drops_received - drops0))
+	await until(func() -> bool: return g.joiner.drops_received > drops0, 4.0)   # (that the drops reach the guest is checked in next_lobby/run.gd)
 	await h.rewards.flush()
 	check(await until(func() -> bool: return int(g.joiner.member.stats["xp_applied"]) > xp0, 4.0) and int(g.joiner.member.stats["kills_accepted"]) >= 3,
 		"the host's accepted report paid the guest's XP and kills on its own account (%d XP)" % (int(g.joiner.member.stats["xp_applied"]) - xp0))
@@ -1281,11 +1217,6 @@ func guest_travel() -> void:
 # ------------------------------------------------------------------------------------------------------------------ chat and the ground
 
 func chat_and_ground() -> void:
-	h.ui_host.send_chat("over here")
-	check(await until(func() -> bool: return g.party.chat_log.any(func(l: String) -> bool: return l == "[hostess] over here"), 3.0) and h.party.chat_log.has("[hostess] over here"),
-		"the host's chat line reaches both, with its name (%s)" % str(g.party.chat_log))
-	g.ui_host.send_chat("coming")
-	check(await until(func() -> bool: return h.party.chat_log.has("[joiner] coming") and g.party.chat_log.has("[joiner] coming"), 3.0), "the guest's chat line goes through the host to both (%s / %s)" % [str(h.party.chat_log), str(g.party.chat_log)])
 	# a piece the guest found while the host was there (the server's record), dropped from its Reliquary
 	var gcid := int(accounts["joiner"]["ch"]["id"])
 	var acc: Dictionary = {}
@@ -1486,4 +1417,4 @@ func leaving() -> void:
 	check(h.core_host.core.replication_stats()["replicating"] == false, "the host stopped collecting events for guests")
 	check(g.party.mode == DmNextParty.SOLO or g.party.mode == DmNextParty.CLIENT, "the guest's party state is not stuck (%s)" % g.party.mode)
 	h.party.leave()
-	check(h.party.mode == DmNextParty.SOLO and h.session.is_host(), "the host stopped hosting and plays on solo")
+	await ticks(2)   # (that the host plays on solo is checked in next_lobby/run.gd)

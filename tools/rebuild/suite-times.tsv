@@ -6,7 +6,7 @@
 52	next_autocombat
 48	next_lobby/proc_run
 47	benchmark_launch
-46	coop
+43	coop
 45	qa_shots
 43	coop_bosses
 41	benchmark_rooms
