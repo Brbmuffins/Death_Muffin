@@ -15,6 +15,8 @@ import { fileURLToPath } from 'node:url';
 // Fast, broad suites run on every code change: every script parses and loads (code_load), the combat core answers (core_smoke), the game scene
 // starts and plays a little (game_scene).
 export const SMOKE = ['code_load', 'core_smoke', 'game_scene'];
+// Suites split into several that share a helper: a changed file named like one of them selects every suite of the family.
+export const FAMILIES = [/^benchmark(?:_|$)/];
 export const MAX_GD_FILES = 40;
 export const MAX_SHARE = 0.6;
 
@@ -89,7 +91,13 @@ export function affected(changed, ctx) {
   const direct = new Set();   // suites chosen because their own files changed
   // client/tests/<name>.gd is a suite's script, client/tests/<name>/... a folder's files: they select the folder's suites (<name> and its runners
   // <name>/<runner>); helpers that no suite is named after select none
-  const suitesOf = (f) => { const m = /^client\/tests\/([^/]+?)(?:\.gd|\/.*)$/.exec(f); return m ? ctx.suites.filter((s) => s === m[1] || s.startsWith(m[1] + '/')) : []; };
+  // A family of suites split from one (benchmark, benchmark_rooms, ..., sharing benchmark_base.gd): any file of the family selects all of it.
+  const suitesOf = (f) => {
+    const m = /^client\/tests\/([^/]+?)(?:\.gd|\/.*)$/.exec(f);
+    if (!m) return [];
+    const fam = FAMILIES.find((re) => re.test(m[1]));
+    return fam ? ctx.suites.filter((s) => fam.test(s)) : ctx.suites.filter((s) => s === m[1] || s.startsWith(m[1] + '/'));
+  };
   for (const f of relevant) for (const s of suitesOf(f)) { sel.add(s); direct.add(s); }
 
   // what the rest of the code base refers to: changed non-test files (scripts, scenes, resources, assets, data)

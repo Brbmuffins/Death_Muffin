@@ -56,7 +56,7 @@ budget section, the crowd's cost counters, the headless frame pad and the world 
   the player enters the world. V-Sync-capped or cancelled runs are sent flagged and left out of the page's trends. Dev-offline, tests and debug builds never send.
 - Output: the results panel (Copy to clipboard), the log (`BENCHMARK` lines) and `user://benchmarks/bench-<datetime>.txt`. Per-frame cost is one float appended to a
   preallocated array plus a few counter reads; the fight upkeep runs at 4 Hz.
-- Test: `client/tests/benchmark.gd` (short runs: the Standard setup, a custom one and a Full Party fight at its real size; the same enemy health in every room, history, the upload queue against fake servers, the setup window and launch arguments; deterministic checks only).
+- Test: `client/tests/benchmark.gd`, `benchmark_rooms.gd`, `benchmark_classes.gd`, `benchmark_launch.gd` and `benchmark_flags.gd` (five suites sharing `benchmark_base.gd`; short runs: the Standard setup, a custom one and a Full Party fight at its real size; the same enemy health in every room, history, the upload queue against fake servers, the setup window and launch arguments; deterministic checks only).
 
 ## Play reports (how a real session ran)
 

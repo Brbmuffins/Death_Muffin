@@ -29,6 +29,16 @@ test('a changed suite (its script, or a file of a folder suite) selects it plus 
   assert.deepEqual(sel(affected(['client/tests/backend/test_routes.gd'], mk())), [...new Set([...SMOKE, 'backend'])].sort());
   assert.deepEqual(sel(affected(['client/tests/boss_base.gd'], mk())), [...SMOKE].sort(), 'a helper no suite is named after');
 });
+test('a suite split into a family (benchmark, benchmark_rooms, ...): any file of the family, its shared base included, selects the whole family', () => {
+  const fam = ['benchmark', 'benchmark_rooms', 'benchmark_classes', 'benchmark_launch'];
+  const ctx = { ...mk({ tests: [['client/tests/benchmark_base.gd', 'DmBenchHistory.pending_file()']], classes: { 'client/next/perf/dm_bench_history.gd': 'DmBenchHistory' } }), suites: [...suites, ...fam] };
+  for (const f of ['client/tests/benchmark.gd', 'client/tests/benchmark_base.gd', 'client/tests/benchmark_launch.gd']) {
+    assert.deepEqual(sel(affected([f], ctx)), [...new Set([...SMOKE, ...fam])].sort(), f);
+  }
+  // a class only the shared base mentions still reaches every suite of the family
+  assert.deepEqual(sel(affected(['client/next/perf/dm_bench_history.gd'], ctx)), [...new Set([...SMOKE, ...fam])].sort());
+  assert.deepEqual(sel(affected(['client/tests/hud.gd'], ctx)), [...new Set([...SMOKE, 'hud'])].sort(), 'other suites are not part of it');
+});
 test('a folder with several runners: a file in it selects every runner of that folder', () => {
   const ctx = { ...mk(), suites: [...suites, 'next_lobby', 'next_lobby/ui_run', 'next_lobby/proc_run', 'relay/udp_run'] };
   assert.deepEqual(sel(affected(['client/tests/next_lobby/helpers.gd'], ctx)), [...new Set([...SMOKE, 'next_lobby', 'next_lobby/proc_run', 'next_lobby/ui_run'])].sort());
