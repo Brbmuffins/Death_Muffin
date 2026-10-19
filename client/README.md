@@ -81,7 +81,7 @@ Run `tools/check/prep.sh` in every new checkout or worktree (it lists the extens
 | `boss` | the Gravedigger King on the core: his brain replayed against recorded scenarios, his fight, the thralls, the rites, his defeat and a new summon |
 | `boss_abbess`, `boss_congregation`, `boss_prelate`, `boss_saint`, `boss_regent`, `boss_mire` | the six other bosses, one suite each on `boss_base.gd`: the recorded scenarios replayed, the summon at its altar, its fight by hand, thralls, rites, wipe, defeat and rewards, the real clock (about 30 s each; "The bosses") |
 | `boss_meta` | the Covenant Seal's Empowered call and the boss key prompt on the mock backend, the first-kill trophies, a bound summon |
-| `front` | boot, login, character select and the game scene with the chosen character on the mock; the API rule; the live server's public health route and manifest (skipped when the machine is offline) |
+| `front` | boot, login, character select and the game scene with the chosen character on the mock; the API rule |
 | `hud` | the HUD on the core: target frame, minimap dots, hotbar and cooldowns, thrall pips, floating number caps, pools, pieces, z layers, the draw-call model |
 | `auto_combat` | Easy auto combat's decisions: golden cases, seeded Full Party fights for the necromancer's rites and the Reaper's, the movement; INFO: a decision's time |
 | `benchmark` | the benchmark on the core: the Full Party fight held as the setup says, every room and every class, Easy auto combat, the report and its budget section, real launches, nothing sent anywhere (its own folder for the models and every file; about 4 minutes) |

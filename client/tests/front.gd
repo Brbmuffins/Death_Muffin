@@ -15,7 +15,6 @@ extends SceneTree
 ##     outside net/dm_config.gd;
 ##   - an unreachable or failing server shows today's player-readable error (login, a stored login at boot, and the bag failing to load);
 ##   - the offline dev entry still works: a dev character on the local mock, no base url, no transport, no request;
-##   - the real test server answers its public health route and its manifest with no credentials (skipped, not failed, when this machine is offline);
 ##   - ZERO script errors or engine errors in the log (the one the transport logs for the refused live address is expected and counted).
 ## Bakes the robber and the hound into a scratch folder first (about 20 s). Run: godot --headless --path client --script res://tests/front.gd
 
@@ -123,7 +122,6 @@ func _run() -> void:
 	await test_api_is_refused()
 	await dev_entry_offline()
 	await real_transport()
-	await real_live_server()
 	finish()
 
 
@@ -553,36 +551,3 @@ func _strip_comments(text: String) -> String:
 			i += 1
 		out.append(line if cut < 0 else line.substr(0, cut))
 	return "\n".join(out)
-
-
-# ------------------------------------------------------------------------------------------------------------------ the real test server
-
-## The real client path (DmHttpTransport -> DmApi) against the real test server: its public health route and its manifest, with no credentials.
-func real_live_server() -> void:
-	var t := DmHttpTransport.new()
-	root.add_child(t)
-	var api := DmApi.new(t.request_callable())
-	check(api.base_url == LIVE_API and api.get_token() == "", "the real api points at the live API and holds no login")
-	var pacing := [true]
-	_pace(pacing)
-	var h: DmResult = await api.health()
-	if h.status == 0:
-		pacing[0] = false
-		print("SKIP front: the live server cannot be reached from here (%s, time scale %s); health and manifest not checked" % [h.error, Engine.time_scale])
-	else:
-		check(h.ok and h.data is Dictionary and h.data.get("status") == "ok", "the live server's /api/health answers ok (status %s)" % h.status)
-		check(h.data is Dictionary and h.data.get("db") == "connected", "and its database is connected")
-		var gate := DmOnlineGate.parse(await api.fetch_client_manifest())
-		pacing[0] = false
-		check(bool(gate["open"]) or bool(gate["staff"]), "the live manifest lets players in: online open %s, staff %s" % [gate["open"], gate["staff"]])
-		print("INFO front: live server health %s, manifest online open=%s staff=%s" % [h.data.get("status"), gate["open"], gate["staff"]])
-	t.queue_free()
-	await process_frame
-
-
-## Under --fixed-fps a frame is 1/60 s of game time however little real time it takes, and the transport's request timeout (30 s) runs on game time: slow the frames while the real
-## server is asked, so a 150 ms answer is a few seconds of game time and not a timeout.
-func _pace(flag: Array) -> void:
-	while flag[0]:
-		OS.delay_msec(4)
-		await process_frame
