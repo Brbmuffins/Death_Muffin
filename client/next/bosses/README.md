@@ -13,7 +13,7 @@ DmBossHost  (node "Bosses" under DmNextGame, every peer)   summon rules, spawner
   `- DmBossFx (every peer)                                 brain events -> telegraphs, impacts, banners, sounds (client/game/dm_event_fx_boss.gd)
   `- DmBossMeta (host)                                     Covenant Seal altar choice, Empowered summons, the prize (dm_boss_meta.gd)
 ```
-- **DmBoss** has no collider, navigation agent or state machine: it keeps what it needs of an enemy as fields (`hp`, `max_hp`, `radius`, `damaged`, `died`, `is_hittable()`), the brain owns movement, `take_damage` goes to `brain.damage`,
+- **DmBoss** has no collider, navigation agent or state machine: it keeps what it needs of an enemy as fields (`hp`, `max_hp`, `radius`, `damaged`, `died`, `is_hittable()`), the brain owns movement, `take_damage` scales the blow by its status set's damage-taken multiplier (a player's Fracture, an enemy priest's Sanctify) and gives it to `brain.damage`,
   `stun` staggers it for at most 0.5 s every 8 s, and the net state carries the boss's core id. `ensure_def` registers `boss_<id>` in `DmSimData.ENEMIES` at runtime. Slow / root / chill are ignored on purpose (bosses are immune).
   `is_hittable()` is false while the Mire Mother's state is `sunk`.
 - **Events** (`t:"boss"`) are played on the host through `DmBossFx` and sent reliably (`_rpc_event`) so every peer draws each once. `t:"hurt"` stays host-side

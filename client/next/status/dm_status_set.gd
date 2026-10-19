@@ -132,7 +132,7 @@ static func ensure(owner: Node) -> DmStatusSet:
 
 
 ## `amount` x the owner's damage-taken multiplier (sanctified, fracture, shrouded): THE one place it is applied. Every `take_damage` (enemy, thrall,
-## hero) calls it once on entry, so any source (rites, thralls, DoTs, zones, enemy blows) gets the multiplier without opting in.
+## hero, boss) calls it once on entry, so any source (rites, thralls, DoTs, zones, enemy blows) gets the multiplier without opting in.
 static func scale_taken(owner: Node, amount: float) -> float:
 	var s := of(owner)
 	return amount * s._taken if s != null else amount

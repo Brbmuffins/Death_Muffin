@@ -8,7 +8,7 @@ extends "res://tests/boss_base.gd"
 ##     60 / 30 %, Barrow Ghouls on the arena rim and the elite robber (adds are core bodies of the Graves, the boss's area), the four pits, the double sweep;
 ##   - thralls: he is not a target while he cannot be hurt (the external's `alive`), and his sweep reaches the thrall that stands by him (`core.damage` on its id);
 ##   - the rites hit him: the host's queries append him after the enemies, the lane, the cone and the circle helpers, Bone Fan, Rot Lance, the Spear's rally, the Scythe's arc count him, a rite's damage goes to his
-##     brain with the hero's credit, his statuses are his own DmStatusSet (the brain ignores slow, root and chill), a stun status staggers him, Colossus Mantle's reflect finds him by his core id;
+##     brain with the hero's credit, his statuses are his own DmStatusSet (the brain ignores slow, root and chill; Fracture and Sanctified scale the blows he takes), a stun status staggers him, Colossus Mantle's reflect finds him by his core id;
 ##   - his wipe (the five adds he has called leave silently) and his defeat (the brain on the engine's ticks calls the ghouls; they leave with him) use the generic parts with his own provocations; on the real clock a thrall beside him hits him.
 ## ZERO script errors or engine errors in the log (an OS Logger counts them).
 ## Gets the robber, the hound and the Gravecaller's legionnaire into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd). Run: godot --headless --path client --script res://tests/boss.gd
@@ -335,6 +335,19 @@ func t_king_rites() -> void:
 	check(boss.brain.stagger_t > 0.0 and boss.brain.stagger_t <= DmBoss.STUN_CAP_S, "a stun status staggers him at most 0.5 s (%.2f; the cooldown is boss_base.t_rites's)" % boss.brain.stagger_t)
 	core.damage(robber, 1.0e9, 0)
 	core.damage(near_robber, 1.0e9, 0)
+	DmStatusSet.of(boss).clear()
+	# a player's Fracture and Sanctified change the blows he takes, as any body's (DmStatusSet.scale_taken), and the damage call reports the blow after them
+	var fr: Dictionary = DmSimData.FRACTURE
+	c.apply_status(bid, &"fracture", 2.0)
+	var want := 1.0 + 2.0 * float(fr["perStack"])
+	hp0 = boss.hp
+	var rr: Dictionary = host.damage(bid, 100.0, hb.core_id)
+	check(near(float(rr["dealt"]), 100.0 * want) and near(hp0 - boss.hp, 100.0 * want), "two Fracture stacks: a blow of 100 takes %.1f off him (x%.2f) and the call reports %.1f" % [hp0 - boss.hp, want, float(rr["dealt"])])
+	c.apply_status(bid, &"sanctified")   # (an enemy priest's blessing: it protects)
+	var both := want * float(DmSimData.SANCTIFIED["damageTakenMult"])
+	hp0 = boss.hp
+	host.damage(bid, 100.0, hb.core_id)
+	check(both < want and near(hp0 - boss.hp, 100.0 * both), "and Sanctified on top protects him: x%.2f (%.1f)" % [both, hp0 - boss.hp])
 	DmStatusSet.of(boss).clear()
 	# Colossus Mantle's reflect turns a share of a blow back at its source: the hero is hurt with the King's core id as the source, and the reflect finds him by it
 	c.mods["wardReflect"] = 0.5

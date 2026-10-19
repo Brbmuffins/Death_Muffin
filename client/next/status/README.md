@@ -16,7 +16,7 @@ signals: changed, expired(id), dot_damage(id, amount, source, killed, target), w
 static: of(body) ensure(body) attach(body) hit(target, amount, from, allow_stagger) warm()
 ```
 - **Ownership of multipliers**: the set writes `speed_mult` and `attack_rate_mult` on the owner (when it has them) only when the status set
-  changes. Nobody else writes them. `damage_taken_mult()` is applied once by the owner's `take_damage` through `DmStatusSet.scale_taken(self, amount)`: `DmHeroBody` does; **`DmBoss.take_damage` does not** (below).
+  changes. Nobody else writes them. `damage_taken_mult()` is applied once by the owner's `take_damage` through `DmStatusSet.scale_taken(self, amount)`: `DmHeroBody` and `DmBoss` do (below).
   `DmStatusSet.hit` is a plain pass-through (never multiplies). `damage_dealt_mult()` (hex) is for the attacker's damage code.
 - **Kill credit**: DoT ticks call `owner.take_damage(amount, source, false)` (the owner applies the multiplier; `dot_damage` reports the scaled amount) in 0.25 s lumps; `source` is the Node that applied (bleed: the
   strongest-dps applier, withered: the last stacker). `dot_damage` carries `killed`. `DmStatusSet.dealing_dot` is true while a DoT tick is dealt, so damage listeners such as lifesteal skip it.
@@ -52,5 +52,6 @@ core's bodies are `DmEnemyFx`'s (`client/next/enemy_fx/README.md`: the ambient p
 `client/tests/core_status.gd` holds the core's set (the 0.1 s step, DoT lumps, stacking and ownership, multipliers, stun, dig-in clear, Withered on death, wire bytes); `client/tests/rites.gd` and the boss suites
 use a hero's and a boss's set.
 - Player-side Bone Ward / Colossus guard stay in `DmPlayerRules` / `DmHeroBody._ward` (computed from the living thralls on every hit), not here. Barrier here has no decay (the 6 s duration only).
-- Bosses (`DmBoss`) carry a set and show `slow` / `root` / `chill` but the brain ignores them: bosses are immune. Statuses never change the blows a boss takes: `DmBoss.take_damage` skips `scale_taken`, and the brain's own Fracture is never fed, so a
-  Marrow Spear's Fracture or a Sanctify on the King does nothing (KNOWN-GAPS "Combat and statuses").
+- Bosses (`DmBoss`) carry a set and show `slow` / `root` / `chill` but the brain ignores them: bosses are immune to them. The damage-taken multipliers do count: `DmBoss.take_damage`
+  scales every blow by `scale_taken` like any body (a Marrow Spear's Fracture makes the King take more, an enemy priest's Sanctify less), and `DmCoreHost.damage` reports the scaled blow. The
+  brain's own Fracture is a separate source (only the Abbess's broken niches feed it) and multiplies with a player's.

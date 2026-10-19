@@ -391,8 +391,9 @@ Worked through beside the phases, top first. Each change is shown to the team wi
   - Toxic corpse pools. Now: they always hurt as if at level 1. After: they hurt at the area's level.
   - The plague bearer. Now: its toxic pool never appears when it dies. After: it leaves its pool.
   - The Mourning Bell wraith. Now: its heal on the monsters around it never happens. After: it heals them, as designed.
-  - Bosses and statuses. Now: effects that make an enemy take more damage (Sanctify, a Marrow Spear's Fracture) do nothing to a boss.
-    After: they work on bosses too, so those rites shorten boss fights.
+  - Bosses and statuses. Done 2026-10-19: Fracture (Marrow Spear, Ivory Cleave, Bone Prison) did nothing to a boss → a boss takes 15% more
+    a stack, up to 45%, like any enemy, so those rites shorten boss fights. (Sanctify is an enemy priest's blessing that makes its target
+    take less; it now protects a boss too.)
 - [ ] **Fix: the look pass** (moved after launch by Helix, B49). Now: blended effects (decals, telegraphs, particles) look wider and
   brighter than in the old game, most on Low and Medium; the Depths' walls are darker; the hero reads darker in bright areas (the Coliseum,
   the Cloister, the Pyre, the Wing) and brighter in dark ones; not every area is signed off. After: every preset looks like the old game or

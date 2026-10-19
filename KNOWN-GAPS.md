@@ -64,8 +64,7 @@ player part of a gain until it is fixed; few real sessions ran on the gains save
 
 - **Found while building the core, approved to fix** (Helix, 2026-10-16; the core already emits each one; ROADMAP polish list): toxic corpse pools
   always hit as at level 1 (nothing sets the area level); a fallen plague bearer's pool never appears and the Mourning Bell wraith's ally heal
-  never happens (signals nobody listens to); statuses never change the blows a boss takes (`DmBoss.take_damage` skips the status set's
-  damage-taken multiplier, and the brain's own Fracture is never fed: a Marrow Spear's Fracture or a Sanctify on the King does nothing).
+  never happens (signals nobody listens to).
 - **Easy auto combat parks the hero in pockets of tombstones:** it steers straight at the nearest enemy, with no path round the graves (found
   when the core was compared with the old game, DECISIONS B50).
 - Barrier has no decay (`client/next/status/README.md`), and the pools of a boss that resets linger their remaining seconds (`client/next/bosses/README.md`).
@@ -121,9 +120,6 @@ polish list). Also:
 - **The Next-step box no longer pings the minimap:** `client/next/hud/dm_next_hud_vm.gd` sets `_map["ping"] = null` where the old game pointed it at the suggestion's target (elsewhere, or marked pingInPlace), yet Settings still offers "Point to it on the minimap" (found porting the Acre's tests).
 - **No in-game leaderboard panel.** `DmApi.get_leaderboard` exists; only the website shows it.
 - Unraised counsel events: `client/ui/onboarding/README.md`. Hero gaps: `client/next/hero/README.md`.
-- **The item card squeezes the stat name of a long affix row:** the card of an affixed staff (the Reliquary's tooltip, seen in the screenshot tool's picture of 2026-10-18) lays a row such as `+30 INT` beside
-  `+42.9 spell power, +60 essence, +3.0 essence/s (+19.4 thrall damage)` out with the name 1 px wide, so it shows a letter a line (`client/ui/widgets/dm_item_card.gd`: a row is an HBox of two labels, the first wraps and the second
-  does not; the layout is the same in any renderer).
 
 ## Tools and tests
 

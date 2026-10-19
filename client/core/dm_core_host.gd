@@ -462,7 +462,7 @@ func damage(id: int, amount: float, source: int, allow_stagger := true) -> Dicti
 	var b := boss_for(id) if not _bosses.is_empty() else null
 	if b != null:
 		var ok := amount > 0.0 and b.take_damage(amount, hero_for(source), allow_stagger)
-		r = {"dealt": amount if ok else 0.0, "killed": ok and b.hp <= 0.0}
+		r = {"dealt": b.last_dealt if ok else 0.0, "killed": ok and b.hp <= 0.0}   # (after the boss's status multiplier, as the core reports its own)
 	else:
 		r = core.damage(id, amount, source, allow_stagger)
 	if float(r.get("dealt", 0.0)) > 0.0:
