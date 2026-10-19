@@ -928,7 +928,8 @@ namespace DeathMuffinTeam.Tests
                 string exe = Path.Combine(game, "DeathMuffinDebug.exe");
                 File.WriteAllText(exe, "#!/bin/bash\necho \"APPDATA=$APPDATA\"\necho \"LOCALAPPDATA=$LOCALAPPDATA\"\necho \"PWD=$PWD\"\nfor a in \"$@\"; do echo \"ARG[$a]\"; done\necho oops >&2\nexit ${EXIT_CODE:-3}\n");
                 File.SetUnixFileMode(exe, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-                var host = new ProcessGameHost((pid, spot) => { });
+                var tended = new List<string>();
+                var host = new ProcessGameHost((pid, spot, size) => { lock (tended) tended.Add(spot + "|" + size); });
                 var launch = new GameLaunch { ExePath = exe, WorkingDir = game, AppData = Path.Combine(dir, "appdata"), LocalAppData = Path.Combine(dir, "local appdata"), Args = new List<string> { "--windowed", "--", "--shot-plan=/tmp/a b/plan.json", "--preset=low" } };
                 IGameProcess p;
                 using (p = host.Start(launch))
@@ -946,6 +947,39 @@ namespace DeathMuffinTeam.Tests
                     T.Has(o, "ARG[--windowed]", "arguments are passed");
                     T.Has(o, "oops", "standard error is captured too");
                 }
+                // A run nobody should see (--position) starts minimized: override.cfg beside the exe while it starts; any other run starts without one (GameOverride).
+                string cfg = Path.Combine(game, GameOverride.FileName);
+                T.Ok(!File.Exists(cfg), "a run that may be seen leaves no override.cfg");
+                File.WriteAllText(exe, "#!/bin/bash\nif [ -f override.cfg ]; then echo \"CFG[$(tr '\\n' '|' < override.cfg)]\"; else echo NOCFG; fi\nexit 0\n");
+                var hidden = new GameLaunch { ExePath = exe, WorkingDir = game, AppData = dir, LocalAppData = dir, Args = new List<string> { "--windowed", "--resolution", "3840x2160", "--position", "-3940,0", "--", "--qa-window=3840x2160" } };
+                lock (tended) tended.Clear();
+                using (p = host.Start(hidden))
+                {
+                    var sw = Stopwatch.StartNew();
+                    while (!p.HasExited && sw.Elapsed < TimeSpan.FromSeconds(20)) Thread.Sleep(20);
+                    p.Tend();
+                    T.Has(p.Output(), "CFG[; Written by the Death Muffin team app", "a hidden run's game finds override.cfg beside its exe");
+                    T.Has(p.Output(), "[display]||window/size/mode=1|]", "and it asks Godot for a minimized window");
+                    lock (tended) T.Ok(tended.Count > 0 && tended.All(t => t == "{X=-3940,Y=0}|{Width=3840, Height=2160}"), "the tamer gets the spot and the size the game asks for: " + string.Join(";", tended));
+                }
+                using (p = host.Start(launch))
+                {
+                    var sw = Stopwatch.StartNew();
+                    while (!p.HasExited && sw.Elapsed < TimeSpan.FromSeconds(20)) Thread.Sleep(20);
+                    T.Has(p.Output(), "NOCFG", "the next run that may be seen (a benchmark) starts without it");
+                }
+                using (p = new ProcessGameHost().Start(hidden))
+                {
+                    var sw = Stopwatch.StartNew();
+                    while (!p.HasExited && sw.Elapsed < TimeSpan.FromSeconds(20)) Thread.Sleep(20);
+                    T.Has(p.Output(), "NOCFG", "without a tamer to restore it, a hidden run is not started minimized");
+                }
+                T.Ok(GameOverride.Prepare(game, true) && File.ReadAllText(cfg) == GameOverride.MinimizedText, "Prepare writes the file for a hidden run");
+                T.Ok(!GameOverride.Prepare(game, false) && !File.Exists(cfg), "and removes it for any other");
+                T.Eq(ProcessGameHost.WindowSize(new List<string> { "--resolution", "1600x900", "--", "--qa-window=2560x1440" }), (System.Drawing.Size?)new System.Drawing.Size(2560, 1440), "the size the game asks for comes first");
+                T.Eq(ProcessGameHost.WindowSize(new List<string> { "--windowed", "--resolution", "1600x900", "--position", "-1700,0", "--", "--boot-check" }), (System.Drawing.Size?)new System.Drawing.Size(1600, 900), "else the engine's --resolution");
+                T.Ok(ProcessGameHost.WindowSize(new List<string> { "--windowed", "--", "--resolution", "1600x900" }) == null && ProcessGameHost.WindowSize(new List<string> { "--qa-window=big" }) == null
+                    && ProcessGameHost.WindowSize(new List<string> { "--qa-window=0x900" }) == null && ProcessGameHost.WindowSize(new List<string>()) == null, "none asked (a --resolution after -- is the game's), or one that does not read: no size");
                 // a game that does not stop: Kill ends it
                 File.WriteAllText(exe, "#!/bin/bash\nsleep 60\n");
                 using (p = host.Start(launch))

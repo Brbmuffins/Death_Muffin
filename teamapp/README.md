@@ -23,8 +23,10 @@ Only the accounts on the server's team list (a table the server's team routes re
   comes with a tray balloon, has no taskbar button and its buttons do not ask for the keyboard. Every change in what the app decides about an offer, and every
   box shown, is written to `app.log` (why it shows, waits or runs).
   The app never sends keys or mouse clicks. **Silent:** the game runs with `--audio-driver Dummy` (Godot still mixes, so the CPU cost stays real, but nothing is heard).
-  **A screenshot job's game window is never seen:** it is started at its normal size (Godot does not draw a minimized window) with `--position` 1700 px left of the virtual screen
-  (every monitor together), outside every monitor. As a fallback the window is also marked "no activate" and sent to the bottom of the window stack, and if it did become the active
+  **A screenshot job's game window is never seen:** it starts minimized, from an `override.cfg` the app writes beside the job's game exe (Godot keeps a new window at least a third on a monitor
+  whatever `--position` says, and shows its boot splash there for the second or two before it answers the app), with its taskbar button taken away at once. As soon as Godot answers, the app
+  restores it at the size the run asks for (Godot does not draw a minimized window) 1700 px left of the virtual screen (every monitor together, the `--position` it was started with), outside every monitor,
+  with no taskbar button. Any other run starts with the file removed. The window is also marked "no activate" and sent to the bottom of the window stack, and if it did become the active
   window the window you were using gets the focus back; Windows itself does not let a background program take the foreground. A benchmark's window stays on screen (the PC is idle
   by then, and a desktop compositor may treat an off-screen window differently).
 - **Low priority.** The app and the game a screenshot or clip job starts run below normal priority. A benchmark's game runs at **normal** priority (a lower one would skew the numbers), and
@@ -261,17 +263,20 @@ the player's Death Muffin), `TeamFolders.cs`, `Settings.cs`, `SelfUpdate.cs`, `J
 
 The compile check proves the Windows code compiles; it cannot run it. These are checked by hand on a team PC (and the app is not released to anyone before they are):
 DPAPI save and load across a restart; the full-screen check (a game or film full screen hides the box and the run, and a yes still runs); the battery check on a laptop;
-that the job's game window does not take the keyboard or the focus (the game is started at its normal size because Godot does not draw a minimized window); hard links into the
+that the job's game window does not take the keyboard or the focus (it starts minimized and is restored off screen at its normal size, because Godot does not draw a minimized window); hard links into the
 job folder; `APPDATA` and `LOCALAPPDATA` reaching Godot; `--preset` honoured by the debug build; the tray icon, balloons and menu; self-update on a real exe swap; and one whole
 screenshot job against the server. For the release job: the release exe printing `BOOT OK <ms>` and quitting 0 with `--boot-check`, quitting itself with `--quit-while-loading` and leaving no `session.lock`; the debug build honouring `--stutter`/`--soak`/`--ui-scale`, writing their JSON where the flags say, and a 3840x2160 window off-screen on a 1080p monitor (Windows may hold it to the screen's size: the log and `screens.json` then say the pictures are smaller); a whole 40-minute job against the server and the report in #build-alerts; the soak at normal priority while the PC is touched. For the clip job: `--fixed-fps 30` honoured by the debug build with the window outside every monitor (the clips still recorded, at 30 frames per game second), the clip and tune files the game reads, a 20 to 40 MB upload on a home connection inside the 6 minutes, and the server's mp4 coming back in the thread. The
 long poll against the live server through nginx (a held heartbeat ending at once for an offer, the cancel reaching a running game within a second). For the benchmark job: the total CPU reading (`GetSystemTimes`) against Task Manager and the game's share (its process's CPU time); the idle time
 (`GetLastInputInfo`) counting a key or the mouse and nothing the app or the game does; the game really running at normal priority (Task Manager, Details) and the job refused when Windows will
 not allow it; the game's window not counting as a full-screen app or as input; the release build honouring `--bench-quit`, `--bench-dir` and `--bench-preset` (exit codes 0, 1, 2) and leaving
-`pending.json`; a disturbed run on a real PC (a busy program started during it) being discarded and retried; the box's note; and one whole benchmark job against the server, including a screenshot job interleaved with a waiting benchmark (the controller reads the PC on the interface thread once a second). Also on a real PC: `--audio-driver Dummy` really silent (loading screen and game), a screenshot job's window really never seen with `--position` left of every
-monitor (and the pictures still taken: Godot and the driver draw a window that is off screen), a cancel in the heartbeat reply stopping a running game; the AFK notice (shown without taking the keyboard or the focus, End AFK mode working from it and from the tray menu).
+`pending.json`; a disturbed run on a real PC (a busy program started during it) being discarded and retried; the box's note; and one whole benchmark job against the server, including a screenshot job interleaved with a waiting benchmark (the controller reads the PC on the interface thread once a second). Also on a real PC: `--audio-driver Dummy` really silent (loading screen and game), a screenshot job's window really never seen (no boot splash, no taskbar button: it starts minimized from `override.cfg`
+and is restored left of every monitor; the pictures still taken, at their exact sizes: Godot and the driver draw a window that is off screen), a cancel in the heartbeat reply stopping a running game; the AFK notice (shown without taking the keyboard or the focus, End AFK mode working from it and from the tray menu).
 
 ### Changelog
 
+- **0.4.2** (2026-10-19) - A run nobody should see starts its window minimized (an `override.cfg` beside the job's game exe) and is restored outside every monitor once Godot answers,
+  at the size the run asks for (`--qa-window`, else `--resolution`, set in real pixels): Godot puts a new window partly on a monitor whatever `--position` says and answers nothing until its first frame,
+  so 0.3.3's 10 ms watch could only move it a second or two later (Helix: the Godot splash still showed for a couple of seconds). The minimized window's taskbar button goes at once.
 - **0.4.1** (2026-10-19) - The AFK notice lists what runs (the job and its latest step, or a benchmark waiting for a quiet PC) and the queue this PC would be
   offered (how many, the first three with how long each takes, then "and N more"), from the heartbeat's new `queue` (Helix's ask); an older server sends none and the notice says nothing is queued.
 - **0.4.0** (2026-10-19) - The app listens for the PC's screen going to sleep (Windows' display-state notification, a hidden window): a benchmark run says
