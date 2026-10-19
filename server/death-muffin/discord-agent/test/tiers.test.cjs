@@ -144,7 +144,7 @@ test('godot tiers: the offline backend, saves, login and net code of the game ar
     'client/data/content/gameplay_killCredit.json', 'client/data/content/gameplay_goldSinkRules.json', 'client/data/content/gameplay_vaultRules.json', 'client/data/content/gameplay_laborRules.json', 'client/data/content/gameplay_legionRules.json',
     'client/data/content/gameplay_milestones.json', 'client/data/content/tradeGoods.json', 'client/rules/gathering/gold_sink_rules.gd', 'client/rules/inventory/vault_rules.gd', 'client/rules/gathering/labor_rules.gd',
     'client/game/dm_game_rewards.gd', 'client/rules/loot/depths_rewards.gd', 'client/ui/panels_b/dm_acre_ledger.gd', 'client/x/economy_rules.gd', 'client/x/spend_gold.gd', 'client/x/unlock_gate.gd', 'client/x/seal_state.gd', 'client/tests/rules-progression/run.gd',
-    'client/tests/backend/run.gd', 'client/tests/backend/net_part.gd', 'client/tests/relay/run.gd', 'client/tests/realtime/run.gd', 'client/tests/next_front/run.gd', 'client/bin/native.gdextension', 'client/x/lib.dll', 'client/x/b.pck'];
+    'client/tests/backend/run.gd', 'client/tests/backend/net_part.gd', 'client/tests/relay/run.gd', 'client/tests/realtime/run.gd', 'client/bin/native.gdextension', 'client/x/lib.dll', 'client/x/b.pck'];
   for (const f of real) assert.equal(gtier(f), 'sensitive', f);
 });
 test('godot tiers: server, launcher, tools, CI, scripts, deploy and config files are sensitive; so is anything unmatched (the frozen web src/, root files)', () => {

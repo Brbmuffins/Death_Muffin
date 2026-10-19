@@ -323,6 +323,15 @@
         "DECISIONS.md",
         "tools/hygiene/**"
       ]
+    },
+    {
+      "id": "suite-next-front",
+      "pattern": "\\bnext_front\\b",
+      "reason": "test suite merged into front (client/tests/front.gd) 2026-10-19: one DmMain front flow",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
     }
   ],
   "allowPaths": {

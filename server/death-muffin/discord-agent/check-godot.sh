@@ -13,7 +13,7 @@
 # "GODOT TESTS: quick (14 suites) — 14 passed" / "GODOT TESTS: full (101 suites) — 101 passed" (", N FAILED" appended on failure).
 # RERUN (`--rerun a,b`; the runner and ship.sh, once, for the few suites a check just failed; the agent, the only way it may run the check, for the
 # suites it needs): hygiene + exactly those suites, one at a time. A suite that fails under load (another ship's client export) passes here and costs no
-# agent turn; a real failure fails again. Names are suites of client/tests (`rites`, `next_front`, `relay/udp_run`): letters, digits, `_`, `-`, `/`.
+# agent turn; a real failure fails again. Names are suites of client/tests (`rites`, `onboarding`, `relay/udp_run`): letters, digits, `_`, `-`, `/`.
 # Run from the worktree root (the agent's cwd). Env: GODOT (default /home/ubuntu/tools/godot/godot), DM_TEST_JOBS (optional: passed as --jobs N), DM_BUILD_CACHE (prep.sh),
 # DM_PREP (tests: a stand-in for prep.sh).
 set -uo pipefail

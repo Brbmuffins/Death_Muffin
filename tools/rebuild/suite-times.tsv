@@ -1,8 +1,9 @@
 # Seconds per suite from a full run side by side (tools/rebuild/run-client-tests.sh --times <file>, 8 at once on the VPS, 2026-10-19); refresh after adding or reshaping suites.
 70	benchmark_flags
 68	warm_coverage
+56	front
+53	spells
 52	next_autocombat
-49	next_front
 48	next_lobby/proc_run
 47	benchmark_launch
 46	coop
@@ -20,7 +21,6 @@
 29	next_boss_meta
 28	rites
 28	next_perfctl
-27	front
 27	gear
 27	benchmark
 26	next_lobby/ui_run
@@ -112,4 +112,3 @@
 1	core_corpses
 1	core_api
 1	core_affixes
-53	spells

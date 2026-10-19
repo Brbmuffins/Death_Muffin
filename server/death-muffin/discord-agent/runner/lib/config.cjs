@@ -113,7 +113,7 @@ const DEFAULTS = {
       'client/**/*kill*', 'client/**/*gold_sink*', 'client/**/*goldSink*', 'client/**/*vault_rules*', 'client/**/*vaultRules*', 'client/**/*labor_rules*', 'client/**/*laborRules*',
       'client/**/*legionRules*', 'client/**/*milestone*', 'client/**/*reward*', 'client/**/*tradeGoods*', 'client/**/*unlock*', 'client/**/*seal*',
       // the tests that guard those systems
-      'client/tests/rules-progression/**', 'client/tests/backend/**', 'client/tests/relay/**', 'client/tests/realtime/**', 'client/tests/next_front/**',
+      'client/tests/rules-progression/**', 'client/tests/backend/**', 'client/tests/relay/**', 'client/tests/realtime/**',
       'client/tests/front.gd', 'client/tests/value.gd',
       // the asset pack's fingerprint (tools/godot/assets-fp.sh) beyond client/assets/**, which every asset change already touches
       'client/crowd/**', 'client/tools/bake_crowd*', 'client/game/view_models.json', 'client/game/dm_creature*', 'client/game/dm_gear_props.gd',
