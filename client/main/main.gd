@@ -27,7 +27,7 @@ extends Node
 ## as a bug report once the player is in an online world (`_send_crash_report`).
 ## The play report (ROADMAP Phase 1; client/next/perf/README.md "Play reports"): a release build's online session is counted by one DmPlayReport (`report`, a child of this node, so a party
 ## hand-over or a discipline change that swaps the game scene keeps it) from the first ready game scene until Log out, Switch character or quit, then queued in user:// and sent with the
-## logged-in api at the character select and when a session starts (DmPlayReportQueue). Never from a debug build, a script run, the dev-offline backend or the benchmark (`plays_report`).
+## logged-in api right away on Log out and quit (at most 2 s), else at the character select and when a session starts (DmPlayReportQueue). Never from a debug build, a script run, the dev-offline backend or the benchmark (`plays_report`).
 
 const DEV_OFFLINE_DB := "user://dm_dev_offline_db.json"    ## --dev-offline testing backend (the same file the dev entry uses)
 
@@ -202,11 +202,12 @@ func _notification(what: int) -> void:
 
 ## Final save of the game (also the quit path of the tests): the scene's `flush_all` (rewards, Chronicle, progression, bag).
 func save_all() -> void:
-	_end_report("quit")   # first, and only files: the queue is sent at the next start, so quitting never waits on the network
+	_end_report("quit")   # first, and only files, so the final numbers never wait on the network
 	if slice != null and slice.ready_:
 		var s := slice
 		slice = null
 		await s.flush_all()
+	await _send_play_reports_now(2000)   # the report goes out before the game closes (what does not make it in time goes at the next start)
 
 
 func _start_flow(switching_character: bool = false) -> void:
@@ -440,7 +441,8 @@ func _attach_report(g: DmNextGame) -> void:
 	report.attach(g)
 
 
-## The session is over (`reason`: logout, switch, quit): the report is queued in user:// (files only) and goes out at the next character select or session start.
+## The session is over (`reason`: logout, switch, quit): the report is queued in user:// (files only). A log out and a quit then send it (`_send_play_reports_now`,
+## at most 2 s), Switch character at the select screen; whatever is left goes at the next character select or session start.
 func _end_report(reason: String) -> void:
 	if report == null:
 		return
@@ -454,6 +456,17 @@ func _end_report(reason: String) -> void:
 func _flush_play_reports() -> void:
 	if plays_report and api != null and DmPlayReportQueue.pending_count() > 0:
 		DmPlayReportQueue.flush(api)
+
+
+## Sends the queued play reports now and waits for them at most `ms` (a log out drops the token right after, a quit closes the game);
+## what has not gone out by then stays queued for the next start.
+func _send_play_reports_now(ms: int) -> void:
+	if not plays_report or api == null or api.get_token().is_empty() or DmPlayReportQueue.pending_count() == 0:
+		return
+	DmPlayReportQueue.flush(api)   # not awaited: the wait below bounds it
+	var until := Time.get_ticks_msec() + ms
+	while DmPlayReportQueue.flushing() and Time.get_ticks_msec() < until:
+		await get_tree().process_frame
 
 
 ## Once per run, in an online world: the last run's crash (DmCrashWatch) goes to the devs as a bug report, and the player is told.
@@ -525,6 +538,7 @@ func _on_next_join_failed(reason: String, character: Dictionary, loading: DmLoad
 func _on_next_left(logout: bool) -> void:
 	await _teardown_next("logout")
 	if logout:
+		await _send_play_reports_now(2000)   # while the login is still good: the token is dropped next
 		api.set_token("")
 	_start_flow()
 

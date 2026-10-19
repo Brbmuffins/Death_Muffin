@@ -12,7 +12,7 @@ extends SceneTree
 ##     a report queued while another is on its way is not lost;
 ##   - nothing leaves a script run: the one gate (`DmPlayReportQueue.records`) refuses a debug build, a script run, dev-offline, the benchmark and a test's mode, and `flush` refuses a real transport from a script;
 ##   - DmMain's wiring on the mock (the gate forced open for the test): the report starts with the first ready scene and never counts a scene that is not ready, a discipline change keeps it (one report id, the
-##     backend session ids of both scenes), Switch character queues it as "switch" and the select screen sends it, Log out queues "logout" and waits for a login, quit queues "quit" before it saves;
+##     backend session ids of both scenes), Switch character queues it as "switch" and the select screen sends it, Log out queues "logout" and sends it before the token goes, quit queues "quit" before it saves and sends it before closing;
 ##   - zero script errors or engine errors in the log.
 
 const CONTRACT_KEYS := ["reportId", "version", "seconds", "endReason", "endArea", "discipline", "level", "partySize", "host", "preset", "gpu", "driver", "os", "cpuCores", "ramMb", "resolution", "vsync", "fpsCap", "frames", "areas", "sessionIds"]
@@ -699,15 +699,14 @@ func dm_main_wiring() -> void:
 	for i in 700:
 		m.report.frame(16.6)
 	var second_id := m.report.report_id
-	# Log out: queued as "logout"; with no login it waits
+	# Log out: queued as "logout" and sent before the token is dropped (2026-10-19: it used to wait for the next login)
 	m.slice.ui_host.leave_world()
 	check(await until(func() -> bool: return m.slice == null and m.flow != null and m.flow.current_name == "login", 30.0), "Log out lands on the login screen")
-	check(m.report == null and DmPlayReportQueue.pending_count() == 1 and mock.play_reports.size() == 1 and DmPlayReportQueue.pending()[0]["endReason"] == "logout" and DmPlayReportQueue.pending()[0]["reportId"] == second_id,
-		"the report waits in the queue as \"logout\" (no login to send it with)")
-	# logging in again and entering the world sends it
+	check(m.report == null and DmPlayReportQueue.pending_count() == 0 and mock.play_reports.size() == 2 and mock.play_reports[1]["report"]["reportId"] == second_id
+		and mock.play_reports[1]["report"]["endReason"] == "logout", "Log out sent the report as \"logout\" while the login was still good")
 	await m._dev_quick_start(2)
 	check(await until(func() -> bool: return m.slice != null and m.slice.ready_ and DmLoadingScreen.current == null, 90.0), "a new session starts")
-	check(await until(func() -> bool: return mock.play_reports.size() == 2, 10.0) and mock.play_reports[1]["report"]["reportId"] == second_id and DmPlayReportQueue.pending_count() == 0, "entering the world sent the waiting report")
+	check(mock.play_reports.size() == 2 and DmPlayReportQueue.pending_count() == 0, "nothing was left to send at the next start")
 	check(m.report != null and m.report.report_id != second_id, "...beside a third session")
 	var third_id := m.report.report_id
 	for i in 700:
@@ -715,10 +714,11 @@ func dm_main_wiring() -> void:
 	# quit: the report is queued first, before the save
 	var last := m.slice
 	m.save_all()   # (a coroutine: what runs before its first await is what a quit does first)
-	check(m.report == null and DmPlayReportQueue.pending_count() == 1 and DmPlayReportQueue.pending()[0]["endReason"] == "quit" and DmPlayReportQueue.pending()[0]["reportId"] == third_id,
-		"quit queues the report as \"quit\" before the save starts (it never waits for the network)")
-	for i in 30:
-		await process_frame
+	var queued_quit: bool = DmPlayReportQueue.pending_count() == 1 and DmPlayReportQueue.pending()[0]["endReason"] == "quit" and DmPlayReportQueue.pending()[0]["reportId"] == third_id
+	var sent_quit: bool = mock.play_reports.size() == 3 and mock.play_reports[2]["report"]["endReason"] == "quit"   # (the mock answers without waiting: the whole quit can run before this line)
+	check(m.report == null and (queued_quit or sent_quit), "quit ends the report as \"quit\" at once, before the save (it never waits for the network to write it)")
+	check(await until(func() -> bool: return mock.play_reports.size() == 3 and DmPlayReportQueue.pending_count() == 0, 10.0) and mock.play_reports[2]["report"]["reportId"] == third_id,
+		"... and sends it before the game closes (the save first, then at most 2 s for the report)")
 	await last.leave()
 	last.queue_free()
 	check(not uncounted_ready[0], "no report was ever attached to a scene that was not ready")

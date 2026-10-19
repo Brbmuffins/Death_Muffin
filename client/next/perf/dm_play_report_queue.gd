@@ -15,6 +15,11 @@ static var dir := "user://play_reports"
 static var _flushing := false
 
 
+## True while flush() is sending (the log out and the quit wait on it, bounded).
+static func flushing() -> bool:
+	return _flushing
+
+
 static func queue_file() -> String:
 	return dir.path_join("queue.json")
 
