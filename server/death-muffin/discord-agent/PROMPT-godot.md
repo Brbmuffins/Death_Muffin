@@ -235,11 +235,13 @@ filled before each cast and the rite is cast again whenever it is off cooldown. 
 a resource filling, several rites in order), give the clip a `setup` and `steps`: lists of `{"do": "<word>", ...}` (a step also has `"at"`, seconds into the
 clip). The words, their arguments and their ranges are in `client/main/qa_clip_steps.json`: read it first. A clip whose steps cast needs no `cast`. With
 `top_up` off a cast must be paid for: a rite the hero cannot afford at its step fails the clip (above, the free Scythe Sweep's kills fill the bag for the Wraith).
+The stand-ins stand still where they are put (a pack's middle 8 m ahead, a line from 4 m) unless `fight` sends them at the hero; a melee rite such as
+`scythe_sweep` (about 3 m) hits nothing 8 m away, so for melee let them fight, or start them near with `distance`. Check a rite's `range` in its data first.
 
 ```json
 {"plan": {"discipline": "reaper",
           "clips": [{"name": "souls", "area": "graves", "at": "pack", "enemies": 8, "seconds": 8,
-                     "setup": [{"do": "hud", "show": true}, {"do": "stand_ins", "health": 1, "harmless": true},
+                     "setup": [{"do": "hud", "show": true}, {"do": "stand_ins", "health": 1, "harmless": true, "fight": true, "distance": 6},
                                {"do": "souls", "value": 0}, {"do": "top_up", "on": false}],
                      "steps": [{"at": 0.3, "do": "cast", "rite": "scythe_sweep"}, {"at": 4, "do": "cast", "rite": "haunting_wraith"}]}]},
  "variants": [{"label": "now", "title": "the souls filling the bag", "tune": {}}]}

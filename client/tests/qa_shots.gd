@@ -551,12 +551,18 @@ func clip_plan_format() -> void:
 	check(sp["ok"] and c0["cast"] == "" and c0["setup"]["hud"] == true and c0["setup"]["health"] == 1.0 and c0["setup"]["harmless"] == false and c0["setup"]["kind"] == DmQaClips.DUMMY and c0["setup"]["souls"] == 0.0 and c0["setup"]["top_up"] == false,
 		"a clip's setup is read with the defaults for what it leaves out, and a clip whose steps cast needs no \"cast\" (%s)" % str(c0.get("setup", sp["error"])))
 	check(sp["ok"] and (c0["steps"] as Array).map(func(x: Dictionary) -> String: return x["rite"]) == ["reap", "haunting_wraith"] and c0["steps"][0]["at"] == 0.3, "the steps run in the order of their times")
+	check(sp["ok"] and c0["setup"]["fight"] == false and c0["setup"]["distance"] < 0.0, "by default the stand-ins stand where they are put, at the layout's own distance")
+	var fp := DmQaClips.parse('{"clips": [{"cast": "scythe_sweep", "setup": [{"do": "stand_ins", "fight": true, "distance": 2}]}]}')
+	check(fp["ok"] and fp["clips"][0]["setup"]["fight"] == true and fp["clips"][0]["setup"]["distance"] == 2.0, "stand-ins that fight, starting 2 m ahead")
+	var o2 := Vector3(1.0, 0.0, 2.0)
+	check(DmQaClips.layout("pack", 1, o2, 2.0)[0].is_equal_approx(o2 + DmQaClips.FACING * 2.0) and DmQaClips.layout("ahead", 2, o2, 1.0)[0].distance_to(o2 + DmQaClips.FACING * 1.0) <= 0.51, "a distance moves a pack's middle, or a line's first stand-in, that far ahead")
 	var refusals := {'{"clips": [{"cast": "reap", "setup": [{"do": "fly"}]}]}': "\"do\" must be one of", '{"clips": [{"cast": "reap", "setup": [{"do": "hud"}]}]}': "needs \"show\"",
 			'{"clips": [{"cast": "reap", "setup": [{"do": "hud", "show": 1}]}]}': "must be true or false", '{"clips": [{"cast": "reap", "setup": [{"do": "stand_ins", "health": 0}]}]}': "must be from",
 			'{"clips": [{"cast": "reap", "setup": [{"do": "stand_ins", "kind": "no_such_beast"}]}]}': "must be an enemy id", '{"clips": [{"cast": "reap", "setup": [{"do": "hud", "show": true, "colour": "red"}]}]}': "unknown argument \"colour\"",
 			'{"clips": [{"steps": [{"do": "cast", "rite": "reap"}]}]}': "\"at\" must be a number", '{"clips": [{"seconds": 2, "steps": [{"at": 3, "do": "cast", "rite": "reap"}]}]}': "\"at\" must be a number",
 			'{"clips": [{"steps": [{"at": 1, "do": "cast", "rite": "no_such_rite"}]}]}': "must be a rite id", '{"clips": [{"steps": [{"at": 1, "do": "cast"}]}]}': "needs \"rite\"",
-			'{"clips": [{"cast": "reap", "setup": {"do": "hud"}}]}': "must be a list"}
+			'{"clips": [{"cast": "reap", "setup": {"do": "hud"}}]}': "must be a list", '{"clips": [{"cast": "reap", "setup": [{"do": "stand_ins", "distance": -3}]}]}': "must be from",
+			'{"clips": [{"cast": "reap", "setup": [{"do": "stand_ins", "fight": "yes"}]}]}': "must be true or false"}
 	for bad in refusals:
 		var r := DmQaClips.parse(String(bad))
 		check(not r["ok"] and String(r["error"]).contains(String(refusals[bad])), "refused, saying why: %s (%s)" % [String(bad).left(80), r["error"]])
@@ -835,6 +841,27 @@ func clips_on_a_reaper() -> void:
 	check(watch.get("hud") == true, "the setup's HUD is on screen while recording")
 	check(watch.get("souls_before") == cost0 + 2 and int(watch["least"]) == 2, "the souls start where the setup put them, and the cast's cost is not topped up (%s, then at least %s)" % [str(watch.get("souls_before")), str(watch["least"])])
 	check(int(watch.get("alive_before", 0)) == 4 and int(watch.get("alive", 4)) < 4, "the setup's mortal stand-ins die to the wraith (%s of 4 left)" % str(watch.get("alive")))
+	# stand-ins that fight come at the hero, so a melee rite reaches them (Helix, 2026-10-19: the Scythe Sweeps of War's soul video hit nobody 8 m away)
+	var start_m := 6.0
+	var fplan := DmQaClips.parse(JSON.stringify({"discipline": "reaper", "clips": [{"name": "fight", "at": "pack", "enemies": 3, "seconds": 3,
+		"setup": [{"do": "stand_ins", "health": 0.05, "harmless": false, "fight": true, "distance": start_m}],
+		"steps": [{"at": 1.5, "do": "cast", "rite": "scythe_sweep"}, {"at": 2.4, "do": "cast", "rite": "scythe_sweep"}]}]}))
+	check(fplan["ok"], "the fighting plan parses (%s)" % fplan["error"])
+	var near := {"n": 0, "closest": 1e9}
+	var fighting := func() -> Image:
+		near["n"] += 1
+		var hero := cg.local_body().position
+		for id in cg.core_host.enemies_in_radius(hero, 30.0):
+			if cg.core_host.enemy_alive(id):
+				var at := cg.core_host.enemy_position(id)
+				near["closest"] = minf(float(near["closest"]), Vector2(at.x, at.z).distance_to(Vector2(hero.x, hero.z)))
+		near["alive"] = cg.core_host.alive_count()
+		var img := Image.create_empty(401, 225, false, Image.FORMAT_RGBA8)
+		img.fill(Color.from_hsv(fmod(float(near["n"]) * 0.02, 1.0), 0.7, 0.8))
+		return img
+	var fc: Dictionary = await DmQaClips.record(root, cg, fplan["clips"][0], dir, fighting)
+	check(fc["ok"] and (fc["casts"] as Array).size() == 2, "the fighting clip is recorded with its two sweeps (%s)" % str(fc))
+	check(int(near.get("alive", 3)) < 3, "stand-ins that fight come at the Reaper and her sweeps kill them (%s of 3 left; the closest came to %.1f m)" % [str(near.get("alive")), float(near["closest"])])
 	cg.process_mode = Node.PROCESS_MODE_DISABLED
 	cg.queue_free()
 	await process_frame

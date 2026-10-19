@@ -249,7 +249,7 @@ godot --fixed-fps 30 --path client -- --dev-offline --class=11 --clip-plan=/abs/
   slowly and in place, over the clip, standing idle: a turntable clip needs no `cast`, its `area` is the Chapterhouse unless it names another, its `seconds` 6 and its `enemies` 0 (a `cast` or enemies may be added). A clip with no cast has `cast_at_frame` -1.
 - **Setup and steps** (`main/qa_clip_steps.json`, `DmQaClips.vocabulary`): a clip may carry `"setup": [{"do": "<word>", ...}]` (how the scene is set before recording) and
   `"steps": [{"at": <seconds>, "do": "<word>", ...}]` (what happens when, run in the order of their times). The words, their arguments, types and ranges are that file's: today
-  `hud` (show the HUD), `stand_ins` (their kind, health as a multiple of normal, harmless or not), `souls` (the Reaper's souls at the start), `top_up` (fill the cost before each cast or not)
+  `hud` (show the HUD), `stand_ins` (their kind, health as a multiple of normal, harmless or not, `fight`: they come at the hero, `distance`: how far ahead they start), `souls` (the Reaper's souls at the start), `top_up` (fill the cost before each cast or not)
   and the step `cast` (a rite at a set time; a busy or cooling rite is tried again each frame, another refusal fails the clip; a clip with cast steps casts nothing by itself and needs no `cast`).
   A new word is an entry in that file, its handler here (`SETUP_WORDS` / `STEP_WORDS` and the code that carries it out) and a check in `tests/qa_shots.gd`, which fails when the file and the
   recorder disagree. The Discord agent's runner checks a request against the branch's own copy of the file, so a word added in a change works in that change's videos at once.

@@ -3,29 +3,39 @@
   "setup": {
     "hud": {
       "help": "show the HUD while recording (it is hidden when this is left out)",
-      "args": { "show": { "type": "bool", "required": true } }
+      "args": {
+        "show": { "type": "bool", "required": true }
+      }
     },
     "stand_ins": {
-      "help": "the stand-in enemies: their kind, their health as a multiple of their normal health (400 when this is left out, so nothing dies) and whether they may hurt the hero (not when this is left out)",
+      "help": "the stand-in enemies: their kind, their health as a multiple of their normal health (400 when this is left out, so nothing dies), whether they may hurt the hero (not when this is left out), whether they come at the hero and fight (they stand where they are put when this is left out) and how far ahead of the hero they start, in metres (the pack's middle 8 m ahead, a line from 4 m, when this is left out; a melee rite such as scythe_sweep reaches about 3 m)",
       "args": {
         "kind": { "type": "enemy" },
         "health": { "type": "number", "min": 0.05, "max": 1000 },
-        "harmless": { "type": "bool" }
+        "harmless": { "type": "bool" },
+        "fight": { "type": "bool" },
+        "distance": { "type": "number", "min": 0, "max": 20 }
       }
     },
     "souls": {
       "help": "the Reaper's souls when the recording starts (a full bag when this is left out); held to her bag's size",
-      "args": { "value": { "type": "number", "min": 0, "max": 500, "required": true } }
+      "args": {
+        "value": { "type": "number", "min": 0, "max": 500, "required": true }
+      }
     },
     "top_up": {
       "help": "whether the hero's souls or essence are filled before each cast (they are when this is left out); off shows what a cast really costs",
-      "args": { "on": { "type": "bool", "required": true } }
+      "args": {
+        "on": { "type": "bool", "required": true }
+      }
     }
   },
   "steps": {
     "cast": {
       "help": "cast a rite at `at` seconds into the clip, aimed at the stand-ins; a rite that is busy or cooling down is tried again each frame. A clip with cast steps casts nothing by itself",
-      "args": { "rite": { "type": "rite", "required": true } }
+      "args": {
+        "rite": { "type": "rite", "required": true }
+      }
     }
   }
 }
