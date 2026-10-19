@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,6 +17,8 @@ namespace DeathMuffinTeam
         public string Text = "";
         /// <summary>"Runs by itself in 4:12", or "Runs when you say yes" (mode: only on a yes).</summary>
         public string Countdown = "";
+        /// <summary>A job kind's own words (a benchmark: it starts once the PC is quiet, normal priority, a touch restarts it), or "".</summary>
+        public string Note = "";
     }
 
     /// <summary>The screen side of the app. TrayContext is the real one; tests use a recorder.</summary>
@@ -31,6 +34,8 @@ namespace DeathMuffinTeam
         void NeedSignIn(string reason, bool openNow);
         /// <summary>The account is not on the team: tell the person; the app then closes.</summary>
         void Stopped(string message);
+        /// <summary>AFK mode on or off: a small persistent notice ("AFK mode on: jobs run right away", End AFK mode) and a tray menu item while it is on. Neither takes the focus.</summary>
+        void SetAfk(bool on);
     }
 
     /// <summary>What the app asks about this PC (the controller uses a stand-in in tests).</summary>
@@ -71,22 +76,44 @@ namespace DeathMuffinTeam
         readonly string version, pcName;
         readonly Uri siteBase;
         readonly Action<string> log;
+        readonly IPcProbe probe;
         string gpu;
+
+        /// <summary>The words of the tray status while a benchmark that was accepted waits for the PC to be left alone.</summary>
+        public const string BenchWaitingText = "Benchmark waiting for the PC to be left alone";
+        public const string BenchGoneText = "The benchmark is no longer available.";
+        /// <summary>How the PC is judged quiet before a benchmark is claimed (the runner judges it again before each setup).</summary>
+        public QuietRules Rules = new QuietRules();
+        /// <summary>The PC is read at most this often while a benchmark waits (EvaluateAsync runs every second).</summary>
+        public int MinReadMs = 800;
+        /// <summary>A claim of a waiting benchmark that failed for another reason than "gone" is tried again after this long.</summary>
+        public static readonly TimeSpan BenchClaimRetry = TimeSpan.FromSeconds(30);
 
         Offer current;
         OfferAnswer answer = OfferAnswer.None;
         DateTime? shownAt;
         readonly Dictionary<string, DateTime> snoozed = new Dictionary<string, DateTime>();
         readonly HashSet<string> sentDeclines = new HashSet<string>();
-        bool running, heartbeating, evaluating, signedIn, stopped, offline;
+        bool running, heartbeating, evaluating, signedIn, stopped, offline, afk;
         string runningJobId;
-        CancellationTokenSource runCts;
+        CancellationTokenSource runCts, cancelCts;
+        bool cancelRequested;
         Task runTask = Task.FromResult(0);
         string lastStatus = "";
         StatusLevel lastLevel = StatusLevel.Ok;
 
+        // A benchmark that was said yes to (or ran by itself): kept here, not claimed. It stays queued on the server, so the PC is not busy while it waits and a screenshot job is
+        // handled as usual meanwhile; it is claimed once the PC has been quiet for a minute and nothing else runs.
+        Offer waitingBench;
+        bool benchGone;
+        readonly List<PcSample> benchSamples = new List<PcSample>();
+        bool benchPrimed;
+        DateTime benchRetryAt = DateTime.MinValue;
+        readonly Stopwatch readClock = new Stopwatch();
+
+        /// <param name="probe">Reads the PC (shared with the runner: it reads only while no job runs, the runner only while one does).</param>
         public TeamController(ITeamApi api, TeamSettings settings, Action save, ITeamPlatform platform, IJobRunner runner, ITeamUi ui,
-            Func<DateTime> utcNow, string version, string pcName, Uri siteBase, Action<string> log)
+            Func<DateTime> utcNow, string version, string pcName, Uri siteBase, Action<string> log, IPcProbe probe)
         {
             this.api = api;
             this.settings = settings;
@@ -99,6 +126,7 @@ namespace DeathMuffinTeam
             this.pcName = pcName;
             this.siteBase = siteBase;
             this.log = log ?? (s => { });
+            this.probe = probe;
         }
 
         public bool IsBusy { get { return running; } }
@@ -107,6 +135,10 @@ namespace DeathMuffinTeam
         public OfferMode Mode { get { return settings.Mode; } }
         public bool IsPaused { get { return settings.IsPaused(utcNow()); } }
         public Offer CurrentOffer { get { return current; } }
+        /// <summary>AFK mode (mode ask only; never kept across a restart): the person is away, so jobs run at once without a box.</summary>
+        public bool IsAfk { get { return afk; } }
+        /// <summary>The benchmark that was accepted and waits for a quiet PC (not claimed, still queued on the server), or null.</summary>
+        public Offer WaitingBench { get { return waitingBench; } }
 
         // ---- Start and sign-in ---------------------------------------------------------------------------------------------------
 
@@ -177,6 +209,8 @@ namespace DeathMuffinTeam
             api.Token = "";
             signedIn = false;
             ClearOffer();
+            DropWaitingBench();
+            LeaveAfk("signed out");
             SetStatus("Signed out", StatusLevel.Warn);
             log("signed out");
             return true;
@@ -215,7 +249,9 @@ namespace DeathMuffinTeam
             {
                 if (!signedIn) return;   // signed out while this heartbeat was on its way
                 offline = false;
+                if (running && runningJobId != null && TeamApi.ParseCancel(r).Contains(runningJobId)) CancelRunningJob();
                 Offer offer = TeamApi.ParseOffer(r);
+                offer = AboutWaitingBench(offer);
                 DateTime now = utcNow();
                 if (offer != null && snoozed.ContainsKey(offer.Id))
                 {
@@ -225,7 +261,8 @@ namespace DeathMuffinTeam
                 if (running)
                 {
                     // A second job offered while one runs: say so once; the job stays queued for the other PCs.
-                    if (offer != null && offer.Id != runningJobId && sentDeclines.Add(offer.Id + "|busy"))
+                    // (a benchmark is not declined for being busy: the server would not offer it to this PC again, and it is queued for this PC alone)
+                    if (offer != null && offer.Id != runningJobId && offer.Kind != JobPlan.BenchKind && sentDeclines.Add(offer.Id + "|busy"))
                         await api.DeclineAsync(offer.Id, settings.PcId, "busy", CancellationToken.None).ConfigureAwait(true);
                     return;
                 }
@@ -253,6 +290,39 @@ namespace DeathMuffinTeam
             if (!running) SetStatus(r.Error, StatusLevel.Warn);
         }
 
+        /// <summary>
+        /// What the heartbeat's offer means for a benchmark that is waiting. The server offers the oldest queued job this PC has not declined, so the waiting benchmark (never declined, still
+        /// queued) is offered again and again: that is no new question, and no answer is wanted. An offer of nothing, or of another benchmark, means it is no longer queued (cancelled, expired or
+        /// taken): it is dropped. A screenshot job offered ahead of it is handled as usual.
+        /// </summary>
+        Offer AboutWaitingBench(Offer offer)
+        {
+            if (waitingBench == null) return offer;
+            if (offer != null && offer.Id == waitingBench.Id) return null;
+            if (offer == null || offer.Kind == JobPlan.BenchKind) { DropWaitingBench(); benchGone = true; SetStatus(BenchGoneText, StatusLevel.Ok); }
+            return offer;
+        }
+
+        /// <summary>Forgets the waiting benchmark (gone from the server, claimed by nobody, or the member signed out).</summary>
+        void DropWaitingBench()
+        {
+            if (waitingBench == null) return;
+            log("the waiting benchmark " + waitingBench.Id + " is dropped");
+            waitingBench = null;
+            benchSamples.Clear();
+            benchPrimed = false;
+        }
+
+        /// <summary>The server cancelled the job this PC is running (its heartbeat reply lists it): the runner stops the game and drops the job without telling the server anything.</summary>
+        void CancelRunningJob()
+        {
+            if (cancelRequested) return;
+            cancelRequested = true;
+            log("the server cancelled job " + runningJobId);
+            var c = cancelCts;
+            if (c != null) c.Cancel();
+        }
+
         /// <summary>The server does not accept the token any more (401 signed_out): forget it, stop polling, and ask the member to sign in again (a balloon, not a box).</summary>
         void SignedOutNow()
         {
@@ -261,6 +331,8 @@ namespace DeathMuffinTeam
             save();
             api.Token = "";
             ClearOffer();
+            DropWaitingBench();
+            LeaveAfk("signed out");
             SetStatus(TeamApi.SignedOutText, StatusLevel.Warn);
             ui.NeedSignIn(TeamApi.SignedOutText, false);
             log("signed out by the server");
@@ -279,18 +351,20 @@ namespace DeathMuffinTeam
         /// <summary>Looks at the offer once (every second while there is one): runs it, asks about it, keeps it waiting, or declines it.</summary>
         public async Task EvaluateAsync()
         {
-            if (evaluating || running || !signedIn || stopped || current == null) return;
+            if (signedIn && !stopped) CheckAfk();
+            if (evaluating || running || !signedIn || stopped) return;
             evaluating = true;
             try
             {
+                if (current == null) { await ServeWaitingBenchAsync().ConfigureAwait(true); return; }
                 Offer offer = current;
-                if (offer.Kind != JobPlan.Kind)
+                if (!JobPlan.RunsKind(offer.Kind))
                 {
                     // A job this version cannot run: decline it once and tell the person to update (the app updates itself).
                     if (sentDeclines.Add(offer.Id + "|kind"))
                     {
                         await api.DeclineAsync(offer.Id, settings.PcId, "not_now", CancellationToken.None).ConfigureAwait(true);
-                        log("skipped a " + offer.Kind + " job: this version runs shots jobs only");
+                        log("skipped a " + offer.Kind + " job: this version runs " + JobPlan.ShotsKind + " and " + JobPlan.BenchKind + " jobs only");
                     }
                     SetStatus("A newer team app is needed for " + offer.Kind + " jobs", StatusLevel.Warn);
                     return;
@@ -299,11 +373,13 @@ namespace DeathMuffinTeam
                 bool paused = settings.IsPaused(now);
                 bool fullscreen = platform.Fullscreen(), game = platform.GameRunning(), battery = platform.OnBattery();
                 TimeSpan elapsed = shownAt.HasValue ? now - shownAt.Value : TimeSpan.Zero;
-                OfferDecision d = TeamLogic.Decide(settings.Mode, answer, elapsed, fullscreen, game, battery, paused);
+                OfferDecision d = TeamLogic.Decide(settings.Mode, answer, elapsed, fullscreen, game, battery, paused, afk);
                 switch (d)
                 {
                     case OfferDecision.Run:
-                        await RunOfferAsync(offer).ConfigureAwait(true);
+                        if (TeamLogic.EntersAfk(settings.Mode, answer, elapsed, d, afk)) EnterAfk();
+                        if (offer.Kind == JobPlan.BenchKind) AcceptBench(offer);
+                        else await RunOfferAsync(offer, false).ConfigureAwait(true);
                         break;
                     case OfferDecision.Ask:
                         if (!shownAt.HasValue) shownAt = now;
@@ -322,9 +398,84 @@ namespace DeathMuffinTeam
             finally { evaluating = false; }
         }
 
+        // ---- AFK mode -----------------------------------------------------------------------------------------------------------------
+
+        /// <summary>A box in mode ask ran out with nobody there and its job runs by itself: the person is away, so from now on jobs run at once, until they are back.</summary>
+        void EnterAfk()
+        {
+            if (afk) return;
+            afk = true;
+            log("AFK mode on: a box ran out with nobody answering");
+            ui.SetAfk(true);
+        }
+
+        /// <summary>The notice's button and the tray item: the person is back. The next offer shows the box with its 5 minutes again.</summary>
+        public void EndAfk() { LeaveAfk("ended by the person"); }
+
+        void LeaveAfk(string why)
+        {
+            if (!afk) return;
+            afk = false;
+            log("AFK mode off: " + why);
+            ui.SetAfk(false);
+            UpdateIdleStatus();
+        }
+
+        /// <summary>AFK mode ends by itself when the player starts Death Muffin or a full-screen app comes up (they are back) or the PC is paused. (A job's own game window can read as full screen on a small
+        /// screen, so a full-screen app is only looked for while no job runs.)</summary>
+        public void CheckAfk()
+        {
+            if (!afk) return;
+            string why = TeamLogic.AfkEndReason(afk, platform.GameRunning(), !running && platform.Fullscreen(), settings.IsPaused(utcNow()));
+            if (why.Length > 0) LeaveAfk(why);
+        }
+
+        /// <summary>
+        /// A benchmark was said yes to (or ran by itself): it is not claimed yet. It waits here until the PC has been quiet for a minute and nothing else runs; it stays queued on the server
+        /// (targeted at this PC), so this PC is not busy meanwhile and a screenshot job offered now is handled as usual.
+        /// </summary>
+        void AcceptBench(Offer offer)
+        {
+            waitingBench = offer;
+            ClearOffer();
+            benchSamples.Clear();
+            benchPrimed = false;
+            benchRetryAt = DateTime.MinValue;
+            log("accepted " + offer.Id + " \"" + offer.Title + "\": waiting for the PC to be left alone");
+            SetStatus(BenchWaitingText, StatusLevel.Busy);
+        }
+
+        /// <summary>
+        /// Every second while no offer needs an answer and no job runs: if a benchmark waits, reads the PC, and once it has been quiet for a minute (Quiet.WhyNotQuiet) claims the benchmark and
+        /// runs it. Not while the PC is paused. A claim that says the job is gone drops it; one that failed otherwise is tried again in 30 s.
+        /// </summary>
+        async Task ServeWaitingBenchAsync()
+        {
+            if (waitingBench == null) return;
+            DateTime now = utcNow();
+            if (settings.IsPaused(now)) { benchSamples.Clear(); benchPrimed = false; UpdateIdleStatus(); return; }
+            if (readClock.IsRunning && readClock.ElapsedMilliseconds < MinReadMs) return;
+            readClock.Restart();
+            if (!benchPrimed)
+            {
+                probe.Read(0);   // the CPU numbers are averages since the previous reading: this one only sets the start
+                benchPrimed = true;
+                SetStatus(BenchWaitingText, StatusLevel.Busy);
+                return;
+            }
+            PcSample s = probe.Read(0);
+            benchSamples.Add(s);
+            while (benchSamples.Count > 1 && s.At - benchSamples[0].At > Rules.QuietFor + Rules.QuietFor) benchSamples.RemoveAt(0);
+            if (Quiet.WhyNotQuiet(benchSamples, Rules).Length > 0) { if (now >= benchRetryAt) SetStatus(BenchWaitingText, StatusLevel.Busy); return; }
+            if (now < benchRetryAt) return;   // (a claim that failed is tried again later; the PC is read meanwhile)
+            Offer bench = waitingBench;
+            waitingBench = null;
+            await RunOfferAsync(bench, true).ConfigureAwait(true);
+        }
+
         OfferView View(Offer offer, TimeSpan shownFor)
         {
-            var v = new OfferView { Text = TeamLogic.OfferText(offer.Title, offer.WeightS) };
+            var v = new OfferView { Text = TeamLogic.OfferText(offer.Title, offer.WeightS), Note = TeamLogic.OfferNote(offer.Kind) };
             v.Countdown = settings.Mode == OfferMode.Ask ? "Runs by itself in " + TeamLogic.Clock(TeamLogic.AutoRunAfter - shownFor) : "Runs when you say yes";
             return v;
         }
@@ -361,6 +512,7 @@ namespace DeathMuffinTeam
                 settings.PausedUntilUtc = utcNow() + TeamLogic.PauseFor;
                 save();
                 answer = OfferAnswer.None;
+                CheckAfk();
             }
             else answer = a;
             await EvaluateAsync().ConfigureAwait(true);
@@ -375,7 +527,8 @@ namespace DeathMuffinTeam
             await HeartbeatAsync().ConfigureAwait(true);
             if (current == null && !running)
             {
-                ui.Notify("Nothing to run", "No jobs are waiting right now.", false);
+                if (waitingBench != null) ui.Notify("A benchmark is waiting", "It starts once the PC has been left alone for a minute.", false);
+                else ui.Notify("Nothing to run", "No jobs are waiting right now.", false);
                 return;
             }
             if (running) return;
@@ -390,6 +543,7 @@ namespace DeathMuffinTeam
             else settings.PausedUntilUtc = utcNow() + TeamLogic.PauseFor;
             save();
             if (shownAt.HasValue && settings.IsPaused(utcNow())) { shownAt = null; ui.HideOffer(); }
+            CheckAfk();
             UpdateIdleStatus();
             await HeartbeatAsync().ConfigureAwait(true);
         }
@@ -400,16 +554,24 @@ namespace DeathMuffinTeam
             settings.Mode = mode;
             save();
             log("mode: " + Modes.Wire(mode));
+            if (mode != OfferMode.Ask) LeaveAfk("the mode is no longer Ask");
             await HeartbeatAsync().ConfigureAwait(true);
             if (current != null) await EvaluateAsync().ConfigureAwait(true);
         }
 
         // ---- The job ---------------------------------------------------------------------------------------------------------------------
 
-        async Task RunOfferAsync(Offer offer)
+        /// <param name="fromWaiting">A benchmark that waited for a quiet PC: a claim that fails for a passing reason puts it back to wait instead of dropping it.</param>
+        async Task RunOfferAsync(Offer offer, bool fromWaiting)
         {
             running = true;
             runningJobId = offer.Id;
+            cancelRequested = false;
+            if (!fromWaiting)
+            {
+                benchSamples.Clear();   // the PC is not quiet while a job runs: a waiting benchmark's minute starts over after it
+                benchPrimed = false;
+            }
             if (shownAt.HasValue) ui.HideOffer();
             shownAt = null;
             var tcs = new TaskCompletionSource<int>();
@@ -421,7 +583,8 @@ namespace DeathMuffinTeam
                 if (claim.Taken)
                 {
                     ClearOffer();
-                    SetStatus("Another team PC took the job", StatusLevel.Ok);
+                    SetStatus(fromWaiting && claim.Error.Length > 0 ? claim.Error : "Another team PC took the job", StatusLevel.Ok);
+                    if (fromWaiting) log("the waiting benchmark " + offer.Id + " is gone: " + claim.Error);
                     return;
                 }
                 if (claim.NotTeam) { Stop(claim.Error.Length > 0 ? claim.Error : "This account is not on the team.", true); return; }
@@ -429,7 +592,8 @@ namespace DeathMuffinTeam
                 ClaimedJob job = TeamApi.ParseClaim(claim);
                 if (job == null)
                 {
-                    snoozed[offer.Id] = utcNow() + TimeSpan.FromMinutes(5);
+                    if (fromWaiting) { waitingBench = offer; benchRetryAt = utcNow() + BenchClaimRetry; }   // still queued: tried again soon
+                    else snoozed[offer.Id] = utcNow() + TimeSpan.FromMinutes(5);
                     ClearOffer();
                     SetStatus(claim.Ok ? "The server's job could not be read" : claim.Error, StatusLevel.Warn);
                     log("claim of " + offer.Id + " failed: " + claim.Error);
@@ -439,20 +603,22 @@ namespace DeathMuffinTeam
                 log("claimed " + job.Id + " \"" + job.Title + "\"");
                 JobPlan plan = null;
                 string err = null;
-                if (job.Kind != JobPlan.Kind || !JobPlan.TryParse(job.Payload, siteBase, out plan, out err))
+                if (!JobPlan.TryParse(job.Kind, job.Payload, siteBase, out plan, out err))
                 {
-                    if (job.Kind != JobPlan.Kind) err = "This version of the team app cannot run " + job.Kind + " jobs.";
                     await api.FailAsync(job.Id, err, "", CancellationToken.None).ConfigureAwait(true);
                     SetStatus("Job refused: " + err, StatusLevel.Warn);
                     ui.Notify("A job was refused", err, true);
                     log("refused " + job.Id + ": " + err);
                     return;
                 }
+                plan.ExpiresAtUtc = JobPlan.ParseExpiry(offer.ExpiresAt);
                 runCts = new CancellationTokenSource();
-                CancellationToken token = runCts.Token;
+                cancelCts = new CancellationTokenSource();
+                if (cancelRequested) cancelCts.Cancel();   // the server's cancel came while the job was being taken
+                CancellationToken token = runCts.Token, cancelled = cancelCts.Token;
                 string jobId = job.Id;
                 RunResult result;
-                try { result = await Task.Run(() => runner.RunAsync(jobId, plan, p => SetStatus(p, StatusLevel.Busy), token)).ConfigureAwait(true); }
+                try { result = await Task.Run(() => runner.RunAsync(jobId, plan, p => SetStatus(p, StatusLevel.Busy), token, cancelled)).ConfigureAwait(true); }
                 catch (Exception ex)
                 {
                     // The runner reports its own failures; this is a bug in the app. The job is failed so the server does not wait for it.
@@ -461,10 +627,16 @@ namespace DeathMuffinTeam
                     try { await api.FailAsync(jobId, why, ex.ToString(), CancellationToken.None).ConfigureAwait(true); } catch (Exception) { }
                     result = new RunResult { Ok = false, Error = why };
                 }
-                if (result.Ok)
+                if (result.Cancelled)
                 {
-                    SetStatus("Last job: " + result.Files.Count + " picture(s) uploaded at " + DateTime.Now.ToString("HH:mm", CultureInfo.InvariantCulture), StatusLevel.Ok);
-                    log("job " + jobId + " done: " + result.Files.Count + " picture(s)");
+                    SetStatus("The job was cancelled.", StatusLevel.Ok);
+                    log("job " + jobId + " was cancelled by the server");
+                }
+                else if (result.Ok)
+                {
+                    string sent = plan.Kind == JobPlan.BenchKind ? result.Runs + " benchmark run(s) sent" : result.Files.Count + " picture(s) uploaded";
+                    SetStatus("Last job: " + sent + " at " + DateTime.Now.ToString("HH:mm", CultureInfo.InvariantCulture), StatusLevel.Ok);
+                    log("job " + jobId + " done: " + sent);
                 }
                 else
                 {
@@ -478,6 +650,8 @@ namespace DeathMuffinTeam
                 running = false;
                 runningJobId = null;
                 runCts = null;
+                cancelCts = null;
+                cancelRequested = false;
                 tcs.TrySetResult(0);
             }
         }
@@ -504,6 +678,8 @@ namespace DeathMuffinTeam
             api.Token = "";
             save();
             ClearOffer();
+            DropWaitingBench();
+            LeaveAfk("stopped");
             SetStatus(message, StatusLevel.Warn);
             log("stopped: " + message);
             if (tell) ui.Stopped(message);
@@ -530,6 +706,9 @@ namespace DeathMuffinTeam
             DateTime now = utcNow();
             if (settings.IsPaused(now)) { SetStatus("Paused until " + settings.PausedUntilUtc.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture), StatusLevel.Warn); return; }
             if (current != null) return;   // EvaluateAsync says what the offer is doing
+            if (waitingBench != null) { SetStatus(BenchWaitingText, StatusLevel.Busy); return; }
+            if (benchGone) { benchGone = false; SetStatus(BenchGoneText, StatusLevel.Ok); return; }   // said once, until the next change of status
+            if (afk) { SetStatus("AFK mode: jobs run right away", StatusLevel.Ok); return; }
             SetStatus("Ready (mode: " + Modes.Label(settings.Mode) + ")", StatusLevel.Ok);
         }
     }

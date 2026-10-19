@@ -13,6 +13,8 @@
  * Everything in a POST is untrusted client data: strings are trimmed, stripped of control characters and capped, numbers must be finite,
  * unknown keys are dropped. Runs that were vsync-capped or cancelled are stored with `flagged` set and left out of the default list.
  * Nothing private (email, account id) is ever returned.
+ * `source` (migration 058): 'player' for a run the game sent here, 'team' for a run a team PC uploaded with its finished `bench` job (team-jobs.cjs, through
+ * `saveRun`, which also keeps the PC's id in `source_pc`, never returned). Only the server sets it: a POST's own `source` is dropped like any unknown key.
  */
 const DAILY_CAP = 60;
 const REPORT_MAX = 24000;
@@ -26,6 +28,7 @@ const SIZES = ['light', 'standard', 'heavy', 'full_party'];   // (the column is 
 const LENGTHS = ['quick', 'full'];
 const MAX_DISCIPLINE = 20;
 const NUM_LIMIT = 1e9;
+const DAILY_CAP_ERROR = 'That is plenty of benchmark runs for one day. Please try again tomorrow.';
 
 const CONTROL = /[\u0000-\u0008\u000b-\u001f\u007f]/g;
 const CONTROL_LINE = /[\u0000-\u001f\u007f]/g;
@@ -97,6 +100,38 @@ function parseRun(body) {
   };
 }
 
+/**
+ * Store one run `parseRun` accepted, for `account`. Returns { id } (a repeated clientRunId answers the first id) or { capped: true } when the account is at its daily cap.
+ * `source` / `sourcePc` mark a run a team PC uploaded (team-jobs.cjs); the player's POST passes none, so its rows keep NULL. Throws what the database throws.
+ */
+async function saveRun(pool, account, r, { source = null, sourcePc = null } = {}) {
+  const existing = async () => {
+    const [rows] = await pool.execute('SELECT id FROM benchmark_runs WHERE account_id = ? AND client_run_id = ? LIMIT 1', [account, r.clientRunId]);
+    return rows[0] ? Number(rows[0].id) : 0;
+  };
+  const had = await existing();
+  if (had) return { id: had };
+  const [[{ c }]] = await pool.execute('SELECT COUNT(*) AS c FROM benchmark_runs WHERE account_id = ? AND created_at > NOW() - INTERVAL 1 DAY', [account]);
+  if (c >= DAILY_CAP) return { capped: true };
+  const m = r.metrics;
+  try {
+    const [result] = await pool.execute(
+      `INSERT INTO benchmark_runs (account_id, client_run_id, ran_at, version, godot, gpu, cpu, cores, os, renderer, resolution, refresh_hz,
+         preset, room, discipline_index, size, length, standard, flagged, flag_reason,
+         avg_fps, p95_ms, p99_ms, worst_ms, hitches, draw_calls, kills_per_min, metrics, breakdown, report, source, source_pc)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [account, r.clientRunId, r.ranAt, r.version, r.godot, r.gpu, r.cpu, r.cores, r.os, r.renderer, r.resolution, r.refreshHz,
+        r.preset, r.room, r.discipline, r.size, r.length, r.standard ? 1 : 0, r.flagged ? 1 : 0, r.flagReason,
+        m.avg_fps, m.p95_ms ?? null, m.p99_ms ?? null, m.worst_ms ?? null, m.hitches === undefined ? null : Math.round(m.hitches), m.draw_calls ?? null, m.kills_per_min ?? null,
+        JSON.stringify(m), r.breakdown ? JSON.stringify(r.breakdown) : null, r.report, source, sourcePc],
+    );
+    return { id: Number(result.insertId) };
+  } catch (err) {
+    if (err && err.code === 'ER_DUP_ENTRY') return { id: await existing() };   // a retry that raced the first upload
+    throw err;
+  }
+}
+
 const asJson = (v) => {
   if (v == null) return null;
   if (typeof v !== 'string') return v;
@@ -110,14 +145,14 @@ function summary(r) {
     id: Number(r.id), username: String(r.username), createdAt: iso(r.created_at), ranAt: iso(r.ran_at),
     version: r.version, gpu: r.gpu, cpu: r.cpu, cores: n(r.cores), os: r.os, renderer: r.renderer, resolution: r.resolution,
     preset: r.preset, room: r.room, discipline: n(r.discipline_index), size: r.size, length: r.length,
-    standard: !!r.standard, flagged: !!r.flagged, flagReason: r.flag_reason || null,
+    standard: !!r.standard, flagged: !!r.flagged, flagReason: r.flag_reason || null, source: r.source === 'team' ? 'team' : 'player',
     avgFps: n(r.avg_fps), p95Ms: n(r.p95_ms), p99Ms: n(r.p99_ms), worstMs: n(r.worst_ms), hitches: n(r.hitches),
     drawCalls: n(r.draw_calls), killsPerMin: n(r.kills_per_min),
   };
 }
 
 const SUMMARY_COLS = 'b.id, a.username, b.created_at, b.ran_at, b.version, b.gpu, b.cpu, b.cores, b.os, b.renderer, b.resolution, b.preset, b.room, ' +
-  'b.discipline_index, b.size, b.length, b.standard, b.flagged, b.flag_reason, b.avg_fps, b.p95_ms, b.p99_ms, b.worst_ms, b.hitches, b.draw_calls, b.kills_per_min';
+  'b.discipline_index, b.size, b.length, b.standard, b.flagged, b.flag_reason, b.source, b.avg_fps, b.p95_ms, b.p99_ms, b.worst_ms, b.hitches, b.draw_calls, b.kills_per_min';
 
 /** Query string -> { where, params } or { error }. */
 function parseFilters(q) {
@@ -158,33 +193,10 @@ module.exports = function mountBenchmarks(app, pool, { requireAuth, isStaff, lim
     const parsed = parseRun(req.body);
     if (parsed.error) return res.status(400).json({ success: false, error: parsed.error });
     const r = parsed.run;
-    const account = req.user.accountId;
     try {
-      const existing = async () => {
-        const [rows] = await pool.execute('SELECT id FROM benchmark_runs WHERE account_id = ? AND client_run_id = ? LIMIT 1', [account, r.clientRunId]);
-        return rows[0] ? Number(rows[0].id) : 0;
-      };
-      const had = await existing();
-      if (had) return res.json({ success: true, data: { id: had } });
-      const [[{ c }]] = await pool.execute('SELECT COUNT(*) AS c FROM benchmark_runs WHERE account_id = ? AND created_at > NOW() - INTERVAL 1 DAY', [account]);
-      if (c >= DAILY_CAP) return res.status(429).json({ success: false, error: 'That is plenty of benchmark runs for one day. Please try again tomorrow.' });
-      const m = r.metrics;
-      try {
-        const [result] = await pool.execute(
-          `INSERT INTO benchmark_runs (account_id, client_run_id, ran_at, version, godot, gpu, cpu, cores, os, renderer, resolution, refresh_hz,
-             preset, room, discipline_index, size, length, standard, flagged, flag_reason,
-             avg_fps, p95_ms, p99_ms, worst_ms, hitches, draw_calls, kills_per_min, metrics, breakdown, report)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [account, r.clientRunId, r.ranAt, r.version, r.godot, r.gpu, r.cpu, r.cores, r.os, r.renderer, r.resolution, r.refreshHz,
-            r.preset, r.room, r.discipline, r.size, r.length, r.standard ? 1 : 0, r.flagged ? 1 : 0, r.flagReason,
-            m.avg_fps, m.p95_ms ?? null, m.p99_ms ?? null, m.worst_ms ?? null, m.hitches === undefined ? null : Math.round(m.hitches), m.draw_calls ?? null, m.kills_per_min ?? null,
-            JSON.stringify(m), r.breakdown ? JSON.stringify(r.breakdown) : null, r.report],
-        );
-        res.json({ success: true, data: { id: Number(result.insertId) } });
-      } catch (err) {
-        if (err && err.code === 'ER_DUP_ENTRY') return res.json({ success: true, data: { id: await existing() } }); // a retry that raced the first upload
-        throw err;
-      }
+      const saved = await saveRun(pool, req.user.accountId, r);
+      if (saved.capped) return res.status(429).json({ success: false, error: DAILY_CAP_ERROR });
+      res.json({ success: true, data: { id: saved.id } });
     } catch (err) {
       if (err && err.code === 'ER_NO_SUCH_TABLE') return noTable(res);
       console.error('benchmark save error:', (err && (err.code || err.message)) || err);
@@ -246,4 +258,6 @@ module.exports = function mountBenchmarks(app, pool, { requireAuth, isStaff, lim
 
 module.exports.parseRun = parseRun;
 module.exports.parseFilters = parseFilters;
+module.exports.saveRun = saveRun;
+module.exports.DAILY_CAP_ERROR = DAILY_CAP_ERROR;
 module.exports.DAILY_CAP = DAILY_CAP;

@@ -59,6 +59,8 @@ namespace DeathMuffinTeam
         public static readonly TimeSpan HeartbeatEvery = TimeSpan.FromSeconds(30);
         /// <summary>One preset's run is stopped after this long.</summary>
         public static readonly TimeSpan RunLimit = TimeSpan.FromMinutes(10);
+        /// <summary>One benchmark setup's run is stopped after this long.</summary>
+        public static readonly TimeSpan BenchRunLimit = TimeSpan.FromMinutes(15);
         public const int KeepJobFolders = 3;
         public const int KeepCacheKeys = 4;
 
@@ -66,9 +68,10 @@ namespace DeathMuffinTeam
         /// The one decision about an offered job. A yes always runs it. A no or a pause declines it. A paused PC declines everything. Otherwise a full-screen
         /// app (a game, a film, a presentation), Death Muffin itself, or a laptop on battery means "not now, and not visibly": the box stays hidden and the job
         /// waits for that to end. With nothing in the way, mode auto runs, mode yes asks forever, and mode ask asks and runs by itself once the box has
-        /// been up for five minutes without an answer (<paramref name="elapsed"/> counts from when the box was shown, so a wait never eats it).
+        /// been up for five minutes without an answer (<paramref name="elapsed"/> counts from when the box was shown, so a wait never eats it). In AFK mode
+        /// (<paramref name="afk"/>, mode ask only: the person has been away since a box ran out) a job runs at once, with no box and no wait.
         /// </summary>
-        public static OfferDecision Decide(OfferMode mode, OfferAnswer answer, TimeSpan elapsed, bool fullscreen, bool gameRunning, bool onBattery, bool paused)
+        public static OfferDecision Decide(OfferMode mode, OfferAnswer answer, TimeSpan elapsed, bool fullscreen, bool gameRunning, bool onBattery, bool paused, bool afk = false)
         {
             if (answer == OfferAnswer.Yes) return OfferDecision.Run;
             if (answer == OfferAnswer.NotNow || answer == OfferAnswer.Pause) return OfferDecision.Decline;
@@ -76,8 +79,34 @@ namespace DeathMuffinTeam
             if (fullscreen || gameRunning || onBattery) return OfferDecision.Wait;
             if (mode == OfferMode.Auto) return OfferDecision.Run;
             if (mode == OfferMode.Yes) return OfferDecision.Ask;
+            if (afk) return OfferDecision.Run;
             return elapsed >= AutoRunAfter ? OfferDecision.Run : OfferDecision.Ask;
         }
+
+        /// <summary>The notice's words while AFK mode is on, and its button.</summary>
+        public const string AfkText = "AFK mode on: jobs run right away";
+        public const string AfkEndText = "End AFK mode";
+
+        /// <summary>
+        /// True when this decision switches AFK mode on: mode ask, nobody answered, the box has been up its five minutes and the job runs by itself. A yes (Run now), the other modes (they never ask, or never
+        /// run by themselves) and a decision that is not Run never do.
+        /// </summary>
+        public static bool EntersAfk(OfferMode mode, OfferAnswer answer, TimeSpan elapsed, OfferDecision decision, bool afk)
+        {
+            return !afk && mode == OfferMode.Ask && answer == OfferAnswer.None && decision == OfferDecision.Run && elapsed >= AutoRunAfter;
+        }
+
+        /// <summary>Why AFK mode ends by itself, in plain words, or "" when it goes on: the player started Death Muffin or a full-screen app came up (they are back), or the PC was paused.</summary>
+        public static string AfkEndReason(bool afk, bool gameRunning, bool fullscreen, bool paused)
+        {
+            if (!afk) return "";
+            if (gameRunning) return "Death Muffin was started";
+            if (fullscreen) return "a full-screen app came up";
+            if (paused) return "the PC was paused";
+            return "";
+        }
+
+        public static bool LeavesAfk(bool afk, bool gameRunning, bool fullscreen, bool paused) { return AfkEndReason(afk, gameRunning, fullscreen, paused).Length > 0; }
 
         /// <summary>The reason the server records for a decline: not_now (the person said no) or paused (a pause, or they chose Pause 2 hours).</summary>
         public static string DeclineReason(OfferAnswer answer, bool paused)
@@ -110,6 +139,15 @@ namespace DeathMuffinTeam
             title = (title ?? "").Trim();
             if (title.Length == 0) title = "A job";
             return title + ", " + HowLong(weightS);
+        }
+
+        /// <summary>
+        /// The offer box's note for a job kind. A benchmark is offered like any job (the same box, modes and exceptions); the note says what happens after the yes: it starts only once the PC has been left
+        /// alone for a minute, runs at normal priority (a lower one would skew the numbers) and starts over if the keyboard or mouse is touched. "" for the others.
+        /// </summary>
+        public static string OfferNote(string kind)
+        {
+            return kind == JobPlan.BenchKind ? "It starts once the PC has been left alone for a minute, and runs at normal priority. Touching the mouse or keyboard restarts it." : "";
         }
 
         /// <summary>"4:12" for the box's countdown.</summary>

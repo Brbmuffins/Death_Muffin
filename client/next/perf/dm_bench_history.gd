@@ -60,6 +60,15 @@ static func record(p: Dictionary) -> void:
 	_write(pending_file(), q.slice(maxi(0, q.size() - PENDING_KEEP)))
 
 
+## Whether `p` (a `payload`) is the last entry of the queue (`pending_file`): the run was recorded. A run the queue could not take (a folder that cannot be written) is not.
+static func queued(p: Dictionary) -> bool:
+	var q := _read(pending_file())
+	if q.is_empty() or not q[q.size() - 1] is Dictionary:
+		return false
+	var last: Dictionary = q[q.size() - 1]
+	return str(last.get("clientRunId", "")) == str(p["clientRunId"])
+
+
 ## The latest earlier local run of the same setup on the same GPU and preset, or {} (`p` itself is skipped by its clientRunId).
 static func previous(p: Dictionary) -> Dictionary:
 	var all := _read(history_file())

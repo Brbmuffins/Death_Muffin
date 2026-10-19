@@ -129,8 +129,8 @@ polish list). Also:
 
 - `launcher/tests/LauncherTests.csproj` does not load in `dotnet build`: its XML comment contains `--project` ("XML comment cannot contain '--'"); CI does not
   build it, so `launcher/tests/run-local.sh` is the only way its tests run (found 2026-10-19).
-- Team jobs: nothing prunes `/home/ubuntu/death-muffin/team-results` (the pictures team PCs upload), and a cancelled job reaches the PC running it only at
-  its next upload or finish (the heartbeat does not carry cancellations).
+- `discord-agent/preview-godot.sh --team` still carries its own copy of the newest-6 clean-up of the preview folders in `team-files`; `server/death-muffin/team-files-prune.sh` is the shared rule it
+  should call (found 2026-10-19).
 - `npm run typecheck` fails on six errors in the rules' parity tests (`server/rules/gameplay/__tests__/legionRules.parity.test.ts`, `necroRules.parity.test.ts`, `vaultRules.parity.test.ts`: fixture rows typed looser than the rule functions take); CI does not run it, so it went unnoticed (found 2026-10-19).
 - The Windows launcher workflow (`.github/workflows/launcher-windows.yml`) rebuilds and re-uploads the launcher zip of the current release for any
   change under `launcher/`, a README included (same version, so no launcher update and no notice; it happened on 2026-10-18).

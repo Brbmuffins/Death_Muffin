@@ -18,10 +18,13 @@
 #    A first publish starts locked. Devs flip it with set-online.sh.
 # 4. Keeps the newest two build folders (the previous one covers launchers that are mid-download).
 # 5. announce-release.sh: launcher news + patch notes, the #build-alerts notice, fixed bug reports released (skipped for a rollback).
+# 6. team-bench.sh: the team PCs' benchmark of this release, one `bench` job per team PC seen in the last 14 days (README.md "Team jobs"). Best effort: a failure
+#    prints a line and never fails the publish. Only for the live folder (/var/www/death-muffin/client: the test channel and tests publish elsewhere; TEAM_BENCH=1
+#    forces it, NO_TEAM_BENCH=1 skips it) and never for a rollback (a revision that is not newer than the build that was live).
 #
 # Served at https://muffindevelopment.com/death-muffin/client/ (static, see nginx-locations.conf).
 # Refuses a forward release while the live lobby differs from <rev>'s (run deploy-lobby.sh first; LOBBY_SKEW_OK=1 overrides).
-# Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2 FX_SHEETS LOBBY_DIR PREPARE SMOKE SYMBOLS_DIR SYMBOL_BUILDS
+# Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2 FX_SHEETS LOBBY_DIR PREPARE SMOKE SYMBOLS_DIR SYMBOL_BUILDS TEAM_BENCH NO_TEAM_BENCH
 # The game is client/ (DECISIONS B49): its PREPARE and SMOKE steps (test-channel/prepare-rebuild.sh, smoke-rebuild.sh) run by default.
 set -euo pipefail
 
@@ -118,6 +121,10 @@ print(json.dumps({"enabled": enabled, "staff": staff, "message": message}))
 PY
 )
 
+# The revision that is live now (before the switch below): a rollback is not benchmarked (the team-bench hook at the end).
+PREV_REV=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get("rev", ""))' "$OUT_DIR/manifest.json" 2>/dev/null || true)
+[[ "$PREV_REV" =~ ^[0-9a-f]{7,40}$ ]] || PREV_REV=""
+
 # Copy into the versioned folder, then describe it.
 DEST="$OUT_DIR/$VERSION"
 mkdir -p "$DEST"
@@ -180,3 +187,20 @@ if [ -z "${NO_ANNOUNCE:-}" ]; then
   else echo "release notes: $SHA has no announce-release.sh (older revision): skipped"; fi
   rm -f "$ANN"
 fi
+
+# --- team bench hook ---
+# The team PCs' benchmark of this release: team-bench.sh from the published revision itself (with the clean-up rule it shares), one `bench` job per team PC seen
+# lately. Best effort: a failure prints a line and never fails the publish (a run of more than 5 minutes is stopped).
+LIVE_OUT=/var/www/death-muffin/client
+if [ -z "${NO_TEAM_BENCH:-}" ] && { [ "$OUT_DIR" = "$LIVE_OUT" ] || [ -n "${TEAM_BENCH:-}" ]; }; then
+  if [ -n "$PREV_REV" ] && git -C "$REPO" cat-file -e "$PREV_REV^{commit}" 2>/dev/null && ! git -C "$REPO" merge-base --is-ancestor "$PREV_REV" "$SHA" 2>/dev/null; then
+    echo "team bench: $SHA is not newer than the build that was live ($PREV_REV): skipped (rollback?)"
+  else
+    TB=$(mktemp -d)
+    if git -C "$REPO" archive "$SHA" server/death-muffin/team-bench.sh server/death-muffin/team-files-prune.sh 2>/dev/null | tar -x -C "$TB" 2>/dev/null; then
+      timeout -k 10 300 bash "$TB/server/death-muffin/team-bench.sh" "$VERSION" || echo "team bench: failed (the publish itself is fine)"
+    else echo "team bench: $SHA has no team-bench.sh (older revision): skipped"; fi
+    rm -rf "$TB"
+  fi
+fi
+# --- end team bench hook ---

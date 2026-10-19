@@ -2,10 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace DeathMuffinTeam
 {
-    /// <summary>What to start: the debug build of the game, from the job's game folder, with Godot's user folders pointed into the job's folder.</summary>
+    /// <summary>What to start: the game, from the job's game folder, with Godot's user folders pointed into the job's folder.</summary>
     internal sealed class GameLaunch
     {
         public string ExePath = "";
@@ -13,6 +14,8 @@ namespace DeathMuffinTeam
         public string AppData = "";
         public string LocalAppData = "";
         public List<string> Args = new List<string>();
+        /// <summary>Below normal for screenshots (a job never competes with what the person is doing); a benchmark runs at normal: low priority would skew it.</summary>
+        public ProcessPriorityClass Priority = ProcessPriorityClass.BelowNormal;
     }
 
     internal interface IGameProcess : IDisposable
@@ -71,7 +74,15 @@ namespace DeathMuffinTeam
             p.OutputDataReceived += (s, e) => { if (e.Data != null) buffer.Add(e.Data); };
             p.ErrorDataReceived += (s, e) => { if (e.Data != null) buffer.Add(e.Data); };
             p.Start();
-            try { p.PriorityClass = ProcessPriorityClass.BelowNormal; } catch (Exception) { /* it may already have exited, or be refused: the app itself runs below normal too */ }
+            bool prioritySet = true;
+            try { p.PriorityClass = l.Priority; } catch (Exception) { prioritySet = false; }
+            if (!prioritySet && l.Priority == ProcessPriorityClass.Normal && !p.HasExited)
+            {
+                // A benchmark must not run at the app's own below-normal priority (honest numbers): no run is better than a skewed one.
+                try { p.Kill(); } catch (Exception) { }
+                p.Dispose();
+                throw new InvalidOperationException("Windows did not let the app run the game at normal priority");
+            }
             p.BeginOutputReadLine();
             p.BeginErrorReadLine();
             return new Running(p, buffer, tend);
@@ -124,12 +135,46 @@ namespace DeathMuffinTeam
         }
     }
 
-    /// <summary>The end of a process's output: at most <c>max</c> characters, oldest lines dropped first.</summary>
+    /// <summary>
+    /// Godot's exit report. A debug build, on exit, prints a long list of what it never freed ("... were leaked at exit", "... were never freed", "Leaked instance dependency", "ObjectDB instances were
+    /// leaked", "resources still in use"), each followed by an "   at: ..." line. It says nothing about why a job failed and it fills the log tail the server keeps, so those lines (and the "at:" line after
+    /// each) are dropped from what the app keeps and uploads. Every other line, every other ERROR and WARNING, stays.
+    /// </summary>
+    internal static class GodotLog
+    {
+        static readonly Regex LeakRe = new Regex("were leaked at exit|were never freed|Leaked instance dependency|ObjectDB instances (were )?leaked|resources still in use", RegexOptions.CultureInvariant);
+        static readonly Regex LocationRe = new Regex("^\\s+at: ", RegexOptions.CultureInvariant);
+
+        /// <summary>A line of the exit report.</summary>
+        public static bool IsLeak(string line) { return line != null && LeakRe.IsMatch(line); }
+
+        /// <summary>The "   at: function (file:line)" line Godot prints under an error.</summary>
+        public static bool IsLocation(string line) { return line != null && LocationRe.IsMatch(line); }
+
+        /// <summary>The text without the exit report's lines.</summary>
+        public static string Clean(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text ?? "";
+            var kept = new List<string>();
+            bool dropLocation = false;
+            foreach (string line in text.Split('\n'))
+            {
+                if (IsLeak(line)) { dropLocation = true; continue; }
+                if (dropLocation && IsLocation(line)) { dropLocation = false; continue; }
+                dropLocation = false;
+                kept.Add(line);
+            }
+            return string.Join("\n", kept);
+        }
+    }
+
+    /// <summary>The end of a process's output: at most <c>max</c> characters, oldest lines dropped first. Godot's exit report is not kept (GodotLog).</summary>
     internal sealed class OutputBuffer
     {
         readonly int max;
         readonly Queue<string> lines = new Queue<string>();
         int size;
+        bool dropLocation;
 
         public OutputBuffer(int max) { this.max = max; }
 
@@ -137,6 +182,9 @@ namespace DeathMuffinTeam
         {
             lock (lines)
             {
+                if (GodotLog.IsLeak(line)) { dropLocation = true; return; }
+                if (dropLocation && GodotLog.IsLocation(line)) { dropLocation = false; return; }
+                dropLocation = false;
                 if (line.Length > 2000) line = line.Substring(0, 2000);
                 lines.Enqueue(line);
                 size += line.Length + 1;

@@ -6,8 +6,8 @@ using System.Text.RegularExpressions;
 namespace DeathMuffinTeam
 {
     /// <summary>
-    /// The app's folder, %LOCALAPPDATA%\DeathMuffinTeam\: cache\&lt;cacheKey&gt;\ (files kept across jobs), jobs\&lt;id&gt;\ (one job: game\, appdata\, localappdata\, out\&lt;preset&gt;\,
-    /// plan.json, job.log), settings.json and app.log. The last few job folders are kept (to look at what a job did); older ones go.
+    /// The app's folder, %LOCALAPPDATA%\DeathMuffinTeam\: cache\&lt;cacheKey&gt;\ (files kept across jobs), jobs\&lt;id&gt;\ (one job: game\, run-&lt;n&gt;\appdata\ and run-&lt;n&gt;\localappdata\ (a fresh pair for each
+    /// run of the game), out\&lt;preset&gt;\ or bench-&lt;n&gt;\ for each benchmark setup, plan.json, job.log), settings.json and app.log.
     /// </summary>
     internal sealed class TeamFolders
     {
@@ -23,9 +23,17 @@ namespace DeathMuffinTeam
         public string JobDir(string id) { return Path.Combine(JobsRoot, id); }
         public string GameDir(string id) { return Path.Combine(JobDir(id), "game"); }
         public string OutDir(string id) { return Path.Combine(JobDir(id), "out"); }
-        /// <summary>The game's APPDATA and LOCALAPPDATA for this job, so Godot's user:// never touches the player's own game, settings or account.</summary>
-        public string AppDataDir(string id) { return Path.Combine(JobDir(id), "appdata"); }
-        public string LocalAppDataDir(string id) { return Path.Combine(JobDir(id), "localappdata"); }
+        /// <summary>The n-th run of the game in a job (1, 2, ...): each preset of a `shots` job, each try of each `bench` setup.</summary>
+        public string RunDir(string id, int run) { return Path.Combine(JobDir(id), "run-" + Num(run)); }
+        /// <summary>
+        /// The game's APPDATA and LOCALAPPDATA for one run, so Godot's user:// never touches the player's own game, settings or account, and one run never finds another's offline save,
+        /// settings or log (JobRunner empties them before the run).
+        /// </summary>
+        public string AppDataDir(string id, int run) { return Path.Combine(RunDir(id, run), "appdata"); }
+        public string LocalAppDataDir(string id, int run) { return Path.Combine(RunDir(id, run), "localappdata"); }
+        /// <summary>A `bench` job's folder for its n-th setup (1, 2, ...): the game's `--bench-dir`, where its `pending.json` is left.</summary>
+        public string BenchDir(string id, int n) { return Path.Combine(JobDir(id), "bench-" + Num(n)); }
+        static string Num(int n) { return n.ToString(System.Globalization.CultureInfo.InvariantCulture); }
         public string PlanFile(string id) { return Path.Combine(JobDir(id), "plan.json"); }
         public string LogFile(string id) { return Path.Combine(JobDir(id), "job.log"); }
 

@@ -9,7 +9,9 @@ extends SceneTree
 ##   - every class: a short run per class, the kit's family, auto combat casts;
 ##   - Easy auto combat casts (the gate is closed until opened, it casts, it walks when it may, it reads the corpses and the core's bulk arrays, and nothing is a node);
 ##   - the report has its lines and its budget section prints, with a verdict for the core and the rest of the main thread, and the HUD's share is measured with the HUD put back after;
-##   - a real `--benchmark` launch (--bench-warm / --bench-measure) prints the report and quits by itself; a room or class the benchmark does not list is refused with exit code 2;
+##   - a real `--benchmark` launch (--bench-warm / --bench-measure) prints the report and quits by itself; a room, class or graphics preset the benchmark does not list is refused with exit code 2;
+##   - the team app's flags: `--bench-preset=` puts a graphics preset on loan for the run (the report and the queued run say it, the player's settings file is not touched or changed), and `--bench-quit` ends a
+##     run with exit code 0 once it is the last entry of the queue, 1 for a cancelled one or one the queue did not take;
 ##   - nothing is sent anywhere: the run's files (history, queue, last setup, reports) and its baked models live in a folder of this run's own (so no other run's files change a check, and none is left behind),
 ##     an upload goes to a mock that answers as the test API, a debug build and a trial launch do not upload, and a real transport is never asked to carry a run from a script;
 ##   - the render breakdown, the history and the setup window work; Esc cancels;
@@ -189,6 +191,40 @@ func the_setup() -> void:
 	var fen: Dictionary = M.bench_setup_from_args(PackedStringArray(["--benchmark", "--bench-room=fen", "--bench-class=11"]))
 	check(fen["room"] == "fen" and fen["discipline"] == 11 and DmBenchmark.refusal(M.bench_wanted_from_args(PackedStringArray(["--bench-room=fen", "--bench-class=11"]))) == "", "launch args pick the Fen and the Reaper")
 	check(DmLaunchArgs.options(PackedStringArray(["--benchmark", "--bench-dir=/tmp/x y"]))["bench_dir"] == "/tmp/x y" and not DmLaunchArgs.options(PackedStringArray(["--benchmark"])).has("bench_dir"), "--bench-dir= names the folder a run keeps its files in")
+	# the team app's flags: the preset of the run, and quitting by itself
+	var named: Dictionary = M.bench_wanted_from_args(PackedStringArray(["--benchmark", "--bench-preset=low", "--bench-room=graves", "--bench-quit"]))
+	check(named == {"preset": "low", "room": "graves"} and DmBenchmark.refusal(named) == "", "--bench-preset=low is read with the setup's keys, and refused by nothing")
+	check(M.bench_setup_from_args(PackedStringArray(["--benchmark", "--bench-preset=low"])) == DmBenchmark.STANDARD, "the preset is not part of the setup: it stays the Standard one")
+	check(not M.bench_wanted_from_args(PackedStringArray(["--benchmark", "--bench-quit"])).has("preset"), "no --bench-preset= names no preset (the player's own)")
+	for id in DmGraphicsPreset.IDS:
+		check(DmBenchmark.refusal({"preset": id}) == "", "--bench-preset=%s is something the benchmark can run" % id)
+	for bad in ["max", "Low", "", "ultra low", "low;rm"]:
+		var why := DmBenchmark.refusal(M.bench_wanted_from_args(PackedStringArray(["--benchmark", "--bench-preset=" + bad])))
+		check(why.contains("'%s'" % bad) and why.contains("low, medium, high, ultra") and why.contains("--bench-preset="), "--bench-preset=%s is refused with a message that names the presets (%s)" % [bad, why])
+	# the preset is on loan: the run reads it as the player's setting, and the player's own are neither written nor changed
+	var settings_before := FileAccess.file_exists(DmSettings.FILE)
+	var settings_text := FileAccess.get_file_as_string(DmSettings.FILE) if settings_before else ""
+	var own_preset := String(DmBenchmark.user_settings()["graphics"])
+	for id in DmGraphicsPreset.IDS:
+		check(String(DmBenchmark.user_settings(id)["graphics"]) == id, "the run reads %s as the graphics setting when it is asked for" % id)
+	check(String(DmBenchmark.user_settings("")["graphics"]) == own_preset and String(DmSettings.new(DmSettings.FILE, true).values["graphics"]) == own_preset, "no preset asked for: the player's own; and the loan does not leak into the next read")
+	check(FileAccess.file_exists(DmSettings.FILE) == settings_before and (not settings_before or FileAccess.get_file_as_string(DmSettings.FILE) == settings_text), "the player's settings file is untouched (%s)" % ("present" if settings_before else "absent"))
+	# the exit code of a --bench-quit run
+	var done_run := {"phases": [{"avg_fps": 60.0}], "cancelled": false}
+	check(DmBenchmarkScreen.exit_code(done_run, true) == 0, "a finished run that is the last entry of the queue exits 0")
+	check(DmBenchmarkScreen.exit_code(done_run, false) == 1, "a run the queue did not take exits 1")
+	check(DmBenchmarkScreen.exit_code({"phases": [{"avg_fps": 60.0}], "cancelled": true}, true) == 1, "a cancelled run exits 1, though it was queued (flagged)")
+	check(DmBenchmarkScreen.exit_code({"phases": [], "cancelled": true}, true) == 1 and DmBenchmarkScreen.exit_code({"phases": []}, false) == 1, "a run with no finished phase exits 1")
+	# "recorded" means the run is the last entry of the queue
+	var entry_a := DmBenchHistory.payload(_tiny_result(), "report a")
+	var entry_b := DmBenchHistory.payload(_tiny_result(), "report b")
+	entry_b["clientRunId"] = str(entry_a["clientRunId"]) + "9"
+	check(not DmBenchHistory.queued(entry_a), "a run that was not recorded is not in the queue")
+	DmBenchHistory.record(entry_a)
+	check(DmBenchHistory.queued(entry_a) and not DmBenchHistory.queued(entry_b), "a recorded run is the last entry of the queue")
+	DmBenchHistory.record(entry_b)
+	check(DmBenchHistory.queued(entry_b) and not DmBenchHistory.queued(entry_a), "the next run is the last entry, the one before it is not")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(DmBenchHistory.pending_file()))
 
 
 # ------------------------------------------------------------------------------------------------------------------ the fight, by hand
@@ -737,6 +773,7 @@ func screen_and_upload() -> void:
 	s.measure_s = 2.0
 	s.baked_dir = scratch
 	s.setup = {"room": "graves", "discipline": 2, "size": "light", "length": "quick"}
+	s.graphics_preset = "low" if DmBenchmark.user_settings()["graphics"] != "low" else "medium"   # the run's preset (--bench-preset=), not the player's
 	s.api = test_api
 	var closed := [false]
 	s.closed.connect(func() -> void: closed[0] = true)
@@ -754,6 +791,7 @@ func screen_and_upload() -> void:
 	var sent: Variant = JSON.parse_string(String(posted[0].get("body", ""))) if not posted.is_empty() else null
 	check(sent is Dictionary and sent.get("room") == "graves" and (sent.get("metrics", {}) as Dictionary).has("core_ms") and String(sent.get("report", "")).contains("Combat core per tick"), "the posted run carries the room, the core's numbers and the report")
 	check(s.report.contains("Budgets (ROADMAP") and s.saved_path != "", "the screen kept the report with its budget section, and saved it")
+	check(sent is Dictionary and sent.get("preset") == s.graphics_preset and s.report.contains("Graphics preset: " + s.graphics_preset), "the posted run and its report carry the preset the run was asked for (%s), not the player's" % s.graphics_preset)
 	check(not has_script_class(root, "DmHttpTransport"), "the screen made no transport of its own")
 	# Esc closes the results
 	var esc := InputEventKey.new()
@@ -928,7 +966,27 @@ func real_launches() -> void:
 	check(c3 == 0 and t3.contains("BENCHMARK Crowd: mesh levels at 40 / 80 m; 64 instances reserved a group; animation off (every body every frame); culling off; thralls do not cast shadows"), "a launch with --bench-crowd records its settings in the report (%d)" % c3)
 	check(t3.contains("ignored --bench-crowd setting 'bogus=1'") and not t3.contains("SCRIPT ERROR"), "and says what it ignored")
 	check(t3.contains("(0 of them thralls; 0 MultiMeshes, 0 k triangles again in the shadow pass)") or t3.contains("(0 of them thralls;"), "and no thrall cast")
-	for pair in [["--bench-room=depths", "'depths'", "graves"], ["--bench-room=nowhere", "'nowhere'", "fen"], ["--bench-class=5", "class 5", "2 Gravecaller"]]:
+	# the team app's launch: a preset on loan and --bench-quit; the player's settings file is not touched, the run is the last entry of its own queue
+	var settings_had := FileAccess.file_exists(DmSettings.FILE)
+	var settings_was := FileAccess.get_file_as_string(DmSettings.FILE) if settings_had else ""
+	var own_preset := String(DmBenchmark.user_settings()["graphics"])
+	var asked := "low" if own_preset != "low" else "medium"
+	var trial := own.path_join("team-run")
+	var o4: Array = []
+	var c4 := OS.execute(exe, ["--headless", "--fixed-fps", "60", "--path", proj, "--", "--benchmark", "--bench-room=graves", "--bench-class=2", "--bench-size=light", "--bench-length=quick", "--bench-warm=1",
+		"--bench-measure=2", "--baked=" + ProjectSettings.globalize_path(scratch), "--bench-dir=" + trial, "--bench-preset=" + asked, "--bench-quit"], o4, true)
+	var t4 := "\n".join(PackedStringArray(o4))
+	check(c4 == 0, "--bench-preset=%s --bench-quit: the launch exits 0 once its run is recorded (%d)" % [asked, c4])
+	check(t4.contains("Graphics preset: " + asked) and not t4.contains("SCRIPT ERROR"), "the report names the preset that was asked for, not the player's (%s)" % own_preset)
+	var trial_queue := trial.path_join("pending.json")
+	var trial_runs: Variant = JSON.parse_string(FileAccess.get_file_as_string(trial_queue)) if FileAccess.file_exists(trial_queue) else []
+	check(trial_runs is Array and (trial_runs as Array).size() == 1 and (trial_runs as Array)[0] is Dictionary, "the run is the one entry of its folder's queue")
+	if trial_runs is Array and (trial_runs as Array).size() == 1:
+		var last: Dictionary = (trial_runs as Array)[0]
+		check(last.get("preset") == asked and last.get("room") == "graves" and int(last.get("discipline", 0)) == 2 and last.get("size") == "light" and last.get("length") == "quick" and not bool(last.get("cancelled", true)) and (last.get("metrics", {}) as Dictionary).has("avg_fps"),
+			"the queued run has the preset and the setup that were asked for and a result (the payload the app sends)")
+	check(FileAccess.file_exists(DmSettings.FILE) == settings_had and (not settings_had or FileAccess.get_file_as_string(DmSettings.FILE) == settings_was), "the launch left the player's settings file as it was")
+	for pair in [["--bench-room=depths", "'depths'", "graves"], ["--bench-room=nowhere", "'nowhere'", "fen"], ["--bench-class=5", "class 5", "2 Gravecaller"], ["--bench-preset=max", "'max'", "low, medium, high, ultra"]]:
 		var o2: Array = []
 		var c2 := OS.execute(exe, ["--headless", "--path", proj, "--", "--benchmark", pair[0]], o2, true)
 		var t2 := "\n".join(PackedStringArray(o2))

@@ -20,16 +20,34 @@ namespace DeathMuffinTeam
         public bool IsCached { get { return CacheKey.Length > 0; } }
     }
 
+    /// <summary>One benchmark run of a `bench` job: the graphics preset and the game's own setup (`--bench-room`, `--bench-class`, `--bench-size`, `--bench-length`).</summary>
+    internal sealed class BenchSetup
+    {
+        public string Preset = "", Room = "", Size = "", Length = "";
+        public int Class;
+
+        /// <summary>"graves, full_party, standard, class 2" (the log's words for the setup; the preset is named beside it).</summary>
+        public string Describe() { return Room + ", " + Size + ", " + Length + ", class " + Class.ToString(CultureInfo.InvariantCulture); }
+    }
+
     /// <summary>
-    /// A `shots` job's payload, checked. Everything here comes from the server, but the app still refuses anything that could leave the job's folder, reach another
-    /// host, or change how the game starts: file names and URLs, checksums, the arguments the game is started with, and the graphics presets.
+    /// A job's payload, checked (kind `shots`: screenshots of a proposal on some presets; kind `bench`: the game's own benchmark on some setups). Everything here comes from the
+    /// server, but the app still refuses anything that could leave the job's folder, reach another host, or change how the game starts: file names and URLs, checksums, the
+    /// arguments the game is started with, the graphics presets and the benchmark setups.
     /// </summary>
     internal sealed class JobPlan
     {
-        public const string Kind = "shots";
-        /// <summary>The debug build of Godot a job downloads, and the game's code pack it is started with: both must be in every job.</summary>
+        public const string ShotsKind = "shots";
+        public const string BenchKind = "bench";
+        /// <summary>The debug build of Godot a `shots` job downloads, and the game's code pack it is started with: both must be in every such job.</summary>
         public const string GameExe = "DeathMuffinDebug.exe";
         public const string MainPack = "DeathMuffinDebug.pck";   // Godot loads "<exe name>.pck" from the exe's folder by itself: export builds refuse --main-pack
+        /// <summary>The files of a `bench` job: the RELEASE build (honest numbers), its code pack (the game loads `DeathMuffin.pck` beside `DeathMuffin.exe` itself, as above), the combat core and the art pack.</summary>
+        public const string BenchExe = "DeathMuffin.exe";
+        public static readonly string[] BenchFiles = { BenchExe, "DeathMuffin.pck", "libdmcore.windows.template_release.x86_64.dll", "DeathMuffin.assets.pck" };
+        public const int MaxSetups = 6;
+        /// <summary>The server takes a run of at most this many bytes of JSON.</summary>
+        public const int MaxRunBytes = 64 * 1024;
         public const string Resolution = "1600x900";
         public const int MaxFiles = 12;
         public const int MaxArgs = 16;
@@ -40,10 +58,14 @@ namespace DeathMuffinTeam
         public const int MaxUploadBytes = 8 << 20;
 
         public static readonly string[] KnownPresets = { "low", "medium", "high", "ultra" };
+        public static readonly string[] BenchSizes = { "light", "standard", "heavy", "full_party" };
+        /// <summary>The lengths the game knows (`--bench-length`): a length it does not know silently becomes its `full`, so no other word is accepted.</summary>
+        public static readonly string[] BenchLengths = { "quick", "full" };
         /// <summary>What the app sets itself: a payload that tries to pass one of these is refused (the game must stay offline, in the job's folder, on the preset asked for).</summary>
         static readonly string[] ReservedArgs =
         {
-            "shot-plan", "shots", "preset", "assets-pack", "baked", "bench-dir", "shot", "online",
+            "shot-plan", "shots", "preset", "assets-pack", "baked", "shot", "online",
+            "benchmark", "bench-dir", "bench-room", "bench-class", "bench-size", "bench-length", "bench-preset", "bench-quit", "audio-driver",
             "main-pack", "path", "script", "headless", "windowed", "fullscreen", "resolution", "position", "rendering-driver", "rendering-method", "log-file",
         };
         static readonly string[] DeviceNames = { "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9" };
@@ -54,16 +76,23 @@ namespace DeathMuffinTeam
         static readonly Regex VersionRe = new Regex("^[A-Za-z0-9._-]{1,32}$", RegexOptions.CultureInvariant);
         static readonly Regex ArgRe = new Regex("^--([a-z][a-z0-9-]{0,30})(=[A-Za-z0-9_.,-]{1,40})?$", RegexOptions.CultureInvariant);
         static readonly Regex ShotRe = new Regex("[^a-z0-9_-]+", RegexOptions.CultureInvariant);
+        static readonly Regex TokenRe = new Regex("^[a-z][a-z0-9_-]{0,31}$", RegexOptions.CultureInvariant);
 
+        /// <summary>`shots` or `bench`.</summary>
+        public string Kind = ShotsKind;
         public string Rev = "";
         public string GodotVersion = "";
         public List<PlanFile> Files = new List<PlanFile>();
-        /// <summary>The proposal's shot plan as the JSON text written to plan.json for the game's --shot-plan.</summary>
+        /// <summary>`shots`: the proposal's shot plan as the JSON text written to plan.json for the game's --shot-plan.</summary>
         public string PlanJson = "";
         public int PlanShots;
         public List<string> Presets = new List<string>();
-        /// <summary>The game's options after `--`, as the server sent them and checked (`--dev-offline` is added when missing).</summary>
+        /// <summary>`bench`: the runs, in order.</summary>
+        public List<BenchSetup> Setups = new List<BenchSetup>();
+        /// <summary>The game's options after `--`, as the server sent them and checked (`shots` adds `--dev-offline` when missing).</summary>
         public List<string> Args = new List<string>();
+        /// <summary>When the job's life ends (the offer's expiry): a `bench` job stops waiting for a quiet PC then. Null when not known.</summary>
+        public DateTime? ExpiresAtUtc;
 
         public PlanFile FileNamed(string name)
         {
@@ -71,16 +100,26 @@ namespace DeathMuffinTeam
             return null;
         }
 
-        /// <summary>Parses and checks a payload (an object, or JSON text of one). File URLs must be on <paramref name="siteBase"/>'s scheme, host and port, under its team-files/ folder.</summary>
+        /// <summary>The kinds of job this version can run.</summary>
+        public static bool RunsKind(string kind) { return kind == ShotsKind || kind == BenchKind; }
+
+        /// <summary>A `shots` payload, checked (see the other overload).</summary>
         public static bool TryParse(object payload, Uri siteBase, out JobPlan plan, out string error)
+        {
+            return TryParse(ShotsKind, payload, siteBase, out plan, out error);
+        }
+
+        /// <summary>Parses and checks a payload (an object, or JSON text of one) of a job of this kind. File URLs must be on <paramref name="siteBase"/>'s scheme, host and port, under its team-files/ folder.</summary>
+        public static bool TryParse(string kind, object payload, Uri siteBase, out JobPlan plan, out string error)
         {
             plan = null;
             error = null;
+            if (!RunsKind(kind)) { error = "This version of the team app cannot run " + Shorten(kind) + " jobs."; return false; }
             var d = payload as Dictionary<string, object>;
             if (d == null && payload is string) d = MiniJson.TryObject((string)payload);
             if (d == null) { error = "The job has no details."; return false; }
 
-            var p = new JobPlan();
+            var p = new JobPlan { Kind = kind };
             p.Rev = MiniJson.Str(d, "rev");
             if (p.Rev.Length > 0 && !RevRe.IsMatch(p.Rev)) { error = "The job names a build that is not a revision."; return false; }
             p.GodotVersion = MiniJson.Str(d, "godotVersion");
@@ -110,8 +149,40 @@ namespace DeathMuffinTeam
                 if (f.Url == null) { error = "The download address of " + f.Name + " is not allowed (" + urlErr + ")."; return false; }
                 p.Files.Add(f);
             }
-            if (p.FileNamed(GameExe) == null || p.FileNamed(MainPack) == null) { error = "The job does not include " + GameExe + " and " + MainPack + "."; return false; }
+            if (kind == BenchKind)
+            {
+                foreach (string need in BenchFiles)
+                    if (p.FileNamed(need) == null) { error = "The job does not include " + need + "."; return false; }
+                if (!ParseSetups(d, p, out error)) return false;
+            }
+            else
+            {
+                if (p.FileNamed(GameExe) == null || p.FileNamed(MainPack) == null) { error = "The job does not include " + GameExe + " and " + MainPack + "."; return false; }
+                if (!ParseShots(d, p, out error)) return false;
+            }
 
+            object rawArgs;
+            if (d.TryGetValue("args", out rawArgs) && rawArgs != null && !(rawArgs is List<object>)) { error = "The job's game options are not a list."; return false; }
+            var args = MiniJson.Arr(d, "args") ?? new List<object>();
+            if (args.Count > MaxArgs) { error = "The job passes too many game options."; return false; }
+            foreach (object o in args)
+            {
+                string a = o as string;
+                Match m = a == null ? null : ArgRe.Match(a);
+                if (m == null || !m.Success) { error = "A game option in the job is not allowed: \"" + Shorten(o as string) + "\"."; return false; }
+                if (Array.IndexOf(ReservedArgs, m.Groups[1].Value) >= 0) { error = "The job tries to set --" + m.Groups[1].Value + ", which the app sets itself."; return false; }
+                if (!p.Args.Contains(a)) p.Args.Add(a);
+            }
+            if (kind == ShotsKind && !p.Args.Contains("--dev-offline")) p.Args.Insert(0, "--dev-offline");
+
+            plan = p;
+            return true;
+        }
+
+        /// <summary>`shots`: the proposal's shot plan and the presets to take it on.</summary>
+        static bool ParseShots(Dictionary<string, object> d, JobPlan p, out string error)
+        {
+            error = null;
             var plan0 = MiniJson.Obj(d, "plan");
             var shots = MiniJson.Arr(plan0, "shots");
             if (plan0 == null || shots == null || shots.Count == 0) { error = "The job has no shot plan."; return false; }
@@ -128,23 +199,38 @@ namespace DeathMuffinTeam
                 if (p.Presets.Contains(s)) { error = "The job lists the preset " + s + " twice."; return false; }
                 p.Presets.Add(s);
             }
-
-            object rawArgs;
-            if (d.TryGetValue("args", out rawArgs) && rawArgs != null && !(rawArgs is List<object>)) { error = "The job's game options are not a list."; return false; }
-            var args = MiniJson.Arr(d, "args") ?? new List<object>();
-            if (args.Count > MaxArgs) { error = "The job passes too many game options."; return false; }
-            foreach (object o in args)
-            {
-                string a = o as string;
-                Match m = a == null ? null : ArgRe.Match(a);
-                if (m == null || !m.Success) { error = "A game option in the job is not allowed: \"" + Shorten(o as string) + "\"."; return false; }
-                if (Array.IndexOf(ReservedArgs, m.Groups[1].Value) >= 0) { error = "The job tries to set --" + m.Groups[1].Value + ", which the app sets itself."; return false; }
-                if (!p.Args.Contains(a)) p.Args.Add(a);
-            }
-            if (!p.Args.Contains("--dev-offline")) p.Args.Insert(0, "--dev-offline");
-
-            plan = p;
             return true;
+        }
+
+        /// <summary>`bench`: 1 to 6 setups, each a known preset, fight size and length, a room that is a safe token and a class number.</summary>
+        static bool ParseSetups(Dictionary<string, object> d, JobPlan p, out string error)
+        {
+            error = null;
+            var setups = MiniJson.Arr(d, "setups");
+            if (setups == null || setups.Count == 0 || setups.Count > MaxSetups) { error = "The job lists no benchmark setups (1 to " + MaxSetups + " are allowed)."; return false; }
+            foreach (object o in setups)
+            {
+                var sd = o as Dictionary<string, object>;
+                if (sd == null) { error = "A benchmark setup in the job is not valid."; return false; }
+                var s = new BenchSetup { Preset = MiniJson.Str(sd, "preset"), Room = MiniJson.Str(sd, "room"), Size = MiniJson.Str(sd, "size"), Length = MiniJson.Str(sd, "length") };
+                if (Array.IndexOf(KnownPresets, s.Preset) < 0) { error = "A benchmark setup asks for a graphics preset that does not exist."; return false; }
+                if (!TokenRe.IsMatch(s.Room)) { error = "A benchmark setup names a room that is not allowed: \"" + Shorten(s.Room) + "\"."; return false; }
+                long? cls = MiniJson.Int(sd, "class");
+                if (cls == null || cls.Value < 1 || cls.Value > 20) { error = "A benchmark setup names a class that does not exist."; return false; }
+                s.Class = (int)cls.Value;
+                if (Array.IndexOf(BenchSizes, s.Size) < 0) { error = "A benchmark setup asks for a fight size that does not exist: \"" + Shorten(s.Size) + "\"."; return false; }
+                if (Array.IndexOf(BenchLengths, s.Length) < 0) { error = "A benchmark setup asks for a length that does not exist: \"" + Shorten(s.Length) + "\"."; return false; }
+                p.Setups.Add(s);
+            }
+            return true;
+        }
+
+        /// <summary>The offer's `expiresAt` (ISO 8601, UTC) as a time, or null when it is missing or not a time.</summary>
+        public static DateTime? ParseExpiry(string iso)
+        {
+            DateTime t;
+            if (string.IsNullOrEmpty(iso) || !DateTime.TryParse(iso, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out t)) return null;
+            return t;
         }
 
         static string Shorten(string s) { s = s ?? ""; return s.Length > 40 ? s.Substring(0, 40) + "..." : s; }
@@ -173,10 +259,35 @@ namespace DeathMuffinTeam
 
         // ---- The command line ------------------------------------------------------------------------------------------------------
 
-        /// <summary>The game's arguments for one preset: `--windowed --resolution 1600x900 -- <options> --shot-plan=<file> --shots=<dir> --preset=<preset>`. Paths use "/".</summary>
-        public List<string> CommandArgs(string preset, string planFile, string shotsDir)
+        /// <summary>
+        /// What goes ahead of `--` for every game the app starts: `--windowed --resolution 1600x900 --audio-driver Dummy` and, when given, `--position X,Y`. The Dummy audio driver still mixes (the game's CPU
+        /// cost stays real) but nothing is heard.
+        /// </summary>
+        static List<string> WindowArgs(string position)
         {
-            var a = new List<string> { "--windowed", "--resolution", Resolution, "--" };
+            var a = new List<string> { "--windowed", "--resolution", Resolution, "--audio-driver", "Dummy" };
+            if (!string.IsNullOrEmpty(position)) { a.Add("--position"); a.Add(position); }
+            a.Add("--");
+            return a;
+        }
+
+        /// <summary>
+        /// The game window's `--position` for a screenshot job: outside every monitor, 1700 px left of the virtual screen's left edge (the window is 1600 wide) and level with its top edge, so the window
+        /// is never seen. <paramref name="virtualLeft"/> and <paramref name="virtualTop"/> are the virtual screen's (SystemInformation.VirtualScreen: every monitor together; negative when a
+        /// monitor sits left of or above the main one).
+        /// </summary>
+        public static string OffscreenPosition(int virtualLeft, int virtualTop)
+        {
+            return (virtualLeft - 1700).ToString(CultureInfo.InvariantCulture) + "," + virtualTop.ToString(CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>
+        /// The game's arguments for one preset: `--windowed --resolution 1600x900 --audio-driver Dummy [--position X,Y] -- <options> --shot-plan=<file> --shots=<dir> --preset=<preset>`. Paths use "/".
+        /// <paramref name="position"/> (see <see cref="OffscreenPosition"/>) keeps the window off every monitor; null leaves it where Godot puts it.
+        /// </summary>
+        public List<string> CommandArgs(string preset, string planFile, string shotsDir, string position = null)
+        {
+            var a = WindowArgs(position);
             a.AddRange(Args);
             a.Add("--shot-plan=" + Slashes(planFile));
             a.Add("--shots=" + Slashes(shotsDir));
@@ -184,13 +295,64 @@ namespace DeathMuffinTeam
             return a;
         }
 
-        public string CommandLine(string preset, string planFile, string shotsDir) { return CommandLineText.Join(CommandArgs(preset, planFile, shotsDir)); }
+        public string CommandLine(string preset, string planFile, string shotsDir, string position = null) { return CommandLineText.Join(CommandArgs(preset, planFile, shotsDir, position)); }
 
         static string Slashes(string path) { return path.Replace('\\', '/'); }
 
         public static string PresetLabel(string preset)
         {
             return string.IsNullOrEmpty(preset) ? "" : char.ToUpperInvariant(preset[0]) + preset.Substring(1);
+        }
+
+        /// <summary>
+        /// A `bench` setup's arguments: `--windowed --resolution 1600x900 --audio-driver Dummy -- --benchmark --bench-room=.. --bench-class=.. --bench-size=.. --bench-length=.. --bench-preset=..
+        /// --bench-dir=<dir> --bench-quit` and the job's own options. No `--main-pack` (a release template refuses it: Godot loads `DeathMuffin.pck` beside the exe), no `--dev-offline`
+        /// (`--bench-dir` already keeps the run a trial that sends nothing) and no `--position`: the window stays on screen (the PC is idle, and an off-screen window may be treated differently by the
+        /// desktop compositor). Paths use "/".
+        /// </summary>
+        public List<string> BenchCommandArgs(BenchSetup s, string benchDir)
+        {
+            var a = WindowArgs(null);
+            a.AddRange(new[]
+            {
+                "--benchmark",
+                "--bench-room=" + s.Room, "--bench-class=" + s.Class.ToString(CultureInfo.InvariantCulture), "--bench-size=" + s.Size, "--bench-length=" + s.Length,
+                "--bench-preset=" + s.Preset, "--bench-dir=" + Slashes(benchDir), "--bench-quit",
+            });
+            a.AddRange(Args);
+            return a;
+        }
+
+        public string BenchCommandLine(BenchSetup s, string benchDir) { return CommandLineText.Join(BenchCommandArgs(s, benchDir)); }
+
+        /// <summary>
+        /// The run the game queued in `<benchDir>\pending.json`: its last entry (DmBenchHistory.record appends the run to the queue, the payload DmApi.post_benchmark sends). False, with a
+        /// sentence for the member, when the game left no run, left one it cancelled, or left one the server would refuse for its size.
+        /// </summary>
+        public static bool TryReadBenchRun(string benchDir, string label, out Dictionary<string, object> run, out string error)
+        {
+            run = null;
+            error = null;
+            string text;
+            try
+            {
+                string file = Path.Combine(benchDir, "pending.json");
+                if (!File.Exists(file)) { error = "The game finished the benchmark on " + label + " but left no result."; return false; }
+                text = File.ReadAllText(file);
+            }
+            catch (IOException) { error = "The result of the benchmark on " + label + " could not be read."; return false; }
+            catch (UnauthorizedAccessException) { error = "The result of the benchmark on " + label + " could not be read."; return false; }
+            object parsed;
+            try { parsed = MiniJson.Parse(text); }
+            catch (FormatException) { error = "The result of the benchmark on " + label + " is damaged."; return false; }
+            var list = parsed as List<object>;
+            if (list == null || list.Count == 0) { error = "The game finished the benchmark on " + label + " but left no result."; return false; }
+            var last = list[list.Count - 1] as Dictionary<string, object>;
+            if (last == null) { error = "The result of the benchmark on " + label + " is damaged."; return false; }
+            if (MiniJson.Bool(last, "cancelled")) { error = "The benchmark on " + label + " was cancelled before it finished."; return false; }
+            if (Encoding.UTF8.GetByteCount(MiniJson.Write(last)) > MaxRunBytes) { error = "The result of the benchmark on " + label + " is too big to send."; return false; }
+            run = last;
+            return true;
         }
 
         // ---- Pictures to upload -----------------------------------------------------------------------------------------------------

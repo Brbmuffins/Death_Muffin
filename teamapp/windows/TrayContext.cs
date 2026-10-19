@@ -31,11 +31,13 @@ namespace DeathMuffinTeam
         readonly ToolStripMenuItem statusItem = new ToolStripMenuItem("Starting...") { Enabled = false };
         readonly ToolStripMenuItem runItem = new ToolStripMenuItem("Run now");
         readonly ToolStripMenuItem pauseItem = new ToolStripMenuItem("Pause 2 hours");
+        readonly ToolStripMenuItem afkItem = new ToolStripMenuItem(TeamLogic.AfkEndText) { Visible = false };
         readonly ToolStripMenuItem[] modeItems = new ToolStripMenuItem[3];
         readonly ToolStripMenuItem signItem = new ToolStripMenuItem("Sign in...");
         readonly ToolStripMenuItem startupItem = new ToolStripMenuItem("Start with Windows") { CheckOnClick = true };
 
         OfferBox box;
+        AfkNotice afkBox;
         bool signInOpen, exiting;
         int updateFailures;
         bool updateGaveUp;
@@ -50,9 +52,10 @@ namespace DeathMuffinTeam
             var transport = new HttpClientTransport(HttpClientTransport.CreateClient(Program.Version));
             var api = new TeamApi(transport, new Uri(TeamUrls.ApiBase));
             var platform = new WindowsPlatform(TeamSettings.Root);
-            var runner = new JobRunner(api, folders, new FileFetcher(FileFetcher.CreateClient(Program.Version)), new ProcessGameHost(Native.TendGameWindow), platform, Native.TryHardLink);
+            var probe = new WindowsPcProbe(platform);   // one reader for both: the controller reads while a benchmark waits, the runner while a job runs
+            var runner = new JobRunner(api, folders, new FileFetcher(FileFetcher.CreateClient(Program.Version)), new ProcessGameHost(Native.TendGameWindow), platform, Native.TryHardLink, probe) { ShotsPosition = Native.OffscreenPosition };
             controller = new TeamController(api, settings, () => settings.Save(protector), platform, runner, this, () => DateTime.UtcNow,
-                Program.Version, Environment.MachineName, new Uri(TeamUrls.SiteBase), log.Line);
+                Program.Version, Environment.MachineName, new Uri(TeamUrls.SiteBase), log.Line, probe);
 
             BuildMenu();
             try { tray.Icon = Icon.ExtractAssociatedIcon(ExePath); } catch (Exception) { tray.Icon = SystemIcons.Application; }
@@ -88,6 +91,7 @@ namespace DeathMuffinTeam
             }
             runItem.Click += (s, e) => Guard(controller.RunNowAsync());
             pauseItem.Click += (s, e) => Guard(controller.TogglePauseAsync());
+            afkItem.Click += (s, e) => controller.EndAfk();
             signItem.Click += (s, e) =>
             {
                 if (controller.SignedIn) Guard(SignOutAsync());
@@ -113,7 +117,7 @@ namespace DeathMuffinTeam
             menu.Items.AddRange(new ToolStripItem[]
             {
                 statusItem, new ToolStripMenuItem("Death Muffin Team " + Program.Version) { Enabled = false }, new ToolStripSeparator(),
-                runItem, pauseItem, modeMenu, new ToolStripSeparator(),
+                runItem, pauseItem, afkItem, modeMenu, new ToolStripSeparator(),
                 signItem, startupItem, folderItem, logItem, new ToolStripSeparator(), quitItem,
             });
             menu.Opening += (s, e) => RefreshMenu();
@@ -167,6 +171,25 @@ namespace DeathMuffinTeam
                     box.PlaceInCorner();
                     box.Show();   // OfferBox.ShowWithoutActivation: the keyboard and the focus stay where they were
                 }
+            });
+        }
+
+        public void SetAfk(bool on)
+        {
+            OnUi(() =>
+            {
+                afkItem.Visible = on;
+                if (on)
+                {
+                    if (afkBox == null)
+                    {
+                        afkBox = new AfkNotice();
+                        afkBox.Ended += () => controller.EndAfk();
+                    }
+                    afkBox.PlaceInCorner();
+                    if (!afkBox.Visible) afkBox.Show();   // AfkNotice.ShowWithoutActivation: the keyboard and the focus stay where they were
+                }
+                else if (afkBox != null) afkBox.Hide();
             });
         }
 
@@ -281,6 +304,7 @@ namespace DeathMuffinTeam
             evaluateTimer.Stop();
             updateTimer.Stop();
             if (box != null) { box.Close(); box = null; }
+            if (afkBox != null) { afkBox.Close(); afkBox = null; }
             tray.Visible = false;
             tray.Dispose();
             ExitThread();

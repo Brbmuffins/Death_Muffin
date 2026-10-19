@@ -113,11 +113,13 @@ namespace DeathMuffinTeam
         Task<ApiResult> DeclineAsync(string jobId, string pcId, string reason, CancellationToken ct);
         Task<ApiResult> UploadAsync(string jobId, string name, byte[] png, CancellationToken ct);
         Task<ApiResult> DoneAsync(string jobId, IList<string> files, string log, double downloadS, double runS, CancellationToken ct);
+        /// <summary>Finishes a `bench` job: <paramref name="runs"/> are the benchmark payloads as the game queued them (one per setup, at most 6, each at most 64 KB of JSON).</summary>
+        Task<ApiResult> DoneBenchAsync(string jobId, IList<Dictionary<string, object>> runs, string log, double downloadS, double runS, CancellationToken ct);
         Task<ApiResult> FailAsync(string jobId, string error, string log, CancellationToken ct);
     }
 
     /// <summary>
-    /// The server's /api/team routes: the team sign-in and sign-out, the heartbeat, claim, decline, pictures, done and fail. Every call but the sign-in sends
+    /// The server's /api/team routes: the team sign-in and sign-out, the heartbeat, claim, decline, pictures, done (with the pictures, or with a benchmark's runs) and fail. Every call but the sign-in sends
     /// `Authorization: Team <token>`. Every reply is the server's `{success, data}` or `{success:false, code, error}`; `error` strings are
     /// player-readable and are passed on as they are. A reply that is not JSON (a proxy's error page) becomes a plain sentence.
     /// </summary>
@@ -204,6 +206,18 @@ namespace DeathMuffinTeam
             return JobCall("done", jobId, body, ct);
         }
 
+        public Task<ApiResult> DoneBenchAsync(string jobId, IList<Dictionary<string, object>> runs, string log, double downloadS, double runS, CancellationToken ct)
+        {
+            var body = new Dictionary<string, object>
+            {
+                { "files", new List<string>() },
+                { "runs", runs },
+                { "log", TextClip.Tail(log, 60000) },
+                { "timings", new Dictionary<string, object> { { "downloadS", Math.Round(downloadS, 1) }, { "runS", Math.Round(runS, 1) } } },
+            };
+            return JobCall("done", jobId, body, ct);
+        }
+
         public Task<ApiResult> FailAsync(string jobId, string error, string log, CancellationToken ct)
         {
             var body = new Dictionary<string, object> { { "error", TextClip.Head(error, 400) }, { "log", TextClip.Tail(log, 60000) } };
@@ -267,6 +281,20 @@ namespace DeathMuffinTeam
                 WeightS = (int)Math.Max(0, Math.Min(86400, MiniJson.Int(o, "weightS") ?? 0)),
                 ExpiresAt = MiniJson.Str(o, "expiresAt"),
             };
+        }
+
+        /// <summary>The heartbeat's `cancel`: the ids of jobs this PC is running that the server has cancelled (nothing to report, or a bad entry, gives nothing for it).</summary>
+        public static List<string> ParseCancel(ApiResult heartbeat)
+        {
+            var ids = new List<string>();
+            var list = MiniJson.Arr(heartbeat == null ? null : heartbeat.Data, "cancel");
+            if (list == null) return ids;
+            foreach (object o in list)
+            {
+                string id = o as string;
+                if (id != null && JobIdRe.IsMatch(id) && !ids.Contains(id)) ids.Add(id);
+            }
+            return ids;
         }
 
         public static ClaimedJob ParseClaim(ApiResult claim)

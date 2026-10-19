@@ -163,6 +163,11 @@ function renderRows() {
     const gpuCell = el('td', `${r.gpu || '—'}${r.cpu ? ` · ${shortCpu(r.cpu)}` : ''}`);
     gpuCell.title = [r.gpu, r.cpu, r.cores ? `${r.cores} cores` : '', r.os, r.resolution].filter(Boolean).join(' · ');
     const flag = el('td');
+    if (r.source === 'team') {   // the release benchmark a team PC ran by itself (team app, `bench` job), not a player's own run
+      const team = el('span', 'Team PC', 'bench-badge team');
+      team.title = 'Run by the release benchmark on one of the team\'s PCs';
+      flag.append(team);
+    }
     if (r.flagged) {
       const badge = el('span', r.flagReason === 'vsync' ? 'Vsync' : r.flagReason === 'cancelled' ? 'Cancelled' : 'Flagged', 'bench-badge');
       badge.title = r.flagReason === 'vsync' ? 'Frame rate was capped by vsync, so it does not compare' : r.flagReason === 'cancelled' ? 'The run was cancelled before it finished' : 'Left out of trends by default';
@@ -198,7 +203,7 @@ async function renderCompare() {
   }
 }
 function describe(r) {
-  return [`#${r.id} ${r.username}`, `${r.gpu || '?'} / ${shortCpu(r.cpu)}`, `v${r.version || '?'} ${cap(r.preset)}`, `${roomName(r.room)}, ${className(r.discipline)}, ${sizeName(r.size)} ${cap(r.length)}`];
+  return [`#${r.id} ${r.username}${r.source === 'team' ? ' (team PC)' : ''}`, `${r.gpu || '?'} / ${shortCpu(r.cpu)}`, `v${r.version || '?'} ${cap(r.preset)}`, `${roomName(r.room)}, ${className(r.discipline)}, ${sizeName(r.size)} ${cap(r.length)}`];
 }
 function compareView(a, b) {
   const wrap = document.createElement('div');

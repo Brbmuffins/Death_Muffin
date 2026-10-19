@@ -16,6 +16,7 @@ const path = require('path');
 function loadServer({ pool, env = {}, bcrypt: bcryptStub = { hash: async () => 'hash', compare: async () => true } }) {
   const routes = new Map();
   const uses = [];
+  const jsonCalls = [];   // the requests the global JSON body parser was asked to read (server.js's app.use(express.json(...)))
   const noop = () => {};
   const stubs = {
     dotenv: { config: noop },
@@ -37,7 +38,7 @@ function loadServer({ pool, env = {}, bcrypt: bcryptStub = { hash: async () => '
         const add = (method) => (route, ...chain) => { for (const r of [].concat(route)) routes.set(`${method} ${r}`, chain); };   // a module may mount one handler on several paths
         return { use: (...fns) => uses.push(...fns), set: noop, listen: noop, get: add('GET'), post: add('POST'), patch: add('PATCH'), put: add('PUT'), delete: add('DELETE') };
       },
-      { json: () => noop },
+      { json: (opts) => (req) => { jsonCalls.push({ url: String(req.path || req.url || ''), limit: opts && opts.limit }); } },
     ),
   };
   const originalLoad = Module._load;
@@ -113,7 +114,7 @@ function loadServer({ pool, env = {}, bcrypt: bcryptStub = { hash: async () => '
     return { res, out };
   }
 
-  return { routes, call, fail, wrap };
+  return { routes, call, fail, wrap, jsonCalls };
 }
 
 module.exports = { loadServer };

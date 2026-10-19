@@ -8,7 +8,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { Readable } = require('node:stream');
 const mountTeamJobs = require('./team-jobs.cjs');
-const { parseHeartbeat, parseNewJob, checkPng, cleanLog, FILE_MAX_BYTES, FILES_PER_JOB, OPEN_JOBS_MAX } = mountTeamJobs;
+const { parseHeartbeat, parseNewJob, checkPng, cleanLog, readsOwnBody, FILE_MAX_BYTES, FILES_PER_JOB, OPEN_JOBS_MAX, DONE_BODY_MAX } = mountTeamJobs;
 
 const T0 = 1_760_000_000_000;                 // the fake clock, epoch ms
 const MIN = 60 * 1000;
@@ -53,6 +53,15 @@ const png = (w = 1600, h = 900, pad = 100) => {
 
 const SHOTS = { rev: 'abcdef123456', godotVersion: '4.7.2.stable', files: [{ name: 'DeathMuffin.pck', url: 'https://example.invalid/x.pck', sha256: 'aa', bytes: 1 }], plan: { shots: [] }, presets: ['low', 'ultra'], args: ['--dev-offline', '--qa'] };
 const newJob = (over = {}) => ({ kind: 'shots', title: 'Screenshots of a change, about 1 minute', weightS: 60, payload: SHOTS, ttlS: 3600, ...over });
+const BENCH = { version: '20261019.120000-abc1234', rev: 'abc123456789', files: [{ name: 'DeathMuffin.exe', url: 'https://example.invalid/x.exe', sha256: 'aa', bytes: 1 }],
+  setups: [{ preset: 'low', room: 'graves', class: 2, size: 'full_party', length: 'full' }, { preset: 'medium', room: 'graves', class: 2, size: 'full_party', length: 'full' }], args: [] };
+const newBench = (over = {}) => ({ kind: 'bench', title: 'Benchmark of the new release, about 6 minutes', weightS: 360, payload: BENCH, ttlS: 3 * 86400, ...over });
+/** One benchmark payload as DmApi.post_benchmark sends it (the game's DmBenchHistory.payload). */
+const benchRun = (over = {}) => ({
+  clientRunId: '1760000000123456', ranAt: '2026-10-19T12:30:05', version: '20261019.120000-abc1234', godot: '4.7.2.stable', gpu: 'NVIDIA GeForce GTX 970', cpu: 'Intel Core i7', os: 'Windows',
+  renderer: 'forward_plus / vulkan', resolution: '1600x900', cores: 8, refreshHz: 60, preset: 'low', room: 'graves', discipline: 2, size: 'full_party', length: 'full', standard: false,
+  vsyncCapped: false, cancelled: false, metrics: { avg_fps: 61.5, p95_ms: 18.2, p99_ms: 25, worst_ms: 60, hitches: 2, draw_calls: 1400 }, breakdown: {}, report: 'BENCHMARK report line', ...over,
+});
 const beat = (over = {}) => ({ pcId: PC_A, name: 'Muffins PC', version: '0.1.0', gpu: 'NVIDIA GeForce RTX 4070', mode: 'ask', state: { gameRunning: false, fullscreen: false, onBattery: false, busy: false, paused: false }, ...over });
 
 /**
@@ -163,18 +172,34 @@ function harness({ missingTable = false, members = [MUFFINS, HELIX, WAR], result
         for (const j of jobs) if (j.status === 'queued' && j.expires_at <= clock) { Object.assign(j, { status: 'expired', finished_at: clock }); n++; }
         return affected(n);
       }
-      if (sql.startsWith("SELECT id, kind, title, weight_s, result, UNIX_TIMESTAMP(expires_at) AS expires_ts FROM team_jobs WHERE status = 'queued' AND expires_at > NOW() ORDER BY created_at ASC, id ASC LIMIT 50")) {
-        const open = jobs.filter((j) => j.status === 'queued' && j.expires_at > clock).sort((a, b) => a.created_at - b.created_at || (a.id < b.id ? -1 : 1));
+      if (sql.startsWith("SELECT id, kind, title, weight_s, result, UNIX_TIMESTAMP(expires_at) AS expires_ts FROM team_jobs WHERE status = 'queued' AND expires_at > NOW() AND (target_pc IS NULL OR target_pc = ?) ORDER BY CASE kind WHEN 'shots' THEN 0 WHEN 'bench' THEN 1 ELSE 2 END ASC, created_at ASC, id ASC LIMIT 50")) {
+        need(p, 1, sql);
+        const rank = (j) => (j.kind === 'shots' ? 0 : j.kind === 'bench' ? 1 : 2);
+        const open = jobs.filter((j) => j.status === 'queued' && j.expires_at > clock && (j.target_pc == null || j.target_pc === p[0])).sort((a, b) => rank(a) - rank(b) || a.created_at - b.created_at || (a.id < b.id ? -1 : 1));
         return [open.slice(0, 50).map((j) => ({ id: j.id, kind: j.kind, title: j.title, weight_s: j.weight_s, result: json(j.result), expires_ts: secs(j.expires_at) }))];
       }
-      if (sql === 'SELECT id, status, claimed_account, claimed_pc, result FROM team_jobs WHERE id = ? LIMIT 1') {
+      if (sql.startsWith("SELECT id FROM team_jobs WHERE status = 'cancelled' AND claimed_account = ? AND claimed_pc = ? AND finished_at > NOW() - INTERVAL ? MINUTE ORDER BY finished_at DESC, id ASC LIMIT 20")) {
+        need(p, 3, sql);
+        const mine = jobs.filter((j) => j.status === 'cancelled' && j.claimed_account === p[0] && j.claimed_pc === p[1] && j.finished_at > clock - p[2] * MIN)
+          .sort((a, b) => b.finished_at - a.finished_at || (a.id < b.id ? -1 : 1));
+        return [mine.slice(0, 20).map((j) => ({ id: j.id }))];
+      }
+      if (sql.startsWith('SELECT id FROM team_jobs WHERE finished_at IS NOT NULL AND finished_at < NOW() - INTERVAL ? DAY AND id IN (')) {
+        const ids = p.slice(1);
+        need(p, 1 + ids.length, sql);
+        assert.strictEqual(sql.match(/\?/g).length, p.length, 'one placeholder per value');
+        assert.ok(sql.endsWith(`IN (${ids.map(() => '?').join(', ')})`));
+        return [jobs.filter((j) => ids.includes(j.id) && j.finished_at != null && j.finished_at < clock - p[0] * 86400_000).map((j) => ({ id: j.id }))];
+      }
+      if (sql === 'SELECT id, kind, status, claimed_account, claimed_pc, target_pc, result FROM team_jobs WHERE id = ? LIMIT 1') {
         const j = byId(p[0]);
-        return [j ? [{ id: j.id, status: j.status, claimed_account: j.claimed_account, claimed_pc: j.claimed_pc, result: json(j.result) }] : []];
+        return [j ? [{ id: j.id, kind: j.kind, status: j.status, claimed_account: j.claimed_account, claimed_pc: j.claimed_pc, target_pc: j.target_pc, result: json(j.result) }] : []];
       }
       if (sql.startsWith("UPDATE team_jobs SET status = 'running', claimed_account = ?, claimed_pc = ?")) {
-        need(p, 3, sql);
+        need(p, 4, sql);
+        assert.ok(sql.endsWith("AND (target_pc IS NULL OR target_pc = ?)"));
         const j = byId(p[2]);
-        if (j && j.status === 'queued' && j.expires_at > clock) { Object.assign(j, { status: 'running', claimed_account: p[0], claimed_pc: p[1], claimed_at: clock, heartbeat_at: clock }); return affected(1); }
+        if (j && j.status === 'queued' && j.expires_at > clock && (j.target_pc == null || j.target_pc === p[3])) { Object.assign(j, { status: 'running', claimed_account: p[0], claimed_pc: p[1], claimed_at: clock, heartbeat_at: clock }); return affected(1); }
         return affected(0);
       }
       if (sql === 'SELECT id, kind, title, payload FROM team_jobs WHERE id = ? LIMIT 1') {
@@ -200,18 +225,24 @@ function harness({ missingTable = false, members = [MUFFINS, HELIX, WAR], result
       }
       if (sql === "SELECT COUNT(*) AS n FROM team_jobs WHERE status IN ('queued', 'running')") return [[{ n: jobs.filter((j) => j.status === 'queued' || j.status === 'running').length }]];
       if (sql.startsWith('INSERT INTO team_jobs')) {
-        need(p, 6, sql);
-        assert.ok(sql.includes("'queued', NOW(3), NOW() + INTERVAL ? SECOND"));
+        need(p, 7, sql);
+        assert.ok(sql.includes("'queued', NOW(3), NOW() + INTERVAL ? SECOND, ?)"));
         if (byId(p[0])) throw Object.assign(new Error('dup'), { code: 'ER_DUP_ENTRY' });
         jobs.push({
           id: p[0], kind: p[1], title: p[2], weight_s: p[3], payload: p[4], status: 'queued', created_at: clock + jobs.length, expires_at: clock + p[5] * 1000,
-          claimed_account: null, claimed_pc: null, claimed_at: null, heartbeat_at: null, finished_at: null, result: null, error: null, tries: 0,
+          claimed_account: null, claimed_pc: null, claimed_at: null, heartbeat_at: null, finished_at: null, result: null, error: null, tries: 0, target_pc: p[6],
         });
         return affected(1);
       }
-      if (sql.startsWith('SELECT id, kind, title, weight_s, payload, status, UNIX_TIMESTAMP(created_at) AS created_ts')) {
+      if (sql.startsWith('SELECT id, kind, title, weight_s, payload, status, target_pc, UNIX_TIMESTAMP(created_at) AS created_ts')) {
         const j = byId(p[0]);
         return [j ? [{ ...j, payload: json(j.payload), result: json(j.result), created_ts: secs(j.created_at), expires_ts: secs(j.expires_at), claimed_ts: secs(j.claimed_at), heartbeat_ts: secs(j.heartbeat_at), finished_ts: secs(j.finished_at) }] : []];
+      }
+      if (sql === "UPDATE team_jobs SET status = 'cancelled', finished_at = NOW() WHERE kind = ? AND target_pc = ? AND status = 'queued' AND id <> ?") {
+        need(p, 3, sql);
+        let n = 0;
+        for (const j of jobs) if (j.kind === p[0] && j.target_pc === p[1] && j.status === 'queued' && j.id !== p[2]) { Object.assign(j, { status: 'cancelled', finished_at: clock }); n++; }
+        return affected(n);
       }
       if (sql === "UPDATE team_jobs SET status = 'cancelled', finished_at = NOW() WHERE id = ? AND status IN ('queued', 'running')") {
         const j = byId(p[0]);
@@ -223,9 +254,20 @@ function harness({ missingTable = false, members = [MUFFINS, HELIX, WAR], result
         const seen = [...pcs.values()].filter((r) => r.last_seen > clock - p[0] * MIN).sort((a, b) => b.last_seen - a.last_seen);
         return [seen.map((r) => ({ ...r, username: accounts.get(r.account_id)?.username ?? null, state: json(r.state), seen_ts: secs(r.last_seen) }))];
       }
+      // benchmark_runs, as benchmarks.cjs's saveRun issues it (a bench job's runs are stored there)
+      if (sql === 'SELECT id FROM benchmark_runs WHERE account_id = ? AND client_run_id = ? LIMIT 1') return [benchRows.filter((r) => r.account_id === p[0] && r.client_run_id === p[1]).map((r) => ({ id: r.id }))];
+      if (sql === 'SELECT COUNT(*) AS c FROM benchmark_runs WHERE account_id = ? AND created_at > NOW() - INTERVAL 1 DAY') return [[{ c: benchRows.filter((r) => r.account_id === p[0]).length + (benchPadding.get(p[0]) || 0) }]];
+      if (sql.startsWith('INSERT INTO benchmark_runs')) {
+        need(p, 32, sql);
+        assert.ok(sql.includes('report, source, source_pc)'));
+        benchRows.push({ id: benchRows.length + 1, account_id: p[0], client_run_id: p[1], version: p[3], gpu: p[5], preset: p[12], room: p[13], discipline_index: p[14], size: p[15], length: p[16], flagged: p[18], avg_fps: p[20], report: p[29], source: p[30], source_pc: p[31] });
+        return [{ insertId: benchRows.length }];
+      }
       throw new Error(`unexpected SQL ${sql}`);
     },
   };
+  const benchRows = [];                // benchmark_runs
+  const benchPadding = new Map();      // account id -> runs already counted today (the daily cap)
 
   const routes = {};
   const reg = (m) => (path_, ...fns) => { for (const p of [].concat(path_)) routes[`${m} ${p}`] = fns; };
@@ -277,8 +319,8 @@ function harness({ missingTable = false, members = [MUFFINS, HELIX, WAR], result
     const stream = Readable.from(chunks || [raw]);
     return run(route, Object.assign(stream, base, { body: undefined }));
   };
-  const internal = (route, { body, params = {}, addr = '127.0.0.1', secret = SECRET, headers = {} } = {}) => run(route, {
-    body, params, query: {}, socket: { remoteAddress: addr }, headers: { ...(secret === null ? {} : { 'x-team-secret': secret }), ...headers },
+  const internal = (route, { body, params = {}, query = {}, addr = '127.0.0.1', secret = SECRET, headers = {} } = {}) => run(route, {
+    body, params, query, socket: { remoteAddress: addr }, headers: { ...(secret === null ? {} : { 'x-team-secret': secret }), ...headers },
   });
 
   /** Make a job through the runner's route and return its id. */
@@ -300,7 +342,7 @@ function harness({ missingTable = false, members = [MUFFINS, HELIX, WAR], result
   const jobFolder = (id) => path.join(resultsDir, id);
 
   return {
-    pool, jobs, pcs, accounts, tokenRows, memberSet, limits, sqlLog, routes, call, login, loginRaw, tokenOf, internal, makeJob, runningJob, upload, jobFolder, resultsDir,
+    pool, jobs, pcs, benchRows, benchPadding, accounts, tokenRows, memberSet, limits, sqlLog, routes, call, login, loginRaw, tokenOf, internal, makeJob, runningJob, upload, jobFolder, resultsDir,
     advance: (ms) => { clock += ms; },
     now: () => clock,
   };
@@ -1156,7 +1198,7 @@ test('the runner makes a job, reads it back with its files and cancels it', asyn
     const queued = await h.internal('GET /internal/team/jobs/:id', { params: { id } });
     assert.deepStrictEqual(queued.body.data, {
       id, kind: 'shots', title: 'Screenshots of "Fix the fen"', weightS: 45, payload: SHOTS, status: 'queued', tries: 0,
-      createdAt: new Date(T0).toISOString(), expiresAt: new Date(T0 + 600_000).toISOString(), claimedAccount: null, claimedPc: null, claimedAt: null, heartbeatAt: null, finishedAt: null,
+      targetPc: null, createdAt: new Date(T0).toISOString(), expiresAt: new Date(T0 + 600_000).toISOString(), claimedAccount: null, claimedPc: null, claimedAt: null, heartbeatAt: null, finishedAt: null,
       result: null, error: null, files: [],
     });
 
@@ -1261,6 +1303,533 @@ test('every SQL statement is parameterised: nothing a PC or the runner sends is 
     assert.ok(h.sqlLog.length > 10);
     assert.ok(h.sqlLog.every((sql) => !sql.includes('DROP') && !sql.includes(id) && !sql.includes(PC_A)), 'no value is inside the SQL');
     assert.strictEqual(h.jobs[0].title, evil.slice(0, 160), 'it is stored as text');
+  });
+});
+
+// ── Target PC, the bench job, the PCs seen in the last days ───────────────────────────────────────────────────────────────
+
+test('parseNewJob takes an optional target PC and refuses one that is not a PC id', () => {
+  assert.strictEqual(parseNewJob(newJob()).job.targetPc, null);
+  assert.strictEqual(parseNewJob(newJob({ targetPc: null })).job.targetPc, null);
+  assert.strictEqual(parseNewJob(newJob({ targetPc: `  ${PC_W} ` })).job.targetPc, PC_W);
+  for (const bad of ['', 'short', 'has space in it', 'pc/../etc', 'x'.repeat(65), 7, {}, []]) {
+    const r = parseNewJob(newJob({ targetPc: bad }));
+    assert.ok(r.error && /target PC/.test(r.error) && !r.job, JSON.stringify(bad));
+  }
+});
+
+test('a job with a target PC is offered to and claimed by that PC only; a job without one still goes to every PC', async () => {
+  await withHarness(async (h) => {
+    const mine = await h.makeJob({ title: 'for the war PC', targetPc: PC_W });
+    const any = await h.makeJob({ title: 'for any PC' });
+    assert.strictEqual(h.jobs[0].target_pc, PC_W);
+    assert.strictEqual(h.jobs[1].target_pc, null);
+    const row = (await h.internal('GET /internal/team/jobs/:id', { params: { id: mine } })).body.data;
+    assert.strictEqual(row.targetPc, PC_W);
+    // the Muffins PC is offered the older job's successor, never the war PC's job
+    const m = await h.call('POST /api/team/heartbeat', { body: beat() });
+    assert.strictEqual(m.body.data.offer.id, any, 'another PC is offered the job without a target (the older job is not for it)');
+    const w = await h.call('POST /api/team/heartbeat', { body: beat({ pcId: PC_W }), accountId: WAR });
+    assert.strictEqual(w.body.data.offer.id, mine, 'its own PC is offered it, oldest first');
+    // another PC (and another account) cannot claim it, and it stays queued
+    for (const [accountId, pcId] of [[MUFFINS, PC_A], [MUFFINS, PC_A2], [HELIX, PC_B]]) {
+      const r = await h.call('POST /api/team/jobs/:id/claim', { accountId, pcId, params: { id: mine }, body: { pcId } });
+      assert.deepStrictEqual([r.statusCode, r.body.code, r.body.error], [403, 'not_your_job', 'This job is meant for another team PC.'], `${accountId}/${pcId}`);
+    }
+    assert.strictEqual(h.jobs[0].status, 'queued');
+    const ok = await h.call('POST /api/team/jobs/:id/claim', { accountId: WAR, pcId: PC_W, params: { id: mine }, body: { pcId: PC_W } });
+    assert.deepStrictEqual([ok.statusCode, ok.body.data.id], [200, mine]);
+    assert.deepStrictEqual([h.jobs[0].claimed_account, h.jobs[0].claimed_pc], [WAR, PC_W]);
+    // a job with no target can be claimed by anyone
+    assert.strictEqual((await h.call('POST /api/team/jobs/:id/claim', { params: { id: any }, body: { pcId: PC_A } })).statusCode, 200);
+  });
+});
+
+test('a job past the 50 listed for the offer does not hide a targeted job (the target is part of the query)', async () => {
+  await withHarness(async (h) => {
+    for (let i = 0; i < 49; i++) await h.makeJob({ title: `for helix ${i}`, targetPc: PC_B });
+    const mine = await h.makeJob({ title: 'for muffins', targetPc: PC_A });
+    const r = await h.call('POST /api/team/heartbeat', { body: beat() });
+    assert.strictEqual(r.body.data.offer.id, mine);
+  });
+});
+
+test('a bench job done: its runs are validated and stored for the claiming account, marked as a team PC\'s whatever the body says, and a resend stores nothing twice', async () => {
+  await withHarness(async (h) => {
+    const id = await h.runningJob({ accountId: WAR, over: newBench({ targetPc: PC_W }) });
+    const runs = [benchRun(), benchRun({ clientRunId: '1760000000654321', preset: 'medium', source: 'player', sourcePc: 'pc-someone-else-9', accountId: 1, account_id: 1 })];
+    const done = await h.call('POST /api/team/jobs/:id/done', { accountId: WAR, params: { id }, body: { runs, log: 'bench ok', timings: { downloadS: 3, runS: 301.26 } } });
+    assert.deepStrictEqual([done.statusCode, done.body], [200, { success: true, data: { id, status: 'done' } }]);
+    assert.strictEqual(h.benchRows.length, 2);
+    assert.deepStrictEqual(h.benchRows.map((r) => [r.account_id, r.source, r.source_pc, r.preset, r.room, r.discipline_index, r.size, r.length, r.avg_fps]),
+      [[WAR, 'team', PC_W, 'low', 'graves', 2, 'full_party', 'full', 61.5], [WAR, 'team', PC_W, 'medium', 'graves', 2, 'full_party', 'full', 61.5]]);
+    const job = h.jobs[0];
+    assert.deepStrictEqual([job.status, job.error], ['done', null]);
+    const result = JSON.parse(job.result);
+    assert.deepStrictEqual(result.runs, [{ clientRunId: '1760000000123456', id: 1 }, { clientRunId: '1760000000654321', id: 2 }]);
+    assert.deepStrictEqual([result.files, result.log, result.timings], [[], 'bench ok', { downloadS: 3, runS: 301.3 }]);
+    const row = (await h.internal('GET /internal/team/jobs/:id', { params: { id } })).body.data;
+    assert.deepStrictEqual([row.status, row.result.runs.length, row.targetPc], ['done', 2, PC_W]);
+    // the answer got lost: the same done again is the same success, and stores nothing twice
+    assert.deepStrictEqual((await h.call('POST /api/team/jobs/:id/done', { accountId: WAR, params: { id }, body: { runs } })).body, { success: true, data: { id, status: 'done' } });
+    assert.strictEqual(h.benchRows.length, 2);
+  });
+});
+
+test('a bench job done with a run that does not validate fails the job with the readable reason, stores none of the runs and answers 400 with it', async () => {
+  await withHarness(async (h) => {
+    const id = await h.runningJob({ over: newBench({ targetPc: PC_A }) });
+    const done = await h.call('POST /api/team/jobs/:id/done', { params: { id }, body: { runs: [benchRun(), benchRun({ clientRunId: '1760000000000002', preset: 'max' })], log: 'the log' } });
+    assert.deepStrictEqual([done.statusCode, done.body.success, done.body.code], [400, false, 'bad_request']);
+    assert.strictEqual(done.body.error, 'Run 2: This benchmark run has an unknown graphics preset.');
+    assert.strictEqual(h.benchRows.length, 0, 'the valid first run is not stored either');
+    const job = h.jobs[0];
+    assert.deepStrictEqual([job.status, job.error, job.finished_at], ['failed', 'Run 2: This benchmark run has an unknown graphics preset.', h.now()]);
+    assert.strictEqual(JSON.parse(job.result).log, 'the log');
+    // the app's own fail call afterwards is the same success; a done after the failure is refused
+    assert.deepStrictEqual((await h.call('POST /api/team/jobs/:id/fail', { params: { id }, body: { error: 'x' } })).body, { success: true, data: { id, status: 'failed' } });
+    assert.strictEqual(h.jobs[0].error, 'Run 2: This benchmark run has an unknown graphics preset.');
+    assert.strictEqual((await h.call('POST /api/team/jobs/:id/done', { params: { id }, body: { runs: [benchRun()] } })).statusCode, 409);
+  });
+});
+
+test('a bench job done needs 1 to 6 readable runs of at most 64 KB each; a one-run job names no run number', async () => {
+  const cases = [
+    ['no runs', {}, 'A finished benchmark job must carry its runs.'],
+    ['an empty list', { runs: [] }, 'A finished benchmark job must carry its runs.'],
+    ['runs that are no list', { runs: 'many' }, 'A finished benchmark job must carry its runs.'],
+    ['the pictures of a shots job', { files: ['low_hero.png'] }, 'A finished benchmark job must carry its runs.'],
+    ['seven runs', { runs: Array.from({ length: 7 }, (_, i) => benchRun({ clientRunId: `run-number-000${i}` })) }, 'A benchmark job takes at most 6 runs.'],
+    ['a run that is no object', { runs: [7] }, 'This benchmark run is not readable or is too large.'],
+    ['a run over 64 KB', { runs: [benchRun({ extra: 'x'.repeat(65 * 1024) })] }, 'This benchmark run is not readable or is too large.'],
+    ['a run without a frame rate', { runs: [benchRun({ metrics: {} })] }, 'This benchmark run has no frame rate result.'],
+    ['a run with no id', { runs: [benchRun({ clientRunId: 'x' })] }, 'This benchmark run has no valid id.'],
+  ];
+  for (const [what, body, reason] of cases) {
+    await withHarness(async (h) => {
+      const id = await h.runningJob({ over: newBench() });
+      const r = await h.call('POST /api/team/jobs/:id/done', { params: { id }, body });
+      assert.deepStrictEqual([r.statusCode, r.body.code, r.body.error], [400, 'bad_request', reason], what);
+      assert.deepStrictEqual([h.jobs[0].status, h.jobs[0].error, h.benchRows.length], ['failed', reason, 0], what);
+    });
+  }
+  await withHarness(async (h) => {   // six runs and a run of 60 KB are fine
+    const id = await h.runningJob({ over: newBench() });
+    const runs = Array.from({ length: 6 }, (_, i) => benchRun({ clientRunId: `run-number-000${i}`, report: 'r'.repeat(20000) }));
+    const r = await h.call('POST /api/team/jobs/:id/done', { params: { id }, body: { runs } });
+    assert.strictEqual(r.statusCode, 200, JSON.stringify(r.body));
+    assert.strictEqual(h.benchRows.length, 6);
+  });
+});
+
+test('a bench run at the account\'s daily benchmark cap fails the job in the cap\'s own words', async () => {
+  await withHarness(async (h) => {
+    h.benchPadding.set(MUFFINS, 60);
+    const id = await h.runningJob({ over: newBench() });
+    const r = await h.call('POST /api/team/jobs/:id/done', { params: { id }, body: { runs: [benchRun()] } });
+    assert.deepStrictEqual([r.statusCode, r.body.code, r.body.error], [429, 'rate_limited', 'That is plenty of benchmark runs for one day. Please try again tomorrow.']);
+    assert.deepStrictEqual([h.jobs[0].status, h.benchRows.length], ['failed', 0]);
+  });
+});
+
+test('a shots job done is unchanged by the bench kind: pictures, never runs', async () => {
+  await withHarness(async (h) => {
+    const id = await h.runningJob();
+    const r = await h.call('POST /api/team/jobs/:id/done', { params: { id }, body: { runs: [benchRun()], files: [] } });
+    assert.strictEqual(r.statusCode, 200);
+    assert.deepStrictEqual([h.benchRows.length, JSON.parse(h.jobs[0].result).files, 'runs' in JSON.parse(h.jobs[0].result)], [0, [], false], 'a shots job stores no benchmark run');
+  });
+});
+
+test('a bench job is for its own PC end to end: only that PC finishes it, a quiet PC gives it back to the same target', async () => {
+  await withHarness(async (h) => {
+    const id = await h.runningJob({ accountId: HELIX, over: newBench({ targetPc: PC_B }) });
+    const other = await h.call('POST /api/team/jobs/:id/done', { params: { id }, body: { runs: [benchRun()] } });   // the Muffins PC
+    assert.deepStrictEqual([other.statusCode, other.body.code], [403, 'not_your_job']);
+    assert.strictEqual(h.benchRows.length, 0);
+    h.advance(4 * MIN);   // the PC went quiet: the job is queued again, still for its PC
+    await h.call('POST /api/team/heartbeat', { body: beat() });
+    assert.deepStrictEqual([h.jobs[0].status, h.jobs[0].target_pc, h.jobs[0].tries], ['queued', PC_B, 1]);
+    assert.strictEqual((await h.call('POST /api/team/heartbeat', { body: beat() })).body.data.offer, null, 'the Muffins PC is not offered it');
+  });
+});
+
+test('the runner may ask for the PCs seen in the last N days', async () => {
+  await withHarness(async (h) => {
+    await h.call('POST /api/team/heartbeat', { body: beat() });
+    h.advance(5 * 86400_000);
+    await h.call('POST /api/team/heartbeat', { body: beat({ pcId: PC_B, name: 'Helix PC' }), accountId: HELIX });
+    h.advance(10 * 86400_000);   // the Muffins PC was last seen 15 days ago, the Helix PC 10 days ago, nothing in the last 2 minutes
+    assert.deepStrictEqual((await h.internal('GET /internal/team/pcs')).body.data.pcs, [], 'without days: the last 2 minutes, as before');
+    assert.deepStrictEqual((await h.internal('GET /internal/team/pcs', { query: { days: '14' } })).body.data.pcs.map((p) => p.pcId), [PC_B]);
+    assert.deepStrictEqual((await h.internal('GET /internal/team/pcs', { query: { days: '30' } })).body.data.pcs.map((p) => p.pcId), [PC_B, PC_A], 'newest first');
+    assert.deepStrictEqual((await h.internal('GET /internal/team/pcs', { query: { days: '1' } })).body.data.pcs, []);
+    for (const days of ['0', '-1', '1.5', 'x', '', '366', '9999', ['1', '2'], '1e2']) {
+      const r = await h.internal('GET /internal/team/pcs', { query: { days } });
+      assert.deepStrictEqual([r.statusCode, r.body.code], [400, 'bad_request'], JSON.stringify(days));
+      assert.match(r.body.error, /1 to 365/);
+    }
+    assert.strictEqual((await h.internal('GET /internal/team/pcs', { query: { days: '14' }, secret: 'wrong-secret-0123456789-abcdefghij' })).statusCode, 404, 'the secret still guards it');
+  });
+});
+
+// ── Cancel reaches the PC by its heartbeat, result folders are pruned ─────────────────────────────────────────────────────
+
+test('the heartbeat names the jobs this PC claimed that were cancelled in the last 10 minutes, so a cancel reaches a running PC within a heartbeat', async () => {
+  await withHarness(async (h) => {
+    const none = await h.call('POST /api/team/heartbeat', { body: beat() });
+    assert.deepStrictEqual(none.body.data.cancel, [], 'nothing cancelled: an empty list, always present');
+    const running = await h.runningJob({ over: { title: 'running one' } });
+    const second = await h.runningJob({ accountId: HELIX, over: { title: 'the helix PC\'s' } });
+    const queued = await h.makeJob({ title: 'cancelled before anyone took it' });
+    assert.deepStrictEqual((await h.call('POST /api/team/heartbeat', { body: beat() })).body.data.cancel, [], 'a job that runs is not cancelled');
+    for (const id of [running, second, queued]) assert.strictEqual((await h.internal('POST /internal/team/jobs/:id/cancel', { params: { id } })).statusCode, 200);
+    h.advance(20_000);
+    const mine = await h.call('POST /api/team/heartbeat', { body: beat() });
+    assert.deepStrictEqual(mine.body.data.cancel, [running], 'its own cancelled job only (not another PC\'s, not one that was never claimed)');
+    assert.deepStrictEqual(Object.keys(mine.body.data).sort(), ['cancel', 'offer', 'serverTime']);
+    assert.deepStrictEqual((await h.call('POST /api/team/heartbeat', { body: beat({ pcId: PC_B }), accountId: HELIX })).body.data.cancel, [second]);
+    assert.deepStrictEqual((await h.call('POST /api/team/heartbeat', { body: beat({ pcId: PC_W }), accountId: WAR })).body.data.cancel, [], 'a PC that ran nothing hears nothing');
+    assert.deepStrictEqual((await h.call('POST /api/team/heartbeat', { body: beat({ pcId: PC_A2 }), pcId: PC_A2 })).body.data.cancel, [], 'nor another PC of the same account');
+    // still named at the next heartbeat (the app may have missed one), gone after 10 minutes
+    h.advance(5 * MIN);
+    assert.deepStrictEqual((await h.call('POST /api/team/heartbeat', { body: beat() })).body.data.cancel, [running]);
+    h.advance(5 * MIN + 1000);
+    assert.deepStrictEqual((await h.call('POST /api/team/heartbeat', { body: beat() })).body.data.cancel, []);
+    assert.strictEqual(h.jobs.find((j) => j.id === running).status, 'cancelled');
+  });
+});
+
+test('several cancelled jobs are named newest first (at most 20); a finished job and one that was requeued are never named', async () => {
+  await withHarness(async (h) => {
+    const ids = [];
+    for (let i = 0; i < 22; i++) {
+      ids.push(await h.runningJob({ over: { title: `job ${i}` } }));
+      h.advance(1000);
+      await h.internal('POST /internal/team/jobs/:id/cancel', { params: { id: ids[i] } });
+      h.advance(1000);
+    }
+    const done = await h.runningJob();
+    await h.call('POST /api/team/jobs/:id/done', { params: { id: done }, body: { files: [] } });
+    const r = await h.call('POST /api/team/heartbeat', { body: beat() });
+    assert.deepStrictEqual(r.body.data.cancel, ids.slice().reverse().slice(0, 20));
+    assert.ok(!r.body.data.cancel.includes(done));
+  });
+  await withHarness(async (h) => {   // a job whose PC went quiet and was queued again, then cancelled: its claim is gone, so no PC is told
+    const id = await h.runningJob();
+    h.advance(4 * MIN);
+    await h.call('POST /api/team/heartbeat', { body: beat({ pcId: PC_B }), accountId: HELIX });   // sweeps
+    assert.strictEqual(h.jobs[0].status, 'queued');
+    await h.internal('POST /internal/team/jobs/:id/cancel', { params: { id } });
+    assert.deepStrictEqual((await h.call('POST /api/team/heartbeat', { body: beat() })).body.data.cancel, []);
+  });
+});
+
+test('a cancelled job told to its PC by the heartbeat: its next upload, done and fail are still refused, so nothing it makes is kept', async () => {
+  await withHarness(async (h) => {
+    const id = await h.runningJob();
+    await h.internal('POST /internal/team/jobs/:id/cancel', { params: { id } });
+    const hb = await h.call('POST /api/team/heartbeat', { body: beat() });
+    assert.deepStrictEqual(hb.body.data.cancel, [id]);
+    assert.strictEqual((await h.call('POST /api/team/jobs/:id/done', { params: { id }, body: { files: [] } })).statusCode, 409);
+    assert.strictEqual(h.jobs[0].status, 'cancelled');
+  });
+});
+
+/** A result folder for job `id` holding one file. */
+const resultFolder = (h, id, name = 'low_hero.png') => {
+  const dir = path.join(h.resultsDir, id);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, name), 'x');
+  return dir;
+};
+
+test('creating a job removes the result folders of jobs that finished more than 14 days ago, and only those', async () => {
+  await withHarness(async (h) => {
+    const mk = async (title, finishDaysAgo) => {   // a finished job with a result folder
+      const id = await h.runningJob({ over: { title } });
+      const job = h.jobs.find((j) => j.id === id);
+      Object.assign(job, { status: 'done', finished_at: h.now() - finishDaysAgo * 86400_000, claimed_pc: PC_A });
+      return { id, dir: resultFolder(h, id) };
+    };
+    const old = await mk('old', 15);
+    const oldFailed = await mk('old failed', 30);
+    oldFailed.job = h.jobs.find((j) => j.id === oldFailed.id);
+    oldFailed.job.status = 'failed';
+    const edge = await mk('13 days', 13);
+    const fresh = await mk('fresh', 0);
+    const runningId = await h.runningJob({ over: { title: 'still running' } });
+    const running = resultFolder(h, runningId);
+    h.jobs.find((j) => j.id === runningId).claimed_at = h.now() - 40 * 86400_000;   // old, but not finished
+    const queuedId = await h.makeJob({ title: 'queued' });
+    const queued = resultFolder(h, queuedId);
+    const orphan = resultFolder(h, 'f'.repeat(12));   // no row: not this clean-up's to judge
+    const notAnId = ['notes', 'ABCDEF123456', 'a'.repeat(13), 'a'.repeat(11), 'abcdefabcdez'].map((n) => resultFolder(h, n));
+    const created = await h.internal('POST /internal/team/jobs', { body: newJob({ title: 'the create that cleans' }) });
+    assert.strictEqual(created.statusCode, 200);
+    assert.deepStrictEqual([old, oldFailed].map((f) => fs.existsSync(f.dir)), [false, false], 'finished more than 14 days ago: gone, whether done or failed');
+    assert.deepStrictEqual([edge, fresh].map((f) => fs.existsSync(f.dir)), [true, true], '13 days and fresh: kept');
+    assert.deepStrictEqual([running, queued, orphan, ...notAnId].map((d) => fs.existsSync(d)), Array(3 + notAnId.length).fill(true), 'running, queued, no row and not-a-job-id names: kept');
+    assert.ok(h.jobs.some((j) => j.id === old.id), 'the job rows are kept');
+    const row = (await h.internal('GET /internal/team/jobs/:id', { params: { id: old.id } })).body.data;
+    assert.deepStrictEqual([row.status, row.files], ['done', []], 'a pruned job reads back with no files');
+    // one day later the 13-day-old job has passed 14 days
+    h.advance(2 * 86400_000);
+    await h.makeJob({ title: 'another' });
+    assert.deepStrictEqual([edge, fresh].map((f) => fs.existsSync(f.dir)), [false, true]);
+  });
+});
+
+test('the clean-up never follows a symlink and never touches a file or a path outside the results folder', async () => {
+  await withHarness(async (h) => {
+    const id = await h.runningJob();
+    Object.assign(h.jobs[0], { status: 'done', finished_at: h.now() - 20 * 86400_000 });
+    const second = await h.runningJob({ over: { title: 'second' } });
+    Object.assign(h.jobs[1], { status: 'done', finished_at: h.now() - 20 * 86400_000 });
+    const outside = fs.mkdtempSync(path.join(path.dirname(h.resultsDir), 'victim-'));
+    fs.writeFileSync(path.join(outside, 'precious.txt'), 'do not delete');
+    fs.mkdirSync(h.resultsDir, { recursive: true });
+    fs.symlinkSync(outside, path.join(h.resultsDir, id));                      // a symlink named like a finished job
+    fs.writeFileSync(path.join(h.resultsDir, second), 'a file, not a folder'); // a file named like a finished job
+    const inner = resultFolder(h, 'e'.repeat(12));
+    h.jobs.push({ ...h.jobs[0], id: 'e'.repeat(12), status: 'failed' });       // an old finished job whose folder holds a symlink to the outside
+    fs.symlinkSync(outside, path.join(inner, 'link'));
+    assert.strictEqual((await h.internal('POST /internal/team/jobs', { body: newJob() })).statusCode, 200);
+    assert.ok(fs.readFileSync(path.join(outside, 'precious.txt'), 'utf8') === 'do not delete', 'nothing outside was reached');
+    assert.ok(fs.lstatSync(path.join(h.resultsDir, id)).isSymbolicLink(), 'the symlink is left as it is');
+    assert.ok(fs.statSync(path.join(h.resultsDir, second)).isFile());
+    assert.ok(!fs.existsSync(inner), 'the real folder went, with the link inside it (the link, not what it points at)');
+    assert.ok(fs.existsSync(path.join(outside, 'precious.txt')));
+    fs.rmSync(outside, { recursive: true, force: true });
+  });
+});
+
+test('a clean-up that fails (no results folder, an unreadable one, a database error) never stops the job from being made', async () => {
+  await withHarness(async (h) => {
+    assert.ok(!fs.existsSync(h.resultsDir));
+    assert.strictEqual((await h.internal('POST /internal/team/jobs', { body: newJob() })).statusCode, 200, 'no results folder yet');
+    fs.mkdirSync(h.resultsDir, { recursive: true });
+    fs.chmodSync(h.resultsDir, 0o000);
+    try {
+      assert.strictEqual((await h.internal('POST /internal/team/jobs', { body: newJob({ title: 'second' }) })).statusCode, 200, 'a folder that cannot be read');
+    } finally {
+      fs.chmodSync(h.resultsDir, 0o750);
+    }
+  });
+  await withHarness({ missingTable: true }, async (h) => {
+    fs.mkdirSync(path.join(h.resultsDir, 'a'.repeat(12)), { recursive: true });
+    const r = await h.internal('POST /internal/team/jobs', { body: newJob() });
+    assert.deepStrictEqual([r.statusCode, r.body.code], [503, 'unavailable'], 'the missing table is still the readable 503 the create always gave');
+    assert.ok(fs.existsSync(path.join(h.resultsDir, 'a'.repeat(12))));
+  });
+});
+
+test('a refused create, and every other route, leave the result folders alone', async () => {
+  await withHarness(async (h) => {
+    const id = await h.runningJob();
+    Object.assign(h.jobs[0], { status: 'done', finished_at: h.now() - 20 * 86400_000 });
+    const dir = resultFolder(h, id);
+    assert.strictEqual((await h.internal('POST /internal/team/jobs', { body: {} })).statusCode, 400);
+    await h.call('POST /api/team/heartbeat', { body: beat() });
+    await h.internal('GET /internal/team/jobs/:id', { params: { id } });
+    await h.internal('GET /internal/team/pcs');
+    assert.ok(fs.existsSync(dir), 'only a valid create cleans up');
+  });
+});
+
+// ── Offer priority, the 1 MB done body, supersede ──────────────────────────────────────────────────────────────────────────
+
+test('the heartbeat offers shots before bench before any other kind, then the oldest: a waiting bench never hides a newer shots job', async () => {
+  await withHarness(async (h) => {
+    const bench1 = await h.makeJob({ kind: 'bench', title: 'old bench', payload: BENCH, targetPc: PC_A });
+    const odd = await h.makeJob({ kind: 'stutter', title: 'a kind nobody knows yet' });
+    const bench2 = await h.makeJob({ kind: 'bench', title: 'newer bench', payload: BENCH });
+    const otherPcs = await h.makeJob({ kind: 'bench', title: 'bench for the helix PC', payload: BENCH, targetPc: PC_B });
+    const offered = async (over = {}) => (await h.call('POST /api/team/heartbeat', { body: beat(), ...over })).body.data.offer;
+    assert.strictEqual((await offered()).id, bench1, 'only benches and an odd kind wait: the bench comes first, the oldest');
+    const shots1 = await h.makeJob({ title: 'newer shots' });
+    const o = await offered();
+    assert.deepStrictEqual([o.id, o.kind], [shots1, 'shots'], 'a shots job that came after the bench is offered first');
+    const shots0 = await h.makeJob({ title: 'newest shots' });
+    assert.strictEqual((await offered()).id, shots1, 'between two shots jobs, the oldest');
+    // the same order for another PC, which has no bench of its own among the first
+    assert.strictEqual((await offered({ accountId: WAR, pcId: PC_W, body: beat({ pcId: PC_W }) })).id, shots1);
+    await h.call('POST /api/team/jobs/:id/claim', { params: { id: shots1 }, body: { pcId: PC_A } });
+    assert.strictEqual((await offered({ accountId: HELIX, pcId: PC_B, body: beat({ pcId: PC_B }) })).id, shots0, 'a claimed job is not offered again');
+    await h.call('POST /api/team/jobs/:id/decline', { params: { id: shots0 }, body: { pcId: PC_A, reason: 'busy' } });
+    assert.strictEqual((await offered()).id, bench1, 'shots declined by this PC: the next kind');
+    await h.call('POST /api/team/jobs/:id/claim', { params: { id: bench1 }, body: { pcId: PC_A } });
+    assert.strictEqual((await offered()).id, bench2, 'then the untargeted bench, never the helix PC\'s');
+    await h.call('POST /api/team/jobs/:id/claim', { params: { id: bench2 }, body: { pcId: PC_A } });
+    assert.strictEqual((await offered()).id, odd, 'an unknown kind comes after both');
+    assert.ok(![bench1, bench2, shots1, odd].includes(otherPcs));
+    assert.strictEqual((await offered({ accountId: HELIX, pcId: PC_B, body: beat({ pcId: PC_B }) })).id, shots0, 'the helix PC is still offered the shots job it has not declined');
+  });
+  await withHarness(async (h) => {   // within a kind and across kinds the rank is part of the query, so it holds past the 50 listed
+    for (let i = 0; i < 48; i++) await h.makeJob({ kind: 'bench', title: `bench ${i}`, payload: BENCH, targetPc: PC_B });
+    await h.makeJob({ kind: 'bench', title: 'a bench for this PC', payload: BENCH, targetPc: PC_A });
+    const shots = await h.makeJob({ title: 'shots, the newest of all' });
+    assert.strictEqual((await h.call('POST /api/team/heartbeat', { body: beat() })).body.data.offer.id, shots);
+  });
+});
+
+test('the ordering is the one SQL statement: a shots, bench, other rank built from the kinds, and the oldest within each', async () => {
+  await withHarness(async (h) => {
+    await h.call('POST /api/team/heartbeat', { body: beat() });
+    const q = h.sqlLog.find((sql) => sql.startsWith('SELECT id, kind, title, weight_s, result'));
+    assert.ok(q.includes("ORDER BY CASE kind WHEN 'shots' THEN 0 WHEN 'bench' THEN 1 ELSE 2 END ASC, created_at ASC, id ASC LIMIT 50"), q);
+    assert.deepStrictEqual(mountTeamJobs.KIND_ORDER, ['shots', 'bench']);
+  });
+});
+
+/** A bench `done` body as a stream of chunks, the way the app's request arrives. */
+const bodyOf = (obj) => Buffer.from(JSON.stringify(obj));
+const streamed = (buf, { length = true, size = 64 * 1024 } = {}) => ({
+  chunks: Array.from({ length: Math.ceil(buf.length / size) }, (_, i) => buf.subarray(i * size, (i + 1) * size)),
+  headers: { 'content-type': 'application/json', ...(length ? { 'content-length': String(buf.length) } : {}) },
+});
+
+test('a bench done may carry 6 runs of 64 KB and a 64 KB log, far over the 512 KB the other routes take: the route reads its own body, up to 1 MB', async () => {
+  await withHarness(async (h) => {
+    const id = await h.runningJob({ over: newBench() });
+    const runs = Array.from({ length: 6 }, (_, i) => benchRun({ clientRunId: `big-run-number-${i}`, extra: 'x'.repeat(60 * 1024) }));
+    const buf = bodyOf({ files: [], runs, log: '\u0001'.repeat(100000), timings: { downloadS: 1, runS: 2 } });   // every control character is 6 bytes of JSON
+    assert.ok(buf.length > 900 * 1024 && buf.length < DONE_BODY_MAX, `${buf.length} bytes`);
+    const r = await h.call('POST /api/team/jobs/:id/done', { params: { id }, ...streamed(buf) });
+    assert.deepStrictEqual([r.statusCode, r.body], [200, { success: true, data: { id, status: 'done' } }], JSON.stringify(r.body));
+    assert.strictEqual(h.benchRows.length, 6);
+    assert.ok(Buffer.byteLength(JSON.parse(h.jobs[0].result).log) <= 65536, 'the stored log is still capped');
+    // the same without a Content-Length (chunked), and a shots done through the same reader
+    const id2 = await h.runningJob({ over: newBench({ title: 'again' }) });
+    const r2 = await h.call('POST /api/team/jobs/:id/done', { params: { id: id2 }, ...streamed(bodyOf({ runs: [benchRun({ clientRunId: 'chunked-run-0001' })] }), { length: false, size: 100 }) });
+    assert.strictEqual(r2.statusCode, 200, JSON.stringify(r2.body));
+    const id3 = await h.runningJob({ over: { title: 'shots' } });
+    await h.upload(id3, 'low_hero.png', png(1600, 900, 50));
+    const r3 = await h.call('POST /api/team/jobs/:id/done', { params: { id: id3 }, ...streamed(bodyOf({ files: ['low_hero.png'], log: 'ok' })) });
+    assert.strictEqual(r3.statusCode, 200, JSON.stringify(r3.body));
+    assert.deepStrictEqual(JSON.parse(h.jobs[2].result).files.map((f) => f.name), ['low_hero.png']);
+  });
+});
+
+test('a done body over 1 MB is a readable 413 (refused before it is read when it says so), the job stays running and nothing is stored', async () => {
+  await withHarness(async (h) => {
+    const id = await h.runningJob({ over: newBench() });
+    const filler = Buffer.alloc(DONE_BODY_MAX + 1, 0x20);   // 1 MB and a byte of valid JSON
+    const text = (r) => [r.statusCode, r.body.success, r.body.code, r.body.error];
+    // it says how big it is: refused at once, whatever follows (the request is answered with the connection closing)
+    const big = await h.call('POST /api/team/jobs/:id/done', { params: { id }, ...streamed(filler) });
+    assert.deepStrictEqual(text(big), [413, false, 'too_large', 'That result is too large (the limit is 1 MB).']);
+    assert.strictEqual(big.headers.Connection, 'close');
+    const chunked = await h.call('POST /api/team/jobs/:id/done', { params: { id }, ...streamed(filler, { length: false }) });
+    assert.deepStrictEqual(text(chunked), [413, false, 'too_large', 'That result is too large (the limit is 1 MB).'], 'no Content-Length: it stops at the cap');
+    const exactly = Buffer.concat([bodyOf({ runs: [benchRun()] }), Buffer.alloc(DONE_BODY_MAX - bodyOf({ runs: [benchRun()] }).length, 0x20)]);
+    assert.strictEqual(exactly.length, DONE_BODY_MAX);
+    assert.strictEqual((await h.call('POST /api/team/jobs/:id/done', { params: { id }, ...streamed(exactly) })).statusCode, 200, 'exactly 1 MB is fine');
+  });
+  await withHarness(async (h) => {
+    const id = await h.runningJob({ over: newBench() });
+    assert.strictEqual((await h.call('POST /api/team/jobs/:id/done', { params: { id }, ...streamed(Buffer.alloc(DONE_BODY_MAX + 5000, 0x20)) })).statusCode, 413);
+    assert.deepStrictEqual([h.jobs[0].status, h.benchRows.length], ['running', 0], 'the job is left running for the app to fail or resend');
+  });
+});
+
+test('a done that cannot be read is 400, one with no sign-in is refused before its body is read, and a body that was parsed already is used as it is', async () => {
+  await withHarness(async (h) => {
+    const id = await h.runningJob({ over: newBench() });
+    const bad = await h.call('POST /api/team/jobs/:id/done', { params: { id }, ...streamed(Buffer.from('{"runs": [')) });
+    assert.deepStrictEqual([bad.statusCode, bad.body.code, bad.body.error], [400, 'bad_request', 'That result could not be read.']);
+    assert.strictEqual(h.jobs[0].status, 'running');
+    const { Readable } = require('node:stream');
+    let reads = 0;
+    const lazy = Object.assign(new Readable({ read() { reads++; this.push(Buffer.from('{}')); this.push(null); } }), { headers: {}, params: { id }, query: {}, socket: { remoteAddress: '203.0.113.9' }, body: undefined });
+    const run = async (r, route) => { const fns = h.routes[route]; const res = { statusCode: 200, body: null, headers: {}, set() {}, status(c) { this.statusCode = c; return this; }, json(b) { this.body = b; return this; } }; let i = 0; const next = async () => { const fn = fns[i++]; if (fn) await fn(r, res, next); }; await next(); return res; };
+    const anon = await run(lazy, 'POST /api/team/jobs/:id/done');
+    assert.deepStrictEqual([anon.statusCode, anon.body.code, reads], [401, 'signed_out', 0], 'no team token: refused, the body untouched');
+    const parsed = await h.call('POST /api/team/jobs/:id/done', { params: { id }, body: { runs: [benchRun()] } });   // already parsed upstream (no stream)
+    assert.strictEqual(parsed.statusCode, 200);
+  });
+});
+
+test('server.js leaves the done route\'s body to the route (its own 1 MB reader) and keeps its 512 KB parser for every other route', () => {
+  const { loadServer } = require('./server-harness.cjs');
+  const srv = loadServer({ pool: { execute: async () => [[]], query: async () => [[]], getConnection: async () => ({}) } });
+  const asked = (method, url) => { srv.jsonCalls.length = 0; srv.wrap({ method, url, path: url, originalUrl: url }); return srv.jsonCalls.map((c) => c.url); };
+  const id = 'a1b2c3d4e5f6';
+  for (const url of [`/api/team/jobs/${id}/done`, `/team/jobs/${id}/done`, `/api/team/jobs/${id}/done?x=1`]) assert.deepStrictEqual(asked('POST', url), [], `${url}: the global parser does not read it`);
+  for (const [method, url] of [['POST', '/api/benchmarks'], ['POST', '/api/team/heartbeat'], ['POST', `/api/team/jobs/${id}/fail`], ['POST', `/api/team/jobs/${id}/claim`], ['POST', `/api/team/jobs/${id}/done/extra`], ['POST', '/api/team/jobs/not-a-job-id/done'], ['POST', '/internal/team/jobs']]) {
+    assert.deepStrictEqual(asked(method, url), [url], `${method} ${url}: still read by the global parser`);
+  }
+  assert.strictEqual(srv.jsonCalls.length, 1);
+  assert.strictEqual(srv.jsonCalls[0].limit, '512kb');
+  assert.strictEqual(readsOwnBody({ method: 'POST', path: `/api/team/jobs/${id}/done` }), true);
+  assert.strictEqual(readsOwnBody({ method: 'GET', url: `/api/team/jobs/${id}/done` }), false);
+  assert.strictEqual(readsOwnBody({}), false);
+  assert.strictEqual(DONE_BODY_MAX, 1024 * 1024);
+  assert.ok(srv.routes.has('POST /api/team/jobs/:id/done') && srv.routes.has('POST /team/jobs/:id/done'));
+});
+
+test('parseNewJob: supersede is true or false, and needs a target PC', () => {
+  assert.strictEqual(parseNewJob(newJob()).job.supersede, false);
+  assert.strictEqual(parseNewJob(newJob({ supersede: false })).job.supersede, false);
+  assert.strictEqual(parseNewJob(newJob({ supersede: true, targetPc: PC_W })).job.supersede, true);
+  for (const bad of [newJob({ supersede: true }), newJob({ supersede: 'yes', targetPc: PC_W }), newJob({ supersede: 1, targetPc: PC_W }), newJob({ supersede: null, targetPc: PC_W })]) {
+    const r = parseNewJob(bad);
+    assert.ok(r.error && !r.job, JSON.stringify(bad).slice(0, 60));
+  }
+});
+
+test('a new job with supersede cancels the same kind\'s queued jobs for the same PC once it is stored, and nothing else', async () => {
+  await withHarness(async (h) => {
+    const mk = (over) => h.makeJob({ kind: 'bench', title: 'bench', payload: BENCH, ...over });
+    const oldA = await mk({ targetPc: PC_W });
+    const oldB = await mk({ targetPc: PC_W });
+    const otherPc = await mk({ targetPc: PC_B });
+    const anyPc = await mk({});
+    const shotsForW = await h.makeJob({ title: 'shots', targetPc: PC_W });
+    const running = await h.runningJob({ accountId: WAR, over: newBench({ targetPc: PC_W, title: 'running' }) });
+    const requeued = await mk({ targetPc: PC_W });
+    h.jobs.find((j) => j.id === requeued).tries = 1;
+    const made = await h.internal('POST /internal/team/jobs', { body: newBench({ targetPc: PC_W, supersede: true }) });
+    assert.strictEqual(made.statusCode, 200, JSON.stringify(made.body));
+    const id = made.body.data.id;
+    assert.deepStrictEqual(made.body.data, { id, superseded: 3 });
+    const status = (jid) => h.jobs.find((j) => j.id === jid).status;
+    assert.deepStrictEqual([oldA, oldB, requeued].map(status), ['cancelled', 'cancelled', 'cancelled'], 'the PC\'s queued benchmarks (a requeued one too)');
+    assert.deepStrictEqual([otherPc, anyPc, shotsForW, running, id].map(status), ['queued', 'queued', 'queued', 'running', 'queued'], 'another PC\'s, an untargeted one, another kind, a running one and the new job itself are left');
+    assert.strictEqual(h.jobs.find((j) => j.id === oldA).finished_at, h.now());
+    const offer = (await h.call('POST /api/team/heartbeat', { body: beat({ pcId: PC_W }), accountId: WAR })).body.data;
+    assert.strictEqual(offer.offer.id, shotsForW, 'shots first, as ever');
+    await h.call('POST /api/team/jobs/:id/claim', { accountId: WAR, pcId: PC_W, params: { id: shotsForW }, body: { pcId: PC_W } });
+    h.jobs.find((j) => j.id === running).status = 'done';
+    const next = async () => (await h.call('POST /api/team/heartbeat', { body: beat({ pcId: PC_W }), accountId: WAR })).body.data.offer.id;
+    assert.strictEqual(await next(), anyPc, 'then the untargeted benchmark (older, not this PC\'s to replace), never the cancelled ones');
+    await h.call('POST /api/team/jobs/:id/claim', { accountId: WAR, pcId: PC_W, params: { id: anyPc }, body: { pcId: PC_W } });
+    assert.strictEqual(await next(), id, 'and the newest one of its own');
+    assert.deepStrictEqual(offer.cancel, [], 'a superseded job was never claimed, so no PC is told to stop it');
+    // without supersede nothing is cancelled and the answer is as before
+    const plain = await h.internal('POST /internal/team/jobs', { body: newBench({ targetPc: PC_W }) });
+    assert.deepStrictEqual(Object.keys(plain.body.data), ['id']);
+    assert.strictEqual(status(id), 'queued');
+    // supersede with nothing to replace
+    assert.deepStrictEqual((await h.internal('POST /internal/team/jobs', { body: newBench({ targetPc: "pc-nobody-9999", supersede: true }) })).body.data.superseded, 0);
+    // supersede without a target is refused and cancels nothing
+    const refused = await h.internal('POST /internal/team/jobs', { body: newBench({ supersede: true }) });
+    assert.deepStrictEqual([refused.statusCode, refused.body.code], [400, 'bad_request']);
+    assert.strictEqual(status(otherPc), 'queued');
+    assert.strictEqual(status(id), 'queued');
+  });
+});
+
+test('a job that cannot be stored supersedes nothing', async () => {
+  await withHarness(async (h) => {
+    const old = await h.makeJob({ kind: 'bench', title: 'bench', payload: BENCH, targetPc: PC_W });
+    const refused = await h.internal('POST /internal/team/jobs', { body: newBench({ targetPc: PC_W, supersede: true, title: '' }) });
+    assert.strictEqual(refused.statusCode, 400);
+    assert.strictEqual(h.jobs.find((j) => j.id === old).status, 'queued');
+    for (let i = 0; i < OPEN_JOBS_MAX - 1; i++) await h.makeJob({ title: `fill ${i}` });
+    const full = await h.internal('POST /internal/team/jobs', { body: newBench({ targetPc: PC_W, supersede: true }) });
+    assert.deepStrictEqual([full.statusCode, full.body.code], [429, 'too_many_jobs']);
+    assert.strictEqual(h.jobs.find((j) => j.id === old).status, 'queued', 'the open-jobs limit refuses before anything is cancelled');
   });
 });
 

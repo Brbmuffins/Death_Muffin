@@ -2035,6 +2035,7 @@ a.enter-button { display: flex; align-items: center; justify-content: center; te
 .bench-legend i { display: inline-block; width: .8rem; height: .8rem; border-radius: 2px; margin-right: .4rem; vertical-align: middle; }
 .bench-table td:first-child, .bench-table th:first-child { width: 1%; }
 .bench-badge { display: inline-block; padding: 0 .4rem; border: 1px solid #dcc38a; border-radius: 4px; color: #dcc38a; font-size: .75em; }
+.bench-badge.team { border-color: #b38cff; color: #b38cff; margin-right: .3rem; }
 .bench-compare { border: 1px solid rgba(155, 92, 255, .3); border-radius: 8px; padding: 1rem; margin: 1.5rem 0; overflow-x: auto; }
 .bench-compare table { border-collapse: collapse; width: 100%; text-align: left; }
 .bench-compare th, .bench-compare td { padding: .35rem .8rem; border-bottom: 1px solid rgba(155, 92, 255, .16); white-space: nowrap; }

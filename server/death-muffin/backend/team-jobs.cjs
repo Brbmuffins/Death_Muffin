@@ -2,7 +2,9 @@
 /**
  * Team jobs (ROADMAP Phase 1, "New: the team app"; DECISIONS B54, B55): jobs that need a real graphics card run on the three team PCs (War,
  * Muffins, Helix) in a small Windows app. This server queues a job, one PC claims it, uploads its result files and finishes it; the Discord
- * agent's runner (same machine) creates jobs and reads the results. Tables team_members, team_pcs, team_jobs, migration 057.
+ * agent's runner (same machine) creates jobs and reads the results. Tables team_members, team_pcs, team_jobs, migration 057 (team_jobs.target_pc, migration 058).
+ * Job kinds: `shots` (pictures of a proposal, uploaded as PNG files) and `bench` (the release's benchmark runs on a team PC, handed over in `done` and stored
+ * in the benchmark history, benchmarks.cjs, marked as team-PC runs; server/death-muffin/team-bench.sh makes one per team PC after each client release).
  *
  * The app signs in with its own team token, never the game's login session: POST /api/team/login checks the account's password like /login does
  * (the same bcrypt compare and rate limiter) but does not claim the account's game session (session.cjs), then the account must be in team_members
@@ -13,21 +15,29 @@
  *   POST /api/team/login                       { username, password, pcId, pcName } -> { success, data: { token, expiresAt, accountId, username } }
  *   POST /api/team/logout                      revokes the token it came with -> { success }
  *   GET  /api/team/me                          -> { success, data: { accountId, username } }
- *   POST /api/team/heartbeat                   the PC's state, every 30 s -> { success, data: { serverTime, offer } }   offer: null or the oldest queued job
- *                                              this PC has not declined
- *   POST /api/team/jobs/:id/claim              { pcId } -> { success, data: { id, kind, title, payload } }   409 `taken` when another PC got it first
+ *   POST /api/team/heartbeat                   the PC's state, every 30 s -> { success, data: { serverTime, offer, cancel } }   offer: null or the oldest queued job
+ *                                              of the first kind in KIND_ORDER that has one (shots, then bench, then any other kind) that this PC has not declined; cancel: the ids of jobs this PC claimed that were cancelled in the last 10 minutes (the
+ *                                              app stops the one it runs and ignores the rest)
+ *   POST /api/team/jobs/:id/claim              { pcId } -> { success, data: { id, kind, title, payload } }   409 `taken` when another PC got it first; a job made
+ *                                              with a target PC is offered to and claimed by that PC only (403 `not_your_job` for another)
  *   POST /api/team/jobs/:id/decline            { pcId, reason } -> { success }   the job stays queued for the other PCs and is not offered to this one again
  *   PUT  /api/team/jobs/:id/files/:name        one PNG as the raw body (at most 8 MB, 40 a job) -> { success, data: { name, bytes, width, height } }
- *   POST /api/team/jobs/:id/done               { files, log, timings } -> { success, data: { id, status } }
+ *   POST /api/team/jobs/:id/done               shots: { files, log, timings }; bench: { runs: [the benchmark payloads DmApi.post_benchmark sends, at most 6, each at
+ *                                              most 64 KB of JSON], log, timings } -> { success, data: { id, status } }. A bench run that does not validate (the words
+ *                                              of POST /api/benchmarks) fails the job with those words and answers 400 with them. The body may be up to 1 MB (this
+ *                                              route reads its own: server.js leaves it to it, DONE_BODY_MAX); a bigger one is 413 `too_large`
  *   POST /api/team/jobs/:id/fail               { error, log } -> { success, data: { id, status } }
  * The runner (loopback only, and X-Team-Secret equal to the contents of TEAM_SECRET_FILE; anything else answers 404):
- *   POST /internal/team/jobs                   { kind, title, weightS, payload, ttlS } -> { success, data: { id } }
+ *   POST /internal/team/jobs                   { kind, title, weightS, payload, ttlS, targetPc?, supersede? } -> { success, data: { id, superseded? } }   (also removes the
+ *                                              result folders of jobs that finished more than 14 days ago); supersede: true (needs targetPc) cancels this kind's
+ *                                              other QUEUED jobs for that PC once the new one is stored (a running job is never touched)
  *   GET  /internal/team/jobs/:id               the row with its files (absolute paths)
  *   POST /internal/team/jobs/:id/cancel        -> { success, data: { id, status } }
- *   GET  /internal/team/pcs                    PCs seen in the last 2 minutes with mode and state
+ *   GET  /internal/team/pcs[?days=N]           PCs seen in the last 2 minutes (or the last N days, 1 to 365) with mode and state
  *
  * Errors are { success: false, code, error } and `error` is player-readable (the app shows it as it is): 400 bad_request, 401 bad_login / signed_out,
- * 403 not_team / wrong_pc / not_your_job, 404 not_found, 409 taken / not_running / too_many, 413 too_large, 415 bad_type, 429 rate_limited / too_many_jobs,
+ * 403 not_team / wrong_pc / not_your_job, 404 not_found, 409 taken / not_running / too_many, 413 too_large, 415 bad_type, 429 rate_limited / too_many_jobs
+ * (rate_limited also when a bench run is past the account's daily benchmark cap),
  * 503 unavailable (a table is missing or the results folder is not writable), 500 server_error.
  * A running job whose PC sends no heartbeat for 3 minutes goes back to queued once (tries + 1); the second time it fails. A queued job past its
  * expires_at becomes expired. Both are swept on every heartbeat and every internal call, so no timer is needed.
@@ -37,11 +47,23 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { parseRun, saveRun, DAILY_CAP_ERROR } = require('./benchmarks.cjs');
 
 const DEFAULT_RESULTS_DIR = '/home/ubuntu/death-muffin/team-results';
 const DEFAULT_SECRET_FILE = '/home/ubuntu/death-muffin/discord-agent/secret';
 const FILE_MAX_BYTES = 8 * 1024 * 1024;
 const FILES_PER_JOB = 40;
+const RUNS_PER_JOB = 6;                   // benchmark runs a `bench` job hands over
+const RUN_MAX_BYTES = 64 * 1024;          // JSON bytes of one benchmark run
+const SEEN_DAYS_MAX = 365;
+const DONE_BODY_MAX = 1024 * 1024;        // bytes of a `done` body: 6 bench runs of 64 KB and a 64 KB log, JSON-escaped, fit with room to spare
+const DONE_ROUTE_RE = /^\/(?:api\/)?team\/jobs\/[0-9a-f]{12}\/done\/?$/;   // the route that reads its own body (server.js's JSON parser leaves it alone)
+const KIND_ORDER = ['shots', 'bench'];   // what a heartbeat offers first: a bench waits on its PC until it is quiet, so it must never hide a newer shots job; other kinds come last
+const KIND_RANK_SQL = `CASE kind ${KIND_ORDER.map((k, i) => `WHEN '${k}' THEN ${i}`).join(' ')} ELSE ${KIND_ORDER.length} END`;
+const CANCEL_MINUTES = 10;                // a heartbeat names the PC's jobs cancelled this recently
+const CANCELS_MAX = 20;
+const RESULTS_KEEP_DAYS = 14;             // a finished job's result folder is removed when it has been finished this long
+const PRUNE_BATCH = 500;                  // result folders looked at in one clean-up
 const PNG_SIDE_MIN = 16;
 const PNG_SIDE_MAX = 4096;
 const LOG_MAX = 64 * 1024;
@@ -128,7 +150,7 @@ function parseHeartbeat(body) {
   };
 }
 
-/** Validate the runner's new job. Returns { error } or { job }. */
+/** Validate the runner's new job (`targetPc`: the one PC that may take it, optional; `supersede`: also cancel the PC's other queued jobs of its kind). Returns { error } or { job }. */
 function parseNewJob(body) {
   const b = isObject(body) ? body : {};
   const kind = typeof b.kind === 'string' ? b.kind.trim() : '';
@@ -138,7 +160,15 @@ function parseNewJob(body) {
   if (!isObject(b.payload)) return { error: 'The job needs a payload object.' };
   const payload = JSON.stringify(b.payload);
   if (payload.length > PAYLOAD_MAX) return { error: 'The job payload is too large.' };
-  return { job: { kind, title, weightS: clampInt(b.weightS, 0, WEIGHT_MAX_S) ?? 60, payload, ttlS: clampInt(b.ttlS, TTL_MIN_S, TTL_MAX_S) ?? TTL_DEFAULT_S } };
+  let targetPc = null;   // the one PC that may take the job; none = any team PC
+  if (b.targetPc !== undefined && b.targetPc !== null) {
+    targetPc = typeof b.targetPc === 'string' ? b.targetPc.trim() : '';
+    if (!PC_ID_RE.test(targetPc)) return { error: 'The job\'s target PC is not a valid PC id.' };
+  }
+  const supersede = b.supersede === true;   // replace this kind's queued jobs for the same PC (a newer release's benchmark makes the older one pointless)
+  if (b.supersede !== undefined && typeof b.supersede !== 'boolean') return { error: 'supersede must be true or false.' };
+  if (supersede && targetPc === null) return { error: 'A job that supersedes others needs a target PC (the PC whose queued jobs of this kind it replaces).' };
+  return { job: { kind, title, weightS: clampInt(b.weightS, 0, WEIGHT_MAX_S) ?? 60, payload, ttlS: clampInt(b.ttlS, TTL_MIN_S, TTL_MAX_S) ?? TTL_DEFAULT_S, targetPc, supersede } };
 }
 
 /**
@@ -344,7 +374,7 @@ module.exports = function mountTeamJobs(app, pool, {
   }
 
   const loadJob = async (id) => {
-    const [rows] = await pool.execute('SELECT id, status, claimed_account, claimed_pc, result FROM team_jobs WHERE id = ? LIMIT 1', [id]);
+    const [rows] = await pool.execute('SELECT id, kind, status, claimed_account, claimed_pc, target_pc, result FROM team_jobs WHERE id = ? LIMIT 1', [id]);
     return rows[0] || null;
   };
   const validJobId = (req, res) => {
@@ -392,13 +422,17 @@ module.exports = function mountTeamJobs(app, pool, {
     // This PC's own running job is alive (renewed before the sweep, so a PC that woke up late keeps it).
     await pool.execute("UPDATE team_jobs SET heartbeat_at = NOW() WHERE status = 'running' AND claimed_account = ? AND claimed_pc = ?", [account, pcId]);
     await sweep();
-    // The oldest queued job this PC has not declined. At most OPEN_JOBS_MAX jobs are queued, so the list is every one of them.
+    // The oldest queued job of the first kind that has one (KIND_ORDER) that this PC has not declined and that is not meant for another PC. At most OPEN_JOBS_MAX jobs are queued, so the list is every one of them.
     const [rows] = await pool.execute(
       `SELECT id, kind, title, weight_s, result, UNIX_TIMESTAMP(expires_at) AS expires_ts FROM team_jobs
-        WHERE status = 'queued' AND expires_at > NOW() ORDER BY created_at ASC, id ASC LIMIT ${OPEN_JOBS_MAX}`);
+        WHERE status = 'queued' AND expires_at > NOW() AND (target_pc IS NULL OR target_pc = ?) ORDER BY ${KIND_RANK_SQL} ASC, created_at ASC, id ASC LIMIT ${OPEN_JOBS_MAX}`, [pcId]);
     const j = rows.find((r) => !declinedBy(r.result, pcId));
     const offer = j ? { id: String(j.id), kind: String(j.kind), title: String(j.title), weightS: Number(j.weight_s), expiresAt: isoOf(j.expires_ts) } : null;
-    res.json({ success: true, data: { serverTime: new Date().toISOString(), offer } });
+    // The jobs this PC claimed that were cancelled lately: a cancel reaches the PC within a heartbeat (it cannot know until it asks). A job cancelled while queued was never claimed.
+    const [cancelled] = await pool.execute(
+      `SELECT id FROM team_jobs WHERE status = 'cancelled' AND claimed_account = ? AND claimed_pc = ? AND finished_at > NOW() - INTERVAL ? MINUTE
+        ORDER BY finished_at DESC, id ASC LIMIT ${CANCELS_MAX}`, [account, pcId, CANCEL_MINUTES]);
+    res.json({ success: true, data: { serverTime: new Date().toISOString(), offer, cancel: cancelled.map((c) => String(c.id)) } });
   }));
 
   app.post(paths('/team/jobs/:id/claim'), ...guards, route('claim', async (req, res) => {
@@ -408,11 +442,12 @@ module.exports = function mountTeamJobs(app, pool, {
     if (pcId === null) return;
     const account = req.user.accountId;
     const [claimed] = await pool.execute(
-      "UPDATE team_jobs SET status = 'running', claimed_account = ?, claimed_pc = ?, claimed_at = NOW(), heartbeat_at = NOW() WHERE id = ? AND status = 'queued' AND expires_at > NOW()",
-      [account, pcId, id]);
+      "UPDATE team_jobs SET status = 'running', claimed_account = ?, claimed_pc = ?, claimed_at = NOW(), heartbeat_at = NOW() WHERE id = ? AND status = 'queued' AND expires_at > NOW() AND (target_pc IS NULL OR target_pc = ?)",
+      [account, pcId, id, pcId]);
     if (!claimed.affectedRows) {
       const job = await loadJob(id);
       if (!job) return jobNotFound(res);
+      if (job.status === 'queued' && job.target_pc != null && job.target_pc !== pcId) return fail(res, 403, 'not_your_job', 'This job is meant for another team PC.');
       const again = job.status === 'running' && Number(job.claimed_account) === account && job.claimed_pc === pcId;   // a resent claim from the PC that has it
       if (!again) return fail(res, 409, 'taken', job.status === 'running' ? 'Another team PC already took this job.' : STATUS_WORDS[job.status] || 'This job is not available any more.');
       await pool.execute("UPDATE team_jobs SET heartbeat_at = NOW() WHERE id = ? AND status = 'running'", [id]);
@@ -472,16 +507,96 @@ module.exports = function mountTeamJobs(app, pool, {
     res.json({ success: true, data: { name, bytes: body.length, width: png.width, height: png.height } });
   }));
 
-  app.post(paths('/team/jobs/:id/done'), ...guards, route('done', async (req, res) => {
+  /** Fail the running job `job` of this account with `error` and the PC's log; false when it is not running any more (the answer is sent). */
+  async function failRunning(req, res, id, job, error, log) {
+    const old = isObject(asJson(job.result)) ? asJson(job.result) : {};
+    const result = { ...old, log: cleanLog(log) };
+    const [failed] = await pool.execute(
+      "UPDATE team_jobs SET status = 'failed', finished_at = NOW(), result = ?, error = ? WHERE id = ? AND status = 'running' AND claimed_account = ?",
+      [JSON.stringify(result), error, id, req.user.accountId]);
+    if (!failed.affectedRows) { fail(res, 409, 'not_running', 'This job is not running any more.'); return false; }
+    return true;
+  }
+
+  /**
+   * A `bench` job's done: its runs (the benchmark payloads the game queued, `DmApi.post_benchmark`'s body) are validated as POST /api/benchmarks validates them
+   * and stored for the claiming account with source 'team' and this PC's id. Anything wrong with the runs fails the job with the readable reason and answers
+   * 400 with it (a retry would send the same runs); a database error leaves the job running, for the PC to send again (a stored run answers its first id).
+   */
+  async function finishBench(req, res, id, job, b) {
+    const refuse = async (status, code, reason) => {
+      if (await failRunning(req, res, id, job, text(reason, ERROR_MAX), b.log)) fail(res, status, code, reason);
+    };
+    const runs = Array.isArray(b.runs) ? b.runs : [];
+    if (!runs.length) return refuse(400, 'bad_request', 'A finished benchmark job must carry its runs.');
+    if (runs.length > RUNS_PER_JOB) return refuse(400, 'bad_request', `A benchmark job takes at most ${RUNS_PER_JOB} runs.`);
+    const parsed = [];
+    for (let i = 0; i < runs.length; i++) {
+      const label = runs.length > 1 ? `Run ${i + 1}: ` : '';
+      if (!isObject(runs[i]) || Buffer.byteLength(JSON.stringify(runs[i])) > RUN_MAX_BYTES) return refuse(400, 'bad_request', `${label}This benchmark run is not readable or is too large.`);
+      const p = parseRun(runs[i]);
+      if (p.error) return refuse(400, 'bad_request', label + p.error);
+      parsed.push(p.run);
+    }
+    const stored = [];
+    for (const r of parsed) {
+      const saved = await saveRun(pool, req.user.accountId, r, { source: 'team', sourcePc: req.user.pcId });
+      if (saved.capped) return refuse(429, 'rate_limited', DAILY_CAP_ERROR);
+      stored.push({ clientRunId: r.clientRunId, id: saved.id });
+    }
+    const old = isObject(asJson(job.result)) ? asJson(job.result) : {};
+    const result = { ...old, files: [], runs: stored, log: cleanLog(b.log), timings: cleanTimings(b.timings) };
+    const [done] = await pool.execute(
+      "UPDATE team_jobs SET status = 'done', finished_at = NOW(), result = ?, error = NULL WHERE id = ? AND status = 'running' AND claimed_account = ?",
+      [JSON.stringify(result), id, req.user.accountId]);
+    if (!done.affectedRows) return fail(res, 409, 'not_running', 'This job is not running any more.');
+    return res.json({ success: true, data: { id, status: 'done' } });
+  }
+
+  /**
+   * The JSON body of a route whose body may be bigger than server.js's global parser takes (it skips DONE_ROUTE): read here, after the sign-in check, up to `max` bytes.
+   * A body that says it is bigger (Content-Length) is refused before anything is read; one that turns out bigger stops at the cap. Both are 413 `too_large` in plain words,
+   * a body that is not JSON is 400. A body that is already parsed (req.body) is left as it is.
+   */
+  const jsonBody = (max, what) => async (req, res, next) => {
+    if (req.body !== undefined || typeof req.on !== 'function') return next();
+    try {
+      const tooLarge = () => {
+        res.set('Connection', 'close');   // the rest of the body is not read; the connection ends with the answer
+        return fail(res, 413, 'too_large', `That ${what} is too large (the limit is ${Math.round(max / 1048576)} MB).`);
+      };
+      const declared = Number((req.headers || {})['content-length']);
+      if (Number.isFinite(declared) && declared > max) return tooLarge();
+      let buf;
+      try {
+        buf = await readBody(req, max);
+      } catch (err) {
+        if (err && err.code === 'UPLOAD_ABORTED') return undefined;   // the PC went away mid-body: nobody to answer
+        throw err;
+      }
+      if (buf.tooLarge) return tooLarge();
+      try {
+        req.body = buf.length ? JSON.parse(buf.toString('utf8')) : {};
+      } catch {
+        return fail(res, 400, 'bad_request', `That ${what} could not be read.`);
+      }
+    } catch (err) {
+      return answerError(res, err, 'done');
+    }
+    return next();
+  };
+
+  app.post(paths('/team/jobs/:id/done'), ...guards, jsonBody(DONE_BODY_MAX, 'result'), route('done', async (req, res) => {
     const id = validJobId(req, res);
     if (!id) return;
     const b = isObject(req.body) ? req.body : {};
+    const job = await ownRunning(req, res, id, 'done');
+    if (!job) return;
+    if (job.kind === 'bench') return finishBench(req, res, id, job, b);
     const named = Array.isArray(b.files) ? b.files : [];
     if (named.length > FILES_PER_JOB || !named.every((n) => typeof n === 'string' && FILE_NAME_RE.test(n))) {
       return fail(res, 400, 'bad_request', `The finished job must name its pictures (up to ${FILES_PER_JOB}, like shot_1.png).`);
     }
-    const job = await ownRunning(req, res, id, 'done');
-    if (!job) return;
     const onDisk = new Map((await listFiles(resultsDir, id)).map((f) => [f.name, f.bytes]));
     const missing = named.find((n) => !onDisk.has(n));
     if (missing) return fail(res, 400, 'bad_request', `The picture ${missing} was never uploaded.`);
@@ -500,12 +615,7 @@ module.exports = function mountTeamJobs(app, pool, {
     const b = isObject(req.body) ? req.body : {};
     const job = await ownRunning(req, res, id, 'failed');
     if (!job) return;
-    const old = isObject(asJson(job.result)) ? asJson(job.result) : {};
-    const result = { ...old, log: cleanLog(b.log) };
-    const [failed] = await pool.execute(
-      "UPDATE team_jobs SET status = 'failed', finished_at = NOW(), result = ?, error = ? WHERE id = ? AND status = 'running' AND claimed_account = ?",
-      [JSON.stringify(result), text(b.error, ERROR_MAX) || 'The team PC could not finish this job.', id, req.user.accountId]);
-    if (!failed.affectedRows) return fail(res, 409, 'not_running', 'This job is not running any more.');
+    if (!(await failRunning(req, res, id, job, text(b.error, ERROR_MAX) || 'The team PC could not finish this job.', b.log))) return;
     res.json({ success: true, data: { id, status: 'failed' } });
   }));
 
@@ -535,22 +645,58 @@ module.exports = function mountTeamJobs(app, pool, {
   };
   const internalRoute = (what, fn) => route(what, async (req, res) => { await sweep(); await fn(req, res); });
 
-  const JOB_COLS = `id, kind, title, weight_s, payload, status, UNIX_TIMESTAMP(created_at) AS created_ts, UNIX_TIMESTAMP(expires_at) AS expires_ts, claimed_account, claimed_pc,
+  const JOB_COLS = `id, kind, title, weight_s, payload, status, target_pc, UNIX_TIMESTAMP(created_at) AS created_ts, UNIX_TIMESTAMP(expires_at) AS expires_ts, claimed_account, claimed_pc,
     UNIX_TIMESTAMP(claimed_at) AS claimed_ts, UNIX_TIMESTAMP(heartbeat_at) AS heartbeat_ts, UNIX_TIMESTAMP(finished_at) AS finished_ts, result, error, tries`;
+
+  /**
+   * Remove the result folders of jobs that finished more than RESULTS_KEEP_DAYS ago: only direct children of the results folder named like a job id (12 lowercase hex),
+   * only real directories (a symlink or a file with such a name is left alone, and nothing is ever followed through one), only when the job's row says it finished that
+   * long ago (a running or queued job, a recent one and a folder with no row stay). Best effort: a failure is logged and never stops what called it.
+   */
+  async function pruneResults() {
+    try {
+      const root = path.resolve(resultsDir);
+      let entries;
+      try {
+        entries = await fs.promises.readdir(root, { withFileTypes: true });
+      } catch (err) {
+        if (err && err.code === 'ENOENT') return;
+        throw err;
+      }
+      const ids = entries.filter((e) => e.isDirectory() && !e.isSymbolicLink() && JOB_ID_RE.test(e.name)).map((e) => e.name).slice(0, PRUNE_BATCH);
+      if (!ids.length) return;
+      const [old] = await pool.execute(
+        `SELECT id FROM team_jobs WHERE finished_at IS NOT NULL AND finished_at < NOW() - INTERVAL ? DAY AND id IN (${ids.map(() => '?').join(', ')})`, [RESULTS_KEEP_DAYS, ...ids]);
+      for (const row of old) {
+        const id = String(row.id);
+        const dir = path.join(root, id);
+        if (!JOB_ID_RE.test(id) || path.dirname(dir) !== root) continue;
+        const st = await fs.promises.lstat(dir).catch(() => null);
+        if (st && st.isDirectory() && !st.isSymbolicLink()) await fs.promises.rm(dir, { recursive: true, force: true });
+      }
+    } catch (err) {
+      console.error('team results clean-up error:', (err && (err.code || err.message)) || err);
+    }
+  }
 
   app.post('/internal/team/jobs', internal, internalRoute('create', async (req, res) => {
     const parsed = parseNewJob(req.body);
     if (parsed.error) return fail(res, 400, 'bad_request', parsed.error);
     const j = parsed.job;
+    await pruneResults();
     const [[{ n }]] = await pool.execute("SELECT COUNT(*) AS n FROM team_jobs WHERE status IN ('queued', 'running')");
     if (Number(n) >= OPEN_JOBS_MAX) return fail(res, 429, 'too_many_jobs', `There are already ${OPEN_JOBS_MAX} jobs waiting or running.`);
     for (let attempt = 0; attempt < 3; attempt++) {
       const id = crypto.randomBytes(6).toString('hex');
       try {
         await pool.execute(
-          "INSERT INTO team_jobs (id, kind, title, weight_s, payload, status, created_at, expires_at) VALUES (?, ?, ?, ?, ?, 'queued', NOW(3), NOW() + INTERVAL ? SECOND)",
-          [id, j.kind, j.title, j.weightS, j.payload, j.ttlS]);
-        return res.json({ success: true, data: { id } });
+          "INSERT INTO team_jobs (id, kind, title, weight_s, payload, status, created_at, expires_at, target_pc) VALUES (?, ?, ?, ?, ?, 'queued', NOW(3), NOW() + INTERVAL ? SECOND, ?)",
+          [id, j.kind, j.title, j.weightS, j.payload, j.ttlS, j.targetPc]);
+        if (!j.supersede) return res.json({ success: true, data: { id } });
+        // The new job is stored: now the PC's older queued jobs of this kind are pointless (never a running one).
+        const [replaced] = await pool.execute(
+          "UPDATE team_jobs SET status = 'cancelled', finished_at = NOW() WHERE kind = ? AND target_pc = ? AND status = 'queued' AND id <> ?", [j.kind, j.targetPc, id]);
+        return res.json({ success: true, data: { id, superseded: Number(replaced.affectedRows) } });
       } catch (err) {
         if (!(err && err.code === 'ER_DUP_ENTRY')) throw err;   // a random id that already exists: draw another
       }
@@ -569,7 +715,7 @@ module.exports = function mountTeamJobs(app, pool, {
       success: true,
       data: {
         id, kind: String(j.kind), title: String(j.title), weightS: Number(j.weight_s), payload: asJson(j.payload) || {}, status: String(j.status), tries: Number(j.tries),
-        createdAt: isoOf(j.created_ts), expiresAt: isoOf(j.expires_ts), claimedAccount: j.claimed_account == null ? null : Number(j.claimed_account), claimedPc: j.claimed_pc == null ? null : String(j.claimed_pc),
+        targetPc: j.target_pc == null ? null : String(j.target_pc), createdAt: isoOf(j.created_ts), expiresAt: isoOf(j.expires_ts), claimedAccount: j.claimed_account == null ? null : Number(j.claimed_account), claimedPc: j.claimed_pc == null ? null : String(j.claimed_pc),
         claimedAt: isoOf(j.claimed_ts), heartbeatAt: isoOf(j.heartbeat_ts), finishedAt: isoOf(j.finished_ts),
         result: asJson(j.result), error: j.error == null ? null : String(j.error), files,
       },
@@ -589,10 +735,17 @@ module.exports = function mountTeamJobs(app, pool, {
   }));
 
   app.get('/internal/team/pcs', internal, internalRoute('pcs', async (req, res) => {
+    let minutes = SEEN_MINUTES;   // ?days=N: every PC seen in the last N days (the benchmark after a release goes to each of them)
+    const days = (req.query || {}).days;
+    if (days !== undefined) {
+      const n = typeof days === 'string' && /^\d{1,3}$/.test(days) ? Number(days) : 0;
+      if (n < 1 || n > SEEN_DAYS_MAX) return fail(res, 400, 'bad_request', `days is a whole number from 1 to ${SEEN_DAYS_MAX}.`);
+      minutes = n * 1440;
+    }
     const [rows] = await pool.execute(
       `SELECT p.account_id, a.username, p.pc_id, p.name, p.version, p.gpu, p.mode, p.state, UNIX_TIMESTAMP(p.last_seen) AS seen_ts
          FROM team_pcs p LEFT JOIN accounts a ON a.id = p.account_id WHERE p.last_seen > NOW() - INTERVAL ? MINUTE ORDER BY p.last_seen DESC`,
-      [SEEN_MINUTES]);
+      [minutes]);
     res.json({
       success: true,
       data: {
@@ -612,5 +765,12 @@ module.exports.cleanLog = cleanLog;
 module.exports.FILE_MAX_BYTES = FILE_MAX_BYTES;
 module.exports.FILES_PER_JOB = FILES_PER_JOB;
 module.exports.OPEN_JOBS_MAX = OPEN_JOBS_MAX;
+module.exports.RUNS_PER_JOB = RUNS_PER_JOB;
+module.exports.DONE_BODY_MAX = DONE_BODY_MAX;
+module.exports.KIND_ORDER = KIND_ORDER;
+/** Whether `req` is the route that reads its own, bigger JSON body (server.js's global parser skips it). */
+module.exports.readsOwnBody = (req) => !!req && req.method === 'POST' && DONE_ROUTE_RE.test(String(req.path || req.url || '').split('?')[0]);
+module.exports.RESULTS_KEEP_DAYS = RESULTS_KEEP_DAYS;
+module.exports.RUN_MAX_BYTES = RUN_MAX_BYTES;
 module.exports.DEFAULT_RESULTS_DIR = DEFAULT_RESULTS_DIR;
 module.exports.DEFAULT_SECRET_FILE = DEFAULT_SECRET_FILE;

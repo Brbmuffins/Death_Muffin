@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const mountBenchmarks = require('./benchmarks.cjs');
-const { parseRun, parseFilters, DAILY_CAP } = mountBenchmarks;
+const { parseRun, parseFilters, saveRun, DAILY_CAP } = mountBenchmarks;
 
 const metrics = { avg_fps: 144.5, avg_ms: 6.9, p95_ms: 9.1, p99_ms: 14.2, worst_ms: 40, hitches: 3, draw_calls: 1800, kills_per_min: 52 };
 const good = (over = {}) => ({
@@ -22,10 +22,10 @@ function harness({ missingTable = false, now = () => Date.now() } = {}) {
       if (sql.startsWith('SELECT COUNT(*)')) return [[{ c: rows.filter((r) => r.account_id === p[0] && now() - r.created < 86400000).length }]];
       if (sql.startsWith('INSERT INTO benchmark_runs')) {
         const [account_id, client_run_id, ran_at, version, godot, gpu, cpu, cores, os, renderer, resolution, refresh_hz, preset, room, discipline_index, size, length, standard, flagged, flag_reason,
-          avg_fps, p95_ms, p99_ms, worst_ms, hitches, draw_calls, kills_per_min, metricsJson, breakdown, report] = p;
-        assert.strictEqual(p.length, 30);
+          avg_fps, p95_ms, p99_ms, worst_ms, hitches, draw_calls, kills_per_min, metricsJson, breakdown, report, source, source_pc] = p;
+        assert.strictEqual(p.length, 32);
         rows.push({ id: rows.length + 1, created: now(), created_at: new Date(now()), account_id, client_run_id, ran_at, version, godot, gpu, cpu, cores, os, renderer, resolution, refresh_hz, preset, room, discipline_index, size, length,
-          standard, flagged, flag_reason, avg_fps, p95_ms, p99_ms, worst_ms, hitches, draw_calls, kills_per_min, metrics: metricsJson, breakdown, report });
+          standard, flagged, flag_reason, avg_fps, p95_ms, p99_ms, worst_ms, hitches, draw_calls, kills_per_min, metrics: metricsJson, breakdown, report, source, source_pc });
         return [{ insertId: rows.length }];
       }
       if (sql.startsWith('SELECT b.id')) {
@@ -52,7 +52,7 @@ function harness({ missingTable = false, now = () => Date.now() } = {}) {
     await routes[route]({ user: { accountId }, body, params, query }, res);
     return res;
   };
-  return { rows, call, routes };
+  return { rows, call, routes, pool };
 }
 
 test('parseRun accepts the client body and cleans it', () => {
@@ -202,4 +202,41 @@ test('only staff can delete a run', async () => {
   assert.strictEqual((await h.call('DELETE /api/benchmarks/:id', { params: { id: '1' }, accountId: 1 })).code, 200);
   assert.strictEqual(h.rows.length, 0);
   assert.strictEqual((await h.call('DELETE /api/benchmarks/:id', { params: { id: '1' }, accountId: 1 })).code, 404);
+});
+
+test('a player run is source "player" and no POST can say it came from a team PC', async () => {
+  const h = harness();
+  await h.call('POST /api/benchmarks', { body: good({ source: 'team', sourcePc: 'pc-muffins-0001', source_pc: 'pc-muffins-0001' }) });
+  assert.strictEqual(h.rows[0].source, null, 'the body\'s source is dropped like any unknown key');
+  assert.strictEqual(h.rows[0].source_pc, null);
+  assert.strictEqual('source' in parseRun(good({ source: 'team' })).run, false);
+  const list = await h.call('GET /api/benchmarks');
+  assert.strictEqual(list.body.runs[0].source, 'player');
+});
+
+test('saveRun stores a team PC\'s run with its marker; the public API says "team" and never names the PC', async () => {
+  const h = harness();
+  const { run } = parseRun(good({ clientRunId: 'team-run-0001', preset: 'low', room: 'graves', size: 'full_party', length: 'full', standard: false }));
+  const saved = await saveRun(h.pool, 1, run, { source: 'team', sourcePc: 'pc-war-0003' });
+  assert.deepStrictEqual(saved, { id: 1 });
+  assert.strictEqual(h.rows[0].source, 'team');
+  assert.strictEqual(h.rows[0].source_pc, 'pc-war-0003');
+  assert.strictEqual(h.rows[0].account_id, 1);
+  const list = await h.call('GET /api/benchmarks');
+  assert.strictEqual(list.body.runs[0].source, 'team');
+  const one = await h.call('GET /api/benchmarks/:id', { params: { id: '1' } });
+  assert.strictEqual(one.body.run.source, 'team');
+  for (const body of [list.body.runs[0], one.body.run]) for (const k of ['source_pc', 'sourcePc', 'pcId', 'pc_id']) assert.ok(!(k in body), k);
+  assert.ok(!JSON.stringify([list.body, one.body]).includes('pc-war-0003'), 'the PC id is not in any public answer');
+});
+
+test('saveRun answers the first id for a repeated run and stops at the daily cap, exactly as POST does', async () => {
+  const h = harness();
+  const mk = (id) => parseRun(good({ clientRunId: id })).run;
+  const a = await saveRun(h.pool, 2, mk('team-run-aaaa'), { source: 'team', sourcePc: 'pc-helix-0002' });
+  assert.deepStrictEqual(await saveRun(h.pool, 2, mk('team-run-aaaa'), { source: 'team', sourcePc: 'pc-helix-0002' }), a);
+  assert.strictEqual(h.rows.length, 1);
+  for (let i = 1; i < DAILY_CAP; i++) assert.ok((await saveRun(h.pool, 2, mk(`team-run-${String(i).padStart(4, '0')}`))).id);
+  assert.deepStrictEqual(await saveRun(h.pool, 2, mk('team-run-one-more')), { capped: true });
+  assert.deepStrictEqual(await saveRun(h.pool, 2, mk('team-run-aaaa')), a, 'a stored run still answers at the cap');
 });

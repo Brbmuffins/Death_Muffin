@@ -17,6 +17,10 @@ extends Node
 ## results screen with a Quit button (a headless run quits by itself). A room or class the benchmark does not list is refused with a message and exit code 2. Release builds then
 ## send the run, to the game's server, with the saved login, if any, unless `--bench-dir=<dir>` keeps the run's files (report, history, queue, last setup) in a folder of its own: a trial,
 ## which sends nothing. The character select screen's Benchmark button opens the setup window (DmBenchmarkSetup) first.
+## Two more flags, release-safe and only read together with `--benchmark` (the team app's `bench` job runs a release build with them): `--bench-preset=<low|medium|high|ultra>` is the graphics
+## preset of the run (applied as Settings would, on loan for the run: DmBenchmark.user_settings, `session_set`, so the player's file is never written; an unknown value is refused with a message
+## and exit code 2, like an unknown room) and `--bench-quit` makes a windowed run quit by itself once its run is recorded (a headless run always does): exit code 0 when the run is in the queue
+## (`pending.json` of `--bench-dir`, its last entry), 1 when it was cancelled or could not be recorded (DmBenchmarkScreen.exit_code).
 ## `start_opts` (set before add_child; tests) are merged over DmNextGame.start's options.
 ##
 ## Co-op: the party's `join_ready` hands the solo game over to a guest game on the same lobby socket, and a guest whose session ended (or whose join failed) is
@@ -79,7 +83,8 @@ func _ready() -> void:
 		bench_dir = String(launch.get("bench_dir", ""))
 		if bench_dir != "":
 			DmBenchmark.dir = bench_dir
-		_run_benchmark(true, bench_setup_from_args(args), _arg_float(args, "--bench-warm=", -1.0), _arg_float(args, "--bench-measure=", -1.0), String(launch.get("baked", "")))
+		_run_benchmark(true, bench_setup_from_args(args), _arg_float(args, "--bench-warm=", -1.0), _arg_float(args, "--bench-measure=", -1.0), String(launch.get("baked", "")),
+			String(bench_wanted_from_args(args).get("preset", "")), "--bench-quit" in args)
 		return
 	if mode == "":
 		mode = mode_for(args)
@@ -233,11 +238,12 @@ static func _arg_float(args: PackedStringArray, prefix: String, d: float) -> flo
 	return d
 
 
-## What a `--benchmark` launch asked for, as given (`--bench-room=graves --bench-class=2 --bench-size=full_party --bench-length=quick`): the keys that were named.
+## What a `--benchmark` launch asked for, as given (`--bench-room=graves --bench-class=2 --bench-size=full_party --bench-length=quick --bench-preset=low`): the keys that were named
+## (`discipline` for the class; `preset` is the graphics preset of the run, not part of the setup).
 static func bench_wanted_from_args(args: PackedStringArray) -> Dictionary:
 	var want := {}
 	for a in args:
-		for k in ["room", "class", "size", "length"]:
+		for k in ["room", "class", "size", "length", "preset"]:
 			var prefix := "--bench-%s=" % k
 			if a.begins_with(prefix):
 				want["discipline" if k == "class" else k] = int(a.substr(prefix.length())) if k == "class" else a.substr(prefix.length())
@@ -280,11 +286,13 @@ func _bench_upload_api() -> DmApi:
 
 ## The benchmark over whatever is on screen: from the character select (the front flow is hidden meanwhile, Back returns to it) or as the whole
 ## session (`--benchmark`, Quit button). It builds its own mock-backed game; `api` and the player's characters are never used.
-func _run_benchmark(quit_on_close: bool, setup: Dictionary = DmBenchmark.STANDARD, warm_s: float = -1.0, measure_s: float = -1.0, baked_dir := "") -> void:
+func _run_benchmark(quit_on_close: bool, setup: Dictionary = DmBenchmark.STANDARD, warm_s: float = -1.0, measure_s: float = -1.0, baked_dir := "", preset := "", auto_quit := false) -> void:
 	if flow != null:
 		flow.visible = false
 	var s := DmBenchmarkScreen.new()
 	s.quit_on_close = quit_on_close
+	s.auto_quit = auto_quit
+	s.graphics_preset = preset
 	s.setup = setup
 	s.warm_s = warm_s
 	s.measure_s = measure_s

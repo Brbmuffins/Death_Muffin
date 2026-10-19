@@ -8,7 +8,7 @@ using System.Text;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-// Everything that needs Windows: DPAPI, the full-screen and battery checks, hard links, the game's window, the start-with-Windows switch.
+// Everything that needs Windows: DPAPI, the full-screen and battery checks, the CPU and keyboard/mouse readings, hard links, the game's window, the start-with-Windows switch.
 // Not compiled by teamapp/tests; teamapp/tests/compile-check.sh compiles it against the .NET Framework 4.8 reference assemblies.
 namespace DeathMuffinTeam
 {
@@ -154,6 +154,109 @@ namespace DeathMuffinTeam
         }
     }
 
+    /// <summary>
+    /// What a `bench` job reads to know whether the PC is quiet (Quiet.cs decides): the total CPU between two readings from GetSystemTimes, the job's game's share of it from its process's CPU time,
+    /// the seconds since the last key or mouse input from GetLastInputInfo, and the platform's own battery, full-screen and player's-game checks. Called from one thread, about once a second.
+    /// </summary>
+    internal sealed class WindowsPcProbe : IPcProbe
+    {
+        [StructLayout(LayoutKind.Sequential)]
+        struct FileTime { public uint Low, High; }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct LastInputInfo { public uint Size, Time; }
+
+        [DllImport("kernel32.dll")]
+        static extern bool GetSystemTimes(out FileTime idle, out FileTime kernel, out FileTime user);
+
+        [DllImport("user32.dll")]
+        static extern bool GetLastInputInfo(ref LastInputInfo info);
+
+        readonly ITeamPlatform platform;
+        readonly Stopwatch clock = Stopwatch.StartNew();
+        bool haveLast;
+        ulong lastIdle, lastTotal;
+        TimeSpan lastAt;
+        Process game;
+        int gamePid;
+        TimeSpan gameCpu;
+
+        public WindowsPcProbe(ITeamPlatform platform) { this.platform = platform; }
+
+        static ulong Ticks(FileTime t) { return ((ulong)t.High << 32) | t.Low; }
+
+        static double Clamp(double v) { return v < 0 ? 0 : v > 100 ? 100 : v; }
+
+        public PcSample Read(int pid)
+        {
+            TimeSpan now = clock.Elapsed;
+            var s = new PcSample { At = now };
+            try
+            {
+                FileTime idle, kernel, user;
+                if (GetSystemTimes(out idle, out kernel, out user))
+                {
+                    ulong i = Ticks(idle), total = Ticks(kernel) + Ticks(user);   // kernel time includes the idle time
+                    if (haveLast && total > lastTotal)
+                    {
+                        double span = total - lastTotal, busy = span - (i - lastIdle);
+                        s.CpuTotal = Clamp(100.0 * busy / span);
+                    }
+                    lastIdle = i;
+                    lastTotal = total;
+                    haveLast = true;
+                }
+            }
+            catch (Exception) { /* no CPU number: the PC then never counts as quiet */ s.CpuTotal = 100; }
+            s.CpuGame = GameShare(pid, (now - lastAt).TotalSeconds);
+            lastAt = now;
+            s.IdleS = IdleSeconds();
+            s.OnBattery = platform.OnBattery();
+            s.Fullscreen = platform.Fullscreen();
+            s.PlayerGame = platform.GameRunning();
+            return s;
+        }
+
+        /// <summary>The job's game's CPU time over the interval, as a percent of the whole CPU. A game seen for the first time was started just before the interval began: its CPU time so far is the interval's.</summary>
+        double GameShare(int pid, double seconds)
+        {
+            if (pid <= 0) { Forget(); return 0; }
+            try
+            {
+                if (game == null || gamePid != pid)
+                {
+                    Forget();
+                    game = Process.GetProcessById(pid);
+                    gamePid = pid;
+                    gameCpu = TimeSpan.Zero;
+                }
+                TimeSpan cpu = game.TotalProcessorTime;
+                double used = (cpu - gameCpu).TotalSeconds;
+                gameCpu = cpu;
+                return seconds <= 0 ? 0 : Clamp(100.0 * used / (seconds * Environment.ProcessorCount));
+            }
+            catch (Exception) { return 0; }   // the game has ended, or Windows refuses: nothing is taken off the others
+        }
+
+        void Forget()
+        {
+            if (game != null) { game.Dispose(); game = null; }
+            gamePid = 0;
+        }
+
+        /// <summary>Seconds since the last key press or mouse move in this Windows session. 0 (just now) when Windows will not say: a PC that cannot be read is never "quiet".</summary>
+        static double IdleSeconds()
+        {
+            try
+            {
+                var info = new LastInputInfo { Size = (uint)Marshal.SizeOf(typeof(LastInputInfo)) };
+                if (!GetLastInputInfo(ref info)) return 0;
+                return unchecked((uint)Environment.TickCount - info.Time) / 1000.0;   // both are the 32-bit millisecond tick count, which wraps
+            }
+            catch (Exception) { return 0; }
+        }
+    }
+
     internal static class Native
     {
         public const int DisplayDeviceMirroring = 0x8;
@@ -177,6 +280,14 @@ namespace DeathMuffinTeam
         {
             try { return CreateHardLink(link, existing, IntPtr.Zero); }
             catch (Exception) { return false; }
+        }
+
+        /// <summary>The `--position` for a screenshot job's game window: outside every monitor (JobPlan.OffscreenPosition on the virtual screen, which spans all of them). The window is never seen; the code below
+        /// that sends it to the bottom and marks it "no activate" stays as the fallback if Windows brings it on screen anyway.</summary>
+        public static string OffscreenPosition()
+        {
+            System.Drawing.Rectangle v = SystemInformation.VirtualScreen;
+            return JobPlan.OffscreenPosition(v.Left, v.Top);
         }
 
         // ---- Keeping the game's window out of the way -------------------------------------------------------------------------------

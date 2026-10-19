@@ -2,7 +2,8 @@ class_name DmBenchmark
 extends Node
 ## The in-game benchmark of the rebuilt client (character select "Benchmark" button, launch arg `--benchmark`): the same held fight on every PC so builds and machines compare
 ## (DECISIONS B50). An ISOLATED offline game (DmBenchFight: mock backend with an in-memory db, nothing persisted, no network); the player's settings
-## file is only READ (graphics preset, fps cap for the report; the run itself is uncapped with V-Sync off).
+## file is only READ (graphics preset, fps cap for the report; the run itself is uncapped with V-Sync off). `graphics_preset` (launch arg `--bench-preset=`, the team app's runs) puts another
+## preset on loan for the run instead of the player's (`user_settings`: DmSettings.session_set, never written).
 ## Setup (`configure`, the setup window DmBenchmarkSetup): room (ROOMS: the nine combat areas), class (`class_indices`: the four necromancers and the Reaper), fight size (SIZES)
 ## and length (LENGTHS); STANDARD is the setup that compares PCs. Fight: only the room's area is loaded, the room's own enemy kinds at the walkable point nearest its centre,
 ## every enemy with the same hp / damage in every room (`standard_stats`, no elites), a god-mode level 60 hero on auto combat, thralls raised directly, enemies topped up to the size's
@@ -95,6 +96,7 @@ var boss_id := ""               ## the boss held awake ("" = none); set by `conf
 var kills_measured := 0         ## enemies killed in the measured window (kills per minute in the report)
 var game: DmNextGame
 var host: DmCoreHost            ## the game's combat core host (timed during the measured window)
+var graphics_preset := ""       ## the graphics preset of the run ("" = the player's own, from their settings file); on loan, never saved
 var baked_dir := ""             ## where the baked crowd models are ("" = the project's res://crowd/baked; tests bake into a scratch folder)
 var break_settle_s := BREAK_SETTLE_S      ## the render breakdown's timings (tests shorten them)
 var break_measure_s := BREAK_MEASURE_S
@@ -168,9 +170,13 @@ func _exit_tree() -> void:
 	_restore()
 
 
-## The plain-data settings the run reads from the player's file (read-only: no update() is ever called on this store).
-static func user_settings() -> Dictionary:
-	return DmSettings.new(DmSettings.FILE, true).values
+## The plain-data settings the run reads from the player's file (read-only: no update() is ever called on this store). `preset` (a DmGraphicsPreset id, "" = none) is the graphics
+## preset the run was asked for: it reads as the player's setting for this run, as if chosen in Settings, and is on loan (`session_set`), so nothing here could write it to the file.
+static func user_settings(preset := "") -> Dictionary:
+	var store := DmSettings.new(DmSettings.FILE, true)
+	if preset != "":
+		store.session_set("graphics", preset, false)
+	return store.values
 
 
 ## Applies a setup ({room, discipline, size, length}; missing or unknown keys fall back to STANDARD's) to the run's fields.
@@ -300,11 +306,13 @@ static func class_indices() -> Array:
 	return out
 
 
-## "" when `want` ({room, discipline}, as a launch asked for them) is something this build can run, else a plain-words refusal naming what it can. Keys that are missing are not
-## refused (they take the Standard setup's).
+## "" when `want` ({room, discipline, preset}, as a launch asked for them) is something this build can run, else a plain-words refusal naming what it can. Keys that are missing are not
+## refused (they take the Standard setup's; no preset is the player's own).
 static func refusal(want: Dictionary) -> String:
 	if want.has("room") and not ROOMS.has(String(want["room"])):
 		return "There is no benchmark room '%s' (--bench-room=): the rooms are %s." % [want["room"], ", ".join(ROOMS)]
+	if want.has("preset") and not DmGraphicsPreset.IDS.has(String(want["preset"])):
+		return "There is no graphics preset '%s' (--bench-preset=): the presets are %s." % [want["preset"], ", ".join(DmGraphicsPreset.IDS)]
 	if want.has("discipline") and not class_indices().has(int(want["discipline"])):
 		return "There is no benchmark class %d (--bench-class=): the classes are %s." % [int(want["discipline"]), ", ".join(class_indices().map(func(i: int) -> String: return "%d %s" % [i, class_name_of(i)]))]
 	return ""
@@ -352,7 +360,7 @@ func cancel() -> void:
 
 
 func run() -> Dictionary:
-	var user := user_settings()
+	var user := user_settings(graphics_preset)
 	_saved_ui_dir = DmUiConfig.dir
 	DmUiConfig.dir = ""   # the HUD's per-device files (dm_ui.json: keybinds, belt, locks; guidance) stay in memory: the player's own are never read or written
 	_saved_vsync = DisplayServer.window_get_vsync_mode()

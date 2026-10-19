@@ -20,6 +20,7 @@ namespace DeathMuffinTeam.Tests
             TextTests();
             JobPlanTests();
             CommandLineTests();
+            BenchTests.Run();
             UploadNameTests();
             SettingsTests();
             ApiTests();
@@ -29,6 +30,7 @@ namespace DeathMuffinTeam.Tests
             ProcessHostTests();
             SelfUpdateTests();
             RunnerTests.Run();
+            LogCancelTests.Run();
             ControllerTests.Run();
             return T.Done();
         }
@@ -57,9 +59,9 @@ namespace DeathMuffinTeam.Tests
 
         // ---- The offer decision: every branch -----------------------------------------------------------------------------------------
 
-        static OfferDecision D(OfferMode mode, OfferAnswer a, double minutes, bool fs = false, bool game = false, bool battery = false, bool paused = false)
+        static OfferDecision D(OfferMode mode, OfferAnswer a, double minutes, bool fs = false, bool game = false, bool battery = false, bool paused = false, bool afk = false)
         {
-            return TeamLogic.Decide(mode, a, TimeSpan.FromMinutes(minutes), fs, game, battery, paused);
+            return TeamLogic.Decide(mode, a, TimeSpan.FromMinutes(minutes), fs, game, battery, paused, afk);
         }
 
         static void OfferDecisionTests()
@@ -88,6 +90,33 @@ namespace DeathMuffinTeam.Tests
             T.Eq(D(OfferMode.Auto, OfferAnswer.None, 0), OfferDecision.Run, "auto: runs without asking");
             T.Eq(D(OfferMode.Yes, OfferAnswer.None, 0), OfferDecision.Ask, "yes: asks");
             T.Eq(D(OfferMode.Yes, OfferAnswer.None, 600), OfferDecision.Ask, "yes: never runs by itself");
+            // AFK mode: Decide takes the flag, and only mode ask is changed by it
+            T.Eq(D(OfferMode.Ask, OfferAnswer.None, 0, afk: true), OfferDecision.Run, "afk: a job runs at once, no box");
+            T.Eq(TeamLogic.Decide(OfferMode.Ask, OfferAnswer.None, TimeSpan.Zero, false, false, false, false, true), OfferDecision.Run, "afk: the flag is the 8th argument");
+            T.Eq(D(OfferMode.Ask, OfferAnswer.None, 0, fs: true, afk: true), OfferDecision.Wait, "afk: a full-screen app still waits");
+            T.Eq(D(OfferMode.Ask, OfferAnswer.None, 0, game: true, afk: true), OfferDecision.Wait, "afk: Death Muffin open still waits");
+            T.Eq(D(OfferMode.Ask, OfferAnswer.None, 0, battery: true, afk: true), OfferDecision.Wait, "afk: the battery still waits");
+            T.Eq(D(OfferMode.Ask, OfferAnswer.None, 0, paused: true, afk: true), OfferDecision.Decline, "afk: a pause still declines");
+            T.Eq(D(OfferMode.Ask, OfferAnswer.NotNow, 0, afk: true), OfferDecision.Decline, "afk: a no still declines");
+            T.Eq(D(OfferMode.Yes, OfferAnswer.None, 0, afk: true), OfferDecision.Ask, "afk changes nothing in mode yes");
+            T.Eq(D(OfferMode.Auto, OfferAnswer.None, 0, afk: true), OfferDecision.Run, "or in mode auto");
+            T.Eq(D(OfferMode.Ask, OfferAnswer.None, 0, afk: false), OfferDecision.Ask, "no afk: the box asks");
+            var five = TimeSpan.FromMinutes(5);
+            T.Ok(TeamLogic.EntersAfk(OfferMode.Ask, OfferAnswer.None, five, OfferDecision.Run, false), "a box that runs out in mode ask enters AFK mode");
+            T.Ok(!TeamLogic.EntersAfk(OfferMode.Ask, OfferAnswer.None, five - TimeSpan.FromSeconds(1), OfferDecision.Run, false), "not before the 5 minutes");
+            T.Ok(!TeamLogic.EntersAfk(OfferMode.Ask, OfferAnswer.None, TimeSpan.Zero, OfferDecision.Run, true), "already on: nothing to enter");
+            T.Ok(!TeamLogic.EntersAfk(OfferMode.Ask, OfferAnswer.Yes, five, OfferDecision.Run, false), "a yes is a person at the PC");
+            T.Ok(!TeamLogic.EntersAfk(OfferMode.Auto, OfferAnswer.None, five, OfferDecision.Run, false), "mode auto never enters it");
+            T.Ok(!TeamLogic.EntersAfk(OfferMode.Yes, OfferAnswer.None, five, OfferDecision.Run, false), "mode yes never enters it");
+            T.Ok(!TeamLogic.EntersAfk(OfferMode.Ask, OfferAnswer.None, five, OfferDecision.Wait, false) && !TeamLogic.EntersAfk(OfferMode.Ask, OfferAnswer.None, five, OfferDecision.Ask, false) && !TeamLogic.EntersAfk(OfferMode.Ask, OfferAnswer.None, five, OfferDecision.Decline, false), "only a decision to run enters it");
+            T.Eq(TeamLogic.AfkEndReason(true, true, false, false), "Death Muffin was started", "afk ends when Death Muffin starts");
+            T.Eq(TeamLogic.AfkEndReason(true, false, true, false), "a full-screen app came up", "when a full-screen app comes up");
+            T.Eq(TeamLogic.AfkEndReason(true, false, false, true), "the PC was paused", "when the PC is paused");
+            T.Eq(TeamLogic.AfkEndReason(true, false, false, false), "", "and not otherwise (the battery does not end it)");
+            T.Eq(TeamLogic.AfkEndReason(false, true, true, true), "", "off stays off");
+            T.Ok(TeamLogic.LeavesAfk(true, true, false, false) && !TeamLogic.LeavesAfk(true, false, false, false) && !TeamLogic.LeavesAfk(false, true, true, true), "leaves, as a yes or no");
+            T.Eq(TeamLogic.AfkText, "AFK mode on: jobs run right away", "the notice's words");
+            T.Eq(TeamLogic.AfkEndText, "End AFK mode", "and its button's");
             T.Eq(TeamLogic.DeclineReason(OfferAnswer.NotNow, false), "not_now", "decline reason: not now");
             T.Eq(TeamLogic.DeclineReason(OfferAnswer.Pause, false), "paused", "decline reason: pause");
             T.Eq(TeamLogic.DeclineReason(OfferAnswer.None, true), "paused", "decline reason: paused PC");
@@ -293,6 +322,10 @@ namespace DeathMuffinTeam.Tests
             Reject(p => p["args"] = new List<object> { "--shot-plan=x.json" }, "args: --shot-plan");
             Reject(p => p["args"] = new List<object> { "--preset=ultra" }, "args: --preset");
             Reject(p => p["args"] = new List<object> { "--online" }, "args: --online");
+            Reject(p => p["args"] = new List<object> { "--audio-driver" }, "args: --audio-driver", "--audio-driver");
+            Reject(p => p["args"] = new List<object> { "--audio-driver=ALSA" }, "args: --audio-driver with a value", "--audio-driver");
+            Reject(p => p["args"] = new List<object> { "--position=0,0" }, "args: --position", "--position");
+            Reject(p => p["args"] = new List<object> { "--benchmark" }, "args: --benchmark", "--benchmark");
             Reject(p => p["args"] = new List<object> { "--assets-pack=evil.pck" }, "args: --assets-pack");
             Reject(p => p["args"] = new List<object> { "--baked=x" }, "args: --baked");
             Reject(p => p["args"] = new List<object> { "--bench-dir=x" }, "args: --bench-dir");
@@ -358,16 +391,40 @@ namespace DeathMuffinTeam.Tests
             string shots = "C:\\Users\\Test User\\AppData\\Local\\DeathMuffinTeam\\jobs\\q7x2k9ab\\out\\low";
             var a = plan.CommandArgs("low", planFile, shots);
             T.Eq(string.Join("|", a),
-                "--windowed|--resolution|1600x900|--|--dev-offline|--class=2|--qa|--shot-plan=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/plan.json|--shots=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/out/low|--preset=low",
+                "--windowed|--resolution|1600x900|--audio-driver|Dummy|--|--dev-offline|--class=2|--qa|--shot-plan=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/plan.json|--shots=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/out/low|--preset=low",
                 "command arguments for low (the contract's line)");
             T.Eq(plan.CommandArgs("ultra", planFile, shots.Replace("low", "ultra")).Last(), "--preset=ultra", "command arguments for ultra");
             T.Eq(plan.CommandLine("low", "C:\\j\\plan.json", "C:\\j\\out\\low"),
-                "--windowed --resolution 1600x900 -- --dev-offline --class=2 --qa --shot-plan=C:/j/plan.json --shots=C:/j/out/low --preset=low",
+                "--windowed --resolution 1600x900 --audio-driver Dummy -- --dev-offline --class=2 --qa --shot-plan=C:/j/plan.json --shots=C:/j/out/low --preset=low",
                 "command line without spaces needs no quotes");
             string line = plan.CommandLine("low", planFile, shots);
             T.Has(line, "\"--shot-plan=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/plan.json\"", "a path with a space is quoted");
             T.Eq(string.Join("|", ParseWinArgs(line)), string.Join("|", a), "the command line reads back as the same arguments");
-            T.Eq(plan.CommandArgs("low", "p", "s").IndexOf("--"), 3, "everything for the game comes after --");
+            T.Eq(plan.CommandArgs("low", "p", "s").IndexOf("--"), 5, "everything for the game comes after --");
+            T.Eq(string.Join(" ", a.Take(5)), "--windowed --resolution 1600x900 --audio-driver Dummy", "the game is silent: the Dummy audio driver still mixes, so its cost stays real");
+
+            // screenshot jobs keep the window outside every monitor
+            var off = plan.CommandArgs("low", planFile, shots, "-1700,0");
+            T.Eq(string.Join(" ", off.Take(8)), "--windowed --resolution 1600x900 --audio-driver Dummy --position -1700,0 --", "--position goes ahead of --, after the audio driver");
+            T.Eq(off.IndexOf("--"), 7, "and everything for the game still comes after --");
+            T.Eq(string.Join("|", off.Skip(8)), string.Join("|", a.Skip(6)), "the game's own options are the same");
+            T.Eq(plan.CommandLine("low", "C:\\j\\plan.json", "C:\\j\\out\\low", "-3620,-200"),
+                "--windowed --resolution 1600x900 --audio-driver Dummy --position -3620,-200 -- --dev-offline --class=2 --qa --shot-plan=C:/j/plan.json --shots=C:/j/out/low --preset=low", "the command line with a position");
+            T.Ok(!a.Contains("--position") && !plan.CommandArgs("low", "p", "s", "").Contains("--position"), "no position given, none is set");
+            T.Eq(ParseWinArgs(plan.CommandLine("low", planFile, shots, "-1700,0")).Count(x => x == "-1700,0"), 1, "a negative position is one argument");
+
+            // the position: 1700 px left of the virtual screen (the window is 1600 wide), level with its top
+            T.Eq(JobPlan.OffscreenPosition(0, 0), "-1700,0", "one monitor at 0,0");
+            T.Eq(JobPlan.OffscreenPosition(-1920, 0), "-3620,0", "a monitor left of the main one: left of that");
+            T.Eq(JobPlan.OffscreenPosition(0, -1080), "-1700,-1080", "a monitor above the main one: level with its top");
+            T.Eq(JobPlan.OffscreenPosition(-1920, -200), "-3620,-200", "both");
+            T.Eq(JobPlan.OffscreenPosition(100, 50), "-1600,50", "a virtual screen that starts right of 0");
+            int width = int.Parse(JobPlan.Resolution.Split('x')[0]);
+            foreach (int left in new[] { 0, -1920, -3840, 200 })
+            {
+                int x = int.Parse(JobPlan.OffscreenPosition(left, 0).Split(',')[0]);
+                T.Ok(x + width < left, "the window (" + width + " px wide) ends left of the virtual screen at " + left + " (x " + x + ")");
+            }
 
             T.Eq(CommandLineText.Quote("plain"), "plain", "quote: plain");
             T.Eq(CommandLineText.Quote(""), "\"\"", "quote: empty");

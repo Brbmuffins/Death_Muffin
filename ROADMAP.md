@@ -120,7 +120,7 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   ("Screenshots of a change, about 1 minute": Run now / Not now / Pause 2 hours), and without an answer it runs by itself after 5 minutes,
   except while Death Muffin or another full-screen game or movie is running (Windows hides the question then, and a party's host runs the
   whole party's fight) or a laptop is on battery: then it waits for a yes or for the game to close. It never takes the keyboard or mouse,
-  runs at low priority and stops if the game starts; it uses its own folder and plays offline (never the player's game, settings or
+  runs at low priority (a benchmark at normal priority, once the PC has been left alone) and stops if the game starts; it uses its own folder and plays offline (never the player's game, settings or
   account), runs only builds and kits our server made, and uploads only its results. Each PC can also run without asking (War's spare
   Alienware, if he sets it) or only on a yes. Every job asks the same way, benchmarks included (Helix, 2026-10-19). Its jobs, in this order
   (B58: all of them in Phase 1):
@@ -129,8 +129,10 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
     server's pictures until they have proven themselves.
   - Benchmarks of every release on each team PC (a fast PC, War's Intel Arc, the Alienware's GTX 970: the weak-PC floor of B39), on the
     benchmarks page marked as team runs. A benchmark starts once the PC has been left alone, and a run disturbed halfway is thrown out
-    and retried, so its numbers are honest. With it (app 0.2.0): silent runs, screenshot runs that never show a window, a fresh folder
-    for every run, cancels that reach the PC within 30 s.
+    and retried, so its numbers are honest. Built 2026-10-19 with app 0.2.0 (queued by every client publish, one per team PC seen in the
+    last 14 days), which also brought silent runs, screenshot runs that never show a window, a fresh folder for every run, cancels that
+    reach the PC within 30 s, and AFK mode (Helix's design: once a job ran by itself because nobody answered, the next jobs run without
+    the 5-minute wait until the person ends it or starts a game).
   - Short clips of a change: the same plan recorded as a few seconds of video (Godot's Movie Maker), posted to the thread; spells and
     effects are judged moving, not frozen.
   - Before and after: every visual proposal's pictures also on the unchanged game, side by side (the server's own "before" pictures
