@@ -162,6 +162,9 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
     - Clips and "pick one": a few seconds of a spell or effect recorded by the game itself (30 frames per game second, only the spell,
       not the loading), posted as videos; for a choice (War's Haunting Wraith at three speeds) each option is numbered and the thread
       asks which one. Model previews are clips too: the new piece worn by a hero, turning.
+    - Scripted clips (B64, 2026-10-19): a clip can set its scene up and say what happens when, with the words of the game's own list
+      (`client/main/qa_clip_steps.json`: the HUD on screen, mortal or harmful stand-ins, the Reaper's souls, no top-up, casts at set times).
+      A video that needs a new word gets it in the same change from the Discord agent, with no change to its runner.
     - Release checks: a fresh install and boot, quitting while loading (the old 4-core crash), the windows and HUD at 1080p, 1440p, 4K
       and ultrawide and the largest UI size, the stutter test (every rite of every discipline, each cast's worst frame and pipeline
       compilations), the benchmark, and a 30-minute soak (memory and frame times per minute). Since B62 (Helix, 2026-10-19) they run
@@ -179,6 +182,11 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
     process once its shutdown is done (B60; the cause inside the engine is in KNOWN-GAPS "Stability"), and the next release check passed
     every step with no crash (Low 676, Medium 639 fps). The app updates itself between jobs,
     so a check never runs on an old app.
+  - Decide: a team PC runs the Discord agent's branch before anyone has reviewed it (found 2026-10-19). Pictures and videos are made from the
+    change itself, so its game code runs on Helix's PC; it runs offline in its own folder, but game code can still reach the PC (run a program,
+    read a file). Today only War, Muffins and Helix can ask the agent for changes, which limits the risk. Claude's recommendation: before team PCs
+    take jobs from anyone else (or War's PCs join), scan the branch's game code for calls that reach outside the game (programs, files outside
+    its folder, the network) and refuse a team build that has one; the video steps themselves (B64) are data and never bring code.
   - Still to do: War's PCs (the Intel Arc and the Alienware's GTX 970) have not signed in to the app yet, so the release checks and
     benchmarks cover one graphics card; the weak-PC floor (B39) and the Ultra Low decision below wait on them.
   - Fix: a release that does not start on Windows reached players before any team PC tried it (the server's boot test runs the Linux build).

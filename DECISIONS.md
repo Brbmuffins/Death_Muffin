@@ -312,6 +312,13 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   paid or self-hosted machine; the agent's own tests run in CI; an expired GitHub token falls back to the slower limit, and the nightly
   drift report warns two weeks before it expires; and after every reinstall and every test build that goes live, the agent's practice run
   (`runner/canary.cjs`) takes a harmless change through the whole path with a fake Discord before the agent takes requests.
+- **B64. Videos are scripted with the game's own words, never with code** (Helix, 2026-10-19: "we will need a LOT more clip options or allow custom
+  requests", then "start"; Claude's design). A clip may carry `setup` (the scene before recording) and `steps` (what happens when), lists of words
+  with arguments defined by the game in `client/main/qa_clip_steps.json`; the recorder carries them out and the Discord agent's runner checks a
+  request against the branch's own copy of that list. A new kind of video is a game change the agent can make itself (the word, its handler, a
+  test), reviewed like any change, and usable in that change's videos at once; the runner needs no change. Free-form scripts were turned down: a
+  script can do anything a program can on the team PC that records it, a word only what the recorder allows. Also from Helix the same evening
+  ("@ war its his thread"): a proposal tags the person who started the thread, not whoever asked last.
 - **B59. One setup, and CI as the one gate, for sessions and the Discord agent alike** (Helix, 2026-10-19: "the way we do testing for
   sessions and discord agents is a mess", then "start"; Claude's design). Every checkout (a session's worktree, an agent job, a CI machine,
   a publish) gets the combat core, Godot's import, the crowd's bakes and the lobby's packages from one setup, `tools/check/prep.sh`, through

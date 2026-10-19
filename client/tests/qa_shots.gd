@@ -525,8 +525,8 @@ func clip_plan_format() -> void:
 	check(p["ok"] and p["class_index"] == 11 and p["discipline"] == "reaper", "a clip plan parses, its discipline (by name, any case) is the Reaper's class")
 	var clips: Array = p["clips"]
 	check(clips.size() == DmQaClips.MAX_CLIPS and DmQaClips.MAX_CLIPS == 4, "at most 4 clips")
-	check(clips[0] == {"name": "wraith-walk", "area": "graves", "cast": "haunting_wraith", "at": "ahead", "enemies": 12, "seconds": 8.0, "camera": "wide", "equip": [], "dress": false}, "a clip: the name slugged, enemies and seconds at their limits (%s)" % str(clips[0]))
-	check(clips[1] == {"name": "clip-2", "area": "graves", "cast": "scythe_sweep", "at": "pack", "enemies": 6, "seconds": 5.0, "camera": "follow", "equip": [], "dress": false}, "the defaults: the second clip's own name, the Graves, a pack of 6, 5 s, the following camera (%s)" % str(clips[1]))
+	check(clips[0] == {"name": "wraith-walk", "area": "graves", "cast": "haunting_wraith", "at": "ahead", "enemies": 12, "seconds": 8.0, "camera": "wide", "equip": [], "dress": false, "setup": DmQaClips._setup_of([]), "steps": []}, "a clip: the name slugged, enemies and seconds at their limits (%s)" % str(clips[0]))
+	check(clips[1] == {"name": "clip-2", "area": "graves", "cast": "scythe_sweep", "at": "pack", "enemies": 6, "seconds": 5.0, "camera": "follow", "equip": [], "dress": false, "setup": DmQaClips._setup_of([]), "steps": []}, "the defaults: the second clip's own name, the Graves, a pack of 6, 5 s, the following camera (%s)" % str(clips[1]))
 	check(clips[2]["name"] == "wraith-walk-2" and clips[3]["name"] == "wraith-walk-3" and clips[2]["seconds"] == DmQaClips.MIN_SECONDS and clips[3]["enemies"] == 0, "a name already taken gets a number, a short clip is made 1 s, no enemies is allowed")
 	var notes := String(" | ").join(PackedStringArray(p["notes"]))
 	check(notes.contains("99 enemies is outside 0-12") and notes.contains("30 seconds is outside 1-8") and notes.contains("0.2 seconds is outside") and notes.contains("the plan has 5 clips, only the first 4 are made"), "what was cut or clamped is said (%s)" % notes)
@@ -538,6 +538,28 @@ func clip_plan_format() -> void:
 		check(not r["ok"] and String(r["error"]) != "", "refused: %s (%s)" % [bad.left(70), r["error"]])
 	check(DmQaClips.class_refusal(p, 11) == "" and DmQaClips.class_refusal(DmQaClips.parse('{"clips": [{"cast": "reap"}]}'), 2) == "" and DmQaClips.class_refusal(p, 2).contains("the game runs class 2, the plan wants reaper (11): start it with --class=11"),
 		"a game of another class than the plan's discipline is refused with the way to start it; a plan without one takes any")
+	# setup and steps: the words of main/qa_clip_steps.json, each one carried out by the recorder (the runner checks requests against the same file)
+	var voc := DmQaClips.vocabulary()
+	var setup_words: Array = DmQaClips.SETUP_WORDS.duplicate()
+	var step_words: Array = DmQaClips.STEP_WORDS.duplicate()
+	setup_words.sort()
+	step_words.sort()
+	check(_sorted_keys(voc.get("setup", {})) == setup_words and _sorted_keys(voc.get("steps", {})) == step_words, "every word of main/qa_clip_steps.json is one the recorder carries out, and every one it carries out is there (%s / %s)" % [str(_sorted_keys(voc.get("setup", {}))), str(_sorted_keys(voc.get("steps", {})))])
+	var sp := DmQaClips.parse('{"clips": [{"name": "souls", "seconds": 4, "setup": [{"do": "hud", "show": true}, {"do": "stand_ins", "health": 1, "harmless": false}, {"do": "souls", "value": 0}, {"do": "top_up", "on": false}], '
+		+ '"steps": [{"at": 2, "do": "cast", "rite": "haunting_wraith"}, {"at": 0.3, "do": "cast", "rite": "reap"}]}]}')
+	var c0: Dictionary = sp["clips"][0] if sp["ok"] else {}
+	check(sp["ok"] and c0["cast"] == "" and c0["setup"]["hud"] == true and c0["setup"]["health"] == 1.0 and c0["setup"]["harmless"] == false and c0["setup"]["kind"] == DmQaClips.DUMMY and c0["setup"]["souls"] == 0.0 and c0["setup"]["top_up"] == false,
+		"a clip's setup is read with the defaults for what it leaves out, and a clip whose steps cast needs no \"cast\" (%s)" % str(c0.get("setup", sp["error"])))
+	check(sp["ok"] and (c0["steps"] as Array).map(func(x: Dictionary) -> String: return x["rite"]) == ["reap", "haunting_wraith"] and c0["steps"][0]["at"] == 0.3, "the steps run in the order of their times")
+	var refusals := {'{"clips": [{"cast": "reap", "setup": [{"do": "fly"}]}]}': "\"do\" must be one of", '{"clips": [{"cast": "reap", "setup": [{"do": "hud"}]}]}': "needs \"show\"",
+			'{"clips": [{"cast": "reap", "setup": [{"do": "hud", "show": 1}]}]}': "must be true or false", '{"clips": [{"cast": "reap", "setup": [{"do": "stand_ins", "health": 0}]}]}': "must be from",
+			'{"clips": [{"cast": "reap", "setup": [{"do": "stand_ins", "kind": "no_such_beast"}]}]}': "must be an enemy id", '{"clips": [{"cast": "reap", "setup": [{"do": "hud", "show": true, "colour": "red"}]}]}': "unknown argument \"colour\"",
+			'{"clips": [{"steps": [{"do": "cast", "rite": "reap"}]}]}': "\"at\" must be a number", '{"clips": [{"seconds": 2, "steps": [{"at": 3, "do": "cast", "rite": "reap"}]}]}': "\"at\" must be a number",
+			'{"clips": [{"steps": [{"at": 1, "do": "cast", "rite": "no_such_rite"}]}]}': "must be a rite id", '{"clips": [{"steps": [{"at": 1, "do": "cast"}]}]}': "needs \"rite\"",
+			'{"clips": [{"cast": "reap", "setup": {"do": "hud"}}]}': "must be a list"}
+	for bad in refusals:
+		var r := DmQaClips.parse(String(bad))
+		check(not r["ok"] and String(r["error"]).contains(String(refusals[bad])), "refused, saying why: %s (%s)" % [String(bad).left(80), r["error"]])
 	# where the stand-ins stand
 	var o := Vector3(10.0, 0.0, 5.0)
 	var pack := DmQaClips.layout("pack", 12, o)
@@ -790,6 +812,29 @@ func clips_on_a_reaper() -> void:
 	var e: Dictionary = await DmQaClips.record(root, cg, plan["clips"][1], dir, blank)
 	check(not e["ok"] and String(e["why"]).contains("no picture") and not FileAccess.file_exists(dir.path_join("second.mjpeg")), "a run that draws nothing fails its clip and leaves no file (%s)" % e["why"])
 	check(float(DmAbilities.def("haunting_wraith")["speed"]) == speed0 and int(DmAbilities.def("haunting_wraith")["soulCost"]) == cost0 and float(DmAbilities.def("haunting_wraith")["range"]) == range0, "the data is as it was")
+	# a scripted clip (setup and steps): mortal stand-ins, the HUD on screen, the Reaper's souls set and never topped up, one cast at a set time
+	var splan := DmQaClips.parse(JSON.stringify({"discipline": "reaper", "clips": [{"name": "souls", "at": "ahead", "enemies": 4, "seconds": 3,
+		"setup": [{"do": "hud", "show": true}, {"do": "stand_ins", "health": 0.05}, {"do": "souls", "value": cost0 + 2}, {"do": "top_up", "on": false}],
+		"steps": [{"at": 0.2, "do": "cast", "rite": "haunting_wraith"}]}]}))
+	check(splan["ok"], "the scripted plan parses (%s)" % splan["error"])
+	var watch := {"n": 0, "least": 1e9}
+	var scripted := func() -> Image:
+		watch["n"] += 1
+		if watch["n"] == 2:   # before the cast (0.2 s in)
+			watch["hud"] = cg.ui.visible
+			watch["souls_before"] = int(caster.p["souls"])
+			watch["alive_before"] = cg.core_host.alive_count()
+		watch["least"] = minf(float(watch["least"]), float(caster.p["souls"]))   # kills only add souls: the least is what the cast left
+		watch["alive"] = cg.core_host.alive_count()
+		var img := Image.create_empty(401, 225, false, Image.FORMAT_RGBA8)
+		img.fill(Color.from_hsv(fmod(float(watch["n"]) * 0.02, 1.0), 0.7, 0.8))
+		return img
+	var sc: Dictionary = await DmQaClips.record(root, cg, splan["clips"][0], dir, scripted)
+	var cast_frame := int(ceil(0.2 * DmQaClips.FPS))
+	check(sc["ok"] and sc["casts"] == [cast_frame], "the scripted clip is recorded with its one cast at 0.2 s, frame %d, and nothing cast by itself (%s)" % [cast_frame, str(sc)])
+	check(watch.get("hud") == true, "the setup's HUD is on screen while recording")
+	check(watch.get("souls_before") == cost0 + 2 and int(watch["least"]) == 2, "the souls start where the setup put them, and the cast's cost is not topped up (%s, then at least %s)" % [str(watch.get("souls_before")), str(watch["least"])])
+	check(int(watch.get("alive_before", 0)) == 4 and int(watch.get("alive", 4)) < 4, "the setup's mortal stand-ins die to the wraith (%s of 4 left)" % str(watch.get("alive")))
 	cg.process_mode = Node.PROCESS_MODE_DISABLED
 	cg.queue_free()
 	await process_frame
@@ -801,7 +846,7 @@ func clips_on_a_reaper() -> void:
 func clip_plan_preview() -> void:
 	var p := DmQaClips.parse('{"discipline": "reaper", "equip": ["staff_moon", "helm_gold"], "clips": [{"name": "preview", "camera": "turntable"}, {"name": "spin", "camera": "Turntable", "cast": "reap", "enemies": 3, "seconds": 3}]}')
 	check(p["ok"] and p["equip"] == ["staff_moon", "helm_gold"], "a clip plan's equip list is parsed (%s)" % str(p.get("error")))
-	check(p["clips"][0] == {"name": "preview", "area": "chapterhouse", "cast": "", "at": "pack", "enemies": 0, "seconds": 6.0, "camera": "turntable", "equip": ["staff_moon", "helm_gold"], "dress": true},
+	check(p["clips"][0] == {"name": "preview", "area": "chapterhouse", "cast": "", "at": "pack", "enemies": 0, "seconds": 6.0, "camera": "turntable", "equip": ["staff_moon", "helm_gold"], "dress": true, "setup": DmQaClips._setup_of([]), "steps": []},
 		"a turntable clip needs no cast, area or length: the Chapterhouse, no enemies, 6 s, wearing the plan's items (%s)" % str(p["clips"][0]))
 	var own := DmQaClips.parse('{"clips": [{"name": "a", "camera": "turntable", "equip": ["staff_moon"]}, {"name": "b", "cast": "reap"}, {"name": "c", "camera": "turntable", "equip": [], "area": "graves"}]}')
 	check(own["ok"] and own["equip"] == [] and own["clips"][0]["equip"] == ["staff_moon"] and own["clips"][1]["equip"] == [] and own["clips"][2]["equip"] == [] and own["clips"][2]["area"] == "graves" and own["clips"][0]["dress"] and own["clips"][1]["dress"],

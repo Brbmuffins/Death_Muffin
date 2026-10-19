@@ -8,14 +8,20 @@ extends RefCounted
 ## Plan: {"discipline": "reaper" (or 1-4 / 11; the game must have been started as that class: `--class=N`),
 ##        "equip": ["<item id>", ...] (at most DmQaUiShots.MAX_EQUIP, worn by the hero for every clip, through the backend's equip call like the shot plan's: the model previews),
 ##        "clips": [{"name": "wraith", "area": "graves", "cast": "<rite id, e.g. haunting_wraith>", "at": "pack" | "ahead", "enemies": 6, "seconds": 5, "camera": "follow" | "wide" | "turntable",
-##                   "equip": ["<item id>", ...] (this clip's own list: it wins over the plan's; the pieces worn before that are not in it are taken off)}]}
+##                   "equip": ["<item id>", ...] (this clip's own list: it wins over the plan's; the pieces worn before that are not in it are taken off),
+##                   "setup": [{"do": "<word>", <its arguments>}, ...] (how the scene is set before recording), "steps": [{"at": <seconds>, "do": "<word>", ...}, ...] (what happens when)}]}
+## `setup` and `steps` use the words of STEPS_FILE (main/qa_clip_steps.json: each word, its arguments and their types), e.g. setup [{"do": "hud", "show": true}, {"do": "stand_ins", "health": 1,
+## "harmless": false}, {"do": "souls", "value": 0}, {"do": "top_up", "on": false}] and steps [{"at": 0.3, "do": "cast", "rite": "reap"}, {"at": 2, "do": "cast", "rite": "haunting_wraith"}]: mortal
+## stand-ins, the HUD on screen, an empty soul bag that fills from the kills, two casts at set times. The runner checks a request against the branch's copy of that file; a new word is an
+## entry there, its handler here (SETUP_WORDS / STEP_WORDS) and a check in tests/qa_shots.gd.
 ## At most MAX_CLIPS clips (the rest are left out, with a note), `seconds` MIN_SECONDS to MAX_SECONDS and `enemies` 0 to MAX_ENEMIES (clamped, with a note). Defaults: area graves, at pack, 6 enemies, 5 s, follow.
 ## "at": "pack" = the enemies bunched PACK_AHEAD m in front of the hero (the rite is aimed at the middle of them: a burst, a cloud, a thrown thing); "ahead" = the enemies in a line down the way the
 ## hero faces, from LINE_FIRST m away, LINE_STEP m apart (the rite is aimed down the line: a thing that travels). "camera": "follow" = the game's own camera; "wide" = its widest zoom;
 ## "turntable" = the hero's close-up (the shot plan's "hero" view) while the hero turns once round slowly, standing idle in place at the area's waystone, over the clip (a model preview: "cast" is not needed, "area" is the Chapterhouse
 ## unless it says another, "seconds" 6 unless it says another, and no enemies unless asked for).
-## The stand-ins are the Graves' robbers with a lot of health and no damage that stand where they are put (a tune that changes the rite's damage cannot kill them or hurt the hero), and the HUD is hidden.
-## The rite is cast LEAD_FRAMES frames in (so the first frames show the scene before it) and again each time it is off cooldown; the hero's souls and essence are topped up for each cast.
+## Unless the setup says otherwise, the stand-ins are the Graves' robbers with a lot of health and no damage that stand where they are put (a tune that changes the rite's damage cannot kill them or
+## hurt the hero), and the HUD is hidden. Without cast steps the rite of `cast` is cast LEAD_FRAMES frames in (so the first frames show the scene before it) and again each time it is off cooldown;
+## the hero's souls and essence are topped up for each cast unless the setup turns that off.
 
 const FPS := 30                 ## frames per game second
 const MAX_CLIPS := 4
@@ -34,6 +40,11 @@ const PACK_AHEAD := 8.0         ## m from the hero to the middle of a pack
 const LINE_FIRST := 4.0         ## m from the hero to the first enemy of a line
 const LINE_STEP := 2.5          ## m between the enemies of a line
 const FACING := Vector3(0.0, 0.0, -1.0)   ## the way the hero faces and casts: up the screen of the game's fixed camera
+const STEPS_FILE := "res://main/qa_clip_steps.json"   ## the words `setup` and `steps` may use, and their arguments
+const MAX_SETUP := 12
+const MAX_STEPS := 24
+const SETUP_WORDS := ["hud", "stand_ins", "souls", "top_up"]   ## the setup words this recorder carries out (stage, record); STEPS_FILE lists the same
+const STEP_WORDS := ["cast"]                                   ## the step words it carries out (record's loop)
 
 
 ## Parses and validates plan text. Returns {ok, error, discipline (name or ""), class_index (0 = not set), equip (the plan's), clips, notes}; each clip is {name, area, cast, at, enemies, seconds, camera, equip (what it wears:
@@ -75,8 +86,17 @@ static func parse(text: String) -> Dictionary:
 			return out
 		var cast := String(c.get("cast", ""))
 		var camera := String(c.get("camera", "follow")).to_lower()
-		if cast == "" and camera != "turntable":
-			out["error"] = "clip %d: \"cast\" is the id of the rite to cast (e.g. haunting_wraith)" % n
+		var length: Variant = c.get("seconds", 6.0 if camera == "turntable" else 5.0)
+		var seconds := clampf(float(length), MIN_SECONDS, MAX_SECONDS) if (length is float or length is int) else 5.0
+		var setup := _words(c.get("setup", []), "setup", n, seconds)
+		var steps := _words(c.get("steps", []), "steps", n, seconds)
+		for w: Dictionary in [setup, steps]:
+			if w["error"] != "":
+				out["error"] = w["error"]
+				return out
+		var cast_steps: bool = (steps["items"] as Array).any(func(st: Dictionary) -> bool: return st["do"] == "cast")
+		if cast == "" and camera != "turntable" and not cast_steps:
+			out["error"] = "clip %d: \"cast\" is the id of the rite to cast (e.g. haunting_wraith), unless its steps cast" % n
 			return out
 		if cast != "" and not DmRiteRegistry.has(cast):
 			out["error"] = "clip %d: unknown rite \"%s\" (a rite id of next/rites/dm_rite_registry.gd)" % [n, cast]
@@ -99,7 +119,6 @@ static func parse(text: String) -> Dictionary:
 		var enemies := clampi(int(c.get("enemies", 0 if camera == "turntable" else 6)), 0, MAX_ENEMIES)
 		if c.has("enemies") and enemies != int(c["enemies"]):
 			(out["notes"] as Array).append("clip %d: %d enemies is outside 0-%d, made %d" % [n, int(c["enemies"]), MAX_ENEMIES, enemies])
-		var seconds := clampf(float(c.get("seconds", 6.0 if camera == "turntable" else 5.0)), MIN_SECONDS, MAX_SECONDS)
 		if c.has("seconds") and not is_equal_approx(seconds, float(c["seconds"])):
 			(out["notes"] as Array).append("clip %d: %s seconds is outside %d-%d, made %d" % [n, DmQaTune.fmt(c["seconds"]), int(MIN_SECONDS), int(MAX_SECONDS), int(seconds)])
 		var clip_worn: Array = out["equip"]
@@ -117,7 +136,8 @@ static func parse(text: String) -> Dictionary:
 			nm = "%s-%d" % [base.substr(0, MAX_NAME - 2), dup]
 			dup += 1
 		seen[nm] = true
-		(out["clips"] as Array).append({"name": nm, "area": area, "cast": cast, "at": at, "enemies": enemies, "seconds": seconds, "camera": camera, "equip": clip_worn, "dress": false})
+		(out["clips"] as Array).append({"name": nm, "area": area, "cast": cast, "at": at, "enemies": enemies, "seconds": seconds, "camera": camera, "equip": clip_worn, "dress": false,
+			"setup": _setup_of(setup["items"]), "steps": steps["items"]})
 		i += 1
 	for clip: Dictionary in out["clips"]:
 		clip["dress"] = any_equip
@@ -144,6 +164,99 @@ static func _equip_list(v: Variant, what: String, notes: Array) -> Dictionary:
 			break
 		(out["ids"] as Array).append(String(id))
 	return out
+
+
+## The words `setup` and `steps` may use (STEPS_FILE): {"setup": {word: {"help", "args": {name: {type, min, max, required}}}}, "steps": {...}}; {} when the file is missing.
+static func vocabulary() -> Dictionary:
+	var v: Variant = JSON.parse_string(FileAccess.get_file_as_string(STEPS_FILE)) if FileAccess.file_exists(STEPS_FILE) else null
+	return v if v is Dictionary else {}
+
+
+## A clip's `setup` or `steps` list checked against the vocabulary: {items (each {"do", "at" (steps only), <its arguments>}; steps sorted by `at`), error}.
+static func _words(v: Variant, section: String, n: int, seconds: float) -> Dictionary:
+	var out := {"items": [], "error": ""}
+	var words: Dictionary = vocabulary().get(section, {})
+	if not (v is Array):
+		out["error"] = "clip %d: \"%s\" must be a list of {\"do\": ...} objects" % [n, section]
+		return out
+	var cap := MAX_SETUP if section == "setup" else MAX_STEPS
+	if (v as Array).size() > cap:
+		out["error"] = "clip %d: \"%s\" has %d entries (at most %d)" % [n, section, (v as Array).size(), cap]
+		return out
+	var k := 0
+	for e in v:
+		k += 1
+		var w := "clip %d %s %d" % [n, section, k]
+		if not (e is Dictionary):
+			out["error"] = "%s is not an object" % w
+			return out
+		var word := String(e.get("do", ""))
+		if not words.has(word):
+			out["error"] = "%s: \"do\" must be one of %s (main/qa_clip_steps.json)" % [w, ", ".join(words.keys())]
+			return out
+		var args: Dictionary = words[word].get("args", {})
+		var item := {"do": word}
+		if section == "steps":
+			var at: Variant = e.get("at")
+			if not (at is float or at is int) or float(at) < 0.0 or float(at) > seconds:
+				out["error"] = "%s (%s): \"at\" must be a number of seconds from 0 to the clip's %s" % [w, word, DmQaTune.fmt(seconds)]
+				return out
+			item["at"] = float(at)
+		for key in e:
+			if key == "do" or (key == "at" and section == "steps"):
+				continue
+			if not args.has(key):
+				out["error"] = "%s (%s) has an unknown argument \"%s\" (it takes: %s)" % [w, word, key, ", ".join(args.keys())]
+				return out
+			var why := _arg_refusal(e[key], args[key])
+			if why != "":
+				out["error"] = "%s (%s): \"%s\" %s" % [w, word, key, why]
+				return out
+			item[key] = e[key]
+		for key in args:
+			if bool(args[key].get("required", false)) and not item.has(key):
+				out["error"] = "%s (%s) needs \"%s\"" % [w, word, key]
+				return out
+		(out["items"] as Array).append(item)
+	if section == "steps":
+		(out["items"] as Array).sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["at"]) < float(b["at"]))
+	return out
+
+
+## "" when `value` is what `spec` asks for, else why not (in plain words, after the argument's name).
+static func _arg_refusal(value: Variant, spec: Dictionary) -> String:
+	match String(spec.get("type", "")):
+		"bool":
+			return "" if value is bool else "must be true or false"
+		"number":
+			if not (value is float or value is int):
+				return "must be a number"
+			if (spec.has("min") and float(value) < float(spec["min"])) or (spec.has("max") and float(value) > float(spec["max"])):
+				return "must be from %s to %s" % [DmQaTune.fmt(spec.get("min", 0)), DmQaTune.fmt(spec.get("max", 0))]
+			return ""
+		"rite":
+			return "" if value is String and DmRiteRegistry.has(value) else "must be a rite id of next/rites/dm_rite_registry.gd"
+		"enemy":
+			return "" if value is String and not DmContent.enemy(value).is_empty() else "must be an enemy id of data/content/enemies.json"
+	return "has a type this recorder does not know (%s)" % str(spec.get("type", ""))
+
+
+## A clip's setup as the recorder reads it: every option with its default (the stand-ins as before, the HUD hidden, the souls as they are, topped up for each cast).
+static func _setup_of(items: Array) -> Dictionary:
+	var o := {"hud": false, "kind": DUMMY, "health": DUMMY_HP, "harmless": true, "souls": -1.0, "top_up": true}
+	for it: Dictionary in items:
+		match String(it["do"]):
+			"hud":
+				o["hud"] = bool(it["show"])
+			"stand_ins":
+				o["kind"] = String(it.get("kind", o["kind"]))
+				o["health"] = float(it.get("health", o["health"]))
+				o["harmless"] = bool(it.get("harmless", o["harmless"]))
+			"souls":
+				o["souls"] = float(it["value"])
+			"top_up":
+				o["top_up"] = bool(it["on"])
+	return o
 
 
 ## A clip's file name: lower case letters, digits and hyphens, at most MAX_NAME long, starting with a letter or digit ("clip-<n>" when nothing is left).
@@ -239,24 +352,29 @@ static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: Stri
 	if clip["dress"]:
 		await dress(game, clip["equip"])
 	var staged: Dictionary = await stage(root, game, clip)
+	var opts: Dictionary = clip.get("setup", _setup_of([]))
+	var steps: Array = clip.get("steps", [])
+	var timed: bool = steps.any(func(st: Dictionary) -> bool: return st["do"] == "cast")   # cast steps say when; nothing is cast by itself then
+	if float(opts["souls"]) >= 0.0 and caster.p.has("soulsMax"):
+		caster.p["souls"] = clampf(float(opts["souls"]), 0.0, float(caster.p["soulsMax"]))
 	var turntable: bool = clip["camera"] == "turntable"
 	var base := "%s/%s" % [out_dir, clip["name"]]
 	_remove(base + ".json")   # a clip's json is there only with the clip it describes
 	var writer := DmQaMjpeg.new()
 	if not writer.open(base + ".mjpeg"):
 		res["why"] = "cannot write %s.mjpeg" % base
-		_clean_up(game, caster, rite, staged)
+		_clean_up(game, caster, _rites(rite, steps), staged)
 		return res
 	var last := [""]   # why the host refused the last request ("" = it took it)
-	var on_refused := func(id: String, why: String) -> void:
-		if id == rite:
-			last[0] = why
+	var on_refused := func(_id: String, why: String) -> void:
+		last[0] = why
 	caster.cast_rejected.connect(on_refused)
 	var total := int(roundf(float(clip["seconds"]) * FPS))
 	var guard := total * 20 + 600   # iterations: a game whose time does not advance ends the clip instead of hanging
 	var elapsed := 0.0
 	var casts: Array = res["casts"]
 	var failed := ""
+	var next_step := 0
 	while writer.frames < total and failed == "":
 		guard -= 1
 		if guard < 0:
@@ -264,8 +382,9 @@ static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: Stri
 			break
 		if turntable:
 			_spin(body, float(writer.frames) / float(total))
-		if rite != "" and ((casts.is_empty() and writer.frames >= LEAD_FRAMES) or (not casts.is_empty() and caster.cooldown_left(rite) <= 0.0)):
-			_top_up(caster)
+		if rite != "" and not timed and ((casts.is_empty() and writer.frames >= LEAD_FRAMES) or (not casts.is_empty() and caster.cooldown_left(rite) <= 0.0)):
+			if bool(opts["top_up"]):
+				_top_up(caster)
 			last[0] = ""
 			caster.request_cast(rite, staged["aim"], -1)
 			if last[0] == "":
@@ -273,6 +392,22 @@ static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: Stri
 			elif last[0] != "busy" and last[0] != "cooldown":   # those two are tried again next frame
 				failed = "the rite was refused (%s)" % last[0]
 				break
+		while next_step < steps.size() and float(writer.frames) / FPS >= float(steps[next_step]["at"]):
+			var st: Dictionary = steps[next_step]
+			# "cast", the one step word (STEP_WORDS): the step waits while the rite is busy or cooling down, any other refusal fails the clip
+			if bool(opts["top_up"]):
+				_top_up(caster)
+			last[0] = ""
+			caster.request_cast(String(st["rite"]), staged["aim"], -1)
+			if last[0] == "busy" or last[0] == "cooldown":
+				break
+			if last[0] != "":
+				failed = "step %d (cast %s at %s s) was refused (%s)" % [next_step + 1, st["rite"], DmQaTune.fmt(st["at"]), last[0]]
+				break
+			casts.append(writer.frames)
+			next_step += 1
+		if failed != "":
+			break
 		await tree.process_frame
 		var dt := root.get_process_delta_time()
 		res["step"] = dt
@@ -284,8 +419,10 @@ static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: Stri
 				failed = "no picture to store (the renderer drew nothing)"
 	writer.close()
 	caster.cast_rejected.disconnect(on_refused)
-	_clean_up(game, caster, rite, staged)
-	if failed == "" and rite != "" and casts.is_empty():
+	_clean_up(game, caster, _rites(rite, steps), staged)
+	if failed == "" and next_step < steps.size():
+		failed = "step %d (cast %s at %s s) never went off before the clip ended (%s)" % [next_step + 1, steps[next_step]["rite"], DmQaTune.fmt(steps[next_step]["at"]), last[0] if last[0] != "" else "no time left"]
+	if failed == "" and rite != "" and not timed and casts.is_empty():
 		failed = "the rite was never cast"
 	if failed != "":
 		_remove(base + ".mjpeg")
@@ -311,9 +448,10 @@ static func stage(root: Node, game: DmNextGame, clip: Dictionary) -> Dictionary:
 	var tree := root.get_tree()
 	var core: DmCoreHost = game.core_host
 	var body := game.local_body()
+	var opts: Dictionary = clip.get("setup", _setup_of([]))
 	if game.ui != null:
 		game.ui.close_panels()
-		game.ui.visible = false
+		game.ui.visible = bool(opts["hud"])
 	game.director.enabled = false   # no waves and no Grave Surge: the stand-ins are the only enemies
 	game.director.surge = null
 	core.core.set_wander(false)
@@ -337,10 +475,10 @@ static func stage(root: Node, game: DmNextGame, clip: Dictionary) -> Dictionary:
 	if caster != null:   # a clip after another one starts as the first did: no cooldown, no cast lock, nothing of the last rite still walking
 		caster.p["cooldowns"].clear()
 		caster.p["castUntil"] = 0.0
-		if clip["cast"] != "":
-			caster.mem(String(clip["cast"])).clear()
+		for r in _rites(String(clip["cast"]), clip.get("steps", [])):
+			caster.mem(r).clear()
 	var spots := layout(clip["at"], int(clip["enemies"]), origin)
-	var ids := stand_ins(game, spots)
+	var ids := stand_ins(game, spots, opts)
 	var saved := {}
 	if clip["camera"] == "turntable":   # the hero's close-up from the front, the HUD away (the shot plan's "hero" view); the record loop turns the hero
 		saved = DmQaUiShots._view_begin(game, {"view": "hero", "turn": 0.0})
@@ -380,11 +518,13 @@ static func dress(game: DmNextGame, wanted: Array) -> void:
 			await game.get_tree().process_frame
 
 
-## The stand-in enemies at `spots` (snapped to the navmesh): the Graves' robbers with DUMMY_HP times the health and no damage, that notice nobody. Returns their core ids.
-static func stand_ins(game: DmNextGame, spots: Array[Vector3]) -> Array[int]:
+## The stand-in enemies at `spots` (snapped to the navmesh), that notice nobody: by default the Graves' robbers with DUMMY_HP times the health and no damage; a clip's setup (`opts`: kind,
+## health, harmless) can make them another kind, mortal or able to hurt the hero. Returns their core ids.
+static func stand_ins(game: DmNextGame, spots: Array[Vector3], opts := {}) -> Array[int]:
 	var ids: Array[int] = []
+	var mults := {"hp": float(opts.get("health", DUMMY_HP)), "dmg": 0.0 if bool(opts.get("harmless", true)) else 1.0}
 	for spot in spots:
-		var id := game.director.spawn(DUMMY, game.world.nav_closest(spot), [], false, {"hp": DUMMY_HP, "dmg": 0.0}, {"aggro": 0.5, "leash": 1.0})
+		var id := game.director.spawn(String(opts.get("kind", DUMMY)), game.world.nav_closest(spot), [], false, mults, {"aggro": 0.5, "leash": 1.0})
 		if id > 0:
 			ids.append(id)
 	return ids
@@ -418,11 +558,22 @@ static func _top_up(caster: DmRiteCaster) -> void:
 		caster.p["resource"]["value"] = caster.p["resource"]["max"]
 
 
-## After a clip: the stand-ins sent away without a death, what the rite left behind forgotten.
-static func _clean_up(game: DmNextGame, caster: DmRiteCaster, rite: String, staged: Dictionary) -> void:
+## The rites a clip casts: its `cast` and those of its cast steps, each once.
+static func _rites(rite: String, steps: Array) -> Array[String]:
+	var out: Array[String] = []
+	if rite != "":
+		out.append(rite)
+	for st: Dictionary in steps:
+		if st["do"] == "cast" and not out.has(String(st["rite"])):
+			out.append(String(st["rite"]))
+	return out
+
+
+## After a clip: the stand-ins still standing sent away without a death, what the rites left behind forgotten.
+static func _clean_up(game: DmNextGame, caster: DmRiteCaster, rites: Array[String], staged: Dictionary) -> void:
 	for id in staged["ids"]:
 		game.core_host.remove_enemy(id)
-	if rite != "":
-		caster.mem(rite).clear()
+	for r in rites:
+		caster.mem(r).clear()
 	if not (staged["saved"] as Dictionary).is_empty():
 		DmQaUiShots._view_end(game, staged["saved"])

@@ -10,6 +10,11 @@
 // A model preview is a clip too: camera "turntable" (the hero stands in the game's light and turns; no rite is cast, so `cast` may be left out) on a hero that
 // wears the items of `equip` (the plan's list is for every clip, a clip's own list replaces it for that clip), written with one variant and an empty tune.
 //
+// A clip may carry `setup` (how the scene is set before recording) and `steps` (what happens when): lists of {"do": "<word>", ...its arguments}, a step
+// also with "at" (seconds into the clip). The words and their arguments are the game's (client/main/qa_clip_steps.json), read from the job's own branch: a new
+// word is a game change the agent makes in its branch (the recorder's handler, the list, a test), and its videos can use it at once. The runner checks a
+// request against that list (known words, known arguments, their types and ranges); the recorder checks it again and carries it out.
+//
 // The shot plan (.dm-shot.json) may carry `resolutions`: the screen sizes a team PC renders every shot at (default: the one standard size). The list is checked here.
 const fs = require('fs');
 const path = require('path');
@@ -22,6 +27,9 @@ const LABEL_RE = /^[a-z0-9][a-z0-9-]{0,23}$/;           // a variant's label: th
 const CLIP_NAME_RE = /^[a-z0-9][a-z0-9-]{0,29}$/;       // no underscore: `<label>_<clip>` splits at the first one
 const AREA_RE = /^[a-z0-9_-]{1,40}$/, CAST_RE = /^[a-z0-9_]{1,60}$/, ITEM_RE = /^[a-z0-9_]{1,60}$/;
 const CAMERAS = ['follow', 'wide', 'turntable'];
+const STEPS_FILE = 'client/main/qa_clip_steps.json';
+const MAX_SETUP = 12, MAX_STEPS = 24;
+const WORD_RE = /^[a-z][a-z0-9_]{0,23}$/, ENEMY_RE = /^[a-z0-9_]{1,40}$/;
 // The screen sizes a shot plan may ask for (a team PC renders each shot at every size listed; with none the game's standard 1600x900 is used).
 const RESOLUTIONS = ['1920x1080', '2560x1440', '3840x2160', '3440x1440'];
 const TUNE_KEY_RE = /^[A-Za-z0-9_][A-Za-z0-9_./-]{0,79}$/;
@@ -64,23 +72,86 @@ function checkEquip(list, where, errs) {
   else if (new Set(list).size !== list.length) errs.push(`${where}: "equip" names an item twice`);
 }
 
-function checkPlan(plan, errs) {
+// The game's list of setup and step words in the job's branch (STEPS_FILE): { setup: {word: {args: {name: {type, min, max, required}}}}, steps: {...} }, or null.
+function readVocabulary(wt) {
+  try {
+    const f = path.join(wt, STEPS_FILE), st = fs.lstatSync(f);
+    if (!st.isFile() || st.size > MAX_BYTES) return null;
+    const j = JSON.parse(fs.readFileSync(f, 'utf8'));
+    return isObj(j) && isObj(j.setup) && isObj(j.steps) ? j : null;
+  } catch { return null; }
+}
+
+// One argument against the game's description of it: '' when it fits, else why not (after its name).
+function argRefusal(v, spec) {
+  switch (spec && spec.type) {
+    case 'bool': return typeof v === 'boolean' ? '' : 'must be true or false';
+    case 'number':
+      if (typeof v !== 'number' || !Number.isFinite(v)) return 'must be a number';
+      if ((typeof spec.min === 'number' && v < spec.min) || (typeof spec.max === 'number' && v > spec.max)) return `must be from ${spec.min} to ${spec.max}`;
+      return '';
+    case 'rite': return typeof v === 'string' && CAST_RE.test(v) ? '' : 'must be a rite id such as haunting_wraith';
+    case 'enemy': return typeof v === 'string' && ENEMY_RE.test(v) ? '' : 'must be an enemy id such as robber';
+    default: return `has a type the runner cannot check (${spec && spec.type}): fix ${STEPS_FILE}`;
+  }
+}
+
+// A clip's `setup` or `steps` against the vocabulary. Returns whether the steps cast a rite (a clip that does needs no `cast`).
+function checkWords(list, section, voc, seconds, w, errs) {
+  if (!Array.isArray(list)) { errs.push(`${w}: "${section}" must be a list of {"do": ...} objects`); return false; }
+  const cap = section === 'setup' ? MAX_SETUP : MAX_STEPS;
+  if (list.length > cap) { errs.push(`${w}: "${section}" has ${list.length} entries (at most ${cap})`); return false; }
+  const words = (voc && voc[section]) || {};
+  let casts = false;
+  list.forEach((e, i) => {
+    const at = `${w} ${section} ${i + 1}`;
+    if (!isObj(e)) { errs.push(`${at} must be an object`); return; }
+    const word = e.do;
+    if (typeof word !== 'string' || !WORD_RE.test(word) || !isObj(words[word])) { errs.push(`${at}: "do" must be one of ${Object.keys(words).join(', ')} (${STEPS_FILE})`); return; }
+    const args = isObj(words[word].args) ? words[word].args : {};
+    if (section === 'steps') {
+      if (typeof e.at !== 'number' || !(e.at >= 0 && e.at <= seconds)) errs.push(`${at} (${word}): "at" must be a number of seconds from 0 to the clip's ${seconds}`);
+      if (word === 'cast') casts = true;
+    }
+    for (const [k, v] of Object.entries(e)) {
+      if (k === 'do' || (k === 'at' && section === 'steps')) continue;
+      if (!Object.prototype.hasOwnProperty.call(args, k)) { errs.push(`${at} (${word}) has an unknown argument "${k}" (it takes: ${Object.keys(args).join(', ') || 'nothing'})`); continue; }
+      const why = argRefusal(v, args[k]);
+      if (why) errs.push(`${at} (${word}): "${k}" ${why}`);
+    }
+    for (const [k, spec] of Object.entries(args)) if (isObj(spec) && spec.required === true && e[k] === undefined) errs.push(`${at} (${word}) needs "${k}"`);
+  });
+  return casts;
+}
+
+function checkPlan(plan, errs, wt) {
   if (!isObj(plan)) { errs.push('"plan" must be an object {"discipline": "reaper", "clips": [...]}'); return null; }
   onlyKeys(plan, ['discipline', 'equip', 'clips'], '"plan"', errs);
   if (!classOf(plan.discipline)) errs.push(`"plan.discipline" must be one of ${Object.keys(CLASSES).join(', ')}`);
   if (plan.equip !== undefined) checkEquip(plan.equip, '"plan"', errs);
   if (!Array.isArray(plan.clips) || plan.clips.length < 1 || plan.clips.length > MAX_CLIPS) { errs.push(`"plan.clips" must be a list of 1 to ${MAX_CLIPS} clips`); return null; }
   const names = new Set();
+  let voc;   // read from the branch only when a clip has setup or steps
   plan.clips.forEach((c, i) => {
     const w = `clip ${i + 1}`;
     if (!isObj(c)) { errs.push(`${w} must be an object`); return; }
-    onlyKeys(c, ['name', 'area', 'cast', 'at', 'enemies', 'seconds', 'camera', 'equip'], w, errs);
+    onlyKeys(c, ['name', 'area', 'cast', 'at', 'enemies', 'seconds', 'camera', 'equip', 'setup', 'steps'], w, errs);
+    let stepCasts = false;
+    if (c.setup !== undefined || c.steps !== undefined) {
+      if (voc === undefined) voc = readVocabulary(wt);
+      if (!voc) errs.push(`${w}: this branch's game has no list of setup and step words (${STEPS_FILE}): merge the latest main first`);
+      else {
+        const secs = typeof c.seconds === 'number' && c.seconds > 0 && c.seconds <= MAX_SECONDS ? c.seconds : (c.camera === 'turntable' ? 6 : 5);
+        if (c.setup !== undefined) checkWords(c.setup, 'setup', voc, secs, w, errs);
+        if (c.steps !== undefined) stepCasts = checkWords(c.steps, 'steps', voc, secs, w, errs);
+      }
+    }
     if (typeof c.name !== 'string' || !CLIP_NAME_RE.test(c.name)) errs.push(`${w}: "name" must be lowercase letters, digits and dashes (1 to 30 characters, no underscore)`);
     else if (names.has(c.name)) errs.push(`${w}: the name "${c.name}" is used twice`); else names.add(c.name);
     if (c.area !== undefined && (typeof c.area !== 'string' || !AREA_RE.test(c.area))) errs.push(`${w}: "area" must be an area id such as graves (the Hollow Graves when left out)`);
     // a turntable clip casts nothing, so it needs no rite
-    if (c.cast === undefined && c.camera === 'turntable') { /* a model preview */ }
-    else if (typeof c.cast !== 'string' || !CAST_RE.test(c.cast)) errs.push(`${w}: "cast" must be a rite id such as haunting_wraith (only a "turntable" clip may leave it out)`);
+    if (c.cast === undefined && (c.camera === 'turntable' || stepCasts)) { /* a model preview, or the steps cast */ }
+    else if (typeof c.cast !== 'string' || !CAST_RE.test(c.cast)) errs.push(`${w}: "cast" must be a rite id such as haunting_wraith (only a "turntable" clip, or one whose steps cast, may leave it out)`);
     if (c.at !== undefined && c.at !== 'pack' && c.at !== 'ahead') errs.push(`${w}: "at" must be "pack" or "ahead"`);
     if (c.camera !== undefined && !CAMERAS.includes(c.camera)) errs.push(`${w}: "camera" must be "follow", "wide" or "turntable"`);
     if (c.equip !== undefined) checkEquip(c.equip, w, errs);
@@ -117,7 +188,7 @@ function readClipRequest(wt) {
   const errs = [];
   if (!isObj(j)) return { error: `${CLIP_FILE} must be a JSON object {"plan": {...}, "variants": [...]}` };
   onlyKeys(j, ['plan', 'variants'], CLIP_FILE, errs);
-  const plan = checkPlan(j.plan, errs), variants = checkVariants(j.variants, errs);
+  const plan = checkPlan(j.plan, errs, wt), variants = checkVariants(j.variants, errs);
   if (errs.length || !plan || !variants) return { error: errs.slice(0, 8).join('; ') + (errs.length > 8 ? `; and ${errs.length - 8} more` : '') };
   return { plan: { discipline: plan.discipline, ...(plan.equip ? { equip: plan.equip.slice() } : {}), clips: plan.clips.map((c) => ({ ...c })) }, variants };
 }
@@ -152,4 +223,4 @@ function readShotPlan(wt) {
   } catch { return null; }
 }
 
-module.exports = { CLIP_FILE, MAX_BYTES, MAX_VARIANTS, MAX_CLIPS, MAX_SECONDS, LABEL_RE, CLIP_NAME_RE, CLASSES, RESOLUTIONS, classOf, readClipRequest, clipMinutes, readShotPlan, checkResolutions, checkTune };
+module.exports = { CLIP_FILE, STEPS_FILE, MAX_BYTES, MAX_VARIANTS, MAX_CLIPS, MAX_SECONDS, LABEL_RE, CLIP_NAME_RE, CLASSES, RESOLUTIONS, classOf, readClipRequest, clipMinutes, readShotPlan, checkResolutions, checkTune };

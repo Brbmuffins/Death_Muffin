@@ -2168,3 +2168,14 @@ test('drafts: a reply that changes nothing keeps the draft and says how to test 
   await until(() => texts(thread).some((t) => /React 🧪 to test it, or ✅ to test and ship it/.test(t)), d.ad);
   assert.equal(proposals(thread).length, 1);
 });
+
+test('a proposal tags the person who started the thread, even when someone else asked for the latest change (Helix, 2026-10-19: "@ war its his thread")', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.LIMITED, 'MAKE-CSS blue');
+  const p1 = await waitProposal(d, thread);
+  assert.equal(p1.payload.content, `<@${IDS.LIMITED}>`);
+  await d.say(thread, IDS.HELIX, 'MAKE-GAMEPLAY actually also faster');
+  const p2 = await waitNthProposal(d, thread, 2);
+  assert.equal(p2.payload.content, `<@${IDS.LIMITED}>`, 'the thread is LIMITED\'s, so the new proposal tags them, not HELIX who asked last');
+  assert.deepEqual(p2.payload.allowedMentions, { parse: [], users: [IDS.LIMITED] });
+});

@@ -1,0 +1,31 @@
+{
+  "about": "The words a clip's `setup` and `steps` may use (main/qa_clips.gd, client/README.md \"Clips and tune\"). Each word lists its arguments: a type (bool, number with min and max, rite, enemy) and whether it is required. The Discord agent's runner checks a clip request against the branch's copy of this file before it goes to a team PC, so a new word is an entry here, its handler in qa_clips.gd (SETUP_WORDS / STEP_WORDS) and a check in tests/qa_shots.gd; nothing in the runner.",
+  "setup": {
+    "hud": {
+      "help": "show the HUD while recording (it is hidden when this is left out)",
+      "args": { "show": { "type": "bool", "required": true } }
+    },
+    "stand_ins": {
+      "help": "the stand-in enemies: their kind, their health as a multiple of their normal health (400 when this is left out, so nothing dies) and whether they may hurt the hero (not when this is left out)",
+      "args": {
+        "kind": { "type": "enemy" },
+        "health": { "type": "number", "min": 0.05, "max": 1000 },
+        "harmless": { "type": "bool" }
+      }
+    },
+    "souls": {
+      "help": "the Reaper's souls when the recording starts (a full bag when this is left out); held to her bag's size",
+      "args": { "value": { "type": "number", "min": 0, "max": 500, "required": true } }
+    },
+    "top_up": {
+      "help": "whether the hero's souls or essence are filled before each cast (they are when this is left out); off shows what a cast really costs",
+      "args": { "on": { "type": "bool", "required": true } }
+    }
+  },
+  "steps": {
+    "cast": {
+      "help": "cast a rite at `at` seconds into the clip, aimed at the stand-ins; a rite that is busy or cooling down is tried again each frame. A clip with cast steps casts nothing by itself",
+      "args": { "rite": { "type": "rite", "required": true } }
+    }
+  }
+}

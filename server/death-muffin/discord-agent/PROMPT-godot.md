@@ -230,9 +230,32 @@ With one option nothing is asked: your proposal goes out as usual and the video 
 may sit at the top of the plan, for every clip, or on a clip, where it replaces the plan's list for that clip (one clip for the armor, another for the weapon). Gear that is
 not in the game's data yet cannot be worn: a model preview is for pieces already wired in.
 
+**Scripted clips (setup and steps).** The stand-ins normally have 400 times their health and do no damage, the HUD is hidden, the hero's souls or essence are
+filled before each cast and the rite is cast again whenever it is off cooldown. When a video must show something else (enemies dying and dropping souls, the HUD,
+a resource filling, several rites in order), give the clip a `setup` and `steps`: lists of `{"do": "<word>", ...}` (a step also has `"at"`, seconds into the
+clip). The words, their arguments and their ranges are in `client/main/qa_clip_steps.json`: read it first. A clip whose steps cast needs no `cast`. With
+`top_up` off a cast must be paid for: a rite the hero cannot afford at its step fails the clip (above, the free Scythe Sweep's kills fill the bag for the Wraith).
+
+```json
+{"plan": {"discipline": "reaper",
+          "clips": [{"name": "souls", "area": "graves", "at": "pack", "enemies": 8, "seconds": 8,
+                     "setup": [{"do": "hud", "show": true}, {"do": "stand_ins", "health": 1, "harmless": true},
+                               {"do": "souls", "value": 0}, {"do": "top_up", "on": false}],
+                     "steps": [{"at": 0.3, "do": "cast", "rite": "scythe_sweep"}, {"at": 4, "do": "cast", "rite": "haunting_wraith"}]}]},
+ "variants": [{"label": "now", "title": "the souls filling the bag", "tune": {}}]}
+```
+
+A video needs a word that is not there yet: add it in your change, in three places: its entry in `client/main/qa_clip_steps.json`, its handler in
+`client/main/qa_clips.gd` (the `SETUP_WORDS` or `STEP_WORDS` list and the code that carries it out), and a check in `client/tests/qa_shots.gd` (the suite fails
+when the file and the recorder disagree). The runner checks a request against your branch's copy of that file, so the new word works in this job's videos at once;
+nothing else has to change. A word only sets up or plays the game; it never runs code the plan brings.
+
+The runner reads `.dm-clip.json` after your turn. Do not say the video is queued or on its way: say you asked for it. If the runner refuses the request, the
+reason comes back to you to fix.
+
 What the runner checks (a mistake comes back to you to fix, twice): `plan.discipline` is ossuary, gravecaller, mourner, rotweaver or reaper; 1 to 4 clips, each
 `{name (lowercase letters, digits, dashes), area (an area id such as graves; the Hollow Graves when left out), cast (the rite's id; a "turntable" clip may leave it out), at ("pack": the cast goes at the dummy enemies,
-"ahead": at the ground in front of the hero), enemies (0 to 12), seconds (above 0, at most 8; 5 when left out), camera ("follow" the hero, "wide", or "turntable"), equip (item ids)}` and no other field
+"ahead": at the ground in front of the hero), enemies (0 to 12), seconds (above 0, at most 8; 5 when left out), camera ("follow" the hero, "wide", or "turntable"), equip (item ids), setup, steps (the words of `client/main/qa_clip_steps.json` in your branch)}` and no other field
 (the plan may also carry `equip`); 1 to 4 variants, each `{label (lowercase letters,
 digits, dashes, at most 24), title (what people read under the video, at most 60 characters: say the value), tune}`; a tune is `{"<data path>": {<nested keys>: <value>}}` with
 numbers, text or true/false only (no lists), at most 64 values, key names of letters, digits and `_ . / -`; the whole file at most 32 KB. Videos show the offline demo

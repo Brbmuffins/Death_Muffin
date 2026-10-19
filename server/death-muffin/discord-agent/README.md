@@ -104,7 +104,7 @@ accepts only exact `backup-pre-release-godot-<yyyymmddThhmmssZ>` real directorie
 
 ## Who can do what (`config.json`, owner-edited, never by the AI)
 
-- `ownerIds`: always requester + approver of every tier. Failures (deploy/publish problems) and rollbacks by someone else get a plain `⚠` line in the thread; nobody is tagged (owner, 2026-10-10). The one ping: a proposal (and a resolved merge that needs a fresh ✅) tags the requester (`job.lastAsker`, else the thread's creator) so it is not missed (Helix, 2026-10-11); only that user, never roles or @everyone, and not on a re-proposal that ships on a carried approval. A ship pings nobody: releases are announced in #build-alerts by `announce-release.sh`. The runner never posts in the channel itself, only in threads.
+- `ownerIds`: always requester + approver of every tier. Failures (deploy/publish problems) and rollbacks by someone else get a plain `⚠` line in the thread; nobody is tagged (owner, 2026-10-10). The one ping: a proposal (and a resolved merge that needs a fresh ✅) tags the person who started the thread (`job.creatorId`, else `job.lastAsker`) so it is not missed (Helix, 2026-10-11; the thread's owner since 2026-10-19: "@ war its his thread"); only that user, never roles or @everyone, and not on a re-proposal that ships on a carried approval. A ship pings nobody: releases are announced in #build-alerts by `announce-release.sh`. The runner never posts in the channel itself, only in threads.
 - `projects.deathmuffin.requesters`: may talk to it and give work. Everyone else is ignored (no reply, audited).
 - `projects.deathmuffin.approvers.{casual,gameplay,sensitive}`: who may ✅ a proposal of that tier. Anyone in `sensitive` is a
   full approver (all tiers, any rollback, no daily cap, may switch models). Someone only in `casual` is limited
@@ -381,7 +381,8 @@ team PC is online):
 
 - **The runner validates it before anything is sent** (`readClipRequest`): at most 32 KB, a regular file; the plan is the game's clip plan (`--clip-plan`: discipline, an optional `equip`
   (1 to 12 item ids the hero wears for every clip), 1 to 4 clips of at most 8 seconds, each `name`, `cast` (the rite; a turntable clip needs none), `area` (default graves), `at` pack or
-  ahead, `enemies` 0 to 12, `seconds` (default 5), `camera` follow, wide or turntable, an optional `equip` that replaces the plan's list for that clip, and no other field); 1 to 4 variants with a unique `label` (lowercase letters, digits,
+  ahead, `enemies` 0 to 12, `seconds` (default 5), `camera` follow, wide or turntable, an optional `equip` that replaces the plan's list for that clip, optional `setup` and `steps` checked against the game's word list in the job's own branch
+  (`client/main/qa_clip_steps.json`: known words and arguments, their types and ranges, a step's `at` within the clip; a clip whose steps cast needs no `cast`; a branch without the file is told to merge main), and no other field); 1 to 4 variants with a unique `label` (lowercase letters, digits,
   dashes, at most 24), a `title` of at most 60 characters and a `tune` (the game's data overrides, `{"<DmDb path>": {<nested keys>: <value>}}`: values only text, numbers and true/false, at most 64,
   at most 6 levels deep; the game itself refuses a key that does not exist, so a typo fails loudly). A bad file goes back to the agent to fix, twice; then the thread gets one readable line
   ("I could not make the short videos: variant 1 has an unknown field ...") and the turn carries on without. The file is removed whatever the answer.

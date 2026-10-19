@@ -55,7 +55,7 @@ test('clips: every refusal is a readable line naming the problem', () => {
   bad((j) => { j.plan.clips[0].equip = ['Iron Staff']; }, /"equip" must be a list of 1 to 12 item ids/);
   bad((j) => { j.plan.equip = Array.from({ length: 13 }, (_, i) => `item_${i}`); }, /"plan": "equip" must be a list of 1 to 12 item ids/);
   bad((j) => { j.plan.equip = ['staff_moon', 'staff_moon']; }, /"equip" names an item twice/);
-  bad((j) => { j.plan.clips[0].cast = undefined; }, /"cast" must be a rite id.*only a "turntable" clip may leave it out/);
+  bad((j) => { j.plan.clips[0].cast = undefined; }, /"cast" must be a rite id.*only a "turntable" clip, or one whose steps cast, may leave it out/);
   bad((j) => { j.plan.clips[0].camera = 'orbit'; }, /"camera" must be "follow", "wide" or "turntable"/);
   bad((j) => { j.plan.clips[0].cast = 'Haunting Wraith'; }, /"cast" must be a rite id/);
   bad((j) => { j.plan.clips[0].exec = 'rm -rf'; }, /clip 1 has an unknown field "exec"/);
@@ -77,13 +77,18 @@ test('clips: a model preview is a turntable clip on a hero that wears items; are
   ok(mutate((j) => { j.plan.clips[0].camera = 'turntable'; delete j.plan.clips[0].cast; }));
 });
 
-test('clips: the examples in the agent prompt are accepted by the runner', () => {
+test('clips: every example in the agent prompt is accepted by the runner (the choice, the model preview, the scripted clip)', () => {
   const prompt = fs.readFileSync(path.join(__dirname, '..', 'PROMPT-godot.md'), 'utf8');
   const section = prompt.slice(prompt.indexOf('## Clips and choices'), prompt.indexOf('## Making new models'));
   const blocks = [...section.matchAll(/```json\n([\s\S]*?)\n```/g)].map((m) => m[1]);
-  assert.equal(blocks.length, 2, 'the choice example and the model preview example');
-  for (const b of blocks) { const r = read(null, b); assert.equal(r.error, undefined, `${r.error} in ${b.slice(0, 80)}`); }
-  assert.deepEqual(read(null, blocks[0]).variants.map((v) => v.label), ['slow', 'now', 'fast']); assert.equal(read(null, blocks[1]).variants.length, 1);
+  const words = fs.readFileSync(path.resolve(__dirname, '../../../../client/main/qa_clip_steps.json'), 'utf8');
+  const parsed = blocks.map((b) => {   // each in a worktree with the game's word list, as a job's branch has it
+    const d = wt(); fs.mkdirSync(path.join(d, 'client/main'), { recursive: true }); fs.writeFileSync(path.join(d, C.STEPS_FILE), words); fs.writeFileSync(path.join(d, C.CLIP_FILE), b);
+    const r = C.readClipRequest(d); assert.equal(r.error, undefined, `${r.error} in ${b.slice(0, 80)}`); return r;
+  });
+  assert.ok(parsed.some((r) => r.variants.map((v) => v.label).join() === 'slow,now,fast'), 'the choice example: three options');
+  assert.ok(parsed.some((r) => r.variants.length === 1 && r.plan.clips[0].camera === 'turntable'), 'the model preview example: one turntable clip');
+  assert.ok(parsed.some((r) => Array.isArray(r.plan.clips[0].steps) && Array.isArray(r.plan.clips[0].setup)), 'the scripted example: setup and steps');
 });
 
 test('clips: shot plan screen sizes: from the four on the list, at most 4, each once; anything else is dropped with a note', () => {
@@ -104,4 +109,37 @@ test('clips: a symlink or a directory is not a request; classes and the shot pla
   assert.equal(C.readShotPlan(s), null); put('{"shots":[{"name":"a"}]}'); assert.deepEqual(C.readShotPlan(s), { plan: { shots: [{ name: 'a' }] }, notes: [] });
   put('{"shots":[]}'); assert.equal(C.readShotPlan(s), null); put('[{"name":"a"}]'); assert.equal(C.readShotPlan(s), null); put('{"shots":["a"]}'); assert.equal(C.readShotPlan(s), null);
   put('nope'); assert.equal(C.readShotPlan(s), null); put(JSON.stringify({ shots: [{ name: 'a', pad: 'x'.repeat(40000) }] })); assert.equal(C.readShotPlan(s), null);
+});
+
+// ---- setup and steps: checked against the game's word list in the job's own branch (client/main/qa_clip_steps.json) ----
+const STEPS = fs.readFileSync(path.resolve(__dirname, '../../../../client/main/qa_clip_steps.json'), 'utf8');
+const readWith = (j, voc = STEPS) => {
+  const d = wt();
+  if (voc != null) { fs.mkdirSync(path.join(d, 'client/main'), { recursive: true }); fs.writeFileSync(path.join(d, C.STEPS_FILE), voc); }
+  fs.writeFileSync(path.join(d, C.CLIP_FILE), JSON.stringify(j));
+  return C.readClipRequest(d);
+};
+test('clips: setup and steps are checked against the branch\'s own word list, so a word the game adds needs no runner change', () => {
+  const j = GOOD(); const c = j.plan.clips[0]; delete c.cast;
+  c.setup = [{ do: 'hud', show: true }, { do: 'stand_ins', health: 1, harmless: false }, { do: 'souls', value: 0 }, { do: 'top_up', on: false }];
+  c.steps = [{ at: 0.3, do: 'cast', rite: 'reap' }, { at: 2, do: 'cast', rite: 'haunting_wraith' }];
+  const r = readWith(j);
+  assert.equal(r.error, undefined, 'a clip whose steps cast needs no "cast"');
+  assert.deepEqual(r.plan.clips[0].steps.map((s) => s.rite), ['reap', 'haunting_wraith']); assert.equal(r.plan.clips[0].setup.length, 4);
+  const voc = JSON.parse(STEPS); voc.steps.zoom = { args: { value: { type: 'number', min: 0.5, max: 3, required: true } } };
+  const k = GOOD(); k.plan.clips[0].steps = [{ at: 1, do: 'zoom', value: 2 }];
+  assert.equal(readWith(k, JSON.stringify(voc)).error, undefined, 'a word the branch\'s list has is accepted');
+  const bad = (f, re, v) => { const m = GOOD(); f(m.plan.clips[0]); const r2 = readWith(m, v); assert.ok(r2 && r2.error, 'refused'); assert.match(r2.error, re); };
+  bad((x) => { x.setup = [{ do: 'fly' }]; }, new RegExp(`"do" must be one of ${Object.keys(JSON.parse(STEPS).setup).join(', ')}`));
+  bad((x) => { x.setup = [{ do: 'hud' }]; }, /\(hud\) needs "show"/);
+  bad((x) => { x.setup = [{ do: 'hud', show: 'yes' }]; }, /"show" must be true or false/);
+  bad((x) => { x.setup = [{ do: 'stand_ins', health: -1 }]; }, /"health" must be from/);
+  bad((x) => { x.setup = [{ do: 'hud', show: true, colour: 'red' }]; }, /unknown argument "colour"/);
+  bad((x) => { x.steps = [{ do: 'cast', rite: 'reap' }]; }, /"at" must be a number of seconds/);
+  bad((x) => { x.seconds = 2; x.steps = [{ at: 3, do: 'cast', rite: 'reap' }]; }, /"at" must be a number of seconds from 0 to the clip's 2/);
+  bad((x) => { x.steps = [{ at: 1, do: 'cast', rite: 'Bad Rite' }]; }, /"rite" must be a rite id/);
+  bad((x) => { x.setup = { do: 'hud' }; }, /"setup" must be a list/);
+  bad((x) => { delete x.cast; x.setup = [{ do: 'hud', show: true }]; }, /"cast" must be a rite id .* whose steps cast/);
+  bad((x) => { x.steps = [{ at: 1, do: 'cast', rite: 'reap' }]; }, /no list of setup and step words .* merge the latest main/, null);
+  bad((x) => { x.steps = Array.from({ length: 25 }, (_, i) => ({ at: i / 10, do: 'cast', rite: 'reap' })); }, /"steps" has 25 entries \(at most 24\)/);
 });
