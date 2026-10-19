@@ -94,9 +94,6 @@ polish list). Also:
 
 ## Party and online
 
-- **Handing a solo game's lobby connection to a guest game logs "Lambda capture at index 0 was freed" twice** (found 2026-10-19 by the
-  lobby UI suite, which lets that one message through): a signal connection that captures the old game outlives it, probably in
-  `client/next/party/dm_next_party.gd`. Nothing visible breaks today.
 - **No automatic rejoin** (D13). A dropped client returns to its own solo game and has to join again by hand (an Open party: Join; a Closed one: a new invite or Ask to join); a dropped host ends the session (D6).
 - **One area per session, Depths solo:** `client/next/areas/README.md`, `client/next/depths/README.md`.
 - **Part of a joiner's state does not reach the host's sim:** the host builds the joiner's hero from the server's record (level, gear,

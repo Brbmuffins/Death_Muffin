@@ -249,17 +249,23 @@ func _ask_row(q: Dictionary) -> Control:
 	return pc
 
 
-## First press asks, the second (within CONFIRM_S) removes.
+## First press asks, the second (within CONFIRM_S) removes. The countdown is a Timer inside the button: the list is rebuilt while it runs (a friend's
+## presence), and a button freed with it takes its countdown along (a SceneTree timer outlived it and called its lambda with the freed button).
 func _confirm_remove(b: Button, id: int) -> void:
 	if b.has_meta("armed"):
 		remove_requested.emit(id)
 		return
 	b.set_meta("armed", true)
 	b.text = DmUi.upper("Sure?")
-	get_tree().create_timer(CONFIRM_S).timeout.connect(func() -> void:
-		if is_instance_valid(b):
-			b.remove_meta("armed")
-			b.text = DmUi.upper("Remove"))
+	var t := Timer.new()
+	t.one_shot = true
+	t.wait_time = CONFIRM_S
+	t.timeout.connect(func() -> void:
+		b.remove_meta("armed")
+		b.text = DmUi.upper("Remove")
+		t.queue_free())
+	b.add_child(t)
+	t.start()
 
 
 func _on_add() -> void:

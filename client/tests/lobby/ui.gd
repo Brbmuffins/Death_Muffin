@@ -25,10 +25,6 @@ class ErrorLog:
 	func _log_error(function: String, file: String, line: int, code: String, rationale: String, _editor_notify: bool, error_type: int, _backtraces: Array[ScriptBacktrace]) -> void:
 		if error_type == Logger.ERROR_TYPE_WARNING:
 			return
-		# Known, in the shipped game (listed in the commit): a solo game that hands its lobby socket over leaves lambdas connected on it, and the lobby's next
-		# message calls one of them after that game is freed ("Lambda capture at index 0 was freed"). Nothing else is let through.
-		if (code + rationale).begins_with("Lambda capture at index 0 was freed"):
-			return
 		errors.append("%s:%d %s %s %s" % [file, line, function, code, rationale])
 
 
@@ -259,6 +255,15 @@ func _part_a_friends() -> void:
 	check(acts == [["accept", 3]] and rm.text == DmUi.upper("Sure?"), "A friends: Remove asks first", str(acts))
 	rm.pressed.emit()
 	check(acts == [["accept", 3], ["remove", 4]], "A friends: the second press removes", str(acts))
+	var rest := _buttons(w.friends_rows, "Remove")
+	var rm2: Button = rest[0] if rest.size() == 1 else null
+	if rm2 != null:
+		rm2.pressed.emit()
+	var tm: Array = rm2.get_children().filter(func(n: Node) -> bool: return n is Timer) if rm2 != null else []
+	check(tm.size() == 1 and not (tm[0] as Timer).is_stopped(), "A friends: the countdown is a Timer inside the button, so a rebuilt list takes it along")
+	if tm.size() == 1:
+		(tm[0] as Timer).timeout.emit()
+	check(rm2 != null and rm2.text == DmUi.upper("Remove") and not rm2.has_meta("armed"), "A friends: when it runs out the button asks again")
 	v["error"] = "Nobody is called \"x\"."
 	v["busy"] = true
 	w.set_view(v)
