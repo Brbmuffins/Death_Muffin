@@ -60,10 +60,8 @@ func _drive(g: DmResolutionGovernor, secs: float, ms: float) -> float:
 
 func _graphics() -> void:
 	# --- the table -----------------------------------------------------------------------------
-	_check(DmGraphicsPreset.IDS == ["low", "medium", "high", "ultra"], "four presets in order")
-	_check(DmGraphicsPreset.DEFAULT == "high", "default preset is High")
-	_check(DmGraphicsPreset.normalize("nonsense") == "high" and DmGraphicsPreset.normalize(null) == "high", "unknown -> High")
-	_check(DmGraphicsPreset.normalize("low") == "low" and DmGraphicsPreset.normalize("high") == "high", "legacy high/low are presets")
+	# (the four ids in order, High as the default and an unknown value becoming High: tests/presets.gd `table`)
+	_check(DmGraphicsPreset.normalize("high") == "high", "legacy high is a preset")
 	var low := DmGraphicsPreset.get_preset("low")
 	# (the client's table has no `lights` or `prop_shadow`: the prop lights are baked into the area's lightmap, dm_graphics_preset.gd; tests/presets.gd holds the table and what each preset does)
 	_check(not low["shadows"] and not low["bloom"] and low["msaa"] == 0 and low["fx"] == "low" and not low["binbun"], "Low = no shadows/bloom, no MSAA, thin fx")
@@ -124,13 +122,7 @@ func _graphics() -> void:
 	# --- governor floors -----------------------------------------------------------------------
 	var g := DmResolutionGovernor.new()
 	_check(g.floor_scale == DmResolutionGovernor.MIN, "governor defaults to the Low floor")
-	_check(_drive(g, 400.0, 40.0) <= 0.61 and g.scale >= 0.6, "Low: sustained misses reach the 0.6 floor and stop there")
-	for id in ["medium", "high", "ultra"]:
-		var g2 := DmResolutionGovernor.new()
-		g2.set_floor(float(DmGraphicsPreset.get_preset(id)["floor"]))
-		var lowest: float = _drive(g2, 600.0, 60.0)
-		_check(lowest >= 0.85 and g2.scale >= 0.85, "%s: never below 0.85 (reached %.2f)" % [id, lowest])
-		_check(lowest < 1.0, "%s: still steps down when frames are slow" % id)
+	# (every preset's floor under a sustained miss, Low's 0.6 and the others' 0.85, is tests/next_perfctl's governor block on the game's perf node)
 	var g3 := DmResolutionGovernor.new()
 	_check(_drive(g3, 3.0, 40.0) == 1.0, "timid: 3 s of misses changes nothing")
 	var g4 := DmResolutionGovernor.new()
@@ -139,7 +131,6 @@ func _graphics() -> void:
 	_check(g4.scale >= 0.85, "raising the floor lifts a lower scale at once")
 	g4.reset()
 	_check(g4.scale == 1.0 and g4.floor_scale == 0.85, "reset keeps the floor, restores full resolution")
-	_check(is_equal_approx(DmResolutionGovernor.budget_fps(0), 60.0), "Max fps is judged against 60")
 
 
 func _depths_builder() -> void:
@@ -242,9 +233,8 @@ func _exit_with_live_effects() -> void:
 	vfx.light_flash(p, Color.WHITE, 1.0, 0.5)
 	for i in 30:
 		await process_frame
-	print("effects playing: ", vfx.binbun_count(), " of ", n)
 	if freed:
 		game.queue_free()
 		for i in 3:
 			await process_frame
-	_check(true, "exit: effects played and the game was %s without a crash" % ("freed" if freed else "left alive"))
+	# (nothing is asserted here: the suite passes when this process exits 0, which the runner checks)

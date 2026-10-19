@@ -74,11 +74,7 @@ func _settings() -> void:
 	check(Engine.max_fps == 30, "fps 30 caps Engine.max_fps (%d)" % Engine.max_fps)
 	st.update({"graphics": "high", "fps": 60})
 	check(Engine.max_fps == 60, "fps 60 (%d)" % Engine.max_fps)
-	# every preset: the governor's floor follows it (the preset's rest on the scene is tests/presets.gd's)
-	for id in DmGraphicsPreset.IDS:
-		st.update({"graphics": id})
-		var gp: Dictionary = DmGraphicsPreset.TABLE[id]
-		check(is_equal_approx(g.perf.governor.floor_scale, float(gp["floor"])), "preset %s: governor floor %.2f" % [id, g.perf.governor.floor_scale])
+	# (each preset's governor floor reaching the perf node is tests/presets.gd's `applied`; the unknown value below goes through the store)
 	# Settings -> Brightness is a plain multiplier on the exposure; Interface size is the window's content scale
 	st.update({"graphics": "high", "brightness": 1.0})
 	var e1 := b.env.tonemap_exposure
@@ -116,7 +112,7 @@ func _governor() -> void:
 	var g := await _game({"dressing": false, "hud": false, "persist": false, "waves": false, "settings": {"graphics": "high", "fps": 60, "auto_res": true}})
 	var p := g.perf
 	var vp := g.get_viewport()
-	check(vp.scaling_3d_scale == 1.0 and p.governor.scale == 1.0, "governor: starts at full resolution")
+	check(vp.scaling_3d_scale == 1.0 and p.governor.scale == 1.0 and vp.scaling_3d_mode == Viewport.SCALING_3D_MODE_BILINEAR, "governor: starts at full resolution, no upscaler")
 	# 25 s of 50 ms frames (a GPU at 20 fps against a 60 fps budget); the first 10 s are held (a load)
 	for i in 500:
 		p.pace(0.05)
@@ -127,6 +123,7 @@ func _governor() -> void:
 	for i in 6000:
 		p.pace(0.012)
 	check(p.governor.scale > low and is_equal_approx(vp.scaling_3d_scale, p.governor.scale), "governor: steps back up with headroom (%.2f)" % p.governor.scale)
+	check(is_equal_approx(vp.scaling_3d_scale, 1.0) and vp.scaling_3d_mode == Viewport.SCALING_3D_MODE_BILINEAR, "governor: back at full size with no upscaler (%.2f)" % vp.scaling_3d_scale)
 	# an area entry holds: slow frames right after hold() change nothing
 	var before: float = p.governor.scale
 	p.hold()

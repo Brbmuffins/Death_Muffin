@@ -6,9 +6,10 @@ extends SceneTree
 ##   B  bosses ignore slow / root / chill like the old game's boss controller (the brain owns speed; only stun is capped, see DmBoss.stun)
 ##   C  the necromancer's primary weapon variants (staff pierce, sickle Withered, scythe arc) and the Splinters / Volley / Marrow-Tap runes on them
 ##   D  rite sound coverage: every registered rite (the registry lists exactly the rite_<id>.gd files) plays the sounds the old game's DmAbilitySystem played (REF_SOUNDS: a table recorded from it before it was removed; the Reaper's are new)
-##   E  cost: scythe swings and piercing needles over a crowd
+##      and gives a visible and an audible cue in the 0.25 s after the press (never silent, never only on landing)
 
 const TICK := 1.0 / 60.0
+const NONVIS := ["sfx", "loop", "gesture", "shake", "float"]   ## the effect counters that are not something to see
 
 const SCYTHE_SPEC := {"kind": "warrior", "cap": 8.0, "hp": 500.0, "damage": 10.0, "attackSpeedMult": 1.0, "r": 0.8}
 
@@ -204,7 +205,6 @@ func _run() -> void:
 	await _bosses()
 	await _player_ward()
 	await _sounds()
-	await _cost()
 	check(errlog.errors.is_empty(), "no engine errors in the log (%d: %s)" % [errlog.errors.size(), ", ".join(errlog.errors.slice(0, 3))])
 	OS.remove_logger(errlog)
 	print("%d passed, %d failed" % [passed, failed])
@@ -583,6 +583,7 @@ func _new_sounds(id: String) -> Dictionary:
 	var why: Array = []
 	var rj := func(_r: String, w: String) -> void: why.append(w)
 	caster.cast_rejected.connect(rj)
+	var before: Dictionary = caster.fx.stats.duplicate()
 	var def := DmAbilities.def(id)
 	if String(def.get("targeting", "ground")) == "enemy":
 		var e := -1
@@ -596,10 +597,16 @@ func _new_sounds(id: String) -> Dictionary:
 	else:
 		var aim := Vector3(best_at.x, 0, best_at.z) if best_at != Vector3.INF else Vector3(3.0, 0, -16.0)
 		caster.request_cast(id, aim, -1)
-	await secs(4.0)
+	await secs(0.25)
+	var early := 0
+	for k in caster.fx.stats:
+		if not NONVIS.has(k):
+			early += int(caster.fx.stats[k]) - int(before[k])
+	var early_sounds := rec.sfx.size() + rec.loops.size()
+	await secs(3.75)
 	caster.cast_rejected.disconnect(rj)
 	caster.fx.audio = old_audio
-	var out := {"why": why, "sfx": rec.sfx.duplicate(), "loops": rec.loops.duplicate()}
+	var out := {"why": why, "early": early, "early_sounds": early_sounds, "sfx": rec.sfx.duplicate(), "loops": rec.loops.duplicate()}
 	out["sfx"].sort()
 	out["loops"].sort()
 	return out
@@ -631,70 +638,14 @@ func _sounds() -> void:
 	var rites: Array = DmRiteRegistry.ids()
 	check(not rites.is_empty() and sorted(rites) == rite_files(), "D: every rite file is registered, and only those (%d rites)" % rites.size())
 	var missing: Array = []
-	var extra: Array = []
 	for id: String in rites:
 		var got := await _new_sounds(id)
 		var rs: Array = REF_SOUNDS.get(id, [])   # a rite newer than the table: it only has to make a sound
 		var ns: Array = got["sfx"] + got["loops"].map(func(l: String) -> String: return "loop:" + l)
 		var lost := rs.filter(func(s: String) -> bool: return not ns.has(s) and not OPTIONAL.has(s))
-		var gained := ns.filter(func(s: String) -> bool: return not rs.has(s) and not OPTIONAL.has(s))
-		print("SFX %-18s old=%s new=%s%s" % [id, str(rs), str(ns), ("" if got["why"].is_empty() else "  REJECTED " + str(got["why"]))])
-		check(got["why"].is_empty() and not ns.is_empty(), "D: %s casts on the rebuild (rejected: %s) and makes sound" % [id, str(got["why"])])
-		check(lost.is_empty(), "D: %s - the rebuild plays every sound the old client did (missing %s)" % [id, str(lost)])
+		# (that it casts, draws and makes a sound at all is tests/spells/run.gd's, for every spell of the playable kits: the same 35 rites)
+		check(lost.is_empty(), "D: %s - the rebuild plays every sound the old client did (missing %s; rejected: %s)" % [id, str(lost), str(got["why"])])
+		check(int(got["early"]) >= 3, "D: %s shows a visible cue at the cast (%d visual calls in 0.25 s)" % [id, int(got["early"])])
+		check(int(got["early_sounds"]) > 0, "D: %s makes a sound at the cast" % id)
 		if not lost.is_empty():
 			missing.append([id, lost])
-		if not gained.is_empty():
-			extra.append([id, gained])
-	print("SFX rebuild-only sounds (informational): ", extra)
-
-
-# =========================================================================================================================== E: cost
-
-func _cost() -> void:
-	reset({"bone_needle": "rune_splinter"}, weapon("staff"))
-	for k in 14:
-		foe(Vector3(-7 + k, 0, -26 - (k % 3) * 1.4))
-	var fc := DmFrameCost.attach(g)
-	await frames(30)
-	fc.reset()
-	for i in 90:
-		await process_frame
-	var idle := fc.median_ms()
-	fc.reset()
-	for i in 150:
-		if i % 4 == 0:
-			cast_needle(foes[(i / 4) % foes.size()])
-		await process_frame
-	var staff := fc.median_ms()
-	var staff_worst := fc.worst_ms()
-	reset({"bone_needle": "rune_splinter"}, weapon("scythe"))
-	for k in 14:
-		foe(Vector3(-2 + (k % 5) * 1.0, 0, -20.5 - (k / 5) * 0.8))
-	await frames(10)
-	fc.reset()
-	for i in 150:
-		if i % 4 == 0:
-			caster.p["cooldowns"].clear()
-			caster.p["castUntil"] = 0.0
-			caster.request_cast("bone_needle", pos_of(foes[0]), eid(foes[0]))
-		for e: int in foes:
-			var mx := float(core.enemy_info(e)["max_hp"])
-			core.set_enemy_hp(e, mx, mx)
-		await process_frame
-	var scythe := fc.median_ms()
-	print("COST 14 soaking enemies: idle median %.2f ms; staff needles with pierce + Splinters %.2f ms (worst %.2f); scythe swings + Splinters %.2f ms (worst %.2f)" % [idle, staff, staff_worst, scythe, fc.worst_ms()])
-	perf_info(staff < idle + 6.0 and scythe < idle + 6.0, "E: piercing needles / scythe swings over a crowd add %.2f / %.2f ms a frame (budget +6 ms, shared VPS)" % [staff - idle, scythe - idle])
-	fc.queue_free()
-	reset()
-
-
-func frames(n: int) -> void:
-	for i in n:
-		await process_frame
-
-
-
-## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
-## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
-func perf_info(cond: bool, what: String) -> void:
-	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

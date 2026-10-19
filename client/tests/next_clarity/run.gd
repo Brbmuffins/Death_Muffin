@@ -1,27 +1,13 @@
 extends SceneTree
 ## Combat-readability polish of the rebuilt client (client/next/feel/README.md), one process: godot --headless --path client --script res://tests/next_clarity/run.gd
 ##   1. the floating-number budget, the action bar's "no corpse / no legion" state, the red legion pips (the core's thrall arrays through the HUD view-model)
-##   2. cues: every registered rite (the registry lists exactly the rite_<id>.gd files) gives a visible AND an audible cue in the 0.25 s after an accepted cast (never silent, never only on landing).
+##   (the cue every registered rite gives at the press, visible and audible in the first 0.25 s, is tests/next_combat_odds' D, which casts every rite once)
 ## The enemies are static bodies of the combat core (stunned for an hour, harmless), the corpses and the legion are the core's, as tests/rites.gd has them.
 ## Not here: the low-health ring on a thrall's own body (a thrall is a core body drawn by the crowd now; the pips are what remains of that polish).
 
 const DT := 1.0 / 60.0
-const NONVIS := ["sfx", "loop", "gesture", "shake", "float"]
 const RISING := 0
 const WARRIOR := {"kind": "warrior", "cap": 6.0, "hp": 500.0, "damage": 10.0, "attackSpeedMult": 1.0, "r": 0.8}
-
-
-## Recording audio back-end (the same two calls DmRiteFx makes).
-class RecAudio:
-	extends RefCounted
-	var sfx: Array = []
-	var loops: Array = []
-	func play_sfx(id, _p, _i) -> void:
-		if not sfx.has(id):
-			sfx.append(id)
-	func loop_sfx(id, _ms, _p, _f) -> void:
-		if not loops.has(id):
-			loops.append(id)
 
 
 class ErrorLog:
@@ -42,8 +28,6 @@ var host: DmCoreHost
 var core: RefCounted
 var hero: DmHeroBody
 var caster: DmRiteCaster
-var foes: Array[int] = []
-var results := {}   ## rite -> {early, sfx, why}
 
 
 func _initialize() -> void:
@@ -63,14 +47,6 @@ func frames(n: int) -> void:
 		await process_frame
 
 
-func ticks(n: int) -> void:
-	var target := Engine.get_physics_frames() + n
-	while Engine.get_physics_frames() < target:
-		await physics_frame
-
-
-func secs(s: float) -> void:
-	await ticks(int(s / DT))
 
 
 func until(cond: Callable, limit_s: float) -> bool:
@@ -89,7 +65,6 @@ func _run() -> void:
 	_needs_pure()
 	await _slot_widget()
 	await _game()
-	await _cues()
 	for e in errlog.errors:
 		printerr("ERROR in log: " + e)
 	check(errlog.errors.is_empty(), "no script or engine errors in the log (%d)" % errlog.errors.size())
@@ -126,13 +101,6 @@ func _budget() -> void:
 				shown += 1
 	check(shown <= DmFloatBudget.TOTAL_CAP + 4, "never more than the hard total at once (%d)" % shown)
 	check(b.allow("hurt", 0.0) and b.allow("gold", 0.0) and b.allow("heal", 0.0), "hurt / gold / heal floats are never limited")
-	var t0 := Time.get_ticks_usec()
-	var bb := DmFloatBudget.new()
-	for i in 20000:
-		bb.allow("hit", float(i % 5000))
-	var us := float(Time.get_ticks_usec() - t0) / 20000.0
-	print("float budget allow(): %.3f us per call" % us)
-	perf_info(us < 20.0, "allow() costs %.2f us" % us)
 
 
 # ---- action bar --------------------------------------------------------------------------------------------------------------------
@@ -170,14 +138,6 @@ func _slot_widget() -> void:
 
 # ---- in the game: the bar, the legion ----------------------------------------------------------------------------------------------
 
-## A static enemy of the core: stunned for an hour (it stands where it is), harmless, with health to spare. Returns its id.
-func foe(at: Vector3, def_id := "robber") -> int:
-	var id := host.spawn_enemy(def_id, at, 1, 1000.0, 0.0, false, "graves", false)
-	core.stun(id, 3600.0)
-	foes.append(id)
-	return id
-
-
 func corpse(at: Vector3, kind := "normal") -> int:
 	return g.corpses.add_corpse(at.x, at.z, kind, "robber", false, 0.0, 1.0, "graves")
 
@@ -196,23 +156,12 @@ func raise_at(pos: Vector3, spec: Dictionary = WARRIOR) -> int:
 func clear_world() -> void:
 	for id in core.enemy_ids():
 		host.remove_enemy(int(id))
-	foes.clear()
 	for id in core.corpse_ids():
 		core.corpse_consume(id, 0, "consumed")
 	for id in core.thrall_ids():
 		core.kill_thrall(id, "crumbled")
 	caster._pending.clear()
 	caster._mem.clear()
-
-
-func reset() -> void:
-	clear_world()
-	hero.teleport(Vector3(0, 0, -18))
-	caster.p["resource"]["value"] = caster.p["resource"]["max"]
-	caster.p["cooldowns"].clear()
-	caster.p["castUntil"] = 0.0
-	caster.p["rootedUntil"] = 0.0
-	hero.heal(1e6)
 
 
 func _game() -> void:
@@ -249,14 +198,6 @@ func _game() -> void:
 	g.ui_host.vm._refresh_needs(b)   # the needs are read once per refresh, not at every state build
 	vm = g.ui_host.hud_state()
 	check(corpse_slot.call(), "a corpse 40 m away does not count")
-	# the needs pass costs next to nothing (the whole build is ~0.6 ms headless, of which this is a few us)
-	var t0 := Time.get_ticks_usec()
-	for i in 500:
-		g.ui_host.vm._refresh_needs(b)
-		DmNextHudVm._legion_hurt(core, b.core_id)
-	var us := float(Time.get_ticks_usec() - t0) / 500.0
-	print("needs + legion pass: %.1f us per build" % us)
-	perf_info(us < 40.0, "the needs / legion pass stays cheap (%.1f us)" % us)
 
 	# the legion: hurt pips
 	clear_world()
@@ -281,89 +222,3 @@ func _game() -> void:
 	check(d.on[0] == 2 and d.fill_hurt != d.fill_on, "Diamonds know a hurt state")
 	d.free()
 	clear_world()
-
-
-# ---- every rite gives a cue --------------------------------------------------------------------------------------------------------
-
-func _vis(s: Dictionary) -> int:
-	var n := 0
-	for k in s:
-		if not NONVIS.has(k):
-			n += int(s[k])
-	return n
-
-
-## The rite modules on disk (client/next/rites/rite_<id>.gd), sorted: the registry must list exactly these (a new rite = a file + a registry line).
-static func rite_files() -> Array:
-	var out: Array = []
-	for f: String in DirAccess.get_files_at("res://next/rites"):
-		if f.begins_with("rite_") and f.ends_with(".gd"):
-			out.append(f.trim_prefix("rite_").trim_suffix(".gd"))
-	out.sort()
-	return out
-
-
-static func sorted(a: Array) -> Array:
-	var b := a.duplicate()
-	b.sort()
-	return b
-
-
-func _cues() -> void:
-	var ids: Array = DmRiteRegistry.ids()
-	check(not ids.is_empty() and sorted(ids) == rite_files(), "every rite file is registered, and only those (%d rites)" % ids.size())
-	for id in ids:
-		await audit_rite(id)
-		var r: Dictionary = results[id]
-		check((r["why"] as Array).is_empty(), "%s casts in the audit scene (refused %s)" % [id, str(r["why"])])
-		check(int(r["early"]) >= 3, "%s shows a visible cue at the cast (%d visual calls in 0.25 s)" % [id, int(r["early"])])
-		check(not (r["sfx"] as Array).is_empty(), "%s makes a sound at the cast (%s)" % [id, str(r["sfx"])])
-
-
-## One rite cast in a scene of seven enemies, six corpses and two thralls: the visual primitives DmRiteFx fires in the cast window (the first 0.25 s after the
-## accepted cast) and the sounds it plays. A rite with none in the cast window gives no cue at the moment of the press.
-func audit_rite(id: String) -> void:
-	reset()
-	hero.teleport(Vector3(0, 0, -16))
-	for i in 7:
-		var a := float(i) / 7.0 * TAU
-		foe(Vector3(cos(a) * 3.5, 0, -16.0 + sin(a) * 3.5))
-	var best := -1
-	var best_at := Vector3(3, 0, -16)
-	for i in 6:
-		var a2 := float(i) / 6.0 * TAU + 0.3
-		var at := Vector3(cos(a2) * 2.2, 0, -16.0 + sin(a2) * 2.2)
-		var cp := corpse(at)
-		if best == -1:
-			best = cp
-			best_at = at
-	for k in 2:
-		raise_at(hero.global_position + Vector3(2 + k, 0, 0))
-	await until(func() -> bool: return core.thrall_ids().size() >= 2 and Array(core.thrall_ids()).all(func(t: int) -> bool: return int(legion().info(t)["state"]) != RISING), 6.0)   # Command: Rend needs a standing legion
-	var rec := RecAudio.new()
-	caster.fx.audio = rec
-	caster.p["castUntil"] = 0.0
-	caster.p["cooldowns"].clear()
-	caster.p["resource"]["value"] = 900.0
-	var why: Array = []
-	var rj := func(_r: String, w: String) -> void: why.append(w)
-	caster.cast_rejected.connect(rj)
-	var before: Dictionary = caster.fx.stats.duplicate()
-	var def := DmAbilities.def(id)
-	if String(def.get("targeting", "ground")) == "enemy":
-		caster.request_cast(id, host.enemy_position(foes[0]), foes[0])
-	else:
-		caster.request_cast(id, best_at, -1)
-	await secs(0.25)
-	var early := {}
-	for k in caster.fx.stats:
-		early[k] = int(caster.fx.stats[k]) - int(before[k])
-	caster.cast_rejected.disconnect(rj)
-	results[id] = {"early": _vis(early), "sfx": rec.sfx.duplicate(), "why": why}
-	print("RITE %-16s early_vis=%2d sfx=%s%s" % [id, _vis(early), str(rec.sfx), ("  REJECTED " + str(why)) if not why.is_empty() else ""])
-
-
-## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
-## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
-func perf_info(cond: bool, what: String) -> void:
-	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

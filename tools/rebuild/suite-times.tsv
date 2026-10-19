@@ -24,7 +24,7 @@
 27	gear
 27	benchmark
 26	next_lobby/ui_run
-24	next_combat_odds
+21	next_combat_odds
 23	play_report
 22	perf/first_frame_run
 22	next_hud_counsel
@@ -33,7 +33,7 @@
 20	next_hero_look
 19	game_scene
 19	next_progress
-19	next_clarity
+12	next_clarity
 22	gathering
 19	chapterhouse
 17	counsel
@@ -61,7 +61,7 @@
 13	backend
 12	boss_mire
 12	boss_saint
-12	auto_combat
+3	auto_combat
 11	panels_a
 11	next_affixes
 11	bosses
