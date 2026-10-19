@@ -36,6 +36,8 @@ const SETTLE_S := 1.5           ## game seconds the scene stands still after the
 const SETTLE_MAX_S := 20.0      ## and the longest wait for them to rise
 const DUMMY := "robber"
 const DUMMY_HP := 400.0         ## health multiplier of the stand-ins
+const FIGHT_SIGHT := {"aggro": 36.0, "leash": 90.0}   ## stand-ins that fight (setup `stand_ins` `fight`): they see the hero across the area, as the Depths' hunters do
+const STILL_SIGHT := {"aggro": 0.5, "leash": 1.0}     ## the others notice nobody and stand where they are put
 const PACK_AHEAD := 8.0         ## m from the hero to the middle of a pack
 const LINE_FIRST := 4.0         ## m from the hero to the first enemy of a line
 const LINE_STEP := 2.5          ## m between the enemies of a line
@@ -243,7 +245,7 @@ static func _arg_refusal(value: Variant, spec: Dictionary) -> String:
 
 ## A clip's setup as the recorder reads it: every option with its default (the stand-ins as before, the HUD hidden, the souls as they are, topped up for each cast).
 static func _setup_of(items: Array) -> Dictionary:
-	var o := {"hud": false, "kind": DUMMY, "health": DUMMY_HP, "harmless": true, "souls": -1.0, "top_up": true}
+	var o := {"hud": false, "kind": DUMMY, "health": DUMMY_HP, "harmless": true, "fight": false, "distance": -1.0, "souls": -1.0, "top_up": true}
 	for it: Dictionary in items:
 		match String(it["do"]):
 			"hud":
@@ -252,6 +254,8 @@ static func _setup_of(items: Array) -> Dictionary:
 				o["kind"] = String(it.get("kind", o["kind"]))
 				o["health"] = float(it.get("health", o["health"]))
 				o["harmless"] = bool(it.get("harmless", o["harmless"]))
+				o["fight"] = bool(it.get("fight", o["fight"]))
+				o["distance"] = float(it.get("distance", o["distance"]))
 			"souls":
 				o["souls"] = float(it["value"])
 			"top_up":
@@ -269,14 +273,16 @@ static func slug(name: String, n: int) -> String:
 	return s if s != "" else "clip-%d" % n
 
 
-## Where the stand-ins stand for a hero at `origin` facing FACING: "pack" = a hexagonal bunch round the point PACK_AHEAD m ahead (1.5 m rings), "ahead" = a line down the facing, alternately 0.5 m to either side.
-static func layout(at: String, n: int, origin: Vector3) -> Array[Vector3]:
+## Where the stand-ins stand for a hero at `origin` facing FACING: "pack" = a hexagonal bunch round the point PACK_AHEAD m ahead (1.5 m rings), "ahead" = a line down the facing, alternately 0.5 m to either side,
+## from LINE_FIRST m away. `distance` (the setup's, when 0 or more) moves the pack's middle or the line's first one to that many metres ahead.
+static func layout(at: String, n: int, origin: Vector3, distance := -1.0) -> Array[Vector3]:
 	var out: Array[Vector3] = []
 	if at == "ahead":
+		var first := distance if distance >= 0.0 else LINE_FIRST
 		for i in n:
-			out.append(origin + FACING * (LINE_FIRST + LINE_STEP * i) + Vector3(0.5 if i % 2 == 0 else -0.5, 0.0, 0.0))
+			out.append(origin + FACING * (first + LINE_STEP * i) + Vector3(0.5 if i % 2 == 0 else -0.5, 0.0, 0.0))
 		return out
-	var middle := origin + FACING * PACK_AHEAD
+	var middle := origin + FACING * (distance if distance >= 0.0 else PACK_AHEAD)
 	for i in n:
 		if i == 0:
 			out.append(middle)
@@ -477,7 +483,7 @@ static func stage(root: Node, game: DmNextGame, clip: Dictionary) -> Dictionary:
 		caster.p["castUntil"] = 0.0
 		for r in _rites(String(clip["cast"]), clip.get("steps", [])):
 			caster.mem(r).clear()
-	var spots := layout(clip["at"], int(clip["enemies"]), origin)
+	var spots := layout(clip["at"], int(clip["enemies"]), origin, float(opts["distance"]))
 	var ids := stand_ins(game, spots, opts)
 	var saved := {}
 	if clip["camera"] == "turntable":   # the hero's close-up from the front, the HUD away (the shot plan's "hero" view); the record loop turns the hero
@@ -518,13 +524,13 @@ static func dress(game: DmNextGame, wanted: Array) -> void:
 			await game.get_tree().process_frame
 
 
-## The stand-in enemies at `spots` (snapped to the navmesh), that notice nobody: by default the Graves' robbers with DUMMY_HP times the health and no damage; a clip's setup (`opts`: kind,
-## health, harmless) can make them another kind, mortal or able to hurt the hero. Returns their core ids.
+## The stand-in enemies at `spots` (snapped to the navmesh): by default the Graves' robbers with DUMMY_HP times the health and no damage, that notice nobody; a clip's setup (`opts`: kind,
+## health, harmless, fight) can make them another kind, mortal, able to hurt the hero, or come at the hero and fight. Returns their core ids.
 static func stand_ins(game: DmNextGame, spots: Array[Vector3], opts := {}) -> Array[int]:
 	var ids: Array[int] = []
 	var mults := {"hp": float(opts.get("health", DUMMY_HP)), "dmg": 0.0 if bool(opts.get("harmless", true)) else 1.0}
 	for spot in spots:
-		var id := game.director.spawn(String(opts.get("kind", DUMMY)), game.world.nav_closest(spot), [], false, mults, {"aggro": 0.5, "leash": 1.0})
+		var id := game.director.spawn(String(opts.get("kind", DUMMY)), game.world.nav_closest(spot), [], false, mults, FIGHT_SIGHT if bool(opts.get("fight", false)) else STILL_SIGHT)
 		if id > 0:
 			ids.append(id)
 	return ids

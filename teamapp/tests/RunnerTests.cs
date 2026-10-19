@@ -553,7 +553,7 @@ namespace DeathMuffinTeam.Tests
                 rig.Host.Behaviour = (l, dir) => { WriteRun(dir, "r", "low"); return 0; };
                 var res = rig.Run("jobW00000004", rig.BenchPlan(new[] { "low" }));
                 var args = rig.Host.Launches[0].Args;
-                T.Ok(res.Ok && !args.Contains("--position") && string.Join(" ", args.Take(5)) == "--windowed --resolution 1600x900 --audio-driver Dummy", "a benchmark's window is not moved off screen, and is silent: " + res.Error);
+                T.Ok(res.Ok && !args.Contains("--position") && string.Join(" ", args.Take(3)) == "--fullscreen --audio-driver Dummy", "a benchmark's window is full screen, not off screen, and silent: " + res.Error);
             }
         }
 
@@ -601,7 +601,7 @@ namespace DeathMuffinTeam.Tests
                 T.Eq((double)MiniJson.Obj(rig.Api.DoneRuns[0], "metrics")["avg_fps"], 144.5, "with the game's numbers");
                 T.Eq(rig.Api.DoneFiles.Count, 0, "no pictures");
                 T.Eq(rig.Api.Count("upload") + rig.Api.Count("fail"), 0, "nothing uploaded, nothing failed");
-                T.Has(rig.Api.DoneLog, "start Low: DeathMuffin.exe --windowed --resolution 1600x900 --audio-driver Dummy -- --benchmark", "the log has the command");
+                T.Has(rig.Api.DoneLog, "start Low: DeathMuffin.exe --fullscreen --audio-driver Dummy -- --benchmark", "the log has the command");
                 T.Has(rig.Api.DoneLog, "finished: 2 run(s)", "and the end");
                 T.Has(rig.Api.DoneLog, "the PC is quiet", "and that the PC was quiet");
                 T.Ok(rig.Api.DoneDownloadS >= 0 && rig.Api.DoneRunS >= 0, "timings are reported");

@@ -450,7 +450,7 @@ namespace DeathMuffinTeam.Tests
             r.Beat(); r.Eval();
             T.Ok(r.Ui.BoxVisible && r.Ui.Shown.Count == 1, "a benchmark is offered in the box too");
             T.Eq(r.Ui.Shown[0].Text, "Benchmark of the new release, about 6 minutes", "the box says what it is and how long");
-            T.Eq(r.Ui.Shown[0].Note, "It starts once other programs have used little of the processor for a minute, and runs at normal priority. You can keep using the PC; a busy processor restarts it.", "and says it starts once the PC has been left alone, runs at normal priority and that touching the PC restarts it");
+            T.Eq(r.Ui.Shown[0].Note, "It starts once other programs have used little of the processor for a minute, takes the whole screen and runs at normal priority. A busy processor restarts it.", "and says it starts once the PC has been left alone, takes the whole screen, runs at normal priority and that a busy processor restarts it");
             T.Eq(r.LastCountdown, "Runs by itself in 5:00", "with the usual countdown");
             r.Offer("job000000010", "shots"); r.Eval();
             T.Eq(r.Ui.Shown.Last().Note, "", "a screenshot job's box has no note");

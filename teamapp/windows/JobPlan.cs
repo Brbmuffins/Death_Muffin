@@ -762,14 +762,14 @@ namespace DeathMuffinTeam
         }
 
         /// <summary>
-        /// A `bench` setup's arguments: `--windowed --resolution 1600x900 --audio-driver Dummy -- --benchmark --bench-room=.. --bench-class=.. --bench-size=.. --bench-length=.. --bench-preset=..
-        /// --bench-dir=<dir> --bench-quit` and the job's own options. No `--main-pack` (a release template refuses it: Godot loads `DeathMuffin.pck` beside the exe), no `--dev-offline`
-        /// (`--bench-dir` already keeps the run a trial that sends nothing) and no `--position`: the window stays on screen (the PC is idle, and an off-screen window may be treated differently by the
-        /// desktop compositor). Paths use "/".
+        /// A `bench` setup's arguments: `--fullscreen --audio-driver Dummy -- --benchmark --bench-room=.. --bench-class=.. --bench-size=.. --bench-length=.. --bench-preset=..
+        /// --bench-dir=<dir> --bench-quit` and the job's own options. Full screen, windowed (Godot's `--fullscreen`: a borderless window over the whole screen at its own resolution, the display mode unchanged; the run
+        /// records that resolution), which the window tamer brings in front with the focus (Helix, 2026-10-19). No `--main-pack` (a release template refuses it: Godot loads `DeathMuffin.pck` beside the exe), no `--dev-offline`
+        /// (`--bench-dir` already keeps the run a trial that sends nothing) and no `--position`. Paths use "/".
         /// </summary>
         public List<string> BenchCommandArgs(BenchSetup s, string benchDir)
         {
-            var a = WindowArgs(null);
+            var a = new List<string> { "--fullscreen", "--audio-driver", "Dummy", "--" };
             a.AddRange(new[]
             {
                 "--benchmark",
