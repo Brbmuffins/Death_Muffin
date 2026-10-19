@@ -16,8 +16,6 @@ extends RefCounted
 ## unless it says another, "seconds" 6 unless it says another, and no enemies unless asked for).
 ## The stand-ins are the Graves' robbers with a lot of health and no damage that stand where they are put (a tune that changes the rite's damage cannot kill them or hurt the hero), and the HUD is hidden.
 ## The rite is cast LEAD_FRAMES frames in (so the first frames show the scene before it) and again each time it is off cooldown; the hero's souls and essence are topped up for each cast.
-## "mortal": true = the stand-ins have their normal health (they die and pay their kills; still no damage), and a Reaper's soul bag starts empty and is not topped up (so cast a free rite such as scythe_sweep
-## and watch the souls arrive). "hud": true = the HUD stays on screen.
 
 const FPS := 30                 ## frames per game second
 const MAX_CLIPS := 4
@@ -119,12 +117,7 @@ static func parse(text: String) -> Dictionary:
 			nm = "%s-%d" % [base.substr(0, MAX_NAME - 2), dup]
 			dup += 1
 		seen[nm] = true
-		for key in ["mortal", "hud"]:
-			if c.has(key) and not (c[key] is bool):
-				out["error"] = "clip %d: \"%s\" must be true or false" % [n, key]
-				return out
-		(out["clips"] as Array).append({"name": nm, "area": area, "cast": cast, "at": at, "enemies": enemies, "seconds": seconds, "camera": camera, "equip": clip_worn, "dress": false,
-			"mortal": bool(c.get("mortal", false)), "hud": bool(c.get("hud", false))})
+		(out["clips"] as Array).append({"name": nm, "area": area, "cast": cast, "at": at, "enemies": enemies, "seconds": seconds, "camera": camera, "equip": clip_worn, "dress": false})
 		i += 1
 	for clip: Dictionary in out["clips"]:
 		clip["dress"] = any_equip
@@ -272,8 +265,7 @@ static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: Stri
 		if turntable:
 			_spin(body, float(writer.frames) / float(total))
 		if rite != "" and ((casts.is_empty() and writer.frames >= LEAD_FRAMES) or (not casts.is_empty() and caster.cooldown_left(rite) <= 0.0)):
-			if not clip.get("mortal", false):
-				_top_up(caster)
+			_top_up(caster)
 			last[0] = ""
 			caster.request_cast(rite, staged["aim"], -1)
 			if last[0] == "":
@@ -321,7 +313,7 @@ static func stage(root: Node, game: DmNextGame, clip: Dictionary) -> Dictionary:
 	var body := game.local_body()
 	if game.ui != null:
 		game.ui.close_panels()
-		game.ui.visible = bool(clip.get("hud", false))
+		game.ui.visible = false
 	game.director.enabled = false   # no waves and no Grave Surge: the stand-ins are the only enemies
 	game.director.surge = null
 	core.core.set_wander(false)
@@ -345,12 +337,10 @@ static func stage(root: Node, game: DmNextGame, clip: Dictionary) -> Dictionary:
 	if caster != null:   # a clip after another one starts as the first did: no cooldown, no cast lock, nothing of the last rite still walking
 		caster.p["cooldowns"].clear()
 		caster.p["castUntil"] = 0.0
-		if clip.get("mortal", false) and caster.p.get("family") == "reaper":
-			caster.p["souls"] = 0
 		if clip["cast"] != "":
 			caster.mem(String(clip["cast"])).clear()
 	var spots := layout(clip["at"], int(clip["enemies"]), origin)
-	var ids := stand_ins(game, spots, 1.0 if clip.get("mortal", false) else DUMMY_HP)
+	var ids := stand_ins(game, spots)
 	var saved := {}
 	if clip["camera"] == "turntable":   # the hero's close-up from the front, the HUD away (the shot plan's "hero" view); the record loop turns the hero
 		saved = DmQaUiShots._view_begin(game, {"view": "hero", "turn": 0.0})
@@ -391,10 +381,10 @@ static func dress(game: DmNextGame, wanted: Array) -> void:
 
 
 ## The stand-in enemies at `spots` (snapped to the navmesh): the Graves' robbers with DUMMY_HP times the health and no damage, that notice nobody. Returns their core ids.
-static func stand_ins(game: DmNextGame, spots: Array[Vector3], hp := DUMMY_HP) -> Array[int]:
+static func stand_ins(game: DmNextGame, spots: Array[Vector3]) -> Array[int]:
 	var ids: Array[int] = []
 	for spot in spots:
-		var id := game.director.spawn(DUMMY, game.world.nav_closest(spot), [], false, {"hp": hp, "dmg": 0.0}, {"aggro": 0.5, "leash": 1.0})
+		var id := game.director.spawn(DUMMY, game.world.nav_closest(spot), [], false, {"hp": DUMMY_HP, "dmg": 0.0}, {"aggro": 0.5, "leash": 1.0})
 		if id > 0:
 			ids.append(id)
 	return ids

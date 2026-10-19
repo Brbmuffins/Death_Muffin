@@ -525,16 +525,13 @@ func clip_plan_format() -> void:
 	check(p["ok"] and p["class_index"] == 11 and p["discipline"] == "reaper", "a clip plan parses, its discipline (by name, any case) is the Reaper's class")
 	var clips: Array = p["clips"]
 	check(clips.size() == DmQaClips.MAX_CLIPS and DmQaClips.MAX_CLIPS == 4, "at most 4 clips")
-	check(clips[0] == {"name": "wraith-walk", "area": "graves", "cast": "haunting_wraith", "at": "ahead", "enemies": 12, "seconds": 8.0, "camera": "wide", "equip": [], "dress": false, "mortal": false, "hud": false}, "a clip: the name slugged, enemies and seconds at their limits (%s)" % str(clips[0]))
-	check(clips[1] == {"name": "clip-2", "area": "graves", "cast": "scythe_sweep", "at": "pack", "enemies": 6, "seconds": 5.0, "camera": "follow", "equip": [], "dress": false, "mortal": false, "hud": false}, "the defaults: the second clip's own name, the Graves, a pack of 6, 5 s, the following camera (%s)" % str(clips[1]))
+	check(clips[0] == {"name": "wraith-walk", "area": "graves", "cast": "haunting_wraith", "at": "ahead", "enemies": 12, "seconds": 8.0, "camera": "wide", "equip": [], "dress": false}, "a clip: the name slugged, enemies and seconds at their limits (%s)" % str(clips[0]))
+	check(clips[1] == {"name": "clip-2", "area": "graves", "cast": "scythe_sweep", "at": "pack", "enemies": 6, "seconds": 5.0, "camera": "follow", "equip": [], "dress": false}, "the defaults: the second clip's own name, the Graves, a pack of 6, 5 s, the following camera (%s)" % str(clips[1]))
 	check(clips[2]["name"] == "wraith-walk-2" and clips[3]["name"] == "wraith-walk-3" and clips[2]["seconds"] == DmQaClips.MIN_SECONDS and clips[3]["enemies"] == 0, "a name already taken gets a number, a short clip is made 1 s, no enemies is allowed")
 	var notes := String(" | ").join(PackedStringArray(p["notes"]))
 	check(notes.contains("99 enemies is outside 0-12") and notes.contains("30 seconds is outside 1-8") and notes.contains("0.2 seconds is outside") and notes.contains("the plan has 5 clips, only the first 4 are made"), "what was cut or clamped is said (%s)" % notes)
 	check(DmQaClips.parse('{"clips": [{"cast": "reap", "name": "' + "x".repeat(60) + '"}]}')["clips"][0]["name"].length() == DmQaClips.MAX_NAME, "a name is at most %d long" % DmQaClips.MAX_NAME)
 	check(DmQaClips.slug("--Hit & Run--", 1) == "hit-run" and DmQaClips.slug("???", 3) == "clip-3" and DmQaClips.parse('{"clips": [{"cast": "reap"}]}')["class_index"] == 0, "a name keeps letters, digits and single hyphens inside; nothing left is clip-<n>; no discipline is none")
-	var mortal: Array = DmQaClips.parse('{"clips": [{"cast": "reap", "mortal": true, "hud": true}, {"cast": "reap"}]}')["clips"]
-	check(mortal[0]["mortal"] and mortal[0]["hud"] and not mortal[1]["mortal"] and not mortal[1]["hud"], "mortal and hud are off unless a clip asks for them")
-	check(not DmQaClips.parse('{"clips": [{"cast": "reap", "hud": "yes"}]}')["ok"], "hud must be true or false")
 	for bad in ['not json', '[]', '{}', '{"clips": []}', '{"clips": [3]}', '{"clips": [{}]}', '{"clips": [{"cast": "no_such_rite"}]}', '{"clips": [{"cast": "reap", "area": "nowhere"}]}', '{"clips": [{"cast": "reap", "at": "behind"}]}',
 			'{"clips": [{"cast": "reap", "camera": "top"}]}', '{"clips": [{"cast": "reap", "seconds": "5"}]}', '{"clips": [{"cast": "reap", "enemies": "many"}]}', '{"discipline": "grave_warden", "clips": [{"cast": "reap"}]}']:
 		var r := DmQaClips.parse(bad)
@@ -804,7 +801,7 @@ func clips_on_a_reaper() -> void:
 func clip_plan_preview() -> void:
 	var p := DmQaClips.parse('{"discipline": "reaper", "equip": ["staff_moon", "helm_gold"], "clips": [{"name": "preview", "camera": "turntable"}, {"name": "spin", "camera": "Turntable", "cast": "reap", "enemies": 3, "seconds": 3}]}')
 	check(p["ok"] and p["equip"] == ["staff_moon", "helm_gold"], "a clip plan's equip list is parsed (%s)" % str(p.get("error")))
-	check(p["clips"][0] == {"name": "preview", "area": "chapterhouse", "cast": "", "at": "pack", "enemies": 0, "seconds": 6.0, "camera": "turntable", "equip": ["staff_moon", "helm_gold"], "dress": true, "mortal": false, "hud": false},
+	check(p["clips"][0] == {"name": "preview", "area": "chapterhouse", "cast": "", "at": "pack", "enemies": 0, "seconds": 6.0, "camera": "turntable", "equip": ["staff_moon", "helm_gold"], "dress": true},
 		"a turntable clip needs no cast, area or length: the Chapterhouse, no enemies, 6 s, wearing the plan's items (%s)" % str(p["clips"][0]))
 	var own := DmQaClips.parse('{"clips": [{"name": "a", "camera": "turntable", "equip": ["staff_moon"]}, {"name": "b", "cast": "reap"}, {"name": "c", "camera": "turntable", "equip": [], "area": "graves"}]}')
 	check(own["ok"] and own["equip"] == [] and own["clips"][0]["equip"] == ["staff_moon"] and own["clips"][1]["equip"] == [] and own["clips"][2]["equip"] == [] and own["clips"][2]["area"] == "graves" and own["clips"][0]["dress"] and own["clips"][1]["dress"],
