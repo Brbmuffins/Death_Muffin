@@ -54,7 +54,8 @@ Only the accounts on the server's team list (a table the server's team routes re
 The server stores each PC's mode, so the Discord agent can see which PCs may take a job.
 
 **AFK mode** (mode Ask only). When a box's 5 minutes run out with nobody answering and the job runs by itself, the app takes it that you are away and switches AFK mode on. A small notice stays in the
-screen corner ("AFK mode on: jobs run right away" and an **End AFK mode** button; it never takes the focus, is not topmost (it stays up for a long time) and has no taskbar button), the tray status says AFK mode and
+screen corner ("AFK mode on: jobs run right away", an **End AFK mode** button and a **Hide** button; it stays on top of everything while it is up, never takes the focus and has no
+taskbar button; Hide puts the notice away and AFK mode stays on, until the tray's **Show AFK notice** or the next AFK mode shows it again), the tray status says AFK mode and
 the tray menu gets **End AFK mode** while it is on. While it is on, every new offer (screenshots or a benchmark) runs straight away, with no box and no 5-minute wait. The waits stay: Death Muffin or a
 full-screen app running, the battery and a pause hold a job back, and a benchmark still waits for a quiet PC. It ends when you press the button or the menu item, by itself when you start Death Muffin or a
 full-screen app comes up (you are back; while a job runs only Death Muffin counts, because a job's own window can read as full screen on a small screen), and when you pause, change the mode or sign out.
@@ -64,7 +65,7 @@ The decisions are `TeamLogic.Decide` (which takes the flag), `EntersAfk` and `Af
 ## The tray menu
 
 The status line (what it is doing), **Run now** (ask the server for a job and run it, even when something above would wait: it is a yes),
-**Pause 2 hours** / **Resume**, **End AFK mode** (only while AFK mode is on), **Mode**, **Sign in** / **Sign out** (not while a job runs), **Start with Windows** (this user only), **Open the app's folder**,
+**Pause 2 hours** / **Resume**, **End AFK mode** (only while AFK mode is on), **Show AFK notice** (only after Hide), **Mode**, **Sign in** / **Sign out** (not while a job runs), **Start with Windows** (this user only), **Open the app's folder**,
 **Open the last job's log**, **Quit**. Balloons are for the answer to a click (Run now with nothing waiting), a failed or refused job, being signed out
 and a newer version that could not be installed.
 
@@ -268,6 +269,7 @@ monitor (and the pictures still taken: Godot and the driver draw a window that i
 
 ### Changelog
 
+- **0.3.1** (2026-10-19) - The AFK notice stays on top while AFK mode is on, with a Hide button (AFK mode stays on; the tray's Show AFK notice brings it back; Helix's ask).
 - **0.3.0** (2026-10-19) - The `clip` job (short videos of a change: one game run for each variant with its own tune, the engine's `--fixed-fps 30`, the clips uploaded as `<variant>_<clip>.mjpeg` for the server to turn into mp4s) and a `shots` job with a `before` and an `after`
   build (files both share are downloaded once, pictures uploaded as `<build>_<preset>_<shot>.png`), and `resolutions` for screenshots at the four standard window sizes (`<preset>_<w>x<h>_<shot>.png`). The `release` job: the release checks of a new client (install, quit-while-loading, screens, stutter, bench, soak),
   each step's result uploaded as it finishes. A job the server refuses to finish is failed with the server's reason instead of staying running. The offer box does not say a job's duration twice when the server's title already does. The heartbeat is a long poll (`wait` 25, answered at once by an offer or a cancel, the next sent right after; 5, 15, 30 s back-off on failures, at least 5 s between heartbeats

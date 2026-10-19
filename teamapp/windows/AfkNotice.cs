@@ -14,12 +14,14 @@ namespace DeathMuffinTeam
 
         /// <summary>The person pressed End AFK mode.</summary>
         public event Action Ended;
+        /// <summary>The person pressed Hide: the notice goes, AFK mode stays (the tray's Show AFK notice brings it back).</summary>
+        public event Action HideRequested;
 
         public AfkNotice()
         {
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
-            TopMost = false;
+            TopMost = true;   // Helix 2026-10-19: always on top while AFK mode is on (it still never takes focus); Hide puts it away
             StartPosition = FormStartPosition.Manual;
             ClientSize = new Size(380, 92);
             BackColor = Art.Bg;
@@ -32,7 +34,9 @@ namespace DeathMuffinTeam
             var text = new Label { Text = TeamLogic.AfkText, Font = new Font("Segoe UI", 10.5f), ForeColor = Art.Ink, BackColor = Color.Transparent, AutoSize = false, AutoEllipsis = true, Bounds = new Rectangle(18, 32, 344, 22) };
             var end = new RuneButton(TeamLogic.AfkEndText, false) { Bounds = new Rectangle(18, 56, 140, 28), TakesFocus = false, TabStop = false, Font = Font };
             end.Click += (s, e) => { var h = Ended; if (h != null) h(); };
-            Controls.AddRange(new Control[] { heading, text, end });
+            var hide = new RuneButton(TeamLogic.AfkHideText, false) { Bounds = new Rectangle(168, 56, 90, 28), TakesFocus = false, TabStop = false, Font = Font };
+            hide.Click += (s, e) => { var h = HideRequested; if (h != null) h(); };
+            Controls.AddRange(new Control[] { heading, text, end, hide });
         }
 
         protected override bool ShowWithoutActivation { get { return true; } }

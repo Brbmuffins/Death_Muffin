@@ -32,6 +32,8 @@ namespace DeathMuffinTeam
         readonly ToolStripMenuItem runItem = new ToolStripMenuItem("Run now");
         readonly ToolStripMenuItem pauseItem = new ToolStripMenuItem("Pause 2 hours");
         readonly ToolStripMenuItem afkItem = new ToolStripMenuItem(TeamLogic.AfkEndText) { Visible = false };
+        readonly ToolStripMenuItem afkShowItem = new ToolStripMenuItem(TeamLogic.AfkShowText) { Visible = false };
+        bool afkHidden;   // the person hid the AFK notice: it stays hidden until they show it or AFK mode ends
         readonly ToolStripMenuItem[] modeItems = new ToolStripMenuItem[3];
         readonly ToolStripMenuItem signItem = new ToolStripMenuItem("Sign in...");
         readonly ToolStripMenuItem startupItem = new ToolStripMenuItem("Start with Windows") { CheckOnClick = true };
@@ -91,6 +93,7 @@ namespace DeathMuffinTeam
             runItem.Click += (s, e) => Guard(controller.RunNowAsync());
             pauseItem.Click += (s, e) => Guard(controller.TogglePauseAsync());
             afkItem.Click += (s, e) => controller.EndAfk();
+            afkShowItem.Click += (s, e) => OnUi(() => { afkHidden = false; afkShowItem.Visible = false; if (afkBox != null && !afkBox.Visible) { afkBox.PlaceInCorner(); afkBox.Show(); } });
             signItem.Click += (s, e) =>
             {
                 if (controller.SignedIn) Guard(SignOutAsync());
@@ -116,7 +119,7 @@ namespace DeathMuffinTeam
             menu.Items.AddRange(new ToolStripItem[]
             {
                 statusItem, new ToolStripMenuItem("Death Muffin Team " + Program.Version) { Enabled = false }, new ToolStripSeparator(),
-                runItem, pauseItem, afkItem, modeMenu, new ToolStripSeparator(),
+                runItem, pauseItem, afkItem, afkShowItem, modeMenu, new ToolStripSeparator(),
                 signItem, startupItem, folderItem, logItem, new ToolStripSeparator(), quitItem,
             });
             menu.Opening += (s, e) => RefreshMenu();
@@ -185,11 +188,21 @@ namespace DeathMuffinTeam
                     {
                         afkBox = new AfkNotice();
                         afkBox.Ended += () => controller.EndAfk();
+                        afkBox.HideRequested += () => { afkHidden = true; afkBox.Hide(); afkShowItem.Visible = true; };
                     }
-                    afkBox.PlaceInCorner();
-                    if (!afkBox.Visible) afkBox.Show();   // AfkNotice.ShowWithoutActivation: the keyboard and the focus stay where they were
+                    afkShowItem.Visible = afkHidden;
+                    if (!afkHidden && !afkBox.Visible)
+                    {
+                        afkBox.PlaceInCorner();
+                        afkBox.Show();   // AfkNotice.ShowWithoutActivation: the keyboard and the focus stay where they were
+                    }
                 }
-                else if (afkBox != null) afkBox.Hide();
+                else
+                {
+                    afkHidden = false;   // the next AFK mode shows its notice again
+                    afkShowItem.Visible = false;
+                    if (afkBox != null) afkBox.Hide();
+                }
             });
         }
 

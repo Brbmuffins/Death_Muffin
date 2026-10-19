@@ -111,6 +111,8 @@ namespace DeathMuffinTeam
         /// <summary>The notice's words while AFK mode is on, and its button.</summary>
         public const string AfkText = "AFK mode on: jobs run right away";
         public const string AfkEndText = "End AFK mode";
+        public const string AfkHideText = "Hide";
+        public const string AfkShowText = "Show AFK notice";
 
         /// <summary>
         /// True when this decision switches AFK mode on: mode ask, nobody answered, the box has been up its five minutes and the job runs by itself. A yes (Run now), the other modes (they never ask, or never
