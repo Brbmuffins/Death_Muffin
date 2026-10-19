@@ -121,8 +121,6 @@ polish list). Also:
 
 ## UI
 
-- **The Covenant Counsel card showed two tips' text over each other** in a release-check fight picture (2560x1440, job ae610a0f36b9,
-  2026-10-19): perhaps a change of tip caught mid-fade; not looked into.
 - **The Next-step box no longer pings the minimap:** `client/next/hud/dm_next_hud_vm.gd` sets `_map["ping"] = null` where the old game pointed it at the suggestion's target (elsewhere, or marked pingInPlace), yet Settings still offers "Point to it on the minimap" (found porting the Acre's tests).
 - **No in-game leaderboard panel.** `DmApi.get_leaderboard` exists; only the website shows it.
 - Unraised counsel events: `client/ui/onboarding/README.md`. Hero gaps: `client/next/hero/README.md`.

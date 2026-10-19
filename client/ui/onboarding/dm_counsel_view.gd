@@ -81,6 +81,7 @@ func glow_rect() -> Rect2:
 func _on_card_shown(id: String, kind: String, title_html: String, body_html: String, ms: int) -> void:
 	if _card != null:
 		_card.queue_free()
+	_on_card_removed()   # a card still fading out (one an urgent tip just replaced) goes at once: the two texts would lie over each other (a release-check picture, 2026-10-19)
 	_kind = kind
 	_card = DmTipCard.new()
 	add_child(_card)
