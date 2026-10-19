@@ -119,6 +119,7 @@ func _ready() -> void:
 				return
 		quiet_window(get_window())
 		print("QA-SHOTS window: takes no focus and passes the mouse through (asked of the %s display)" % DisplayServer.get_name())
+		full_size_window(get_window(), asked_resolution(OS.get_cmdline_args()))
 		var scenario := qa_scenario(args, mode)
 		if scenario != "":
 			_run_qa_scenario(scenario, args)   # its own games, no front flow, and the run ends with its exit code
@@ -270,6 +271,28 @@ static func quiet_window(win: Window) -> void:
 		return
 	win.unfocusable = true
 	win.mouse_passthrough = true
+
+
+## Testing: a QA run's window at the size the engine was asked for (`--resolution WxH`), even taller or wider than the PC's screen. Windows holds a window to the screen
+## unless the window names a larger maximum (Godot passes `max_size` on as the window's largest tracking size), so the maximum is set to the asked size and the size
+## applied again: the team PC's 2560x1440, 3440x1440 and 3840x2160 pictures came out 1421 high on a 1440p screen (2026-10-19). Called only where the QA tools start.
+static func full_size_window(win: Window, want: Vector2i) -> void:
+	if win == null or want == Vector2i.ZERO or win.size == want or DisplayServer.get_name() == "headless":
+		return
+	win.max_size = want
+	win.size = want
+	print("QA-SHOTS window: %dx%d asked, %dx%d now" % [want.x, want.y, win.size.x, win.size.y])
+
+
+## The engine's `--resolution WxH` among the command line's arguments, Vector2i.ZERO when there is none or it does not read.
+static func asked_resolution(engine_args: PackedStringArray) -> Vector2i:
+	var i := engine_args.find("--resolution")
+	if i < 0 or i + 1 >= engine_args.size():
+		return Vector2i.ZERO
+	var wh := engine_args[i + 1].split("x")
+	if wh.size() != 2 or not wh[0].is_valid_int() or not wh[1].is_valid_int() or int(wh[0]) <= 0 or int(wh[1]) <= 0:
+		return Vector2i.ZERO
+	return Vector2i(int(wh[0]), int(wh[1]))
 
 
 ## Testing: the graphics preset a QA run asks for with `--preset=<low|medium|high|ultra>`, "" for none. Honoured only where the QA tools start (`qa_wanted`: a debug build on the dev-offline backend), so a release
