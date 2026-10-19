@@ -899,6 +899,20 @@ namespace DeathMuffinTeam.Tests
                 T.Eq(rig.Api.DoneRuns.Count, 1, "one run is sent");
                 T.Has(rig.Api.DoneLog, "was disturbed", "the log says the run was disturbed");
             }
+            // benchmarks switched off in the tray (Helix 2026-10-19): the bench step is skipped, not failed, and nothing is started for it; the other steps run
+            using (var rig = new Rig())
+            {
+                rig.Runner.BenchmarksAllowed = () => false;
+                rig.Host.Behaviour = ReleaseGame();
+                var res = rig.Run("relG00000006", rig.ReleasePlan(p => { p["steps"] = new List<object> { "bench", "stutter" }; p["setups"] = new List<object> { BenchTests.Setup("low") }; }));
+                T.Ok(res.Ok, "done: " + res.Error);
+                var bench = StepIn(rig.Api.DoneSteps, "bench");
+                T.Ok(bench.Ok && bench.Skipped && bench.Error == JobRunner.BenchSkipped, "the bench step is reported skipped, with why");
+                T.Eq(MiniJson.Write(bench.ToJson()), "{\"step\":\"bench\",\"ok\":true,\"skipped\":true,\"error\":\"" + JobRunner.BenchSkipped + "\",\"ms\":0}", "and sent as skipped");
+                T.Ok(StepIn(rig.Api.DoneSteps, "stutter").Ok && rig.Host.Launches.Count == 1, "only the stutter step started the game");
+                T.Ok(!rig.Api.Uploaded.Contains("bench.json") && (rig.Api.DoneRuns == null || rig.Api.DoneRuns.Count == 0), "no bench result and no runs");
+                T.Has(rig.Api.DoneLog, "step bench skipped", "the log says so");
+            }
             // a setup that is disturbed every time fails the bench step only
             using (var rig = new Rig())
             {

@@ -15,7 +15,7 @@ namespace DeathMuffinTeam
     }
 
     /// <summary>
-    /// %LOCALAPPDATA%\DeathMuffinTeam\settings.json: who is signed in (the team token DPAPI-protected, never in plain text), this PC's id, its mode and a pause.
+    /// %LOCALAPPDATA%\DeathMuffinTeam\settings.json: who is signed in (the team token DPAPI-protected, never in plain text), this PC's id, its mode, a pause, and the tray's Run benchmarks and Allow AFK mode.
     /// No password is ever stored. Read and written with MiniJson, so teamapp/tests round-trips the real thing.
     /// </summary>
     internal sealed class TeamSettings
@@ -26,6 +26,10 @@ namespace DeathMuffinTeam
         public string PcId = "";
         public OfferMode Mode = OfferMode.Ask;
         public DateTime PausedUntilUtc = DateTime.MinValue;
+        /// <summary>Tray: Run benchmarks. Off: this PC leaves benchmark jobs alone and skips a release check's benchmark step (Helix 2026-10-19).</summary>
+        public bool RunBenchmarks = true;
+        /// <summary>Tray: Allow AFK mode. Off: a box that runs out still runs its job, but the next job asks again (AFK mode never starts).</summary>
+        public bool AfkAllowed = true;
 
         public static string Root
         {
@@ -86,6 +90,8 @@ namespace DeathMuffinTeam
             DateTime until;
             if (DateTime.TryParse(MiniJson.Str(d, "pausedUntil"), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out until))
                 s.PausedUntilUtc = until.ToUniversalTime();
+            if (d.ContainsKey("runBenchmarks") && d["runBenchmarks"] is bool) s.RunBenchmarks = (bool)d["runBenchmarks"];
+            if (d.ContainsKey("afkAllowed") && d["afkAllowed"] is bool) s.AfkAllowed = (bool)d["afkAllowed"];
             string tok = MiniJson.Str(d, "token");
             if (tok.Length > 0) s.Token = protector.Unprotect(tok) ?? "";
             return s;
@@ -100,6 +106,8 @@ namespace DeathMuffinTeam
                 { "pcId", PcId },
                 { "mode", Modes.Wire(Mode) },
                 { "pausedUntil", PausedUntilUtc > DateTime.MinValue ? PausedUntilUtc.ToString("o", System.Globalization.CultureInfo.InvariantCulture) : "" },
+                { "runBenchmarks", RunBenchmarks },
+                { "afkAllowed", AfkAllowed },
             };
             return MiniJson.Write(d);
         }

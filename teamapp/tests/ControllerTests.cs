@@ -52,7 +52,7 @@ namespace DeathMuffinTeam.Tests
             Answers();
             Exceptions();
             OtherModes();
-            RunNowAndPause();
+            ShowJobsAndPause();
             JobProblems();
             SignInTrouble();
             SignOut();
@@ -64,6 +64,123 @@ namespace DeathMuffinTeam.Tests
             AfkMode();
             ServerCancel();
             JobsForTheAfkNotice();
+            JobList();
+            BenchmarksSwitch();
+            AfkSwitch();
+        }
+
+        static Dictionary<string, object> Listed(string id, string kind, string title, double weightS, string who = null, string thread = null, params string[] steps)
+        {
+            var d = Queued(id, kind, title, weightS);
+            if (who != null) d["requestedBy"] = who;
+            if (thread != null) d["thread"] = thread;
+            if (steps.Length > 0) d["steps"] = steps.Cast<object>().ToList();
+            return d;
+        }
+
+        static void ListReply(CtlRig r, params Dictionary<string, object>[] jobs)
+        {
+            var list = jobs.Cast<object>().ToList();
+            r.Api.Heartbeat = () =>
+            {
+                var a = jobs.Length == 0 ? FakeApi.Ok(new Dictionary<string, object> { { "serverTime", "x" }, { "offer", null } }) : FakeApi.OfferReply((string)jobs[0]["id"], (string)jobs[0]["kind"]);
+                a.Data["queue"] = list;
+                return a;
+            };
+        }
+
+        /// <summary>Helix 2026-10-19: the box lists the first 10 jobs oldest first, with who started the Discord thread and its name; a click picks one; Run now runs that one only.</summary>
+        static void JobList()
+        {
+            var r = new CtlRig();
+            r.Start();
+            ListReply(r, Listed("job000000001", "shots", "Screenshots of a change, about 2 minutes", 120, "War", "Bigger skull pile"),
+                Listed("job000000002", "clip", "Short videos of a change: 1 option, about 2 minutes", 120, "Helix", null),
+                Listed("job000000003", "release", "Checks of abc1234", 240, null, null, "install", "bench"));
+            r.Beat(); r.Eval();
+            OfferView v = r.Ui.Shown.Last();
+            T.Eq(string.Join("|", v.Rows.Select(x => x.Id + (x.Selected ? "*" : ""))), "job000000001*|job000000002|job000000003", "every job listed oldest first, the oldest picked");
+            T.Eq(string.Join("|", v.Rows.Select(x => x.Who)), "War · Bigger skull pile|Helix|takes the whole screen", "who asked and the thread; a job with a benchmark says it takes the whole screen");
+            T.Eq(v.Countdown, "The selected job runs by itself in 5:00", "the countdown is the picked job's");
+            r.Advance(2); r.Eval();
+            r.C.Choose("job000000002");
+            v = r.Ui.Shown.Last();
+            T.Ok(r.C.CurrentOffer.Id == "job000000002" && v.Rows[1].Selected && !v.Rows[0].Selected, "a click picks another job, and the box shows it at once");
+            T.Eq(v.Countdown, "The selected job runs by itself in 3:00", "a pick keeps the box's countdown");
+            r.C.Choose("job000000009");
+            T.Eq(r.C.CurrentOffer.Id, "job000000002", "a job not listed cannot be picked");
+            r.Beat(); r.Eval();
+            T.Eq(r.C.CurrentOffer.Id, "job000000002", "the pick stays across heartbeats");
+            Util.Wait(r.C.AnswerAsync(OfferAnswer.Yes));
+            T.Ok(r.Ran == 1 && r.Api.Calls.Contains("claim job000000002"), "Run now runs the picked job, and only it");
+            ListReply(r, Listed("job000000001", "shots", "Screenshots of a change, about 2 minutes", 120), Listed("job000000003", "release", "Checks of abc1234", 240, null, null, "install"));
+            r.Beat(); r.Eval();
+            T.Ok(r.Ran == 1 && r.Ui.BoxVisible && r.C.CurrentOffer.Id == "job000000001" && r.LastCountdown == "The selected job runs by itself in 5:00",
+                "the next job asks again, with its own 5 minutes (Helix: a yes in mode Ask runs one job, not all)");
+
+            var many = new List<Dictionary<string, object>>();
+            for (int i = 0; i < 14; i++) many.Add(Listed("job0000000" + (10 + i), "shots", "Screenshots " + i, 60));
+            r = new CtlRig();
+            r.Start(); ListReply(r, many.ToArray()); r.Beat(); r.Eval();
+            v = r.Ui.Shown.Last();
+            T.Ok(v.Rows.Count == TeamController.RowsShown && v.More == 4 && v.Rows[0].Id == "job000000010" && v.Rows[9].Id == "job000000019", "the first 10, oldest first, and how many more");
+            T.Eq(r.C.JobsAvailable, 14, "the tray counts them all");
+
+            // Not now puts the whole list off, Show jobs brings it back
+            r = new CtlRig();
+            r.Start(); ListReply(r, Listed("job000000001", "shots", "a", 60), Listed("job000000002", "shots", "b", 60)); r.Beat(); r.Eval();
+            Util.Wait(r.C.AnswerAsync(OfferAnswer.NotNow));
+            r.Beat(); r.Eval();
+            T.Ok(!r.Ui.BoxVisible && r.C.CurrentOffer == null && r.C.JobsAvailable == 2 && r.Api.Declines.Count == 0, "Not now hides every listed job, refuses none");
+            Util.Wait(r.C.ShowJobsAsync());
+            T.Eq(r.Ui.Shown.Last().Rows.Count, 2, "Show jobs lists them all again");
+        }
+
+        /// <summary>Helix 2026-10-19: the tray's Run benchmarks; off, this PC leaves benchmark-only jobs alone and tells the server.</summary>
+        static void BenchmarksSwitch()
+        {
+            var r = new CtlRig();
+            r.Start();
+            ListReply(r, Listed("job000000001", "bench", "Benchmark of the new release", 360), Listed("job000000002", "release", "Benchmark of the live build", 240, null, null, "bench"),
+                Listed("job000000003", "release", "Checks of abc1234", 240, null, null, "install", "bench"), Listed("job000000004", "shots", "Screenshots", 60));
+            Util.Wait(r.C.SetRunBenchmarksAsync(false));
+            T.Ok(!r.Settings.RunBenchmarks && r.Saves > 0 && !r.Api.LastState.Benchmarks, "switched off: saved, and the server hears it at once");
+            r.Eval();
+            T.Eq(string.Join("|", r.Ui.Shown.Last().Rows.Select(x => x.Id)), "job000000003|job000000004", "benchmark-only jobs are not listed; a release check with other steps is (it skips its benchmark)");
+            T.Eq(r.Api.Declines.Count, 0, "and nothing is refused: another PC, or this one later, takes them");
+            Util.Wait(r.C.SetRunBenchmarksAsync(true));
+            r.Eval();
+            T.Ok(r.Api.LastState.Benchmarks && r.Ui.Shown.Last().Rows.Count == 4, "switched on again: all four listed");
+            T.Eq(TeamSettings.FromJson(r.Settings.ToJson(new FakeProtector()), new FakeProtector()).RunBenchmarks, true, "the switch round-trips");
+            r.Settings.RunBenchmarks = false;
+            T.Eq(TeamSettings.FromJson(r.Settings.ToJson(new FakeProtector()), new FakeProtector()).RunBenchmarks, false, "off round-trips too");
+            T.Ok(new TeamSettings().RunBenchmarks && new TeamSettings().AfkAllowed && TeamSettings.FromJson("{}", new FakeProtector()).RunBenchmarks, "both switches are on by default");
+
+            // a benchmark already waiting for a quiet PC is let go
+            var w = new WaitRig(OfferMode.Auto);
+            w.Offers("bench0000001"); w.R.Eval();
+            T.Ok(w.R.C.WaitingBench != null, "a benchmark waits");
+            Util.Wait(w.R.C.SetRunBenchmarksAsync(false));
+            T.Ok(w.R.C.WaitingBench == null && w.R.Ran == 0, "switching benchmarks off lets it go");
+        }
+
+        /// <summary>Helix 2026-10-19: AFK mode stays as it is, with a switch to turn it off.</summary>
+        static void AfkSwitch()
+        {
+            var r = new CtlRig();
+            r.Start();
+            r.C.SetAfkAllowed(false);
+            T.Ok(!r.Settings.AfkAllowed && r.Saves > 0, "switched off and saved");
+            r.Offer("job000000001"); r.Eval(); r.Advance(5.1); r.Eval();
+            T.Ok(r.Ran == 1 && !r.C.IsAfk && !r.Ui.Afk, "a box that runs out still runs its job, but AFK mode does not start");
+            r.Offer("job000000002"); r.Eval();
+            T.Ok(r.Ran == 1 && r.Ui.BoxVisible, "so the next job asks again");
+            r = new CtlRig();
+            r.Start(); r.Offer("job000000001"); r.Eval(); r.Advance(5.1); r.Eval();
+            T.Ok(r.C.IsAfk, "with the switch on (the default) AFK mode starts as before");
+            r.C.SetAfkAllowed(false);
+            T.Ok(!r.C.IsAfk && !r.Ui.Afk, "switching it off ends AFK mode");
+            T.Eq(TeamSettings.FromJson(r.Settings.ToJson(new FakeProtector()), new FakeProtector()).AfkAllowed, false, "the switch round-trips");
         }
 
         static Dictionary<string, object> Queued(string id, string kind, string title, double weightS)
@@ -227,10 +344,10 @@ namespace DeathMuffinTeam.Tests
             r = new CtlRig();
             r.Start(); r.Offer(); r.Eval();
             Util.Wait(r.C.AnswerAsync(OfferAnswer.NotNow));
-            T.Eq(string.Join(",", r.Api.Declines), "job000000001:not_now", "Not now declines with not_now");
+            T.Eq(r.Api.Declines.Count, 0, "Not now refuses nothing on the server (Helix 2026-10-19: it is not a no for good)");
             T.Ok(!r.Ui.BoxVisible && r.C.CurrentOffer == null && r.Ran == 0, "the box goes and nothing runs");
             r.Beat(); r.Eval();
-            T.Ok(r.C.CurrentOffer == null && r.Api.Declines.Count == 1, "the server offering the same job again is ignored for a while");
+            T.Ok(r.C.CurrentOffer == null && r.Api.Declines.Count == 0, "the server offering the same job again is ignored for a while");
             r.Advance(29); r.Beat(); r.Eval();
             T.Ok(r.C.CurrentOffer == null, "still ignored after 29 minutes");
             r.Advance(2); r.Beat(); r.Eval();
@@ -341,23 +458,31 @@ namespace DeathMuffinTeam.Tests
             T.Eq(r.Api.LastMode, OfferMode.Yes, "mode yes is sent");
         }
 
-        static void RunNowAndPause()
+        /// <summary>Helix 2026-10-19: the tray has no Run now (a job runs only from the box); Show jobs brings the box back, and Not now puts the jobs off for 30 minutes without refusing them.</summary>
+        static void ShowJobsAndPause()
         {
             var r = new CtlRig();
             r.Start();
-            Util.Wait(r.C.RunNowAsync());
-            T.Ok(r.Ran == 0 && r.Ui.Notices.Any(n => n.StartsWith("Nothing to run")), "Run now with no job says so");
+            Util.Wait(r.C.ShowJobsAsync());
+            T.Ok(r.Ran == 0 && r.Ui.Notices.Any(n => n.StartsWith("No jobs")) && r.C.JobsAvailable == 0, "Show jobs with no job says so");
 
             r = new CtlRig();
-            r.Start(); r.Api.Heartbeat = () => FakeApi.OfferReply("job000000001");
-            Util.Wait(r.C.RunNowAsync());
-            T.Eq(r.Ran, 1, "Run now takes the waiting job at once, without the box");
-            T.Eq(r.Ui.Shown.Count, 0, "no box for Run now");
+            r.Start(); r.Offer("job000000001"); r.Eval();
+            T.Ok(r.Ui.BoxVisible && r.C.JobsAvailable == 1, "a job: the box");
+            Util.Wait(r.C.AnswerAsync(OfferAnswer.NotNow));
+            T.Ok(!r.Ui.BoxVisible && r.Api.Declines.Count == 0 && r.C.JobsAvailable == 1, "Not now hides the box and refuses nothing: the job stays this PC's to take");
+            r.Advance(10); r.Beat(); r.Eval();
+            T.Ok(!r.Ui.BoxVisible && r.Ran == 0, "the box stays away");
+            Util.Wait(r.C.ShowJobsAsync());
+            T.Ok(r.Ui.BoxVisible && r.Ran == 0 && r.LastCountdown == "Runs by itself in 5:00", "Show jobs brings it back with its own 5 minutes, and runs nothing at once");
+            r.Advance(5); r.Eval();
+            T.Eq(r.Ran, 1, "the countdown runs it");
 
             r = new CtlRig();
-            r.Start(); r.Plat.IsGame = true; r.Api.Heartbeat = () => FakeApi.OfferReply("job000000001");
-            Util.Wait(r.C.RunNowAsync());
-            T.Eq(r.Ran, 1, "Run now is a yes: it runs while Death Muffin is open");
+            r.Start(); r.Offer("job000000001"); r.Eval();
+            Util.Wait(r.C.AnswerAsync(OfferAnswer.NotNow));
+            r.Advance(31); r.Beat(); r.Eval();
+            T.Ok(r.Ui.BoxVisible && r.Ran == 0, "after 30 minutes the box asks again");
 
             r = new CtlRig();
             r.Start();
@@ -366,8 +491,8 @@ namespace DeathMuffinTeam.Tests
             r.Api.Heartbeat = () => FakeApi.OfferReply("job000000001");
             r.Beat(); r.Eval();
             T.Ok(r.Ran == 0 && r.Api.Declines.SequenceEqual(new[] { "job000000001:paused" }), "a paused PC declines");
-            Util.Wait(r.C.RunNowAsync());
-            T.Ok(!r.C.IsPaused && r.Ran == 1, "Run now ends the pause and runs");
+            Util.Wait(r.C.ShowJobsAsync());
+            T.Ok(!r.C.IsPaused && r.Ui.BoxVisible && r.Ran == 0, "Show jobs ends the pause and asks");
 
             r = new CtlRig();
             r.Start();
@@ -568,10 +693,10 @@ namespace DeathMuffinTeam.Tests
             b = rig(OfferMode.Ask);
             b.Eval();
             Util.Wait(b.C.AnswerAsync(OfferAnswer.NotNow));
-            T.Eq(string.Join(",", b.Api.Declines), "job000000001:not_now", "Not now declines a benchmark with not_now");
+            T.Eq(b.Api.Declines.Count, 0, "Not now refuses a benchmark nowhere either");
             T.Ok(!b.Ui.BoxVisible && b.C.CurrentOffer == null && b.Ran == 0 && b.Api.Count("claim") == 0, "the box goes and nothing runs");
             b.Beat(); b.Eval();
-            T.Ok(b.C.CurrentOffer == null && b.Api.Declines.Count == 1, "the same benchmark offered again is ignored for 30 minutes");
+            T.Ok(b.C.CurrentOffer == null && b.Api.Declines.Count == 0, "the same benchmark offered again is ignored for 30 minutes");
             b.Advance(31); b.Beat(); b.Eval();
             T.Ok(b.Ui.BoxVisible, "and asked about again after that");
 
@@ -604,10 +729,12 @@ namespace DeathMuffinTeam.Tests
             Settle(b);
             T.Eq(b.Ran, 1, "a yes runs it");
 
-            // the tray's Run now
+            // the tray's Show jobs, then the box's yes
             b = rig(OfferMode.Yes);
-            Util.Wait(b.C.RunNowAsync());
-            T.Ok(b.Ran == 0 && b.C.WaitingBench != null, "Run now in the tray accepts a waiting benchmark (a yes goes through the exceptions)");
+            Util.Wait(b.C.ShowJobsAsync());
+            T.Ok(b.Ran == 0 && b.Ui.BoxVisible, "Show jobs asks about the benchmark");
+            Util.Wait(b.C.AnswerAsync(OfferAnswer.Yes));
+            T.Ok(b.Ran == 0 && b.C.WaitingBench != null, "a yes accepts it as a waiting benchmark");
             Settle(b);
             T.Ok(b.Ran == 1 && b.Runner.LastPlan.Kind == "bench", "and it runs once the PC is quiet");
         }
@@ -723,12 +850,12 @@ namespace DeathMuffinTeam.Tests
             w.Offers("bench0000004"); r.Eval();
             T.Ok(r.Ui.BoxVisible && r.C.CurrentOffer.Id == "bench0000004", "after it the benchmark is asked about");
 
-            // the tray's Run now says a benchmark is waiting
+            // the tray's Show jobs says a benchmark is waiting
             w = new WaitRig(OfferMode.Auto);
             r = w.R;
             w.Offers("bench0000005"); r.Eval();
-            Util.Wait(r.C.RunNowAsync());
-            T.Ok(r.Ui.Notices.Any(n => n.StartsWith("A benchmark is waiting")) && r.Ran == 0, "Run now with only a waiting benchmark says it starts once the PC is left alone");
+            Util.Wait(r.C.ShowJobsAsync());
+            T.Ok(r.Ui.Notices.Any(n => n.StartsWith("A benchmark is waiting")) && r.Ran == 0, "Show jobs with only a waiting benchmark says it starts once the PC is left alone");
 
             // the PC is read about once a second, not once per call
             w = new WaitRig(OfferMode.Auto);
@@ -929,9 +1056,10 @@ namespace DeathMuffinTeam.Tests
             r.Start(); r.Offer("job000000001"); r.Eval();
             Util.Wait(r.C.AnswerAsync(OfferAnswer.Yes));
             T.Ok(r.Ran == 1 && !r.C.IsAfk, "Run now in the box is not AFK");
-            r.Offer("job000000002"); r.Eval();
-            Util.Wait(r.C.RunNowAsync());
-            T.Ok(!r.C.IsAfk, "nor is the tray's Run now");
+            r.Offer("job000000002");
+            Util.Wait(r.C.ShowJobsAsync());
+            Util.Wait(r.C.AnswerAsync(OfferAnswer.Yes));
+            T.Ok(r.Ran == 2 && !r.C.IsAfk, "nor is Show jobs then a yes");
             // a box that runs out while a game is open does not run, so it does not enter it either
             r = new CtlRig();
             r.Start(); r.Plat.IsGame = true; r.Offer("job000000001"); r.Eval(); r.Advance(10); r.Eval();
@@ -944,7 +1072,7 @@ namespace DeathMuffinTeam.Tests
             T.Ok(!r.C.IsAfk, "switching to run without asking ends AFK mode");
             r = new CtlRig();
             r.Start(); r.Offer("job000000001"); r.Eval(); r.Advance(5.1); r.Eval();
-            T.Ok(!r.Settings.ToJson(new FakeProtector()).ToLowerInvariant().Contains("afk"), "AFK mode is never saved");
+            T.Ok(!MiniJson.TryObject(r.Settings.ToJson(new FakeProtector())).Keys.Any(k => k.ToLowerInvariant().Contains("afk") && k != "afkAllowed"), "AFK mode itself is never saved (only the tray's Allow AFK mode)");
             var fresh = new CtlRig();
             fresh.Start();
             T.Ok(!fresh.C.IsAfk && !fresh.Ui.Afk, "an app that starts again starts with AFK mode off");
@@ -1155,8 +1283,8 @@ namespace DeathMuffinTeam.Tests
             T.Ok(r.Ui.BoxVisible == false, "no box while busy");
             Util.Wait(r.C.AnswerAsync(OfferAnswer.Yes));
             T.Eq(r.Runner.Ran.Count, 1, "an answer while busy does nothing");
-            Util.Wait(r.C.RunNowAsync());
-            T.Eq(r.Runner.Ran.Count, 1, "Run now while busy does nothing");
+            Util.Wait(r.C.ShowJobsAsync());
+            T.Eq(r.Runner.Ran.Count, 1, "Show jobs while busy runs nothing");
             T.Ok(r.Ui.Notices.Any(n => n.StartsWith("A job is running")), "but says a job is running");
             r.Runner.Gate.SetResult(0);
             Util.Wait(running);

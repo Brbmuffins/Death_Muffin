@@ -490,6 +490,8 @@ def step_line(job, step):
     sent = {s.get("step"): s for s in result.get("steps", []) if isinstance(s, dict)}
     payload = job.get("payload") if isinstance(job.get("payload"), dict) else {}
     entry = sent.get(step)
+    if entry and entry.get("skipped") is True:   # the PC left it out on purpose (a benchmark on a PC with benchmarks off, team app 0.4.4)
+        return ("none", "– skipped" + (": " + clean(entry.get("error"), 120) if entry.get("error") else ""))
     data = read_json(job, step)
     ok = entry.get("ok") if entry and isinstance(entry.get("ok"), bool) else (data.get("ok") if isinstance(data, dict) and isinstance(data.get("ok"), bool) else None)
     if ok is None:

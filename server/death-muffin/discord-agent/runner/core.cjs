@@ -188,6 +188,12 @@ function createRunner(cfgIn, opts = {}) {
   // The one person a proposal tags: whoever started the thread (Helix, 2026-10-19: "@ war its his thread"), else whoever asked last.
   const requesterOf = (job) => String(job.creatorId || (job.lastAsker && job.lastAsker.id) || '');
   const pingRequester = (job) => { const id = requesterOf(job); return /^\d{5,25}$/.test(id) ? { content: `<@${id}>`, mentionUsers: [id] } : {}; };
+  // Who a team PC job is for, as the team app's job list shows it (Helix 2026-10-19): the thread starter's name and the thread's name (the name syncName gives it, without its marker; the backend drops emojis).
+  const teamWho = (job) => {
+    const id = requesterOf(job);
+    const t = job.bugReportId && job.title && !job.title.includes(`#${job.bugReportId}`) ? `#${job.bugReportId} ${job.title}` : job.title;
+    return { ...(/^\d{5,25}$/.test(id) ? { requestedBy: nameOf(id) } : {}), ...(t ? { thread: String(t) } : {}) };
+  };
 
   // ---------- images people attach (written into the worktree for the agent to Read; never redacted, never committed) ----------
   // Returns the lines to append to the message text (one per image, or a short note for a refused one).
@@ -1168,8 +1174,8 @@ function createRunner(cfgIn, opts = {}) {
       const common = { rev: head.slice(0, 12), godotVersion: '4.7.2.stable', plan, ...(plan.resolutions ? { resolutions: plan.resolutions } : {}), presets, args: ['--dev-offline', `--class=${cls}`, '--qa'] };
       const attempt = async (paired) => {
         const body = paired
-          ? { kind: 'shots', title: 'Pictures of a change (before and after), about 3 minutes', weightS: 180, ttlS: 45 * 60, payload: { ...common, builds: [{ label: 'before', files: before.files }, { label: 'after', files: after.files }] } }
-          : { kind: 'shots', title: 'Screenshots of a change, about 2 minutes', weightS: 120, ttlS: 30 * 60, payload: { ...common, files: after.files } };
+          ? { kind: 'shots', title: 'Pictures of a change (before and after), about 3 minutes', weightS: 180, ttlS: 45 * 60, ...teamWho(job), payload: { ...common, builds: [{ label: 'before', files: before.files }, { label: 'after', files: after.files }] } }
+          : { kind: 'shots', title: 'Screenshots of a change, about 2 minutes', weightS: 120, ttlS: 30 * 60, ...teamWho(job), payload: { ...common, files: after.files } };
         const made = await teamCall('POST', '/jobs', body);
         if (!made || !TEAM_ID_RE.test(String(made.id))) return { error: 'the backend did not take the job' };
         audit.log('team-shots', { job: job.id, teamJob: made.id, queued: true, pcs: pcs.length, paired });
@@ -1281,7 +1287,7 @@ function createRunner(cfgIn, opts = {}) {
       const head = await G.head(job.worktree);
       const cls = CL.classOf(req.plan.discipline) || 2, minutes = CL.clipMinutes(req.plan, req.variants);
       const n = req.variants.length;
-      const made = await teamCall('POST', '/jobs', { kind: 'clip', title: `Short videos of a change: ${n} option${n === 1 ? '' : 's'}, about ${minutes} minutes`, weightS: minutes * 60, ttlS: 45 * 60,
+      const made = await teamCall('POST', '/jobs', { kind: 'clip', title: `Short videos of a change: ${n} option${n === 1 ? '' : 's'}, about ${minutes} minutes`, weightS: minutes * 60, ttlS: 45 * 60, ...teamWho(job),
         payload: { rev: head.slice(0, 12), godotVersion: '4.7.2.stable', files: b.files, plan: req.plan, variants: req.variants.map((v) => ({ label: v.label, tune: v.tune })), presets: ['high'], args: ['--dev-offline', `--class=${cls}`, '--qa'] } });
       if (!made || !TEAM_ID_RE.test(String(made.id))) { audit.log('team-clips', { job: job.id, ok: false, why: 'the backend did not take the job' }); say(job, '⚠ No short videos this time (the backend did not take the job). Say `!clips` to try again.'); return { ok: false }; }
       audit.log('team-clips', { job: job.id, teamJob: made.id, queued: true, variants: n, clips: req.plan.clips.length, pcs: pcs.length });
