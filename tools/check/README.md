@@ -10,7 +10,7 @@ bash tools/check/prep.sh --windows             # also the Windows combat core an
 bash tools/check/prep.sh --no-bake             # without the crowd's baked models
 bash tools/check/prep.sh --keys                # the cache keys of this checkout, one per piece
 bash tools/check/prep.sh --warm <rev>          # fill the cache for <rev> from a scratch worktree of it (nothing to do when it is all cached)
-node --test tools/check/test/*.test.mjs        # its tests (a throwaway repository with stand-ins; also in CI)
+node --test tools/check/test/*.test.mjs        # its tests, and ci.sh's (a throwaway repository with stand-ins, a stand-in GitHub; also in CI)
 ```
 
 ## The pieces
@@ -52,7 +52,7 @@ The last line says what happened, for scripts and logs:
 ## CI is the gate
 
 GitHub CI (`.github/workflows/ci.yml`) runs on every push to every branch: the backend and lobby tests, hygiene, the model check, this
-script's tests, and every game suite split over six machines by their recorded times (a push that changes only documents, Markdown or
+script's tests, the Discord agent's own tests (`server/death-muffin/discord-agent/test/*.test.cjs`, about 220, with the AppArmor user-namespace block lifted on the runner so `unshare` works), and every game suite split over six machines by their recorded times (a push that changes only documents, Markdown or
 `docs/`, skips the game's suites). A run on `main` is never cancelled; a newer push to a
 branch replaces that branch's older run. Nothing is merged, deployed or published until CI passed it (DECISIONS B59, CLAUDE.md):
 
@@ -67,6 +67,12 @@ tools/check/ci.sh failed <rev>                 # the game suites that failed (on
   files (`git commit --amend --no-edit`, then push): `wait` gives that commit's own run five minutes to appear and follows it.
 - **One copy of the recent runs for the whole machine** (`~/death-muffin/ci-status/`), refreshed with conditional requests: once a minute
   without a token (GitHub allows 60 calls an hour), every 15 s with a read-only token in `~/death-muffin/private/github-api-token`.
+- **A token GitHub refuses does not stop it.** If the token expires or is revoked, GitHub answers 401: `ci.sh` repeats that call without the
+  token, writes `token-bad` (with the time) in its cache folder, and prints one note an hour on stderr (`ci.sh: GitHub refused the API token in
+  <file> (expired or revoked?); checking without it, 60 calls an hour`). For that hour the token is not sent and the no-token pace applies; then
+  it is tried again, and a token GitHub accepts clears the marker. The nightly drift report (`server/death-muffin/ops/README.md`) tells the team
+  when the token is missing, refused, or runs out within 14 days. A new one: Muffins (the repo owner) makes a fine-grained token with "Public
+  repositories (read-only)" on github.com (Settings, Developer settings) and sends it to Muffin Core, which puts it in the token file.
 - **`deploy-release.sh` and `publish-godot-client.sh` refuse a revision CI has not passed** (judged by that revision's own `ci.sh`; a revision
   from before the gate has none, so a rollback to an older build still works). While GitHub is down, `DM_CI_GATE=off` deploys or publishes
   anyway and says so, after the full set ran here (`tools/rebuild/run-client-tests.sh`).

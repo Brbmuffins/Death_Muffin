@@ -23,11 +23,14 @@ async function world() {
   const same = git('rev-parse', 'HEAD');
   fs.writeFileSync(path.join(repo, 'a.txt'), 'two\n'); git('commit', '-qam', 'two');
   const two = git('rev-parse', 'HEAD');
-  const state = { runs: [], checkRuns: {}, annotations: {}, hits: [], etag: 'v1' };
+  const state = { runs: [], checkRuns: {}, annotations: {}, hits: [], auths: [], etag: 'v1', goodToken: 'good-token' };
   const server = http.createServer((req, res) => {
     state.hits.push(`${req.method} ${req.url} ${req.headers['if-none-match'] || ''}`);
     const u = new URL(req.url, 'http://x');
+    state.auths.push(req.headers.authorization || '');
     const send = (code, body, headers = {}) => { res.writeHead(code, { 'content-type': 'application/json', ...headers }); res.end(body === undefined ? '' : JSON.stringify(body)); };
+    // A token that is not the good one is refused the way GitHub refuses an expired or revoked one.
+    if (req.headers.authorization && req.headers.authorization !== `Bearer ${state.goodToken}`) return send(401, { message: 'Bad credentials' });
     if (u.pathname === '/repos/o/r/actions/runs') {
       const sha = u.searchParams.get('head_sha');
       if (sha) return send(200, { workflow_runs: state.runs.filter((r) => r.head_sha === sha) });
@@ -44,14 +47,16 @@ async function world() {
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const cache = path.join(root, 'cache');
   const env = { ...process.env, DM_GITHUB_API: `http://127.0.0.1:${server.address().port}`, DM_GITHUB_REPO: 'o/r', DM_CI_CACHE: cache,
-    DM_GITHUB_TOKEN_FILE: path.join(root, 'no-token'), DM_CI_EVERY: '0', DM_CI_POLL: '0.2', DM_CI_NONE_TRIES: '3' };
+    DM_GITHUB_TOKEN_FILE: path.join(root, 'token'), DM_CI_EVERY: '0', DM_CI_POLL: '0.2', DM_CI_NONE_TRIES: '3' };
+  const tokenFile = path.join(root, 'token');
+  const useToken = (t) => fs.writeFileSync(tokenFile, t + '\n');
   const ci = (...args) => new Promise((resolve) => {
     const p = spawn('bash', [CI, ...args], { cwd: repo, env });
     let out = ''; p.stdout.on('data', (d) => { out += d; }); p.stderr.on('data', (d) => { out += d; });
     p.on('close', (code) => resolve({ code, out: out.trim() }));
   });
   const run = (id, sha, status, conclusion) => ({ id, name: 'CI', head_sha: sha, status, conclusion, html_url: `https://github.test/runs/${id}` });
-  return { root, repo, one, same, two, state, ci, run, api: env.DM_GITHUB_API, cleanup: () => { server.close(); fs.rmSync(root, { recursive: true, force: true }); } };
+  return { root, repo, cache, tokenFile, useToken, env, one, same, two, state, ci, run, api: env.DM_GITHUB_API, cleanup: () => { server.close(); fs.rmSync(root, { recursive: true, force: true }); } };
 }
 
 test('a verdict belongs to the files: a passed run of another commit with the same tree passes this one; different files do not', async () => {
@@ -135,9 +140,64 @@ test('a red run of another commit with the same files waits for this commit\'s o
     W.state.runs = [W.run(7, W.one, 'completed', 'failure')]; W.state.etag = 'v8';
     const t0 = Date.now();
     const n = await new Promise((resolve) => {
-      const p = spawn('bash', [CI, 'wait', W.same, '1'], { cwd: W.repo, env: { ...process.env, DM_GITHUB_API: W.api, DM_GITHUB_REPO: 'o/r', DM_CI_CACHE: path.join(W.root, 'cache2'), DM_GITHUB_TOKEN_FILE: path.join(W.root, 'no-token'), DM_CI_EVERY: '0', DM_CI_POLL: '0.2', DM_CI_OWN_WAIT: '2' } });
+      const p = spawn('bash', [CI, 'wait', W.same, '1'], { cwd: W.repo, env: { ...process.env, DM_GITHUB_API: W.api, DM_GITHUB_REPO: 'o/r', DM_CI_CACHE: path.join(W.root, 'cache2'), DM_GITHUB_TOKEN_FILE: path.join(W.root, 'none'), DM_CI_EVERY: '0', DM_CI_POLL: '0.2', DM_CI_OWN_WAIT: '2' } });
       let out = ''; p.stdout.on('data', (d) => { out += d; }); p.on('close', (code) => resolve({ code, out: out.trim() }));
     });
     assert.equal(n.code, 1); assert.match(n.out, /another commit with these files/); assert.ok(Date.now() - t0 >= 1000, 'it gave the own run its time first');
+  } finally { W.cleanup(); }
+});
+
+test('a token GitHub accepts is sent on every call and leaves no marker', async () => {
+  const W = await world(); try {
+    W.useToken('good-token');
+    W.state.runs = [W.run(1, W.one, 'completed', 'success')];
+    const r = await W.ci('status', W.one);
+    assert.equal(r.out, 'passed https://github.test/runs/1');
+    assert.ok(W.state.auths.length > 0 && W.state.auths.every((a) => a === 'Bearer good-token'));
+    assert.equal(fs.existsSync(path.join(W.cache, 'token-bad')), false);
+  } finally { W.cleanup(); }
+});
+
+test('a refused token (401) falls back to no token: the answer still comes, a token-bad marker is written, one note says so, and the token is not sent for an hour', async () => {
+  const W = await world(); try {
+    W.useToken('expired-token');
+    W.state.runs = [W.run(1, W.one, 'completed', 'success')];
+    const r = await W.ci('status', W.one);
+    assert.match(r.out, /ci\.sh: GitHub refused the API token in .*token \(expired or revoked\?\); checking without it, 60 calls an hour/);
+    assert.match(r.out, /passed https:\/\/github\.test\/runs\/1$/);
+    assert.equal(r.out.split('\n').filter((l) => l.includes('refused the API token')).length, 1);
+    assert.match(fs.readFileSync(path.join(W.cache, 'token-bad'), 'utf8'), /^\d{4}-\d\d-\d\dT/);
+    assert.deepEqual(W.state.auths, ['Bearer expired-token', ''], 'the refused call, then the same call without the token');
+    // while the marker is under an hour old: no token, no second note, no wasted 401
+    W.state.auths.length = 0; W.state.etag = 'v2';
+    const again = await W.ci('status', W.one);
+    assert.equal(again.out, 'passed https://github.test/runs/1');
+    assert.ok(W.state.auths.length > 0 && W.state.auths.every((a) => a === ''));
+    // the lookup of a revision older than the recent runs and the failed-suites list fall back too
+    W.state.checkRuns[W.two] = [{ id: 11, conclusion: 'failure' }];
+    W.state.annotations[11] = [{ title: 'client suite rites failed', message: 'x' }];
+    assert.equal((await W.ci('failed', W.two)).out, 'rites');
+  } finally { W.cleanup(); }
+});
+
+test('after an hour the refused token is tried again: a replaced token works and clears the marker, a still-bad one gets a fresh marker and note', async () => {
+  const W = await world(); try {
+    W.useToken('expired-token');
+    W.state.runs = [W.run(1, W.one, 'completed', 'success')];
+    await W.ci('status', W.one);
+    const marker = path.join(W.cache, 'token-bad');
+    const old = new Date(Date.now() - 3700 * 1000);
+    fs.utimesSync(marker, old, old);
+    W.state.auths.length = 0; W.state.etag = 'v2';
+    const bad = await W.ci('status', W.one);   // still the same dead token: tried once, refused, note again
+    assert.equal(W.state.auths[0], 'Bearer expired-token');
+    assert.match(bad.out, /refused the API token/);
+    assert.ok(Date.now() - fs.statSync(marker).mtimeMs < 60000, 'a fresh marker');
+    fs.utimesSync(marker, old, old);
+    W.useToken('good-token'); W.state.auths.length = 0; W.state.etag = 'v3';
+    const good = await W.ci('status', W.one);
+    assert.equal(good.out, 'passed https://github.test/runs/1');
+    assert.ok(W.state.auths.every((a) => a === 'Bearer good-token'));
+    assert.equal(fs.existsSync(marker), false, 'an accepted token clears the marker');
   } finally { W.cleanup(); }
 });

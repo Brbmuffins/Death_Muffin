@@ -44,7 +44,7 @@ jobs:
   server:
     name: Backend + lobby tests
     runs-on: ubuntu-24.04   # pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19 (GitHub notice), a move to make on purpose
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -79,6 +79,22 @@ jobs:
 
       - name: The game's setup (tools/check/prep.sh, on a throwaway repository)
         run: node --test tools/check/test/*.test.mjs
+
+      # The Discord agent's own tests (about 220, a minute): they need git, zip/unzip and `unshare`. ubuntu-24.04 blocks unprivileged user
+      # namespaces through AppArmor, so allow them first (this runner is thrown away after the job).
+      - name: Discord agent tests
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          # the sandbox makes every mount read-only, then mounts a tmpfs over /tmp; libmount then fails to update its table in /run/mount
+          # ("failed to update userspace mount table"), so keep the table in /dev/shm, which stays writable
+          export LIBMOUNT_UTAB=/dev/shm/dm-mount-utab
+          # The agent's tests expect the VPS's layout: install-runner.sh makes /home/ubuntu/death-muffin/deploy, and the sandbox tests try to write
+          # the live folders the runner user owns there (they need most of them to exist: a sandbox that protects nothing must fail, not pass empty).
+          sudo mkdir -p /home/ubuntu /var/www/death-muffin/{client,play,offline,preview} /opt/{crossworlds-bot,crossworlds-auth,muffincore} /game /game-staging
+          sudo chown "$USER" /home/ubuntu /var/www/death-muffin /var/www/death-muffin/{client,play,offline,preview} /opt/{crossworlds-bot,crossworlds-auth,muffincore} /game /game-staging
+          # zip/unzip (the preview packages) and Pillow (label-shot.py draws the labels on the pictures)
+          python3 -c 'import PIL' 2>/dev/null && command -v zip >/dev/null && command -v unzip >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq zip unzip python3-pil; }
+          node --test server/death-muffin/discord-agent/test/*.test.cjs
 
   # The game (client/, DECISIONS B49): its build products from the cache (or built), then every suite.
   client:

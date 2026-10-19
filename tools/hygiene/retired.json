@@ -455,5 +455,30 @@
   },
   "historyDocs": [
     "DECISIONS.md"
+  ],
+  "notSuites": {
+    "client/tests/benchmark_base.gd": "shared base of the five benchmark suites",
+    "client/tests/boss_base.gd": "shared base of the boss suites",
+    "client/tests/crash_note_child.gd": "child process crash_note.gd starts",
+    "client/tests/crowd_fade_smoke.gd": "rendered look run by hand (needs a window), not headless",
+    "client/tests/crowd_look_smoke.gd": "rendered look run by hand (needs a window), not headless",
+    "client/tests/crowd_smoke.gd": "rendered look run by hand (needs a window), not headless",
+    "client/tests/crowd_view_smoke.gd": "rendered look run by hand (needs a window), not headless",
+    "client/tests/hud_cost.gd": "class HudCost, a helper of tests/hud.gd",
+    "client/tests/hud_feeds.gd": "class HudFeeds, a helper of tests/hud.gd",
+    "client/tests/hud_shim.gd": "class HudShim, a helper of tests/hud.gd"
+  },
+  "staleGlobs": {
+    ".claude/**": "on purpose: keeps a future .claude folder protected; the repo has none today",
+    "client/backend/**": "STALE (found 2026-10-19): no client/backend folder in the repo; config.cjs should drop it or name the folder that replaced it",
+    "client/tests/realtime/**": "STALE (found 2026-10-19): no client/tests/realtime folder in the repo; config.cjs should drop it or name its successor"
+  },
+  "freeRunners": [
+    "ubuntu-latest",
+    "ubuntu-24.04",
+    "ubuntu-22.04",
+    "windows-latest",
+    "windows-2025",
+    "windows-2022"
   ]
 }
