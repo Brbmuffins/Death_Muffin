@@ -56,8 +56,33 @@ namespace DeathMuffinTeam
         /// <summary>Mode "ask": a box nobody answered runs by itself after this long.</summary>
         public static readonly TimeSpan AutoRunAfter = TimeSpan.FromMinutes(5);
         public static readonly TimeSpan PauseFor = TimeSpan.FromHours(2);
-        public static readonly TimeSpan HeartbeatEvery = TimeSpan.FromSeconds(30);
-        /// <summary>One preset's run is stopped after this long.</summary>
+        /// <summary>
+        /// The heartbeat is a long poll: it asks the server to hold it up to this many seconds while it has nothing to say, so an offer or a cancel reaches the PC in about a second, and the next one is sent
+        /// right after the answer.
+        /// </summary>
+        public const int HeartbeatWaitS = 25;
+        /// <summary>A heartbeat gets this long (the server holds it up to <see cref="HeartbeatWaitS"/>) before the app gives up on it.</summary>
+        public static readonly TimeSpan HeartbeatTimeout = TimeSpan.FromSeconds(40);
+        /// <summary>The wait after a heartbeat that failed: the first time, the second, the third and every time after.</summary>
+        public static readonly TimeSpan[] HeartbeatBackoff = { TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30) };
+        /// <summary>
+        /// A heartbeat with nothing new in its answer is not followed by another sooner than this after it was sent: a server that does not hold requests (an older one), an offer that waits for a yes (the server
+        /// answers at once while one is queued for this PC) or a cancel list the PC already knows would otherwise be asked again and again without a pause.
+        /// </summary>
+        public static readonly TimeSpan HeartbeatMinCycle = TimeSpan.FromSeconds(5);
+
+        /// <summary>
+        /// How long to wait before the next heartbeat. After <paramref name="failures"/> failures in a row: 5 s, then 15 s, then 30 s (and 30 s after that). After an answer with something new (an offer
+        /// the PC had not seen, or a cancel of the job it runs): none. After any other answer: what is left of <see cref="HeartbeatMinCycle"/> since it was sent (none when the server held it for long).
+        /// </summary>
+        public static TimeSpan HeartbeatPause(int failures, bool news, TimeSpan sinceSent)
+        {
+            if (failures > 0) return HeartbeatBackoff[Math.Min(failures, HeartbeatBackoff.Length) - 1];
+            if (news) return TimeSpan.Zero;
+            TimeSpan left = HeartbeatMinCycle - sinceSent;
+            return left > TimeSpan.Zero ? left : TimeSpan.Zero;
+        }
+        /// <summary>One game run (a screenshots preset, a clip variant) is stopped after this long.</summary>
         public static readonly TimeSpan RunLimit = TimeSpan.FromMinutes(10);
         /// <summary>One benchmark setup's run is stopped after this long.</summary>
         public static readonly TimeSpan BenchRunLimit = TimeSpan.FromMinutes(15);
@@ -134,19 +159,44 @@ namespace DeathMuffinTeam
         }
 
         /// <summary>The box's first line: what the job is and how heavy ("Screenshots of a change, about 1 minute").</summary>
-        public static string OfferText(string title, int weightS)
+        public static string OfferText(string title, int weightS) { return OfferText("", title, weightS); }
+
+        /// <summary>
+        /// The same for a job of this kind: the server's title when it sent one, else the kind's own words (<see cref="DefaultTitle"/>) - "Short videos of a change, about 3 minutes" for a clip job.
+        /// </summary>
+        public static string OfferText(string kind, string title, int weightS)
         {
             title = (title ?? "").Trim();
-            if (title.Length == 0) title = "A job";
-            return title + ", " + HowLong(weightS);
+            if (title.Length == 0) title = DefaultTitle(kind);
+            return EndsWithDuration(title) ? title : title + ", " + HowLong(weightS);
+        }
+
+        static readonly System.Text.RegularExpressions.Regex DurationRe = new System.Text.RegularExpressions.Regex(
+            "(about [0-9]+ (minutes?|hours?)|less than a minute)[.!]?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// Does the title already say how long the job takes ("Release checks of 20261019.1, about 40 minutes", "..., about 1 hour", "..., less than a minute")? The server titles its jobs that way, and the box
+        /// must not say it twice.
+        /// </summary>
+        public static bool EndsWithDuration(string title) { return DurationRe.IsMatch((title ?? "").Trim()); }
+
+        /// <summary>What the box calls a job whose title is empty: its kind in plain words.</summary>
+        public static string DefaultTitle(string kind)
+        {
+            if (kind == JobPlan.ClipKind) return "Short videos of a change";
+            if (kind == JobPlan.ReleaseKind) return "Release checks of the new client";
+            if (kind == JobPlan.ShotsKind) return "Screenshots of a change";
+            if (kind == JobPlan.BenchKind) return "Benchmark of the new release";
+            return "A job";
         }
 
         /// <summary>
-        /// The offer box's note for a job kind. A benchmark is offered like any job (the same box, modes and exceptions); the note says what happens after the yes: it starts only once the PC has been left
+        /// The offer box's note for a job kind. A release job's checks start the game several times; its benchmark and soak steps wait for a quiet PC. A benchmark is offered like any job (the same box, modes and exceptions); the note says what happens after the yes: it starts only once the PC has been left
         /// alone for a minute, runs at normal priority (a lower one would skew the numbers) and starts over if the keyboard or mouse is touched. "" for the others.
         /// </summary>
         public static string OfferNote(string kind)
         {
+            if (kind == JobPlan.ReleaseKind) return "The game starts several times, off screen and silent. The benchmark and the soak test wait for the PC to be left alone for a minute and run at normal priority.";
             return kind == JobPlan.BenchKind ? "It starts once the PC has been left alone for a minute, and runs at normal priority. Touching the mouse or keyboard restarts it." : "";
         }
 

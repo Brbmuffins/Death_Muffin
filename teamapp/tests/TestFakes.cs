@@ -153,6 +153,9 @@ namespace DeathMuffinTeam.Tests
         public readonly List<string> Declines = new List<string>();
         public PcState LastState;
         public OfferMode LastMode;
+        /// <summary>The `wait` of the last heartbeat (0 for a heartbeat that asks to be answered at once) and of every one.</summary>
+        public int LastWait;
+        public readonly List<int> Waits = new List<int>();
         public string LastPcId, LastName, LastVersion, LastGpu, LastClaimToken, LastLoginUser, LastLoginPassword, LastLoginPcId, LastLoginPcName;
 
         public Func<ApiResult> Login = () => Ok(new Dictionary<string, object> { { "token", "tok-1" }, { "expiresAt", "2027-01-17T12:00:00Z" }, { "accountId", 100.0 }, { "username", "Helix" } });
@@ -187,8 +190,15 @@ namespace DeathMuffinTeam.Tests
         public Task<ApiResult> LogoutAsync(CancellationToken ct) { Log("logout " + Token); return Task.FromResult(Logout()); }
         public Task<ApiResult> HeartbeatAsync(string pcId, string name, string version, string gpu, OfferMode mode, PcState state, CancellationToken ct)
         {
-            Log("heartbeat"); LastPcId = pcId; LastName = name; LastVersion = version; LastGpu = gpu; LastMode = mode; LastState = state;
-            return Task.FromResult(Heartbeat());
+            return HeartbeatAsync(pcId, name, version, gpu, mode, state, 0, ct);
+        }
+        public Task<ApiResult> HeartbeatAsync(string pcId, string name, string version, string gpu, OfferMode mode, PcState state, int waitS, CancellationToken ct)
+        {
+            Log("heartbeat"); LastPcId = pcId; LastName = name; LastVersion = version; LastGpu = gpu; LastMode = mode; LastState = state; LastWait = waitS;
+            lock (Waits) Waits.Add(waitS);
+            var answer = Heartbeat();
+            ct.ThrowIfCancellationRequested();   // a heartbeat in flight when the app closes ends with the cancellation, as an HTTP request would
+            return Task.FromResult(answer);
         }
         public Task<ApiResult> ClaimAsync(string jobId, string pcId, CancellationToken ct) { Log("claim " + jobId); LastClaimToken = Token; return Task.FromResult(Claim(jobId)); }
         public Task<ApiResult> DeclineAsync(string jobId, string pcId, string reason, CancellationToken ct) { Log("decline " + jobId + " " + reason); lock (Declines) Declines.Add(jobId + ":" + reason); return Task.FromResult(Ok(new Dictionary<string, object>())); }
@@ -209,10 +219,19 @@ namespace DeathMuffinTeam.Tests
             Log("done " + jobId); DoneJob = jobId; DoneFiles = new List<string>(); DoneRuns = runs.ToList(); DoneLog = log; DoneDownloadS = downloadS; DoneRunS = runS;
             return Task.FromResult(Done());
         }
-        public Task<ApiResult> FailAsync(string jobId, string error, string log, CancellationToken ct)
+        public Task<ApiResult> FailAsync(string jobId, string error, string log, CancellationToken ct) { return FailAsync(jobId, error, log, null, ct); }
+        public Task<ApiResult> FailAsync(string jobId, string error, string log, IList<StepReport> steps, CancellationToken ct)
         {
-            Log("fail " + jobId); FailJob = jobId; FailError = error; FailLog = log;
+            Log("fail " + jobId); FailJob = jobId; FailError = error; FailLog = log; FailSteps = steps == null ? null : steps.ToList();
             return Task.FromResult(Fail());
+        }
+        /// <summary>What a `release` job's done carried: how each step went, the files it uploaded, the bench step's runs.</summary>
+        public List<StepReport> DoneSteps;
+        public List<StepReport> FailSteps;
+        public Task<ApiResult> DoneReleaseAsync(string jobId, IList<StepReport> steps, IList<string> files, IList<Dictionary<string, object>> runs, string log, double downloadS, double runS, CancellationToken ct)
+        {
+            Log("done " + jobId); DoneJob = jobId; DoneSteps = steps.ToList(); DoneFiles = files.ToList(); DoneRuns = runs == null ? null : runs.ToList(); DoneLog = log; DoneDownloadS = downloadS; DoneRunS = runS;
+            return Task.FromResult(Done());
         }
     }
 
@@ -238,8 +257,15 @@ namespace DeathMuffinTeam.Tests
             return a.Substring(a.IndexOf('=') + 1);
         }
 
-        /// <summary>Where the run puts its files: the shots folder, or a benchmark's `--bench-dir`.</summary>
-        public static string ShotsDir(GameLaunch l) { return ArgValue(l, "--shots", "--bench-dir"); }
+        /// <summary>What a run prints (what the app reads `BOOT OK` from): the same for every run unless a test sets this.</summary>
+        public Func<GameLaunch, string> OutputFor;
+
+        /// <summary>Where the run puts its files: the shots folder, a clip run's `--clips` folder, a benchmark's `--bench-dir`, a QA scenario's `--stutter-out` or `--soak-out`; a run with none (a boot check) has its LOCALAPPDATA.</summary>
+        public static string ShotsDir(GameLaunch l)
+        {
+            string a = l.Args.FirstOrDefault(x => new[] { "--shots", "--clips", "--bench-dir", "--stutter-out", "--soak-out" }.Any(n => x.StartsWith(n + "=")));
+            return a == null ? l.LocalAppData : a.Substring(a.IndexOf('=') + 1);
+        }
 
         public static string Preset(GameLaunch l) { return ArgValue(l, "--preset", "--bench-preset"); }
 
@@ -250,7 +276,7 @@ namespace DeathMuffinTeam.Tests
             string dir = ShotsDir(l);
             Directory.CreateDirectory(dir);
             int? code = Behaviour(l, dir);
-            return new FakeProcess(this, Interlocked.Increment(ref nextPid), code);
+            return new FakeProcess(this, Interlocked.Increment(ref nextPid), code, l);
         }
 
         sealed class FakeProcess : IGameProcess
@@ -260,13 +286,14 @@ namespace DeathMuffinTeam.Tests
             readonly int runPolls;
             bool killed;
             int polls;
-            public FakeProcess(FakeGameHost host, int pid, int? code) { this.host = host; Id = pid; this.code = code; runPolls = host.RunPolls; }
+            readonly GameLaunch launch;
+            public FakeProcess(FakeGameHost host, int pid, int? code, GameLaunch launch) { this.host = host; Id = pid; this.code = code; runPolls = host.RunPolls; this.launch = launch; }
             public int Id { get; private set; }
             public bool HasExited { get { return killed || (code.HasValue && ++polls > runPolls); } }
             public int ExitCode { get { return killed ? -1 : code ?? -1; } }
             public void Kill() { if (!killed) { killed = true; host.Killed++; } }
             public void Tend() { }
-            public string Output() { return "QA-SHOTS fake game output"; }
+            public string Output() { return host.OutputFor == null ? "QA-SHOTS fake game output" : host.OutputFor(launch); }
             public void Dispose() { }
         }
     }

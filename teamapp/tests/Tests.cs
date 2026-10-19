@@ -21,6 +21,9 @@ namespace DeathMuffinTeam.Tests
             JobPlanTests();
             CommandLineTests();
             BenchTests.Run();
+            ClipTests.Run();
+            PollTests.Run();
+            ReleaseTests.Run();
             UploadNameTests();
             SettingsTests();
             ApiTests();
@@ -127,7 +130,8 @@ namespace DeathMuffinTeam.Tests
             T.Eq(TeamLogic.WaitReason(false, false, false), "", "wait reason: nothing");
             T.Eq(TeamLogic.AutoRunAfter, TimeSpan.FromMinutes(5), "auto-run after 5 minutes");
             T.Eq(TeamLogic.PauseFor, TimeSpan.FromHours(2), "pause is 2 hours");
-            T.Eq(TeamLogic.HeartbeatEvery, TimeSpan.FromSeconds(30), "heartbeat every 30 s");
+            T.Eq(TeamLogic.HeartbeatWaitS, 25, "a heartbeat asks the server to hold it up to 25 s");
+            T.Eq(TeamLogic.HeartbeatTimeout, TimeSpan.FromSeconds(40), "and gives up on it after 40 s");
             T.Eq(TeamLogic.RunLimit, TimeSpan.FromMinutes(10), "10-minute limit");
             T.Eq(TeamLogic.KeepJobFolders, 3, "keeps 3 job folders");
             T.Ok(TeamLogic.PausedAt(new DateTime(2026, 10, 19, 14, 0, 0, DateTimeKind.Utc), new DateTime(2026, 10, 19, 13, 59, 59, DateTimeKind.Utc)), "paused before the end");
@@ -155,6 +159,20 @@ namespace DeathMuffinTeam.Tests
             T.Eq(TeamLogic.HowLong(7200), "about 2 hours", "how long: two hours");
             T.Eq(TeamLogic.OfferText("Screenshots of a change", 60), "Screenshots of a change, about 1 minute", "offer text");
             T.Eq(TeamLogic.OfferText("  ", 60), "A job, about 1 minute", "offer text without a title");
+            // a title that already says how long (the server titles its jobs that way) is not given a second duration
+            T.Eq(TeamLogic.OfferText("Release checks of 20261019.120000-abc1234, about 40 minutes", 2400), "Release checks of 20261019.120000-abc1234, about 40 minutes", "a title ending in \"about N minutes\" is shown as it is");
+            T.Eq(TeamLogic.OfferText("Short videos of a change, about 3 minutes", 180), "Short videos of a change, about 3 minutes", "(a clip job's)");
+            T.Eq(TeamLogic.OfferText("Screenshots of a change, about 1 minute", 60), "Screenshots of a change, about 1 minute", "one minute");
+            T.Eq(TeamLogic.OfferText("Benchmark, about 1 hour", 3600), "Benchmark, about 1 hour", "an hour");
+            T.Eq(TeamLogic.OfferText("Benchmark, about 2 hours", 7200), "Benchmark, about 2 hours", "hours");
+            T.Eq(TeamLogic.OfferText("A quick look, less than a minute", 10), "A quick look, less than a minute", "less than a minute");
+            T.Eq(TeamLogic.OfferText("Release checks, About 40 Minutes.", 2400), "Release checks, About 40 Minutes.", "in any case, with a full stop");
+            T.Eq(TeamLogic.OfferText("  Release checks, about 40 minutes  ", 2400), "Release checks, about 40 minutes", "and trimmed");
+            T.Eq(TeamLogic.OfferText("release", "Release checks, about 40 minutes", 60), "Release checks, about 40 minutes", "the title's duration wins over the job's weight");
+            T.Eq(TeamLogic.OfferText("Fix about 5 minutes of lag", 300), "Fix about 5 minutes of lag, about 5 minutes", "a duration in the middle of a title is not one at its end");
+            T.Eq(TeamLogic.OfferText("Screenshots of a change", 60), "Screenshots of a change, about 1 minute", "a title with no duration gets it");
+            T.Eq(TeamLogic.OfferText("Videos in about 5 mins", 300), "Videos in about 5 mins, about 5 minutes", "only the box's own words count (minutes, hours, less than a minute)");
+            T.Ok(TeamLogic.EndsWithDuration("x, about 3 minutes") && !TeamLogic.EndsWithDuration("x about") && !TeamLogic.EndsWithDuration("") && !TeamLogic.EndsWithDuration(null), "EndsWithDuration"); 
             T.Eq(TeamLogic.Clock(TimeSpan.FromSeconds(252)), "4:12", "clock");
             T.Eq(TeamLogic.Clock(TimeSpan.FromSeconds(-5)), "0:00", "clock never negative");
             T.Eq(TeamLogic.Clock(TimeSpan.FromMinutes(5)), "5:00", "clock 5:00");
@@ -523,7 +541,7 @@ namespace DeathMuffinTeam.Tests
 
         // ---- The server calls -----------------------------------------------------------------------------------------------------------
 
-        sealed class FakeTransport : ITransport
+        internal sealed class FakeTransport : ITransport
         {
             public sealed class Req { public string Method; public Uri Url; public string Token; public byte[] Body; public string ContentType; }
             public readonly List<Req> Sent = new List<Req>();

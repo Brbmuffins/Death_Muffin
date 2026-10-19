@@ -15,7 +15,8 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-# team-jobs.cjs stores the team app's result pictures here (README "Team jobs"); the folder must exist before the service starts, `-` lets it start without
+# team-jobs.cjs stores the team app's result pictures and clips here and runs /usr/bin/ffmpeg inside the job's folder to turn a clip into an mp4 (README "Team jobs"; /usr stays readable and executable under
+# ProtectSystem=strict, the job's folder is the only place ffmpeg writes); the folder must exist before the service starts, `-` lets it start without
 ReadWritePaths=-/home/ubuntu/death-muffin/team-results
 
 [Install]

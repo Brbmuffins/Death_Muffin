@@ -41,7 +41,7 @@ namespace DeathMuffinTeam.Tests
         }
 
         /// <summary>A payload for a job: its own main pack, the shared art pack and Godot template under their cache keys.</summary>
-        public JobPlan Plan(string[] presets = null, string artKey = "assets-aaa", byte[] art = null, bool publishMain = true)
+        public JobPlan Plan(string[] presets = null, string artKey = "assets-aaa", byte[] art = null, bool publishMain = true, Action<Dictionary<string, object>> mutate = null)
         {
             string folder = "job" + (++n) + "x";
             var files = new List<object>();
@@ -52,6 +52,7 @@ namespace DeathMuffinTeam.Tests
             var p = Program.ValidPayload();
             p["files"] = files;
             p["presets"] = (presets ?? new[] { "low", "ultra" }).Cast<object>().ToList();
+            if (mutate != null) mutate(p);
             JobPlan plan; string err;
             if (!JobPlan.TryParse(p, Srv.SiteBase, out plan, out err)) throw new InvalidOperationException("test payload refused: " + err);
             return plan;
@@ -73,6 +74,83 @@ namespace DeathMuffinTeam.Tests
             p["setups"] = (presets ?? new[] { "low", "medium" }).Select(x => (object)BenchTests.Setup(x)).ToList();
             JobPlan plan; string err;
             if (!JobPlan.TryParse(JobPlan.BenchKind, p, Srv.SiteBase, out plan, out err)) throw new InvalidOperationException("test bench payload refused: " + err);
+            plan.ExpiresAtUtc = expires;
+            return plan;
+        }
+
+        /// <summary>A `clip` payload: the shared files as a screenshots job's, the clip plan and two variants (`slow` and `fast`, each with a tune); <paramref name="mutate"/> changes the payload first.</summary>
+        public JobPlan ClipPlan(Action<Dictionary<string, object>> mutate = null)
+        {
+            string folder = "clip" + (++n) + "x";
+            var files = new List<object>
+            {
+                Srv.Publish(folder, "DeathMuffinDebug.pck", Util.Blob(5000, 50 + n)),
+                Srv.Publish(folder, "DeathMuffin.assets.pck", Art, "assets-aaa"),
+                Srv.Publish(folder, "libdmcore.windows.template_release.x86_64.dll", Dll),
+                Srv.Publish(folder, "DeathMuffinDebug.exe", Godot, "godot-debug-4.7.2"),
+            };
+            var p = ClipTests.ValidPayload();
+            p["files"] = files;
+            if (mutate != null) mutate(p);
+            JobPlan plan; string err;
+            if (!JobPlan.TryParse(JobPlan.ClipKind, p, Srv.SiteBase, out plan, out err)) throw new InvalidOperationException("test clip payload refused: " + err);
+            return plan;
+        }
+
+        /// <summary>
+        /// One build's file entries for a `shots` job with two builds: its own code pack, the debug game and the art pack under their cache keys (the same bytes for both builds, each published at its own
+        /// address) and the core library (the same bytes, no cache key). <paramref name="packSeed"/> makes the code pack differ between builds.
+        /// </summary>
+        public List<object> BuildFiles(string label, int packSeed, bool corruptPack = false)
+        {
+            string folder = "b" + label + (++n) + "x";
+            return new List<object>
+            {
+                Srv.Publish(folder, "DeathMuffinDebug.pck", Util.Blob(5000, packSeed)),
+                Srv.Publish(folder, "DeathMuffin.assets.pck", Art, "assets-aaa"),
+                Srv.Publish(folder, "libdmcore.windows.template_release.x86_64.dll", Dll),
+                Srv.Publish(folder, "DeathMuffinDebug.exe", Godot, "godot-debug-4.7.2"),
+            };
+        }
+
+        /// <summary>A `shots` payload with a before and an after build (`files` replaced by `builds`), on the given presets.</summary>
+        public JobPlan BuildsPlan(string[] presets = null, Action<Dictionary<string, object>> mutate = null)
+        {
+            var p = Program.ValidPayload();
+            p.Remove("files");
+            p["builds"] = new List<object>
+            {
+                new Dictionary<string, object> { { "label", "before" }, { "files", BuildFiles("before", 61) } },
+                new Dictionary<string, object> { { "label", "after" }, { "files", BuildFiles("after", 62) } },
+            };
+            p["presets"] = (presets ?? new[] { "low", "ultra" }).Cast<object>().ToList();
+            if (mutate != null) mutate(p);
+            JobPlan plan; string err;
+            if (!JobPlan.TryParse(p, Srv.SiteBase, out plan, out err)) throw new InvalidOperationException("test builds payload refused: " + err);
+            return plan;
+        }
+
+        /// <summary>A `release` payload: the release build's files and the debug build's (the art pack, the core library and the code of each, each published at its own address), all six steps, two window sizes with one more UI scale and a 2-minute soak.</summary>
+        public JobPlan ReleasePlan(Action<Dictionary<string, object>> mutate = null, DateTime? expires = null)
+        {
+            var p = ReleaseTests.ValidPayload();
+            string folder = "rel" + (++n) + "x";
+            p["builds"] = new List<object>
+            {
+                new Dictionary<string, object> { { "label", "release" }, { "files", new List<object>
+                {
+                    Srv.Publish(folder, "DeathMuffin.exe", Godot, "godot-release-4.7.2"), Srv.Publish(folder, "DeathMuffin.pck", Util.Blob(5000, 70 + n)),
+                    Srv.Publish(folder, "DeathMuffin.assets.pck", Art, "assets-aaa"), Srv.Publish(folder, "libdmcore.windows.template_release.x86_64.dll", Dll),
+                } } },
+                new Dictionary<string, object> { { "label", "debug" }, { "files", new List<object>
+                {
+                    Srv.Publish(folder + "d", "DeathMuffinDebug.pck", Util.Blob(5000, 80 + n)), Srv.Publish(folder + "d", "DeathMuffin.assets.pck", Art, "assets-aaa"),
+                    Srv.Publish(folder + "d", "libdmcore.windows.template_release.x86_64.dll", Dll), Srv.Publish(folder + "d", "DeathMuffinDebug.exe", Util.Blob(81000, 24), "godot-debug-4.7.2"),
+                } } },
+            };
+            if (mutate != null) mutate(p);
+            JobPlan plan; string err;
+            if (!JobPlan.TryParse(JobPlan.ReleaseKind, p, Srv.SiteBase, out plan, out err)) throw new InvalidOperationException("test release payload refused: " + err);
             plan.ExpiresAtUtc = expires;
             return plan;
         }
@@ -100,6 +178,8 @@ namespace DeathMuffinTeam.Tests
             FreshRunFolders();
             Windows();
             BenchHappy();
+            ClipTests.RunnerRuns();
+            ReleaseTests.RunnerRuns();
             BenchDisturbed();
             BenchQuietWait();
             BenchFailures();
@@ -296,11 +376,13 @@ namespace DeathMuffinTeam.Tests
             }
             using (var rig = new Rig())
             {
-                // done itself fails: the pictures are up, the job cannot be failed for that
+                // done itself is refused: the pictures are up, and the server is told the job failed, in its own words (a job the app leaves "running" would be kept alive by its heartbeat for ever)
                 rig.Api.Done = () => FakeApi.Err(409, "", "This job is not running any more.");
                 var res = rig.Run("jobF00000012", rig.Plan(new[] { "low" }));
                 T.Ok(!res.Ok && res.Error.Contains("did not accept the finished job") && res.Error.Contains("not running any more"), "a refused done is reported");
-                T.Eq(rig.Api.Count("fail"), 0, "and the job is not failed after its pictures were taken");
+                T.Eq(rig.Api.Count("fail"), 1, "the job is failed with the server's reason, so it never stays running");
+                T.Eq(rig.Api.FailError, "This job is not running any more.", "the reason is the server's own");
+                T.Has(rig.Api.FailLog, "uploaded low_", "and the log goes with it");
             }
             using (var rig = new Rig())
             {
@@ -553,7 +635,8 @@ namespace DeathMuffinTeam.Tests
                 rig.Api.Done = () => FakeApi.Err(400, "bad_request", "The run of Low is not valid: its numbers are missing.");
                 var res = rig.Run("benchA0000005", rig.BenchPlan(new[] { "low" }));
                 T.Ok(!res.Ok && res.Error == "The benchmark ran, but the server did not accept the results: The run of Low is not valid: its numbers are missing.", "a refused done says why: " + res.Error);
-                T.Eq(rig.Api.Count("fail"), 0, "and the job is not failed on top (the server has failed it)");
+                T.Eq(rig.Api.Count("fail"), 1, "the job is failed with the server's reason (a server that already failed it answers 409, harmlessly)");
+                T.Eq(rig.Api.FailError, "The run of Low is not valid: its numbers are missing.", "the reason is the server's own");
             }
         }
 

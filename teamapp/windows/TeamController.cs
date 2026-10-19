@@ -13,7 +13,7 @@ namespace DeathMuffinTeam
     /// <summary>What the offer box shows.</summary>
     internal sealed class OfferView
     {
-        /// <summary>"Screenshots of a change, about 1 minute".</summary>
+        /// <summary>"Screenshots of a change, about 1 minute"; "Short videos of a change, about 3 minutes" for a clip job.</summary>
         public string Text = "";
         /// <summary>"Runs by itself in 4:12", or "Runs when you say yes" (mode: only on a yes).</summary>
         public string Countdown = "";
@@ -231,7 +231,49 @@ namespace DeathMuffinTeam
             };
         }
 
-        /// <summary>Tells the server this PC is here (every 30 seconds) and takes the offer it answers with. Also keeps a running job alive on the server.</summary>
+        /// <summary>
+        /// The heartbeat as a long poll, until <paramref name="ct"/> ends: each one asks the server to hold it up to 25 seconds while it has nothing to say, so an offer or a cancel reaches the PC in about
+        /// a second, and the next is sent right after the answer (<see cref="TeamLogic.HeartbeatPause"/>: none after news, 5 s at least after an answer with nothing new, 5, 15, then 30 s after failures). It
+        /// goes on while a job runs (that keeps the job alive on the server and brings its cancel) and idles while the PC is signed out. <paramref name="sleep"/> is Task.Delay (tests pass a stand-in).
+        /// </summary>
+        public async Task HeartbeatLoopAsync(CancellationToken ct, Func<TimeSpan, CancellationToken, Task> sleep = null)
+        {
+            if (sleep == null) sleep = (d, c) => Task.Delay(d, c);
+            int failures = 0;
+            string lastOffer = "";
+            try
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    if (!signedIn || stopped)
+                    {
+                        failures = 0;
+                        lastOffer = "";
+                        await sleep(TimeSpan.FromSeconds(1), ct).ConfigureAwait(true);
+                        continue;
+                    }
+                    DateTime sent = utcNow();
+                    ApiResult r = await api.HeartbeatAsync(settings.PcId, pcName, version, gpu ?? "", settings.Mode, BuildState(), TeamLogic.HeartbeatWaitS, ct).ConfigureAwait(true);
+                    bool news = false;
+                    if (r.Ok)
+                    {
+                        failures = 0;
+                        Offer offer = TeamApi.ParseOffer(r);
+                        string id = offer == null ? "" : offer.Id;
+                        news = (id.Length > 0 && id != lastOffer) || (running && runningJobId != null && TeamApi.ParseCancel(r).Contains(runningJobId));
+                        lastOffer = id;
+                    }
+                    else if (!r.SignedOut && !r.NotTeam) failures++;
+                    await HandleHeartbeatAsync(r).ConfigureAwait(true);
+                    if (!signedIn || stopped) continue;   // the answer signed the app out (or stopped it): idle until a sign-in, with no pause of its own
+                    TimeSpan pause = TeamLogic.HeartbeatPause(failures, news, utcNow() - sent);
+                    if (pause > TimeSpan.Zero) await sleep(pause, ct).ConfigureAwait(true);
+                }
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { /* the app is closing */ }
+        }
+
+        /// <summary>Tells the server this PC is here right now (after a sign-in, a mode change or a finished job: the long poll of <see cref="HeartbeatLoopAsync"/> does the rest) and takes the offer it answers with. Also keeps a running job alive on the server.</summary>
         public async Task HeartbeatAsync()
         {
             if (heartbeating || !signedIn || stopped) return;
@@ -262,8 +304,8 @@ namespace DeathMuffinTeam
                 if (running)
                 {
                     // A second job offered while one runs: say so once; the job stays queued for the other PCs.
-                    // (a benchmark is not declined for being busy: the server would not offer it to this PC again, and it is queued for this PC alone)
-                    if (offer != null && offer.Id != runningJobId && offer.Kind != JobPlan.BenchKind && sentDeclines.Add(offer.Id + "|busy"))
+                    // (a benchmark and a release job are not declined for being busy: the server would not offer them to this PC again, and each is queued for this PC alone)
+                    if (offer != null && offer.Id != runningJobId && offer.Kind != JobPlan.BenchKind && offer.Kind != JobPlan.ReleaseKind && sentDeclines.Add(offer.Id + "|busy"))
                         await api.DeclineAsync(offer.Id, settings.PcId, "busy", CancellationToken.None).ConfigureAwait(true);
                     return;
                 }
@@ -368,7 +410,7 @@ namespace DeathMuffinTeam
                     if (sentDeclines.Add(offer.Id + "|kind"))
                     {
                         await api.DeclineAsync(offer.Id, settings.PcId, "not_now", CancellationToken.None).ConfigureAwait(true);
-                        log("skipped a " + offer.Kind + " job: this version runs " + JobPlan.ShotsKind + " and " + JobPlan.BenchKind + " jobs only");
+                        log("skipped a " + offer.Kind + " job: this version runs " + JobPlan.ShotsKind + ", " + JobPlan.ClipKind + ", " + JobPlan.ReleaseKind + " and " + JobPlan.BenchKind + " jobs only");
                     }
                     SetStatus("A newer team app is needed for " + offer.Kind + " jobs", StatusLevel.Warn);
                     return;
@@ -399,7 +441,7 @@ namespace DeathMuffinTeam
                             ui.Notify("Job offered", TeamLogic.OfferText(offer.Title, offer.WeightS), false);   // the tray balloon too: a second way to see it
                         }
                         ui.ShowOffer(View(offer, now - shownAt.Value));
-                        SetStatus("Job offered: " + TeamLogic.OfferText(offer.Title, offer.WeightS), StatusLevel.Busy);
+                        SetStatus("Job offered: " + TeamLogic.OfferText(offer.Kind, offer.Title, offer.WeightS), StatusLevel.Busy);
                         break;
                     case OfferDecision.Wait:
                         if (shownAt.HasValue) { shownAt = null; ui.HideOffer(); }
@@ -490,7 +532,7 @@ namespace DeathMuffinTeam
 
         OfferView View(Offer offer, TimeSpan shownFor)
         {
-            var v = new OfferView { Text = TeamLogic.OfferText(offer.Title, offer.WeightS), Note = TeamLogic.OfferNote(offer.Kind) };
+            var v = new OfferView { Text = TeamLogic.OfferText(offer.Kind, offer.Title, offer.WeightS), Note = TeamLogic.OfferNote(offer.Kind) };
             v.Countdown = settings.Mode == OfferMode.Ask ? "Runs by itself in " + TeamLogic.Clock(TeamLogic.AutoRunAfter - shownFor) : "Runs when you say yes";
             return v;
         }
@@ -649,7 +691,9 @@ namespace DeathMuffinTeam
                 }
                 else if (result.Ok)
                 {
-                    string sent = plan.Kind == JobPlan.BenchKind ? result.Runs + " benchmark run(s) sent" : result.Files.Count + " picture(s) uploaded";
+                    string sent = plan.Kind == JobPlan.BenchKind ? result.Runs + " benchmark run(s) sent"
+                        : plan.Kind == JobPlan.ReleaseKind ? StepsPassed(result) + " of " + (result.Steps == null ? 0 : result.Steps.Count) + " release check step(s) passed"
+                        : result.Files.Count + (plan.Kind == JobPlan.ClipKind ? " clip(s) uploaded" : " picture(s) uploaded");
                     SetStatus("Last job: " + sent + " at " + DateTime.Now.ToString("HH:mm", CultureInfo.InvariantCulture), StatusLevel.Ok);
                     log("job " + jobId + " done: " + sent);
                 }
@@ -669,6 +713,13 @@ namespace DeathMuffinTeam
                 cancelRequested = false;
                 tcs.TrySetResult(0);
             }
+        }
+
+        static int StepsPassed(RunResult r)
+        {
+            int n = 0;
+            if (r.Steps != null) foreach (StepReport s in r.Steps) if (s.Ok) n++;
+            return n;
         }
 
         /// <summary>The app is closing: a running job is stopped (the runner kills the game and tells the server "stopped: the team app was closed"), waiting up to <paramref name="wait"/> for that.</summary>

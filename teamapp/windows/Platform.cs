@@ -290,6 +290,13 @@ namespace DeathMuffinTeam
             return JobPlan.OffscreenPosition(v.Left, v.Top);
         }
 
+        /// <summary>The same for a window of this width (a `release` job's screens step takes 1920 to 3840 wide): it starts left of every monitor by its own width and a margin.</summary>
+        public static string OffscreenPositionFor(int width)
+        {
+            System.Drawing.Rectangle v = SystemInformation.VirtualScreen;
+            return JobPlan.OffscreenPosition(v.Left, v.Top, width);
+        }
+
         // ---- Keeping the game's window out of the way -------------------------------------------------------------------------------
 
         delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);

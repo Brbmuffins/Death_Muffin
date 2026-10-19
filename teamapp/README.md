@@ -1,9 +1,9 @@
 # Death Muffin Team (the team app)
 
 A small Windows app for the three team PCs (War, Muffins and Helix; DECISIONS B54 and B55). It sits in the tray and runs the jobs that need a
-real graphics card, which the server does not have. The first job is **screenshots of a Discord-agent proposal on Low and Ultra** (`shots`); the second is
-**the game's own benchmark of each new client release** (`bench`), run on a PC that is left alone. It is not the
-players' launcher: it is installed only on those PCs, updates itself, and a bug in it never reaches players.
+real graphics card, which the server does not have. Its jobs: **screenshots of a Discord-agent proposal on Low and Ultra** (`shots`; also of a *before* and an *after* build, side by side),
+**short videos of a change** (`clip`; one game run for each variant the team can choose between, such as three speeds of a spell), and **the game's own benchmark of each new client release**
+(`bench`), run on a PC that is left alone, and **the release checks of each new client** (`release`: install, quit while loading, screens at four window sizes, stutter, bench and soak, one job and one report). It is not the players' launcher: it is installed only on those PCs, updates itself, and a bug in it never reaches players.
 
 The server keeps everything with keys or passwords and everything that changes the live game. The app only downloads builds our server made and
 uploads results; the server checks each result before it uses it.
@@ -15,7 +15,7 @@ Only the accounts on the server's team list (a table the server's team routes re
 
 ## What it promises
 
-- **It asks first.** A job comes with a small box ("Screenshots of a change, about 1 minute": Run now / Not now / Pause 2 hours). With no answer
+- **It asks first.** A job comes with a small box ("Screenshots of a change, about 1 minute"; "Short videos of a change, about 3 minutes" for a clip job: Run now / Not now / Pause 2 hours). With no answer
   it runs by itself after 5 minutes (mode Ask).
 - **It never gets in the way.** It waits (no box, no run) while a full-screen app is running (a game, a film, a presentation; Windows hides
   questions then), while Death Muffin is open (a party's host runs the whole party's fight) or while a laptop is on battery, until that ends or
@@ -27,18 +27,20 @@ Only the accounts on the server's team list (a table the server's team routes re
   (every monitor together), outside every monitor. As a fallback the window is also marked "no activate" and sent to the bottom of the window stack, and if it did become the active
   window the window you were using gets the focus back; Windows itself does not let a background program take the foreground. A benchmark's window stays on screen (the PC is idle
   by then, and a desktop compositor may treat an off-screen window differently).
-- **Low priority.** The app and the game a screenshot job starts run below normal priority. A benchmark's game runs at **normal** priority (a lower one would skew the numbers), and
+- **Low priority.** The app and the game a screenshot or clip job starts run below normal priority. A benchmark's game runs at **normal** priority (a lower one would skew the numbers), and
   the box says so.
-- **It stops for you.** If you start Death Muffin while a screenshot job runs, the job's game is closed and the job is reported as
+- **It stops for you.** If you start Death Muffin while a screenshot or clip job runs, the job's game is closed and the job is reported as
   "stopped: the game started". Closing the app does the same ("stopped: the team app was closed"). A benchmark treats it as a touch of the PC: the run is thrown away and the
   benchmark waits for the PC to be quiet again ("The benchmark job" below).
-- **Its own folder, offline.** The game it starts runs with `APPDATA` and `LOCALAPPDATA` pointed into the job's folder (screenshots also with `--dev-offline`; a benchmark with
+- **Its own folder, offline.** The game it starts runs with `APPDATA` and `LOCALAPPDATA` pointed into the job's folder (screenshots and clips also with `--dev-offline`; a benchmark with
   `--bench-dir`, which makes it a trial that sends nothing), so it never touches your game, settings or account. **Every run of the game has its own empty pair** (`jobs\<id>\run-<n>\appdata` and
-  `localappdata`: each screenshot preset, each benchmark setup and each retry), so one run never starts from another's offline save, settings or log.
+  `localappdata`: each screenshot preset on each build, each clip variant, each benchmark setup and each retry), so one run never starts from another's offline save, settings or log.
 - **Only our builds.** It downloads only from the game's own server (`/death-muffin/team-files/`, https, the same host), checks every file's
   SHA-256, refuses file names or addresses that could leave the job's folder, and passes the game only the options it checks (it sets `--shot-plan`,
-  `--shots`, `--preset` and `--dev-offline` itself for screenshots, `--benchmark` and the `--bench-*` options for a benchmark). It uploads only the pictures the game made, as `<preset>_<shot>.png`,
-  and sends a benchmark's runs only from the files the game wrote in the setup's own folder.
+  `--shots`, `--preset` and `--dev-offline` itself for screenshots, `--clip-plan`, `--clips`, `--tune`, `--preset` and `--dev-offline` for clips, `--benchmark` and the `--bench-*` options for a benchmark). It uploads only the pictures
+  the game made, as `<preset>_<shot>.png` (`<build>_<preset>_<shot>.png` with two builds), the clips it recorded, as `<variant>_<clip>.mjpeg`, and sends a benchmark's runs only from the files the game wrote in the setup's own folder.
+- **A job that is refused stays no job.** If the server will not accept a finished job (`done` answered with an error), the app tells it the job failed, with the server's own reason, so a job never stays "running" on the server
+  (this PC's heartbeat would keep it alive for ever).
 - **A pause stays a pause.** Pause 2 hours declines jobs for 2 hours (the server is told). Run now ends it.
 
 ## Modes (tray menu, Mode)
@@ -81,10 +83,14 @@ That sign-in **never touches the game's session**, so it cannot stop a game you 
 
 ## What a job does
 
-1. Every 30 seconds the app sends a heartbeat (its id, name, version, graphics card, mode, and whether Death Muffin runs, a full-screen app runs, the
-   PC is on battery, a job is running or it is paused). The reply carries the oldest waiting job, if any. Heartbeats go on while a job runs: that
+1. The app keeps a heartbeat in flight (its id, name, version, graphics card, mode, and whether Death Muffin runs, a full-screen app runs, the
+   PC is on battery, a job is running or it is paused). It is a **long poll**: it asks the server to hold it up to 25 seconds (`wait` 25, an HTTP limit of 40 s) while there is nothing to say, so a new job or a cancel
+   reaches the PC in about a second, and the next heartbeat is sent at once after the answer. The reply carries the oldest waiting job, if any. Heartbeats go on while a job runs: that
    keeps the job alive on the server (a job whose PC is silent for 3 minutes goes back to the queue). The reply may also list `cancel`: the jobs this PC is running that the server has cancelled.
-   When the job the app is running is listed, it kills the game, drops the job without calling fail (the server knows) and the tray says "The job was cancelled."
+   When the job the app is running is listed, it kills the game, drops the job without calling fail (the server knows) and the tray says "The job was cancelled." Pauses between heartbeats, `TeamLogic.HeartbeatPause`:
+   none after an answer with news (an offer the PC had not seen, a cancel of the job it runs) or after a held answer; at least 5 seconds between two heartbeats when an answer had nothing new and came
+   back at once (a server that does not hold requests, an offer waiting for a yes, a cancel list the PC already knows), so the server is never asked in a tight loop; after a failed heartbeat 5 s, then 15 s, then 30 s every time, starting over after an answer.
+   Signed out (or the app stopped), the loop only looks once a second whether the PC has signed in again. A sign-in, a mode change and a finished job send one heartbeat at once that asks for an answer at once (`wait` 0).
 2. The offer is decided by `TeamLogic.Decide` (`teamapp/windows/TeamLogic.cs`): ask, run, wait or decline, from the mode, your answer, how long the box
    has been up, and the exceptions above. The 5 minutes count from when the box is shown, so a wait never uses them up.
 3. **Not now** declines the job for this PC (the job stays queued for the others, and the server skips it for this PC) and the app does not ask about it again for
@@ -92,7 +98,8 @@ That sign-in **never touches the game's session**, so it cannot stop a game you 
    the reason `paused`. A job whose kind this version cannot run is declined once and the status asks for a newer app.
 4. A yes (or the 5 minutes, or auto mode) claims the job. If another PC got it first, the app lets it go. A benchmark is accepted and claimed later (see "The benchmark job").
 5. The payload is checked (`JobPlan.cs`, by the job's kind). `shots`: the files (`DeathMuffinDebug.exe` with `DeathMuffinDebug.pck` beside it, `DeathMuffin.assets.pck` and the core library),
-   the shot plan, the presets (low, medium, high, ultra) and the game options. `bench`: see "The benchmark job" below. Anything not allowed fails the job with a readable reason.
+   the shot plan, the presets (low, medium, high, ultra) and the game options; or, instead of `files`, a `builds` list of a `before` and an `after` build, each with its own files. `clip`: see "The clip job" below.
+   `bench`: see "The benchmark job" below. Anything not allowed fails the job with a readable reason.
 6. The files are downloaded into the job's folder with a SHA-256 check, resuming a half download. Files with a `cacheKey` (the art pack, about 500 MB, and the
    Godot debug build, about 90 MB) are kept in `cache\<cacheKey>\` and reused by later jobs without a download; the job's game folder gets a hard link
    to them (a copy when Windows refuses).
@@ -105,7 +112,18 @@ That sign-in **never touches the game's session**, so it cannot stop a game you 
    every other ERROR and WARNING stays, so the lines that say why it failed are not pushed out of the log tail the server keeps.
 9. The last 3 job folders and the 4 most recently used cache folders are kept; older ones are deleted.
 
-Steps 1 to 3 and 6 are the same for a `bench` job; the claim (4) comes later for it, and 5, 7 and 8 are what "The benchmark job" replaces.
+Steps 1 to 3 and 6 are the same for a `clip` job (its files are a screenshots job's; 5, 7 and 8 are what "The clip job" replaces) and for a `bench` job (the claim (4) comes later for it, and 5, 7 and 8 are what "The benchmark job" replaces).
+
+**Before and after** (`builds`). A screenshots job may carry `builds: [{label: "before", files: [...]}, {label: "after", files: [...]}]` (each label at most once) instead of `files`. Each build is checked like a
+job's files (it needs its own `DeathMuffinDebug.exe` and `DeathMuffinDebug.pck`) and gets its own game folder (`game-before\`, `game-after\`). A file both builds list with the same checksum and size is downloaded
+once and placed (hard link, else copy) in the second build's folder (the art pack and the Godot build also stay in the cache as for any job; two entries that give one cache name to different files are refused). The app runs every preset on each
+build, the before build first, and uploads `<label>_<preset>_<shot>.png` (`before_low_hero.png`, `after_low_hero.png`). A run's pictures are in `out\<build>\<preset>\`. With more pictures than the server takes (40) every
+(build, preset) run keeps the same number of its first pictures, so the pairs stay pairs.
+
+**Window sizes** (`resolutions`). A screenshots payload may carry `resolutions`: one to four of `1920x1080`, `2560x1440`, `3840x2160` and `3440x1440` (anything else is refused; none: the one 1600x900 window as ever). The app runs
+each preset on each build at each size (`--resolution WxH`, the window outside every monitor by its own width, silent), puts a run's pictures in `out\[<build>\]<preset>\<WxH>\` and uploads `<build>_<preset>_<w>x<h>_<shot>.png`
+(`<preset>_<w>x<h>_<shot>.png` with no builds). Over 40 pictures every (build, preset, size) run keeps the same number of its first pictures. A size larger than the monitor may be held to the screen's by Windows: the app notes in the
+log when the pictures are not the size asked for.
 
 ## The benchmark job (`bench`)
 
@@ -141,6 +159,54 @@ under the member's account, marked as team-PC runs. The numbers only mean someth
   unless a game, a full-screen app or the battery is in the way, Run without asking, Only on a yes). The quiet wait above starts only after the yes (or the automatic start), and the box says so: "It starts once the PC has
   been left alone for a minute, and runs at normal priority. Touching the mouse or keyboard restarts it."
 
+## The clip job (`clip`)
+
+"Short videos of a change, about N minutes": the team asks how something moves or looks in motion ("take 3 short videos of the spell at different speeds and ask what he likes best"), the Discord agent writes a clip plan and the
+values to compare, and this app records one set of clips for each value. The payload is a screenshots job's `files`, `rev` and `godotVersion`, plus:
+
+- `plan`, the clip plan, passed to the game as `--clip-plan=<file>` (written to `plan.json`): `{"discipline": "reaper", "clips": [{"name": "wraith", "area": "graves", "cast": "haunting_wraith", "at": "pack", "enemies": 6, "seconds": 5, "camera": "follow"}]}`.
+  The app checks 1 to 4 clips, each name a safe token (`^[a-z0-9][a-z0-9_-]{0,31}$`, once) and each `seconds` (when given) a number above 0 and at most 8; the game checks the rest.
+- `variants`: 1 to 4 of `{label, tune}`. The label is `^[a-z0-9][a-z0-9-]{0,23}$` (once; none, or a variant without a label, is `clip`); `tune` is an object of data overrides (at most 32 KB), written to `tune-<label>.json` and passed as
+  `--tune=<file>` (a variant with no tune gets no `--tune`; the game refuses a path or key it does not know with a printed line and exit code 2). No `variants` is one run labelled `clip`.
+- `presets`: one graphics preset, `["high"]` when none is given. `args`: game options as for screenshots (the app refuses `--clip-plan`, `--clips`, `--tune`, `--fixed-fps`, `--preset` and the others it sets itself).
+
+**One game run for each variant**, each with its own empty `APPDATA`/`LOCALAPPDATA` and its own `out\<label>\` folder: `DeathMuffinDebug.exe --windowed --resolution 1600x900 --audio-driver Dummy --fixed-fps 30 [--position X,Y] -- --dev-offline <options>
+--preset=<preset> --clip-plan=<plan.json> --clips=<out>\<label> [--tune=<tune-label.json>]`, below normal priority, at most 10 minutes a run. `--fixed-fps 30` is the engine's: the game runs 30 frames per game second whatever the
+time a frame's readback takes, so the clip's timing is the game's. The window is silent and outside every monitor, as for screenshots. The game writes `<name>.mjpeg` (one JPEG per frame, 960 px wide) and `<name>.json` (fps, frames, size, the frame the rite
+was cast at; its contents go into the job's log) for each planned clip. A clip the game did not write, a run that wrote none, exit code 2 ("The game refused the clip plan or the tune for the slow variant"), another exit code, the 10 minutes or the player
+starting Death Muffin fails the job with a sentence naming the variant, and nothing is uploaded unless every variant ran.
+
+**Uploads**: after all the runs, every clip as `<label>_<clip>.mjpeg` (sorted within a variant, variants in order) with `Content-Type: video/x-motion-jpeg` (an empty clip, or one over the server's 48 MB, fails the job; each is read into memory and sent on its own),
+then `done` with their names. **The server turns each into an mp4** (ffmpeg, under 8 MB for Discord) while it answers `done`: a clip it cannot turn into a video fails the job and the app shows the server's reason ("The clips were uploaded, but the server did
+not accept the finished job: ..."). A request of 40 s is a heartbeat, one of 6 minutes a clip upload or a done.
+
+## The release job (`release`)
+
+"Release checks of <version>, about 40 minutes": after every client release each team PC gets one job that checks the release on a real PC. It is one box and one claim; the steps run in this order, each step's result is
+uploaded the moment it finishes (so a PC that stops halfway has still reported what it did), a step that fails is a result and does not stop the next one, and at the end `done` says how each step went. The server posts the
+results of all PCs as one report per release in #build-alerts. The payload (`TeamLogic`/`JobPlan.ParseRelease`):
+
+- `builds`: `[{label: "release", files}, {label: "debug", files}]`, the same file entries as any job. The **release** build is `DeathMuffin.exe`, `DeathMuffin.pck`, the core's DLL and `DeathMuffin.assets.pck` (what the launcher installs);
+  the **debug** build of the same revision is `DeathMuffinDebug.exe` and `DeathMuffinDebug.pck` (and the art pack and core library, shared with the release build and downloaded once). Each build is fetched into its own folder
+  (`game-release\`, `game-debug\`) the first time a step needs it, every file checked by SHA-256, the art pack and the Godot builds kept in `cache\`: a download that fails fails the steps that need that build, not the others.
+- `steps`: any subset of `install`, `quit-loading`, `screens`, `stutter`, `bench`, `soak`; the app runs them in that order. `setups` (bench: Low and Medium, Full Party, full when absent), `screens` (`plan`: the standard shots; `resolutions`:
+  up to six `WxH`, the four standard ones when absent; `uiScales`: up to three values besides the default UI scale, none when absent; `preset`: `high`), `soak` (`minutes`: 1 to 120, 30 when absent), `args` as for screenshots.
+
+| Step | What it runs | Result file | Passes when |
+|---|---|---|---|
+| `install` | the RELEASE exe: `DeathMuffin.exe --windowed --resolution 1600x900 --audio-driver Dummy [--position X,Y] -- --boot-check`, below normal priority, 90 s | `install.json`: ok, `bootMs` (the game's `BOOT OK <ms>`), exit code, download seconds, the files | exit 0 and a `BOOT OK <ms>` line; the step's `ms` is the game's boot time |
+| `quit-loading` | the same with `--quit-while-loading`, 20 s | `quit-loading.json`: ok, exit code, seconds, `crashReport`, `crashFiles` | exit 0 within 20 s and no `session.lock`, `crash_pending.json` or `core_crash_note.txt` (DmCrashWatch's files) left under the run's APPDATA |
+| `screens` | the debug build, one run for each window size at the default UI scale and at each `uiScales` value: `--resolution WxH ... -- --dev-offline --shot-plan=<plan> --shots=<dir> --preset=<preset> [--ui-scale=<v>]`, below normal priority, off-screen and silent, 10 minutes a run | `<w>x<h>[_s<scale>]_<shot>.png` (a dot in a scale is a dash: `s1-5`) and `screens.json`: each run's size, scale, pictures, exit code and the size the pictures really are | every run exits 0 with pictures of the size asked for |
+| `stutter` | the debug build: `-- --dev-offline --stutter --stutter-out=<dir>`, below normal priority, 30 minutes | `stutter.json`: the game's JSON as it wrote it (any other `*.json` in the folder if it did not use that name) | exit 0 and a result that is JSON (at most 1 MB) |
+| `bench` | the release build's benchmark setups as the `bench` job runs them (normal priority, a quiet minute first, a touched PC throws a run out and retries, 3 tries) | `bench.json`: a summary of each run's numbers and the runs; the runs also go to the server in `done` for the public benchmarks page (source `team`) | every setup gives a run |
+| `soak` | the debug build: `-- --dev-offline --soak=<minutes> --soak-out=<dir>`, at **normal** priority after a quiet minute; the PC is read every second but nothing that happens to it throws the run out (a key, the mouse, other programs, the battery are noted); Death Muffin starting stops the whole job; the limit is the minutes plus 15 | `soak.json`: the game's JSON as written; `soak-notes.json` (when something was noted) | exit 0 and a result that is JSON |
+
+The bench and the soak wait up to 4 hours (or the job's life) for the PC to be left alone, then fail their step and the next one runs. Every run of the game has its own empty `APPDATA`/`LOCALAPPDATA`. The flags `--boot-check`,
+`--quit-while-loading`, `--stutter`, `--stutter-out`, `--soak`, `--soak-out` and `--ui-scale` are the app's (a payload may not pass them). **What the game is assumed to do** (client side, wave 3): print `BOOT OK <ms>` at its first
+screen and quit 0; quit itself while loading; write the stutter and soak JSON into the folder the flag names; take `--ui-scale`; honour `--resolution` as the window size. The app reads the scenarios' JSON as opaque and uploads it. A
+release job is not declined for being busy (it is queued for this PC alone); the box says the game starts several times and that the benchmark and the soak want the PC left alone; the tray says "N of M release check step(s) passed".
+If the player starts Death Muffin, or the app closes, the job fails with the steps it had finished (`fail` carries them) and their result files stay on the server for the report.
+
 ## Folders (`%LOCALAPPDATA%\DeathMuffinTeam\`)
 
 | What | Where |
@@ -148,7 +214,7 @@ under the member's account, marked as team-PC runs. The numbers only mean someth
 | Settings (signed-in account, protected token, this PC's id, mode, pause) | `settings.json` |
 | The app's own log | `app.log` (and `app.old.log`) |
 | Files kept across jobs | `cache\<cacheKey>\` |
-| One job | `jobs\<id>\` with `game\`, `run-<n>\appdata\` and `run-<n>\localappdata\` (a fresh pair for each run of the game), `out\<preset>\` (screenshots) or `bench-<i>\` (a benchmark setup's `pending.json`), `plan.json`, `job.log` |
+| One job | `jobs\<id>\` with `game\` (`game-before\` and `game-after\` for a screenshots job with two builds), `run-<n>\appdata\` and `run-<n>\localappdata\` (a fresh pair for each run of the game), `out\<preset>\` (`out\<build>\<preset>\` with two builds) for screenshots, `out\<variant>\` and `tune-<variant>.json` for clips, `out\screens\<w>x<h>[_s<scale>]\`, `out\stutter\` and `out\soak\` for a release job (with `game-release\` and `game-debug\`), `bench-<i>\` (a benchmark setup's `pending.json`), `plan.json`, `job.log` |
 
 ## Updating itself
 
@@ -181,7 +247,7 @@ numbers) for each release and add a line below.
 
 `TeamLogic.cs` (modes, the offer decision, texts, token expiry, version compare, hashing), `Quiet.cs` (when a PC is quiet enough for a benchmark and when a run was disturbed: pure rules over readings of the PC),
 `JobPlan.cs` (payload checks for each kind, command lines, upload names, reading a benchmark's result),
-`TeamApi.cs` (the login and the server's team routes behind an injectable transport), `TeamController.cs` (heartbeat, offers, answers, claim, sign-in problems),
+`TeamApi.cs` (the login and the server's team routes behind an injectable transport; how long each kind of request may take), `TeamController.cs` (the heartbeat's long poll, offers, answers, claim, sign-in problems),
 `JobRunner.cs` (download, game runs, uploads or benchmark runs, done or fail), `FileFetcher.cs` (checked, resumable downloads), `GameHost.cs` (starting the game and watching for
 the player's Death Muffin), `TeamFolders.cs`, `Settings.cs`, `SelfUpdate.cs`, `Json.cs`: none of them touches Windows or WinForms, and `teamapp/tests` runs all of them.
 `Platform.cs` (DPAPI, full screen and battery checks, the CPU and keyboard/mouse readings, hard links, the game's window, start with Windows), `TrayContext.cs`, `OfferBox.cs`, `AfkNotice.cs`, `SignInForm.cs`,
@@ -193,13 +259,19 @@ The compile check proves the Windows code compiles; it cannot run it. These are 
 DPAPI save and load across a restart; the full-screen check (a game or film full screen hides the box and the run, and a yes still runs); the battery check on a laptop;
 that the job's game window does not take the keyboard or the focus (the game is started at its normal size because Godot does not draw a minimized window); hard links into the
 job folder; `APPDATA` and `LOCALAPPDATA` reaching Godot; `--preset` honoured by the debug build; the tray icon, balloons and menu; self-update on a real exe swap; and one whole
-screenshot job against the server. For the benchmark job: the total CPU reading (`GetSystemTimes`) against Task Manager and the game's share (its process's CPU time); the idle time
+screenshot job against the server. For the release job: the release exe printing `BOOT OK <ms>` and quitting 0 with `--boot-check`, quitting itself with `--quit-while-loading` and leaving no `session.lock`; the debug build honouring `--stutter`/`--soak`/`--ui-scale`, writing their JSON where the flags say, and a 3840x2160 window off-screen on a 1080p monitor (Windows may hold it to the screen's size: the log and `screens.json` then say the pictures are smaller); a whole 40-minute job against the server and the report in #build-alerts; the soak at normal priority while the PC is touched. For the clip job: `--fixed-fps 30` honoured by the debug build with the window outside every monitor (the clips still recorded, at 30 frames per game second), the clip and tune files the game reads, a 20 to 40 MB upload on a home connection inside the 6 minutes, and the server's mp4 coming back in the thread. The
+long poll against the live server through nginx (a held heartbeat ending at once for an offer, the cancel reaching a running game within a second). For the benchmark job: the total CPU reading (`GetSystemTimes`) against Task Manager and the game's share (its process's CPU time); the idle time
 (`GetLastInputInfo`) counting a key or the mouse and nothing the app or the game does; the game really running at normal priority (Task Manager, Details) and the job refused when Windows will
 not allow it; the game's window not counting as a full-screen app or as input; the release build honouring `--bench-quit`, `--bench-dir` and `--bench-preset` (exit codes 0, 1, 2) and leaving
 `pending.json`; a disturbed run on a real PC (touch the mouse) being discarded and retried; the box's note; and one whole benchmark job against the server, including a screenshot job interleaved with a waiting benchmark (the controller reads the PC on the interface thread once a second). Also on a real PC: `--audio-driver Dummy` really silent (loading screen and game), a screenshot job's window really never seen with `--position` left of every
 monitor (and the pictures still taken: Godot and the driver draw a window that is off screen), a cancel in the heartbeat reply stopping a running game; the AFK notice (shown without taking the keyboard or the focus, End AFK mode working from it and from the tray menu).
 
 ### Changelog
+
+- **0.3.0** (2026-10-19) - The `clip` job (short videos of a change: one game run for each variant with its own tune, the engine's `--fixed-fps 30`, the clips uploaded as `<variant>_<clip>.mjpeg` for the server to turn into mp4s) and a `shots` job with a `before` and an `after`
+  build (files both share are downloaded once, pictures uploaded as `<build>_<preset>_<shot>.png`), and `resolutions` for screenshots at the four standard window sizes (`<preset>_<w>x<h>_<shot>.png`). The `release` job: the release checks of a new client (install, quit-while-loading, screens, stutter, bench, soak),
+  each step's result uploaded as it finishes. A job the server refuses to finish is failed with the server's reason instead of staying running. The offer box does not say a job's duration twice when the server's title already does. The heartbeat is a long poll (`wait` 25, answered at once by an offer or a cancel, the next sent right after; 5, 15, 30 s back-off on failures, at least 5 s between heartbeats
+  that bring nothing new), so an offer or a cancel reaches the PC in about a second instead of up to 30. A clip is up to 48 MB and a clip job's `done` waits for the server's videos, so the HTTP limits are per request (40 s for a heartbeat, 6 minutes for a clip or a done).
 
 - **0.2.0** (2026-10-19) - The `bench` job: the game's own benchmark of the release build, offered like any job (and, in AFK mode, accepted at once), then accepted and kept unclaimed (the PC is not busy, screenshot jobs run meanwhile) until the PC is
   quiet (a minute without input and under 15% CPU, nothing full screen, Death Muffin closed, on mains), thrown away and retried (3 tries a setup) when the PC is touched; the runs go to the server in `done`. A benchmark's game runs at normal priority and its box says so.
