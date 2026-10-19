@@ -174,7 +174,10 @@ polish list). Also:
   quits cleanly after 30 minutes of the soak, the stutter and the screenshot runs; the release build quits cleanly from its first screen; the
   Linux headless benchmark exits 0. Not known whether a player's own quit after a session hits it: the crash watch's lock is cleared in
   `main.gd` `_exit_tree`, before the engine's last teardown, so such a crash is never reported. Team app 0.3.9 keeps such a run's numbers and
-  names the crash and Windows' faulting module in the bench step.
+  names the crash and Windows' faulting module in the bench step: ntdll.dll at the same offset every time (where the heap check fired, not the
+  culprit). Narrowed on Helix's PC with the same benchmark: the debug engine with the debug pack, the release's core library and art pack closes
+  cleanly (job f1b7b90ed70d); the release engine with that unbaked debug pack still crashes (job a85b67e925ff). So it is the release engine
+  build's teardown, not the baked shaders, the pack or the core library alone. Next: a Windows crash dump (WER LocalDumps, needs admin on the PC).
 - The Windows half of the combat core's crash note (the unhandled-exception filter and its stack walk, native/README.md "Crash notes") has
   not crashed on a real Windows PC yet; the Linux half is tested on every run. The team app's release crash check will cover it (ROADMAP Phase 1).
 - Quitting while models still load in the background aborted the old game on a 4-core PC (the CI runner, 2026-10-16); the release checks'
