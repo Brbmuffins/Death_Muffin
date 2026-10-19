@@ -359,6 +359,15 @@
         "DECISIONS.md",
         "tools/hygiene/**"
       ]
+    },
+    {
+      "id": "suite-first-frame-run",
+      "pattern": "\\bfirst_frame_run\\b",
+      "reason": "test suite removed 2026-10-19: it asserted only that the HUD is applied during start, which hud checks (client/tests/hud.gd); its timing line asserted nothing",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
     }
   ],
   "allowPaths": {
