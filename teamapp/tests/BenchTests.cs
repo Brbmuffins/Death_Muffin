@@ -234,11 +234,10 @@ namespace DeathMuffinTeam.Tests
             T.Eq(Why(Run(0, 130, t => S(t, cpu: t < 60 ? 100 : 5))), "", "a busy time before the minute does not count");
             T.Eq(Why(Run(0, 130, t => S(t, cpu: t < 80 ? 100 : 5))), "other programs are using the CPU (about 21%)", "but one inside it does (10 s at 100% in a minute: the average is over 15%)");
 
-            // keyboard and mouse
+            // keyboard and mouse: not a reason to wait (Helix, 2026-10-19: the PC may be in use; its CPU is what counts)
             T.Eq(Why(Run(0, 60, t => S(t, idle: 60))), "", "60 s without input is quiet");
-            T.Eq(Why(Run(0, 60, t => S(t, idle: 59))), "the keyboard or mouse was used 59 s ago", "59 s is not");
-            T.Eq(Why(Run(0, 60, t => S(t, idle: t < 60 ? 500 : 3))), "the keyboard or mouse was used 3 s ago", "a key a moment ago starts the minute over");
-            T.Eq(Why(Run(0, 60, t => S(t, idle: 0))), "the keyboard or mouse was used 0 s ago", "this very second");
+            T.Eq(Why(Run(0, 60, t => S(t, idle: 0))), "", "input this very second does not make the PC busy");
+            T.Eq(Why(Run(0, 60, t => S(t, idle: 0, cpu: 40))), "other programs are using the CPU (about 40%)", "a PC in use is judged by its CPU");
 
             // the PC's state, now
             T.Eq(Why(Run(0, 60, t => S(t, player: t == 60))), "Death Muffin is open", "the player's Death Muffin is open");
@@ -273,13 +272,11 @@ namespace DeathMuffinTeam.Tests
             T.Eq(Dist(new List<PcSample>()), "", "a run with no readings was not disturbed");
             T.Eq(Dist(Run(101, 200, t => S(t, cpu: 45, game: 40, idle: 400 + t))), "", "a run on a quiet PC is left alone: the others use 5%");
 
-            // keyboard and mouse
-            T.Eq(Dist(Run(101, 140, t => S(t, idle: t == 110 ? 0 : t < 110 ? t + 400 : t - 110))), "the keyboard or mouse was used", "a key pressed during the run disturbs it");
-            T.Eq(Dist(Run(101, 140, t => S(t, idle: t + 400))), "", "input long before the run does not");
-            T.Eq(Dist(Run(101, 140, t => S(t, idle: t - 96))), "", "input 4 s before the run started (the last quiet reading was before) does not");
-            T.Eq(Dist(new List<PcSample> { S(101, idle: 0.5) }), "", "input within a second of the start is the clocks' difference, not a touch");
-            T.Eq(Dist(new List<PcSample> { S(102.5, idle: 0.5) }), "the keyboard or mouse was used", "input 2 s after the start is a touch");
-            T.Eq(Dist(new List<PcSample> { S(50, idle: 0), S(101, idle: 500) }), "", "readings from before the run are not the run's");
+            // keyboard and mouse: never a disturbance (Helix, 2026-10-19); the other programs' CPU is
+            T.Eq(Dist(Run(101, 140, t => S(t, idle: t == 110 ? 0 : t < 110 ? t + 400 : t - 110))), "", "a key pressed during the run does not disturb it");
+            T.Eq(Dist(Run(101, 140, t => S(t, idle: 0))), "", "nor does constant use");
+            T.Eq(Dist(Run(101, 160, t => S(t, idle: 0, cpu: 70, game: 40))), "other programs were using the CPU (about 30%)", "use that loads the CPU does");
+            T.Eq(Dist(new List<PcSample> { S(50, player: true), S(101) }), "", "readings from before the run are not the run's");
 
             // the PC's state
             T.Eq(Dist(Run(101, 140, t => S(t, player: t == 120))), "Death Muffin was started", "the player starts Death Muffin during the run");

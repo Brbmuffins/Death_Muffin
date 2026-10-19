@@ -144,22 +144,23 @@ under the member's account, marked as team-PC runs. The numbers only mean someth
   screenshot job runs (the PC is not read then) and its quiet minute starts over after it; the server offers screenshot jobs ahead of benchmarks, so a waiting benchmark never hides a newer
   screenshot job. The tray says "Benchmark waiting for the PC to be left alone". A benchmark offered while a job runs is not declined as busy (a decline would end it for this PC). A pause holds it back,
   signing out forgets it, and it is kept only in memory (after a restart the server offers it again and the box asks again).
-- **Claimed when the PC is quiet.** Once nothing else runs and the PC has been quiet for a whole minute (the app reads it once a second): no key or mouse for 60 s (`GetLastInputInfo`), the total CPU of
+- **Claimed when the PC is quiet.** Once nothing else runs and the PC has been quiet for a whole minute (the app reads it once a second): the total CPU of
   every process averaging under 15% over the minute, and through the minute no full-screen app, Death Muffin not open and the PC not on battery (a reading gap over 5 s, from sleep or a hang, starts
-  the minute over), the app claims the benchmark and runs it. If the claim answers that the job is gone (taken, expired, cancelled) it is dropped and the tray shows the server's words; a heartbeat that offers
+  the minute over), the app claims the benchmark and runs it. The keyboard and mouse do not count (Helix, 2026-10-19: the team member may keep using the PC; what skews the numbers is
+  other programs' CPU). If the claim answers that the job is gone (taken, expired, cancelled) it is dropped and the tray shows the server's words; a heartbeat that offers
   nothing, or another benchmark, means the same. A claim that failed for a passing reason is tried again after 30 s.
 - **Quiet again before each setup.** The files are downloaded after the claim, and before each setup the runner reads the PC the same way and waits for a quiet minute again. While it waits the status says
   what is in the way. It waits until the job's life ends (the offer's expiry, 3 days), then fails with "The PC never went quiet for long enough: ...".
-- **A disturbed run** is thrown away. While the game runs the app keeps reading the PC; the run is disturbed by a key or the mouse after it started, by the other programs (every process but
+- **A disturbed run** is thrown away. While the game runs the app keeps reading the PC; the run is disturbed by the other programs (every process but
   the game) using more than 20% of the CPU on average over any 30 s of it (judged once the run is 10 s old), by the player starting Death Muffin (a `DeathMuffin` or `DeathMuffinDebug`
   process that the app did not start, that runs from outside the app's folder and has not ended; one whose path Windows will not give counts as the player's) or by the cable being pulled. The game is closed,
   the setup's `bench-<i>` folder and the run's APPDATA are deleted, the app waits for a quiet minute again and starts the setup over: at most 3 tries a setup, then the job fails with
-  "The benchmark on Low was disturbed 3 times (...), so no numbers were sent. Leave the PC alone while it runs." A full-screen app is not a disturbance during a run (on a small screen the game's own 1600x900 window may count as one).
+  "The benchmark on Low was disturbed 3 times (...), so no numbers were sent. Keep other programs and Death Muffin closed while it runs." A full-screen app is not a disturbance during a run (on a small screen the game's own 1600x900 window may count as one).
 - **The result.** The last entry of each setup's `pending.json` (the payload the game would send, at most 64 KB; a cancelled one is no result) goes into **done** as `runs`, in setup order, all in one call:
   a setup that fails fails the job and nothing is sent. The server checks each run as it checks one a player sent and marks it as a team-PC run.
 - **It asks first, like every job.** A benchmark is offered in the same box (Run now / Not now / Pause 2 hours), under the same modes and the same exceptions (`TeamLogic.Decide`: Ask accepts by itself after 5 minutes
-  unless a game, a full-screen app or the battery is in the way, Run without asking, Only on a yes). The quiet wait above starts only after the yes (or the automatic start), and the box says so: "It starts once the PC has
-  been left alone for a minute, and runs at normal priority. Touching the mouse or keyboard restarts it."
+  unless a game, a full-screen app or the battery is in the way, Run without asking, Only on a yes). The quiet wait above starts only after the yes (or the automatic start), and the box says so: "It starts once other programs
+  have used little of the processor for a minute, and runs at normal priority. You can keep using the PC; a busy processor restarts it."
 
 ## The clip job (`clip`)
 
@@ -265,11 +266,13 @@ screenshot job against the server. For the release job: the release exe printing
 long poll against the live server through nginx (a held heartbeat ending at once for an offer, the cancel reaching a running game within a second). For the benchmark job: the total CPU reading (`GetSystemTimes`) against Task Manager and the game's share (its process's CPU time); the idle time
 (`GetLastInputInfo`) counting a key or the mouse and nothing the app or the game does; the game really running at normal priority (Task Manager, Details) and the job refused when Windows will
 not allow it; the game's window not counting as a full-screen app or as input; the release build honouring `--bench-quit`, `--bench-dir` and `--bench-preset` (exit codes 0, 1, 2) and leaving
-`pending.json`; a disturbed run on a real PC (touch the mouse) being discarded and retried; the box's note; and one whole benchmark job against the server, including a screenshot job interleaved with a waiting benchmark (the controller reads the PC on the interface thread once a second). Also on a real PC: `--audio-driver Dummy` really silent (loading screen and game), a screenshot job's window really never seen with `--position` left of every
+`pending.json`; a disturbed run on a real PC (a busy program started during it) being discarded and retried; the box's note; and one whole benchmark job against the server, including a screenshot job interleaved with a waiting benchmark (the controller reads the PC on the interface thread once a second). Also on a real PC: `--audio-driver Dummy` really silent (loading screen and game), a screenshot job's window really never seen with `--position` left of every
 monitor (and the pictures still taken: Godot and the driver draw a window that is off screen), a cancel in the heartbeat reply stopping a running game; the AFK notice (shown without taking the keyboard or the focus, End AFK mode working from it and from the tray menu).
 
 ### Changelog
 
+- **0.3.5** (2026-10-19) - The keyboard and mouse no longer hold a benchmark back or throw a run out (Helix: the PC may be in use); other programs' CPU, the
+  battery, a full-screen app before the start and the player's own Death Muffin still do, and the box and the tray say so.
 - **0.3.4** (2026-10-19) - The games the app starts are remembered and never counted as the player's, and a game that has already ended is not counted at all:
   a benchmark game closing (Windows no longer gives its path then) threw Helix's release benchmark away as "Death Muffin was started".
 - **0.3.3** (2026-10-19) - A run nobody should see (everything but a benchmark) has its window moved outside every monitor within about 10 ms of appearing, kept there, and given no taskbar button (Helix: the Godot splash popped up, then hid).

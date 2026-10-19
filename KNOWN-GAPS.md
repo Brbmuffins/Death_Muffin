@@ -127,6 +127,8 @@ polish list). Also:
 
 ## Tools and tests
 
+- **A team app test fails now and then** (2026-10-19, 1 run in 3 on the VPS): `teamapp/tests/LogCancelTests.cs` "and the exit report is not", which reads a real
+  process's filtered output right after it exits; the next two runs passed.
 - **Typed lists in game code that a new boss or area must be added to by hand** (found by the content-count pass, 2026-10-19): `DmBossHost`'s
   `served_areas` and `LIVE` (a new boss in the boss data does not wake until both are edited; `client/tests/boss.gd` now fails on the mismatch)
   and `DmBenchmark.ROOMS` (`client/tests/benchmark.gd` fails on a mismatch with the world's combat areas).

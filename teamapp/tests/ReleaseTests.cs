@@ -315,7 +315,7 @@ namespace DeathMuffinTeam.Tests
             r.Beat(); r.Eval();
             T.Eq(r.Ui.Shown[0].Text, "Release checks of 20261019.120000-abc1234, about 40 minutes", "the box says what the job is and how long: about 40 minutes");
             T.Has(r.Ui.Shown[0].Note, "starts several times", "and its note says the game starts several times, and that the benchmark and the soak wait for a quiet PC");
-            T.Has(r.Ui.Shown[0].Note, "left alone", "(the benchmark and the soak want the PC left alone)");
+            T.Has(r.Ui.Shown[0].Note, "little of the processor for a minute", "(the benchmark and the soak wait for a quiet processor)");
             T.Eq(r.LastCountdown, "Runs by itself in 5:00", "a release job counts down like any job");
             r.Advance(5.01); r.Eval();
             T.Eq(r.Ran, 1, "after 5 minutes without an answer the job runs by itself (AFK mode starts, as for any job)");
@@ -879,18 +879,18 @@ namespace DeathMuffinTeam.Tests
                 T.Has(StepIn(rig.Api.DoneSteps, "soak").Error, "never went quiet for long enough", "(both)");
                 T.Eq(rig.Host.Launches.Count, 2, "no game was started for either");
             }
-            // the bench step keeps the benchmark's rules: a touched PC throws the run out and it is tried again
+            // the bench step keeps the benchmark's rules: a disturbed run (the player starts Death Muffin) is thrown out and it is tried again
             using (var rig = new Rig())
             {
                 int gameReads = 0;
                 rig.Probe.Script = (n, t, pid) =>
                 {
-                    if (pid > 0 && rig.Host.Launches.Count == 1 && ++gameReads == 3) rig.Probe.LastInput = t;   // a key pressed during the first run
-                    return new PcSample { CpuTotal = 3 + (pid > 0 ? 40 : 0), CpuGame = pid > 0 ? 40 : 0 };
+                    bool player = pid > 0 && rig.Host.Launches.Count == 1 && ++gameReads == 3;   // the player starts the game during the first run
+                    return new PcSample { CpuTotal = 3 + (pid > 0 ? 40 : 0), CpuGame = pid > 0 ? 40 : 0, PlayerGame = player };
                 };
                 rig.Host.Behaviour = ReleaseGame((step, l) =>
                 {
-                    if (step == "bench") rig.Host.RunPolls = rig.Host.Launches.Count == 1 ? 100000 : 0;   // the first run lasts until the PC is touched
+                    if (step == "bench") rig.Host.RunPolls = rig.Host.Launches.Count == 1 ? 100000 : 0;   // the first run lasts until it is disturbed
                     return null;
                 });
                 var res = rig.Run("relG00000004", rig.ReleasePlan(p => { p["steps"] = new List<object> { "bench" }; p["setups"] = new List<object> { BenchTests.Setup("low") }; }));
@@ -905,8 +905,8 @@ namespace DeathMuffinTeam.Tests
                 int gameReads = 0;
                 rig.Probe.Script = (n, t, pid) =>
                 {
-                    if (pid > 0 && ++gameReads % 3 == 0) rig.Probe.LastInput = t;   // every run is touched
-                    return new PcSample { CpuTotal = 3 + (pid > 0 ? 40 : 0), CpuGame = pid > 0 ? 40 : 0 };
+                    bool player = pid > 0 && ++gameReads % 3 == 0;   // every run is disturbed
+                    return new PcSample { CpuTotal = 3 + (pid > 0 ? 40 : 0), CpuGame = pid > 0 ? 40 : 0, PlayerGame = player };
                 };
                 rig.Host.Behaviour = ReleaseGame((step, l) => { rig.Host.RunPolls = step == "bench" ? 100000 : 0; return null; });
                 var res = rig.Run("relG00000005", rig.ReleasePlan(p => { p["steps"] = new List<object> { "bench", "stutter" }; p["setups"] = new List<object> { BenchTests.Setup("low") }; }));

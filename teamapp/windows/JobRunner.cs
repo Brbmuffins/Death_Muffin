@@ -908,12 +908,11 @@ namespace DeathMuffinTeam
             TimeSpan lastInput = TimeSpan.MinValue;
             Action<PcSample> onSample = s =>
             {
-                // (the copy has no key or mouse time: Quiet.Disturbance would answer "the keyboard or mouse was used" for every later reading and hide the other reasons; touches are counted here)
-                samples.Add(new PcSample { At = s.At, CpuTotal = s.CpuTotal, CpuGame = s.CpuGame, IdleS = 1e9, OnBattery = s.OnBattery, Fullscreen = s.Fullscreen, PlayerGame = s.PlayerGame });
+                samples.Add(s);
                 while (samples.Count > 120) samples.RemoveAt(0);
                 int minute = (int)Math.Max(0, (s.At - runStart).TotalMinutes);
                 TimeSpan input = s.At - TimeSpan.FromSeconds(s.IdleS);
-                if (input > runStart + Rules.InputSlack && input > lastInput + TimeSpan.FromSeconds(2))
+                if (input > runStart + TimeSpan.FromSeconds(1) && input > lastInput + TimeSpan.FromSeconds(2))   // (a second's slack: the two clocks are not the same clock)
                 {
                     lastInput = input;
                     touches++;
@@ -1044,7 +1043,7 @@ namespace DeathMuffinTeam
                     note(label + ": the run was disturbed (" + disturbed + ") and thrown away" + (disturbed.Contains("Death Muffin") && watch.LastSeen.Length > 0 ? " [counted as the player's game: " + watch.LastSeen + "]" : ""));
                     await ResetDirAsync(benchDir, ct).ConfigureAwait(false);
                     if (attempt >= BenchTries)
-                        throw new JobFailure("The benchmark on " + label + " was disturbed " + BenchTries + " times (" + disturbed + "), so no numbers were sent. Leave the PC alone while it runs.");
+                        throw new JobFailure("The benchmark on " + label + " was disturbed " + BenchTries + " times (" + disturbed + "), so no numbers were sent. Keep other programs and Death Muffin closed while it runs.");
                 }
                 Dictionary<string, object> run;
                 string err;

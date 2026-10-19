@@ -36,7 +36,8 @@ namespace DeathMuffinTeam
     /// <summary>The numbers behind "quiet" and "disturbed" (ROADMAP Phase 1, the `bench` job's honest numbers).</summary>
     internal sealed class QuietRules
     {
-        /// <summary>Before a run the PC must have been quiet this long: no key or mouse, total CPU averaging under <see cref="QuietCpuPct"/>.</summary>
+        /// <summary>Before a run the PC must have been quiet this long: total CPU averaging under <see cref="QuietCpuPct"/>. The keyboard and mouse do not count (Helix,
+        /// 2026-10-19: a team member may keep using the PC; what would skew the numbers is other programs' CPU, watched before and during a run).</summary>
         public TimeSpan QuietFor = TimeSpan.FromSeconds(60);
         public double QuietCpuPct = 15;
         /// <summary>Readings further apart than this mean the reader stalled (sleep, a hang): the stretch was not watched.</summary>
@@ -48,15 +49,13 @@ namespace DeathMuffinTeam
         public double OthersCpuPct = 20;
         public TimeSpan OthersWindow = TimeSpan.FromSeconds(30);
         public TimeSpan OthersMinSpan = TimeSpan.FromSeconds(10);
-        /// <summary>Input this long after the run started or less is read as before it (the two clocks are not the same clock).</summary>
-        public TimeSpan InputSlack = TimeSpan.FromSeconds(1);
     }
 
     internal static class Quiet
     {
         /// <summary>
         /// "" when the PC is quiet enough to start a benchmark, else why not, in plain words. <paramref name="samples"/> are oldest first and end now. Quiet means: no full-screen
-        /// app, Death Muffin not open, not on battery (now and through the last <see cref="QuietRules.QuietFor"/>), no key or mouse for that long, the total CPU (every process,
+        /// app, Death Muffin not open, not on battery (now and through the last <see cref="QuietRules.QuietFor"/>), the total CPU (every process,
         /// nothing excluded) averaging under 15% over it, and the PC watched all that time (no gap between readings over <see cref="QuietRules.MaxGap"/>, the first reading no later than
         /// <see cref="QuietRules.StartSlack"/> after the window began).
         /// </summary>
@@ -67,7 +66,6 @@ namespace DeathMuffinTeam
             if (last.PlayerGame) return "Death Muffin is open";
             if (last.Fullscreen) return "a full-screen app is open";
             if (last.OnBattery) return "this PC is on battery";
-            if (last.IdleS < r.QuietFor.TotalSeconds) return "the keyboard or mouse was used " + Seconds(last.IdleS) + " ago";
 
             TimeSpan from = last.At - r.QuietFor;
             int first = -1;
@@ -92,8 +90,8 @@ namespace DeathMuffinTeam
         }
 
         /// <summary>
-        /// "" when a run that started at <paramref name="runStart"/> (the reader's clock) was left alone, else why it was disturbed: the keyboard or mouse was used after it
-        /// started, the player started Death Muffin, the PC went on battery, or the other processes used more than 20% of the CPU on average (over any 30 s of the run, or the
+        /// "" when a run that started at <paramref name="runStart"/> (the reader's clock) was left alone, else why it was disturbed: the player started Death Muffin, the PC
+        /// went on battery, or the other processes used more than 20% of the CPU on average (over any 30 s of the run, or the
         /// whole run while it is shorter; the run must be 10 s old before this counts).
         /// </summary>
         public static string Disturbance(IList<PcSample> samples, TimeSpan runStart, QuietRules r)
@@ -104,7 +102,6 @@ namespace DeathMuffinTeam
             {
                 if (s.PlayerGame) return "Death Muffin was started";
                 if (s.OnBattery) return "the PC went on battery";
-                if (s.At - TimeSpan.FromSeconds(s.IdleS) > runStart + r.InputSlack) return "the keyboard or mouse was used";
             }
             for (int e = 0; e < run.Count; e++)
             {

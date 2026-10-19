@@ -80,7 +80,7 @@ namespace DeathMuffinTeam
         string gpu;
 
         /// <summary>The words of the tray status while a benchmark that was accepted waits for the PC to be left alone.</summary>
-        public const string BenchWaitingText = "Benchmark waiting for the PC to be left alone";
+        public const string BenchWaitingText = "Benchmark waiting for a quiet PC";
         public const string BenchGoneText = "The benchmark is no longer available.";
         /// <summary>How the PC is judged quiet before a benchmark is claimed (the runner judges it again before each setup).</summary>
         public QuietRules Rules = new QuietRules();
@@ -498,7 +498,7 @@ namespace DeathMuffinTeam
             benchSamples.Clear();
             benchPrimed = false;
             benchRetryAt = DateTime.MinValue;
-            log("accepted " + offer.Id + " \"" + offer.Title + "\": waiting for the PC to be left alone");
+            log("accepted " + offer.Id + " \"" + offer.Title + "\": waiting for a quiet PC");
             SetStatus(BenchWaitingText, StatusLevel.Busy);
         }
 
@@ -584,7 +584,7 @@ namespace DeathMuffinTeam
             await HeartbeatAsync().ConfigureAwait(true);
             if (current == null && !running)
             {
-                if (waitingBench != null) ui.Notify("A benchmark is waiting", "It starts once the PC has been left alone for a minute.", false);
+                if (waitingBench != null) ui.Notify("A benchmark is waiting", "It starts once other programs have used little of the processor for a minute.", false);
                 else ui.Notify("Nothing to run", "No jobs are waiting right now.", false);
                 return;
             }

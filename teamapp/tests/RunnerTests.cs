@@ -642,7 +642,7 @@ namespace DeathMuffinTeam.Tests
 
         static void BenchDisturbed()
         {
-            // a key pressed during the first run: the run is thrown away with its folders, the PC is waited on again, and the retry is the result
+            // the player starts Death Muffin during the first run: the run is thrown away with its folders, the PC is waited on again, and the retry is the result
             using (var rig = new Rig())
             {
                 var saw = new List<string>();
@@ -650,8 +650,8 @@ namespace DeathMuffinTeam.Tests
                 int gameReads = 0;
                 rig.Probe.Script = (n, t, pid) =>
                 {
-                    if (pid > 0 && rig.Host.Launches.Count == 1 && ++gameReads == 3) rig.Probe.LastInput = t;
-                    return new PcSample { CpuTotal = 3 + (pid > 0 ? 40 : 0), CpuGame = pid > 0 ? 40 : 0 };
+                    bool player = pid > 0 && rig.Host.Launches.Count == 1 && ++gameReads == 3;
+                    return new PcSample { CpuTotal = 3 + (pid > 0 ? 40 : 0), CpuGame = pid > 0 ? 40 : 0, PlayerGame = player };
                 };
                 rig.Host.Behaviour = (l, dir) =>
                 {
@@ -662,7 +662,7 @@ namespace DeathMuffinTeam.Tests
                     {
                         File.WriteAllText(Path.Combine(dir, "stale.txt"), "x");
                         WriteRun(dir, "disturbed", "low");
-                        rig.Host.RunPolls = 100000;   // runs until the PC is touched
+                        rig.Host.RunPolls = 100000;   // runs until it is disturbed
                         return 0;
                     }
                     rig.Host.RunPolls = 0;
@@ -678,9 +678,24 @@ namespace DeathMuffinTeam.Tests
                 T.Eq(string.Join(";", saw), "|;|", "the retry found its --bench-dir and its APPDATA empty (the disturbed run's files are gone)");
                 T.Ok(rig.Host.Launches[0].AppData != rig.Host.Launches[1].AppData, "and has an APPDATA of its own");
                 T.Ok(readsAtStart[1] - readsAtStart[0] >= 60, "the PC had to be quiet for a minute again first (" + (readsAtStart[1] - readsAtStart[0]) + " readings)");
-                T.Has(rig.Api.DoneLog, "the run was disturbed (the keyboard or mouse was used) and thrown away", "the log says what happened");
+                T.Has(rig.Api.DoneLog, "the run was disturbed (Death Muffin was started) and thrown away", "the log says what happened");
                 T.Ok(progress.Contains("Benchmark on Low (1 of 1)") && progress.Contains("Benchmark on Low (1 of 1), try 2 of 3"), "the status says it is the second try");
                 T.Ok(!File.Exists(Path.Combine(rig.Folders.BenchDir("benchB0000001", 1), "stale.txt")), "the first try's files are gone");
+            }
+
+            // the keyboard and mouse never disturb a run (Helix, 2026-10-19: the PC may be in use while it runs)
+            using (var rig = new Rig())
+            {
+                rig.Probe.Script = (n, t, pid) =>
+                {
+                    if (pid > 0) rig.Probe.LastInput = t;   // in use the whole run
+                    return new PcSample { CpuTotal = 3 + (pid > 0 ? 40 : 0), CpuGame = pid > 0 ? 40 : 0 };
+                };
+                int polls = 0;
+                rig.Host.Behaviour = (l, dir) => { WriteRun(dir, "used", "low"); rig.Host.RunPolls = 30; polls++; return 0; };
+                var res = rig.Run("benchB0000009", rig.BenchPlan(new[] { "low" }));
+                T.Ok(res.Ok && rig.Host.Launches.Count == 1 && MiniJson.Str(rig.Api.DoneRuns.Single(), "clientRunId") == "used", "a run on a PC in use is kept the first time: " + res.Error);
+                T.Ok(!rig.Api.DoneLog.Contains("disturbed"), "and nothing calls it disturbed");
             }
 
             // other programs, the player's Death Muffin, the battery: each disturbs a run once
@@ -714,7 +729,7 @@ namespace DeathMuffinTeam.Tests
                 rig.Host.Behaviour = (l, dir) => { WriteRun(dir, "never-sent", "low"); File.WriteAllText(Path.Combine(dir, "stale.txt"), "x"); return 0; };
                 string id = "benchB0000003";
                 var res = rig.Run(id, rig.BenchPlan(new[] { "low" }));
-                T.Eq(res.Error, "The benchmark on Low was disturbed 3 times (other programs were using the CPU (about 30%)), so no numbers were sent. Leave the PC alone while it runs.", "three disturbed runs fail the job in plain words");
+                T.Eq(res.Error, "The benchmark on Low was disturbed 3 times (other programs were using the CPU (about 30%)), so no numbers were sent. Keep other programs and Death Muffin closed while it runs.", "three disturbed runs fail the job in plain words");
                 T.Eq(rig.Host.Launches.Count, 3, "at most 3 tries");
                 T.Eq(rig.Host.Killed, 3, "each was stopped");
                 T.Eq(rig.Api.FailError, res.Error, "the server is told the same");
@@ -768,7 +783,7 @@ namespace DeathMuffinTeam.Tests
             using (var rig = new Rig())
             {
                 // a full-screen app, the battery, and busy CPU wait too
-                foreach (string kind in new[] { "full", "battery", "cpu", "typing" })
+                foreach (string kind in new[] { "full", "battery", "cpu" })
                 {
                     rig.Host.Launches.Clear();
                     rig.Probe.Script = (n, t, pid) =>
@@ -778,13 +793,12 @@ namespace DeathMuffinTeam.Tests
                         if (kind == "full") s.Fullscreen = bad;
                         if (kind == "battery") s.OnBattery = bad;
                         if (kind == "cpu" && bad) s.CpuTotal = 45;
-                        if (kind == "typing" && bad) rig.Probe.LastInput = t;
                         return s;
                     };
                     rig.Probe.Reads = 0;
                     var starts = new List<int>();
                     rig.Host.Behaviour = (l, dir) => { starts.Add(rig.Probe.Reads); WriteRun(dir, "r", "low"); return 0; };
-                    var res = rig.Run("benchQ000000" + (kind == "full" ? 2 : kind == "battery" ? 3 : kind == "cpu" ? 4 : 5), rig.BenchPlan(new[] { "low" }));
+                    var res = rig.Run("benchQ000000" + (kind == "full" ? 2 : kind == "battery" ? 3 : 4), rig.BenchPlan(new[] { "low" }));
                     T.Ok(res.Ok && starts.Count == 1 && starts[0] >= (kind == "cpu" ? 130 : 148), kind + ": the benchmark waits until the PC is quiet and a minute has passed (" + (starts.Count == 1 ? starts[0].ToString() : "?") + " readings): " + res.Error);
                 }
             }
@@ -799,9 +813,13 @@ namespace DeathMuffinTeam.Tests
             }
             using (var rig = new Rig())
             {
-                rig.Probe.Script = (n, t, pid) => { rig.Probe.LastInput = t; return new PcSample { CpuTotal = 3 }; };
-                var res = rig.Run("benchQ0000007", rig.BenchPlan(new[] { "low" }, DateTime.UtcNow.AddMilliseconds(200)));
-                T.Eq(res.Error, "The PC never went quiet for long enough: the keyboard or mouse was used 0 s ago.", "someone who never stops typing: the reason says so");
+                // someone who never stops typing on a quiet PC: the benchmark runs after its quiet minute anyway (Helix, 2026-10-19: only the CPU counts)
+                rig.Probe.Script = (n, t, pid) => { rig.Probe.LastInput = t; return new PcSample { CpuTotal = 3 + (pid > 0 ? 40 : 0), CpuGame = pid > 0 ? 40 : 0 }; };
+                rig.Probe.Reads = 0;
+                var starts = new List<int>();
+                rig.Host.Behaviour = (l, dir) => { starts.Add(rig.Probe.Reads); WriteRun(dir, "typed", "low"); return 0; };
+                var res = rig.Run("benchQ0000007", rig.BenchPlan(new[] { "low" }));
+                T.Ok(res.Ok && starts.Count == 1 && starts[0] < 90, "someone who never stops typing: the benchmark runs after its quiet minute (" + (starts.Count == 1 ? starts[0].ToString() : "?") + " readings): " + res.Error);
             }
             using (var rig = new Rig())
             {

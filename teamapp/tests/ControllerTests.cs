@@ -39,7 +39,7 @@ namespace DeathMuffinTeam.Tests
 
     static class CtlStatus
     {
-        public const string Waiting = "Benchmark waiting for the PC to be left alone";
+        public const string Waiting = "Benchmark waiting for a quiet PC";
     }
 
     static class ControllerTests
@@ -406,12 +406,12 @@ namespace DeathMuffinTeam.Tests
             r.Beat(); r.Eval();
             T.Ok(r.Ui.BoxVisible && r.Ui.Shown.Count == 1, "a benchmark is offered in the box too");
             T.Eq(r.Ui.Shown[0].Text, "Benchmark of the new release, about 6 minutes", "the box says what it is and how long");
-            T.Eq(r.Ui.Shown[0].Note, "It starts once the PC has been left alone for a minute, and runs at normal priority. Touching the mouse or keyboard restarts it.", "and says it starts once the PC has been left alone, runs at normal priority and that touching the PC restarts it");
+            T.Eq(r.Ui.Shown[0].Note, "It starts once other programs have used little of the processor for a minute, and runs at normal priority. You can keep using the PC; a busy processor restarts it.", "and says it starts once the PC has been left alone, runs at normal priority and that touching the PC restarts it");
             T.Eq(r.LastCountdown, "Runs by itself in 5:00", "with the usual countdown");
             r.Offer("job000000010", "shots"); r.Eval();
             T.Eq(r.Ui.Shown.Last().Note, "", "a screenshot job's box has no note");
             T.Eq(TeamLogic.OfferNote("shots"), "", "no note for shots");
-            T.Ok(TeamLogic.OfferNote("bench").Contains("left alone for a minute") && TeamLogic.OfferNote("bench").Contains("normal priority") && TeamLogic.OfferNote("bench").Contains("restarts"), "the note's words");
+            T.Ok(TeamLogic.OfferNote("bench").Contains("little of the processor for a minute") && TeamLogic.OfferNote("bench").Contains("normal priority") && TeamLogic.OfferNote("bench").Contains("restarts"), "the note's words");
 
             // the same exceptions as for every job: a benchmark waits for what is in the way
             r = new CtlRig(mode: OfferMode.Auto);
@@ -429,7 +429,7 @@ namespace DeathMuffinTeam.Tests
             r.Api.Heartbeat = () => FakeApi.OfferReply("job000000012", "bench", "Benchmark of the new release", 360);
             r.Beat(); r.Eval();
             T.Ok(r.Ran == 0 && r.Api.Count("claim") == 0 && r.C.WaitingBench != null && r.C.WaitingBench.Id == "job000000012" && !r.C.IsBusy, "a benchmark that is said yes to is not claimed: it waits, and the PC is not busy");
-            T.Eq(r.Ui.Status, "Benchmark waiting for the PC to be left alone", "the tray says so");
+            T.Eq(r.Ui.Status, "Benchmark waiting for a quiet PC", "the tray says so");
             Settle(r);
             T.Eq(r.Ran, 1, "a bench job is run once the PC has been left alone");
             T.Ok(r.C.WaitingBench == null && r.Api.Count("claim") == 1, "it was claimed then, and is no longer waiting");
@@ -646,9 +646,7 @@ namespace DeathMuffinTeam.Tests
             r.Probe.Script = (n, t, pid) => { if (n < 100) r.Probe.LastInput = t; return new PcSample { CpuTotal = 3 }; };
             w.Offers("bench0000002"); r.Eval();
             Settle(r, 95);
-            T.Ok(r.Ran == 0 && w.Claims.Count == 0 && r.C.WaitingBench != null, "someone at the keyboard: the benchmark keeps waiting");
-            Settle(r, 75);
-            T.Ok(r.Ran == 1 && w.Claims.Count == 1, "and starts a minute after they stop");
+            T.Ok(r.Ran == 1 && w.Claims.Count == 1, "someone at the keyboard: the benchmark does not wait for them (only the CPU counts, Helix 2026-10-19)");
 
             // not while a screenshot offer is waiting for an answer (mode only on a yes)
             w = new WaitRig(OfferMode.Yes);

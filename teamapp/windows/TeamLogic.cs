@@ -198,8 +198,8 @@ namespace DeathMuffinTeam
         /// </summary>
         public static string OfferNote(string kind)
         {
-            if (kind == JobPlan.ReleaseKind) return "The game starts several times, off screen and silent. The benchmark and the soak test wait for the PC to be left alone for a minute and run at normal priority.";
-            return kind == JobPlan.BenchKind ? "It starts once the PC has been left alone for a minute, and runs at normal priority. Touching the mouse or keyboard restarts it." : "";
+            if (kind == JobPlan.ReleaseKind) return "The game starts several times, off screen and silent. The benchmark and the soak test wait until other programs have used little of the processor for a minute, and run at normal priority.";
+            return kind == JobPlan.BenchKind ? "It starts once other programs have used little of the processor for a minute, and runs at normal priority. You can keep using the PC; a busy processor restarts it." : "";
         }
 
         /// <summary>"4:12" for the box's countdown.</summary>
