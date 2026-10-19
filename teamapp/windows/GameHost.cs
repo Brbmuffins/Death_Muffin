@@ -49,10 +49,21 @@ namespace DeathMuffinTeam
 
     internal sealed class ProcessGameHost : IGameHost
     {
-        readonly Action<int> tend;
+        readonly Action<int, System.Drawing.Point?> tend;
 
-        /// <param name="tend">Called with the game's process id on every poll (the window tamer on Windows); null for none.</param>
-        public ProcessGameHost(Action<int> tend = null) { this.tend = tend; }
+        /// <param name="tend">Called with the game's process id on every poll (the window tamer on Windows), and with the spot outside every monitor the
+        /// window must stay at when the run is one nobody should see (it was started with `--position`; a benchmark is not); null for none.</param>
+        public ProcessGameHost(Action<int, System.Drawing.Point?> tend = null) { this.tend = tend; }
+
+        /// <summary>The `--position X,Y` the run was started with, or null (the window may be seen: a benchmark).</summary>
+        static System.Drawing.Point? HiddenSpot(List<string> args)
+        {
+            int i = args.IndexOf("--position");
+            if (i < 0 || i + 1 >= args.Count) return null;
+            string[] xy = args[i + 1].Split(',');
+            int x, y;
+            return xy.Length == 2 && int.TryParse(xy[0], out x) && int.TryParse(xy[1], out y) ? new System.Drawing.Point(x, y) : (System.Drawing.Point?)null;
+        }
 
         public IGameProcess Start(GameLaunch l)
         {
@@ -87,17 +98,35 @@ namespace DeathMuffinTeam
             }
             p.BeginOutputReadLine();
             p.BeginErrorReadLine();
-            return new Running(p, buffer, tend);
+            System.Drawing.Point? spot = HiddenSpot(l.Args);
+            var running = new Running(p, buffer, tend, spot);
+            if (tend != null && spot.HasValue)
+            {
+                // Godot shows its window (the boot splash) before the game reads --position, and may place it on a monitor: for the first 10 s the
+                // window is looked for every 10 ms and moved outside every monitor the moment it appears (Helix, 2026-10-19: the splash popped up, then hid).
+                int id0 = p.Id;
+                System.Threading.Tasks.Task.Run(() =>
+                {
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    while (sw.ElapsedMilliseconds < 10000 && !running.HasExited)
+                    {
+                        try { tend(id0, spot); } catch (Exception) { }
+                        System.Threading.Thread.Sleep(10);
+                    }
+                });
+            }
+            return running;
         }
 
         sealed class Running : IGameProcess
         {
             readonly Process p;
             readonly OutputBuffer buffer;
-            readonly Action<int> tend;
+            readonly Action<int, System.Drawing.Point?> tend;
+            readonly System.Drawing.Point? spot;
             readonly int id;
 
-            public Running(Process p, OutputBuffer buffer, Action<int> tend) { this.p = p; this.buffer = buffer; this.tend = tend; id = p.Id; }
+            public Running(Process p, OutputBuffer buffer, Action<int, System.Drawing.Point?> tend, System.Drawing.Point? spot) { this.p = p; this.buffer = buffer; this.tend = tend; this.spot = spot; id = p.Id; }
 
             public int Id { get { return id; } }
 
@@ -123,7 +152,7 @@ namespace DeathMuffinTeam
             public void Tend()
             {
                 if (tend == null) return;
-                try { tend(id); } catch (Exception) { /* keeping the window out of the way is best effort */ }
+                try { tend(id, spot); } catch (Exception) { /* keeping the window out of the way is best effort */ }
             }
 
             public string Output()

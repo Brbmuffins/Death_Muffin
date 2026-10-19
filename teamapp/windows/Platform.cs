@@ -346,7 +346,9 @@ namespace DeathMuffinTeam
         [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr")] static extern IntPtr SetWindowLong64(IntPtr hWnd, int index, IntPtr value);
 
         const int GWL_EXSTYLE = -20;
-        const long WS_EX_NOACTIVATE = 0x08000000L;
+        const long WS_EX_NOACTIVATE = 0x08000000L, WS_EX_TOOLWINDOW = 0x00000080L, WS_EX_APPWINDOW = 0x00040000L;
+        [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hWnd, out Rect r);
+        [StructLayout(LayoutKind.Sequential)] struct Rect { public int Left, Top, Right, Bottom; }
         const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOACTIVATE = 0x10;
         static readonly IntPtr HWND_BOTTOM = new IntPtr(1);
 
@@ -363,7 +365,7 @@ namespace DeathMuffinTeam
         /// "no activate" so a click never gives it the keyboard, and sent to the bottom of the stack; if it did become the active window, the window the person was using
         /// gets it back. Windows' own rule that a background process cannot take the foreground does most of the work; this covers the rest.
         /// </summary>
-        public static void TendGameWindow(int pid)
+        public static void TendGameWindow(int pid, System.Drawing.Point? hiddenAt)
         {
             lock (TameGate)
             {
@@ -384,8 +386,17 @@ namespace DeathMuffinTeam
                 {
                     if (Tamed.Add(h))
                     {
-                        SetExStyle(h, GetExStyle(h) | WS_EX_NOACTIVATE);
+                        long ex = GetExStyle(h) | WS_EX_NOACTIVATE;
+                        if (hiddenAt.HasValue) ex = (ex | WS_EX_TOOLWINDOW) & ~WS_EX_APPWINDOW;   // a run nobody should see: no taskbar button either
+                        SetExStyle(h, ex);
                         SetWindowPos(h, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                    }
+                    if (hiddenAt.HasValue)
+                    {
+                        // kept outside every monitor: moved there the moment it appears, and back if the game places it on a monitor again
+                        Rect r;
+                        if (GetWindowRect(h, out r) && (r.Left != hiddenAt.Value.X || r.Top != hiddenAt.Value.Y))
+                            SetWindowPos(h, HWND_BOTTOM, hiddenAt.Value.X, hiddenAt.Value.Y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
                     }
                     if (fg == h && persons != IntPtr.Zero) SetForegroundWindow(persons);
                 }

@@ -269,6 +269,7 @@ monitor (and the pictures still taken: Godot and the driver draw a window that i
 
 ### Changelog
 
+- **0.3.3** (2026-10-19) - A run nobody should see (everything but a benchmark) has its window moved outside every monitor within about 10 ms of appearing, kept there, and given no taskbar button (Helix: the Godot splash popped up, then hid).
 - **0.3.2** (2026-10-19) - The release checks' screens pass the plan's class to the debug build (`--class=N`; without it no game started and every size ended with code 2), and the job log names the process a benchmark or a job counted as the player's game (name, id, path), to find why the job's own game was taken for the player's.
 - **0.3.1** (2026-10-19) - The AFK notice stays on top while AFK mode is on, with a Hide button (AFK mode stays on; the tray's Show AFK notice brings it back; Helix's ask).
 - **0.3.0** (2026-10-19) - The `clip` job (short videos of a change: one game run for each variant with its own tune, the engine's `--fixed-fps 30`, the clips uploaded as `<variant>_<clip>.mjpeg` for the server to turn into mp4s) and a `shots` job with a `before` and an `after`
