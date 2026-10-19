@@ -178,6 +178,9 @@ polish list). Also:
 ## Assets and effects
 
 Notes for the asset and effects work (ROADMAP):
+- Fix (2026-10-19, seen in a team PC's clip run): some Binbun materials under `client/assets/fx/binbun/lib/` (MagicOrbsVFX `magic_orb_flash_02`, MagicAreaVFX `ripple_area_02`, `pulse_area_03`)
+  name their shader by a uid Godot no longer has (`uid://cxgc3o7ygtvmo`, `uid://bgxf20vtx55u7`), so `DmRiteFx.warm` prints a WARNING with a backtrace for each at every start ("invalid UID ... using text path instead");
+  they load through the path. After: the `.tres` files carry the shaders' current uids and a start prints none.
 - The baked crowd is 234 MB (positions 140, normals 70, level-of-detail meshes 23); each level of detail's mesh repeats the vertex arrays,
   where one array with Godot's own mesh LODs would share them.
 - The Bone Colossus's rim reads fuller than the old game's (a pose that differs, or the baked normals at its hard edges).
