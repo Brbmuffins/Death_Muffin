@@ -368,6 +368,15 @@
         "DECISIONS.md",
         "tools/hygiene/**"
       ]
+    },
+    {
+      "id": "social-suite",
+      "pattern": "tests/social\\.gd|coop_bosses,? (and )?social\\b|--only social\\b",
+      "reason": "the social suite was merged 2026-10-19 into next_lobby/ui_run (Part D: the real boot scene as the joining player)",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
     }
   ],
   "allowPaths": {
