@@ -299,7 +299,8 @@ func fight_shot() -> void:
 				seen += 1
 	check(g.world.area_at(hero.position.x, hero.position.z) == "graves" and g.ui.visible and (st["saved"] as Dictionary).is_empty(), "fight: the hero is in the Graves with the HUD up")
 	check(casts[0] >= 5 and hits[0] >= 1, "fight: the hero cast %d times at the pack and hit it %d times" % [casts[0], hits[0]])
-	check(g.core_host.alive_count() >= DmQaUiShots.FIGHT_FOES - 2 and seen >= 4, "fight: %d enemies alive, %d of them on screen" % [g.core_host.alive_count(), seen])
+	# (the pack is made up again only once it is under FIGHT_FOES - 2, and the casts of the last step can kill after it: 4 is what the picture is promised)
+	check(g.core_host.alive_count() >= 4 and seen >= 4, "fight: %d enemies alive, %d of them on screen (at least 4 of each)" % [g.core_host.alive_count(), seen])
 	check(float(hero.p["hp"]) >= 0.95 * float(hero.p["stats"]["maxHp"]), "fight: the hero is kept alive and healthy for the picture")
 	g.input.hotbar.disconnect(cast_cb)
 	g.core_host.enemy_damaged.disconnect(hit_cb)

@@ -246,13 +246,16 @@ static func icon(path: String, side: int = 128) -> Texture2D:
 
 ## The greyed variant of an icon (a rite out of essence, locked or waiting for a corpse): the old slot shader's `mix(grey, rgb, sat) * bright`, baked.
 ## `level` is DIM_SOFT (sat 0.55, bright 0.7), DIM_HARD (0.3, 0.55) or DIM_LOCKED (0.0, 0.55). The original texture when the image cannot be read.
+## Made from the icon's packed pixels (no second load or GPU read back); the per-pixel bake still costs ~4 ms an icon, so the bar's variants are baked
+## while loading (DmNextHudVm.warm_icons).
 static func dimmed(path: String, level: int, side: int = 128) -> Texture2D:
 	var key := "d%d|%s|%d" % [level, path, side]
 	if _icons.has(key):
 		return _icons[key]
 	var out: Texture2D = icon(path, side)
 	if ResourceLoader.exists(path):
-		var img := _readable(load(path) as Texture2D, side)
+		var packed := region("i|%s|%d" % [path, side])
+		var img := _main.image.get_region(packed) if packed.size != Vector2i.ZERO else _readable(load(path) as Texture2D, side)
 		if img != null:
 			var sat := 0.55 if level == DIM_SOFT else (0.3 if level == DIM_HARD else 0.0)
 			var bright := 0.7 if level == DIM_SOFT else 0.55
