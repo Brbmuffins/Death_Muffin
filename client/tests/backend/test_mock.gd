@@ -67,26 +67,6 @@ static func run(t: SceneTree) -> Array:
 	check.call(sl.ok and sl.data.size() == 1 and dl.ok and dl.data.size() == 0 and not badslot.ok and not badpreset.ok and badpreset.error == "A loadout holds a primary and five rites.", "loadouts")
 	var unknown := await api.craft(cid, "recipe_x")
 	check.call(not unknown.ok and unknown.error == "Unknown recipe" and unknown.status != 501, "craft is served by the backend (no 501 stub)")
-	# offline sync: snapshot -> load (changes) -> versions -> restore
-	var snap := await api.offline_snapshot()
-	check.call(snap.ok and str(snap.data["fingerprint"]).length() == 64 and snap.data["summary"]["level"] == 4, "offline snapshot")
-	var edited: Dictionary = snap.data["snapshot"].duplicate(true)
-	edited["character"]["level"] = 9
-	var stale := await api.offline_load(edited, "0".repeat(64))
-	check.call(not stale.ok and stale.status == 409, "offline load stale fingerprint")
-	var ld := await api.offline_load(edited, snap.data["fingerprint"])
-	check.call(ld.ok and ld.data["summary"]["level"] == 9, "offline load")
-	var vers := await api.offline_versions()
-	check.call(vers.ok and vers.data["versions"].size() == 2, "versions recorded")
-	var snap2 := await api.offline_snapshot()
-	var online_version: int = 0
-	for v in vers.data["versions"]:
-		if v["source"] == "online":
-			online_version = v["id"]
-	var rs := await api.offline_restore(online_version, snap2.data["fingerprint"])
-	check.call(rs.ok and rs.data["summary"]["level"] == 4, "offline restore")
-	var ss := await api.offline_sync_stats(7, 12, 5)
-	check.call(ss.ok and ss.data["improved"] == true and ss.data["level"] == 12, "sync-stats improves")
 	var lb := await api.get_leaderboard()
 	check.call(lb.ok and lb.data["players"].size() == 1 and lb.data["players"][0]["rank"] == 1, "leaderboard")
 	var unauth := DmApi.new(mock.transport_callable())

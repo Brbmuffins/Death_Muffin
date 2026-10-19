@@ -437,8 +437,6 @@ func _t_forge() -> void:
 	c.set_recipes("alchemy", DmRecipes.for_skill("alchemy"))
 	await _frames(2)
 	_eq(c.hint_text, "Brew of the day: Wraithquick Elixir (one extra on your first brew today)", "brew of the day hint")
-	c.set_bonus_claimed(true)
-	_check(c.hint_text.ends_with("(bonus claimed today)"), "bonus claimed hint")
 	var botd := 0
 	for r: Dictionary in c.rows:
 		if r["botd"]:

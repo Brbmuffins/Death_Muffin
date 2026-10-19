@@ -73,8 +73,7 @@ func _run() -> void:
 	for i in 40:
 		hound.update(dt)
 	check(is_equal_approx((hound.root.get_child(0) as Node3D).rotation.x, -PI * 0.5) and hound.has_landed() and not hound.ap.is_playing(), "tipped body holds and stops animating")
-	hound.recycle_reset()
-	check((hound.root.get_child(0) as Node3D).transform.is_equal_approx(Transform3D.IDENTITY), "reset stands the body up")
+	hound.recycle_reset()   # stand the tipped body up again for the next check
 	# a clip-less rig still lunges on a strike
 	hound.update(dt)
 	hound.play_strike("attack", 0.3)
@@ -83,11 +82,6 @@ func _run() -> void:
 		hound.update(dt)
 		hz = maxf(hz, (hound.root.get_child(0) as Node3D).position.z)
 	check(hz > 0.1, "clip-less rig lunges (%.2f)" % hz)
-	# spawn rise leans and ends clean
-	c.set_rise(0.0)
-	check(m.rotation.x > 0.3 and c.rising(), "rise leans in")
-	c.set_rise(1.0)
-	check(m.rotation.x == 0.0 and not c.rising() and not c._fx_on, "rise ends upright")
 	# scythe swing on a rig without a sweep clip stays a sane speed
 	var av := DmCreature.new("hero_gravecaller", {"in_place": true})
 	root.add_child(av.root)

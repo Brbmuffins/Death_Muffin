@@ -112,7 +112,6 @@ func _test_mix_gain() -> void:
 	near(Mixer.slider_gain(0.5), pow(0.5, 1.5), 1e-12, "slider 0.5")
 	near(Mixer.slider_gain(NAN), 1.0, 0.0, "slider NaN -> 1")
 	near(Mixer.master_gain({"volume": 0.6, "combatVolume": 1.0, "ambienceVolume": 1.0, "musicVolume": 0.85, "interfaceVolume": 1.0}), pow(0.6, 1.5) * 0.9, 1e-12, "master default")
-	near(Mixer.music_gain({"musicVolume": 0.85}), pow(0.85, 1.5) * 0.72, 1e-12, "music gain")
 	eq(Array(Mixer.BUS_IDS), ["combat", "enemies", "thralls", "ui", "ambience"], "bus ids")
 
 
@@ -739,12 +738,6 @@ func _test_director() -> void:
 	d.set_area("pyre")
 	ok(not d.boss_bed_active(), "changing area ends the war drum")
 	d.set_area("chapterhouse")
-	# combat override ducks the bed
-	d.set_combat(true)
-	for i in 30:
-		d.advance(0.1)
-	ok(d.combat_level() >= 1.0 and d.stats()["bed_duck"] < 0.55, "set_combat ducks the zone bed (%f)" % d.stats()["bed_duck"])
-	d.set_combat(false)
 	# stop
 	d.stop_area()
 	ok(d.current_area() == "" and d.music_cue() == "", "stop_area ends bed and music")

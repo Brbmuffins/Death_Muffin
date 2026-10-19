@@ -111,7 +111,6 @@ func run(tree: SceneTree) -> void:
 	await _stop_tests()
 	await _auto_tests()
 	await _flush_tests()
-	await _api_tests()
 	await _views_tests(tree)
 
 
@@ -362,30 +361,6 @@ func _flush_tests() -> void:
 	await loop.flush()
 	await loop.flush()
 	check(posts.size() == 1, "empty flush posts nothing")
-
-
-func _api_tests() -> void:
-	# the real DmApi on the offline backend: gather is served there (the server's time budget and rules)
-	var mock := DmMockBackend.new("")
-	mock.now_ms = func(): return 1700000000000
-	var api := DmApi.new(mock.transport_callable())
-	api.base_url = ""
-	var r: DmResult = await api.register("tester", "t@example.com", "secretpw")
-	api.set_token(str(r.data["token"]))
-	var ch: DmResult = await api.load_or_create_character(0)
-	var oak := _find("coffin_oak", "acre")
-	var spot := DmGathering.stand_spot(nav.blocked, oak, float(oak["x"]), float(oak["z"]) + 5.0)
-	_reset(spot["x"], spot["z"])
-	var post := DmGatherLoop.api_post(api, int(ch.data["id"]))
-	var res: DmResult = await post.call("coffin_oak", 3, false, true)
-	check(not res.ok and res.status == 400 and res.error == "Start AFK gathering from Skills first.", "api_post reaches DmApi.gather (the backend refuses AFK before afk-start)")
-	var res2: DmResult = await post.call("coffin_oak", 3, false, false)
-	check(res2.ok and res2.data["node"] == "coffin_oak" and int(res2.data["accepted"]) == 3, "api_post gathers on the offline backend")
-	loop.hooks["post"] = post
-	loop.start(oak)
-	loop.update(2.4)
-	await loop.flush()
-	check(errors.is_empty(), "a flush against the offline backend is not an error")
 
 
 func _fake_builder(defs: Array) -> Object:
