@@ -332,6 +332,15 @@
         "DECISIONS.md",
         "tools/hygiene/**"
       ]
+    },
+    {
+      "id": "suite-next-polish",
+      "pattern": "\\bnext_polish\\b",
+      "reason": "test suite merged into counsel (client/tests/counsel.gd) 2026-10-19",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
     }
   ],
   "allowPaths": {

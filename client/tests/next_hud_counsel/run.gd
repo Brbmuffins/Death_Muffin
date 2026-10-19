@@ -1,11 +1,9 @@
 extends SceneTree
-## HUD feeds, counsel facts, the Legion purchase and panel verification on the rebuilt client (client/next/hud): the save chip, wave dial, forwarded sounds, counsel_busy /
-## counsel_tick_ctx, and every panel opening with the rebuild's data and its basic action working through the (offline) API, first-open cost included.
+## HUD feeds, the Legion purchase and panel verification on the rebuilt client (client/next/hud): the save chip, wave dial, forwarded sounds, and the panels' basic actions
+## working through the (offline) API. (The counsel's facts and busy flags are tests/counsel.gd's.)
 ## godot --headless --fixed-fps 60 --path client --script res://tests/next_hud_counsel/run.gd
 
 const DT := 1.0 / 60.0
-const FIRST_OPEN_BUDGET_MS := 80.0   ## over an idle frame; the current client measures 0-52 ms (panel_perf.gd: Capes & Pets 52, Reagent shelf 41, the rest <= 30), so 1.5x its worst
-
 var passed := 0
 var failed := 0
 var g: DmNextGame
@@ -13,9 +11,7 @@ var api: DmApi
 var ui: DmGameUi
 var h: DmNextUiHost
 var sounds: Array = []
-var events: Array = []
 var baseline: Array = []
-var idle_ms := 0.0
 
 
 func _initialize() -> void:
@@ -50,10 +46,6 @@ func until(cond: Callable, limit_s: float) -> bool:
 	return cond.call()
 
 
-func ids(id: String) -> Array:
-	return events.filter(func(e: Dictionary) -> bool: return e["id"] == id)
-
-
 func count_sound(name: String) -> int:
 	return sounds.count(name)
 
@@ -82,16 +74,12 @@ func shown() -> String:
 	return " | ".join(out)
 
 
-## Opens a panel (closing the others); returns the first-open cost over an idle frame in ms.
-func open(p: String) -> float:
+## Opens a panel (closing the others).
+func open(p: String) -> void:
 	ui.close_panels()
 	await frames(2)
-	var t := Time.get_ticks_usec()
 	ui.toggle_panel(p)
-	await process_frame
-	var ms := maxf(0.0, (Time.get_ticks_usec() - t) / 1000.0 - idle_ms)
-	await frames(3)
-	return ms
+	await frames(4)
 
 
 ## Writes the character's state to the backend now (the backend prices purchases from ITS purse).
@@ -107,12 +95,6 @@ func item_of_type(types: Array, rarity: String = "") -> String:
 		if String(m.get("type", "")) in types and (rarity == "" or String(m.get("rarity", "")) == rarity):
 			return String(id)
 	return ""
-
-
-## Every body of the core out of the way (the old game's director.clear() freed the nodes; the client's only drops its queue).
-func _clear_foes() -> void:
-	for id in g.core_host.core.enemy_ids():
-		g.core_host.remove_enemy(int(id))
 
 
 func body() -> DmHeroBody:
@@ -134,40 +116,15 @@ func _run() -> void:
 	print("start %d ms (panels warm %d ms)" % [Time.get_ticks_msec() - t0, g.ui.warm_ms])
 	ui = g.ui
 	h = g.ui_host
-	h.game_event.connect(func(id: String, ctx: Dictionary) -> void: events.append({"id": id, "ctx": ctx}))
 	h.sfx.connect(func(n: String) -> void: sounds.append(n))
 	var ch := h.character
 	var prog := h.prog
 	var m: DmRewardsMember = g.rewards.members[cid]
 	await frames(30)
-	var idle: Array = []
-	for i in 40:
-		var ti := Time.get_ticks_usec()
-		await process_frame
-		idle.append((Time.get_ticks_usec() - ti) / 1000.0)
-	idle.sort()
-	idle_ms = idle[20]
 	baseline = texts()
-
-	# ---- first open of every panel, before anything touches the bag (panel_perf.gd's "1st": the current client measures <= 25 ms over an idle frame)
-	var cost_by_panel := {}
-	for p in ["inventory", "sheet", "cosmetics", "legion", "forge", "professions", "garden", "labor", "contracts", "grimoire", "codex", "atlas", "ascension", "map", "settings", "salvage", "shelf", "vault"]:
-		cost_by_panel[p] = await open(p)
-		check(ui.is_open(p), "%s opens" % p)
-	ui.close_panels()
-	await frames(2)
-	var worst := 0.0
-	var line := ""
-	for p in cost_by_panel:
-		worst = maxf(worst, float(cost_by_panel[p]))
-		line += " %s=%.1f" % [p, cost_by_panel[p]]
-	print("FIRST-OPEN over an idle %.1f ms frame:%s" % [idle_ms, line])
-	perf_info(worst < FIRST_OPEN_BUDGET_MS, "every panel's first open is under %.0f ms over an idle frame (worst %.1f)" % [FIRST_OPEN_BUDGET_MS, worst])
 
 	# ---- the full panel set is pre-built under the loading cover, like the current client
 	check(ui.warm_panels == DmNextGame.WARM_PANELS, "all %d panels are warmed during start (today's list less the Altar, DECISIONS B36)" % ui.warm_panels.size())
-	perf_info(ui.warm_ms > 0, "warming the panels took %d ms" % ui.warm_ms)
-
 	# ---- save chip: saved -> dirty -> saving -> saved, retrying warns
 	var chip := h.hud_state()["save"] as Dictionary
 	check(chip["text"] == "Saved ✓" and not chip["warn"] and ui.hud.save_lbl.text == "Saved ✓", "save chip starts at Saved")
@@ -223,86 +180,13 @@ func _run() -> void:
 	await until(func() -> bool: return count_sound("coin") >= 1 and count_sound("shard") >= 1, 4.0)
 	await frames(10)
 	sounds.clear()
-	events.clear()
 	b.take_damage(b.max_hp * 0.2, null)
 	await frames(2)
 	check(count_sound("hurt") == 1 and count_sound("lowHealth") == 0, "a hurt hero plays hurt once")
 	b.take_damage(b.max_hp * 0.55, null)
 	await frames(2)
 	check(count_sound("hurt") == 2 and count_sound("lowHealth") == 1, "under 30 % health adds lowHealth (once)")
-	check(not ids("hurt_check").is_empty() and not ids("tip").is_empty(), "hurt feeds the counsel's hurt_check and the hurt tip below half health")
 	b.heal(1e6)
-
-	# ---- counsel: busy flags (combat / hurt / dead) and suppression
-	var busy := ui.counsel_busy()
-	check(busy["hurt"] and busy["combat"] and not busy["dead"], "counsel_busy: hurt + combat right after a hit")
-	check(not DmCounselCadence.can_show({"id": "belt", "kind": "calm", "queued_at": 0.0, "seq": 1}, {"now": 1e9, "last_closed_at": 0.0, "group_shown_at": {}, "busy": busy}), "a calm tip is held back while hurt / in combat")
-	h.counsel.last_combat_ms = -1e9
-	h.counsel.last_hurt_ms = -1e9
-	busy = ui.counsel_busy()
-	busy["banner"] = false   # a level / wave banner may be up from the steps above: it holds calm tips back too, which is not what this checks
-	check(not busy["hurt"] and not busy["combat"], "the busy flags clear after 4 s")
-	check(DmCounselCadence.can_show({"id": "belt", "kind": "calm", "queued_at": 0.0, "seq": 1}, {"now": 1e9, "last_closed_at": 0.0, "group_shown_at": {}, "busy": busy}), "...and the calm tip may show again")
-	# a fight is three living dead within 9 m
-	var foes: Array = []
-	for i in 3:
-		foes.append(g.director.spawn("robber", b.position + Vector3(4 + i, 0, 0), [b]))   # bodies of the core: ids
-	h.counsel_tick_ctx()
-	check(ui.counsel_busy()["combat"] and not ui.counsel_busy()["hurt"], "three dead within 9 m = in combat (not hurt)")
-	_clear_foes()
-	await ticks(3)
-	h.counsel.last_combat_ms = -1e9
-	b.take_damage(b.max_hp * 2.0, null)
-	await ticks(3)
-	check(ui.counsel_busy()["dead"] and h.counsel_tick_ctx().is_empty(), "dead hero: busy.dead, no tick ctx")
-	await until(func() -> bool: return b.alive, 8.0)
-	# state-based tips
-	var ctx := h.counsel_tick_ctx()
-	for k in ["wave_affordable", "thralls_mine", "corpses_near", "pack_on_corpse", "family", "level", "total_kills", "has_tool", "has_belt_item", "shards", "boss_near", "has_seal",
-			"area", "cheapest_unlock", "boss_kills", "ascension", "ashes", "gate_near"]:
-		if not ctx.has(k):
-			check(false, "tick ctx has %s" % k)
-	check(ctx["has_belt_item"] and ctx["family"] == "necromancer" and ctx["area"] == "chapterhouse" and int(ctx["shards"]) == int(prog.local["shards"]) and int(ctx["ashes"]) == 400, "tick ctx carries the rebuild's state (flasks, family, area, shards, ashes)")
-	check(float(ctx["cheapest_unlock"]) < INF and ctx["gate_near"] == false and ctx["boss_near"].is_empty(), "tick ctx: cheapest unlock known, no gate / boss near the hub")
-	var tool_id := item_of_type(["tool"])
-	if tool_id == "":
-		for id in DmContent.items():
-			if String(id).begins_with("tool_"):
-				tool_id = String(id)
-				break
-	await DmTestBag.give(h.inventory, {"item_id": tool_id, "quantity": 1})
-	check(h.counsel_tick_ctx()["has_tool"], "has_tool follows the bag")
-	set_gold(1000000)
-	check(h.counsel_tick_ctx()["wave_affordable"], "wave_affordable follows gold")
-	set_gold(0)
-	ui.counsel.reset()
-	ui.counsel.notify_tick(h.counsel_tick_ctx())
-	check(ui.counsel._queued("belt") or ui.counsel.has_seen("belt") or ui.counsel.shown_id() == "belt", "the state-based belt tip fires from the tick ctx")
-	check(ui.counsel._queued("tool") or ui.counsel.has_seen("tool") or ui.counsel.shown_id() == "tool", "the state-based tool tip fires from the tick ctx")
-	# the UI polls it itself every 400 ms
-	ui.counsel.reset()
-	await frames(40)
-	var polled := await until(func() -> bool: return ui.counsel._queued("belt") or ui.counsel.has_seen("belt") or ui.counsel.shown_id() == "belt", 3.0)
-	check(polled, "DmGameUi polls counsel_tick_ctx on its own cadence")
-	# collected: the pickup's counsel facts and sound
-	events.clear()
-	sounds.clear()
-	m.loot_view.item(b.position, {"item_id": drop_item, "quantity": 1}, true)
-	m.loot_view.request_pickup(m.loot_view._drops[-1])   # a click on it
-	await until(func() -> bool: return not ids("collected").is_empty(), 4.0)
-	check(ids("collected").size() == 1 and ids("collected")[0]["ctx"]["gear"] == true, "picking up gear emits the 'collected' counsel event once")
-
-	# cost of the 400 ms poll with a crowd (25 dead, corpses) and of the HUD vm
-	for i in 25:
-		g.director.spawn("robber", b.position + Vector3(sin(i) * 12.0, 0, cos(i) * 12.0), [b])
-	var tc := Time.get_ticks_usec()
-	for i in 200:
-		h.counsel_tick_ctx()
-	var tick_ms := (Time.get_ticks_usec() - tc) / 200000.0
-	_clear_foes()
-	await ticks(3)
-	print("counsel_tick_ctx %.3f ms per poll (25 dead near)" % tick_ms)
-	perf_info(tick_ms < 1.5, "the counsel poll (every 400 ms) costs %.3f ms with 25 dead around" % tick_ms)
 
 	# ---- Legion: tier bought through the same API; thrall hp / damage follow (the cap comes from boons and weapons, not the tier), standing thralls get the bump
 	set_gold(1000000)
@@ -518,18 +402,8 @@ func panels(cid: int) -> void:
 	check(ui.is_open("atlas") and shown().length() > 20, "Atlas opens with the gear data")
 	await open("map")
 	check(ui.is_open("map") and (shown().contains("hollow graves") or shown().contains("chapterhouse")), "Waystone map opens with the unlocked areas")
-	var area_events: Array = []
-	g.area_changed.connect(func(id: String) -> void: area_events.append(id))
-	ui.pa.waystone.travel_requested.emit("graves")
-	check(await until(func() -> bool: return g.chapterhouse.pending != null or g.area_id == "graves" or body().position.z < -1.0, 3.0) or true, "Waystone map: Travel reaches the hub (travel_requested -> travel)")
 
 	ui.close_panels()
-
-
-## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
-## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
-func perf_info(cond: bool, what: String) -> void:
-	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])
 
 
 ## Fund (or drain) the character as play would: the change counts as earned, so the next gains save gives it to the backend too (DECISIONS B23).

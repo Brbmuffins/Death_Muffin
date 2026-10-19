@@ -27,8 +27,8 @@
 21	next_combat_odds
 23	play_report
 22	perf/first_frame_run
-22	next_hud_counsel
 21	game/regress_run
+20	next_hud_counsel
 20	world
 20	next_hero_look
 19	game_scene
