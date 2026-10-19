@@ -93,9 +93,14 @@ if [ "$OUT_DIR" = /var/www/death-muffin/client ] && [ -f "$WT/tools/check/ci.sh"
 fi
 [ -f "$WT/$PROJECT/export_presets.cfg" ] || { echo "$SHA has no $PROJECT/export_presets.cfg (preset \"$PRESET\")" >&2; exit 1; }
 # PREPARE=<script> (the test channel): adjusts the scratch worktree before the import, e.g. renderer and endpoints. Never the repository.
+# Each step says how long it took (where a release's minutes go).
+STEP_T=$SECONDS; took() { echo "== $1: $(( SECONDS - STEP_T )) s"; STEP_T=$SECONDS; }
 [ -z "${PREPARE:-}" ] || bash "$PREPARE" "$WT" || { echo "prepare step failed: $PREPARE" >&2; exit 1; }
+took "prepared (the shared setup, tools/check/prep.sh)"
 "$GODOT" --headless --path "$WT/$PROJECT" --import >"$STAGE/import.log" 2>&1 || { tail -30 "$STAGE/import.log" >&2; echo "godot import failed" >&2; exit 1; }
+took "imported"
 bash "$WT/tools/godot/export-baked.sh" "$WT/$PROJECT" release "$PRESET" "$STAGE/DeathMuffin.exe" "$GODOT" || exit 1   # baked shaders when a renderer is free (the script says)
+took "exported"
 rm -f "$STAGE/import.log" "$STAGE/export.log"
 if [ -f "$WT/tools/godot/assets-pack.sh" ]; then
   CACHE="$WORK/assets-cache"; mkdir -p "$CACHE"
@@ -109,6 +114,7 @@ if [ -f "$WT/tools/godot/assets-pack.sh" ]; then
   cp "$CACHE/$FP.pck" "$STAGE/DeathMuffin.assets.pck"
   touch "$CACHE/$FP.pck"
   ls -1t "$CACHE"/*.pck 2>/dev/null | tail -n +4 | while read -r f; do rm -f "$f"; done   # keep the newest three
+  took "assets pack"
 fi
 [ -n "${INCLUDE_CONSOLE:-}" ] || rm -f "$STAGE"/*.console.exe
 
@@ -116,7 +122,7 @@ fi
 [ -s "$STAGE/DeathMuffin.exe" ] && [ "$(head -c2 "$STAGE/DeathMuffin.exe")" = "MZ" ] || { echo "DeathMuffin.exe missing or not a Windows executable" >&2; exit 1; }
 [ "$(stat -c %s "$STAGE/DeathMuffin.pck" 2>/dev/null || echo 0)" -gt 100000 ] || { echo "DeathMuffin.pck missing or suspiciously small" >&2; exit 1; }
 # SMOKE=<script> (the test channel): boots an exported copy of the build before anything is published (test-channel/smoke-rebuild.sh).
-[ -z "${SMOKE:-}" ] || bash "$SMOKE" "$WT/$PROJECT" "$STAGE" || { echo "boot smoke failed: $SMOKE" >&2; exit 1; }
+[ -z "${SMOKE:-}" ] || { bash "$SMOKE" "$WT/$PROJECT" "$STAGE" || { echo "boot smoke failed: $SMOKE" >&2; exit 1; }; took "boot smoke"; }
 
 # Carry the online lock over from the manifest that is live now (locked on a first publish or if the old one is unreadable).
 ONLINE_JSON=$(python3 - "$OUT_DIR/manifest.json" "$DEFAULT_MESSAGE" <<'PY'
