@@ -286,6 +286,7 @@ namespace DeathMuffinTeam
             lastAt = now;
             s.IdleS = IdleSeconds();
             s.OnBattery = platform.OnBattery();
+            s.DisplayOff = DisplayWatch.Off;
             s.Fullscreen = platform.Fullscreen();
             s.PlayerGame = platform.GameRunningBesides(pid);   // the job's own game never counts as the player's
             return s;
@@ -328,6 +329,55 @@ namespace DeathMuffinTeam
                 return unchecked((uint)Environment.TickCount - info.Time) / 1000.0;   // both are the 32-bit millisecond tick count, which wraps
             }
             catch (Exception) { return 0; }
+        }
+    }
+
+    /// <summary>
+    /// Whether the PC's screen is on: Windows tells a window that registered for GUID_CONSOLE_DISPLAY_STATE (0 off, 1 on, 2 dimmed) every time it
+    /// changes. One hidden window of the tray app listens (<see cref="Start"/>, on the interface thread); <see cref="Off"/> is read by the PC reader.
+    /// </summary>
+    internal sealed class DisplayWatch : NativeWindow
+    {
+        static readonly Guid ConsoleDisplayState = new Guid("6FE69556-704A-47A0-8F24-C28D936FDA47");
+        const int WmPowerBroadcast = 0x0218, PbtPowerSettingChange = 0x8013;
+        static volatile bool off;
+        static DisplayWatch instance;
+        IntPtr registration = IntPtr.Zero;
+
+        /// <summary>True while Windows says the screen is off (dimmed counts as on).</summary>
+        public static bool Off { get { return off; } }
+
+        [DllImport("user32.dll", SetLastError = true)] static extern IntPtr RegisterPowerSettingNotification(IntPtr recipient, ref Guid setting, int flags);
+        [DllImport("user32.dll")] static extern bool UnregisterPowerSettingNotification(IntPtr handle);
+
+        /// <summary>Starts listening (once; never throws: without it the screen counts as on).</summary>
+        public static void Start()
+        {
+            if (instance != null) return;
+            try
+            {
+                var w = new DisplayWatch();
+                w.CreateHandle(new CreateParams());
+                Guid g = ConsoleDisplayState;
+                w.registration = RegisterPowerSettingNotification(w.Handle, ref g, 0);
+                instance = w;
+            }
+            catch (Exception) { }
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == WmPowerBroadcast && m.WParam.ToInt64() == PbtPowerSettingChange && m.LParam != IntPtr.Zero)
+            {
+                try
+                {
+                    // POWERBROADCAST_SETTING: the setting's GUID (16 bytes), the data's length (4), the data (one DWORD here)
+                    var setting = (Guid)Marshal.PtrToStructure(m.LParam, typeof(Guid));
+                    if (setting == ConsoleDisplayState) off = Marshal.ReadInt32(m.LParam, 20) == 0;
+                }
+                catch (Exception) { }
+            }
+            base.WndProc(ref m);
         }
     }
 

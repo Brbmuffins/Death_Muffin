@@ -20,6 +20,8 @@ namespace DeathMuffinTeam
         public bool OnBattery, Fullscreen;
         /// <summary>The player's own Death Muffin is running (not the job's game).</summary>
         public bool PlayerGame;
+        /// <summary>The PC's screen was off (asleep) at the reading: a benchmark run then draws frames nobody is shown, so its numbers are noted as such.</summary>
+        public bool DisplayOff;
 
         /// <summary>What every other process used: the total minus the job's game.</summary>
         public double CpuOthers { get { return Math.Max(0, CpuTotal - CpuGame); } }

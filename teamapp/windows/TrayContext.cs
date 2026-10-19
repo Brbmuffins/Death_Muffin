@@ -57,6 +57,7 @@ namespace DeathMuffinTeam
             var transport = new HttpClientTransport(HttpClientTransport.CreateClient(Program.Version));
             var api = new TeamApi(transport, new Uri(TeamUrls.ApiBase));
             var platform = new WindowsPlatform(TeamSettings.Root);
+            DisplayWatch.Start();   // is the screen on? (a benchmark run with it off is noted)
             var probe = new WindowsPcProbe(platform);   // one reader for both: the controller reads while a benchmark waits, the runner while a job runs
             var runner = new JobRunner(api, folders, new FileFetcher(FileFetcher.CreateClient(Program.Version)), new ProcessGameHost(Native.TendGameWindow, platform.Launched), platform, Native.TryHardLink, probe) { ShotsPosition = Native.OffscreenPosition, WindowPosition = Native.OffscreenPositionFor, CrashRecord = Native.CrashRecord };
             controller = new TeamController(api, settings, () => settings.Save(protector), platform, runner, this, () => DateTime.UtcNow,

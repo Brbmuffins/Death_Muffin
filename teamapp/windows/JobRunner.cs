@@ -874,8 +874,9 @@ namespace DeathMuffinTeam
                 o.Error = "The game crashed while closing after the benchmark (" + string.Join("; ", closeCrashes) + "); its numbers were sent.";
             }
             var summary = new List<object>();
-            foreach (var run in runs)
+            for (int ri = 0; ri < runs.Count; ri++)
             {
+                var run = runs[ri];
                 var metrics = MiniJson.Obj(run, "metrics");
                 var row = new Dictionary<string, object> { { "preset", MiniJson.Str(run, "preset") }, { "room", MiniJson.Str(run, "room") }, { "size", MiniJson.Str(run, "size") }, { "length", MiniJson.Str(run, "length") }, { "gpu", MiniJson.Str(run, "gpu") } };
                 foreach (string key in new[] { "avg_fps", "p95_ms", "p99_ms", "worst_ms", "hitches", "draw_calls" })
@@ -883,6 +884,7 @@ namespace DeathMuffinTeam
                     object v;
                     if (metrics != null && metrics.TryGetValue(key, out v) && v is double) row[key] = v;
                 }
+                if (ri < darkReadings.Count && darkReadings[ri] > 0) row["screenOffS"] = (double)darkReadings[ri];   // readings are a second apart
                 summary.Add(row);
             }
             var crashes = new List<object>(closeCrashes);
@@ -1039,6 +1041,7 @@ namespace DeathMuffinTeam
         {
             var runs = new List<Dictionary<string, object>>();
             closeCrashes.Clear();
+            darkReadings.Clear();
             for (int i = 0; i < plan.Setups.Count; i++)
             {
                 BenchSetup setup = plan.Setups[i];
@@ -1069,6 +1072,7 @@ namespace DeathMuffinTeam
                 if (!JobPlan.TryReadBenchRun(benchDir, label, out run, out err)) { AppendGodotLog(folders.AppDataDir(jobId, runNo.N), note); throw new JobFailure(err); }
                 note(label + ": the run was recorded (" + MiniJson.Write(run).Length + " bytes of JSON)");
                 runs.Add(run);
+                darkReadings.Add(lastRunDarkReadings);
             }
             return runs;
         }
@@ -1162,9 +1166,12 @@ namespace DeathMuffinTeam
                 string output = proc.Output();
                 if (output.Length > 0) note("game output (" + label + "):\n" + TextClip.Tail(output, 16000));
                 double others = 0;
-                foreach (PcSample s in samples) others += s.CpuOthers;
+                int dark = 0;
+                foreach (PcSample s in samples) { others += s.CpuOthers; if (s.DisplayOff) dark++; }
+                lastRunDarkReadings = dark;
                 note(label + ": the game ran " + sw.Elapsed.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture) + " s" + (failure == null && disturbed.Length == 0 ? ", exit code " + exit : ", stopped")
-                    + (samples.Count > 0 ? "; other programs used about " + ((int)Math.Round(others / samples.Count)).ToString(CultureInfo.InvariantCulture) + "% of the CPU (" + samples.Count + " readings)" : ""));
+                    + (samples.Count > 0 ? "; other programs used about " + ((int)Math.Round(others / samples.Count)).ToString(CultureInfo.InvariantCulture) + "% of the CPU (" + samples.Count + " readings)" : "")
+                    + (dark > 0 ? "; the screen was off for " + dark + " of them" : ""));
             }
             if (disturbed.Length > 0) return disturbed;
             if (failure != null) { AppendGodotLog(appData, note); throw new JobFailure(failure); }
@@ -1186,6 +1193,10 @@ namespace DeathMuffinTeam
 
         /// <summary>Benchmark runs of this job whose numbers were saved and then the game crashed (while closing): the runs are sent, the crash is reported beside them.</summary>
         readonly List<string> closeCrashes = new List<string>();
+        /// <summary>For each recorded benchmark run of this job, how many of its once-a-second readings found the PC's screen off (Helix, 2026-10-19: are
+        /// numbers from a dark screen right?). The release check's summary carries it beside the run's numbers.</summary>
+        readonly List<int> darkReadings = new List<int>();
+        int lastRunDarkReadings;
 
         /// <summary>What Windows recorded about a crashed game process (its event log's faulting module and offset), or ""; the tray app reads the Application log, tests stand in.</summary>
         public Func<int, string> CrashRecord = pid => "";

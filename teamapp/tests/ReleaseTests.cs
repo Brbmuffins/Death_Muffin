@@ -960,6 +960,18 @@ namespace DeathMuffinTeam.Tests
                 T.Ok(StepIn(rig.Api.DoneSteps, "stutter").Ok, "the next step runs");
                 T.Has(Encoding.UTF8.GetString(Uploaded(rig, "bench.json")), "\"crashes\"", "bench.json lists the crash");
             }
+            // the screen was off (asleep) during the benchmark: the run counts, and the summary and the log say for how long (Helix, 2026-10-19)
+            using (var rig = new Rig())
+            {
+                Rig_Boot(rig);
+                rig.Host.Behaviour = ReleaseGame((step, l) => { rig.Host.RunPolls = step == "bench" ? 12 : 0; return null; });
+                rig.Probe.Script = (n, t, pid) => new PcSample { CpuTotal = 3 + (pid > 0 ? 40 : 0), CpuGame = pid > 0 ? 40 : 0, DisplayOff = pid > 0 };
+                var res = rig.Run("relH00000012", rig.ReleasePlan(p => { p["steps"] = new List<object> { "bench" }; p["setups"] = new List<object> { BenchTests.Setup("low") }; }));
+                T.Ok(res.Ok && StepIn(rig.Api.DoneSteps, "bench").Ok, "a run with the screen off still counts: " + res.Error);
+                string bench = Encoding.UTF8.GetString(Uploaded(rig, "bench.json"));
+                T.Has(bench, "\"screenOffS\"", "the summary says how long the screen was off: " + bench);
+                T.Has(rig.Api.DoneLog, "the screen was off for", "and so does the log");
+            }
             // ... and a crash before the numbers were saved fails the step with no numbers
             using (var rig = new Rig())
             {
