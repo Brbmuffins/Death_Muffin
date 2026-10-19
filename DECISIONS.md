@@ -279,6 +279,14 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   the game's own shutdown has run (saves, the play report, the party left, the crash lock removed), `DmMain.end_process` ends the process
   (`OS.kill` on itself, exit code 0) instead of `quit()`. A debug build, Linux, and any exit code that is not 0 keep the engine's teardown, so
   leak reports and the tests still see it. Revisit when Godot is upgraded or the cause is found.
+- **B61. A team PC starts every release before players get it, when one is free** (Claude, 2026-10-19; ROADMAP Phase 1, the team app: "a
+  crash should stop the release"). The server's boot test runs the Linux build, so nothing checked that the Windows build starts before
+  players had it. Now the publish, after its boot test and before the switch, asks the team app for one short job any free team PC may take:
+  start this build's own files to the first screen and quit one while it loads (about 10 seconds; `team-gate.sh`). If the game fails there
+  (does not start, stops with an error, or leaves a crash report) the build is not published, and the publish says why. If no PC is free
+  (off, paused, in a game, on battery, or busy with a release check), none takes it within 2.5 minutes, or the PC gives up for its own reasons
+  (a download, the player starting the game), the release goes out as before, and the full release checks after it still run. Releases are
+  never held hostage by a PC being off; the cost is at most about 3 minutes a release, usually seconds.
 - **B59. One setup, and CI as the one gate, for sessions and the Discord agent alike** (Helix, 2026-10-19: "the way we do testing for
   sessions and discord agents is a mess", then "start"; Claude's design). Every checkout (a session's worktree, an agent job, a CI machine,
   a publish) gets the combat core, Godot's import, the crowd's bakes and the lobby's packages from one setup, `tools/check/prep.sh`, through

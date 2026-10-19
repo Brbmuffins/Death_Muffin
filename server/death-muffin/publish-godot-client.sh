@@ -10,6 +10,8 @@
 #    version, the pack tools) and reused from
 #    $WORK/assets-cache/<fingerprint>.pck while unchanged, so it keeps its SHA-256 and the launcher skips it. Godot's export is not
 #    byte-reproducible, so an unchanged pack must be reused, never rebuilt. A revision without assets-pack.sh ships one pck (rollbacks).
+#    Then the pre-release check (team-gate.sh, DECISIONS B61): a free team PC starts the build's Windows files and quits them while loading; only the game
+#    failing there stops the publish (no PC or no answer lets it go on; never for a rollback; live folder only, TEAM_GATE=1 forces it, TEAM_GATE=off skips it).
 # 2. Hashes every file (SHA-256) and copies them to $OUT_DIR/<version>/ (a folder per build, so a player who is mid-download of the
 #    previous build never sees its files change).
 # 3. Writes $OUT_DIR/manifest.json LAST, atomically:
@@ -25,7 +27,7 @@
 #
 # Served at https://muffindevelopment.com/death-muffin/client/ (static, see nginx-locations.conf).
 # Refuses a forward release while the live lobby differs from <rev>'s (run deploy-lobby.sh first; LOBBY_SKEW_OK=1 overrides).
-# Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2 FX_SHEETS LOBBY_DIR PREPARE SMOKE SYMBOLS_DIR SYMBOL_BUILDS TEAM_RELEASE NO_TEAM_RELEASE
+# Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2 FX_SHEETS LOBBY_DIR PREPARE SMOKE SYMBOLS_DIR SYMBOL_BUILDS TEAM_GATE TEAM_RELEASE NO_TEAM_RELEASE
 # The game is client/ (DECISIONS B49): its PREPARE and SMOKE steps (test-channel/prepare-rebuild.sh, smoke-rebuild.sh) run by default.
 set -euo pipefail
 
@@ -139,9 +141,26 @@ print(json.dumps({"enabled": enabled, "staff": staff, "message": message}))
 PY
 )
 
-# The revision that is live now (before the switch below): a rollback gets no release checks (the team release hook at the end).
+# The revision that is live now (before the switch below): a rollback gets no pre-release check and no release checks (the team release hook at the end).
 PREV_REV=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get("rev", ""))' "$OUT_DIR/manifest.json" 2>/dev/null || true)
 [[ "$PREV_REV" =~ ^[0-9a-f]{7,40}$ ]] || PREV_REV=""
+
+# --- pre-release check ---
+# The pre-release check (DECISIONS B61): before players get the build, a team PC that can take a job now starts this build's Windows files to the first screen
+# and quits it while loading (team-gate.sh of the published revision; it says why it is skipped). Only exit 10, the game failing on the PC, stops the publish:
+# no PC, no answer in time or the gate's own trouble lets it go on. Live folder only (TEAM_GATE=1 forces it elsewhere), never for a rollback (a revision that is
+# not newer than the build that was live), and TEAM_GATE=off skips it (once you know why it failed and want the build out anyway).
+if [ "${TEAM_GATE:-}" != off ] && { [ "$OUT_DIR" = /var/www/death-muffin/client ] || [ "${TEAM_GATE:-}" = 1 ]; } && [ -f "$WT/server/death-muffin/team-gate.sh" ]; then
+  if [ -n "$PREV_REV" ] && git -C "$REPO" cat-file -e "$PREV_REV^{commit}" 2>/dev/null && ! git -C "$REPO" merge-base --is-ancestor "$PREV_REV" "$SHA" 2>/dev/null; then
+    echo "pre-release check: $SHA is not newer than the build that was live ($PREV_REV): skipped (rollback?)"
+  else
+    GATE_RC=0
+    timeout -k 10 660 bash "$WT/server/death-muffin/team-gate.sh" "$STAGE" "$VERSION" "$SHA" || GATE_RC=$?
+    [ "$GATE_RC" -ne 10 ] || { echo "Refusing to publish $SHA: the game failed on a team PC (the line above). TEAM_GATE=off publishes it anyway." >&2; exit 1; }
+    took "pre-release check"
+  fi
+fi
+# --- end pre-release check ---
 
 # Copy into the versioned folder, then describe it.
 DEST="$OUT_DIR/$VERSION"

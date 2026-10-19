@@ -35,8 +35,8 @@ Every item says what kind it is:
   core, the Discord agent working on the live game, document-only changes that ship no update, checks for War's content, play reports,
   shaders baked into every release, the old game's folder deleted (its tests moved to the game), and the team app's first job (pictures on a
   real graphics card, proven on Helix's PC) and its other jobs (B58: release benchmarks and release checks, clips and "pick one", before and after,
-  pictures without `!shot`). Left: the crash and install checks as a gate before a release goes live, the stutter fixes the checks turn up, and the
-  Ultra Low decision once the numbers are in.
+  pictures without `!shot`), and a free team PC starting every release before players get it (B61). Left: War's PCs on the team app, the
+  stutter fixes the checks turn up on a weaker card, and the Ultra Low decision once the numbers are in.
 - Ascension (the Altar, vows and heat, Ashes, Covenant Boons) left on launch day and comes back redesigned in Phase 3 (B36). Players'
   saved Ascension data is kept.
 
@@ -160,12 +160,15 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
     - Jobs reach a PC within about a second (the PC's check-in waits on the server).
   - Proven on Helix's PC (RTX 4070 SUPER) on 2026-10-19 with apps 0.3.1 to 0.3.9: a full release check with every step (24 pictures at
     their exact sizes, the stutter test, the benchmark at Low 691 and Medium 597 fps with no hitches, 30 minutes of soak with flat memory).
-    Its first finding is a real bug: the release build crashes while closing after the benchmark (KNOWN-GAPS "Stability"). The app
-    updates itself between jobs, so a check never runs on an old app.
+    Its first finding was a real bug: the Windows release build crashed while closing, after every quit; since 2026-10-19 it ends its own
+    process once its shutdown is done (B60; the cause inside the engine is in KNOWN-GAPS "Stability"). The app updates itself between jobs,
+    so a check never runs on an old app.
   - Still to do: War's PCs (the Intel Arc and the Alienware's GTX 970) have not signed in to the app yet, so the release checks and
     benchmarks cover one graphics card; the weak-PC floor (B39) and the Ultra Low decision below wait on them.
-  - Also still to do: the crash and install checks run right after a release, not yet before it goes live (a crash should stop the release:
-    that needs the test channel's build to go through the team PCs first).
+  - Fix: a release that does not start on Windows reached players before any team PC tried it (the server's boot test runs the Linux build).
+    Done 2026-10-19 (B61): before the switch to a new build, a free team PC starts it to the first screen and quits one while it loads
+    (about 10 seconds); if the game fails there, the build is not published and the publish says why. No free PC, or none taking it within
+    2.5 minutes, lets the release go out as before (`server/death-muffin/team-gate.sh`; README "Pre-release check").
   - With the art rebuild (Phase 4): lighting bakes on the strongest graphics card available instead of by hand, the result coming back as
     a proposal.
   - Later: a co-op test between two team PCs.
