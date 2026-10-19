@@ -1316,6 +1316,20 @@
    "range": 3.6,
    "radius": 3.6,
    "power": 0.7
+  },
+  "haunting_wraith": {
+   "id": "haunting_wraith",
+   "slot": 9,
+   "name": "Haunting Wraith",
+   "description": "Raise a huge wraith that walks 14m toward the cursor and hurts every enemy it touches, every quarter second, as it passes. Costs 5 souls, 14s cooldown; place it from the Grimoire.",
+   "icon": "art/abilities/necro-veil-step.webp",
+   "targeting": "direction",
+   "cooldownMs": 14000,
+   "essenceCost": 0,
+   "soulCost": 5,
+   "range": 14,
+   "radius": 2.2,
+   "power": 0.5
   }
  },
  "SIGNATURE_LEVEL": 10,
@@ -1627,6 +1641,9 @@
    "survival"
   ],
   "scythe_weave": [
+   "damage"
+  ],
+  "haunting_wraith": [
    "damage"
   ]
  },

@@ -37,6 +37,7 @@ const MODULES := {
 	"unleash_souls": preload("res://next/rites/rite_unleash_souls.gd"),
 	"soul_harvest": preload("res://next/rites/rite_soul_harvest.gd"),
 	"scythe_weave": preload("res://next/rites/rite_scythe_weave.gd"),
+	"haunting_wraith": preload("res://next/rites/rite_haunting_wraith.gd"),
 }
 
 static var _inst: Dictionary = {}

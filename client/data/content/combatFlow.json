@@ -272,6 +272,10 @@
    "lockMs": 120,
    "gestureSeconds": 0.5
   },
+  "haunting_wraith": {
+   "lockMs": 150,
+   "gestureSeconds": 0.5
+  },
   "unleash_souls": {
    "lockMs": 150,
    "gestureSeconds": 0.45

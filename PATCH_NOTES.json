@@ -14,7 +14,8 @@
       "If the game ever crashes in a fight, its automatic crash report now says exactly where, so we can fix it faster.",
       "The benchmark window now says where your finished runs go: the game's benchmark page.",
       "When you stop playing, the game sends us a small report of how smoothly it ran (frame times, your graphics card and preset) and where you played. Nothing personal; it helps us make the game run well on every PC. The numbers are on the site's play reports page.",
-      "The game now arrives with many of its shaders already prepared, so the first start after an update loads faster."
+      "The game now arrives with many of its shaders already prepared, so the first start after an update loads faster.",
+      "New Reaper spell, Haunting Wraith (Grimoire): a huge wraith rises at your feet and walks toward the cursor, hurting every enemy it touches. 5 souls, 14s cooldown."
     ]
   },
   {
