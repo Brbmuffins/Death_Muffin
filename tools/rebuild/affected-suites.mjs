@@ -39,6 +39,14 @@ export function additiveNames(f, added) {
   return { words: [...words], fixed: [...fixed] };
 }
 
+// Suites that read a whole folder or dataset through a loader no reference search can follow (DmCombatData.load_json("abilities"), the rites by the registry's list):
+// a change under these paths selects the suite whatever the references say. `spells` casts every spell of every playable kit from the data.
+export const FORCED = [
+  [/^client\/next\/rites\//, 'spells'],
+  [/^client\/data\/combat\//, 'spells'],
+  [/^client\/game_ui\/dm_spell_tooltip\.gd$/, 'spells'],
+];
+
 const IGNORED = (f) => /\.(md|uid|import)$/.test(f) || !/^(client|native)\//.test(f);   // docs, Godot bookkeeping, and everything outside the game (server/, docs/, ...)
 
 // DmDb accessor patterns for client/data/<domain>/<name>.json (the consumers of that dataset)
@@ -77,6 +85,7 @@ export function affected(changed, ctx) {
   const sel = new Set(SMOKE.filter((s) => ctx.suites.includes(s)));
   // a content table change runs rules-core, which reads every content table and the manifest's list of them
   if (relevant.some((f) => /^client\/data\/content\/[^/]+\.json$/.test(f)) && ctx.suites.includes('rules-core')) sel.add('rules-core');
+  for (const [re, suite] of FORCED) if (relevant.some((f) => re.test(f)) && ctx.suites.includes(suite)) sel.add(suite);
   const direct = new Set();   // suites chosen because their own files changed
   // client/tests/<name>.gd is a suite's script, client/tests/<name>/... a folder's files: they select the folder's suites (<name> and its runners
   // <name>/<runner>); helpers that no suite is named after select none

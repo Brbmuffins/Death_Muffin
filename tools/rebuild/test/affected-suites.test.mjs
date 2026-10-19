@@ -1,9 +1,9 @@
 // node --test tools/rebuild/test/affected-suites.test.mjs (npm run test:server)
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { affected, SMOKE, dataPatterns, centralReason } from '../affected-suites.mjs';
+import { affected, SMOKE, dataPatterns, centralReason, FORCED } from '../affected-suites.mjs';
 
-const suites = ['code_load', 'core_smoke', 'game_scene', 'rules-core', 'front', 'enemies', 'loot_view', 'gear', 'hud', 'fx', 'world', 'sim', 'thralls', 'rites', 'ui', 'game', 'backend'];
+const suites = ['code_load', 'core_smoke', 'game_scene', 'rules-core', 'front', 'enemies', 'loot_view', 'gear', 'hud', 'fx', 'world', 'sim', 'thralls', 'rites', 'spells', 'ui', 'game', 'backend'];
 // tests: [suite-file, text]; src: [file, text]; classes: file -> class_name
 function mk({ tests = [], src = [], classes = {} } = {}) {
   const hit = (list, p) => list.filter(([, t]) => p.fixed.some((x) => t.includes(x)) || p.words.some((w) => new RegExp(`\\b${w}\\b`).test(t))).map(([f]) => f);
@@ -92,4 +92,16 @@ test('an add-only change to the API client or mock selects the users of the adde
 test('a content table change also runs rules-core (it reads every content table)', () => {
   assert.ok(sel(affected(['client/data/content/audioMap.json'], mk())).includes('rules-core'));
   assert.ok(!sel(affected(['client/hud/x.gd'], mk())).includes('rules-core'));
+});
+
+test('the rites, the combat data and the spell card select the spells suite whatever the references say', () => {
+  assert.ok(FORCED.length > 0);
+  for (const f of ['client/next/rites/rite_miasma.gd', 'client/next/rites/dm_rite_registry.gd', 'client/data/combat/abilities.json', 'client/data/combat/disciplines.json', 'client/game_ui/dm_spell_tooltip.gd']) {
+    const s = sel(affected([f], mk()));
+    assert.ok(s.includes('spells'), f + ': ' + s.join());
+    for (const m of SMOKE) assert.ok(s.includes(m));
+  }
+  assert.ok(sel(affected(['client/data/combat/enemies.json'], mk())).includes('spells'), 'any combat table');
+  assert.ok(!sel(affected(['client/game_ui/dm_hud_tips.gd'], mk())).includes('spells'), 'other files of game_ui do not');
+  assert.ok(sel(affected(['client/tests/spells/run.gd'], mk())).includes('spells'), 'its own script');
 });
