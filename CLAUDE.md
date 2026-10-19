@@ -74,6 +74,9 @@ Never deploy, publish a client, or flip `set-online.sh` without passing checks f
 
 ## Working conventions
 
+- **Tests read the game's numbers from its data** (B59; Helix, 2026-10-19). A test compares the game's data with itself and never types a
+  total (how many spells, areas, bosses) or a tuning value (a spell's speed, damage, cooldown or cost, an enemy's health), so adding
+  content or retuning never breaks a test. A value a test tunes on purpose is its own input; what the game holds is read first.
 - **Work order** (ROADMAP.md, DECISIONS B50): bugs and crashes first, then the team's approved requests, then the next unchecked item of the
   current phase and the polish list. Findings outside your task go in the same commit, a line each: a bug or gap to KNOWN-GAPS.md, an idea
   to ROADMAP "Ideas" (dated, with the section it would belong to). Don't act on them. A ROADMAP item says what kind it is: Fix (what happens now and what it will be after), New (what

@@ -319,7 +319,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   on every branch push, split over six machines, and a run on `main` is never cancelled. A change is merged, deployed or published only once
   CI passed its exact files (`tools/check/ci.sh`); the VPS runs single suites while working, and the full set only when GitHub is down.
   Approvals that wait for a ship still go out together: they merge as one tree that CI tests once. Tests compare the game's data with
-  itself, never typed totals (a spell War added broke a count). Replaces the morning's rule (444da1ad: wait about 20 minutes for CI with a
+  itself, never typed totals or tuning values (a spell War added broke a count; a typed spell speed broke War's faster Haunting Wraith). Replaces the morning's rule (444da1ad: wait about 20 minutes for CI with a
   local quick check beside it) and the agent's own preparation and cache.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,

@@ -616,7 +616,8 @@ func tune_refusals() -> void:
 		var r: Dictionary = DmQaTune.apply(parsed["tune"]) if parsed["ok"] else {"ok": false, "error": parsed["error"], "lines": []}
 		check(not r["ok"] and String(r["error"]).contains(String(rows[text])), "refused: %s -> %s" % [String(text).left(80), r["error"]])
 		check(parsed["ok"] == false or (r["lines"] as Array).size() == 1 and String(r["lines"][0]) == "QA tune refused: " + String(r["error"]), "a refusal is one printed line: %s" % str(r["lines"]).left(60))
-	check(float(DmAbilities.def("haunting_wraith")["speed"]) == speed0 and speed0 == 6.0, "none of them changed the data (the wraith's speed is still %s)" % str(speed0))
+	check(float(DmAbilities.def("haunting_wraith")["speed"]) == speed0, "none of them changed the data (the wraith's speed is still %s)" % str(speed0))
+	var flail0 := float(DmAbilities.def("flail_swing")["cooldownMs"])
 	var many := {}
 	var n := 0
 	for id in DmAbilities.defs():
@@ -625,7 +626,7 @@ func tune_refusals() -> void:
 		if n > DmQaTune.MAX_VALUES:
 			break
 	var too := DmQaTune.apply({"combat/abilities": {"abilities": many}})
-	check(not too["ok"] and String(too["error"]).contains("more than %d values" % DmQaTune.MAX_VALUES) and float(DmAbilities.def("flail_swing")["cooldownMs"]) == 700.0, "more than %d values in one tune is refused, and none is set" % DmQaTune.MAX_VALUES)
+	check(not too["ok"] and String(too["error"]).contains("more than %d values" % DmQaTune.MAX_VALUES) and float(DmAbilities.def("flail_swing")["cooldownMs"]) == flail0, "more than %d values in one tune is refused, and none is set" % DmQaTune.MAX_VALUES)
 	var dir := ProjectSettings.globalize_path(OUT)
 	var big := FileAccess.open(dir.path_join("tune_big.json"), FileAccess.WRITE)
 	big.store_string("{\"combat/abilities\": {}}" + " ".repeat(DmQaTune.MAX_BYTES))
@@ -645,12 +646,18 @@ func tune_refusals() -> void:
 
 ## A tune that is valid reaches everything that reads the data, and the clips on a Reaper's game scene. The data is put back at the end.
 func tune_and_clips() -> void:
+	# the game's own numbers, read from the data (tests never type them: retuning the game must not break a test)
+	var speed0 := float(DmAbilities.def("haunting_wraith")["speed"])
+	var range0 := float(DmCombatData.abilities()["abilities"]["haunting_wraith"]["range"])
+	var robber0: Dictionary = DmCoreData.json(ProjectSettings.globalize_path("res://data/content/enemies.json"))["ENEMIES"]["robber"]
+	var hp0 := float(robber0["hp"])
+	var xp0 := float(robber0["xp"])
 	var tune_path := ProjectSettings.globalize_path(OUT.path_join("tune.json"))
 	var tf := FileAccess.open(tune_path, FileAccess.WRITE)
 	tf.store_string('{"combat/abilities": {"abilities": {"haunting_wraith": {"speed": 5.5, "range": 9}}}, "content/enemies": {"ENEMIES": {"robber": {"hp": 1234, "xp": 77}}}}')
 	tf.close()
 	# what is read before the tune is cached (the loot view is a projection of content/enemies), and the core's table before it
-	check(float(DmDb.loot_view()["enemies"]["robber"]["xp"]) == 4.0, "the loot view is built from the untuned data (robber xp 4)")
+	check(float(DmDb.loot_view()["enemies"]["robber"]["xp"]) == xp0, "the loot view is built from the untuned data (robber xp %s)" % DmQaTune.fmt(xp0))
 	var base_hp := _core_robber_hp()
 	var r := DmQaTune.apply_file(tune_path)
 	check(r["ok"] and r["lines"] == ["QA tune: combat/abilities.abilities.haunting_wraith.speed = 5.5", "QA tune: combat/abilities.abilities.haunting_wraith.range = 9", "QA tune: content/enemies.ENEMIES.robber.hp = 1234", "QA tune: content/enemies.ENEMIES.robber.xp = 77"],
@@ -658,10 +665,10 @@ func tune_and_clips() -> void:
 	check(float(DmAbilities.def("haunting_wraith")["speed"]) == 5.5 and float(DmCombatData.abilities()["abilities"]["haunting_wraith"]["range"]) == 9.0, "the rules read the tuned numbers (DmAbilities, DmCombatData)")
 	check(float(DmDb.loot_view()["enemies"]["robber"]["xp"]) == 77.0, "a projection of the data is rebuilt from the tuned data (robber xp 77)")
 	var tuned_hp := _core_robber_hp()
-	check(base_hp > 0.0 and absf(tuned_hp / base_hp - 1234.0 / 68.0) < 0.01, "the combat core's table is the tuned one (a robber's max health %.1f -> %.1f)" % [base_hp, tuned_hp])
-	check(float(DmCoreData.json(ProjectSettings.globalize_path("res://data/content/enemies.json"))["ENEMIES"]["robber"]["hp"]) == 68.0, "a file read by its disk path is the file's (the data files themselves are never written)")
-	var put_back := DmQaTune.apply({"combat/abilities": {"abilities": {"haunting_wraith": {"speed": 6.0, "range": 14}}}, "content/enemies": {"ENEMIES": {"robber": {"hp": 68, "xp": 4}}}})
-	check(put_back["ok"] and float(DmAbilities.def("haunting_wraith")["speed"]) == 6.0 and float(DmDb.loot_view()["enemies"]["robber"]["xp"]) == 4.0 and absf(_core_robber_hp() - base_hp) < 0.01, "and the data is put back (a tune is its own undo)")
+	check(base_hp > 0.0 and absf(tuned_hp / base_hp - 1234.0 / hp0) < 0.01, "the combat core's table is the tuned one (a robber's max health %.1f -> %.1f)" % [base_hp, tuned_hp])
+	check(float(DmCoreData.json(ProjectSettings.globalize_path("res://data/content/enemies.json"))["ENEMIES"]["robber"]["hp"]) == hp0, "a file read by its disk path is the file's (the data files themselves are never written)")
+	var put_back := DmQaTune.apply({"combat/abilities": {"abilities": {"haunting_wraith": {"speed": speed0, "range": range0}}}, "content/enemies": {"ENEMIES": {"robber": {"hp": hp0, "xp": xp0}}}})
+	check(put_back["ok"] and float(DmAbilities.def("haunting_wraith")["speed"]) == speed0 and float(DmDb.loot_view()["enemies"]["robber"]["xp"]) == xp0 and absf(_core_robber_hp() - base_hp) < 0.01, "and the data is put back (a tune is its own undo)")
 	await clips_on_a_reaper()
 
 
@@ -690,6 +697,10 @@ func clips_on_a_reaper() -> void:
 	await until(func() -> bool: return cg.local_body().avatar != null, 5.0)
 	check(cg.ready_ and int(cg.character["class_index"]) == 11 and cg.area_id == "chapterhouse", "a Reaper's game scene starts in the Chapterhouse")
 	var caster := cg.local_body().get_node("Rites") as DmRiteCaster
+	var wraith0 := DmAbilities.def("haunting_wraith")   # its speed, soul cost and range, read from the data (never typed here)
+	var speed0 := float(wraith0["speed"])
+	var cost0 := int(wraith0["soulCost"])
+	var range0 := float(wraith0["range"])
 	var dir := ProjectSettings.globalize_path(OUT.path_join("clips"))
 	DirAccess.make_dir_recursive_absolute(dir)
 	var plan := DmQaClips.parse('{"discipline": "reaper", "clips": [{"name": "wraith", "cast": "haunting_wraith", "at": "ahead", "enemies": 4, "seconds": 2, "camera": "wide"}, {"name": "second", "cast": "haunting_wraith", "at": "pack", "enemies": 3, "seconds": 1}]}')
@@ -718,7 +729,7 @@ func clips_on_a_reaper() -> void:
 	check(seen["n"] >= 20 and seen["n"] <= 60, "30 frames per game second whatever the engine's frame step (this run steps %.4f s: %d pictures read back for 60 frames)" % [float(a.get("step", 0.0)), seen["n"]])
 	check(seen.get("area") == "graves" and seen.get("alive") == 4 and not seen.get("hud", true) and absf(float(seen.get("zoom", 0.0)) - float(cg.camera.cfg["zoomMax"])) < 0.01 and not seen.get("waves", true),
 		"while recording: in the area, four stand-ins and no others, the HUD away, the widest camera, no waves (%s)" % str(seen))
-	check(seen.get("walkers") == 1 and seen.get("speed") == 6.0 and seen.get("souls", 0) == int(seen.get("bag", 0)) - 5, "the wraith walks at the data's speed (%s m/s)" % str(seen.get("speed")))
+	check(seen.get("walkers") == 1 and seen.get("speed") == speed0 and seen.get("souls", 0) == int(seen.get("bag", 0)) - cost0, "the wraith walks at the data's speed (%s m/s)" % str(seen.get("speed")))
 	await ticks(4)
 	check(hurt[0] > 0 and cg.core_host.alive_count() == 0 and caster.mem("haunting_wraith").get("walkers", []).is_empty(), "the wraith hurt the stand-ins (%d blows), which are sent away after the clip with nothing of the rite left walking" % hurt[0])
 	var bytes := FileAccess.get_file_as_bytes(dir.path_join("wraith.mjpeg"))
@@ -768,20 +779,20 @@ func clips_on_a_reaper() -> void:
 	var tmeta: Variant = JSON.parse_string(FileAccess.get_file_as_string(dir.path_join("preview.json")))
 	check(tmeta is Dictionary and tmeta["cast_at_frame"] == -1.0 and tmeta["frames"] == 60.0 and FileAccess.file_exists(dir.path_join("preview.mjpeg")), "preview.json says the cast frame is -1 (no cast): %s" % str(tmeta))
 	# a tune reaches the rite that is cast
-	var tuned := DmQaTune.apply({"combat/abilities": {"abilities": {"haunting_wraith": {"speed": 3.5}}}})
+	var tuned := DmQaTune.apply({"combat/abilities": {"abilities": {"haunting_wraith": {"speed": speed0 * 0.5}}}})
 	seen["n"] = 0
 	var c: Dictionary = await DmQaClips.record(root, cg, plan["clips"][1], dir, fake)
-	check(tuned["ok"] and c["ok"] and seen.get("speed") == 3.5, "the wraith of a tuned run walks at the tuned speed (%s m/s)" % str(seen.get("speed")))
+	check(tuned["ok"] and c["ok"] and seen.get("speed") == speed0 * 0.5, "the wraith of a tuned run walks at the tuned speed (%s m/s)" % str(seen.get("speed")))
 	# a rite the host refuses fails its clip and leaves no file
 	var dear := DmQaTune.apply({"combat/abilities": {"abilities": {"haunting_wraith": {"soulCost": 99}}}})
 	var d: Dictionary = await DmQaClips.record(root, cg, plan["clips"][0], dir, fake)
 	check(dear["ok"] and not d["ok"] and String(d["why"]).contains("the rite was refused (souls)") and not FileAccess.file_exists(dir.path_join("wraith.mjpeg")) and not FileAccess.file_exists(dir.path_join("wraith.json")), "a rite the hero cannot pay for fails its clip, saying why, and leaves no file (%s)" % d["why"])
 	# a picture source that gives nothing fails the clip, and removes what it began
 	var blank := func() -> Image: return null
-	DmQaTune.apply({"combat/abilities": {"abilities": {"haunting_wraith": {"soulCost": 5, "speed": 6.0}}}})
+	DmQaTune.apply({"combat/abilities": {"abilities": {"haunting_wraith": {"soulCost": cost0, "speed": speed0}}}})
 	var e: Dictionary = await DmQaClips.record(root, cg, plan["clips"][1], dir, blank)
 	check(not e["ok"] and String(e["why"]).contains("no picture") and not FileAccess.file_exists(dir.path_join("second.mjpeg")), "a run that draws nothing fails its clip and leaves no file (%s)" % e["why"])
-	check(float(DmAbilities.def("haunting_wraith")["speed"]) == 6.0 and int(DmAbilities.def("haunting_wraith")["soulCost"]) == 5 and float(DmAbilities.def("haunting_wraith")["range"]) == 14.0, "the data is as it was")
+	check(float(DmAbilities.def("haunting_wraith")["speed"]) == speed0 and int(DmAbilities.def("haunting_wraith")["soulCost"]) == cost0 and float(DmAbilities.def("haunting_wraith")["range"]) == range0, "the data is as it was")
 	cg.process_mode = Node.PROCESS_MODE_DISABLED
 	cg.queue_free()
 	await process_frame
