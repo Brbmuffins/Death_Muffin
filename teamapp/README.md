@@ -78,7 +78,7 @@ The decisions are `TeamLogic.Decide` (which takes the flag), `EntersAfk` and `Af
 
 The status line (what it is doing), **Show jobs (N)** (the box again with every job this PC may take, those put off with Not now included, and its own 5 minutes; it ends a pause and AFK mode;
 greyed out while nothing waits or a job runs: a job runs only from the box, Helix 2026-10-19),
-**Pause 2 hours** / **Resume**, **End AFK mode** (only while AFK mode is on), **Show AFK notice** (only after Hide), **Mode**, **Run benchmarks** and **Allow AFK mode** (switches, on by default, saved),
+**Pause 2 hours** / **Resume**, **End AFK mode** (only while AFK mode is on), **Show AFK notice** (only after Hide), **Mode**, **Run benchmarks** and **Allow AFK mode** (switches, on by default, saved; a tick shows one is on),
 **Sign in** / **Sign out** (not while a job runs), **Start with Windows** (this user only), **Open the app's folder**,
 **Open the last job's log**, **Quit**. Balloons are for the answer to a click (Show jobs with nothing waiting), a failed or refused job, being signed out
 and a newer version that could not be installed.
@@ -291,6 +291,7 @@ or the focus, the box growing with the list and staying in its corner).
 
 ### Changelog
 
+- **0.4.6** (2026-10-19) - The tray menu shows a tick beside Run benchmarks, Allow AFK mode and Start with Windows when they are on (the menu had no check column, so on and off looked the same; Helix).
 - **0.4.5** (2026-10-19) - Videos at 1080p and 60 frames a second (Helix): a clip run is 1920x1080 at `--fixed-fps 60` with `--clip-fps=60 --clip-width=1920 --qa-window=1920x1080`, and this PC makes each clip's mp4
   with ffmpeg (downloaded once from the game's team-files, 105 MB, kept in the cache) and uploads only the mp4 (a few MB instead of about 150 MB of motion JPEG). The motion-JPEG upload is gone from the app.
 - **0.4.4** (2026-10-19) - Helix's job list: the box lists the first 10 jobs oldest first, each with who started its Discord thread and the thread's name (without emojis), and a click picks the one Run now

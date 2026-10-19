@@ -87,7 +87,7 @@ namespace DeathMuffinTeam
 
         void BuildMenu()
         {
-            var menu = new ContextMenuStrip { ShowImageMargin = false };
+            var menu = new ContextMenuStrip { ShowImageMargin = false, ShowCheckMargin = true };   // the switches' ticks (Run benchmarks, Allow AFK mode, Start with Windows) need the check column (Helix 2026-10-19: no way to tell on from off)
             var modeMenu = new ToolStripMenuItem("Mode");
             OfferMode[] modes = { OfferMode.Ask, OfferMode.Auto, OfferMode.Yes };
             for (int i = 0; i < modes.Length; i++)
