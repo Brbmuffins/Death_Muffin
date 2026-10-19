@@ -22,4 +22,4 @@ Data: `client/data/sim/world.json` (nav colliders, crypts, nodes, pew cover). Lo
   `"d:<16 hex digits>"` strings; `DmSimExact.decode` restores them.
 
 ## Tests
-`client/tests/depths.gd` plays the Depths' rules without a game (floors per seed, quota, pacing, rosters) and its floors in the game scene; `client/tests/boss.gd` and the other boss suites replay the brains.
+`client/tests/depths.gd` plays the Depths' rules without a game (floors per seed, quota, pacing, rosters) and its floors in the game scene; `client/tests/bosses/run.gd` replays the recorded scenarios of every boss through the brains.

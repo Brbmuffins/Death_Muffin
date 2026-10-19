@@ -1,6 +1,6 @@
 extends SceneTree
 ## The world dressing on the area scenes (client/README.md "World dressing", client/world_fx/), headless:
-##   - the data: 4 windows, 70 silhouettes, 347 candle flames in 8 areas, 220 mist puffs, 13 weather profiles;
+##   - the data: 4 windows, 70 silhouettes, the candle flames of the area data, 220 mist puffs, 13 weather profiles;
 ##   - attached to the world: a world built with lights has a dressing, one built without has none; its flames are one MultiMesh in each loaded area that has candles (the data's count),
 ##     its windows are under the nearest loaded area's scene, nothing of the stand-ins the converter used to leave (flame spheres, water planes, puddle quads) is in the tree, and
 ##     an area the world does not hold gets nothing;
@@ -72,13 +72,24 @@ func _run() -> void:
 func _the_data() -> void:
 	var d := _data
 	check(not d.is_empty(), "data/world_fx/fx.json is there")
-	check(d.windows.size() == 4 and d.silhouettes.size() == 70, "4 stained-glass windows and 70 far silhouettes")
+	check(not d.windows.is_empty() and not d.silhouettes.is_empty(), "stained-glass windows and far silhouettes (%d, %d)" % [d.windows.size(), d.silhouettes.size()])
 	var n := 0
 	for k in d.flames:
 		n += (d.flames[k].phase as Array).size()
-	check(n == 347 and d.flames.size() == 8, "347 candle flames over 8 areas (%d over %d)" % [n, d.flames.size()])
-	check(int(d.mist.count) == 220 and (d.mist.pos as Array).size() == 660, "220 mist puffs")
-	check(d.atmosphere.profiles.size() == 13, "13 weather profiles")
+	# the candle flames the fx data holds, area by area, are the candle props of world.json times the flames each prop's spec lights
+	var world: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/slice/world.json"))
+	var specs: Dictionary = world.propSpecs
+	var want: Dictionary = {}
+	for p in world.props:
+		var fl := int((specs.get(String(p.prop), {}) as Dictionary).get("light", {}).get("flames", 0))
+		if fl > 0:
+			want[String(p.area)] = int(want.get(String(p.area), 0)) + fl
+	var have: Dictionary = {}
+	for k in d.flames:
+		have[String(k)] = (d.flames[k].phase as Array).size()
+	check(have == want and n > 0, "the candle flames in each area are the candle props' flames in world.json (%d over %d areas, %d expected over %d)" % [n, d.flames.size(), want.values().reduce(func(a, b): return a + b, 0), want.size()])
+	check(int(d.mist.count) > 0 and (d.mist.pos as Array).size() == int(d.mist.count) * 3, "mist puffs: three numbers each (%d)" % int(d.mist.count))
+	check(not d.atmosphere.profiles.is_empty(), "weather profiles (%d)" % d.atmosphere.profiles.size())
 
 
 # ---------------------------------------------------------------- attached to the world
@@ -238,7 +249,10 @@ func _the_brazier_emission() -> void:
 	root.add_child(fire)
 	fire.setup(DmData.world())
 	fire.rng.seed = 7
-	check(fire.braziers.size() == 21, "the world's 21 braziers (%d)" % fire.braziers.size())
+	var brazier_props := 0
+	for bp in DmData.world()["props"]:
+		brazier_props += 1 if bp["prop"] == "brazier" else 0
+	check(brazier_props > 0 and fire.braziers.size() == brazier_props, "a fire for each brazier prop of world.json (%d)" % fire.braziers.size())
 	var near := Vector3(-4.6, 0.0, 2.4)   # between the Graves' two braziers (9.2 m apart) and the Chapterhouse's four (z 8 and out: 12 to 14 m away in z)
 	var in_range := 0
 	for b: Dictionary in fire.braziers:

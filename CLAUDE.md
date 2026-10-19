@@ -32,7 +32,13 @@ things the correct way."
 
 Never deploy, publish a client, or flip `set-online.sh` without passing checks for what you touched:
 
-- Commands for Godot, server, lobby and launcher tests: README.md "Tests". Run the one suite you touched while developing. Before a release (dev build, owner 2026-10-10): the suites the change can affect plus the smoke set (`tools/rebuild/run-client-tests.sh --only $(node tools/rebuild/affected-suites.mjs | paste -sd, -)`); the full set for backend deploys and for server, net, login/session/save or central changes.
+- Commands for Godot, server, lobby and launcher tests: README.md "Tests". Set up a new worktree with `tools/check/prep.sh` (seconds when
+  cached) and run the one suite you touched while developing.
+- **CI is the gate, for every change, sessions and the Discord agent alike** (DECISIONS B59, tools/check/README.md): rebase on `origin/main`,
+  push your branch, and wait for `tools/check/ci.sh wait <rev>` (every suite, the backend and lobby tests, hygiene, about 8 minutes). Only a
+  revision whose files CI passed is merged, deployed or published: fast-forward `main` to it (`git push origin <rev>:main`, the verdict
+  carries over), and if `main` moved in the meantime, rebase and wait again. Only when GitHub is down, run the full set here
+  (`tools/rebuild/run-client-tests.sh`).
 - Backend deploys only through `deploy-release.sh`, the lobby only through `deploy-lobby.sh`, the client only through `publish-godot-client.sh` (README.md "Export, publish, deploy").
   Migrations must be additive and idempotent; `migrate.sh` records each applied file in `schema_migrations`, so never edit one that is applied (add a new file).
 - Shared VPS: run at most one rendered (software-GL) Godot or one headless browser at a time, and not the full suite in

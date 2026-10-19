@@ -8,9 +8,10 @@ extends SceneTree
 ##   - the model sees that regression: with every group shown the crowd counts several times its draws;
 ##   - the world, the world dressing (mist, weather, water, silhouettes, flames and brazier fire: client/README.md "World dressing") and the whole stay inside their budgets (BUDGET_*),
 ##     so a change that adds draw calls (a prop merged so that it no longer instances, a group left shown, one more piece of dressing) fails here and not on Helix's PC.
-## INFO lines print the rows by group. Bakes the Graves' roster (and three models the party does not use) into a scratch folder first (about a minute).
+## INFO lines print the rows by group. Gets the Graves' roster (and three models the party does not use) into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd).
 ## Run: godot --headless --path client --script res://tests/draw_budget.gd   (--fixed-fps 60 before --path is faster)
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://draw_budget_test"
 const BAKE := ["grave_robber", "bone_hound", "barrow_ghoul", "choir_wraith", "skeleton_thrall", "skeleton_thrall+warrior", "skeleton_thrall+shieldbearer", "skeleton_thrall+archer",
 	"skeleton_thrall+bonemage", "skull_rat", "tithe_bat", "shroud_moth"]   ## the party uses the first nine (the legions' own bodies fall back to the skeleton); the last three are the idle roster
@@ -48,7 +49,7 @@ func _initialize() -> void:
 	DmSimData.ensure()
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			quit(1)

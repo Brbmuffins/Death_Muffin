@@ -3,7 +3,7 @@ extends SceneTree
 ## DmFxLayer.flush), kept as text (tests/fixtures/old_game/fx/dm_fx_prims.gd.txt, so Godot never parses it) and compiled at run time with its class_name line dropped. Both effect layers get the same decals (every texture,
 ## blend, role and order, delays, spin, pulse, growth, anchors, sheets, followers that vanish, persistent ones, settling ones that overlap and bring each other's outline forward,
 ## kills, and more than the cap of 160) and the same frame times (60 Hz, 144 Hz, hitches); after every frame each layer's drawn count and every float of its drawn buffer must be EQUAL,
-## and so must the number of combat transients and whether each handle is alive. Prints INFO: the update's time per frame on both sides with about 140 decals alive.
+## and so must the number of combat transients and whether each handle is alive.
 ## Run: godot --headless --path client --script res://tests/fx_decals.gd
 
 const TODAY := "res://tests/fixtures/old_game/fx/dm_fx_prims.gd.txt"   ## the old game's effects layer, kept as text
@@ -37,7 +37,6 @@ func _main() -> void:
 		_compare(today, 1)
 		_compare(today, 2)
 		_cap(today)
-		_timing(today)
 	_end()
 
 
@@ -228,41 +227,6 @@ func _cap(today: GDScript) -> void:
 			port.update(1.0 / 60.0, 1.0 / 60.0)
 	check(bad == "", "the cap: 420 decals and 60 flashes leave the same ones alive as today's%s" % ("" if bad == "" else ": " + bad))
 	check(port.transient_load() <= 160 + 1 + 20, "the cap holds the combat transients near 160 (%d, persistent ones are outside it)" % port.transient_load())
-	port.clear()
-	port.dispose()
-	ref.call("clear")
-	ref.call("dispose")
-	refg.free()
-	portg.free()
-
-
-## INFO: about 140 decals alive, one update on each side.
-func _timing(today: GDScript) -> void:
-	var refg := Node3D.new()
-	var portg := Node3D.new()
-	root.add_child(refg)
-	root.add_child(portg)
-	var ref: Object = today.new(refg)
-	var port := DmFxPrims.new(portg)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 5
-	for i in 140:
-		var o := _options(rng, i, true)
-		o.erase("delay")
-		o["duration"] = 600.0
-		o.erase("persistent")
-		ref.call("decal", o)
-		port.decal(o)
-	var us := [0, 0]
-	for f in 120:
-		clock = float(f) / 60.0
-		var t0 := Time.get_ticks_usec()
-		ref.call("update", 1.0 / 60.0, 1.0 / 60.0)
-		var t1 := Time.get_ticks_usec()
-		port.update(1.0 / 60.0, 1.0 / 60.0)
-		us[0] += t1 - t0
-		us[1] += Time.get_ticks_usec() - t1
-	print("INFO fx_decals: one update with 140 decals: today's %.3f ms, the port's %.3f ms" % [us[0] / 120000.0, us[1] / 120000.0])
 	port.clear()
 	port.dispose()
 	ref.call("clear")

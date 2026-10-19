@@ -167,6 +167,7 @@ func _run() -> void:
 	await _more(game, ui)
 	await _panels(game, ui)
 	await _extras(game, ui)
+	await _card_rows()
 	print("%d passed, %d failed" % [_pass, _fail])
 	print("%s game_ui %d checks%s" % ["PASS" if _fail == 0 else "FAIL", _pass + _fail, "" if _fail == 0 else " (%d failed)" % _fail])
 	quit(1 if _fail > 0 else 0)
@@ -185,7 +186,6 @@ func _more(game: DmMockGame, ui: DmGameUi) -> void:
 	sp.changed.emit("no_tips", false)
 	_check(ui.counsel.tips_enabled, "no_tips off re-enables the counsel")
 	sp.action.emit("reset_tips")
-	_check(true, "reset_tips runs")
 	ui.counsel.tips_disabled.emit()
 	_check(game.settings["no_tips"] == true, "counsel 'Don't show tips' stores no_tips")
 	ui.update_setting({"no_tips": false})
@@ -560,7 +560,7 @@ func _extras(game: DmMockGame, ui: DmGameUi) -> void:
 	# rites sanitising
 	var kit := DmAbilities.kit_for("necromancer")
 	var rt := DmRites.new(3, kit, 1)
-	_check(rt.keys.size() == 5 and rt.primary == String(kit["defaultPrimary"]), "rites default for a fresh character")
+	_check(rt.keys.size() == (kit["hotbar"] as Array).size() and rt.primary == String(kit["defaultPrimary"]), "rites default for a fresh character")
 	# bind rules
 	_check(not DmUiBinds.check_bind({}, "loadout_1", "i")["ok"] and DmUiBinds.check_bind({}, "loadout_1", "f7")["ok"], "keybind: reserved refused, F7 ok")
 	_check(not DmUiBinds.check_bind({}, "loadout_2", "f3")["ok"], "keybind: F3 belongs to the performance overlay (a saved F3 bind is dropped on load, which uses the same check)")
@@ -577,3 +577,25 @@ func _extras(game: DmMockGame, ui: DmGameUi) -> void:
 	_check(lines == ["Thralls hit +9.6% harder", "Thralls have +5% health"], "legion bonus lines")
 	# necro weapon + brew text
 	_check(DmUiBrews.necro_weapon_tooltip("staff_bone").get("level") == 1 and DmUiBrews.summary("elixir_moonlight").begins_with("Elixir"), "weapon tooltip + brew summary")
+
+
+## An item card's stat row with a long meaning beside it, in a card as narrow as the tooltip: the stat ("+30 INT") stays on one line and the meaning wraps
+## (2026-10-19, a team PC's screenshot: the stat was squeezed to one letter a line).
+func _card_rows() -> void:
+	var box := VBoxContainer.new()
+	box.size = Vector2(340, 0)
+	root.add_child(box)
+	var card := DmItemCard.new()
+	box.add_child(card)
+	card.set_item({"name": "Brutal Staff of the Pale Moon", "rarity": "epic", "type_label": "Two-handed Weapon",
+		"stats": [{"text": "+30 INT", "fx": "+39.0 spell power, +60 essence, +3.0 essence/s (+17.9 thrall damage)"}, {"text": "+6 VIT", "fx": "+48 health (+22 thrall health)"}]})
+	await _frames(3)
+	var stat_labels: Array = []
+	for row in card.get_children():
+		if row is HBoxContainer and row.get_child_count() == 2:
+			stat_labels.append(row.get_child(0))
+	_check(stat_labels.size() == 2, "the card has the two stat rows with a meaning (%d)" % stat_labels.size())
+	for l in stat_labels:
+		var lab := l as Label
+		_check(lab.get_line_count() == 1 and lab.size.x + 0.5 >= lab.get_minimum_size().x, "\"%s\" stays on one line beside its long meaning (%d lines, %.0f px wide)" % [lab.text, lab.get_line_count(), lab.size.x])
+	box.queue_free()

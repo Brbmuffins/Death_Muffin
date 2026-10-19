@@ -30,8 +30,7 @@ for s in "${SCENES[@]}"; do
 done
 
 echo "publish-bake-kit: building $REV (core for Linux and Windows, import)..."
-(cd "$WT/client" && bash setup.sh) >"$WORK/setup.log" 2>&1 || { tail -20 "$WORK/setup.log"; exit 1; }
-(cd "$WT" && bash native/build.sh windows) >"$WORK/build-win.log" 2>&1 || { tail -20 "$WORK/build-win.log"; exit 1; }
+bash "$WT/tools/check/prep.sh" --windows --no-bake "$WT" >"$WORK/setup.log" 2>&1 || { tail -20 "$WORK/setup.log"; exit 1; }
 
 ZIP="$WORK/kit-$REV.zip"
 rm -f "$ZIP"

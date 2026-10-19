@@ -12,8 +12,7 @@ const SWEPT := ["register", "login", "load_or_create_character", "get_character"
 	"vault_withdraw", "vault_withdraw_many", "vault_deposit_all", "vault_sort", "vault_move", "sort_bag", "use_items", "sell_items", "salvage_gear", "reforge_quote", "reforge_affix", "boss_key_status", "boss_key_summon", "boss_key_refund",
 	"boss_key_claim", "send_bug_report", "get_my_bug_reports", "get_account_prefs", "set_account_prefs", "claim_session", "probe_session", "get_leaderboard"]
 ## Called by game code but local to the client (no route).
-## get_patch_notes fetches the site's static patch notes: offline it gets a 404 and reads as "unknown" (never an error).
-const LOCAL_ONLY := ["set_token", "get_token", "notify_session_replaced", "is_session_replaced", "get_patch_notes"]
+const LOCAL_ONLY := ["set_token", "get_token", "notify_session_replaced", "is_session_replaced"]
 ## Only reached with `--online` (DmOnlineGate, staff-only online D10): the local mock backend never runs the gate, so these have no offline route.
 const ONLINE_ONLY := ["fetch_client_manifest", "get_me"]
 
@@ -147,7 +146,6 @@ func _sweep() -> void:
 			"get_garden", "get_labor", "assign_labor", "get_cosmetics", "select_cosmetics", "get_vault", "vault_sort", "reforge_quote", "boss_key_status", "send_bug_report",
 			"get_my_bug_reports", "get_account_prefs", "set_account_prefs", "get_leaderboard", "runes_learned"]:
 		_ok(calls[k].ok, "succeeds: " + k, "%d %s" % [calls[k].status, calls[k].error])
-	_ok(not (await api.get_patch_notes()).ok, "patch notes are not served offline")
 	var claim := await api.claim_session(api.get_token())
 	_ok(claim == api.get_token(), "claim_session")
 	await api.probe_session()
@@ -293,7 +291,7 @@ func _no_loss_on_refusal() -> void:
 
 
 ## A contract reward obeys the item's stack cap like contracts.cjs addToBag: a second Copper Ring opens its own slot (a 2-stack was refused by every later
-## inventory save, so the bag never reached the server and a Workbench reforge found "nothing in that slot": next_acre_guide flaked on the reward roll).
+## inventory save, so the bag never reached the server and a Workbench reforge found "nothing in that slot": the chapterhouse suite flaked on the reward roll).
 func _repair_stacks() -> void:
 	var mock: DmMockBackend = _session()[0]
 	var acc := {"slots": [{"slot_index": 0, "item_id": "ring_copper", "quantity": 3, "equipped": 0}, {"slot_index": 1, "item_id": "log_oak", "quantity": 5, "equipped": 0}]}

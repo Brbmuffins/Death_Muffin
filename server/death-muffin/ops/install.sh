@@ -21,6 +21,12 @@ git -C "$REPO" show "$REV:$SRC/git-pre-push.sh" >"$HOOKS/pre-push.new" && chmod 
 for u in death-muffin-db-backup.service death-muffin-db-backup.timer death-muffin-drift-report.service death-muffin-drift-report.timer death-muffin-launcher-notice.service death-muffin-launcher-notice.timer death-muffin-health-watch.service death-muffin-health-watch.timer; do
   git -C "$REPO" show "$REV:$SRC/$u" | sudo tee "/etc/systemd/system/$u" >/dev/null
 done
+# Retired jobs: stopped, their units and installed copies removed (the release checks report went with B62: team PC checks run before a release, on request).
+for t in death-muffin-team-report; do
+  sudo systemctl disable --now "$t.timer" "$t.service" >/dev/null 2>&1 || true
+  sudo rm -f "/etc/systemd/system/$t.timer" "/etc/systemd/system/$t.service"
+done
+rm -f "$DEST/team-report.sh" "$DEST/state/team-report.json" "$DEST/state/team-report.json.lock"
 sudo systemctl daemon-reload
 sudo systemctl enable --now death-muffin-db-backup.timer death-muffin-drift-report.timer death-muffin-launcher-notice.timer death-muffin-health-watch.timer
 systemctl list-timers death-muffin-db-backup.timer death-muffin-drift-report.timer death-muffin-launcher-notice.timer death-muffin-health-watch.timer --no-pager

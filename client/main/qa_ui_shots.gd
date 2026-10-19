@@ -11,19 +11,24 @@ extends RefCounted
 ## Plan: {"bag": "demo"|"keep", "give": ["item id", ...] (extra items, one each), "equip": ["item id", ...] (max 12, worn like a player equipping from the bag),
 ##        "discipline": "ossuary"|"gravecaller"|"mourner"|"rotweaver"|"reaper" (or 1-4 / 11; read by the launching script, which passes --class=N: client/tools/qa_shots.sh),
 ##        "shots": [{"name", "open": "bag" | ["bag", ...], "hover": <bag slot 0-47> | "item:<item id>" | "worn:<equip slot>" | "belt:<tool>",
-##        "area": "<area id>", "wait_ms": 300, "clip": "window", "view": "hero" | "game", "turn": <degrees>, "anim": "idle" | "run" | "cast"}]}.
-## At most MAX_SHOTS shots per plan (run several plans for more). "open" lists are applied in order (the game keeps one window
+##        "area": "<area id>", "wait_ms": 300, "clip": "window", "view": "hero" | "game", "turn": <degrees>, "anim": "idle" | "run" | "cast", "fight": true}]}.
+## At most MAX_SHOTS shots per plan: a plan with more is refused (`QA-SHOTS plan error:`, exit code 2), not trimmed (run several plans for more). "open" lists are applied in order (the game keeps one window
 ## open at a time, so the last one stays). "clip": "window" crops to the open window (plus the tooltip when one is shown); default is the whole screen.
 ## "equip": each id is added to the bag (gear gets a real backend roll) and equipped through the backend's equip call, then the bag reloads, so the avatar
 ## updates exactly as in play (weapon in hand, helm, mantle, set look at 3+ pieces, legendary body swap). Unknown or unequippable ids print `QA-SHOTS equip:` and are skipped.
+## "fight": true makes the wait ("wait_ms") a real fight, for a shot of the HUD in combat: FIGHT_FOES of the Graves' robbers (play's health and damage) are made in a fan 6 to 9 m ahead of the hero as the shot's area is entered, and every FIGHT_STEP_S
+## the hero casts at the nearest enemy (the primary, now and then the right mouse button's rite) with its resource and health topped up and the pack made up again when it has thinned, as the scripted fight of the driver does; give it "wait_ms" of 3000 or more so the pack has arrived. Without "fight" the waves of a
+## dev-offline start are only climbing out 18 m away or more after a few seconds: nothing is on screen, nothing is cast, nothing is hit.
 ## "view": "hero" closes every window, hides the HUD and frames the hero full body close-up from the front (`turn` degrees: 0 faces the camera, 180 shows the
 ## back; `anim` poses the hero and freezes it after a short settle); "game" is the normal game camera with the HUD hidden. The camera, HUD and pose are restored after the shot.
 ## Window ids (WINDOWS): bag/reliquary/inventory, character/gear/sheet, pets/cosmetics, legion, grimoire/spellbook, vault, forge, salvage, shelf,
 ## codex, atlas, ascension, map, class, settings, professions, garden, labor, contracts, social/friends, party.
 
-const MAX_SHOTS := 4
+const MAX_SHOTS := 6
 const MAX_WAIT_MS := 5000
 const MAX_EQUIP := 12
+const FIGHT_FOES := 8        ## "fight": enemies made round the hero
+const FIGHT_STEP_S := 0.4    ## "fight": the hero casts this often
 const DEFAULT_TURN := 25.0   ## a hero view without "turn" stands slightly turned (front three-quarter); "turn": 0 faces the camera
 const VIEWS := ["", "hero", "game"]
 const ANIMS := ["", "idle", "run", "cast"]
@@ -50,7 +55,7 @@ const DEMO_BAG := [
 
 
 ## Parses and validates plan text. Returns {ok, error, bag, give, equip, class_index (0 = not set), shots} with normalised shots
-## ({name, open: Array[String] of canonical window ids, hover: Variant (int|String|null), area, wait_ms, clip, view, turn (degrees), anim}).
+## ({name, open: Array[String] of canonical window ids, hover: Variant (int|String|null), area, wait_ms, clip, view, turn (degrees), anim, fight}).
 static func parse(text: String) -> Dictionary:
 	var out := {"ok": false, "error": "", "bag": "demo", "give": [], "equip": [], "class_index": 0, "shots": []}
 	var js := JSON.new()
@@ -76,10 +81,11 @@ static func parse(text: String) -> Dictionary:
 			out["error"] = "unknown discipline \"%s\" (known: %s)" % [disc, ", ".join(DISCIPLINES.keys())]
 			return out
 		out["class_index"] = ci
+	if (list as Array).size() > MAX_SHOTS:
+		out["error"] = "plan has %d shots, at most %d are taken (run several plans for more)" % [(list as Array).size(), MAX_SHOTS]
+		return out
 	var i := 0
 	for s in list:
-		if i >= MAX_SHOTS:
-			break
 		if not (s is Dictionary):
 			out["error"] = "shot %d is not an object" % (i + 1)
 			return out
@@ -111,12 +117,13 @@ static func parse(text: String) -> Dictionary:
 		if not ANIMS.has(anim):
 			out["error"] = "shot %d: anim must be idle, run or cast" % (i + 1)
 			return out
+		var fight: Variant = s.get("fight", false)
 		var nm := String(s.get("name", "shot-%d" % (i + 1))).to_lower()
 		var rx := RegEx.create_from_string("[^a-z0-9-]+")
 		nm = rx.sub(nm, "-", true).substr(0, 40)
 		(out["shots"] as Array).append({"name": nm if nm != "" else "shot-%d" % (i + 1), "open": wins, "hover": hover, "area": String(s.get("area", "")),
 			"wait_ms": clampi(int(s.get("wait_ms", 300)), 0, MAX_WAIT_MS), "clip": "window" if String(s.get("clip", "")) == "window" else "",
-			"view": view, "turn": fmod(float(s.get("turn", DEFAULT_TURN)), 360.0), "anim": anim})
+			"view": view, "turn": fmod(float(s.get("turn", DEFAULT_TURN)), 360.0), "anim": anim, "fight": fight is bool and fight})
 		i += 1
 	out["ok"] = true
 	return out
@@ -207,12 +214,14 @@ static func stage(root: Node, game: DmNextGame, s: Dictionary) -> Dictionary:
 		go_area(game, s["area"])
 	for _i in 3:
 		await tree.process_frame
+	if s["fight"]:
+		_fight_begin(game)
 	for w in s["open"]:
 		ui.toggle_panel(w)
 	var saved := {}
 	if s["view"] != "":
 		saved = _view_begin(game, s)
-	await tree.create_timer(maxf(0.15, float(s["wait_ms"]) / 1000.0)).timeout
+	await _wait(root, game, s)
 	if not s["open"].is_empty() and not ui.is_open(s["open"][s["open"].size() - 1]):   # the last window of the list is the one that stays
 		var last: String = s["open"][s["open"].size() - 1]
 		print("QA-SHOTS window did not open: %s%s" % [last, " (the Vault opens only in the Chapterhouse: \"area\": \"chapterhouse\")" if last == "vault" else ""])
@@ -224,6 +233,59 @@ static func stage(root: Node, game: DmNextGame, s: Dictionary) -> Dictionary:
 	await tree.process_frame
 	await tree.process_frame
 	return {"saved": saved, "tip": tip_rect}
+
+
+## The shot's wait: `wait_ms` of game time (at least 0.15 s); a "fight" shot casts every FIGHT_STEP_S of it.
+static func _wait(root: Node, game: DmNextGame, s: Dictionary) -> void:
+	var secs := maxf(0.15, float(s["wait_ms"]) / 1000.0)
+	if not s["fight"]:
+		await root.get_tree().create_timer(secs).timeout
+		return
+	var t := 0.0
+	var n := 0
+	while t < secs:
+		_fight_step(game, n)
+		n += 1
+		var step := minf(FIGHT_STEP_S, secs - t)
+		await root.get_tree().create_timer(step).timeout
+		t += step
+
+
+## "fight": `count` robbers in a fan 6 to 9 m ahead of the hero (up the screen), at the same places every time (`first`: the place to start from), through the director like the scripted fight's.
+static func _fight_spawn(game: DmNextGame, count: int, first: int = 0) -> void:
+	var b := game.local_body()
+	for k in count:
+		var i := (first + k) % FIGHT_FOES
+		var a := deg_to_rad(-60.0 + 120.0 * float(i) / float(FIGHT_FOES - 1))
+		var r := 6.0 + 1.5 * float(i % 3)
+		game.director.spawn("robber", b.position + Vector3(sin(a) * r, 0.0, -cos(a) * r))
+
+
+static func _fight_begin(game: DmNextGame) -> void:
+	_fight_spawn(game, FIGHT_FOES)
+
+
+## One cast of a "fight" shot: the nearest enemy gets the primary (the right mouse button's rite every fourth step), the hero's resource and health are topped up and the pack made up to FIGHT_FOES again when it has thinned.
+static func _fight_step(game: DmNextGame, n: int) -> void:
+	var b := game.local_body()
+	var best := 0
+	var best_d := 99.0
+	for id in game.core_host.enemies_in_radius(b.position, 99.0):
+		var at := game.core_host.enemy_position(id)
+		var d := Vector2(at.x - b.position.x, at.z - b.position.z).length()
+		if d < best_d:
+			best_d = d
+			best = id
+	if best != 0:
+		var aim := game.core_host.enemy_position(best)
+		game.input.cast_at(5 if n % 4 == 3 else 0, Vector3(aim.x, 0.0, aim.z), best, false)
+	var caster := b.get_node_or_null("Rites") as DmRiteCaster
+	if caster != null:
+		caster.p["resource"]["value"] = caster.p["resource"]["max"]
+	b.heal(1e6)
+	var alive := game.core_host.alive_count()
+	if alive < FIGHT_FOES - 2:   # the pack thins out as the hero kills: more climb out, so the picture has a fight in it whenever it is taken
+		_fight_spawn(game, FIGHT_FOES - alive, n * 3)
 
 
 ## The staged shot as a PNG at `file`: the viewport's picture, cropped to the open window (and its tooltip) for "clip": "window", then the camera, HUD and pose put back.

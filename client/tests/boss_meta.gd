@@ -22,7 +22,6 @@ func _config() -> void:
 	boss_id = BOSS
 	load_areas = ["graves", "ossuary"]
 	bakes = ["thrall_legionnaire", "grave_robber", "bone_hound"]
-	replay_count = 0
 	start_opts = {"hud": true, "persist": false}
 	mock_clock = clock
 

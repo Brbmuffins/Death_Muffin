@@ -15,6 +15,8 @@ import { fileURLToPath } from 'node:url';
 // Fast, broad suites run on every code change: every script parses and loads (code_load), the combat core answers (core_smoke), the game scene
 // starts and plays a little (game_scene).
 export const SMOKE = ['code_load', 'core_smoke', 'game_scene'];
+// Suites split into several that share a helper: a changed file named like one of them selects every suite of the family.
+export const FAMILIES = [/^benchmark(?:_|$)/];
 export const MAX_GD_FILES = 40;
 export const MAX_SHARE = 0.6;
 
@@ -38,6 +40,14 @@ export function additiveNames(f, added) {
   }
   return { words: [...words], fixed: [...fixed] };
 }
+
+// Suites that read a whole folder or dataset through a loader no reference search can follow (DmCombatData.load_json("abilities"), the rites by the registry's list):
+// a change under these paths selects the suite whatever the references say. `spells` casts every spell of every playable kit from the data.
+export const FORCED = [
+  [/^client\/next\/rites\//, 'spells'],
+  [/^client\/data\/combat\//, 'spells'],
+  [/^client\/game_ui\/dm_spell_tooltip\.gd$/, 'spells'],
+];
 
 const IGNORED = (f) => /\.(md|uid|import)$/.test(f) || !/^(client|native)\//.test(f);   // docs, Godot bookkeeping, and everything outside the game (server/, docs/, ...)
 
@@ -75,13 +85,19 @@ export function affected(changed, ctx) {
   if (gd.length > MAX_GD_FILES) return { all: true, why: `${gd.length} changed .gd files (> ${MAX_GD_FILES})` };
 
   const sel = new Set(SMOKE.filter((s) => ctx.suites.includes(s)));
-  // a content table changes the counts that client/data/content/manifest.json records, and rules-core checks them all (2026-10-11: a sound
-  // added to audioMap.json without the manifest count shipped on a quick check that never ran rules-core)
-  if (relevant.some((f) => /^client\/data\/content\/[^/]+\.json$/.test(f)) && ctx.suites.includes('rules-core')) sel.add('rules-core');
+  // a content table change runs rules_core, which reads every content table and the manifest's list of them
+  if (relevant.some((f) => /^client\/data\/content\/[^/]+\.json$/.test(f)) && ctx.suites.includes('rules_core')) sel.add('rules_core');
+  for (const [re, suite] of FORCED) if (relevant.some((f) => re.test(f)) && ctx.suites.includes(suite)) sel.add(suite);
   const direct = new Set();   // suites chosen because their own files changed
   // client/tests/<name>.gd is a suite's script, client/tests/<name>/... a folder's files: they select the folder's suites (<name> and its runners
   // <name>/<runner>); helpers that no suite is named after select none
-  const suitesOf = (f) => { const m = /^client\/tests\/([^/]+?)(?:\.gd|\/.*)$/.exec(f); return m ? ctx.suites.filter((s) => s === m[1] || s.startsWith(m[1] + '/')) : []; };
+  // A family of suites split from one (benchmark, benchmark_rooms, ..., sharing benchmark_base.gd): any file of the family selects all of it.
+  const suitesOf = (f) => {
+    const m = /^client\/tests\/([^/]+?)(?:\.gd|\/.*)$/.exec(f);
+    if (!m) return [];
+    const fam = FAMILIES.find((re) => re.test(m[1]));
+    return fam ? ctx.suites.filter((s) => fam.test(s)) : ctx.suites.filter((s) => s === m[1] || s.startsWith(m[1] + '/'));
+  };
   for (const f of relevant) for (const s of suitesOf(f)) { sel.add(s); direct.add(s); }
 
   // what the rest of the code base refers to: changed non-test files (scripts, scenes, resources, assets, data)

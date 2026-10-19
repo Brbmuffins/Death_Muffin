@@ -293,6 +293,9 @@ var _atlas_task_key := 0
 var _atlas_task_out: Dictionary = {}  # written by the worker, read only after the task completed
 var _atlas_stale_t := -1.0            # seconds until the verdicts are recomputed in the background (-1 = up to date / not wanted yet)
 const ATLAS_SETTLE_S := 0.8           # looting changes the bag every second: recompute once it goes quiet
+## True while a fight is on (the host's `in_combat`): the background recompute (about 0.3 s of a core) waits for the fight to end, so looting
+## never keeps a core busy through one (KNOWN-GAPS, 2026-10-19). Opening the Atlas still computes at once. Tests replace it.
+var in_fight: Callable = func() -> bool: return game != null and game.has_method("in_combat") and bool(game.call("in_combat"))
 
 
 ## What the verdicts depend on (see DmStatKey) plus which catalogue pieces are worn.
@@ -359,7 +362,7 @@ func tick(delta: float) -> void:
 		return
 	_atlas_stale_t = -1.0
 	var ctx: Variant = ui.stat_ctx()
-	if ctx == null or _atlas_task >= 0 and not WorkerThreadPool.is_task_completed(_atlas_task):
+	if ctx == null or in_fight.call() or _atlas_task >= 0 and not WorkerThreadPool.is_task_completed(_atlas_task):
 		_atlas_stale_t = ATLAS_SETTLE_S
 		return
 	var owned := DmAtlasPanel.owned_from_slots(game.slots)

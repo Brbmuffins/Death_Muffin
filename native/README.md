@@ -1,6 +1,6 @@
 # The combat core (C++)
 
-The game's combat core (DECISIONS B34, B42, B50): a GDExtension (`DmCore.version()` is "dmcore 0.16") that owns every enemy, thrall, corpse and status in flat arrays and steps them once per 60 Hz tick; GDScript (`client/`) owns the hero, rites, bosses, rewards, HUD and flow.
+The game's combat core (DECISIONS B34, B42, B50): a GDExtension (`DmCore.version()` is "dmcore 0.17") that owns every enemy, thrall, corpse and status in flat arrays and steps them once per 60 Hz tick; GDScript (`client/`) owns the hero, rites, bosses, rewards, HUD and flow.
 Before launch the core was checked against the old per-creature game: its rules replayed against the old code, and its behaviour compared with seeded scenarios (kills, damage, time to kill, thrall uptime) within stated tolerances; DECISIONS B50 keeps the result.
 
 ## Design (the contract every change keeps)
@@ -156,7 +156,7 @@ run rewards, loot or the kill report from `died`.
 
 **A puppet core** (`set_puppet(true)`; switching clears every body) steps with `step(dt)`: a body eases toward its last snapshot by `1 - exp(-15 dt)` and snaps above 6 m, yaw
 likewise, its ground speed is the eased motion smoothed at 10 per second (0 below 0.3 m/s), time in state counts up and is taken from a snapshot when it differs by more than
-0.1 s, status chips count down. Queries (`enemies_in_radius`, `enemy_info`, `thralls_in_radius`, `thrall_*`, `corpse_*`, `statuses`) read the same tables as on the host. A puppet's
+0.1 s, status chips count down. Queries (`enemies_in_radius`, `enemy_info` and its one-field reads `enemy_state` / `enemy_pos` / `enemy_radius` (`dmcore 0.17`, no enum or wire change), `thralls_in_radius`, `thrall_*`, `corpse_*`, `statuses`) read the same tables as on the host. A puppet's
 `enemy_info` has `net_pos` (where the last snapshot put the body). Commands the host owns (`spawn_enemy`, `remove_enemy`, `damage`, `stun`, `apply_status`, `remove_status`, `raise_thrall`,
 `kill_thrall`, `sacrifice_thralls`, `rally_thralls`, `recall_thralls`, `set_legion_burst`, `set_thrall_*`, `curse_thrall`, `strip_shroud`, `cover_miasma`, `remove_enemy`, `corpse_add`,
 `corpse_consume`, `snapshot`, `snapshot_parts`, `take_reliable`, `baseline`, `set_replication`) are refused: they return 0, false, nothing or (`damage`) `{dealt: 0, killed: false, refused: true}`, print
@@ -313,7 +313,7 @@ An elite carries some of four affixes, a bit mask on its body (the spawn event c
   (the format's constants and a core's co-op counters), `snapshot` (the 20 Hz message, both ways), `reliable` (event batches and the baseline, both ways) and `puppet` (a guest's step, snapshot
   records and reliable records).
 - Tests: the `core_*` suites, `crowd_view.gd`, `game_scene.gd` and the co-op suites (client/README.md "Set up and test"). Run
-  `bash client/setup.sh` first in a fresh checkout: a script run in a
+  `bash tools/check/prep.sh` first in a fresh checkout: a script run in a
   project that was never imported hangs.
 - `SConstruct`: builds into `client/bin/libdmcore.<platform>.<target>.<arch>.<ext>`.
 - `build.sh`: links godot-cpp into native's thirdparty folder (not committed) from one shared cache per commit

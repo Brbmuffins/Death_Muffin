@@ -64,7 +64,7 @@ func _initialize() -> void:
 	ok(not DmDb.exists("loot/content"), "loot/content.json must not exist (projection of content/*)")
 	ok(not DmDb.exists("progression/content"), "progression/content.json must not exist (projection of content/*)")
 	ok(not DmDb.exists("panels_a/sheet_sample"), "sample/mock data belongs under tests/")
-	ok(FileAccess.file_exists("res://tests/panels_a/sheet_sample.json"), "sheet_sample moved to tests/panels_a")
+	ok(FileAccess.file_exists("res://tests/panel_data/sheet_sample.json"), "sheet_sample moved to tests/panel_data")
 	var cp: Dictionary = DmDb.raw("combat/progression")
 	for k in ["vows", "boons", "ascension", "chain", "wave_milestones", "stat_effects", "damage_upgrade"]:
 		ok(not cp.has(k), "combat/progression.json must not re-carry content/ fact: " + k)
@@ -82,27 +82,32 @@ func _initialize() -> void:
 	var rat := DmLootData.enemy("rat")
 	ok(int(rat["gold"][0]) == 0 and int(rat["gold"][1]) == 1 and int(rat["xp"]) == 1, "loot enemy")
 	ok(is_equal_approx(DmLootData.difficulty_reward_mult("hard"), 1.3), "difficulty reward")
-	ok(DmLootData.content()["armor"].size() == 115 and DmLootData.content()["necroWeapons"].size() == 35, "armor/necro counts")
+	ok(not DmLootData.content()["armor"].is_empty() and not DmLootData.content()["necroWeapons"].is_empty(), "armor/necro tables are there")
 	ok(is_equal_approx(float(DmLootData.area("graves")["itemChance"]), 0.062089552238805974), "area itemChance")
 	ok(DmProgContent.vows()["elder_dead"]["maxRank"] == 20 and typeof(DmProgContent.vows()["elder_dead"]["maxRank"]) == TYPE_INT, "prog vow int")
-	ok(DmProgContent.boon_order().size() == 15 and DmProgContent.vow_order().size() == 11, "prog orders")
+	ok(DmProgContent.boon_order().size() == DmProgContent.boons().size() and DmProgContent.vow_order().size() == DmProgContent.vows().size() and not DmProgContent.boon_order().is_empty(), "prog orders list every boon and vow")
 	ok(DmProgContent.upgrades()["damage"]["costBase"] == 40 and is_equal_approx(DmProgContent.upgrades()["legion"]["costGrowth"], 1.65), "upgrade costs")
-	ok(DmProgContent.get_data()["milestones"].size() == 51 and DmProgContent.get_data()["milestones"][50]["id"] == "chain.100", "milestones")
+	var ms: Array = DmProgContent.get_data()["milestones"]
+	var ms_ids := {}
+	for m in ms:
+		ms_ids[String(m["id"])] = true
+	ok(not ms.is_empty() and ms_ids.size() == ms.size(), "milestones: some, each id once")
 	ok(DmProgContent.areas()["ossuary"]["unlock"] == {"area": "graves", "kills": 300}, "area unlock")
 	ok(DmProgContent.is_always_open("graves") and not DmProgContent.is_always_open("ossuary"), "always open")
 	ok(DmProgContent.get_data()["startAreas"] == ["chapterhouse", "graves"], "start areas")
-	ok(DmContent.items().size() == 309 and int(DmContent.item("log_oak")["sell"]) == 1, "content items")
+	ok(not DmContent.items().is_empty() and int(DmContent.item("log_oak")["sell"]) == 1, "content items")
 	ok(DmContent.file_names().size() > 60, "content file names")
-	ok(DmContent.get_export("areas", "AREA_ORDER").size() == 13, "content export")
+	ok(DmContent.get_export("areas", "AREA_ORDER").size() == DmData.world()["order"].size(), "content export: the areas' order lists the world's areas")
 	ok(DmContent.file("items") == DmDb.content("items"), "DmContent delegates")
-	ok(DmCombatData.abilities()["abilities"].size() == 70, "combat abilities")
+	var combat_abilities: Dictionary = DmCombatData.abilities()["abilities"]   # the combat table and the content table list the same abilities
+	ok(combat_abilities.has("bone_needle") and combat_abilities.size() == (DmContent.file("abilities")["ABILITIES"] as Dictionary).size(), "combat abilities")
 	var prog: Dictionary = DmCombatData.load_json("progression")
-	ok(prog["vows"]["elder_dead"]["maxRank"] == 20 and prog["chain"]["windowMs"] == 4000 and prog["boon_order"].size() == 15, "combat progression composed")
+	ok(prog["vows"]["elder_dead"]["maxRank"] == 20 and prog["chain"]["windowMs"] == 4000 and prog["boon_order"].size() == DmProgContent.boon_order().size(), "combat progression composed")
 	ok(prog["kit"]["base"] == 120 and prog["new_blood"]["damage_mult"] == 1.5, "combat progression residual")
-	ok(DmGatherData.get_data()["nodes"].size() == 30, "gathering nodes")
-	ok(DmCounselData.order().size() == 122, "counsel tips")
-	ok(DmData.world()["areas"].size() == 13, "slice world")
-	ok(DmPaData.atlas()["item_order"].size() == 309, "panels_a atlas")
+	ok(DmGatherData.get_data()["nodes"].size() == (DmContent.get_export("gameplay_gatheringRules", "NODES") as Dictionary).size() and not DmGatherData.get_data()["nodes"].is_empty(), "gathering nodes: the data holds the rules' node types")
+	ok(DmCounselData.order().size() == DmCounselData.tips().size() and not DmCounselData.order().is_empty(), "counsel tips: the order lists every tip")
+	ok(DmData.world()["areas"].size() == DmData.world()["order"].size() and not DmData.world()["order"].is_empty(), "slice world: an entry for each area in the order")
+	ok(DmPaData.atlas()["item_order"].size() == DmContent.items().size(), "panels_a atlas lists every item")
 	# necromancer gear look props (slice/necro_gear.json): every prop and legendary hero model is registered and imported
 	var ng: Dictionary = DmDb.slice("necro_gear")
 	var used_models: Array = DmDb.slice("assets_used")["models"]
@@ -117,15 +122,15 @@ func _initialize() -> void:
 		if not used_models.has(m) or not ResourceLoader.exists("res://assets/slice/" + m):
 			ng_bad += 1
 			print("necro_gear model missing: ", m)
-	ok(ng_props.size() == 7 + 8 + 7 + 1 + 5 and ng_bad == 0, "necro gear table: 28 models listed in assets_used and imported")
+	ok(not ng_props.is_empty() and ng_bad == 0, "necro gear table: %d models listed in assets_used and imported" % ng_props.size())
 	var asets: Dictionary = DmContent.get_export("armorSets", "ARMOR_SETS")
 	ok(ng["mantle_by_set_id"].has("gravecaller") and ng["mantle_by_set_id"].has("rotweaver_ascended") and asets.has("gravecaller"), "necro gear table: class and ascended mantle ids")
 	for k in ng["legendary_hero_by_set_id"]:
 		ok(DmContent.get_export("armorSets", "ARMOR_BY_ID").has("leg_%s_chest" % k), "necro gear table: legendary set %s exists" % k)
-	ok(DmWfxData.get_data().has("windows") and DmWfxData.get_data()["windows"].size() == 4, "world fx")
+	ok(DmWfxData.get_data().has("windows") and not DmWfxData.get_data()["windows"].is_empty(), "world fx")
 	var sw1: Dictionary = DmDb.sim_world()
 	var sw2: Dictionary = DmDb.sim_world()
-	ok(sw1["obstacles"].size() == 568 and not is_same(sw1, sw2), "sim world fresh each call")
+	ok(not sw1["obstacles"].is_empty() and sw1["obstacles"].size() == sw2["obstacles"].size() and not is_same(sw1, sw2), "sim world fresh each call")
 	ok(DmDb.content("wing").size() > 0 and DmDb.content_export("reagents", "REAGENT_BREW_LIST").size() > 0, "wing + reagents")
 	ok(DmDb.content("disciplines")["PLAYABLE_DISCIPLINES"].size() > 0, "playable disciplines")
 

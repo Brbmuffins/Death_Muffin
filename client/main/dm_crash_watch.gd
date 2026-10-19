@@ -1,7 +1,8 @@
 class_name DmCrashWatch
 extends RefCounted
 ## Automatic crash reports (owner 2026-10-15; DECISIONS B29). A release build writes a lock file when it starts and removes it when it
-## shuts down normally (main.gd _exit_tree: window close, quit, benchmark end). A lock still there at the next start means the last run
+## shuts down normally (main.gd _exit_tree: window close, quit, benchmark end; or `DmMain.end_process` just before a Windows release build ends
+## its own process, DECISIONS B60). A lock still there at the next start means the last run
 ## ended without shutting down: a crash, a freeze that was killed, or the PC going down. That run's log tail is kept in a pending file
 ## until a signed-in game can send it as a bug report (category "bug", context `crash: true`), which opens an #in-game-reports thread like
 ## any player report. Dev builds never write the lock, so editor and test runs make no reports. The combat core also

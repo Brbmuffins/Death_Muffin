@@ -375,8 +375,6 @@ func _t_net() -> void:
 	for i in defs.size():
 		ids.append(hg.core_host.spawn_enemy(defs[i], spots[i], 1, 1.0, 1.0, false, "graves", defs[i] == "ghoul"))
 	await ticks(3)
-	var worst := 1e9
-	var sum := 0.0
 	var n := 0
 	for _i in 1500:   # up to 25 s of physics ticks: let the room swing
 		if tlog_h.size() >= 4 and hg.enemy_fx.stats["strike"] >= 3:
@@ -387,20 +385,15 @@ func _t_net() -> void:
 	check(tlog_h.size() >= 3, "net: host telegraphed %d times" % tlog_h.size())
 	check(cg.enemy_fx.stats["telegraph"] == tlog_c.size() and hg.enemy_fx.stats["telegraph"] == tlog_h.size(), "net: each peer's fx saw its own telegraphs exactly once (h %d/%d c %d/%d)" % [hg.enemy_fx.stats["telegraph"], tlog_h.size(), cg.enemy_fx.stats["telegraph"], tlog_c.size()])
 	check(tlog_c.size() >= tlog_h.size() - 1 and tlog_c.size() <= tlog_h.size(), "net: client got every telegraph the host sent (%d of %d)" % [tlog_c.size(), tlog_h.size()])
-	# lead time: window the client has = host windup - (client arrival - host emit)
+	# match each client telegraph to the host's
 	var used := {}
 	for th in tlog_h:
 		for tc in tlog_c:
 			if tc[0] == th[0] and tc[3] == th[3] and tc[1] >= th[1] and not used.has(tc):
 				used[tc] = true
-				var delay_ms: float = float(tc[1] - th[1]) / 1000.0
-				var lead_ms: float = float(th[2]) * 1000.0 - delay_ms
-				worst = minf(worst, lead_ms)
-				sum += lead_ms
 				n += 1
 				break
 	check(n >= 3, "net: the client got the telegraphs (%d matched)" % n)
-	perf_info(worst > 250.0, "net: client telegraph lead worst %.0f ms, mean %.0f ms (>250 ms to dodge)" % [worst, sum / maxf(1.0, n)])
 	# client-side sounds/decals came from the puppet core's events: telegraph sfx once per telegraph
 	var tele_sounds_c := ca.count("tellStrike") + ca.count("tollSmall")
 	var tele_sounds_h := ha.count("tellStrike") + ha.count("tollSmall")
@@ -433,9 +426,3 @@ func _t_warm() -> void:
 		check(effects.has(id), "warm: Binbun effect %s is in the DmWarmup set" % id)
 	for id in DmEnemyFx.SFX_IDS:
 		check(not DmAudioMap.defn(id).is_empty(), "sfx: %s exists in the audio map" % id)
-
-
-## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
-## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
-func perf_info(cond: bool, what: String) -> void:
-	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

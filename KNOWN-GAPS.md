@@ -6,6 +6,9 @@ A path below without a folder is under `client/`.
 ## Missing since launch day
 
 - Ascension (the Altar, vows and heat, Ashes, Covenant Boons) left on purpose (B36; ROADMAP Phase 3).
+- **Ascension leftovers still on screen** (the suite audit, 2026-10-19). Decide: the Chapterhouse's Altar still opens the Ascension panel
+  (`client/tests/chapterhouse/run.gd` checks that it does) and the party and friends rows still show Heat (`client/tests/lobby/ui.gd`),
+  although B36 leaves Ascension out until its redesign. Claude's recommendation: hide both until Phase 3 brings the new Ascension.
 
 ## Performance
 
@@ -14,13 +17,15 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
 - **Spikes:** a rite's cast takes 2 to 4 ms in the tick it is cast (1.2 to 1.9 ms of it its effects: `DmRiteCaster._play_event`, the `Vfx`
   nodes); a big kill's event handlers 2 to 9 ms (`DmCoreHost._dispatch`: rewards, loot, the counsel); Bone Fan's pick in Easy auto combat
   (`DmAutoCombat._primary_target`) tests every pair of targets, up to 4,000 calls, about 6 ms (the Gravecaller's default loadout does not use it).
-- **Per-frame waste:** `DmCore.enemy_info` builds a 25-entry Dictionary (8 us) and is called 14 times a frame (the HUD's target frame, the
-  event handlers, the rites' single reads); Easy auto combat's gather (`DmNextAutoCombat._gather`, ten times a second, 0.4 to 0.75 ms) copies
+- **Per-frame waste:** `DmCore.enemy_info` builds a 25-entry Dictionary (7 us) and is still called several times a frame by the HUD's target
+  frame and the effect handlers (`DmEnemyFx`, some for one field); the host's `enemy_alive`, `enemy_position` and `enemy_radius` read one field
+  of the core since 2026-10-19 (`DmCore.enemy_state` / `enemy_pos` / `enemy_radius`, 0.3 us); Easy auto combat's gather (`DmNextAutoCombat._gather`, ten times a second, 0.4 to 0.75 ms) copies
   every body in range into a row that `select_action` copies again; `DmFxBinbun.update` walks every live effect every frame (the Pyre's 56:
-  about 0.2 ms); the Gear Atlas verdicts (`DmUiPanelsA.tick`, about 0.3 s of a worker) are worked out again after every quiet 0.8 s of the bag,
-  so loot keeps a core busy through a fight even with the Atlas closed.
+  about 0.2 ms).
 - **Draw calls:** `Vfx` (`DmFxRuntime`) leaves some pooled MultiMeshes visible with no instance (4 of its 20 in a Full Party fight), a draw
-  call each; the area scenes' props always cast the moon's shadow (the old game stopped beyond 32 m of the hero); decals are unique quads, one
+  call each: the spikes, grave hands and bone shards of `DmFxPrims` (the decal layers and the particle rings hide when empty). Their being drawn
+  empty is also what builds their pipelines on the loading screen, as the warm-up never shows them: hiding them needs the warm-up to draw each
+  once first, or the first Bone Prison or Bone Mantle compiles in a fight; the area scenes' props always cast the moon's shadow (the old game stopped beyond 32 m of the hero); decals are unique quads, one
   draw call each (the Graves: 23); a crowd body outside the view that casts a shadow is drawn in the main pass too (a shadows-only MultiMesh
   would send it to the shadow map alone; worth it only if Helix's PC shows a cost).
 
@@ -59,9 +64,7 @@ player part of a gain until it is fixed; few real sessions ran on the gains save
 
 - **Found while building the core, approved to fix** (Helix, 2026-10-16; the core already emits each one; ROADMAP polish list): toxic corpse pools
   always hit as at level 1 (nothing sets the area level); a fallen plague bearer's pool never appears and the Mourning Bell wraith's ally heal
-  never happens (signals nobody listens to); statuses never change the blows a boss takes (`DmBoss.take_damage` skips the status set's
-  damage-taken multiplier, and the brain's own Fracture is never fed: a Marrow Spear's Fracture or a Sanctify on the King does nothing).
-- **Reduce motion no longer turns off the hitstop:** `client/next/next_game.gd` never sets `hitstopper.disabled` (the old game's did, from Settings' `reduce_motion`), so an elite's death still freezes the frame with it on (found porting the `next_feel` suite).
+  never happens (signals nobody listens to).
 - **Easy auto combat parks the hero in pockets of tombstones:** it steers straight at the nearest enemy, with no path round the graves (found
   when the core was compared with the old game, DECISIONS B50).
 - Barrier has no decay (`client/next/status/README.md`), and the pools of a boss that resets linger their remaining seconds (`client/next/bosses/README.md`).
@@ -109,59 +112,68 @@ polish list). Also:
 - A guest sees a Grave Surge only as the bodies that climb out of the crypt (the core's snapshot) and, once the host quells it, its offering: the
   banner, the cracked crypt, the sounds and the tip are the host's window only (`DmAreaFlow` listens to the host's director).
 
-## Gathering
-
-- Cycles gathered in the last 8 s before the player leaves or closes the window are never sent (`flush_all` does not flush the gather loop).
-
 ## UI
 
-- **The Next-step box no longer pings the minimap:** `client/next/hud/dm_next_hud_vm.gd` sets `_map["ping"] = null` where the old game pointed it at the suggestion's target (elsewhere, or marked pingInPlace), yet Settings still offers "Point to it on the minimap" (found porting the `next_acre_guide` suite).
+- **The Next-step box no longer pings the minimap:** `client/next/hud/dm_next_hud_vm.gd` sets `_map["ping"] = null` where the old game pointed it at the suggestion's target (elsewhere, or marked pingInPlace), yet Settings still offers "Point to it on the minimap" (found porting the Acre's tests).
 - **No in-game leaderboard panel.** `DmApi.get_leaderboard` exists; only the website shows it.
 - Unraised counsel events: `client/ui/onboarding/README.md`. Hero gaps: `client/next/hero/README.md`.
-- **The item card squeezes the stat name of a long affix row:** the card of an affixed staff (the Reliquary's tooltip, seen in the screenshot tool's picture of 2026-10-18) lays a row such as `+30 INT` beside
-  `+42.9 spell power, +60 essence, +3.0 essence/s (+19.4 thrall damage)` out with the name 1 px wide, so it shows a letter a line (`client/ui/widgets/dm_item_card.gd`: a row is an HBox of two labels, the first wraps and the second
-  does not; the layout is the same in any renderer).
 
 ## Tools and tests
 
+- **Game code that nothing in the game calls** (found by the suite consolidation, 2026-10-19; their tests are gone): 17 of
+  `DmAudioHooks`' static one-liners in `client/main/audio_hooks.gd` (`click`, `error`, `panel_open`, `panel_close`, `needle_cast`,
+  `needle_hit`, `enemy_windup`, `enemy_strike`, `enemy_died`, `hero_hurt`, `thrall_raised`, `thrall_hit`, `thrall_died`, `loot_drop`,
+  `loot_collected`, `gather_cycle`, `boss_music`; the class itself is used), `DmHudMinimap.world_point` (the click handler computes the
+  point itself), `DmGameUi._can_ascend`, the mixer's `music_gain` and the director's `set_combat`, `DmApi`'s `offline_snapshot`,
+  `offline_load`, `offline_versions`, `offline_restore`, `offline_sync_stats` and `get_patch_notes`, `DmGatherLoop.api_post`, the forge
+  panel's `set_bonus_claimed`, `DmStatusSet.is_stunned` and `is_silenced`, and the creature's `set_rise` (only tests use `recycle_reset`).
+  Delete them with the next change in those files.
+- **The pre-release check is skipped while the team PC runs a long check** (B61, 2026-10-19): a shipper's checks (`team-check.sh`, B62) can
+  hold the PC for minutes, and with Helix's PC the only one signed in, a release then goes live without a PC starting it first (the publish
+  says so); in the app's "Ask" mode it needs a click within 2.5 minutes (AFK mode and "Run without asking" take it at once). The app's offer
+  box describes every `release` job with the full checks' note (benchmark and soak), whatever steps it has.
+- **The lobby suite failed once in a full run on the VPS** (2026-10-19): it expected "the host ended the party" and got "Co-op data mismatch:
+  the host's enemy and status tables differ"; it passes alone and in CI. Likely two suites reaching each other's local lobby at the same time.
+- **A team app test fails now and then** (2026-10-19, 1 run in 3 on the VPS): `teamapp/tests/LogCancelTests.cs` "and the exit report is not", which reads a real
+  process's filtered output right after it exits; the next two runs passed.
+- **Typed lists in game code that a new boss or area must be added to by hand** (found by the content-count pass, 2026-10-19): `DmBossHost`'s
+  `served_areas` and `LIVE` (a new boss in the boss data does not wake until both are edited; `client/tests/boss.gd` now fails on the mismatch)
+  and `DmBenchmark.ROOMS` (`client/tests/benchmark.gd` fails on a mismatch with the world's combat areas).
+- **`disciplines.json` `by_index` maps the unused class indices 0, 10 and 12 to the fallback Gravecaller**, so `DmCharacterBuild.is_playable`
+  answers true for them. Nothing shows it today (character select and the benchmark list from `PLAYABLE_DISCIPLINES`).
 - `launcher/tests/LauncherTests.csproj` does not load in `dotnet build`: its XML comment contains `--project` ("XML comment cannot contain '--'"); CI does not
   build it, so `launcher/tests/run-local.sh` is the only way its tests run (found 2026-10-19).
-- Team jobs: nothing prunes `/home/ubuntu/death-muffin/team-results` (the pictures team PCs upload), and a cancelled job reaches the PC running it only at
-  its next upload or finish (the heartbeat does not carry cancellations).
+- `discord-agent/preview-godot.sh --team` still carries its own copy of the newest-6 clean-up of the preview folders in `team-files`; `server/death-muffin/team-files-prune.sh` is the shared rule it
+  should call (found 2026-10-19).
 - `npm run typecheck` fails on six errors in the rules' parity tests (`server/rules/gameplay/__tests__/legionRules.parity.test.ts`, `necroRules.parity.test.ts`, `vaultRules.parity.test.ts`: fixture rows typed looser than the rule functions take); CI does not run it, so it went unnoticed (found 2026-10-19).
 - The Windows launcher workflow (`.github/workflows/launcher-windows.yml`) rebuilds and re-uploads the launcher zip of the current release for any
   change under `launcher/`, a README included (same version, so no launcher update and no notice; it happened on 2026-10-18).
 - `client/tests/game_scene.gd`'s node checks pass about every other run under load: the counsel's tip card (16 nodes, shown at the first
   Barrow Ghoul and dismissed on a wall-clock timer) is in the scene tree for part of the run.
-- The warm-up's residency (what `DmWarmup.hold` keeps, the hero kits it lets go) and its cold-load checks cannot run headless: `client/next/perf/dm_next_warmup.gd` skips its threaded loads there, so the ported `next_perfctl` leaves them out; judge them on a real window.
-- The client's suites other than `world.gd` do not set `DM_SYNC_NAV`: under `--fixed-fps` a suite that enables a region (a seal, a baked
-  Depths floor) and then relies on bodies walking may get a path from a navigation map that has not merged it yet.
+- The warm-up's residency (what `DmWarmup.hold` keeps, the hero kits it lets go) and its cold-load checks cannot run headless: `client/next/perf/dm_next_warmup.gd` skips its threaded loads there, so the ported `perf_controls` leaves them out; judge them on a real window.
 - The benchmark: a level-up during the fight refreshes the god-mode hero from the throwaway character's real level, so the held fight changes
   as that character levels; the held Full Party keeps the pack in view and within 32 m, so the crowd's culling and animation bands barely
   engage (1 of 148 bodies culled); its report's budget section is labelled "Budgets (ROADMAP", but the budgets are in CLAUDE.md (B39).
 - The draw model counts the rendered Graves a few draws under the engine, but Helix's World row is about 40 over the same stage: the real
   fight draws what the model's stage does not (the hero's place, the effects, the boss).
-- The Discord agent's check links the lobby's packages from the main checkout (`server/death-muffin/discord-agent/check-godot.sh`), and
-  nothing updates them there: after a change to `server/death-muffin/lobby/package-lock.json`, a job's co-op suites run on the old packages
-  until someone runs `npm ci` in that folder (`server/death-muffin/deploy-lobby.sh` updates only the live lobby). Caching them by the lockfile in
-  `server/death-muffin/discord-agent/client-prep.sh`, like the combat core, would keep them current.
-- A suite that skips shows as `no result line` in `tools/rebuild/run-client-tests.sh` (coop, coop_bosses and social print `<suite>: SKIPPED`, which
-  the runner does not read), so a check's failure does not say why; and `check-godot.sh`'s summary counts the re-runs again (24 suites with 3
-  failing showed as "27 suites, 6 FAILED").
-- The automatic one-time re-run of 1-3 failing suites (the Discord agent's runner, `failedSuites` in `server/death-muffin/discord-agent/runner/core.cjs`,
-  and `ship.sh`) reads only suite names without `/`. A failing `relay/udp_run` or `perf/first_frame_run` alone gets no re-run; worse, when
-  another suite fails beside it and passes its re-run, the check counts as passed with the nested suite still failing (found 2026-10-19).
-- `client/tests/next_clarity`, `next_combat_odds` and `data` hard-code the number of rites and of combat abilities, `next_combat_odds` keeps
-  its own table of each rite's sounds, and nothing updates the counts in `client/data/content/manifest.json` (rules-core) for a new rite, so
-  every new spell fails four suites until they are edited by hand (War's Haunting Wraith, the 35th rite, failed its ship on 2026-10-19 on
-  those counts alone).
+- `--tune=` (`client/README.md` "Clips and tune") changes only numbers the data files hold, and most rites keep some in their scripts (Miasma's flight speed, Unleash Souls' three speeds, the Haunting Wraith's damage tick, ...), so a team PC cannot show variants of those until each moves into its rite's row of
+  `client/data/combat/abilities.json`, as the Haunting Wraith's `speed` did (found 2026-10-19).
+- `--boot-check --quit-while-loading` quits with the art pack's models loading on worker threads, not during the pack's own mount: that is synchronous in the first autoload (`client/main/dm_packs.gd`), before any script of the game can quit, so the step cannot reproduce a quit
+  in the middle of it (found 2026-10-19).
+- The old HUD suite (its checks are in `hud` since 2026-10-19) failed one check when it ran beside other suites at load 9 (twice on 2026-10-19) and passed alone; the test runner
+  re-runs a failed suite alone, so nothing fails, but the check (the 20 Hz refresh count in `hud`, or the key cast beside it) may still be load-sensitive.
 
 ## Stability
 
+- **The Windows release engine crashes in its last teardown, after every quit** (Helix's RTX 4070 SUPER PC, 2026-10-19; Windows crash files
+  of a benchmark run and of a player's quit: 0xC0000374 heap corruption at ntdll+0x118095, and 0xC0000005 at DeathMuffin.exe+0x3f8832f, beside
+  +0x3f88433 on the first one's stack). The debug engine with the same pack, core and art closes cleanly; the release engine with an unbaked
+  pack still crashes; the combat core is not on the stack and Godot publishes no Windows symbols. Worked around by B60 (the release build ends
+  its own process after its shutdown); the cause inside the engine is not known. Team app 0.3.9 still names any crash code in the bench step.
 - The Windows half of the combat core's crash note (the unhandled-exception filter and its stack walk, native/README.md "Crash notes") has
   not crashed on a real Windows PC yet; the Linux half is tested on every run. The team app's release crash check will cover it (ROADMAP Phase 1).
-- Quitting while models still load in the background aborted the old game on a 4-core PC (the CI runner, 2026-10-16); not checked in the
-  game since.
+- Quitting while models still load in the background aborted the old game on a 4-core PC (the CI runner, 2026-10-16); the release checks'
+  quit-loading step passes on Helix's 16-core PC (2026-10-19), not yet checked on a 4-core one.
 
 ## Assets and effects
 

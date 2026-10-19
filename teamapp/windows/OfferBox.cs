@@ -5,16 +5,20 @@ using System.Windows.Forms;
 namespace DeathMuffinTeam
 {
     /// <summary>
-    /// The small box that asks about a job: what it is and how heavy, a countdown (mode ask) and Run now / Not now / Pause 2 hours. It never takes the keyboard or
-    /// the focus: shown without activation, no-activate window style, not topmost, no taskbar button, and its buttons do not ask for focus. It sits in the
-    /// bottom-right corner of the work area, where a notification would.
+    /// The small box that asks about a job: what it is and how heavy, a countdown (mode ask), a job kind's own note (a benchmark: it starts once the PC is quiet, normal priority, a touch restarts it)
+    /// and Run now / Not now / Pause 2 hours. It never takes the keyboard or the focus: shown without activation, no-activate window style, not topmost, no taskbar button, and its buttons do not
+    /// ask for focus. It sits in the bottom-right corner of the work area, where a notification would.
     /// </summary>
     internal sealed class OfferBox : Form
     {
         const int WS_EX_TOOLWINDOW = 0x00000080, WS_EX_NOACTIVATE = 0x08000000;
 
+        const int BaseHeight = 134, NoteHeight = 52;   // the note may take three lines
+
         readonly Label text = new Label();
         readonly Label countdown = new Label();
+        readonly Label note = new Label();
+        readonly RuneButton[] buttons = new RuneButton[3];
 
         /// <summary>The person's click.</summary>
         public event Action<OfferAnswer> Answered;
@@ -23,9 +27,9 @@ namespace DeathMuffinTeam
         {
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
-            TopMost = false;
+            TopMost = true;   // a notification: on top of other windows (never over a game: jobs wait while one runs), and it still never takes focus
             StartPosition = FormStartPosition.Manual;
-            ClientSize = new Size(380, 134);
+            ClientSize = new Size(380, BaseHeight);
             BackColor = Art.Bg;
             Font = new Font("Segoe UI", 9.5f);
             DoubleBuffered = true;
@@ -44,10 +48,17 @@ namespace DeathMuffinTeam
             countdown.AutoSize = false;
             countdown.Bounds = new Rectangle(18, 62, 344, 20);
 
-            var run = Button("Run now", true, new Rectangle(18, 90, 108, 32), OfferAnswer.Yes);
-            var notNow = Button("Not now", false, new Rectangle(136, 90, 100, 32), OfferAnswer.NotNow);
-            var pause = Button("Pause 2 hours", false, new Rectangle(246, 90, 116, 32), OfferAnswer.Pause);
-            Controls.AddRange(new Control[] { heading, text, countdown, run, notNow, pause });
+            note.Font = new Font("Segoe UI", 9f);
+            note.ForeColor = Art.Muted;
+            note.BackColor = Color.Transparent;
+            note.AutoSize = false;
+            note.Bounds = new Rectangle(18, 84, 344, NoteHeight - 4);
+            note.Visible = false;
+
+            buttons[0] = Button("Run now", true, new Rectangle(18, 90, 108, 32), OfferAnswer.Yes);
+            buttons[1] = Button("Not now", false, new Rectangle(136, 90, 100, 32), OfferAnswer.NotNow);
+            buttons[2] = Button("Pause 2 hours", false, new Rectangle(246, 90, 116, 32), OfferAnswer.Pause);
+            Controls.AddRange(new Control[] { heading, text, countdown, note, buttons[0], buttons[1], buttons[2] });
         }
 
         RuneButton Button(string label, bool primary, Rectangle bounds, OfferAnswer answer)
@@ -57,11 +68,22 @@ namespace DeathMuffinTeam
             return b;
         }
 
-        /// <summary>Shows what is on offer (called every second while the box is up; only changed text repaints).</summary>
+        /// <summary>Shows what is on offer (called every second while the box is up; only changed text repaints). A note makes the box taller, the buttons keep their place under it.</summary>
         public void Apply(OfferView view)
         {
             if (text.Text != view.Text) text.Text = view.Text;
             if (countdown.Text != view.Countdown) countdown.Text = view.Countdown;
+            string line = view.Note ?? "";
+            if (note.Text != line) note.Text = line;
+            bool has = line.Length > 0;
+            int height = has ? BaseHeight + NoteHeight : BaseHeight;
+            if (note.Visible != has) note.Visible = has;
+            if (ClientSize.Height != height)
+            {
+                ClientSize = new Size(ClientSize.Width, height);
+                foreach (RuneButton b in buttons) b.Top = height - BaseHeight + 90;
+                if (Visible) PlaceInCorner();
+            }
         }
 
         protected override bool ShowWithoutActivation { get { return true; } }

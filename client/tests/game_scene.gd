@@ -16,10 +16,10 @@ extends SceneTree
 ##   - the hover pick finds the enemy under the cursor through the core;
 ##   - the scene refuses an api that is not the test server's and no HTTP request node exists;
 ##   - ZERO script errors or engine errors in the log (an OS Logger counts them; warnings are not errors).
-## Prints INFO timings: the host's step, crowd sync and event dispatch per tick, and the crowd's draw per rendered frame, with about 70 enemies.
-## Bakes the robber and the hound into a scratch folder first (about 20 s). Run: godot --headless --path client --script res://tests/game_scene.gd
+## Gets the robber and the hound into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd). Run: godot --headless --path client --script res://tests/game_scene.gd
 ## Faster: godot --headless --fixed-fps 60 --path client --script res://tests/game_scene.gd
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://game_scene_test"
 const RUN_TICKS := 3600
 const BAKE := ["grave_robber", "bone_hound"]
@@ -57,8 +57,6 @@ var got_up_at := Vector3.INF            # where the hero stood when he last got 
 var dead_hits := 0
 var hero_dead := false
 var death_tick := -1
-var draw_us := 0
-var draw_n := 0
 var min_hero_hp := 1.0e9
 var max_alive := 0
 var max_total := 0
@@ -102,7 +100,7 @@ func _initialize() -> void:
 	OS.add_logger(errlog)
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			quit(1)
@@ -462,13 +460,6 @@ func hover_pick() -> void:
 	g.director.enabled = true
 
 
-func draw_frame() -> void:
-	var t := Time.get_ticks_usec()
-	host.view._process(1.0 / 60.0)
-	draw_us += Time.get_ticks_usec() - t
-	draw_n += 1
-
-
 ## The affixes' one-off beats: the bell tolls (a telegraph, then the ring), a corpse is eaten, a shroud is lifted, the Vengeful bursts into Risen. Each is one
 ## event of the core's buffer, played by DmEnemyFx.
 func affixes() -> void:
@@ -543,10 +534,9 @@ func shroud_ward(id: int) -> void:
 	check(int(g.enemy_fx.stats["shroud_smoke"]) - smoke0 - covered_smoke >= 1, "and smokes again (%d puffs in 5 s)" % (int(g.enemy_fx.stats["shroud_smoke"]) - smoke0 - covered_smoke))
 
 
-## INFO timings with about 70 enemies in a fight: the host's tick and the crowd's draw per frame.
+## About 70 enemies in a fight: the crowd has a view per body and draws them.
 func timings() -> void:
 	g.director.enabled = false
-	host.view.set_process(false)   # the test calls the draw itself, to time it
 	var view := host.view
 	var b := g.local_body()
 	# a clean field: every body the earlier parts left is killed and removed after its 4 s
@@ -579,29 +569,7 @@ func timings() -> void:
 	g.director.flush_spawns()
 	check(made == room and host.alive_count() == 72, "the director made a wave of %d through the core (%d, %d alive)" % [room, made, host.alive_count()])
 	await ticks(90)   # the rise
-	var enemies := 0
-	var t_ticks := 0
-	draw_us = 0
-	draw_n = 0
-	host.measure = true
-	host.step_us = 0
-	host.sync_us = 0
-	host.dispatch_us = 0
-	var ticks0 := host.ticks
-	process_frame.connect(draw_frame)
-	for t in 600:
-		await physics_frame
-		enemies += host.alive_count()
-		if t % 4 == 0:
-			b.restore_vitals()   # he stays on his feet in the middle of it: the busiest the event buffer gets
-	process_frame.disconnect(draw_frame)
-	host.measure = false
-	t_ticks = host.ticks - ticks0
-	view.set_process(true)
-	var tk := float(maxi(t_ticks, 1))
-	print("INFO timings with about %d enemies alive (%d bodies in the core, %d thralls): per tick step %.0f us, crowd sync %.0f us, event dispatch %.0f us (%.1f events a tick); per rendered frame draw %.0f us over %d frames" % [
-		enemies / 600, host.enemy_total(), host.thrall_count(), float(host.step_us) / tk, float(host.sync_us) / tk, float(host.dispatch_us) / tk,
-		float(host.events_total) / maxf(1.0, float(host.ticks)), float(draw_us) / float(maxi(draw_n, 1)), draw_n])
+	await ticks(30)   # the crowd draws a few frames
 	var st: Dictionary = view.stats()
 	check(int(st.get("bodies", 0)) >= host.alive_count() - 2, "the crowd has a view per body (%s)" % str(st))
 	var drawn := 0

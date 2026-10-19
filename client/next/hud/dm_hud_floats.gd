@@ -17,6 +17,7 @@ const RISE := 46.0
 const KINDS: Array[String] = ["hit", "crit", "dot", "thrall", "hurt", "gold", "shard", "xp", "info", "big", "skill", "heal", "ward"]
 
 var alive := 0                                 ## numbers on screen (tests)
+var drawn := 0                                 ## numbers drawn so far (tests: a number may have faded before a check looks)
 var _fonts: Array[Font] = []
 var _sizes := PackedInt32Array()
 var _lifes := PackedFloat32Array()
@@ -91,6 +92,7 @@ func add(screen_pos: Vector2, text: String, kind: String = "hit", color: Color =
 	_free.resize(_free.size() - 1)
 	_out.append(e)
 	alive = _out.size()
+	drawn += 1
 	_pos[e] = screen_pos
 	_kind[e] = k
 	_born[e] = _time

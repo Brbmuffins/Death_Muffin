@@ -8,17 +8,21 @@ extends SceneTree
 ##   - a returning player (a login kept) skips the select, and the gear worn in the server's bag (a helm, a staff) is in the hero's stats and loadout;
 ##   - the panels' hand-overs: a discipline change from the class panel restarts the game with the changed character (a Reaper), Switch character lands on the select
 ##     screen with the same login and a pick goes back in, Log out lands on the login screen with no login kept;
-##   - an account whose discipline is not playable is sent to the discipline switch;
+##   - an account whose discipline is not playable is sent to the discipline switch (the same character, switched), every necromancer discipline picked on the select screen
+##     enters the game with its body, the bag survives a log out (a queued sip reaches the server) and a quit (save_all), Settings -> Switch character is a real click that saves first,
+##     a class change frees the old game, and three enter/leave cycles leave no leak;
+##   - the front screens (DmFrontFlow) on their own: login and register copy, the server's errors verbatim, the select cards (recommended, order, portraits, greyed-out ones), a stale
+##     token, the standalone (local) card, the token file; the launch arguments that pick the mode;
 ##   - THE API RULE (DECISIONS B38): every address the client can use resolves to the TEST server, never to the live API, live lobby or live manifest (read from
 ##     tests/fixtures/old_game/net/dm_config.gd.txt, the old game's config kept as text): the config, DmApi's default, every request the flows made, the allow-list of the transport and of the game scene, the real transport's
 ##     refusal of a live address, a front flow whose api is the live one (it ends on the login screen, saying why), and a scan of every shipped file for an address
 ##     outside net/dm_config.gd;
 ##   - an unreachable or failing server shows today's player-readable error (login, a stored login at boot, and the bag failing to load);
 ##   - the offline dev entry still works: a dev character on the local mock, no base url, no transport, no request;
-##   - the real test server answers its public health route and its manifest with no credentials (skipped, not failed, when this machine is offline);
 ##   - ZERO script errors or engine errors in the log (the one the transport logs for the refused live address is expected and counted).
-## Bakes the robber and the hound into a scratch folder first (about 20 s). Run: godot --headless --path client --script res://tests/front.gd
+## Gets the robber and the hound into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd). Run: godot --headless --path client --script res://tests/front.gd
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://front_test"
 const BAKE := ["grave_robber", "bone_hound"]
 ## What this build talks to (the literals, so a change of net/dm_config.gd cannot move the test with it; also read from tests/fixtures/old_game/net/dm_config.gd.txt below) and what it never may:
@@ -28,6 +32,8 @@ const LIVE_API := "https://muffindevelopment.com/death-muffin/api"
 const LIVE_LOBBY := "wss://muffindevelopment.com/death-muffin/lobby/"
 const TEST_LOBBY := "wss://muffindevelopment.com/death-muffin/test-lobby/"   # the test lobby of 2-player co-op (server/death-muffin/test-server/coop)
 const TEST_MANIFEST := "https://muffindevelopment.com/death-muffin/client-test/manifest.json"
+const NODE_BOUND := 60          ## nodes allowed to remain after 3 more enter/leave cycles than after the first
+const MEM_BOUND_MB := 40.0      ## static memory growth allowed over the same cycles (shared VPS, GC noise)
 const SCAN_EXT := ["gd", "tscn", "tres", "json", "cfg", "godot", "gdshader", "gdshaderinc", "txt", "csv"]
 const SCAN_SKIP := ["tests", "assets", "addons", ".godot", "bin", "assets/crowd/baked", "ui/fonts"]   # ui/fonts: the fonts' licence texts carry their authors' web addresses
 
@@ -78,6 +84,7 @@ var fails := 0
 var checks := 0
 var errlog := ErrorLog.new()
 var all_urls: Array[String] = []   ## every address any flow of this run asked for
+var _ent: Array = []               ## enter_world signals of the flows made by make_flow
 
 
 func check(ok: bool, what: String) -> void:
@@ -105,7 +112,7 @@ func _run() -> void:
 	OS.add_logger(errlog)
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			quit(1)
@@ -118,12 +125,13 @@ func _run() -> void:
 	await boot_and_register(api, shim)
 	await returning_player(api, shim)
 	await hand_overs(api, shim)
+	await each_discipline_and_bag(api, shim)
 	await unplayable_discipline(api, shim)
 	await unreachable_and_failing(shim)
+	await front_screens()
 	await test_api_is_refused()
 	await dev_entry_offline()
 	await real_transport()
-	await real_live_server()
 	finish()
 
 
@@ -216,8 +224,19 @@ func boot_and_register(api: DmApi, shim: Shim) -> void:
 		(bench_win[0].get_child(0) as DmBenchmarkSetup).closed.emit()
 		await process_frame
 		check(m.get_children().filter(func(c: Node) -> bool: return c is CanvasLayer and c.get_child_count() > 0 and c.get_child(0) is DmBenchmarkSetup).is_empty() and m.flow.current == sel, "Back closes the window and the select screen is still there")
+	var locked_n := 0
+	var locked_want := 0
+	for c in sel.cards:
+		var playable := DmCharacterBuild.is_playable(float(c.disc["classIndex"]))
+		locked_want += 0 if playable else 1
+		check(c.locked == not playable and (c.disabled or playable), "%s card %s" % [c.disc["id"], "open" if playable else "greyed out"])
+		if c.locked:
+			locked_n += 1
+	check(locked_n == locked_want and locked_n > 0, "a greyed-out card for each discipline that is not playable (%d)" % locked_n)
 	var refused_pick := await sel.choose(5)
-	check(not refused_pick and sel.error_label.text != "", "a discipline that is not playable is refused with a message")
+	check(not refused_pick and sel.error_label.text != "" and m.flow.current_name == "select", "a discipline that is not playable is refused with a message, and the select screen stays")
+	var no_char: DmResult = await api.get_character()
+	check(no_char.status == 404, "refusing created no character")
 	var picked := await sel.choose(3)
 	check(picked, "picking the Mourner creates the character on the server")
 	check(await until(in_world(m), 90.0), "the game scene runs after the pick")
@@ -225,7 +244,8 @@ func boot_and_register(api: DmApi, shim: Shim) -> void:
 	if g == null or not g.ready_:
 		await drop(m, shim)
 		return
-	check(int(g.character["class_index"]) == 3 and int(g.character["id"]) > 0, "the game scene has the character the server returned (class %s, id %s)" % [g.character.get("class_index"), g.character.get("id")])
+	check(int(g.character["class_index"]) == 3 and int(g.character["id"]) > 0 and int(g.character["level"]) == 1, "the game scene has the character the server returned (class %s, id %s, level %s)" % [g.character.get("class_index"), g.character.get("id"), g.character.get("level")])
+	check(m.flow == null, "the front screens are gone once the game runs")
 	var body := g.local_body()
 	check(body != null and body.discipline_id == "mourner" and body.family == "necromancer", "the hero is a Mourner")
 	check(g.session.discipline_id == "mourner" and g.session.character_name == PLAYER, "the session carries the discipline and the account's name")
@@ -287,6 +307,7 @@ func hand_overs(api: DmApi, shim: Shim) -> void:
 	g.ui.pa._change_class(11)   # the class panel's pick: the server changes the character, then the game restarts with it
 	check(await until(func() -> bool: return m.slice != null and m.slice.get_instance_id() != first and m.slice.ready_ and DmLoadingScreen.current == null, 90.0),
 		"a discipline change from the class panel restarts the game")
+	check(not is_instance_id_valid(first) or (instance_from_id(first) as Node).is_queued_for_deletion(), "a class change frees the old game")
 	var hero := m.slice.local_body() if m.slice != null else null
 	check(m.slice != null and int(m.slice.character["class_index"]) == 11 and hero != null and hero.discipline_id == "reaper" and hero.p.has("souls"),
 		"the server changed the character and the hero is now a Reaper, with her soul bag")
@@ -310,9 +331,207 @@ func hand_overs(api: DmApi, shim: Shim) -> void:
 	await drop(m, shim)
 
 
+# ------------------------------------------------------------------------------------------------------------------ discipline picks, the bag, Settings, leaks
+
+func necro_indices() -> Dictionary:
+	var out := {}
+	for d in DmCharSelectScreen.load_disciplines():
+		if String(DmCharacterBuild.discipline_for(float(d["classIndex"]))["family"]) == "necromancer":
+			out[String(d["id"])] = int(d["classIndex"])
+	return out
+
+
+## A real click (move, press, release) on the centre of a control.
+func click(c: Control) -> void:
+	var vp := c.get_viewport()
+	var at_px: Vector2 = vp.get_final_transform() * c.get_global_rect().get_center()   # window pixels (the UI is content-scaled)
+	var mv := InputEventMouseMotion.new()
+	mv.position = at_px
+	mv.global_position = at_px
+	vp.push_input(mv)
+	for pressed in [true, false]:
+		var e := InputEventMouseButton.new()
+		e.button_index = MOUSE_BUTTON_LEFT
+		e.pressed = pressed
+		e.position = at_px
+		e.global_position = at_px
+		e.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
+		vp.push_input(e)
+
+
+func find_button(n: Node, text: String) -> Button:
+	if n is Button and (n as Button).text == text and (n as Button).is_visible_in_tree():
+		return n
+	for c in n.get_children():
+		var r := find_button(c, text)
+		if r != null:
+			return r
+	return null
+
+
+func flasks_on_server(api: DmApi, cid: int) -> int:
+	var total := 0
+	for sl in (await api.get_inventory(cid)).data:
+		if sl is Dictionary and String(sl.get("item_id", "")) == "flask_hp_minor":
+			total += int(sl.get("quantity", 0))
+	return total
+
+
+## Put `n` more healing flasks in the hero's bag on the server (as a GM would: the bag is the server's) and show them. Returns the count.
+func seed_flasks(g: DmNextGame, n: int) -> int:
+	var cid := int(g.character["id"])
+	var rows: Array = (await g.api.get_inventory(cid)).data.filter(func(r: Dictionary) -> bool: return int(r["slot_index"]) < 48)
+	var used := {}
+	for r in rows:
+		used[int(r["slot_index"])] = true
+	var free := 47
+	while used.has(free):
+		free -= 1
+	rows.append({"slot_index": free, "item_id": "flask_hp_minor", "quantity": n})
+	await g.api.save_inventory(cid, rows.map(func(r: Dictionary) -> Dictionary: return {"slot_index": int(r["slot_index"]), "item_id": r["item_id"], "quantity": int(r["quantity"]), "instance_id": r.get("instance_id")}), 48)
+	await g.ui_host.refresh_inventory()
+	return g.ui_host.inventory.count("flask_hp_minor")
+
+
+## From the login screen: sign PLAYER in and wait for the game.
+func sign_in(m: DmMain) -> void:
+	await until(at(m, "login"), 10.0)
+	var l := m.flow.current as DmLoginScreen
+	l.user_edit.text = PLAYER
+	l.pass_edit.text = PLAYER_PASS
+	await l.submit()
+	await until(in_world(m), 90.0)
+
+
+func log_out(m: DmMain) -> void:
+	m.slice.ui_host.leave_world()
+	await until(at(m, "login"), 30.0)
+	await process_frame
+
+
+## Every necromancer discipline of the data is picked on the select screen (Switch character, then a card) and enters the game with that body; the bag survives a log out
+## and a quit; Settings -> Switch character is a real click that saves first; three enter/leave cycles leak nothing.
+func each_discipline_and_bag(api: DmApi, shim: Shim) -> void:
+	var m := boot(api)
+	check(await until(in_world(m), 90.0), "each discipline: a returning player is in the game")
+	if m.slice == null or not m.slice.ready_:
+		await drop(m, shim)
+		return
+	var necro := necro_indices()
+	check(necro.size() > 0, "the data names necromancer disciplines (%s)" % str(necro.keys()))
+	for id in necro:
+		m.slice.ui_host.switch_character()
+		check(await until(at(m, "select"), 30.0), "%s: Switch character lands on the select screen" % id)
+		var sel := m.flow.current as DmCharSelectScreen if m.flow != null else null
+		if sel == null:
+			break
+		await sel.choose(int(necro[id]))
+		check(await until(in_world(m), 90.0), "%s: the game runs after the pick" % id)
+		if m.slice == null:
+			break
+		var g: DmNextGame = m.slice
+		check(int(g.character["class_index"]) == necro[id], "%s: character class %s" % [id, g.character.get("class_index")])
+		check(g.local_body() != null and g.local_body().discipline_id == id, "%s: the body plays that discipline" % id)
+		check(not g.is_offline and g.api == api and g.ui_host != null and g.ui_host.slots is Array and g.ui_host.character == g.character, "%s: HUD host holds the character and a bag, on the session's api" % id)
+		check(m.flow == null, "%s: front screens gone" % id)
+	if m.slice == null or not m.slice.ready_:
+		await drop(m, shim)
+		return
+	# the bag: a sip queued at log out reaches the server (the client never saves its bag, DECISIONS B25), then a quit sends what is queued
+	var g1: DmNextGame = m.slice
+	var cid := int(g1.character["id"])
+	var cls := int(g1.character["class_index"])
+	var bag_before: int = g1.ui_host.slots.size()
+	var flasks0 := await seed_flasks(g1, 4)
+	check(g1.ui_host.inventory.consume("flask_hp_minor"), "a sip")
+	await log_out(m)
+	check(m.get_node_or_null("NextGame") == null, "log out frees the game")
+	check(api.get_token().is_empty(), "log out clears the session")
+	await sign_in(m)
+	var g2: DmNextGame = m.slice
+	check(g2 != null and int(g2.character["id"]) == cid and int(g2.character["class_index"]) == cls, "re-enter: same persisted character")
+	check(g2 != null and g2.ui_host.inventory.count("flask_hp_minor") == flasks0 - 1 and g2.ui_host.slots.size() >= bag_before, "re-enter: the sip queued at log out reached the server")
+	if g2 != null:
+		check(g2.ui_host.inventory.consume("flask_hp_minor") and g2.ui_host.inventory.consume("flask_hp_minor"), "two more sips")
+		await m.save_all()
+		var total := await flasks_on_server(api, int(g2.character["id"]))
+		check(total == flasks0 - 3, "quit: save_all sent the queued sips to the server (%d)" % total)
+		m.slice = g2   # save_all detaches it; hand it back for the clean teardown
+		await settings_switch(m, api, g2)
+	# three enter/leave cycles: no growth
+	await sign_in(m)   # (the refused-token case above ended on the login screen)
+	await log_out(m)
+	await process_frame
+	var base := snap()
+	for i in 3:
+		await sign_in(m)
+		check(in_world(m).call(), "cycle %d: entered" % (i + 1))
+		await log_out(m)
+	await process_frame
+	await process_frame
+	var after := snap()
+	var dn: float = after["nodes"] - base["nodes"]
+	var dm: float = after["mem"] - base["mem"]
+	print("INFO front: leak probe: nodes %d -> %d (%+d), static mem %.1f -> %.1f MB (%+.1f)" % [base["nodes"], after["nodes"], dn, base["mem"], after["mem"], dm])
+	check(dn <= NODE_BOUND, "3 cycles: node growth %+d <= %d" % [dn, NODE_BOUND])
+	check(dm <= MEM_BOUND_MB, "3 cycles: static memory growth %+.1f MB <= %.0f" % [dm, MEM_BOUND_MB])
+	# the login the later cases use
+	await sign_in(m)
+	await drop(m, shim)
+
+
+func snap() -> Dictionary:
+	return {"nodes": Performance.get_monitor(Performance.OBJECT_NODE_COUNT), "mem": Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0}
+
+
+## Settings -> Switch character, by a real click: saved first, the game freed, the select screen on the SAME token (no login screen); a card re-enters. A token the server refuses lands on login.
+func settings_switch(m: DmMain, api: DmApi, g: DmNextGame) -> void:
+	var tok := api.get_token()
+	var cid := int(g.character["id"])
+	var cls := int(g.character["class_index"])
+	await DmTestBag.give(g.ui_host.inventory, {"item_id": "flask_hp_minor", "quantity": 1})
+	var flasks := g.ui_host.inventory.count("flask_hp_minor")
+	var old_size := root.size
+	root.size = Vector2i(1280, 720)   # the headless window is tiny: the Settings window needs room for the click to land on it
+	await process_frame
+	g.ui.set_ui.open()
+	await process_frame
+	await process_frame
+	var account: Button = g.ui.set_ui.panel._tabs["account"]["btn"]   # Switch character lives on the Account tab, beside Logout
+	click(account)
+	await process_frame
+	await process_frame
+	var btn := find_button(g.ui.set_ui.panel, DmUi.upper("Switch character"))
+	check(btn != null and find_button(g.ui.set_ui.panel, DmUi.upper("Logout")) != null, "settings: Switch character sits beside Logout on the Account tab")
+	if btn == null:
+		root.size = old_size
+		return
+	await process_frame
+	click(btn)
+	await process_frame
+	await until(at(m, "select"), 30.0)
+	check(at(m, "select").call() and not (m.flow.current is DmLoginScreen), "switch character: the select screen, no login screen")
+	check(m.get_node_or_null("NextGame") == null, "switch character: the game is freed")
+	check(api.get_token() == tok and not tok.is_empty(), "switch character: the session token is kept")
+	check(await flasks_on_server(api, cid) == flasks, "switch character: saved first (%d flasks on the server)" % flasks)
+	var sel := m.flow.current as DmCharSelectScreen
+	await sel.choose(cls)
+	await until(in_world(m), 90.0)
+	check(in_world(m).call() and api.get_token() == tok, "switch character: a card re-enters the world on the same token")
+	# the server refuses the token: login, and the stored token is gone
+	m.slice.ui_host.switch_character()
+	await until(at(m, "select"), 30.0)
+	api.set_token("not-a-token-the-server-knows")
+	m.flow.switch_character()
+	await until(at(m, "login"), 10.0)
+	check(at(m, "login").call() and api.get_token() == "", "switch character: a refused token goes to login and is cleared")
+	root.size = old_size
+
+
 ## An account whose character is a discipline that is not playable yet is sent to the discipline switch.
 func unplayable_discipline(api: DmApi, shim: Shim) -> void:
 	var ch: DmResult = await api.get_character()
+	var char_id := int(ch.data["id"])
 	var changed: DmResult = await api.change_discipline(int(ch.data["id"]), 5)
 	check(changed.ok and int(changed.data["class_index"]) == 5, "the stand-in's character is now a Grave Warden")
 	var m := boot(api)
@@ -323,6 +542,7 @@ func unplayable_discipline(api: DmApi, shim: Shim) -> void:
 	check(switched, "choosing the Ossuary switches the discipline")
 	check(await until(in_world(m), 90.0), "the game starts with the switched character")
 	check(m.slice != null and int(m.slice.character["class_index"]) == 1 and m.slice.local_body().discipline_id == "ossuary", "the hero is an Ossuary")
+	check(m.slice != null and int(m.slice.character["id"]) == char_id, "the same character, now switched")
 	await drop(m, shim)
 
 
@@ -374,6 +594,146 @@ func unreachable_and_failing(shim: Shim) -> void:
 	check(m3.flow.current is DmLoginScreen and (m3.flow.current as DmLoginScreen).error_label.text == "Your bag is lost in the dark", "with the server's words on it")
 	shim.fail_part = ""
 	await drop(m3, shim)
+
+
+## DmFrontFlow login / register / discipline select on their own, against a fresh mock: no DmMain and no game scene, so cheap.
+func fr(n: int = 2) -> void:
+	for i in n:
+		await process_frame
+
+
+func make_flow(standalone: bool = false) -> Array:
+	var fmock := DmMockBackend.new("")
+	fmock.now_ms = func(): return 1700000000000
+	var fapi := DmApi.new(fmock.transport_callable())
+	fapi.base_url = ""
+	var flow := DmFrontFlow.new(fapi, standalone, true)
+	flow.persist_token = false
+	root.add_child(flow)
+	flow.enter_world.connect(func(c, s): _ent.append([c, s]))
+	return [flow, fapi, fmock]
+
+
+func front_screens() -> void:
+	# ---- no token -> login
+	var fa := make_flow()
+	var flow: DmFrontFlow = fa[0]
+	var api: DmApi = fa[1]
+	await flow.start()
+	await fr()
+	check(flow.current_name == "login" and flow.current is DmLoginScreen, "start without token shows login")
+	var login: DmLoginScreen = flow.current
+	check(login.kicker_label.text == "THE GATE IS OPEN" and login.heading_label.text == "Return to the Covenant", "login copy")
+	check(login.email_edit == null and login.pass_edit != null and login.pass_edit.secret, "login has name + secret password, no email")
+	check(login.card.find_child("Note", true, false).text.begins_with("Offline dev mode"), "dev offline note")
+	# ---- login fail: server string verbatim (first letter capitalised)
+	login.user_edit.text = "nobody"
+	login.pass_edit.text = "wrongpw"
+	var ok := await login.submit()
+	check(not ok and login.error_label.text == "Invalid username or password.", "login fail shows server error verbatim: " + login.error_label.text)
+	check(api.get_token() == "" and login.submit_btn.disabled == false and login.submit_btn.text == "DESCEND", "failed login leaves no token, button restored")
+	# ---- register validation error shown verbatim
+	login.toggle_mode()
+	await fr()
+	check(login.mode == "register" and login.email_edit != null and login.heading_label.text == "Join the Covenant", "register mode fields")
+	login.user_edit.text = "ab"
+	login.email_edit.text = ""
+	login.pass_edit.text = "x"
+	ok = await login.submit()
+	check(not ok and login.error_label.text == "Use a username of at least 3 characters and a password of at least 4.", "register validation error verbatim")
+	# ---- register ok -> token -> resume -> no character (404) -> select
+	login.user_edit.text = "tester"
+	login.pass_edit.text = "pw1234"
+	ok = await login.submit()
+	await fr(4)
+	var sel: DmCharSelectScreen = flow.current
+	check(not sel.cards.is_empty() and sel.cards.size() == DmCharSelectScreen.load_disciplines().size(), "a card for each discipline of the data (%d)" % sel.cards.size())
+	var rec := sel.cards.filter(func(c): return c.has_meta("recommended"))
+	check(rec.size() == 1 and rec[0].disc["id"] == "gravecaller", "gravecaller recommended for first run")
+	var want: Array = DmCharSelectScreen.load_disciplines().map(func(d: Dictionary) -> String: return String(d["id"]))
+	var got: Array = sel.cards.map(func(c): return c.disc["id"])
+	check(got == want, "card order matches PLAYABLE_DISCIPLINES")
+	var art_ok := true
+	for c in sel.cards:
+		art_ok = art_ok and ResourceLoader.exists("res://front/art/" + String(c.disc["portrait"]).trim_prefix("art/"))
+	check(art_ok, "every card's portrait is shipped under front/art")
+	# ---- non-necro disciplines are greyed out until rebuilt (owner 2026-10-09): choosing one is refused
+	var locked_idx := -1
+	for d in sel.disciplines:
+		if d["id"] == "carrion_witch":
+			locked_idx = int(d["classIndex"])
+	var refused := await sel.choose(locked_idx)
+	check(not refused and _ent.is_empty(), "locked discipline (Carrion Witch) cannot be chosen")
+	# ---- create character (Rotweaver: a playable necro discipline that is not the recommended one)
+	var cw_idx := -1
+	for d in sel.disciplines:
+		if d["id"] == "rotweaver":
+			cw_idx = int(d["classIndex"])
+	var picked := await sel.choose(cw_idx)
+	await fr(3)
+	check(picked and _ent.size() == 1, "choose emits enter_world once")
+	if _ent.size() == 1:
+		var ch: Dictionary = _ent[0][0]
+		check(int(ch["class_index"]) == cw_idx and int(ch["level"]) == 1, "entered character is the created discipline")
+		check(_ent[0][1] == api, "enter_world passes the authenticated session")
+	check(flow.current == null, "front screens removed after entering the world")
+	_ent.clear()
+	# ---- choose() failure shows server error verbatim and re-enables the cards
+	var fb := make_flow()
+	var f3: DmFrontFlow = fb[0]
+	var api3: DmApi = fb[1]
+	var r := await api3.register("second", "", "pw1234")
+	api3.set_token(r.data["token"])
+	await f3.start()
+	await fr()
+	var sel3: DmCharSelectScreen = f3.current
+	api3.set_token("offline:ghost")   # no such account: server refuses
+	var res := await sel3.choose(2)
+	check(not res and sel3.error_label.text != "" and sel3.cards[0].disabled == false, "choose failure: error shown, cards re-enabled: " + sel3.error_label.text)
+	# ---- bad token on resume -> token cleared, login
+	var fc := make_flow()
+	var f4: DmFrontFlow = fc[0]
+	(fc[1] as DmApi).set_token("offline:ghost")
+	await f4.start()
+	await fr()
+	check(f4.current_name == "login" and (fc[1] as DmApi).get_token() == "", "stale token -> cleared, login")
+	# ---- logout
+	var out_n := [0]
+	f4.logged_out.connect(func(): out_n[0] += 1)
+	(fc[1] as DmApi).set_token("offline:x")
+	f4.logout()
+	await fr()
+	check(out_n[0] == 1 and (fc[1] as DmApi).get_token() == "" and f4.current_name == "login", "logout clears token, signals, shows login")
+	# ---- standalone (the local backend): local player, no email/password, fixed local password
+	var fs := make_flow(true)
+	var f5: DmFrontFlow = fs[0]
+	await f5.start()
+	await fr()
+	var l5: DmLoginScreen = f5.current
+	check(l5.kicker_label.text == "DEV OFFLINE MODE" and l5.heading_label.text == "Continue local game" and l5.pass_edit == null and l5.email_edit == null, "standalone login copy/fields")
+	check(l5.submit_btn.text == "CONTINUE" and l5.toggle_btn.text == "Create a local player", "standalone buttons")
+	l5.user_edit.text = "localdude"
+	var created := await l5.submit()   # login first: unknown local player -> server error
+	check(not created and l5.error_label.text == "Invalid username or password.", "standalone login unknown player error")
+	l5.toggle_mode()
+	await fr()
+	check(l5.heading_label.text == "Create local player" and l5.submit_btn.text == "CREATE PLAYER", "standalone register copy")
+	l5.user_edit.text = "localdude"
+	created = await l5.submit()
+	check(created and (fs[1] as DmApi).get_token() == "offline:localdude", "standalone create player (no password typed)")
+	await fr(3)
+	# ---- token persistence (user://dm_jwt.txt), cleared on logout
+	var pm := DmMockBackend.new("")
+	var papi := DmApi.new(pm.transport_callable())
+	papi.base_url = ""
+	papi.persist_token = true
+	papi.set_token("offline:persist")
+	check(FileAccess.file_exists(DmApi.TOKEN_FILE), "token persisted to user://")
+	var papi2 := DmApi.new(pm.transport_callable())
+	papi2.persist_token = true
+	check(papi2.get_token() == "offline:persist", "persisted token reloads in a new session")
+	papi.set_token("")
+	check(not FileAccess.file_exists(DmApi.TOKEN_FILE), "logout removes the token file")
 
 
 ## The API rule, the test side: an api whose address is the test server's never gets a game (the real transport never sends it either: real_transport).
@@ -448,6 +808,20 @@ func dev_entry_offline() -> void:
 	check(DmMain.mode_for(PackedStringArray(["--dev-offline"]), true) == "dev_offline" and DmMain.mode_for(PackedStringArray(["--dev-offline"]), false) == "online", "--dev-offline works in a debug build and a release build ignores it")
 	check(DmMain.mode_for(PackedStringArray([]), true) == "online", "the default start is online (against the live server)")
 	check(DmMain.quick_start_class(PackedStringArray(["--dev-offline", "--class=4"])) == 4, "--class=N is read")
+	check(DmMain.mode_for(PackedStringArray(["--offline"])) == "online", "an old launcher's --offline starts online")
+	check(DmMain.mode_for(PackedStringArray(["--online", "--next"])) == "online", "--online / --next = online")
+	check(DmMain.mode_for(PackedStringArray(["--world-demo"]), false) == "online", "a release export ignores --world-demo")
+	check(DmMain.token_username("offline:somebody") == "somebody", "token username")
+	var necro := 0
+	var necro_want := 0
+	for d in DmCharSelectScreen.load_disciplines():
+		var fam := String(DmCharacterBuild.discipline_for(float(d["classIndex"]))["family"])
+		check(DmCharacterBuild.is_playable(float(d["classIndex"])) == (fam == "necromancer" or fam == "reaper"), "%s playable only if necromancer or reaper" % d["id"])
+		if fam == "necromancer":
+			necro += 1
+		if String(d["family"]) == "necromancer":
+			necro_want += 1
+	check(necro > 0 and necro == necro_want, "the necromancer disciplines the data names are the ones the build treats as necromancers (%d)" % necro)
 	await drop(m)
 
 
@@ -553,36 +927,3 @@ func _strip_comments(text: String) -> String:
 			i += 1
 		out.append(line if cut < 0 else line.substr(0, cut))
 	return "\n".join(out)
-
-
-# ------------------------------------------------------------------------------------------------------------------ the real test server
-
-## The real client path (DmHttpTransport -> DmApi) against the real test server: its public health route and its manifest, with no credentials.
-func real_live_server() -> void:
-	var t := DmHttpTransport.new()
-	root.add_child(t)
-	var api := DmApi.new(t.request_callable())
-	check(api.base_url == LIVE_API and api.get_token() == "", "the real api points at the live API and holds no login")
-	var pacing := [true]
-	_pace(pacing)
-	var h: DmResult = await api.health()
-	if h.status == 0:
-		pacing[0] = false
-		print("SKIP front: the live server cannot be reached from here (%s, time scale %s); health and manifest not checked" % [h.error, Engine.time_scale])
-	else:
-		check(h.ok and h.data is Dictionary and h.data.get("status") == "ok", "the live server's /api/health answers ok (status %s)" % h.status)
-		check(h.data is Dictionary and h.data.get("db") == "connected", "and its database is connected")
-		var gate := DmOnlineGate.parse(await api.fetch_client_manifest())
-		pacing[0] = false
-		check(bool(gate["open"]) or bool(gate["staff"]), "the live manifest lets players in: online open %s, staff %s" % [gate["open"], gate["staff"]])
-		print("INFO front: live server health %s, manifest online open=%s staff=%s" % [h.data.get("status"), gate["open"], gate["staff"]])
-	t.queue_free()
-	await process_frame
-
-
-## Under --fixed-fps a frame is 1/60 s of game time however little real time it takes, and the transport's request timeout (30 s) runs on game time: slow the frames while the real
-## server is asked, so a 150 ms answer is a few seconds of game time and not a timeout.
-func _pace(flag: Array) -> void:
-	while flag[0]:
-		OS.delay_msec(4)
-		await process_frame

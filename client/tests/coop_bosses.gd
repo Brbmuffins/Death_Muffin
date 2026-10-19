@@ -22,7 +22,7 @@ extends "res://tests/coop.gd"
 ##     report entry, the guest's drops and XP on its own account; a guest's first-kill bonus and trophy are its own backend's business, as in today's game).
 ## Second summon (the HOST asks): a wipe. Both heroes fall, the boss resets on both sides with nothing paid, its adds leave without a death, a corpse or a credit, both heroes get up and the bodies are freed
 ## on both sides.
-## ZERO script errors or engine errors in the log. Bakes the robber, the hound and the legionnaire into a scratch folder first (about 25 s); a boss's own adds are drawn with the nearest baked model.
+## ZERO script errors or engine errors in the log. Gets the robber, the hound and the legionnaire into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd) ; a boss's own adds are drawn with the nearest baked model.
 ## Run (with --fixed-fps 60, about 70 s):
 ##   godot --headless --fixed-fps 60 --path client --script res://tests/coop_bosses.gd
 
@@ -162,7 +162,7 @@ func _run() -> void:
 		quit(0)
 		return
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			stop_services()

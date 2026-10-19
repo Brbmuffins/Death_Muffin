@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Logic tests for the team app's pure code (offer decision, job plan, settings, server calls, downloads, job runner, controller, self-update). Runs on Linux and Windows:
+  <!-- Logic tests for the team app's pure code (offer decision, quiet and disturbed rules, job plan, settings, server calls, downloads, job runner, controller, self-update). Runs on Linux and Windows:
        dotnet run in this folder, or run-local.sh when only a .NET 8 runtime and a Roslyn csc.dll are available. -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -11,6 +11,7 @@
   <ItemGroup>
     <Compile Include="..\windows\Json.cs" />
     <Compile Include="..\windows\TeamLogic.cs" />
+    <Compile Include="..\windows\Quiet.cs" />
     <Compile Include="..\windows\JobPlan.cs" />
     <Compile Include="..\windows\Settings.cs" />
     <Compile Include="..\windows\TeamApi.cs" />

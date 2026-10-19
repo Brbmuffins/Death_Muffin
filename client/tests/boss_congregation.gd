@@ -1,7 +1,7 @@
 extends "res://tests/boss_base.gd"
 ## The Drowned Congregation on the combat core (the Drowned Nave's boss; archive/old-game:godot/tests/next_bosses/congregation_part.gd on today's game, the same numbers and timing). Her climbers are core
 ## bodies (the Choir Wraith and the Bellbound Penitent), the pews are cover (`DmDb.sim_world()["cover"]`), her grasp roots and her hymn chills the hero.
-##   - her recorded scenarios replay through the client's copy of the brain (the pews scenario among them); the generic parts (boss_base.gd): the summon at the Drowned Font (4 soul shards),
+##   - her recorded scenarios are replayed by tests/bosses (not here) (the pews scenario among them); the generic parts (boss_base.gd): the summon at the Drowned Font (4 soul shards),
 ##     thralls, rites, wipe, defeat, rewards;
 ##   - Maul, Drowning Grasp (the rings, the root) and Flood Hymn (the arc, the chill) at today's ticks and numbers; a pew between her and a hero or a thrall is cover (the thrall in the aisle is hurt);
 ##   - the rising water: wading slower in phase 2 and 3 off her dais (the host's wade clock), the soaked Hymn x1.2 in phase 3; each phase's six climbers (4 wraiths, 2 penitents) on the rim;
@@ -13,7 +13,6 @@ func _config() -> void:
 	boss_id = "congregation"
 	load_areas = ["nave"]
 	bakes = ["thrall_legionnaire", "choir_wraith", "penitent"]
-	replay_count = 6
 
 
 func adds(def_id := "") -> Array:

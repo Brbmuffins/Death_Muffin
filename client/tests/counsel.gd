@@ -10,8 +10,10 @@ extends SceneTree
 ##   - the state-driven tips (thrall, litany, burst, codex, wave, prelate, belt, tool) fire from the 400 ms poll on the facts of the core and the bag;
 ##   - the first hour: `world_entered` once as the game opens (the welcome tip, no signature or grimoire tip at level 1), the Next-step box, the Prior's greeting and advice from the live
 ##     guidance state, the HUD's progressive reveal, the first entry of an area, "Show tips again" and "Don't show tips";
+##   - the auto cast's fact (`auto_combat_cast`), the gather bests kept in the store, GM mode (the Settings toggle, F9 break seals) for a dev account and never for a normal one;
+##   - the counsel's pickup fact (`collected`), and the poll's state facts following the progression (shards, Ashes);
 ##   - no node per creature (the node count does not move with the crowd or the polls) and ZERO script errors or engine errors in the log.
-## Bakes the robber and the hound into a scratch folder first. Run: godot --headless --fixed-fps 60 --path client --script res://tests/counsel.gd   (--fixed-fps 60 runs the 400 ms polls and the tips' seconds as fast as the CPU allows)
+## Gets the robber and the hound into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd). Run: godot --headless --fixed-fps 60 --path client --script res://tests/counsel.gd  (--fixed-fps 60 runs the 400 ms polls and the tips' seconds as fast as the CPU allows)
 
 class ErrorLog:
 	extends Logger
@@ -22,6 +24,7 @@ class ErrorLog:
 			errors.append("%s:%d %s %s %s" % [file, line, function, code, rationale])
 
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://counsel_test"
 const BAKE := ["grave_robber", "bone_hound"]
 const TICK_KEYS := ["wave_affordable", "thralls_mine", "corpses_near", "pack_on_corpse", "family", "level", "total_kills", "has_tool", "has_belt_item", "shards", "boss_near", "has_seal",
@@ -99,7 +102,7 @@ func _main() -> void:
 	DmUiConfig.dir = ""   # in-memory stores: the run reads and leaves nothing in the user folder, and every tip is new
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 	DmSimData.ensure()
 	rng.seed = 20261017
@@ -133,9 +136,13 @@ func _main() -> void:
 	await _state_tips()
 	await _areas_and_reveal()
 	await _tips_again_and_off()
+	await _collected_fact()
 	for id: String in shown_n:
 		if id != "minimap" and id != "belt" and id != "codex" and id != "atlas" and id != "grimoire":   # the replay shows those again by design
 			check(int(shown_n[id]) == 1, "tip %s was shown once (%d)" % [id, int(shown_n[id])])
+	await _auto_cast_fact()
+	await _gather_bests()
+	await _gm_mode()
 	check(errlog.errors.is_empty(), "no script or engine errors in the log (%d: %s)" % [errlog.errors.size(), str(errlog.errors.slice(0, 3))])
 	print("%s counsel %d checks%s" % ["PASS" if fails == 0 else "FAIL", checks, "" if fails == 0 else " (%d failed)" % fails])
 	g.queue_free()
@@ -181,6 +188,9 @@ func _the_port() -> void:
 	check(missing.is_empty() and ctx.size() == TICK_KEYS.size(), "the poll answers every key of today's (%d; missing %s)" % [ctx.size(), str(missing)])
 	check(ctx["family"] == "necromancer" and int(ctx["level"]) == 1 and ctx["area"] == "chapterhouse" and ctx["thralls_mine"] == 0 and ctx["corpses_near"] == 0 and not ctx["pack_on_corpse"],
 		"a new Gravecaller in the Chapterhouse: nothing near him, no thralls (%s)" % str(ctx))
+	check(int(ctx["shards"]) == int(h.prog.local["shards"]) and int(ctx["ashes"]) == int(h.prog.local["ashes"]) and ctx["has_belt_item"] == h.inventory.slots.any(func(r: Dictionary) -> bool: return DmContent.healing_flasks().has(String(r["item_id"]))),
+		"the poll carries the rebuild's state: flasks in the bag, shards, Ashes")
+	check(float(ctx["cheapest_unlock"]) < INF and ctx["gate_near"] == false and ctx["boss_near"].is_empty(), "the cheapest unlock is known, and no gate or boss is near the hub")
 	var busy := h.counsel_busy()
 	check(not busy["combat"] and not busy["hurt"] and not busy["dead"], "and no fight")
 	check(ui.counsel_busy()["area"] == "chapterhouse" and ui.counsel_busy()["safe"], "the panel host adds the area and that it is safe")
@@ -238,6 +248,28 @@ func _first_hour() -> void:
 	ui.dialogue.close()
 	# the HUD's progressive reveal: the upgrades box waits for the first gold outside a safe place
 	check(not ui.reveal.has("hud.upgrades"), "the upgrades box is not revealed yet")
+	# a fresh hero: the shards, the skills and the dial are held back, and show as you progress (flagged NEW until their panel is opened)
+	check(not ui.reveal.has("hud.shards") and not ui.reveal.has("menu.skills") and not ui.reveal.has("hud.dial"), "fresh character: shards / skills / dial are held back")
+	var held: Dictionary = ui.merged_vm()["reveal"]
+	check(held.get("hud.shards") == false and held.get("menu.skills") == false, "the HUD view model holds them back")
+	var skills0: Variant = ui.skills
+	var shards0: Variant = h.prog.local["shards"]
+	var tier0: Variant = h.prog.local["waveTierOwned"]
+	h.prog.local["shards"] = 3
+	ui.skills = {"mining": 2}
+	h.prog.local["waveTierOwned"] = 1
+	ui._progressive_tick()
+	check(ui.reveal.has("hud.shards") and ui.reveal.has("menu.skills") and ui.reveal.has("hud.dial"), "shards, skills and the dial reveal as you progress")
+	var rvm: Dictionary = ui.merged_vm()
+	check(rvm["new"].get("menu.skills") == true and not (rvm["reveal"] as Dictionary).has("menu.skills"), "menu.skills is NEW and no longer held back")
+	check(ui.pa.acre_win != null and ui.reveal.is_new("menu.skills"), "NEW pip flagged (persisted reveal)")
+	ui.toggle_panel("professions")
+	await ticks(3)
+	check(not ui.reveal.is_new("menu.skills") and not ui.merged_vm()["new"].has("menu.skills"), "opening the panel clears the NEW pip")
+	ui.close_panels()
+	h.prog.local["shards"] = shards0
+	h.prog.local["waveTierOwned"] = tier0
+	ui.skills = skills0
 
 
 # ------------------------------------------------------------------------------------------------------------------ spawns
@@ -462,20 +494,6 @@ func _the_facts_against_a_brute_force_reading() -> void:
 		host.spawn_enemy("robber", Vector3(cp3.x + 2.8, 0.0, cp3.y + 0.1 * float(i)), 1, 1.0, 1.0, false, "graves", true)
 	check(h.counsel_tick_ctx()["pack_on_corpse"], "...and at 2.8 m they are")
 	_clear()
-	# the cost of a poll in a crowd: 72 bodies around him and 30 corpses within 7 m, none of them a pack (the worst case: every corpse is asked)
-	for i in 72:
-		var a4 := float(i) * 2.399963
-		var r4 := 8.0 + float(i % 6) * 0.8
-		_spawn("robber", Vector3(cos(a4) * r4, 0.0, sin(a4) * r4))
-	for i in 30:
-		var a5 := float(i) * 2.399963
-		core.corpse_add(Vector2(hp.x + cos(a5) * 6.5, hp.y + sin(a5) * 6.5), "normal", "robber", false, 0.0, 1.0, "graves")
-	var t0 := Time.get_ticks_usec()
-	for i in 200:
-		h.counsel_tick_ctx()
-	var poll_ms := float(Time.get_ticks_usec() - t0) / 200000.0
-	print("INFO counsel poll: %.3f ms (72 bodies, 30 corpses near; every 400 ms)" % poll_ms)
-	_clear()
 	await ticks(2)
 
 
@@ -670,3 +688,105 @@ func _tips_again_and_off() -> void:
 	ui.update_setting({"no_tips": false})
 	_clear()
 	await ticks(2)
+
+
+# ------------------------------------------------------------------------------------------------------------------ the pickup fact
+
+func _collected_fact() -> void:
+	var m := events.size()
+	var member: DmRewardsMember = g.rewards.members[int(h.character["id"])]
+	var gear := ""
+	for id in DmContent.items():
+		var meta: Dictionary = DmContent.items()[id]
+		if String(meta.get("type", "")) in ["weapon", "chest_armor"] and String(meta.get("rarity", "")) == "common":
+			gear = String(id)
+			break
+	member.loot_view.item(hero.position, {"item_id": gear, "quantity": 1}, true)
+	member.loot_view.request_pickup(member.loot_view._drops[-1])   # a click on it
+	await until(func() -> bool: return not since(m, "collected").is_empty(), 60 * 4)
+	var ev := since(m, "collected")
+	check(ev.size() == 1 and ev[0]["gear"] == true, "picking up gear emits the 'collected' counsel event once")
+
+
+# ------------------------------------------------------------------------------------------------------------------ the auto cast, gather bests, GM mode
+
+## The auto cast's fact (the creatures' facts are the core's events above).
+func _auto_cast_fact() -> void:
+	_clear()
+	var store := h.settings_store
+	store.set_active_character(int(g.character.get("id", 1)), true)
+	store.update({"difficulty": "easy", "auto_combat": true})
+	var m := events.size()
+	var foe := host.spawn_enemy("robber", hero.position + Vector3(0, 0, -6), 1, 1000.0, 0.0, false, g.area_id, false)
+	check(await until(func() -> bool: return not since(m, "auto_combat_cast").is_empty(), 60 * 8), "auto_combat_cast raised by an auto cast")
+	store.update({"auto_combat": false})
+	host.remove_enemy(foe)
+	_clear()
+
+
+## The best gather session of each skill is kept in the store under the game's key, read back after a relaunch, and replaced by a better one.
+func _gather_bests() -> void:
+	var skill: String = String(DmContent.get_export("gameplay_gatheringRules", "SKILLS").keys()[0])
+	var item_id := String(DmContent.items().keys()[0])
+	var make_session := func(qty: int) -> void:
+		var gs := DmGatherSession.new(float(Time.get_ticks_msec()) - 120000.0,
+			func(id: String) -> Dictionary: return {"name": id, "rarity": "common", "sell": 1},
+			func(_s: String) -> int: return 1, func(_s: String) -> float: return 0.0)
+		gs.record({"skill": skill, "items": [{"itemId": item_id, "qty": qty}], "xp": 40 * qty})
+		g.gather.session = gs
+	make_session.call(5)
+	await g.gather._end_session("test")
+	var key := "dm_gather_best_v1:%d" % int(h.character["id"])
+	var stored: Variant = JSON.parse_string(g.progress.store.get_item(key))
+	check(stored is Dictionary and int(stored[skill]["items"]) == 5, "bests are written under the current game's key")
+	g.gather.bests = {}   # a relaunch: read back from the store
+	var m := events.size()
+	make_session.call(9)
+	await g.gather._end_session("test")
+	var rep: Array = since(m, "gather_report")
+	check(not rep.is_empty() and ((rep.back()["report"]["records"]) as Array).size() == 1, "a better session reads the stored best (records: %s)" % [rep.back()["report"]["records"] if not rep.is_empty() else "-"])
+	check(int(JSON.parse_string(g.progress.store.get_item(key))[skill]["items"]) == 9, "and stores the new best")
+
+
+## GM mode: never for a normal account; for a dev account the Settings toggle opens and closes progression, gathering tiers, the host's caster and the sealed halls, and F9 breaks every seal.
+func _gm_mode() -> void:
+	var f9 := InputEventKey.new()
+	f9.keycode = KEY_F9
+	f9.pressed = true
+	# a normal account
+	check(not h.dev_account and not h.dev_access and not h.prog.dev_access, "normal account: dev access never on")
+	h.settings_store.update({"dev_access": false})
+	h.settings_store.update({"dev_access": true})
+	check(not h.dev_access and not g.gather.skills.dev_access, "the toggle does nothing for a normal account")
+	var unlocked0: int = h.prog.local["unlocked"].size()
+	g.input._unhandled_input(f9)
+	check(h.prog.local["unlocked"].size() == unlocked0 and h.dev_break_seals() == 0, "F9 is a no-op for a normal account")
+	h.settings_store.update({"dev_access": false})
+	# a dev account (the server marks it GM: gm_enabled on the character)
+	h.character["gm_enabled"] = true
+	h.dev_account = true
+	check(h.dev_account and not h.dev_access and not h.prog.dev_access, "dev account: GM mode is off at setup (settings default off)")
+	h.settings_store.update({"dev_access": true})
+	check(h.dev_access and h.prog.dev_access and g.gather.skills.dev_access, "GM mode on: progression and gathering follow")
+	var caster := hero.get_node_or_null("Rites") as DmRiteCaster
+	check(caster != null and caster.dev, "the host's own caster is told (locked rites cast)")
+	check(g.chapterhouse != null and h.prog.is_unlocked("warren"), "sealed halls read as open")
+	var m := events.size()
+	h.settings_store.update({"dev_access": false})
+	check(not h.dev_access and not h.prog.dev_access and not g.gather.skills.dev_access and not caster.dev and not h.prog.is_unlocked("warren"), "toggle off: everything closes again")
+	check(since(m, "toast").any(func(x: Dictionary) -> bool: return String(x["text"]).begins_with("GM mode off")), "toast says so")
+	check(h.dev_break_seals() == 0, "F9 does nothing with dev access off")
+	m = events.size()
+	h.settings_store.update({"dev_access": true})
+	check(h.dev_access and h.prog.dev_access and caster.dev and since(m, "toast").any(func(x: Dictionary) -> bool: return String(x["text"]).begins_with("GM mode on")), "toggle on: effects return")
+	var open_count := func() -> int:
+		var n := 0
+		for id in DmContent.area_order():
+			if h.prog.really_unlocked(String(id)):
+				n += 1
+		return n
+	var before: int = open_count.call()
+	g.input._unhandled_input(f9)
+	check(int(open_count.call()) == DmContent.area_order().size() and before < int(open_count.call()), "F9 breaks every seal (%d -> %d)" % [before, open_count.call()])
+	check(h.prog.local["unlocked"].has("warren"), "and the break is real (saved state)")
+	h.settings_store.update({"dev_access": false})

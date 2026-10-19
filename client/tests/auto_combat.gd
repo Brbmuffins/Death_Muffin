@@ -1,15 +1,12 @@
 extends SceneTree
 ## Easy auto combat's decisions (client/game/dm_auto_combat.gd, ported to cost a quarter as much and choose the same: client/code.list "Ported") against TODAY'S: the reference is
 ## the old game's game/dm_auto_combat.gd itself, kept as text (tests/fixtures/old_game/game/dm_auto_combat.gd.txt, so Godot never parses it) and compiled at run time (its class_name line dropped).
-##   - the golden cases of the live game's test (tests/game/fixtures/auto_action.json, auto_movement.json: generated from the frozen web game, one home) replayed
-##     against both: the action and movement choices, the enemies and corpses once as plain dictionaries and once as objects (the half of the cases the live test feeds sim objects);
 ##   - seeded Full-Party-sized contexts (sixty-odd enemies in reach, corpses of every kind, boss or none, random cooldowns, essence, hurt, souls and thralls; stacked enemies for equal
 ##     distances) for the necromancer's rites and the Reaper's: the port's choice must equal the reference's, every rule of the list reached;
 ##   - the movement (`select_movement`) on seeded rooms, memory included.
-## Prints INFO: a decision's time on both sides on a Full Party sized context. Run: godot --headless --path client --script res://tests/auto_combat.gd
+## The frozen web game's golden cases are replayed on the port by tests/auto_combat_fixtures/run.gd (the one home of them). Run: godot --headless --path client --script res://tests/auto_combat.gd
 
 const TODAY := "res://tests/fixtures/old_game/game/dm_auto_combat.gd.txt"   ## the old game's decision code, kept as text
-const FIXTURES := "res://tests/game/fixtures/"   ## the live game's golden cases, generated from the frozen web game (tests/game/autocombat_run.gd replays them on the port alone)
 const RITES := ["bone_needle", "bone_fan", "exhume", "grave_offering", "rally_dead", "carrion_seed", "bone_mantle", "black_litany", "corpse_explosion", "ivory_cleave", "miasma", "bone_prison",
 	"grave_hands", "bone_storm", "soul_siphon", "grave_frost", "marrow_spear", "wailing_skull", "command_rend", "plague_bloom", "ossuary_wall", "dirge", "scythe_sweep", "reap", "harvest_spin",
 	"scythe_throw", "wraith_walk", "soul_burst"]
@@ -18,40 +15,6 @@ const STATES := ["chase", "chase", "chase", "windup", "attack", "channel", "dead
 var fails := 0
 var checks := 0
 var ref: GDScript
-var navs: Array = []
-
-
-class FakeEnemy:
-	extends RefCounted
-	var id := 0
-	var x := 0.0
-	var z := 0.0
-	var hp := 0.0
-	var maxHp := 0.0
-	var state := ""
-	var radius := 0.5
-	var elite := false
-	var area := ""
-	var hexOwner := ""
-
-
-class FakeCorpse:
-	extends RefCounted
-	var x := 0.0
-	var z := 0.0
-	var kind := "normal"
-	var area := ""
-	var seedOwner := ""
-	var echoOwner := ""
-
-
-class FakeBoss:
-	extends RefCounted
-	var active := false
-	var x := 0.0
-	var z := 0.0
-	var hp := 0.0
-	var state := ""
 
 
 func check(ok: bool, what: String) -> void:
@@ -76,207 +39,15 @@ func _main() -> void:
 	today.source_code = src.replace("class_name DmAutoCombat\n", "")
 	check(today.reload() == OK, "today's decision code compiles in this project")
 	ref = today
-	var fixtures := FIXTURES
-	for name in ["auto_action", "auto_movement"]:
-		var path := fixtures.path_join(name + ".json")
-		check(FileAccess.file_exists(path), "the golden cases %s are there" % name)
-		if FileAccess.file_exists(path):
-			_golden(name, DmSimExact.load_json(path))
 	_seeded_actions("necromancer", 700, 20261017)
 	_seeded_actions("reaper", 500, 20261018)
 	_seeded_movement(160, 20261019)
-	_timing()
 	_end()
 
 
 func _end() -> void:
 	print("%s auto_combat %d checks%s" % ["PASS" if fails == 0 else "FAIL", checks, "" if fails == 0 else " (%d failed)" % fails])
 	quit(1 if fails > 0 else 0)
-
-
-# ------------------------------------------------------------------------------------------------------------------ the live game's golden cases
-
-func _golden(name: String, file: Dictionary) -> void:
-	var cases: Array = file["cases"]
-	var bad := 0
-	var first := ""
-	for i in cases.size():
-		var c: Dictionary = cases[i]
-		for who in [ref, DmAutoCombat]:
-			var msg := _case_action(c, i, who) if name == "auto_action" else _case_movement(c, i, who)
-			if msg != "":
-				bad += 1
-				if first == "":
-					first = "%s #%d (%s): %s" % [name, i, "today's" if who == ref else "the port", msg]
-	check(bad == 0 and cases.size() > 100, "%s: %d golden cases, today's code and the port both give every answer%s" % [name, cases.size(), "" if bad == 0 else " (first miss: " + first.left(300) + ")"])
-
-
-func _case_action(c: Dictionary, idx: int, who: Object) -> String:
-	var inp: Dictionary = c["in"]
-	var objs := idx % 2 == 1
-	var ready_set: Array = inp["ready"]
-	var ctx: Dictionary = inp.duplicate()
-	ctx["ready"] = func(id: String) -> bool: return ready_set.has(id)
-	ctx["enemies"] = _enemies(inp["enemies"], objs)
-	var cs: Array = []
-	for cp in inp["corpses"]:
-		cs.append(_corpse_obj(cp) if objs else cp)
-	ctx["corpses"] = cs
-	if objs:
-		var b: Dictionary = inp["boss"]
-		var bs := FakeBoss.new()
-		bs.active = b["active"]
-		bs.x = b["x"]
-		bs.z = b["z"]
-		bs.hp = b["hp"]
-		bs.state = b["state"]
-		ctx["boss"] = bs
-	return _cmp(who.select_action(ctx), c["out"])
-
-
-func _case_movement(c: Dictionary, idx: int, who: Object) -> String:
-	var inp: Dictionary = c["in"]
-	var objs := idx % 2 == 1
-	var mem: Variant = null
-	if inp["useMem"]:
-		mem = inp["memInit"].duplicate(true) if inp["memInit"] != null else {}
-	var nav: Variant = _nav(int(inp["ni"]))
-	var si := 0
-	for s in inp["steps"]:
-		var ctx := {"player": s["player"], "enemies": _enemies(s["enemies"], objs)}
-		if nav != null:
-			ctx["nav"] = nav
-		if s.has("hazards"):
-			ctx["hazards"] = _hazards(s["hazards"])
-		for k in ["primary", "primaryRange", "family"]:
-			if inp.get(k) != null:
-				ctx[k] = inp[k]
-		var out: Variant = who.select_movement(ctx, mem, float(s["now"]), float(s["dt"]))
-		var m := _cmp(out, s["out"])
-		if m == "":
-			m = _cmp(mem, s["mem"])
-			if m != "":
-				m = "mem " + m
-		if m != "":
-			return "step %d: %s" % [si, m]
-		si += 1
-	return ""
-
-
-func _enemies(arr: Array, objs: bool) -> Array:
-	var out: Array = []
-	for e in arr:
-		if not objs:
-			out.append(e)
-			continue
-		var o := FakeEnemy.new()
-		o.id = int(e["id"])
-		o.x = e["x"]
-		o.z = e["z"]
-		o.hp = e["hp"]
-		o.maxHp = e.get("maxHp", 0.0)
-		o.state = e["state"]
-		o.radius = e.get("radius", 0.5)
-		o.elite = e.get("elite", false)
-		o.area = e.get("area", "")
-		o.hexOwner = e.get("hexOwner", "")
-		out.append(o)
-	return out
-
-
-func _corpse_obj(c: Dictionary) -> FakeCorpse:
-	var o := FakeCorpse.new()
-	o.x = c["x"]
-	o.z = c["z"]
-	o.kind = c["kind"]
-	o.area = c.get("area", "")
-	o.seedOwner = c.get("seedOwner", "")
-	o.echoOwner = c.get("echoOwner", "")
-	return o
-
-
-func _hazards(arr: Variant) -> Array:
-	var out: Array = []
-	if arr == null:
-		return out
-	for h in arr:
-		var d: Dictionary = (h as Dictionary).duplicate(true)
-		if d.get("until") == null:
-			d["until"] = INF
-		out.append(d)
-	return out
-
-
-func _nav(i: int) -> Variant:
-	if i < 0:
-		return null
-	if navs.is_empty():
-		var all: Array = []
-		for a in DmContent.area_order():
-			if a != "depths":
-				all.append(a)
-		navs = [_world_nav(null), _world_nav(all), _world_nav(["ossuary", "nave"])]
-	return navs[i]
-
-
-func _world_nav(unlocked: Variant) -> DmNav:
-	var nav := DmNav.new()
-	var w: Dictionary = DmSimExact.load_json("res://data/sim/world.json")
-	for o in w["obstacles"]:
-		nav.add_obstacle(DmNavObstacle.from_dict(o))
-	for s in w["sightBlockers"]:
-		nav.add_sight_blocker(DmNavObstacle.from_dict(s))
-	if unlocked != null:
-		nav.set_unlocked(unlocked)
-	return nav
-
-
-## Actual -> comparable: ints to floats, INF to null (JSON), nested.
-func _norm(v: Variant) -> Variant:
-	if v is Dictionary:
-		var d := {}
-		for k in v:
-			d[k] = _norm(v[k])
-		return d
-	if v is Array:
-		var a := []
-		for x in v:
-			a.append(_norm(x))
-		return a
-	if v is int:
-		return float(v)
-	if v is float and is_inf(v):
-		return null
-	return v
-
-
-func _eq(a: Variant, b: Variant) -> bool:
-	if a == null or b == null:
-		return a == null and b == null
-	if a is Dictionary:
-		if not (b is Dictionary) or a.size() != b.size():
-			return false
-		for k in a:
-			if not b.has(k) or not _eq(a[k], b[k]):
-				return false
-		return true
-	if a is Array:
-		if not (b is Array) or a.size() != b.size():
-			return false
-		for i in a.size():
-			if not _eq(a[i], b[i]):
-				return false
-		return true
-	if (a is float or a is int) and (b is float or b is int):
-		return float(a) == float(b)
-	return a == b
-
-
-func _cmp(actual: Variant, expected: Variant) -> String:
-	var a: Variant = _norm(actual)
-	if _eq(a, expected):
-		return ""
-	return "got %s expected %s" % [JSON.stringify(a), JSON.stringify(expected)]
 
 
 # ------------------------------------------------------------------------------------------------------------------ seeded Full-Party-sized contexts
@@ -338,7 +109,6 @@ func _seeded_actions(family: String, n: int, seed_: int) -> void:
 				first = "case %d: today's %s, the port's %s" % [i, str(a), str(b)]
 	check(bad == 0, "%s: %d seeded fights, the port chooses what today's code chooses (%d different rites chosen)%s" % [family, n, seen.size(), "" if bad == 0 else " (first miss: " + first.left(300) + ")"])
 	check(seen.size() >= (9 if family == "necromancer" else 6), "%s: the fights reach many rules of the list (%s)" % [family, ", ".join(seen.keys())])
-	print("INFO auto_combat: %s fights chose %s" % [family, ", ".join(seen.keys())])
 
 
 func _with_ready(ctx: Dictionary) -> Dictionary:
@@ -371,38 +141,3 @@ func _seeded_movement(n: int, seed_: int) -> void:
 					first = "case %d step %d: today's %s %s, the port's %s %s" % [i, s, str(a), str(mem_a), str(b), str(mem_b)]
 				break
 	check(bad == 0, "movement: %d seeded rooms of up to 4 steps, the port steers where today's code steers, memory included%s" % [n, "" if bad == 0 else " (first miss: " + first.left(300) + ")"])
-
-
-# ------------------------------------------------------------------------------------------------------------------ INFO: what a decision costs
-
-func _timing() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 7
-	var ctx := _context(rng, "necromancer")
-	var enemies: Array = []
-	for i in 62:
-		var a := rng.randf() * TAU
-		var r := rng.randf_range(1.0, 13.0)
-		enemies.append({"id": i + 1, "x": 100.0 + cos(a) * r, "z": 50.0 + sin(a) * r, "hp": 272.9, "maxHp": 272.9, "state": "chase", "radius": 0.5, "elite": false, "area": "graves", "hexOwner": ""})
-	ctx["enemies"] = enemies
-	var corpses: Array = []
-	for i in 31:
-		var a2 := rng.randf() * TAU
-		var r2 := rng.randf_range(1.0, 13.0)
-		corpses.append({"x": 100.0 + cos(a2) * r2, "z": 50.0 + sin(a2) * r2, "kind": "normal", "area": "graves", "seedOwner": "", "echoOwner": null})
-	ctx["corpses"] = corpses
-	ctx["boss"] = {"active": false, "hp": 0.0, "state": "idle", "x": 0.0, "z": 0.0}
-	ctx["ready"] = ["corpse_explosion", "command_rend", "bone_needle"]
-	ctx["player"]["essence"] = 90.0
-	ctx["thrallCount"] = 4
-	ctx["thrallCap"] = 4
-	var us := [0.0, 0.0]
-	var reps := 40
-	for k in 2:
-		var who: Object = ref if k == 0 else DmAutoCombat
-		for i in reps:
-			var c := _with_ready(ctx)
-			var t0 := Time.get_ticks_usec()
-			who.select_action(c)
-			us[k] += float(Time.get_ticks_usec() - t0)
-	print("INFO auto_combat: one decision with 62 enemies and 31 corpses in reach: today's %.2f ms, the port's %.2f ms" % [us[0] / reps / 1000.0, us[1] / reps / 1000.0])

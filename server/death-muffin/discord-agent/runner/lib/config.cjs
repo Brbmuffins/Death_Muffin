@@ -47,9 +47,10 @@ const DEFAULTS = {
   // Playable preview of each proposal (offline edition build, see preview.sh). previewCmd (tests) replaces preview.sh.
   previewRoot: '/var/www/death-muffin/preview',
   previewUrl: 'https://muffindevelopment.com/death-muffin/preview/',
-  // Team PC pictures (godot mode): after a proposal with pictures, a team PC online renders the same shot plan on Low and Ultra (teamShots: false = off).
-  // teamApi: the backend the runner reaches /internal/team on ('' = off); teamResultsDir: where the backend keeps the uploaded pictures; teamBuildCmd and
-  // teamLabelCmd (tests) replace preview-godot.sh --team and label-shot.py; teamPollMs: how often the job is checked.
+  // Team PC pictures and short videos (godot mode): with a team PC online the agent writes a shot plan instead of rendering, and the team PC renders it
+  // after the proposal on Low and Ultra, before and after; it also records the agent's clips (teamShots: false = off for both).
+  // teamApi: the backend the runner reaches /internal/team on ('' = off); teamResultsDir: where the backend keeps the uploaded pictures and videos; teamBuildCmd and
+  // teamLabelCmd (tests) replace preview-godot.sh --team and label-shot.py; teamPollMs: how often a job is checked.
   teamShots: true,
   teamApi: 'http://127.0.0.1:5190',
   teamResultsDir: '/home/ubuntu/death-muffin/team-results',
@@ -112,7 +113,7 @@ const DEFAULTS = {
       'client/**/*kill*', 'client/**/*gold_sink*', 'client/**/*goldSink*', 'client/**/*vault_rules*', 'client/**/*vaultRules*', 'client/**/*labor_rules*', 'client/**/*laborRules*',
       'client/**/*legionRules*', 'client/**/*milestone*', 'client/**/*reward*', 'client/**/*tradeGoods*', 'client/**/*unlock*', 'client/**/*seal*',
       // the tests that guard those systems
-      'client/tests/rules-progression/**', 'client/tests/backend/**', 'client/tests/relay/**', 'client/tests/realtime/**', 'client/tests/next_front/**',
+      'client/tests/rules_progression/**', 'client/tests/backend/**', 'client/tests/relay/**', 'client/tests/realtime/**',
       'client/tests/front.gd', 'client/tests/value.gd',
       // the asset pack's fingerprint (tools/godot/assets-fp.sh) beyond client/assets/**, which every asset change already touches
       'client/crowd/**', 'client/tools/bake_crowd*', 'client/game/view_models.json', 'client/game/dm_creature*', 'client/game/dm_gear_props.gd',
@@ -126,7 +127,17 @@ const DEFAULTS = {
   },
   // Paths the agent may never touch (proposal refused, not even for the owner to approve): secrets, and the agent's own rules/deploy scripts.
   // They are still "sensitive" if the owner removes them from this list and makes the change by hand.
-  forbiddenPaths: ['server/death-muffin/discord-agent/**', '**/deploy*.sh', '**/.env*', '.claude/**', 'client/export_presets.cfg'],
+  // The CI that grades a change and the game's setup and gate (tools/check/) are never the agent's to change (DECISIONS B59).
+  forbiddenPaths: ['server/death-muffin/discord-agent/**', '**/deploy*.sh', '**/.env*', '.claude/**', 'client/export_presets.cfg', '.github/**', 'tools/check/**'],
+  // godot: GitHub CI is the gate (DECISIONS B59): a proposal waits for CI's verdict on its branch, a ship for CI on the merged tree (approvals that
+  // wait for a ship go out with it, one CI run and one publish), through ciScript (tools/check/ci.sh, installed beside the runner; null = there).
+  // false = the fallback while GitHub is down: the local check (check-godot.sh) as before.
+  ciGate: true,
+  ciScript: null,
+  // godot with the CI gate: proposals are drafts (Helix, 2026-10-19: "i dont see the point of doing any tests until the idea i have is actually
+  // built out"). A round is proposed without waiting for tests (the push still starts CI in the background); 🧪 or `!test` runs them on the open
+  // change, and ✅ ships only after CI passed what ships (ship.sh). false = every proposal waits for CI first, as before.
+  drafts: true,
 };
 function merge(a, b) {
   if (Array.isArray(a) || typeof a !== 'object' || a === null) return b === undefined ? a : b;
@@ -153,6 +164,9 @@ function loadConfig(file) {
   if (!['web', 'godot'].includes(c.mode)) throw new Error(`Invalid mode: ${JSON.stringify(c.mode)}; must be 'web' or 'godot'`);
   // Everything downstream (classifier, ship gate) reads cfg.tiers, so the mode picks the rule set here once.
   if (c.mode === 'godot') c.tiers = c.godotTiers;
+  c.ciGate = c.mode === 'godot' && c.ciGate !== false;
+  if (!c.ciScript) c.ciScript = require('path').join(c.toolsDir, 'ci.sh');
+  c.drafts = c.ciGate && c.drafts !== false;   // drafts need CI: without it (GitHub down) every proposal is checked here first
   return c;
 }
 module.exports = { loadConfig, DEFAULTS };

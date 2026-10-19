@@ -2,6 +2,8 @@
 # Publish the Godot Windows client for the launcher, from a COMMITTED revision (never the working tree).
 #
 #   publish-godot-client.sh <git-rev>
+#   EXPORT_ONLY=<dir> publish-godot-client.sh <git-rev>     the release build only, for a team PC's checks before it goes live (team-check.sh): steps 1 and the boot smoke,
+#                                                         then the files are copied to <dir> and nothing is published (no CI gate, no lobby check, no pre-release check)
 #
 # 1. `git worktree add --detach` of <rev> into a scratch folder (removed on exit), runs its PREPARE (the combat core, the flipbook sheets kept outside
 #    git, the import, the crowd's bakes), imports the project and exports the "Windows Desktop" preset with Godot 4.7.2 (DeathMuffin.exe + DeathMuffin.pck).
@@ -10,6 +12,8 @@
 #    version, the pack tools) and reused from
 #    $WORK/assets-cache/<fingerprint>.pck while unchanged, so it keeps its SHA-256 and the launcher skips it. Godot's export is not
 #    byte-reproducible, so an unchanged pack must be reused, never rebuilt. A revision without assets-pack.sh ships one pck (rollbacks).
+#    Then the pre-release check (team-gate.sh, DECISIONS B61): a free team PC starts the build's Windows files and quits them while loading; only the game
+#    failing there stops the publish (no PC or no answer lets it go on; never for a rollback; live folder only, TEAM_GATE=1 forces it, TEAM_GATE=off skips it).
 # 2. Hashes every file (SHA-256) and copies them to $OUT_DIR/<version>/ (a folder per build, so a player who is mid-download of the
 #    previous build never sees its files change).
 # 3. Writes $OUT_DIR/manifest.json LAST, atomically:
@@ -18,10 +22,11 @@
 #    A first publish starts locked. Devs flip it with set-online.sh.
 # 4. Keeps the newest two build folders (the previous one covers launchers that are mid-download).
 # 5. announce-release.sh: launcher news + patch notes, the #build-alerts notice, fixed bug reports released (skipped for a rollback).
+# The team PCs' longer checks (screens, stutter, benchmark, soak) run BEFORE a release, when its shipper asks (team-check.sh, DECISIONS B62), never after it.
 #
 # Served at https://muffindevelopment.com/death-muffin/client/ (static, see nginx-locations.conf).
 # Refuses a forward release while the live lobby differs from <rev>'s (run deploy-lobby.sh first; LOBBY_SKEW_OK=1 overrides).
-# Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2 FX_SHEETS LOBBY_DIR PREPARE SMOKE SYMBOLS_DIR SYMBOL_BUILDS
+# Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2 FX_SHEETS LOBBY_DIR PREPARE SMOKE SYMBOLS_DIR SYMBOL_BUILDS TEAM_GATE EXPORT_ONLY
 # The game is client/ (DECISIONS B49): its PREPARE and SMOKE steps (test-channel/prepare-rebuild.sh, smoke-rebuild.sh) run by default.
 set -euo pipefail
 
@@ -50,7 +55,7 @@ flock -w 600 9 || { echo "another client publish holds $WORK/.publish-client.loc
 # The live lobby must already run what <rev> has (deploy-lobby.sh first): a client can depend on new lobby messages, and a skipped lobby
 # deploy fails silently. Only for a forward release (<rev> contains origin/main): a rollback to an older client keeps the newer lobby.
 LOBBY_DIR="${LOBBY_DIR:-/home/ubuntu/death-muffin/lobby}"
-if [ -d "$LOBBY_DIR/src" ] && [ -z "${LOBBY_SKEW_OK:-}" ] && git -C "$REPO" merge-base --is-ancestor origin/main "$SHA" 2>/dev/null; then
+if [ -z "${EXPORT_ONLY:-}" ] && [ -d "$LOBBY_DIR/src" ] && [ -z "${LOBBY_SKEW_OK:-}" ] && git -C "$REPO" merge-base --is-ancestor origin/main "$SHA" 2>/dev/null; then
   for f in $(git -C "$REPO" ls-tree --name-only "$SHA" server/death-muffin/lobby/src/ | grep -E '\.js$'); do
     git -C "$REPO" show "$SHA:$f" | cmp -s - "$LOBBY_DIR/src/$(basename "$f")" ||
       { echo "Refusing to publish $SHA: the live lobby differs from it ($(basename "$f")). Run deploy-lobby.sh $SHA first (LOBBY_SKEW_OK=1 publishes anyway)." >&2; exit 1; }
@@ -76,11 +81,27 @@ SMOKE="${SMOKE-$WT/server/death-muffin/test-channel/smoke-rebuild.sh}"
 echo "== exporting $SHA as $VERSION"
 git -C "$REPO" worktree add -q --detach "$WT" "$SHA" >/dev/null 2>&1
 [ -f "$WT/$PROJECT/project.godot" ] || { echo "$SHA has no $PROJECT/project.godot" >&2; exit 1; }
+# The CI gate (DECISIONS B59): players only get a revision whose files GitHub CI passed, judged by that revision's own tools/check/ci.sh (a
+# revision from before the gate, such as an older build a rollback republishes, has none). Only for the live folder; DM_CI_GATE=off only while
+# GitHub is down.
+if [ -z "${EXPORT_ONLY:-}" ] && [ "$OUT_DIR" = /var/www/death-muffin/client ] && [ -f "$WT/tools/check/ci.sh" ]; then
+  if [ "${DM_CI_GATE:-}" = off ]; then echo "== CI gate: off (DM_CI_GATE=off), publishing $SHA without CI's verdict"
+  else
+    V=$(cd "$WT" && bash tools/check/ci.sh status "$SHA" 2>&1 | tail -1)
+    [ "${V%% *}" = passed ] || { echo "Refusing to publish $SHA: GitHub CI has not passed it ($V). Push it and wait for tools/check/ci.sh wait $SHA (DM_CI_GATE=off only while GitHub is down)." >&2; exit 1; }
+    echo "== CI: passed ($V)"
+  fi
+fi
 [ -f "$WT/$PROJECT/export_presets.cfg" ] || { echo "$SHA has no $PROJECT/export_presets.cfg (preset \"$PRESET\")" >&2; exit 1; }
 # PREPARE=<script> (the test channel): adjusts the scratch worktree before the import, e.g. renderer and endpoints. Never the repository.
+# Each step says how long it took (where a release's minutes go).
+STEP_T=$SECONDS; took() { echo "== $1: $(( SECONDS - STEP_T )) s"; STEP_T=$SECONDS; }
 [ -z "${PREPARE:-}" ] || bash "$PREPARE" "$WT" || { echo "prepare step failed: $PREPARE" >&2; exit 1; }
+took "prepared (the shared setup, tools/check/prep.sh)"
 "$GODOT" --headless --path "$WT/$PROJECT" --import >"$STAGE/import.log" 2>&1 || { tail -30 "$STAGE/import.log" >&2; echo "godot import failed" >&2; exit 1; }
+took "imported"
 bash "$WT/tools/godot/export-baked.sh" "$WT/$PROJECT" release "$PRESET" "$STAGE/DeathMuffin.exe" "$GODOT" || exit 1   # baked shaders when a renderer is free (the script says)
+took "exported"
 rm -f "$STAGE/import.log" "$STAGE/export.log"
 if [ -f "$WT/tools/godot/assets-pack.sh" ]; then
   CACHE="$WORK/assets-cache"; mkdir -p "$CACHE"
@@ -94,6 +115,7 @@ if [ -f "$WT/tools/godot/assets-pack.sh" ]; then
   cp "$CACHE/$FP.pck" "$STAGE/DeathMuffin.assets.pck"
   touch "$CACHE/$FP.pck"
   ls -1t "$CACHE"/*.pck 2>/dev/null | tail -n +4 | while read -r f; do rm -f "$f"; done   # keep the newest three
+  took "assets pack"
 fi
 [ -n "${INCLUDE_CONSOLE:-}" ] || rm -f "$STAGE"/*.console.exe
 
@@ -101,7 +123,15 @@ fi
 [ -s "$STAGE/DeathMuffin.exe" ] && [ "$(head -c2 "$STAGE/DeathMuffin.exe")" = "MZ" ] || { echo "DeathMuffin.exe missing or not a Windows executable" >&2; exit 1; }
 [ "$(stat -c %s "$STAGE/DeathMuffin.pck" 2>/dev/null || echo 0)" -gt 100000 ] || { echo "DeathMuffin.pck missing or suspiciously small" >&2; exit 1; }
 # SMOKE=<script> (the test channel): boots an exported copy of the build before anything is published (test-channel/smoke-rebuild.sh).
-[ -z "${SMOKE:-}" ] || bash "$SMOKE" "$WT/$PROJECT" "$STAGE" || { echo "boot smoke failed: $SMOKE" >&2; exit 1; }
+[ -z "${SMOKE:-}" ] || { bash "$SMOKE" "$WT/$PROJECT" "$STAGE" || { echo "boot smoke failed: $SMOKE" >&2; exit 1; }; took "boot smoke"; }
+
+# EXPORT_ONLY=<dir>: the release build for a team PC's checks (team-check.sh): copied out, nothing published.
+if [ -n "${EXPORT_ONLY:-}" ]; then
+  mkdir -p "$EXPORT_ONLY"
+  cp -lf "$STAGE"/* "$EXPORT_ONLY"/ 2>/dev/null || cp -f "$STAGE"/* "$EXPORT_ONLY"/   # (hard links: the stage goes when this ends)
+  echo "== exported $SHA to $EXPORT_ONLY (nothing published)"
+  exit 0
+fi
 
 # Carry the online lock over from the manifest that is live now (locked on a first publish or if the old one is unreadable).
 ONLINE_JSON=$(python3 - "$OUT_DIR/manifest.json" "$DEFAULT_MESSAGE" <<'PY'
@@ -117,6 +147,27 @@ except Exception:
 print(json.dumps({"enabled": enabled, "staff": staff, "message": message}))
 PY
 )
+
+# The revision that is live now (before the switch below): a rollback gets no pre-release check.
+PREV_REV=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get("rev", ""))' "$OUT_DIR/manifest.json" 2>/dev/null || true)
+[[ "$PREV_REV" =~ ^[0-9a-f]{7,40}$ ]] || PREV_REV=""
+
+# --- pre-release check ---
+# The pre-release check (DECISIONS B61): before players get the build, a team PC that can take a job now starts this build's Windows files to the first screen
+# and quits it while loading (team-gate.sh of the published revision; it says why it is skipped). Only exit 10, the game failing on the PC, stops the publish:
+# no PC, no answer in time or the gate's own trouble lets it go on. Live folder only (TEAM_GATE=1 forces it elsewhere), never for a rollback (a revision that is
+# not newer than the build that was live), and TEAM_GATE=off skips it (once you know why it failed and want the build out anyway).
+if [ "${TEAM_GATE:-}" != off ] && { [ "$OUT_DIR" = /var/www/death-muffin/client ] || [ "${TEAM_GATE:-}" = 1 ]; } && [ -f "$WT/server/death-muffin/team-gate.sh" ]; then
+  if [ -n "$PREV_REV" ] && git -C "$REPO" cat-file -e "$PREV_REV^{commit}" 2>/dev/null && ! git -C "$REPO" merge-base --is-ancestor "$PREV_REV" "$SHA" 2>/dev/null; then
+    echo "pre-release check: $SHA is not newer than the build that was live ($PREV_REV): skipped (rollback?)"
+  else
+    GATE_RC=0
+    timeout -k 10 660 bash "$WT/server/death-muffin/team-gate.sh" "$STAGE" "$VERSION" "$SHA" || GATE_RC=$?
+    [ "$GATE_RC" -ne 10 ] || { echo "Refusing to publish $SHA: the game failed on a team PC (the line above). TEAM_GATE=off publishes it anyway." >&2; exit 1; }
+    took "pre-release check"
+  fi
+fi
+# --- end pre-release check ---
 
 # Copy into the versioned folder, then describe it.
 DEST="$OUT_DIR/$VERSION"

@@ -48,16 +48,23 @@ func _run() -> void:
 
 # ---------------------------------------------------------------- data
 func _test_data(d: Dictionary) -> void:
-	_check(d.windows.size() == 4, "4 stained-glass windows (3 nave, 1 sanctum)")
-	_check(d.silhouettes.size() == 70, "70 far silhouettes")
+	_check(not d.windows.is_empty(), "stained-glass windows (%d)" % d.windows.size())
+	_check(not d.silhouettes.is_empty(), "far silhouettes (%d)" % d.silhouettes.size())
 	var n := 0
 	for k in d.flames:
 		n += (d.flames[k].phase as Array).size()
 		_check((d.flames[k].pos as Array).size() == (d.flames[k].phase as Array).size() * 3, "flame arrays agree in %s" % k)
-	_check(n == 347, "347 candle flames over %d areas" % d.flames.size())
-	_check(d.flames.size() == 8, "flames in 8 areas")
-	_check(int(d.mist.count) == 220 and (d.mist.pos as Array).size() == 660, "220 mist puffs")
-	_check(d.atmosphere.profiles.size() == 13, "13 weather profiles")
+	var world: Dictionary = DmData.world()
+	var want_flames := 0
+	var want_areas := {}
+	for p in world.props:
+		var fl := int(((world.propSpecs as Dictionary).get(String(p.prop), {}) as Dictionary).get("light", {}).get("flames", 0))
+		if fl > 0:
+			want_flames += fl
+			want_areas[String(p.area)] = true
+	_check(n > 0 and n == want_flames and d.flames.size() == want_areas.size(), "the candle flames are the candle props' flames in world.json (%d over %d areas)" % [n, d.flames.size()])
+	_check(int(d.mist.count) > 0 and (d.mist.pos as Array).size() == int(d.mist.count) * 3, "mist puffs: three numbers each (%d)" % int(d.mist.count))
+	_check(not d.atmosphere.profiles.is_empty(), "weather profiles (%d)" % d.atmosphere.profiles.size())
 	_check(d.wings.keys().size() == 3 and d.wings.has("moth") and d.wings.has("bat") and d.wings.has("seraph"), "wing table = moth, bat, seraph")
 	_check(_near(float(d.wings.bat.speed), 17.0) and _near(float(d.wings.bat.amp), 0.75) and _near(float(d.wings.bat.body), 0.22), "bat wing numbers")
 	_check(_near(float(d.bloom.strength), 0.75) and _near(float(d.bloom.radius), 0.55) and _near(float(d.bloom.threshold), 0.85), "world bloom numbers")

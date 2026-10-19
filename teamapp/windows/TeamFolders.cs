@@ -6,8 +6,9 @@ using System.Text.RegularExpressions;
 namespace DeathMuffinTeam
 {
     /// <summary>
-    /// The app's folder, %LOCALAPPDATA%\DeathMuffinTeam\: cache\&lt;cacheKey&gt;\ (files kept across jobs), jobs\&lt;id&gt;\ (one job: game\, appdata\, localappdata\, out\&lt;preset&gt;\,
-    /// plan.json, job.log), settings.json and app.log. The last few job folders are kept (to look at what a job did); older ones go.
+    /// The app's folder, %LOCALAPPDATA%\DeathMuffinTeam\: cache\&lt;cacheKey&gt;\ (files kept across jobs), jobs\&lt;id&gt;\ (one job: game\ (game-before\ and game-after\ for a screenshots job with two builds), run-&lt;n&gt;\appdata\ and
+    /// run-&lt;n&gt;\localappdata\ (a fresh pair for each run of the game), out\&lt;preset&gt;\ (out\&lt;build&gt;\&lt;preset&gt;\ with two builds) for screenshots, out\&lt;variant&gt;\ and tune-&lt;variant&gt;.json for clips, bench-&lt;n&gt;\ for each
+    /// benchmark setup, plan.json, job.log), settings.json and app.log.
     /// </summary>
     internal sealed class TeamFolders
     {
@@ -22,11 +23,24 @@ namespace DeathMuffinTeam
         public string CacheDir(string key) { return Path.Combine(CacheRoot, key); }
         public string JobDir(string id) { return Path.Combine(JobsRoot, id); }
         public string GameDir(string id) { return Path.Combine(JobDir(id), "game"); }
+        /// <summary>The game's folder for one build of a screenshots job that has two (`game-before`, `game-after`); the one folder, `game`, when <paramref name="build"/> is empty.</summary>
+        public string GameDir(string id, string build) { return string.IsNullOrEmpty(build) ? GameDir(id) : Path.Combine(JobDir(id), "game-" + build); }
         public string OutDir(string id) { return Path.Combine(JobDir(id), "out"); }
-        /// <summary>The game's APPDATA and LOCALAPPDATA for this job, so Godot's user:// never touches the player's own game, settings or account.</summary>
-        public string AppDataDir(string id) { return Path.Combine(JobDir(id), "appdata"); }
-        public string LocalAppDataDir(string id) { return Path.Combine(JobDir(id), "localappdata"); }
+        /// <summary>The n-th run of the game in a job (1, 2, ...): each preset of a `shots` job, each try of each `bench` setup.</summary>
+        public string RunDir(string id, int run) { return Path.Combine(JobDir(id), "run-" + Num(run)); }
+        /// <summary>
+        /// The game's APPDATA and LOCALAPPDATA for one run, so Godot's user:// never touches the player's own game, settings or account, and one run never finds another's offline save,
+        /// settings or log (JobRunner empties them before the run).
+        /// </summary>
+        public string AppDataDir(string id, int run) { return Path.Combine(RunDir(id, run), "appdata"); }
+        public string LocalAppDataDir(string id, int run) { return Path.Combine(RunDir(id, run), "localappdata"); }
+        /// <summary>A `bench` job's folder for its n-th setup (1, 2, ...): the game's `--bench-dir`, where its `pending.json` is left.</summary>
+        public string BenchDir(string id, int n) { return Path.Combine(JobDir(id), "bench-" + Num(n)); }
+        static string Num(int n) { return n.ToString(System.Globalization.CultureInfo.InvariantCulture); }
+        /// <summary>The plan the game is given: a screenshots job's shot plan or a clip job's clip plan.</summary>
         public string PlanFile(string id) { return Path.Combine(JobDir(id), "plan.json"); }
+        /// <summary>A clip variant's tune, written for the game's `--tune`.</summary>
+        public string TuneFile(string id, string label) { return Path.Combine(JobDir(id), "tune-" + label + ".json"); }
         public string LogFile(string id) { return Path.Combine(JobDir(id), "job.log"); }
 
         /// <summary>The newest job folder that has a log, or null.</summary>

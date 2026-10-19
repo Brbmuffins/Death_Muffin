@@ -49,6 +49,20 @@ function makeWorld(over = {}) {
   fs.writeFileSync(path.join(T, 'eleven.key'), 'sk_FakeElevenKeyForTestsOnly00000000000000\n', { mode: 0o600 });
   fs.symlinkSync(path.join(SRC, 'runner'), path.join(tools, 'runner'));
   fs.writeFileSync(path.join(tools, 'check-godot.sh'), '#!/usr/bin/env bash\n[ -e FAILTESTS ] && { echo "godot boom"; exit 1; }\necho "tests/game run.gd exit=0  12 passed"; echo "$*" >> "$(dirname "$0")/check-godot.calls"; if [ "${1:-}" = --full ]; then echo "GODOT TESTS: full (2 suites) — 2 passed"; else echo "GODOT TESTS: quick (2 suites) — 2 passed"; fi\n', { mode: 0o755 });
+  // ci.sh stand-in (tools/check/ci.sh; used when a test sets ciGate: true): CI answers at once. A CIFAIL file next to it fails a revision when every
+  // line in it matches that revision ("<path>" = the file exists there, "<path>:<text>" = the file holds that text; an empty file fails every
+  // revision); `failed` names the suites in CIFAIL_SUITES (default "game"). Every call is logged to ci.calls.
+  fs.writeFileSync(path.join(tools, 'ci.sh'), [
+    '#!/usr/bin/env bash',
+    'd="$(dirname "$0")"; echo "$*" >> "$d/ci.calls"; bad=',
+    'if [ -e "$d/CIFAIL" ]; then bad=1; while IFS= read -r c; do [ -n "$c" ] || continue',
+    '  case "$c" in *:*) git show "$2:${c%%:*}" 2>/dev/null | grep -qF -- "${c#*:}" || bad= ;; *) git cat-file -e "$2:$c" 2>/dev/null || bad= ;; esac',
+    'done < "$d/CIFAIL"; fi',
+    'case "$1" in',
+    '  status) [ -n "$bad" ] && echo "failed https://ci.test/actions/runs/1" || echo "passed https://ci.test/actions/runs/1";;',
+    '  wait) [ -n "$bad" ] && { echo "failed https://ci.test/actions/runs/1"; exit 1; }; echo "passed https://ci.test/actions/runs/1";;',
+    '  failed) [ -z "$bad" ] || { [ -s "$d/CIFAIL_SUITES" ] && cat "$d/CIFAIL_SUITES" || echo game; };;',
+    'esac', 'exit 0', ''].join('\n'), { mode: 0o755 });
   // shot-godot.sh stand-in: writes a PNG-ish file; in a base-<id> scratch worktree it writes the BEFORE picture (unless NOBASE exists)
   fs.writeFileSync(path.join(tools, 'shot-godot.sh'), '#!/usr/bin/env bash\n[ -f .dm-shot.json ] || exit 2\nmkdir -p .dm-shots\ncase "$PWD" in */base-*) [ -e "$(dirname "$PWD")/NOBASE" ] && exit 1; echo PNG-before > .dm-shots/a.png;; *) echo PNG-after > .dm-shots/a.png;; esac\n', { mode: 0o755 });
   fs.writeFileSync(path.join(tools, 'check.sh'), '#!/usr/bin/env bash\n[ -e FAILTESTS ] && { echo "boom"; exit 1; }\necho "# tests 3"; echo "# pass 3"; echo "# fail 0"\n', { mode: 0o755 });
@@ -66,7 +80,7 @@ function makeWorld(over = {}) {
     previewRoot: path.join(T, 'preview'), previewUrl: 'https://example.test/death-muffin/preview/',
     teamApi: '',   // team PC pictures off unless a test brings its own fake backend (never the real one)
     previewCmd: 'if [ -e "$DM_PREVIEW_ROOT/../FAIL" ]; then echo "vite exploded"; exit 1; fi; mkdir -p "$DM_PREVIEW_ROOT/$1" && echo "$DM_PREVIEW_TITLE|$DM_PREVIEW_BASE" > "$DM_PREVIEW_ROOT/$1/index.html"',
-    ...(godot ? { baseBranch: 'godot-port', mode: 'godot', clientManifest: path.join(T, 'client', 'manifest.json'), deployCmd: `echo deployed "$1" >> ${deploy}/deploys.log`,
+    ...(godot ? { baseBranch: 'godot-port', mode: 'godot', ciGate: false, clientManifest: path.join(T, 'client', 'manifest.json'), deployCmd: `echo deployed "$1" >> ${deploy}/deploys.log`,
       previewCmd: 'if [ -e "$DM_PREVIEW_ROOT/../FAIL" ]; then echo "godot exploded"; exit 1; fi; mkdir -p "$DM_PREVIEW_ROOT/$1" && echo "$DM_PREVIEW_TITLE" > "$DM_PREVIEW_ROOT/$1/DeathMuffin-Preview-$1-win64.zip"' } : {}),
     ...over };
   fs.writeFileSync(cfgFile, JSON.stringify(raw));

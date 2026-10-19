@@ -33,8 +33,10 @@ Every item says what kind it is:
 - The old game is retired (B57; its source is tag `archive/old-game`): a rollback publishes an earlier build of the game.
 - **Now: Phase 1, settling the launch.** Done: alerts when a server stops, Grave Surges back, crash reports that point inside the combat
   core, the Discord agent working on the live game, document-only changes that ship no update, checks for War's content, play reports,
-  shaders baked into every release, and the old game's folder deleted (its tests moved to the game). Left: the stutter test, the team app,
-  and the Ultra Low decision once the numbers are in.
+  shaders baked into every release, the old game's folder deleted (its tests moved to the game), and the team app's first job (pictures on a
+  real graphics card, proven on Helix's PC) and its other jobs (B58: release benchmarks and release checks, clips and "pick one", before and after,
+  pictures without `!shot`), and a free team PC starting every release before players get it (B61). Left: War's PCs on the team app, the
+  stutter fixes the checks turn up on a weaker card, and the Ultra Low decision once the numbers are in.
 - Ascension (the Altar, vows and heat, Ashes, Covenant Boons) left on launch day and comes back redesigned in Phase 3 (B36). Players'
   saved Ascension data is kept.
 
@@ -72,13 +74,36 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   The Windows half is confirmed on a real PC by the team app's crash check (KNOWN-GAPS "Stability").
 - [x] **Fix: the Discord agent tested and photographed the old game.** Done 2026-10-18: it makes its changes in the game (`client/`) directly;
   every proposal is tested on the game (the quick check runs the suites the change can affect), with the combat core, the import and the
-  crowd's bakes taken from a cache built only from `main` (`server/death-muffin/discord-agent/client-prep.sh`), so a check does not rebuild them;
+  crowd's bakes taken from a cache built only from `main` (today `tools/check/prep.sh --warm`), so a check does not rebuild them;
   its screenshots are the game's, rendered on the server the way it plays (until the team app takes them over), and a "Try it" preview without
   new art uses the art pack of the player's installed game instead of carrying its own 500 MB. Fixed 2026-10-19: the co-op and friends
-  suites (coop, coop_bosses, social) start the real lobby, which a job's copy of the game could not run without the lobby's packages, so
+  suites (coop, coop_bosses, lobby) start the real lobby, which a job's copy of the game could not run without the lobby's packages, so
   every check that picked them failed (War's Haunting Wraith, three times on 2026-10-18); the check now brings those packages in. Fixed
   2026-10-19: a round ran its whole check twice, about 20 minutes each (the agent in its turn, then the runner before the proposal); the
   agent now runs only the suites it names (`check-godot.sh --rerun`), and the whole check is the runner's.
+- [x] **Fix: the Discord agent's checks were slow and failed late, or for reasons outside the change.** Done 2026-10-19. Now → after: the
+  game's suites ran one at a time (the old game's runner ran 8 at once; that was lost in the switch), so a check took 20 to 35 minutes → side by
+  side again, the slowest first, the lobby and relay suites in a lane of their own, each failure once more alone (all 112 suites in about 6.5
+  minutes; a spell-sized change's check about 5 minutes end to end, co-op included). A job was checked against the main it started from, so
+  suites main had gained failed only at ship → the check runs with the latest main merged into the branch, and a ship of the same code skips
+  its tests. A broken test setup cost repair turns and an hour of checks → the failing suites run on clean main first, and if they fail there
+  too the thread is told plainly, with no repair turn. The automatic re-run could pass a check with a folder suite still failing → it reads
+  every suite and counts against the summary. Three tests named the number of spells or abilities → they compare the spell registry with the
+  spell files and the two ability tables with each other.
+- [x] **Fix: testing was slow, and sessions and the Discord agent each did it their own way** (B59). Done 2026-10-19. Now → after: four
+  separate setups built the game for every checkout (about 7 minutes for a new worktree) → one setup with one shared cache (about 15
+  seconds); CI took 20 to 24 minutes and sessions waited for it while the agent shipped on its own quick check → CI runs every suite on
+  every push in about 4 minutes and is the one gate for everyone, the deploy and publish scripts included; approvals that wait for a ship
+  still go out together, now with one CI run for all of them; tests that broke when a spell or an area was added compare the game's data
+  with itself instead.
+- [x] **Fix: the Discord agent made people wait for tests between every round** (B63). Done 2026-10-19. Now → after: each round of back and
+  forth waited about 3 minutes for CI before its proposal → rounds are drafts, proposed at once; 🧪 tests on request and ✅ tests and ships; a
+  ship whose tests fail comes back fixed for one more ✅; ❌ asks before it throws the work away.
+- [x] **Fix: the next test build could break testing and the Discord agent again unnoticed** (B63). Done 2026-10-19. Now → after: a new suite
+  nobody listed never ran → CI fails until it is listed; the agent's own tests ran only by hand → in CI; a renamed folder silently dropped its
+  protection from the agent's rules → CI fails until the rules follow; nothing stopped a workflow from asking for a paid GitHub machine → CI
+  refuses it; an expired GitHub token left the checks stuck → they carry on without it, and the nightly report warns two weeks ahead; the
+  first real request was the only test of a reinstalled agent → its practice run proves it end to end first.
 - [x] **Fix: a document change from the Discord agent shipped a game update.** Done 2026-10-18: an approved change that touches only
   documents (Markdown files, docs/) goes to `main` and stops there, with no game build, deploy or notice, and the thread says so; when someone
   shares an idea the roadmap lacks, the agent offers to add it to "Ideas" with its section (server/death-muffin/discord-agent/README.md).
@@ -94,8 +119,17 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   next time its art changes), and since 2026-10-19 a test fails when play draws a material the loading screen never drew
   (`client/tests/warm_coverage.gd`: every rite of the five disciplines, a fight, a boss, waves, loot, worn gear and pets); it found nine
   gaps (a dropped item's icon, name and light, and six pieces of worn gear and pets) and the warm-up now draws them. The test cannot see
-  lighting variants, presets other than High, the other areas and bosses, UI panels, death and respawn, or other players' effects. After:
-  the team app's stutter test confirms it on a real graphics card once it runs.
+  lighting variants, presets other than High, the other areas and bosses, UI panels, death and respawn, or other players' effects. The team
+  app's stutter test ran on Helix's RTX 4070 SUPER on 2026-10-19 (every rite of the five classes once, High): p99 2.8 ms, the worst frame 40 ms
+  on the Reaper's Soul Burst, which was the bar greying six spells at once (fixed the same day: the greyed icons are baked on loading); five
+  casts went over 8 ms (Ossuary Wall 14, Grave Frost 10, Ivory Cleave 9, Exhume 8), and the casts still compiled 395 shader pipelines, the same
+  ones again in every new game (Soul Siphon 18 each time). The two runs after the fix (releases 1852fe7 and 578df6f, 2026-10-19) had no cast
+  over 8 ms (worst 6.6 and 6.5 ms, p99 2.4 ms; the third, of b0b717a, one: the Mourner's Bone Needle at 12.9 ms, 5.6 the run before) and still about 400 compilations, which Godot builds in the background, so on that card they no
+  longer show as hitches; a weaker card (War's GTX 970) is the open question. The repeats are not materials freed and made again (a material
+  made again does not compile again in Godot 4.7.2: a small test on the server's software renderer, 2026-10-19). Since 2026-10-19 the stutter test
+  counts each kind of compilation apart, and #build-alerts says how many ran in the background, so the next runs show which ones make a frame wait.
+  After: the warm-up also draws what those casts compile, a new game compiles nothing the one before it did, and the next stutter test shows no
+  cast over 8 ms.
 - [x] **New: play reports.** Done 2026-10-19: when a play session ends (log out, switch character, quit; a crash is sent at the next start) the
   game sends a small summary: average, p99 and worst frame times, hitches, the graphics preset and card, time and deaths per area, and where
   the session ended (nothing personal). The site's play reports page shows them per release, beside the server's own numbers over the same
@@ -110,18 +144,48 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   ("Screenshots of a change, about 1 minute": Run now / Not now / Pause 2 hours), and without an answer it runs by itself after 5 minutes,
   except while Death Muffin or another full-screen game or movie is running (Windows hides the question then, and a party's host runs the
   whole party's fight) or a laptop is on battery: then it waits for a yes or for the game to close. It never takes the keyboard or mouse,
-  runs at low priority and stops if the game starts; it uses its own folder and plays offline (never the player's game, settings or
+  runs at low priority (a benchmark at normal priority, once the PC has been left alone) and stops if the game starts; it uses its own folder and plays offline (never the player's game, settings or
   account), runs only builds and kits our server made, and uploads only its results. Each PC can also run without asking (War's spare
-  Alienware, if he sets it) or only on a yes. Its jobs, each added when it is needed:
-  - First: screenshots of a proposal on Low and Ultra, posted to the thread by our server (they replace the server's slower pictures).
-    Built 2026-10-19 (`teamapp/`, the backend's team jobs, the Discord agent's team pictures): it runs once the three PCs have it installed,
-    and its pictures come beside the server's until it has proven itself on them.
-  - Soon after: benchmarks for every release on a fast PC and on the Alienware's GTX 970 (the weak-PC floor of B39), on the benchmarks
-    page. A benchmark waits until nothing else is loading the PC, and a run disturbed halfway is thrown out and retried, so its numbers are
-    honest.
-  - Then: the stutter test (every rite and effect played on a real graphics card, each hitch reported) and a release crash check (a release
-    candidate plays a few minutes on two different graphics cards, and quits while still loading, which crashed the old game on 4-core
-    PCs, before it goes live; a crash stops the release).
+  Alienware, if he sets it) or only on a yes. Every job asks the same way, benchmarks included (Helix, 2026-10-19). Its jobs, in this order
+  (B58: all of them in Phase 1):
+  - Screenshots of a proposal on Low and Ultra, posted to the thread by our server. Live since 2026-10-19 and proven on Helix's PC that
+    night (0.1.1: four pictures in 40 s of play; 0.1.0 could not start the game and reported no graphics card). They come beside the
+    server's pictures until they have proven themselves.
+  - Benchmarks of a release build on a team PC (a fast PC, War's Intel Arc, the Alienware's GTX 970: the weak-PC floor of B39), on the
+    benchmarks page marked as team runs. A benchmark starts once the PC has been left alone, and a run disturbed halfway is thrown out
+    and retried, so its numbers are honest. Built 2026-10-19 with app 0.2.0 (now a step of the checks below), which also brought silent runs, screenshot runs that never show a window, a fresh folder for every run, cancels that
+    reach the PC within 30 s, and AFK mode (Helix's design: once a job ran by itself because nobody answered, the next jobs run without
+    the 5-minute wait until the person ends it or starts a game).
+  - Built 2026-10-19 with app 0.3.0 (one release for all of these, B58):
+    - Pictures without `!shot`: with a team PC online, the Discord agent writes a shot plan for every visible change and the team PC
+      renders it, before and after side by side (the unchanged game and the change), on Low and Ultra.
+    - Clips and "pick one": a few seconds of a spell or effect recorded by the game itself (30 frames per game second, only the spell,
+      not the loading), posted as videos; for a choice (War's Haunting Wraith at three speeds) each option is numbered and the thread
+      asks which one. Model previews are clips too: the new piece worn by a hero, turning.
+    - Release checks: a fresh install and boot, quitting while loading (the old 4-core crash), the windows and HUD at 1080p, 1440p, 4K
+      and ultrawide and the largest UI size, the stutter test (every rite of every discipline, each cast's worst frame and pipeline
+      compilations), the benchmark, and a 30-minute soak (memory and frame times per minute). Since B62 (Helix, 2026-10-19) they run
+      BEFORE a release, when its shipper asks, never after it: `server/death-muffin/team-check.sh <rev> --checks ... [--compare]` builds
+      the revision, runs the chosen steps on a team PC (with `--compare` the live build first, on the same PC, so every number reads live
+      build -> this change) and writes a summary and contact sheets for whoever asked: a session posts them to a new thread or a DM (it
+      asks the person which). Approval never waits for them.
+    - Next (after ubuntu-f2's agent change is on main): the Discord agent runs these checks as tests at its test runs (🧪 / `!test` and
+      the ship's own CI): a pass posts nothing, a failure is fixed and tested again, and the thread hears only what needs a person's
+      review (before and after pictures of a visible change, a choice, a problem it could not fix).
+    - Jobs reach a PC within about a second (the PC's check-in waits on the server).
+  - Proven on Helix's PC (RTX 4070 SUPER) on 2026-10-19 with apps 0.3.1 to 0.3.9: a full release check with every step (24 pictures at
+    their exact sizes, the stutter test, the benchmark at Low 691 and Medium 597 fps with no hitches, 30 minutes of soak with flat memory).
+    Its first finding was a real bug: the Windows release build crashed while closing, after every quit; since 2026-10-19 it ends its own
+    process once its shutdown is done (B60; the cause inside the engine is in KNOWN-GAPS "Stability"), and the next release check passed
+    every step with no crash (Low 676, Medium 639 fps). The app updates itself between jobs,
+    so a check never runs on an old app.
+  - Still to do: War's PCs (the Intel Arc and the Alienware's GTX 970) have not signed in to the app yet, so the release checks and
+    benchmarks cover one graphics card; the weak-PC floor (B39) and the Ultra Low decision below wait on them.
+  - Fix: a release that does not start on Windows reached players before any team PC tried it (the server's boot test runs the Linux build).
+    Done 2026-10-19 (B61): before the switch to a new build, a free team PC starts it to the first screen and quits one while it loads
+    (about 10 seconds); if the game fails there, the build is not published and the publish says why. No free PC, or none taking it within
+    2.5 minutes, lets the release go out as before (`server/death-muffin/team-gate.sh`; README "Pre-release check"). Proven on Helix's PC
+    the same day: taken after 5 seconds, passed in 14.
   - With the art rebuild (Phase 4): lighting bakes on the strongest graphics card available instead of by hand, the result coming back as
     a proposal.
   - Later: a co-op test between two team PCs.
@@ -174,8 +238,10 @@ writing) plus one "How we work" page; CLAUDE.md points every session to them.
   test server and its lobby and relay still exist, but since launch day the game only talks to the live server, so no new test build can
   be made. After: a big change (Ascension, a new class, the map revamp) is published to the test channel first, from `main` or a
   short-lived branch, built so it reaches only the test server (and the live build only the live one); the test server's copies of the
-  team's accounts are refreshed when asked; the team plays it there before it goes live. Small fixes and everyday requests still go
-  straight to live.
+  team's accounts are refreshed when asked; the team plays it there before it goes live, and one script puts it live: it checks that CI
+  passed the merged files, waits for the Discord agent to be idle and holds the deploy lock, deploys and publishes, reinstalls the agent if
+  its files changed, and requires a clean drift report and the agent's practice run, stopping at the first failure (B63). Small fixes and
+  everyday requests still go straight to live.
 - [ ] **Decide + New: Ascension's one-page plan,** written with Helix through "From idea to shipped", so Phase 3 starts building the day
   this phase ends: what the Altar, vows and heat, Ashes and Covenant Boons become, and the co-op rules (today a guest's Prelate kill counts
   for the host).
@@ -231,7 +297,8 @@ budgets for every kind of asset, and checks for everything but models.
   every other copy (client data, server rules, the server's item rows), and the build fails if a copy is out of date.
 - [ ] **New: automatic checks for every new asset and content entry.** Models already get triangles, materials, the skeleton and the
   combat clips checked (Phase 1); still to add for models: texture sizes, bones, levels of detail, scale and pivot, a source and licence record. For data: required fields, ids that exist, numbers inside the
-  balance sheet. They run before every push, in the Discord agent's check and in CI, and replace today's tests that pin counts. It gives:
+  balance sheet. They run before every push, in the Discord agent's check and in CI (the tests that pinned counts already compare the data
+  with itself, B59). It gives:
   an over-budget model, a missing clip or a broken item cannot ship.
 - [ ] **New: the rules reach every Claude by themselves.** CLAUDE.md, which every session reads first, points to the docs map; each recipe
   is also a Claude Code skill that loads by itself when a session is asked to do that job (sessions on the server and the Discord agent
@@ -264,9 +331,9 @@ budgets for every kind of asset, and checks for everything but models.
 
 - [ ] **New: an automatic secret scan.** The repository is public and many sessions push to it, but only a scan each session runs by hand
   keeps keys and passwords out. After: every push is scanned before it leaves the server and again in CI, and one with a secret is refused.
-- [ ] **Fix: a document-only push runs every test.** Now: each push to `main` runs all the suites (about 20 minutes), even when only a
-  document changed. After: a push that changes only documents runs the document checks; game changes run everything, as now. This also
-  keeps the free test minutes in reach once the code goes private for 1.0.
+- [x] **Fix: a document-only push runs every test.** Done 2026-10-19 (B59): each push to `main` ran all the suites (about 20 minutes), even
+  when only a document changed → a push that changes only documents runs the document checks; game changes run everything, on six
+  machines with the build products from the cache (about 4 minutes).
 - [ ] **New: a security watch on the server's packages.** The game's server, lobby and relay use outside code packages that get security
   fixes. After: a weekly check lists packages with known holes, and they are updated on purpose, tested, like any change.
 - [ ] **Fix: untyped code is allowed.** Now: GDScript without types still loads (under 1 % of the game's code), so some mistakes only
@@ -275,7 +342,8 @@ budgets for every kind of asset, and checks for everything but models.
   rewards and loot 2 to 9 ms (measured on the VPS: a small hitch on a weaker PC), some code repeats work every frame, and some effects draw
   while empty. After: each one inside its budget, fixed and measured one at a time, the hitches first (KNOWN-GAPS "Performance").
 - [ ] **Fix: some test suites fail at random.** Now: a few suites fail now and then under load or on timing (KNOWN-GAPS "Tools and
-  tests"), so a red CI does not always mean a real problem. After: every suite passes every time, and red means broken.
+  tests"; the HUD suite and `qa_shots` fixed 2026-10-19), so a red CI does not always mean a real problem, and with CI as the gate (B59) a
+  random failure blocks a ship. After: every suite passes every time, and red means broken.
 - [ ] **Fix: leftovers from the web game.** Now: parts of the code still copy the old web game's exact math, and an asset list is kept by
   hand. After: plain Godot code and generated lists (KNOWN-GAPS "Leftovers from the web era").
 - [ ] **Fix: docs too long to read.** Now: `client/README.md` is 175 KB (its comparisons with the old game are gone since 2026-10-18, but
@@ -337,8 +405,9 @@ Worked through beside the phases, top first. Each change is shown to the team wi
   - Toxic corpse pools. Now: they always hurt as if at level 1. After: they hurt at the area's level.
   - The plague bearer. Now: its toxic pool never appears when it dies. After: it leaves its pool.
   - The Mourning Bell wraith. Now: its heal on the monsters around it never happens. After: it heals them, as designed.
-  - Bosses and statuses. Now: effects that make an enemy take more damage (Sanctify, a Marrow Spear's Fracture) do nothing to a boss.
-    After: they work on bosses too, so those rites shorten boss fights.
+  - Bosses and statuses. Done 2026-10-19: Fracture (Marrow Spear, Ivory Cleave, Bone Prison) did nothing to a boss → a boss takes 15% more
+    a stack, up to 45%, like any enemy, so those rites shorten boss fights. (Sanctify is an enemy priest's blessing that makes its target
+    take less; it now protects a boss too.)
 - [ ] **Fix: the look pass** (moved after launch by Helix, B49). Now: blended effects (decals, telegraphs, particles) look wider and
   brighter than in the old game, most on Low and Medium; the Depths' walls are darker; the hero reads darker in bright areas (the Coliseum,
   the Cloister, the Pyre, the Wing) and brighter in dark ones; not every area is signed off. After: every preset looks like the old game or
@@ -389,7 +458,8 @@ Worked through beside the phases, top first. Each change is shown to the team wi
   get an email address and password recovery (none exist today); chat gets reporting and moderation; a privacy policy and terms; a signed
   launcher and game so Windows does not warn new players; a review of the servers' capacity and of cheating; a licence check of every asset
   against how the game is offered (Tripo models, ElevenLabs sounds and music, the sound and effect packs); the test runs fitted to the paid
-  minutes of a private repository; and a store or download page.
+  minutes of a private repository (about $80 to $115 a month at the 2026-10-19 pace; first an Actions budget of $0 with "Stop usage", and the
+  drafts' background CI runs off, B63); and a store or download page.
 - Not planned: dedicated or VPS-hosted game sessions and host migration (the hybrid model stays, owner 2026-10-15; D6), translations, mod
   support.
 

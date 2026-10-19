@@ -74,11 +74,10 @@ function verdict(W, name) {
 }
 const run = (W, script, args, extraEnv = {}) => spawnSync('bash', [path.join(DIR, script), ...args], { cwd: W.top, env: { ...W.env, ...extraEnv }, encoding: 'utf8', timeout: 180000 });
 const probeCmd = (name) => `bash "$TOP/.probe.sh" ${name}`;
-// Stand-ins for the game's preparation (client-prep.sh outside the sandbox, client-prep-in.sh inside: its sandboxed half, where a probe runs).
+// A stand-in for the game's preparation (tools/check/prep.sh): --warm outside the sandbox, --read-only inside it, where a probe runs.
 const prepStubs = (W, inside = '') => {
-  W.w('.prep/prep.sh', 'echo "PREP core=cached bake=cached dir=/nowhere keys=a,b,c"\n');
-  W.w('.prep/prep-in.sh', `${inside}\n`);
-  return { DM_CLIENT_PREP: path.join(W.top, '.prep/prep.sh'), DM_CLIENT_PREP_IN: path.join(W.top, '.prep/prep-in.sh') };
+  W.w('.prep/prep.sh', `case " $* " in *" --warm "*) echo "PREP warm 0123456789ab: cached"; exit 0;; esac\n${inside}\n`);
+  return { DM_PREP: path.join(W.top, '.prep/prep.sh') };
 };
 
 test('sandbox: check.sh (tsc, vitest and npm scripts all run read-only except the worktree)', () => {
@@ -99,19 +98,13 @@ test('sandbox: check-godot.sh (the preparation and the suites)', () => {
   } finally { W.cleanup(); }
 });
 
-test('check-godot.sh links the main checkout\'s lobby packages into a worktree that has none (coop, coop_bosses and social start the real lobby)', () => {
+test('check-godot.sh prepares the worktree inside the sandbox (prep.sh --read-only), and the suites use what it put there (the lobby\'s packages for coop, coop_bosses and lobby/ui)', () => {
   const W = world(); try {
-    W.w('server/death-muffin/lobby/package.json', '{}\n');
     W.w('tools/rebuild/run-client-tests.sh', '[ "${1:-}" = --list ] && { echo game; exit 0; }\nr=$(cat server/death-muffin/lobby/node_modules/ws/index.js)\nprintf "%-18s %-16s exit=%d  %s\\n" game game.gd 0 "$r"\n');
-    execFileSync('git', ['-C', W.top, 'add', '-A']);
-    execFileSync('git', ['-C', W.top, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'base']);
-    W.w('server/death-muffin/lobby/node_modules/ws/index.js', 'LOBBY_WS_OK\n');   // the main checkout's install (git does not hold it)
-    const wt = path.join(W.root, 'job-wt');
-    execFileSync('git', ['-C', W.top, 'worktree', 'add', '-q', '--detach', wt]);
-    const r = spawnSync('bash', [path.join(DIR, 'check-godot.sh')], { cwd: wt, env: { ...W.env, ...prepStubs(W) }, encoding: 'utf8', timeout: 180000 });
+    const inside = 'mkdir -p server/death-muffin/lobby/node_modules/ws && echo LOBBY_WS_OK > server/death-muffin/lobby/node_modules/ws/index.js';
+    const r = run(W, 'check-godot.sh', [], prepStubs(W, inside));
     assert.equal(r.status, 0, r.stdout + r.stderr);
-    assert.equal(fs.readlinkSync(path.join(wt, 'server/death-muffin/lobby/node_modules')), path.join(W.top, 'server/death-muffin/lobby/node_modules'));
-    assert.match(r.stdout, /LOBBY_WS_OK/, 'the suites read the linked packages inside the sandbox');
+    assert.match(r.stdout, /LOBBY_WS_OK/, 'the suites read the packages the preparation copied into the worktree');
   } finally { W.cleanup(); }
 });
 

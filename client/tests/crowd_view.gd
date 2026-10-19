@@ -9,10 +9,10 @@ extends SceneTree
 ## and the time draw() takes (INFO only); the crowd's cost (README "Crowd cost"): bodies outside the camera's view not written (against the engine's own frustum planes, the drawn
 ## range packed, a caster kept while its shadow falls in), the animation bands (poses worked out per second per band, the same bytes near the hero), the shadow counters;
 ## and the alpha path (README "The alpha path"): a sinking body and a shrouded one drawn in the model's fade group at today's opacity, nothing else about their rows changed.
-## Bakes the models it needs into a scratch folder (about 25 s).
+## Gets the models it needs into a scratch folder (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd).
 ## Run: godot --headless --path client --script res://tests/crowd_view.gd
 
-const Baker := preload("res://crowd/crowd_baker.gd")
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://crowd_view_test"
 const SLUGS := ["grave_robber", "bone_hound", "skeleton_thrall"]
 const DT := 1.0 / 60.0
@@ -312,7 +312,7 @@ func _initialize() -> void:
 	live_assets = ProjectSettings.globalize_path("res://assets")
 	rows_path = ProjectSettings.globalize_path("res://game/view_models.json")
 	for slug in SLUGS:
-		var r: Dictionary = Baker.bake(root, slug, OUT.path_join(slug), {"assets_dir": live_assets, "rows_path": rows_path})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"assets_dir": live_assets, "rows_path": rows_path})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			quit(1)
@@ -1752,23 +1752,16 @@ func full_party() -> void:
 			seen_champion = true
 	check(seen_champion, "a champion thrall is drawn 1.35x")
 	glows(view, crowd, core, ids, heroes)
-	# the time draw() takes: Full Party, the core stepping, one tick and one frame each
-	var us := PackedFloat64Array()
-	var sync_us := PackedFloat64Array()
+	# Full Party, the core stepping, one tick and one frame each
 	var regrows0: int = crowd.stats().regrows
 	var same := true
 	var rows_seen := 0
 	var states := {}
 	for f in 300:
 		core.step(DT)
-		var t0 := Time.get_ticks_usec()
 		view.sync()
-		var t1 := Time.get_ticks_usec()
 		var alpha := float(f % 4) / 4.0
 		crowd.draw(DT, alpha, CAM)
-		var t2 := Time.get_ticks_usec()
-		sync_us.append(t1 - t0)
-		us.append(t2 - t1)
 		clock_ms += DT * 1000.0
 		var lf: Dictionary = crowd.last_feed()
 		guest.sync_rows(lf.body_ints, lf.body_floats, lf.hits, lf.corpse_ints, lf.corpse_floats)
@@ -1784,16 +1777,6 @@ func full_party() -> void:
 	check(same and rows_seen > 1500, "a crowd fed the same rows (a co-op guest's snapshots) draws the same buffers (%d instance rows compared)" % rows_seen)
 	check(states.has("walk") and states.has("idle") and states.keys().any(func(k: String) -> bool: return k.begins_with("attack") and k.ends_with("*")), "the party fights: %s" % str(states.keys()))
 	print("INFO the Full Party run grew the buffers %d times (a new peak in a group)" % (crowd.stats().regrows - regrows0))
-	us.sort()
-	sync_us.sort()
-	var sum := 0.0
-	var ssum := 0.0
-	for v in us:
-		sum += v
-	for v in sync_us:
-		ssum += v
-	print("INFO draw(): Full Party (%d bodies, %d drawn) over %d frames: mean %.0f us, p95 %.0f us, max %.0f us" % [crowd.stats().bodies, crowd.stats().drawn, us.size(), sum / us.size(), us[int(us.size() * 0.95)], us[us.size() - 1]])
-	print("INFO sync(): mean %.0f us, p95 %.0f us (the core's whole budget is 4000 us a frame)" % [ssum / sync_us.size(), sync_us[int(sync_us.size() * 0.95)]])
 	# a steady crowd: the same bodies for 300 frames (no tick, the frame time and interpolation changing): the buffers do not grow
 	var before: Dictionary = crowd.stats()
 	for f in 300:
@@ -2022,7 +2005,7 @@ func rims(view: CrowdView, crowd: RefCounted, core: RefCounted, enemy_ids: Array
 ## Thralls with hand props (DmEntityViews._make_thrall): a warrior with no legion or an armed one is drawn with the "<model>+warrior" variant when it is baked;
 ## a Rotweaver's (unarmed legion) stays bare; a kind whose variant is not baked keeps its plain body and says so once. A variant is never a stand-in for another model.
 func armed_variants() -> void:
-	var r: Dictionary = Baker.bake(root, "skeleton_thrall+warrior", OUT.path_join("skeleton_thrall+warrior"), {"assets_dir": live_assets, "rows_path": rows_path})
+	var r: Dictionary = DmTestBake.bake(root, "skeleton_thrall+warrior", OUT.path_join("skeleton_thrall+warrior"), {"assets_dir": live_assets, "rows_path": rows_path})
 	check(r.ok, "bake skeleton_thrall+warrior: %s" % r.get("error", ""))
 	if not r.ok:
 		return
@@ -2065,7 +2048,7 @@ func armed_variants() -> void:
 	check(int(view.crowd.view_info(t_rot).model) != int(slots["skeleton_thrall+warrior"]), "a Rotweaver's warrior is bare: its legion is unarmed")
 	view.queue_free()
 	# the Mourner's wraiths: a spectral model is see-through (the SPECTRAL shader) and never casts into the moon's shadow
-	var rw: Dictionary = Baker.bake(root, "wraith_thrall", OUT.path_join("wraith_thrall"), {"assets_dir": live_assets, "rows_path": rows_path})
+	var rw: Dictionary = DmTestBake.bake(root, "wraith_thrall", OUT.path_join("wraith_thrall"), {"assets_dir": live_assets, "rows_path": rows_path})
 	check(rw.ok, "bake wraith_thrall: %s" % rw.get("error", ""))
 	if not rw.ok:
 		return

@@ -1,7 +1,7 @@
 class_name DmSpellTooltip
 extends RefCounted
 ## Port of archive/legacy-web:src/ui/spellTooltip.ts: the player-readable data of the HUD spell card (name, control line, status, metrics, per-rite details, combat tip).
-## Pure data, golden-tested against the TS (tests/ui_parity). `discipline` is the DISCIPLINES entry ({} = none); `state` mirrors SpellTooltipState:
+## Pure data, golden-tested against the TS (tests/ui_details). `discipline` is the DISCIPLINES entry ({} = none); `state` mirrors SpellTooltipState:
 ## {empowered, locked, affordable, left (ms), key, kit (kit dict), auto (canUseAutoCombat)}.
 
 const TARGETING := {

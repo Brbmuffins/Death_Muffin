@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -24,21 +25,28 @@ namespace DeathMuffinTeam
         readonly HttpClient updateHttp = FileFetcher.CreateClient(Program.Version);
         readonly NotifyIcon tray = new NotifyIcon();
         readonly Control marshal = new Control();
-        readonly Timer heartbeatTimer = new Timer { Interval = (int)TeamLogic.HeartbeatEvery.TotalMilliseconds };
+        readonly System.Threading.CancellationTokenSource heartbeatCts = new System.Threading.CancellationTokenSource();
         readonly Timer evaluateTimer = new Timer { Interval = 1000 };
         readonly Timer updateTimer = new Timer { Interval = 30 * 1000 };
 
         readonly ToolStripMenuItem statusItem = new ToolStripMenuItem("Starting...") { Enabled = false };
         readonly ToolStripMenuItem runItem = new ToolStripMenuItem("Run now");
         readonly ToolStripMenuItem pauseItem = new ToolStripMenuItem("Pause 2 hours");
+        readonly ToolStripMenuItem afkItem = new ToolStripMenuItem(TeamLogic.AfkEndText) { Visible = false };
+        readonly ToolStripMenuItem afkShowItem = new ToolStripMenuItem(TeamLogic.AfkShowText) { Visible = false };
+        bool afkHidden;   // the person hid the AFK notice: it stays hidden until they show it or AFK mode ends
         readonly ToolStripMenuItem[] modeItems = new ToolStripMenuItem[3];
         readonly ToolStripMenuItem signItem = new ToolStripMenuItem("Sign in...");
         readonly ToolStripMenuItem startupItem = new ToolStripMenuItem("Start with Windows") { CheckOnClick = true };
 
         OfferBox box;
+        AfkNotice afkBox;
         bool signInOpen, exiting;
         int updateFailures;
         bool updateGaveUp;
+        bool updateChecking;   // one check at a time (the timer, a job's end and an offer can each start one)
+        bool wasBusy;          // the controller was running a job at the last status: its end triggers a check
+        DateTime lastUpdateCheck = DateTime.MinValue;   // (UTC) the box is shown again with every countdown tick: an offer checks at most once a minute
 
         public TrayContext(AppLog log)
         {
@@ -50,25 +58,26 @@ namespace DeathMuffinTeam
             var transport = new HttpClientTransport(HttpClientTransport.CreateClient(Program.Version));
             var api = new TeamApi(transport, new Uri(TeamUrls.ApiBase));
             var platform = new WindowsPlatform(TeamSettings.Root);
-            var runner = new JobRunner(api, folders, new FileFetcher(FileFetcher.CreateClient(Program.Version)), new ProcessGameHost(Native.TendGameWindow), platform, Native.TryHardLink);
+            DisplayWatch.Start();   // is the screen on? (a benchmark run with it off is noted)
+            var probe = new WindowsPcProbe(platform);   // one reader for both: the controller reads while a benchmark waits, the runner while a job runs
+            var runner = new JobRunner(api, folders, new FileFetcher(FileFetcher.CreateClient(Program.Version)), new ProcessGameHost(Native.TendGameWindow, platform.Launched), platform, Native.TryHardLink, probe) { ShotsPosition = Native.OffscreenPosition, WindowPosition = Native.OffscreenPositionFor, CrashRecord = Native.CrashRecord };
             controller = new TeamController(api, settings, () => settings.Save(protector), platform, runner, this, () => DateTime.UtcNow,
-                Program.Version, Environment.MachineName, new Uri(TeamUrls.SiteBase), log.Line);
+                Program.Version, Environment.MachineName, new Uri(TeamUrls.SiteBase), log.Line, probe);
 
             BuildMenu();
             try { tray.Icon = Icon.ExtractAssociatedIcon(ExePath); } catch (Exception) { tray.Icon = SystemIcons.Application; }
             tray.Text = "Death Muffin Team";
             tray.Visible = true;
 
-            heartbeatTimer.Tick += (s, e) => Guard(controller.HeartbeatAsync());
             evaluateTimer.Tick += (s, e) => Guard(controller.EvaluateAsync());
-            updateTimer.Tick += (s, e) => { updateTimer.Interval = 60 * 60 * 1000; Guard(CheckUpdateAsync()); };
-            heartbeatTimer.Start();
+            updateTimer.Tick += (s, e) => { updateTimer.Interval = 15 * 60 * 1000; Guard(CheckUpdateAsync()); };
             evaluateTimer.Start();
             updateTimer.Start();
 
             log.Line("started " + Program.Version);
             // After the message loop has started (the sign-in box, when needed, is a dialog and must not open inside the constructor).
             marshal.BeginInvoke(new Action(() => Guard(controller.StartAsync())));
+            marshal.BeginInvoke(new Action(() => Guard(controller.HeartbeatLoopAsync(heartbeatCts.Token))));   // the long poll: idles until signed in
         }
 
         // ---- The menu ------------------------------------------------------------------------------------------------------------
@@ -88,6 +97,8 @@ namespace DeathMuffinTeam
             }
             runItem.Click += (s, e) => Guard(controller.RunNowAsync());
             pauseItem.Click += (s, e) => Guard(controller.TogglePauseAsync());
+            afkItem.Click += (s, e) => controller.EndAfk();
+            afkShowItem.Click += (s, e) => OnUi(() => { afkHidden = false; afkShowItem.Visible = false; if (afkBox != null && !afkBox.Visible) { afkBox.PlaceInCorner(); afkBox.Show(); } });
             signItem.Click += (s, e) =>
             {
                 if (controller.SignedIn) Guard(SignOutAsync());
@@ -113,7 +124,7 @@ namespace DeathMuffinTeam
             menu.Items.AddRange(new ToolStripItem[]
             {
                 statusItem, new ToolStripMenuItem("Death Muffin Team " + Program.Version) { Enabled = false }, new ToolStripSeparator(),
-                runItem, pauseItem, modeMenu, new ToolStripSeparator(),
+                runItem, pauseItem, afkItem, afkShowItem, modeMenu, new ToolStripSeparator(),
                 signItem, startupItem, folderItem, logItem, new ToolStripSeparator(), quitItem,
             });
             menu.Opening += (s, e) => RefreshMenu();
@@ -156,6 +167,8 @@ namespace DeathMuffinTeam
         {
             OnUi(() =>
             {
+                if (DateTime.UtcNow - lastUpdateCheck > TimeSpan.FromMinutes(1))
+                    Guard(CheckUpdateAsync());   // a newer app first: the job is offered again after the restart (Helix's release checks ran on the old app, 2026-10-19)
                 if (box == null)
                 {
                     box = new OfferBox();
@@ -166,7 +179,49 @@ namespace DeathMuffinTeam
                 {
                     box.PlaceInCorner();
                     box.Show();   // OfferBox.ShowWithoutActivation: the keyboard and the focus stay where they were
+                    log.Line("box shown at " + box.Bounds + " (screen " + Screen.PrimaryScreen.WorkingArea + "), visible " + box.Visible + ", handle " + box.IsHandleCreated);
                 }
+            });
+        }
+
+        public void SetAfk(bool on)
+        {
+            OnUi(() =>
+            {
+                afkItem.Visible = on;
+                if (on)
+                {
+                    if (afkBox == null)
+                    {
+                        afkBox = new AfkNotice();
+                        afkBox.SetJobs(jobLines);
+                        afkBox.Ended += () => controller.EndAfk();
+                        afkBox.HideRequested += () => { afkHidden = true; afkBox.Hide(); afkShowItem.Visible = true; };
+                    }
+                    afkShowItem.Visible = afkHidden;
+                    if (!afkHidden && !afkBox.Visible)
+                    {
+                        afkBox.PlaceInCorner();
+                        afkBox.Show();   // AfkNotice.ShowWithoutActivation: the keyboard and the focus stay where they were
+                    }
+                }
+                else
+                {
+                    afkHidden = false;   // the next AFK mode shows its notice again
+                    afkShowItem.Visible = false;
+                    if (afkBox != null) afkBox.Hide();
+                }
+            });
+        }
+
+        IList<string> jobLines = new List<string>();
+
+        public void SetJobs(IList<string> lines)
+        {
+            OnUi(() =>
+            {
+                jobLines = lines;
+                if (afkBox != null) afkBox.SetJobs(lines);
             });
         }
 
@@ -180,6 +235,9 @@ namespace DeathMuffinTeam
             OnUi(() =>
             {
                 statusItem.Text = text.Length > 90 ? text.Substring(0, 87) + "..." : text;
+                bool busy = controller.IsBusy;
+                if (wasBusy && !busy) Guard(CheckUpdateAsync());   // a job just ended: update now, before the next job starts (the 15-minute check skips busy times)
+                wasBusy = busy;
                 string tip = "Death Muffin Team: " + text;
                 tray.Text = tip.Length > 63 ? tip.Substring(0, 60) + "..." : tip;   // NotifyIcon.Text takes at most 63 characters
             });
@@ -236,7 +294,15 @@ namespace DeathMuffinTeam
         /// <summary>The app's self-update (SelfUpdate.cs): never while a job runs; after a swap the new copy starts and this one closes.</summary>
         async Task CheckUpdateAsync()
         {
-            if (exiting || controller.IsBusy) return;
+            if (exiting || controller.IsBusy || updateChecking) return;
+            updateChecking = true;
+            lastUpdateCheck = DateTime.UtcNow;
+            try { await CheckUpdateOnceAsync(); }
+            finally { updateChecking = false; }
+        }
+
+        async Task CheckUpdateOnceAsync()
+        {
             TeamManifest m = await SelfUpdate.FetchAsync(updateHttp, TeamUrls.VersionUrl);
             bool newer = m != null && VersionCompare.Compare(m.Version, Program.Version) > 0;
             SelfUpdateAction act = SelfUpdate.Decide(m, Program.Version, controller.IsBusy, newer && SelfUpdate.FolderWritable(ExePath), updateFailures);
@@ -277,10 +343,11 @@ namespace DeathMuffinTeam
         {
             if (exiting) return;
             exiting = true;
-            heartbeatTimer.Stop();
+            heartbeatCts.Cancel();
             evaluateTimer.Stop();
             updateTimer.Stop();
             if (box != null) { box.Close(); box = null; }
+            if (afkBox != null) { afkBox.Close(); afkBox = null; }
             tray.Visible = false;
             tray.Dispose();
             ExitThread();

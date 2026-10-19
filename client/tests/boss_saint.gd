@@ -1,7 +1,7 @@
 extends "res://tests/boss_base.gd"
 ## The Plague Saint on the combat core (the Cloister's boss; archive/old-game:godot/tests/next_bosses/saint_part.gd on today's game, the same numbers and timing). Her rot pools are core zones with her as the
 ## source (`DmCore.add_zone`), the rot she stands in is the core's list of toxic zones (`DmCore.zones`), her adds are core bodies.
-##   - her recorded scenarios replay through the client's copy of the brain (the Plague Doctors' rot scenario among them); the generic parts (boss_base.gd): the summon at the Saint's Litter
+##   - her recorded scenarios are replayed by tests/bosses (not here) (the Plague Doctors' rot scenario among them); the generic parts (boss_base.gd): the summon at the Saint's Litter
 ##     (5 soul shards), thralls, rites, wipe, defeat, rewards;
 ##   - the censer swing and Rot Rain at today's ticks and numbers; one toxic pool per circle (r 2, 6 s, dps = the rain's damage x 0.3), credited to her, drawn by the zone visual; a hero in the rot
 ##     is hurt dps x 1 s once a second, with her core id as the source; a thrall too;
@@ -17,7 +17,6 @@ func _config() -> void:
 	boss_id = "saint"
 	load_areas = ["cloister"]
 	bakes = ["thrall_legionnaire", "skull_rat", "plague_doctor", "flagellant"]
-	replay_count = 6
 
 
 func adds(def_id := "") -> Array:

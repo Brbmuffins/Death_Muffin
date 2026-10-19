@@ -32,12 +32,9 @@ extends SceneTree
 ## Run: godot --headless --fixed-fps 60 --path client --script res://tests/warm_coverage.gd   (PACED in the runner; `-- --list` after it prints every signature, what warmed
 ## it and how often play showed it)
 
-const REAPER := 11
-const DISCIPLINES := [[2, "gravecaller"], [1, "ossuary"], [3, "mourner"], [4, "rotweaver"], [REAPER, "reaper"]]
 const BIG := 1000.0   ## health multiplier of a target that must survive the cast
 const START := {"areas": ["graves"], "offline": true, "name": "tester", "hud": true, "audio": false, "seed": 20261016, "waves": false, "wander": false, "warmup": true}
 const RARITIES := ["common", "uncommon", "rare", "epic", "legendary"]
-const REAPER_RITES := ["scythe_sweep", "scythe_throw", "reap", "wraith_walk", "soul_burst", "harvest_spin", "unleash_souls", "soul_harvest", "scythe_weave"]
 const CORPSE_RITES := ["exhume", "corpse_explosion", "grave_offering", "carrion_seed", "grave_step"]   ## aimed at a corpse
 
 
@@ -360,13 +357,38 @@ func _initialize() -> void:
 	mock_ = mock
 	var reg := await api.register("tester", "t@example.com", "pw1234")
 	api.set_token(reg.data["token"])
-	for d in DISCIPLINES:
+	for d in _disciplines():
 		await start_game(int(d[0]), String(d[1]))
 		await play_discipline(String(d[1]))
 	await finish()
 
 
 # ------------------------------------------------------------------------------------------------------------------------ a game
+
+## The playable disciplines from the data, as [class index, discipline id]: the Gravecaller first (its game also fights the boss and the waves), then the rest by class index.
+func _disciplines() -> Array:
+	var out: Array = []
+	for d: Dictionary in (DmCombatData.disciplines()["disciplines"] as Dictionary).values():
+		if DmCharacterBuild.is_playable(float(d["classIndex"])):
+			out.append([int(d["classIndex"]), String(d["id"])])
+	out.sort_custom(func(a: Array, b: Array) -> bool:
+		if (a[1] == "gravecaller") != (b[1] == "gravecaller"):
+			return a[1] == "gravecaller"
+		return int(a[0]) < int(b[0]))
+	return out
+
+
+## Every rite of a family's kit, read from the data the way the game does (hotbar, grimoire, primaries, RMB, signatures).
+func _kit_rites(family: String) -> Array:
+	var kit: Dictionary = DmContent.kit(family)
+	var out: Array = []
+	for key in ["hotbar", "grimoire", "primaries"]:
+		out.append_array(kit.get(key, []))
+	if kit.has("rmb"):
+		out.append(kit["rmb"])
+	out.append_array((kit.get("signatures", {}) as Dictionary).values())
+	return out
+
 
 ## A fresh game with a level-20 hero of class `cls`, started with the warm-up on. Everything the tree gets until `start` returns is warm.
 func start_game(cls: int, disc: String) -> void:
@@ -522,7 +544,7 @@ func play_discipline(disc: String) -> void:
 	# the rites of the kit the hotbar does not hold (the grimoire can slot them), once per kit: the first necromancer's game and the Reaper's
 	if disc == "gravecaller" or disc == "reaper":
 		for rite: String in DmRiteRegistry.ids():
-			if not cast_rites.has(rite) and (rite in REAPER_RITES) == (hero.family == "reaper"):
+			if not cast_rites.has(rite) and (rite in _kit_rites(String(hero.family))):
 				await play_rite(disc, rite)
 	await play_fight(disc)
 	if disc == "gravecaller":

@@ -126,6 +126,9 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 	var qa_preset := String(shell.opts.get("qa_preset", ""))   # a QA run's --preset= (DmMain.qa_preset): in force for this run, never saved
 	if qa_preset != "":
 		settings_store.session_set("graphics", qa_preset, false)
+	var qa_ui_scale := float(shell.opts.get("qa_ui_scale", 0.0))   # a QA run's --ui-scale= (DmMain.qa_ui_scale): Interface size for this run, never saved
+	if qa_ui_scale > 0.0:
+		settings_store.session_set("ui_scale", qa_ui_scale, false)
 	settings_store.changed.connect(func(_v: Dictionary) -> void: _apply_settings_side_effects())
 	dev_account = _is_dev_account()   # old DmGame.setup: dev_access = dev_account and the Settings toggle; everything that reads it follows below
 	dev_access = dev_account and bool(settings["dev_access"])
@@ -431,6 +434,7 @@ func _apply_settings_side_effects() -> void:
 		shell.perf.apply(settings)
 	if shell.camera != null:
 		shell.camera.reduced_motion = bool(settings["reduce_motion"])
+	shell.hitstopper.disabled = func() -> bool: return bool(settings["reduce_motion"])   # Reduce motion: no freeze on heavy hits and elite deaths either
 
 
 func set_auto_combat(on: bool) -> void:
@@ -451,6 +455,8 @@ func set_rites(new_primary: String, new_keys: Array) -> void:
 	primary = new_primary
 	keys = new_keys.duplicate()
 	DmLoadout.save_rites(hero_id, {"primary": primary, "keys": keys}, persist)
+	if vm != null:
+		vm.warm_icons([primary] + keys)   # a rite new to the bar greys without a bake in the fight
 
 
 ## The Q key and the Reliquary's Drink: a healing flask (the heal belt chip). A party guest drinks from its own bag and the host applies it.

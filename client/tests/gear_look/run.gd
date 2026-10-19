@@ -213,10 +213,8 @@ func _run() -> void:
 	await process_frame
 	var objs0 := Performance.get_monitor(Performance.OBJECT_COUNT)
 	var nodes0 := Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
-	var t0 := Time.get_ticks_usec()
 	for i in 240:
 		av4.update(1.0 / 60.0, 1.0 + float(i) * 0.05, 0, 0.0, true, 3.0)
-	var dressed_ms := (Time.get_ticks_usec() - t0) / 240000.0
 	check(Performance.get_monitor(Performance.OBJECT_COUNT) <= objs0 + 2 and Performance.get_monitor(Performance.OBJECT_NODE_COUNT) == nodes0, "240 frames of a fully dressed legendary hero allocate nothing that stays (objects %d -> %d)" % [objs0, Performance.get_monitor(Performance.OBJECT_COUNT)])
 	check(av4.c._attached.is_empty(), "no props in the per-frame calibration list")
 	var gpu := av4.find_children("*", "CPUParticles3D", true, false)
@@ -224,12 +222,6 @@ func _run() -> void:
 	for p in gpu:
 		total += (p as CPUParticles3D).amount
 	check(total <= DmGearFx.MAX_MOTES + DmGearFx.AURA_MOTES[2], "a dressed hero's particles are capped (%d)" % total)
-	var bare := await _avatar("hero_ossuary")
-	var t1 := Time.get_ticks_usec()
-	for i in 240:
-		bare.update(1.0 / 60.0, 1.0 + float(i) * 0.05, 0, 0.0, true, 3.0)
-	print("INFO perf: avatar update with full legendary dressing %.3f ms, bare %.3f ms (headless, per frame)" % [dressed_ms, (Time.get_ticks_usec() - t1) / 240000.0])
-	bare.dispose()
 	av4.dispose()
 	av5.dispose()
 
@@ -375,9 +367,7 @@ func _models() -> void:
 	for i in 90:   # (the two-piece look started loading the body on a worker thread)
 		await process_frame
 	var cold0 := DmModels.cold_loads
-	var swap_t := Time.get_ticks_usec()
 	av2.set_equipment(leg.merged({"legs": {"item_id": "leg_legion_unburied_legs", "rarity": "legendary"}}))
-	print("INFO perf: legendary swap after the two-piece prefetch %.2f ms, cold model loads %d" % [(Time.get_ticks_usec() - swap_t) / 1000.0, DmModels.cold_loads - cold0])
 	check(DmModels.cold_loads == cold0, "legendary: the swap found the body already loaded by the two-piece prefetch (no cold load)")
 	await _settle(av2)
 	check(av2.body_slug == "hero_leg_legion_unburied" and av2.c.rig_slug == "hero_leg_legion_unburied" and av2.slug == "hero_gravecaller", "legendary: three pieces swap the body to the set's hero (own body slug kept)")
@@ -463,16 +453,10 @@ func _models() -> void:
 		if DmGearModels.TIER_DRESS[t].has("k"):
 			check(float(DmGearModels.TIER_DRESS[t].k) <= 0.4, "tier %s: the glow is an accent" % t)
 
-	# ---- cost: draw calls per hero and the equip / swap work (counters; timings are INFO)
+	# ---- cost: draw calls per hero and the equip / swap work (counters)
 	var bare := await _avatar("hero_rotweaver")
 	var meshes0 := bare.find_children("*", "MeshInstance3D", true, false).size()
 	var full := {"main_hand": {"item_id": "staff_hell", "rarity": "epic"}, "off_hand": {"item_id": "grimoire_gold", "rarity": "rare"}, "chest": {"item_id": "set_rotweaver_chest", "rarity": "rare"}, "head": {"item_id": "set_rotweaver_head", "rarity": "rare"}}
-	var t0 := Time.get_ticks_usec()
-	bare.set_equipment(full)
-	var equip_ms := (Time.get_ticks_usec() - t0) / 1000.0
-	t0 = Time.get_ticks_usec()
-	bare.set_equipment({})
-	var unequip_ms := (Time.get_ticks_usec() - t0) / 1000.0
 	bare.set_equipment(full)
 	var added := bare.find_children("*", "MeshInstance3D", true, false).size() - meshes0
 	check(added == 4, "worn gear adds %d mesh instances (weapon, off-hand, helm, mantle: one each)" % added)
@@ -481,14 +465,7 @@ func _models() -> void:
 		if (obj as Node3D).visible:
 			shown += 1
 	print("INFO perf: gear props shown on a fully geared hero: %d of %d mounted (weapon, off-hand, helm, mantle; the default staff gives way)" % [shown, bare._mounts.size()])
-	print("INFO perf: equip full gear %.2f ms, unequip %.2f ms (headless)" % [equip_ms, unequip_ms])
-	var swap0 := Time.get_ticks_usec()
 	bare.set_equipment(full.merged({"legs": {"item_id": "leg_plague_choir_legs", "rarity": "legendary"}, "chest": {"item_id": "leg_plague_choir_chest", "rarity": "legendary"}, "head": {"item_id": "leg_plague_choir_head", "rarity": "legendary"}}, true))
-	print("INFO perf: legendary swap (first, model cold) %.2f ms, body %s" % [(Time.get_ticks_usec() - swap0) / 1000.0, bare.body_slug])
 	check(bare.body_slug == "hero_leg_plague_choir", "the rotweaver turns into the Plague Choir hero in a full set")
-	bare.set_equipment(full)
-	swap0 = Time.get_ticks_usec()
-	bare.set_equipment(full.merged({"legs": {"item_id": "leg_plague_choir_legs", "rarity": "legendary"}, "chest": {"item_id": "leg_plague_choir_chest", "rarity": "legendary"}, "head": {"item_id": "leg_plague_choir_head", "rarity": "legendary"}}, true))
-	print("INFO perf: legendary swap (warm) %.2f ms" % ((Time.get_ticks_usec() - swap0) / 1000.0))
 	bare.dispose()
 	scene.queue_free()

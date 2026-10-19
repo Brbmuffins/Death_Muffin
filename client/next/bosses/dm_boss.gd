@@ -31,6 +31,7 @@ var empowered: bool = false
 var summoner: int = 0                     ## peer that woke it
 var host_node: DmBossHost
 var brain: DmBossBrain                    ## host only
+var last_dealt := 0.0                     ## host: the last blow after the status set's damage-taken multiplier (take_damage)
 var world: DmBossNodeWorld                ## host only
 var bstate := DmBossState.new()           ## what DmBossView reads (every peer)
 var view: DmBossView
@@ -155,13 +156,16 @@ func finish(killed: bool) -> void:
 
 
 ## A blow: from a rite (the host's `damage` call), a thrall (EV_THRALL_HIT_EXTERNAL) or a DoT lump of its status set. `from` is the hero body or thrall owner that
-## gets the kill (the brain's `last_hit_by` is its peer). The status set's damage-taken multiplier is not applied: the brain takes the blow as it is.
+## gets the kill (the brain's `last_hit_by` is its peer). Like every body's, the blow is first scaled by its status set's damage-taken multiplier (a player's Fracture,
+## Sanctified: DmStatusSet.scale_taken); the brain's own Fracture (the Abbess's broken niches) is a separate source and multiplies with it. `last_dealt` is the blow after
+## the status multiplier (DmCoreHost.damage reports it).
 func take_damage(amount: float, from: Node = null, _allow_stagger: bool = true) -> bool:
 	if brain == null or not is_multiplayer_authority() or not is_hittable():
 		return false
-	brain.damage(amount, _credit(from), 0)   # Fracture is the brain's, never passed in
+	last_dealt = DmStatusSet.scale_taken(self, amount)
+	brain.damage(last_dealt, _credit(from), 0)   # (the third argument adds to the brain's own Fracture: only the Abbess's niches do)
 	hp = maxf(0.0, float(brain.state["hp"]))
-	damaged.emit(amount, hp, from)
+	damaged.emit(last_dealt, hp, from)
 	if hp <= 0.0:
 		brain.update(0.0)   # the brain reports the defeat now, not next tick
 		_mirror()

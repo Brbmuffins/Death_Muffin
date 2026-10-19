@@ -147,10 +147,15 @@ namespace DeathMuffinTeam.Tests
         public readonly Dictionary<string, byte[]> UploadedBytes = new Dictionary<string, byte[]>();
         public string DoneLog, FailLog, FailError, DoneJob, FailJob;
         public IList<string> DoneFiles;
+        /// <summary>What a `bench` job's done carried.</summary>
+        public List<Dictionary<string, object>> DoneRuns;
         public double DoneDownloadS, DoneRunS;
         public readonly List<string> Declines = new List<string>();
         public PcState LastState;
         public OfferMode LastMode;
+        /// <summary>The `wait` of the last heartbeat (0 for a heartbeat that asks to be answered at once) and of every one.</summary>
+        public int LastWait;
+        public readonly List<int> Waits = new List<int>();
         public string LastPcId, LastName, LastVersion, LastGpu, LastClaimToken, LastLoginUser, LastLoginPassword, LastLoginPcId, LastLoginPcName;
 
         public Func<ApiResult> Login = () => Ok(new Dictionary<string, object> { { "token", "tok-1" }, { "expiresAt", "2027-01-17T12:00:00Z" }, { "accountId", 100.0 }, { "username", "Helix" } });
@@ -185,8 +190,15 @@ namespace DeathMuffinTeam.Tests
         public Task<ApiResult> LogoutAsync(CancellationToken ct) { Log("logout " + Token); return Task.FromResult(Logout()); }
         public Task<ApiResult> HeartbeatAsync(string pcId, string name, string version, string gpu, OfferMode mode, PcState state, CancellationToken ct)
         {
-            Log("heartbeat"); LastPcId = pcId; LastName = name; LastVersion = version; LastGpu = gpu; LastMode = mode; LastState = state;
-            return Task.FromResult(Heartbeat());
+            return HeartbeatAsync(pcId, name, version, gpu, mode, state, 0, ct);
+        }
+        public Task<ApiResult> HeartbeatAsync(string pcId, string name, string version, string gpu, OfferMode mode, PcState state, int waitS, CancellationToken ct)
+        {
+            Log("heartbeat"); LastPcId = pcId; LastName = name; LastVersion = version; LastGpu = gpu; LastMode = mode; LastState = state; LastWait = waitS;
+            lock (Waits) Waits.Add(waitS);
+            var answer = Heartbeat();
+            ct.ThrowIfCancellationRequested();   // a heartbeat in flight when the app closes ends with the cancellation, as an HTTP request would
+            return Task.FromResult(answer);
         }
         public Task<ApiResult> ClaimAsync(string jobId, string pcId, CancellationToken ct) { Log("claim " + jobId); LastClaimToken = Token; return Task.FromResult(Claim(jobId)); }
         public Task<ApiResult> DeclineAsync(string jobId, string pcId, string reason, CancellationToken ct) { Log("decline " + jobId + " " + reason); lock (Declines) Declines.Add(jobId + ":" + reason); return Task.FromResult(Ok(new Dictionary<string, object>())); }
@@ -202,10 +214,24 @@ namespace DeathMuffinTeam.Tests
             Log("done " + jobId); DoneJob = jobId; DoneFiles = files.ToList(); DoneLog = log; DoneDownloadS = downloadS; DoneRunS = runS;
             return Task.FromResult(Done());
         }
-        public Task<ApiResult> FailAsync(string jobId, string error, string log, CancellationToken ct)
+        public Task<ApiResult> DoneBenchAsync(string jobId, IList<Dictionary<string, object>> runs, string log, double downloadS, double runS, CancellationToken ct)
         {
-            Log("fail " + jobId); FailJob = jobId; FailError = error; FailLog = log;
+            Log("done " + jobId); DoneJob = jobId; DoneFiles = new List<string>(); DoneRuns = runs.ToList(); DoneLog = log; DoneDownloadS = downloadS; DoneRunS = runS;
+            return Task.FromResult(Done());
+        }
+        public Task<ApiResult> FailAsync(string jobId, string error, string log, CancellationToken ct) { return FailAsync(jobId, error, log, null, ct); }
+        public Task<ApiResult> FailAsync(string jobId, string error, string log, IList<StepReport> steps, CancellationToken ct)
+        {
+            Log("fail " + jobId); FailJob = jobId; FailError = error; FailLog = log; FailSteps = steps == null ? null : steps.ToList();
             return Task.FromResult(Fail());
+        }
+        /// <summary>What a `release` job's done carried: how each step went, the files it uploaded, the bench step's runs.</summary>
+        public List<StepReport> DoneSteps;
+        public List<StepReport> FailSteps;
+        public Task<ApiResult> DoneReleaseAsync(string jobId, IList<StepReport> steps, IList<string> files, IList<Dictionary<string, object>> runs, string log, double downloadS, double runS, CancellationToken ct)
+        {
+            Log("done " + jobId); DoneJob = jobId; DoneSteps = steps.ToList(); DoneFiles = files.ToList(); DoneRuns = runs == null ? null : runs.ToList(); DoneLog = log; DoneDownloadS = downloadS; DoneRunS = runS;
+            return Task.FromResult(Done());
         }
     }
 
@@ -218,17 +244,30 @@ namespace DeathMuffinTeam.Tests
         public Func<GameLaunch, string, int?> Behaviour;
         public bool ThrowOnStart;
         public int Killed;
+        /// <summary>How many times a process is asked whether it has exited before it says yes (0: at once), for the processes started after this is set (a Behaviour may set it for its own run).
+        /// A run that has to last a while for the PC to be read during it.</summary>
+        public int RunPolls;
         static int nextPid = 5000;
 
         public FakeGameHost() { Behaviour = (l, dir) => { File.WriteAllBytes(Path.Combine(dir, "bag-open.png"), Util.FakePng(1)); File.WriteAllBytes(Path.Combine(dir, "hero view.png"), Util.FakePng(2)); return 0; }; }
 
-        public static string ShotsDir(GameLaunch l)
+        static string ArgValue(GameLaunch l, params string[] names)
         {
-            string a = l.Args.First(x => x.StartsWith("--shots="));
-            return a.Substring("--shots=".Length);
+            string a = l.Args.First(x => names.Any(n => x.StartsWith(n + "=")));
+            return a.Substring(a.IndexOf('=') + 1);
         }
 
-        public static string Preset(GameLaunch l) { return l.Args.First(x => x.StartsWith("--preset=")).Substring("--preset=".Length); }
+        /// <summary>What a run prints (what the app reads `BOOT OK` from): the same for every run unless a test sets this.</summary>
+        public Func<GameLaunch, string> OutputFor;
+
+        /// <summary>Where the run puts its files: the shots folder, a clip run's `--clips` folder, a benchmark's `--bench-dir`, a QA scenario's `--stutter-out` or `--soak-out`; a run with none (a boot check) has its LOCALAPPDATA.</summary>
+        public static string ShotsDir(GameLaunch l)
+        {
+            string a = l.Args.FirstOrDefault(x => new[] { "--shots", "--clips", "--bench-dir", "--stutter-out", "--soak-out" }.Any(n => x.StartsWith(n + "=")));
+            return a == null ? l.LocalAppData : a.Substring(a.IndexOf('=') + 1);
+        }
+
+        public static string Preset(GameLaunch l) { return ArgValue(l, "--preset", "--bench-preset"); }
 
         public IGameProcess Start(GameLaunch l)
         {
@@ -237,21 +276,24 @@ namespace DeathMuffinTeam.Tests
             string dir = ShotsDir(l);
             Directory.CreateDirectory(dir);
             int? code = Behaviour(l, dir);
-            return new FakeProcess(this, Interlocked.Increment(ref nextPid), code);
+            return new FakeProcess(this, Interlocked.Increment(ref nextPid), code, l);
         }
 
         sealed class FakeProcess : IGameProcess
         {
             readonly FakeGameHost host;
             readonly int? code;
+            readonly int runPolls;
             bool killed;
-            public FakeProcess(FakeGameHost host, int pid, int? code) { this.host = host; Id = pid; this.code = code; }
+            int polls;
+            readonly GameLaunch launch;
+            public FakeProcess(FakeGameHost host, int pid, int? code, GameLaunch launch) { this.host = host; Id = pid; this.code = code; runPolls = host.RunPolls; this.launch = launch; }
             public int Id { get; private set; }
-            public bool HasExited { get { return killed || code.HasValue; } }
+            public bool HasExited { get { return killed || (code.HasValue && ++polls > runPolls); } }
             public int ExitCode { get { return killed ? -1 : code ?? -1; } }
             public void Kill() { if (!killed) { killed = true; host.Killed++; } }
             public void Tend() { }
-            public string Output() { return "QA-SHOTS fake game output"; }
+            public string Output() { return host.OutputFor == null ? "QA-SHOTS fake game output" : host.OutputFor(launch); }
             public void Dispose() { }
         }
     }
@@ -262,6 +304,39 @@ namespace DeathMuffinTeam.Tests
         public int Begins;
         public void Begin() { Begins++; }
         public bool PlayerStarted(int ownPid) { return Started; }
+        public string LastSeen { get { return Started ? "DeathMuffin.exe pid 1 at C:/Games/DeathMuffin.exe" : ""; } }
+    }
+
+    /// <summary>
+    /// The PC as a script on a clock of its own: every Read advances <see cref="Step"/> and returns <see cref="Script"/>'s answer for it, so a minute of quiet is 60 reads and no waiting.
+    /// The default PC is quiet: nothing else running, long idle, the job's game using 40%.
+    /// </summary>
+    sealed class FakePcProbe : IPcProbe
+    {
+        public TimeSpan Step = TimeSpan.FromSeconds(1);
+        public TimeSpan Clock = TimeSpan.FromSeconds(1000);
+        public int Reads;
+        public readonly List<int> Pids = new List<int>();
+        /// <summary>(read number, clock, game pid) -> the reading. The reading's own time and the game's share are filled in after when left at their defaults.</summary>
+        public Func<int, TimeSpan, int, PcSample> Script;
+        /// <summary>When the last key or mouse input was, on the same clock (the default is long ago).</summary>
+        public TimeSpan LastInput = TimeSpan.FromSeconds(-100000);
+
+        public FakePcProbe() { Script = (n, t, pid) => new PcSample { CpuTotal = 3 + (pid > 0 ? 40 : 0), CpuGame = pid > 0 ? 40 : 0 }; }
+
+        public PcSample Read(int gamePid)
+        {
+            Reads++;
+            Pids.Add(gamePid);
+            Clock += Step;
+            PcSample s = Script(Reads, Clock, gamePid);
+            s.At = Clock;
+            s.IdleS = (Clock - LastInput).TotalSeconds;
+            return s;
+        }
+
+        /// <summary>Someone presses a key now (the next reading says so).</summary>
+        public void Touch() { LastInput = Clock + Step; }
     }
 
     sealed class FakeProtector : ITokenProtector
@@ -307,6 +382,13 @@ namespace DeathMuffinTeam.Tests
         public void Notify(string title, string text, bool error) { Notices.Add(title + ": " + text); }
         public void NeedSignIn(string reason, bool openNow) { SignInReason = reason; SignInOpenNow = openNow; SignInCalls++; }
         public void Stopped(string message) { StoppedMessage = message; }
+        public bool Afk;
+        public readonly List<bool> AfkChanges = new List<bool>();
+        public void SetAfk(bool on) { Afk = on; AfkChanges.Add(on); }
+        public List<string> JobLines = new List<string>();
+        public int JobUpdates;
+        readonly object jobsLock = new object();
+        public void SetJobs(IList<string> lines) { lock (jobsLock) { JobLines = new List<string>(lines); JobUpdates++; } }
     }
 
     sealed class FakeRunner : IJobRunner
@@ -315,19 +397,21 @@ namespace DeathMuffinTeam.Tests
         public JobPlan LastPlan;
         public RunResult Result = new RunResult { Ok = true, Files = new List<string> { "low_a.png" } };
         public TaskCompletionSource<int> Gate;
-        public CancellationToken LastToken;
+        public CancellationToken LastToken, LastCancel;
         public Exception Throw;
 
-        public async Task<RunResult> RunAsync(string jobId, JobPlan plan, Action<string> progress, CancellationToken ct)
+        public async Task<RunResult> RunAsync(string jobId, JobPlan plan, Action<string> progress, CancellationToken ct, CancellationToken cancelled)
         {
             Ran.Add(jobId);
             LastPlan = plan;
             LastToken = ct;
+            LastCancel = cancelled;
             progress("running " + jobId);
             if (Throw != null) throw Throw;
             if (Gate != null)
             {
-                var done = await Task.WhenAny(Gate.Task, Task.Delay(Timeout.Infinite, ct)).ConfigureAwait(false);
+                var done = await Task.WhenAny(Gate.Task, Task.Delay(Timeout.Infinite, ct), Task.Delay(Timeout.Infinite, cancelled)).ConfigureAwait(false);
+                if (cancelled.IsCancellationRequested) return new RunResult { Ok = false, Cancelled = true, Error = "The job was cancelled." };
                 if (ct.IsCancellationRequested) return new RunResult { Ok = false, Error = "stopped: the team app was closed" };
             }
             return Result;

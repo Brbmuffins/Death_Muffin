@@ -1,7 +1,7 @@
 extends "res://tests/boss_base.gd"
 ## The Bell-Sworn Prelate on the combat core (the Bell Sanctum's boss, woken with the Sundered Bell; archive/old-game:godot/tests/next_bosses/prelate_part.gd on today's game, the same numbers and timing). Her
 ## Procession is core bodies (the Risen and the Bellbound Penitent), her echoes are the world's vows.
-##   - her recorded scenarios replay through the client's copy of the brain, Prelate Echoes I, II and III among them; the generic parts (boss_base.gd): the bell (5 soul shards), thralls,
+##   - her recorded scenarios are replayed by tests/bosses (not here), Prelate Echoes I, II and III among them; the generic parts (boss_base.gd): the bell (5 soul shards), thralls,
 ##     rites, wipe, defeat, rewards;
 ##   - the bell takes its shards through `spend_shards` and owes the run a Prelate summon; Slam, Toll and Bell Rain at today's ticks and numbers; the cooldown scale of each phase; each phase's
 ##     Procession from the four aisle spots (the last two a step further along in phase 3), not elite, counted as Sanctum enemies;
@@ -17,7 +17,6 @@ func _config() -> void:
 	boss_id = "prelate"
 	load_areas = ["sanctum"]
 	bakes = ["thrall_legionnaire", "penitent", "skeleton_thrall"]
-	replay_count = 8
 
 
 func adds(def_id := "") -> Array:

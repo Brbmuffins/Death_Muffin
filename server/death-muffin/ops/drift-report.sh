@@ -7,6 +7,8 @@ REPO="${REPO:-/home/ubuntu/vps-handoffs/DeathMuffin/game}"
 DM="${DM_HOME:-/home/ubuntu/death-muffin}"
 WWW="${WWW:-/var/www/death-muffin}"
 WEBHOOK_FILE="${WEBHOOK_FILE:-$DM/private/discord-build-alerts-webhook.url}"   # #build-alerts
+GH_TOKEN_FILE="${GH_TOKEN_FILE:-$DM/private/github-api-token}"   # the read-only token tools/check/ci.sh sends to GitHub
+GH_API="${GH_API:-https://api.github.com}"
 REV=origin/main
 DISCORD=0; ALWAYS=0; JSON=0
 for a in "$@"; do case "$a" in
@@ -69,8 +71,10 @@ compare_exact() {
 section "1. Installed agent and ops copies"
 SRC=server/death-muffin/discord-agent
 LIST="$(g ls-tree -r --name-only "$REV" -- "$SRC/runner" | sed "s#^$SRC/##")
-ship.sh rollback.sh sandbox-lib.sh check.sh check-godot.sh client-prep.sh client-prep-in.sh regen.sh shot.sh shoot.cjs shot-godot.sh label-shot.py render-model.sh render-model.py art-run.sh build-art.sh sound-run.mjs build-sound.sh sound-build.mjs preview.sh preview-godot.sh agit wait-for-ship.sh reports-cli.cjs PROMPT.md PROMPT-godot.md config.example.json death-muffin-discord-agent.service"
+ship.sh rollback.sh sandbox-lib.sh check.sh check-godot.sh regen.sh shot.sh shoot.cjs shot-godot.sh label-shot.py render-model.sh render-model.py art-run.sh build-art.sh sound-run.mjs build-sound.sh sound-build.mjs preview.sh preview-godot.sh agit wait-for-ship.sh reports-cli.cjs PROMPT.md PROMPT-godot.md config.example.json death-muffin-discord-agent.service"
 for f in $(echo $LIST); do compare_exact "$SRC/$f" "$DM/discord-agent/$f" "discord-agent/$f"; done
+compare_exact tools/check/prep.sh "$DM/discord-agent/prep.sh" "discord-agent/prep.sh"
+compare_exact tools/check/ci.sh "$DM/discord-agent/ci.sh" "discord-agent/ci.sh"
 for f in common gemini tripo; do compare_exact "tools/ai/$f.mjs" "$DM/discord-agent/art-tools/tools/ai/$f.mjs" "discord-agent/art-tools/tools/ai/$f.mjs"; done
 compare_exact "$SRC/death-muffin-discord-agent.service" /etc/systemd/system/death-muffin-discord-agent.service "systemd death-muffin-discord-agent.service"
 # the ops jobs themselves (this script included: an installed copy left behind once kept reporting a retired agent)
@@ -201,6 +205,34 @@ if [ ! -d "$BD" ]; then drift "no DB backup directory ($BD)"; else
     [ "$h" -gt 36 ] && drift "newest DB backup is ${h}h old ($(basename "${NEW#* }"))" || info "newest DB backup ${h}h old ($(basename "${NEW#* }"))"
   fi
 fi
+
+# check_github_token: tools/check/ci.sh (the agent's and the sessions' CI verdict) sends this token; GitHub rate_limit is a free call. Drift when the
+# file is missing, GitHub refuses the token (401), or its expiry (header github-authentication-token-expiration) is under 14 days away.
+GH_TOKEN_HOWTO="Muffins (brbmuffins, the repo owner) makes a new one on github.com -> Settings -> Developer settings -> Fine-grained tokens (\"Public repositories (read-only)\") and DMs it to Muffin Core."
+check_github_token() {
+  if [ ! -s "$GH_TOKEN_FILE" ]; then
+    drift "the GitHub token file is missing ($GH_TOKEN_FILE), so CI checks run on the 60-calls-an-hour limit and the agent can be left without a verdict. $GH_TOKEN_HOWTO"; return
+  fi
+  local code hdr="$TMP/gh-token.hdr" exp ts days
+  # the token goes in on stdin, never in the command line
+  code=$(printf 'header = "Authorization: Bearer %s"\n' "$(tr -d '[:space:]' < "$GH_TOKEN_FILE")" | curl -s -m 15 -K - -o /dev/null -D "$hdr" -w '%{http_code}' -H 'Accept: application/vnd.github+json' "$GH_API/rate_limit" 2>/dev/null || echo 000)
+  case "$code" in
+    401) drift "GitHub refuses the CI token (expired or revoked): CI checks fall back to 60 calls an hour and can leave the agent without a verdict. $GH_TOKEN_HOWTO"; return;;
+    200) ;;
+    000) info "GitHub token not checked: could not reach GitHub"; return;;
+    *) info "GitHub token not checked: GitHub answered $code"; return;;
+  esac
+  exp=$(grep -i '^github-authentication-token-expiration:' "$hdr" 2>/dev/null | head -1 | cut -d' ' -f2- | tr -d '\r')
+  if [ -z "$exp" ]; then info "GitHub token works (no expiry date)"; return; fi
+  ts=$(date -d "$exp" +%s 2>/dev/null) || { info "GitHub token works (expiry date not understood: $exp)"; return; }
+  days=$(( (ts - $(date +%s)) / 86400 ))
+  if [ "$days" -lt 14 ]; then drift "the GitHub token for CI checks runs out in ${days} day(s) (on $exp); after that CI checks fall back to 60 calls an hour. $GH_TOKEN_HOWTO"
+  else info "GitHub token works, expires in ${days} days"; fi
+}
+
+# 10. GitHub token
+section "10. GitHub token for CI checks"
+check_github_token
 
 # Report
 NDRIFT="$(grep -c $'\tdrift\t' "$REC")"

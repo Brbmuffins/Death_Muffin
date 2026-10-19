@@ -298,8 +298,10 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		add_child(hooks)
 		hooks.setup(self)
 	if _visual:
-		enemy_fx.warm(local_body().global_position)
-		bosses.warm(local_body().global_position)
+		# A co-op guest's own hero can still be on its way from the host here: warm at the origin then (where only matters for the cover).
+		var warm_at := local_body().global_position if local_body() != null else Vector3.ZERO
+		enemy_fx.warm(warm_at)
+		bosses.warm(warm_at)
 		DmRiteFx.with_autoloads().warm()
 		# Every model, effect and area lighting drawn once under a cover, so no shader compiles mid-play (client/next/perf/dm_next_warmup.gd): for players
 		# (`_wants_warmup`); `opts.warmup` overrides it.
@@ -417,6 +419,7 @@ func _start_hud() -> void:
 		if a != null:
 			a.play_sfx(n))
 	await ui.warm()
+	ui_host.vm.warm_icons()   # the bar's greyed rites (a slot greys when its rite cannot be cast: baked now, not in the fight)
 	if codex != null:
 		codex.seed_ui()
 	if belt() != null:
@@ -597,15 +600,19 @@ func _player_settings() -> Dictionary:
 	return DmSettings.new(DmSettings.FILE, true).values if opts.get("hud", false) == true else {}
 
 
-## What the game starts with: `opts.settings` (tests) or the player's own, with a QA run's graphics preset on top (`opts.qa_preset`, from `--preset=`, DmMain.qa_preset). The preset is in force
+## What the game starts with: `opts.settings` (tests) or the player's own, with a QA run's graphics preset (`opts.qa_preset`, from `--preset=`, DmMain.qa_preset) and Interface size (`opts.qa_ui_scale`, `--ui-scale=`) on top. They are in force
 ## for the run only: the UI host's DmSettings holds it on loan (`session_set`) and never writes it.
 func _start_settings() -> Dictionary:
 	var s: Dictionary = opts["settings"] if opts.has("settings") else _player_settings()
 	var preset := String(opts.get("qa_preset", ""))
-	if preset == "":
+	var ui_scale := float(opts.get("qa_ui_scale", 0.0))   # `--ui-scale=` (DmMain.qa_ui_scale): Settings' Interface size, the same way
+	if preset == "" and ui_scale <= 0.0:
 		return s
 	s = s.duplicate()
-	s["graphics"] = preset
+	if preset != "":
+		s["graphics"] = preset
+	if ui_scale > 0.0:
+		s["ui_scale"] = ui_scale
 	return s
 
 
@@ -791,7 +798,7 @@ func respawn_point() -> Vector3:
 	return world.spawn_point()
 
 
-## The warm-up runs for players: not on a headless run, and not on a QA or screenshot run (`--qa`, `--shot-plan=`), where software GL
+## The warm-up runs for players: not on a headless run, and not on a QA, screenshot or clip run (`--qa`, `--shot-plan=`, `--clip-plan=`), where software GL
 ## spends minutes on it and nobody plays. `--warmup` forces it; `opts.warmup` overrides all of it (the benchmark: on; the look and HUD tools: off).
 static func _wants_warmup(args: PackedStringArray = OS.get_cmdline_user_args(), display: String = DisplayServer.get_name()) -> bool:
 	if "--warmup" in args:
@@ -799,7 +806,7 @@ static func _wants_warmup(args: PackedStringArray = OS.get_cmdline_user_args(), 
 	if display == "headless":
 		return false
 	for a in args:
-		if a == "--qa" or a.begins_with("--shot-plan="):
+		if a == "--qa" or a.begins_with("--shot-plan=") or a.begins_with("--clip-plan="):
 			return false
 	return true
 
@@ -837,6 +844,8 @@ func flush_all() -> void:
 		await rewards.end_session({})
 	if chron != null:
 		await chron.flush()
+	if gather != null and gather.loop != null:
+		await gather.loop.flush()   # the cycles since its last batch (it sends every 8 s): leaving or closing mid-gather kept them before
 	if progress != null:
 		await progress.flush_all()
 	if loot != null and loot.inventory != null:

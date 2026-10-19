@@ -56,9 +56,36 @@ namespace DeathMuffinTeam
         /// <summary>Mode "ask": a box nobody answered runs by itself after this long.</summary>
         public static readonly TimeSpan AutoRunAfter = TimeSpan.FromMinutes(5);
         public static readonly TimeSpan PauseFor = TimeSpan.FromHours(2);
-        public static readonly TimeSpan HeartbeatEvery = TimeSpan.FromSeconds(30);
-        /// <summary>One preset's run is stopped after this long.</summary>
+        /// <summary>
+        /// The heartbeat is a long poll: it asks the server to hold it up to this many seconds while it has nothing to say, so an offer or a cancel reaches the PC in about a second, and the next one is sent
+        /// right after the answer.
+        /// </summary>
+        public const int HeartbeatWaitS = 25;
+        /// <summary>A heartbeat gets this long (the server holds it up to <see cref="HeartbeatWaitS"/>) before the app gives up on it.</summary>
+        public static readonly TimeSpan HeartbeatTimeout = TimeSpan.FromSeconds(40);
+        /// <summary>The wait after a heartbeat that failed: the first time, the second, the third and every time after.</summary>
+        public static readonly TimeSpan[] HeartbeatBackoff = { TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30) };
+        /// <summary>
+        /// A heartbeat with nothing new in its answer is not followed by another sooner than this after it was sent: a server that does not hold requests (an older one), an offer that waits for a yes (the server
+        /// answers at once while one is queued for this PC) or a cancel list the PC already knows would otherwise be asked again and again without a pause.
+        /// </summary>
+        public static readonly TimeSpan HeartbeatMinCycle = TimeSpan.FromSeconds(5);
+
+        /// <summary>
+        /// How long to wait before the next heartbeat. After <paramref name="failures"/> failures in a row: 5 s, then 15 s, then 30 s (and 30 s after that). After an answer with something new (an offer
+        /// the PC had not seen, or a cancel of the job it runs): none. After any other answer: what is left of <see cref="HeartbeatMinCycle"/> since it was sent (none when the server held it for long).
+        /// </summary>
+        public static TimeSpan HeartbeatPause(int failures, bool news, TimeSpan sinceSent)
+        {
+            if (failures > 0) return HeartbeatBackoff[Math.Min(failures, HeartbeatBackoff.Length) - 1];
+            if (news) return TimeSpan.Zero;
+            TimeSpan left = HeartbeatMinCycle - sinceSent;
+            return left > TimeSpan.Zero ? left : TimeSpan.Zero;
+        }
+        /// <summary>One game run (a screenshots preset, a clip variant) is stopped after this long.</summary>
         public static readonly TimeSpan RunLimit = TimeSpan.FromMinutes(10);
+        /// <summary>One benchmark setup's run is stopped after this long.</summary>
+        public static readonly TimeSpan BenchRunLimit = TimeSpan.FromMinutes(15);
         public const int KeepJobFolders = 3;
         public const int KeepCacheKeys = 4;
 
@@ -66,9 +93,10 @@ namespace DeathMuffinTeam
         /// The one decision about an offered job. A yes always runs it. A no or a pause declines it. A paused PC declines everything. Otherwise a full-screen
         /// app (a game, a film, a presentation), Death Muffin itself, or a laptop on battery means "not now, and not visibly": the box stays hidden and the job
         /// waits for that to end. With nothing in the way, mode auto runs, mode yes asks forever, and mode ask asks and runs by itself once the box has
-        /// been up for five minutes without an answer (<paramref name="elapsed"/> counts from when the box was shown, so a wait never eats it).
+        /// been up for five minutes without an answer (<paramref name="elapsed"/> counts from when the box was shown, so a wait never eats it). In AFK mode
+        /// (<paramref name="afk"/>, mode ask only: the person has been away since a box ran out) a job runs at once, with no box and no wait.
         /// </summary>
-        public static OfferDecision Decide(OfferMode mode, OfferAnswer answer, TimeSpan elapsed, bool fullscreen, bool gameRunning, bool onBattery, bool paused)
+        public static OfferDecision Decide(OfferMode mode, OfferAnswer answer, TimeSpan elapsed, bool fullscreen, bool gameRunning, bool onBattery, bool paused, bool afk = false)
         {
             if (answer == OfferAnswer.Yes) return OfferDecision.Run;
             if (answer == OfferAnswer.NotNow || answer == OfferAnswer.Pause) return OfferDecision.Decline;
@@ -76,8 +104,71 @@ namespace DeathMuffinTeam
             if (fullscreen || gameRunning || onBattery) return OfferDecision.Wait;
             if (mode == OfferMode.Auto) return OfferDecision.Run;
             if (mode == OfferMode.Yes) return OfferDecision.Ask;
+            if (afk) return OfferDecision.Run;
             return elapsed >= AutoRunAfter ? OfferDecision.Run : OfferDecision.Ask;
         }
+
+        /// <summary>The notice's words while AFK mode is on, and its button.</summary>
+        public const string AfkText = "AFK mode on: jobs run right away";
+        public const string AfkEndText = "End AFK mode";
+        public const string AfkHideText = "Hide";
+        public const string AfkShowText = "Show AFK notice";
+        /// <summary>How many queued jobs the AFK notice names before "and N more".</summary>
+        public const int AfkQueueShown = 3;
+
+        /// <summary>
+        /// The AFK notice's job lines (Helix 2026-10-19: "display what the current job queue is and which one is currently running"): "Running: &lt;title&gt;" with the job's latest step on the
+        /// next line, or "Waiting for a quiet PC: &lt;title&gt;" for an accepted benchmark, or "Nothing is running"; then "Queued: N" and the first <see cref="AfkQueueShown"/> as
+        /// "· &lt;title&gt;, about N minutes" with "· and N more" after them, or "Nothing is queued". A queued job that is the running or the waiting one is not listed twice.
+        /// </summary>
+        public static List<string> AfkJobLines(string runningId, string runningTitle, string runningStep, string waitingId, string waitingTitle, IList<QueuedJob> queue)
+        {
+            var lines = new List<string>();
+            bool isRunning = !string.IsNullOrEmpty(runningId);
+            if (isRunning)
+            {
+                lines.Add("Running: " + Name(runningTitle, ""));
+                if (!string.IsNullOrEmpty(runningStep)) lines.Add("   " + runningStep);
+            }
+            if (!string.IsNullOrEmpty(waitingId)) lines.Add("Waiting for a quiet PC: " + Name(waitingTitle, JobPlan.BenchKind));
+            if (!isRunning && string.IsNullOrEmpty(waitingId)) lines.Add("Nothing is running");
+            var rest = new List<QueuedJob>();
+            if (queue != null)
+                foreach (QueuedJob q in queue)
+                    if (q != null && q.Id != runningId && q.Id != waitingId) rest.Add(q);
+            if (rest.Count == 0) { lines.Add("Nothing is queued"); return lines; }
+            lines.Add("Queued: " + rest.Count + (rest.Count >= TeamApi.MaxQueue ? " or more" : ""));
+            for (int i = 0; i < rest.Count && i < AfkQueueShown; i++) lines.Add("· " + OfferText(rest[i].Kind, rest[i].Title, rest[i].WeightS));
+            if (rest.Count > AfkQueueShown) lines.Add("· and " + (rest.Count - AfkQueueShown) + " more");
+            return lines;
+        }
+
+        static string Name(string title, string kind)
+        {
+            title = (title ?? "").Trim();
+            return title.Length > 0 ? title : DefaultTitle(kind);
+        }
+
+        /// <summary>
+        /// True when this decision switches AFK mode on: mode ask, nobody answered, the box has been up its five minutes and the job runs by itself. A yes (Run now), the other modes (they never ask, or never
+        /// run by themselves) and a decision that is not Run never do.
+        /// </summary>
+        public static bool EntersAfk(OfferMode mode, OfferAnswer answer, TimeSpan elapsed, OfferDecision decision, bool afk)
+        {
+            return !afk && mode == OfferMode.Ask && answer == OfferAnswer.None && decision == OfferDecision.Run && elapsed >= AutoRunAfter;
+        }
+
+        /// <summary>Why AFK mode ends by itself, in plain words, or "" when it goes on: the player started Death Muffin or a full-screen app came up (they are back), or the PC was paused.</summary>
+        public static string AfkEndReason(bool afk, bool gameRunning, bool fullscreen, bool paused)
+        {
+            if (!afk) return "";
+            if (gameRunning) return "Death Muffin was started";
+            if (fullscreen) return "a full-screen app came up";
+            if (paused) return "the PC was paused";
+            return "";
+        }
+
+        public static bool LeavesAfk(bool afk, bool gameRunning, bool fullscreen, bool paused) { return AfkEndReason(afk, gameRunning, fullscreen, paused).Length > 0; }
 
         /// <summary>The reason the server records for a decline: not_now (the person said no) or paused (a pause, or they chose Pause 2 hours).</summary>
         public static string DeclineReason(OfferAnswer answer, bool paused)
@@ -105,11 +196,45 @@ namespace DeathMuffinTeam
         }
 
         /// <summary>The box's first line: what the job is and how heavy ("Screenshots of a change, about 1 minute").</summary>
-        public static string OfferText(string title, int weightS)
+        public static string OfferText(string title, int weightS) { return OfferText("", title, weightS); }
+
+        /// <summary>
+        /// The same for a job of this kind: the server's title when it sent one, else the kind's own words (<see cref="DefaultTitle"/>) - "Short videos of a change, about 3 minutes" for a clip job.
+        /// </summary>
+        public static string OfferText(string kind, string title, int weightS)
         {
             title = (title ?? "").Trim();
-            if (title.Length == 0) title = "A job";
-            return title + ", " + HowLong(weightS);
+            if (title.Length == 0) title = DefaultTitle(kind);
+            return EndsWithDuration(title) ? title : title + ", " + HowLong(weightS);
+        }
+
+        static readonly System.Text.RegularExpressions.Regex DurationRe = new System.Text.RegularExpressions.Regex(
+            "(about [0-9]+ (minutes?|hours?)|less than a minute)[.!]?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// Does the title already say how long the job takes ("Release checks of 20261019.1, about 40 minutes", "..., about 1 hour", "..., less than a minute")? The server titles its jobs that way, and the box
+        /// must not say it twice.
+        /// </summary>
+        public static bool EndsWithDuration(string title) { return DurationRe.IsMatch((title ?? "").Trim()); }
+
+        /// <summary>What the box calls a job whose title is empty: its kind in plain words.</summary>
+        public static string DefaultTitle(string kind)
+        {
+            if (kind == JobPlan.ClipKind) return "Short videos of a change";
+            if (kind == JobPlan.ReleaseKind) return "Release checks of the new client";
+            if (kind == JobPlan.ShotsKind) return "Screenshots of a change";
+            if (kind == JobPlan.BenchKind) return "Benchmark of the new release";
+            return "A job";
+        }
+
+        /// <summary>
+        /// The offer box's note for a job kind. A release job's checks start the game several times; its benchmark and soak steps wait for a quiet PC. A benchmark is offered like any job (the same box, modes and exceptions); the note says what happens after the yes: it starts only once the PC has been left
+        /// alone for a minute, runs at normal priority (a lower one would skew the numbers) and starts over if the keyboard or mouse is touched. "" for the others.
+        /// </summary>
+        public static string OfferNote(string kind)
+        {
+            if (kind == JobPlan.ReleaseKind) return "The game starts several times, off screen and silent. The benchmark and the soak test wait until other programs have used little of the processor for a minute, and run at normal priority.";
+            return kind == JobPlan.BenchKind ? "It starts once other programs have used little of the processor for a minute, and runs at normal priority. You can keep using the PC; a busy processor restarts it." : "";
         }
 
         /// <summary>"4:12" for the box's countdown.</summary>

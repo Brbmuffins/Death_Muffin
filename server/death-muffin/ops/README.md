@@ -1,7 +1,7 @@
 # Ops: health watch, nightly DB backup, nightly drift report, launcher release notice, pre-push hook
 
-Install or update both from a committed revision: `server/death-muffin/ops/install.sh [rev]` (copies the scripts to
-`/home/ubuntu/death-muffin/ops/`, installs the units, enables the timers). Never edit the installed copies.
+Install or update all of it from a committed revision: `server/death-muffin/ops/install.sh [rev]` (copies the scripts to
+`/home/ubuntu/death-muffin/ops/`, installs the units, enables the timers, and stops and removes a retired job: the release checks report, `death-muffin-team-report`, B62). Never edit the installed copies.
 
 ## Health watch (timer `death-muffin-health-watch`, every minute)
 
@@ -52,6 +52,7 @@ Env: `REPO` (default `/home/ubuntu/vps-handoffs/DeathMuffin/game`), `DM_HOME` (`
 | 7 | Services active, auth `/health` |
 | 8 | Disk over 85%, size of `wt/` and `deploy/` (`deploy/` over 2 GB is drift, with a breakdown), old `backup-pre-release-*` folders (never pruned) |
 | 9 | Newest file in `~/death-muffin/backups/db/` missing or older than 36 h |
+| 10 | The GitHub token `tools/check/ci.sh` sends (`~/death-muffin/private/github-api-token`, `GH_TOKEN_FILE` overrides; `GH_API` the API address): drift when the file is missing, GitHub refuses it (401), or its expiry (`github-authentication-token-expiration`) is under 14 days away; the post says in plain words that Muffins (brbmuffins, the repo owner) makes a new one on github.com (Settings, Developer settings, Fine-grained tokens, "Public repositories (read-only)") and DMs it to Muffin Core. The call is GitHub's free `rate_limit`; the token is sent on stdin, never printed (test: `server/death-muffin/ops/drift-token.test.cjs`) |
 
 Any worktree you create (including for this report's own branch) shows up in check 4 until it is removed.
 

@@ -17,6 +17,7 @@ function cancelTypo(text) {
   return ['cancel', 'stop', 'abort', 'halt'].some((c) => w !== c && editDistance(w, c) <= (c.length <= 4 ? 1 : 2));
 }
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { loadConfig } = require('./lib/config.cjs');
@@ -31,6 +32,7 @@ const { verifyGenerated, describeMismatch } = require('./lib/generated.cjs');
 const { planReply } = require('./lib/discordText.cjs');
 const A = require('./lib/art.cjs');
 const S = require('./lib/sound.cjs');
+const CL = require('./lib/clips.cjs');
 
 const TIER_COLOR = { casual: 0x16a34a, gameplay: 0xb45309, sensitive: 0xdc2626 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -38,7 +40,7 @@ const clip = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1) + '…'
 const safeName = (n) => String(n || 'file').replace(/[^\w.-]/g, '_');
 const INBOX_IMAGE_MAX = 8 * 1024 * 1024, INBOX_JOB_MAX = 40 * 1024 * 1024, INBOX_PER_MESSAGE = 4;
 const IMG_MAGIC = [[0x89, 0x50, 0x4e, 0x47], [0xff, 0xd8, 0xff], [0x47, 0x49, 0x46, 0x38], [0x52, 0x49, 0x46, 0x46]];   // png, jpeg, gif, webp(RIFF)
-const SHOT_MAX_BYTES = 8 * 1024 * 1024, SHOTS_PER_POST = 4;
+const SHOT_MAX_BYTES = 8 * 1024 * 1024, SHOTS_PER_POST = 4, VIDEO_MAX_BYTES = 8 * 1024 * 1024, POST_MAX_BYTES = 20 * 1024 * 1024;   // Discord refuses a post whose files are too big (a refused post is lost)
 // Progress notes (owner, 2026-10-10: a one-sentence progress report and a percentage of the work done, plus the time worked, instead of
 // random fun lines). The agent writes ".dm-status" as "<pct>% · <sentence>"; while check-godot.sh runs it writes ".dm-check-progress"
 // ("<done> <total>" suites), and the percentage moves from the agent's number toward CHECK_PCT_END as suites finish.
@@ -61,9 +63,15 @@ function progressNote({ status, check, mins }) {
 // fixtures, a timeout, nothing ran). Otherwise [].
 function failedSuites(out) {
   if (/GODOT TESTS: (repo hygiene|fixture generation|timed out|.*no suites ran)/.test(out) || / exit=124 /.test(out)) return [];   // a suite timeout is a wait that never ends, not load
-  const bad = [...new Set([...String(out).matchAll(/^([A-Za-z0-9_-]+)\s+\S+\s+exit=([1-9]\d*)/gm)].map((m) => m[1]))];
+  const bad = suitesFailing(out);
+  // Every failure must be one of these lines, or the others' re-run would pass the check with it still failing (2026-10-19: names with a `/`
+  // were not read): a count that differs from the summary's "N FAILED" means no re-run.
+  const n = /GODOT TESTS: .*?(\d+) FAILED/.exec(String(out));
+  if (n && Number(n[1]) !== bad.length) return [];
   return bad.length >= 1 && bad.length <= 3 ? bad : [];
 }
+// The suites a check's output names as failing (`<suite> <script> exit=<n>`, n > 0; a suite may be a folder runner such as `relay/udp`).
+function suitesFailing(out) { return [...new Set([...String(out).matchAll(/^([A-Za-z0-9_/-]+)\s+\S+\s+exit=([1-9]\d*)/gm)].map((m) => m[1]))]; }
 const fmtList = (a, n) => (a.length > n ? a.slice(0, n).join('\n') + `\n… +${a.length - n} more` : a.join('\n'));
 
 function createRunner(cfgIn, opts = {}) {
@@ -123,6 +131,12 @@ function createRunner(cfgIn, opts = {}) {
     return op.id;
   }
   const say = (job, text, extra) => post({ threadId: job.threadId }, { content: clip(text, 1900), ...extra });
+  // A post that resolves once the adapter has sent it (or after `ms`: a bot that is away must not hold the caller): big uploads (videos) go one at a time.
+  const postWait = (target, payload, ms = 120000) => new Promise((resolve) => {
+    let done = false; const fin = () => { if (!done) { done = true; resolve(); } };
+    if (!post(target, payload, fin)) return resolve();
+    setTimeout(fin, ms).unref();
+  });
   // The agent's own replies can be long: several messages, or a preview plus the full text as reply.md (discordText.cjs).
   const sayLong = (job, text) => { const { chunks, file } = planReply(text); chunks.forEach((c, i) => post({ threadId: job.threadId }, { content: c, ...(file && i === chunks.length - 1 ? { file } : {}) })); };
   // "Muffin Core is typing…" is the normal acknowledgement while a job works. Typing ops are fire-and-forget: handed out once,
@@ -299,7 +313,7 @@ function createRunner(cfgIn, opts = {}) {
     job.sessionId = null;
     const earlier = (job.history || []).slice(-6).map((h) => `round ${h.round || 1} ${h.discarded ? 'discarded' : `shipped${h.shipSha ? ` (${String(h.shipSha).slice(0, 7)})` : ''}`}${h.title ? `: ${clip(h.title, 90)}` : ''}`).join('; ');
     if (prev.worktree) await G.removeJobArtifacts(cfg, { ...job, ...prev }).catch(() => {});
-    Object.assign(job, { round, branch: `discord/${job.id}-${round}`, worktree: w.worktree, base: w.base, proposal: null, artRequest: null, concepts: {}, conceptCount: 0, shotsSeen: {}, turns: 0, status: 'idle', queuedNotice: false, cancelRequested: false, previewBusy: false,
+    Object.assign(job, { round, branch: `discord/${job.id}-${round}`, worktree: w.worktree, base: w.base, proposal: null, artRequest: null, concepts: {}, conceptCount: 0, shotsSeen: {}, lastClip: null, clipAsk: null, turns: 0, status: 'idle', queuedNotice: false, cancelRequested: false, previewBusy: false,
       roundNote: carry ? `New round in this thread on a fresh branch from the latest ${BB}; the earlier conversation is not carried over. Earlier rounds here: ${earlier || 'none'}. Work from the request and the code as it is now.`
         : `This thread's earlier work was on a different version of the game, so that conversation is not carried over. You are on a fresh branch from the latest ${BB}; work from the request and the code.`, lastActive: now() });
     audit.log('round', { job: job.id, round, branch: job.branch, base: w.base });
@@ -340,12 +354,25 @@ function createRunner(cfgIn, opts = {}) {
       case 'discard':
         if (!auth.canDiscard(msg.userId, job, job.proposal && job.proposal.tier)) return { action: 'reply', text: 'Only the person who started this, or the owner, can discard.' };
         discard(job, msg.userId).catch((e) => say(job, `Discard failed: ${e.message}`)); return { action: 'accepted' };
+      case 'test': {
+        if (!auth.isAllowed(msg.userId)) return { action: 'ignore' };
+        const why = requestTest(job, msg.userId);
+        return why ? { action: 'reply', text: why } : { action: 'accepted' };
+      }
       case 'shot':
         if (job.turns >= cfg.maxTurnsPerJob) return { action: 'reply', text: 'This thread has hit its turn limit. Start a new request in the channel.' };
-        job.queue.push({ ...msg, text: GODOT
+        // shotCmd: with a team PC online processJob swaps this for the team wording (the plan only; the team PC renders it)
+        job.queue.push({ ...msg, shotCmd: true, text: GODOT
           ? 'Show me what your current change looks like: write a shot plan to .dm-shot.json and run shot-godot.sh, check the images yourself, and keep your reply to one or two lines. If you have not changed anything yet, capture the game as it is now for the thing we have been talking about.'
           : 'Show me what your current change looks like: write a scenario to .dm-shot.json and run shot.sh, check the images yourself, and keep your reply to one or two lines. If you have not changed anything yet, capture the game as it is now for the thing we have been talking about.' });
         job.lastActive = now(); save(); pump(); return { action: 'accepted' };
+      case 'clips': {
+        if (!GODOT) return { action: 'reply', text: 'Short videos are only available in Godot mode.' };
+        if (!job.lastClip) return { action: 'reply', text: 'There is no short-video request in this thread yet. Ask me to show a change in motion, or to try a few options, and I will record them on a team PC.' };
+        if (job.running) return { action: 'reply', text: 'Busy right now; try again in a minute.' };
+        clipsAgain(job).catch((e) => say(job, `The short videos failed to start: ${clip(redactText(e.message), 300)}`));
+        return { action: 'accepted' };
+      }
       case 'preview': {
         if (!job.proposal || job.status !== 'proposed') return { action: 'reply', text: 'There is no open proposal to preview yet.' };
         if (job.running || job.previewBusy) return { action: 'reply', text: 'Busy right now; try again in a minute.' };
@@ -390,7 +417,7 @@ function createRunner(cfgIn, opts = {}) {
       }
       case 'sync':
         job.queue.push({ ...msg, text: '(sync request)', sync: true }); save(); pump(); return { action: 'accepted' };
-      default: return { action: 'reply', text: `Commands: !status, !credits (your model and sound budgets), !model <name> (owner), !cancel, !discard, !shot (screenshot of the change), !preview (build a playable preview), !report [number] (in-game bug reports), !sync, !retry (a failed client publish), rollback (approvers).` };
+      default: return { action: 'reply', text: `Commands: !status, !credits (your model and sound budgets), !model <name> (owner), !cancel, !discard, !test (every test on the open change, nothing ships), !shot (screenshot of the change), !clips (record the last short videos again on a team PC), !preview (build a playable preview), !report [number] (in-game bug reports), !sync, !retry (a failed client publish), rollback (approvers).` };
     }
   }
 
@@ -433,6 +460,16 @@ function createRunner(cfgIn, opts = {}) {
       return requestRetry(job, String(ev.userId)) ? { action: 'accepted' } : { action: 'remove_reaction' };
     }
     if (job && art && !goneThread(job.threadId) && job.artRequest && job.artRequest.messageId && job.artRequest.messageId === ev.messageId) return handleArtReaction(job, ev);
+    // ❌ on the "Discard this change?" question confirms it (anyone who may discard; the question goes stale with the next proposal)
+    if (job && !goneThread(job.threadId) && job.discardAsk && job.discardAsk.messageId && job.discardAsk.messageId === ev.messageId) {
+      if (ev.emoji !== '❌') return { action: 'ignore' };
+      if (!auth.canDiscard(String(ev.userId), job, job.proposal && job.proposal.tier)) return { action: 'remove_reaction' };
+      job.discardAsk = null; save();
+      if (['shipping', 'shipped', 'discarded'].includes(job.status)) return { action: 'ignore' };
+      audit.log('discard-confirmed', { userId: String(ev.userId), job: job.id });
+      discard(job, String(ev.userId)).catch((e) => say(job, `Discard failed: ${e.message}`));
+      return { action: 'accepted' };
+    }
     if (!job || goneThread(job.threadId) || !job.proposal || job.proposal.messageId !== ev.messageId) return { action: 'ignore' };
     const uid = String(ev.userId); const p = job.proposal;
     if (ev.emoji === '✅') {
@@ -443,11 +480,12 @@ function createRunner(cfgIn, opts = {}) {
         if (!job.lastRefusalAt || now() - job.lastRefusalAt > 60000) { job.lastRefusalAt = now(); say(job, `Only ${who} can ship this one (${p.tier} tier).`); }
         return { action: 'remove_reaction' };
       }
-      if (job.status !== 'proposed' || !p.testsOk) {
+      if (job.status !== 'proposed' || !(p.testsOk || p.draft)) {
         audit.log('approve-refused', { userId: uid, job: job.id, why: `status ${job.status}` });
         // A silently removed ✅ looked like a missed click (2026-10-11: reacted again and again). Say why once a minute, except while it ships
         // (the ✅ that started it already counts).
-        const why = { running: 'I am still working on a newer version of this change; react ✅ on the new proposal when it posts.', generating: 'A model is still generating for this thread; react ✅ on the proposal that follows.' }[job.status];
+        const why = job.testing ? 'The tests are running on this change right now; react ✅ again when they finish (a few minutes).'
+          : { running: 'I am still working on a newer version of this change; react ✅ on the new proposal when it posts.', generating: 'A model is still generating for this thread; react ✅ on the proposal that follows.' }[job.status];
         if (why && (!job.lastRefusalAt || now() - job.lastRefusalAt > 60000)) { job.lastRefusalAt = now(); say(job, why); }
         return { action: 'remove_reaction' };
       }
@@ -471,10 +509,23 @@ function createRunner(cfgIn, opts = {}) {
       startShip(job, uid);
       return { action: 'accepted' };
     }
+    if (ev.emoji === '🧪') {
+      if (!auth.isAllowed(uid)) return { action: 'remove_reaction' };
+      const why = requestTest(job, uid);
+      if (!why) return { action: 'accepted' };
+      if (!job.lastRefusalAt || now() - job.lastRefusalAt > 60000) { job.lastRefusalAt = now(); say(job, why); }
+      return { action: 'remove_reaction' };
+    }
     if (ev.emoji === '❌') {
       if (!auth.canDiscard(uid, job, p.tier)) return { action: 'remove_reaction' };
       if (['shipping', 'shipped', 'discarded'].includes(job.status)) return { action: 'ignore' };
-      discard(job, uid).catch((e) => say(job, `Discard failed: ${e.message}`));
+      // One tap could throw away a long back-and-forth (Helix, 2026-10-19), so ❌ on a proposal asks once, on a message of its own; a typed
+      // !discard or "discard this" does not ask.
+      if (job.discardAsk && now() - job.discardAsk.at < 10 * 60000) return { action: 'accepted' };
+      job.discardAsk = { at: now(), by: uid, messageId: null }; save();
+      audit.log('discard-asked', { userId: uid, job: job.id });
+      post({ threadId: job.threadId }, { content: 'Discard this change? Its branch and everything on it are deleted and cannot be brought back. React ❌ on this message to confirm; anything else keeps it.', reactions: ['❌'] },
+        (res) => { if (res.messageId && job.discardAsk) { job.discardAsk.messageId = String(res.messageId); save(); } });
       return { action: 'accepted' };
     }
     return { action: 'ignore' };
@@ -488,7 +539,7 @@ function createRunner(cfgIn, opts = {}) {
       stopStep(job);
       say(job, 'Discarding as soon as the current step stops.'); save(); return;
     }
-    job.discardRequested = null;
+    job.discardRequested = null; job.discardAsk = null;
     audit.log('discarded', { job: job.id, userId: String(byId) });
     job.artRequest = null;
     await G.removeJobArtifacts(cfg, job);
@@ -560,7 +611,8 @@ function createRunner(cfgIn, opts = {}) {
     job.queuedNotice = false;
     const msgs = job.queue.splice(0); save();
     const sync = msgs.some((m) => m.sync);
-    const real = msgs.filter((m) => !m.sync && !m.art);
+    const test = msgs.some((m) => m.test); const repost = msgs.some((m) => m.test && m.repost);
+    let real = msgs.filter((m) => !m.sync && !m.art && !m.test);
     let extra = '';
     if (job.roundNote) { extra = job.roundNote; job.roundNote = null; }
     if (job.bugReportId && !job.sessionId && real.length) {   // a report thread: every fresh session gets the report itself
@@ -571,6 +623,17 @@ function createRunner(cfgIn, opts = {}) {
     }
     const artNotes = msgs.filter((m) => m.art).map((m) => m.text);
     if (artNotes.length) extra = (extra ? extra + '\n\n' : '') + artNotes.join('\n\n');
+    // Team pictures (team helper wave 2): is a team PC online as this turn starts? Then the agent writes a shot plan for every visible change and does not
+    // render it itself (the team PC does, before and after, once the proposal is out); otherwise it works exactly as before.
+    job.teamTurn = false; job.shotAsked = false;
+    if (real.length && teamEnabled()) {
+      job.teamTurn = (await teamPcs()).length > 0;
+      if (job.teamTurn && job.worktree) for (const f of ['.dm-shot.json', CL.CLIP_FILE]) { try { fs.rmSync(path.join(job.worktree, f), { force: true }); } catch { /* none */ } }   // a plan left from an earlier turn describes an earlier change
+      if (real.some((m) => m.shotCmd)) job.shotAsked = job.teamTurn;
+      if (job.teamTurn) real = real.map((m) => (m.shotCmd ? { ...m, text: TEAM_SHOT_ASK } : m));
+      if (job.clipAsk) extra = (extra ? extra + '\n\n' : '') + clipChoiceNote(job.clipAsk);
+      extra = (extra ? extra + '\n\n' : '') + (job.teamTurn ? TEAM_ON_NOTE : TEAM_OFF_NOTE);
+    }
     if (real.length) job.carryApproval = null;   // someone is changing the request: the next proposal needs a fresh ✅
     if (real.length) job.lastAsker = { id: String(real[real.length - 1].userId), name: real[real.length - 1].name };
     if (sync) {
@@ -606,7 +669,8 @@ function createRunner(cfgIn, opts = {}) {
       if (st && st !== status) { status = st; pendingStatus = true; }
       if (pendingStatus && (!lastStatusPost || now() - lastStatusPost >= statusEvery)) { pendingStatus = false; lastStatusPost = now(); say(job, note()); }
     }, cfg.tickMs || 8000); ticker.unref();
-    try { await runJob(job, real, extra); } finally { clearInterval(ticker); syncName(job); }
+    if (test) job.testing = true;
+    try { await runJob(job, real, extra, { test, repost }); } finally { job.testing = false; clearInterval(ticker); syncName(job); }
   }
   // ---------- screenshots (<worktree>/.dm-shots/*.png, written by the agent via shot.sh) ----------
   function listShots(job) {
@@ -676,7 +740,7 @@ function createRunner(cfgIn, opts = {}) {
     finally { await G.git(cfg.repo, ['worktree', 'remove', '--force', dir], { allowFail: true }); try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ } }
   }
 
-  async function runJob(job, real, extra) {
+  async function runJob(job, real, extra, o = {}) {
     let r = null;
     if (real.length || extra) r = await agentTurn(job, buildPrompt(real, extra));
     if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return; }
@@ -690,7 +754,8 @@ function createRunner(cfgIn, opts = {}) {
     if (art && await conceptStage(job)) return;   // concept images are being made (or were refused): people look at them before anything is built
     if (art && await artStage(job)) return;       // a model request is waiting for an approver (or was refused): nothing to verify or propose yet
     if (sound && await soundStage(job)) return;   // a sound is being generated (or was refused): the agent continues once the takes exist
-    await afterTurn(job, readResult(job.worktree));
+    if (GODOT && await clipStage(job)) return;    // short videos of the options are on their way to a team PC: people pick one before any change is proposed
+    await afterTurn(job, readResult(job.worktree), o);
   }
 
   async function unchangedProposal(job) {
@@ -700,10 +765,45 @@ function createRunner(cfgIn, opts = {}) {
     return (await G.head(job.worktree)) === p.head;
   }
 
-  // Verify -> (fix-up turns) -> propose. Everything here is deterministic runner code, not the model.
-  async function verify(job) {
+  // Godot mode: the check runs on the branch with the latest base branch merged in, so it tests what a ship would merge (2026-10-19: War's job,
+  // checked against the main it started from, passed and then failed at ship on suites main had gained since). A clean merge is committed on
+  // the branch and the job's work is measured from the new base (as !sync does); a conflict is undone and left to the ship's own sync.
+  async function syncBeforeCheck(job) {
+    const wt = job.worktree;
+    await G.git(cfg.repo, ['fetch', '-q', 'origin'], { allowFail: true });
+    const tip = (await G.git(cfg.repo, ['rev-parse', `origin/${BB}`], { allowFail: true })).out.trim();
+    if (!tip || tip === job.base) return;
+    if ((await G.git(wt, ['merge-base', '--is-ancestor', tip, 'HEAD'], { allowFail: true })).code === 0) { job.base = tip; save(); return; }
+    const m = await G.git(wt, ['merge', '--no-edit', '-m', `Merge ${BB} into ${job.branch} before the check`, tip], { allowFail: true });
+    if (m.code !== 0) { await G.git(wt, ['merge', '--abort'], { allowFail: true }); audit.log('pre-sync', { job: job.id, ok: false, tip }); return; }
+    job.base = tip; save();
+    audit.log('pre-sync', { job: job.id, ok: true, tip });
+  }
+  // Godot mode, after a failed check: the failing suites (at most 6) run on a clean copy of the base. Any that fail there too are not this
+  // change's: the test setup or the base branch is broken, and no agent turn can fix it (2026-10-18: three full checks and two repair turns
+  // went on co-op suites that could not start the lobby in any job). Never throws: { failing: [...] } ([] = unknown, the agent gets it as before).
+  async function baseCheck(job, suites) {
+    const dir = path.join(cfg.worktreeRoot, `basecheck-${job.id}`);
+    try {
+      await G.git(cfg.repo, ['worktree', 'add', '-q', '--detach', '-f', dir, job.base]);
+      const nm = path.join(cfg.repo, 'node_modules');
+      if (fs.existsSync(nm)) { try { fs.symlinkSync(nm, path.join(dir, 'node_modules')); } catch { /* exists */ } }
+      let r;
+      try { r = await G.run(path.join(cfg.toolsDir, CHECK), ['--rerun', suites.join(',')], { cwd: dir, env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: 60 * 60000, onSpawn: (p) => checkProcs.set(job.id, p) }); }
+      finally { checkProcs.delete(job.id); }
+      const failing = r.timedOut ? [] : suitesFailing(r.out + r.err).filter((s) => suites.includes(s));
+      audit.log('base-check', { job: job.id, base: job.base, suites, failing });
+      return { failing };
+    } catch (e) { audit.log('base-check', { job: job.id, error: clip(e.message, 200) }); return { failing: [] }; }
+    finally { await G.git(cfg.repo, ['worktree', 'remove', '--force', dir], { allowFail: true }); try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ } }
+  }
+
+  // Verify -> (fix-up turns) -> propose. Everything here is deterministic runner code, not the model. `tests: false` (a draft round, cfg.drafts):
+  // every gate but the tests; they run on 🧪 / !test and before any ship.
+  async function verify(job, { tests = true } = {}) {
     const wt = job.worktree;
     if (await G.mergeInProgress(wt) || await G.isDirty(wt)) return { ok: false, fixable: true, why: 'There are uncommitted changes (or an unfinished merge). Stage explicit paths with agit add and commit with agit commit -m "<one plain sentence>".' };
+    if (GODOT && cfg.syncBeforeCheck !== false) await (opts.syncBeforeCheck || syncBeforeCheck)(job);
     let commits = await G.commitsSince(wt, job.base);
     if (commits.some((c) => /^\s*co-authored-by:/im.test(c.body))) {
       await G.git(wt, ['filter-branch', '-f', '--msg-filter', "sed '/^[Cc]o-[Aa]uthored-[Bb]y:/d'", `${job.base}..HEAD`], { allowFail: true });
@@ -722,7 +822,8 @@ function createRunner(cfgIn, opts = {}) {
     if (secrets.length) return { ok: false, fixable: true, why: `The secret scan flagged ${secrets.map((s) => s.file).join(', ')}. Remove anything secret-like from the change.` };
     const migrations = G.migrationsFrom(files);
     if (migrations.length && !cfg.allowMigrations) return { ok: false, fixable: false, why: 'This change adds a database migration, which is switched off for this agent.' };
-    let t = await (opts.runChecks || runChecks)(job);
+    if (!tests) return { ok: true, files, cls, migrations, tests: { ok: null, summary: 'not tested yet' }, untested: true, diff, commits };
+    let t = await (GODOT && cfg.ciGate ? (opts.ciCheck || ciCheck) : (opts.runChecks || runChecks))(job);
     // A few suites failing (often under load from another ship's client export, even after run-all-tests.sh retried them alone) get ONE more run of
     // just those suites before an agent turn is spent on them. A real failure fails again and goes to the agent as before.
     const flaky = !t.ok && GODOT ? failedSuites(t.tail) : [];
@@ -731,8 +832,40 @@ function createRunner(cfgIn, opts = {}) {
       audit.log('flake-rerun', { job: job.id, suites: flaky, ok: r.ok });
       if (r.ok) t = { ...t, ok: true, summary: `${t.summary.replace(/ — .*$/, '')} — passed (${flaky.join(', ')} passed on a re-run)` };
     }
+    if (!t.ok && GODOT && cfg.baseCheck !== false) {
+      const failing = suitesFailing(t.tail).slice(0, 6);
+      const b = failing.length ? await (opts.baseCheck || baseCheck)(job, failing) : { failing: [] };
+      if (b.failing.length) return { ok: false, fixable: false, infra: b.failing, why: `${CHECK} failed:\n${t.tail}`, tests: t };
+    }
     if (!t.ok) return { ok: false, fixable: true, why: `${CHECK} failed:\n${t.tail}`, tests: t };
     return { ok: true, files, cls, migrations, tests: t, diff, commits };
+  }
+  // Godot with the CI gate (DECISIONS B59): the branch is pushed and GitHub CI's verdict on its exact files is the check (every suite, the backend
+  // and lobby tests, hygiene, the model check). Failing suites come back as the "<suite> <script> exit=1" lines the local check prints, so the
+  // one re-run of a few flaky ones (here) and the clean-base check work as before. CI failing outside the suites: the check here says what it is.
+  // No verdict at all (GitHub down, no run, out of time): the full set here instead (CLAUDE.md).
+  async function ciCheck(job) {
+    const head = await G.head(job.worktree);
+    try { await (opts.pushBranch || G.pushBranch)(cfg, job); } catch (e) { return { ok: false, tail: `The branch could not be pushed for CI: ${clip(e.message, 200)}`, summary: 'CI — the branch could not be pushed' }; }
+    const ci = (args, ms) => G.run('bash', [cfg.ciScript, ...args], { cwd: job.worktree, env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: ms, onSpawn: (pr) => checkProcs.set(job.id, pr) });
+    let r;
+    try { r = await ci(['wait', head, '50'], 55 * 60000); } finally { checkProcs.delete(job.id); }
+    const last = String(r.out || '').trim().split('\n').pop() || ''; const url = (/https?:\/\/\S+/.exec(last) || [''])[0];
+    audit.log('ci-check', { job: job.id, head, code: r.code, url });
+    if (r.code === 0 && !r.timedOut) return { ok: true, tail: '', summary: `CI — every suite passed${url ? ` (${url})` : ''}` };
+    if (r.code === 1) {
+      const f = await ci(['failed', head], 120000);
+      const suites = String(f.out || '').split('\n').map((x) => x.trim()).filter((x) => /^[A-Za-z0-9_/-]+$/.test(x));
+      if (!suites.length) {
+        const t = await runChecks(job);
+        return t.ok ? { ok: false, tail: `CI failed outside the game suites (the backend or lobby tests, hygiene or the model check), and the check here passed: ${url}`, summary: 'CI — FAILED outside the game suites' }
+          : { ...t, summary: `CI FAILED; here: ${t.summary}` };
+      }
+      return { ok: false, tail: [...suites.map((x) => `${x} (CI) exit=1`), `GODOT TESTS: CI (${url}) — ${suites.length} FAILED`].join('\n'), summary: `CI — ${suites.length} FAILED (${suites.join(', ')})` };
+    }
+    audit.log('ci-unavailable', { job: job.id, head, code: r.code });
+    const t = await runChecks(job, ['--full']);
+    return { ...t, summary: `${t.summary} (no verdict from GitHub CI: the full set ran here)` };
   }
   async function runChecks(job, args = []) {
     let r;
@@ -747,7 +880,10 @@ function createRunner(cfgIn, opts = {}) {
     return { ok: r.code === 0 && !r.timedOut, tail: out.trim().split('\n').filter((l) => !(GODOT && / exit=0 /.test(l))).slice(-30).join('\n'), summary: sum || (r.code === 0 ? (GODOT ? 'Godot test suites passed' : 'typecheck + client + server tests passed') : 'failed') };
   }
 
-  async function afterTurn(job, result) {
+  // o.test: a test run (🧪 / !test, or CI failed what a ship would have shipped; o.repost then): the tests run on the change as it is, and a pass
+  // of the proposed commit marks that proposal tested where it stands instead of posting it again.
+  async function afterTurn(job, result, o = {}) {
+    const testRun = !!o.test;
     // A message that arrived during the turn changes the request: no proposal for the outdated state (owner, 2026-10-10: a stale proposal
     // with fresh screenshots came first, then the one with the new change). The next turn starts right away and proposes once, with both.
     if (job.queue.some((m) => !m.art)) {
@@ -756,21 +892,38 @@ function createRunner(cfgIn, opts = {}) {
     }
     // A turn that changed nothing (a thank-you, a question, a "what if") leaves the open proposal exactly as it was: same commit, clean
     // workspace. Its checks already passed for that commit, so nothing is re-checked, re-built or re-posted, and it can be approved at once.
-    if (await unchangedProposal(job)) {
+    if (!testRun && await unchangedProposal(job)) {
       job.status = 'proposed'; save(); syncName(job);
       audit.log('proposal-kept', { job: job.id, head: job.proposal.head });
-      say(job, 'Nothing changed, so the proposal above still stands (already checked). React ✅ on it to ship.');
+      say(job, job.proposal.testsOk ? 'Nothing changed, so the proposal above still stands (already checked). React ✅ on it to ship.'
+        : 'Nothing changed, so the proposal above still stands. React 🧪 to test it, or ✅ to test and ship it.');
+      if (job.shotAsked) { job.shotAsked = false; teamShots(job, job.proposal.head, { forced: true }); }   // `!shot` with a team PC online: pictures of the proposal
       return;
     }
+    const tests = testRun || !cfg.drafts;
     for (let attempt = 0; ; attempt++) {
       if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return; }
-      const v = await verify(job);
+      const v = await verify(job, { tests });
       if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return; }
-      if (v.ok && v.empty) { job.status = 'idle'; job.proposal = null; return; }
-      if (v.ok) return propose(job, v, result);
+      if (v.ok && v.empty) {
+        job.status = 'idle'; job.proposal = null;
+        if (job.shotAsked) { job.shotAsked = false; teamShots(job, await G.head(job.worktree), { proposal: false, forced: true }); }   // `!shot` with nothing changed: the game as it is
+        return;
+      }
+      if (v.ok) {
+        const p = job.proposal;
+        if (testRun && !o.repost && p && p.messageId && !v.untested && p.head === await G.head(job.worktree)) return markTested(job, v);
+        return propose(job, v, result || (p ? { title: p.title, summary: p.summary, risk: p.risk } : null));
+      }
       audit.log('verify-failed', { job: job.id, why: v.why });
+      if (v.infra) {
+        audit.log('infra-failed', { job: job.id, suites: v.infra });
+        say(job, `⚠ Not this change: ${v.infra.join(', ')} ${v.infra.length > 1 ? 'fail' : 'fails'} on ${BB} without this change too, so the test setup (or ${BB} itself) is broken. Nothing was proposed and no fix was attempted. Say "try again" once it is fixed.`);
+        job.status = 'idle'; return;
+      }
       if (!v.fixable || attempt >= 2) { say(job, `I could not get this into a shippable state: ${clip(v.why, 900)}\nNothing was proposed. Tell me how to proceed or react ❌ / say !discard.`); job.status = 'idle'; return; }
-      // the fix-up turn is internal (audit: verify-failed); no thread post (owner, 2026-10-10: fewer thread posts)
+      // the fix-up turn is internal (audit: verify-failed); no thread post (owner, 2026-10-10: fewer thread posts), except for a test someone asked for
+      if (testRun && attempt === 0) say(job, `🧪 The tests failed (${clip((v.tests && v.tests.summary) || 'the review failed', 200)}). Fixing it; a tested version follows.`);
       const r = await agentTurn(job, GODOT
         ? `The automatic review failed. Fix this and commit. To see a failing suite again, run ${cfg.toolsDir}/check-godot.sh --rerun <suite>[,<suite>] (only those suites); the runner runs the whole check again after your turn:\n${v.why}`
         : `The automatic review failed. Fix this, make sure ${CHECK} passes, and commit:\n${v.why}`);
@@ -781,11 +934,34 @@ function createRunner(cfgIn, opts = {}) {
     }
   }
 
+  // A test run passed on exactly the proposed commit: the open proposal is tested now, and ✅ on it ships without waiting for CI again.
+  function markTested(job, v) {
+    const p = job.proposal;
+    p.testsOk = true; p.draft = false; p.tested = v.tests.summary; job.status = 'proposed'; save(); syncName(job);
+    audit.log('test-passed', { job: job.id, head: p.head });
+    say(job, `🧪 Tests passed: ${v.tests.summary}. React ✅ on the proposal above to ship it.`);
+  }
+  // 🧪 / !test (Helix, 2026-10-19): every test on the open change, nothing shipped. The run is a queued step (processJob), so it takes a job slot,
+  // can be cancelled and never overlaps a turn. Returns a line to say instead when there is nothing to start.
+  function requestTest(job, uid) {
+    const p = job.proposal;
+    if (job.status === 'shipping' || job.shipQueued) return 'This change is approved already: the tests run as part of its ship.';
+    if (job.testing || job.queue.some((m) => m.test)) return 'The tests are already running on this change.';
+    if (job.running) return 'I am still working on a newer version of this change; react 🧪 on the proposal that follows.';
+    if (!p || job.status !== 'proposed') return 'There is no open change to test yet.';
+    if (p.testsOk) return `Already tested: ${p.tested || 'every suite passed'}. React ✅ on the proposal to ship it.`;
+    job.queue.push({ userId: String(uid), name: nameOf(uid), role: auth.roleOf(uid) || 'member', text: '(test request)', messageId: null, ts: now(), test: true });
+    job.lastActive = now(); save();
+    audit.log('test-requested', { userId: String(uid), job: job.id, head: p.head });
+    say(job, '🧪 Testing this change: every suite on GitHub CI (a few minutes). Nothing ships.');
+    pump(); return null;
+  }
+
   async function propose(job, v, result) {
     const head = await G.head(job.worktree);
     try { await (opts.pushBranch || G.pushBranch)(cfg, job); } catch (e) { say(job, `I could not push the branch to GitHub: ${clip(e.message, 300)}`); job.status = 'idle'; return; }
     const tier = v.cls.tier;
-    const subjects = v.commits.map((c) => c.subject).reverse();   // oldest first
+    const subjects = v.commits.filter((c) => !/^Merge\b/.test(c.subject)).map((c) => c.subject).reverse();   // oldest first; merges of the base are not the job's work
     // A turn that changed nothing (a question, a "what if") writes no result: keep the title of the proposal it re-posts, and otherwise fall
     // back to the NEWEST commit, which describes the change as it is now (2026-10-04: a re-post said "button" after it became a checkbox).
     const same = job.proposal && job.proposal.head === head ? job.proposal : null;
@@ -802,12 +978,12 @@ function createRunner(cfgIn, opts = {}) {
       fields: [
         { name: 'Review tier', value: tierLabel(tier, cfg) + (tier === 'sensitive' ? '\n⚠ touches ' + [...new Set(v.cls.perFile.filter((f) => f.tier === 'sensitive').map((f) => f.path))].slice(0, 4).join(', ') : ''), inline: false },
         { name: `Files (${v.files.length})`, value: '```\n' + fmtList(fileLines, 10) + '\n```', inline: false },
-        { name: 'Tests', value: `✅ ${v.tests.summary}`, inline: true },
+        { name: 'Tests', value: v.untested ? '🧪 Not tested yet. React 🧪 to run every test, or ✅ to test and ship.' : `✅ ${v.tests.summary}`, inline: !v.untested },
         { name: 'Migrations', value: v.migrations.length ? v.migrations.map((m) => `\`${m}\``).join('\n') : 'none', inline: true },
         ...(warn.length ? [{ name: 'Heads-up for the reviewer', value: fmtList(warn.map((w) => `• ${w}`), 6), inline: false }] : []),
         { name: 'Exact diff', value: `[${job.branch} on GitHub](${url}) · ${v.commits.length} commit(s)`, inline: false },
       ],
-      footer: { text: `✅ ship (${owner.join(' / ')}) · ❌ discard · reply to keep iterating · ${job.id}` },
+      footer: { text: `✅ ${v.untested ? 'test and ship' : 'ship'} (${owner.join(' / ')}) · ${v.untested ? '🧪 test · ' : ''}❌ discard · reply to keep iterating · ${job.id}` },
     };
     // Godot: the Windows preview is built only on request (owner, 2026-10-10: 44 built in a day, none downloaded; each is a full import + export).
     const onRequest = GODOT && cfg.previewOnProposal !== true;
@@ -819,22 +995,28 @@ function createRunner(cfgIn, opts = {}) {
       : { name: 'Preview build failed', value: `${pv.why}\nThe proposal is still valid; review the diff, or say !preview to retry.`, inline: false };
     embed.fields.splice(embed.fields.length - 1, 0, previewField);
     for (const f of embed.fields) f.value = clip(f.value, 1024);   // Discord: field value <= 1024 chars (whole embed <= 6000; the caps above keep it well under)
-    job.proposal = { messageId: null, head, base: job.base, tier, title, summary: Array.isArray(result && result.summary) ? result.summary : null, risk: (result && result.risk) || null, files: v.files.map((f) => f.path), migrations: v.migrations, testsOk: true, createdAt: new Date(now()).toISOString() };
-    job.status = 'proposed'; job.autoReships = 0; save(); syncName(job);
-    audit.log('proposal', { job: job.id, tier, head, files: v.files.length, migrations: v.migrations.join(',') });
+    job.proposal = { messageId: null, head, base: job.base, tier, title, summary: Array.isArray(result && result.summary) ? result.summary : null, risk: (result && result.risk) || null, files: v.files.map((f) => f.path), migrations: v.migrations, testsOk: !v.untested, draft: !!v.untested, tested: v.untested ? null : v.tests.summary, createdAt: new Date(now()).toISOString() };
+    job.status = 'proposed'; job.autoReships = 0; job.discardAsk = null; save(); syncName(job);
+    audit.log('proposal', { job: job.id, tier, head, files: v.files.length, migrations: v.migrations.join(','), ...(v.untested ? { draft: true } : {}) });
     const committedAt = Number((await G.git(job.worktree, ['log', '-1', '--format=%ct'], { allowFail: true })).out.trim()) * 1000 || 0;
     const shots = proposalShots(job, committedAt);
+    // Team PC pictures: with a shot plan in the worktree and a team PC online now, the proposal goes out without server pictures and says they follow. The plan
+    // counts when the turn was told a team PC was online, when `!shot` asked, or when the agent rendered server pictures anyway (a PC on top of them).
+    const teamPlan = teamEnabled() ? CL.readShotPlan(job.worktree) : null;
+    const teamPcsNow = teamPlan && (shots.length || job.teamTurn || job.shotAsked) ? await teamPcs() : [];
+    job.shotAsked = false; job.clipAsk = null;   // a change is proposed: the options people were asked about are settled
     if (shots.length) embed.image = { url: `attachment://${shots[0].name}` };
+    if (teamPcsNow.length) embed.fields.splice(embed.fields.length - 1, 0, { name: 'Screenshots', value: `${shots.length ? 'More pictures' : 'Pictures'} from a team PC follow (before and after, on a real graphics card; a few minutes).`, inline: false });
     // screenshots only on request (Helix, 2026-10-12): a proposal without pictures offers them
-    else if (GODOT) embed.fields.splice(embed.fields.length - 1, 0, { name: 'Screenshots', value: 'None taken. Say `!shot` to see this change.', inline: false });
+    else if (GODOT && !shots.length) embed.fields.splice(embed.fields.length - 1, 0, { name: 'Screenshots', value: 'None taken. Say `!shot` to see this change.', inline: false });
     // no ping when the original approval is about to carry (it ships by itself; carryApproval pings if it cannot)
-    post({ threadId: job.threadId }, { ...(job.carryApproval ? {} : pingRequester(job)), embed, ...(shots.length ? { files: shots } : {}), reactions: ['✅', '❌'] }, (res) => { if (res.messageId && job.proposal && job.proposal.head === head) { job.proposal.messageId = String(res.messageId); save(); } });
+    post({ threadId: job.threadId }, { ...(job.carryApproval ? {} : pingRequester(job)), embed, ...(shots.length ? { files: shots } : {}), reactions: v.untested ? ['✅', '🧪', '❌'] : ['✅', '❌'] }, (res) => { if (res.messageId && job.proposal && job.proposal.head === head) { job.proposal.messageId = String(res.messageId); save(); } });
     // BEFORE pictures come after, in the background: rendering waits for the shared renderer lock (other renders can hold it for many
     // minutes), and a job waiting on it kept its slot and blocked other requests (2026-10-10). The pair is posted as a follow-up.
     // BEFORE pictures (the unchanged base rendered with the same shot plan) only when switched on: each is one more software-GL render
     // in the shared renderer queue (owner, 2026-10-10: "skip making before photos"). cfg.beforeShots: true brings them back.
     if (GODOT && shots.length && cfg.beforeShots === true) postBeforeAfter(job, head, shots.slice(0, 2));
-    if (GODOT && shots.length && cfg.teamShots !== false) teamShots(job, head);
+    if (teamPcsNow.length) teamShots(job, head, { pcs: teamPcsNow, say: !shots.length });
     carryApproval(job);
   }
   // A ship that hit a merge conflict was synced by the runner; when the resolved change is still the approved one (same files or fewer, tier
@@ -866,85 +1048,282 @@ function createRunner(cfgIn, opts = {}) {
     }).catch(() => {}).finally(() => beforeBusy.delete(job.id));
   }
 
-  // ---------- team PC pictures (teamapp/README.md; server/death-muffin/README.md "Team jobs") ----------
-  // After a proposal whose pictures came from a shot plan: when a team PC is online, a debug build of the branch (preview-godot.sh --team; teamBuildCmd in
-  // tests) goes to it as a `shots` job through the backend's /internal/team routes, and its Low and Ultra pictures (a real graphics card, unlike the
-  // server's software renderer) follow in the thread. Best effort, in the background: no team PC online = no job; a failed build or job is audited only;
-  // a newer proposal or a discard cancels it.
-  const TEAM_CLASSES = { ossuary: 1, gravecaller: 2, mourner: 3, rotweaver: 4, reaper: 11 };
-  const teamBusy = new Set();
-  async function teamCall(method, p, body) {
+  // ---------- team PC pictures and short videos (teamapp/README.md; server/death-muffin/README.md "Team jobs"; README "Team PC pictures", "Clips and choices") ----------
+  // A team PC (War's, Muffins', Helix's) has a real graphics card; the server's software renderer does not. When one is online as a turn starts, the agent is
+  // told so: it writes a shot plan (.dm-shot.json) for every visible change and does not render. After the proposal the runner builds the branch for the team PC
+  // (preview-godot.sh --team; teamBuildCmd in tests) and the unchanged base too (a scratch worktree at job.base), queues ONE `shots` job with both builds, and
+  // posts the pairs (BEFORE then AFTER per shot and preset, labelled by label-shot.py). A base that cannot be built means AFTER pictures only. A `clip` job
+  // records the agent's .dm-clip.json (variants of a tune over the game's data), and the thread is asked which one people like best. Everything is best effort,
+  // in the background, and never changes what is shipped: the team PC only renders, a human decides.
+  const teamEnabled = () => GODOT && cfg.teamShots !== false && !!cfg.teamApi;
+  const TEAM_ON_NOTE = '[A team PC is online right now. Pictures need no `!shot`: for every change players can see, write the shot plan `.dm-shot.json` (see "Screenshots", when a team PC is online) and do NOT render anything yourself; the team PC renders it after the proposal, before and after, on a real graphics card. Short videos and "pick one" options work too (see "Clips and choices").]';
+  const TEAM_OFF_NOTE = '[No team PC is online right now. Pictures only on request (`!shot`), rendered on the server as described under "Screenshots"; short videos ("Clips and choices") are not possible this turn.]';
+  const TEAM_SHOT_ASK = 'Show me what your current change looks like: a team PC is online, so write the shot plan to .dm-shot.json for it (do not render anything yourself; the team PC renders it, on a real graphics card) and keep your reply to one or two lines. If you have not changed anything yet, write the plan for the game as it is now, for the thing we have been talking about.';
+  const CLIP_OFFLINE = 'Short videos need a team PC online, and none is right now, so I could not record them. Say `!clips` once a team PC is on, or tell me which option to apply.';
+  // What the agent is told about the videos people just saw, so a reply such as "the second one" (or "2") works even in a fresh session.
+  const clipChoiceNote = (ask) => `[Short videos of these options were posted in the thread, numbered as people saw them:\n${ask.options.map((o) => `${o.n} · ${o.title} (tune ${clip(JSON.stringify(o.tune), 400)})`).join('\n')}\nThe request below may pick one (a number, a name, "the slow one") or ask for something else. If it picks one, apply that option's values as a NORMAL change: edit the data or code the change itself reads (a tune only existed for the recording), test, commit and propose as usual. If it asks for other values, you may write a new ${CL.CLIP_FILE}.]`;
+  const TEAM_FILES_PER_JOB = 40;         // the backend's limit of pictures in one team job
+  const TEAM_ID_RE = /^[0-9a-f]{12}$/;   // a team job's id; it names a folder under cfg.teamResultsDir, so nothing else is accepted
+  const teamBusy = new Set();   // jobs with team pictures in flight
+  const clipBusy = new Set();   // jobs with a clip job in flight
+  async function teamCall(method, p, body, timeoutMs = 15000) {
     if (!cfg.teamApi) return null;
     let secret = ''; try { secret = fs.readFileSync(cfg.secretFile, 'utf8').trim(); } catch { return null; }
     try {
       const r = await fetch(`${String(cfg.teamApi).replace(/\/$/, '')}/internal/team${p}`, {
-        method, headers: { 'content-type': 'application/json', 'x-team-secret': secret }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(15000) });
+        method, headers: { 'content-type': 'application/json', 'x-team-secret': secret }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(timeoutMs) });
       const j = await r.json().catch(() => null);
       return j && j.success ? j.data : null;
     } catch { return null; }
   }
-  async function teamShots(job, head) {
-    if (!cfg.teamApi || teamBusy.has(job.id) || !job.worktree) return;
-    let plan = null; try { plan = JSON.parse(fs.readFileSync(path.join(job.worktree, '.dm-shot.json'), 'utf8')); } catch { return; }
-    if (!plan || typeof plan !== 'object' || Array.isArray(plan)) return;
-    const online = await teamCall('GET', '/pcs');
-    if (!online || !Array.isArray(online.pcs) || !online.pcs.length) return;
-    teamBusy.add(job.id);
-    const stale = () => !job.proposal || job.proposal.head !== head || ['discarded', 'deleted'].includes(job.status);
-    const fail = (why, extra = {}) => audit.log('team-shots', { job: job.id, ok: false, why: clip(why, 300), ...extra });
+  // The team PCs that can take a job now: online (the backend lists the PCs seen in the last 2 minutes) and not paused (a paused PC declines every job).
+  async function teamPcs() {
+    if (!teamEnabled()) return [];
+    const online = await teamCall('GET', '/pcs', null, 5000);
+    return online && Array.isArray(online.pcs) ? online.pcs.filter((p) => p && !(p.state && p.state.paused)) : [];
+  }
+  // The branch (or a scratch worktree at the base) built for a team PC: { files } for the job's payload, or { error }.
+  async function teamBuild(cwd, job, { timeoutMs = 40 * 60000, onSpawn } = {}) {
+    const env = { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' };
+    const b = cfg.teamBuildCmd
+      ? await G.run('bash', ['-c', cfg.teamBuildCmd, 'team', job.id], { cwd, env, timeoutMs: 15 * 60000, onSpawn })
+      : await G.run(path.join(cfg.toolsDir, 'preview-godot.sh'), [job.id, '--team'], { cwd, env, timeoutMs, onSpawn });
+    const line = String(b.out || '').split('\n').reverse().find((l) => l.startsWith('TEAMFILES: '));
+    let files = null; try { files = line ? JSON.parse(line.slice('TEAMFILES: '.length)) : null; } catch { files = null; }
+    if (b.code !== 0 || b.timedOut || !Array.isArray(files)) return { error: b.timedOut ? 'the team build took too long' : redactText(String((b.out || '') + (b.err || '')).trim().split('\n').slice(-3).join(' ') || `exit ${b.code}`) };
+    return { files };
+  }
+  // The unchanged game for the BEFORE pictures: a scratch worktree at job.base (like baseShots), built the same way, removed afterwards.
+  async function teamBuildBase(job) {
+    const dir = path.join(cfg.worktreeRoot, `teambase-${job.id}`);
     try {
-      const env = { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' };
-      const b = cfg.teamBuildCmd
-        ? await G.run('bash', ['-c', cfg.teamBuildCmd, 'team', job.id], { cwd: job.worktree, env, timeoutMs: 15 * 60000 })
-        : await G.run(path.join(cfg.toolsDir, 'preview-godot.sh'), [job.id, '--team'], { cwd: job.worktree, env, timeoutMs: 40 * 60000 });
-      const line = String(b.out || '').split('\n').reverse().find((l) => l.startsWith('TEAMFILES: '));
-      let files = null; try { files = line ? JSON.parse(line.slice('TEAMFILES: '.length)) : null; } catch { files = null; }
-      if (b.code !== 0 || b.timedOut || !Array.isArray(files)) return fail(b.timedOut ? 'the team build took too long' : redactText(String((b.out || '') + (b.err || '')).trim().split('\n').slice(-3).join(' ') || `exit ${b.code}`));
+      try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* none */ }   // a leftover of a run that was cut short
+      await G.git(cfg.repo, ['worktree', 'prune'], { allowFail: true });
+      await G.git(cfg.repo, ['worktree', 'add', '-q', '--detach', '-f', dir, job.base]);
+      return await teamBuild(dir, job, { timeoutMs: 25 * 60000 });
+    } catch (e) { return { error: clip(e.message, 200) }; }
+    finally { await G.git(cfg.repo, ['worktree', 'remove', '--force', dir], { allowFail: true }); try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ } }
+  }
+  // Waits for a queued team job (checked every cfg.teamPollMs). { t } = done; { stale: true } = it was cancelled because nobody wants the answer any more;
+  // { error, status } = it did not finish, with the reason in plain words.
+  async function teamWait(id, { stale, maxMs }) {
+    let t = null;
+    for (let i = 0, n = Math.ceil(maxMs / (cfg.teamPollMs || 20000)); i < n; i++) {
+      await sleep(cfg.teamPollMs || 20000);
+      if (stale()) { await teamCall('POST', `/jobs/${id}/cancel`); return { stale: true }; }
+      t = await teamCall('GET', `/jobs/${id}`);
+      if (t && ['done', 'failed', 'expired', 'cancelled'].includes(t.status)) break;
+    }
+    if (t && t.status === 'done') return { t };
+    if (!t || ['queued', 'running'].includes(t.status)) await teamCall('POST', `/jobs/${id}/cancel`);
+    const status = t ? t.status : null;
+    const why = status === 'failed' ? (t.error ? `the team PC reported: ${t.error}` : 'the team PC could not make them')
+      : status === 'running' ? 'the team PC did not finish in time'
+      : status === 'cancelled' ? 'the job was cancelled'
+      : status ? 'no team PC took the job in time' : 'the backend did not answer';
+    return { error: why, status, backendError: t && t.error ? String(t.error) : '' };
+  }
+  const whoOf = (pcs, t) => { const pc = pcs.find((x) => x.pcId === t.claimedPc) || {}; return clip([pc.username ? `${pc.username}'s PC` : 'a team PC', pc.gpu].filter(Boolean).join(', '), 120); };
+  // The same label as the server's pictures ("BRANCH PREVIEW · not live · <branch>"), burned in by the trusted label-shot.py: it reads <dir>/.dm-shots/.raw and
+  // writes <dir>/.dm-shots/<name>.png, and nothing it did not label is posted.
+  async function labelInto(lab, branch) {
+    await G.run(cfg.teamLabelCmd ? 'bash' : 'python3', cfg.teamLabelCmd ? ['-c', cfg.teamLabelCmd, 'label', lab, branch] : [path.join(cfg.toolsDir, 'label-shot.py'), lab, branch],
+      { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: 2 * 60000 });
+  }
+
+  // Pictures for the proposal (o.proposal, the default) or for the game as it is (!shot with nothing to propose). o.pcs: the PCs the caller already found online;
+  // o.say: say in the thread when nothing came (the proposal said pictures follow); o.forced: the person asked (`!shot`), so answer even when nothing can be done.
+  async function teamShots(job, head, o = {}) {
+    if (!teamEnabled() || !job.worktree) return;
+    if (teamBusy.has(job.id)) { if (o.forced) say(job, 'A team PC is already making pictures for this thread; they will follow here.'); return; }
+    teamBusy.add(job.id);
+    const proposal = o.proposal !== false;
+    const stale = () => ['discarded', 'deleted'].includes(job.status) || !!job.deleteRequested || (proposal && (!job.proposal || job.proposal.head !== head));
+    const fail = (why, extra = {}) => { audit.log('team-shots', { job: job.id, ok: false, why: clip(why, 300), ...extra }); if (o.say || o.forced) say(job, `⚠ No pictures from a team PC this time (${clip(why, 300)}). Say \`!shot\` to ask again.`); };
+    try {
+      const sp = CL.readShotPlan(job.worktree);
+      if (!sp) return;
+      const plan = sp.plan, notes = sp.notes.slice();
+      const pcs = o.pcs && o.pcs.length ? o.pcs : await teamPcs();
+      if (!pcs.length) { if (o.forced) say(job, 'No team PC is online right now, so there are no pictures from one. Say `!shot` again once one is on.'); return; }
+      if (o.forced) say(job, 'Pictures from a team PC follow in a few minutes (before and after).');
+      const after = await teamBuild(job.worktree, job);
+      if (after.error) return fail(`the game could not be built for the team PC: ${after.error}`);
       if (stale()) return;
-      const disc = typeof plan.discipline === 'string' ? TEAM_CLASSES[plan.discipline.toLowerCase().replace(/^hero_/, '')] : plan.discipline;
-      const cls = Object.values(TEAM_CLASSES).includes(disc) ? disc : 2;
-      const made = await teamCall('POST', '/jobs', { kind: 'shots', title: 'Screenshots of a change, about 2 minutes', weightS: 120, ttlS: 30 * 60,
-        payload: { rev: head.slice(0, 12), godotVersion: '4.7.2.stable', files, plan, presets: ['low', 'ultra'], args: ['--dev-offline', `--class=${cls}`, '--qa'] } });
-      if (!made || !made.id) return fail('the backend did not take the job');
-      audit.log('team-shots', { job: job.id, teamJob: made.id, queued: true, pcs: online.pcs.length });
-      let t = null;
-      for (let i = 0, n = Math.ceil((35 * 60000) / (cfg.teamPollMs || 20000)); i < n; i++) {
-        await sleep(cfg.teamPollMs || 20000);
-        if (stale()) { await teamCall('POST', `/jobs/${made.id}/cancel`); return; }
-        t = await teamCall('GET', `/jobs/${made.id}`);
-        if (t && ['done', 'failed', 'expired', 'cancelled'].includes(t.status)) break;
+      let before = null;   // the unchanged game, when there is a change to compare with; no base build = AFTER pictures only
+      if (job.base && head !== job.base) {
+        const b = await teamBuildBase(job);
+        if (b.error) audit.log('team-shots', { job: job.id, before: false, why: clip(b.error, 200) }); else before = b;
+        if (stale()) return;
       }
-      if (!t || t.status !== 'done') {
-        if (!t || ['queued', 'running'].includes(t.status)) await teamCall('POST', `/jobs/${made.id}/cancel`);
-        return fail(t && t.error ? t.error : `the team job ended ${t ? t.status : 'without an answer'}`, { teamJob: made.id });
-      }
-      if (stale()) return;
-      const dir = path.join(path.resolve(cfg.teamResultsDir), made.id);
-      const rank = (n) => (n.startsWith('low') ? 0 : n.startsWith('ultra') ? 1 : 2);
-      const chosen = (Array.isArray(t.files) ? t.files : [])
-        .filter((f) => f && /^[a-z0-9][a-z0-9_-]{0,39}\.png$/.test(String(f.name)) && path.dirname(path.resolve(String(f.path))) === dir)
-        .map((f) => String(f.name).replace(/_/g, '-'));
-      // the same label as the server's pictures ("BRANCH PREVIEW · not live · <branch>"), burned in by the trusted label-shot.py: it reads
-      // <dir>/.dm-shots/.raw and writes <dir>/.dm-shots/<name>.png, and nothing it did not label is posted
-      const lab = fs.mkdtempSync(path.join(require('os').tmpdir(), 'dm-team-shots-'));
-      let pics = [];
-      try {
-        fs.mkdirSync(path.join(lab, '.dm-shots', '.raw'), { recursive: true });
-        for (const n of chosen) { try { fs.copyFileSync(path.join(dir, n.replace(/-/g, '_')), path.join(lab, '.dm-shots', '.raw', n)); } catch { /* listed but gone */ } }
-        await G.run(cfg.teamLabelCmd ? 'bash' : 'python3', cfg.teamLabelCmd ? ['-c', cfg.teamLabelCmd, 'label', lab, job.branch] : [path.join(cfg.toolsDir, 'label-shot.py'), lab, job.branch],
-          { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: 2 * 60000 });
-        pics = chosen.sort((a, b) => rank(a) - rank(b) || (a < b ? -1 : 1))
-          .map((n) => { try { const f = path.join(lab, '.dm-shots', n); const st = fs.lstatSync(f); return st.isFile() && st.size <= SHOT_MAX_BYTES ? { name: safeName(n), b64: fs.readFileSync(f).toString('base64') } : null; } catch { return null; } })
-          .filter(Boolean);
-      } finally { fs.rmSync(lab, { recursive: true, force: true }); }
-      if (!pics.length) return fail('the team job finished without pictures that could be labelled', { teamJob: made.id });
-      const pc = online.pcs.find((x) => x.pcId === t.claimedPc) || {};
-      const who = [pc.username ? `${pc.username}'s PC` : 'a team PC', pc.gpu].filter(Boolean).join(', ');
-      audit.log('team-shots', { job: job.id, teamJob: made.id, ok: true, pictures: pics.length });
-      for (let i = 0; i < pics.length; i += SHOTS_PER_POST) {
-        post({ threadId: job.threadId }, { content: i === 0 ? `📸 The same pictures on a real graphics card (${clip(who, 120)}), Low then Ultra · branch preview, not live` : '📸 (more)', files: pics.slice(i, i + SHOTS_PER_POST) });
-      }
+      const cls = CL.classOf(plan.discipline) || 2;
+      // A job holds at most TEAM_FILES_PER_JOB pictures (the backend's limit): builds x presets x shots x screen sizes. When the plan asks for many sizes, Ultra alone
+      // is rendered (a screen size matters for the layout, a preset hardly), and when that is still too many the BEFORE pictures go.
+      const sizes = plan.resolutions && plan.resolutions.length ? plan.resolutions.length : 1;
+      const fits = (builds, presets) => builds * presets.length * plan.shots.length * sizes <= TEAM_FILES_PER_JOB;
+      let presets = ['low', 'ultra'];
+      if (!fits(before ? 2 : 1, presets)) { presets = ['ultra']; notes.push('Only Ultra was rendered: both presets at every size would be more pictures than one job can hold.'); }
+      if (before && !fits(2, presets)) { before = null; notes.push('There are no BEFORE pictures: they would not fit in one job at this many sizes.'); }
+      const common = { rev: head.slice(0, 12), godotVersion: '4.7.2.stable', plan, ...(plan.resolutions ? { resolutions: plan.resolutions } : {}), presets, args: ['--dev-offline', `--class=${cls}`, '--qa'] };
+      const attempt = async (paired) => {
+        const body = paired
+          ? { kind: 'shots', title: 'Pictures of a change (before and after), about 3 minutes', weightS: 180, ttlS: 45 * 60, payload: { ...common, builds: [{ label: 'before', files: before.files }, { label: 'after', files: after.files }] } }
+          : { kind: 'shots', title: 'Screenshots of a change, about 2 minutes', weightS: 120, ttlS: 30 * 60, payload: { ...common, files: after.files } };
+        const made = await teamCall('POST', '/jobs', body);
+        if (!made || !TEAM_ID_RE.test(String(made.id))) return { error: 'the backend did not take the job' };
+        audit.log('team-shots', { job: job.id, teamJob: made.id, queued: true, pcs: pcs.length, paired });
+        return { ...(await teamWait(made.id, { stale, maxMs: (paired ? 45 : 35) * 60000 })), id: made.id };
+      };
+      let paired = !!before;
+      let r = await attempt(paired);
+      // The plan may use something only the change has (a new window or item), which the unchanged game cannot run: then the pair's job fails, and the AFTER pictures
+      // still come from a second, single-build job.
+      if (paired && !r.stale && r.error && r.status === 'failed') { audit.log('team-shots', { job: job.id, teamJob: r.id, paired: false, retry: true, why: clip(r.error, 200) }); paired = false; r = await attempt(false); }
+      if (r.stale || stale()) return;
+      if (r.error) return fail(r.error, { teamJob: r.id });
+      const pics = await teamPictures(job, r.t, r.id, { paired, plan, who: whoOf(pcs, r.t), noBefore: !paired, notes });
+      if (!pics) return fail('the team PC finished without pictures that could be labelled', { teamJob: r.id });
+      audit.log('team-shots', { job: job.id, teamJob: r.id, ok: true, pictures: pics, paired });
     } catch (e) { fail(e && e.message ? e.message : String(e)); } finally { teamBusy.delete(job.id); }
+  }
+  // Reads a finished shots job's pictures from the backend's results folder, labels them and posts them. Returns how many were posted (0 = none usable).
+  // Names the app uploads: `<preset>_<shot>.png`, or `<before|after>_<preset>_<shot>.png` for a two-build job; Discord gets `low-a.png` / `before-low-a.png`.
+  async function teamPictures(job, t, id, { paired, plan, who, noBefore, notes = [] }) {
+    const dir = path.join(path.resolve(cfg.teamResultsDir), id);
+    const rank = (n) => (n.startsWith('low') ? 0 : n.startsWith('ultra') ? 1 : 2);
+    const items = [];   // { build, preset, shot, raw, src, buf }; `raw` is the neutral name label-shot.py gets (its names are short and fixed; the posted names carry the preset and shot)
+    for (const f of (Array.isArray(t.files) ? t.files : [])) {
+      if (!f || typeof f.name !== 'string' || typeof f.path !== 'string' || path.dirname(path.resolve(f.path)) !== dir) continue;   // only what the backend stored for this job
+      const m = paired ? /^(before|after)_([a-z0-9]+)_([a-z0-9_-]+)\.png$/.exec(f.name) : /^()([a-z0-9]+)_([a-z0-9_-]+)\.png$/.exec(f.name);
+      if (!m) continue;
+      items.push({ build: m[1] || 'after', preset: m[2], shot: m[3].replace(/_/g, '-').slice(0, 60), raw: `s${items.length}.png`, src: path.resolve(f.path) });
+    }
+    const labs = [];
+    try {
+      for (const build of paired ? ['before', 'after'] : ['after']) {
+        const mine = items.filter((x) => x.build === build); if (!mine.length) continue;
+        const lab = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-team-shots-')); labs.push(lab);
+        fs.mkdirSync(path.join(lab, '.dm-shots', '.raw'), { recursive: true });
+        for (const x of mine) { try { fs.copyFileSync(x.src, path.join(lab, '.dm-shots', '.raw', x.raw)); } catch { /* listed but gone */ } }
+        await labelInto(lab, build === 'before' ? BB : job.branch);   // the BEFORE pictures are the base branch's game, the AFTER ones this branch's
+        for (const x of mine) { try { const f = path.join(lab, '.dm-shots', x.raw); const st = fs.lstatSync(f); if (st.isFile() && st.size <= SHOT_MAX_BYTES) x.buf = fs.readFileSync(f); } catch { /* not labelled: not posted */ } }
+      }
+    } finally { for (const l of labs) fs.rmSync(l, { recursive: true, force: true }); }
+    const got = items.filter((x) => x.buf);
+    if (!got.some((x) => x.build === 'after')) return 0;
+    const file = (x) => ({ name: safeName(`${paired ? `${x.build}-` : ''}${x.preset}-${x.shot}.png`), b64: x.buf.toString('base64') });
+    const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+    const tail = ` · branch preview, not live${notes.length ? `\n${notes.join(' ')}` : ''}`;
+    const presets = [...new Set(got.map((x) => x.preset))].sort((a, b) => rank(a) - rank(b) || (a < b ? -1 : 1));
+    // posts of at most SHOTS_PER_POST files and POST_MAX_BYTES; a group (a BEFORE/AFTER pair) is never split
+    const chunked = (groups) => { const out = []; let cur = [], bytes = 0; for (const g of groups) { const gb = g.reduce((n, x) => n + x.buf.length, 0); if (cur.length && (cur.length + g.length > SHOTS_PER_POST || bytes + gb > POST_MAX_BYTES)) { out.push(cur); cur = []; bytes = 0; } cur.push(...g); bytes += gb; } if (cur.length) out.push(cur); return out; };
+    if (!paired) {
+      const list = got.sort((a, b) => rank(a.preset) - rank(b.preset) || (`${a.preset}-${a.shot}` < `${b.preset}-${b.shot}` ? -1 : 1));
+      chunked(list.map((x) => [x])).forEach((c, i) => post({ threadId: job.threadId }, { content: i === 0 ? `📸 The same pictures on a real graphics card (${who}), ${presets.map(cap).join(' then ')}${noBefore ? ' (no BEFORE pictures this time)' : ''}${tail}` : '📸 (more)', files: c.map(file) }));
+      return list.length;
+    }
+    // pairs: BEFORE then AFTER for each shot, a preset at a time, in the plan's order; a pair never splits across two posts
+    const order = new Map((plan.shots || []).map((s, i) => [String((s && s.name) || '').toLowerCase().replace(/_/g, '-'), i]));
+    const place = (shot) => { const k = [...order.keys()].find((n) => shot === n || shot.endsWith(`-${n}`)); return k === undefined ? 99 : order.get(k); };   // a size may come before the name
+    let n = 0, first = true;
+    for (const preset of presets) {
+      const shots = [...new Set(got.filter((x) => x.preset === preset).map((x) => x.shot))].sort((a, b) => place(a) - place(b) || (a < b ? -1 : 1));
+      const groups = shots.map((s) => ['before', 'after'].map((b) => got.find((x) => x.preset === preset && x.shot === s && x.build === b)).filter(Boolean)).filter((g) => g.some((x) => x.build === 'after'));
+      chunked(groups).forEach((c, i) => { n += c.length; post({ threadId: job.threadId }, { content: i === 0 ? `📸 ${cap(preset)} on a real graphics card (${who}): each pair is BEFORE (the game as it is now), then AFTER (this change)${first ? tail : ' · branch preview, not live'}` : `📸 ${cap(preset)} (more)`, files: c.map(file) }); first = false; });
+    }
+    return n;
+  }
+
+  // ---------- short videos of a change (.dm-clip.json: variants of a tune over the game's data; a `clip` job on a team PC; "Which do you like best?") ----------
+  // The agent writes .dm-clip.json when a request is about how something moves or looks in motion, or when the requester should choose between options given
+  // as data values (speeds, sizes, colours). The runner checks the file (lib/clips.cjs), builds the branch for a team PC, queues the job and posts the numbered
+  // videos with the question. The requester's reply is a normal message: the agent then applies the chosen values as a normal change (clipChoiceNote).
+  // Returns true when the turn is over with the videos on their way (no proposal now); false to carry on without them (the thread was told why).
+  async function clipStage(job) {
+    if (!job.worktree) return false;
+    let rq = CL.readClipRequest(job.worktree); if (!rq) return false;
+    const rm = () => { try { fs.rmSync(path.join(job.worktree, CL.CLIP_FILE), { force: true }); } catch { /* none */ } };
+    for (let attempt = 0; ; attempt++) {
+      rm();
+      if (!rq.error) break;
+      audit.log('clip-invalid', { job: job.id, error: clip(rq.error, 300) });
+      if (attempt >= 2) { say(job, `I could not make the short videos: ${clip(rq.error, 900)}\nNothing was recorded.`); return false; }
+      const r = await agentTurn(job, `The runner rejected your clip request (${CL.CLIP_FILE}). Fix it and write the file again, or drop the idea. Problems: ${rq.error}`);
+      if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return true; }
+      if (r.error) { say(job, `The agent hit an error: ${clip(redactText(r.error), 300)}`); job.status = 'idle'; return true; }
+      rq = CL.readClipRequest(job.worktree); if (!rq) return false;   // it dropped the idea
+    }
+    job.lastClip = { plan: rq.plan, variants: rq.variants, at: now() }; save();
+    audit.log('clip-request', { job: job.id, variants: rq.variants.length, clips: rq.plan.clips.length });
+    const res = await clipPrepare(job, job.lastClip, { inTurn: true });
+    if (res.cancelled) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return true; }
+    if (!res.ok) return false;
+    res.watch();   // the waiting and the posting go on in the background, so the job's slot is free for others
+    // One option is a preview (a model turning on a hero, a spell in motion), not a question: the turn goes on to its proposal as usual and the video follows.
+    if (rq.variants.length === 1) return false;
+    if (await unchangedProposal(job)) job.status = 'proposed'; else { job.status = 'idle'; job.proposal = null; }   // the options come first; a change follows the answer
+    save(); return true;
+  }
+  // Everything up to the queued job: a team PC online, the branch built for it, the job accepted. { ok: false } = the thread was told why; { ok: true, watch }.
+  async function clipPrepare(job, req, { inTurn = false } = {}) {   // inTurn: part of the agent's turn, so `!cancel` stops the build and a cancel is honoured
+    if (!teamEnabled()) { say(job, 'Short videos need the team app, which this agent is not connected to.'); return { ok: false }; }
+    if (clipBusy.has(job.id)) { say(job, 'A team PC is already recording videos for this thread; they will follow here.'); return { ok: false }; }
+    clipBusy.add(job.id);
+    let handed = false;
+    try {
+      const pcs = await teamPcs();
+      if (!pcs.length) { audit.log('team-clips', { job: job.id, ok: false, why: 'no team PC online' }); say(job, CLIP_OFFLINE); return { ok: false }; }
+      let b;
+      try { b = await teamBuild(job.worktree, job, inTurn ? { onSpawn: (p) => checkProcs.set(job.id, p) } : {}); } finally { if (inTurn) checkProcs.delete(job.id); }
+      if ((inTurn && job.cancelRequested) || ['discarded', 'deleted'].includes(job.status) || job.deleteRequested) return { ok: false, cancelled: true };
+      if (b.error) { audit.log('team-clips', { job: job.id, ok: false, why: clip(b.error, 300) }); say(job, `⚠ No short videos this time (the game could not be built for the team PC: ${clip(b.error, 300)}). Say \`!clips\` to try again.`); return { ok: false }; }
+      const head = await G.head(job.worktree);
+      const cls = CL.classOf(req.plan.discipline) || 2, minutes = CL.clipMinutes(req.plan, req.variants);
+      const n = req.variants.length;
+      const made = await teamCall('POST', '/jobs', { kind: 'clip', title: `Short videos of a change: ${n} option${n === 1 ? '' : 's'}, about ${minutes} minutes`, weightS: minutes * 60, ttlS: 45 * 60,
+        payload: { rev: head.slice(0, 12), godotVersion: '4.7.2.stable', files: b.files, plan: req.plan, variants: req.variants.map((v) => ({ label: v.label, tune: v.tune })), presets: ['high'], args: ['--dev-offline', `--class=${cls}`, '--qa'] } });
+      if (!made || !TEAM_ID_RE.test(String(made.id))) { audit.log('team-clips', { job: job.id, ok: false, why: 'the backend did not take the job' }); say(job, '⚠ No short videos this time (the backend did not take the job). Say `!clips` to try again.'); return { ok: false }; }
+      audit.log('team-clips', { job: job.id, teamJob: made.id, queued: true, variants: n, clips: req.plan.clips.length, pcs: pcs.length });
+      handed = true;
+      return { ok: true, watch: () => clipWatch(job, req, made.id, pcs).catch((e) => audit.log('team-clips', { job: job.id, ok: false, why: clip(e && e.message ? e.message : String(e), 200) })).finally(() => clipBusy.delete(job.id)) };
+    } catch (e) { audit.log('team-clips', { job: job.id, ok: false, why: clip(e && e.message ? e.message : String(e), 200) }); say(job, '⚠ No short videos this time (something went wrong on my side). Say `!clips` to try again.'); return { ok: false }; }
+    finally { if (!handed) clipBusy.delete(job.id); }
+  }
+  // Waits for the clip job, posts each video (numbered by option, with its title) and then the question.
+  async function clipWatch(job, req, id, pcs) {
+    const stale = () => ['discarded', 'deleted'].includes(job.status) || !!job.deleteRequested;
+    const fail = (why, extra = {}) => { audit.log('team-clips', { job: job.id, ok: false, why: clip(why, 300), ...extra }); say(job, `⚠ No short videos this time (${clip(why, 300)}). Say \`!clips\` to ask again.`); };
+    const w = await teamWait(id, { stale, maxMs: Math.min(45, 5 + req.variants.length * 10) * 60000 });
+    if (w.stale) return;
+    if (w.error) return fail(w.error, { teamJob: id });
+    const dir = path.join(path.resolve(cfg.teamResultsDir), id);
+    const have = new Map();
+    for (const f of (Array.isArray(w.t.files) ? w.t.files : [])) if (f && typeof f.name === 'string' && typeof f.path === 'string' && /^[a-z0-9][a-z0-9_-]{0,59}\.mp4$/.test(f.name) && path.dirname(path.resolve(f.path)) === dir) have.set(f.name, path.resolve(f.path));
+    const many = req.plan.clips.length > 1, choice = req.variants.length > 1, options = [], notes = []; let posted = 0;
+    for (const [i, v] of req.variants.entries()) {
+      const n = i + 1; options.push({ n, label: v.label, title: v.title, tune: v.tune });
+      for (const c of req.plan.clips) {
+        if (stale()) return;
+        const src = have.get(`${v.label}_${c.name}.mp4`), what = `${choice ? `${n} · ` : ''}${v.title}${many ? ` · ${c.name}` : ''}`;
+        let buf = null;
+        if (src) { try { const st = fs.lstatSync(src); if (st.isFile() && st.size <= VIDEO_MAX_BYTES) buf = fs.readFileSync(src); else notes.push(`${what}: the video is over ${VIDEO_MAX_BYTES / 1048576} MB, so it is not posted`); } catch { /* gone */ } }
+        if (!buf) { if (!src) notes.push(`${what}: no video came`); continue; }
+        posted++; await postWait({ threadId: job.threadId }, { content: what, files: [{ name: `${choice ? `${n}-` : ''}${v.label}-${c.name}.mp4`, b64: buf.toString('base64') }] });
+      }
+    }
+    if (!posted) return fail('the team PC finished without videos', { teamJob: id });
+    audit.log('team-clips', { job: job.id, teamJob: id, ok: true, videos: posted });
+    const where = `Recorded on ${whoOf(pcs, w.t)} with the offline demo character on this branch (not the live game).`;
+    if (!choice) { say(job, `${notes.length ? `Not shown: ${notes.join('; ')}.\n` : ''}${where}`); return; }   // a preview: nothing to pick
+    say(job, `${notes.length ? `Not shown: ${notes.join('; ')}.\n` : ''}${where}\nWhich do you like best? Reply with its number.`);
+    job.clipAsk = { at: now(), options }; save();
+  }
+  // `!clips`: the last request goes to a team PC again.
+  async function clipsAgain(job) {
+    const res = await clipPrepare(job, job.lastClip);
+    if (!res.ok) return;
+    say(job, 'Recording the last short videos again on a team PC; they will follow here.');
+    res.watch();
   }
 
   // ---------- model generation: request -> estimate -> ✅ -> Gemini + Tripo run by the runner -> the agent builds and commits the result ----------
@@ -1267,8 +1646,8 @@ function createRunner(cfgIn, opts = {}) {
   function spawnScript(script, env, onLine) {
     return G.run('bash', [script, ...(env.__ARGS || [])], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 60 * 60000 });
   }
-  function startShip(job, approverId) {
-    ship(job, approverId).catch((e) => { setBusy(false); say(job, `Ship crashed: ${e.message}`); audit.log('ship-error', { job: job.id, error: e.message }); if (job.status === 'shipping') { job.status = job.proposal ? 'proposed' : 'idle'; save(); pump(); } })
+  function startShip(job, approverId, batch = []) {
+    ship(job, approverId, batch).catch((e) => { setBusy(false); say(job, `Ship crashed: ${e.message}`); audit.log('ship-error', { job: job.id, error: e.message }); if (job.status === 'shipping') { job.status = job.proposal ? 'proposed' : 'idle'; save(); pump(); } })
       .finally(() => { if (job.deleteRequested) cleanupDeleted(job).then(() => pump()); });
   }
   // Ships merged with DEFER_PUBLISH (another approved ship was waiting): pushed to the base branch, not yet in a published client. The next publish
@@ -1277,42 +1656,95 @@ function createRunner(cfgIn, opts = {}) {
   const releaseTitle = (...titles) => redactText([...deferredJobs().map((j) => j.publishFailed.proposal && j.publishFailed.proposal.title), ...titles].filter(Boolean).filter((t, i, a) => a.indexOf(t) === i).join(' · ')).slice(0, 120);
   // Approved ships waiting for the deploy, oldest approval first (job.shipQueued survives a runner restart in jobs.json).
   function shipQueue() { return Object.values(jobs).filter((j) => j.shipQueued).sort((a, b) => a.shipQueued.at - b.shipQueued.at); }
-  // Ships the oldest queued job that is still exactly what was approved; anything that changed while waiting is dropped with a note.
+  // Ships the oldest queued job that is still exactly what was approved; anything that changed while waiting is dropped with a note. With the CI
+  // gate every other ready approval goes out with it (DECISIONS B59): one merge, one CI run on the combined tree, one publish. `solo` marks the
+  // changes of a batch that could not ship as one: each then ships on its own, so the one that breaks it is the one that comes back.
   function drainShipQueue() {
     if (shipBusy) return;
+    const ready = [];
     for (const job of shipQueue()) {
-      const q = job.shipQueued; job.shipQueued = null; save();
+      const q = job.shipQueued;
       const p = job.proposal;
       const gone = goneThread(job.threadId) || job.deleteRequested || ['discarded', 'deleted', 'shipped'].includes(job.status);
       const why = gone ? 'gone'
-        : (job.running || job.status !== 'proposed' || !p || !p.testsOk || p.head !== q.head) ? 'the change moved on while it waited in the queue. Approve the new proposal when it comes'
+        : (job.running || job.status !== 'proposed' || !p || !(p.testsOk || p.draft) || p.head !== q.head) ? 'the change moved on while it waited in the queue. Approve the new proposal when it comes'
         : !auth.canApprove(q.approverId, p.tier) ? `${nameOf(q.approverId)} can no longer ship this tier`
         : (!auth.isFull(q.approverId) && auth.shipsToday(q.approverId, readShips()) >= cfg.casualShipsPerDay) ? `that is today's limit of ${cfg.casualShipsPerDay} ships for ${nameOf(q.approverId)}`
         : null;
-      if (why) { audit.log('ship-queue-dropped', { job: job.id, why }); if (!gone) say(job, `Not shipped from the queue: ${why}.`); continue; }
-      audit.log('ship-dequeued', { job: job.id, approver: q.approverId });
-      startShip(job, q.approverId);
+      if (why) { job.shipQueued = null; save(); audit.log('ship-queue-dropped', { job: job.id, why }); if (!gone) say(job, `Not shipped from the queue: ${why}.`); continue; }
+      ready.push({ job, q });
+      if (!(GODOT && cfg.ciGate)) break;   // without the CI gate one ship at a time, the rest stay queued (and see it as waiting: DEFER_PUBLISH)
+    }
+    if (ready.length) {
+      const [lead, ...rest] = ready;
+      const batch = GODOT && cfg.ciGate && !lead.q.solo ? rest.filter((x) => !x.q.solo) : [];
+      const ids = batch.length ? [lead, ...batch].map((x) => x.job.id) : undefined;
+      for (const x of [lead, ...batch]) { x.job.shipQueued = null; audit.log('ship-dequeued', { job: x.job.id, approver: x.q.approverId, ...(ids ? { batch: ids } : {}) }); }
+      save();
+      startShip(lead.job, lead.q.approverId, batch.map((x) => ({ job: x.job, approverId: x.q.approverId })));
       return;
     }
     const d = deferredJobs(); const last = d[d.length - 1];   // nothing left to ship: publish what the batch merged
     if (last && !last.deleteRequested) retryPublish(last, null).catch((e) => { setBusy(false); say(last, `Publish crashed: ${e.message}`); });
   }
-  async function ship(job, approverId) {
+  async function ship(job, approverId, batch = []) {
     setBusy(true, `ship ${job.id}`); job.status = 'shipping'; save();
     const p = job.proposal;
-    const defer = GODOT && shipQueue().some((j) => j !== job);   // another approved ship waits: merge now, one publish for the batch
-    say(job, `Approved by ${nameOf(approverId)}. Shipping: taking the deploy lock, merging onto ${BB}, re-testing, deploying. This takes a few minutes.`);
+    const CI = GODOT && cfg.ciGate;
+    // without the CI gate: another approved ship waits, so merge now and leave the publish to the last one (with it, the batch below does that)
+    const defer = GODOT && !CI && shipQueue().some((j) => j !== job);
+    const titles = [p.title || job.title, ...batch.map((b) => b.job.proposal.title || b.job.title)];
+    say(job, batch.length
+      ? `Approved by ${nameOf(approverId)}. Shipping together with ${batch.length} other approved change${batch.length > 1 ? 's' : ''} (${batch.map((b) => `\`${b.job.id}\``).join(', ')}): one merge onto ${BB}, one CI run, one update for players.`
+      : `Approved by ${nameOf(approverId)}. Shipping: merging onto ${BB}, ${CI ? 'CI on the merged change' : 're-testing'}, deploying. This takes a few minutes.`);
+    for (const b of batch) {
+      b.job.status = 'shipping';
+      say(b.job, `Approved by ${nameOf(b.approverId)}. Shipping together with \`${job.id}\`${batch.length > 1 ? ` and ${batch.length - 1} more` : ''}: one merge onto ${BB}, one CI run, one update for players.`);
+    }
+    save();
+    const migrations = [...new Set([...p.migrations, ...batch.flatMap((b) => b.job.proposal.migrations || [])])];
     const env = { REPO: cfg.repo, WT_ROOT: cfg.worktreeRoot, BRANCH: job.branch, JOBID: job.id, EXPECT_HEAD: p.head, LOCK: lockFile, TOOLS: cfg.toolsDir, CONFIG: cfg.__file || path.join(cfg.toolsDir, 'config.json'),
-      RELEASE_TITLE: releaseTitle(p.title || job.title),   // #build-alerts notice title: the proposal's title (else the thread's name), joined with any batched ships' titles
+      RELEASE_TITLE: releaseTitle(...titles),   // #build-alerts notice title: the proposal's title (else the thread's name), joined with any batched ships' titles
       ...(defer ? { DEFER_PUBLISH: '1' } : {}),
-      MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: p.migrations.join(' '), BASE_BRANCH: BB, MODE: GODOT ? 'godot' : 'web', DEPLOY_DIR: cfg.deployDir, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.backendDeployCmd ? { BACKEND_DEPLOY_CMD: cfg.backendDeployCmd } : {}), ...(cfg.lobbyDeployCmd ? { LOBBY_DEPLOY_CMD: cfg.lobbyDeployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}),
+      ...(p.testsOk ? {} : { PROPOSAL_UNTESTED: '1' }),   // a draft: the local check (no CI gate) may not skip the merged tree as already tested
+      ...(CI ? { CI_GATE: '1', CI_SCRIPT: cfg.ciScript } : {}),
+      ...(batch.length ? { BATCH: batch.map((b) => `${b.job.id} ${b.job.branch} ${b.job.proposal.head} ${auth.maxTier(b.approverId) || 'casual'}`).join('\n') } : {}),
+      MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: migrations.join(' '), BASE_BRANCH: BB, MODE: GODOT ? 'godot' : 'web', DEPLOY_DIR: cfg.deployDir, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.backendDeployCmd ? { BACKEND_DEPLOY_CMD: cfg.backendDeployCmd } : {}), ...(cfg.lobbyDeployCmd ? { LOBBY_DEPLOY_CMD: cfg.lobbyDeployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}),
       MOBILE_BRANCH: cfg.mobileBranch === undefined ? 'mobile' : String(cfg.mobileBranch), ...(cfg.mobileDeployScript ? { MOBILE_DEPLOY_SCRIPT: cfg.mobileDeployScript } : {}), ...(cfg.mobileDeployCmd ? { MOBILE_DEPLOY_CMD: cfg.mobileDeployCmd } : {}) };
     let r;
     try { r = await G.run('bash', [path.join(cfg.toolsDir, 'ship.sh')], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 150 * 60000 }); }
     finally { setBusy(false); }
     const out = r.out + r.err; const m = /^RESULT: (\S+)\s*(.*)$/m.exec(out); const kind = m ? m[1] : 'crashed'; const detail = m ? m[2] : '';
-    audit.log('ship-result', { job: job.id, kind, detail, approver: approverId });
+    audit.log('ship-result', { job: job.id, kind, detail, approver: approverId, ...(batch.length ? { batch: batch.map((b) => b.job.id) } : {}) });
     const tail = clip(out.trim().split('\n').slice(-12).join('\n'), 900);
+    if (batch.length) {
+      const merged = new Set([...out.matchAll(/^BATCH: (\S+)$/gm)].map((m) => m[1]));
+      if (kind === 'live' || kind === 'docs') {
+        const [sha, rb] = detail.split(' ');
+        for (const b of batch) if (merged.has(b.job.id)) await shippedWith(b.job, b.approverId, kind, sha, rb, job);
+      } else if (kind === 'deploy-failed' && merged.size) {
+        // pushed with the lead but not published yet: the lead's publish retry carries them (healOtherPublishes closes their threads then)
+        const sha = (detail.split(' ')[0] || '').trim();
+        for (const b of batch) if (merged.has(b.job.id)) {
+          b.job.publishFailed = { sha, proposal: b.job.proposal, approverId: String(b.approverId), at: now(), autoRetried: false, messageId: null, deferred: true };
+          b.job.status = 'idle'; b.job.proposal = null;
+          say(b.job, `Merged into ${BB} with \`${job.id}\`, but publishing the game failed; it goes live with that publish's retry.`);
+        }
+        save();
+      } else {
+        // Nothing reached the base branch: each change ships again, on its own unless only the timing failed, so a change that
+        // breaks the batch is the one that comes back.
+        const again = ['master-moved', 'lock-timeout'].includes(kind) ? {} : { solo: true };
+        for (const x of [{ job, approverId }, ...batch]) {
+          if (x.job.deleteRequested || !x.job.proposal) continue;
+          x.job.status = 'proposed'; x.job.shipQueued = { approverId: String(x.approverId), head: x.job.proposal.head, at: now(), ...again };
+          say(x.job, again.solo ? `The changes approved together could not ship as one (${kind}${detail ? `: ${clip(detail, 200)}` : ''}). Each now ships on its own, so whichever breaks it comes back with the reason.`
+            : `${BB} moved or the deploy was busy, so nothing was pushed. Shipping again by itself.`);
+        }
+        audit.log('batch-split', { job: job.id, kind, batch: batch.map((b) => b.job.id), solo: !!again.solo }); save();
+        setTimeout(() => drainShipQueue(), 0); return;
+      }
+    }
     if (kind === 'merged') {   // DEFER_PUBLISH: on the base branch, live with the next publish
       const sha = detail.split(' ')[0];
       job.publishFailed = { sha, proposal: p, approverId: String(approverId), at: now(), autoRetried: false, messageId: null, deferred: true };
@@ -1356,6 +1788,7 @@ function createRunner(cfgIn, opts = {}) {
       'master-moved': `${BB} moved while I was deploying; nothing was pushed. React ✅ again or say !sync.`,
       'backup-failed': `I could not prepare a rollback for the Godot client, so nothing was pushed or published (${detail}). Ask the owner to look, then react ✅ again.`,
       'lock-timeout': 'another deploy held the lock for too long; nothing was changed. React ✅ again later.',
+      'ci-unavailable': `GitHub CI gave no verdict on the merged change (${detail || 'it may be down'}); nothing was pushed. React ✅ again later. While GitHub is down, the owner can switch the agent to the local check (ciGate false in its config).`,
       'sync-failed': `copying the change into the game (client/) failed, so nothing was pushed or published (${detail}). Ask the owner to look, then react ✅ again.\n${tail}`,
       'deploy-failed': `${BB} was pushed but the deploy script FAILED. The owner should look now.\n${tail}`,
     }[kind] || `unexpected failure (${kind}).\n${tail}`;
@@ -1386,11 +1819,31 @@ function createRunner(cfgIn, opts = {}) {
       say(job, `${BB} moved while I was shipping, so nothing was pushed. Shipping it again by itself.`);
       audit.log('auto-reship', { job: job.id, n: job.autoReships }); save(); return;   // drainShipQueue picks it up (the deploy is free)
     }
+    // The tests failed on what would ship (Helix, 2026-10-19: drafts are tested at ✅): the agent fixes it and a tested proposal comes back for one
+    // more ✅. The test run merges the latest base in and starts from CI's verdict, so suites that fail on the base too stop it with a plain line.
+    if (kind === 'tests-failed' && GODOT && !job.deleteRequested && job.worktree && fs.existsSync(job.worktree)) {
+      const failing = suitesFailing(out);
+      say(job, `❌ Not live: the tests failed on what would ship${failing.length ? ` (${failing.slice(0, 6).join(', ')})` : ''}. Fixing it now; a tested version follows for one more ✅.`);
+      job.status = 'idle'; p.testsOk = false; p.draft = false;
+      job.queue.push({ userId: String(approverId), name: nameOf(approverId), role: auth.roleOf(approverId) || 'approver', text: '(test after a failed ship)', messageId: null, ts: now(), test: true, repost: true });
+      audit.log('ship-tests-failed', { job: job.id, suites: failing }); save(); pump(); return;
+    }
     say(job, `❌ Not live: ${why}`);
     if (kind === 'deploy-failed' || kind === 'crashed') ownerPing(pingTarget(job), `Deploy problem for \`${job.id}\`: ${kind}. Check ${cfg.toolsDir}/state/ship-${job.id}.deploy.log`);
-    job.status = ['master-moved', 'lock-timeout', 'backup-failed'].includes(kind) ? 'proposed' : 'idle';
+    job.status = ['master-moved', 'lock-timeout', 'backup-failed', 'ci-unavailable'].includes(kind) ? 'proposed' : 'idle';
     if (job.status === 'idle') job.proposal = null;
     save(); pump();   // a message that arrived during the ship is handled on this same branch
+  }
+
+  // A change that went out in another approval's batch (DECISIONS B59): the same ending as its own ship.
+  async function shippedWith(j, approverId, kind, sha, rb, lead) {
+    const pj = j.proposal;
+    logShip({ type: kind, jobId: j.id, sha, approverId: String(approverId), approverName: nameOf(approverId), tier: pj.tier, title: pj.title, rollback: kind === 'live' && rb && rb !== 'none' ? rb : null, batchedWith: lead.id });
+    j.status = 'shipped'; j.proposal = { ...pj, shipSha: sha }; (j.history = j.history || []).push({ round: j.round || 1, branch: j.branch, shipSha: sha, title: pj.title, at: new Date(now()).toISOString() }); save(); syncName(j);
+    say(j, kind === 'docs' ? `✅ Merged into ${BB} as \`${sha}\` with \`${lead.id}\`. It only changes documents, so no game update went out. Keep going here for the next change.`
+      : `🚀 Live. Release \`${sha}\` (with \`${lead.id}\`) is on ${BB} and deployed. Thanks, ${nameOf(j.creatorId)}.\nPlayers get it in the Windows launcher on next start.`);
+    if (j.queue.length && !j.deleteRequested) await beginRound(j);
+    else { await G.removeJobArtifacts(cfg, j); j.worktree = null; save(); }
   }
 
   // ---------- failed client publish: automatic + manual retry (godot) ----------

@@ -18,7 +18,7 @@
       "allow": [
         "DECISIONS.md",
         "tools/hygiene/**",
-        "client/tests/next_acre_guide/run.gd",
+        "client/tests/chapterhouse/run.gd",
         "server/death-muffin/discord-agent/runner/lib/config.cjs",
         "client/next/hud/dm_next_ui_host.gd"
       ]
@@ -230,7 +230,7 @@
       "reason": "the client never saves or edits its bag (DECISIONS B25): bag changes are server operations (bag-ops.cjs and the other bag routes)",
       "allow": [
         "tools/hygiene/**",
-        "client/tests/next_bag/run.gd"
+        "client/tests/bag/run.gd"
       ]
     },
     {
@@ -287,6 +287,161 @@
         ".gitignore",
         "server/death-muffin/lobby/src/server.js"
       ]
+    },
+    {
+      "id": "team-bench-hook",
+      "pattern": "team-bench\\.(sh|test\\.cjs)|\\bNO_TEAM_BENCH\\b|\\bTEAM_BENCH\\b|DM_TEAM_BENCH_DAYS",
+      "reason": "the publish hook that queued the team PCs' benchmark became team-release.sh (the `release` job, whose `bench` step is the benchmark; env TEAM_RELEASE, NO_TEAM_RELEASE, DM_TEAM_RELEASE_DAYS), 2026-10-19",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "client-setup-sh",
+      "pattern": "client/setup\\.sh",
+      "reason": "replaced 2026-10-19 by tools/check/prep.sh, the game's one setup (tools/check/README.md)",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "merged-test-suites",
+      "pattern": "\\b(next_gathering|next_acre_guide|audio_wire)\\b",
+      "reason": "test suites merged into others 2026-10-19 (every check kept once): next_gathering and next_acre_guide into gathering and chapterhouse, audio_wire into sound",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "client-prep",
+      "pattern": "client-prep(-in)?\\.sh|client-cache|DM_CLIENT_CACHE|DM_CLIENT_PREP",
+      "reason": "the Discord agent's own prep and cache, replaced 2026-10-19 by tools/check/prep.sh (--warm / --read-only) and ~/death-muffin/build-cache",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "suite-next-front",
+      "pattern": "\\bnext_front\\b",
+      "reason": "test suite merged into front (client/tests/front.gd) 2026-10-19: one DmMain front flow",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "suite-next-polish",
+      "pattern": "\\bnext_polish\\b",
+      "reason": "test suite merged into counsel (client/tests/counsel.gd) 2026-10-19",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "suite-next-hud",
+      "pattern": "\\bnext_hud\\b",
+      "reason": "test suite merged into hud (client/tests/hud.gd) 2026-10-19",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "suite-next-hud-counsel",
+      "pattern": "\\bnext_hud_counsel\\b",
+      "reason": "test suite split 2026-10-19: its counsel checks went to counsel (client/tests/counsel.gd), the rest is hud_actions",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "suite-first-frame-run",
+      "pattern": "\\bfirst_frame_run\\b",
+      "reason": "test suite removed 2026-10-19: it asserted only that the HUD is applied during start, which hud checks (client/tests/hud.gd); its timing line asserted nothing",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "social-suite",
+      "pattern": "tests/social\\.gd|coop_bosses,? (and )?social\\b|--only social\\b",
+      "reason": "the social suite was merged 2026-10-19 into next_lobby/ui_run (Part D: the real boot scene as the joining player)",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "suite-names-next",
+      "pattern": "((?<!godot/)tests/|PASS |FAIL |`|--only[^\\n]*\\b)next_(bag|loot|hero_look|progress|boss_meta|playtest|perfctl|autocombat|feel|spawn_aggro|meta|brews_affix|runes|clarity|combat_odds|glue|affixes|online_gate)\\b",
+      "reason": "test suites renamed 2026-10-19 to the system they protect (no next_ prefix): next_bag -> bag, next_boss_meta -> boss_track, next_playtest -> playtest_regressions, next_perfctl -> perf_controls, next_autocombat -> auto_combat_play, next_feel -> combat_feel, next_meta -> meta_systems, next_brews_affix -> brews_affixes, next_clarity -> combat_clarity, next_glue -> integration, and the rest by dropping the prefix (client/README.md 'Suite names')",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "suite-names-next-lobby",
+      "pattern": "\\bnext_lobby\\b",
+      "reason": "test suite folder next_lobby renamed 2026-10-19 to lobby (runners lobby/ui and lobby/processes, were ui_run and proc_run)",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "suite-names-rules",
+      "pattern": "(tests/|PASS |FAIL |`|'|\"|--only[^\\n]*\\b)rules-(core|combat|gathering|loot|progression)\\b|\\brules-(core|combat|gathering|loot|progression)/",
+      "reason": "fixture suites renamed 2026-10-19 from rules-<area> to rules_<area> (snake_case, client/README.md 'Suite names')",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "suite-names-game",
+      "pattern": "tests/game/|\\bgame/(units|anim|autocombat|regress)_run\\b|\\b(units|autocombat|regress)_run\\.gd|\\banim_run\\.gd|\\b(ui|proc|udp)_run\\.gd|\\brelay/udp_run\\b",
+      "reason": "the first game's tests/game folder is gone (2026-10-19): units_run -> gathering_labor, anim_run -> creature_anim, autocombat_run -> auto_combat_fixtures, regress_run -> regressions; relay/udp_run -> relay/udp",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "suite-names-misc",
+      "pattern": "tests/(panels_a|ui_parity)\\b|\\bui_parity\\b|(PASS |FAIL |--only[^\\n]*\\b)panels_a\\b",
+      "reason": "test suites renamed 2026-10-19: panels_a -> panel_data, ui_parity -> ui_details (the game's own ui/panels_a folder keeps its name)",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "team-release-hook",
+      "pattern": "team-release\\.(sh|test\\.cjs)|\\bNO_TEAM_RELEASE\\b|\\bTEAM_RELEASE\\b|DM_TEAM_RELEASE_DAYS|\\bDM_TEAM_DAYS\\b",
+      "reason": "the team PCs' release checks after every client release (team-release.sh, the publish's hook) became checks before a release when its shipper asks (team-check.sh, B62), 2026-10-19",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "team-report",
+      "pattern": "team-report\\.(sh|test\\.cjs|json)|death-muffin-team-report",
+      "reason": "the release checks report to #build-alerts went with B62 (2026-10-19): a check's results go where its shipper asked; ops/install.sh removes the installed job",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**",
+        "server/death-muffin/ops/install.sh",
+        "server/death-muffin/ops/README.md"
+      ]
     }
   ],
   "allowPaths": {
@@ -300,5 +455,30 @@
   },
   "historyDocs": [
     "DECISIONS.md"
+  ],
+  "notSuites": {
+    "client/tests/benchmark_base.gd": "shared base of the five benchmark suites",
+    "client/tests/boss_base.gd": "shared base of the boss suites",
+    "client/tests/crash_note_child.gd": "child process crash_note.gd starts",
+    "client/tests/crowd_fade_smoke.gd": "rendered look run by hand (needs a window), not headless",
+    "client/tests/crowd_look_smoke.gd": "rendered look run by hand (needs a window), not headless",
+    "client/tests/crowd_smoke.gd": "rendered look run by hand (needs a window), not headless",
+    "client/tests/crowd_view_smoke.gd": "rendered look run by hand (needs a window), not headless",
+    "client/tests/hud_cost.gd": "class HudCost, a helper of tests/hud.gd",
+    "client/tests/hud_feeds.gd": "class HudFeeds, a helper of tests/hud.gd",
+    "client/tests/hud_shim.gd": "class HudShim, a helper of tests/hud.gd"
+  },
+  "staleGlobs": {
+    ".claude/**": "on purpose: keeps a future .claude folder protected; the repo has none today",
+    "client/backend/**": "on purpose: keeps a future client/backend folder sensitive (the offline backend lives in client/net today, also sensitive)",
+    "client/tests/realtime/**": "on purpose: keeps a future realtime test folder sensitive, like the relay and backend tests"
+  },
+  "freeRunners": [
+    "ubuntu-latest",
+    "ubuntu-24.04",
+    "ubuntu-22.04",
+    "windows-latest",
+    "windows-2025",
+    "windows-2022"
   ]
 }

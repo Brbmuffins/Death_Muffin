@@ -3,6 +3,7 @@
 // See tools/hygiene/README.md. Plain Node, no dependencies.
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -33,6 +34,7 @@ function matches(globs, file) {
   });
 }
 
+const require_ = (p) => createRequire(import.meta.url)(path.join(root, p));
 const problems = [];
 const report = (file, line, msg) => problems.push(`${file}:${line}: ${msg}`);
 const read = (f) => readFileSync(path.join(root, f), 'utf8');
@@ -183,6 +185,121 @@ for (const f of files) {
     const m = /^\s*assert\(([^,]*)/.exec(l);
     if (m && /[A-Za-z_]\w*\s*\(/.test(m[1])) report(f, i + 1, 'call inside assert() is stripped from release builds; compute it first, then assert the result');
   });
+}
+
+// h. The suite list matches the suite files: a suite nobody lists in tools/rebuild/run-client-tests.sh never runs, in CI or anywhere.
+// Mirrors the runner: a suite is client/tests/<name>.gd, client/tests/<name>/run.gd, or <folder>/<runner> (a slash name). Top-level files
+// that are helpers, not suites, are named in config.notSuites.
+{
+  const runner = 'tools/rebuild/run-client-tests.sh';
+  const text = read(runner).replace(/\\\n/g, ' ');   // a trailing backslash continues a quoted list
+  const listOf = (name) => {
+    const m = new RegExp('^' + name + '="([^"]*)"', 'm').exec(text);
+    if (!m) { report(runner, 1, `cannot find ${name}= in the runner (the hygiene rule that checks the suite list needs it)`); return null; }
+    return m[1].split(/\s+/).filter(Boolean);
+  };
+  const suites = listOf('SUITES');
+  if (suites) {
+    const have = new Set(suites);
+    const testFiles = files.filter((f) => f.startsWith('client/tests/'));
+    const notSuites = Object.keys(config.notSuites || {});
+    const candidates = [];
+    for (const f of testFiles) {
+      let m = /^client\/tests\/([^/]+)\.gd$/.exec(f);
+      if (m) { candidates.push([m[1], f]); continue; }
+      m = /^client\/tests\/([^/]+)\/run\.gd$/.exec(f);
+      if (m) candidates.push([m[1], f]);
+    }
+    for (const [name, f] of candidates) {
+      if (have.has(name) || notSuites.includes(f)) continue;
+      report(f, 1, `${f} is a suite that ${runner} does not list: add it to SUITES (and to PACED if it plays game time); if it is a helper, not a suite, list it in notSuites in tools/hygiene/retired.json`);
+    }
+    for (const f of notSuites) if (!files.includes(f)) report('tools/hygiene/retired.json', 1, `notSuites names ${f}, which does not exist`);
+    for (const name of suites) {
+      const ok = name.includes('/') ? files.includes(`client/tests/${name}.gd`) : (files.includes(`client/tests/${name}.gd`) || files.includes(`client/tests/${name}/run.gd`));
+      if (!ok) report(runner, lineOf(text, text.indexOf(name)), `SUITES names ${name}, but there is no client/tests/${name}.gd${name.includes('/') ? '' : ' or client/tests/' + name + '/run.gd'}`);
+    }
+    for (const list of ['PACED', 'LANE', 'WAITING']) {
+      const names = listOf(list);
+      for (const name of names || []) if (!have.has(name)) report(runner, lineOf(text, text.indexOf(`${list}=`)), `${list} names ${name}, which is not in SUITES (a typo here silently changes how a suite runs)`);
+    }
+  }
+}
+
+// i. The Discord agent's path rules name real paths. runner/lib/config.cjs holds the tier globs for godot mode and forbiddenPaths; a glob whose
+// folder was renamed matches nothing, so its protection silently stops and the change drops to a lower approval tier. Markdown paths in the
+// agent's prompt are rule b; this is the JS side. A glob's fixed part is everything before the first segment with a wildcard; one with no wildcard
+// must exist itself; one with no fixed part (**/.env*) is skipped. Stale ones that are meant to stay: staleGlobs in retired.json.
+{
+  const { DEFAULTS } = require_('server/death-muffin/discord-agent/runner/lib/config.cjs');
+  const cfgFile = 'server/death-muffin/discord-agent/runner/lib/config.cjs';
+  const allowed = Object.keys(config.staleGlobs || {});
+  const globs = [];
+  for (const tier of Object.values(DEFAULTS.godotTiers || {})) for (const g of tier) globs.push(typeof g === 'string' ? g : g.glob);
+  for (const g of DEFAULTS.forbiddenPaths || []) globs.push(g);
+  const isTracked = (p) => files.includes(p) || files.some((f) => f.startsWith(p + '/'));
+  const seen = new Set();
+  for (const g of globs) {
+    if (seen.has(g) || allowed.includes(g)) continue;
+    seen.add(g);
+    const segs = g.split('/');
+    const wild = segs.findIndex((x) => /[*?[{]/.test(x));
+    const fixed = (wild === -1 ? segs : segs.slice(0, wild)).join('/');
+    if (!fixed || isTracked(fixed)) continue;
+    const text = read(cfgFile);
+    report(cfgFile, lineOf(text, Math.max(0, text.indexOf(`'${g}'`))), `the glob '${g}' protects nothing now: ${fixed} is not a tracked path. Update config.cjs in the same change as the rename (or list the glob in staleGlobs in tools/hygiene/retired.json if it is meant to name a path that does not exist)`);
+  }
+  for (const g of Object.keys(config.staleGlobs || {})) if (!globs.includes(g)) report('tools/hygiene/retired.json', 1, `staleGlobs names ${g}, which config.cjs no longer has`);
+}
+
+// j. No paid or foreign GitHub machines: GitHub-hosted standard runners are free for this public repo; larger runners (custom labels) cost money and
+// self-hosted runners are somebody's own machine. Every runs-on in .github/workflows must be one of the standard labels (config.freeRunners), or a
+// matrix expression whose values are all listed literally in the same workflow.
+{
+  const free = config.freeRunners || [];
+  const unquote = (x) => x.replace(/\s+#.*$/, '').trim().replace(/^['"]|['"]$/g, '');
+  for (const f of files.filter((x) => /^\.github\/workflows\/[^/]+\.ya?ml$/.test(x))) {
+    const text = read(f);
+    const lines = text.split('\n');
+    const bad = (i, label) => report(f, i + 1, `runs-on: ${label} is not a free standard GitHub runner (${free.join(', ')}): it could cost money or run on someone's machine`);
+    const matrixValues = (key) => {   // the literal values of matrix.<key>, or null when they are not all written out
+      for (let i = 0; i < lines.length; i++) {
+        const m = new RegExp('^(\\s+)' + key + ':\\s*(.*)$').exec(lines[i]);
+        if (!m || /^\s*(runs-on|if)\b/.test(lines[i])) continue;
+        const rest = unquote(m[2]);
+        if (rest.startsWith('[') && rest.endsWith(']')) return rest.slice(1, -1).split(',').map(unquote);
+        if (rest) continue;
+        const vals = [];
+        for (let j = i + 1; j < lines.length; j++) {
+          const li = /^(\s+)-\s+(.*)$/.exec(lines[j]);
+          if (!li || li[1].length <= m[1].length) break;
+          vals.push(unquote(li[2]));
+        }
+        if (vals.length) return vals;
+      }
+      return null;
+    };
+    for (let i = 0; i < lines.length; i++) {
+      const m = /^(\s*)runs-on:\s*(.*)$/.exec(lines[i]);
+      if (!m) continue;
+      let rest = m[2].replace(/\s+#.*$/, '').trim();
+      let labels = [];
+      if (!rest) {   // block list on the next lines
+        for (let j = i + 1; j < lines.length; j++) { const li = /^\s+-\s+(.*)$/.exec(lines[j]); if (!li) break; labels.push(unquote(li[1])); }
+        if (!labels.length) { bad(i, '(not a plain label)'); continue; }
+      } else if (rest.startsWith('[') && rest.endsWith(']')) labels = rest.slice(1, -1).split(',').map(unquote);
+      else labels = [unquote(rest)];
+      for (const l of labels) {
+        const mx = /^\$\{\{\s*matrix\.([A-Za-z0-9_-]+)\s*\}\}$/.exec(l);
+        if (mx) {
+          const vals = matrixValues(mx[1]);
+          if (!vals || !vals.length) bad(i, l);
+          else for (const v of vals) if (!free.includes(v)) bad(i, `${v} (from ${l})`);
+        } else if (!free.includes(l)) bad(i, l);
+      }
+      if (labels.length > 1) bad(i, `[${labels.join(', ')}] (a list of labels selects a custom runner)`);
+    }
+  }
 }
 
 if (fixed.length) console.log(`hygiene: fixed ${fixed.length} texture import(s); now run: godot --headless --path client --import`);

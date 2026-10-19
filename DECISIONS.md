@@ -267,6 +267,60 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   last build, `launch-undo.sh` and the server paths only it used go as soon as the Discord agent and the tools work on `client/` (the system
   guides move first). An archive tag keeps the old game's source; from then on a rollback goes to an earlier build of the new game. Done on
   2026-10-18: tag `archive/old-game`.
+- **B58. The team app gets every job that needs a real graphics card, now** (Helix, 2026-10-19: "all", "and add them now"). Besides the
+  screenshots and release benchmarks: short clips of a change, before and after pictures, the stutter test, a release crash check, a
+  fresh-install check, the screen sizes and UI scales, every graphics card maker the team has, a 30-minute soak test and model previews,
+  all in Phase 1 (ROADMAP "New: the team app", in that order), built one after another once app 0.2.0 has landed. Every job asks the same
+  way (the box and the PC's mode), benchmarks included. Claude's recommendation was the same list with the screen sizes and the soak
+  test in Phase 2; Helix wanted them now.
+- **B60. A Windows release build ends its own process after the game's shutdown** (Claude, 2026-10-19, with Helix's crash files). The
+  release engine's last teardown crashes on Windows after every quit, the benchmark's and a player's alike (0xC0000374 heap corruption or
+  0xC0000005 at the same engine code; the debug engine with the same pack, art and combat core closes cleanly; KNOWN-GAPS "Stability"). Once
+  the game's own shutdown has run (saves, the play report, the party left, the crash lock removed), `DmMain.end_process` ends the process
+  (`OS.kill` on itself, exit code 0) instead of `quit()`. A debug build, Linux, and any exit code that is not 0 keep the engine's teardown, so
+  leak reports and the tests still see it. Revisit when Godot is upgraded or the cause is found.
+- **B61. A team PC starts every release before players get it, when one is free** (Claude, 2026-10-19; ROADMAP Phase 1, the team app: "a
+  crash should stop the release"). The server's boot test runs the Linux build, so nothing checked that the Windows build starts before
+  players had it. Now the publish, after its boot test and before the switch, asks the team app for one short job any free team PC may take:
+  start this build's own files to the first screen and quit one while it loads (about 10 seconds; `team-gate.sh`). If the game fails there
+  (does not start, stops with an error, or leaves a crash report) the build is not published, and the publish says why. If no PC is free
+  (off, paused, in a game, on battery, or busy with a release check), none takes it within 2.5 minutes, or the PC gives up for its own reasons
+  (a download, the player starting the game), the release goes out as before. Releases are never held hostage by a PC being off; the cost
+  is at most about 3 minutes a release, usually seconds.
+- **B62. The team PCs check a change before it goes live, when its shipper asks, never after** (Helix, 2026-10-19: "we do not need to be
+  running release checks every time we push something to live... we use it before we push something to live"; then "go, no waiting for
+  checks"). Replaces B58's release checks after every client release (a 40-minute job on each team PC, posted to #build-alerts), which
+  held the PC after each release and reported after players already had the build. Now `team-check.sh` builds a revision (its release
+  build through the publish's own steps, publishing nothing, and its debug build), runs the steps its shipper picks on a team PC (with
+  `--compare` the live build first on the same PC, so the numbers read live build -> this change) and writes a summary and contact sheets
+  for whoever asked; a session posts them to a new thread or a DM after asking the person which. For the Discord agent they are tests
+  (Helix, 2026-10-19: "it should post them for user review. if user review is not required then it doesnt post"): a check that passes
+  posts nothing, one that fails is fixed and tested again like a failing test, and the thread hears only what a person must look at
+  (before and after pictures of a visible change, a choice, a problem the agent could not fix). Approving a change never waits for them;
+  the publish's 14-second check (B61) is the one automatic check, and it runs before the switch. #build-alerts gets release notices and
+  server alerts only.
+- **B63. Discord agent proposals are drafts; the tests run when someone asks or ships, and the next big change cannot break testing unnoticed**
+  (Helix, 2026-10-19: "we need to make sure the discord agent and tests dont break again the next time we make a test build and push it to
+  live", "if i have to wait for tests to run between every single itteration its going to take forever", then "start"; Claude's design).
+  Replaces B59's "a proposal waits for CI". A round of back and forth is proposed at once, marked "Not tested yet", with three reactions: ✅
+  tests it and ships it, 🧪 (or `!test`) runs every test without shipping, ❌ discards it after asking once (one tap could throw away hours of
+  work). Every push still starts CI in the background, so ✅ and 🧪 often find the answer waiting. Nothing untested ships: the ship waits for CI
+  on exactly what goes live (B59), and when those tests fail the agent fixes it and a tested proposal comes back for one more ✅ (a fix made to
+  pass a test can change how something plays, so someone sees it first). Without the CI gate (GitHub down) every proposal is tested first, as
+  before. So that a promoted test build (B53) or a reinstall cannot break testing or the agent unnoticed (the 2026-10-18 launch did both): CI
+  fails when a suite file is missing from the suite list, when a path the agent's rules name no longer exists, or when a workflow asks for a
+  paid or self-hosted machine; the agent's own tests run in CI; an expired GitHub token falls back to the slower limit, and the nightly
+  drift report warns two weeks before it expires; and after every reinstall and every test build that goes live, the agent's practice run
+  (`runner/canary.cjs`) takes a harmless change through the whole path with a fake Discord before the agent takes requests.
+- **B59. One setup, and CI as the one gate, for sessions and the Discord agent alike** (Helix, 2026-10-19: "the way we do testing for
+  sessions and discord agents is a mess", then "start"; Claude's design). Every checkout (a session's worktree, an agent job, a CI machine,
+  a publish) gets the combat core, Godot's import, the crowd's bakes and the lobby's packages from one setup, `tools/check/prep.sh`, through
+  one cache keyed by what each is made of; nothing made from uncommitted files or inside the agent's sandbox is stored. CI runs every suite
+  on every branch push, split over six machines, and a run on `main` is never cancelled. A change is merged, deployed or published only once
+  CI passed its exact files (`tools/check/ci.sh`); the VPS runs single suites while working, and the full set only when GitHub is down.
+  Approvals that wait for a ship still go out together: they merge as one tree that CI tests once. Tests compare the game's data with
+  itself, never typed totals (a spell War added broke a count). Replaces the morning's rule (444da1ad: wait about 20 minutes for CI with a
+  local quick check beside it) and the agent's own preparation and cache.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

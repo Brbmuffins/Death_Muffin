@@ -37,6 +37,7 @@ class ErrorLog:
 			errors.append("%s:%d %s %s %s" % [file, line, function, code, rationale])
 
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://world_test"
 const BAKE := ["grave_robber", "bone_hound"]
 
@@ -77,7 +78,7 @@ func _initialize() -> void:
 func _main() -> void:
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 	DmSimData.ensure()
 	var mock := DmOffline.make_mock("")
@@ -149,11 +150,15 @@ func _gate_open(id: String) -> bool:
 
 func _the_world() -> void:
 	var want := DmNextWorld.every_area()
-	check(want.size() == 12 and not want.has("depths") and g.world.loaded == want, "every area but the Depths is loaded (%s)" % str(g.world.loaded))
+	var not_instances: Array = []
+	for id in DmData.world()["order"]:
+		if not bool(DmData.world()["areas"][id]["instance"]):
+			not_instances.append(String(id))
+	check(not want.is_empty() and want == not_instances and not want.has("depths") and g.world.loaded == want, "every area but the Depths (the instance) is loaded (%s)" % str(g.world.loaded))
 	var doors := 0
 	for id: String in g.world.loaded:
 		doors += g.world.get_node("area_" + id).get_node("Doors").get_child_count()
-	check(doors == DmContent.doors().size() and g.world.nav_regions.size() == 12 + doors, "each of the %d doors is in the world once (%d)" % [DmContent.doors().size(), doors])
+	check(doors == DmContent.doors().size() and g.world.nav_regions.size() == g.world.loaded.size() + doors, "each of the %d doors is in the world once (%d)" % [DmContent.doors().size(), doors])
 	var ret: Dictionary = DmContent.get_export("areas", "CHAPTERHOUSE_RETURN")
 	check(hero.position.distance_to(Vector3(float(ret["x"]) + 3.0, 0.0, float(ret["z"]))) < 0.05 and g.area_id == "chapterhouse",
 		"the hero starts 3 m from the Chapterhouse's return point, as today's host (%s, %s)" % [str(hero.position), g.area_id])
@@ -200,8 +205,16 @@ func _the_world() -> void:
 # ------------------------------------------------------------------------------------------------------------------ the seals
 
 func _the_seals() -> void:
-	var open_areas := ["chapterhouse", "acre", "alchemist_wing", "graves"]
-	check(g.world.unlocked.keys().all(func(a: String) -> bool: return open_areas.has(a)) and g.world.unlocked.size() == 4, "a new character's open areas are the hubs and the Graves (%s)" % str(g.world.unlocked.keys()))
+	# a new character's open areas are the loaded ones whose world.json entry has no seal (unlock: null)
+	var open_areas: Array = []
+	for id: String in g.world.loaded:
+		if DmData.world()["areas"][id]["unlock"] == null:
+			open_areas.append(id)
+	var open_now: Array = g.world.unlocked.keys()
+	open_now.sort()
+	var open_sorted := open_areas.duplicate()
+	open_sorted.sort()
+	check(not open_areas.is_empty() and open_now == open_sorted, "a new character's open areas are the ones with no seal in world.json (%s)" % str(open_now))
 	var wrong: Array = []
 	for id: String in g.world.loaded:
 		if (g.world.nav_regions["area:" + id] as NavigationRegion3D).enabled != open_areas.has(id):

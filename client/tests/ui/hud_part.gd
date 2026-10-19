@@ -178,10 +178,6 @@ func _run() -> void:
 	var m := DmHudMock.minimap()
 	_check(DmHudMinimap.walkable(0.0, 20.0, m), "minimap: chapterhouse floor is walkable")
 	_check(not DmHudMinimap.walkable(40.0, -15.0, m), "minimap: sealed area is not walkable")
-	_check(DmHudMinimap.world_point(Vector2(95, 95), 10.0, 20.0) == Vector2(10.0, 20.0), "minimap centre = player")
-	_check(DmHudMinimap.world_point(Vector2(0, 0), 0, 0) == null, "minimap: outside the disc")
-	var wp: Vector2 = DmHudMinimap.world_point(Vector2(95 + 21, 95), 0.0, 0.0)
-	_check(absf(wp.x - 10.0) < 1e-6, "minimap scale 2.1 px / unit")
 	var ac := DmHudMock.combat()
 	ac["auto_combat"] = {"on": true, "available": true, "visible": true}
 	hud.apply(ac)

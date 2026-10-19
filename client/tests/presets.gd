@@ -9,10 +9,11 @@ extends SceneTree
 ##   - each preset applied to a real game scene: the moon's shadow, reach, splits and atlas, the soft filter, bloom, ambient occlusion, MSAA, anisotropy and mesh LOD
 ##     on the viewport, the effects quality, the governor's floor; and the crowd's shadow policy: with 30 robbers round the hero the shadow groups hold the preset's
 ##     nearest casters (Low none), the thralls cast from Medium up;
-##   - the governor: slow frames step the 3D scale down to the preset's floor, upscaled with FSR 1, and full speed brings it back to full size with no upscaler;
+##   - (the governor's stream of slow and fast frames is tests/perf_controls's);
 ##   - ZERO script errors or engine errors in the log.
-## Bakes the robber and the legionnaire into a scratch folder first (about 15 s). Run: godot --headless --fixed-fps 60 --path client --script res://tests/presets.gd
+## Gets the robber and the legionnaire into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd). Run: godot --headless --fixed-fps 60 --path client --script res://tests/presets.gd
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://presets_test"
 const BAKE := ["grave_robber", "thrall_legionnaire"]
 
@@ -53,7 +54,7 @@ func _run() -> void:
 	OS.add_logger(errlog)
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 	table()
 	var mock := DmOffline.make_mock("")
@@ -70,7 +71,6 @@ func _run() -> void:
 		await applied(g, String(id))
 	await lift_blend(g)
 	hero_look(g)
-	await governor(g)
 	g.process_mode = Node.PROCESS_MODE_DISABLED
 	g.queue_free()
 	await process_frame
@@ -127,7 +127,7 @@ func area_lifts() -> void:
 	scenes.sort()
 	var keys: Array = DmWorldBuilder.AREA_LIFT.keys()
 	keys.sort()
-	check(keys == scenes and scenes.size() == 12, "a lift for each of the twelve areas, and only for them (%s)" % str(scenes))
+	check(keys == scenes and not scenes.is_empty(), "a lift for each area scene, and only for them (%s)" % str(scenes))
 	var same := true
 	var inside := true
 	for id in AREA_LIFTS:
@@ -310,18 +310,3 @@ func _shadow_instances(g: DmNextGame) -> int:
 		for lod in view.lod_distances.size() + 1:
 			n += int(view.crowd.instance_count(slot, lod, true))
 	return n
-
-
-## Slow frames step the 3D scale down to the floor (FSR 1 upscales it), full-speed frames bring it back to full size.
-func governor(g: DmNextGame) -> void:
-	g.perf.apply({"graphics": "medium", "auto_res": true, "fps": 60})
-	var vp := g.get_viewport()
-	check(is_equal_approx(vp.scaling_3d_scale, 1.0) and vp.scaling_3d_mode == Viewport.SCALING_3D_MODE_BILINEAR, "full size at the start, no upscaler")
-	for i in 900:
-		g.perf.pace(1.0 / 30.0)   # 30 fps against a 60 fps cap
-	check(vp.scaling_3d_scale < 0.999 and vp.scaling_3d_scale >= float(DmGraphicsPreset.get_preset("medium")["floor"]) - 0.001, "slow frames lower the 3D scale to the floor at most (%.2f)" % vp.scaling_3d_scale)
-	check(vp.scaling_3d_mode == Viewport.SCALING_3D_MODE_FSR, "a lowered scale is upscaled with FSR 1")
-	for i in 4000:   # 20 s of headroom: the governor steps up after 15 s of it (smoothed frame time)
-		g.perf.pace(1.0 / 200.0)
-	check(is_equal_approx(vp.scaling_3d_scale, 1.0) and vp.scaling_3d_mode == Viewport.SCALING_3D_MODE_BILINEAR, "fast frames bring it back to full size (%.2f)" % vp.scaling_3d_scale)
-	g.perf.apply({"graphics": "high", "auto_res": false})

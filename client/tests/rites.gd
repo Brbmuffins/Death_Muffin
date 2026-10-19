@@ -11,9 +11,10 @@ extends SceneTree
 ##   - a short full fight where the hero clears a wave of sixteen with rites, with thralls raised, rallied and sacrificed on the way;
 ##   - the other three necromancers and the Reaper, each a real character in a fresh game (t_disciplines, t_reaper);
 ##   - ZERO script errors or engine errors in the log (an OS Logger counts them; warnings are not errors).
-## Bakes the robber, the hound and the Gravecaller's legionnaire into a scratch folder first (a few seconds). Run: godot --headless --path client --script res://tests/rites.gd
+## Gets the robber, the hound and the Gravecaller's legionnaire into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd). Run: godot --headless --path client --script res://tests/rites.gd
 ## It plays about 90 s of game time: it takes that long in real time, and about 30 s with the engine argument `--fixed-fps 60` before `--path`.
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://rites_test"
 const BAKE := ["grave_robber", "bone_hound", "thrall_legionnaire"]
 const BIG := 1000.0   ## health multiplier of a target that must survive the case
@@ -86,7 +87,7 @@ func _initialize() -> void:
 	t0_msec = Time.get_ticks_msec()
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 		if not r.ok:
 			quit(1)
@@ -337,9 +338,27 @@ func raise_at(pos: Vector3, kind := "normal", enemy := "robber", elite := false)
 
 func the_catalogue() -> void:
 	var ids := DmRiteRegistry.ids()
-	check(ids.size() == 35, "the registry holds the necromancer's 25 rites and the Reaper's 10 (%d)" % ids.size())
-	for reaper in ["scythe_sweep", "scythe_throw", "reap", "wraith_walk", "soul_burst", "harvest_spin", "unleash_souls", "soul_harvest", "scythe_weave", "haunting_wraith"]:
-		check(DmRiteRegistry.has(reaper), "the Reaper's %s is registered" % reaper)
+	# The rites of every playable class's kit, read from the data (hotbar, grimoire, primaries, RMB, signatures), never a typed count:
+	# a new spell or a newly playable class needs no edit here.
+	var families := {}
+	for d in (DmCombatData.disciplines()["disciplines"] as Dictionary).values():
+		if DmCharacterBuild.is_playable(float(d["classIndex"])):
+			families[String(d["family"])] = true
+	var want := {}
+	for fam in families:
+		var kit: Dictionary = DmContent.kit(String(fam))
+		for key in ["hotbar", "grimoire", "primaries"]:
+			for r in kit.get(key, []):
+				want[String(r)] = fam
+		if kit.has("rmb"):
+			want[String(kit["rmb"])] = fam
+		for r in (kit.get("signatures", {}) as Dictionary).values():
+			want[String(r)] = fam
+	check(not want.is_empty() and ids.size() == want.size(), "the registry holds exactly the playable kits' %d rites (%d registered)" % [want.size(), ids.size()])
+	for rite in want:
+		check(DmRiteRegistry.has(rite), "the %s kit's %s is registered" % [want[rite], rite])
+	for rite in ids:
+		check(want.has(String(rite)), "the registered %s is in a playable class's kit" % rite)
 	for rite in ids:
 		check(DmRiteRegistry.module(rite) != null and DmRiteRegistry.module(rite).id == rite, "%s has its module" % rite)
 	check(DmRiteCaster.WITHERED_WIRE == DmStatusSet.IDS.find(&"withered"), "the caster reads Withered by its wire id")

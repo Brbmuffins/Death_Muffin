@@ -80,7 +80,7 @@ func _run() -> void:
 func _test_data() -> void:
 	var d := DmCounselData.data()
 	var order: Array = d["order"]
-	_check(order.size() == 122, "122 tips exported (%d)" % order.size())
+	_check(not order.is_empty() and order.size() == (d["tips"] as Dictionary).size(), "every tip is in the order (%d)" % order.size())
 	for id in order:
 		_check(DmCounselData.title(id) != "" and DmCounselData.body(id).length() > 20, "tip has title+body: " + id)
 	# every anchored tip resolves to a DmHud anchor key
@@ -446,5 +446,11 @@ func _test_view() -> void:
 	counsel.show("welcome")
 	counsel.tick(30.0)
 	_check(counsel.shown_id() == "" or counsel.shown_id() == "welcome", "welcome flows")
+	# a tip that takes another's place (an urgent one) comes while the old card still fades out: the old one goes at once
+	view._on_card_shown("a", "calm", "First", "one", 6000)
+	view._on_card_hidden("a")
+	view._on_card_shown("b", "urgent", "Second", "two", 6000)
+	var cards := view.get_children().filter(func(n: Node) -> bool: return n is DmTipCard and not n.is_queued_for_deletion())
+	_check(cards.size() == 1 and cards[0] == view.card(), "a card that takes another's place is the only one on screen, no two texts over each other (%d)" % cards.size())
 	root.queue_free()
 	await _frames(2)

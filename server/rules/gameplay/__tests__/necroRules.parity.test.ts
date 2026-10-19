@@ -13,7 +13,7 @@ import { checkParity, recorder } from './parity';
 /**
  * The necromancer progression rules (client/rules/progression/necro_rules.gd), the Ascension / vow / boon tables they read
  * (ascension.gd), the upgrade price curves (progression/prog_content.gd, DmUpgrades) and the Kill Chain (kill_chain.gd).
- * Replayed by the Godot suite rules-progression (necro_parity.json, upgrades_parity.json, kill_chain_parity.json).
+ * Replayed by the Godot suite rules_progression (necro_parity.json, upgrades_parity.json, kill_chain_parity.json).
  * Regenerate: UPDATE_NECRO_PARITY=1 / UPDATE_UPGRADES_PARITY=1 / UPDATE_KILL_CHAIN_PARITY=1 npx vitest run <this file>
  */
 function rng(seed: number) {
@@ -127,7 +127,7 @@ describe('necromancer progression parity', () => {
         }
       }
     }
-    checkParity('rules-progression', 'necro', 'NECRO', r.cases);
+    checkParity('rules_progression', 'necro', 'NECRO', r.cases);
   });
 
   it('upgrades_parity.json is current', () => {
@@ -179,7 +179,7 @@ describe('necromancer progression parity', () => {
     for (const run of [{ prelateKills: 0, peakWaveTier: 5, kills: 900 }, { prelateKills: 1, peakWaveTier: 0, kills: 0 }, { prelateKills: 3, peakWaveTier: 12, kills: 8176 }, { prelateKills: 9, peakWaveTier: 8, kills: 99999 }]) {
       for (const heat of [-1, 0, 1, 4.7, 10, 40]) r.add('ashesForRun', [run, heat], () => ashesForRun(run, heat));
     }
-    checkParity('rules-progression', 'upgrades', 'UPGRADES', r.cases);
+    checkParity('rules_progression', 'upgrades', 'UPGRADES', r.cases);
   });
 
   it('kill_chain_parity.json is current', () => {
@@ -206,6 +206,6 @@ describe('necromancer progression parity', () => {
       });
     }
     void CHAIN;
-    checkParity('rules-progression', 'kill_chain', 'KILL_CHAIN', r.cases);
+    checkParity('rules_progression', 'kill_chain', 'KILL_CHAIN', r.cases);
   });
 });

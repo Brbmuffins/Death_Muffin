@@ -20,6 +20,10 @@ namespace DeathMuffinTeam.Tests
             TextTests();
             JobPlanTests();
             CommandLineTests();
+            BenchTests.Run();
+            ClipTests.Run();
+            PollTests.Run();
+            ReleaseTests.Run();
             UploadNameTests();
             SettingsTests();
             ApiTests();
@@ -29,6 +33,7 @@ namespace DeathMuffinTeam.Tests
             ProcessHostTests();
             SelfUpdateTests();
             RunnerTests.Run();
+            LogCancelTests.Run();
             ControllerTests.Run();
             return T.Done();
         }
@@ -57,9 +62,9 @@ namespace DeathMuffinTeam.Tests
 
         // ---- The offer decision: every branch -----------------------------------------------------------------------------------------
 
-        static OfferDecision D(OfferMode mode, OfferAnswer a, double minutes, bool fs = false, bool game = false, bool battery = false, bool paused = false)
+        static OfferDecision D(OfferMode mode, OfferAnswer a, double minutes, bool fs = false, bool game = false, bool battery = false, bool paused = false, bool afk = false)
         {
-            return TeamLogic.Decide(mode, a, TimeSpan.FromMinutes(minutes), fs, game, battery, paused);
+            return TeamLogic.Decide(mode, a, TimeSpan.FromMinutes(minutes), fs, game, battery, paused, afk);
         }
 
         static void OfferDecisionTests()
@@ -88,6 +93,33 @@ namespace DeathMuffinTeam.Tests
             T.Eq(D(OfferMode.Auto, OfferAnswer.None, 0), OfferDecision.Run, "auto: runs without asking");
             T.Eq(D(OfferMode.Yes, OfferAnswer.None, 0), OfferDecision.Ask, "yes: asks");
             T.Eq(D(OfferMode.Yes, OfferAnswer.None, 600), OfferDecision.Ask, "yes: never runs by itself");
+            // AFK mode: Decide takes the flag, and only mode ask is changed by it
+            T.Eq(D(OfferMode.Ask, OfferAnswer.None, 0, afk: true), OfferDecision.Run, "afk: a job runs at once, no box");
+            T.Eq(TeamLogic.Decide(OfferMode.Ask, OfferAnswer.None, TimeSpan.Zero, false, false, false, false, true), OfferDecision.Run, "afk: the flag is the 8th argument");
+            T.Eq(D(OfferMode.Ask, OfferAnswer.None, 0, fs: true, afk: true), OfferDecision.Wait, "afk: a full-screen app still waits");
+            T.Eq(D(OfferMode.Ask, OfferAnswer.None, 0, game: true, afk: true), OfferDecision.Wait, "afk: Death Muffin open still waits");
+            T.Eq(D(OfferMode.Ask, OfferAnswer.None, 0, battery: true, afk: true), OfferDecision.Wait, "afk: the battery still waits");
+            T.Eq(D(OfferMode.Ask, OfferAnswer.None, 0, paused: true, afk: true), OfferDecision.Decline, "afk: a pause still declines");
+            T.Eq(D(OfferMode.Ask, OfferAnswer.NotNow, 0, afk: true), OfferDecision.Decline, "afk: a no still declines");
+            T.Eq(D(OfferMode.Yes, OfferAnswer.None, 0, afk: true), OfferDecision.Ask, "afk changes nothing in mode yes");
+            T.Eq(D(OfferMode.Auto, OfferAnswer.None, 0, afk: true), OfferDecision.Run, "or in mode auto");
+            T.Eq(D(OfferMode.Ask, OfferAnswer.None, 0, afk: false), OfferDecision.Ask, "no afk: the box asks");
+            var five = TimeSpan.FromMinutes(5);
+            T.Ok(TeamLogic.EntersAfk(OfferMode.Ask, OfferAnswer.None, five, OfferDecision.Run, false), "a box that runs out in mode ask enters AFK mode");
+            T.Ok(!TeamLogic.EntersAfk(OfferMode.Ask, OfferAnswer.None, five - TimeSpan.FromSeconds(1), OfferDecision.Run, false), "not before the 5 minutes");
+            T.Ok(!TeamLogic.EntersAfk(OfferMode.Ask, OfferAnswer.None, TimeSpan.Zero, OfferDecision.Run, true), "already on: nothing to enter");
+            T.Ok(!TeamLogic.EntersAfk(OfferMode.Ask, OfferAnswer.Yes, five, OfferDecision.Run, false), "a yes is a person at the PC");
+            T.Ok(!TeamLogic.EntersAfk(OfferMode.Auto, OfferAnswer.None, five, OfferDecision.Run, false), "mode auto never enters it");
+            T.Ok(!TeamLogic.EntersAfk(OfferMode.Yes, OfferAnswer.None, five, OfferDecision.Run, false), "mode yes never enters it");
+            T.Ok(!TeamLogic.EntersAfk(OfferMode.Ask, OfferAnswer.None, five, OfferDecision.Wait, false) && !TeamLogic.EntersAfk(OfferMode.Ask, OfferAnswer.None, five, OfferDecision.Ask, false) && !TeamLogic.EntersAfk(OfferMode.Ask, OfferAnswer.None, five, OfferDecision.Decline, false), "only a decision to run enters it");
+            T.Eq(TeamLogic.AfkEndReason(true, true, false, false), "Death Muffin was started", "afk ends when Death Muffin starts");
+            T.Eq(TeamLogic.AfkEndReason(true, false, true, false), "a full-screen app came up", "when a full-screen app comes up");
+            T.Eq(TeamLogic.AfkEndReason(true, false, false, true), "the PC was paused", "when the PC is paused");
+            T.Eq(TeamLogic.AfkEndReason(true, false, false, false), "", "and not otherwise (the battery does not end it)");
+            T.Eq(TeamLogic.AfkEndReason(false, true, true, true), "", "off stays off");
+            T.Ok(TeamLogic.LeavesAfk(true, true, false, false) && !TeamLogic.LeavesAfk(true, false, false, false) && !TeamLogic.LeavesAfk(false, true, true, true), "leaves, as a yes or no");
+            T.Eq(TeamLogic.AfkText, "AFK mode on: jobs run right away", "the notice's words");
+            T.Eq(TeamLogic.AfkEndText, "End AFK mode", "and its button's");
             T.Eq(TeamLogic.DeclineReason(OfferAnswer.NotNow, false), "not_now", "decline reason: not now");
             T.Eq(TeamLogic.DeclineReason(OfferAnswer.Pause, false), "paused", "decline reason: pause");
             T.Eq(TeamLogic.DeclineReason(OfferAnswer.None, true), "paused", "decline reason: paused PC");
@@ -98,7 +130,8 @@ namespace DeathMuffinTeam.Tests
             T.Eq(TeamLogic.WaitReason(false, false, false), "", "wait reason: nothing");
             T.Eq(TeamLogic.AutoRunAfter, TimeSpan.FromMinutes(5), "auto-run after 5 minutes");
             T.Eq(TeamLogic.PauseFor, TimeSpan.FromHours(2), "pause is 2 hours");
-            T.Eq(TeamLogic.HeartbeatEvery, TimeSpan.FromSeconds(30), "heartbeat every 30 s");
+            T.Eq(TeamLogic.HeartbeatWaitS, 25, "a heartbeat asks the server to hold it up to 25 s");
+            T.Eq(TeamLogic.HeartbeatTimeout, TimeSpan.FromSeconds(40), "and gives up on it after 40 s");
             T.Eq(TeamLogic.RunLimit, TimeSpan.FromMinutes(10), "10-minute limit");
             T.Eq(TeamLogic.KeepJobFolders, 3, "keeps 3 job folders");
             T.Ok(TeamLogic.PausedAt(new DateTime(2026, 10, 19, 14, 0, 0, DateTimeKind.Utc), new DateTime(2026, 10, 19, 13, 59, 59, DateTimeKind.Utc)), "paused before the end");
@@ -126,6 +159,20 @@ namespace DeathMuffinTeam.Tests
             T.Eq(TeamLogic.HowLong(7200), "about 2 hours", "how long: two hours");
             T.Eq(TeamLogic.OfferText("Screenshots of a change", 60), "Screenshots of a change, about 1 minute", "offer text");
             T.Eq(TeamLogic.OfferText("  ", 60), "A job, about 1 minute", "offer text without a title");
+            // a title that already says how long (the server titles its jobs that way) is not given a second duration
+            T.Eq(TeamLogic.OfferText("Release checks of 20261019.120000-abc1234, about 40 minutes", 2400), "Release checks of 20261019.120000-abc1234, about 40 minutes", "a title ending in \"about N minutes\" is shown as it is");
+            T.Eq(TeamLogic.OfferText("Short videos of a change, about 3 minutes", 180), "Short videos of a change, about 3 minutes", "(a clip job's)");
+            T.Eq(TeamLogic.OfferText("Screenshots of a change, about 1 minute", 60), "Screenshots of a change, about 1 minute", "one minute");
+            T.Eq(TeamLogic.OfferText("Benchmark, about 1 hour", 3600), "Benchmark, about 1 hour", "an hour");
+            T.Eq(TeamLogic.OfferText("Benchmark, about 2 hours", 7200), "Benchmark, about 2 hours", "hours");
+            T.Eq(TeamLogic.OfferText("A quick look, less than a minute", 10), "A quick look, less than a minute", "less than a minute");
+            T.Eq(TeamLogic.OfferText("Release checks, About 40 Minutes.", 2400), "Release checks, About 40 Minutes.", "in any case, with a full stop");
+            T.Eq(TeamLogic.OfferText("  Release checks, about 40 minutes  ", 2400), "Release checks, about 40 minutes", "and trimmed");
+            T.Eq(TeamLogic.OfferText("release", "Release checks, about 40 minutes", 60), "Release checks, about 40 minutes", "the title's duration wins over the job's weight");
+            T.Eq(TeamLogic.OfferText("Fix about 5 minutes of lag", 300), "Fix about 5 minutes of lag, about 5 minutes", "a duration in the middle of a title is not one at its end");
+            T.Eq(TeamLogic.OfferText("Screenshots of a change", 60), "Screenshots of a change, about 1 minute", "a title with no duration gets it");
+            T.Eq(TeamLogic.OfferText("Videos in about 5 mins", 300), "Videos in about 5 mins, about 5 minutes", "only the box's own words count (minutes, hours, less than a minute)");
+            T.Ok(TeamLogic.EndsWithDuration("x, about 3 minutes") && !TeamLogic.EndsWithDuration("x about") && !TeamLogic.EndsWithDuration("") && !TeamLogic.EndsWithDuration(null), "EndsWithDuration"); 
             T.Eq(TeamLogic.Clock(TimeSpan.FromSeconds(252)), "4:12", "clock");
             T.Eq(TeamLogic.Clock(TimeSpan.FromSeconds(-5)), "0:00", "clock never negative");
             T.Eq(TeamLogic.Clock(TimeSpan.FromMinutes(5)), "5:00", "clock 5:00");
@@ -160,7 +207,7 @@ namespace DeathMuffinTeam.Tests
             return new Dictionary<string, object>
             {
                 { "rev", "0123456789ab" }, { "godotVersion", "4.7.2.stable" },
-                { "files", new List<object> { File_("DeathMuffin.pck"), File_("DeathMuffin.assets.pck", "assets-0f3a9c"), File_("libdmcore.windows.template_release.x86_64.dll"), File_("DeathMuffinDebug.exe", "godot-debug-4.7.2") } },
+                { "files", new List<object> { File_("DeathMuffinDebug.pck"), File_("DeathMuffin.assets.pck", "assets-0f3a9c"), File_("libdmcore.windows.template_release.x86_64.dll"), File_("DeathMuffinDebug.exe", "godot-debug-4.7.2") } },
                 { "plan", new Dictionary<string, object> { { "bag", "demo" }, { "discipline", "gravecaller" }, { "shots", new List<object> {
                     new Dictionary<string, object> { { "name", "bag-open" }, { "open", "bag" } }, new Dictionary<string, object> { { "name", "hero-front" }, { "view", "hero" } } } } } },
                 { "presets", new List<object> { "low", "ultra" } },
@@ -195,8 +242,8 @@ namespace DeathMuffinTeam.Tests
             T.Eq(plan.PlanShots, 2, "plan shot count");
             T.Eq(plan.FileNamed("DeathMuffin.assets.pck").CacheKey, "assets-0f3a9c", "cache key kept");
             T.Eq(plan.FileNamed("DeathMuffinDebug.exe").CacheKey, "godot-debug-4.7.2", "godot cache key kept");
-            T.Ok(!plan.FileNamed("DeathMuffin.pck").IsCached, "the main pack is not cached");
-            T.Eq(plan.FileNamed("deathmuffin.pck").Name, "DeathMuffin.pck", "file lookup ignores case");
+            T.Ok(!plan.FileNamed("DeathMuffinDebug.pck").IsCached, "the main pack is not cached");
+            T.Eq(plan.FileNamed("deathmuffindebug.pck").Name, "DeathMuffinDebug.pck", "file lookup ignores case");
             T.Eq(plan.Args[0], "--dev-offline", "args keep dev-offline first");
             T.Eq(string.Join(" ", plan.Args), "--dev-offline --class=2 --qa", "args as sent");
             var round = MiniJson.TryObject(plan.PlanJson);
@@ -230,8 +277,8 @@ namespace DeathMuffinTeam.Tests
             Reject(p => Files(p).Add(File_("nul.pck", url: GoodUrl)), "Windows device name");
             Reject(p => Files(p).Add(File_("COM1", url: GoodUrl)), "Windows device name COM1");
             Reject(p => Files(p).Add(File_(new string('a', 81), url: GoodUrl)), "name too long");
-            Reject(p => Files(p).Add(File_("DEATHMUFFIN.PCK", url: GoodUrl)), "same name in another case", "twice");
-            Reject(p => Files(p).Add(File_("DeathMuffin.pck", url: GoodUrl)), "same name twice", "twice");
+            Reject(p => Files(p).Add(File_("DEATHMUFFINDEBUG.PCK", url: GoodUrl)), "same name in another case", "twice");
+            Reject(p => Files(p).Add(File_("DeathMuffinDebug.pck", url: GoodUrl)), "same name twice", "twice");
             // files: checksum, size, cache key
             Reject(p => Files(p).Add(File_("a.dll", sha: "xyz")), "bad sha256", "checksum");
             Reject(p => Files(p).Add(File_("a.dll", sha: new string('g', 64))), "non-hex sha256");
@@ -267,10 +314,10 @@ namespace DeathMuffinTeam.Tests
             Reject(p => p.Remove("files"), "no files", "no files");
             Reject(p => p["files"] = new List<object>(), "empty files");
             Reject(p => p["files"] = "files", "files as text");
-            Reject(p => Files(p).Add("DeathMuffin.pck"), "a file entry that is text");
+            Reject(p => Files(p).Add("DeathMuffinDebug.pck"), "a file entry that is text");
             Reject(p => { for (int i = 0; i < 12; i++) Files(p).Add(File_("extra" + i + ".dll")); }, "too many files", "too many");
             Reject(p => Files(p).RemoveAll(f => (string)((Dictionary<string, object>)f)["name"] == "DeathMuffinDebug.exe"), "no game exe", "DeathMuffinDebug.exe");
-            Reject(p => Files(p).RemoveAll(f => (string)((Dictionary<string, object>)f)["name"] == "DeathMuffin.pck"), "no main pack", "DeathMuffin.pck");
+            Reject(p => Files(p).RemoveAll(f => (string)((Dictionary<string, object>)f)["name"] == "DeathMuffinDebug.pck"), "no main pack", "DeathMuffinDebug.pck");
             // revision, version
             Reject(p => p["rev"] = "not-a-rev", "bad rev");
             Reject(p => p["godotVersion"] = "4.7.2 && calc", "bad godot version");
@@ -293,6 +340,10 @@ namespace DeathMuffinTeam.Tests
             Reject(p => p["args"] = new List<object> { "--shot-plan=x.json" }, "args: --shot-plan");
             Reject(p => p["args"] = new List<object> { "--preset=ultra" }, "args: --preset");
             Reject(p => p["args"] = new List<object> { "--online" }, "args: --online");
+            Reject(p => p["args"] = new List<object> { "--audio-driver" }, "args: --audio-driver", "--audio-driver");
+            Reject(p => p["args"] = new List<object> { "--audio-driver=ALSA" }, "args: --audio-driver with a value", "--audio-driver");
+            Reject(p => p["args"] = new List<object> { "--position=0,0" }, "args: --position", "--position");
+            Reject(p => p["args"] = new List<object> { "--benchmark" }, "args: --benchmark", "--benchmark");
             Reject(p => p["args"] = new List<object> { "--assets-pack=evil.pck" }, "args: --assets-pack");
             Reject(p => p["args"] = new List<object> { "--baked=x" }, "args: --baked");
             Reject(p => p["args"] = new List<object> { "--bench-dir=x" }, "args: --bench-dir");
@@ -358,16 +409,40 @@ namespace DeathMuffinTeam.Tests
             string shots = "C:\\Users\\Test User\\AppData\\Local\\DeathMuffinTeam\\jobs\\q7x2k9ab\\out\\low";
             var a = plan.CommandArgs("low", planFile, shots);
             T.Eq(string.Join("|", a),
-                "--main-pack|DeathMuffin.pck|--windowed|--resolution|1600x900|--|--dev-offline|--class=2|--qa|--shot-plan=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/plan.json|--shots=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/out/low|--preset=low",
+                "--windowed|--resolution|1600x900|--audio-driver|Dummy|--|--dev-offline|--class=2|--qa|--shot-plan=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/plan.json|--shots=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/out/low|--preset=low",
                 "command arguments for low (the contract's line)");
             T.Eq(plan.CommandArgs("ultra", planFile, shots.Replace("low", "ultra")).Last(), "--preset=ultra", "command arguments for ultra");
             T.Eq(plan.CommandLine("low", "C:\\j\\plan.json", "C:\\j\\out\\low"),
-                "--main-pack DeathMuffin.pck --windowed --resolution 1600x900 -- --dev-offline --class=2 --qa --shot-plan=C:/j/plan.json --shots=C:/j/out/low --preset=low",
+                "--windowed --resolution 1600x900 --audio-driver Dummy -- --dev-offline --class=2 --qa --shot-plan=C:/j/plan.json --shots=C:/j/out/low --preset=low",
                 "command line without spaces needs no quotes");
             string line = plan.CommandLine("low", planFile, shots);
             T.Has(line, "\"--shot-plan=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/plan.json\"", "a path with a space is quoted");
             T.Eq(string.Join("|", ParseWinArgs(line)), string.Join("|", a), "the command line reads back as the same arguments");
             T.Eq(plan.CommandArgs("low", "p", "s").IndexOf("--"), 5, "everything for the game comes after --");
+            T.Eq(string.Join(" ", a.Take(5)), "--windowed --resolution 1600x900 --audio-driver Dummy", "the game is silent: the Dummy audio driver still mixes, so its cost stays real");
+
+            // screenshot jobs keep the window outside every monitor
+            var off = plan.CommandArgs("low", planFile, shots, "-1700,0");
+            T.Eq(string.Join(" ", off.Take(8)), "--windowed --resolution 1600x900 --audio-driver Dummy --position -1700,0 --", "--position goes ahead of --, after the audio driver");
+            T.Eq(off.IndexOf("--"), 7, "and everything for the game still comes after --");
+            T.Eq(string.Join("|", off.Skip(8)), string.Join("|", a.Skip(6)), "the game's own options are the same");
+            T.Eq(plan.CommandLine("low", "C:\\j\\plan.json", "C:\\j\\out\\low", "-3620,-200"),
+                "--windowed --resolution 1600x900 --audio-driver Dummy --position -3620,-200 -- --dev-offline --class=2 --qa --shot-plan=C:/j/plan.json --shots=C:/j/out/low --preset=low", "the command line with a position");
+            T.Ok(!a.Contains("--position") && !plan.CommandArgs("low", "p", "s", "").Contains("--position"), "no position given, none is set");
+            T.Eq(ParseWinArgs(plan.CommandLine("low", planFile, shots, "-1700,0")).Count(x => x == "-1700,0"), 1, "a negative position is one argument");
+
+            // the position: 1700 px left of the virtual screen (the window is 1600 wide), level with its top
+            T.Eq(JobPlan.OffscreenPosition(0, 0), "-1700,0", "one monitor at 0,0");
+            T.Eq(JobPlan.OffscreenPosition(-1920, 0), "-3620,0", "a monitor left of the main one: left of that");
+            T.Eq(JobPlan.OffscreenPosition(0, -1080), "-1700,-1080", "a monitor above the main one: level with its top");
+            T.Eq(JobPlan.OffscreenPosition(-1920, -200), "-3620,-200", "both");
+            T.Eq(JobPlan.OffscreenPosition(100, 50), "-1600,50", "a virtual screen that starts right of 0");
+            int width = int.Parse(JobPlan.Resolution.Split('x')[0]);
+            foreach (int left in new[] { 0, -1920, -3840, 200 })
+            {
+                int x = int.Parse(JobPlan.OffscreenPosition(left, 0).Split(',')[0]);
+                T.Ok(x + width < left, "the window (" + width + " px wide) ends left of the virtual screen at " + left + " (x " + x + ")");
+            }
 
             T.Eq(CommandLineText.Quote("plain"), "plain", "quote: plain");
             T.Eq(CommandLineText.Quote(""), "\"\"", "quote: empty");
@@ -466,7 +541,7 @@ namespace DeathMuffinTeam.Tests
 
         // ---- The server calls -----------------------------------------------------------------------------------------------------------
 
-        sealed class FakeTransport : ITransport
+        internal sealed class FakeTransport : ITransport
         {
             public sealed class Req { public string Method; public Uri Url; public string Token; public byte[] Body; public string ContentType; }
             public readonly List<Req> Sent = new List<Req>();
@@ -853,8 +928,8 @@ namespace DeathMuffinTeam.Tests
                 string exe = Path.Combine(game, "DeathMuffinDebug.exe");
                 File.WriteAllText(exe, "#!/bin/bash\necho \"APPDATA=$APPDATA\"\necho \"LOCALAPPDATA=$LOCALAPPDATA\"\necho \"PWD=$PWD\"\nfor a in \"$@\"; do echo \"ARG[$a]\"; done\necho oops >&2\nexit ${EXIT_CODE:-3}\n");
                 File.SetUnixFileMode(exe, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-                var host = new ProcessGameHost(pid => { });
-                var launch = new GameLaunch { ExePath = exe, WorkingDir = game, AppData = Path.Combine(dir, "appdata"), LocalAppData = Path.Combine(dir, "local appdata"), Args = new List<string> { "--main-pack", "DeathMuffin.pck", "--", "--shot-plan=/tmp/a b/plan.json", "--preset=low" } };
+                var host = new ProcessGameHost((pid, spot) => { });
+                var launch = new GameLaunch { ExePath = exe, WorkingDir = game, AppData = Path.Combine(dir, "appdata"), LocalAppData = Path.Combine(dir, "local appdata"), Args = new List<string> { "--windowed", "--", "--shot-plan=/tmp/a b/plan.json", "--preset=low" } };
                 IGameProcess p;
                 using (p = host.Start(launch))
                 {
@@ -868,7 +943,7 @@ namespace DeathMuffinTeam.Tests
                     T.Has(o, "LOCALAPPDATA=" + Path.Combine(dir, "local appdata"), "LOCALAPPDATA points into the job folder (a path with a space)");
                     T.Has(o, "PWD=" + game, "the game starts in its own folder");
                     T.Has(o, "ARG[--shot-plan=/tmp/a b/plan.json]", "an argument with a space stays one argument");
-                    T.Has(o, "ARG[--main-pack]", "arguments are passed");
+                    T.Has(o, "ARG[--windowed]", "arguments are passed");
                     T.Has(o, "oops", "standard error is captured too");
                 }
                 // a game that does not stop: Kill ends it

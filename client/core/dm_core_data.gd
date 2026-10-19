@@ -7,7 +7,13 @@ extends RefCounted
 const CONST_FILES: Array[String] = ["sim/sim_consts.gd", "next/corpses/dm_corpse_field.gd", "next/thralls/dm_thrall.gd"]
 
 
+## A data file parsed. A file of the game's own data folder (`DmDb.ROOT`) comes through the one registry (`DmDb.raw`, a copy the caller may change), so a QA run's `--tune=` (main/qa_tune.gd) reaches the core too;
+## any other path (a test's folder, the crowd's looks) is read from disk as it is.
 static func json(path: String) -> Dictionary:
+	if path.begins_with(DmDb.ROOT) and path.ends_with(".json"):
+		var v: Variant = DmDb.raw(path.trim_prefix(DmDb.ROOT).trim_suffix(".json"))
+		if v is Dictionary:
+			return (v as Dictionary).duplicate(true)
 	var f := FileAccess.open(path, FileAccess.READ)
 	return JSON.parse_string(f.get_as_text())
 

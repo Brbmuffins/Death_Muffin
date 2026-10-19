@@ -28,7 +28,7 @@ The JSON here is the source of truth and is edited by hand. Keep each fact in on
 No number is retyped in C++. `DmCoreData.load_all` (`client/core/dm_core_data.gd`) hands the core the enemy defs and tuning (`content/enemies.json`),
 the status rules (`content/abilities.json`, `statuses.json`, `enemies.json`), the legion tuning (`abilities.json`, `fen.json`, `statuses.json`, `gameplay_legendary.json`,
 `runes.json`, and `combat/enemies.json` for the damage scale) and the constants of `sim/sim_consts.gd`; the core's compiled-in defaults equal these files (native/README.md "Design",
-"Numbers from data, not retyped"). The co-op messages carry a hash of the enemy defs and the numbers a puppet derives events from, so a guest on other data is refused
+"Numbers from data, not retyped"). The files come through the registry's cache (`DmDb.raw`, a copy), so a QA run's `--tune=` reaches the core too (README.md "Clips and tune"). The co-op messages carry a hash of the enemy defs and the numbers a puppet derives events from, so a guest on other data is refused
 (native/README.md "Co-op: snapshots, events and the puppet core").
 
 ## Merged and overlapping data

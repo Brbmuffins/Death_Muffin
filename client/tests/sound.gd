@@ -14,7 +14,7 @@ extends SceneTree
 ##     the gate sound when a seal breaks (once per opening, at the door's centre, not before the hooks' first frame), the boss score while the King is awake;
 ##   - ZERO script errors or engine errors in the log.
 ## What the counts leave out: pictures and the sounds other systems own (rites, loot, panels: tests/rites.gd, value.gd, panels.gd). The hero stands still and cannot fall in the fight.
-## Bakes the robber and the hound into a scratch folder first. Run: godot --headless --fixed-fps 60 --path client --script res://tests/sound.gd   (--fixed-fps 60 makes the fight run as fast as the CPU allows and keeps frames and ticks together)
+## Gets the robber and the hound into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd). Run: godot --headless --fixed-fps 60 --path client --script res://tests/sound.gd  (--fixed-fps 60 makes the fight run as fast as the CPU allows and keeps frames and ticks together)
 
 class ErrorLog:
 	extends Logger
@@ -138,6 +138,7 @@ class FakeMain:
 		add_child(world)
 
 
+const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://sound_test"
 const BAKE := ["grave_robber", "bone_hound"]
 const RISING := DmCoreEvents.State.RISING
@@ -193,7 +194,7 @@ func _main() -> void:
 	DmUiConfig.dir = ""   # in-memory stores: the run reads and leaves nothing in the user folder
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
+		var r: Dictionary = DmTestBake.bake(root, slug, OUT.path_join(slug), {"rows_path": "res://game/view_models.json"})
 		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
 	DmSimData.ensure()
 	real = root.get_node("AudioDirector")
@@ -228,9 +229,11 @@ func _main() -> void:
 	await _hero_hurt()
 	_the_fight_against_today()
 	await _the_hero_world()
+	g.queue_free()   # leaving the world: the area's bed and score stop
+	await until(func() -> bool: return proxy.current_area() == "", 120)
+	check(proxy.current_area() == "", "leaving the world stops the area (stop_area)")
 	check(errlog.errors.is_empty(), "no script or engine errors in the log (%d: %s)" % [errlog.errors.size(), str(errlog.errors.slice(0, 3))])
 	print("%s sound %d checks%s" % ["PASS" if fails == 0 else "FAIL", checks, "" if fails == 0 else " (%d failed)" % fails])
-	g.queue_free()
 	await process_frame
 	quit(1 if fails > 0 else 0)
 
@@ -291,6 +294,7 @@ func _start_up() -> void:
 	g.ui.update_setting({"vol_music": 0.3})
 	check(proxy.applied > applied, "a volume slider in Settings reaches the director at once (apply_settings, %d -> %d)" % [applied, proxy.applied])
 	check(proxy.listener != Vector2.ZERO and proxy.listener.distance_to(_hero_at()) < 0.5, "the listener follows the hero (%s, he stands at %s)" % [str(proxy.listener), str(_hero_at())])
+	check(not g.get_node("AudioHooks").is_wet(hero.position.x, hero.position.z), "the Chapterhouse start is dry (his strides carry no wet flag there)")
 
 
 func _to_the_graves() -> void:
@@ -476,12 +480,6 @@ func _the_fight_against_today() -> void:
 	for p in proxy.plays:
 		if OWN.has(p[0]):
 			got[p[0]] = int(got.get(p[0], 0)) + 1
-	var kinds := {}
-	for e: Dictionary in evs:
-		kinds[e["k"]] = int(kinds.get(e["k"], 0)) + 1
-	print("INFO the fight's events: ", kinds)
-	print("INFO the cues it played: ", got)
-	print("INFO what today's code plays (least / most): ", lo, " / ", hi)
 	var names := {}
 	for n in lo:
 		names[n] = true
@@ -532,7 +530,6 @@ func _the_hero_world() -> void:
 	var from := hero.position
 	hero.set_move_target(from + Vector3(8.0, 0.0, 0.0))
 	await until(func() -> bool: return stepped.any(func(n: String) -> bool: return n.begins_with("step")), 900)
-	print("INFO footsteps: ", proxy.foot.size(), " strides to the director, last ", proxy.foot.slice(-1), ", the director played ", stepped.slice(0, 5), ", moved to ", hero.position)
 	check(proxy.foot.size() > 0 and String(proxy.foot[-1][3]) == "graves", "the hero's strides reach the director with the area he walks in (%d, %s)" % [proxy.foot.size(), str(proxy.foot[-1][3]) if not proxy.foot.is_empty() else "-"])
 	check(stepped.any(func(n: String) -> bool: return n.begins_with("step")), "footsteps sound while he walks (%s)" % str(stepped.slice(0, 4)))
 	await until(func() -> bool: return proxy.stopped > 0, 120)

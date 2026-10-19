@@ -9,7 +9,7 @@ extends SceneTree
 ##   C gold and shards go straight to the purse (pooled over goldEveryKills kills, elites pay at once), and the HUD shows them; the upgrades box shows by today's rule;
 ##   D a drop from the tape lies on the ground: walking over it takes nothing, a click (request) and the walk claim it, and the server's roll is in the bag;
 ##   E the brews: the tonic's wisdom is read per kill; lifesteal heals on the hero's direct blows (DmCoreHost.struck) only, never on a DoT tick, a thrall's swing or a
-##     blow with no hero behind it (today's tests/next_brews_affix B, by DmBrews.lifesteal_heal);
+##     blow with no hero behind it (today's tests/brews_affixes B, by DmBrews.lifesteal_heal);
 ##   F the meta: difficulty reaches the director, the rewards and the bosses; the Omen's multipliers the member; saved vows and boons do nothing (B36);
 ##   G the belt: Q drinks a flask from the bag (the mock's new character carries three);
 ##   H saving: flush_all ends the session with its last batch, and the character the backend holds carries the XP, level and gold.

@@ -22,6 +22,7 @@ The tip queue, cadence rules, card and glow that guide a new player. Tip text, k
 - One card at a time. Calm cards wait for quiet (no fight, talk, banner or panel; 20 s after the last card; 3 s at session start), danger cards show in fights,
   asked cards promptly; 150 s subject groups (40 s for enemy / lesson); stale tips pruned; calm backlog capped at 4.
 - A card yields to fights / talk / panels after 6 s, is preempted by Hurt? / fight lessons after 5 s, leaves with the hero for place tips, and returns to the front of the queue when it yields.
+  A card that takes another's place appears alone: the one it replaces is removed at once instead of fading out under it (`DmCounselView`).
 - Card: 25-40 s (fight cards 14 s+), timer pauses on hover / drag, click dismisses, header drags (position saved, clamped 8 px in).
 - Glow: 2 px outline with a pulsing halo (1.4 s); `reduce_motion` holds it steady. It lights one HUD node per tip and follows the node live.
   Anchor aliases: brew -> belt, bag_full / bag_filling -> relic, skill_up -> gather.

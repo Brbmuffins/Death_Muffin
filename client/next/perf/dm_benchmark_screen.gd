@@ -5,10 +5,14 @@ extends Control
 ## records the run in DmBenchHistory and sends the queued runs to the benchmark history on the game's server with `api` (online and logged in; else they wait). The
 ## transport behind `api` refuses any address but the live server's (net/dm_config.gd).
 ## `quit_on_close` (launch arg `--benchmark`): the closing button is "Quit" and quits the game (a headless run quits by itself once the report is out); otherwise `closed` is emitted (back to character select).
+## `auto_quit` (`--bench-quit`, the team app's runs; with `quit_on_close`): a windowed run quits by itself as well, once its run is recorded and the upload (if it has an api) was tried, with `exit_code`:
+## 0 for a recorded run, 1 for a cancelled one or one that could not be recorded. `graphics_preset` (`--bench-preset=`) is the run's graphics preset (DmBenchmark.graphics_preset).
 
 signal closed
 
 var quit_on_close := false
+var auto_quit := false           ## `--bench-quit`: quit by itself when the run is recorded, whatever the display (the exit code says whether it was)
+var graphics_preset := ""        ## `--bench-preset=`: the run's graphics preset on loan ("" = the player's own)
 var setup: Dictionary = DmBenchmark.STANDARD.duplicate()
 var warm_s := -1.0               ## > 0: overrides the length's warm-up / measured seconds (`--bench-warm=` / `--bench-measure=` smoke runs)
 var measure_s := -1.0
@@ -62,6 +66,7 @@ func _ready() -> void:
 func _run() -> void:
 	runner = DmBenchmark.new()
 	runner.configure(setup)
+	runner.graphics_preset = graphics_preset
 	if warm_s > 0.0:
 		runner.warm_s = warm_s
 	if measure_s > 0.0:
@@ -79,7 +84,7 @@ func _run() -> void:
 	_running = false
 	if (r["phases"] as Array).is_empty():
 		if quit_on_close:
-			get_tree().quit()   # cancelled before any phase finished: nothing to show
+			get_tree().quit(1 if auto_quit else 0)   # cancelled before any phase finished: nothing to show (and nothing recorded)
 		else:
 			closed.emit()
 		return
@@ -90,10 +95,16 @@ func _run() -> void:
 	var entry := DmBenchHistory.payload(r, report)
 	var prev := DmBenchHistory.previous(entry)
 	DmBenchHistory.record(entry)
+	var recorded := DmBenchHistory.queued(entry)
 	_show_results(r, prev)
 	await _upload()
-	if quit_on_close and DisplayServer.get_name() == "headless":
-		get_tree().quit()   # nobody can press Quit: a scripted run ends with its report
+	if quit_on_close and (auto_quit or DisplayServer.get_name() == "headless"):
+		DmMain.end_process(get_tree(), exit_code(r, recorded) if auto_quit else 0)   # nobody can press Quit: a scripted run ends with its report (B60)
+
+
+## The exit code of a `--bench-quit` run: 0 when its run was recorded (the last entry of `DmBenchHistory.pending_file()` is this run) and finished, 1 when it was cancelled or could not be recorded.
+static func exit_code(r: Dictionary, recorded: bool) -> int:
+	return 0 if recorded and not bool(r.get("cancelled", false)) and not (r["phases"] as Array).is_empty() else 1
 
 
 func _upload() -> void:

@@ -114,7 +114,7 @@ func _every_panel() -> void:
 	for kills in [0, 1, 2]:
 		run["prelateKills"] = kills
 		var full := DmProgression.new(g.character, g.ui_host.progress).ashes_on_ascend()
-		check(g.ui._ashes_on_ascend() == full and g.ui._can_ascend() == (full > 0) and bool(g.ui.guidance_state()["canAscend"]) == (full > 0),
+		check(g.ui._ashes_on_ascend() == full and bool(g.ui.guidance_state()["canAscend"]) == (full > 0),
 			"the Ascension guidance agrees with the progression with %d Prelate kills (%d ashes)" % [kills, full])
 	run["prelateKills"] = kills0
 

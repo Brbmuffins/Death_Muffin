@@ -37,8 +37,8 @@ Where to read next: [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNO
 Godot 4.7.2 is at `/home/ubuntu/tools/godot/godot` (`GODOT` env var overrides it in the scripts). The renderer is Forward+.
 
 ```
-bash client/setup.sh                              # first time and after switching branches: builds the combat core (Linux) and imports
-bash client/tools/bake_crowd.sh                   # the crowd's baked models (not committed), to see enemies and thralls
+bash tools/check/prep.sh                          # first time and after switching branches: the combat core, the import, the crowd's baked models and the
+                                                  # lobby's packages, from the shared cache when nothing they are made of changed (tools/check/README.md)
 godot --path client                               # normal start: online, needs the live server
 godot --path client -- --dev-offline              # testing only: local accounts in user://dm_dev_offline_db.json, no server
 godot --path client -- --dev-offline --class=2    # skip the front flow, enter as account "tester" (1 Ossuary ... 4 Rotweaver, 11 Reaper)
@@ -53,9 +53,10 @@ rendered runs use the software Vulkan driver and `xvfb-run`, one at a time.
 ## Tests
 
 ```
-tools/rebuild/run-client-tests.sh --jobs 3        # every game suite (client/tests: <name>.gd or a folder <name>/run.gd), after client/setup.sh and client/tools/bake_crowd.sh; one line per suite
+tools/rebuild/run-client-tests.sh                 # every game suite (client/tests: <name>.gd or a folder <name>/run.gd), 8 side by side (fewer on a busy machine), after tools/check/prep.sh; one line per suite
 tools/rebuild/run-client-tests.sh --only surge,value   # just those
-node tools/rebuild/affected-suites.mjs            # the suites a change can affect, plus the smoke set (the Discord agent's quick check; --explain says why)
+node tools/rebuild/affected-suites.mjs            # the suites a change can affect, plus the smoke set (a quick run here while working; --explain says why)
+tools/check/ci.sh wait <rev>                      # GitHub CI's verdict on a pushed revision (the gate before any merge, deploy or publish; tools/check/README.md)
 npm run test:rules                                # shared rules (vitest, server/rules), with the client parity fixtures
 npm run test:server                               # backend suites (node --test)
 npm test --prefix server/death-muffin/lobby       # lobby + relay (run `npm ci --prefix server/death-muffin/lobby` once)
@@ -68,7 +69,7 @@ teamapp/tests/compile-check.sh                    # the whole team app, UI inclu
 ```
 
 Run one suite: `godot --headless --path client --script res://tests/<name>.gd`. CI (`.github/workflows/ci.yml`) runs the backend, lobby,
-hygiene, model check and every game suite on `main`.
+hygiene, model check and every game suite on every push to every branch, and is the gate (CLAUDE.md).
 Tests never assert wall-clock time: timing figures print as `INFO perf:` lines. FPS is judged on real hardware (F3 overlay);
 suites only check deterministic counters.
 

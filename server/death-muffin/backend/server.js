@@ -33,7 +33,10 @@ let maintenanceMode = false;
 const VALID_ZONES     = new Set(['HUB','Darkwood','Ashen Wastelands','Toujam Basin','GM Island','VoidDungeon']);
 const INSTANCED_ZONES = new Set(['VoidDungeon']);
 
-app.use(express.json({ limit: '512kb' }));
+// The team app's `done` for a benchmark job carries up to 6 runs and a log (up to 1 MB): that route reads its own body, with its own limit and its own readable 413 (team-jobs.cjs).
+const teamJobs = require('./team-jobs.cjs');
+const jsonBody = express.json({ limit: '512kb' });
+app.use((req, res, next) => (teamJobs.readsOwnBody(req) ? next() : jsonBody(req, res, next)));
 // Player-facing refusals (4xx) were invisible in the journal: a bag-save 400 loop once ran for minutes unseen.
 // Log one line per refusal: method, path (ids collapsed), status and the player-readable error.
 app.use((req, res, next) => {
@@ -1900,7 +1903,7 @@ require('./play-reports.cjs')(app, pool, {
 // Team jobs: the team app's job queue (War, Muffins, Helix) and the Discord agent's runner (/internal/team/..., this machine only). The app signs in with its own team token
 // (POST /api/team/login: the same password check and login rate limiter as /login, but it never claims the account's game session, so signing in does not
 // end the player's game and the game's session rule never refuses the app); every other app route is limited per account, 120 calls a minute.
-require('./team-jobs.cjs')(app, pool, {
+teamJobs(app, pool, {
   loginLimiter,
   comparePassword: (password, hash) => bcrypt.compare(password, hash),
   limiter: rateLimit({

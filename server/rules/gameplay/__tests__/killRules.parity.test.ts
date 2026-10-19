@@ -8,8 +8,8 @@ import { checkParity, recorder } from './parity';
 
 /**
  * What a kill pays and how the level curve runs: client/rules/combat/dm_enemy_stats.gd (kill_xp_base, kill_gold_max, new_blood_*) and
- * client/rules/progression/progression.gd (xp_to_next). Replayed by the Godot suites rules-combat (kill_parity.json) and
- * rules-progression (xp_parity.json). Regenerate: UPDATE_KILL_PARITY=1 / UPDATE_XP_PARITY=1 npx vitest run <this file>
+ * client/rules/progression/progression.gd (xp_to_next). Replayed by the Godot suites rules_combat (kill_parity.json) and
+ * rules_progression (xp_parity.json). Regenerate: UPDATE_KILL_PARITY=1 / UPDATE_XP_PARITY=1 npx vitest run <this file>
  */
 describe('kill reward parity', () => {
   it('kill_parity.json is current', () => {
@@ -36,7 +36,7 @@ describe('kill reward parity', () => {
       r.add('newBloodDamageMult', [fam], () => newBloodDamageMult(fam));
       for (const lv of [0, 1, 2, 7, 8, 14, 14.6, 15, 16, 200]) r.add('newBloodXpMult', [fam, lv], () => newBloodXpMult(fam, lv));
     }
-    checkParity('rules-combat', 'kill', 'KILL', r.cases);
+    checkParity('rules_combat', 'kill', 'KILL', r.cases);
   });
 
   it('xp_parity.json is current', () => {
@@ -48,6 +48,6 @@ describe('kill reward parity', () => {
       atCap - 1, atCap, atCap + 1, atCap + LEVEL_CAP * 100 - 1, atCap + LEVEL_CAP * 100, atCap + 10_000_000, 2147483647]) {
       r.add('splitXp', [total], () => splitXp(total));
     }
-    checkParity('rules-progression', 'xp', 'XP', r.cases);
+    checkParity('rules_progression', 'xp', 'XP', r.cases);
   });
 });

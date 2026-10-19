@@ -45,8 +45,8 @@ Standing mouse-aim: `DmCombatInput.stand_face` from the 10 Hz hover pick -> `ses
 - **Damage-number cap**: `DmFloatBudget` (`client/next/hud/dm_float_budget.gd`, used by `DmNextUiHost.float_text`): hits + crits 14 (a crit gets +4), dot 5, thrall 6, hard total 22; hurt / gold / heal / info are never limited. The caps are judgement numbers: loosen if a crit-heavy build feels muted.
 
 ## Tests
-`client/tests/auto_combat.gd` (Easy auto combat: its golden cases, seeded Full Party fights for the necromancer's rites and the Reaper's, the movement), `client/tests/rites.gd` (the kit's hotbar, the click-to-attack chase, every rite's cast),
-`client/tests/hud.gd` (slot needs, floating number caps).
+`client/tests/auto_combat.gd` (Easy auto combat: seeded Full Party fights for the necromancer's rites and the Reaper's, the movement), `client/tests/rites.gd` (the kit's hotbar, the click-to-attack chase, every rite's cast),
+`client/tests/hud.gd` (slot needs, floating number caps), `client/tests/combat_odds/run.gd` (every rite's sounds and its visible and audible cue at the press), `client/tests/combat_clarity/run.gd` (the number cap, slot needs, thrall pips).
 
 ## Known gaps
 - Auto-combat has no `DmNav` over the navmesh (the decision code's `clear_line` / path-around is skipped; the body's nav clamp slides it), so it parks the hero in pockets of tombstones (KNOWN-GAPS "Combat and statuses").

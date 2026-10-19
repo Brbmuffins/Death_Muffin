@@ -134,27 +134,26 @@ func _part_a() -> void:
 	var id1: int = (cs[0][0] as DmSession).get_my_id()
 	var id2: int = (cs[1][0] as DmSession).get_my_id()
 	ok(await wait_for(func(): return hs.get_body(id1).position.distance_to(Vector3(6, 0, 2)) < 0.01 and hs.get_body(id2).position.distance_to(Vector3(-5, 0, 4)) < 0.01), "A: host bodies reach targets")
-	await create_timer(0.5).timeout
-	var conv := true
-	for c in cs:
-		for id in [id1, id2]:
-			conv = conv and (c[0] as DmSession).get_body(id).position.distance_to(hs.get_body(id).position) < 0.05
-	ok(conv, "A: clients converge on host positions")
+	var converged := func() -> bool:
+		for c in cs:
+			for id in [id1, id2]:
+				if (c[0] as DmSession).get_body(id).position.distance_to(hs.get_body(id).position) >= 0.05:
+					return false
+		return true
+	ok(await wait_for(converged), "A: clients converge on host positions")
 	# speed clamp: 10 units in <= ~2s at 5 u/s means not instant
 	var p0 := hs.get_body(id1).position
 	(cs[0][0] as DmSession).request_move_to(Vector3(-30, 0, 2))
 	await create_timer(0.5).timeout
 	ok(hs.get_body(id1).position.distance_to(p0) < 5.0 * 0.5 + 0.3, "A: host clamps speed")
 	(cs[0][0] as DmSession).request_move_to(Vector3(1e9, 0, 0))
-	await create_timer(0.2).timeout
 	(cs[0][0] as DmSession).request_move_to(Vector3(INF, 0, 0))
-	await create_timer(0.2).timeout
-	ok(hs.rejected_intents >= 1, "A: non-finite intent rejected")
+	ok(await wait_for(func(): return hs.rejected_intents >= 1), "A: non-finite intent rejected")
 	# forged intent
 	var before := hs.get_body(id2).position
 	var rej := hs.rejected_intents
 	(cs[0][0] as DmSession).request_move_to(Vector3(20, 0, 20), id2)
-	await create_timer(0.5).timeout
+	await wait_for(func(): return hs.rejected_intents > rej)
 	ok(hs.rejected_intents == rej + 1 and hs.get_body(id2).position.distance_to(before) < 0.001, "A: forged intent for another body ignored")
 	# dir intent + ttl
 	var pd := hs.get_body(id2).position
@@ -245,7 +244,7 @@ func _part_b() -> void:
 	for f in DirAccess.get_files_at(dir):
 		DirAccess.remove_absolute(dir + "/" + f)
 	spawn("host", "host")
-	await create_timer(1.5).timeout
+	await wait_for(func(): return bool(st("host").get("started", false)), 30.0)
 	spawn("client", "A")
 	spawn("client", "B")
 	var all3 := func():
@@ -340,8 +339,7 @@ func _part_c() -> void:
 	s.request_move_to(Vector3(4, 0, -2))
 	ok(await wait_for(func(): return s.get_body(1).position.distance_to(Vector3(4, 0, -2)) < 0.01), "C: solo body moves via intents")
 	s.request_move_dir(Vector3(0, 0, 1))
-	await create_timer(0.4).timeout
-	ok(s.get_body(1).position.z > -2.0 + 0.5, "C: dir intent works solo")
+	ok(await wait_for(func(): return s.get_body(1).position.z > -2.0 + 0.5), "C: dir intent works solo")
 	ok(s.rejected_intents == 0, "C: no intents rejected")
 	await s.leave()
 	ok(ended[0] != "" and not s.is_active(), "C: solo session ends cleanly")

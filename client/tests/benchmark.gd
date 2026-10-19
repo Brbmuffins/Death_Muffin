@@ -1,91 +1,24 @@
-extends SceneTree
+extends "res://tests/benchmark_base.gd"
 ## The in-game benchmark on the combat core (the rebuild's Gates B and C, DECISIONS B50; client/README.md "The benchmark"), headless: `godot --headless --path client --script res://tests/benchmark.gd`.
-## Short runs of the real thing, deterministic checks only (timings are printed as INFO and never asserted):
-##   - the setup: sizes, today's nine rooms and five classes, the Bell Sanctum as the Standard room, today's enemy health, the budgets are B39's, a room or class the benchmark does not list is refused with a plain message;
+## The first of five suites that split the old one (benchmark_base.gd holds what they share; benchmark_rooms, benchmark_classes, benchmark_launch and benchmark_flags are the others). Deterministic checks only, timings are INFO:
+##   - the setup: sizes, the combat areas as rooms and the playable classes, the Bell Sanctum as the Standard room, today's enemy health, the budgets are B39's, a room or class the benchmark does not list is refused with a plain message,
+##     the team app's flags (`--bench-preset=`, `--bench-quit`) as the launch line reads them and the exit code they give;
 ##   - the fight is set up as the setup says: 72 enemies held (the farthest extras trimmed without a death), 32 thralls, the Gravedigger King awake, the fixed seed, every enemy on
 ##     the standard health, the hero holding the centre, no node per creature;
-##   - every room: a short Full Party run boots only that room's area, the hero stands on its floor, the director holds the room's whole roster on the core, the enemies that spawn are the room's, the report names the room, and
-##     the room's boss is held awake the whole fight exactly where today's benchmark holds one (TODAYS_BOSS), while the Warren and the Coliseum run without;
-##   - every class: a short run per class, the kit's family, auto combat casts;
 ##   - Easy auto combat casts (the gate is closed until opened, it casts, it walks when it may, it reads the corpses and the core's bulk arrays, and nothing is a node);
-##   - the report has its lines and its budget section prints, with a verdict for the core and the rest of the main thread, and the HUD's share is measured with the HUD put back after;
-##   - a real `--benchmark` launch (--bench-warm / --bench-measure) prints the report and quits by itself; a room or class the benchmark does not list is refused with exit code 2;
-##   - nothing is sent anywhere: the run's files (history, queue, last setup, reports) and its baked models live in a folder of this run's own (so no other run's files change a check, and none is left behind),
-##     an upload goes to a mock that answers as the test API, a debug build and a trial launch do not upload, and a real transport is never asked to carry a run from a script;
-##   - the render breakdown, the history and the setup window work; Esc cancels;
+##   - the frame split and the F3 overlay's logic line (a tick that holds itself for 3 ms);
+##   - the report has its lines and its budget section prints, with a verdict for the core and the rest of the main thread, and the HUD's share is measured with the HUD put back after (a Full Party run in the Graves);
+##   - the render breakdown and the HUD's share work;
+##   - the setup window lists the rooms, classes and sizes, names the room's boss, and remembers the pick;
 ##   - ZERO script errors or engine errors in the log (an OS Logger counts them; warnings are not errors).
-## Bakes the robber and the hound into a scratch folder first (the rest of the rosters borrow them: warnings, not errors). About 4 minutes.
-
-const SCRATCH_ROOT := "user://benchmark_test"   ## every run of this suite makes its own folder in here and removes it at the end
-const BAKE := ["grave_robber", "bone_hound"]
-## The boss today's Full Party fight holds awake in each room (client/next/perf/dm_bench_fight.gd `boss_of`: the boss whose arena is the room); the Warren and the Coliseum have none.
-## Kinds the room's own bodies make: a Deacon raises a corpse and a Lich Acolyte unbinds a fallen thrall as a Risen (native/src/core/support.cpp, nave.cpp), today's too.
-const MADE_BY := {"risen": ["deacon", "acolyte"]}
-const TODAYS_BOSS := {"graves": "gravedigger", "warren": "", "ossuary": "abbess", "nave": "congregation", "coliseum": "", "sanctum": "prelate", "cloister": "saint", "pyre": "regent", "fen": "mire"}
-const STD_HP := 272.928627      ## the health every enemy has (today's DmBenchmark.standard_stats at c47c35a1)
-const STD_DMG := 10.848627
+## Bakes the robber and the hound into a scratch folder first, unless the checkout's setup baked them (the rest of the rosters borrow them: warnings, not errors).
 
 
-class ErrorLog:
-	extends Logger
-	var errors: Array[String] = []
-
-	func _log_error(function: String, file: String, line: int, code: String, rationale: String, _editor_notify: bool, error_type: int, _backtraces: Array[ScriptBacktrace]) -> void:
-		if error_type != Logger.ERROR_TYPE_WARNING:
-			errors.append("%s:%d %s %s %s" % [file, line, function, code, rationale])
+func suite_name() -> String:
+	return "benchmark"
 
 
-var fails := 0
-var checks := 0
-var errlog := ErrorLog.new()
-var scratch := ""               ## this run's own folder: the baked models, and in `data` every file the benchmark keeps
-var data := ""                  ## DmBenchmark.dir for the whole suite: history, queue, last setup, reports
-
-
-func check(ok: bool, what: String) -> void:
-	checks += 1
-	if not ok:
-		fails += 1
-		printerr("FAIL benchmark: " + what)
-
-
-## True when a node under `from` runs a script whose class_name is `cls` (`find_children` only knows the engine's classes).
-func has_script_class(from: Node, cls: String) -> bool:
-	var stack: Array[Node] = [from]
-	while not stack.is_empty():
-		var nd: Node = stack.pop_back()
-		stack.append_array(nd.get_children())
-		var sc: Script = nd.get_script()
-		if sc != null and String(sc.get_global_name()) == cls:
-			return true
-	return false
-
-
-func nodes() -> int:
-	return int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
-
-
-func ticks(n: int) -> void:
-	var target := Engine.get_physics_frames() + n
-	while Engine.get_physics_frames() < target:
-		await physics_frame
-
-
-func _initialize() -> void:
-	await process_frame
-	OS.add_logger(errlog)
-	DmSimData.ensure()
-	_remove_stale_runs()
-	scratch = SCRATCH_ROOT.path_join("%d_%d" % [OS.get_process_id(), Time.get_ticks_usec()])
-	data = scratch.path_join("data")
-	DirAccess.make_dir_recursive_absolute(data)
-	DmBenchmark.dir = data   # every history, queue, setup and report file of the suite lands in this run's folder: no other run's files are read, none is left for a real session to send
-	for slug in BAKE:
-		var r: Dictionary = CrowdBaker.bake(root, slug, scratch.path_join(slug), {"rows_path": "res://game/view_models.json"})
-		check(r.ok, "bake %s: %s" % [slug, r.get("error", "")])
-		if not r.ok:
-			quit(1)
-			return
+func run_suite() -> void:
 	check(DmBenchmark.dir == data and DmBenchmark.dir != DmBenchmark.DIR and DmBenchHistory.pending_file() == data + "/pending.json" and DmBenchHistory.history_file() == data + "/history.json" and DmBenchmarkSetup.file() == data + "/setup.json",
 		"the suite keeps the benchmark's files in its own folder (%s), not in %s" % [data, DmBenchmark.DIR])
 	check(DmBenchHistory.pending_count() == 0 and not FileAccess.file_exists(DmBenchmarkSetup.file()) and DmBenchHistory.previous({"clientRunId": "x", "discipline": 2, "room": "graves", "size": "x", "length": "x", "gpu": "x", "preset": "x"}).is_empty(), "and it starts with an empty queue, no history and no setup")
@@ -95,14 +28,52 @@ func _initialize() -> void:
 	await frame_split()
 	await full_party_run()
 	await breakdown_run()
-	await every_room()
-	await every_class()
-	await screen_and_upload()
-	await esc_cancels()
 	setup_window()
-	await nothing_over_the_network()
-	await real_launches()
-	finish()
+
+
+# ------------------------------------------------------------------------------------------------------------------ what the data says
+
+## The combat areas: the world's order, the areas that are neither safe hubs nor the Depths instance.
+func _combat_areas() -> Array:
+	var out: Array = []
+	for id in DmData.world()["order"]:
+		var a: Dictionary = DmData.world()["areas"][id]
+		if not bool(a["instance"]) and not bool(DmContent.area(String(id)).get("safe", false)):
+			out.append(String(id))
+	return out
+
+
+## An area of the world the benchmark does not list as a room ("" when it lists them all).
+func _area_outside_rooms() -> String:
+	for id in DmData.world()["order"]:
+		if not DmBenchmark.ROOMS.has(String(id)):
+			return String(id)
+	return ""
+
+
+func _sorted(a: Array) -> Array:
+	var b := a.duplicate()
+	b.sort()
+	return b
+
+
+## The playable disciplines' class indices, ascending (DmCharacterBuild.is_playable over the combat data's disciplines).
+func _playable_classes() -> Array:
+	var out: Array = []
+	for d: Dictionary in (DmCombatData.disciplines()["disciplines"] as Dictionary).values():
+		if DmCharacterBuild.is_playable(float(d["classIndex"])):
+			out.append(int(d["classIndex"]))
+	out.sort()
+	return out
+
+
+## A class index of the character select's list that is not playable (a number no discipline has when all are).
+func _unplayable_class() -> int:
+	var playable := _playable_classes()
+	for d: Dictionary in DmContent.file("disciplines").get("PLAYABLE_DISCIPLINES", []):
+		if not playable.has(int(d["classIndex"])):
+			return int(d["classIndex"])
+	return 99
 
 
 # ------------------------------------------------------------------------------------------------------------------ the setup
@@ -114,8 +85,8 @@ func the_setup() -> void:
 	check(DmBenchmark.SIZES["light"] == [15, 10] and DmBenchmark.SIZES["standard"] == [30, 20] and DmBenchmark.SIZES["heavy"] == [60, 30], "the other sizes are today's")
 	check(DmBenchmark.LENGTHS["quick"] == [6.0, 20.0, false] and DmBenchmark.LENGTHS["full"] == [10.0, 30.0, true], "the lengths are today's")
 	check(DmBenchmark.ENEMY_LIMIT > cap and DmBenchmark.SEED == 20261011, "the director's body limit leaves room for the corpses; the seed is today's (%d)" % DmBenchmark.SEED)
-	check(DmBenchmark.ROOMS == ["graves", "warren", "ossuary", "nave", "coliseum", "sanctum", "cloister", "pyre", "fen"] and DmBenchmark.class_indices() == [1, 2, 3, 4, 11],
-		"the benchmark has today's nine rooms and five classes (the four necromancers and the Reaper)")
+	check(DmBenchmark.ROOMS == _combat_areas() and not DmBenchmark.ROOMS.is_empty() and _sorted(DmBenchmark.class_indices()) == _playable_classes() and not DmBenchmark.class_indices().is_empty(),
+		"the benchmark's rooms are the world's combat areas, in world order, and its classes the playable disciplines of the data")
 	var every: Array = DmNextWorld.every_area()
 	var rooms_ok := true
 	for room: String in DmBenchmark.ROOMS:
@@ -123,17 +94,22 @@ func the_setup() -> void:
 		rooms_ok = rooms_ok and every.has(room) and not roster.is_empty() and roster.all(func(e: Dictionary) -> bool: return DmWaveDirector.runs_on_core(String(e["id"])))
 	check(rooms_ok and not DmBenchmark.ROOMS.has("depths"), "every room is an area the world loads and the core runs its whole roster (the Depths stays out)")
 	check(DmBenchmark.BUDGET_CORE_MS == 4.0 and DmBenchmark.BUDGET_REST_MS == 4.0 and DmBenchmark.BUDGET_HUD_MS == 0.5 and DmBenchmark.BUDGET_HUD_DRAWS == 150, "the budgets are B39's: core 4 ms, rest 4 ms, HUD 0.5 ms and 150 draws")
+	var last_room: String = DmBenchmark.ROOMS[DmBenchmark.ROOMS.size() - 1]
+	var last_class: int = DmBenchmark.class_indices()[DmBenchmark.class_indices().size() - 1]
+	var off_room := _area_outside_rooms()
+	var off_class := _unplayable_class()
+	check(off_room != "" and off_class >= 0, "the data has an area and a class the benchmark does not list (%s, %d)" % [off_room, off_class])
 	check(DmBenchmark.normalize_setup({"room": "nowhere", "discipline": 7, "size": "huge"}) == DmBenchmark.STANDARD, "unknown picks fall back to the Standard setup")
-	check(DmBenchmark.normalize_setup({"room": "fen", "discipline": 11})["room"] == "fen" and DmBenchmark.normalize_setup({"room": "fen", "discipline": 11})["discipline"] == 11 and DmBenchmark.normalize_setup({"room": "depths"})["room"] == "sanctum"
-		and DmBenchmark.normalize_setup({"discipline": 5})["discipline"] == 2, "a listed room and class are taken; the Depths and a greyed-out class fall back to the Standard room and class")
+	check(DmBenchmark.normalize_setup({"room": last_room, "discipline": last_class})["room"] == last_room and DmBenchmark.normalize_setup({"room": last_room, "discipline": last_class})["discipline"] == last_class and DmBenchmark.normalize_setup({"room": off_room})["room"] == DmBenchmark.STANDARD["room"]
+		and DmBenchmark.normalize_setup({"discipline": off_class})["discipline"] == DmBenchmark.STANDARD["discipline"], "a listed room and class are taken; the Depths and a greyed-out class fall back to the Standard room and class")
 	check(DmBenchmark.STANDARD == {"room": "sanctum", "discipline": 2, "size": "standard", "length": "full"} and DmBenchmark.is_standard(DmBenchmark.STANDARD) and not DmBenchmark.is_standard({"room": "graves", "discipline": 2, "size": "standard", "length": "full"}),
 		"Standard is today's: the Bell Sanctum, Gravecaller, Standard, Full")
 	# a room or class the benchmark does not list is refused in plain words
-	check(DmBenchmark.refusal({"room": "graves", "discipline": 2}) == "" and DmBenchmark.refusal({}) == "" and DmBenchmark.refusal({"room": "fen", "discipline": 11}) == "", "the listed rooms and classes are not refused")
-	var why_room := DmBenchmark.refusal({"room": "depths"})
-	check(why_room.contains("'depths'") and why_room.contains("graves") and why_room.contains("fen"), "a room outside the nine is refused with a clear message (%s)" % why_room)
-	var why_class := DmBenchmark.refusal({"discipline": 5})
-	check(why_class.contains("class 5") and why_class.contains("2 Gravecaller") and why_class.contains("11 Reaper"), "a class outside the five is refused with a clear message (%s)" % why_class)
+	check(DmBenchmark.refusal({"room": DmBenchmark.ROOMS[0], "discipline": DmBenchmark.class_indices()[0]}) == "" and DmBenchmark.refusal({}) == "" and DmBenchmark.refusal({"room": last_room, "discipline": last_class}) == "", "the listed rooms and classes are not refused")
+	var why_room := DmBenchmark.refusal({"room": off_room})
+	check(why_room.contains("'%s'" % off_room) and DmBenchmark.ROOMS.all(func(r: String) -> bool: return why_room.contains(r)), "a room the benchmark does not list is refused with a clear message naming the listed ones (%s)" % why_room)
+	var why_class := DmBenchmark.refusal({"discipline": off_class})
+	check(why_class.contains("class %d" % off_class) and DmBenchmark.class_indices().all(func(i: int) -> bool: return why_class.contains("%d %s" % [i, DmBenchmark.class_name_of(i)])), "a class the benchmark does not list is refused with a clear message naming the listed ones (%s)" % why_class)
 	# the enemies' health and damage are today's: the Bell Sanctum roster's weighted average on Easy, whatever the room
 	var std := DmBenchmark.standard_stats()
 	check(absf(float(std["hp"]) - STD_HP) < 0.001 and absf(float(std["dmg"]) - STD_DMG) < 0.001, "every enemy has today's health %.3f and damage %.3f (%.3f, %.3f)" % [STD_HP, STD_DMG, std["hp"], std["dmg"]])
@@ -143,9 +119,9 @@ func the_setup() -> void:
 	var todays := true
 	var woken := true
 	for room: String in DmBenchmark.ROOMS:   # the rooms and their bosses are today's, and the game wakes every one of them
-		todays = todays and DmBenchFight.boss_of(room) == TODAYS_BOSS[room]
-		woken = woken and (TODAYS_BOSS[room] == "" or served.has(room))
-	check(todays and woken and TODAYS_BOSS.size() == DmBenchmark.ROOMS.size(), "every room's boss is today's, and the boss host wakes all seven (%s)" % str(served))
+		todays = todays and DmBenchFight.boss_of(room) == _boss_in(room)
+		woken = woken and (_boss_in(room) == "" or served.has(room))
+	check(todays and woken, "every room's boss is the boss the data puts in that area, and the boss host wakes it (%s)" % str(served))
 	var sanctum_fp := DmBenchmark.new()
 	sanctum_fp.configure({"room": "sanctum", "size": "full_party"})
 	check(sanctum_fp.boss_id == "prelate" and sanctum_fp.boss_text().contains("Bell-Sworn Prelate held awake"), "Full Party in the Sanctum holds its Prelate (%s)" % sanctum_fp.boss_text())
@@ -189,6 +165,40 @@ func the_setup() -> void:
 	var fen: Dictionary = M.bench_setup_from_args(PackedStringArray(["--benchmark", "--bench-room=fen", "--bench-class=11"]))
 	check(fen["room"] == "fen" and fen["discipline"] == 11 and DmBenchmark.refusal(M.bench_wanted_from_args(PackedStringArray(["--bench-room=fen", "--bench-class=11"]))) == "", "launch args pick the Fen and the Reaper")
 	check(DmLaunchArgs.options(PackedStringArray(["--benchmark", "--bench-dir=/tmp/x y"]))["bench_dir"] == "/tmp/x y" and not DmLaunchArgs.options(PackedStringArray(["--benchmark"])).has("bench_dir"), "--bench-dir= names the folder a run keeps its files in")
+	# the team app's flags: the preset of the run, and quitting by itself
+	var named: Dictionary = M.bench_wanted_from_args(PackedStringArray(["--benchmark", "--bench-preset=low", "--bench-room=graves", "--bench-quit"]))
+	check(named == {"preset": "low", "room": "graves"} and DmBenchmark.refusal(named) == "", "--bench-preset=low is read with the setup's keys, and refused by nothing")
+	check(M.bench_setup_from_args(PackedStringArray(["--benchmark", "--bench-preset=low"])) == DmBenchmark.STANDARD, "the preset is not part of the setup: it stays the Standard one")
+	check(not M.bench_wanted_from_args(PackedStringArray(["--benchmark", "--bench-quit"])).has("preset"), "no --bench-preset= names no preset (the player's own)")
+	for id in DmGraphicsPreset.IDS:
+		check(DmBenchmark.refusal({"preset": id}) == "", "--bench-preset=%s is something the benchmark can run" % id)
+	for bad in ["max", "Low", "", "ultra low", "low;rm"]:
+		var why := DmBenchmark.refusal(M.bench_wanted_from_args(PackedStringArray(["--benchmark", "--bench-preset=" + bad])))
+		check(why.contains("'%s'" % bad) and why.contains("low, medium, high, ultra") and why.contains("--bench-preset="), "--bench-preset=%s is refused with a message that names the presets (%s)" % [bad, why])
+	# the preset is on loan: the run reads it as the player's setting, and the player's own are neither written nor changed
+	var settings_before := FileAccess.file_exists(DmSettings.FILE)
+	var settings_text := FileAccess.get_file_as_string(DmSettings.FILE) if settings_before else ""
+	var own_preset := String(DmBenchmark.user_settings()["graphics"])
+	for id in DmGraphicsPreset.IDS:
+		check(String(DmBenchmark.user_settings(id)["graphics"]) == id, "the run reads %s as the graphics setting when it is asked for" % id)
+	check(String(DmBenchmark.user_settings("")["graphics"]) == own_preset and String(DmSettings.new(DmSettings.FILE, true).values["graphics"]) == own_preset, "no preset asked for: the player's own; and the loan does not leak into the next read")
+	check(FileAccess.file_exists(DmSettings.FILE) == settings_before and (not settings_before or FileAccess.get_file_as_string(DmSettings.FILE) == settings_text), "the player's settings file is untouched (%s)" % ("present" if settings_before else "absent"))
+	# the exit code of a --bench-quit run
+	var done_run := {"phases": [{"avg_fps": 60.0}], "cancelled": false}
+	check(DmBenchmarkScreen.exit_code(done_run, true) == 0, "a finished run that is the last entry of the queue exits 0")
+	check(DmBenchmarkScreen.exit_code(done_run, false) == 1, "a run the queue did not take exits 1")
+	check(DmBenchmarkScreen.exit_code({"phases": [{"avg_fps": 60.0}], "cancelled": true}, true) == 1, "a cancelled run exits 1, though it was queued (flagged)")
+	check(DmBenchmarkScreen.exit_code({"phases": [], "cancelled": true}, true) == 1 and DmBenchmarkScreen.exit_code({"phases": []}, false) == 1, "a run with no finished phase exits 1")
+	# "recorded" means the run is the last entry of the queue
+	var entry_a := DmBenchHistory.payload(_tiny_result(), "report a")
+	var entry_b := DmBenchHistory.payload(_tiny_result(), "report b")
+	entry_b["clientRunId"] = str(entry_a["clientRunId"]) + "9"
+	check(not DmBenchHistory.queued(entry_a), "a run that was not recorded is not in the queue")
+	DmBenchHistory.record(entry_a)
+	check(DmBenchHistory.queued(entry_a) and not DmBenchHistory.queued(entry_b), "a recorded run is the last entry of the queue")
+	DmBenchHistory.record(entry_b)
+	check(DmBenchHistory.queued(entry_b) and not DmBenchHistory.queued(entry_a), "the next run is the last entry, the one before it is not")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(DmBenchHistory.pending_file()))
 
 
 # ------------------------------------------------------------------------------------------------------------------ the fight, by hand
@@ -584,240 +594,6 @@ func breakdown_run() -> void:
 	await process_frame
 
 
-# ------------------------------------------------------------------------------------------------------------------ every room and every class
-
-## What a short run showed, read off the running game from the progress line (about once a second; the first comes as the warm-up begins, before the first wave).
-class Watch:
-	extends RefCounted
-	var loaded: Array = []                 ## the area ids the world holds
-	var director_area := ""
-	var director_kinds: Array = []         ## the kinds the director makes in the room
-	var family := ""
-	var casts := 0
-	var defs := {}                         ## def id -> bodies spawned
-	var areas := {}                        ## the area ids the spawns carried
-	var hooked := false
-	var hero_floor := ""                   ## the area the hero stood in once the fight began
-	var looks := 0                         ## progress lines with the game up
-	var boss_looks := 0                    ## ... of which a boss was awake
-	var boss_ids := {}                     ## the boss ids seen awake
-	var boss_floors := {}                  ## the areas the awake boss stood in
-	var boss_hittable := 0                 ## looks where the awake boss could be hit (a sunk Mire Mother cannot)
-
-	func look(b: DmBenchmark) -> void:
-		if b.game == null or not is_instance_valid(b.game) or b.host == null:
-			return
-		if not hooked:
-			hooked = true
-			b.host.enemy_spawned.connect(func(_id: int, def: String, _l: int, _e: bool, area: String, _af: int, _x: float, _z: float, _hp: float) -> void:
-				defs[def] = int(defs.get(def, 0)) + 1
-				areas[area] = true)
-			loaded = b.game.world.loaded.duplicate()
-			director_area = b.game.director.area_id
-			director_kinds = b.game.director.kinds.map(func(k: Dictionary) -> String: return String(k["id"]))
-			family = String(b.game.local_body().family)
-		looks += 1
-		hero_floor = b.game.world.area_at(b.game.local_body().position.x, b.game.local_body().position.z)
-		casts = int(b.game.input.auto.stats["casts"])
-		var boss: DmBoss = b.game.bosses.active_boss()
-		if boss != null:
-			boss_looks += 1
-			boss_ids[boss.boss_id] = true
-			boss_floors[b.game.world.area_at(boss.position.x, boss.position.z)] = true
-			boss_hittable += 1 if boss.is_hittable() else 0
-
-
-## One short run: `room` and `disc`, `size`, `warm` s of warm-up and `measure` s measured. Returns {r, watch, b, ms}; the caller frees `b` once it has read it.
-func short_run(room: String, disc: int, size := "light", warm := 1.0, measure := 2.0) -> Dictionary:
-	var t0 := Time.get_ticks_msec()
-	var b := DmBenchmark.new()
-	b.configure({"room": room, "discipline": disc, "size": size, "length": "quick"})
-	b.warm_s = warm
-	b.measure_s = measure
-	b.hud_rounds = 0
-	b.baked_dir = scratch
-	var w := Watch.new()
-	b.progress.connect(func(_t: String) -> void: w.look(b))
-	root.add_child(b)
-	var r: Dictionary = await b.run()
-	return {"r": r, "watch": w, "b": b, "ms": Time.get_ticks_msec() - t0}
-
-
-## Every room boots alone in a Full Party fight, spawns its own roster on the core, holds its boss awake the whole fight where today's benchmark does (and runs without one where today's does), and reaches the report.
-func every_room() -> void:
-	var total := 0
-	var cap := int(DmSimData.GLOBAL_ENEMY_CAP)
-	for room: String in DmBenchmark.ROOMS:
-		var o := await short_run(room, 2, "full_party", 2.0, 6.0)
-		var r: Dictionary = o["r"]
-		var w: Watch = o["watch"]
-		var b: DmBenchmark = o["b"]
-		total += int(o["ms"])
-		var boss: String = TODAYS_BOSS[room]
-		var rect: Dictionary = DmContent.area(room)["rect"]
-		var roster: Array = (DmContent.area(room)["enemies"] as Array).map(func(e: Dictionary) -> String: return String(e["id"]))
-		roster.sort()
-		var kinds: Array = w.director_kinds.duplicate()
-		kinds.sort()
-		var outside: Array = []   # spawned kinds that are not the room's roster nor made by it: a boss's own adds
-		for d: String in w.defs.keys():
-			if not roster.has(d) and not (MADE_BY.get(d, []) as Array).any(func(k: String) -> bool: return roster.has(k)):
-				outside.append(d)
-		var ph: Dictionary = r["phases"][0] if not (r["phases"] as Array).is_empty() else {}
-		check(not r["cancelled"] and (r["phases"] as Array).size() == 1 and r["setup"]["room"] == room and r["setup"]["size"] == "full_party", "%s: the Full Party run completes" % room)
-		check(w.loaded == [room], "%s: only that area is loaded (%s)" % [room, str(w.loaded)])
-		check(w.director_area == room and kinds == roster, "%s: the director holds the whole roster on the core (%d kinds of %d)" % [room, kinds.size(), roster.size()])
-		check(not w.defs.is_empty() and w.areas.keys() == [room] and (boss != "" or outside.is_empty()), "%s: the enemies that spawned are in the room (%s)" % [room, str(w.defs)])
-		check(w.defs.size() >= mini(3, roster.size()) and b.spawns >= cap, "%s: %d bodies of %d kinds spawned" % [room, b.spawns, w.defs.size()])
-		check(b.area_nav_on and w.hero_floor == room and b._at.x >= float(rect["x0"]) and b._at.x <= float(rect["x1"]) and b._at.z >= float(rect["z0"]) and b._at.z <= float(rect["z1"]),
-			"%s: the room's navmesh is on and the hero stands on its floor (%s)" % [room, str(b._at)])
-		check(not ph.is_empty() and float(ph["enemies"]) >= cap * 0.8 and float(ph["thralls"]) >= 31.99, "%s: 72 enemies and 32 thralls are held (%.1f, %.1f)" % [room, float(ph.get("enemies", 0.0)), float(ph.get("thralls", 0.0))])
-		# the boss: today's room has one, it is held awake the whole fight (the first look is before the first upkeep wakes it); a room without one runs without
-		if boss != "":
-			check(b.boss_id == boss and r["boss"]["id"] == boss and w.boss_ids.keys() == [boss], "%s: %s is the boss held (%s)" % [room, boss, str(w.boss_ids.keys())])
-			check(b.boss_summons >= 1 and b.boss_summons == 1 + b.boss_defeats and float(ph["boss_awake_pct"]) >= (99.0 if b.boss_defeats == 0 else 85.0) and w.looks > 1 and w.boss_looks >= w.looks - 1,
-				"%s: awake the whole fight (%.0f%% of the window; woken %d times, defeated %d; awake in %d of %d looks)" % [room, float(ph.get("boss_awake_pct", 0.0)), b.boss_summons, b.boss_defeats, w.boss_looks, w.looks])
-			check(w.boss_floors.keys() == [room], "%s: in its own arena (%s)" % [room, str(w.boss_floors.keys())])
-			check(DmBenchmark.format_text(r).contains("Boss: %s   woken" % DmContent.boss(boss)["name"]) and DmBenchmark.format_text(r).contains("%s held awake" % DmContent.boss(boss)["name"]), "%s: the report names the boss" % room)
-		else:
-			check(b.boss_id == "" and String(r["boss"]["id"]) == "" and b.boss_summons == 0 and w.boss_looks == 0 and not ph.has("boss_awake_pct") and outside.is_empty(), "%s: no boss, none woken, no foreign body (%s)" % [room, str(outside)])
-			check(DmBenchmark.format_text(r).contains("no boss (this room has none)") and not DmBenchmark.format_text(r).contains("Boss:"), "%s: the report says the room has none" % room)
-		var text := DmBenchmark.format_text(r)
-		check(text.contains("Setup: %s, Gravecaller, Full Party, Quick (custom" % DmBenchmark.room_name(room)) and text.contains("Budgets (ROADMAP") and text.contains("Combat core per tick"), "%s: the report names the room and has its budget section" % room)
-		check(text.contains("Process ms (avg)") and text.contains("Physics ms (avg)") and text.contains("Slowest tick ms") and text.contains("Process ms (Godot peak)") and text.contains("Physics ms (Godot peak)") and text.contains("\nFrame ")
-			and float(ph["physics_avg_ms"]) > 0.0 and float(ph["process_avg_ms"]) > 0.0 and float(ph["physics_worst_ms"]) >= float(ph["physics_tick_ms"]),
-			"%s: the report has the frame's physics and process averages beside Godot's peaks (physics %.2f, process %.2f ms)" % [room, float(ph.get("physics_avg_ms", 0.0)), float(ph.get("process_avg_ms", 0.0))])
-		var cc: Dictionary = ph.get("crowd", {})
-		check(text.contains("Crowd: mesh levels at") and text.contains("Crowd per frame (average over the measured window") and not cc.is_empty() and float(cc["bodies"]) > 0.0 and float(cc["drawn"]) <= float(cc["bodies"]) and float(cc["casting_thralls"]) > 0.0
-			and float(cc["triangles"]) > 0.0 and r["meta"]["crowd"].culling and r["meta"]["crowd"].anim_lod, "%s: the report records the crowd's settings and counters (%.0f bodies, %.0f drawn, %.0f outside the view, %.0f casting)" % [room, float(cc.get("bodies", 0.0)), float(cc.get("drawn", 0.0)), float(cc.get("culled", 0.0)), float(cc.get("casting", 0.0))])
-		print("INFO bench room %s (%s): %d bodies of %d kinds, boss awake %.0f%% (woken %d, defeated %d, hittable in %d of %d looks), outside the roster %s, avg %.2f ms, core %.2f ms, run took %.1f s" % [
-			room, boss if boss != "" else "no boss", b.spawns, w.defs.size(), float(ph.get("boss_awake_pct", 0.0)), b.boss_summons, b.boss_defeats, w.boss_hittable, w.looks, str(outside),
-			float(ph.get("avg_ms", 0.0)), float(ph.get("core_ms", 0.0)), float(o["ms"]) / 1000.0])
-		b.queue_free()
-		await process_frame
-	print("INFO bench every room: %.1f s" % (total / 1000.0))
-
-
-## Every class plays its short run: the kit's family, and auto combat casts.
-func every_class() -> void:
-	var total := 0
-	for disc: int in DmBenchmark.class_indices():
-		var o := await short_run("graves", disc)
-		var r: Dictionary = o["r"]
-		var w: Watch = o["watch"]
-		total += int(o["ms"])
-		var want := String(DmCharacterBuild.discipline_for(float(disc))["family"])
-		var name_ := DmBenchmark.class_name_of(disc)
-		check(not r["cancelled"] and r["setup"]["discipline"] == disc and w.family == want, "%s: the short run completes with a %s hero (%s)" % [name_, want, w.family])
-		check(w.casts > 0 and (r["phases"] as Array).size() == 1 and int(r["phases"][0]["frames"]) > 0, "%s: auto combat cast %d times" % [name_, w.casts])
-		check(DmBenchmark.format_text(r).contains("Setup: The Hollow Graves, %s, Light, Quick" % name_), "%s: the report names the class" % name_)
-		print("INFO bench class %s: %d casts, %d kills, avg %.2f ms, run took %.1f s" % [name_, w.casts, int(r["kills"]), float(r["phases"][0]["avg_ms"]) if not (r["phases"] as Array).is_empty() else 0.0, float(o["ms"]) / 1000.0])
-		(o["b"] as DmBenchmark).queue_free()
-		await process_frame
-	print("INFO bench every class: %.1f s" % (total / 1000.0))
-
-
-# ------------------------------------------------------------------------------------------------------------------ the screen and what it sends
-
-func screen_and_upload() -> void:
-	if FileAccess.file_exists(DmBenchHistory.pending_file()):   # (the runs above are queued: this check is about the screen's own run)
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(DmBenchHistory.pending_file()))
-	var posted: Array = []
-	var test_api := DmApi.new(func(req: Dictionary) -> Dictionary:
-		posted.append(req)
-		return {"status": 200, "text": "{\"success\":true,\"data\":{\"id\":7}}"})
-	test_api.base_url = DmConfig.API_BASE
-	test_api.set_token("t")
-	check(DmConfig.allows_api_base(test_api.base_url), "the api the run uploads with is the test server's (%s)" % test_api.base_url)
-	var top := CanvasLayer.new()
-	top.layer = 95
-	root.add_child(top)
-	var s := DmBenchmarkScreen.new()
-	s.warm_s = 1.0
-	s.measure_s = 2.0
-	s.baked_dir = scratch
-	s.setup = {"room": "graves", "discipline": 2, "size": "light", "length": "quick"}
-	s.api = test_api
-	var closed := [false]
-	s.closed.connect(func() -> void: closed[0] = true)
-	top.add_child(s)
-	var t0 := Time.get_ticks_msec()
-	while s.uploaded < 0 and Time.get_ticks_msec() - t0 < 120000:
-		await process_frame
-	check(s.uploaded == 1 and DmBenchHistory.pending_count() == 0, "the screen's run was sent and left the queue (%d accepted)" % s.uploaded)
-	check(posted.size() == 1 and String(posted[0]["method"]) == "POST" and String(posted[0]["url"]).begins_with(DmConfig.API_BASE) and String(posted[0]["url"]).ends_with("/api/benchmarks"),
-		"it posted once, to the test API's benchmarks (%s)" % [posted.map(func(q: Dictionary) -> String: return String(q["url"]))])
-	var all_test := not posted.is_empty()
-	for q in posted:
-		all_test = all_test and DmConfig.allows_url(String(q["url"])) and String(q["url"]).begins_with(DmConfig.API_BASE)
-	check(all_test, "every request stayed on the test server")
-	var sent: Variant = JSON.parse_string(String(posted[0].get("body", ""))) if not posted.is_empty() else null
-	check(sent is Dictionary and sent.get("room") == "graves" and (sent.get("metrics", {}) as Dictionary).has("core_ms") and String(sent.get("report", "")).contains("Combat core per tick"), "the posted run carries the room, the core's numbers and the report")
-	check(s.report.contains("Budgets (ROADMAP") and s.saved_path != "", "the screen kept the report with its budget section, and saved it")
-	check(not has_script_class(root, "DmHttpTransport"), "the screen made no transport of its own")
-	# Esc closes the results
-	var esc := InputEventKey.new()
-	esc.keycode = KEY_ESCAPE
-	esc.pressed = true
-	Input.parse_input_event(esc)
-	t0 = Time.get_ticks_msec()
-	while not closed[0] and Time.get_ticks_msec() - t0 < 10000:
-		await process_frame
-	check(closed[0], "Esc closes the results (back to the character select)")
-	top.queue_free()
-	await process_frame
-	# who may upload: the logged-in api from the character select; a debug build's `--benchmark` never
-	var m := DmMain.new()
-	m.mode = "benchmark"
-	check(OS.is_debug_build() and m._bench_upload_api() == null, "a debug build's --benchmark run does not upload")
-	m.mode = "online"
-	m.api = test_api
-	check(m._bench_upload_api() == test_api, "from the character select the run goes out with the logged-in (test server) api")
-	m.mode = "dev_offline"
-	check(m._bench_upload_api() == null, "a dev-offline run does not upload")
-	m.free()
-	var n := DmBenchHistory.pending_count()
-	check(await DmBenchHistory.flush(DmApi.new()) == 0 and DmBenchHistory.pending_count() == n, "no login: nothing is sent")
-	var down := DmApi.new(func(_req: Dictionary) -> Dictionary: return {"status": 503, "text": "{\"success\":false,\"error\":\"later\"}"})
-	down.set_token("t")
-	DmBenchHistory.record(DmBenchHistory.payload(_tiny_result(), "report"))
-	check(await DmBenchHistory.flush(down) == 0 and DmBenchHistory.pending_count() == n + 1, "server down: the run stays queued")
-
-
-func _tiny_result() -> Dictionary:
-	return {"meta": {"version": "dev", "godot": "", "gpu": "", "cpu": "", "cores": 1, "os": "", "renderer": "", "resolution": "", "refresh_hz": 0.0, "preset": "high"}, "setup": DmBenchmark.STANDARD,
-		"phases": [{"avg_fps": 50.0}], "breakdown": {}}
-
-
-func esc_cancels() -> void:
-	var top := CanvasLayer.new()
-	top.layer = 95
-	root.add_child(top)
-	var s := DmBenchmarkScreen.new()
-	s.warm_s = 60.0
-	s.measure_s = 30.0
-	s.baked_dir = scratch
-	s.setup = {"room": "graves", "discipline": 2, "size": "light", "length": "quick"}
-	var closed := [false]
-	s.closed.connect(func() -> void: closed[0] = true)
-	top.add_child(s)
-	var t0 := Time.get_ticks_msec()
-	while (s.runner == null or s.runner.game == null) and Time.get_ticks_msec() - t0 < 60000:
-		await process_frame
-	for i in 30:
-		await process_frame
-	var esc := InputEventKey.new()
-	esc.keycode = KEY_ESCAPE
-	esc.pressed = true
-	Input.parse_input_event(esc)
-	t0 = Time.get_ticks_msec()
-	while not closed[0] and Time.get_ticks_msec() - t0 < 30000:
-		await process_frame
-	check(closed[0], "Esc cancels a running benchmark and closes the screen")
-	top.queue_free()
-	await process_frame
-
-
 # ------------------------------------------------------------------------------------------------------------------ the setup window
 
 func setup_window() -> void:
@@ -826,14 +602,14 @@ func setup_window() -> void:
 	w.start.connect(func(s: Dictionary) -> void: got.append(s))
 	root.add_child(w)
 	check(DmBenchmark.is_standard(w.setup), "the setup window opens on the Standard setup the first time")
-	check(w._room.item_count == DmBenchmark.ROOMS.size() and w._room.get_item_text(0).begins_with("The Hollow Graves") and w._room.get_item_text(w._room.item_count - 1).begins_with("The Mourning Fen"),
-		"it lists today's nine rooms in order, the Graves first and the Fen last")
+	check(w._room.item_count == DmBenchmark.ROOMS.size() and w._room.get_item_text(0).begins_with(DmBenchmark.room_name(DmBenchmark.ROOMS[0])) and w._room.get_item_text(w._room.item_count - 1).begins_with(DmBenchmark.room_name(DmBenchmark.ROOMS[DmBenchmark.ROOMS.size() - 1])),
+		"it lists the benchmark's rooms in order, the first and the last by name")
 	var std_room := w._room.get_item_text(DmBenchmark.ROOMS.find("sanctum"))
 	check(std_room.begins_with("The Bell Sanctum") and std_room.ends_with("(standard)") and w._room.get_selected_metadata() == "sanctum", "the Bell Sanctum is marked standard and picked (%s)" % std_room)
-	var classes_ok := w._class.item_count == 5
+	var classes_ok := w._class.item_count == DmBenchmark.class_indices().size()
 	for i in w._class.item_count:
-		classes_ok = classes_ok and w._class.get_item_metadata(i) == [1, 2, 3, 4, 11][i] and w._class.get_item_text(i).begins_with(DmBenchmark.class_name_of(int(w._class.get_item_metadata(i))))
-	check(classes_ok and w._class.get_item_text(4).begins_with("Reaper") and w._class.get_selected_metadata() == 2, "it lists the four necromancers and the Reaper, the Gravecaller picked (%s)" % w._class.get_item_text(4))
+		classes_ok = classes_ok and w._class.get_item_metadata(i) == DmBenchmark.class_indices()[i] and w._class.get_item_text(i).begins_with(DmBenchmark.class_name_of(int(w._class.get_item_metadata(i))))
+	check(classes_ok and w._class.get_selected_metadata() == DmBenchmark.STANDARD["discipline"], "it lists the playable classes, the Standard class picked (%s)" % w._class.get_item_text(w._class.item_count - 1))
 	check(w._size.item_count == DmBenchmark.SIZES.size() and w._size.get_item_text(w._size.item_count - 1) == "Full Party: 72 enemies, 32 thralls, a boss", "it lists Full Party with its counts and the boss (%s)" % w._size.get_item_text(w._size.item_count - 1))
 	w._size.select(DmBenchmark.SIZES.keys().find("full_party"))
 	w._size.item_selected.emit(w._size.selected)
@@ -860,119 +636,3 @@ func setup_window() -> void:
 	var all_text := "\n".join(texts)
 	check(all_text.contains("benchmark page") and not all_text.contains("muffindevelopment.com"), "the window says runs go to the game's benchmark page, and names no address")
 	w.queue_free()
-
-
-# ------------------------------------------------------------------------------------------------------------------ nothing leaves the process
-
-## No test sends a run anywhere but a mock. The one door a run can leave by is DmApi.post_benchmark through DmBenchHistory.flush: from a script, flush refuses a real transport.
-func nothing_over_the_network() -> void:
-	DmBenchHistory.record(DmBenchHistory.payload(_tiny_result(), "report"))
-	var queued := DmBenchHistory.pending_count()
-	# a real transport with a login, pointed at an address its own door refuses: flush must stop before it asks (and if it ever did, the transport still sends nothing)
-	var t := DmHttpTransport.new()
-	root.add_child(t)
-	var real := DmApi.new(t.request_callable())
-	real.base_url = "https://example.invalid/death-muffin/test-api"
-	real.set_token("t")
-	var errors_before := errlog.errors.size()
-	check(DmBenchHistory.over_the_network_from_a_script(real), "a script run sees a real transport as the network")
-	check(await DmBenchHistory.flush(real) == 0 and DmBenchHistory.pending_count() == queued, "flush does not send a run through a real transport from a script: it stays queued (%d)" % queued)
-	check(errlog.errors.size() == errors_before and t.get_child_count() == 0, "and the transport was never asked (no request node, no refusal logged)")
-	t.queue_free()
-	var mock_api := DmApi.new(func(_req: Dictionary) -> Dictionary: return {"status": 200, "text": "{\"success\":true,\"data\":{\"id\":1}}"})
-	mock_api.set_token("t")
-	check(not DmBenchHistory.over_the_network_from_a_script(mock_api) and await DmBenchHistory.flush(mock_api) == queued and DmBenchHistory.pending_count() == 0, "a mock answers: the queue is sent to it and leaves")
-	# the launch path: a trial (its own folder) never gets an api, whatever build it is
-	var m := DmMain.new()
-	m.mode = "benchmark"
-	m.bench_dir = data
-	check(m._bench_upload_api() == null, "a --benchmark launch with its own --bench-dir= sends nothing")
-	m.free()
-	await process_frame
-
-
-# ------------------------------------------------------------------------------------------------------------------ real launches
-
-## `godot --headless ... -- --benchmark ...` as a script or a person starts it.
-func real_launches() -> void:
-	var exe := OS.get_executable_path()
-	var proj := ProjectSettings.globalize_path("res://")
-	var own := ProjectSettings.globalize_path(data)
-	var out: Array = []
-	var code := OS.execute(exe, ["--headless", "--fixed-fps", "60", "--path", proj, "--", "--benchmark", "--bench-room=graves", "--bench-class=2", "--bench-size=full_party", "--bench-length=quick", "--bench-warm=2",
-		"--bench-measure=4", "--baked=" + ProjectSettings.globalize_path(scratch), "--bench-dir=" + own], out, true)
-	var text := "\n".join(PackedStringArray(out))
-	check(code == 0, "a --benchmark launch ends by itself with exit code 0 (%d)" % code)
-	for needle in ["BENCHMARK Death Muffin benchmark", "BENCHMARK Setup: The Hollow Graves, Gravecaller, Full Party, Quick", "BENCHMARK Boss: The Gravedigger King", "BENCHMARK Average fps", "BENCHMARK Budgets (ROADMAP",
-			"BENCHMARK   Combat core per tick", "BENCHMARK   Rest of the main thread per frame", "BENCHMARK saved to"]:
-		check(text.contains(needle), "the launch printed '%s'" % needle)
-	check(not text.contains("SCRIPT ERROR") and not text.contains("Parse Error"), "and no script error")
-	var reports := 0
-	for f in DirAccess.get_files_at(own):
-		reports += 1 if f.begins_with("bench-") else 0
-	check(text.contains(own) and reports >= 1, "the launch kept its report in the folder it was given")
-	# another room and class, from the launch line
-	var out_fen: Array = []
-	var code_fen := OS.execute(exe, ["--headless", "--fixed-fps", "60", "--path", proj, "--", "--benchmark", "--bench-room=fen", "--bench-class=11", "--bench-size=light", "--bench-length=quick", "--bench-warm=1",
-		"--bench-measure=2", "--baked=" + ProjectSettings.globalize_path(scratch), "--bench-dir=" + own], out_fen, true)
-	var text_fen := "\n".join(PackedStringArray(out_fen))
-	check(code_fen == 0 and text_fen.contains("BENCHMARK Setup: The Mourning Fen, Reaper, Light, Quick") and text_fen.contains("BENCHMARK Average fps") and not text_fen.contains("SCRIPT ERROR"), "--bench-room=fen --bench-class=11 runs the Reaper in the Fen (%d)" % code_fen)
-	var queued_runs: Array = JSON.parse_string(FileAccess.get_file_as_string(DmBenchHistory.pending_file())) if FileAccess.file_exists(DmBenchHistory.pending_file()) else []
-	var rooms_queued := queued_runs.map(func(q: Dictionary) -> String: return "%s/%d" % [q["room"], int(q["discipline"])])
-	check(rooms_queued.has("graves/2") and rooms_queued.has("fen/11"), "the two launches queued their runs in the folder they were given and sent nothing (%s)" % str(rooms_queued))
-	# the crowd's cost settings from the launch: the report records what was in force, and a setting that is not one is said to be ignored
-	var o3: Array = []
-	var c3 := OS.execute(exe, ["--headless", "--fixed-fps", "60", "--path", proj, "--", "--benchmark", "--bench-room=graves", "--bench-class=2", "--bench-size=full_party", "--bench-length=quick", "--bench-warm=2",
-		"--bench-measure=4", "--baked=" + ProjectSettings.globalize_path(scratch), "--bench-dir=" + own, "--bench-crowd=cull=off,anim=off,thrall_shadows=off,reserve=64,lod=40/80,bogus=1"], o3, true)
-	var t3 := "\n".join(PackedStringArray(o3))
-	check(c3 == 0 and t3.contains("BENCHMARK Crowd: mesh levels at 40 / 80 m; 64 instances reserved a group; animation off (every body every frame); culling off; thralls do not cast shadows"), "a launch with --bench-crowd records its settings in the report (%d)" % c3)
-	check(t3.contains("ignored --bench-crowd setting 'bogus=1'") and not t3.contains("SCRIPT ERROR"), "and says what it ignored")
-	check(t3.contains("(0 of them thralls; 0 MultiMeshes, 0 k triangles again in the shadow pass)") or t3.contains("(0 of them thralls;"), "and no thrall cast")
-	for pair in [["--bench-room=depths", "'depths'", "graves"], ["--bench-room=nowhere", "'nowhere'", "fen"], ["--bench-class=5", "class 5", "2 Gravecaller"]]:
-		var o2: Array = []
-		var c2 := OS.execute(exe, ["--headless", "--path", proj, "--", "--benchmark", pair[0]], o2, true)
-		var t2 := "\n".join(PackedStringArray(o2))
-		check(c2 == 2 and t2.contains("BENCHMARK refused:") and not t2.contains("BENCHMARK Death Muffin benchmark"), "%s is refused with exit code 2 (%d) and no run" % [pair[0], c2])
-		check(t2.contains(pair[1]) and t2.contains(pair[2]), "%s: the message names the pick and says what the benchmark has" % pair[0])
-
-
-# ------------------------------------------------------------------------------------------------------------------ the end
-
-func finish() -> void:
-	DmBenchmark.dir = DmBenchmark.DIR
-	if scratch != "":   # this run's folder: the baked models, the history, the queue, the reports
-		_remove_tree(ProjectSettings.globalize_path(scratch))
-	check(errlog.errors.is_empty(), "no script or engine errors in the runs (%d)" % errlog.errors.size())
-	for e in errlog.errors.slice(0, 12):
-		printerr("ERROR LOG: " + e)
-	if fails == 0:
-		print("PASS benchmark %d checks" % checks)
-	else:
-		printerr("FAIL benchmark: %d of %d checks" % [fails, checks])
-	quit(1 if fails > 0 else 0)
-
-
-## The folders of runs of this suite that died before they cleaned up (their process is gone). A folder of a run that is still going stays.
-func _remove_stale_runs() -> void:
-	if not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(SCRATCH_ROOT)):
-		return
-	for d in DirAccess.get_directories_at(SCRATCH_ROOT):
-		var pid := d.get_slice("_", 0)
-		if pid.is_valid_int() and d.contains("_") and int(pid) != OS.get_process_id() and not _pid_alive(int(pid)):
-			_remove_tree(ProjectSettings.globalize_path(SCRATCH_ROOT.path_join(d)))
-
-
-## Whether process `pid` still runs. Not OS.is_process_running: for a process that is not this one's child (another worktree's run of this suite, which
-## shares user://) Godot logs an engine error. /proc where there is one; elsewhere the folder is kept.
-static func _pid_alive(pid: int) -> bool:
-	if not DirAccess.dir_exists_absolute("/proc/self"):
-		return true
-	return DirAccess.dir_exists_absolute("/proc/%d" % pid)
-
-
-func _remove_tree(path: String) -> void:
-	for f in DirAccess.get_files_at(path):
-		DirAccess.remove_absolute(path.path_join(f))
-	for d in DirAccess.get_directories_at(path):
-		_remove_tree(path.path_join(d))
-	DirAccess.remove_absolute(path)

@@ -33,15 +33,29 @@ namespace DeathMuffinTeam
         public static HttpClient CreateClient(string appVersion)
         {
             System.Net.ServicePointManager.SecurityProtocol |= System.Net.SecurityProtocolType.Tls12;
-            var c = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
+            // no timeout of the client's own: each request has the limit TimeoutFor gives it (a heartbeat 40 seconds, a clip upload or a clip job's `done` longer)
+            var c = new HttpClient { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
             c.DefaultRequestHeaders.UserAgent.ParseAdd("DeathMuffinTeam/" + appVersion);
             return c;
+        }
+
+        /// <summary>
+        /// How long a request may take. A heartbeat 40 seconds (the server holds it up to 25). Most others are small: 2 minutes. A request that sends more than a megabyte (a clip is up to 48 MB, on a home
+        /// connection's upload speed) or finishes a job (a clip job's `done` waits while the server turns each clip into a video) gets 6.
+        /// </summary>
+        public static TimeSpan TimeoutFor(Uri url, byte[] body)
+        {
+            if (url != null && url.AbsolutePath.EndsWith("/heartbeat", StringComparison.Ordinal)) return TeamLogic.HeartbeatTimeout;
+            bool longRequest = (body != null && body.Length > (1 << 20)) || (url != null && url.AbsolutePath.EndsWith("/done", StringComparison.Ordinal));
+            return longRequest ? TimeSpan.FromMinutes(6) : TimeSpan.FromMinutes(2);
         }
 
         public async Task<HttpReply> SendAsync(string method, Uri url, string teamToken, byte[] body, string contentType, CancellationToken ct)
         {
             try
             {
+                using (var timeout = new CancellationTokenSource(TimeoutFor(url, body)))
+                using (var both = CancellationTokenSource.CreateLinkedTokenSource(ct, timeout.Token))
                 using (var req = new HttpRequestMessage(new HttpMethod(method), url))
                 {
                     if (!string.IsNullOrEmpty(teamToken)) req.Headers.Authorization = new AuthenticationHeaderValue(TeamApi.AuthScheme, teamToken);
@@ -50,7 +64,7 @@ namespace DeathMuffinTeam
                         req.Content = new ByteArrayContent(body);
                         req.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
                     }
-                    using (var resp = await http.SendAsync(req, ct).ConfigureAwait(false))
+                    using (var resp = await http.SendAsync(req, both.Token).ConfigureAwait(false))
                     {
                         string text = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
                         return new HttpReply { Status = (int)resp.StatusCode, Body = text };
@@ -82,6 +96,23 @@ namespace DeathMuffinTeam
         public static ApiResult Local(string error) { return new ApiResult { Error = error }; }
     }
 
+    /// <summary>How one step of a `release` job went, as `done` and `fail` report it: the step's name, whether it worked, why not, and how long it took (for `install`, the milliseconds to the game's first screen).</summary>
+    internal sealed class StepReport
+    {
+        public string Step = "";
+        public bool Ok;
+        public string Error = "";
+        public long Ms;
+
+        public Dictionary<string, object> ToJson()
+        {
+            var d = new Dictionary<string, object> { { "step", Step }, { "ok", Ok } };
+            if (Error.Length > 0) d["error"] = TextClip.Head(Error, 400);
+            d["ms"] = Ms;
+            return d;
+        }
+    }
+
     internal sealed class Offer
     {
         public string Id = "";
@@ -89,6 +120,15 @@ namespace DeathMuffinTeam
         public string Title = "";
         public int WeightS;
         public string ExpiresAt = "";
+    }
+
+    /// <summary>A job of the heartbeat's `queue`: one this PC would be offered, in the server's order (the AFK notice lists them).</summary>
+    internal sealed class QueuedJob
+    {
+        public string Id = "";
+        public string Kind = "";
+        public string Title = "";
+        public int WeightS;
     }
 
     internal sealed class ClaimedJob
@@ -109,15 +149,24 @@ namespace DeathMuffinTeam
         /// <summary>Ends this token on the server (Sign out).</summary>
         Task<ApiResult> LogoutAsync(CancellationToken ct);
         Task<ApiResult> HeartbeatAsync(string pcId, string name, string version, string gpu, OfferMode mode, PcState state, CancellationToken ct);
+        /// <summary>The heartbeat as a long poll: <paramref name="waitS"/> (0 to 25) asks the server to hold it while it has nothing to say (0: answer at once).</summary>
+        Task<ApiResult> HeartbeatAsync(string pcId, string name, string version, string gpu, OfferMode mode, PcState state, int waitS, CancellationToken ct);
         Task<ApiResult> ClaimAsync(string jobId, string pcId, CancellationToken ct);
         Task<ApiResult> DeclineAsync(string jobId, string pcId, string reason, CancellationToken ct);
-        Task<ApiResult> UploadAsync(string jobId, string name, byte[] png, CancellationToken ct);
+        /// <summary>Uploads one result file as the raw body: a picture (`.png`, sent as image/png), a clip (`.mjpeg`, video/x-motion-jpeg) or a release step's result (`.json`, application/json).</summary>
+        Task<ApiResult> UploadAsync(string jobId, string name, byte[] data, CancellationToken ct);
         Task<ApiResult> DoneAsync(string jobId, IList<string> files, string log, double downloadS, double runS, CancellationToken ct);
+        /// <summary>Finishes a `bench` job: <paramref name="runs"/> are the benchmark payloads as the game queued them (one per setup, at most 6, each at most 64 KB of JSON).</summary>
+        /// <summary>Finishes a `release` job: how each step went, the pictures and step results it uploaded, and the bench step's runs (null or empty: none).</summary>
+        Task<ApiResult> DoneReleaseAsync(string jobId, IList<StepReport> steps, IList<string> files, IList<Dictionary<string, object>> runs, string log, double downloadS, double runS, CancellationToken ct);
+        Task<ApiResult> DoneBenchAsync(string jobId, IList<Dictionary<string, object>> runs, string log, double downloadS, double runS, CancellationToken ct);
         Task<ApiResult> FailAsync(string jobId, string error, string log, CancellationToken ct);
+        /// <summary>The same for a `release` job that stops halfway: the steps it finished are reported with it.</summary>
+        Task<ApiResult> FailAsync(string jobId, string error, string log, IList<StepReport> steps, CancellationToken ct);
     }
 
     /// <summary>
-    /// The server's /api/team routes: the team sign-in and sign-out, the heartbeat, claim, decline, pictures, done and fail. Every call but the sign-in sends
+    /// The server's /api/team routes: the team sign-in and sign-out, the heartbeat, claim, decline, pictures, done (with the pictures, or with a benchmark's runs) and fail. Every call but the sign-in sends
     /// `Authorization: Team <token>`. Every reply is the server's `{success, data}` or `{success:false, code, error}`; `error` strings are
     /// player-readable and are passed on as they are. A reply that is not JSON (a proxy's error page) becomes a plain sentence.
     /// </summary>
@@ -130,6 +179,13 @@ namespace DeathMuffinTeam
 
         static readonly Regex JobIdRe = new Regex("^[A-Za-z0-9]{1,24}$", RegexOptions.CultureInvariant);
         static readonly Regex FileNameRe = new Regex("^[a-z0-9_-]{1,60}\\.png$", RegexOptions.CultureInvariant);
+        static readonly Regex ClipNameRe = new Regex("^[a-z0-9][a-z0-9_-]{0,59}\\.mjpeg$", RegexOptions.CultureInvariant);
+        static readonly Regex JsonNameRe = new Regex("^[a-z0-9][a-z0-9_-]{0,59}\\.json$", RegexOptions.CultureInvariant);
+        public const string PngType = "image/png";
+        /// <summary>The content type of a step's result file (a `release` job).</summary>
+        public const string JsonType = "application/json";
+        /// <summary>The content type the server takes for a clip (a motion-JPEG file: one JPEG picture after another).</summary>
+        public const string ClipType = "video/x-motion-jpeg";
         static readonly Regex PcIdRe = new Regex("^[A-Za-z0-9_-]{8,64}$", RegexOptions.CultureInvariant);
 
         readonly ITransport transport;
@@ -168,12 +224,18 @@ namespace DeathMuffinTeam
 
         public Task<ApiResult> HeartbeatAsync(string pcId, string name, string version, string gpu, OfferMode mode, PcState state, CancellationToken ct)
         {
+            return HeartbeatAsync(pcId, name, version, gpu, mode, state, 0, ct);
+        }
+
+        public Task<ApiResult> HeartbeatAsync(string pcId, string name, string version, string gpu, OfferMode mode, PcState state, int waitS, CancellationToken ct)
+        {
             if (!PcIdRe.IsMatch(pcId ?? "")) return Task.FromResult(ApiResult.Local("This PC has no valid id."));
             var body = new Dictionary<string, object>
             {
                 { "pcId", pcId }, { "name", TextClip.Head(name, 64) }, { "version", TextClip.Head(version, 32) }, { "gpu", TextClip.Head(gpu, 120) },
                 { "mode", Modes.Wire(mode) }, { "state", state.ToJson() },
             };
+            if (waitS > 0) body["wait"] = Math.Min(waitS, TeamLogic.HeartbeatWaitS);
             return CallAsync("POST", Url("team/heartbeat"), true, Utf8(MiniJson.Write(body)), "application/json", ct);
         }
 
@@ -187,10 +249,13 @@ namespace DeathMuffinTeam
             return JobCall("decline", jobId, new Dictionary<string, object> { { "pcId", pcId }, { "reason", reason } }, ct);
         }
 
-        public Task<ApiResult> UploadAsync(string jobId, string name, byte[] png, CancellationToken ct)
+        public Task<ApiResult> UploadAsync(string jobId, string name, byte[] data, CancellationToken ct)
         {
-            if (!JobIdRe.IsMatch(jobId ?? "") || !FileNameRe.IsMatch(name ?? "")) return Task.FromResult(ApiResult.Local("The picture's name is not valid: " + name));
-            return CallAsync("PUT", Url("team/jobs/" + jobId + "/files/" + name), true, png, "image/png", ct);
+            // a picture (`.png`, image/png), a clip (`.mjpeg`, video/x-motion-jpeg) or a step's result (`.json`, application/json): the name says which
+            bool clip = ClipNameRe.IsMatch(name ?? ""), result = JsonNameRe.IsMatch(name ?? "");
+            if (!JobIdRe.IsMatch(jobId ?? "") || !(clip || result || FileNameRe.IsMatch(name ?? "")))
+                return Task.FromResult(ApiResult.Local("The " + ((name ?? "").EndsWith(".mjpeg", StringComparison.Ordinal) ? "clip" : (name ?? "").EndsWith(".json", StringComparison.Ordinal) ? "result" : "picture") + "'s name is not valid: " + name));
+            return CallAsync("PUT", Url("team/jobs/" + jobId + "/files/" + name), true, data, clip ? ClipType : result ? JsonType : PngType, ct);
         }
 
         public Task<ApiResult> DoneAsync(string jobId, IList<string> files, string log, double downloadS, double runS, CancellationToken ct)
@@ -204,9 +269,47 @@ namespace DeathMuffinTeam
             return JobCall("done", jobId, body, ct);
         }
 
+        public Task<ApiResult> DoneBenchAsync(string jobId, IList<Dictionary<string, object>> runs, string log, double downloadS, double runS, CancellationToken ct)
+        {
+            var body = new Dictionary<string, object>
+            {
+                { "files", new List<string>() },
+                { "runs", runs },
+                { "log", TextClip.Tail(log, 60000) },
+                { "timings", new Dictionary<string, object> { { "downloadS", Math.Round(downloadS, 1) }, { "runS", Math.Round(runS, 1) } } },
+            };
+            return JobCall("done", jobId, body, ct);
+        }
+
+        public Task<ApiResult> DoneReleaseAsync(string jobId, IList<StepReport> steps, IList<string> files, IList<Dictionary<string, object>> runs, string log, double downloadS, double runS, CancellationToken ct)
+        {
+            var body = new Dictionary<string, object>
+            {
+                { "steps", StepsJson(steps) },
+                { "files", files },
+                { "log", TextClip.Tail(log, 60000) },
+                { "timings", new Dictionary<string, object> { { "downloadS", Math.Round(downloadS, 1) }, { "runS", Math.Round(runS, 1) } } },
+            };
+            if (runs != null && runs.Count > 0) body["runs"] = runs;
+            return JobCall("done", jobId, body, ct);
+        }
+
+        static List<object> StepsJson(IList<StepReport> steps)
+        {
+            var list = new List<object>();
+            if (steps != null) foreach (StepReport s in steps) list.Add(s.ToJson());
+            return list;
+        }
+
         public Task<ApiResult> FailAsync(string jobId, string error, string log, CancellationToken ct)
         {
+            return FailAsync(jobId, error, log, null, ct);
+        }
+
+        public Task<ApiResult> FailAsync(string jobId, string error, string log, IList<StepReport> steps, CancellationToken ct)
+        {
             var body = new Dictionary<string, object> { { "error", TextClip.Head(error, 400) }, { "log", TextClip.Tail(log, 60000) } };
+            if (steps != null && steps.Count > 0) body["steps"] = StepsJson(steps);
             return JobCall("fail", jobId, body, ct);
         }
 
@@ -267,6 +370,40 @@ namespace DeathMuffinTeam
                 WeightS = (int)Math.Max(0, Math.Min(86400, MiniJson.Int(o, "weightS") ?? 0)),
                 ExpiresAt = MiniJson.Str(o, "expiresAt"),
             };
+        }
+
+        /// <summary>The heartbeat's `queue`, in order, at most <see cref="MaxQueue"/> (a server from before it, or a bad entry, gives nothing for it).</summary>
+        public static List<QueuedJob> ParseQueue(ApiResult heartbeat)
+        {
+            var jobs = new List<QueuedJob>();
+            var list = MiniJson.Arr(heartbeat == null ? null : heartbeat.Data, "queue");
+            if (list == null) return jobs;
+            foreach (object o in list)
+            {
+                var d = o as Dictionary<string, object>;
+                if (d == null || jobs.Count >= MaxQueue) continue;
+                string id = MiniJson.Str(d, "id");
+                if (!JobIdRe.IsMatch(id)) continue;
+                jobs.Add(new QueuedJob { Id = id, Kind = MiniJson.Str(d, "kind"), Title = MiniJson.Str(d, "title"), WeightS = (int)Math.Max(0, Math.Min(86400, MiniJson.Int(d, "weightS") ?? 0)) });
+            }
+            return jobs;
+        }
+
+        /// <summary>The most queued jobs the app keeps from a heartbeat (the server sends at most 20).</summary>
+        public const int MaxQueue = 20;
+
+        /// <summary>The heartbeat's `cancel`: the ids of jobs this PC is running that the server has cancelled (nothing to report, or a bad entry, gives nothing for it).</summary>
+        public static List<string> ParseCancel(ApiResult heartbeat)
+        {
+            var ids = new List<string>();
+            var list = MiniJson.Arr(heartbeat == null ? null : heartbeat.Data, "cancel");
+            if (list == null) return ids;
+            foreach (object o in list)
+            {
+                string id = o as string;
+                if (id != null && JobIdRe.IsMatch(id) && !ids.Contains(id)) ids.Add(id);
+            }
+            return ids;
         }
 
         public static ClaimedJob ParseClaim(ApiResult claim)

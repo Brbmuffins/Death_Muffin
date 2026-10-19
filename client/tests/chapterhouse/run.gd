@@ -3,7 +3,6 @@ extends SceneTree
 ## godot --headless --path client --script res://tests/chapterhouse/run.gd
 
 const DT := 1.0 / 60.0
-const IDLE_BUDGET_US := 600.0       ## median per-frame cost of the hub node with every NPC (generous: a shared VPS; measured ~10-60 us)
 
 var passed := 0
 var failed := 0
@@ -141,6 +140,7 @@ func _run() -> void:
 		["sawpit", "sawpit", func() -> bool: return g.ui.pb.forges.has("sawpit") and g.ui.pb.forges["sawpit"].visible],
 		["cooking_fire", "fire", func() -> bool: return g.ui.pb.forges.has("fire") and g.ui.pb.forges["fire"].visible],
 		["wing_cauldron", "cauldron", func() -> bool: return g.ui.pb.forges.has("cauldron") and g.ui.pb.forges["cauldron"].visible],
+		["wing_alembic", "alembic", func() -> bool: return g.ui.pb.forges.has("cauldron") and g.ui.pb.forges["cauldron"].visible],   # (the alembic is the cauldron's window)
 		["bone_grinder", "grinder", func() -> bool: return g.ui.is_open("salvage")],
 		["wing_reagent_shelf", "shelf", func() -> bool: return g.ui.is_open("shelf")],
 		["lectern", "lectern", func() -> bool: return g.ui.is_open("codex")],
@@ -343,20 +343,21 @@ func _run() -> void:
 	check(h.hover != null and h.hover["kind"] == "npc" and h.hover["npc"] == "prior", "hovering the Prior picks the NPC (highlight)")
 	h.hover = null
 
-	# ---- performance: the idle hub with every NPC
+	# ---- the forges, the reforge and the bug report (after the Workbench and Vault parts above, which count on the bag as it was)
+	await _forge_crafts()
+	await _reforge()
+	await _bug_report()
+
+	# ---- the idle hub with every NPC
 	at(-5.5, -20.0)     # in the Graves: all NPCs far
 	await until(func() -> bool: return g.area_id == "graves", 2.0)
 	await ticks(30)
 	settle()
 	check(h.npcs._near.is_empty() and h.npcs._mid.is_empty(), "far from every NPC nothing is animated per frame")
-	var far := _median_us(300)
 	at(-3.4, 15.8 + 2.5)    # beside the Prior, in the Chapterhouse hall
 	await ticks(10)
 	settle()
 	var near_ids := h.npcs._near.size() + h.npcs._mid.size()
-	var near := _median_us(300)
-	print("hub node per-frame cost (median of 300): far from NPCs %.1f us, with %d NPC(s) animating %.1f us" % [far, near_ids, near])
-	perf_info(far < IDLE_BUDGET_US and near < IDLE_BUDGET_US * 3.0, "idle hub frame cost within budget (%.1f / %.1f us)" % [far, near])
 	check(near_ids >= 1, "the Prior animates when you stand beside them")
 
 	print("%d passed, %d failed" % [passed, failed])
@@ -366,18 +367,165 @@ func _run() -> void:
 	quit(1 if failed > 0 else 0)
 
 
-## Median wall time of one DmChapterhouse._process(dt) over `n` calls (the 10 Hz tick included in the average frames).
-func _median_us(n: int) -> float:
-	var s: Array = []
-	for i in n:
-		var t0 := Time.get_ticks_usec()
-		h._process(DT)
-		s.append(float(Time.get_ticks_usec() - t0))
-	s.sort()
-	return s[n / 2]
+func go(x: float, z: float, area: String) -> void:
+	at(x, z)
+	await until(func() -> bool: return g.area_id == area, 3.0)
+	await ticks(3)
 
 
-## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
-## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
-func perf_info(cond: bool, what: String) -> void:
-	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])
+func give(item_id: String, qty: int = 1) -> void:
+	var uh := g.ui_host
+	await DmTestBag.give(uh.inventory, {"item_id": item_id, "quantity": qty})
+	await uh.inventory.flush()
+	await uh.refresh_inventory()
+
+
+## Each forge station's panel crafts one thing through the API: the first level-1 recipe of its first tab (the ingredients are given).
+func _forge_crafts() -> void:
+	for row in [["bone_kiln", "kiln"], ["sawpit", "sawpit"], ["cooking_fire", "fire"], ["wing_cauldron", "cauldron"], ["wing_alembic", "alembic"]]:
+		var it := interactable(row[0])
+		g.ui.close_panels()
+		await go(float(it["x"]), float(it["z"]) + 1.6, String(it["area"]))
+		h.click_interactable(it)
+		await ticks(4)
+		await _craft_at(String(row[1]))
+	g.ui.close_panels()
+
+
+func _craft_at(kind: String) -> void:
+	var key := "cauldron" if kind == "alembic" else kind
+	var f: DmForgePanel = g.ui.pb.forges[key]
+	var prof := f.current_profession()
+	var rr: DmResult = await api.get_recipes(prof)
+	check(rr.ok and rr.data is Array and not (rr.data as Array).is_empty(), "%s: %s recipes load (%d)" % [kind, prof, (rr.data as Array).size() if rr.ok else 0])
+	if not rr.ok:
+		return
+	var recipe: Dictionary = {}
+	for rc in rr.data:
+		if int(rc.get("skill_level_required", 99)) <= 1:
+			recipe = rc
+			break
+	check(not recipe.is_empty(), "%s: %s has a level-1 recipe" % [kind, prof])
+	if recipe.is_empty():
+		return
+	var rid := String(recipe["id"])
+	var result_id := String(recipe["result_item_id"])
+	for ing in recipe["ingredients"]:
+		await give(String(ing["item_id"]), int(ing["quantity"]) * 2)
+	var before := g.ui_host.inventory.count(result_id)
+	f.craft_requested.emit(rid, 1)
+	check(await until(func() -> bool: return g.ui_host.inventory.count(result_id) > before, 5.0), "%s: crafting %s through the panel yields %s" % [kind, rid, result_id])
+
+
+## The first affix of a rolled piece the Workbench will accept (it refuses one-value or already-maxed rolls), or -1.
+func reforgeable_index(roll: Dictionary) -> int:
+	var inst := {"affixes": roll["affixes"], "ilvl": roll["ilvl"]}
+	for i in (roll["affixes"] as Array).size():
+		if DmGoldSink.reforge_problem(inst, i, Callable(DmAffixRules, "affix_range")) == "":
+			return i
+	return -1
+
+
+## Fund (or drain) the character as play would: the change counts as earned, so the next gains save gives it to the backend too (DECISIONS B23).
+func set_gold(n: int) -> void:
+	var p: DmProgression = g.progress.prog
+	p.gold_unsent += n - int(p.character.get("gold", 0))
+	p.character["gold"] = n
+
+
+## A rolled, affixed piece in the bag: the Workbench's Reforge tab lists it, takes exactly the quoted gold, keeps the backend's purse equal to ours, and a stale price is refused.
+func _reforge() -> void:
+	var uh := g.ui_host
+	var cid := int(character["id"])
+	g.ui.close_panels()
+	await go(8.5, 15.6, "chapterhouse")
+	var piece := ""
+	for id in DmContent.items():
+		if String(DmContent.items()[id].get("type", "")) == "weapon" and String(DmContent.items()[id].get("rarity", "")) in ["rare", "epic"]:
+			piece = String(id)
+			break
+	if piece == "":
+		for id in DmContent.items():
+			if DmAffixes.can_roll(String(id)):
+				piece = String(id)
+				break
+	var rolled: DmResult = null
+	for i in 8:   # a roll can come out with no affix: roll again (each roll mints an instance in the offline account, which is fine)
+		rolled = await api.roll_loot(cid, [{"item_id": piece, "level": 8 + i, "source": "elite"}])
+		if rolled.ok and (rolled.data as Array).size() == 1 and reforgeable_index(rolled.data[0]) >= 0:
+			break
+	check(rolled.ok and (rolled.data as Array).size() == 1 and reforgeable_index(rolled.data[0]) >= 0, "an affixed %s was rolled by the offline backend (%s)" % [piece, str(rolled.error) + str(rolled.data)])
+	if not rolled.ok:
+		return
+	# make room, then bag the rolled piece the way a pickup does
+	for s in uh.slots.duplicate():
+		if int(s["slot_index"]) >= 40 and int(s["slot_index"]) < 48:
+			uh.inventory.consume(String(s["item_id"]))
+	await uh.inventory.flush()
+	await uh.refresh_inventory()
+	var drop := {"item_id": piece, "quantity": 1, "instance": {"id": rolled.data[0]["instance_id"], "ilvl": rolled.data[0]["ilvl"], "affixes": rolled.data[0]["affixes"]}}
+	check(await DmTestBag.give(uh.inventory, drop), "the rolled piece goes into the bag")
+	await uh.inventory.flush()
+	await uh.refresh_inventory()
+	set_gold(1000000)
+	uh.prog.save_dirty = true
+	g.progress.psync.tick(0.0)
+	await g.progress.psync.flush()
+	var wb := interactable("workbench")
+	check(h.click_interactable(wb), "the Workbench is used")
+	await ticks(4)
+	var forge: DmForgePanel = g.ui.pb.forges[""]
+	check(forge.visible and forge.reforge != null, "the Workbench opens with its Reforge tab")
+	forge.quote_requested.emit()
+	await ticks(10)
+	var pieces: Array = forge.reforge.pieces()
+	check(not pieces.is_empty(), "the Reforge lists the affixed piece (%d)" % pieces.size())
+	var pc: Dictionary = {}
+	for p in pieces:
+		if String(p["item_id"]) == piece:
+			pc = p
+	check(not pc.is_empty(), "...including the rolled one")
+	if pc.is_empty():
+		return
+	var cost_g: int = forge.reforge.cost_of(pc)
+	var gold0 := int(uh.character["gold"])
+	var ai := reforgeable_index({"affixes": pc["inst"]["affixes"], "ilvl": pc["inst"]["ilvl"]})
+	forge.reforge.reforge_requested.emit(int(pc["slot_index"]), ai, cost_g)
+	check(await until(func() -> bool: return int(uh.character["gold"]) < gold0, 5.0), "reforging an affix takes gold (%d -> %d) %s" % [gold0, int(uh.character["gold"]), str(forge.reforge.error_text)])
+	check(int(uh.character["gold"]) == gold0 - cost_g, "...exactly the quoted %d" % cost_g)
+	var after: Dictionary = {}
+	for s in uh.slots:
+		if s.get("inst") != null and String(s["item_id"]) == piece:
+			after = s
+	check(not after.is_empty(), "the reforged piece is still in the bag")
+	# the server's purse and ours agree: the reforge went through the progress sync (else the next save would hand the gold back)
+	g.progress.psync.tick(0.0)
+	await g.progress.psync.flush()
+	var srv: DmResult = await api.get_character()
+	check(srv.ok and int(srv.data["gold"]) == int(uh.character["gold"]), "the backend's gold equals ours after the reforge (%s vs %d)" % [str(srv.data.get("gold")), int(uh.character["gold"])])
+	# a wrong price is refused, never charged
+	var gold1 := int(uh.character["gold"])
+	var bad: DmResult = await api.reforge_affix(cid, int(pc["slot_index"]), ai, 1)
+	check(not bad.ok and int(uh.character["gold"]) == gold1, "a stale price is refused by the backend (%s)" % bad.error)
+	g.ui.close_panels()
+
+
+## Report a bug inside Settings (the OFFLINE api only: the report stays in the local mock).
+func _bug_report() -> void:
+	g.ui.close_panels()
+	g.ui.open_bug_report()
+	await ticks(4)
+	check(g.ui.is_open("settings") and g.ui.set_ui.bug_report_open(), "Report a bug opens inside Settings")
+	var view: DmBugReportView = g.ui.set_ui.report
+	view.category.select(2)
+	view.message.text = "Test report: the Acre laborers stand in the right place."
+	view._sync()
+	check(not view.send_button.disabled, "a 10+ character message enables Send")
+	var ctx := view.context()
+	check(String(ctx["release"]).begins_with("godot-next-") and ctx["area"] == g.area_id and int(ctx["level"]) == int(g.ui_host.character["level"]), "the context names the rebuild's release, area and level (%s)" % str(ctx["release"]))
+	await view.send()
+	check(view.result_label.text.begins_with("Thank you"), "Send reports success (%s)" % view.result_label.text)
+	var mine: DmResult = await api.get_my_bug_reports()
+	check(mine.ok and (mine.data as Array).size() == 1 and mine.data[0]["category"] == "ui" and String(mine.data[0]["message"]).begins_with("Test report"), "the report is in the (offline) backend's list")
+	g.ui.set_ui.close_bug_report()
+	g.ui.close_panels()

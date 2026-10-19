@@ -1,7 +1,7 @@
 extends "res://tests/boss_base.gd"
 ## The Cinder Regent on the combat core (the Cinder Pyre's boss; archive/old-game:godot/tests/next_bosses/regent_part.gd on today's game, the same numbers and timing). Her coals, the firebreak down the line of
 ## her cleave and what is left of the floor after a Conflagration are core zones of kind ember with her as the source (`DmCore.add_zone`), drawn by the zone visual.
-##   - her recorded scenarios replay through the client's copy of the brain (the thralls scenario among them); the generic parts (boss_base.gd): the summon at the Ember Altar (6 soul shards),
+##   - her recorded scenarios are replayed by tests/bosses (not here) (the thralls scenario among them); the generic parts (boss_base.gd): the summon at the Ember Altar (6 soul shards),
 ##     thralls, rites, wipe, defeat, rewards;
 ##   - Cinder Cleave (the cone, 28 x scale) and its firebreak (3 ember pools at 1.9 / 3.7 / 5.5 m down the line, r 1.4, 5 s, dps 28 x scale x 0.3), Coals (4-6 circles, one on the hero, 22 x scale;
 ##     one pool per circle, r 1.8, 4 s), the pools burning a hero and a thrall once a second with her core id as the source;
@@ -18,7 +18,6 @@ func _config() -> void:
 	boss_id = "regent"
 	load_areas = ["pyre"]
 	bakes = ["thrall_legionnaire", "cinder_husk", "pyre_priest", "cinderhound"]
-	replay_count = 6
 
 
 func adds(def_id := "") -> Array:

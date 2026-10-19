@@ -2,7 +2,7 @@ extends SceneTree
 ## Headless: godot --headless --path client --script res://tests/bosses/run.gd
 ## Replays every scenario in tests/bosses/fixtures (*.json.gz, captured from the real TS BossBrain; committed answer keys) through the
 ## GDScript brains and compares, per tick: the boss state, the ordered world-call log (events, spawns, pools, removals) and the
-## entities left in the world. First mismatch per scenario is reported.
+## entities left in the world. First mismatch per scenario is reported. The one place the recorded scenarios are replayed (boss.gd and the boss_* suites do not).
 
 const FX := "res://tests/bosses/fixtures/"
 const Brains := preload("res://sim/bosses/boss_brains.gd")
@@ -27,6 +27,9 @@ func _init() -> void:
 		quit(1)
 		return
 	files.sort()
+	# every boss of the data has recorded scenarios (the six boss_* suites and boss.gd used to count their own)
+	for id in Brains.BOSS_IDS:
+		ok(files.any(func(f: String) -> bool: return f.begins_with(String(id) + "_")), "recorded scenarios exist for %s" % id)
 	_test_factory()
 	_test_nav_chase()
 	for f in files:
@@ -47,7 +50,7 @@ func ok(cond: bool, msg: String) -> void:
 func _test_factory() -> void:
 	var w := FakeWorld.new(1, "medium", 5)
 	var all: Dictionary = Brains.make_all(w)
-	ok(all.size() == 7, "make_all builds 7 brains")
+	ok(not all.is_empty() and all.size() == Brains.BOSS_IDS.size() and all.size() == DmContent.bosses().size(), "make_all builds a brain for each boss of the data (%d)" % all.size())
 	for id in Brains.BOSS_IDS:
 		ok(all.has(id) and all[id].id == id and not all[id].state["active"], "brain %s idle" % id)
 

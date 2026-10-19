@@ -8,7 +8,7 @@ import { dropStream } from '../lootRules';
 import { checkParity, recorder } from './parity';
 
 /**
- * The affix rules the client shows and the server validates: client/rules/loot/affix_rules.gd. Replayed by the Godot suite rules-loot
+ * The affix rules the client shows and the server validates: client/rules/loot/affix_rules.gd. Replayed by the Godot suite rules_loot
  * (affix_parity.json). Regenerate: UPDATE_AFFIX_PARITY=1 npx vitest run server/rules/gameplay/__tests__/affixRules.parity.test.ts
  */
 describe('affix rules parity', () => {
@@ -85,6 +85,6 @@ describe('affix rules parity', () => {
     }
     r.add('instanceSellValue', [50, null], () => instanceSellValue(50, null));
     r.add('instancePower', [null], () => instancePower(null));
-    checkParity('rules-loot', 'affix', 'AFFIX', r.cases);
+    checkParity('rules_loot', 'affix', 'AFFIX', r.cases);
   });
 });

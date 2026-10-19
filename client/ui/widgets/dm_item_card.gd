@@ -79,16 +79,17 @@ func set_item(d: Dictionary, show_lore: bool = true, show_sell: bool = true) -> 
 			necro = s.get("necro", false)
 		else:
 			txt = String(s)
-		# a row, not a flow: the stat text wraps inside the card, so a long line can never widen the window it sits in
+		# a row, not a flow: the text wraps inside the card, so a long line can never widen the window it sits in. With a meaning beside it the stat
+		# ("+30 INT") stays on one line and the meaning wraps (2026-10-19: the other way round the stat was squeezed to one letter a line).
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
-		var sl := DmUi.label(("† " if necro else "") + txt, "DmStat", true)
+		var sl := DmUi.label(("† " if necro else "") + txt, "DmStat", fx == "")
 		sl.add_theme_font_override("font", DmUi.font("body_bold"))
 		if necro:
 			sl.add_theme_color_override("font_color", DmUi.SPELL_300)
 		row.add_child(sl)
 		if fx != "":
-			var fl := DmUi.label(fx, "DmFaint")
+			var fl := DmUi.label(fx, "DmFaint", true)
 			fl.add_theme_font_size_override("font_size", 12)
 			fl.add_theme_color_override("font_color", DmUi.BONE_300)
 			row.add_child(fl)
