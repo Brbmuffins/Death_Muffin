@@ -117,8 +117,11 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   casts went over 8 ms (Ossuary Wall 14, Grave Frost 10, Ivory Cleave 9, Exhume 8), and the casts still compiled 395 shader pipelines, the same
   ones again in every new game (Soul Siphon 18 each time). The two runs after the fix (releases 1852fe7 and 578df6f, 2026-10-19) had no cast
   over 8 ms (worst 6.6 and 6.5 ms, p99 2.4 ms) and still about 400 compilations, which Godot builds in the background, so on that card they no
-  longer show as hitches; a weaker card (War's GTX 970) is the open question. After: the warm-up also draws what those casts compile, a new game compiles nothing
-  the one before it did, and the next stutter test shows no cast over 8 ms.
+  longer show as hitches; a weaker card (War's GTX 970) is the open question. The repeats are not materials freed and made again (a material
+  made again does not compile again in Godot 4.7.2: a small test on the server's software renderer, 2026-10-19). Since 2026-10-19 the stutter test
+  counts each kind of compilation apart, and #build-alerts says how many ran in the background, so the next runs show which ones make a frame wait.
+  After: the warm-up also draws what those casts compile, a new game compiles nothing the one before it did, and the next stutter test shows no
+  cast over 8 ms.
 - [x] **New: play reports.** Done 2026-10-19: when a play session ends (log out, switch character, quit; a crash is sent at the next start) the
   game sends a small summary: average, p99 and worst frame times, hitches, the graphics preset and card, time and deaths per area, and where
   the session ended (nothing personal). The site's play reports page shows them per release, beside the server's own numbers over the same

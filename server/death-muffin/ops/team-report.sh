@@ -214,12 +214,17 @@ def detail_stutter(entry, data, ok):
         for r in worst:
             who = r.get("discipline")
             who = DISCIPLINES.get(who, who) if not isinstance(who, bool) else None
+            if isinstance(who, str) and who.islower():
+                who = who.capitalize()   # the game's stutter.json names them ("ossuary")
             rite = clean(str(r.get("rite", "?")).replace("_", " ").replace("-", " "), 40)
             names.append("%s%s %s ms" % (rite, " (%s)" % clean(who, 20) if who not in (None, "") else "", fmt(r["worst_ms"])))
         out.append("worst " + ", ".join(names))
         compiles = sum(number(r.get("compilations")) or 0 for r in rites)
         if compiles > 0:
-            out.append("%s pipeline compiles" % fmt(compiles, 0))
+            # the game's per-kind counts (qa_stutter.gd `kinds`): "specialization" compiles in the background, the other kinds make the frame wait
+            background = [number(r["kinds"].get("specialization")) for r in rites if isinstance(r.get("kinds"), dict)]
+            known = [b for b in background if b is not None]
+            out.append("%s pipeline compiles%s" % (fmt(compiles, 0), " (%s in the background)" % fmt(sum(known), 0) if known else ""))
     d = data if isinstance(data, dict) else {}
     p50, p99 = number(pick(d.get("p50"), d.get("p50_ms"))), number(pick(d.get("p99"), d.get("p99_ms")))
     if p50 is not None or p99 is not None:

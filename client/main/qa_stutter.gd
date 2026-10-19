@@ -3,10 +3,10 @@ extends Node
 ## The stutter scenario (`-- --dev-offline --stutter --stutter-out=<abs dir>`, QA runs only; it writes `<dir>/stutter.json`; client/README.md "Release checks"): for each playable discipline a fresh isolated offline game on High (DmBenchFight.boot: the HUD
 ## on, the warm-up that players get, a level 60 hero in the Graves), stand-in enemies in the combat core in front of the hero, then every rite of the discipline's primaries, hotbar and grimoire and its signature cast once, one after
 ## the other, with what the cast needs laid ready (cooldowns and resources filled, a few corpses, four thralls for a necromancer, raised again before each cast). For each cast: the worst frame in the second after it (ms, real time) and the pipelines the renderer compiled
-## in that second (the engine's counters, DmQaPerf.compilations: Godot 4.7 has them; a run with no renderer counts none). A rite the host refuses (it needs a target the stand-ins cannot give) is listed apart, not measured.
+## in that second, in all and per kind (the engine's counters, DmQaPerf.compilations_by_kind: Godot 4.7 has them; a run with no renderer counts none). A rite the host refuses (it needs a target the stand-ins cannot give) is listed apart, not measured.
 ## Loaded by DmMain (`_run_qa_scenario`) by path: no other start compiles it. The run is the Node `Scenario` of the boot; `run()` returns the exit code (0 results written, 1 a discipline failed or nothing was cast).
 ##
-## Results file: {"rows": [{"discipline": "reaper", "rite": "scythe_throw", "worst_ms": 14.2, "compilations": 0}, ...], "p50_ms", "p99_ms" (every frame of the cast windows),
+## Results file: {"rows": [{"discipline": "reaper", "rite": "scythe_throw", "worst_ms": 14.2, "compilations": 3, "kinds": {"canvas": 0, "mesh": 0, "surface": 0, "draw": 1, "specialization": 2}}, ...], "p50_ms", "p99_ms" (every frame of the cast windows),
 ##   and beside them "scenario": "stutter", "preset", "renderer", "compilations_counted": true, "refused": [{"discipline", "rite", "reason"}], "errors": [{"discipline", "error"}], "worst_ms", "frames", "ms" (the run's length)}.
 
 const AREA := "graves"
@@ -135,7 +135,7 @@ func _discipline(disc: int, settings: Dictionary) -> void:
 			if id == rite:
 				last[0] = why
 		caster.cast_rejected.connect(on_refused)
-		var before := DmQaPerf.compilations()
+		var before := DmQaPerf.compilations_by_kind()
 		_window_max = 0.0
 		_measuring = true
 		var start := Time.get_ticks_usec()
@@ -143,12 +143,12 @@ func _discipline(disc: int, settings: Dictionary) -> void:
 		while float(Time.get_ticks_usec() - start) < window_s * 1000000.0:
 			await tree.process_frame
 		_measuring = false
-		var after := DmQaPerf.compilations()
+		var kinds := DmQaPerf.kinds_between(before, DmQaPerf.compilations_by_kind())
 		caster.cast_rejected.disconnect(on_refused)
 		if last[0] != "":
 			refused.append({"discipline": who, "rite": rite, "reason": last[0]})
 		else:
-			rows.append({"discipline": who, "rite": rite, "worst_ms": DmQaPerf.rounded(_window_max), "compilations": after - before})
+			rows.append({"discipline": who, "rite": rite, "worst_ms": DmQaPerf.rounded(_window_max), "compilations": kinds.values().reduce(func(sum: int, n: int) -> int: return sum + n, 0), "kinds": kinds})
 		await tree.create_timer(gap_s).timeout
 	await game.leave()
 	game.queue_free()

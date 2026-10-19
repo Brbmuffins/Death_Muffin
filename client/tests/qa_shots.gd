@@ -847,6 +847,8 @@ func scenario_gates() -> void:
 	check(DmQaStutter.rites_of(11).has("haunting_wraith") and DmQaStutter.rites_of(2).has("command_rend") and DmQaStutter.name_of(11) == "reaper" and DmQaStutter.name_of(1) == "ossuary", "the Reaper's grimoire and the Gravecaller's signature are in, and the names are the discipline names")
 	check(DmQaPerf.percentile(PackedFloat32Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 100]), 10, 50.0) == 5.0 and DmQaPerf.percentile(PackedFloat32Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 100]), 10, 99.0) == 100.0 and DmQaPerf.percentile(PackedFloat32Array(), 0, 50.0) == 0.0
 		and DmQaPerf.frame_stats(PackedFloat32Array([5, 1, 3, 7, 100]), 4) == {"frames": 4, "p50_ms": 3.0, "p99_ms": 7.0, "worst_ms": 7.0}, "the frame statistics: nearest rank, over the frames counted only")
+	check(DmQaPerf.kinds_between({"draw": 1, "mesh": 2}, {"draw": 4, "mesh": 2, "specialization": 2}) == {"canvas": 0, "mesh": 0, "surface": 0, "draw": 3, "specialization": 2}
+		and DmQaPerf.compilations_by_kind().keys() == ["canvas", "mesh", "surface", "draw", "specialization"], "the compilations per kind: every kind, the difference of two readings")
 	var growth := DmQaSoak.growth([{"p50_ms": 4.0, "p99_ms": 8.0, "static_mb": 100.0, "objects": 1000, "video_mb": 50.0}, {"p50_ms": 5.0, "p99_ms": 9.0, "static_mb": 110.0, "objects": 1100, "video_mb": 55.0},
 		{"p50_ms": 6.0, "p99_ms": 12.0, "static_mb": 130.0, "objects": 1300, "video_mb": 60.0}])
 	var rows3: Array = [{"p50_ms": 4.0, "p99_ms": 8.0, "static_mb": 100.0, "objects": 1000, "video_mb": 50.0}, {"p50_ms": 5.0, "p99_ms": 9.0, "static_mb": 110.0, "objects": 1100, "video_mb": 55.0}, {"p50_ms": 6.0, "p99_ms": 12.0, "static_mb": 130.0, "objects": 1300, "video_mb": 60.0}]
@@ -906,8 +908,9 @@ func stutter_and_soak() -> void:
 		check(seen == asked, "the first three rites of the Reaper were each measured or refused (%s of %s)" % [str(seen), str(asked)])
 		var shaped := not rows.is_empty()
 		for r: Dictionary in rows:
-			shaped = shaped and _sorted_keys(r) == ["compilations", "discipline", "rite", "worst_ms"] and r["discipline"] == "reaper" and r["worst_ms"] is float and float(r["worst_ms"]) > 0.0 and r["compilations"] is float and float(r["compilations"]) == 0.0
-		check(shaped, "a row is {discipline, rite, worst_ms, compilations}: the worst frame of its second and the pipelines compiled (none: there is no renderer here) (%s)" % str(rows.slice(0, 2)))
+			shaped = shaped and _sorted_keys(r) == ["compilations", "discipline", "kinds", "rite", "worst_ms"] and r["discipline"] == "reaper" and r["worst_ms"] is float and float(r["worst_ms"]) > 0.0 and r["compilations"] is float and float(r["compilations"]) == 0.0
+			shaped = shaped and r["kinds"] is Dictionary and _sorted_keys(r["kinds"]) == ["canvas", "draw", "mesh", "specialization", "surface"] and (r["kinds"] as Dictionary).values().all(func(n: Variant) -> bool: return n is float and float(n) == 0.0)
+		check(shaped, "a row is {discipline, rite, worst_ms, compilations, kinds}: the worst frame of its second and the pipelines compiled, in all and per kind (none: there is no renderer here) (%s)" % str(rows.slice(0, 2)))
 		check(rep["p50_ms"] is float and rep["p99_ms"] is float and float(rep["p50_ms"]) > 0.0 and float(rep["p99_ms"]) >= float(rep["p50_ms"]) and float(rep["worst_ms"]) >= float(rep["p99_ms"]) and int(rep["frames"]) > 0 and float(rep["ms"]) > 0.0,
 			"the run's p50 %s and p99 %s ms over %s frames" % [str(rep["p50_ms"]), str(rep["p99_ms"]), str(rep["frames"])])
 		for r: Dictionary in rep["refused"]:

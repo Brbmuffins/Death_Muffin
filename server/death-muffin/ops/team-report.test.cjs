@@ -341,7 +341,7 @@ test('a PC\'s name and graphics card cannot mention anyone or start formatting; 
   assert.deepStrictEqual(ctx.wh.posts[0].json.allowed_mentions, { parse: [] });
 });
 
-test('the shapes the team app writes read right: bootMs, seconds, the bench summary (or only the runs), the screens note and the soak\'s PC notes', async (t) => {
+test('the shapes the team app writes read right: bootMs, seconds, the bench summary (or only the runs), the screens note, the soak\'s PC notes and the game\'s stutter rows with their compiles per kind', async (t) => {
   const ctx = await setup(t);
   const bench = (rows) => ({ step: 'bench', ok: true, ...rows });
   addJob(ctx, passing({
@@ -350,7 +350,11 @@ test('the shapes the team app writes read right: bootMs, seconds, the bench summ
       screens: { step: 'screens', ok: true, preset: 'high', runs: [], uiScales: ['default'], note: 'default UI scale only: the job names no other UI scale' },
       'soak-notes': { step: 'soak', minutes: 30, notes: ['minute 3: the keyboard or mouse was used', 'minute 9: other programs used the CPU'] } },
   }));
-  addJob(ctx, passing({ pc: PC_H, json: { ...PASSING.json, bench: bench({ runs: [{ preset: 'high', metrics: { avg_fps: 144.6, p99_ms: 9.5 } }] }) } }));
+  const kinds = (draw, specialization) => ({ canvas: 0, mesh: 0, surface: 0, draw, specialization });
+  const stutter = { scenario: 'stutter', preset: 'high', compilations_counted: true, p50_ms: 1.45, p99_ms: 2.42, worst_ms: 5.1, refused: [], errors: [],   // what client/main/qa_stutter.gd writes
+    rows: [{ discipline: 'ossuary', rite: 'soul_siphon', worst_ms: 3.91, compilations: 18, kinds: kinds(2, 16) }, { discipline: 'reaper', rite: 'wraith_walk', worst_ms: 5.1, compilations: 16, kinds: kinds(0, 16) },
+      { discipline: 'mourner', rite: 'dirge', worst_ms: 2.9, compilations: 0, kinds: kinds(0, 0) }] };
+  addJob(ctx, passing({ pc: PC_H, json: { ...PASSING.json, stutter, bench: bench({ runs: [{ preset: 'high', metrics: { avg_fps: 144.6, p99_ms: 9.5 } }] }) } }));
   const r = await ctx.run();
   assert.strictEqual(r.code, 0, r.out);
   const [a, h] = ctx.wh.posts[0].json.embeds[0].fields.map((f) => f.value.split('\n'));
@@ -358,6 +362,8 @@ test('the shapes the team app writes read right: bootMs, seconds, the bench summ
   assert.strictEqual(a[4], '✓ bench: Low 240 fps · Ultra 100 fps (p99 15 ms)');
   assert.ok(a[5].endsWith('; PC notes (2): minute 3: the keyboard or mouse was used'), a[5]);
   assert.strictEqual(h[4], '✓ bench: High 145 fps (p99 9.5 ms)');
+  assert.strictEqual(h[3], '✓ stutter: worst wraith walk (Reaper) 5.1 ms, soul siphon (Ossuary) 3.9 ms, dirge (Mourner) 2.9 ms; 34 pipeline compiles (32 in the background); p50 1.4 / p99 2.4 ms');
+  assert.ok(a[3].endsWith('; 3 pipeline compiles; p50 6.9 / p99 14.2 ms'), 'rows without kinds (older games) say no background count');
 });
 
 test('a failed job shows why, and what it did before it stopped; steps that were never reached say so; a release with no debug build says the three steps were not queued', async (t) => {

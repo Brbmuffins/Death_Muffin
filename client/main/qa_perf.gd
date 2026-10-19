@@ -4,17 +4,36 @@ extends RefCounted
 ## memory monitors, and the results file. QA runs only; nothing here runs in play.
 
 ## Godot 4.7 counts the pipelines the renderer compiled so far, by kind: a first-use effect or material that compiles during play is a hitch (ROADMAP "first-use stutters").
-const COMPILATIONS := [RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_CANVAS, RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_MESH, RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SURFACE,
-	RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_DRAW, RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SPECIALIZATION]
+## The first four kinds make the frame wait (canvas, a mesh or surface met for the first time, a draw); "specialization" compiles an optimised copy in the background
+## while the general one draws, which a fast processor hides and a weak one may not.
+const COMPILATIONS := {"canvas": RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_CANVAS, "mesh": RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_MESH,
+	"surface": RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SURFACE, "draw": RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_DRAW,
+	"specialization": RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SPECIALIZATION}
 const MB := 1048576.0
 
 
 ## The pipelines compiled since the run began, all five kinds together (0 on a run with no renderer).
 static func compilations() -> int:
 	var n := 0
-	for kind in COMPILATIONS:
+	for kind in COMPILATIONS.values():
 		n += int(RenderingServer.get_rendering_info(kind))
 	return n
+
+
+## The same, per kind: {canvas, mesh, surface, draw, specialization}.
+static func compilations_by_kind() -> Dictionary:
+	var out := {}
+	for name in COMPILATIONS:
+		out[name] = int(RenderingServer.get_rendering_info(COMPILATIONS[name]))
+	return out
+
+
+## `after` minus `before`, kind by kind (two compilations_by_kind() readings).
+static func kinds_between(before: Dictionary, after: Dictionary) -> Dictionary:
+	var out := {}
+	for name in COMPILATIONS:
+		out[name] = int(after.get(name, 0)) - int(before.get(name, 0))
+	return out
 
 
 ## The p-th percentile (nearest rank) of the first `n` values of an ASCENDING array; 0 for none.
