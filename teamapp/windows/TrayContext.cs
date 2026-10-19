@@ -43,6 +43,9 @@ namespace DeathMuffinTeam
         bool signInOpen, exiting;
         int updateFailures;
         bool updateGaveUp;
+        bool updateChecking;   // one check at a time (the timer, a job's end and an offer can each start one)
+        bool wasBusy;          // the controller was running a job at the last status: its end triggers a check
+        DateTime lastUpdateCheck = DateTime.MinValue;   // (UTC) the box is shown again with every countdown tick: an offer checks at most once a minute
 
         public TrayContext(AppLog log)
         {
@@ -162,6 +165,8 @@ namespace DeathMuffinTeam
         {
             OnUi(() =>
             {
+                if (DateTime.UtcNow - lastUpdateCheck > TimeSpan.FromMinutes(1))
+                    Guard(CheckUpdateAsync());   // a newer app first: the job is offered again after the restart (Helix's release checks ran on the old app, 2026-10-19)
                 if (box == null)
                 {
                     box = new OfferBox();
@@ -216,6 +221,9 @@ namespace DeathMuffinTeam
             OnUi(() =>
             {
                 statusItem.Text = text.Length > 90 ? text.Substring(0, 87) + "..." : text;
+                bool busy = controller.IsBusy;
+                if (wasBusy && !busy) Guard(CheckUpdateAsync());   // a job just ended: update now, before the next job starts (the 15-minute check skips busy times)
+                wasBusy = busy;
                 string tip = "Death Muffin Team: " + text;
                 tray.Text = tip.Length > 63 ? tip.Substring(0, 60) + "..." : tip;   // NotifyIcon.Text takes at most 63 characters
             });
@@ -272,7 +280,15 @@ namespace DeathMuffinTeam
         /// <summary>The app's self-update (SelfUpdate.cs): never while a job runs; after a swap the new copy starts and this one closes.</summary>
         async Task CheckUpdateAsync()
         {
-            if (exiting || controller.IsBusy) return;
+            if (exiting || controller.IsBusy || updateChecking) return;
+            updateChecking = true;
+            lastUpdateCheck = DateTime.UtcNow;
+            try { await CheckUpdateOnceAsync(); }
+            finally { updateChecking = false; }
+        }
+
+        async Task CheckUpdateOnceAsync()
+        {
             TeamManifest m = await SelfUpdate.FetchAsync(updateHttp, TeamUrls.VersionUrl);
             bool newer = m != null && VersionCompare.Compare(m.Version, Program.Version) > 0;
             SelfUpdateAction act = SelfUpdate.Decide(m, Program.Version, controller.IsBusy, newer && SelfUpdate.FolderWritable(ExePath), updateFailures);

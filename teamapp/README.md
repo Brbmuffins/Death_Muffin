@@ -222,7 +222,7 @@ If the player starts Death Muffin (a game that has stayed open 3 s: one listed f
 
 ## Updating itself
 
-The app reads `https://muffindevelopment.com/death-muffin/teamapp/version.json` (`{version, url, sha256}`, `size` optional) 30 seconds after it starts and then every 15 minutes. For a newer version it
+The app reads `https://muffindevelopment.com/death-muffin/teamapp/version.json` (`{version, url, sha256}`, `size` optional) 30 seconds after it starts, then every 15 minutes, right after each job ends and when a job is offered (a newer app installs first and the job is offered again after the restart), never while a job runs. For a newer version it
 does what the launcher does ([launcher/windows/SelfUpdate.cs](../launcher/windows/SelfUpdate.cs)): downloads `DeathMuffinTeam.exe.new` next to itself, checks the SHA-256,
 renames the running exe to `.old`, moves the new one in, starts it and closes; the new copy removes `.old`. Never while a job runs. A folder it cannot write to,
 or three failures, show a balloon and the app keeps running. The workflow artifact is not published anywhere: putting a build in that folder of the site is a
@@ -272,6 +272,8 @@ monitor (and the pictures still taken: Godot and the driver draw a window that i
 
 ### Changelog
 
+- **0.3.7** (2026-10-19) - The update check also runs right after each job ends and when a job is offered, so a new app is in place before the next job (Helix's
+  release checks twice ran on the version before, which the 15-minute check had skipped while a job ran).
 - **0.3.6** (2026-10-19) - The release checks' screens send the size to the game as `--qa-window=WxH` too (Godot keeps `--resolution` from the game, so the
   game could not take a size past the screen); the player's Death Muffin disturbs a benchmark run only when seen in 3 readings in a row (Helix's benchmark was still
   thrown away on 0.3.4 by a "DeathMuffin.exe" listed for a moment at the end of each run), and the job log names such a process's parent and start time; between steps and in every job a new game counts only once it has stayed open 3 s (the same process stopped the whole release check before its soak).
