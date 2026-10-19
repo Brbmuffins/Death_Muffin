@@ -18,6 +18,7 @@
     <Compile Include="..\windows\TeamFolders.cs" />
     <Compile Include="..\windows\FileFetcher.cs" />
     <Compile Include="..\windows\GameHost.cs" />
+    <Compile Include="..\windows\VideoEncoder.cs" />
     <Compile Include="..\windows\JobRunner.cs" />
     <Compile Include="..\windows\SelfUpdate.cs" />
     <Compile Include="..\windows\TeamController.cs" />

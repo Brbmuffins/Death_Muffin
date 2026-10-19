@@ -1,12 +1,14 @@
 class_name DmQaMjpeg
 extends RefCounted
 ## The writer of a clip's frames (client/README.md "Clips and tune"): one JPEG per frame, appended one after the other into a `.mjpeg` file (a motion-JPEG stream: every picture starts with FF D8 and ends
-## with FF D9, which ffmpeg reads with `-f mjpeg -framerate 30`). The first picture sets the size: scaled down to WIDTH pixels wide (never up), both sides even (a video needs them), and every later picture
+## with FF D9, which ffmpeg reads with `-f mjpeg -framerate <fps>`). The first picture sets the size: scaled down to `max_width` pixels wide (WIDTH unless the run asks for more: the team app's 1080p clips
+## send `--clip-width=1920`; never up), both sides even (a video needs them), and every later picture
 ## is brought to that size. Only the QA clip run (main/qa_clips.gd) uses it, and it knows nothing of the game: the pictures are handed to it, so a test feeds it made-up ones.
 
-const WIDTH := 960        ## the widest a clip's picture is
+const WIDTH := 960        ## the widest a clip's picture is, unless max_width says otherwise
 const QUALITY := 0.85     ## the JPEG's quality
 
+var max_width := WIDTH    ## set before the first picture
 var path := ""
 var width := 0
 var height := 0
@@ -27,7 +29,7 @@ func add(img: Image, times := 1) -> bool:
 	if _file == null or img == null or img.is_empty() or img.is_compressed() or times < 1:
 		return false
 	if width == 0:
-		width = maxi(2, mini(WIDTH, img.get_width()) & ~1)
+		width = maxi(2, mini(max_width, img.get_width()) & ~1)
 		height = maxi(2, int(roundf(float(img.get_height()) * float(width) / float(img.get_width()))) & ~1)
 	if img.get_format() != Image.FORMAT_RGB8:
 		img.convert(Image.FORMAT_RGB8)

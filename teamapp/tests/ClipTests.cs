@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -28,6 +29,42 @@ namespace DeathMuffinTeam.Tests
             ApiTests();
             FolderTests();
             ControllerRuns();
+            EncoderTests();
+        }
+
+        /// <summary>The encoder's command line, and the real ffmpeg (Linux has one on PATH here) on a 1080p 60 fps motion JPEG it makes itself: a valid mp4 under the limit, and plain words when it cannot.</summary>
+        static void EncoderTests()
+        {
+            T.Eq(string.Join(" ", FfmpegEncoder.Args("C:/j/out/slow/wraith.mjpeg", 60, "C:/j/out/slow/wraith.mp4.part", 20, 6000)),
+                "-nostdin -hide_banner -loglevel error -y -f mjpeg -framerate 60 -i C:/j/out/slow/wraith.mjpeg -t 10 -c:v libx264 -preset medium -crf 20 -maxrate 6000k -bufsize 12000k -r 60 -pix_fmt yuv420p -movflags +faststart -an -f mp4 C:/j/out/slow/wraith.mp4.part",
+                "ffmpeg's arguments: motion JPEG in at the clip's rate, H.264 at most 10 s, capped bit rate, yuv420p, playable while it loads, no sound");
+            T.Ok(FfmpegEncoder.Steps.Length == 3 && FfmpegEncoder.Steps[0][0] == 20 && FfmpegEncoder.Steps[0][1] * 10 / 8 * 1000 < JobPlan.MaxMp4Bytes, "the first step's cap keeps 10 seconds under the server's limit");
+            T.Eq(JobPlan.Encoder.Url.ToString(), "https://muffindevelopment.com/death-muffin/team-files/tools/ffmpeg-9.0.2/ffmpeg.exe", "the encoder comes from the game's own team-files");
+            T.Ok(JobPlan.Encoder.Sha256.Length == 64 && JobPlan.Encoder.CacheKey == "ffmpeg-" + JobPlan.Encoder.Sha256.Substring(0, 16) && JobPlan.Encoder.Bytes > 0, "checked by its sha256, kept under its own cache key");
+            string ffmpeg = "/usr/bin/ffmpeg";
+            if (!OperatingSystem.IsLinux() || !File.Exists(ffmpeg)) { Console.WriteLine("(skipped the real encoder test: no /usr/bin/ffmpeg)"); return; }
+            string dir = Util.TempDir("enc");
+            try
+            {
+                string mjpeg = Path.Combine(dir, "wraith.mjpeg"), mp4 = Path.Combine(dir, "wraith.mp4");
+                var make = Process.Start(new ProcessStartInfo(ffmpeg, "-nostdin -loglevel error -f lavfi -i testsrc2=size=1920x1080:rate=60 -t 2 -q:v 3 -f mjpeg \"" + mjpeg + "\"") { UseShellExecute = false });
+                make.WaitForExit(60000);
+                T.Ok(File.Exists(mjpeg) && new FileInfo(mjpeg).Length > 100000, "a 2 s 1080p 60 fps motion JPEG to encode (" + (File.Exists(mjpeg) ? new FileInfo(mjpeg).Length : 0) + " bytes)");
+                var r = Util.Wait(new FfmpegEncoder().EncodeAsync(ffmpeg, mjpeg, 60, mp4, CancellationToken.None));
+                T.Ok(r.Ok && r.Crf == 20 && r.Bytes > 1000 && r.Bytes <= JobPlan.MaxMp4Bytes && new FileInfo(mp4).Length == r.Bytes && !File.Exists(mp4 + ".part"), "the real ffmpeg makes the mp4 at the first step: " + r.Bytes + " bytes " + r.Error);
+                byte[] head = File.ReadAllBytes(mp4).Take(12).ToArray();
+                T.Eq(Encoding.ASCII.GetString(head, 4, 4), "ftyp", "it is an mp4 (ftyp first)");
+                var probe = Process.Start(new ProcessStartInfo("/usr/bin/ffprobe", "-v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate,codec_name -of csv=p=0 \"" + mp4 + "\"") { UseShellExecute = false, RedirectStandardOutput = true });
+                string said = probe.StandardOutput.ReadToEnd().Trim();
+                probe.WaitForExit(30000);
+                T.Eq(said, "h264,1920,1080,60/1", "H.264, 1920x1080, 60 frames a second");
+                File.WriteAllBytes(Path.Combine(dir, "junk.mjpeg"), Util.Blob(5000, 9));
+                var bad = Util.Wait(new FfmpegEncoder().EncodeAsync(ffmpeg, Path.Combine(dir, "junk.mjpeg"), 60, Path.Combine(dir, "junk.mp4"), CancellationToken.None));
+                T.Ok(!bad.Ok && bad.Error.StartsWith("ffmpeg ended with code") && !File.Exists(Path.Combine(dir, "junk.mp4")) && !File.Exists(Path.Combine(dir, "junk.mp4.part")), "a file that is no video: plain words, nothing left behind (" + bad.Error + ")");
+                var none = Util.Wait(new FfmpegEncoder().EncodeAsync(Path.Combine(dir, "no-ffmpeg"), mjpeg, 60, Path.Combine(dir, "x.mp4"), CancellationToken.None));
+                T.Ok(!none.Ok && none.Error.StartsWith("ffmpeg could not be started"), "no encoder: plain words (" + none.Error + ")");
+            }
+            finally { Util.Rm(dir); }
         }
 
         // ---- The payload ---------------------------------------------------------------------------------------------------------------
@@ -195,22 +232,23 @@ namespace DeathMuffinTeam.Tests
             string tune = "C:\\Users\\Test User\\AppData\\Local\\DeathMuffinTeam\\jobs\\q7x2k9ab\\tune-slow.json";
             var a = plan.ClipCommandArgs(plan.Variants[0], "high", planFile, clips, tune);
             T.Eq(string.Join("|", a),
-                "--windowed|--resolution|1600x900|--audio-driver|Dummy|--fixed-fps|30|--|--dev-offline|--qa|--preset=high|--clip-plan=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/plan.json|--clips=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/out/slow|--tune=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/tune-slow.json",
-                "the clip run's arguments are the contract's: the engine's --fixed-fps 30, then -- <args> --preset --clip-plan --clips --tune");
-            T.Eq(string.Join(" ", a.Take(7)), "--windowed --resolution 1600x900 --audio-driver Dummy --fixed-fps 30", "a clip run is silent, windowed, and at a fixed 30 frames per game second (readback time never changes the clip's timing)");
+                "--windowed|--resolution|1920x1080|--audio-driver|Dummy|--fixed-fps|60|--|--dev-offline|--qa|--preset=high|--clip-plan=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/plan.json|--clips=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/out/slow|--tune=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/tune-slow.json|--clip-fps=60|--clip-width=1920|--qa-window=1920x1080",
+                "the clip run's arguments are the contract's: 1080p at the engine's --fixed-fps 60, then -- <args> --preset --clip-plan --clips --tune and the recording's rate, width and window (Helix: 1080p at 60)");
+            T.Eq(string.Join(" ", a.Take(7)), "--windowed --resolution 1920x1080 --audio-driver Dummy --fixed-fps 60", "a clip run is silent, windowed at 1920x1080, and at a fixed 60 frames per game second (readback time never changes the clip's timing)");
             T.Eq(a.IndexOf("--"), 7, "everything for the game comes after --");
             T.Ok(a.IndexOf("--fixed-fps") < a.IndexOf("--"), "--fixed-fps is an engine option, ahead of --");
             var noTune = plan.ClipCommandArgs(new ClipVariant { Label = "clip" }, "high", planFile, clips, null);
-            T.Ok(!noTune.Any(x => x.StartsWith("--tune")) && noTune.Last().StartsWith("--clips="), "a variant with no tune passes no --tune");
+            T.Ok(!noTune.Any(x => x.StartsWith("--tune")) && noTune.Count == a.Count - 1, "a variant with no tune passes no --tune");
             var off = plan.ClipCommandArgs(plan.Variants[0], "high", planFile, clips, tune, "-1700,0");
-            T.Eq(string.Join(" ", off.Take(10)), "--windowed --resolution 1600x900 --audio-driver Dummy --fixed-fps 30 --position -1700,0 --", "--position (outside every monitor) goes ahead of --, after --fixed-fps");
+            T.Eq(string.Join(" ", off.Take(10)), "--windowed --resolution 1920x1080 --audio-driver Dummy --fixed-fps 60 --position -1700,0 --", "--position (outside every monitor) goes ahead of --, after --fixed-fps");
             T.Eq(string.Join("|", off.Skip(10)), string.Join("|", a.Skip(8)), "the game's own options are the same");
             T.Ok(!a.Contains("--position") && !plan.ClipCommandArgs(plan.Variants[0], "high", "p", "c", "t", "").Contains("--position"), "no position given, none is set");
             string line = plan.ClipCommandLine(plan.Variants[0], "high", planFile, clips, tune);
             T.Has(line, "\"--clip-plan=C:/Users/Test User/AppData/Local/DeathMuffinTeam/jobs/q7x2k9ab/plan.json\"", "a path with a space is quoted");
-            T.Has(line, "--fixed-fps 30 -- --dev-offline", "the command line");
+            T.Has(line, "--fixed-fps 60 -- --dev-offline", "the command line");
             T.Eq(plan.ClipCommandLine(plan.Variants[1], "low", "C:\\j\\plan.json", "C:\\j\\out\\fast", "C:\\j\\tune-fast.json"),
-                "--windowed --resolution 1600x900 --audio-driver Dummy --fixed-fps 30 -- --dev-offline --qa --preset=low --clip-plan=C:/j/plan.json --clips=C:/j/out/fast --tune=C:/j/tune-fast.json", "a command line without spaces needs no quotes");
+                "--windowed --resolution 1920x1080 --audio-driver Dummy --fixed-fps 60 -- --dev-offline --qa --preset=low --clip-plan=C:/j/plan.json --clips=C:/j/out/fast --tune=C:/j/tune-fast.json --clip-fps=60 --clip-width=1920 --qa-window=1920x1080",
+                "a command line without spaces needs no quotes");
 
             // a screenshots run does not get --fixed-fps
             JobPlan shots; JobPlan.TryParse(Program.ValidPayload(), Site, out shots, out error);
@@ -221,25 +259,25 @@ namespace DeathMuffinTeam.Tests
 
         static void ClipNameTests()
         {
-            var name = new Regex("^[a-z0-9][a-z0-9_-]{0,59}\\.mjpeg$");
-            T.Eq(JobPlan.ClipUploadName("slow", "wraith.mjpeg"), "slow_wraith.mjpeg", "clip upload name: the variant's label and the clip");
-            T.Eq(JobPlan.ClipUploadName("clip", "C:\\x\\out\\clip\\pack.mjpeg"), "clip_pack.mjpeg", "from a path; the default label is clip");
-            T.Eq(JobPlan.ClipUploadName("fast", "Big Hit!.MJPEG"), "fast_big_hit.mjpeg", "cleaned and lower-cased");
-            T.Eq(JobPlan.ClipUploadName("fast", "notes.json"), null, "only clips are uploaded");
-            T.Eq(JobPlan.ClipUploadName("fast", "wraith.png"), null, "a picture is not a clip");
-            T.Eq(JobPlan.ClipUploadName("fast", "x.mjpeg.txt"), null, "a name that only contains .mjpeg is not a clip");
-            T.Eq(JobPlan.ClipUploadName("fast", "!!!.mjpeg"), "fast_shot.mjpeg", "an empty name gets a placeholder");
+            var name = new Regex("^[a-z0-9][a-z0-9_-]{0,59}\\.mp4$");
+            T.Eq(JobPlan.Mp4UploadName("slow", "wraith.mp4"), "slow_wraith.mp4", "clip upload name: the variant's label and the clip");
+            T.Eq(JobPlan.Mp4UploadName("clip", "C:\\x\\out\\clip\\pack.mp4"), "clip_pack.mp4", "from a path; the default label is clip");
+            T.Eq(JobPlan.Mp4UploadName("fast", "Big Hit!.MP4"), "fast_big_hit.mp4", "cleaned and lower-cased");
+            T.Eq(JobPlan.Mp4UploadName("fast", "notes.json"), null, "only clips are uploaded");
+            T.Eq(JobPlan.Mp4UploadName("fast", "wraith.png"), null, "a picture is not a clip");
+            T.Eq(JobPlan.Mp4UploadName("fast", "x.mp4.txt"), null, "a name that only contains .mp4 is not a clip's video");
+            T.Eq(JobPlan.Mp4UploadName("fast", "!!!.mp4"), "fast_shot.mp4", "an empty name gets a placeholder");
             foreach (string label in new[] { "a", "slow", new string('x', 24), "b-2" })
                 foreach (string clip in new[] { "a", new string('x', 40), new string('y', 200), "caf\u00e9 \u00fcber", "UPPER_case-1", "..", "9" })
                 {
-                    string n = JobPlan.ClipUploadName(label, clip + ".mjpeg");
+                    string n = JobPlan.Mp4UploadName(label, clip + ".mp4");
                     T.Ok(n != null && name.IsMatch(n), "clip upload name matches the server's rule: " + label + " " + (clip.Length > 20 ? clip.Substring(0, 20) : clip) + " -> " + n);
                 }
             var used = new HashSet<string>();
-            var list = JobPlan.ClipUploadNames("slow", new[] { "z:/o/b.mjpeg", "z:/o/a.mjpeg", "z:/o/A.mjpeg", "z:/o/a.json", "z:/o/a!.mjpeg", "z:/o/pic.png" }, used);
-            T.Eq(string.Join(",", list.Select(k => k.Value)), "slow_a.mjpeg,slow_a-2.mjpeg,slow_a-3.mjpeg,slow_b.mjpeg", "names are unique (a second a becomes a-2) and only clips are named");
-            T.Eq(JobPlan.ClipUploadNames("fast", new[] { "z:/f/a.mjpeg" }, used)[0].Value, "fast_a.mjpeg", "the same clip of another variant keeps its own name");
-            var many = JobPlan.ClipUploadNames("slow", Enumerable.Range(0, 20).Select(i => "z:/o/" + new string('s', 60) + ".mjpeg"), new HashSet<string>());
+            var list = JobPlan.Mp4UploadNames("slow", new[] { "z:/o/b.mp4", "z:/o/a.mp4", "z:/o/A.mp4", "z:/o/a.json", "z:/o/a!.mp4", "z:/o/pic.png" }, used);
+            T.Eq(string.Join(",", list.Select(k => k.Value)), "slow_a.mp4,slow_a-2.mp4,slow_a-3.mp4,slow_b.mp4", "names are unique (a second a becomes a-2) and only clips are named");
+            T.Eq(JobPlan.Mp4UploadNames("fast", new[] { "z:/f/a.mp4" }, used)[0].Value, "fast_a.mp4", "the same clip of another variant keeps its own name");
+            var many = JobPlan.Mp4UploadNames("slow", Enumerable.Range(0, 20).Select(i => "z:/o/" + new string('s', 60) + ".mp4"), new HashSet<string>());
             T.Ok(many.Select(k => k.Value).Distinct().Count() == 20 && many.All(k => name.IsMatch(k.Value)), "long colliding names stay unique and valid");
 
             // a build's pictures: the build and the preset make the prefix
@@ -406,39 +444,39 @@ namespace DeathMuffinTeam.Tests
             var api = new TeamApi(tr, new Uri(TeamUrls.ApiBase)) { Token = "team-tok-1" };
             tr.Respond = r => new HttpReply { Status = 200, Body = "{\"success\":true,\"data\":{}}" };
             byte[] clip = Util.Blob(5000, 3);
-            Util.Wait(api.UploadAsync("ab12cd34ef56", "slow_wraith.mjpeg", clip, CancellationToken.None));
+            Util.Wait(api.UploadAsync("ab12cd34ef56", "slow_wraith.mp4", clip, CancellationToken.None));
             var up = tr.Sent[0];
-            T.Eq(up.Method + " " + up.Url.AbsolutePath, "PUT /death-muffin/api/team/jobs/ab12cd34ef56/files/slow_wraith.mjpeg", "a clip goes to the files route as a PUT");
-            T.Eq(up.ContentType, "video/x-motion-jpeg", "with the content type the server takes for a clip");
+            T.Eq(up.Method + " " + up.Url.AbsolutePath, "PUT /death-muffin/api/team/jobs/ab12cd34ef56/files/slow_wraith.mp4", "a clip's video goes to the files route as a PUT");
+            T.Eq(up.ContentType, "video/mp4", "with the content type the server takes for it");
             T.Ok(up.Body.SequenceEqual(clip), "the raw bytes are the body");
             T.Eq(up.Token, "team-tok-1", "with the team token");
-            T.Eq(TeamApi.ClipType + "|" + TeamApi.PngType, "video/x-motion-jpeg|image/png", "the two content types");
+            T.Eq(TeamApi.Mp4Type + "|" + TeamApi.PngType, "video/mp4|image/png", "the two content types");
             Util.Wait(api.UploadAsync("ab12cd34ef56", "before_low_hero.png", Util.FakePng(1), CancellationToken.None));
             T.Eq(tr.Sent[1].ContentType, "image/png", "a picture is still image/png");
             T.Eq(tr.Sent[1].Url.AbsolutePath, "/death-muffin/api/team/jobs/ab12cd34ef56/files/before_low_hero.png", "and goes where it did");
             tr.Sent.Clear();
-            foreach (string bad in new[] { "../x.mjpeg", "Slow_a.mjpeg", "a b.mjpeg", "a.MJPEG", "_a.mjpeg", "-a.mjpeg", ".mjpeg", "a.mjpeg/../b.mjpeg", "a/b.mjpeg", "a.mp4", "a.mjpg", new string('a', 61) + ".mjpeg", "" })
+            foreach (string bad in new[] { "../x.mp4", "Slow_a.mp4", "a b.mp4", "a.MP4", "_a.mp4", "-a.mp4", ".mp4", "a.mp4/../b.mp4", "a/b.mp4", "a.mjpeg", "a.mp", new string('a', 61) + ".mp4", "" })
             {
                 var r = Util.Wait(api.UploadAsync("ab12cd34ef56", bad, clip, CancellationToken.None));
                 T.Ok(!r.Ok && r.Error.Length > 0, "upload refuses the name '" + bad + "'");
             }
-            T.Ok(Util.Wait(api.UploadAsync("ab12cd34ef56", "slow_a.mjpeg", clip, CancellationToken.None)).Ok && Util.Wait(api.UploadAsync("ab12cd34ef56", new string('a', 60) + ".mjpeg", clip, CancellationToken.None)).Ok, "60 characters before .mjpeg is allowed");
-            T.Has(Util.Wait(api.UploadAsync("ab12cd34ef56", "A.mjpeg", clip, CancellationToken.None)).Error, "clip", "a refused clip name says clip");
-            T.Ok(!Util.Wait(api.UploadAsync("../x", "a_b.mjpeg", clip, CancellationToken.None)).Ok, "upload refuses a bad job id for a clip too");
+            T.Ok(Util.Wait(api.UploadAsync("ab12cd34ef56", "slow_a.mp4", clip, CancellationToken.None)).Ok && Util.Wait(api.UploadAsync("ab12cd34ef56", new string('a', 60) + ".mp4", clip, CancellationToken.None)).Ok, "60 characters before .mp4 is allowed");
+            T.Has(Util.Wait(api.UploadAsync("ab12cd34ef56", "A.mp4", clip, CancellationToken.None)).Error, "clip", "a refused clip name says clip");
+            T.Ok(!Util.Wait(api.UploadAsync("../x", "a_b.mp4", clip, CancellationToken.None)).Ok, "upload refuses a bad job id for a clip too");
             T.Eq(tr.Sent.Count, 2, "refused uploads never reach the network");
 
             // a clip job's done is the shots done: the names of what was uploaded
             tr.Sent.Clear();
-            Util.Wait(api.DoneAsync("ab12cd34ef56", new List<string> { "slow_wraith.mjpeg", "fast_wraith.mjpeg" }, "log", 3.0, 20.0, CancellationToken.None));
+            Util.Wait(api.DoneAsync("ab12cd34ef56", new List<string> { "slow_wraith.mp4", "fast_wraith.mp4" }, "log", 3.0, 20.0, CancellationToken.None));
             var done = MiniJson.TryObject(Encoding.UTF8.GetString(tr.Sent[0].Body));
-            T.Eq(string.Join(",", MiniJson.Arr(done, "files").Cast<string>()), "slow_wraith.mjpeg,fast_wraith.mjpeg", "done names the uploaded clips");
+            T.Eq(string.Join(",", MiniJson.Arr(done, "files").Cast<string>()), "slow_wraith.mp4,fast_wraith.mp4", "done names the uploaded videos");
 
             // how long a request may take
             Uri team = new Uri("https://muffindevelopment.com/death-muffin/api/team/");
             T.Eq(HttpClientTransport.TimeoutFor(new Uri(team, "heartbeat"), new byte[300]), TimeSpan.FromSeconds(40), "a heartbeat: 40 s (the server holds it up to 25)");
             T.Eq(HttpClientTransport.TimeoutFor(new Uri(team, "jobs/ab12cd34ef56/claim"), new byte[300]), TimeSpan.FromMinutes(2), "a small call: 2 minutes");
             T.Eq(HttpClientTransport.TimeoutFor(new Uri(team, "jobs/ab12cd34ef56/files/a.png"), new byte[200000]), TimeSpan.FromMinutes(2), "a picture: 2 minutes");
-            T.Eq(HttpClientTransport.TimeoutFor(new Uri(team, "jobs/ab12cd34ef56/files/a.mjpeg"), new byte[3 << 20]), TimeSpan.FromMinutes(6), "a clip: 6 minutes");
+            T.Eq(HttpClientTransport.TimeoutFor(new Uri(team, "jobs/ab12cd34ef56/files/a.mp4"), new byte[3 << 20]), TimeSpan.FromMinutes(6), "a clip's video: 6 minutes");
             T.Eq(HttpClientTransport.TimeoutFor(new Uri(team, "jobs/ab12cd34ef56/done"), new byte[300]), TimeSpan.FromMinutes(6), "a done (the server makes the videos while it waits): 6 minutes");
             T.Eq(HttpClientTransport.TimeoutFor(new Uri(team, "login"), null), TimeSpan.FromMinutes(2), "a call with no body: 2 minutes");
         }
@@ -543,7 +581,7 @@ namespace DeathMuffinTeam.Tests
 
         // ---- The runner ---------------------------------------------------------------------------------------------------------------
 
-        /// <summary>The game as a stand-in that records the clips of a plan: for each planned clip it writes `<name>.mjpeg` (and a small `<name>.json`) into `--clips`; the bytes depend on the variant and the clip.</summary>
+        /// <summary>The game as a stand-in that records the clips of a plan: for each planned clip it writes `<name>.mjpeg` (and a small `<name>.json`, at <paramref name="fps"/>) into `--clips`; the bytes depend on the variant and the clip.</summary>
         public static byte[] ClipBytes(string variant, string clip) { return Util.Blob(3000 + clip.Length * 100, (variant + "/" + clip).GetHashCode() & 0xffff); }
 
         static string ArgOf(GameLaunch l, string name)
@@ -552,7 +590,7 @@ namespace DeathMuffinTeam.Tests
             return a == null ? null : a.Substring(a.IndexOf('=') + 1);
         }
 
-        static Func<GameLaunch, string, int?> ClipGame(Func<string, int?> special = null)
+        static Func<GameLaunch, string, int?> ClipGame(Func<string, int?> special = null, int fps = 60)
         {
             return (l, dir) =>
             {
@@ -564,7 +602,7 @@ namespace DeathMuffinTeam.Tests
                 {
                     string name = MiniJson.Str((Dictionary<string, object>)c, "name");
                     File.WriteAllBytes(Path.Combine(dir, name + ".mjpeg"), ClipBytes(variant, name));
-                    File.WriteAllText(Path.Combine(dir, name + ".json"), "{\"fps\":30,\"frames\":150,\"width\":960,\"height\":540,\"cast_at_frame\":12}");
+                    File.WriteAllText(Path.Combine(dir, name + ".json"), "{\"fps\":" + fps + ",\"frames\":300,\"width\":1920,\"height\":1080,\"cast_at_frame\":12}");
                 }
                 return 0;
             };
@@ -598,7 +636,11 @@ namespace DeathMuffinTeam.Tests
                 T.Eq(slow.WorkingDir, game, "in its folder");
                 T.Eq(string.Join("|", slow.Args), string.Join("|", plan.ClipCommandArgs(plan.Variants[0], "high", planFile, Path.Combine(rig.Folders.OutDir(id), "slow"), rig.Folders.TuneFile(id, "slow"))), "the slow variant's arguments are the contract's");
                 T.Eq(string.Join("|", rig.Host.Launches[1].Args), string.Join("|", plan.ClipCommandArgs(plan.Variants[1], "high", planFile, Path.Combine(rig.Folders.OutDir(id), "fast"), rig.Folders.TuneFile(id, "fast"))), "and the fast one's");
-                T.Has(string.Join(" ", slow.Args), "--fixed-fps 30 --", "the engine runs at a fixed 30 frames per game second");
+                T.Has(string.Join(" ", slow.Args), "--fixed-fps 60 --", "the engine runs at a fixed 60 frames per game second");
+                T.Eq(string.Join(",", rig.Enc.Calls), "pack.mjpeg@60,wraith.mjpeg@60,pack.mjpeg@60,wraith.mjpeg@60", "this PC makes every clip's video, at the rate the game's note says");
+                T.Eq(rig.Enc.Ffmpeg, Path.Combine(rig.Folders.CacheDir("ffmpeg-test"), "ffmpeg.exe"), "with the encoder from the cache");
+                T.Ok(File.ReadAllBytes(rig.Enc.Ffmpeg).SequenceEqual(rig.Ffmpeg), "downloaded and checked like any job file");
+                T.Ok(!Directory.GetFiles(Path.Combine(rig.Folders.OutDir(id), "slow"), "*.mjpeg").Any(), "the motion JPEG is deleted once its video is made");
                 T.Has(string.Join(" ", slow.Args), "--preset=high --clip-plan=", "on the plan's preset");
                 T.Ok(slow.AppData.StartsWith(rig.Folders.JobDir(id)) && slow.LocalAppData.StartsWith(rig.Folders.JobDir(id)) && slow.AppData != slow.LocalAppData, "APPDATA and LOCALAPPDATA point into the job's own folder");
                 T.Ok(slow.AppData != rig.Host.Launches[1].AppData && slow.LocalAppData != rig.Host.Launches[1].LocalAppData, "each variant has its own fresh pair (each in its fresh folder)");
@@ -610,8 +652,8 @@ namespace DeathMuffinTeam.Tests
                 T.Eq(MiniJson.Int(MiniJson.Obj(MiniJson.Obj(tuneSlow, "combat/abilities"), "haunting_wraith"), "speed"), 4L, "the slow variant's tune is the file the game is given");
                 T.Eq(MiniJson.Int(MiniJson.Obj(MiniJson.Obj(tuneFast, "combat/abilities"), "haunting_wraith"), "speed"), 9L, "and the fast variant's");
                 T.Ok(ArgOf(slow, "--tune") != ArgOf(rig.Host.Launches[1], "--tune"), "each variant has its own tune file");
-                T.Eq(string.Join(",", rig.Api.Uploaded), "slow_pack.mjpeg,slow_wraith.mjpeg,fast_pack.mjpeg,fast_wraith.mjpeg", "clips are uploaded as <label>_<clip>.mjpeg, variant by variant");
-                T.Ok(rig.Api.UploadedBytes["slow_wraith.mjpeg"].SequenceEqual(ClipBytes("slow", "wraith")) && rig.Api.UploadedBytes["fast_pack.mjpeg"].SequenceEqual(ClipBytes("fast", "pack")), "uploaded bytes are the game's clip");
+                T.Eq(string.Join(",", rig.Api.Uploaded), "slow_pack.mp4,slow_wraith.mp4,fast_pack.mp4,fast_wraith.mp4", "the videos are uploaded as <label>_<clip>.mp4, variant by variant");
+                T.Ok(rig.Api.UploadedBytes["slow_wraith.mp4"].SequenceEqual(FakeEncoder.Mp4Of(ClipBytes("slow", "wraith"))) && rig.Api.UploadedBytes["fast_pack.mp4"].SequenceEqual(FakeEncoder.Mp4Of(ClipBytes("fast", "pack"))), "uploaded bytes are the video of the game's clip");
                 T.Eq(string.Join(",", rig.Api.DoneFiles), string.Join(",", rig.Api.Uploaded), "done lists every uploaded clip");
                 T.Eq(rig.Api.DoneJob, id, "done names the job");
                 T.Eq(rig.Api.Count("fail"), 0, "no fail call");
@@ -619,22 +661,29 @@ namespace DeathMuffinTeam.Tests
                 T.Ok(lastUpload >= 0 && doneAt > lastUpload, "done comes after the last upload");
                 T.Eq(res.Files.Count, 4, "the result lists the clips");
                 T.Has(rig.Api.DoneLog, "game output (the slow variant)", "the log carries the game's output");
-                T.Has(rig.Api.DoneLog, "clip wraith: {\"fps\":30,\"frames\":150", "and the game's note about each clip");
-                T.Has(rig.Api.DoneLog, "uploaded slow_wraith.mjpeg", "and what was uploaded");
-                T.Ok(progress.Any(p => p == "Recording clips for the slow variant (1 of 2)") && progress.Any(p => p == "Recording clips for the fast variant (2 of 2)") && progress.Any(p => p == "Uploading clips (4 of 4)") && progress.Any(p => p == "Done: 4 clip(s) uploaded"), "progress tells what is happening");
+                T.Has(rig.Api.DoneLog, "clip wraith: {\"fps\":60,\"frames\":300", "and the game's note about each clip");
+                T.Has(rig.Api.DoneLog, "clip wraith: mp4 of 0.0 MB at 60 fps (crf 20)", "and its video");
+                T.Has(rig.Api.DoneLog, "downloaded ffmpeg.exe", "and that the encoder was downloaded");
+                T.Has(rig.Api.DoneLog, "uploaded slow_wraith.mp4", "and what was uploaded");
+                T.Ok(progress.Any(p => p == "Recording clips for the slow variant (1 of 2)") && progress.Any(p => p == "Recording clips for the fast variant (2 of 2)") && progress.Any(p => p == "Making the video of wraith (2 of 2)")
+                    && progress.Any(p => p.StartsWith("Downloading the video encoder (once): ")) && progress.Any(p => p == "Uploading clips (4 of 4)") && progress.Any(p => p == "Done: 4 clip(s) uploaded"), "progress tells what is happening");
                 T.Ok(File.ReadAllText(rig.Folders.LogFile(id)).Contains("finished: 4 clip(s)"), "job.log is written");
                 T.Eq(rig.Watch.Begins, 1, "the player's games are noted once");
                 T.Eq(rig.Links.Count, 2, "the cached files are linked into the game folder");
                 T.Ok(rig.Api.DoneRunS >= 0 && rig.Api.DoneDownloadS >= 0, "timings are reported");
                 T.Ok(!Directory.Exists(rig.Folders.GameDir(id, "before")), "no per-build game folders for a clip job");
+                var again = rig.Run("clipA0000002", rig.ClipPlan());
+                T.Ok(again.Ok && rig.Api.DoneLog.Contains("kept from an earlier job: ffmpeg.exe"), "the next clip job uses the cached encoder: " + again.Error);
             }
             // the window: outside every monitor, like a screenshots run
             using (var rig = new Rig())
             {
                 rig.Host.Behaviour = ClipGame();
-                rig.Runner.ShotsPosition = () => "-3620,0";
+                var widths = new List<int>();
+                rig.Runner.WindowPosition = w => { widths.Add(w); return "-3940,0"; };
                 T.Ok(rig.Run("clipB0000001", rig.ClipPlan()).Ok, "a clip job with a window position runs");
-                T.Ok(rig.Host.Launches.All(l => string.Join(" ", l.Args.Take(10)) == "--windowed --resolution 1600x900 --audio-driver Dummy --fixed-fps 30 --position -3620,0 --"), "every clip run's window is outside every monitor");
+                T.Ok(rig.Host.Launches.All(l => string.Join(" ", l.Args.Take(10)) == "--windowed --resolution 1920x1080 --audio-driver Dummy --fixed-fps 60 --position -3940,0 --"), "every clip run's 1080p window is outside every monitor");
+                T.Ok(widths.Count == 2 && widths.All(w => w == 1920), "with a spot for a 1920-wide window");
             }
             // a clip the game left from an earlier try is not this run's
             using (var rig = new Rig())
@@ -646,7 +695,7 @@ namespace DeathMuffinTeam.Tests
                 Directory.CreateDirectory(old);
                 File.WriteAllBytes(Path.Combine(old, "stale.mjpeg"), Util.Blob(100, 1));
                 T.Ok(rig.Run(id, plan).Ok, "a clip job runs over an earlier try's folder");
-                T.Eq(string.Join(",", rig.Api.Uploaded), "slow_pack.mjpeg,slow_wraith.mjpeg", "a stale clip is not uploaded");
+                T.Eq(string.Join(",", rig.Api.Uploaded), "slow_pack.mp4,slow_wraith.mp4", "a stale clip is not uploaded");
                 T.Ok(!rig.Host.Launches[0].Args.Any(a => a.StartsWith("--tune")) && !File.Exists(rig.Folders.TuneFile(id, "slow")), "a variant with no tune has no tune file and no --tune");
             }
         }
@@ -661,8 +710,8 @@ namespace DeathMuffinTeam.Tests
                 T.Ok(res.Ok, "a clip job with no variants and no preset runs: " + res.Error);
                 T.Eq(rig.Host.Launches.Count, 1, "one game run");
                 T.Has(string.Join(" ", rig.Host.Launches[0].Args), "--preset=high", "on high");
-                T.Eq(string.Join(",", rig.Api.Uploaded), "clip_wraith.mjpeg", "with no label the clips are clip_<name>.mjpeg");
-                T.Ok(rig.Api.Calls.Contains("upload clip_wraith.mjpeg"), "uploaded as that");
+                T.Eq(string.Join(",", rig.Api.Uploaded), "clip_wraith.mp4", "with no label the videos are clip_<name>.mp4");
+                T.Ok(rig.Api.Calls.Contains("upload clip_wraith.mp4"), "uploaded as that");
                 T.Ok(rig.Api.DoneLog.Contains("game output (the clip run)"), "the run is named the clip run");
             }
         }
@@ -728,32 +777,33 @@ namespace DeathMuffinTeam.Tests
             using (var rig = new Rig())
             {
                 rig.Host.Behaviour = ClipGame();
-                rig.Api.Upload = name => name == "slow_wraith.mjpeg" ? FakeApi.Err(400, "bad_request", "That clip is not a motion-JPEG clip.") : FakeApi.Ok(new Dictionary<string, object>());
+                rig.Api.Upload = name => name == "slow_wraith.mp4" ? FakeApi.Err(400, "bad_request", "That clip is not an mp4 video.") : FakeApi.Ok(new Dictionary<string, object>());
                 var res = rig.Run("clipE0000007", rig.ClipPlan());
-                T.Eq(res.Error, "The server did not take the clip slow_wraith.mjpeg: That clip is not a motion-JPEG clip.", "a refused clip fails the job with the server's words");
+                T.Eq(res.Error, "The server did not take the clip slow_wraith.mp4: That clip is not an mp4 video.", "a refused clip fails the job with the server's words");
                 T.Eq(rig.Api.Count("done"), 0, "and done is never sent");
             }
-            // an empty clip, and one over the server's 48 MB
+            // a video that cannot be made, and one past the server's limit
             using (var rig = new Rig())
             {
-                rig.Host.Behaviour = (l, dir) => { foreach (object c in MiniJson.Arr(MiniJson.TryObject(File.ReadAllText(ArgOf(l, "--clip-plan"))), "clips")) File.WriteAllBytes(Path.Combine(dir, MiniJson.Str((Dictionary<string, object>)c, "name") + ".mjpeg"), new byte[0]); return 0; };
+                rig.Host.Behaviour = ClipGame();
+                rig.Enc.Fail = "ffmpeg ended with code 1: Invalid data found when processing input";
                 var res = rig.Run("clipE0000008", rig.ClipPlan());
-                T.Eq(res.Error, "The clip slow_pack.mjpeg is empty.", "an empty clip is refused before it is sent");
+                T.Eq(res.Error, "The video of the clip pack on the slow variant could not be made: ffmpeg ended with code 1: Invalid data found when processing input", "an encoder failure fails the job, naming the clip and ffmpeg's words");
+                T.Eq(rig.Api.Count("upload"), 0, "nothing was uploaded");
             }
             using (var rig = new Rig())
             {
-                rig.Host.Behaviour = (l, dir) =>
-                {
-                    foreach (object c in MiniJson.Arr(MiniJson.TryObject(File.ReadAllText(ArgOf(l, "--clip-plan"))), "clips"))
-                    {
-                        string name = MiniJson.Str((Dictionary<string, object>)c, "name");
-                        using (var fs = new FileStream(Path.Combine(dir, name + ".mjpeg"), FileMode.Create)) fs.SetLength(JobPlan.MaxClipBytes + (2 << 20));
-                    }
-                    return 0;
-                };
+                rig.Host.Behaviour = ClipGame();
+                rig.Enc.Big = true;
                 var res = rig.Run("clipE0000009", rig.ClipPlan());
-                T.Eq(res.Error, "The clip slow_pack.mjpeg is too big (50 MB).", "a clip over 48 MB is refused before it is sent");
+                T.Eq(res.Error, "The clip slow_pack.mp4 is too big (8 MB).", "a video past the server's 8 MB is refused before it is sent");
                 T.Eq(rig.Api.Count("upload"), 0, "and not uploaded");
+            }
+            // a game build from before 1080p clips records at 30: its note says so, and the video is made at 30
+            using (var rig = new Rig())
+            {
+                rig.Host.Behaviour = ClipGame(null, 30);
+                T.Ok(rig.Run("clipE0000014", rig.ClipPlan()).Ok && rig.Enc.Calls.All(c => c.EndsWith("@30")), "an older game's clips are made at the rate it recorded: " + string.Join(",", rig.Enc.Calls));
             }
             // the server does not accept the finished job: the clips were uploaded, and no fail follows
             using (var rig = new Rig())

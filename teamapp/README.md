@@ -46,7 +46,7 @@ Only the accounts on the server's team list (a table the server's team routes re
 - **Only our builds.** It downloads only from the game's own server (`/death-muffin/team-files/`, https, the same host), checks every file's
   SHA-256, refuses file names or addresses that could leave the job's folder, and passes the game only the options it checks (it sets `--shot-plan`,
   `--shots`, `--preset` and `--dev-offline` itself for screenshots, `--clip-plan`, `--clips`, `--tune`, `--preset` and `--dev-offline` for clips, `--benchmark` and the `--bench-*` options for a benchmark). It uploads only the pictures
-  the game made, as `<preset>_<shot>.png` (`<build>_<preset>_<shot>.png` with two builds), the clips it recorded, as `<variant>_<clip>.mjpeg`, and sends a benchmark's runs only from the files the game wrote in the setup's own folder.
+  the game made, as `<preset>_<shot>.png` (`<build>_<preset>_<shot>.png` with two builds), the videos it made of the clips the game recorded, as `<variant>_<clip>.mp4`, and sends a benchmark's runs only from the files the game wrote in the setup's own folder.
 - **A job that is refused stays no job.** If the server will not accept a finished job (`done` answered with an error), the app tells it the job failed, with the server's own reason, so a job never stays "running" on the server
   (this PC's heartbeat would keep it alive for ever).
 - **A pause stays a pause.** Pause 2 hours declines jobs for 2 hours (the server is told). Resume, or the tray's Show jobs, ends it.
@@ -187,17 +187,20 @@ values to compare, and this app records one set of clips for each value. The pay
   The app checks 1 to 4 clips, each name a safe token (`^[a-z0-9][a-z0-9_-]{0,31}$`, once) and each `seconds` (when given) a number above 0 and at most 8; the game checks the rest.
 - `variants`: 1 to 4 of `{label, tune}`. The label is `^[a-z0-9][a-z0-9-]{0,23}$` (once; none, or a variant without a label, is `clip`); `tune` is an object of data overrides (at most 32 KB), written to `tune-<label>.json` and passed as
   `--tune=<file>` (a variant with no tune gets no `--tune`; the game refuses a path or key it does not know with a printed line and exit code 2). No `variants` is one run labelled `clip`.
-- `presets`: one graphics preset, `["high"]` when none is given. `args`: game options as for screenshots (the app refuses `--clip-plan`, `--clips`, `--tune`, `--fixed-fps`, `--preset` and the others it sets itself).
+- `presets`: one graphics preset, `["high"]` when none is given. `args`: game options as for screenshots (the app refuses `--clip-plan`, `--clips`, `--tune`, `--fixed-fps`, `--clip-fps`, `--clip-width`, `--qa-window`, `--preset` and the others it sets itself).
 
-**One game run for each variant**, each with its own empty `APPDATA`/`LOCALAPPDATA` and its own `out\<label>\` folder: `DeathMuffinDebug.exe --windowed --resolution 1600x900 --audio-driver Dummy --fixed-fps 30 [--position X,Y] -- --dev-offline <options>
---preset=<preset> --clip-plan=<plan.json> --clips=<out>\<label> [--tune=<tune-label.json>]`, below normal priority, at most 10 minutes a run. `--fixed-fps 30` is the engine's: the game runs 30 frames per game second whatever the
-time a frame's readback takes, so the clip's timing is the game's. The window is silent and outside every monitor, as for screenshots. The game writes `<name>.mjpeg` (one JPEG per frame, 960 px wide) and `<name>.json` (fps, frames, size, the frame the rite
-was cast at; its contents go into the job's log) for each planned clip. A clip the game did not write, a run that wrote none, exit code 2 ("The game refused the clip plan or the tune for the slow variant"), another exit code, the 10 minutes or the player
+**1080p at 60** (Helix 2026-10-19). **One game run for each variant**, each with its own empty `APPDATA`/`LOCALAPPDATA` and its own `out\<label>\` folder: `DeathMuffinDebug.exe --windowed --resolution 1920x1080 --audio-driver Dummy --fixed-fps 60 [--position X,Y] -- --dev-offline <options>
+--preset=<preset> --clip-plan=<plan.json> --clips=<out>\<label> [--tune=<tune-label.json>] --clip-fps=60 --clip-width=1920 --qa-window=1920x1080`, below normal priority, at most 10 minutes a run. `--fixed-fps 60` is the engine's: the game runs 60 frames per game second whatever the
+time a frame's readback takes, so the clip's timing is the game's. The window is silent and outside every monitor (a spot for a 1920-wide window), as for screenshots, and `--qa-window` keeps it 1080 high on a 1080p screen. The game writes `<name>.mjpeg` (one JPEG per frame, up to 1920 px wide; a game build from before
+these flags records 960 wide at 30) and `<name>.json` (fps, frames, size, the frame the rite was cast at; its contents go into the job's log) for each planned clip.
+**The video is made on this PC** (`VideoEncoder.cs`): the first clip job downloads the encoder, ffmpeg 9.0.2 for Windows (gyan.dev's essentials build, GPL, with libx264; 105 MB; `JobPlan.Encoder`:
+`team-files/tools/ffmpeg-9.0.2/ffmpeg.exe` on the game's own site, its sha256 checked; kept in `cache\ffmpeg-<sha16>\` and never pruned), and after each run turns every clip into `<name>.mp4`: H.264 at the rate the clip's json says,
+yuv420p, at most 10 s, no sound, playable while it loads, below normal priority, at most 3 minutes; CRF 20 capped at 6 Mbit/s, then CRF 24 at 4 and CRF 28 at 2.5 until it is under 8,000,000 bytes (Discord's limit for the bot). The motion JPEG
+(about 150 MB a 1080p clip) is deleted once its video is made. A video that cannot be made fails the job ("The video of the clip pack on the slow variant could not be made: <ffmpeg's words>"). A clip the game did not write, a run that wrote none, exit code 2 ("The game refused the clip plan or the tune for the slow variant"), another exit code, the 10 minutes or the player
 starting Death Muffin fails the job with a sentence naming the variant, and nothing is uploaded unless every variant ran.
 
-**Uploads**: after all the runs, every clip as `<label>_<clip>.mjpeg` (sorted within a variant, variants in order) with `Content-Type: video/x-motion-jpeg` (an empty clip, or one over the server's 48 MB, fails the job; each is read into memory and sent on its own),
-then `done` with their names. **The server turns each into an mp4** (ffmpeg, under 8 MB for Discord) while it answers `done`: a clip it cannot turn into a video fails the job and the app shows the server's reason ("The clips were uploaded, but the server did
-not accept the finished job: ..."). A request of 40 s is a heartbeat, one of 6 minutes a clip upload or a done.
+**Uploads**: after all the runs, every video as `<label>_<clip>.mp4` (sorted within a variant, variants in order) with `Content-Type: video/mp4` (an empty one, or one over 8,000,000 bytes, fails the job; each is read into memory and sent on its own),
+then `done` with their names; the server checks each is a whole mp4 and keeps it as it is (a refused done shows the server's reason: "The clips were uploaded, but the server did not accept the finished job: ..."). A request of 40 s is a heartbeat, one of 6 minutes an upload over 1 MB or a done.
 
 ## The release job (`release`)
 
@@ -288,6 +291,8 @@ or the focus, the box growing with the list and staying in its corner).
 
 ### Changelog
 
+- **0.4.5** (2026-10-19) - Videos at 1080p and 60 frames a second (Helix): a clip run is 1920x1080 at `--fixed-fps 60` with `--clip-fps=60 --clip-width=1920 --qa-window=1920x1080`, and this PC makes each clip's mp4
+  with ffmpeg (downloaded once from the game's team-files, 105 MB, kept in the cache) and uploads only the mp4 (a few MB instead of about 150 MB of motion JPEG). The motion-JPEG upload is gone from the app.
 - **0.4.4** (2026-10-19) - Helix's job list: the box lists the first 10 jobs oldest first, each with who started its Discord thread and the thread's name (without emojis), and a click picks the one Run now
   runs; Not now hides the box for 30 minutes instead of refusing the job for good; the tray's Run now became **Show jobs** (a job runs only from the box); the tray's **Run benchmarks** (off: benchmark-only
   jobs are left alone and a release check's benchmark step is skipped) and **Allow AFK mode** (off: a box that runs out runs its job, the next one asks again). The heartbeat says whether benchmarks are on.

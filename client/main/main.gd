@@ -13,7 +13,8 @@ extends Node
 ## worker threads (the case that crashed the old game on 4-core PCs), after `QUIT-WHILE-LOADING <n> of <m> loads in flight`; the team app's `quit-loading` step checks the exit code 0 and that DmCrashWatch left no crash report.
 ## `--qa` / `--shot-plan=<plan.json>` (with `--shots=<dir>`, `--seconds=N`; dev-offline runs only): the QA tools beside the game, the scripted fight or the shot plan of a proposal (`start_qa`, client/README.md "Screenshots for proposals").
 ## `--qa-window=WxH` (only where the QA tools start): the window takes that size even when the screen is smaller (`full_size_window`; the team app's screens step sends it).
-## `--clip-plan=<plan.json> --clips=<dir>` (the same QA runs, engine started `--fixed-fps 30`): short video clips of a rite in use, 30 frames per game second as `<name>.mjpeg` (DmQaClips, client/README.md "Clips and tune").
+## `--clip-plan=<plan.json> --clips=<dir>` (the same QA runs, engine started `--fixed-fps 30`): short video clips of a rite in use, 30 frames per game second as `<name>.mjpeg` (DmQaClips, client/README.md "Clips and tune");
+## `--clip-fps=N --clip-width=N` (with `--fixed-fps N`) records at another rate and size: the team app's 1080p 60 fps clips.
 ## `--tune=<data.json>` (only where the QA tools start, `qa_tune`): data overrides for this run, merged into the game's data before anything reads it (DmQaTune); an unknown file, key or type is refused with a printed line and exit code 2.
 ## `--preset=<low|medium|high|ultra>` (only where the QA tools start, `qa_preset`): that graphics preset is in force from the game's start, as if chosen in Settings, and is never saved to the player's settings
 ## (a team PC's screenshots of a proposal on Low and Ultra); an unknown value is ignored with a printed warning. `--ui-scale=<0.8 to 1.25>` (`qa_ui_scale`) is Settings' Interface size for the run the same way.

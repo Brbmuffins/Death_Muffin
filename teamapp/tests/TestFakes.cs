@@ -391,6 +391,27 @@ namespace DeathMuffinTeam.Tests
         public void SetJobs(IList<string> lines) { lock (jobsLock) { JobLines = new List<string>(lines); JobUpdates++; } }
     }
 
+    /// <summary>A stand-in for ffmpeg: the "mp4" is MP4: and the clip's bytes; each call is noted as `<clip file>@<fps>`. <see cref="Fail"/> makes it fail, <see cref="Big"/> makes an mp4 past the server's limit.</summary>
+    sealed class FakeEncoder : IVideoEncoder
+    {
+        public readonly List<string> Calls = new List<string>();
+        public string Ffmpeg;
+        public string Fail;
+        public bool Big;
+
+        public static byte[] Mp4Of(byte[] mjpeg) { return Encoding.ASCII.GetBytes("MP4:").Concat(mjpeg).ToArray(); }
+
+        public Task<EncodeResult> EncodeAsync(string ffmpeg, string mjpeg, int fps, string mp4, CancellationToken ct)
+        {
+            lock (Calls) Calls.Add(Path.GetFileName(mjpeg) + "@" + fps);
+            Ffmpeg = ffmpeg;
+            if (Fail != null) return Task.FromResult(new EncodeResult { Error = Fail });
+            if (Big) using (var fs = new FileStream(mp4, FileMode.Create)) fs.SetLength(JobPlan.MaxMp4Bytes + 1);
+            else File.WriteAllBytes(mp4, Mp4Of(File.ReadAllBytes(mjpeg)));
+            return Task.FromResult(new EncodeResult { Ok = true, Bytes = new FileInfo(mp4).Length, Crf = 20, Seconds = 0.1 });
+        }
+    }
+
     sealed class FakeRunner : IJobRunner
     {
         public readonly List<string> Ran = new List<string>();

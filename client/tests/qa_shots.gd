@@ -614,6 +614,17 @@ func mjpeg_writer() -> void:
 	check(narrow.open(path) and narrow.add(Image.create_empty(401, 225, false, Image.FORMAT_RGBA8)) and narrow.width == 400 and narrow.height == 224, "a picture narrower than 960 keeps its width, both sides made even (%dx%d)" % [narrow.width, narrow.height])
 	narrow.close()
 	check(not DmQaMjpeg.new().open("/no/such/dir/a.mjpeg"), "a file that cannot be written is said")
+	var wide := DmQaMjpeg.new()
+	wide.max_width = 1920
+	check(wide.open(path) and wide.add(Image.create_empty(1921, 1081, false, Image.FORMAT_RGBA8)) and wide.width == 1920 and wide.height == 1080, "with max_width 1920 a 1080p window keeps its size (%dx%d)" % [wide.width, wide.height])
+	wide.close()
+	# the team app's 1080p 60 fps clips ask with --clip-fps / --clip-width; anything out of range keeps the defaults, with a note
+	var o := DmQaClips.options(PackedStringArray(["--dev-offline", "--clip-fps=60", "--clip-width=1920"]))
+	check(o["fps"] == 60 and o["width"] == 1920 and (o["notes"] as Array).is_empty(), "--clip-fps=60 --clip-width=1920 are read (%s)" % str(o))
+	var d := DmQaClips.options(PackedStringArray(["--clip-plan=x"]))
+	check(d["fps"] == DmQaClips.FPS and d["width"] == DmQaMjpeg.WIDTH and (d["notes"] as Array).is_empty(), "none given: %d frames a game second, %d wide (%s)" % [DmQaClips.FPS, DmQaMjpeg.WIDTH, str(d)])
+	var bad := DmQaClips.options(PackedStringArray(["--clip-fps=120", "--clip-width=wide", "--clip-fps=", "--clip-width=100"]))
+	check(bad["fps"] == DmQaClips.FPS and bad["width"] == DmQaMjpeg.WIDTH and (bad["notes"] as Array).size() == 4, "out of range or not a number: the defaults, a note each (%s)" % str(bad))
 
 
 ## The tune's refusals: each changes nothing in the data (and is a line the boot prints).
@@ -803,6 +814,11 @@ func clips_on_a_reaper() -> void:
 	check(tv3["ok"] and (view.get("worn", {}) as Dictionary).is_empty() and tv3["frames"] == 30, "and an empty list takes everything off (%s)" % str(view.get("worn")))
 	var tmeta: Variant = JSON.parse_string(FileAccess.get_file_as_string(dir.path_join("preview.json")))
 	check(tmeta is Dictionary and tmeta["cast_at_frame"] == -1.0 and tmeta["frames"] == 60.0 and FileAccess.file_exists(dir.path_join("preview.mjpeg")), "preview.json says the cast frame is -1 (no cast): %s" % str(tmeta))
+	# at 60 frames per game second (the team app's 1080p clips): twice the frames for the same seconds, and the json says so
+	yaws.clear()
+	var t60: Dictionary = await DmQaClips.record(root, cg, tplan["clips"][2], dir, turn, 60, 1920)
+	var m60: Variant = JSON.parse_string(FileAccess.get_file_as_string(dir.path_join("bare.json")))
+	check(t60["ok"] and t60["frames"] == 60 and m60 is Dictionary and m60["fps"] == 60.0 and m60["frames"] == 60.0 and m60["width"] == 400.0, "a 1 s clip at 60 fps is 60 frames, its json says fps 60, and a narrower window keeps its width (%s)" % str(m60))
 	# a tune reaches the rite that is cast
 	var tuned := DmQaTune.apply({"combat/abilities": {"abilities": {"haunting_wraith": {"speed": speed0 * 0.5}}}})
 	seen["n"] = 0

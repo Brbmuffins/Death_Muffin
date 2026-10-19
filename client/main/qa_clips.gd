@@ -1,9 +1,10 @@
 class_name DmQaClips
 extends RefCounted
-## Clip plan for the QA driver (`-- --dev-offline --class=11 --qa --clip-plan=/abs/plan.json --clips=/abs/dir`, with the engine started `--fixed-fps 30`): short videos of a rite in use. Loaded by main/qa_driver.gd
+## Clip plan for the QA driver (`-- --dev-offline --class=11 --qa --clip-plan=/abs/plan.json --clips=/abs/dir [--clip-fps=N] [--clip-width=N]`, with the engine started `--fixed-fps <the same N>`): short videos of a rite in use. Loaded by main/qa_driver.gd
 ## only when `--clip-plan=` is given, so normal play never touches it (and `DmMain.qa_wanted` lets it start on the dev-offline backend of a debug build only). client/README.md "Clips and tune".
-## For each clip the run enters the area, makes the stand-in enemies, lets the scene settle, then records the viewport at 30 frames per game second into `<dir>/<name>.mjpeg` (main/qa_mjpeg.gd)
-## and writes `<dir>/<name>.json` = {fps, frames, width, height, cast_at_frame}. Variants of a clip are runs of their own with another `--tune=` (main/qa_tune.gd).
+## For each clip the run enters the area, makes the stand-in enemies, lets the scene settle, then records the viewport at FPS frames per game second into `<dir>/<name>.mjpeg` (main/qa_mjpeg.gd), at most
+## DmQaMjpeg.WIDTH wide, and writes `<dir>/<name>.json` = {fps, frames, width, height, cast_at_frame}. `--clip-fps=N` (MIN_FPS to MAX_FPS) and `--clip-width=N` (MIN_WIDTH to MAX_WIDTH) change those two
+## (`options`): the team app records 1080p at 60 frames per game second with `--clip-fps=60 --clip-width=1920` and a window of 1920x1080 (Helix 2026-10-19), and makes the mp4 on the PC. Variants of a clip are runs of their own with another `--tune=` (main/qa_tune.gd).
 ##
 ## Plan: {"discipline": "reaper" (or 1-4 / 11; the game must have been started as that class: `--class=N`),
 ##        "equip": ["<item id>", ...] (at most DmQaUiShots.MAX_EQUIP, worn by the hero for every clip, through the backend's equip call like the shot plan's: the model previews),
@@ -23,7 +24,11 @@ extends RefCounted
 ## hurt the hero), and the HUD is hidden. Without cast steps the rite of `cast` is cast LEAD_FRAMES frames in (so the first frames show the scene before it) and again each time it is off cooldown;
 ## the hero's souls and essence are topped up for each cast unless the setup turns that off.
 
-const FPS := 30                 ## frames per game second
+const FPS := 30                 ## frames per game second, unless the run asks for another (`options`)
+const MIN_FPS := 10
+const MAX_FPS := 60
+const MIN_WIDTH := 320          ## the narrowest and widest picture a run may ask for (`--clip-width=`)
+const MAX_WIDTH := 1920
 const MAX_CLIPS := 4
 const MIN_SECONDS := 1.0
 const MAX_SECONDS := 8.0
@@ -31,7 +36,7 @@ const MAX_ENEMIES := 12
 const MAX_NAME := 32            ## characters (the team app puts the variant's label before it in a file name)
 const ATS := ["pack", "ahead"]
 const CAMERAS := ["follow", "wide", "turntable"]
-const LEAD_FRAMES := 6          ## the scene is recorded this long before the first cast
+const LEAD_FRAMES := 6          ## the scene is recorded this long (at FPS) before the first cast: 0.2 s, the same time at any frame rate
 const SETTLE_S := 1.5           ## game seconds the scene stands still after the stand-ins have risen
 const SETTLE_MAX_S := 20.0      ## and the longest wait for them to rise
 const DUMMY := "robber"
@@ -47,6 +52,21 @@ const MAX_SETUP := 12
 const MAX_STEPS := 24
 const SETUP_WORDS := ["hud", "stand_ins", "souls", "top_up"]   ## the setup words this recorder carries out (stage, record); STEPS_FILE lists the same
 const STEP_WORDS := ["cast"]                                   ## the step words it carries out (record's loop)
+
+
+## The run's recording options from the game's arguments: {fps, width, notes}. `--clip-fps=N` and `--clip-width=N` outside their ranges, or not whole numbers, keep the defaults (FPS, DmQaMjpeg.WIDTH) with a note.
+static func options(args: PackedStringArray) -> Dictionary:
+	var out := {"fps": FPS, "width": DmQaMjpeg.WIDTH, "notes": []}
+	for a in args:
+		for spec in [["--clip-fps=", "fps", MIN_FPS, MAX_FPS], ["--clip-width=", "width", MIN_WIDTH, MAX_WIDTH]]:
+			if not a.begins_with(spec[0]):
+				continue
+			var v := a.trim_prefix(spec[0])
+			if v.is_valid_int() and int(v) >= int(spec[2]) and int(v) <= int(spec[3]):
+				out[spec[1]] = int(v)
+			else:
+				(out["notes"] as Array).append("%s%s is not a whole number from %d to %d: %d kept" % [spec[0], v, spec[2], spec[3], out[spec[1]]])
+	return out
 
 
 ## Parses and validates plan text. Returns {ok, error, discipline (name or ""), class_index (0 = not set), equip (the plan's), clips, notes}; each clip is {name, area, cast, at, enemies, seconds, camera, equip (what it wears:
@@ -308,7 +328,8 @@ static func class_refusal(plan: Dictionary, have: int) -> String:
 
 ## Runs the plan on a live game, then quits the tree: exit code 0 = every clip written, 1 = one was not (a run with no renderer, a rite that was refused), 2 = a plan or a class the run cannot use.
 ## `root` is any node in the tree (the QA driver); `source` returns the picture to store (default the viewport's), null = nothing is drawn.
-static func run(root: Node, game: DmNextGame, plan_path: String, out_dir: String, source := Callable()) -> void:
+## `fps` and `width`: the recording's frames per game second and widest picture (`options`).
+static func run(root: Node, game: DmNextGame, plan_path: String, out_dir: String, source := Callable(), fps := FPS, width := DmQaMjpeg.WIDTH) -> void:
 	var tree := root.get_tree()
 	var plan := parse(FileAccess.get_file_as_string(plan_path))
 	if not plan["ok"] or out_dir == "":
@@ -333,10 +354,10 @@ static func run(root: Node, game: DmNextGame, plan_path: String, out_dir: String
 	var noted := false
 	for clip in plan["clips"]:
 		var t0 := Time.get_ticks_msec()
-		var r: Dictionary = await record(root, game, clip, out_dir, source)
-		if not noted and r.has("step") and absf(float(r["step"]) - 1.0 / FPS) > 0.0005:
+		var r: Dictionary = await record(root, game, clip, out_dir, source, fps, width)
+		if not noted and r.has("step") and absf(float(r["step"]) - 1.0 / fps) > 0.0005:
 			noted = true
-			print("QA-CLIPS note: the frame step is %.4f s, not 1/%d: the clips keep %d frames per game second all the same (start the engine with --fixed-fps %d for one picture per frame)" % [float(r["step"]), FPS, FPS, FPS])
+			print("QA-CLIPS note: the frame step is %.4f s, not 1/%d: the clips keep %d frames per game second all the same (start the engine with --fixed-fps %d for one picture per frame)" % [float(r["step"]), fps, fps, fps])
 		if r["ok"]:
 			print("QA-CLIPS clip %s/%s.mjpeg %d frames %dx%d, cast at frame %s, %dms" % [out_dir, clip["name"], r["frames"], r["width"], r["height"], str(r["casts"]), Time.get_ticks_msec() - t0])
 		else:
@@ -346,7 +367,7 @@ static func run(root: Node, game: DmNextGame, plan_path: String, out_dir: String
 
 
 ## One clip: stages the scene, records it, writes `<out_dir>/<name>.mjpeg` and `.json`; the files of a clip that failed are removed. Returns {ok, why, frames, width, height, casts (the frames the rite was cast at; none for a clip with no `cast`, which has `cast_at_frame` -1), step (a frame's game time)}.
-static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: String, source := Callable()) -> Dictionary:
+static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: String, source := Callable(), fps := FPS, width := DmQaMjpeg.WIDTH) -> Dictionary:
 	var tree := root.get_tree()
 	var rite: String = clip["cast"]   # "" = no cast (a turntable preview)
 	var res := {"ok": false, "why": "", "frames": 0, "width": 0, "height": 0, "casts": []}
@@ -367,6 +388,8 @@ static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: Stri
 	var base := "%s/%s" % [out_dir, clip["name"]]
 	_remove(base + ".json")   # a clip's json is there only with the clip it describes
 	var writer := DmQaMjpeg.new()
+	writer.max_width = width
+	var lead := int(roundf(float(LEAD_FRAMES) * float(fps) / float(FPS)))
 	if not writer.open(base + ".mjpeg"):
 		res["why"] = "cannot write %s.mjpeg" % base
 		_clean_up(game, caster, _rites(rite, steps), staged)
@@ -375,7 +398,7 @@ static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: Stri
 	var on_refused := func(_id: String, why: String) -> void:
 		last[0] = why
 	caster.cast_rejected.connect(on_refused)
-	var total := int(roundf(float(clip["seconds"]) * FPS))
+	var total := int(roundf(float(clip["seconds"]) * fps))
 	var guard := total * 20 + 600   # iterations: a game whose time does not advance ends the clip instead of hanging
 	var elapsed := 0.0
 	var casts: Array = res["casts"]
@@ -388,7 +411,7 @@ static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: Stri
 			break
 		if turntable:
 			_spin(body, float(writer.frames) / float(total))
-		if rite != "" and not timed and ((casts.is_empty() and writer.frames >= LEAD_FRAMES) or (not casts.is_empty() and caster.cooldown_left(rite) <= 0.0)):
+		if rite != "" and not timed and ((casts.is_empty() and writer.frames >= lead) or (not casts.is_empty() and caster.cooldown_left(rite) <= 0.0)):
 			if bool(opts["top_up"]):
 				_top_up(caster)
 			last[0] = ""
@@ -398,7 +421,7 @@ static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: Stri
 			elif last[0] != "busy" and last[0] != "cooldown":   # those two are tried again next frame
 				failed = "the rite was refused (%s)" % last[0]
 				break
-		while next_step < steps.size() and float(writer.frames) / FPS >= float(steps[next_step]["at"]):
+		while next_step < steps.size() and float(writer.frames) / fps >= float(steps[next_step]["at"]):
 			var st: Dictionary = steps[next_step]
 			# "cast", the one step word (STEP_WORDS): the step waits while the rite is busy or cooling down, any other refusal fails the clip
 			if bool(opts["top_up"]):
@@ -418,7 +441,7 @@ static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: Stri
 		var dt := root.get_process_delta_time()
 		res["step"] = dt
 		elapsed += dt
-		var due := mini(total, int(floor(elapsed * FPS + 1e-6))) - writer.frames
+		var due := mini(total, int(floor(elapsed * fps + 1e-6))) - writer.frames
 		if due > 0:
 			var img: Image = source.call() if source.is_valid() else DmQaUiShots.grab(root)
 			if not writer.add(img, due):
@@ -439,7 +462,7 @@ static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: Stri
 		_remove(base + ".mjpeg")
 		res["why"] = "cannot write %s.json" % base
 		return res
-	meta.store_string(JSON.stringify({"fps": FPS, "frames": writer.frames, "width": writer.width, "height": writer.height, "cast_at_frame": casts[0] if not casts.is_empty() else -1}))
+	meta.store_string(JSON.stringify({"fps": fps, "frames": writer.frames, "width": writer.width, "height": writer.height, "cast_at_frame": casts[0] if not casts.is_empty() else -1}))
 	meta.close()
 	res["ok"] = true
 	res["frames"] = writer.frames

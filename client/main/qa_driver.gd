@@ -1,6 +1,6 @@
 extends Node
 ## QA driver, started by the boot (`DmMain.start_qa`, a child named Driver) only for a dev-offline run with `-- --qa`, `-- --shot-plan` or `-- --clip-plan`: a release export never honours a testing flag, and no other start
-## compiles this script (it names most of the game). Inactive unless the game is started with user args:  -- --qa [--shots=<dir>] [--seconds=N] [--shot-plan=<plan.json>] [--clip-plan=<plan.json> --clips=<dir>] [--preset=<low|medium|high|ultra>] [--tune=<data.json>]
+## compiles this script (it names most of the game). Inactive unless the game is started with user args:  -- --qa [--shots=<dir>] [--seconds=N] [--shot-plan=<plan.json>] [--clip-plan=<plan.json> --clips=<dir> [--clip-fps=N] [--clip-width=N]] [--preset=<low|medium|high|ultra>] [--tune=<data.json>]
 ## (`--preset=` is read by the boot, `DmMain.qa_preset`, and applied by the game scene; the driver only says which preset the run has. `--tune=` is applied by the boot, `DmQaTune`, before the game is built.)
 ## Launch it with the dev-offline quick start (`--dev-offline --class=2`, or its alias `--world-demo`): the game scene (DmNextGame) as the test account `tester`; client/tools/qa_shots.sh renders it.
 ## Default: scripted fight in the Hollow Graves, a wave of the dead around the hero, the real rites cast at the nearest enemy; one
@@ -53,7 +53,10 @@ func _process(dt: float) -> void:
 				return
 			set_process(false)
 			if clip_path != "":
-				DmQaClips.run(self, nxt, clip_path, clips)
+				var o := DmQaClips.options(OS.get_cmdline_user_args())
+				for note in o["notes"]:
+					print("QA-CLIPS note: ", note)
+				DmQaClips.run(self, nxt, clip_path, clips, Callable(), int(o["fps"]), int(o["width"]))
 			else:
 				DmQaUiShots.run(self, nxt, plan_path, shots)
 			return

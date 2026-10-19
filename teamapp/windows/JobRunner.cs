@@ -71,6 +71,9 @@ namespace DeathMuffinTeam
         public int SampleMs = 1000;
         public int BenchTries = 3;
         public QuietRules Rules = new QuietRules();
+        /// <summary>The video encoder clips' mp4s are made with (JobPlan.Encoder: fetched once into cache\), and what runs it (tests use stand-ins).</summary>
+        public PlanFile EncoderFile = JobPlan.Encoder;
+        public IVideoEncoder Encoder = new FfmpegEncoder();
         /// <summary>The tray's Run benchmarks: false makes a `release` job skip its benchmark step (reported as skipped, not failed). Null: always on.</summary>
         public Func<bool> BenchmarksAllowed;
         public const string BenchSkipped = "Skipped: benchmarks are off on this PC (the team app's tray menu, Run benchmarks).";
@@ -139,10 +142,12 @@ namespace DeathMuffinTeam
                 if (plan.Kind != JobPlan.ReleaseKind)
                     foreach (PlanBuild build in builds) await FetchBuildAsync(jobId, plan, build, fetched, note, progress, ct).ConfigureAwait(false);
                 // (a `release` job fetches each build when the first step that needs it runs: a download that fails fails that step, not the job)
+                string encoder = plan.Kind == JobPlan.ClipKind ? await FetchEncoderAsync(fetched, note, progress, ct).ConfigureAwait(false) : null;
+                fetched.UsedKeys.Add(EncoderFile.CacheKey);   // the video encoder stays in cache\ whatever job runs (105 MB, needed by every clip job)
                 if (plan.Kind != JobPlan.ReleaseKind) folders.PruneCache(TeamLogic.KeepCacheKeys, fetched.UsedKeys);
                 result.DownloadS = clock.Elapsed.TotalSeconds;
                 if (plan.Kind == JobPlan.BenchKind) return await RunBenchAsync(jobId, plan, result, log, note, progress, ct).ConfigureAwait(false);
-                if (plan.Kind == JobPlan.ClipKind) return await RunClipsAsync(jobId, plan, result, log, note, progress, ct).ConfigureAwait(false);
+                if (plan.Kind == JobPlan.ClipKind) return await RunClipsAsync(jobId, plan, encoder, result, log, note, progress, ct).ConfigureAwait(false);
                 if (plan.Kind == JobPlan.ReleaseKind) return await RunReleaseAsync(jobId, plan, fetched, result, log, note, progress, ct).ConfigureAwait(false);
 
                 string planPath = folders.PlanFile(jobId);
@@ -250,6 +255,27 @@ namespace DeathMuffinTeam
             public readonly Dictionary<string, string> Failed = new Dictionary<string, string>();     // build label -> why its files could not be fetched (a `release` job tries each build once)
             public readonly HashSet<string> Done = new HashSet<string>();                             // build labels fetched
             public int FileNo, FileCount;
+        }
+
+        /// <summary>The video encoder (EncoderFile), checked and kept in cache\ like the art pack: downloaded once, by the first clip job. Its path.</summary>
+        async Task<string> FetchEncoderAsync(Fetched st, Action<string> note, Action<string> progress, CancellationToken ct)
+        {
+            PlanFile f = EncoderFile;
+            Directory.CreateDirectory(folders.CacheDir(f.CacheKey));
+            string target = Path.Combine(folders.CacheDir(f.CacheKey), f.Name);
+            int lastPct = -1;
+            Action<long> report = n =>
+            {
+                int pct = (int)Math.Min(100, n * 100 / Math.Max(1, f.Bytes));
+                if (pct != lastPct) { lastPct = pct; progress("Downloading the video encoder (once): " + pct + "%"); }
+            };
+            bool fresh;
+            try { fresh = await fetcher.EnsureAsync(f, target, report, ct).ConfigureAwait(false); }
+            catch (IOException ex) { throw new JobFailure("The video encoder could not be downloaded: " + ex.Message); }
+            note((fresh ? "downloaded " : "kept from an earlier job: ") + f.Name + " (" + Mb(f.Bytes) + ", cache " + f.CacheKey + ")");
+            folders.TouchCache(f.CacheKey);
+            st.UsedKeys.Add(f.CacheKey);
+            return target;
         }
 
         /// <summary>
@@ -411,10 +437,11 @@ namespace DeathMuffinTeam
         // ---- The `clip` job --------------------------------------------------------------------------------------------------------
 
         /// <summary>
-        /// A `clip` job with its files in place: one game run for each variant (its own empty folders, the engine's `--fixed-fps 30`, the clip plan, and the variant's tune when it has one), then every
-        /// clip the game wrote (`<variant>_<clip>.mjpeg`) is uploaded and the job is done. The game records the frames; the server turns them into videos.
+        /// A `clip` job with its files in place: one game run for each variant (its own empty folders, 1080p at the engine's `--fixed-fps 60`, the clip plan, and the variant's tune when it has one), then
+        /// this PC makes each clip the game wrote into an mp4 (<paramref name="encoder"/>: ffmpeg, <see cref="Encoder"/>; the motion JPEG, about 150 MB a clip, is deleted once its video is made), the mp4s
+        /// (`<variant>_<clip>.mp4`) are uploaded and the job is done (Helix 2026-10-19: 1080p at 60 frames a second).
         /// </summary>
-        async Task<RunResult> RunClipsAsync(string jobId, JobPlan plan, RunResult result, StringBuilder log, Action<string> note, Action<string> progress, CancellationToken ct)
+        async Task<RunResult> RunClipsAsync(string jobId, JobPlan plan, string encoder, RunResult result, StringBuilder log, Action<string> note, Action<string> progress, CancellationToken ct)
         {
             string gameDir = folders.GameDir(jobId), outDir = folders.OutDir(jobId), planPath = folders.PlanFile(jobId), preset = plan.Presets[0];
             File.WriteAllText(planPath, plan.PlanJson, new UTF8Encoding(false));
@@ -441,33 +468,56 @@ namespace DeathMuffinTeam
                 runClock.Start();
                 try
                 {
-                    await RunGameAsync(plan.ClipCommandArgs(variant, preset, planPath, clipsDir, tuneFile, ShotsPosition == null ? null : ShotsPosition()), JobPlan.GameExe, label, gameDir, appData, localAppData, "recorded every clip",
+                    await RunGameAsync(plan.ClipCommandArgs(variant, preset, planPath, clipsDir, tuneFile, PositionFor(JobPlan.ClipWidth)), JobPlan.GameExe, label, gameDir, appData, localAppData, "recorded every clip",
                         "The game refused the clip plan or the tune for " + label + " (code 2). The log says which line.", note, ct).ConfigureAwait(false);
                 }
                 finally { runClock.Stop(); }
-                var found = JobPlan.ClipUploadNames(variant.Label, Directory.GetFiles(clipsDir, "*.mjpeg"), usedNames);
-                if (found.Count == 0) { AppendGodotLog(appData, note); throw new JobFailure("The game finished " + label + " but recorded no clips."); }
+                var recorded = new List<string>(Directory.GetFiles(clipsDir, "*.mjpeg"));
+                recorded.Sort(StringComparer.Ordinal);
+                if (recorded.Count == 0) { AppendGodotLog(appData, note); throw new JobFailure("The game finished " + label + " but recorded no clips."); }
                 foreach (string planned in plan.ClipNames)
                     if (!File.Exists(Path.Combine(clipsDir, planned + ".mjpeg"))) { AppendGodotLog(appData, note); throw new JobFailure("The game did not record the clip " + planned + " on " + label + "."); }
-                note(label + ": " + found.Count + " clip(s)");
-                foreach (var clip in found) NoteClipInfo(clip.Key, note);
-                clips.AddRange(found);
+                note(label + ": " + recorded.Count + " clip(s)");
+                for (int k = 0; k < recorded.Count; k++)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    string mjpeg = recorded[k], name = Path.GetFileNameWithoutExtension(mjpeg);
+                    int fps = NoteClipInfo(mjpeg, note);
+                    progress("Making the video of " + name + (recorded.Count > 1 ? " (" + (k + 1) + " of " + recorded.Count + ")" : ""));
+                    runClock.Start();
+                    EncodeResult made;
+                    try { made = await Encoder.EncodeAsync(encoder, mjpeg, fps, Path.ChangeExtension(mjpeg, ".mp4"), ct).ConfigureAwait(false); }
+                    finally { runClock.Stop(); }
+                    if (!made.Ok) throw new JobFailure("The video of the clip " + name + " on " + label + " could not be made: " + made.Error);
+                    note("clip " + name + ": mp4 of " + (made.Bytes / 1e6).ToString("0.0", CultureInfo.InvariantCulture) + " MB at " + fps + " fps (crf " + made.Crf + ") in " + made.Seconds.ToString("0.0", CultureInfo.InvariantCulture) + " s");
+                    try { File.Delete(mjpeg); } catch (IOException) { } catch (UnauthorizedAccessException) { }   // its frames are in the mp4 now
+                }
+                clips.AddRange(JobPlan.Mp4UploadNames(variant.Label, Directory.GetFiles(clipsDir, "*.mp4"), usedNames));
             }
             result.RunS = runClock.Elapsed.TotalSeconds;
             if (clips.Count > JobPlan.MaxUploads) clips.RemoveRange(JobPlan.MaxUploads, clips.Count - JobPlan.MaxUploads);
-            return await UploadAndFinishAsync(jobId, clips, "clip", JobPlan.MaxClipBytes, result, log, note, progress, ct).ConfigureAwait(false);
+            return await UploadAndFinishAsync(jobId, clips, "clip", JobPlan.MaxMp4Bytes, result, log, note, progress, ct).ConfigureAwait(false);
         }
 
-        /// <summary>The game's note about a clip (`<name>.json`: fps, frames, size, the frame the rite was cast at) in the log, when it wrote one and it is small.</summary>
-        static void NoteClipInfo(string mjpegPath, Action<string> note)
+        /// <summary>The game's note about a clip (`<name>.json`: fps, frames, size, the frame the rite was cast at) in the log, when it wrote one and it is small. Returns the clip's frames a second: the note's
+        /// `fps` (a game build from before 1080p clips records 30 whatever the app asks), 30 when it says none.</summary>
+        static int NoteClipInfo(string mjpegPath, Action<string> note)
         {
+            int fps = 30;
             try
             {
                 string info = Path.ChangeExtension(mjpegPath, ".json");
-                if (File.Exists(info) && new FileInfo(info).Length <= 2048) note("clip " + Path.GetFileNameWithoutExtension(mjpegPath) + ": " + File.ReadAllText(info).Replace('\n', ' ').Replace('\r', ' ').Trim());
+                if (File.Exists(info) && new FileInfo(info).Length <= 2048)
+                {
+                    string text = File.ReadAllText(info);
+                    note("clip " + Path.GetFileNameWithoutExtension(mjpegPath) + ": " + text.Replace('\n', ' ').Replace('\r', ' ').Trim());
+                    long? said = MiniJson.Int(MiniJson.TryObject(text), "fps");
+                    if (said.HasValue && said.Value >= 1 && said.Value <= 120) fps = (int)said.Value;
+                }
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
+            return fps;
         }
 
         // ---- The `release` job -----------------------------------------------------------------------------------------------------

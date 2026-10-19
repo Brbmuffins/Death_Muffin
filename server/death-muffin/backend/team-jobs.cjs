@@ -6,8 +6,8 @@
  * team_jobs.requested_by and thread_name, migration 060).
  * Job kinds: `shots` (pictures of a proposal, uploaded as PNG files), `release` (the release checks of a new client on a team PC: one job, steps run in order, each step's
  * result uploaded as a `<step>.json` file beside the screens' PNGs as it finishes, then `done` with how each step went; the reporter reads them with the internal list route),
- * `clip` (short videos of a change: the PC uploads motion-JPEG files, and `done` turns each into an
- * mp4 with ffmpeg here, because the game's debug build has no video encoder) and `bench` (the release's benchmark runs on a team PC, handed over in `done` and stored
+ * `clip` (short videos of a change: since team app 0.4.5 the PC makes each mp4 itself (1080p at 60, Helix 2026-10-19) and uploads it, checked and kept as it is; an older app uploads
+ * motion-JPEG files, and `done` turns each into an mp4 with ffmpeg here, because the game's debug build has no video encoder) and `bench` (the release's benchmark runs on a team PC, handed over in `done` and stored
  * in the benchmark history, benchmarks.cjs, marked as team-PC runs; the `release` job, which server/death-muffin/team-check.sh queues for a revision before it goes live, carries the same runs).
  *
  * The app signs in with its own team token, never the game's login session: POST /api/team/login checks the account's password like /login does
@@ -30,10 +30,11 @@
  *                                              with a target PC is offered to and claimed by that PC only (403 `not_your_job` for another)
  *   POST /api/team/jobs/:id/decline            { pcId, reason } -> { success }   the job stays queued for the other PCs; not_now keeps it from this PC for good (the app's Not now no longer sends it: it hides the list for 30 minutes)
  *   PUT  /api/team/jobs/:id/files/:name        one file as the raw body, 40 a job (120 for a release job): a PNG (`image/png`, at most 20 MB; not for a clip job), for a clip job only a
+ *                                              clip's video (`<name>.mp4`, `video/mp4`, at most 8,000,000 bytes, whole boxes: ftyp first, moov, mdat with data) or a
  *                                              motion-JPEG clip (`<name>.mjpeg`, `video/x-motion-jpeg`, at most 48 MB, starting with a JPEG picture), for a release job only a step's
  *                                              result (`<name>.json`, `application/json`, at most 1 MB, valid JSON) -> { success, data: { name, bytes, width, height } } (no size for a JSON file)
- *   POST /api/team/jobs/:id/done               shots: { files, log, timings }; clip: { files: [the uploaded .mjpeg names], log, timings }, which turns each clip into
- *                                              <name>.mp4 (ffmpeg, below) and keeps the mp4 only; release: { steps: [{ step, ok, error?, ms? }], files: [uploaded .png/.json names],
+ *   POST /api/team/jobs/:id/done               shots: { files, log, timings }; clip: { files: [the uploaded .mp4 or .mjpeg names], log, timings }: an mp4 is kept as it is (it must still hold a
+ *                                              video), a .mjpeg is turned into <name>.mp4 (ffmpeg, below) and only the mp4 kept; release: { steps: [{ step, ok, error?, ms? }], files: [uploaded .png/.json names],
  *                                              runs?: [the bench step's benchmark payloads, as for bench], log, timings } (a step the PC skipped, a benchmark with benchmarks off there, is { step, ok: true, skipped: true, error }); bench: { runs: [the benchmark payloads DmApi.post_benchmark sends, at most 6, each at
  *                                              most 64 KB of JSON], log, timings } -> { success, data: { id, status } }. A bench run that does not validate (the words
  *                                              of POST /api/benchmarks) fails the job with those words and answers 400 with them. The body may be up to 1 MB (this
@@ -133,6 +134,7 @@ const MP4_NAME_RE = /^[a-z0-9][a-z0-9_-]{0,59}\.mp4$/;
 const JSON_NAME_RE = /^[a-z0-9][a-z0-9_-]{0,59}\.json$/;
 const RESULT_NAME_RE = { result: [FILE_NAME_RE, MP4_NAME_RE, JSON_NAME_RE], stored: [FILE_NAME_RE, CLIP_NAME_RE, MP4_NAME_RE, JSON_NAME_RE] };   // what a job's listing shows (pictures and videos), and what its folder may hold
 const CLIP_TYPE = 'video/x-motion-jpeg';
+const MP4_TYPE = 'video/mp4';
 const KIND_CLIP = 'clip';
 const KIND_RELEASE = 'release';
 const STEP_NAMES = ['install', 'quit-loading', 'screens', 'stutter', 'bench', 'soak'];   // a release job's steps, in the order they run
@@ -233,6 +235,28 @@ function parseNewJob(body) {
   const requestedBy = plain(b.requestedBy, REQUESTED_BY_MAX) || null;
   const thread = plain(b.thread, THREAD_MAX) || null;
   return { job: { kind, title, weightS: clampInt(b.weightS, 0, WEIGHT_MAX_S) ?? 60, payload, ttlS: clampInt(b.ttlS, TTL_MIN_S, TTL_MAX_S) ?? TTL_DEFAULT_S, targetPc, supersede, requestedBy, thread } };
+}
+
+/**
+ * Check an mp4 a team PC made of a clip (team app 0.4.5: Helix 2026-10-19, 1080p at 60 frames a second, the video made on the PC): whole boxes from the start, an `ftyp` first, a `moov`
+ * and an `mdat` with data (what mp4HoldsVideo asks of a file on disk). Returns { error } or {}.
+ */
+function checkMp4(buf) {
+  const notVideo = { error: 'That file is not an mp4 video (it must be whole: ftyp first, then moov and the picture data).' };
+  if (!Buffer.isBuffer(buf) || buf.length < 16 || buf.toString('latin1', 4, 8) !== 'ftyp') return notVideo;
+  const seen = {};
+  for (let at = 0, boxes = 0; at < buf.length; boxes++) {
+    if (boxes >= 64 || at + 8 > buf.length) return notVideo;
+    let len = buf.readUInt32BE(at);
+    let header = 8;
+    if (len === 1) { if (at + 16 > buf.length) return notVideo; len = Number(buf.readBigUInt64BE(at + 8)); header = 16; }
+    else if (len === 0) len = buf.length - at;   // the last box runs to the end of the file
+    if (len < header || at + len > buf.length) return notVideo;
+    const kind = buf.toString('latin1', at + 4, at + 8);
+    seen[kind] = Math.max(seen[kind] || 0, len - header);
+    at += len;
+  }
+  return 'moov' in seen && (seen.mdat || 0) > 0 ? {} : notVideo;
 }
 
 /**
@@ -769,23 +793,24 @@ module.exports = function mountTeamJobs(app, pool, {
     const id = validJobId(req, res);
     if (!id) return;
     const name = typeof req.params.name === 'string' ? req.params.name : '';
-    // what the file is: a motion-JPEG video clip (a clip job), a step's JSON result (a release job) or a PNG picture (any job but a clip job)
-    const sort = CLIP_NAME_RE.test(name) ? 'clip' : JSON_NAME_RE.test(name) ? 'result' : FILE_NAME_RE.test(name) ? 'picture' : null;
-    if (!sort) return fail(res, 400, 'bad_request', 'A file name uses lowercase letters, digits, - and _, and ends in .png (a picture), .mjpeg (a video clip) or .json (a step\'s result), at most 60 characters before it.');
-    const limit = sort === 'clip' ? CLIP_MAX_BYTES : sort === 'result' ? JSON_MAX_BYTES : FILE_MAX_BYTES;
-    const type = sort === 'clip' ? CLIP_TYPE : sort === 'result' ? 'application/json' : 'image/png';
+    // what the file is: a clip's video made on the PC (.mp4) or a motion-JPEG clip the server makes it of (.mjpeg, the team app before 0.4.5), both for a clip job; a step's JSON result (a release job);
+    // or a PNG picture (any job but a clip job)
+    const sort = MP4_NAME_RE.test(name) ? 'video' : CLIP_NAME_RE.test(name) ? 'clip' : JSON_NAME_RE.test(name) ? 'result' : FILE_NAME_RE.test(name) ? 'picture' : null;
+    if (!sort) return fail(res, 400, 'bad_request', 'A file name uses lowercase letters, digits, - and _, and ends in .png (a picture), .mp4 or .mjpeg (a video clip) or .json (a step\'s result), at most 60 characters before it.');
+    const limit = sort === 'video' ? MP4_MAX_BYTES : sort === 'clip' ? CLIP_MAX_BYTES : sort === 'result' ? JSON_MAX_BYTES : FILE_MAX_BYTES;
+    const type = sort === 'video' ? MP4_TYPE : sort === 'clip' ? CLIP_TYPE : sort === 'result' ? 'application/json' : 'image/png';
     if (String((req.headers || {})['content-type'] || '').split(';')[0].trim().toLowerCase() !== type) return fail(res, 415, 'bad_type', `Send the ${sort} as ${type}.`);
     const tooLarge = () => {
       res.set('Connection', 'close');   // the rest of the upload is not read; the connection ends with the answer
-      return fail(res, 413, 'too_large', `That ${sort} is too large (the limit is ${limit / 1048576} MB).`);
+      return fail(res, 413, 'too_large', `That ${sort} is too large (the limit is ${sort === 'video' ? `${limit / 1e6} MB` : `${limit / 1048576} MB`}).`);
     };
     const declared = Number((req.headers || {})['content-length']);
     if (Number.isFinite(declared) && declared > limit) return tooLarge();
     const job = await ownRunning(req, res, id, null);
     if (!job) return;
-    if (sort === 'clip' && job.kind !== KIND_CLIP) return fail(res, 400, 'bad_request', 'This job takes pictures, not video clips.');
+    if ((sort === 'clip' || sort === 'video') && job.kind !== KIND_CLIP) return fail(res, 400, 'bad_request', 'This job takes pictures, not video clips.');
     if (sort === 'result' && job.kind !== KIND_RELEASE) return fail(res, 400, 'bad_request', 'This job takes no step results (.json files).');
-    if (sort === 'picture' && job.kind === KIND_CLIP) return fail(res, 400, 'bad_request', 'This job takes video clips (.mjpeg), not pictures.');
+    if (sort === 'picture' && job.kind === KIND_CLIP) return fail(res, 400, 'bad_request', 'This job takes video clips (.mp4 or .mjpeg), not pictures.');
     const cap = job.kind === KIND_RELEASE ? RELEASE_FILES_PER_JOB : FILES_PER_JOB;
     const files = await listFiles(resultsDir, id, 'stored');
     if (files.length >= cap && !files.some((f) => f.name === name)) return fail(res, 409, 'too_many', `A job takes at most ${cap} ${sort}s.`);
@@ -797,7 +822,7 @@ module.exports = function mountTeamJobs(app, pool, {
       throw err;
     }
     if (body.tooLarge) return tooLarge();
-    const checked = sort === 'clip' ? checkMjpeg(body) : sort === 'result' ? checkJson(body) : checkPng(body);
+    const checked = sort === 'video' ? checkMp4(body) : sort === 'clip' ? checkMjpeg(body) : sort === 'result' ? checkJson(body) : checkPng(body);
     if (checked.error) return fail(res, 400, 'bad_request', checked.error);
     await storeFile(resultsDir, id, name, body);
     await pool.execute("UPDATE team_jobs SET heartbeat_at = NOW() WHERE id = ? AND status = 'running'", [id]);   // an upload shows the PC is alive
@@ -982,6 +1007,15 @@ module.exports = function mountTeamJobs(app, pool, {
     const made = [];
     for (const n of names) {
       await pool.execute("UPDATE team_jobs SET heartbeat_at = NOW() WHERE id = ? AND status = 'running'", [id]);   // a long transcode keeps the job alive
+      if (MP4_NAME_RE.test(n)) {   // made on the PC (team app 0.4.5): checked when it was uploaded, kept as it is
+        if (!(await mp4HoldsVideo(path.join(path.resolve(resultsDir), id, n)))) {
+          const why = `The clip ${n.replace(/\.mp4$/, '')} is not a playable video.`;
+          if (!(await markFailed(accountId, id, job, why, log))) return refuse(409, 'not_running', 'This job is not running any more.');
+          return refuse(400, 'bad_request', why);
+        }
+        made.push({ name: n, bytes: stored.get(n) });
+        continue;
+      }
       const mp4 = n.replace(/\.mjpeg$/, '.mp4');
       if (!stored.has(n)) { made.push({ name: mp4, bytes: stored.get(mp4) }); continue; }   // turned into a video by an earlier try of this done
       const r = await transcodeOne(id, n);
@@ -1004,8 +1038,8 @@ module.exports = function mountTeamJobs(app, pool, {
 
   async function finishClip(req, res, id, job, b) {
     const named = Array.isArray(b.files) ? b.files : [];
-    if (!named.length || named.length > FILES_PER_JOB || !named.every((n) => typeof n === 'string' && CLIP_NAME_RE.test(n))) {
-      return fail(res, 400, 'bad_request', `The finished job must name its clips (1 to ${FILES_PER_JOB}, like low_wraith.mjpeg).`);
+    if (!named.length || named.length > FILES_PER_JOB || !named.every((n) => typeof n === 'string' && (MP4_NAME_RE.test(n) || CLIP_NAME_RE.test(n)))) {
+      return fail(res, 400, 'bad_request', `The finished job must name its clips (1 to ${FILES_PER_JOB}, like low_wraith.mp4).`);
     }
     let finishing = clipsFinishing.get(id);
     if (!finishing) {
@@ -1285,6 +1319,7 @@ module.exports = function mountTeamJobs(app, pool, {
 
 module.exports.parseHeartbeat = parseHeartbeat;
 module.exports.parseNewJob = parseNewJob;
+module.exports.checkMp4 = checkMp4;
 module.exports.parseWait = parseWait;
 module.exports.WAIT_MAX_S = WAIT_MAX_S;
 module.exports.HELD_MAX = HELD_MAX;

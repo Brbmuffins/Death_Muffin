@@ -176,7 +176,7 @@ namespace DeathMuffinTeam
         Task<ApiResult> HeartbeatAsync(string pcId, string name, string version, string gpu, OfferMode mode, PcState state, int waitS, CancellationToken ct);
         Task<ApiResult> ClaimAsync(string jobId, string pcId, CancellationToken ct);
         Task<ApiResult> DeclineAsync(string jobId, string pcId, string reason, CancellationToken ct);
-        /// <summary>Uploads one result file as the raw body: a picture (`.png`, sent as image/png), a clip (`.mjpeg`, video/x-motion-jpeg) or a release step's result (`.json`, application/json).</summary>
+        /// <summary>Uploads one result file as the raw body: a picture (`.png`, sent as image/png), a clip's video (`.mp4`, video/mp4) or a release step's result (`.json`, application/json).</summary>
         Task<ApiResult> UploadAsync(string jobId, string name, byte[] data, CancellationToken ct);
         Task<ApiResult> DoneAsync(string jobId, IList<string> files, string log, double downloadS, double runS, CancellationToken ct);
         /// <summary>Finishes a `bench` job: <paramref name="runs"/> are the benchmark payloads as the game queued them (one per setup, at most 6, each at most 64 KB of JSON).</summary>
@@ -202,13 +202,13 @@ namespace DeathMuffinTeam
 
         static readonly Regex JobIdRe = new Regex("^[A-Za-z0-9]{1,24}$", RegexOptions.CultureInvariant);
         static readonly Regex FileNameRe = new Regex("^[a-z0-9_-]{1,60}\\.png$", RegexOptions.CultureInvariant);
-        static readonly Regex ClipNameRe = new Regex("^[a-z0-9][a-z0-9_-]{0,59}\\.mjpeg$", RegexOptions.CultureInvariant);
+        static readonly Regex Mp4NameRe = new Regex("^[a-z0-9][a-z0-9_-]{0,59}\\.mp4$", RegexOptions.CultureInvariant);
         static readonly Regex JsonNameRe = new Regex("^[a-z0-9][a-z0-9_-]{0,59}\\.json$", RegexOptions.CultureInvariant);
         public const string PngType = "image/png";
         /// <summary>The content type of a step's result file (a `release` job).</summary>
         public const string JsonType = "application/json";
-        /// <summary>The content type the server takes for a clip (a motion-JPEG file: one JPEG picture after another).</summary>
-        public const string ClipType = "video/x-motion-jpeg";
+        /// <summary>The content type of a clip's video (made on this PC since team app 0.4.5).</summary>
+        public const string Mp4Type = "video/mp4";
         static readonly Regex PcIdRe = new Regex("^[A-Za-z0-9_-]{8,64}$", RegexOptions.CultureInvariant);
 
         readonly ITransport transport;
@@ -274,11 +274,11 @@ namespace DeathMuffinTeam
 
         public Task<ApiResult> UploadAsync(string jobId, string name, byte[] data, CancellationToken ct)
         {
-            // a picture (`.png`, image/png), a clip (`.mjpeg`, video/x-motion-jpeg) or a step's result (`.json`, application/json): the name says which
-            bool clip = ClipNameRe.IsMatch(name ?? ""), result = JsonNameRe.IsMatch(name ?? "");
-            if (!JobIdRe.IsMatch(jobId ?? "") || !(clip || result || FileNameRe.IsMatch(name ?? "")))
-                return Task.FromResult(ApiResult.Local("The " + ((name ?? "").EndsWith(".mjpeg", StringComparison.Ordinal) ? "clip" : (name ?? "").EndsWith(".json", StringComparison.Ordinal) ? "result" : "picture") + "'s name is not valid: " + name));
-            return CallAsync("PUT", Url("team/jobs/" + jobId + "/files/" + name), true, data, clip ? ClipType : result ? JsonType : PngType, ct);
+            // a picture (`.png`, image/png), a clip's video (`.mp4`, video/mp4) or a step's result (`.json`, application/json): the name says which
+            bool mp4 = Mp4NameRe.IsMatch(name ?? ""), result = JsonNameRe.IsMatch(name ?? "");
+            if (!JobIdRe.IsMatch(jobId ?? "") || !(mp4 || result || FileNameRe.IsMatch(name ?? "")))
+                return Task.FromResult(ApiResult.Local("The " + ((name ?? "").EndsWith(".mp4", StringComparison.Ordinal) ? "clip" : (name ?? "").EndsWith(".json", StringComparison.Ordinal) ? "result" : "picture") + "'s name is not valid: " + name));
+            return CallAsync("PUT", Url("team/jobs/" + jobId + "/files/" + name), true, data, mp4 ? Mp4Type : result ? JsonType : PngType, ct);
         }
 
         public Task<ApiResult> DoneAsync(string jobId, IList<string> files, string log, double downloadS, double runS, CancellationToken ct)

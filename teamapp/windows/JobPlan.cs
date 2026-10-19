@@ -82,13 +82,28 @@ namespace DeathMuffinTeam
         public const int MaxReleaseUploads = 110;
         /// <summary>The label of the videos of a clip job that names no variants (or a variant with no label): `clip_<name>.mjpeg`.</summary>
         public const string ClipLabelDefault = "clip";
-        /// <summary>A clip job's limits: the server takes at most 48 MB a clip; the game writes at most 4 clips of 8 seconds a run, at 30 frames per game second (the engine's --fixed-fps).</summary>
+        /// <summary>A clip job's limits: the game writes at most 4 clips of 8 seconds a run, at <see cref="ClipFps"/> frames per game second (the engine's --fixed-fps) and <see cref="ClipResolution"/>
+        /// (Helix 2026-10-19: 1080p at 60), and this PC makes each one's mp4 (<see cref="FfmpegEncoder"/>), at most <see cref="MaxMp4Bytes"/> (the server's limit, under Discord's 8 MB for the bot).</summary>
         public const int MaxClips = 4;
         public const int MaxVariants = 4;
         public const int MaxClipSeconds = 8;
         public const int MaxTuneBytes = 32 * 1024;
-        public const int MaxClipBytes = 48 << 20;
-        public const int ClipFps = 30;
+        public const int MaxMp4Bytes = 8000000;
+        public const int ClipFps = 60;
+        public const string ClipResolution = "1920x1080";
+        public const int ClipWidth = 1920;
+        /// <summary>
+        /// The video encoder the PC makes clips' mp4s with: ffmpeg 9.0.2 for Windows (gyan.dev's "essentials" build, GPL, with libx264; its sha256 checked against the publisher's when it was put on our server),
+        /// fetched once from the game's own team-files like any job file and kept in cache\ (never pruned while it is the one in use).
+        /// </summary>
+        public static readonly PlanFile Encoder = new PlanFile
+        {
+            Name = "ffmpeg.exe",
+            Url = new Uri(TeamUrls.SiteBase + "team-files/tools/ffmpeg-9.0.2/ffmpeg.exe"),
+            Sha256 = "3256173f3f8bffd7df12227c68adf68025edb1832273a9530688a7bb1ed8edec",
+            Bytes = 105423872,
+            CacheKey = "ffmpeg-3256173f3f8bffd7",
+        };
         /// <summary>The graphics preset of a clip job that names none.</summary>
         public const string ClipPresetDefault = "high";
         /// <summary>The debug build of Godot a `shots` job downloads, and the game's code pack it is started with: both must be in every such job.</summary>
@@ -121,7 +136,7 @@ namespace DeathMuffinTeam
             "shot-plan", "shots", "preset", "assets-pack", "baked", "shot", "online",
             "benchmark", "bench-dir", "bench-room", "bench-class", "bench-size", "bench-length", "bench-preset", "bench-quit", "audio-driver",
             "main-pack", "path", "script", "headless", "windowed", "fullscreen", "resolution", "position", "rendering-driver", "rendering-method", "log-file",
-            "clip-plan", "clips", "tune", "fixed-fps",
+            "clip-plan", "clips", "tune", "fixed-fps", "clip-fps", "clip-width", "qa-window",
             "boot-check", "quit-while-loading", "stutter", "stutter-out", "soak", "soak-out", "ui-scale",
         };
         static readonly string[] DeviceNames = { "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9" };
@@ -663,17 +678,22 @@ namespace DeathMuffinTeam
         public string CommandLine(string preset, string planFile, string shotsDir, string position = null) { return CommandLineText.Join(CommandArgs(preset, planFile, shotsDir, position)); }
 
         /// <summary>
-        /// A `clip` run's arguments: `--windowed --resolution 1600x900 --audio-driver Dummy --fixed-fps 30 [--position X,Y] -- <options> --preset=<preset> --clip-plan=<file> --clips=<dir> [--tune=<file>]`
-        /// (`--tune` only for a variant that has one). The window follows the screenshots' rules (silent, outside every monitor when a position is given). Paths use "/".
+        /// A `clip` run's arguments: `--windowed --resolution 1920x1080 --audio-driver Dummy --fixed-fps 60 [--position X,Y] -- <options> --preset=<preset> --clip-plan=<file> --clips=<dir> [--tune=<file>]
+        /// --clip-fps=60 --clip-width=1920 --qa-window=1920x1080` (`--tune` only for a variant that has one): 1080p at 60 frames per game second (Helix 2026-10-19; a game build from before it ignores the last three
+        /// and records 960 wide at 30, which its clip's json says). The window follows the screenshots' rules (silent, outside every monitor when a position is given: one for a 1920-wide window), and
+        /// `--qa-window` lets it be 1080 high on a 1080p screen. Paths use "/".
         /// </summary>
         public List<string> ClipCommandArgs(ClipVariant variant, string preset, string planFile, string clipsDir, string tuneFile, string position = null)
         {
-            var a = WindowArgs(position, true);
+            var a = WindowArgs(position, true, ClipResolution);
             a.AddRange(Args);
             a.Add("--preset=" + preset);
             a.Add("--clip-plan=" + Slashes(planFile));
             a.Add("--clips=" + Slashes(clipsDir));
             if (variant.HasTune) a.Add("--tune=" + Slashes(tuneFile));
+            a.Add("--clip-fps=" + ClipFps.ToString(CultureInfo.InvariantCulture));
+            a.Add("--clip-width=" + ClipWidth.ToString(CultureInfo.InvariantCulture));
+            a.Add("--qa-window=" + ClipResolution);
             return a;
         }
 
@@ -823,11 +843,11 @@ namespace DeathMuffinTeam
         /// <summary>Names for a preset's picture files, one each: a name that collides gets -2, -3 (names are unique across <paramref name="used"/>).</summary>
         public static List<KeyValuePair<string, string>> UploadNames(string preset, IEnumerable<string> files, HashSet<string> used) { return UploadNamesCore(preset, files, used, ".png"); }
 
-        /// <summary>`slow` and `wraith.mjpeg` -> `slow_wraith.mjpeg`: the name the server accepts for a clip (`^[a-z0-9][a-z0-9_-]{0,59}\.mjpeg$`). Null for a file that is not a .mjpeg.</summary>
-        public static string ClipUploadName(string label, string fileName) { return UploadNameCore(label, fileName, ".mjpeg"); }
+        /// <summary>`slow` and `wraith.mp4` -> `slow_wraith.mp4`: the name the server accepts for a clip's video (`^[a-z0-9][a-z0-9_-]{0,59}\.mp4$`). Null for a file that is not a .mp4.</summary>
+        public static string Mp4UploadName(string label, string fileName) { return UploadNameCore(label, fileName, ".mp4"); }
 
-        /// <summary>Names for a variant's clip files, one each, unique across <paramref name="used"/> like <see cref="UploadNames"/>.</summary>
-        public static List<KeyValuePair<string, string>> ClipUploadNames(string label, IEnumerable<string> files, HashSet<string> used) { return UploadNamesCore(label, files, used, ".mjpeg"); }
+        /// <summary>Names for a variant's clip videos (the mp4s this PC made), one each, unique across <paramref name="used"/> like <see cref="UploadNames"/>.</summary>
+        public static List<KeyValuePair<string, string>> Mp4UploadNames(string label, IEnumerable<string> files, HashSet<string> used) { return UploadNamesCore(label, files, used, ".mp4"); }
 
         /// <summary>The whole name stays within 60 characters including its extension (the server takes up to 60 before it).</summary>
         static string UploadNameCore(string prefix, string fileName, string ext)

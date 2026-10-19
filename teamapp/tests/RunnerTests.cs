@@ -23,7 +23,8 @@ namespace DeathMuffinTeam.Tests
         public readonly JobRunner Runner;
         public readonly List<string> Links = new List<string>();
         public bool LinkWorks = true;
-        public readonly byte[] Art = Util.Blob(120000, 21), Godot = Util.Blob(80000, 22), Dll = Util.Blob(9000, 23);
+        public readonly byte[] Art = Util.Blob(120000, 21), Godot = Util.Blob(80000, 22), Dll = Util.Blob(9000, 23), Ffmpeg = Util.Blob(7000, 24);
+        public readonly FakeEncoder Enc = new FakeEncoder();
         int n;
 
         public Rig()
@@ -37,7 +38,9 @@ namespace DeathMuffinTeam.Tests
                 return true;
             };
             Runner = new JobRunner(Api, Folders, new FileFetcher(Http) { RetryDelay = TimeSpan.FromMilliseconds(5), StallTimeout = TimeSpan.FromSeconds(10) }, Host, Watch, linker, Probe)
-            { PollMs = 5, SampleMs = 1, ApiRetryDelay = TimeSpan.FromMilliseconds(5) };
+            { PollMs = 5, SampleMs = 1, ApiRetryDelay = TimeSpan.FromMilliseconds(5), Encoder = Enc };
+            var enc = Srv.Publish("tools", "ffmpeg.exe", Ffmpeg, "ffmpeg-test");   // the video encoder, from the test server like any job file
+            Runner.EncoderFile = new PlanFile { Name = "ffmpeg.exe", Url = new Uri((string)enc["url"]), Sha256 = (string)enc["sha256"], Bytes = Ffmpeg.Length, CacheKey = "ffmpeg-test" };
         }
 
         /// <summary>A payload for a job: its own main pack, the shared art pack and Godot template under their cache keys.</summary>

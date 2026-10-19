@@ -2722,7 +2722,7 @@ test('a clip upload is stored under the job folder as it came, and answers its s
 test('a clip upload with a bad name is 400 and writes nothing, whatever the name tries', async () => {
   await withHarness(async (h) => {
     const id = await h.runningJob({ over: newClip() });
-    const bad = ['Wraith.mjpeg', 'wraith.MJPEG', 'wraith.mjpg', 'wraith.mp4', 'wraith', '.mjpeg', '_wraith.mjpeg', '-wraith.mjpeg', 'a b.mjpeg', 'a/b.mjpeg', '../x.mjpeg', '..%2fx.mjpeg', 'a\\b.mjpeg', 'wraith.mjpeg.exe',
+    const bad = ['Wraith.mjpeg', 'wraith.MJPEG', 'wraith.mjpg', 'wraith.MP4', 'wraith', '.mjpeg', '_wraith.mjpeg', '-wraith.mjpeg', 'a b.mjpeg', 'a/b.mjpeg', '../x.mjpeg', '..%2fx.mjpeg', 'a\\b.mjpeg', 'wraith.mjpeg.exe',
       'wraith..mjpeg', `${'a'.repeat(61)}.mjpeg`, 'ü.mjpeg', 'a.mjpeg\u0000', '.hidden.mjpeg', 'wraith.mjpeg.png'];
     for (const name of bad) {
       const r = await h.uploadClip(id, name, fakeClip());
@@ -3270,4 +3270,60 @@ realTest('the real transcode needs nothing the service\'s unit does not give it:
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// ── A clip's video made on the team PC (team app 0.4.5: 1080p at 60, Helix 2026-10-19) ─────────────────────────────────────
+
+test('checkMp4 wants whole boxes from the start: ftyp first, a moov and an mdat with data', () => {
+  const { checkMp4 } = mountTeamJobs;
+  assert.deepStrictEqual(checkMp4(fakeMp4(5000)), {});
+  const box = (kind, body) => { const b = Buffer.alloc(8); b.writeUInt32BE(8 + body.length, 0); b.write(kind, 4, 'latin1'); return Buffer.concat([b, body]); };
+  const ftyp = box('ftyp', Buffer.from('isom0000isomiso2'));
+  assert.deepStrictEqual(checkMp4(Buffer.concat([ftyp, box('moov', Buffer.alloc(40)), box('mdat', Buffer.alloc(0))])).error !== undefined, true, 'an empty mdat (a video of no pictures) is none');
+  for (const [bad, why] of [[null, 'nothing'], [Buffer.alloc(0), 'empty'], [fakeMp4(5000).subarray(0, 3000), 'cut off'], [Buffer.concat([box('moov', Buffer.alloc(40)), ftyp, box('mdat', Buffer.alloc(9))]), 'ftyp not first'],
+    [Buffer.concat([ftyp, box('mdat', Buffer.alloc(9))]), 'no moov'], [Buffer.concat([ftyp, box('moov', Buffer.alloc(40))]), 'no mdat'], [Buffer.concat([fakeMp4(3000), Buffer.from([0, 0, 0])]), 'trailing bytes'],
+    [fakeClip(2), 'a motion JPEG']]) {
+    assert.match(String((checkMp4(bad) || {}).error), /not an mp4 video/, why);
+  }
+});
+
+test('a clip job takes the PC\'s mp4s (video/mp4, at most 8 MB, a real mp4) and done keeps them as they are, with no transcode', async () => {
+  const fake = fakeSpawn(() => ({ size: 4321 }));
+  await withHarness(clipsWith(fake), async (h) => {
+    const id = await h.runningJob({ over: newClip() });
+    const video = fakeMp4(250_000);
+    const up = (name, buf, type = 'video/mp4') => h.upload(id, name, buf, { type });
+    const r = await up('slow_wraith.mp4', video);
+    assert.deepStrictEqual([r.statusCode, r.body.success, r.body.data.name, r.body.data.bytes], [200, true, 'slow_wraith.mp4', video.length], JSON.stringify(r.body));
+    assert.ok(fs.readFileSync(path.join(h.jobFolder(id), 'slow_wraith.mp4')).equals(video), 'stored as it came');
+    assert.deepStrictEqual([(await up('fast_wraith.mp4', video, 'video/x-motion-jpeg')).statusCode, (await up('fast_wraith.mp4', video, 'video/x-motion-jpeg')).body.code], [415, 'bad_type'], 'an mp4 is sent as video/mp4');
+    const big = await up('fast_wraith.mp4', fakeMp4(8_000_001));
+    assert.deepStrictEqual([big.statusCode, big.body.code], [413, 'too_large'], 'at most 8,000,000 bytes (Discord takes it)');
+    assert.match(big.body.error, /8 MB/);
+    const junk = await up('fast_wraith.mp4', fakeClip(3));
+    assert.deepStrictEqual([junk.statusCode, junk.body.code], [400, 'bad_request'], 'a motion JPEG named .mp4 is refused');
+    assert.match(junk.body.error, /not an mp4 video/);
+    assert.strictEqual((await up('fast_wraith.mp4', fakeMp4(9000))).statusCode, 200);
+    const done = await doneClips(h, id, ['slow_wraith.mp4', 'fast_wraith.mp4']);
+    assert.deepStrictEqual([done.statusCode, done.body], [200, { success: true, data: { id, status: 'done' } }]);
+    assert.strictEqual(fake.calls.length, 0, 'nothing to make: no ffmpeg');
+    const row = (await h.internal('GET /internal/team/jobs/:id', { params: { id } })).body.data;
+    assert.deepStrictEqual(row.files.map((f) => f.name).sort(), ['fast_wraith.mp4', 'slow_wraith.mp4'], 'the runner sees the two videos');
+  });
+});
+
+test('an mp4 is only for a clip job, and a done that names one never uploaded or no longer playable says so', async () => {
+  await withHarness(clipsWith(fakeSpawn(() => ({ size: 4321 }))), async (h) => {
+    const shots = await h.runningJob();
+    const r = await h.upload(shots, 'low_wraith.mp4', fakeMp4(9000), { type: 'video/mp4' });
+    assert.deepStrictEqual([r.statusCode, r.body.error], [400, 'This job takes pictures, not video clips.']);
+    const id = await h.runningJob({ over: newClip(), accountId: HELIX });
+    const missing = await doneClips(h, id, ['slow_wraith.mp4'], {}, { accountId: HELIX });
+    assert.deepStrictEqual([missing.statusCode, missing.body.error], [400, 'The clip slow_wraith.mp4 was never uploaded.']);
+    assert.strictEqual((await h.upload(id, 'slow_wraith.mp4', fakeMp4(9000), { type: 'video/mp4', accountId: HELIX })).statusCode, 200);
+    fs.writeFileSync(path.join(h.jobFolder(id), 'slow_wraith.mp4'), Buffer.from('broken on disk'));   // something ruined it after the upload's check
+    const broken = await doneClips(h, id, ['slow_wraith.mp4'], {}, { accountId: HELIX });
+    assert.deepStrictEqual([broken.statusCode, broken.body.error], [400, 'The clip slow_wraith is not a playable video.']);
+    assert.strictEqual(h.jobs.find((j) => j.id === id).status, 'failed', 'the job fails with that reason');
+  });
 });
