@@ -5,7 +5,7 @@ extends SceneTree
 ##   A  player-side Bone Ward / Colossus guard: stat-based on hit exactly as the old game's DmPlayerRules / DmGameCombat.on_hurt (no timed status exists there either)
 ##   B  bosses ignore slow / root / chill like the old game's boss controller (the brain owns speed; only stun is capped, see DmBoss.stun)
 ##   C  the necromancer's primary weapon variants (staff pierce, sickle Withered, scythe arc) and the Splinters / Volley / Marrow-Tap runes on them
-##   D  rite sound coverage: every one of the 34 rites plays the sounds the old game's DmAbilitySystem played (REF_SOUNDS: a table recorded from it before it was removed; the Reaper's are new)
+##   D  rite sound coverage: every one of the 35 rites plays the sounds the old game's DmAbilitySystem played (REF_SOUNDS: a table recorded from it before it was removed; the Reaper's are new)
 ##   E  cost: scythe swings and piercing needles over a crowd
 
 const TICK := 1.0 / 60.0
@@ -549,6 +549,7 @@ const REF_SOUNDS := {   ## rite -> the sfx (and "loop:"-prefixed loops) the old 
 	"unleash_souls": ["wail", "boneHit"],
 	"soul_harvest": ["boneHit", "ivoryCleave", "wail"],
 	"scythe_weave": ["boneHit", "ivoryCleave"],
+	"haunting_wraith": ["wail", "banshee", "boneHit"],   # 2026-10-19, new: the sounds it was written to play
 }
 
 
@@ -612,7 +613,7 @@ const OPTIONAL := ["boneHit", "needleHit", "soulRelease", "tollSmall", "toll", "
 
 func _sounds() -> void:
 	var rites: Array = DmRiteRegistry.ids()
-	check(rites.size() == 34, "D: 34 rites are registered (%d)" % rites.size())
+	check(rites.size() == 35, "D: 35 rites are registered (%d)" % rites.size())
 	var missing: Array = []
 	var extra: Array = []
 	for id: String in rites:

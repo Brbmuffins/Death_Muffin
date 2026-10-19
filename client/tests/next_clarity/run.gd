@@ -1,7 +1,7 @@
 extends SceneTree
 ## Combat-readability polish of the rebuilt client (client/next/feel/README.md), one process: godot --headless --path client --script res://tests/next_clarity/run.gd
 ##   1. the floating-number budget, the action bar's "no corpse / no legion" state, the red legion pips (the core's thrall arrays through the HUD view-model)
-##   2. cues: every one of the 34 rites gives a visible AND an audible cue in the 0.25 s after an accepted cast (never silent, never only on landing).
+##   2. cues: every one of the 35 rites gives a visible AND an audible cue in the 0.25 s after an accepted cast (never silent, never only on landing).
 ## The enemies are static bodies of the combat core (stunned for an hour, harmless), the corpses and the legion are the core's, as tests/rites.gd has them.
 ## Not here: the low-health ring on a thrall's own body (a thrall is a core body drawn by the crowd now; the pips are what remains of that polish).
 
@@ -295,7 +295,7 @@ func _vis(s: Dictionary) -> int:
 
 func _cues() -> void:
 	var ids: Array = DmRiteRegistry.ids()
-	check(ids.size() == 34, "34 rites are registered (%d)" % ids.size())
+	check(ids.size() == 35, "35 rites are registered (%d)" % ids.size())
 	for id in ids:
 		await audit_rite(id)
 		var r: Dictionary = results[id]
