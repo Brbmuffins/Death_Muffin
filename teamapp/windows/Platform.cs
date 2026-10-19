@@ -538,9 +538,33 @@ namespace DeathMuffinTeam
         const int GWL_EXSTYLE = -20;
         const long WS_EX_NOACTIVATE = 0x08000000L, WS_EX_TOOLWINDOW = 0x00000080L, WS_EX_APPWINDOW = 0x00040000L;
         [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hWnd, out Rect r);
+        [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr hWnd, out Rect r);
+        [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hWnd);
+        [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int cmd);
+        [DllImport("user32.dll")] static extern bool GetWindowPlacement(IntPtr hWnd, ref WindowPlacement wp);
+        [DllImport("user32.dll")] static extern bool SetWindowPlacement(IntPtr hWnd, ref WindowPlacement wp);
+        [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);   // Windows 10 1607 and later
         [StructLayout(LayoutKind.Sequential)] struct Rect { public int Left, Top, Right, Bottom; }
-        const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOACTIVATE = 0x10;
+        [StructLayout(LayoutKind.Sequential)] struct Pt { public int X, Y; }
+        [StructLayout(LayoutKind.Sequential)] struct WindowPlacement { public int Length, Flags, ShowCmd; public Pt MinPosition, MaxPosition; public Rect NormalPosition; }
+        const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOZORDER = 0x4, SWP_NOACTIVATE = 0x10;
+        const int SW_HIDE = 0, SW_SHOWNOACTIVATE = 4;
         static readonly IntPtr HWND_BOTTOM = new IntPtr(1);
+        static readonly IntPtr DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = new IntPtr(-4);
+
+        [ComImport, Guid("56FDF342-FD6D-11d0-958A-006097C9A090"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        interface ITaskbarList { void HrInit(); void AddTab(IntPtr hwnd); void DeleteTab(IntPtr hwnd); void ActivateTab(IntPtr hwnd); void SetActiveAlt(IntPtr hwnd); }
+        [ComImport, Guid("56FDF344-FD6D-11d0-958A-006097C9A090"), ClassInterface(ClassInterfaceType.None)]
+        class TaskbarList { }
+
+        /// <summary>Takes the window's taskbar button away now: the taskbar does it, so it needs no answer from the game (best effort).</summary>
+        static void DropTaskbarButton(IntPtr h)
+        {
+            object o = null;
+            try { o = new TaskbarList(); var t = (ITaskbarList)o; t.HrInit(); t.DeleteTab(h); }
+            catch (Exception) { }
+            finally { if (o != null) try { Marshal.ReleaseComObject(o); } catch (Exception) { } }
+        }
 
         static long GetExStyle(IntPtr h) { return IntPtr.Size == 8 ? GetWindowLong64(h, GWL_EXSTYLE).ToInt64() : GetWindowLong32(h, GWL_EXSTYLE); }
         static void SetExStyle(IntPtr h, long v) { if (IntPtr.Size == 8) SetWindowLong64(h, GWL_EXSTYLE, new IntPtr(v)); else SetWindowLong32(h, GWL_EXSTYLE, (int)v); }
@@ -551,11 +575,12 @@ namespace DeathMuffinTeam
         static IntPtr persons = IntPtr.Zero;
 
         /// <summary>
-        /// Best effort, called every poll while the game runs. A window of the game (it is created normal-sized, because a minimized Godot window does not draw) is marked
-        /// "no activate" so a click never gives it the keyboard, and sent to the bottom of the stack; if it did become the active window, the window the person was using
-        /// gets it back. Windows' own rule that a background process cannot take the foreground does most of the work; this covers the rest.
+        /// Best effort, called every poll while the game runs. A window of the game is marked "no activate" so a click never gives it the keyboard, and sent to the bottom of the stack;
+        /// if it did become the active window, the window the person was using gets it back. Windows' own rule that a background process cannot take the foreground does most of the work;
+        /// this covers the rest. A run nobody should see (<paramref name="hiddenAt"/>) starts minimized (GameOverride) and is restored outside every monitor (<see cref="RestoreOffscreen"/>),
+        /// again whenever it is found minimized (a minimized Godot window does not draw), then kept there. Each call into the game's window waits until Godot answers.
         /// </summary>
-        public static void TendGameWindow(int pid, System.Drawing.Point? hiddenAt)
+        public static void TendGameWindow(int pid, System.Drawing.Point? hiddenAt, System.Drawing.Size? clientSize)
         {
             lock (TameGate)
             {
@@ -574,14 +599,16 @@ namespace DeathMuffinTeam
                 }, IntPtr.Zero);
                 foreach (IntPtr h in windows)
                 {
-                    if (Tamed.Add(h))
+                    bool fresh = Tamed.Add(h);
+                    if (hiddenAt.HasValue && IsIconic(h)) RestoreOffscreen(h, hiddenAt.Value, clientSize);
+                    else if (fresh)
                     {
                         long ex = GetExStyle(h) | WS_EX_NOACTIVATE;
                         if (hiddenAt.HasValue) ex = (ex | WS_EX_TOOLWINDOW) & ~WS_EX_APPWINDOW;   // a run nobody should see: no taskbar button either
                         SetExStyle(h, ex);
                         SetWindowPos(h, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
                     }
-                    if (hiddenAt.HasValue)
+                    if (hiddenAt.HasValue && !IsIconic(h))
                     {
                         // kept outside every monitor: moved there the moment it appears, and back if the game places it on a monitor again
                         Rect r;
@@ -591,6 +618,49 @@ namespace DeathMuffinTeam
                     if (fg == h && persons != IntPtr.Zero) SetForegroundWindow(persons);
                 }
             }
+        }
+
+        /// <summary>
+        /// A minimized window of a run nobody should see, back at its normal size outside every monitor. Its taskbar button goes at once (the taskbar removes it while the game is still busy
+        /// starting); once the game answers, the window is hidden (the restore has no button to animate from), gets "no activate" and no taskbar button for good, and its normal place is set to
+        /// <paramref name="spot"/> and shown there without the focus, in one SetWindowPlacement (SetWindowPos would only move the minimized window). Then the size the run asks for is applied
+        /// again, in real pixels: Windows created the window at most the screen's size and the game's own resize past it (`--qa-window`) came while it was minimized, which does not change
+        /// the normal size, and this app's scaled view of a DPI-aware window may round it by a pixel. If the placement fails, the window is restored where it was and the next poll moves it.
+        /// </summary>
+        static void RestoreOffscreen(IntPtr h, System.Drawing.Point spot, System.Drawing.Size? clientSize)
+        {
+            DropTaskbarButton(h);
+            ShowWindow(h, SW_HIDE);
+            SetExStyle(h, (GetExStyle(h) | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW) & ~WS_EX_APPWINDOW);
+            var wp = new WindowPlacement { Length = Marshal.SizeOf(typeof(WindowPlacement)) };
+            bool placed = false;
+            if (GetWindowPlacement(h, ref wp))
+            {
+                Rect n = wp.NormalPosition;
+                wp.NormalPosition = new Rect { Left = spot.X, Top = spot.Y, Right = spot.X + (n.Right - n.Left), Bottom = spot.Y + (n.Bottom - n.Top) };
+                wp.Flags = 0;
+                wp.ShowCmd = SW_SHOWNOACTIVATE;
+                placed = SetWindowPlacement(h, ref wp);
+            }
+            if (!placed) ShowWindow(h, SW_SHOWNOACTIVATE);
+            SetWindowPos(h, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            if (clientSize.HasValue) SizeClient(h, clientSize.Value);
+        }
+
+        /// <summary>The window's inside (client area) at <paramref name="want"/> pixels, measured and set in real pixels (this app is not DPI aware; Godot is), the frame kept as it is.</summary>
+        static void SizeClient(IntPtr h, System.Drawing.Size want)
+        {
+            IntPtr was = IntPtr.Zero;
+            try { was = SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2); } catch (EntryPointNotFoundException) { }
+            try
+            {
+                Rect w, c;
+                if (!GetWindowRect(h, out w) || !GetClientRect(h, out c)) return;
+                int cw = c.Right - c.Left, ch = c.Bottom - c.Top;
+                if (cw == want.Width && ch == want.Height) return;
+                SetWindowPos(h, IntPtr.Zero, 0, 0, want.Width + (w.Right - w.Left - cw), want.Height + (w.Bottom - w.Top - ch), SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+            finally { if (was != IntPtr.Zero) SetThreadDpiAwarenessContext(was); }
         }
     }
 

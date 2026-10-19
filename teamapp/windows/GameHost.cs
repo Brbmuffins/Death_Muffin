@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -47,15 +48,45 @@ namespace DeathMuffinTeam
         string LastSeen { get; }
     }
 
+    /// <summary>
+    /// Godot's own settings for one run: an `override.cfg` beside the game's exe, which Godot reads at start over the project's settings (only ever in a job's game folder).
+    /// A run nobody should see starts its window minimized. Godot keeps a new window at least a third on a monitor whatever `--position` says (DisplayServerWindows::_create_window),
+    /// draws its boot splash there and answers no window messages until its first frame, so the app could only move the window away a second or two later (Helix, 2026-10-19:
+    /// the splash still showed on 0.3.3 to 0.4.1). Minimized, nothing reaches a monitor; the window tamer restores it outside every monitor once Godot answers (Godot draws nothing
+    /// while minimized). `--windowed` does not undo it: a game's window mode comes from its settings, the flag only skips Godot's change at boot. Every other run (a benchmark)
+    /// starts with the file removed.
+    /// </summary>
+    internal static class GameOverride
+    {
+        public const string FileName = "override.cfg";
+        public const string MinimizedText = "; Written by the Death Muffin team app for a run nobody should see: the window starts minimized and the app restores it outside every monitor.\n"
+            + "; Removed before any other run.\n[display]\n\nwindow/size/mode=1\n";
+
+        /// <summary>
+        /// Removes the file from <paramref name="exeDir"/> (it is never written through: it could be a hard link) and, when <paramref name="minimized"/>, writes it again. True when the run starts minimized;
+        /// false when it was not asked or could not be written (the run then starts as before, on a monitor until it is moved). A file that cannot be removed throws: that run would start minimized and nothing would restore it.
+        /// </summary>
+        public static bool Prepare(string exeDir, bool minimized)
+        {
+            string file = Path.Combine(exeDir, FileName);
+            if (File.Exists(file)) File.Delete(file);
+            if (!minimized) return false;
+            try { File.WriteAllText(file, MinimizedText, new UTF8Encoding(false)); return true; }
+            catch (IOException) { return false; }
+            catch (UnauthorizedAccessException) { return false; }
+        }
+    }
+
     internal sealed class ProcessGameHost : IGameHost
     {
-        readonly Action<int, System.Drawing.Point?> tend;
+        readonly Action<int, System.Drawing.Point?, System.Drawing.Size?> tend;
         readonly Action<int> started;
 
-        /// <param name="tend">Called with the game's process id on every poll (the window tamer on Windows), and with the spot outside every monitor the
-        /// window must stay at when the run is one nobody should see (it was started with `--position`; a benchmark is not); null for none.</param>
+        /// <param name="tend">Called with the game's process id on every poll (the window tamer on Windows), with the spot outside every monitor the window must stay at when the run is
+        /// one nobody should see (it was started with `--position`; a benchmark is not), and with the size it asks for (<see cref="WindowSize"/>); null for none.
+        /// A run nobody should see starts minimized only when there is a tamer to restore it (<see cref="GameOverride"/>).</param>
         /// <param name="started">Called with each game's process id the moment it starts (the platform remembers the app's own games: never the player's).</param>
-        public ProcessGameHost(Action<int, System.Drawing.Point?> tend = null, Action<int> started = null) { this.tend = tend; this.started = started; }
+        public ProcessGameHost(Action<int, System.Drawing.Point?, System.Drawing.Size?> tend = null, Action<int> started = null) { this.tend = tend; this.started = started; }
 
         /// <summary>The `--position X,Y` the run was started with, or null (the window may be seen: a benchmark).</summary>
         static System.Drawing.Point? HiddenSpot(List<string> args)
@@ -67,8 +98,25 @@ namespace DeathMuffinTeam
             return xy.Length == 2 && int.TryParse(xy[0], out x) && int.TryParse(xy[1], out y) ? new System.Drawing.Point(x, y) : (System.Drawing.Point?)null;
         }
 
+        /// <summary>The size of the window's inside the run asks for: the game's `--qa-window=WxH` (the release checks' screens, past the screen), else the engine's `--resolution WxH`; null when neither reads.</summary>
+        public static System.Drawing.Size? WindowSize(List<string> args)
+        {
+            string v = null;
+            foreach (string a in args) if (a.StartsWith("--qa-window=", StringComparison.Ordinal)) v = a.Substring(12);
+            if (v == null)
+            {
+                int i = args.IndexOf("--resolution"), end = args.IndexOf("--");
+                if (i >= 0 && i + 1 < args.Count && (end < 0 || i < end)) v = args[i + 1];
+            }
+            string[] wh = v == null ? new string[0] : v.Split('x');
+            int w, h;
+            return wh.Length == 2 && int.TryParse(wh[0], out w) && int.TryParse(wh[1], out h) && w > 0 && h > 0 ? new System.Drawing.Size(w, h) : (System.Drawing.Size?)null;
+        }
+
         public IGameProcess Start(GameLaunch l)
         {
+            System.Drawing.Point? spot = HiddenSpot(l.Args);
+            GameOverride.Prepare(Path.GetDirectoryName(Path.GetFullPath(l.ExePath)), tend != null && spot.HasValue);
             var psi = new ProcessStartInfo
             {
                 FileName = l.ExePath,
@@ -101,19 +149,19 @@ namespace DeathMuffinTeam
             }
             p.BeginOutputReadLine();
             p.BeginErrorReadLine();
-            System.Drawing.Point? spot = HiddenSpot(l.Args);
-            var running = new Running(p, buffer, tend, spot);
+            System.Drawing.Size? size = WindowSize(l.Args);
+            var running = new Running(p, buffer, tend, spot, size);
             if (tend != null && spot.HasValue)
             {
-                // Godot shows its window (the boot splash) before the game reads --position, and may place it on a monitor: for the first 10 s the
-                // window is looked for every 10 ms and moved outside every monitor the moment it appears (Helix, 2026-10-19: the splash popped up, then hid).
+                // The window starts minimized (GameOverride) and Godot answers no window messages until its first frame: for the first 10 s the window is looked for every 10 ms,
+                // so it is restored outside every monitor at Godot's first answer, before the game draws anything (the tamer's calls wait for that answer).
                 int id0 = p.Id;
                 System.Threading.Tasks.Task.Run(() =>
                 {
                     var sw = System.Diagnostics.Stopwatch.StartNew();
                     while (sw.ElapsedMilliseconds < 10000 && !running.HasExited)
                     {
-                        try { tend(id0, spot); } catch (Exception) { }
+                        try { tend(id0, spot, size); } catch (Exception) { }
                         System.Threading.Thread.Sleep(10);
                     }
                 });
@@ -125,11 +173,15 @@ namespace DeathMuffinTeam
         {
             readonly Process p;
             readonly OutputBuffer buffer;
-            readonly Action<int, System.Drawing.Point?> tend;
+            readonly Action<int, System.Drawing.Point?, System.Drawing.Size?> tend;
             readonly System.Drawing.Point? spot;
+            readonly System.Drawing.Size? size;
             readonly int id;
 
-            public Running(Process p, OutputBuffer buffer, Action<int, System.Drawing.Point?> tend, System.Drawing.Point? spot) { this.p = p; this.buffer = buffer; this.tend = tend; this.spot = spot; id = p.Id; }
+            public Running(Process p, OutputBuffer buffer, Action<int, System.Drawing.Point?, System.Drawing.Size?> tend, System.Drawing.Point? spot, System.Drawing.Size? size)
+            {
+                this.p = p; this.buffer = buffer; this.tend = tend; this.spot = spot; this.size = size; id = p.Id;
+            }
 
             public int Id { get { return id; } }
 
@@ -155,7 +207,7 @@ namespace DeathMuffinTeam
             public void Tend()
             {
                 if (tend == null) return;
-                try { tend(id, spot); } catch (Exception) { /* keeping the window out of the way is best effort */ }
+                try { tend(id, spot, size); } catch (Exception) { /* keeping the window out of the way is best effort */ }
             }
 
             public string Output()

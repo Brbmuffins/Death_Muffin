@@ -185,7 +185,8 @@ function createRunner(cfgIn, opts = {}) {
   const ownerPing = (target, text) => target && post(target, { content: `⚠ ${text}` });
   // The one ping the agent sends: a proposal (or a merge that needs a fresh ✅) tags the person whose request it answers, so it is not missed
   // (Helix, 2026-10-11). Only that user (allowedMentions users), never roles or @everyone; nothing else tags anyone.
-  const requesterOf = (job) => String((job.lastAsker && job.lastAsker.id) || job.creatorId || '');
+  // The one person a proposal tags: whoever started the thread (Helix, 2026-10-19: "@ war its his thread"), else whoever asked last.
+  const requesterOf = (job) => String(job.creatorId || (job.lastAsker && job.lastAsker.id) || '');
   const pingRequester = (job) => { const id = requesterOf(job); return /^\d{5,25}$/.test(id) ? { content: `<@${id}>`, mentionUsers: [id] } : {}; };
 
   // ---------- images people attach (written into the worktree for the agent to Read; never redacted, never committed) ----------
