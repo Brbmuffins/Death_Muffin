@@ -287,6 +287,15 @@
         ".gitignore",
         "server/death-muffin/lobby/src/server.js"
       ]
+    },
+    {
+      "id": "team-bench-hook",
+      "pattern": "team-bench\\.(sh|test\\.cjs)|\\bNO_TEAM_BENCH\\b|\\bTEAM_BENCH\\b|DM_TEAM_BENCH_DAYS",
+      "reason": "the publish hook that queued the team PCs' benchmark became team-release.sh (the `release` job, whose `bench` step is the benchmark; env TEAM_RELEASE, NO_TEAM_RELEASE, DM_TEAM_RELEASE_DAYS), 2026-10-19",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
     }
   ],
   "allowPaths": {

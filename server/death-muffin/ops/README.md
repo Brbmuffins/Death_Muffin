@@ -1,6 +1,6 @@
-# Ops: health watch, nightly DB backup, nightly drift report, launcher release notice, pre-push hook
+# Ops: health watch, nightly DB backup, nightly drift report, launcher release notice, release checks report, pre-push hook
 
-Install or update both from a committed revision: `server/death-muffin/ops/install.sh [rev]` (copies the scripts to
+Install or update all of it from a committed revision: `server/death-muffin/ops/install.sh [rev]` (copies the scripts to
 `/home/ubuntu/death-muffin/ops/`, installs the units, enables the timers). Never edit the installed copies.
 
 ## Health watch (timer `death-muffin-health-watch`, every minute)
@@ -63,6 +63,10 @@ zip's download link. Public GitHub API, no token; webhook `~/death-muffin/privat
 kept in `~/death-muffin/ops/state/launcher-announced.txt` (the first run records the existing releases without posting). #build-alerts
 gets only these and the shipped-release notices from `announce-release.sh`: the GitHub commit feed into it (a repo webhook sharing the
 channel's old webhook) was cut on 2026-10-12 by replacing that webhook.
+
+## Release checks report (timer `death-muffin-team-report`, every 2 minutes)
+
+`team-report.sh` posts the team PCs' release checks to #build-alerts: one message per client release, when every team PC's `release` job has finished or 24 hours have passed since the first was queued (the hook that queues them: `server/death-muffin/team-release.sh`, README.md "Team jobs"). A field per PC with its graphics card and a line per step (✓ or ✗ and the numbers: boot ms, quit while loading, screens, the 3 worst stutter rites, bench fps per preset, soak growth) and per resolution a contact sheet of the screens (Pillow, which must be importable for `ubuntu`: it is in `~/.local`; without it the message goes with a note). A PC still working after the 24 hours is named as waiting and posts a "late results" message when it finishes. It reads the runner's routes (`GET /internal/team/jobs?kind=release&status=finished&unreported=1`, `status=open`, `GET /internal/team/pcs`) with the runner's secret (`~/death-muffin/discord-agent/secret`), reads the results from `~/death-muffin/team-results/<job id>/`, and marks each reported job (`POST /internal/team/jobs/<id>/reported`). The state is `~/death-muffin/ops/state/team-report.json` (what was posted, so a failed mark never posts twice); the journal has a line only when something was posted or went wrong, and a backend without the routes (not deployed yet) is quiet. The webhook is `~/death-muffin/private/discord-build-alerts-webhook.url` (`HOOK_FILE` overrides), read and never printed. `team-report.sh --dry-run` prints the message and changes nothing; env overrides are in the script's header (tests: `server/death-muffin/ops/team-report.test.cjs`).
 
 ## Pre-push hook (`git-pre-push.sh`)
 

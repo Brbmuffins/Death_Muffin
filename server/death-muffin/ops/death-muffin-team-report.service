@@ -1,0 +1,11 @@
+[Unit]
+Description=Death Muffin release checks report (server/death-muffin/ops/team-report.sh; posts each release's team PC results to #build-alerts)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Environment=HOME=/home/ubuntu
+ExecStart=/home/ubuntu/death-muffin/ops/team-report.sh
+Nice=10
+TimeoutStartSec=170
