@@ -308,8 +308,8 @@
     },
     {
       "id": "merged-test-suites",
-      "pattern": "\\b(next_gathering|next_acre_guide)\\b",
-      "reason": "test suites merged into gathering and chapterhouse 2026-10-19 (every check kept once); run those",
+      "pattern": "\\b(next_gathering|next_acre_guide|audio_wire)\\b",
+      "reason": "test suites merged into others 2026-10-19 (every check kept once): next_gathering and next_acre_guide into gathering and chapterhouse, audio_wire into sound",
       "allow": [
         "DECISIONS.md",
         "tools/hygiene/**"

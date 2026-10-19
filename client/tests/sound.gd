@@ -229,9 +229,11 @@ func _main() -> void:
 	await _hero_hurt()
 	_the_fight_against_today()
 	await _the_hero_world()
+	g.queue_free()   # leaving the world: the area's bed and score stop
+	await until(func() -> bool: return proxy.current_area() == "", 120)
+	check(proxy.current_area() == "", "leaving the world stops the area (stop_area)")
 	check(errlog.errors.is_empty(), "no script or engine errors in the log (%d: %s)" % [errlog.errors.size(), str(errlog.errors.slice(0, 3))])
 	print("%s sound %d checks%s" % ["PASS" if fails == 0 else "FAIL", checks, "" if fails == 0 else " (%d failed)" % fails])
-	g.queue_free()
 	await process_frame
 	quit(1 if fails > 0 else 0)
 
@@ -292,6 +294,7 @@ func _start_up() -> void:
 	g.ui.update_setting({"vol_music": 0.3})
 	check(proxy.applied > applied, "a volume slider in Settings reaches the director at once (apply_settings, %d -> %d)" % [applied, proxy.applied])
 	check(proxy.listener != Vector2.ZERO and proxy.listener.distance_to(_hero_at()) < 0.5, "the listener follows the hero (%s, he stands at %s)" % [str(proxy.listener), str(_hero_at())])
+	check(not g.get_node("AudioHooks").is_wet(hero.position.x, hero.position.z), "the Chapterhouse start is dry (his strides carry no wet flag there)")
 
 
 func _to_the_graves() -> void:
@@ -533,7 +536,6 @@ func _the_hero_world() -> void:
 	var from := hero.position
 	hero.set_move_target(from + Vector3(8.0, 0.0, 0.0))
 	await until(func() -> bool: return stepped.any(func(n: String) -> bool: return n.begins_with("step")), 900)
-	print("INFO footsteps: ", proxy.foot.size(), " strides to the director, last ", proxy.foot.slice(-1), ", the director played ", stepped.slice(0, 5), ", moved to ", hero.position)
 	check(proxy.foot.size() > 0 and String(proxy.foot[-1][3]) == "graves", "the hero's strides reach the director with the area he walks in (%d, %s)" % [proxy.foot.size(), str(proxy.foot[-1][3]) if not proxy.foot.is_empty() else "-"])
 	check(stepped.any(func(n: String) -> bool: return n.begins_with("step")), "footsteps sound while he walks (%s)" % str(stepped.slice(0, 4)))
 	await until(func() -> bool: return proxy.stopped > 0, 120)

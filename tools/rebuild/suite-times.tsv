@@ -51,12 +51,11 @@
 14	panels
 14	next_brews_affix
 14	next_bag
-14	audio_wire
 13	boss_prelate
 13	boss_regent
 13	boss_congregation
 13	boss_abbess
-13	sound
+14	sound
 13	value
 13	enemy_fx
 13	backend
