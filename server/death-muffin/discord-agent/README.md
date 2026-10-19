@@ -55,7 +55,7 @@ links the lobby's packages (the main checkout's lobby `node_modules`) into a wor
 default and fewer on a busy machine, the slowest first, the real-socket suites in a lane of their own, each failure once more alone: its header). While the suites run it writes
 `<done> <total>` to `.dm-check-progress` in the worktree (removed at the end) for the progress notes. It has two modes. **Quick** (default; the runner before a proposal): `tools/rebuild/affected-suites.mjs` picks the suites for the change (changed suites; suites referencing a changed file by `res://` path or
 `class_name`, one level through non-test dependents; for changed `client/data` files the scripts that load them, by path or DmDb accessor; plus a smoke set
-`code_load core_smoke game_scene`; a `client/data/content/*.json` change also runs `rules-core`, which checks the manifest counts) and `run-client-tests.sh --only <list>`
+`code_load core_smoke game_scene`; a `client/data/content/*.json` change also runs `rules-core`, which reads every content table) and `run-client-tests.sh --only <list>`
 runs them. It prints `ALL` (every suite) for central changes (`project.godot`, `export_presets.cfg`, the combat core `native/`, `client/main`, `client/core`, `client/rules/core`,
 `client/net` (except a change that only adds lines to `dm_api.gd` / `dm_mock_backend.gd`: that selects the suites using the added `func` names and `/api/...` routes, one level
 through dependents), `client/session`, the shared test helpers, the runner), more than 40 changed `.gd` files, or more than 60% of suites selected; nothing for docs-only.

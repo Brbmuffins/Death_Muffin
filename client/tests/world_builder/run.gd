@@ -87,8 +87,8 @@ func _run() -> void:
 
 	# ---- exported data
 	var w: Dictionary = DmData.world()
-	_check(w.order.size() == 13, "13 areas exported")
-	_check(w.doors.size() == 11, "11 doors exported")
+	_check(not w.order.is_empty() and w.order.size() == w.areas.size() and w.order.size() == DmContent.get_export("areas", "AREA_ORDER").size(), "every area is exported (%d), in the order the content names" % w.order.size())
+	_check(not w.doors.is_empty() and w.doors.size() == DmContent.doors().size(), "every door of the content is exported (%d)" % w.doors.size())
 	_check(w.props.size() > 500 and w.nodes.size() > 50 and w.walls.size() > 100, "layout exported (props/nodes/walls)")
 	var used: Dictionary = DmData.load_json("assets_used")
 	var missing := 0
@@ -141,8 +141,8 @@ func _run() -> void:
 	print("world build: %d ms" % (Time.get_ticks_msec() - t_build))
 	await _settle(b)
 	print("nav bake: %d ms, %d regions, %d links" % [b.nav_bake_ms, b.nav_regions.size(), b.nav_links.size()])
-	_check(b.area_nodes.size() == 13 and b.nav_regions.size() == 13 + 11, "an area node + nav region per area and per door")
-	_check(b.gates.size() == 10, "10 gates (chapter_graves is always open)")
+	_check(b.area_nodes.size() == w.order.size() and b.nav_regions.size() == w.order.size() + w.doors.size(), "an area node + nav region per area and per door")
+	_check(b.gates.size() == w.doors.size() - 1 and not b.gates.has("chapter_graves"), "a gate for each door but chapter_graves, which is always open (%d)" % b.gates.size())
 	var start := Vector3(0, 0, 24)
 
 	# default seals: always-open halls reachable, sealed ones not

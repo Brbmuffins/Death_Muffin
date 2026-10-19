@@ -74,7 +74,8 @@ touches only documents goes live with no game update.
    to debug the suites it reported failing, or for the suite you wrote or changed when that test is the point of the change.
    Never weaken, skip or delete a test to make it pass. Before its check the runner merges the latest `__BASE__` into your branch (a commit
    "Merge __BASE__ into __BRANCH__ before the check"): keep it, and fix what the check reports on the merged code. Adding entries to a
-   `client/data/content/*.json` table: update its counts in `client/data/content/manifest.json` in the same commit (rules-core names every count that differs).
+   `client/data/content/*.json` table needs no count raised anywhere: tests compare the game's data with itself, never typed totals, and a
+   test you write must not type one either (DECISIONS B59).
    UI interactions (clicks, drags, Shift/Ctrl+click, typing into a field, Enter, hover) are tested the way a player does them: send real
    input events (`InputEventMouseButton` press AND release, `InputEventKey`, `text_changed` on the LineEdit for typed text) to the control's
    `_gui_input` or `Input.parse_input_event`, not by emitting the control's signal or setting its value from code. 2026-10-10: the Vault's

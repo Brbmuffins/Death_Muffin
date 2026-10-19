@@ -1,11 +1,11 @@
 extends SceneTree
 ## The in-game benchmark on the combat core (the rebuild's Gates B and C, DECISIONS B50; client/README.md "The benchmark"), headless: `godot --headless --path client --script res://tests/benchmark.gd`.
 ## Short runs of the real thing, deterministic checks only (timings are printed as INFO and never asserted):
-##   - the setup: sizes, today's nine rooms and five classes, the Bell Sanctum as the Standard room, today's enemy health, the budgets are B39's, a room or class the benchmark does not list is refused with a plain message;
+##   - the setup: sizes, the combat areas as rooms and the playable classes, the Bell Sanctum as the Standard room, today's enemy health, the budgets are B39's, a room or class the benchmark does not list is refused with a plain message;
 ##   - the fight is set up as the setup says: 72 enemies held (the farthest extras trimmed without a death), 32 thralls, the Gravedigger King awake, the fixed seed, every enemy on
 ##     the standard health, the hero holding the centre, no node per creature;
 ##   - every room: a short Full Party run boots only that room's area, the hero stands on its floor, the director holds the room's whole roster on the core, the enemies that spawn are the room's, the report names the room, and
-##     the room's boss is held awake the whole fight exactly where today's benchmark holds one (TODAYS_BOSS), while the Warren and the Coliseum run without;
+##     the room's boss is held awake the whole fight exactly where today's benchmark holds one (the boss data), while the Warren and the Coliseum run without;
 ##   - every class: a short run per class, the kit's family, auto combat casts;
 ##   - Easy auto combat casts (the gate is closed until opened, it casts, it walks when it may, it reads the corpses and the core's bulk arrays, and nothing is a node);
 ##   - the report has its lines and its budget section prints, with a verdict for the core and the rest of the main thread, and the HUD's share is measured with the HUD put back after;
@@ -23,7 +23,6 @@ const BAKE := ["grave_robber", "bone_hound"]
 ## The boss today's Full Party fight holds awake in each room (client/next/perf/dm_bench_fight.gd `boss_of`: the boss whose arena is the room); the Warren and the Coliseum have none.
 ## Kinds the room's own bodies make: a Deacon raises a corpse and a Lich Acolyte unbinds a fallen thrall as a Risen (native/src/core/support.cpp, nave.cpp), today's too.
 const MADE_BY := {"risen": ["deacon", "acolyte"]}
-const TODAYS_BOSS := {"graves": "gravedigger", "warren": "", "ossuary": "abbess", "nave": "congregation", "coliseum": "", "sanctum": "prelate", "cloister": "saint", "pyre": "regent", "fen": "mire"}
 const STD_HP := 272.928627      ## the health every enemy has (today's DmBenchmark.standard_stats at c47c35a1)
 const STD_DMG := 10.848627
 
@@ -107,6 +106,59 @@ func _initialize() -> void:
 	finish()
 
 
+# ------------------------------------------------------------------------------------------------------------------ what the data says
+
+## The combat areas: the world's order, the areas that are neither safe hubs nor the Depths instance.
+func _combat_areas() -> Array:
+	var out: Array = []
+	for id in DmData.world()["order"]:
+		var a: Dictionary = DmData.world()["areas"][id]
+		if not bool(a["instance"]) and not bool(DmContent.area(String(id)).get("safe", false)):
+			out.append(String(id))
+	return out
+
+
+## An area of the world the benchmark does not list as a room ("" when it lists them all).
+func _area_outside_rooms() -> String:
+	for id in DmData.world()["order"]:
+		if not DmBenchmark.ROOMS.has(String(id)):
+			return String(id)
+	return ""
+
+
+func _sorted(a: Array) -> Array:
+	var b := a.duplicate()
+	b.sort()
+	return b
+
+
+## The playable disciplines' class indices, ascending (DmCharacterBuild.is_playable over the combat data's disciplines).
+func _playable_classes() -> Array:
+	var out: Array = []
+	for d: Dictionary in (DmCombatData.disciplines()["disciplines"] as Dictionary).values():
+		if DmCharacterBuild.is_playable(float(d["classIndex"])):
+			out.append(int(d["classIndex"]))
+	out.sort()
+	return out
+
+
+## A class index of the character select's list that is not playable (a number no discipline has when all are).
+func _unplayable_class() -> int:
+	var playable := _playable_classes()
+	for d: Dictionary in DmContent.file("disciplines").get("PLAYABLE_DISCIPLINES", []):
+		if not playable.has(int(d["classIndex"])):
+			return int(d["classIndex"])
+	return 99
+
+
+## The boss the boss data puts in `room` ("" = none).
+func _boss_in(room: String) -> String:
+	for id in DmContent.bosses():
+		if String(DmContent.boss(String(id))["area"]) == room:
+			return String(id)
+	return ""
+
+
 # ------------------------------------------------------------------------------------------------------------------ the setup
 
 func the_setup() -> void:
@@ -116,8 +168,8 @@ func the_setup() -> void:
 	check(DmBenchmark.SIZES["light"] == [15, 10] and DmBenchmark.SIZES["standard"] == [30, 20] and DmBenchmark.SIZES["heavy"] == [60, 30], "the other sizes are today's")
 	check(DmBenchmark.LENGTHS["quick"] == [6.0, 20.0, false] and DmBenchmark.LENGTHS["full"] == [10.0, 30.0, true], "the lengths are today's")
 	check(DmBenchmark.ENEMY_LIMIT > cap and DmBenchmark.SEED == 20261011, "the director's body limit leaves room for the corpses; the seed is today's (%d)" % DmBenchmark.SEED)
-	check(DmBenchmark.ROOMS == ["graves", "warren", "ossuary", "nave", "coliseum", "sanctum", "cloister", "pyre", "fen"] and DmBenchmark.class_indices() == [1, 2, 3, 4, 11],
-		"the benchmark has today's nine rooms and five classes (the four necromancers and the Reaper)")
+	check(DmBenchmark.ROOMS == _combat_areas() and not DmBenchmark.ROOMS.is_empty() and _sorted(DmBenchmark.class_indices()) == _playable_classes() and not DmBenchmark.class_indices().is_empty(),
+		"the benchmark's rooms are the world's combat areas, in world order, and its classes the playable disciplines of the data")
 	var every: Array = DmNextWorld.every_area()
 	var rooms_ok := true
 	for room: String in DmBenchmark.ROOMS:
@@ -125,17 +177,22 @@ func the_setup() -> void:
 		rooms_ok = rooms_ok and every.has(room) and not roster.is_empty() and roster.all(func(e: Dictionary) -> bool: return DmWaveDirector.runs_on_core(String(e["id"])))
 	check(rooms_ok and not DmBenchmark.ROOMS.has("depths"), "every room is an area the world loads and the core runs its whole roster (the Depths stays out)")
 	check(DmBenchmark.BUDGET_CORE_MS == 4.0 and DmBenchmark.BUDGET_REST_MS == 4.0 and DmBenchmark.BUDGET_HUD_MS == 0.5 and DmBenchmark.BUDGET_HUD_DRAWS == 150, "the budgets are B39's: core 4 ms, rest 4 ms, HUD 0.5 ms and 150 draws")
+	var last_room: String = DmBenchmark.ROOMS[DmBenchmark.ROOMS.size() - 1]
+	var last_class: int = DmBenchmark.class_indices()[DmBenchmark.class_indices().size() - 1]
+	var off_room := _area_outside_rooms()
+	var off_class := _unplayable_class()
+	check(off_room != "" and off_class >= 0, "the data has an area and a class the benchmark does not list (%s, %d)" % [off_room, off_class])
 	check(DmBenchmark.normalize_setup({"room": "nowhere", "discipline": 7, "size": "huge"}) == DmBenchmark.STANDARD, "unknown picks fall back to the Standard setup")
-	check(DmBenchmark.normalize_setup({"room": "fen", "discipline": 11})["room"] == "fen" and DmBenchmark.normalize_setup({"room": "fen", "discipline": 11})["discipline"] == 11 and DmBenchmark.normalize_setup({"room": "depths"})["room"] == "sanctum"
-		and DmBenchmark.normalize_setup({"discipline": 5})["discipline"] == 2, "a listed room and class are taken; the Depths and a greyed-out class fall back to the Standard room and class")
+	check(DmBenchmark.normalize_setup({"room": last_room, "discipline": last_class})["room"] == last_room and DmBenchmark.normalize_setup({"room": last_room, "discipline": last_class})["discipline"] == last_class and DmBenchmark.normalize_setup({"room": off_room})["room"] == DmBenchmark.STANDARD["room"]
+		and DmBenchmark.normalize_setup({"discipline": off_class})["discipline"] == DmBenchmark.STANDARD["discipline"], "a listed room and class are taken; the Depths and a greyed-out class fall back to the Standard room and class")
 	check(DmBenchmark.STANDARD == {"room": "sanctum", "discipline": 2, "size": "standard", "length": "full"} and DmBenchmark.is_standard(DmBenchmark.STANDARD) and not DmBenchmark.is_standard({"room": "graves", "discipline": 2, "size": "standard", "length": "full"}),
 		"Standard is today's: the Bell Sanctum, Gravecaller, Standard, Full")
 	# a room or class the benchmark does not list is refused in plain words
-	check(DmBenchmark.refusal({"room": "graves", "discipline": 2}) == "" and DmBenchmark.refusal({}) == "" and DmBenchmark.refusal({"room": "fen", "discipline": 11}) == "", "the listed rooms and classes are not refused")
-	var why_room := DmBenchmark.refusal({"room": "depths"})
-	check(why_room.contains("'depths'") and why_room.contains("graves") and why_room.contains("fen"), "a room outside the nine is refused with a clear message (%s)" % why_room)
-	var why_class := DmBenchmark.refusal({"discipline": 5})
-	check(why_class.contains("class 5") and why_class.contains("2 Gravecaller") and why_class.contains("11 Reaper"), "a class outside the five is refused with a clear message (%s)" % why_class)
+	check(DmBenchmark.refusal({"room": DmBenchmark.ROOMS[0], "discipline": DmBenchmark.class_indices()[0]}) == "" and DmBenchmark.refusal({}) == "" and DmBenchmark.refusal({"room": last_room, "discipline": last_class}) == "", "the listed rooms and classes are not refused")
+	var why_room := DmBenchmark.refusal({"room": off_room})
+	check(why_room.contains("'%s'" % off_room) and DmBenchmark.ROOMS.all(func(r: String) -> bool: return why_room.contains(r)), "a room the benchmark does not list is refused with a clear message naming the listed ones (%s)" % why_room)
+	var why_class := DmBenchmark.refusal({"discipline": off_class})
+	check(why_class.contains("class %d" % off_class) and DmBenchmark.class_indices().all(func(i: int) -> bool: return why_class.contains("%d %s" % [i, DmBenchmark.class_name_of(i)])), "a class the benchmark does not list is refused with a clear message naming the listed ones (%s)" % why_class)
 	# the enemies' health and damage are today's: the Bell Sanctum roster's weighted average on Easy, whatever the room
 	var std := DmBenchmark.standard_stats()
 	check(absf(float(std["hp"]) - STD_HP) < 0.001 and absf(float(std["dmg"]) - STD_DMG) < 0.001, "every enemy has today's health %.3f and damage %.3f (%.3f, %.3f)" % [STD_HP, STD_DMG, std["hp"], std["dmg"]])
@@ -145,9 +202,9 @@ func the_setup() -> void:
 	var todays := true
 	var woken := true
 	for room: String in DmBenchmark.ROOMS:   # the rooms and their bosses are today's, and the game wakes every one of them
-		todays = todays and DmBenchFight.boss_of(room) == TODAYS_BOSS[room]
-		woken = woken and (TODAYS_BOSS[room] == "" or served.has(room))
-	check(todays and woken and TODAYS_BOSS.size() == DmBenchmark.ROOMS.size(), "every room's boss is today's, and the boss host wakes all seven (%s)" % str(served))
+		todays = todays and DmBenchFight.boss_of(room) == _boss_in(room)
+		woken = woken and (_boss_in(room) == "" or served.has(room))
+	check(todays and woken, "every room's boss is the boss the data puts in that area, and the boss host wakes it (%s)" % str(served))
 	var sanctum_fp := DmBenchmark.new()
 	sanctum_fp.configure({"room": "sanctum", "size": "full_party"})
 	check(sanctum_fp.boss_id == "prelate" and sanctum_fp.boss_text().contains("Bell-Sworn Prelate held awake"), "Full Party in the Sanctum holds its Prelate (%s)" % sanctum_fp.boss_text())
@@ -689,7 +746,7 @@ func every_room() -> void:
 		var w: Watch = o["watch"]
 		var b: DmBenchmark = o["b"]
 		total += int(o["ms"])
-		var boss: String = TODAYS_BOSS[room]
+		var boss: String = _boss_in(room)
 		var rect: Dictionary = DmContent.area(room)["rect"]
 		var roster: Array = (DmContent.area(room)["enemies"] as Array).map(func(e: Dictionary) -> String: return String(e["id"]))
 		roster.sort()
@@ -864,14 +921,14 @@ func setup_window() -> void:
 	w.start.connect(func(s: Dictionary) -> void: got.append(s))
 	root.add_child(w)
 	check(DmBenchmark.is_standard(w.setup), "the setup window opens on the Standard setup the first time")
-	check(w._room.item_count == DmBenchmark.ROOMS.size() and w._room.get_item_text(0).begins_with("The Hollow Graves") and w._room.get_item_text(w._room.item_count - 1).begins_with("The Mourning Fen"),
-		"it lists today's nine rooms in order, the Graves first and the Fen last")
+	check(w._room.item_count == DmBenchmark.ROOMS.size() and w._room.get_item_text(0).begins_with(DmBenchmark.room_name(DmBenchmark.ROOMS[0])) and w._room.get_item_text(w._room.item_count - 1).begins_with(DmBenchmark.room_name(DmBenchmark.ROOMS[DmBenchmark.ROOMS.size() - 1])),
+		"it lists the benchmark's rooms in order, the first and the last by name")
 	var std_room := w._room.get_item_text(DmBenchmark.ROOMS.find("sanctum"))
 	check(std_room.begins_with("The Bell Sanctum") and std_room.ends_with("(standard)") and w._room.get_selected_metadata() == "sanctum", "the Bell Sanctum is marked standard and picked (%s)" % std_room)
-	var classes_ok := w._class.item_count == 5
+	var classes_ok := w._class.item_count == DmBenchmark.class_indices().size()
 	for i in w._class.item_count:
-		classes_ok = classes_ok and w._class.get_item_metadata(i) == [1, 2, 3, 4, 11][i] and w._class.get_item_text(i).begins_with(DmBenchmark.class_name_of(int(w._class.get_item_metadata(i))))
-	check(classes_ok and w._class.get_item_text(4).begins_with("Reaper") and w._class.get_selected_metadata() == 2, "it lists the four necromancers and the Reaper, the Gravecaller picked (%s)" % w._class.get_item_text(4))
+		classes_ok = classes_ok and w._class.get_item_metadata(i) == DmBenchmark.class_indices()[i] and w._class.get_item_text(i).begins_with(DmBenchmark.class_name_of(int(w._class.get_item_metadata(i))))
+	check(classes_ok and w._class.get_selected_metadata() == DmBenchmark.STANDARD["discipline"], "it lists the playable classes, the Standard class picked (%s)" % w._class.get_item_text(w._class.item_count - 1))
 	check(w._size.item_count == DmBenchmark.SIZES.size() and w._size.get_item_text(w._size.item_count - 1) == "Full Party: 72 enemies, 32 thralls, a boss", "it lists Full Party with its counts and the boss (%s)" % w._size.get_item_text(w._size.item_count - 1))
 	w._size.select(DmBenchmark.SIZES.keys().find("full_party"))
 	w._size.item_selected.emit(w._size.selected)

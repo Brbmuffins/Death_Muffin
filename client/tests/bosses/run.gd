@@ -47,7 +47,7 @@ func ok(cond: bool, msg: String) -> void:
 func _test_factory() -> void:
 	var w := FakeWorld.new(1, "medium", 5)
 	var all: Dictionary = Brains.make_all(w)
-	ok(all.size() == 7, "make_all builds 7 brains")
+	ok(not all.is_empty() and all.size() == Brains.BOSS_IDS.size() and all.size() == DmContent.bosses().size(), "make_all builds a brain for each boss of the data (%d)" % all.size())
 	for id in Brains.BOSS_IDS:
 		ok(all.has(id) and all[id].id == id and not all[id].state["active"], "brain %s idle" % id)
 

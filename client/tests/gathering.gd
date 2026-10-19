@@ -169,7 +169,7 @@ func _event_ids() -> Array:
 
 func _the_nodes() -> void:
 	var data: Array = DmData.world()["nodes"]
-	check(g.gather != null and g.gather.loop != null and g.gather.nodes.size() == data.size() and data.size() == 68, "the gather node is up on the host with its loop and all %d nodes of world.json" % data.size())
+	check(g.gather != null and g.gather.loop != null and g.gather.nodes.size() == data.size() and not data.is_empty(), "the gather node is up on the host with its loop and all %d nodes of world.json" % data.size())
 	var missing: Array = []
 	var misplaced: Array = []
 	for n: Dictionary in data:
@@ -180,7 +180,7 @@ func _the_nodes() -> void:
 			misplaced.append(n["id"])
 	check(missing.is_empty() and misplaced.is_empty(), "every node is in its area scene where world.json puts it (missing %s, misplaced %s)" % [str(missing), str(misplaced)])
 	var b := g.world.builder
-	check(b.node_views.size() == data.size() and b.area_nodes.size() == 13 and g.gather.views != null, "the views hold every node's prop (%d) and every area's root, the twelve scenes' and the Depths' node (%d)" % [b.node_views.size(), b.area_nodes.size()])
+	check(b.node_views.size() == data.size() and b.area_nodes.size() == DmData.world()["order"].size() and g.gather.views != null, "the views hold every node's prop (%d) and every area's root, the twelve scenes' and the Depths' node (%d)" % [b.node_views.size(), b.area_nodes.size()])
 	var spent: Dictionary = {}
 	for n: Dictionary in data:
 		if n["spentModel"] != null:

@@ -202,7 +202,14 @@ func finish() -> void:
 
 func _wire() -> void:
 	check(g.ready_ and hb != null and c != null and g.bosses != null and g.bosses.name == "Bosses" and g.bosses.fx != null, "the game scene is up, the hero has his caster and the scene has a Bosses host with its fx")
-	check(g.bosses.served_areas == ["graves", "ossuary", "nave", "sanctum", "cloister", "pyre", "fen"], "the host wakes the boss of every area (the other six have their own suites: boss_*.gd)")
+	var boss_areas: Array = []
+	for bid in DmContent.bosses():
+		if not boss_areas.has(String(DmContent.boss(String(bid))["area"])):
+			boss_areas.append(String(DmContent.boss(String(bid))["area"]))
+	var served: Array = g.bosses.served_areas.duplicate()
+	served.sort()
+	boss_areas.sort()
+	check(not boss_areas.is_empty() and served == boss_areas, "the host wakes the boss of every area the boss data names (the other bosses have their own suites: boss_*.gd)")
 	hb.p["stats"]["maxHp"] = 1.0e5   # the fight is about numbers, not about the hero surviving them
 	hb.heal(1.0e6)
 	g.bosses.fx.set_backends(stub, astub)
@@ -350,10 +357,15 @@ func t_replays() -> void:
 			if f.begins_with("gravedigger_") and f.ends_with(".json.gz"):
 				files.append(f)
 	files.sort()
-	check(files.size() == 6, "the King's six recorded scenarios are there (%d)" % files.size())
+	check(not files.is_empty(), "the King's recorded scenarios are there (%d)" % files.size())
 	var ticks_total := 0
+	var empty: Array = []
 	for f in files:
-		ticks_total += _replay(dir.path_join("fixtures").path_join(f), fake, diff)
+		var t := _replay(dir.path_join("fixtures").path_join(f), fake, diff)
+		ticks_total += t
+		if t <= 0:
+			empty.append(f)
+	check(empty.is_empty(), "every recorded scenario in the folder was loaded and replayed (%s)" % str(empty))
 	print("INFO replays: %d scenarios, %d ticks compared, boss state, world calls and entities every tick" % [files.size(), ticks_total])
 
 

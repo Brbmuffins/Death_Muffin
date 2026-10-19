@@ -483,7 +483,7 @@ func _grimoire() -> void:
 	check(g.ui.is_open("grimoire"), "B: the Grimoire opens")
 	g.ui_host.counsel.last_combat_ms = -1e9   # the fights above leave the hero "in combat" for a few seconds
 	var owned: Dictionary = DmRunes.owned_runes(g.ui_host.inventory.slots)
-	check(owned.size() == 11, "B: the bag holds %d runes to learn" % owned.size())
+	check(owned.size() == DmCombatData.abilities()["rune_ids"].size() and not owned.is_empty(), "B: the bag holds all %d runes to learn" % owned.size())
 	var err: String = await g.ui.inv.socket_rune_id("bone_needle", "rune_volley")   # what the Grimoire's rune button calls
 	check(err.contains("learned") and DmAbilities.rune(caster.p, "bone_needle") == "", "B: a rune not learned yet cannot be socketed (%s)" % err)
 	await _learn("rune_volley")

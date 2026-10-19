@@ -127,7 +127,7 @@ func area_lifts() -> void:
 	scenes.sort()
 	var keys: Array = DmWorldBuilder.AREA_LIFT.keys()
 	keys.sort()
-	check(keys == scenes and scenes.size() == 12, "a lift for each of the twelve areas, and only for them (%s)" % str(scenes))
+	check(keys == scenes and not scenes.is_empty(), "a lift for each area scene, and only for them (%s)" % str(scenes))
 	var same := true
 	var inside := true
 	for id in AREA_LIFTS:

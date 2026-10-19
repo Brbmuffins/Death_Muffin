@@ -80,7 +80,7 @@ func _run() -> void:
 func _test_data() -> void:
 	var d := DmCounselData.data()
 	var order: Array = d["order"]
-	_check(order.size() == 122, "122 tips exported (%d)" % order.size())
+	_check(not order.is_empty() and order.size() == (d["tips"] as Dictionary).size(), "every tip is in the order (%d)" % order.size())
 	for id in order:
 		_check(DmCounselData.title(id) != "" and DmCounselData.body(id).length() > 20, "tip has title+body: " + id)
 	# every anchored tip resolves to a DmHud anchor key

@@ -89,7 +89,7 @@ test('an add-only change to the API client or mock selects the users of the adde
   assert.equal(affected(['client/net/dm_api.gd'], { ...ctx, addedLines: () => null }).all, true);
   assert.equal(affected(['client/net/dm_config.gd'], ctx).all, true);
 });
-test('a content table change also runs rules-core (it checks the manifest counts)', () => {
+test('a content table change also runs rules-core (it reads every content table)', () => {
   assert.ok(sel(affected(['client/data/content/audioMap.json'], mk())).includes('rules-core'));
   assert.ok(!sel(affected(['client/hud/x.gd'], mk())).includes('rules-core'));
 });

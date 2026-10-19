@@ -69,7 +69,7 @@ editJson('client/data/content/computed.json', (d) => { d.itemIds = Object.keys(I
 editJson('client/data/content/gameplay_authorityRules.json', (d) => { d.GROUND_RATES = R.GROUND_RATES; });
 editJson('client/data/content/gameplay_atlas.json', (d) => { d.ARMOR_BY_ID = A.ARMOR_BY_ID; d.LEGENDARY_SETS = L.LEGENDARY_SETS; });
 
-// ---- content/manifest.json: the export counts the rules-core suite checks (array length / key count, 1 for a scalar) -------------------
+// ---- content/manifest.json: the export counts it records (array length / key count, 1 for a scalar; informational, nothing pins them) ----
 editJson('client/data/content/manifest.json', (m) => {
   for (const name of ['armorSets', 'legendarySets', 'items', 'setBonuses', 'computed', 'gameplay_authorityRules', 'gameplay_atlas']) {
     const file = name === 'setBonuses' ? { ...readJson(`client/data/content/${name}.json`), SET_NAMES: setName, SET_IDS: setIds } : readJson(`client/data/content/${name}.json`);

@@ -127,6 +127,11 @@ polish list). Also:
 
 ## Tools and tests
 
+- **Typed lists in game code that a new boss or area must be added to by hand** (found by the content-count pass, 2026-10-19): `DmBossHost`'s
+  `served_areas` and `LIVE` (a new boss in the boss data does not wake until both are edited; `client/tests/boss.gd` now fails on the mismatch)
+  and `DmBenchmark.ROOMS` (`client/tests/benchmark.gd` fails on a mismatch with the world's combat areas).
+- **`disciplines.json` `by_index` maps the unused class indices 0, 10 and 12 to the fallback Gravecaller**, so `DmCharacterBuild.is_playable`
+  answers true for them. Nothing shows it today (character select and the benchmark list from `PLAYABLE_DISCIPLINES`).
 - `launcher/tests/LauncherTests.csproj` does not load in `dotnet build`: its XML comment contains `--project` ("XML comment cannot contain '--'"); CI does not
   build it, so `launcher/tests/run-local.sh` is the only way its tests run (found 2026-10-19).
 - `discord-agent/preview-godot.sh --team` still carries its own copy of the newest-6 clean-up of the preview folders in `team-files`; `server/death-muffin/team-files-prune.sh` is the shared rule it
@@ -142,8 +147,6 @@ polish list). Also:
   engage (1 of 148 bodies culled); its report's budget section is labelled "Budgets (ROADMAP", but the budgets are in CLAUDE.md (B39).
 - The draw model counts the rendered Graves a few draws under the engine, but Helix's World row is about 40 over the same stage: the real
   fight draws what the model's stage does not (the hero's place, the effects, the boss).
-- `client/data/content/manifest.json`'s counts are kept by hand: a new entry in a content table fails rules-core until its count is raised
-  (rules-core names each; the Discord agent's prompt says so). Only `tools/generate-armor-assets.mjs` updates them by itself.
 - `--tune=` (`client/README.md` "Clips and tune") changes only numbers the data files hold, and most rites keep some in their scripts (Miasma's flight speed, Unleash Souls' three speeds, the Haunting Wraith's damage tick, ...), so a team PC cannot show variants of those until each moves into its rite's row of
   `client/data/combat/abilities.json`, as the Haunting Wraith's `speed` did (found 2026-10-19).
 - `--boot-check --quit-while-loading` quits with the art pack's models loading on worker threads, not during the pack's own mount: that is synchronous in the first autoload (`client/main/dm_packs.gd`), before any script of the game can quit, so the step cannot reproduce a quit

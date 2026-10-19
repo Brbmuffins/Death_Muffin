@@ -239,16 +239,16 @@ func _front_screens() -> void:
 	await _fr(4)
 	check(flow.current_name == "select" and flow.current is DmCharSelectScreen, "no character -> discipline select")
 	var sel: DmCharSelectScreen = flow.current
-	check(sel.cards.size() == 10, "ten discipline cards")
+	check(not sel.cards.is_empty() and sel.cards.size() == DmCharSelectScreen.load_disciplines().size(), "a card for each discipline of the data (%d)" % sel.cards.size())
 	var rec := sel.cards.filter(func(c): return c.has_meta("recommended"))
 	check(rec.size() == 1 and rec[0].disc["id"] == "gravecaller", "gravecaller recommended for first run")
-	var want := ["ossuary", "gravecaller", "mourner", "rotweaver", "grave_warden", "bell_monk", "carrion_witch", "hollow_knight", "veilwalker", "reaper"]
+	var want: Array = DmCharSelectScreen.load_disciplines().map(func(d: Dictionary) -> String: return String(d["id"]))
 	var got: Array = sel.cards.map(func(c): return c.disc["id"])
 	check(got == want, "card order matches PLAYABLE_DISCIPLINES")
 	var art_ok := true
 	for c in sel.cards:
 		art_ok = art_ok and ResourceLoader.exists("res://front/art/" + String(c.disc["portrait"]).trim_prefix("art/"))
-	check(art_ok, "all ten portraits shipped under front/art")
+	check(art_ok, "every card's portrait is shipped under front/art")
 	# ---- non-necro disciplines are greyed out until rebuilt (owner 2026-10-09): choosing one is refused
 	var locked_idx := -1
 	for d in sel.disciplines:
@@ -359,12 +359,15 @@ func _entry_flow() -> void:
 	# (the old game's wipe of a retired offline save and token, DmMain.wipe_offline_edition, is not in the client's boot)
 	# ---- playable disciplines
 	var necro := 0
+	var necro_want := 0
 	for d in DmCharSelectScreen.load_disciplines():
 		var fam := String(DmCharacterBuild.discipline_for(float(d["classIndex"]))["family"])
 		check(DmCharacterBuild.is_playable(float(d["classIndex"])) == (fam == "necromancer" or fam == "reaper"), "%s playable only if necromancer or reaper" % d["id"])
 		if fam == "necromancer":
 			necro += 1
-	check(necro == 4, "four playable necromancer disciplines (%d)" % necro)
+		if String(d["family"]) == "necromancer":
+			necro_want += 1
+	check(necro > 0 and necro == necro_want, "the necromancer disciplines the data names are the ones the build treats as necromancers (%d)" % necro)
 	# ---- main scene: login -> select
 	var main2: DmMain = load("res://main/main.tscn").instantiate()
 	main2.mode = "dev_offline"
@@ -381,13 +384,18 @@ func _entry_flow() -> void:
 	check(main2.flow.current_name == "select", "a new account goes to discipline select: %s" % main2.flow.current_name)
 	var sel: DmCharSelectScreen = main2.flow.current as DmCharSelectScreen
 	var locked := 0
+	var locked_want := 0
+	var locked_class := -1
 	for c in sel.cards:
+		if c.locked and locked_class < 0:
+			locked_class = int(c.disc["classIndex"])
+		locked_want += 0 if DmCharacterBuild.is_playable(float(c.disc["classIndex"])) else 1
 		var playable := DmCharacterBuild.is_playable(float(c.disc["classIndex"]))
 		check(c.locked == not playable and (c.disabled or playable), "%s card %s" % [c.disc["id"], "open" if playable else "greyed out"])
 		if c.locked:
 			locked += 1
-	check(locked == 5, "five greyed-out cards (%d)" % locked)
-	check(not await sel.choose(5) and main2.flow.current_name == "select", "a greyed-out discipline is refused")
+	check(locked == locked_want and locked > 0, "a greyed-out card for each discipline that is not playable (%d)" % locked)
+	check(not await sel.choose(locked_class) and main2.flow.current_name == "select", "a greyed-out discipline is refused")
 	var gr := await main2.api.get_character()
 	check(gr.status == 404, "refusing created no character")
 	# ---- a character of a discipline that is not playable yet (an existing online one): resume -> the discipline switch
