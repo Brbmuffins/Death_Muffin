@@ -273,6 +273,12 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   all in Phase 1 (ROADMAP "New: the team app", in that order), built one after another once app 0.2.0 has landed. Every job asks the same
   way (the box and the PC's mode), benchmarks included. Claude's recommendation was the same list with the screen sizes and the soak
   test in Phase 2; Helix wanted them now.
+- **B60. A Windows release build ends its own process after the game's shutdown** (Claude, 2026-10-19, with Helix's crash files). The
+  release engine's last teardown crashes on Windows after every quit, the benchmark's and a player's alike (0xC0000374 heap corruption or
+  0xC0000005 at the same engine code; the debug engine with the same pack, art and combat core closes cleanly; KNOWN-GAPS "Stability"). Once
+  the game's own shutdown has run (saves, the play report, the party left, the crash lock removed), `DmMain.end_process` ends the process
+  (`OS.kill` on itself, exit code 0) instead of `quit()`. A debug build, Linux, and any exit code that is not 0 keep the engine's teardown, so
+  leak reports and the tests still see it. Revisit when Godot is upgraded or the cause is found.
 - **B59. One setup, and CI as the one gate, for sessions and the Discord agent alike** (Helix, 2026-10-19: "the way we do testing for
   sessions and discord agents is a mess", then "start"; Claude's design). Every checkout (a session's worktree, an agent job, a CI machine,
   a publish) gets the combat core, Godot's import, the crowd's bakes and the lobby's packages from one setup, `tools/check/prep.sh`, through

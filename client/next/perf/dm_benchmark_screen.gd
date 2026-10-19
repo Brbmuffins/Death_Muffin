@@ -99,7 +99,7 @@ func _run() -> void:
 	_show_results(r, prev)
 	await _upload()
 	if quit_on_close and (auto_quit or DisplayServer.get_name() == "headless"):
-		get_tree().quit(exit_code(r, recorded) if auto_quit else 0)   # nobody can press Quit: a scripted run ends with its report
+		DmMain.end_process(get_tree(), exit_code(r, recorded) if auto_quit else 0)   # nobody can press Quit: a scripted run ends with its report (B60)
 
 
 ## The exit code of a `--bench-quit` run: 0 when its run was recorded (the last entry of `DmBenchHistory.pending_file()` is this run) and finished, 1 when it was cancelled or could not be recorded.

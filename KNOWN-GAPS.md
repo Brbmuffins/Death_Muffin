@@ -166,16 +166,11 @@ polish list). Also:
 
 ## Stability
 
-- **The release build crashes while closing after the benchmark on Windows** (Helix's RTX 4070 SUPER PC, 2026-10-19, release checks of
-  20261019.090501-1852fe7, job d9be0824dd0b): the benchmark finishes and saves, then the game exits with 0xC0000374 (heap corruption). The
-  earlier runs that night end the same way (the dying process was what the team app took for "Death Muffin was started"). The debug build
-  quits cleanly after 30 minutes of the soak, the stutter and the screenshot runs; the release build quits cleanly from its first screen; the
-  Linux headless benchmark exits 0. Not known whether a player's own quit after a session hits it: the crash watch's lock is cleared in
-  `main.gd` `_exit_tree`, before the engine's last teardown, so such a crash is never reported. Team app 0.3.9 keeps such a run's numbers and
-  names the crash and Windows' faulting module in the bench step: ntdll.dll at the same offset every time (where the heap check fired, not the
-  culprit). Narrowed on Helix's PC with the same benchmark: the debug engine with the debug pack, the release's core library and art pack closes
-  cleanly (job f1b7b90ed70d); the release engine with that unbaked debug pack still crashes (job a85b67e925ff). So it is the release engine
-  build's teardown, not the baked shaders, the pack or the core library alone. Next: a Windows crash dump (WER LocalDumps, needs admin on the PC).
+- **The Windows release engine crashes in its last teardown, after every quit** (Helix's RTX 4070 SUPER PC, 2026-10-19; Windows crash files
+  of a benchmark run and of a player's quit: 0xC0000374 heap corruption at ntdll+0x118095, and 0xC0000005 at DeathMuffin.exe+0x3f8832f, beside
+  +0x3f88433 on the first one's stack). The debug engine with the same pack, core and art closes cleanly; the release engine with an unbaked
+  pack still crashes; the combat core is not on the stack and Godot publishes no Windows symbols. Worked around by B60 (the release build ends
+  its own process after its shutdown); the cause inside the engine is not known. Team app 0.3.9 still names any crash code in the bench step.
 - The Windows half of the combat core's crash note (the unhandled-exception filter and its stack walk, native/README.md "Crash notes") has
   not crashed on a real Windows PC yet; the Linux half is tested on every run. The team app's release crash check will cover it (ROADMAP Phase 1).
 - Quitting while models still load in the background aborted the old game on a 4-core PC (the CI runner, 2026-10-16); the release checks'

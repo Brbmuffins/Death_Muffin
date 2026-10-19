@@ -363,8 +363,29 @@ func _run_qa_scenario(kind: String, args: PackedStringArray) -> void:
 ## A normal shutdown (window close, quit) saves first (the web's pagehide flush), then quits.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		var game := slice
 		await save_all()
-		get_tree().quit()
+		if game != null and is_instance_valid(game) and game.session != null:
+			await game.session.leave()   # a party is told at once (the engine's teardown closed the connection before; DECISIONS B60)
+		end_process(get_tree(), 0)
+
+
+## The game ends here once its own shutdown has run (saves, play report, the party left; DECISIONS B60). A Windows release build ends its
+## process at once (`OS.kill` on itself, exit code 0): the engine's last teardown crashes there (0xC0000374 / 0xC0000005 at the same engine
+## code, after the benchmark and after a normal quit, Helix's PC 2026-10-19; KNOWN-GAPS "Stability"). The crash lock goes first. Other builds,
+## and a code that is not 0, quit through the engine.
+static func end_process(tree: SceneTree, code: int = 0) -> void:
+	if code == 0 and fast_exit(OS.get_name(), OS.is_debug_build()):
+		DmCrashWatch.end()
+		OS.kill(OS.get_process_id())
+		return
+	tree.quit(code)
+
+
+## Whether the game ends its own process instead of the engine's teardown: a Windows release build only (a debug build keeps the full teardown,
+## so its leak reports and the tests still see it).
+static func fast_exit(os_name: String, debug_build: bool) -> bool:
+	return os_name == "Windows" and not debug_build
 
 
 ## Final save of the game (also the quit path of the tests): the scene's `flush_all` (rewards, Chronicle, progression, bag).

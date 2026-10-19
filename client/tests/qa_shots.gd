@@ -214,6 +214,8 @@ func boot_hook() -> void:
 		"--qa-window=WxH is read for the QA window (none, an empty or a bad value: none)")
 	check(not OS.get_cmdline_args().has("--fixed-fps") and not OS.get_cmdline_args().has("--headless"),
 		"Godot keeps its own options out of the arguments a game reads (why the size comes as --qa-window, not from --resolution): %s" % str(OS.get_cmdline_args()))
+	check(DmMain.fast_exit("Windows", false) and not DmMain.fast_exit("Windows", true) and not DmMain.fast_exit("Linux", false) and not DmMain.fast_exit("macOS", false),
+		"only a Windows release build ends its own process after its shutdown (B60); a debug build keeps the engine's teardown")
 	DmMain.full_size_window(null, Vector2i(3840, 2160))
 	DmMain.full_size_window(root, Vector2i.ZERO)   # (a headless display has no window to size: only the call path)
 	var m := DmMain.new()
