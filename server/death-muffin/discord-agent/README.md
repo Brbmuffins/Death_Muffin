@@ -50,7 +50,7 @@ A job that changes the lobby's `package-lock.json` gets a plain line that its pa
 (`tools/hygiene/check.mjs`, the same `npm run hygiene` CI runs: a stale doc link, missing path or retired term fails with `GODOT TESTS: repo hygiene FAILED`); a change
 that only touches Markdown files stops there (`GODOT TESTS: skipped, docs-only change`); the model check on the models the change adds or edits
 (`tools/assets/check-models.mjs --changed`); the game's build products (above; `GODOT TESTS: preparing the game FAILED` when they cannot be made; before the sandbox it also
-links the lobby's packages (the main checkout's lobby `node_modules`) into a worktree that has none, since coop, coop_bosses and social start the real lobby); then
+links the lobby's packages (the main checkout's lobby `node_modules`) into a worktree that has none, since coop, coop_bosses and next_lobby/ui_run start the real lobby); then
 `tools/rebuild/run-client-tests.sh` (one line per suite, `<suite> <file> exit=<code> <result>`; `GODOT` defaults to `/home/ubuntu/tools/godot/godot`; suites side by side, 8 by
 default and fewer on a busy machine, the slowest first, the real-socket suites in a lane of their own, each failure once more alone: its header). While the suites run it writes
 `<done> <total>` to `.dm-check-progress` in the worktree (removed at the end) for the progress notes. It has two modes. **Quick** (default; the runner before a proposal): `tools/rebuild/affected-suites.mjs` picks the suites for the change (changed suites; suites referencing a changed file by `res://` path or

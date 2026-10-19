@@ -52,7 +52,7 @@ The Full Party's bandwidth for one guest was about 28 KB/s in 82 packets/s on th
 frame (and the UDP lane when it is up, DECISIONS B31); nothing else runs per frame.
 
 ## Tests
-`client/tests/coop.gd` (a real local lobby and relay, a host and a guest in one process: the party flow, the connection, the fight, kills and rewards on the guest's account, the seals, refused versions), `client/tests/social.gd` (the Social window, a guest that is the real boot scene, friends) and
+`client/tests/coop.gd` (a real local lobby and relay, a host and a guest in one process: the party flow, the connection, the fight, kills and rewards on the guest's account, the seals, refused versions), `client/tests/next_lobby/ui_run.gd` (the Social window, a guest that is the real boot scene, friends) and
 `client/tests/value.gd` (a guest's account). Each needs `node` and `cd server/death-muffin/lobby && npm ci`, else it prints a skip line.
 
 ## Known gaps

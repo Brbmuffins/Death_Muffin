@@ -4,7 +4,9 @@ extends SceneTree
 ##   godot --headless --path client --script res://tests/next_lobby/ui_run.gd
 ## Part A: the Party pane alone on synthetic views (every state and every error text), then the Friends pane. Part B: the HUD button / O and F keys,
 ## the forms, host / join / leave / remove through the window, and a joiner's own HUD (party frames, casting reaches the host, the window from the
-## joiner's side). Part C: two players become friends through their windows (request, the waiting-request pip, accept, class line, remove).
+## joiner's side). Part C: two players become friends through their windows (request, the waiting-request pip, accept, class line, remove). Part D: the
+## real boot scene (main/main.tscn, DmMain) as the joining player, so main.gd's own hand-over of the solo game to a guest game is what runs (the Party tab's
+## Host form makes an Open party, the guest joins from the list and leaves, a refused join and a closed party put the guest back in its own world with the reason).
 
 const DT := 1.0 / 60.0
 
@@ -13,6 +15,21 @@ var failed := 0
 var lobby: DmTestLobby
 var mock: DmMockBackend
 var _n := 0
+var errlog := ErrorLog.new()
+
+
+class ErrorLog:
+	extends Logger
+	var errors: Array[String] = []
+
+	func _log_error(function: String, file: String, line: int, code: String, rationale: String, _editor_notify: bool, error_type: int, _backtraces: Array[ScriptBacktrace]) -> void:
+		if error_type == Logger.ERROR_TYPE_WARNING:
+			return
+		# Known, in the shipped game (listed in the commit): a solo game that hands its lobby socket over leaves lambdas connected on it, and the lobby's next
+		# message calls one of them after that game is freed ("Lambda capture at index 0 was freed"). Nothing else is let through.
+		if (code + rationale).begins_with("Lambda capture at index 0 was freed"):
+			return
+		errors.append("%s:%d %s %s %s" % [file, line, function, code, rationale])
 
 
 func _initialize() -> void:
@@ -54,6 +71,7 @@ func ticks(n: int) -> void:
 
 
 func _run() -> void:
+	OS.add_logger(errlog)
 	await _part_a()
 	await _part_a_friends()
 	_write_friends({})
@@ -67,7 +85,9 @@ func _run() -> void:
 	check(await lobby.wait_ready(self), "the local lobby service is up")
 	await _part_b()
 	await _part_c()
+	await _part_d()
 	lobby.stop()
+	check(errlog.errors.is_empty(), "zero script errors or engine errors in the log (%d: %s)" % [errlog.errors.size(), "; ".join(errlog.errors.slice(0, 3))])
 	print("%d passed, %d failed" % [passed, failed])
 	print("%s next_lobby/ui_run %d checks%s" % ["PASS" if failed == 0 else "FAIL", passed + failed, "" if failed == 0 else " (%d failed)" % failed])
 	quit(1 if failed > 0 else 0)
@@ -312,9 +332,11 @@ func _part_b() -> void:
 	ui._unhandled_key_input(_key(KEY_F))
 	await ticks(2)
 	check(not win.visible and hg.party.lobby != null and hg.party.link == "ready", "B: F again closes it; the friends link stays")
+	check(not hg.party.watching, "B: the closed window no longer watches the public list")
 	ui._unhandled_key_input(_key(KEY_F))
 	await ticks(2)
 	check(panel.is_visible_in_tree(), "B: F opens it on Party")
+	check(hg.party.watching, "B: the open window watches the public list")
 	await until(func() -> bool: return hg.party.listed, 6.0)
 	# someone else's public session shows up in the window's list, with a working Join
 	var other := DmLobbyClient.new()
@@ -407,6 +429,14 @@ func _part_b() -> void:
 	ui._unhandled_key_input(_key(KEY_F))
 	await ticks(2)
 	check(not win.visible and hg.party.link == "ready", "B: closing the window keeps the friends link")
+	ui._unhandled_key_input(_key(KEY_O))
+	await ticks(2)
+	var esc := InputEventAction.new()
+	esc.action = "ui_cancel"
+	esc.pressed = true
+	root.push_input(esc)
+	await ticks(2)
+	check(not win.visible, "B: Esc closes the window")
 	await hg.leave()
 	hg.queue_free()
 
@@ -509,3 +539,99 @@ func _part_c() -> void:
 	ab.queue_free()
 	bb.queue_free()
 	await ticks(2)
+
+
+# ---- D: the real boot scene as the joining player ---------------------------------------------------------------------------------------
+
+func _toasts_of(gm: DmNextGame) -> String:
+	var out: Array[String] = []
+	for n in gm.ui.hud.toasts.find_children("*", "Label", true, false):
+		out.append((n as Label).text)
+	return " | ".join(out)
+
+
+## The guest's world, whatever game main.gd runs now: in it, built, and the loading cover gone.
+func _guest_world(dm: DmMain, as_guest: bool) -> Callable:
+	return func() -> bool: return dm.slice != null and dm.slice.ready_ and dm.slice.is_guest == as_guest and DmLoadingScreen.current == null and \
+		(not as_guest or dm.slice.session.is_active())
+
+
+func _part_d() -> void:
+	var out := "user://ui_run_test"
+	DirAccess.make_dir_recursive_absolute(out)
+	_write_friends({})
+	mock = DmOffline.make_mock("")
+	var api_h := DmOffline.make_api(mock)
+	var ch_h := await _account(api_h, "hostmain")
+	var hb := _branch()
+	var main_node := Node.new()   # the host's game sits where the boot scene puts it (/root/<main>/NextGame), so the guest's DmMain finds the same paths
+	main_node.name = String(load("res://main/main.tscn").get_state().get_node_name(0))
+	hb.add_child(main_node)
+	var hg: DmNextGame = load("res://next/next_game.tscn").instantiate()
+	hg.name = "NextGame"
+	main_node.add_child(hg)
+	await hg.start(ch_h, api_h, {"areas": ["graves", "warren"], "hud": true, "audio": false, "baked_dir": out, "name": "hostmain", "waves": false, "seed": 20261016,
+		"persist": false, "dressing": false, "offline": true, "warmup": false, "lobby_url": lobby.url, "lobby_token": lobby.token(301, "hostmain")})
+	var hs: DmSocialWindow = hg.ui.social_ui.window
+	hg.ui.toggle_panel("party")
+	await until(func() -> bool: return hs.visible, 2.0)
+	var hosted := [false]
+	hg.party.hosting_changed.connect(func(on: bool) -> void: hosted[0] = on)
+	hs.party.host_requested.emit("Social test", false)
+	await until(func() -> bool: return hosted[0], 10.0)
+	check(hosted[0] and hg.party.mode == DmNextParty.HOST and not bool(hg.party.info.get("private", true)), "D: the Party tab's Host form made an Open party (%s, busy %s, link %s, mode %s)" % [hg.party.last_error, hg.party.busy, hg.party.link, hg.party.mode])
+	await ticks(2)
+	check(hs.party.party_box.visible and hg.party.view().get("mode", "") == String(DmNextParty.HOST), "D: the Party tab shows the party it hosts")
+
+	var gb := _branch()
+	var dm: DmMain = load("res://main/main.tscn").instantiate()
+	dm.mode = "test"
+	dm.api = DmOffline.make_api(mock)
+	dm.persist_token = false
+	dm.start_opts = {"audio": false, "seed": 20261016, "baked_dir": out, "waves": false, "lobby_url": lobby.url, "lobby_token": lobby.token(302, "tester")}
+	gb.add_child(dm)
+	await dm._dev_quick_start(2)
+	check(await until(_guest_world(dm, false), 60.0), "D: the guest's boot scene is in its own world")
+	dm.slice.ui.toggle_panel("party")
+	var sid := String(hg.party.info.get("id", ""))
+	var listed := func() -> bool:
+		for row in dm.slice.party.view().get("sessions", []):
+			if String((row as Dictionary).get("id", "")) == sid:
+				return true
+		return false
+	check(await until(listed, 10.0), "D: the guest's Party tab lists the host's Open party")
+	dm.slice.ui.social_ui.window.party.join_requested.emit(sid)
+	check(await until(_guest_world(dm, true), 60.0), "D: joining from the list: main.gd hands the solo game over to a guest game, and the host accepts it")
+	if dm.slice.is_guest:
+		check(dm.slice.core_host.puppet and hg.body_of(2) != null and hg.session.is_active(), "D: the guest runs a puppet core and the host has its hero")
+		check(dm.slice.party.view().get("mode", "") == String(DmNextParty.CLIENT), "D: the guest's Social window shows the party it is in")
+		dm.slice.ui.toggle_panel("party")
+		await ticks(2)
+		dm.slice.ui.social_ui.window.party.leave_requested.emit()
+		check(await until(_guest_world(dm, false), 60.0), "D: leaving from the Party tab puts the guest back in its own world")
+		await until(func() -> bool: return hg.body_of(2) == null, 5.0)
+		check(hg.body_of(2) == null and hg.party.mode == DmNextParty.HOST, "D: the host's party goes on without it")
+
+		# a guest that speaks another core wire version is refused: main.gd puts it back in its own world, the refusal on screen
+		dm.start_opts["wire"] = 999
+		dm.slice.party.join_session(sid)
+		var refused_back := func() -> bool: return dm.slice != null and dm.slice.ready_ and not dm.slice.is_guest and DmLoadingScreen.current == null and _toasts_of(dm.slice).contains("Could not join")
+		check(await until(refused_back, 90.0), "D: a refused guest is put back in its own world (%s)" % (_toasts_of(dm.slice) if dm.slice != null and dm.slice.ui != null else "no game"))
+		if dm.slice != null and dm.slice.ui != null:
+			check(_toasts_of(dm.slice).contains("newer version") or _toasts_of(dm.slice).contains("older version"), "D: with the refusal in the player's words: %s" % _toasts_of(dm.slice))
+		dm.start_opts.erase("wire")
+
+		# the host closes its party while the guest is in: the guest is back in its own world with the reason
+		await until(func() -> bool: return dm.slice.party.busy == "", 5.0)
+		dm.slice.party.join_session(sid)
+		check(await until(_guest_world(dm, true), 60.0), "D: the guest joins again")
+		if dm.slice.is_guest:
+			hs.party.leave_requested.emit()
+			var closed_back := func() -> bool: return dm.slice != null and dm.slice.ready_ and not dm.slice.is_guest and DmLoadingScreen.current == null
+			check(await until(closed_back, 60.0), "D: the host closed the party: the guest is back in its own world")
+			await ticks(5)
+			check(dm.slice.ui != null and _toasts_of(dm.slice) != "", "D: with the reason on screen (%s)" % (_toasts_of(dm.slice) if dm.slice.ui != null else ""))
+			check(hg.party.mode == DmNextParty.SOLO, "D: and the host plays solo again")
+	if dm.slice != null:
+		dm.slice.process_mode = Node.PROCESS_MODE_DISABLED
+	hg.process_mode = Node.PROCESS_MODE_DISABLED

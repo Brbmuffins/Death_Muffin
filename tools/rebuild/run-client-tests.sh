@@ -45,7 +45,7 @@ case "$JOBS" in ''|*[!0-9]*|0) echo "bad --jobs: $JOBS" >&2; exit 2 ;; esac
 cd "$(dirname "$0")/../.."
 # Every suite, in the order the core comes first. PACED suites play game time faster than real time (`--fixed-fps 60`); the rest run in real time.
 SUITES="core_smoke core_api core_enemies core_status core_corpses core_thralls core_affixes core_coop code_load areas crowd_bake crowd_view game_scene rites spells boss hud front coop
-benchmark benchmark_rooms benchmark_classes benchmark_launch benchmark_flags social presets rewards value fx_motes panels world core_kinds gathering counsel sound depths auto_combat draw_budget dressing fx_decals threads coop_bosses core_boss crash_note qa_shots
+benchmark benchmark_rooms benchmark_classes benchmark_launch benchmark_flags presets rewards value fx_motes panels world core_kinds gathering counsel sound depths auto_combat draw_budget dressing fx_decals threads coop_bosses core_boss crash_note qa_shots
 boss_abbess boss_congregation boss_prelate boss_saint boss_regent boss_mire boss_meta surge play_report warm_coverage
 rules-combat rules-core rules-gathering rules-loot rules-progression data dialogue gear sim audio loot_view panels_a bosses onboarding fx world_builder world_fx game_ui ui ui_parity gear_look
 next_online_gate session relay relay/udp_run backend chapterhouse next_bag next_loot next_hero_look next_progress
@@ -59,11 +59,11 @@ PACED=" game_scene rites spells boss presets benchmark benchmark_rooms benchmark
  next_online_gate backend next_bag next_loot next_hero_look next_progress next_boss_meta next_playtest \
  status game/units_run game/anim_run game/autocombat_run game/regress_run next_perfctl next_spawn_aggro next_meta hud_actions next_brews_affix next_runes next_clarity next_combat_odds next_glue enemy_fx "
 # LANE: the suites that wait on real sockets and child processes in real time (session, relay and next_lobby talk to peers and the lobby;
-# coop, coop_bosses and social start the real lobby service, node, and wait for it). One after another beside the pool.
-LANE=" session relay relay/udp_run next_lobby next_lobby/ui_run next_lobby/proc_run coop coop_bosses social "
+# coop, coop_bosses and next_lobby/ui_run start the real lobby service, node, and wait for it). One after another beside the pool.
+LANE=" session relay relay/udp_run next_lobby next_lobby/ui_run next_lobby/proc_run coop coop_bosses "
 # Of those, the ones that mostly wait on sockets keep normal priority (the rest of a run is at nice 10), so a busy machine does not starve their
-# real-time waits (2026-10-19: next_lobby failed at load 20 at nice 10 and passed alone; coop, coop_bosses and social wait on the real lobby too).
-WAITING=" session relay relay/udp_run next_lobby next_lobby/ui_run next_lobby/proc_run coop coop_bosses social "
+# real-time waits (2026-10-19: next_lobby failed at load 20 at nice 10 and passed alone; coop, coop_bosses and next_lobby/ui_run wait on the real lobby too).
+WAITING=" session relay relay/udp_run next_lobby next_lobby/ui_run next_lobby/proc_run coop coop_bosses "
 TIMES_FILE=tools/rebuild/suite-times.tsv
 [ -z "$ONLY" ] || SUITES="${ONLY//,/ }"
 # The script of a suite, under client/tests: <name>.gd, else <name>/run.gd; a name with a slash is one runner of a folder (<folder>/<runner>.gd).
