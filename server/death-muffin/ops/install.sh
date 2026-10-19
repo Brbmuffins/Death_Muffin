@@ -8,12 +8,13 @@ DEST=/home/ubuntu/death-muffin/ops
 SRC=server/death-muffin/ops
 git -C "$REPO" fetch -q origin
 mkdir -p "$DEST"
-for f in backup-db.sh drift-report.sh launcher-release-notice.sh health-watch.mjs ../team-files-prune.sh; do
-  # the new copy keeps its extension (node only reads a .mjs file as a module) and must pass its syntax check, or the install stops here
-  # (team-files-prune.sh lives beside team-check.sh, which runs it too: the nightly job uses the same rules)
-  src="$f"; f="$(basename "$f")"
+for src in ops/backup-db.sh ops/drift-report.sh ops/launcher-release-notice.sh ops/health-watch.mjs team-files-prune.sh; do
+  # paths under server/death-muffin/ (team-files-prune.sh lives beside team-check.sh, which runs it too: the nightly job uses the same rules). The new copy keeps its
+  # extension (node only reads a .mjs file as a module); a file missing from <rev> (git show writes nothing then) or failing its syntax check stops the install here
+  f="$(basename "$src")"
   tmp="$DEST/.new.$f"
-  git -C "$REPO" show "$REV:$SRC/$src" >"$tmp" && chmod 755 "$tmp"
+  git -C "$REPO" show "$REV:server/death-muffin/$src" >"$tmp" || { rm -f "$tmp"; echo "install.sh: $src is not in $REV; nothing installed for it" >&2; exit 1; }
+  chmod 755 "$tmp"
   case "$f" in *.mjs) node --check "$tmp" ;; *) bash -n "$tmp" ;; esac || { rm -f "$tmp"; echo "install.sh: $f failed its syntax check; nothing installed for it" >&2; exit 1; }
   mv "$tmp" "$DEST/$f"
 done
