@@ -33,8 +33,9 @@ Every item says what kind it is:
 - The old game is retired (B57; its source is tag `archive/old-game`): a rollback publishes an earlier build of the game.
 - **Now: Phase 1, settling the launch.** Done: alerts when a server stops, Grave Surges back, crash reports that point inside the combat
   core, the Discord agent working on the live game, document-only changes that ship no update, checks for War's content, play reports,
-  shaders baked into every release, and the old game's folder deleted (its tests moved to the game). Left: the stutter test, the team app,
-  and the Ultra Low decision once the numbers are in.
+  shaders baked into every release, the old game's folder deleted (its tests moved to the game), and the team app's first job (pictures on a
+  real graphics card, proven on Helix's PC). Left: the team app's other jobs (B58: benchmarks, clips, before and after, the stutter test,
+  the crash, install and screen-size checks, every card maker, a soak test, model previews) and the Ultra Low decision once the numbers are in.
 - Ascension (the Altar, vows and heat, Ashes, Covenant Boons) left on launch day and comes back redesigned in Phase 3 (B36). Players'
   saved Ascension data is kept.
 
@@ -121,16 +122,29 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   whole party's fight) or a laptop is on battery: then it waits for a yes or for the game to close. It never takes the keyboard or mouse,
   runs at low priority and stops if the game starts; it uses its own folder and plays offline (never the player's game, settings or
   account), runs only builds and kits our server made, and uploads only its results. Each PC can also run without asking (War's spare
-  Alienware, if he sets it) or only on a yes. Its jobs, each added when it is needed:
-  - First: screenshots of a proposal on Low and Ultra, posted to the thread by our server (they replace the server's slower pictures).
-    Built 2026-10-19 (`teamapp/`, the backend's team jobs, the Discord agent's team pictures): it runs once the three PCs have it installed,
-    and its pictures come beside the server's until it has proven itself on them.
-  - Soon after: benchmarks for every release on a fast PC and on the Alienware's GTX 970 (the weak-PC floor of B39), on the benchmarks
-    page. A benchmark waits until nothing else is loading the PC, and a run disturbed halfway is thrown out and retried, so its numbers are
-    honest.
-  - Then: the stutter test (every rite and effect played on a real graphics card, each hitch reported) and a release crash check (a release
-    candidate plays a few minutes on two different graphics cards, and quits while still loading, which crashed the old game on 4-core
-    PCs, before it goes live; a crash stops the release).
+  Alienware, if he sets it) or only on a yes. Every job asks the same way, benchmarks included (Helix, 2026-10-19). Its jobs, in this order
+  (B58: all of them in Phase 1):
+  - Screenshots of a proposal on Low and Ultra, posted to the thread by our server. Live since 2026-10-19 and proven on Helix's PC that
+    night (0.1.1: four pictures in 40 s of play; 0.1.0 could not start the game and reported no graphics card). They come beside the
+    server's pictures until they have proven themselves.
+  - Benchmarks of every release on each team PC (a fast PC, War's Intel Arc, the Alienware's GTX 970: the weak-PC floor of B39), on the
+    benchmarks page marked as team runs. A benchmark starts once the PC has been left alone, and a run disturbed halfway is thrown out
+    and retried, so its numbers are honest. With it (app 0.2.0): silent runs, screenshot runs that never show a window, a fresh folder
+    for every run, cancels that reach the PC within 30 s.
+  - Short clips of a change: the same plan recorded as a few seconds of video (Godot's Movie Maker), posted to the thread; spells and
+    effects are judged moving, not frozen.
+  - Before and after: every visual proposal's pictures also on the unchanged game, side by side (the server's own "before" pictures
+    were switched off because each took minutes).
+  - The stutter test (every rite and effect played on a real graphics card, each first-use hitch reported).
+  - A release crash check (a release candidate plays a few minutes on two different graphics cards, and quits while still loading, which
+    crashed the old game on 4-core PCs, before it goes live; a crash stops the release).
+  - A fresh-install check: before a release is announced, a team PC installs it from scratch the way the launcher does and starts it.
+  - The screen sizes: each release's windows and HUD at 1080p, 1440p, 4K and ultrawide and at every UI scale (the item tooltip's
+    squeezed stat names, found by a team PC's picture on 2026-10-19, is the kind of bug it catches).
+  - Every graphics card maker: each release's pictures and benchmark on NVIDIA, Intel Arc and the old GTX 970 (driver-specific bugs).
+  - A soak test: a release candidate plays itself (auto combat) for 30 minutes while memory and frame times are recorded (leaks and slow
+    creep that a short run cannot show).
+  - Model previews: a new model (War's armor sets) on a hero in the game's own lighting, turning and animated, on a real graphics card.
   - With the art rebuild (Phase 4): lighting bakes on the strongest graphics card available instead of by hand, the result coming back as
     a proposal.
   - Later: a co-op test between two team PCs.

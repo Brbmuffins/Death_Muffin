@@ -115,6 +115,9 @@ polish list). Also:
 
 ## UI
 
+- The item tooltip's stat rows squeeze the stat ("+30 INT") to one letter a line when the meaning beside it is long: in
+  `client/ui/widgets/dm_item_card.gd` the stat label wraps and the meaning does not (found 2026-10-19 by a team PC's pictures at 1600x900, Low and
+  Ultra). Fix: the stat stays on one line and the meaning wraps.
 - **The Next-step box no longer pings the minimap:** `client/next/hud/dm_next_hud_vm.gd` sets `_map["ping"] = null` where the old game pointed it at the suggestion's target (elsewhere, or marked pingInPlace), yet Settings still offers "Point to it on the minimap" (found porting the `next_acre_guide` suite).
 - **No in-game leaderboard panel.** `DmApi.get_leaderboard` exists; only the website shows it.
 - Unraised counsel events: `client/ui/onboarding/README.md`. Hero gaps: `client/next/hero/README.md`.

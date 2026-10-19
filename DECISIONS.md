@@ -267,6 +267,12 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   last build, `launch-undo.sh` and the server paths only it used go as soon as the Discord agent and the tools work on `client/` (the system
   guides move first). An archive tag keeps the old game's source; from then on a rollback goes to an earlier build of the new game. Done on
   2026-10-18: tag `archive/old-game`.
+- **B58. The team app gets every job that needs a real graphics card, now** (Helix, 2026-10-19: "all", "and add them now"). Besides the
+  screenshots and release benchmarks: short clips of a change, before and after pictures, the stutter test, a release crash check, a
+  fresh-install check, the screen sizes and UI scales, every graphics card maker the team has, a 30-minute soak test and model previews,
+  all in Phase 1 (ROADMAP "New: the team app", in that order), built one after another once app 0.2.0 has landed. Every job asks the same
+  way (the box and the PC's mode), benchmarks included. Claude's recommendation was the same list with the screen sizes and the soak
+  test in Phase 2; Helix wanted them now.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking
