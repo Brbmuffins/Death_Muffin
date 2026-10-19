@@ -45,7 +45,8 @@ if [[ "$LIVE_REV" =~ ^[0-9a-f]{7,40}$ ]] && git -C "$TOP" cat-file -e "$LIVE_REV
   # shellcheck disable=SC2086
   git -C "$TOP" diff --quiet "$LIVE_REV" -- $ART && [ -z "$(git -C "$TOP" ls-files --others --exclude-standard -- $ART)" ] && SAME_ART=1
 fi
-export DM_PREP="${DM_PREP:-$TOOLS/prep.sh}"
+# the installed agent keeps its trusted copy beside this script; run from a checkout (team-release.sh), the checkout's own one
+DM_PREP="${DM_PREP:-$TOOLS/prep.sh}"; [ -f "$DM_PREP" ] || DM_PREP="$(cd "$TOOLS/../../.." && pwd)/tools/check/prep.sh"; export DM_PREP
 # (never filled from the job's own code: without a base revision the sandbox builds what is missing and stores nothing)
 MB=$(git -C "$TOP" merge-base HEAD "origin/${BASE_BRANCH:-main}" 2>/dev/null) || MB=
 if [ -n "$MB" ]; then PREP=$(bash "$DM_PREP" --warm "$MB" --windows "$TOP" 2>&1) || { echo "$PREP" | tail -20; echo "preparing the game failed (prep.sh --warm)"; exit 1; }; fi

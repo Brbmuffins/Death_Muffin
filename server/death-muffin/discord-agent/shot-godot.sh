@@ -41,7 +41,8 @@ RAW="$TOP/.dm-shots/.raw"
 [ -L "$TOP/.dm-shots" ] && { echo ".dm-shots must not be a symlink"; exit 2; }
 rm -rf "$RAW" 2>/dev/null; mkdir -p "$RAW" || exit 2
 # the game's build products: the cache outside (trusted), the copy and whatever this branch changed inside the sandbox
-export DM_PREP="${DM_PREP:-$TOOLS/prep.sh}"
+# the installed agent keeps its trusted copy beside this script; run from a checkout (team-release.sh), the checkout's own one
+DM_PREP="${DM_PREP:-$TOOLS/prep.sh}"; [ -f "$DM_PREP" ] || DM_PREP="$(cd "$TOOLS/../../.." && pwd)/tools/check/prep.sh"; export DM_PREP
 # (never filled from the job's own code: without a base revision the sandbox builds what is missing and stores nothing)
 MB=$(git -C "$TOP" merge-base HEAD "origin/${BASE_BRANCH:-main}" 2>/dev/null) || MB=
 if [ -n "$MB" ]; then PREP=$(bash "$DM_PREP" --warm "$MB" "$TOP" 2>&1) || { echo "$PREP" | tail -20; echo "preparing the game for the pictures failed (prep.sh --warm)"; rm -rf "$RAW"; exit 1; }; fi
