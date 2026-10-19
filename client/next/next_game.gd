@@ -298,8 +298,10 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		add_child(hooks)
 		hooks.setup(self)
 	if _visual:
-		enemy_fx.warm(local_body().global_position)
-		bosses.warm(local_body().global_position)
+		# A co-op guest's own hero can still be on its way from the host here: warm at the origin then (where only matters for the cover).
+		var warm_at := local_body().global_position if local_body() != null else Vector3.ZERO
+		enemy_fx.warm(warm_at)
+		bosses.warm(warm_at)
 		DmRiteFx.with_autoloads().warm()
 		# Every model, effect and area lighting drawn once under a cover, so no shader compiles mid-play (client/next/perf/dm_next_warmup.gd): for players
 		# (`_wants_warmup`); `opts.warmup` overrides it.
