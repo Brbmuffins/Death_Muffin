@@ -7,7 +7,7 @@
  * result uploaded as a `<step>.json` file beside the screens' PNGs as it finishes, then `done` with how each step went; the reporter reads them with the internal list route),
  * `clip` (short videos of a change: the PC uploads motion-JPEG files, and `done` turns each into an
  * mp4 with ffmpeg here, because the game's debug build has no video encoder) and `bench` (the release's benchmark runs on a team PC, handed over in `done` and stored
- * in the benchmark history, benchmarks.cjs, marked as team-PC runs; server/death-muffin/team-bench.sh makes one per team PC after each client release).
+ * in the benchmark history, benchmarks.cjs, marked as team-PC runs; the `release` job, which server/death-muffin/team-release.sh queues per team PC after each client release, carries the same runs).
  *
  * The app signs in with its own team token, never the game's login session: POST /api/team/login checks the account's password like /login does
  * (the same bcrypt compare and rate limiter) but does not claim the account's game session (session.cjs), then the account must be in team_members

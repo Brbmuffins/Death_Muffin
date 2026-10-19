@@ -69,9 +69,15 @@ namespace DeathMuffinTeam
         /// <summary>True when the process runs from under the app's own folder (a job's game). A process whose path cannot be read counts as the player's.</summary>
         bool IsOurs(Process p)
         {
-            try { return p.MainModule.FileName.StartsWith(ownRoot, StringComparison.OrdinalIgnoreCase); }
-            catch (Exception) { return false; }
+            // QueryFullProcessImageName, not p.MainModule: reading the modules fails for a moment while a game is still starting (ERROR_PARTIAL_COPY),
+            // and a failure here counts as the player's game (2026-10-19: Helix's release benchmark was thrown away three times as "Death Muffin was started"
+            // by its own game). An unreadable path still counts as the player's: the safe side when it really is theirs.
+            string path = Native.ImagePath(p.Id);
+            return path != null && path.StartsWith(ownRoot, StringComparison.OrdinalIgnoreCase);
         }
+
+        /// <summary>The player's games, the job's own game <paramref name="jobPid"/> left out (the benchmark's disturbance check).</summary>
+        public bool GameRunningBesides(int jobPid) { return RunningGames(jobPid > 0 ? (int?)jobPid : null).Count > 0; }
 
         /// <summary>The process ids of the player's Death Muffin (and debug build) that are running, except <paramref name="exclude"/> and the app's own job games.</summary>
         List<int> RunningGames(int? exclude)
@@ -172,7 +178,7 @@ namespace DeathMuffinTeam
         [DllImport("user32.dll")]
         static extern bool GetLastInputInfo(ref LastInputInfo info);
 
-        readonly ITeamPlatform platform;
+        readonly WindowsPlatform platform;   // the real one: the disturbance check needs GameRunningBesides
         readonly Stopwatch clock = Stopwatch.StartNew();
         bool haveLast;
         ulong lastIdle, lastTotal;
@@ -181,7 +187,7 @@ namespace DeathMuffinTeam
         int gamePid;
         TimeSpan gameCpu;
 
-        public WindowsPcProbe(ITeamPlatform platform) { this.platform = platform; }
+        public WindowsPcProbe(WindowsPlatform platform) { this.platform = platform; }
 
         static ulong Ticks(FileTime t) { return ((ulong)t.High << 32) | t.Low; }
 
@@ -213,7 +219,7 @@ namespace DeathMuffinTeam
             s.IdleS = IdleSeconds();
             s.OnBattery = platform.OnBattery();
             s.Fullscreen = platform.Fullscreen();
-            s.PlayerGame = platform.GameRunning();
+            s.PlayerGame = platform.GameRunningBesides(pid);   // the job's own game never counts as the player's
             return s;
         }
 
@@ -259,6 +265,24 @@ namespace DeathMuffinTeam
 
     internal static class Native
     {
+        const uint ProcessQueryLimitedInformation = 0x1000;
+        [DllImport("kernel32.dll", SetLastError = true)] static extern IntPtr OpenProcess(uint access, bool inherit, int pid);
+        [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] static extern bool QueryFullProcessImageName(IntPtr h, int flags, System.Text.StringBuilder name, ref int size);
+        /// <summary>A process's exe path (works from the start of its life and across 32/64-bit), or null.</summary>
+        public static string ImagePath(int pid)
+        {
+            IntPtr h = OpenProcess(ProcessQueryLimitedInformation, false, pid);
+            if (h == IntPtr.Zero) return null;
+            try
+            {
+                var sb = new System.Text.StringBuilder(1024);
+                int size = sb.Capacity;
+                return QueryFullProcessImageName(h, 0, sb, ref size) ? sb.ToString(0, size) : null;
+            }
+            finally { CloseHandle(h); }
+        }
+
         public const int DisplayDeviceMirroring = 0x8;
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         public struct DisplayDevice
