@@ -162,36 +162,6 @@ func _rite(id: String) -> Dictionary:
 	return r
 
 
-## The greyed looks the bar can give the rites on it (the primary, 1-4, RMB and the signature, or `ids`), baked ahead: on loading (DmNextGame._start_hud, under the
-## cover) and when a rite is put on the bar (DmNextUiHost.set_rites). A slot greys the moment its rite cannot be cast, and the first bake of an icon's grey costs
-## a few ms: the Reaper's Soul Burst empties the bag and greyed six slots in one frame (42 ms, the release checks' stutter run, 2026-10-19). Out of essence or
-## souls for a rite with a cost, "no corpse / no legion" for the rites in NEEDS, locked for one above the hero's rite level. The grimoire's other rites are not
-## baked (a necromancer's whole kit is 46 bakes, ~160 ms of loading on the VPS). Returns how many it asked for.
-func warm_icons(ids: Array = []) -> int:
-	if ids.is_empty():
-		ids = [host.primary, host.signature]
-		ids.append_array(host.keys)
-	var b: DmHeroBody = host.game.local_body() if host.game != null else null
-	var reaper := b != null and b.family == "reaper"
-	var lvl := DmAbilities.rite_level(float(host.character.get("level", 1)), host.dev_access)
-	var n := 0
-	for id: String in ids:
-		if id == "" or not DmAbilities.defs().has(id):
-			continue
-		var d := _rite(id)
-		var levels: Array[int] = []
-		if float(d["soul"] if reaper else d["essence"]) > 0.0:
-			levels.append(DmHudAtlas.DIM_HARD)
-		if NEEDS.has(id):
-			levels.append(DmHudAtlas.DIM_SOFT)
-		if lvl < float(d["unlock"]):
-			levels.append(DmHudAtlas.DIM_LOCKED)
-		for level in levels:
-			DmHudAtlas.dimmed(String(d["icon"]), level)
-			n += 1
-	return n
-
-
 ## The current area's (static) definition, kept while the area stays the same.
 func _area(id: String) -> Dictionary:
 	if id != _area_id:

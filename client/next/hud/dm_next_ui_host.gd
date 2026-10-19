@@ -454,8 +454,6 @@ func set_rites(new_primary: String, new_keys: Array) -> void:
 	primary = new_primary
 	keys = new_keys.duplicate()
 	DmLoadout.save_rites(hero_id, {"primary": primary, "keys": keys}, persist)
-	if vm != null:
-		vm.warm_icons([primary] + keys)   # a rite new to the bar greys without a bake in the fight
 
 
 ## The Q key and the Reliquary's Drink: a healing flask (the heal belt chip). A party guest drinks from its own bag and the host applies it.

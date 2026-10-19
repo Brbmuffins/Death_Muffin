@@ -58,8 +58,7 @@ Every key is optional; missing = zero / hidden. Units: HP in HP, cooldown in ms.
 ### slot dict (`slots[]`, and `primary`)
 `{icon, key, cost, left_ms, total_ms, affordable, empowered, locked, unlock_level (10), alt, rune_icon, swap}`.
 Cooldown sweep = clockwise shade from 12 o'clock of `round(left/total*100)` %, number = `ceil(s)` or one decimal under 1 s.
-`affordable:false` dims it; `empowered` pulses jade (cost struck-through colour); `locked` greys it and prints `unlock_level`
-(the greyed icons are baked into the HUD atlas on loading, and when a rite is put on the bar: `DmNextHudVm.warm_icons`, never in a fight);
+`affordable:false` dims it; `empowered` pulses jade (cost struck-through colour); `locked` greys it and prints `unlock_level`;
 `alt` = the right-click action (ember accent + left rule); `swap` shows the swap arrows on the key cap (swap-ready).
 
 ### minimap dict
