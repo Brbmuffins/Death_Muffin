@@ -126,6 +126,9 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 	var qa_preset := String(shell.opts.get("qa_preset", ""))   # a QA run's --preset= (DmMain.qa_preset): in force for this run, never saved
 	if qa_preset != "":
 		settings_store.session_set("graphics", qa_preset, false)
+	var qa_ui_scale := float(shell.opts.get("qa_ui_scale", 0.0))   # a QA run's --ui-scale= (DmMain.qa_ui_scale): Interface size for this run, never saved
+	if qa_ui_scale > 0.0:
+		settings_store.session_set("ui_scale", qa_ui_scale, false)
 	settings_store.changed.connect(func(_v: Dictionary) -> void: _apply_settings_side_effects())
 	dev_account = _is_dev_account()   # old DmGame.setup: dev_access = dev_account and the Settings toggle; everything that reads it follows below
 	dev_access = dev_account and bool(settings["dev_access"])

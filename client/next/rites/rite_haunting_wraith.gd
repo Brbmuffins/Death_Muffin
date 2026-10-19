@@ -1,10 +1,9 @@
 extends DmRiteModule
-## Haunting Wraith (the Reaper, Grimoire only): a huge wraith rises at her feet and walks 14 m toward the cursor (3.5 m/s, 4 s), hurting every enemy it
-## touches (2.2 m round it, plus the enemy's radius) every 0.25 s for power 0.5. 5 souls, 14 s. Host: `mem("haunting_wraith").walkers` (the damage is
-## rolled once, at the cast); every peer draws the wraith from the cast event and from each tick's event.
+## Haunting Wraith (the Reaper, Grimoire only): a huge wraith rises at her feet and walks `range` (14 m) toward the cursor at `speed` (3.5 m/s: 4 s), hurting every enemy it
+## touches (`radius` 2.2 m round it, plus the enemy's radius) every 0.25 s for `power` 0.5. 5 souls, 14 s. The numbers are the rite's row in data/combat/abilities.json. Host: `mem("haunting_wraith").walkers`
+## (the damage is rolled once, at the cast); every peer draws the wraith from the cast event and from each tick's event.
 ## On the combat core: the wraith's targets are DmFoe snapshots from `DmReaperRites.cone`, a blow is `c.deal` (through `DmReaperRites.strike`).
 
-const SPEED := 3.5      ## m/s
 const TICK_S := 0.25    ## damage and drawing step
 
 
@@ -22,9 +21,10 @@ func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
 	var from := c.pos()
 	var def := DmAbilities.def(id)
 	var walkers: Array = c.mem(id).get_or_add("walkers", [])
-	walkers.append({"x": from.x, "z": from.z, "dx": dir.x, "dz": dir.y, "r": float(def["radius"]),
+	var speed := float(def["speed"])
+	walkers.append({"x": from.x, "z": from.z, "dx": dir.x, "dz": dir.y, "r": float(def["radius"]), "speed": speed,
 		"dmg": DmAbilities.rite_damage(DmAbilities.sp(c.p, c.now_ms), id),
-		"until": c.now_ms + float(def["range"]) / SPEED * 1000.0, "next": c.now_ms + TICK_S * 1000.0})
+		"until": c.now_ms + float(def["range"]) / speed * 1000.0, "next": c.now_ms + TICK_S * 1000.0})
 	c.broadcast({"t": "rise", "rite": id, "by": c.peer_id, "x": from.x, "z": from.z, "r": float(def["radius"])})
 	return ""
 
@@ -37,8 +37,8 @@ func step(c: DmRiteCaster, dt: float) -> void:
 		if not bool(c.p["alive"]) or c.now_ms >= float(w["until"]):
 			walkers.remove_at(i)
 		else:
-			w["x"] = float(w["x"]) + float(w["dx"]) * SPEED * dt
-			w["z"] = float(w["z"]) + float(w["dz"]) * SPEED * dt
+			w["x"] = float(w["x"]) + float(w["dx"]) * float(w["speed"]) * dt
+			w["z"] = float(w["z"]) + float(w["dz"]) * float(w["speed"]) * dt
 			if c.now_ms >= float(w["next"]):
 				w["next"] = float(w["next"]) + TICK_S * 1000.0
 				var marks := DmReaperRites.strike(c, id, DmReaperRites.cone(c, float(w["x"]), float(w["z"]), 0.0, 1.0, float(w["r"]), 180.0), float(w["dmg"]), false)

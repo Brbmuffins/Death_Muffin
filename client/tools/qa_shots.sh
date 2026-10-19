@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The pictures of a proposal, rendered from the CLIENT (the game) on this VPS: a shot plan in, raw PNGs out (client/README.md "Screenshots for proposals").
 #   client/tools/qa_shots.sh <plan.json> <out_dir> [class]
-# The plan is the format of client/main/qa_ui_shots.gd (windows, tooltips, `equip`, `discipline`, `view` hero|game, `turn`, `anim`, `area`, `wait_ms`; at most 4 shots). `class` is the discipline's
+# The plan is the format of client/main/qa_ui_shots.gd (windows, tooltips, `equip`, `discipline`, `view` hero|game, `turn`, `anim`, `area`, `wait_ms`; at most 6 shots, a plan with more is refused). `class` is the discipline's
 # class number (1 Ossuary, 2 Gravecaller, 3 Mourner, 4 Rotweaver, 11 Reaper); without it the plan's `discipline` is used, and 2 when the plan has none. The game starts as the dev-offline hero `tester`
 # on the local mock backend, in a scratch user folder of its own (nothing is written to the real one, nothing reaches a server), with
 # `-- --dev-offline --class=N --qa --shot-plan=<plan> --shots=<out_dir>`.

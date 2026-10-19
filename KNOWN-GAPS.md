@@ -145,6 +145,10 @@ polish list). Also:
   `server/death-muffin/discord-agent/client-prep.sh`, like the combat core, would keep them current.
 - `client/data/content/manifest.json`'s counts are kept by hand: a new entry in a content table fails rules-core until its count is raised
   (rules-core names each; the Discord agent's prompt says so). Only `tools/generate-armor-assets.mjs` updates them by itself.
+- `--tune=` (`client/README.md` "Clips and tune") changes only numbers the data files hold, and most rites keep some in their scripts (Miasma's flight speed, Unleash Souls' three speeds, the Haunting Wraith's damage tick, ...), so a team PC cannot show variants of those until each moves into its rite's row of
+  `client/data/combat/abilities.json`, as the Haunting Wraith's `speed` did (found 2026-10-19).
+- `--boot-check --quit-while-loading` quits with the art pack's models loading on worker threads, not during the pack's own mount: that is synchronous in the first autoload (`client/main/dm_packs.gd`), before any script of the game can quit, so the step cannot reproduce a quit
+  in the middle of it (found 2026-10-19).
 - `next_hud` fails one check when it runs beside other suites at load 9 (twice on 2026-10-19) and passes alone; the test runner re-runs it alone,
   so nothing fails, but the check is load-sensitive.
 

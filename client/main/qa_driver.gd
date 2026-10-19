@@ -1,10 +1,10 @@
 extends Node
-## QA driver, started by the boot (`DmMain.start_qa`, a child named Driver) only for a dev-offline run with `-- --qa` or `-- --shot-plan`: a release export never honours a testing flag, and no other start
-## compiles this script (it names most of the game). Inactive unless the game is started with user args:  -- --qa [--shots=<dir>] [--seconds=N] [--shot-plan=<plan.json>] [--preset=<low|medium|high|ultra>]
-## (`--preset=` is read by the boot, `DmMain.qa_preset`, and applied by the game scene; the driver only says which preset the run has.)
+## QA driver, started by the boot (`DmMain.start_qa`, a child named Driver) only for a dev-offline run with `-- --qa`, `-- --shot-plan` or `-- --clip-plan`: a release export never honours a testing flag, and no other start
+## compiles this script (it names most of the game). Inactive unless the game is started with user args:  -- --qa [--shots=<dir>] [--seconds=N] [--shot-plan=<plan.json>] [--clip-plan=<plan.json> --clips=<dir>] [--preset=<low|medium|high|ultra>] [--tune=<data.json>]
+## (`--preset=` is read by the boot, `DmMain.qa_preset`, and applied by the game scene; the driver only says which preset the run has. `--tune=` is applied by the boot, `DmQaTune`, before the game is built.)
 ## Launch it with the dev-offline quick start (`--dev-offline --class=2`, or its alias `--world-demo`): the game scene (DmNextGame) as the test account `tester`; client/tools/qa_shots.sh renders it.
 ## Default: scripted fight in the Hollow Graves, a wave of the dead around the hero, the real rites cast at the nearest enemy; one
-## screenshot a second (qa_NN.png); quits N seconds into the fight. With --shot-plan: the UI shot plan (main/qa_ui_shots.gd) instead of the fight.
+## screenshot a second (qa_NN.png); quits N seconds into the fight. With --shot-plan: the UI shot plan (main/qa_ui_shots.gd) instead of the fight. With --clip-plan: the clips (main/qa_clips.gd) instead of either.
 ## The fight reads and spawns through the combat core (enemies are ids: `core_host.enemies_in_radius`, `enemy_position`, `director.spawn`),
 ## the game is the boot's child `NextGame`, and a start that makes no game (no quick start, or the boot refused it) ends the run at once with a line saying so.
 
@@ -21,6 +21,8 @@ var _cast_t := 0.0
 var _setup := false
 var _game_seen := false   ## the boot made the game node (it exists while it loads)
 var plan_path := ""   ## --shot-plan=<abs json>: UI shot plan (main/qa_ui_shots.gd) instead of the fight
+var clip_path := ""   ## --clip-plan=<abs json>: clip plan (main/qa_clips.gd) instead of the fight or the shots
+var clips := ""       ## --clips=<abs dir>: where the clips are written (needed with --clip-plan)
 
 
 func _ready() -> void:
@@ -29,21 +31,31 @@ func _ready() -> void:
 			active = true
 		elif a.begins_with("--shot-plan="):
 			plan_path = a.substr(12)
+		elif a.begins_with("--clip-plan="):
+			clip_path = a.substr(12)
+		elif a.begins_with("--clips="):
+			clips = a.substr(8)
 		elif a.begins_with("--shots="):
 			shots = a.substr(8)
 		elif a.begins_with("--seconds="):
 			seconds = float(a.substr(10))
-	set_process(active or plan_path != "")
+	if clip_path != "" and plan_path != "":
+		print("QA-CLIPS note: --shot-plan is ignored in a clip run (one plan per run)")
+		plan_path = ""
+	set_process(active or plan_path != "" or clip_path != "")
 
 
 func _process(dt: float) -> void:
 	t += dt
 	if nxt != null:
-		if plan_path != "":
+		if plan_path != "" or clip_path != "":
 			if nxt.ui == null or nxt.ui.warming or DmLoadingScreen.current != null or t < 3.0:
 				return
 			set_process(false)
-			DmQaUiShots.run(self, nxt, plan_path, shots)
+			if clip_path != "":
+				DmQaClips.run(self, nxt, clip_path, clips)
+			else:
+				DmQaUiShots.run(self, nxt, plan_path, shots)
 			return
 		_process_next(dt)
 		return
@@ -54,7 +66,7 @@ func _process(dt: float) -> void:
 			nxt = nm
 			if nm.opts.has("qa_preset"):   # `--preset=` (DmMain.qa_preset): the line the team app's log shows, and the test reads
 				print("QA-SHOTS preset %s (from --preset=, never saved to the player's settings)" % nm.perf.preset)
-			if plan_path == "":
+			if plan_path == "" and clip_path == "":
 				t = 0.0   # the fight's clock (its steps, its shots, `seconds`) starts with the game: a slow start no longer spends it
 	elif _game_seen or t > NO_GAME_S:
 		print("QA-SHOTS no game: the boot made none (a QA run needs the dev quick start: -- --dev-offline --class=N), see the log")

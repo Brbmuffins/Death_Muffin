@@ -8,9 +8,16 @@ extends Node
 ## (DmMockBackend: no network at all); `--dev-offline --class=N` skips the front flow (test account `tester`) and enters directly, with `--seed=N`, `--no-waves` and `--baked=<dir>`
 ## as the dev entry (dev/dm_dev_entry.tscn, which stays the way to a crowd or a screenshot); `--world-demo` is an alias of `--dev-offline --class=2`.
 ## `--boot-smoke`: reach the first screen, print "BOOT OK <screen>" and quit (the test channel's publish check).
+## `--boot-check` (release-safe: it only quits; the team app's `install` step runs the release build with it): reach the first screen, print `BOOT OK <ms>` (ms since the engine started) and quit with exit code 0; no first
+## screen within 60 s prints `BOOT FAIL ...` and quits with exit code 1 (`_boot_check`). With `--quit-while-loading` (also release-safe, and read only with `--boot-check`) it quits with the art pack's models still loading on the
+## worker threads (the case that crashed the old game on 4-core PCs), after `QUIT-WHILE-LOADING <n> of <m> loads in flight`; the team app's `quit-loading` step checks the exit code 0 and that DmCrashWatch left no crash report.
 ## `--qa` / `--shot-plan=<plan.json>` (with `--shots=<dir>`, `--seconds=N`; dev-offline runs only): the QA tools beside the game, the scripted fight or the shot plan of a proposal (`start_qa`, client/README.md "Screenshots for proposals").
+## `--clip-plan=<plan.json> --clips=<dir>` (the same QA runs, engine started `--fixed-fps 30`): short video clips of a rite in use, 30 frames per game second as `<name>.mjpeg` (DmQaClips, client/README.md "Clips and tune").
+## `--tune=<data.json>` (only where the QA tools start, `qa_tune`): data overrides for this run, merged into the game's data before anything reads it (DmQaTune); an unknown file, key or type is refused with a printed line and exit code 2.
 ## `--preset=<low|medium|high|ultra>` (only where the QA tools start, `qa_preset`): that graphics preset is in force from the game's start, as if chosen in Settings, and is never saved to the player's settings
-## (a team PC's screenshots of a proposal on Low and Ultra); an unknown value is ignored with a printed warning.
+## (a team PC's screenshots of a proposal on Low and Ultra); an unknown value is ignored with a printed warning. `--ui-scale=<0.8 to 1.25>` (`qa_ui_scale`) is Settings' Interface size for the run the same way.
+## `--stutter --stutter-out=<abs dir>` and `--soak[=<minutes>] --soak-out=<abs dir>` (QA runs only, `qa_scenario`; they write `<dir>/stutter.json` and `<dir>/soak.json`): the release checks' scenarios, each on isolated offline games of its own
+## with no front flow (DmQaStutter: every rite of each playable discipline cast once, the worst frame and the pipeline compilations of each; DmQaSoak: auto combat in the Graves with waves for that long, a row a minute and the growth), client/README.md "Release checks".
 ## A QA run also never takes the keyboard or the mouse from the person at the PC (`quiet_window`: no focus, mouse events pass through), so a team PC can run it while its owner works.
 ## `--benchmark`: runs the in-game benchmark straight away on an isolated offline game (DmBenchmark, no login; `--bench-room=`, `--bench-class=`, `--bench-size=`,
 ## `--bench-length=` pick the setup, default the Standard one, `--bench-warm=` / `--bench-measure=` shorten it, `--baked=<dir>` names the baked crowd models) and stays on the
@@ -34,6 +41,8 @@ extends Node
 ## logged-in api right away on Log out and quit (at most 2 s), else at the character select and when a session starts (DmPlayReportQueue). Never from a debug build, a script run, the dev-offline backend or the benchmark (`plays_report`).
 
 const DEV_OFFLINE_DB := "user://dm_dev_offline_db.json"    ## --dev-offline testing backend (the same file the dev entry uses)
+const BOOT_CHECK_MS := 60000                                ## `--boot-check` fails when no first screen is up after this long
+const QA_SOAK_MINUTES := 30.0                               ## what a bare `--soak` runs for
 
 var mode := ""              ## "online" | "dev_offline" | "test" (injected api, local wording) | "benchmark" (`--benchmark`); "" = decided from the launch args in _ready
 var flow: DmFrontFlow
@@ -100,12 +109,27 @@ func _ready() -> void:
 		if bool(o["no_waves"]):
 			start_opts["waves"] = false
 	if qa_wanted(args, mode):
-		start_qa()
+		var tune := qa_tune(args, mode)
+		if tune != "":
+			var applied := DmQaTune.apply_file(tune)   # before the game scene (and the core's data) is built, so every number is read tuned
+			for line in applied["lines"]:
+				print(line)
+			if not applied["ok"]:
+				get_tree().quit(2)
+				return
 		quiet_window(get_window())
 		print("QA-SHOTS window: takes no focus and passes the mouse through (asked of the %s display)" % DisplayServer.get_name())
+		var scenario := qa_scenario(args, mode)
+		if scenario != "":
+			_run_qa_scenario(scenario, args)   # its own games, no front flow, and the run ends with its exit code
+			return
+		start_qa()
 		var preset := qa_preset(args, mode)
 		if preset != "":
 			start_opts["qa_preset"] = preset   # DmNextGame applies it before the world is built; DmSettings keeps it out of the player's file
+		var ui_scale := qa_ui_scale(args, mode)
+		if ui_scale > 0.0:
+			start_opts["qa_ui_scale"] = ui_scale   # the same, for Settings' Interface size
 	if api != null:
 		pass   # injected (tests)
 	elif mode == "dev_offline":
@@ -117,12 +141,14 @@ func _ready() -> void:
 		api = DmApi.new(_transport.request_callable())
 		api.slot_decorator = Callable(DmAffixes, "decorate_slots")
 	var quick := quick_start_class(args)
-	if mode != "online" and quick >= 0:
+	if mode != "online" and quick >= 0 and not boot_check(args):
 		await _dev_quick_start(quick)
 		return
 	_start_flow()
 	if OS.is_debug_build() and "--boot-smoke" in args:
 		_boot_smoke()
+	if boot_check(args):
+		_boot_check("--quit-while-loading" in args)
 
 
 ## Testing (`--boot-smoke`, debug builds): the test channel's publish boots an exported copy and waits for this line, so a build that cannot reach its
@@ -135,6 +161,33 @@ func _boot_smoke() -> void:
 	print("CROWD %d" % CrowdView.baked_models().size())   # the crowd's baked models as the export sees them (smoke-rebuild.sh compares)
 	print("BOOT OK %s" % flow.current_name if flow != null and flow.current_name != "" else "BOOT STUCK")
 	get_tree().quit(0 if flow != null and flow.current_name != "" else 1)
+
+
+## `--boot-check`, in release builds too (the team app's `install` and `quit-loading` steps run the release exe with it): it only quits. Waits for the first screen (the login, or the character select of a saved login) for at most 60 s,
+## prints `BOOT OK <ms>` (ms since the engine started, the art pack's mount included) and quits with exit code 0; no screen in time prints `BOOT FAIL` and quits with exit code 1. `quit_loading`
+## (`--quit-while-loading`): it first asks the worker threads for the art pack's models (the loads the warm-up makes, DmWarmup) and quits with them in flight, prints how many were (a headless run has no renderer to load for: none).
+func _boot_check(quit_loading: bool) -> void:
+	var end := Time.get_ticks_msec() + BOOT_CHECK_MS
+	while (flow == null or flow.current_name == "") and Time.get_ticks_msec() < end:
+		await get_tree().process_frame
+	if flow == null or flow.current_name == "":
+		print("BOOT FAIL no first screen in %d s" % (BOOT_CHECK_MS / 1000))
+		get_tree().quit(1)
+		return
+	print("BOOT OK %d" % Time.get_ticks_msec())
+	print("BOOT screen %s" % flow.current_name)
+	if quit_loading:
+		var paths: Array = DmWarmup._model_paths() if DisplayServer.get_name() != "headless" else []
+		var asked := 0
+		for p: String in paths:
+			if ResourceLoader.load_threaded_request(p, "", true) == OK:
+				asked += 1
+		var flying := 0
+		for p: String in paths:
+			if ResourceLoader.load_threaded_get_status(p) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+				flying += 1
+		print("QUIT-WHILE-LOADING %d of %d loads in flight" % [flying, asked])
+	get_tree().quit(0)
 
 
 ## Testing: the class a dev quick start enters with (`--class=N`; `--world-demo` = class 2), -1 = no quick start (the front flow runs).
@@ -153,14 +206,59 @@ static func mode_for(args: PackedStringArray, debug_build: bool = OS.is_debug_bu
 	return "dev_offline" if ("--dev-offline" in args or "--world-demo" in args) else "online"
 
 
-## Testing: whether the QA tools start (`--qa`, or `--shot-plan=<plan.json>`): on the local dev backend of a debug build only, as `mode_for` has it, so a release export never starts them.
+## Testing: whether the QA tools start (`--qa`, `--shot-plan=<plan.json>` or `--clip-plan=<plan.json>`): on the local dev backend of a debug build only, as `mode_for` has it, so a release export never starts them.
 static func qa_wanted(args: PackedStringArray, mode_: String, debug_build: bool = OS.is_debug_build()) -> bool:
 	if not debug_build or mode_ != "dev_offline":
 		return false
 	for a in args:
-		if a == "--qa" or a.begins_with("--shot-plan="):
+		if a == "--qa" or a.begins_with("--shot-plan=") or a.begins_with("--clip-plan=") or a == "--stutter" or a == "--soak" or a.begins_with("--soak="):
 			return true
 	return false
+
+
+## Release-safe: whether the launch is a boot check (`--boot-check`). It only quits (`_boot_check`), so a release build honours it, unlike every QA flag.
+static func boot_check(args: PackedStringArray) -> bool:
+	return "--boot-check" in args
+
+
+## Testing: which release-check scenario a QA run asks for: "stutter" (`--stutter`), "soak" (`--soak` or `--soak=<minutes>`), "" for none. Only where the QA tools start (`qa_wanted`); `--stutter` wins over `--soak`.
+static func qa_scenario(args: PackedStringArray, mode_: String, debug_build: bool = OS.is_debug_build()) -> String:
+	if not qa_wanted(args, mode_, debug_build):
+		return ""
+	if "--stutter" in args:
+		return "stutter"
+	for a in args:
+		if a == "--soak" or a.begins_with("--soak="):
+			return "soak"
+	return ""
+
+
+## Testing: the minutes `--soak=<minutes>` asks for (30 for a bare `--soak` or a value that is no positive number).
+static func qa_soak_minutes(args: PackedStringArray) -> float:
+	for a in args:
+		if a.begins_with("--soak=") and a.substr(7).is_valid_float() and float(a.substr(7)) > 0.0:
+			return float(a.substr(7))
+	return QA_SOAK_MINUTES
+
+
+## Testing: the file a QA scenario writes its results to: `<dir>/<kind>.json` for `--<kind>-out=<abs dir>` (`kind` is "stutter" or "soak"), "" for none.
+static func qa_results(args: PackedStringArray, kind: String) -> String:
+	var prefix := "--%s-out=" % kind
+	for a in args:
+		if a.begins_with(prefix) and a.length() > prefix.length():
+			return a.substr(prefix.length()).path_join("%s.json" % kind)
+	return ""
+
+
+## Testing: the data file a QA run asks for with `--tune=<abs json>` (DmQaTune), "" for none. Honoured only where the QA tools start (`qa_wanted`), so a release export, an online start and a launch without
+## the QA flags ignore it whatever the line says.
+static func qa_tune(args: PackedStringArray, mode_: String, debug_build: bool = OS.is_debug_build()) -> String:
+	if not qa_wanted(args, mode_, debug_build):
+		return ""
+	for a in args:
+		if a.begins_with("--tune="):
+			return a.substr(7)
+	return ""
 
 
 ## Testing: a QA run never takes the keyboard or the mouse from the person at the PC (the team app runs it on a team member's own computer, while they work): the main window takes no
@@ -189,6 +287,21 @@ static func qa_preset(args: PackedStringArray, mode_: String, debug_build: bool 
 	return ""
 
 
+## Testing: Settings' Interface size a QA run asks for with `--ui-scale=<0.8 to 1.25>`, 0.0 for none. Honoured only where the QA tools start, like `--preset=`; a value outside what Settings offers is ignored with a warning.
+## It is applied before the game scene starts and is never saved (DmSettings.session_set).
+static func qa_ui_scale(args: PackedStringArray, mode_: String, debug_build: bool = OS.is_debug_build()) -> float:
+	if not qa_wanted(args, mode_, debug_build):
+		return 0.0
+	for a in args:
+		if a.begins_with("--ui-scale="):
+			var v := a.substr(11)
+			if v.is_valid_float() and float(v) >= 0.8 and float(v) <= 1.25:
+				return float(v)
+			print("QA-SHOTS warning: --ui-scale=%s ignored (it must be a number from 0.8 to 1.25); the game keeps the interface size it has." % v)
+			return 0.0
+	return 0.0
+
+
 ## Testing: the QA driver (main/qa_driver.gd) as the child Driver, which finds the game this boot makes. It is loaded here, by path, and never named: it names most of the game (compiling it took
 ## every start about 5 s in the old game, which registered it as an autoload stub), so no other start pays for it. The project file registers no autoload for it: `client/project.godot` is an input
 ## of the art pack's fingerprint.
@@ -196,6 +309,27 @@ func start_qa() -> void:
 	var d: Node = load("res://main/qa_driver.gd").new()
 	d.name = "Driver"
 	add_child(d)
+
+
+## Testing: a release-check scenario (`qa_scenario`) as the child Scenario: it builds isolated offline games of its own (DmBenchFight), writes its results file (`qa_results`) and returns the run's exit code (0 done, 1 not, 2 refused). Loaded by path,
+## like the driver, so no other start compiles it. The graphics preset is High unless `--preset=` says another.
+func _run_qa_scenario(kind: String, args: PackedStringArray) -> void:
+	var node: Node = load("res://main/qa_%s.gd" % kind).new()
+	var runner: Variant = node
+	node.name = "Scenario"
+	node.set("results_file", qa_results(args, kind))
+	var preset := qa_preset(args, mode)
+	if preset != "":
+		node.set("preset", preset)
+	if kind == "soak":
+		node.set("minutes", qa_soak_minutes(args))
+		var cls := quick_start_class(args)
+		if cls >= 0:
+			node.set("discipline", cls)
+	add_child(node)
+	var code: int = await runner.run()
+	print("QA-%s exit %d" % [kind.to_upper(), code])
+	get_tree().quit(code)
 
 
 ## A normal shutdown (window close, quit) saves first (the web's pagehide flush), then quits.
