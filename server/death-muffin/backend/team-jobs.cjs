@@ -88,6 +88,9 @@ const RUN_MAX_BYTES = 64 * 1024;          // JSON bytes of one benchmark run
 const SEEN_DAYS_MAX = 365;
 const DONE_BODY_MAX = 1024 * 1024;        // bytes of a `done` body: 6 bench runs of 64 KB and a 64 KB log, JSON-escaped, fit with room to spare
 const DONE_ROUTE_RE = /^\/(?:api\/)?team\/jobs\/[0-9a-f]{12}\/done\/?$/;   // the route that reads its own body (server.js's JSON parser leaves it alone)
+// The uploads read their own body too: a .json step result is sent as application/json, and server.js's JSON parser would read it first and leave
+// the route waiting for a body already gone (2026-10-19: Helix's release checks timed out three times on install.json).
+const FILES_ROUTE_RE = /^\/(?:api\/)?team\/jobs\/[0-9a-f]{12}\/files\/[^/]+$/;
 const KIND_ORDER = ['shots', 'clip', 'release', 'bench'];   // what a heartbeat offers first: a release or bench job waits on its PC until it is quiet, so it must never hide a newer shots or clip job; other kinds come last
 const KIND_RANK_SQL = `CASE kind ${KIND_ORDER.map((k, i) => `WHEN '${k}' THEN ${i}`).join(' ')} ELSE ${KIND_ORDER.length} END`;
 const CANCEL_MINUTES = 10;                // a heartbeat names the PC's jobs cancelled this recently
@@ -1276,7 +1279,11 @@ module.exports.RUNS_PER_JOB = RUNS_PER_JOB;
 module.exports.DONE_BODY_MAX = DONE_BODY_MAX;
 module.exports.KIND_ORDER = KIND_ORDER;
 /** Whether `req` is the route that reads its own, bigger JSON body (server.js's global parser skips it). */
-module.exports.readsOwnBody = (req) => !!req && req.method === 'POST' && DONE_ROUTE_RE.test(String(req.path || req.url || '').split('?')[0]);
+module.exports.readsOwnBody = (req) => {
+  if (!req) return false;
+  const p = String(req.path || req.url || '').split('?')[0];
+  return (req.method === 'POST' && DONE_ROUTE_RE.test(p)) || (req.method === 'PUT' && FILES_ROUTE_RE.test(p));
+};
 module.exports.RESULTS_KEEP_DAYS = RESULTS_KEEP_DAYS;
 module.exports.RUN_MAX_BYTES = RUN_MAX_BYTES;
 module.exports.DEFAULT_RESULTS_DIR = DEFAULT_RESULTS_DIR;

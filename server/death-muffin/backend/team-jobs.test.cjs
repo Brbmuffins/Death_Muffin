@@ -1794,6 +1794,11 @@ test('server.js leaves the done route\'s body to the route (its own 1 MB reader)
   assert.strictEqual(readsOwnBody({ method: 'POST', path: `/api/team/jobs/${id}/done` }), true);
   assert.strictEqual(readsOwnBody({ method: 'GET', url: `/api/team/jobs/${id}/done` }), false);
   assert.strictEqual(readsOwnBody({}), false);
+  for (const url of [`/api/team/jobs/${id}/files/install.json`, `/team/jobs/${id}/files/low_bag.png`]) {
+    assert.strictEqual(readsOwnBody({ method: 'PUT', path: url }), true, `${url}: an upload reads its own body (a .json result is application/json)`);
+    assert.deepStrictEqual(asked('PUT', url), [], `PUT ${url}: the global parser does not read it`);
+  }
+  assert.strictEqual(readsOwnBody({ method: 'POST', path: `/api/team/jobs/${id}/files/install.json` }), false);
   assert.strictEqual(DONE_BODY_MAX, 1024 * 1024);
   assert.ok(srv.routes.has('POST /api/team/jobs/:id/done') && srv.routes.has('POST /team/jobs/:id/done'));
 });
