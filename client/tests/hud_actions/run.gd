@@ -1,7 +1,7 @@
 extends SceneTree
 ## HUD feeds, the Legion purchase and panel verification on the rebuilt client (client/next/hud): the save chip, wave dial, forwarded sounds, and the panels' basic actions
 ## working through the (offline) API. (The counsel's facts and busy flags are tests/counsel.gd's.)
-## godot --headless --fixed-fps 60 --path client --script res://tests/next_hud_counsel/run.gd
+## godot --headless --fixed-fps 60 --path client --script res://tests/hud_actions/run.gd
 
 const DT := 1.0 / 60.0
 var passed := 0
@@ -233,7 +233,7 @@ func _run() -> void:
 	await panels(cid)
 	print("---- %d passed, %d failed" % [passed, failed])
 	await g.leave()
-	print("%s next_hud_counsel %d checks%s" % ["PASS" if failed == 0 else "FAIL", passed + failed, "" if failed == 0 else " (%d failed)" % failed])
+	print("%s hud_actions %d checks%s" % ["PASS" if failed == 0 else "FAIL", passed + failed, "" if failed == 0 else " (%d failed)" % failed])
 	quit(1 if failed > 0 else 0)
 
 

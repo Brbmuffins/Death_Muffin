@@ -312,7 +312,7 @@ budgets for every kind of asset, and checks for everything but models.
   rewards and loot 2 to 9 ms (measured on the VPS: a small hitch on a weaker PC), some code repeats work every frame, and some effects draw
   while empty. After: each one inside its budget, fixed and measured one at a time, the hitches first (KNOWN-GAPS "Performance").
 - [ ] **Fix: some test suites fail at random.** Now: a few suites fail now and then under load or on timing (KNOWN-GAPS "Tools and
-  tests"; `next_hud` and `qa_shots` fixed 2026-10-19), so a red CI does not always mean a real problem, and with CI as the gate (B59) a
+  tests"; the HUD suite and `qa_shots` fixed 2026-10-19), so a red CI does not always mean a real problem, and with CI as the gate (B59) a
   random failure blocks a ship. After: every suite passes every time, and red means broken.
 - [ ] **Fix: leftovers from the web game.** Now: parts of the code still copy the old web game's exact math, and an asset list is kept by
   hand. After: plain Godot code and generated lists (KNOWN-GAPS "Leftovers from the web era").

@@ -9,6 +9,9 @@ extends SceneTree
 ##     timeline of one number, expiry;
 ##   - NO NODE PER CREATURE: the scene's node count is the same with 0 and with 100 more enemies, 30 more thralls and 40 floating numbers alive;
 ##   - the boss plate and his dot on the map while the Gravedigger King is awake, and the fx's banners and toasts (the sink of `bosses.fx.host`);
+##   - the keys and the click: the loadout is the kit's with its icons and the signature locked at level 1, a key press casts through the
+##     caster (cooldown, essence, the slot's flash, "not ready" on the second press), a click on the bar casts the primary, one hotbar listener, a hit number is drawn on the float layer,
+##     damage taken floats and flashes, the minimap's destination mark, the Reliquary counts a picked-up drop, and the HUD applies at about 20 Hz;
 ##   - the pieces: each readout group has its anchors, moves and scales around its corner, hides for good; the HUD scale;
 ##   - the atlas and the drawing helpers: 9-patch pixels against what StyleBoxFlat draws, regions and their padding, the z layers of text, the meshes, the sweep;
 ##   - the per-frame work kept small ("The HUD's budget", CPU): a NEW glow's and an empowered slot's pulse and a cast flash fade a layer drawn once (no redraw per frame, the same
@@ -40,6 +43,7 @@ var host: DmCoreHost
 var core: RefCounted
 var hero: DmHeroBody
 var caster: DmRiteCaster
+var feed: Array = []        ## the adapter's game events since the keys and the click began: {id, ctx}
 
 
 func check(ok: bool, what: String) -> void:
@@ -62,6 +66,13 @@ func ticks(n: int) -> void:
 	var target := Engine.get_physics_frames() + n
 	while Engine.get_physics_frames() < target:
 		await physics_frame
+
+
+func until(cond: Callable, limit_ticks: int) -> bool:
+	var end := Engine.get_physics_frames() + limit_ticks
+	while not bool(cond.call()) and Engine.get_physics_frames() < end:
+		await physics_frame
+	return bool(cond.call())
 
 
 func nodes() -> int:
@@ -93,6 +104,7 @@ func _initialize() -> void:
 	h = HudShim.new(g)
 	check(g.ready_ and g.ui != null and g.ui.hud is DmHud and g.ui_host != null, "the game scene is up with today's HUD and panels on the adapter (hud: true)")
 	hud = g.ui.hud
+	check(not g.ui._vm.is_empty() and hud.minimap != null and hud.visible, "the first HUD apply happened during start (loading), before any played frame")
 	host = g.core_host
 	core = host.core
 	hero = g.local_body()
@@ -113,6 +125,7 @@ func _initialize() -> void:
 	await per_frame_work()
 	await draw_model()
 	await costs()
+	await keys_and_click()
 	await boss_plate()
 	check(errlog.errors.is_empty(), "no script or engine errors in the log (%d: %s)" % [errlog.errors.size(), str(errlog.errors.slice(0, 3))])
 	await finish()
@@ -574,6 +587,117 @@ func death_veil() -> void:
 		waited += 1
 	h.refresh()
 	check(hero.alive and not bool(h.last_vm()["death"]["show"]), "he got up: the veil goes down")
+
+
+# ------------------------------------------------------------------------------------------------------------------ the keys, the click, the listener, the refresh rate
+
+func floats_of(kind: String) -> Array:
+	return feed.filter(func(e: Dictionary) -> bool: return e["id"] == "float" and e["ctx"]["kind"] == kind)
+
+
+func keys_and_click() -> void:
+	var uh := g.ui_host
+	var listener := func(id: String, ctx: Dictionary) -> void: feed.append({"id": id, "ctx": ctx})
+	uh.game_event.connect(listener)
+	# the loadout is the kit's default loadout + RMB, with each rite's icon on its slot
+	var kit := DmContent.kit("necromancer")
+	var want: Array = (kit["defaultLoadout"] as Array).duplicate()
+	want.append(kit["rmb"])
+	check(uh.keys == want and uh.primary == kit["defaultPrimary"], "loadout = the kit's default loadout + rmb, primary %s" % uh.primary)
+	check(hud.primary_slot != null and hud.primary_slot.key_text == "LMB", "HUD built the primary slot (LMB)")
+	for i in 5:
+		check(String(hud._slots[i].icon_path).ends_with(String(DmAbilities.def(want[i])["icon"]).replace("art/", "")), "slot %d icon is %s" % [i + 1, want[i]])
+	# R is the discipline's signature, locked at level 1 (the level of this run is 20)
+	var level0: Variant = g.character["level"]
+	g.character["level"] = 1
+	h.refresh()
+	var sig_vm: Dictionary = h.last_vm()["slots"][5]
+	check(sig_vm["key"] == "R" and sig_vm["locked"] and uh.rite_at(6) == kit["signatures"][hero.discipline_id], "vm: R is the discipline's signature, locked at level 1")
+	g.character["level"] = level0
+	h.refresh()
+	# the minimap's destination mark follows a click-to-move goal
+	check(uh.hud_state()["minimap"]["destination"] == null, "minimap: no destination while standing")
+	hero.set_move_target(hero.position + Vector3(6, 0, 0))
+	var dest: Variant = uh.hud_state()["minimap"]["destination"]
+	check(dest != null and near(float(dest["x"]), hero.position.x + 6.0), "minimap: a click-to-move goal shows as the destination mark")
+	hero.has_target = false
+	check(uh.hud_state()["minimap"]["destination"] == null, "minimap: the mark clears on arrival")
+	# a key press casts through the caster: the slowest rite of the bar that is ready and costs essence
+	hero.resource = hero.resource_max
+	var slot := -1
+	var slowest := 0.0
+	for i in 5:
+		var rid := String(uh.keys[i])
+		var d := DmAbilities.def(rid)
+		if caster.cooldown_left(rid) <= 0.0 and float(d["essenceCost"]) > 0.0 and float(DmAbilities.unlock_level(rid)) <= 20.0 and float(d["cooldownMs"]) > slowest:
+			slot = i
+			slowest = float(d["cooldownMs"])
+	check(slot >= 0, "a rite of the bar is ready to cast")
+	if slot >= 0:
+		var rid := String(uh.keys[slot])
+		var key_ev := InputEventKey.new()
+		key_ev.pressed = true
+		key_ev.physical_keycode = KEY_1 + slot
+		g.input._unhandled_input(key_ev)
+		await ticks(3)
+		check(caster.cooldown_left(rid) > 0.0, "key %d casts %s (cooldown %.0f ms)" % [slot + 1, rid, caster.cooldown_left(rid)])
+		check(hero.resource < hero.resource_max - 1.0, "essence spent")
+		check(g.input.hotbar.get_connections().size() == 1, "one hotbar listener (the HUD): %d (two = every key cast twice)" % g.input.hotbar.get_connections().size())
+		check(feed.any(func(e: Dictionary) -> bool: return e["id"] == "slot_flash" and e["ctx"]["slot"] == slot + 1), "slot flash for the cast")
+		# the same key again, past the cast lock, is on cooldown: said as a float
+		await ticks(120)
+		feed.clear()
+		g.input._unhandled_input(key_ev)
+		await ticks(2)
+		check(floats_of("info").any(func(e: Dictionary) -> bool: return String(e["ctx"]["text"]).find("not ready") >= 0), "cooldown rejection shows a float: %s" % [floats_of("info").map(func(e: Dictionary) -> String: return e["ctx"]["text"])])
+	# a click on the bar's primary slot casts it at an enemy, and the hit number is drawn on the HUD's float layer
+	var foe: int = host.spawn_enemy("robber", hero.position + Vector3(0, 0, -4), 1, 1000.0, 0.0, false, "graves", false)
+	await ticks(30)
+	hero.heal(1.0e6)
+	feed.clear()
+	var primary_cd := caster.cooldown_left(uh.primary)
+	h.floats = DmFloatBudget.new()   # (the caps test above ran its numbers at a made-up time)
+	var drawn_before: int = hud.float_layer.drawn
+	g.input.hotbar.emit(0, host.enemy_position(foe), foe)
+	await ticks(2)
+	check(caster.cooldown_left(uh.primary) > primary_cd, "LMB casts %s" % uh.primary)
+	check(await until(func() -> bool: return not floats_of("hit").is_empty() or not floats_of("crit").is_empty(), 60 * 4), "a primary hit floats a damage number")
+	await ticks(2)
+	check(hud.float_layer.drawn > drawn_before, "the number is drawn on the HUD float layer (a pool: DmHudFloats)")
+	host.remove_enemy(foe)
+	# damage taken floats a hurt number and flashes
+	feed.clear()
+	var hp0 := hero.hp
+	hero.take_damage(12.0, 0, "melee")
+	await ticks(2)
+	check(not floats_of("hurt").is_empty() and hero.hp < hp0, "damage taken floats a hurt number")
+	check(feed.any(func(e: Dictionary) -> bool: return e["id"] == "hit_flash"), "hit flash on damage")
+	hero.heal(1.0e6)
+	# a picked-up drop is counted by the Reliquary
+	var member: DmRewardsMember = g.rewards.members[int(g.character["id"])]
+	var bag0 := uh.inventory.count("reagent_grave_dust")
+	member.loot_view.item(hero.position, {"item_id": "reagent_grave_dust", "quantity": 3}, true)
+	member.loot_view.request_pickup(member.loot_view._drops[-1])   # what a click on it does (DmNextUiHost.loot_click)
+	check(await until(func() -> bool: return uh.inventory.count("reagent_grave_dust") == bag0 + 3, 60 * 3), "a clicked drop lands in the bag")
+	g.ui.toggle_panel("inventory")
+	await process_frame
+	check(g.ui.inv.count("reagent_grave_dust") == bag0 + 3, "the Reliquary counts the drop")
+	g.ui.close_panels()
+	uh.game_event.disconnect(listener)
+	# the HUD applies at 20 Hz, not per frame
+	var n0 := Time.get_ticks_msec()
+	var applies := 0
+	var frames := 0
+	var last_at: int = g.ui._hud_at   # the time of the last apply (the client's view-model is one reused dictionary, so a new object cannot say it)
+	while Time.get_ticks_msec() - n0 < 1000:
+		await process_frame
+		frames += 1
+		if g.ui._hud_at != last_at:
+			applies += 1
+			last_at = g.ui._hud_at
+	# The throttle is wall-clock (50 ms), so on a loaded machine frames can be slower than 50 ms and every frame applies: the floor is
+	# min(8, frames / 2), the cap stays 22, and with plenty of frames the throttle must be visible (fewer applies than frames).
+	check(applies >= mini(8, frames / 2) and applies <= 22 and (frames < 60 or applies < frames / 2), "HUD applies at ~20 Hz (%d applies in %d frames in 1 s)" % [applies, frames])
 
 
 # ------------------------------------------------------------------------------------------------------------------ the boss

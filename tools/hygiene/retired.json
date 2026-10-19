@@ -341,6 +341,24 @@
         "DECISIONS.md",
         "tools/hygiene/**"
       ]
+    },
+    {
+      "id": "suite-next-hud",
+      "pattern": "\\bnext_hud\\b",
+      "reason": "test suite merged into hud (client/tests/hud.gd) 2026-10-19",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "suite-next-hud-counsel",
+      "pattern": "\\bnext_hud_counsel\\b",
+      "reason": "test suite split 2026-10-19: its counsel checks went to counsel (client/tests/counsel.gd), the rest is hud_actions",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
     }
   ],
   "allowPaths": {

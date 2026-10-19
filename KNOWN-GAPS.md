@@ -153,8 +153,8 @@ polish list). Also:
   `client/data/combat/abilities.json`, as the Haunting Wraith's `speed` did (found 2026-10-19).
 - `--boot-check --quit-while-loading` quits with the art pack's models loading on worker threads, not during the pack's own mount: that is synchronous in the first autoload (`client/main/dm_packs.gd`), before any script of the game can quit, so the step cannot reproduce a quit
   in the middle of it (found 2026-10-19).
-- `next_hud` fails one check when it runs beside other suites at load 9 (twice on 2026-10-19) and passes alone; the test runner re-runs it alone,
-  so nothing fails, but the check is load-sensitive.
+- The old HUD suite (its checks are in `hud` since 2026-10-19) failed one check when it ran beside other suites at load 9 (twice on 2026-10-19) and passed alone; the test runner
+  re-runs a failed suite alone, so nothing fails, but the check (the 20 Hz refresh count in `hud`, or the key cast beside it) may still be load-sensitive.
 
 ## Stability
 
