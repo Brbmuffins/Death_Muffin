@@ -375,9 +375,9 @@ func start_game(cls: int, disc: String) -> void:
 	if g != null:
 		g.process_mode = Node.PROCESS_MODE_DISABLED
 		await g.leave()
-		drop_effects()
 		g.queue_free()
 		await process_frame
+		check_effects_dropped()
 		root.multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
 	rec.set_ctx(disc, "", "start")
 	rec.begin_warm()
@@ -406,12 +406,15 @@ func start_game(cls: int, disc: String) -> void:
 	await ticks(2)   # the avatar is made a frame after the body enters the tree
 
 
-## Stops every effect before a game is freed: nothing in the game does (the Vfx autoload outlives it), and an Unleash Souls orbit still circling the hero calls its `follow`
-## closure on the freed hero every frame ("Lambda capture ... was freed").
-func drop_effects() -> void:
+## After a game is freed nothing it played is left running (DmNextGame._exit_tree clears the Vfx autoload, which outlives the game: an Unleash
+## Souls orbit still circling would otherwise call its `follow` closure on the freed hero every frame).
+func check_effects_dropped() -> void:
 	var vfx := root.get_node_or_null("Vfx")
-	if vfx != null:
-		vfx.clear_all()
+	if vfx == null:
+		return
+	var left: int = vfx.binbun._live.size() if vfx.binbun != null else 0
+	left += vfx.prims._transients.size() if vfx.prims != null else 0
+	check(left == 0, "freeing a game stops its effects (%d left running)" % left)
 
 
 ## The first direction from the hero along which the ground is clear for 16 m, and 3 m to either side (rites.gd's).
@@ -801,10 +804,10 @@ func play_loot(disc: String) -> void:
 func finish() -> void:
 	for rite: String in DmRiteRegistry.ids():
 		check(int(cast_rites.get(rite, 0)) >= 1, "%s was cast at least once" % rite)
-	drop_effects()
 	g.queue_free()
 	await ticks(5)
 	await process_frame
+	check_effects_dropped()
 	rec.scan_all()
 	var secs_run := float(Time.get_ticks_msec() - t0_msec) / 1000.0
 	for line in warm_log:

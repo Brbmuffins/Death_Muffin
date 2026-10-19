@@ -555,6 +555,14 @@ func attach_caster(body: DmHeroBody) -> void:
 		DmStatusSet.attach(body)
 
 
+## Freed (log out, switch character): stop every effect, persistent decals included. The Vfx autoload outlives the game, and an effect that
+## follows a body (an Unleash Souls orbit) would otherwise call its closure on the freed body every frame.
+func _exit_tree() -> void:
+	var vfx := get_node_or_null("/root/Vfx")
+	if vfx != null:
+		vfx.clear_all()
+
+
 func _process(dt: float) -> void:
 	hitstopper.frame(dt)
 	if _visual:
