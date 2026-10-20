@@ -745,6 +745,10 @@ func clips_on_a_reaper() -> void:
 	var speed0 := float(wraith0["speed"])
 	var cost0 := int(wraith0["soulCost"])
 	var range0 := float(wraith0["range"])
+	var cooldown0 := float(wraith0["cooldownMs"])
+	# the clips below check ONE cast, so the test sets the wraith's cooldown as its own input (a tune, as the "pick one" videos do): it holds whatever the live cooldown is
+	var cd_tune := DmQaTune.apply({"combat/abilities": {"abilities": {"haunting_wraith": {"cooldownMs": 60000.0}}}})
+	check(cd_tune["ok"] and float(DmAbilities.def("haunting_wraith")["cooldownMs"]) == 60000.0, "the test gives the wraith a 60 s cooldown for the one-cast clips")
 	var dir := ProjectSettings.globalize_path(OUT.path_join("clips"))
 	DirAccess.make_dir_recursive_absolute(dir)
 	var plan := DmQaClips.parse('{"discipline": "reaper", "clips": [{"name": "wraith", "cast": "haunting_wraith", "at": "ahead", "enemies": 4, "seconds": 2, "camera": "wide"}, {"name": "second", "cast": "haunting_wraith", "at": "pack", "enemies": 3, "seconds": 1}]}')
@@ -792,6 +796,13 @@ func clips_on_a_reaper() -> void:
 	var b: Dictionary = await DmQaClips.record(root, cg, plan["clips"][1], dir, fake)
 	check(b["ok"] and b["frames"] == 30 and b["casts"] == [DmQaClips.LEAD_FRAMES] and FileAccess.file_exists(dir.path_join("second.mjpeg")) and FileAccess.file_exists(dir.path_join("second.json")), "a second clip: 30 frames, cast at frame %d again (%s)" % [DmQaClips.LEAD_FRAMES, str(b)])
 	check(seen.get("alive") == 3 and seen.get("zoom") != null and absf(float(seen["zoom"]) - 1.0) < 0.01, "with its own stand-ins and the game's own camera (%s)" % str(seen))
+	DmQaTune.apply({"combat/abilities": {"abilities": {"haunting_wraith": {"cooldownMs": cooldown0}}}})
+	# a clip of a rite with no cooldown casts it once, not every frame
+	DmQaTune.apply({"combat/abilities": {"abilities": {"haunting_wraith": {"cooldownMs": 0.0}}}})
+	seen["n"] = 0
+	var z: Dictionary = await DmQaClips.record(root, cg, plan["clips"][1], dir, fake)
+	check(z["ok"] and z["casts"] == [DmQaClips.LEAD_FRAMES], "a rite with no cooldown is cast once in a clip (%s)" % str(z))
+	DmQaTune.apply({"combat/abilities": {"abilities": {"haunting_wraith": {"cooldownMs": cooldown0}}}})
 	# a model preview: items worn, the turntable camera, no cast
 	var tplan := DmQaClips.parse('{"discipline": "reaper", "equip": ["staff_moon", "helm_gold"], "clips": [{"name": "preview", "camera": "turntable", "seconds": 2}, {"name": "only-staff", "camera": "turntable", "seconds": 1, "equip": ["staff_moon"]}, {"name": "bare", "camera": "turntable", "seconds": 1, "equip": []}]}')
 	var yaws: Array[float] = []
