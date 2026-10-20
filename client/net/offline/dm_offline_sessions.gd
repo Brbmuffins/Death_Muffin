@@ -15,6 +15,9 @@ const MAX_BOSSES_PER_MEMBER := 12
 
 var _sessions: Dictionary = {}
 var _counter := 0
+## The mock backend's judge of a member's first boss kill (party-sessions.cjs / kills.cjs decideFirstKills): Callable(character id, boss id, kills) -> true when it is the character's
+## first kill of that boss; the kills are counted in its Chronicle either way. Unset: nothing is ever a first kill.
+var first_kill: Callable = Callable()
 
 static func _fail(status: int, code: String, msg: String) -> Dictionary:
 	return {"status": status, "body": {"success": false, "code": code, "error": msg}}
@@ -217,15 +220,24 @@ func _report(s: Dictionary, body: Dictionary, account: String, now: int) -> Dict
 			if g is Dictionary and (g.get("n") is int or g.get("n") is float):
 				claimed += clampi(int(g["n"]), 0, 6000)
 		var bosses := 0
+		var asked := {}   # boss id -> kills in the entries that ask the server about a first kill
 		for b in e.get("bosses", []):
 			if b is Dictionary and (b.get("n") is int or b.get("n") is float):
 				bosses += clampi(int(b["n"]), 0, 20)
+				if b.get("askFirst") == true and String(b.get("boss", "")) != "prelate" and not DmContent.boss(String(b.get("boss", ""))).is_empty():
+					asked[String(b["boss"])] = int(asked.get(String(b["boss"]), 0)) + clampi(int(b["n"]), 0, 20)
+		var firsts: Array = []
+		for boss in asked:
+			if first_kill.is_valid() and bool(first_kill.call(cid, boss, int(asked[boss]))):
+				firsts.append(boss)
 		if e.get("floors") is Array and not e["floors"].is_empty():
 			r["floorsDropped"] = e["floors"].size()
 		r["credited"] = true
 		r["mode"] = "offline"
 		r["claimedKills"] = claimed
 		r["accepted"] = {"kills": claimed, "bosses": bosses}
+		if not firsts.is_empty():
+			r["accepted"]["firstBosses"] = firsts
 		m["reported"] = int(m["reported"]) + claimed
 		m["accepted"] = int(m["accepted"]) + claimed
 		m["bosses"] = int(m["bosses"]) + bosses

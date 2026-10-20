@@ -41,6 +41,9 @@ static func consts(godot_dir: String, files: Array = CONST_FILES) -> Dictionary:
 static func load_all(core: RefCounted, godot_dir: String) -> void:
 	var content := func(name: String) -> Dictionary: return json(godot_dir.path_join("data/content/%s.json" % name))
 	var enemies: Dictionary = content.call("enemies")
+	for key: String in (enemies["ENEMIES"] as Dictionary).keys():
+		if String((enemies["ENEMIES"][key] as Dictionary).get("behavior", "")) == "boss":   # a boss's def (DmBoss.ensure_def registers it at run time in the shared table, for the codex): bosses are
+			(enemies["ENEMIES"] as Dictionary).erase(key)                                     # externals the core never runs, and a core built after one woke must hold the tables of one built before
 	var abilities: Dictionary = content.call("abilities")
 	var statuses: Dictionary = content.call("statuses")
 	core.load_enemy_defs(enemies["ENEMIES"])

@@ -29,4 +29,4 @@ Elite Vanguard (tier 3), Restless Crypts (6), Nightfall (8): banner on crossing 
 hemisphere x(1 - 0.3 k), eased at 0.8/s, scaled by ratio so other light writers compose; the Acre and the Alchemist's Wing stay lit). The lights are the world's (`DmNextWorld.builder` holds them), the banners go through `game_event`.
 `_process` only runs while easing. The variants live in the director (`DmWaveDirector.milestone(id)` at the ramped tier): the Vanguard's first plain pick of every other wave is an elite, Nightfall makes half the common picks `shrouded`;
 Restless Crypts shortens the next surge x0.6 (`DmGraveSurge`).
-Not done: a joined client does not dim (the tier is host state); Nightfall dims only the real-time ambient, so lightmapped ground, walls and props keep their full ambient (KNOWN-GAPS "Look").
+A party guest has the node too: the host's tier is the world's (`DmNextNet.send_tier` on a join and on each change), so its window banners the milestones and dims for Nightfall as the host's does. Nightfall dims only the real-time ambient, so lightmapped ground, walls and props keep their full ambient (KNOWN-GAPS "Look").

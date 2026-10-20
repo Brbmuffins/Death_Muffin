@@ -44,6 +44,7 @@ var play_reports: Array = []       ## the play reports it was sent, oldest first
 
 func _init(path: String = "user://dm_offline_db.json") -> void:
 	persist_path = path
+	_sessions.first_kill = Callable(self, "_first_kill")
 	_load()
 
 func transport_callable() -> Callable:
@@ -1795,6 +1796,19 @@ func _placement_rows(acc: Dictionary) -> Array:
 	return out
 
 # --- chronicle ---------------------------------------------------------------------------------------------------------------------
+
+## A party report asks whether a member's kill of `boss` is its first (kills.cjs decideFirstKills): the Chronicle's counter `boss.<id>` is the trophy record. The kills are counted
+## now, in the current run too; true when the counter was 0.
+func _first_kill(character_id: int, boss: String, kills: int) -> bool:
+	var acc: Dictionary = db["accounts"].get(_character_owner(character_id), {})
+	if acc.is_empty():
+		return false
+	var ch := _chron(acc)
+	var key := "boss." + boss
+	var had := _num_or(ch["life"].get(key, 0), 0.0) > 0.0
+	for t in [ch["life"], ch["run"]]:
+		t[key] = _tidy(_num_or(t.get(key, 0), 0.0) + float(kills))
+	return not had
 
 func _chron(acc: Dictionary) -> Dictionary:
 	if not acc.has("chronicle"):

@@ -16,8 +16,12 @@ extends Node
 ##   heroes     `_rpc_heroes`     reliable: {peer id: the hero's external id in the host's core}, on every join and leave. The ids in the events (the owner of a thrall, the source of a
 ##              blow) are the host's; a guest's hero bodies adopt them (`DmCoreHost.adopt_hero`).
 ##   vitals     `_rpc_vitals`     unreliable_ordered, 20 Hz: every hero's [hp, max, resource, resource max, alive]. A fall in a guest's own health is its `hurt` (the damage number,
-##              the flash and the sounds: DmHeroBody.apply_vitals).
+##              the flash and the sounds: DmHeroBody.apply_vitals). The same message carries the thralls' blows (below), so they cost no packet of their own.
 ##   effect     `_rpc_effect`     reliable: an enemy dragged the guest's hero (`hero_effect`): the guest's "Dragged!" and camera shake. A chill and a root are statuses, which replicate.
+##   tier       `_rpc_tier`       reliable: the world's Wave Speed tier (the host's dial), on a join and whenever it changes, so a guest's window follows the host's world: the Nightfall light and the
+##              milestones' banners (DmWaveMilestones, a guest has one too).
+##   blows      (in `_rpc_vitals`)  [enemy id, damage, ...] for each blow a thrall landed since the last message, so the guest's HUD numbers every blow as the host's does (the puppet core derives
+##              only the hit flash and the killing blow, and a derived event names no source). 8 bytes a blow, at most BLOWS_MAX a message.
 ##   The hero positions are the session's own snapshot (DmSession, 20 Hz), the King's state and events are DmBossHost's, the rites' events DmRiteCaster's.
 ## GUEST -> HOST: move intents (DmSession), `request_cast` (DmRiteCaster) and `_rpc_need_baseline` (a batch went missing). The host resolves a guest's rites on its core; the guest's
 ## thralls are the host's bodies, owned by the guest's hero external.
@@ -28,6 +32,7 @@ extends Node
 
 signal baseline_applied                        ## guest: the host's whole present arrived (the crowd is cleared and rebuilt from it)
 signal refused(reason: String)                 ## guest: the host's messages cannot be used (another version or other data): the game scene leaves the session with this text
+signal thrall_blows(blows: PackedInt32Array)   ## guest: [enemy id, damage, ...] the thralls' blows since the last message (the HUD floats a number over each enemy)
 
 const SEND_HZ := 20.0
 const PRIORITY := 150                          ## after the core's tick (DmCoreHost.PRIORITY 100): the snapshot shows the state this tick ended in
@@ -35,16 +40,21 @@ const PRIORITY := 150                          ## after the core's tick (DmCoreH
 ## datagram (MTU 1,392). 1,300 leaves room for the frame and for a longer node path.
 const PART_MAX := 1300
 const ASK_EVERY_MS := 1000                     ## a guest asks for a baseline at most this often
+const BLOWS_MAX := 32                          ## the most thrall blows one message carries (the HUD shows six thrall numbers at once; a Full Party sends about one a message)
 
 var game: Node                                 ## DmNextGame
 var part_max := PART_MAX                       ## tests cut smaller to exercise many parts
 ## Counters for the tests and the F3 overlay (host: what was sent; guest: what arrived).
 var stats := {"frames": 0, "parts": 0, "snapshot_bytes": 0, "max_part": 0, "batches": 0, "reliable_bytes": 0, "baselines": 0, "baseline_bytes": 0, "vitals": 0,
-		"heroes": 0, "asked": 0, "applied_parts": 0, "lost_parts": 0, "applied_batches": 0, "applied_baselines": 0, "refused_messages": 0}
+		"heroes": 0, "asked": 0, "applied_parts": 0, "lost_parts": 0, "applied_batches": 0, "applied_baselines": 0, "refused_messages": 0,
+		"blows": 0, "blow_msgs": 0, "blow_bytes": 0, "applied_blows": 0}
 
 var _applied := {}                             ## guest: the ticks of the snapshot parts applied lately (the last 128): which parts of a frame arrived
 var _last_tick := 0                            ## guest: the newest part applied
 var _guests := {}                              ## host: peer id -> true (roster members that were sent their baseline)
+var _thralls := {}                             ## host: core id -> true for every living thrall, kept once a guest is in (a blow of one is told to the guests)
+var _blows := PackedInt32Array()               ## host: [enemy id, damage, ...] since the last send
+var _watching := false
 var _asked_by := {}                            ## host: peer id -> when it last asked for a baseline (ms)
 var _acc := 0.0
 var _tick := 1                                 ## host: the number of the next snapshot part
@@ -74,12 +84,15 @@ func add_guest(peer: int) -> void:
 	var core := _core()
 	if _guests.is_empty():
 		core.set_replication(true)             # the first guest: from here on the reliable events are collected
+		_watch_thralls()
 	_guests[peer] = true
 	var base: PackedByteArray = core.baseline()
 	_rpc_baseline.rpc_id(peer, base)
 	stats["baselines"] += 1
 	stats["baseline_bytes"] += base.size()
 	send_heroes()
+	if game.milestones != null and game.milestones.seen_tier >= 0.0:
+		_rpc_tier.rpc_id(peer, game.milestones.seen_tier)
 
 
 ## Host: a player left. The last one out turns the collecting off.
@@ -90,6 +103,34 @@ func remove_guest(peer: int) -> void:
 
 func guests() -> Array:
 	return _guests.keys()
+
+
+## Host: the world's Wave Speed tier changed (DmWaveMilestones.on_tier): every guest's window follows it.
+func send_tier(tier: float) -> void:
+	if _is_host():
+		for peer in _guests:
+			_rpc_tier.rpc_id(peer, tier)
+
+
+## Host: from the first guest on, the thralls' blows on enemies are collected (the core's `enemy_damaged` with a thrall as the source) to be sent with the snapshot. The set of living thralls is
+## seeded from the core and kept by its raise and removal events; nothing runs per frame and a solo game never gets here.
+func _watch_thralls() -> void:
+	if _watching:
+		return
+	_watching = true
+	var ch := game.core_host as DmCoreHost
+	for id in ch.core.thrall_ids():
+		_thralls[id] = true
+	ch.thrall_raised.connect(func(id: int, _k: String, _o: int, _sl: int, _em: bool, _c: bool, _x: float, _z: float, _y: float, _h: float) -> void: _thralls[id] = true)
+	ch.thrall_removed.connect(func(id: int) -> void: _thralls.erase(id))
+	ch.enemy_damaged.connect(_on_enemy_damaged)
+
+
+func _on_enemy_damaged(id: int, source: int, amount: float, _hp: float) -> void:
+	if _guests.is_empty() or not _thralls.has(source) or _blows.size() >= BLOWS_MAX * 2:
+		return
+	_blows.append(id)
+	_blows.append(int(amount))
 
 
 ## Host: an enemy dragged the hero of guest `peer`: the guest's own HUD floats the word and shakes the camera, as the host's does for its own hero. Nothing for a peer that is not a guest.
@@ -147,8 +188,13 @@ func _send_vitals() -> void:
 			ids.append(hb.owner_peer)
 			rows.append(hb.vitals())
 	for peer in _guests:
-		_rpc_vitals.rpc_id(peer, ids, rows)
+		_rpc_vitals.rpc_id(peer, ids, rows, _blows)
 	stats["vitals"] += 1
+	if not _blows.is_empty():
+		stats["blows"] += _blows.size() >> 1
+		stats["blow_msgs"] += 1
+		stats["blow_bytes"] += _blows.size() * 4 * _guests.size()
+		_blows.clear()
 
 
 # ---- guest -------------------------------------------------------------------------------------------------------------------------------
@@ -257,6 +303,13 @@ func _rpc_heroes(table: Dictionary) -> void:
 	apply_heroes()
 
 
+## Guest: the host's world is at this Wave Speed tier (on joining, quietly: the state it was given; later a banner when a milestone is crossed).
+@rpc("authority", "call_remote", "reliable")
+func _rpc_tier(tier: float) -> void:
+	if _guest_core() != null and game.milestones != null:
+		game.milestones.on_tier(tier)
+
+
 ## Guest: the host's word of a drag on the local hero (the only effect the HUD acts on): the body says it as the host's does.
 @rpc("authority", "call_remote", "reliable")
 func _rpc_effect(kind: String) -> void:
@@ -266,13 +319,16 @@ func _rpc_effect(kind: String) -> void:
 
 
 @rpc("authority", "call_remote", "unreliable_ordered")
-func _rpc_vitals(ids: PackedInt32Array, rows: Array) -> void:
+func _rpc_vitals(ids: PackedInt32Array, rows: Array, blows: PackedInt32Array) -> void:
 	if _guest_core() == null:
 		return
 	for i in ids.size():
 		var hb := game.session.get_body(ids[i]) as DmHeroBody
 		if hb != null and not hb.simulated:
 			hb.apply_vitals(rows[i])
+	if not blows.is_empty():   # the thralls' blows since the host's last message (the HUD numbers each over its enemy, as the host's does for the blows it sees)
+		stats["applied_blows"] += blows.size() >> 1
+		thrall_blows.emit(blows)
 
 
 ## Guest -> host: a batch went missing; send the whole present again (the host answers at most once a second per guest).

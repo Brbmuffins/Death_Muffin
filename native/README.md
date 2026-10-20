@@ -50,7 +50,8 @@ Before launch the core was checked against the old per-creature game: its rules 
 - **Numbers from data, not retyped:** `load_enemy_defs` / `load_tuning` (enemies.json), `load_status_defs`, `load_legion_tuning` (abilities RALLY, fen
   HAG_HEX, statuses PLAGUE_BURST, gameplay_legendary LEGEND, runes RUNE_TUNING.colossus, combat/enemies damage_scale) and `load_sim_consts` (the
   numeric constants of `sim_consts.gd`, which `client/core/dm_core_data.gd` reads; the corpse field's and the thralls' constants are compiled in).
-  `DmCoreData.load_all` does all of it. The defaults compiled in equal the data, so a core that loads nothing still plays;
+  `DmCoreData.load_all` does all of it (it leaves out a boss's def, which `DmBoss.ensure_def` registers at run time in the shared enemy table for the codex: a core built after a boss woke must hold the tables of one built before, or the host
+  refuses it as other game data; `client/tests/core_coop.gd`). The defaults compiled in equal the data, so a core that loads nothing still plays;
   `client/tests/core_thralls.gd` asserts it (`DmCore.tuning()`).
 - **Timers:** every "x seconds" timer accumulates or counts down in doubles, so 0.1 s lands on tick 7 and a 0.3 s countdown on tick 19.
   Positions stay float32, scalars double.

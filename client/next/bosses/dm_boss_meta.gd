@@ -1,8 +1,9 @@
 class_name DmBossMeta
 extends Node
-## Boss meta-progression of the rebuild (child "BossMeta" of DmNextGame, host; the local hero's own account): the altar's Covenant Seal choice, the
+## Boss meta-progression of the rebuild (child "BossMeta" of DmNextGame, host AND party guest; the local hero's own account): the altar's Covenant Seal choice, the
 ## Empowered summon and the Seal's prize. The money is the BACKEND's (`/api/boss-key/*` takes the Seal and the gold, remembers the open summon, rolls
-## the prize): nothing here prices or rolls anything.
+## the prize): nothing here prices or rolls anything. A guest pays and claims on its own account the same way; the host wakes the boss for it (`DmBossHost.ask_empowered`),
+## remembers its summon id for the kill's report, and tells it when the report is in (`prize_ready`).
 ##
 ## Flow: E at an altar / a click on it -> DmBossHost.request_summon -> `use_site`. A boss that can be Empowered, with a Seal in the bag (or a summon
 ## already bound by an earlier lost fight), opens the HUD's BossKeyPrompt (`boss_key_offer`, the HUD calls back summon_boss / summon_boss_empowered
@@ -27,11 +28,15 @@ var _member: DmRewardsMember
 func setup(game_: Node) -> void:
 	game = game_
 	hero_id = int(game.character.get("id", 0))
-	_member = game.rewards.members.get(hero_id)
+	_member = game.my_member()
 	game.bosses.site_hook = Callable(self, "use_site")
-	game.bosses.defeated.connect(_on_defeated)
-	game.bosses.reset.connect(_on_reset)
-	game.rewards.boss_earned.connect(_on_earned)
+	if game.session.is_host():
+		game.bosses.defeated.connect(_on_defeated)
+		game.bosses.reset.connect(_on_reset)
+		game.rewards.boss_earned.connect(_on_earned)
+	else:   # a party guest: the host's `defeated` event tells how the fight ended, and the host says when the prize may be claimed
+		game.bosses.fight_ended.connect(_on_fight_ended)
+		game.bosses.prize_ready.connect(_on_prize_ready)
 	await refresh_bound()
 
 
@@ -71,7 +76,7 @@ func summon_normal(id: String) -> void:
 
 
 ## The Empowered choice. Returns "" when the boss is waking, else why not ("busy far dead unknown" before anything is spent, "refused" after a
-## failed call or when the boss would not wake and the Seal and gold went back).
+## failed call or when the boss would not wake and the Seal and gold went back). A guest's boss wakes on the host's word (`DmBossHost.ask_empowered`).
 func call_empowered(id: String) -> String:
 	var b: DmBossHost = game.bosses
 	var me: int = game.session.get_my_id()
@@ -85,7 +90,7 @@ func call_empowered(id: String) -> String:
 	var ui: Node = game.get("ui_host")
 	var inv: Object = ui.inventory if ui != null else null
 	var work := func() -> DmResult:
-		var res: DmResult = await game.progress.psync.spend_on_server(func() -> DmResult: return await game.api.boss_key_summon(hero_id, id))
+		var res: DmResult = await _psync().spend_on_server(func() -> DmResult: return await game.api.boss_key_summon(hero_id, id))
 		if res.ok and res.data is Dictionary and res.data.has("bag") and inv != null:
 			inv.replace(res.data["bag"])
 		return res
@@ -96,7 +101,7 @@ func call_empowered(id: String) -> String:
 		return "refused"
 	var reused := bool(r.data.get("reused", false))
 	var cost := int(r.data.get("cost", 0))
-	var woke := b.try_summon(me, id, true)   # a boss woke meanwhile: give the Seal and gold back
+	var woke := b.try_summon(me, id, true) if game.session.is_host() else await b.ask_empowered(id, int(r.data.get("summon_id", 0)))   # a boss woke meanwhile: give the Seal and gold back
 	if woke != "":
 		await _refund(id)
 		busy = false
@@ -113,11 +118,16 @@ func call_empowered(id: String) -> String:
 	return ""
 
 
+## This player's progression sync: the host's own, or a guest's (its joiner's).
+func _psync() -> DmProgressSync:
+	return game.progress.psync if game.progress != null else game.joiner.psync
+
+
 func _refund(id: String) -> void:
 	var ui: Node = game.get("ui_host")
 	var inv: Object = ui.inventory if ui != null else null
 	var work := func() -> DmResult:
-		var res: DmResult = await game.progress.psync.spend_on_server(func() -> DmResult: return await game.api.boss_key_refund(hero_id, id))
+		var res: DmResult = await _psync().spend_on_server(func() -> DmResult: return await game.api.boss_key_refund(hero_id, id))
 		if res.ok and res.data is Dictionary and res.data.has("bag") and inv != null:
 			inv.replace(res.data["bag"])
 		return res
@@ -146,13 +156,45 @@ func _on_earned(character_id: int, id: String, _first: bool, at: Vector3) -> voi
 	if character_id == hero_id and bound.has(id) and _member.empower_pending == id:
 		bound.erase(id)
 		_claim(id, at)
+	elif character_id != hero_id:
+		_tell_guest(character_id, id, at)
+
+
+## HOST: a guest was paid for the kill of the boss it called Empowered (its summon id was in the report entry the reply of which paid it): once the report is sent, it claims the prize
+## from the backend itself (`_on_prize_ready`). A guest that was not paid (dead, or far) is not told: its summon stays bound for a free retry.
+func _tell_guest(character_id: int, id: String, at: Vector3) -> void:
+	var m: DmRewardsMember = game.rewards.members.get(character_id)
+	if m == null or not m.remote or m.empower_pending != id or m.empower_summon_id == 0:
+		return
+	m.empower_pending = ""
+	m.empower_summon_id = 0
+	await game.rewards.flush()
+	game.bosses.send_prize_ready(m.peer_id, id, at)
+
+
+## GUEST: the fight it called is over. Won or lost, the summon stays bound on the backend until its prize is claimed (a lost fight is retried free); the claim comes with `prize_ready`.
+func _on_fight_ended(id: String, _killed: bool) -> void:
+	if pending == id:
+		pending = ""
+		bound[id] = true
+		_member.empower_pending = ""
+
+
+## GUEST: the host paid this account for the Empowered kill and its report is in: the Seal's prize.
+func _on_prize_ready(id: String, at: Vector3) -> void:
+	if bound.has(id):
+		bound.erase(id)
+		_claim(id, at)
 
 
 ## The kill of an Empowered boss this hero called: one server-rolled prize, dropped at the corpse like any loot. The kill report goes first
 ## (the backend ties the summon to it).
 func _claim(id: String, at: Vector3) -> void:
-	await game.rewards.flush()
-	var level: float = float(DmContent.area(String(DmContent.boss(id)["area"]))["level"]) + float(game.rewards.vow_levels)
+	var vow_levels := 0.0
+	if game.rewards != null:   # (a guest's report is the host's: it sent `prize_ready` after it)
+		await game.rewards.flush()
+		vow_levels = float(game.rewards.vow_levels)
+	var level: float = float(DmContent.area(String(DmContent.boss(id)["area"]))["level"]) + vow_levels
 	var r: DmResult = await game.api.boss_key_claim(hero_id, id, String(_member.discipline["id"]), int(level))
 	_member.empower_pending = ""
 	if not is_inside_tree():

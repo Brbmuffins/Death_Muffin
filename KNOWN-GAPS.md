@@ -90,16 +90,11 @@ polish list). Also:
 
 - **A dropped player's seat is not held:** the rejoin offer lasts 5 minutes, but a party that filled up in that time answers `full` (the lobby reserves nothing; a held seat would show a party as full while it lists a free one).
 - **One area per session, Depths solo:** `client/next/areas/README.md`, `client/next/depths/README.md`.
-- **Part of a joiner's state does not reach the host's sim:** the host builds the joiner's hero from the server's record (level, gear,
-  set bonuses, affixes, boons, vows, upgrade tiers, rune sockets), but Colossus Mantle hooks are host-hero only; no Covenant Seal or Nightfall dim; a client cannot call Empowered bosses.
 - Chat is party chat in a party and local-only when solo.
 - **Friends show offline while the launcher is open:** the launcher has no login and no lobby link. They show online from the sign-in (character select, loading, the world).
-- A guest's waystone map lists its own account's open areas, not the host's world's (a jump to a sealed one is refused with the reason).
-- A guest sees no number over an enemy for a blow of its thralls, except the killing one: a guest's core gets no source with a blow, so the
-  host would have to send each one.
 - A guest whose own account has a boss's area sealed wakes the host's boss for nothing: its shards are refused and given back, and the toast
   comes after the boss is awake (whether a guest may wake what only the host has opened is a co-op rule to decide).
-- A guest's Prelate kill counts for the host (the Prelate tally and `can_ascend`), and a guest never gets a boss's first-kill bonus or trophy.
+- A guest's Prelate kill counts for the host (the Prelate tally and `can_ascend`).
 - Suspected, read from the code, not seen: after a baseline a guest's thralls may fall back to the plain look and the strong rim until the
   heroes are adopted again (`DmCrowd.clear` forgets `owner_legion` and `owner_ally`).
 - A guest's core lists no zones (`DmCore.zones`): its zones arrive as events for its effects. Nothing reads them on a guest today.

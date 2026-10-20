@@ -19,7 +19,12 @@
       "Friends now see you online from the moment you sign in, at character select and while the world loads, not only once you are in the world.",
       "The Altar of Ascension is quiet until Ascension returns redesigned: it no longer opens its old window, the Prior no longer points you to it, and party and friends lists show the difficulty without Heat.",
       "Fewer hitches the first time you cast a spell: starting a game or saving Settings no longer throws away the effects the loading screen prepared.",
-      "In a party, every area a player is fighting in now gets its own waves; before, only the host's area did, so a friend fighting in another area met no new enemies."
+      "In a party, every area a player is fighting in now gets its own waves; before, only the host's area did, so a friend fighting in another area met no new enemies.",
+      "Co-op: a guest's waystone map (M) now lists the areas open in the host's world, where the party plays, instead of the guest's own.",
+      "Co-op: a guest now sees a damage number for every blow of the thralls, as the host does, not just the one that kills.",
+      "Co-op: a guest now gets its own first-kill bonus and trophy for a boss (the server checks your own record), not just the host.",
+      "Co-op: a guest can now call a boss Empowered with a Covenant Seal from its own bag at the altar and claim the prize, and its screen dims for Nightfall along with the host's world.",
+      "Joining a friend's party after you have woken a boss in your own game no longer fails with a \"co-op data mismatch\"."
     ]
   },
   {

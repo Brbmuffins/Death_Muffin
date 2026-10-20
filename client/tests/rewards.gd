@@ -114,6 +114,7 @@ func _main() -> void:
 	await _t_refusals()
 	await _t_end()
 	await _t_boss_xp_remote()
+	await _t_remote_first_kill()
 	print("%s rewards %d checks%s" % ["PASS" if _f == 0 else "FAIL", _p + _f, "" if _f == 0 else " (%d failed)" % _f])
 	quit(1 if _f > 0 else 0)
 
@@ -238,6 +239,63 @@ func _t_boss_xp_remote() -> void:
 	ok(int(joiner.stats["xp_applied"]) > 0 and credited.has(2) and int(credited[2]["xp"]) == int(joiner.stats["xp_applied"]) and int(credited[2]["kills"]) == 0,
 		"a boss kill's XP is sent on for a remote member (no kills)", str(credited))
 	ok(not credited.has(1) and int(host.stats["xp_applied"]) > 0, "the host's own boss XP is applied in place, not re-sent", str(credited))
+	shell.queue_free()
+	r.queue_free()
+
+
+# ---------------------------------------------------------------------------------------------------------------- a party guest's first boss kill
+
+## A party guest's first kill of a boss is the SERVER's call (its Chronicle, asked in the report entry, party-sessions.cjs): it gets the first-kill shards and the trophy once, as the
+## host's own member does from its Chronicle (it never did: a remote member's trophy store said no). Both have the session open and an api of their own; `remote` is what routes the guest's
+## kill through the question.
+func _t_remote_first_kill() -> void:
+	var mock := DmOffline.make_mock("")
+	mock.now_ms = func(): return _clock[0]
+	var ua = await _user(mock, "hostess")
+	var ub = await _user(mock, "guestly")
+	var shell := Shell.new()
+	root.add_child(shell)
+	var r := _new_rewards(shell)
+	var a := DmRewardsMember.make(ua[1], 1, _body(Vector3.ZERO), ua[0])
+	var b := DmRewardsMember.make(ub[1], 2, _body(Vector3(2, 0, 0), 2), ub[0])
+	b.remote = true
+	b.trophy_store = func(_boss: String) -> bool: return false   # (as the party makes a remote member: it knows no trophies of its own)
+	r.add_member(a)
+	r.add_member(b)
+	ok(await r.start(ua[1]), "a party session opens with a host and a remote member")
+	var shards := {ua[1]: [], ub[1]: []}
+	var earned := []
+	r.loot_dropped.connect(func(cid: int, d: Dictionary, _at: Vector3) -> void:
+		if d.get("kind") == "shard":
+			shards[cid].append(int(d["amount"])))
+	r.boss_earned.connect(func(cid: int, _id: String, first: bool, _at: Vector3) -> void: earned.append([cid, first]))
+	var boss := "saint"
+	var kill := func() -> void:
+		earned.clear()
+		r.on_boss_defeated({"boss": boss, "x": 0.0, "z": 0.0, "killer": a.body})
+		var n := 0
+		while earned.size() < 2 and n < 900:   # (the guest is paid when the server has answered)
+			await process_frame
+			n += 1
+	await kill.call()
+	var first_of := func(cid: int) -> Variant:
+		for e in earned:
+			if int(e[0]) == cid:
+				return e[1]
+		return null
+	ok(earned.size() == 2 and first_of.call(ua[1]) == true and first_of.call(ub[1]) == true, "the first kill of the boss is the first of both: the host's from its trophy, the guest's from the server", str(earned))
+	await kill.call()
+	ok(earned.size() == 2 and first_of.call(ua[1]) == false and first_of.call(ub[1]) == false, "the second kill is a first kill for neither", str(earned))
+	var bonus_a: int = shards[ua[1]][0] - shards[ua[1]][1]
+	var bonus_b: int = shards[ub[1]][0] - shards[ub[1]][1]
+	ok(bonus_a > 0 and bonus_b == bonus_a, "the guest's first kill paid the same first-kill shards as the host's (%d, %d)" % [bonus_b, bonus_a], str(shards))
+	ok(b.stats["bosses"] == 2 and a.stats["bosses"] == 2, "each kill is in each member's report")
+	await r.flush()
+	var chron_b: Dictionary = mock.db["accounts"][mock._character_owner(ub[1])]["chronicle"]["life"]
+	ok(float(chron_b.get("boss." + boss, 0)) == 2.0, "the server counted both kills in the guest's own Chronicle: the trophy is its account's (%s)" % str(chron_b))
+	var chron_a: Dictionary = mock.db["accounts"][mock._character_owner(ua[1])].get("chronicle", {}).get("life", {})
+	ok(not chron_a.has("boss." + boss), "and nothing in the host's: its own client keeps that record")
+	await r.end_session()
 	shell.queue_free()
 	r.queue_free()
 

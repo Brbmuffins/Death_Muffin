@@ -76,7 +76,7 @@ function sessionsFake({ characters = {}, accounts = {}, failWith = null, ...rest
   const run = wrap(kf.pool.execute);
   const conn = { execute: run, query: run, beginTransaction: async () => {}, commit: async () => {}, rollback: async () => {}, release: () => {} };
   const pool = { execute: run, query: run, getConnection: async () => conn };
-  return { pool, db: pool, sessions, members, kills: kf, audit: kf.audit, ledger: kf.ledger };
+  return { pool, db: pool, sessions, members, kills: kf, audit: kf.audit, ledger: kf.ledger, chronicle: kf.chronicle, setChronicle: kf.setChronicle };
 }
 
 module.exports = { sessionsFake };

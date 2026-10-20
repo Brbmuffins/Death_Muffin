@@ -401,6 +401,91 @@ test('an objective group (a party kill the member was not paid for) counts kills
   assert.equal(t.fake.ledger(12).shard_credit, shards1, 'no shards');
 });
 
+// ── a member's first kill of a boss is the server's call (a guest never got the first-kill bonus or trophy) ────────────────────────────
+
+test('a member\'s first kill of a boss: the server decides from the Chronicle, pays the +2 shards once and counts the trophy', async () => {
+  const { t, sid } = await party();
+  const bossEntry = (id, over = {}) => entry(id, [], { bosses: [{ boss: 'saint', tier: 0, diff: 'medium', first: false, n: 1, ...over }] });
+  const shards = (id) => (t.fake.ledger(id) || { shard_credit: 0 }).shard_credit;
+  const life = () => t.fake.chronicle().life || {};
+  // an old client claims its own first kill (13) and a plain one does not (12): what the first-kill bonus is worth, whatever it is tuned to
+  const b1 = await t.report(sid, 1, { batch: 1, members: [bossEntry(11, { askFirst: true }), bossEntry(12), bossEntry(13, { first: true })] });
+  const by = Object.fromEntries(b1.body.data.members.map((m) => [m.characterId, m]));
+  const bonus = shards(13) - shards(12);
+  assert.ok(bonus > 0, 'the old claim still pays the first-kill shards');
+  assert.deepEqual(by[11].accepted.firstBosses, ['saint'], 'the host asked about member 11 and the server says it is the first');
+  assert.equal(shards(11), shards(13), 'and pays it the same bonus');
+  assert.equal(by[12].accepted.firstBosses, undefined);
+  assert.equal(life()['boss.saint'], 1, 'the trophy: the Chronicle counts the kill (the old claims leave the Chronicle to their clients)');
+  assert.equal(t.fake.chronicle().run['boss.saint'], 1, 'in the current run too');
+  // the next kill is not a first one
+  t.advance(30_000);
+  const before = [shards(11), shards(12)];
+  const b2 = await t.report(sid, 1, { batch: 2, members: [bossEntry(11, { askFirst: true }), bossEntry(12)] });
+  assert.equal(b2.body.data.members[0].accepted.firstBosses, undefined, 'a second kill is no first kill');
+  assert.equal(shards(11) - before[0], shards(12) - before[1], 'and pays no bonus');
+  assert.equal(life()['boss.saint'], 2);
+  // two kills in one entry: one first and one plain
+  t.fake.setChronicle({});
+  t.advance(30_000);
+  const before3 = [shards(11), shards(12)];
+  const b3 = await t.report(sid, 1, { batch: 3, members: [bossEntry(11, { askFirst: true, n: 2 }), bossEntry(12, { n: 2 })] });
+  assert.deepEqual(b3.body.data.members[0].accepted.firstBosses, ['saint']);
+  assert.equal(shards(11) - before3[0], shards(12) - before3[1] + bonus, 'the bonus is paid once for the two kills');
+  assert.equal(life()['boss.saint'], 2, 'both kills are counted');
+  // a character that killed it before (as a host, say) is not first, and the counter keeps counting
+  t.fake.setChronicle({ 'boss.saint': 5 });
+  t.advance(30_000);
+  const before4 = [shards(11), shards(12)];
+  const b4 = await t.report(sid, 1, { batch: 4, members: [bossEntry(11, { askFirst: true }), bossEntry(12)] });
+  assert.equal(b4.body.data.members[0].accepted.firstBosses, undefined);
+  assert.equal(shards(11) - before4[0], shards(12) - before4[1]);
+  assert.equal(life()['boss.saint'], 6);
+});
+
+test('asking about a first kill is idempotent, and only for the bosses that have a trophy', async () => {
+  const { t, sid } = await party();
+  const ask = (boss, over = {}) => entry(12, [], { bosses: [{ boss, tier: 0, diff: 'medium', first: false, askFirst: true, n: 1, ...over }] });
+  const life = () => t.fake.chronicle().life || {};
+  const a = await t.report(sid, 1, { batch: 1, members: [ask('saint')] });
+  assert.deepEqual(a.body.data.members[0].accepted.firstBosses, ['saint']);
+  const again = await t.report(sid, 1, { batch: 1, members: [ask('saint')] });
+  assert.equal(again.body.data.duplicate, true, 'the same batch again is the replay of a lost answer');
+  assert.equal(life()['boss.saint'], 1, 'and counts nothing twice');
+  // the Prelate has no first-kill trophy (it is the run\'s boss), and a name that is no boss is ignored
+  t.advance(30_000);
+  const p = await t.report(sid, 1, { batch: 2, members: [ask('prelate'), ] });
+  assert.equal(p.body.data.members[0].accepted.firstBosses, undefined);
+  assert.equal(life()['boss.prelate'], undefined);
+  t.advance(30_000);
+  const junk = await t.report(sid, 1, { batch: 3, members: [ask('constructor')] });
+  assert.equal(junk.status, 200);
+  assert.equal(junk.body.data.members[0].accepted.firstBosses, undefined);
+  // an old client\'s own claim, with no question, is judged as before and leaves the Chronicle alone
+  t.advance(30_000);
+  const claim = await t.report(sid, 1, { batch: 4, members: [entry(12, [], { bosses: [{ boss: 'regent', tier: 0, diff: 'medium', first: true, n: 1 }] })] });
+  assert.equal(claim.body.data.members[0].accepted.bosses, 1);
+  assert.equal(claim.body.data.members[0].accepted.firstBosses, undefined);
+  assert.equal(life()['boss.regent'], undefined);
+});
+
+test('a Chronicle that cannot be written decides nothing and never costs the report', async () => {
+  const t = setup();
+  const sid = (await t.open(1, 11)).body.data.sessionId;
+  const inner = t.fake.pool;
+  const failing = async (sql, p) => {
+    if (/character_chronicle/.test(sql)) throw Object.assign(new Error('gone'), { code: 'ER_NO_SUCH_TABLE' });
+    return inner.execute(sql, p);
+  };
+  const conn = { ...(await inner.getConnection()), execute: failing, query: failing };
+  const pool = { execute: failing, query: failing, getConnection: async () => conn };
+  const out = await ps.reportBatch(pool, { sessionId: sid, accountId: 1, body: { batch: 1, members: [entry(11, [], { bosses: [{ boss: 'saint', tier: 0, diff: 'medium', first: false, askFirst: true, n: 1 }] })] }, now: T0, env: ENFORCE, log: quietLog(), limiter: ps.createLimiter() });
+  assert.equal(out.status, 200);
+  assert.equal(out.body.data.members[0].credited, true);
+  assert.equal(out.body.data.members[0].accepted.bosses, 1, 'the kill is still counted');
+  assert.equal(out.body.data.members[0].accepted.firstBosses, undefined, 'only no first kill is decided');
+});
+
 // ── a member's build (the host builds the guest's hero from the server's record) ─────────────────────────────────────────────────────
 
 test('only the host of a live session reads an active member\'s build: character, worn slots and progression', async () => {

@@ -51,6 +51,8 @@ var joined: bool = false
 ## (Callable(boss_id) -> bool: true = first kill, and records it).
 var trophies: Dictionary = {}
 var trophy_store: Callable = Callable()
+## A remote member's first kills are the SERVER's call: its report entry asks (`askFirst`) and the answer lands here, boss id -> whether it was the member's first kill (DmSessionRewards).
+var firsts: Dictionary = {}
 ## The Empowered boss this member called (DmBossMeta): its kill's report carries the backend summon id, and the Seal's prize is claimed for it.
 var empower_pending: String = ""
 var empower_summon_id: int = 0

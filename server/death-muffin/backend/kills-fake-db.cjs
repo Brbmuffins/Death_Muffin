@@ -73,7 +73,7 @@ function killsFake({ necro = null, chronicle = null, characters = { 1: { id: 1, 
   return {
     db: pool, pool, audit: base.audit, authority: base,
     ledger: (id) => ledgers.get(id), bossCredit,
-    setNecro: base.setNecro, setChronicle: base.setChronicle,
+    setNecro: base.setNecro, setChronicle: base.setChronicle, chronicle: base.chronicle,
   };
 }
 

@@ -16,7 +16,4 @@ in `client/game/`) draws the NPCs with a tiered update, and only when the Chapte
 - Cost: one 10 Hz tick, a 5 Hz NPC refresh, per-frame animation only for NPCs near the player (far NPCs frozen, mid at 15 Hz).
 
 ## Tests
-`client/tests/world.gd` (seals, gates, waystone travel, the recall), `client/tests/coop.gd` (the host's seals on a guest, a guest's waystone jump and recall), `client/tests/panels.gd` (the stations' panels open).
-
-## Known gaps
-- A guest's waystone map lists its own account's open areas, not the host's world's (KNOWN-GAPS "Party and online").
+`client/tests/world.gd` (seals, gates, waystone travel, the recall), `client/tests/coop.gd` (the host's seals on a guest, a guest's waystone map, jump and recall), `client/tests/panels.gd` (the stations' panels open).

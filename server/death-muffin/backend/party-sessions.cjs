@@ -311,6 +311,7 @@ async function creditMembers(pool, { session, entries, now, env, log, isStaff })
     if (d.unavailable) r.reason = 'unavailable';
     const acc = d.accepted || { kills: 0, bosses: 0 };
     r.accepted = { kills: num(acc.kills), bosses: num(acc.bosses) };
+    if (Array.isArray(acc.firstBosses) && acc.firstBosses.length) r.accepted.firstBosses = acc.firstBosses.map(String);   // the bosses the server counted as this member's first kill
     r.claimedKills = claimed;
     // In `off` mode the ledger writes nothing and answers only the mode: nothing is counted, nothing is credited.
     await pool.execute('UPDATE party_session_members SET last_seq = ?, reported_kills = reported_kills + ?, accepted_kills = accepted_kills + ?, accepted_bosses = accepted_bosses + ? WHERE session_id = ? AND character_id = ?',

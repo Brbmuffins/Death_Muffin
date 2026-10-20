@@ -69,6 +69,10 @@ so a drink, an extension, a replacement and an expiry all take effect with no ex
 ## Bosses (first kills, Empowered)
 `on_boss_defeated` pays each eligible member; its XP is applied at once, and for a remote member also sent as `member_credited` (`kills` 0) so the guest's own client gets it. `m.claim_trophy(id)` is `DmNextChronicle.claim_trophy` (persisted through the Chronicle, `client/next/progress/README.md`); an Empowered kill adds the backend `summon`
 id to the report (`m.empower_pending / empower_summon_id`, set by `DmBossMeta`).
+**A party guest's first kill is the server's call** (a remote member has no Chronicle on the host, and its own client keeps none in a party). `_pay_remote_boss` queues the guest's boss entry with `askFirst: true` (and `first: false`), flushes the
+report and waits for its reply: the backend (`kills.cjs` `decideFirstKills`) reads the guest's own Chronicle counter `boss.<id>`, calls the first entry of a boss with none its first (`first: true` for one kill, +2 shards in the ledger), counts the kills in that Chronicle (the
+trophy; once per batch number) and answers `accepted.firstBosses`. `_apply` stores the answer in `m.firsts`; only then `_pay_boss` rolls the guest's boss reward with `first` (its +2 shards, the relic and the relic rune through the drop event the guest rolls from its own tape),
+so what the guest is paid is what the server counted. A report that fails, a refused member or a server that does not know the question answers no (a plain kill, as before). The Prelate has no first kill. Old clients send `first` themselves and no question: judged as before.
 
 ## This player's loot (`dm_next_loot.gd`, `client/loot_view/loot_view.gd`)
 `DmNextLoot` (child `Loot` of `DmNextGame`, host or guest) holds this player's drops and bag: `inventory` (`DmInventory`, the server's rows), the runes owned, a click on a drop. It sends `event(id, ctx)` (the `game_event` shape) to the HUD. Worn gear feeds the stats (`DmNextProgress.request_stats`) and pays for the belt.

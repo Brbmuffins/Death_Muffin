@@ -19,7 +19,7 @@ extends SceneTree
 ##     (the other six bosses fight a party in tests/coop_bosses.gd);
 ##   - a guest-side death shows (vitals, the body, the HUD's veil) and the hero gets up; kills are credited by the HOST only, once each: the guest credits none;
 ##   - the guest's window shows the fight as the host's does (client/README.md "The HUD on the core"): an enemy's hit flash on both crowds, a number for every hit of either hero's rites (the
-##     guest's crits too, which travel as the rites' events) and for a DoT's lumps; its own hero's hurt from the health the host's vitals take away (a number, the red flash, the hurt sound, the
+##     guest's crits too, which travel as the rites' events), for a DoT's lumps and for every blow of the thralls (the host lists them); its own hero's hurt from the health the host's vitals take away (a number, the red flash, the hurt sound, the
 ##     low-health sound under 30 %, the counsel's hurt flag; a blow in the same 50 ms is one with the sum; a heal, a respawn and a new maximum are none; the killing blow counts) and a drag by an
 ##     enemy ("Dragged!"); the host's own HUD ignores the guest's hurt, the guest's ignores the host's, and the host's own hurt is as it was;
 ##   - the guest's own account (DECISIONS B22): a kill near both pays the guest's XP on its account (the host's accepted report, sent on),
@@ -425,6 +425,8 @@ func _run() -> void:
 	await chat_and_ground()
 	await seals()
 	await guest_travel()
+	await nightfall()
+	await guest_gear()
 	await waves_apart()
 	await versions()
 	await full_party()
@@ -948,10 +950,57 @@ func guest_window() -> void:
 	var dots_h := tapped(tap_h, "floats", "dot") - d0_h
 	var dots_g := tapped(tap_g, "floats", "dot") - d0_g
 	check(dots_h >= 2 and dots_g == dots_h, "a DoT's lumps are numbers on the guest's window as on the host's (%d and %d)" % [dots_g, dots_h])
-	print("INFO coop the guest's window: thrall numbers on the host's HUD %d, on the guest's %d (only a killing blow: the died event names its killer; today's guest shows none)" % [tapped(tap_h, "floats", "thrall"), tapped(tap_g, "floats", "thrall")])
+
+	# ---- a thrall's blows: a number over the foe for every one, on the guest's window as on the host's (the puppet core derives the flash and a killing blow's, none of them with a source:
+	# the host tells the guest each blow, DmNextNet `_rpc_blows`). One thrall of each hero works on the sturdy foe.
+	h.ui_host.floats = DmFloatBudget.new()
+	g.ui_host.floats = DmFloatBudget.new()
+	var thralls := {}
+	for tid in h.core_host.core.thrall_ids():   # (any left standing from the casts above work on the foe too)
+		thralls[tid] = true
+	h.core_host.thrall_raised.connect(func(tid: int, _k: String, _o: int, _sl: int, _em: bool, _c: bool, _x: float, _z: float, _y: float, _hp: float) -> void: thralls[tid] = true)
+	var blows_h := [0]
+	h.core_host.enemy_damaged.connect(func(_id: int, source: int, _a: float, _hp: float) -> void: blows_h[0] += 1 if thralls.has(source) else 0)
+	var nt0_h := tapped(tap_h, "floats", "thrall")
+	var nt0_g := tapped(tap_g, "floats", "thrall")
+	var sent0: int = h.net.stats["blows"]
+	var vat := h.core_host.enemy_position(victim)
+	h.core_host.core.raise_thrall(thrall_stats("warrior", 1.0e6, 30.0), hb.core_id, Vector2(vat.x + 1.5, vat.z), 0.0, 120.0)
+	h.core_host.core.raise_thrall(thrall_stats("warrior", 1.0e6, 30.0), gb_h.core_id, Vector2(vat.x - 1.5, vat.z), 0.0, 120.0)
+	var swing_ticks := int(ceil(float(THRALL_BASE["warrior"][1]) * 60.0))
+	var dropped_h := 0
+	var dropped_g := 0
+	for round_ in 7:   # a swing each, whatever the interval (the budget of numbers counts real time, so each round gets a fresh one, as above)
+		h.ui_host.floats = DmFloatBudget.new()
+		g.ui_host.floats = DmFloatBudget.new()
+		await ticks(swing_ticks + 6)
+		dropped_h += h.ui_host.floats.dropped
+		dropped_g += g.ui_host.floats.dropped
+	h.core_host.remove_enemy(victim)   # (nothing left to strike: the counts below are of a finished piece of work)
+	await ticks(30)
+	var nt_h := tapped(tap_h, "floats", "thrall") - nt0_h
+	var nt_g := tapped(tap_g, "floats", "thrall") - nt0_g
+	check(blows_h[0] >= 4 and nt_h == blows_h[0] and dropped_h == 0, "the host's window numbers every blow of the thralls (%d blows, %d numbers, %d dropped by the budget)" % [blows_h[0], nt_h, dropped_h])
+	check(nt_g == blows_h[0] and dropped_g == 0 and int(h.net.stats["blows"]) - sent0 == blows_h[0], "and so does the guest's: %d numbers for the host's %d blows, %d sent by the host" % [nt_g, blows_h[0], int(h.net.stats["blows"]) - sent0])
+	# the blow that kills is one number too, not two (the guest's killing blow is also derived from the died event, which names its killer)
+	h.ui_host.floats = DmFloatBudget.new()
+	g.ui_host.floats = DmFloatBudget.new()
+	var kills0_h: int = blows_h[0]
+	var k0_h := tapped(tap_h, "floats", "thrall")
+	var k0_g := tapped(tap_g, "floats", "thrall")
+	var died0 := died_guest
+	var frail_at := h.world.nav_clamp(Vector3(vat.x, 0.0, vat.z + 1.5))
+	h.core_host.spawn_enemy("robber", frail_at, 1, 0.0001, 0.0, false, "graves", false)
+	check(await until(func() -> bool: return died_guest > died0, 6.0), "a frail foe falls to a thrall's blow on both cores")
+	await ticks(30)
+	var kn_h := tapped(tap_h, "floats", "thrall") - k0_h
+	var kn_g := tapped(tap_g, "floats", "thrall") - k0_g
+	check(kn_h >= 1 and kn_h == blows_h[0] - kills0_h and kn_g == kn_h, "the blows that killed it are one number each on both windows (the host's %d, the guest's %d, %d blows)" % [kn_h, kn_g, blows_h[0] - kills0_h])
+	for tid in thralls:
+		h.core_host.core.kill_thrall(tid, "killed")
+	thralls.clear()
 
 	# ---- the guest's own hero is hurt: a number, the red flash and the sounds, from the health the host's vitals take away
-	h.core_host.remove_enemy(victim)
 	await ticks(30)
 	gb_h.p["stats"]["maxHp"] = 400.0
 	gb_h.p["hp"] = 400.0
@@ -1204,6 +1253,38 @@ func guest_travel() -> void:
 	var gs: Vector3 = stone.call("graves")
 	var ws: Vector3 = stone.call("warren") + Vector3(0.0, 0.0, 1.6)
 	check(gs != Vector3.INF and ws.x != INF, "the Graves and the Warren have waystones (%s, %s)" % [str(gs), str(ws)])
+	# the guest's map (M) lists the host's world, where the party plays: the Warren is open there and sealed on the guest's own account, and an area only the guest's own account has open is not listed
+	var sealed := ""
+	for a in DmContent.area_order():
+		if DmContent.area(String(a)).get("unlock") is Dictionary and not h.world.unlocked.has(String(a)):
+			sealed = String(a)
+			break
+	check(sealed != "", "(an area the host's world still has sealed: %s)" % sealed)
+	var gprog: DmProgression = g.ui_host.prog
+	check(not gprog.really_unlocked("warren") and not gprog.really_unlocked(sealed), "(the guest's own account has neither the Warren nor %s open)" % sealed)
+	gprog.unlock(sealed)
+	var key_m := InputEventKey.new()
+	key_m.keycode = KEY_M
+	key_m.pressed = true
+	g.ui._unhandled_key_input(key_m)
+	await ticks(3)
+	var listed: Array = g.ui.pa.waystone.unlocked.duplicate()
+	var world_open: Array = []
+	for a in DmContent.area_order():
+		if h.world.unlocked.has(String(a)) and not bool(DmContent.area(String(a)).get("instance", false)):
+			world_open.append(String(a))
+	check(g.ui.is_open("map") and listed.has("warren") and not listed.has(sealed) and listed == world_open, "the guest's waystone map lists the host's world, not its own account's (%s; the host's open areas %s)" % [str(listed), str(world_open)])
+	g.ui._unhandled_key_input(key_m)
+	await ticks(3)
+	check(not g.ui.is_open("map"), "and M closes it again")
+	# a row of the map: M opens it, the click on the row asks for the jump (the panel closes first, like the host's)
+	var click_row := func(area: String) -> bool:
+		g.ui._unhandled_key_input(key_m)
+		for b in g.ui.pa.waystone.body.find_children("*", "Button", true, false):
+			if String((b as Button).get_meta("arg", "")) == area:
+				(b as Button).pressed.emit()
+				return true
+		return false
 	# away from every stone: the guest's own check refuses and nothing is sent
 	var away: Vector3 = h.world.nav_closest(gs + Vector3(0.0, 0.0, -12.0))
 	hb.teleport(away)
@@ -1216,17 +1297,11 @@ func guest_travel() -> void:
 	# beside the Graves' stone: the host moves the guest's body to the Warren's
 	hb.teleport(h.world.nav_closest(gs + Vector3(1.5, 0.0, 0.0)))
 	await until(func() -> bool: return gb.position.distance_to(hb.position) < 0.5, 3.0)
-	g.chapterhouse.travel("warren")
+	check(click_row.call("warren"), "the Warren's row on the guest's map is clicked")
 	check(await until(func() -> bool: return hb.position.distance_to(ws) < 0.1, 3.0), "the host moves the guest's body to the Warren's waystone (%s, the stone's spot %s)" % [str(hb.position), str(ws)])
 	check(await until(func() -> bool: return gb.position.distance_to(ws) < 0.5 and went == ["warren"], 3.0), "the guest sees itself there and its jump played (%s, %s)" % [str(gb.position), str(went)])
-	# an area still sealed in the host's world: the host refuses and the guest is told why
+	# an area still sealed in the host's world (though open on the guest's own account): the host refuses and the guest is told why
 	toasts.clear()
-	var sealed := ""
-	for a in DmContent.area_order():
-		if DmContent.area(String(a)).get("unlock") is Dictionary and not h.world.unlocked.has(String(a)):
-			sealed = String(a)
-			break
-	check(sealed != "", "(an area the host's world still has sealed: %s)" % sealed)
 	g.party.ask_travel(sealed)
 	check(await until(func() -> bool: return toasts.any(func(t: String) -> bool: return t.contains("still sealed")), 3.0) and hb.position.distance_to(ws) < 0.1,
 		"a sealed area: the host refuses, the guest is told why and stays (%s)" % str(toasts))
@@ -1304,6 +1379,95 @@ func waves_apart() -> void:
 func _mid(id: String) -> Vector3:
 	var r: Dictionary = DmContent.area(id)["rect"]
 	return Vector3((float(r["x0"]) + float(r["x1"])) * 0.5, 0.0, (float(r["z0"]) + float(r["z1"])) * 0.5)
+
+# ------------------------------------------------------------------------------------------------------------------ what a guest brings: the host's Wave Speed tier, the guest's gear
+
+## The party plays in the host's world, at the host's Wave Speed tier: a guest's window dims for Nightfall and tells the milestones as the host's does (DmWaveMilestones, the tier told by `Net`),
+## and a player who joins later is given the tier it finds, without a banner.
+func nightfall() -> void:
+	var night: Dictionary = {}
+	for m in DmContent.get_export("upgrades", "WAVE_MILESTONES"):
+		if String(m["id"]) == "nightfall":
+			night = m
+	var tier := float(night["tier"])
+	check(g.milestones != null and g.milestones.seen_tier == h.milestones.seen_tier, "the guest follows the host's tier from the join (%s, the host's %s)" % [str(g.milestones.seen_tier), str(h.milestones.seen_tier)])
+	var seen := {"g": [], "h": []}
+	g.ui_host.game_event.connect(func(id: String, ctx: Dictionary) -> void: seen["g"].append([id, ctx]))
+	h.ui_host.game_event.connect(func(id: String, ctx: Dictionary) -> void: seen["h"].append([id, ctx]))
+	var banners := func(who: String) -> Array: return seen[who].filter(func(e: Array) -> bool: return e[0] == "banner" and String(e[1].get("title", "")) == String(night["name"]))
+	h.milestones.on_tier(0.0)   # (the loaded state first: it has no banner)
+	await ticks(10)
+	h.milestones.on_tier(tier)
+	check(await until(func() -> bool: return g.milestones.seen_tier == tier and g.milestones.target == 1.0, 3.0), "the host reaches the Nightfall tier: the guest's window follows (tier %s, light target %s)" % [str(g.milestones.seen_tier), str(g.milestones.target)])
+	check(await until(func() -> bool: return banners.call("g").size() == 1 and banners.call("h").size() == 1, 3.0), "and both windows told its banner once (%d, %d)" % [banners.call("g").size(), banners.call("h").size()])
+	await ticks(60)
+	check(g.milestones.night_k > 0.0 and h.milestones.night_k > 0.0, "the light is falling on both (%.2f on the guest's, %.2f on the host's)" % [g.milestones.night_k, h.milestones.night_k])
+	# a player who joins now finds the tier, and the dimming, without a banner of its own
+	var br := new_branch()
+	var late := await game(br, "third")
+	var got: Array = await seat(late, func() -> void: late.party.join_by_code(h.party.code))
+	var lg: DmNextGame = null
+	if got.size() == 2:
+		lg = await hand_over(late, br, "third", got[0])
+	check(lg != null and lg.ready_ and await until(func() -> bool: return lg.milestones.seen_tier == tier and lg.milestones.target == 1.0, 4.0), "a player joining later is given the tier and Nightfall's light (%s)" % [str(lg.milestones.seen_tier) if lg != null else "no game"])
+	if lg != null:
+		lg.party.leave()
+		await until(func() -> bool: return h.session.get_roster().size() == 2 and h.net.guests() == [2], 6.0)
+		lg.process_mode = Node.PROCESS_MODE_DISABLED
+		lg.queue_free()
+		await ticks(30)
+	# the tier falls back: the milestone fades on the guest's window too, and the light eases back
+	h.milestones.on_tier(0.0)
+	check(await until(func() -> bool: return g.milestones.seen_tier == 0.0 and g.milestones.target == 0.0 and seen["g"].any(func(e: Array) -> bool: return e[0] == "toast" and String(e[1].get("text", "")) == "%s fades" % night["name"]), 3.0), "when it falls back the guest's window says it fades and the light returns")
+	check(await until(func() -> bool: return g.milestones.night_k == 0.0 and h.milestones.night_k == 0.0, 20.0), "(and is back to day on both)")
+
+
+## A guest's gear works in the party as it does solo: the host builds its hero from the server's record of it, so the Colossus Mantle's guard cuts the blows that reach the guest's hero on the host,
+## whose copy of it holds the set's reflect and shatter. (The guest's account is given the five pieces on the mock's server; the host reads them when the guest says what it wears changed.)
+func guest_gear() -> void:
+	var acc: Dictionary = {}
+	for a: Dictionary in mock.db["accounts"].values():
+		if a.get("character") is Dictionary and int(a["character"]["id"]) == int(accounts["joiner"]["ch"]["id"]):
+			acc = a
+	var parts := ["head", "chest", "hands", "legs", "feet"]
+	var rows: Array = []
+	for i in parts.size():
+		var item := "leg_colossus_mantle_%s" % parts[i]
+		var iid: int = mock._mint_instance(acc, item, 10, [])
+		var row := {"slot_index": 100 + i, "item_id": item, "quantity": 1, "equipped": 1, "instance_id": iid}
+		acc["slots"].append(row)
+		rows.append(row)
+	g.party.build_changed()
+	var guarded := await until(func() -> bool: return float(gb_h.mods.get("colossusGuard", 0.0)) > 0.0, 5.0)
+	check(guarded and float(gb_h.mods.get("wardReflect", 0.0)) > 0.0 and float(gb_h.mods.get("litanyShatter", 0.0)) > 0.0, "the host's copy of the guest's hero wears the Colossus Mantle's guard, reflect and shatter (%s)" % [str(gb_h.mods.get("colossusGuard"))])
+	var caster := gb_h.get_node("Rites") as DmRiteCaster
+	check(float(caster.mods.get("colossusGuard", 0.0)) == float(gb_h.mods.get("colossusGuard", 0.0)) and gb_h._legend_hurt, "and so does its caster (the hooks run when it is hit)")
+	check(float(hb.mods.get("colossusGuard", 0.0)) == 0.0, "(the host's own hero wears none)")
+	# the guard needs the legion at its side: the set's thralls, raised for the guest's hero in the host's core
+	var need := int(ceil(float(DmLegend.L()["colossusThralls"])))
+	for i in need:
+		h.core_host.core.raise_thrall(thrall_stats("warrior", 1.0e6, 1.0), gb_h.core_id, Vector2(gb_h.position.x + 1.0 + float(i) * 0.6, gb_h.position.z), 0.0, 120.0)
+	await ticks(20)
+	check(h.core_host.thrall_count(gb_h.core_id) >= need and DmLegend.colossus_active(gb_h.mods, float(h.core_host.thrall_count(gb_h.core_id))), "%d thralls stand by the guest's hero: the guard is on" % h.core_host.thrall_count(gb_h.core_id))
+	gb_h.p["stats"]["maxHp"] = 1.0e5
+	gb_h.p["hp"] = 1.0e5
+	gb_h.p["barrier"] = 0.0
+	gb_h._mirror_from_state()
+	var raw := 100.0
+	var ward := gb_h._ward()
+	var taken := gb_h.take_damage(raw, 0)
+	var want := raw * DmLegend.damage_taken_mult(ward, float(gb_h.mods["colossusGuard"]))
+	var plain := raw * DmLegend.damage_taken_mult(ward, 0.0)
+	check(absf(taken - want) < 0.01 and taken < plain - 0.5, "a blow on the guest's hero is cut by the guard on the host (%.1f taken of %.0f, %.1f without it)" % [taken, raw, plain])
+	# what the guest wore is back off: the host's copy returns to a plain hero
+	for r in rows:
+		acc["slots"].erase(r)
+	for tid in h.core_host.core.thrall_ids():
+		h.core_host.core.kill_thrall(tid, "killed")
+	OS.delay_msec(1100)   # (the host reads a member's build at most once a second, in real time)
+	g.party.build_changed()
+	check(await until(func() -> bool: return float(gb_h.mods.get("colossusGuard", 0.0)) == 0.0, 5.0), "and with the pieces off, the host's copy of the guest's hero wears none again")
+	await ticks(30)
 
 
 # ------------------------------------------------------------------------------------------------------------------ chat and the ground
@@ -1431,6 +1595,7 @@ func full_party() -> void:
 	await watch(240, refill)   # the ramp: bodies spawn, the legions stand, the first batches and baselines settle
 	check(h.core_host.alive_count() >= 60 and h.core_host.thrall_count(owners[0]) + h.core_host.thrall_count(owners[1]) >= 28, "the Full Party stands: %d enemies, %d thralls" % [h.core_host.alive_count(), h.core_host.thrall_count(owners[0]) + h.core_host.thrall_count(owners[1])])
 	var kb0 := h.net.stats.duplicate()
+	var gb0 := g.net.stats.duplicate()
 	relay.max_in = 0
 	relay.max_out = 0
 	var m0 := relay.mark()
@@ -1458,6 +1623,12 @@ func full_party() -> void:
 		hin[1] / secs / RELAY_BYTES_PER_S * 100.0, hin[0] / secs / RELAY_PACKETS_PER_S * 100.0, gout[1] / secs / 1024.0, gout[0] / secs])
 	print("INFO coop Full Party snapshots: %d frames, %d packets (%.2f a frame), %.1f KB/s of snapshots + %.1f KB/s of reliable batches to the guest; largest part %d B (limit %d), largest relay packet %d B = a game packet of %d B (limit %d)" % [
 		frames, parts, float(parts) / maxf(frames, 1), snap_b / secs / 1024.0, rel_b / secs / 1024.0, int(hnet["max_part"]), DmNextNet.PART_MAX, relay.max_in, relay.max_in - DmUdpRelay.HEADER, PACKET_LIMIT])
+	var blows: int = int(hnet["blows"]) - int(kb0["blows"])
+	var blow_msgs: int = int(hnet["blow_msgs"]) - int(kb0["blow_msgs"])
+	var blow_b: int = int(hnet["blow_bytes"]) - int(kb0["blow_bytes"])
+	var blows_seen: int = int(g.net.stats["applied_blows"]) - int(gb0["applied_blows"])
+	print("INFO coop Full Party thrall blows: %d in %d messages (%.1f a message), %.2f KB/s of payload to the guest (the largest message carries at most %d)" % [blows, blow_msgs, float(blows) / maxf(blow_msgs, 1), blow_b / secs / 1024.0, DmNextNet.BLOWS_MAX])
+	check(blows >= 50 and blow_msgs <= frames and blows_seen * 10 >= blows * 9, "the thralls' blows reached the guest as they happened: %d sent in %d messages (one at most for each of the %d frames), %d arrived" % [blows, blow_msgs, frames, blows_seen])
 	check(frames >= 1100 / 3 and parts >= frames, "the host sent snapshots at 20 Hz (%d frames in %.0f s)" % [frames, secs])
 	check(int(hnet["max_part"]) <= DmNextNet.PART_MAX and relay.max_in - DmUdpRelay.HEADER <= PACKET_LIMIT and relay.max_out - DmUdpRelay.HEADER <= PACKET_LIMIT, "no game packet is over %d bytes: the largest was %d B (a snapshot part of at most %d B)" % [PACKET_LIMIT, maxi(relay.max_in, relay.max_out) - DmUdpRelay.HEADER, int(hnet["max_part"])])
 	check(relay.max_in <= ENET_FREE and relay.max_out <= ENET_FREE, "and the relay's packets (with their 6-byte header) stay under the %d bytes ENet sends in one datagram: %d B" % [ENET_FREE, maxi(relay.max_in, relay.max_out)])

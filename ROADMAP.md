@@ -269,17 +269,22 @@ Worked through beside the phases, top first. Each change is shown to the team wi
 - [ ] **Fix: co-op gaps** (now → after; KNOWN-GAPS "Party and online"):
   - Done 2026-10-20: a dropped player landed in their own solo game → for 5 minutes a notice and a Rejoin button in Social offer the same
     party back (a host who drops still ends the session, D6; no seat is held, so a party that filled up answers "full").
-  - A guest's waystone map lists the guest's own unlocked areas → the host's world, where the party plays.
-  - A guest sees only the killing blow of its thralls → every blow, as the host does.
+  - Done 2026-10-20: a guest's waystone map listed the guest's own unlocked areas → it lists the host's world, where the party plays.
+  - Done 2026-10-20: a guest saw only the killing blow of its thralls → it sees every blow, as the host does (the host lists each blow in the vitals message: 0.2 KB/s and no extra packet in the Full Party fight).
   - A guest whose account has not opened a boss's area wakes the boss anyway, has its payment refused and is told afterwards → the team
     decides whether a guest may wake a boss only the host has opened, and the guest is told before anything happens.
-  - A guest never gets a boss's first-kill bonus or trophy → guests get their own.
+  - Done 2026-10-20: a guest never got a boss's first-kill bonus or trophy → guests get their own (the server decides from the guest's own
+    Chronicle, in the host's party report, once; the guest is paid after its answer).
   - Done 2026-10-20: only the host's area got waves → each area a member fights in gets its own, sharing the 72-enemy limit (a Grave
     Surge still opens in one area at a time).
   - The Depths are solo only → decide whether a party can descend together, and build it if so.
-  - A guest cannot call an Empowered boss, and its Colossus Mantle effects, Covenant Seal and Nightfall dimming do not reach the host's
-    game → a guest's gear and choices work in the party as they do solo.
-  - Someone who joins during a boss fight does not see the pools already burning → sees the fight as it is.
+  - Done 2026-10-20: a guest could not call an Empowered boss, and its Covenant Seal and the Nightfall dimming did not reach the party → a
+    guest calls a boss Empowered with a Seal of its own bag (it pays on its own account, the host wakes the boss, the guest claims the
+    prize) and its window dims for Nightfall with the host's Wave Speed tier. Its Colossus Mantle already worked (the host builds its hero
+    from the server's record; a test now proves the guard cuts the blows on it).
+  - Done 2026-10-20: someone who joins during a boss fight → the join baseline already listed the live pools and a late joiner draws them (a
+    test now plays it on the Saint's rot and a burning pool); what did stop a join was a game that had already woken a boss: its combat core
+    held the boss's entry of the shared enemy table and the host refused it as "other game data" → a core is built from the data files alone.
   - Done 2026-10-20: friends showed as online only once in the world → from sign-in, at character select and while the world loads (the
     launcher has no login, so not there).
 - [ ] **Decide + Fix: things built but never shown.** Now: thralls never wear their Legion kit or their discipline's look, water never

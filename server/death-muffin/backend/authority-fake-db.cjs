@@ -13,6 +13,7 @@ function authorityFake({ necro = null, sell = {}, failWith = null, chronicle = n
   const blank = (id) => ({ character_id: id, xp_bucket: 0, gold_bucket: 0, bucket_at: null, gold_credit: 0, item_budget: null, last_progress_at: null, last_bag_at: null, xp_accepted: 0, gold_accepted: 0, flags: 0 });
   let necroState = necro;
   let chronicleLife = chronicle;
+  let chronicleRun = chronicle ? { ...chronicle } : null;
 
   const handler = (sql, p = []) => {
     sql = sql.trim().replace(/\s+/g, ' ');
@@ -47,6 +48,10 @@ function authorityFake({ necro = null, sell = {}, failWith = null, chronicle = n
     }
     if (sql.startsWith('SELECT state FROM character_necro_progress')) return [necroState ? [{ state: JSON.stringify(necroState) }] : []];
     if (sql.startsWith('SELECT life FROM character_chronicle')) return [chronicleLife ? [{ life: JSON.stringify(chronicleLife) }] : []];
+    // the party report's first-kill decision (kills.cjs decideFirstKills): the row is made if missing, read with its run, written back
+    if (sql.startsWith('INSERT IGNORE INTO character_chronicle')) { if (!chronicleLife) { chronicleLife = {}; chronicleRun = {}; } return [{}]; }
+    if (sql.startsWith('SELECT life, run FROM character_chronicle')) return [chronicleLife ? [{ life: JSON.stringify(chronicleLife), run: JSON.stringify(chronicleRun || {}) }] : []];
+    if (sql.startsWith('UPDATE character_chronicle SET life = ?, run = ?')) { chronicleLife = JSON.parse(p[0]); chronicleRun = JSON.parse(p[1]); return [{}]; }
     if (sql.startsWith('SELECT id, sell_value FROM items')) return [p[0].map((id) => ({ id, sell_value: sell[id] ?? 10 }))];
     return undefined;
   };
@@ -61,7 +66,8 @@ function authorityFake({ necro = null, sell = {}, failWith = null, chronicle = n
     handler, audit, rows,
     state: (id) => rows.get(id),
     setNecro: (n) => { necroState = n; },
-    setChronicle: (life) => { chronicleLife = life; },
+    setChronicle: (life) => { chronicleLife = life; chronicleRun = life ? { ...life } : null; },
+    chronicle: () => ({ life: chronicleLife, run: chronicleRun }),
     db: { execute: run, query: run },
   };
 }

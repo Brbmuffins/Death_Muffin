@@ -323,16 +323,33 @@ func _apply(sent: Dictionary, data: Variant) -> void:
 		var claim: Variant = sent["claims"].get(cid)
 		if m == null or claim == null:
 			continue
+		var asked := _asked_firsts(sent, cid)
 		if not bool(e.get("credited", false)):
 			var reason := String(e.get("reason", "refused"))
 			m.stats["refused_batches"] += 1
 			m.last_refusal = reason
 			if reason == "left" or reason == "not_member":
 				m.blocked = reason
+			for boss in asked:
+				m.firsts[boss] = false   # no word from the server: a plain kill (`_pay_remote_boss` stops waiting)
 			member_refused.emit(cid, reason)
 			continue
 		var acc: Dictionary = e.get("accepted", {"kills": 0})
 		_credit(m, claim, clampi(int(acc.get("kills", 0)), 0, int(claim["kills"])), int(sent["batch"]))
+		var firsts: Array = acc.get("firstBosses", [])
+		for boss in asked:
+			m.firsts[boss] = firsts.has(boss)
+
+
+## The bosses a member's part of a sent batch asked the server about (`askFirst`, `_pay_remote_boss`).
+func _asked_firsts(sent: Dictionary, character_id: int) -> Array:
+	var out: Array = []
+	for en in sent["entries"]:
+		if int(en["characterId"]) == character_id:
+			for b in en["bosses"]:
+				if bool(b.get("askFirst", false)) and not out.has(b["boss"]):
+					out.append(b["boss"])
+	return out
 
 
 ## Apply `kills` accepted kills of a member's claim ({xp, kills, areas}): the XP share, the kill counts, the signal.
@@ -501,56 +518,94 @@ func on_kill(ev: Dictionary) -> void:
 
 ## A boss died (the boss host calls it): ev {boss, x, z, killer: Node|null, empowered}. The normal-kill rule decides who is paid (alive, within
 ## KILL_REWARD_RANGE); each gets its own roll (DmLoot.roll_boss), a first-kill bonus (+2 shards, a rare relic, a trophy), the relic rune, XP now,
-## and a boss entry in its report (the backend's kill ledger). Mirrors DmGameRewards.on_boss_defeated.
+## and a boss entry in its report (the backend's kill ledger). Mirrors DmGameRewards.on_boss_defeated. A first kill is this character's own record:
+## a local member's is its Chronicle's (`claim_trophy`), a remote member's (a party guest) is the SERVER's call, asked in its report entry (`_pay_remote_boss`).
 func on_boss_defeated(ev: Dictionary) -> void:
 	var id := String(ev["boss"])
 	if ended or ev.get("killer") == null:
 		return
-	var def: Dictionary = DmContent.boss(id)
 	var at := Vector3(float(ev["x"]), 0, float(ev["z"]))
-	var level := float(DmContent.area(String(def["area"]))["level"]) + vow_levels
 	for cid in members:
 		var m: DmRewardsMember = members[cid]
 		if m.blocked != "" or not _rules.boss_reward_eligible(m.alive(), DmSimMath.hypot(at.x - m.pos().x, at.z - m.pos().z)):
 			continue
-		var first: bool = id != "prelate" and m.claim_trophy(id)   # the Prelate has no first-kill trophy: it is the run's boss (tally + Ascend instead)
-		var rolled := _roll_event(m, "boss", {"boss": id, "area": String(def["area"]), "costShards": float(def["shards"]), "first": first, "level": level,
-			"waveTier": wave_tier, "difficulty": difficulty}, at)
-		var reward: Dictionary
-		var first_item: Variant = null
-		if rolled.get("reward") != null:
-			reward = rolled["reward"]
-			reward["items"] = rolled["items"]   # spoils, rune and the first-kill relic, each with its own source
-		elif rolled.has("items"):   # a tape with no seed yet: the boss's gold and XP, no items
-			reward = DmLoot.roll_boss(wave_tier, rng, difficulty, String(def["area"]), float(def["shards"]), id, String(m.discipline["id"]), Callable(m, "owned_ids"))
-			reward["items"] = []
+		if m.remote and id != "prelate" and session_id != "" and not legacy_ledger:
+			_pay_remote_boss(m, ev)
 		else:
-			reward = DmLoot.roll_boss(wave_tier, rng, difficulty, String(def["area"]), float(def["shards"]), id, String(m.discipline["id"]), Callable(m, "owned_ids"))
-			if first:
-				first_item = DmLoot.roll_first_kill_item(String(def["area"]), rng, String(m.discipline["id"]))
-			var rune: Variant = DmLoot.roll_boss_rune(id, first, rng)
-			if rune != null:
-				reward["items"].append(rune)
+			_pay_boss(m, ev, id != "prelate" and m.claim_trophy(id), true)   # (the Prelate has no first-kill trophy: it is the run's boss, tally + Ascend instead)
+
+
+## The report entry of a boss kill: the Empowered summon this member called (`empower_pending`, DmBossMeta; a guest's is told by `DmBossHost`) rides in it, in the kill of the boss it woke
+## (`ev.summoner`, the peer that did; a caller that does not say counts).
+func _boss_entry(m: DmRewardsMember, ev: Dictionary, first: bool) -> Dictionary:
+	var rep := {"boss": String(ev["boss"]), "tier": wave_tier, "diff": difficulty, "first": first}
+	if ev.get("empowered", false) and m.empower_pending == String(ev["boss"]) and m.empower_summon_id != 0 and int(ev.get("summoner", m.peer_id)) == m.peer_id:
+		rep["summon"] = m.empower_summon_id
+	return rep
+
+
+## A party guest's boss kill: whether it is the guest's FIRST is the server's call (its Chronicle's `boss.<id>`; the host cannot know, and the guest's client keeps no Chronicle
+## in a party). The report entry carries the question (`askFirst`), the reply names the bosses that were first (`accepted.firstBosses`, `_apply`), and only then is the guest
+## paid: its first-kill shards, relic and rune are exactly what the server counted for that account, which also backs the shards in the guest's own save. A report that cannot be
+## sent (or a server without the question) answers no: a plain kill, as before.
+func _pay_remote_boss(m: DmRewardsMember, ev: Dictionary) -> void:
+	var id := String(ev["boss"])
+	var entry := _boss_entry(m, ev, false)
+	entry["askFirst"] = true
+	m.reporter.boss(entry)
+	m.firsts.erase(id)
+	var tries := 0
+	while not m.firsts.has(id) and tries < 4 and not ended and members.get(m.character_id) == m:
+		await flush()
+		tries += 1
+	if ended or members.get(m.character_id) != m:
+		return   # the session or the member is gone: its kill is in the report, the rest has nobody to go to
+	var first: bool = bool(m.firsts.get(id, false))
+	m.firsts.erase(id)
+	_pay_boss(m, ev, first, false)
+
+
+## One member's pay for a boss kill. `first`: its first kill (+2 shards, the relic and the relic rune). `queue`: put its entry in the report now (a remote member's was queued with its question).
+func _pay_boss(m: DmRewardsMember, ev: Dictionary, first: bool, queue: bool) -> void:
+	var id := String(ev["boss"])
+	var def: Dictionary = DmContent.boss(id)
+	var at := Vector3(float(ev["x"]), 0, float(ev["z"]))
+	var level := float(DmContent.area(String(def["area"]))["level"]) + vow_levels
+	var rolled := _roll_event(m, "boss", {"boss": id, "area": String(def["area"]), "costShards": float(def["shards"]), "first": first, "level": level,
+		"waveTier": wave_tier, "difficulty": difficulty}, at)
+	var reward: Dictionary
+	var first_item: Variant = null
+	if rolled.get("reward") != null:
+		reward = rolled["reward"]
+		reward["items"] = rolled["items"]   # spoils, rune and the first-kill relic, each with its own source
+	elif rolled.has("items"):   # a tape with no seed yet: the boss's gold and XP, no items
+		reward = DmLoot.roll_boss(wave_tier, rng, difficulty, String(def["area"]), float(def["shards"]), id, String(m.discipline["id"]), Callable(m, "owned_ids"))
+		reward["items"] = []
+	else:
+		reward = DmLoot.roll_boss(wave_tier, rng, difficulty, String(def["area"]), float(def["shards"]), id, String(m.discipline["id"]), Callable(m, "owned_ids"))
 		if first:
-			reward["shards"] = int(reward["shards"]) + 2
-		m.stats["bosses"] += 1
-		var rep := {"boss": id, "tier": wave_tier, "diff": difficulty, "first": first}
-		if ev.get("empowered", false) and m.empower_pending == id and m.empower_summon_id != 0:
-			rep["summon"] = m.empower_summon_id
-		m.reporter.boss(rep)
-		if id == "prelate":
-			m.prog.record_prelate_kill()
-		_ground(m, {"kind": "gold", "amount": int(reward["gold"]) + int(reward["materialGold"])}, at)
-		_ground(m, {"kind": "shard", "amount": int(reward["shards"])}, at)
-		_drop_items(m, at, reward["items"], level, "boss")
-		if first_item != null:
-			_drop_items(m, at, [first_item], level, "first_kill")
-		m.stats["xp_applied"] += int(reward["xp"])
-		var lv: int = m.prog.add_xp(float(reward["xp"]))
-		m.stats["levels"] += lv
-		if m.remote:   # a joiner's XP lives on its own client: DmNextParty relays member_credited to it (no kills: the boss is in the report)
-			member_credited.emit(m.character_id, {"xp": int(reward["xp"]), "kills": 0, "levels": lv, "batch": 0, "areas": []})
-		boss_earned.emit(m.character_id, id, first, at)
+			first_item = DmLoot.roll_first_kill_item(String(def["area"]), rng, String(m.discipline["id"]))
+		var rune: Variant = DmLoot.roll_boss_rune(id, first, rng)
+		if rune != null:
+			reward["items"].append(rune)
+	if first:
+		reward["shards"] = int(reward["shards"]) + 2
+	m.stats["bosses"] += 1
+	if queue:
+		m.reporter.boss(_boss_entry(m, ev, first))
+	if id == "prelate":
+		m.prog.record_prelate_kill()
+	_ground(m, {"kind": "gold", "amount": int(reward["gold"]) + int(reward["materialGold"])}, at)
+	_ground(m, {"kind": "shard", "amount": int(reward["shards"])}, at)
+	_drop_items(m, at, reward["items"], level, "boss")
+	if first_item != null:
+		_drop_items(m, at, [first_item], level, "first_kill")
+	m.stats["xp_applied"] += int(reward["xp"])
+	var lv: int = m.prog.add_xp(float(reward["xp"]))
+	m.stats["levels"] += lv
+	if m.remote:   # a joiner's XP lives on its own client: DmNextParty relays member_credited to it (no kills: the boss is in the report)
+		member_credited.emit(m.character_id, {"xp": int(reward["xp"]), "kills": 0, "levels": lv, "batch": 0, "areas": []})
+	boss_earned.emit(m.character_id, id, first, at)
 
 
 ## A Grave Surge was quelled (DmGraveSurge): every member the normal-kill rule pays gets a guaranteed item from the area's table plus bonus gold

@@ -16,6 +16,9 @@ signal summon_refused(boss_id: String, why: String, by_peer: int)   ## host
 signal defeated(boss_id: String, killer_peer: int, pos: Vector3)    ## host: a real kill (not a wipe reset)
 signal brain_event(ev: Dictionary, boss: DmBoss)  ## host: every event the brain emitted (hurt included), after its consequences
 signal reset(boss_id: String)                     ## host: the party wiped / left, the boss went back to sleep
+signal fight_ended(boss_id: String, killed: bool) ## a guest: the host's `defeated` event came (killed: a real kill, else a wipe or a leave): its Empowered call is spent or bound again (DmBossMeta)
+signal prize_ready(boss_id: String, at: Vector3)  ## a guest: the host paid it for the Empowered kill it called, and its report is in: claim the Seal's prize (DmBossMeta)
+signal empowered_answered(boss_id: String, why: String)   ## a guest: the host's answer to its Empowered call ("" = the boss is waking)
 
 ## The bosses this build knows (each in its own area, whichever the world has open; area-agnostic). One line per boss track. `served_areas` says which of them it wakes.
 const LIVE := ["gravedigger", "abbess", "congregation", "prelate", "saint", "regent", "mire"]
@@ -23,8 +26,9 @@ const ID_BASE := 1000000                          ## dm_id of bosses (the direct
 const SUMMON_RANGE := 4.0                         ## metres from the site
 const SEND_HZ := 20.0
 const FREE_S := 8.0                               ## a defeated body stays this long (the view fades after 2.5 s)
+const EMPOWER_WAIT_S := 10.0                     ## a guest waits this long (real time) for the host's answer to an Empowered call, then takes its Seal back
 const WHY := {"busy": "Another boss is awake.", "far": "Stand at its altar to wake it.", "shards": "%s demands %d soul shards%s. Elites carry them.",
-	"dead": "You are dead.", "unknown": "Nothing sleeps here.", "area": "Nothing sleeps here."}
+	"dead": "You are dead.", "unknown": "Nothing sleeps here.", "area": "Nothing sleeps here.", "timeout": "The host did not answer."}
 
 var game: Node                                    ## DmNextGame
 var area_id: String = "graves"                    ## fallback area of an enemy that carries no `dm_area`
@@ -159,10 +163,10 @@ func site_near(pos: Vector3, r: float) -> String:
 
 # ---- summon (host rules; any peer may ask) ---------------------------------------------------------------------------------------
 
-## Ask to wake `boss_id` (the local hero, at its site). Any peer; the host decides. On the host the BossMeta node's altar choice (Covenant
-## Seal) comes first when it has one to offer (`site_hook`).
+## Ask to wake `boss_id` (the local hero, at its site). Any peer; the host decides. The BossMeta node's altar choice (Covenant Seal, the hero's own, on a guest too)
+## comes first when it has one to offer (`site_hook`).
 func request_summon(boss_id: String) -> void:
-	if site_hook.is_valid() and multiplayer.is_server():
+	if site_hook.is_valid():
 		site_hook.call(boss_id)
 	else:
 		request_summon_plain(boss_id)
@@ -210,6 +214,10 @@ func try_summon(peer: int, boss_id: String, empowered: bool = false) -> String:
 		return why
 	_spawner.spawn({"boss": boss_id, "id": ID_BASE + _next, "emp": empowered, "by": peer})
 	_next += 1
+	if game.rewards != null:   # a new fight: no member's earlier Empowered call is this boss's (the caller sets its own after this returns)
+		for mm: DmRewardsMember in game.rewards.members.values():
+			mm.empower_pending = ""
+			mm.empower_summon_id = 0
 	summoned.emit(boss_id, peer)
 	return ""
 
@@ -258,6 +266,53 @@ func _rpc_summoned(boss_id: String) -> void:
 	var paid := jp.spend_shards(_shard_cost(boss_id)) if boss_id == "prelate" else jp.spend_boss_shards(boss_id)
 	if not paid:
 		push_warning("[coop] summoned %s but the shards were gone by the host's answer" % boss_id)
+
+
+## GUEST: wake `boss_id` Empowered. The Seal and the gold are paid already, on this guest's own account (DmBossMeta; the server's bound summon `summon_id`): the host wakes it like any summon
+## (busy, far and dead are its refusals; nothing is charged to anyone there) and remembers the summon id for the kill's report. Returns "" when it is waking, else why not
+## (the same words as the plain summon's, or "timeout" when the host does not answer in EMPOWER_WAIT_S: the caller takes the Seal back).
+func ask_empowered(boss_id: String, summon_id: int) -> String:
+	var answer := [null]
+	var cb := func(b: String, why: String) -> void:
+		if b == boss_id and answer[0] == null:
+			answer[0] = why
+	empowered_answered.connect(cb)
+	_rpc_summon_empowered.rpc_id(1, boss_id, summon_id)
+	var until := Time.get_ticks_msec() + int(EMPOWER_WAIT_S * 1000.0)
+	while answer[0] == null and Time.get_ticks_msec() < until and is_inside_tree():
+		await get_tree().process_frame
+	empowered_answered.disconnect(cb)
+	return String(answer[0]) if answer[0] != null else "timeout"
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_summon_empowered(boss_id: String, summon_id: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var from := multiplayer.get_remote_sender_id()
+	var why := try_summon(from, boss_id, true) if DmGoldSink.can_empower(boss_id) else "unknown"
+	if why == "":
+		var m := member_of(from)
+		if m != null:   # the kill's report carries it (DmSessionRewards._boss_entry); the server stamps it only on a summon this character paid for
+			m.empower_pending = boss_id
+			m.empower_summon_id = clampi(summon_id, 0, 2147483647)
+	_rpc_empowered_answer.rpc_id(from, boss_id, why)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_empowered_answer(boss_id: String, why: String) -> void:
+	empowered_answered.emit(boss_id, why)
+
+
+## HOST: the report with this guest's Empowered kill is in; it may claim the Seal's prize from the backend (DmBossMeta).
+func send_prize_ready(peer: int, boss_id: String, at: Vector3) -> void:
+	if multiplayer.get_peers().has(peer):
+		_rpc_prize_ready.rpc_id(peer, boss_id, at)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_prize_ready(boss_id: String, at: Vector3) -> void:
+	prize_ready.emit(boss_id, at)
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -348,6 +403,8 @@ func _route(ev: Dictionary, boss: DmBoss) -> void:
 @rpc("authority", "call_remote", "reliable")
 func _rpc_event(ev: Dictionary) -> void:
 	fx.play(ev)
+	if String(ev.get("kind", "")) == "defeated":
+		fight_ended.emit(String(ev.get("boss", "")), String(ev.get("killer", "")) != "")
 
 
 func _on_defeated(boss: DmBoss, ev: Dictionary) -> void:
@@ -361,11 +418,16 @@ func _on_defeated(boss: DmBoss, ev: Dictionary) -> void:
 	free_t.timeout.connect(boss.queue_free)   # the spawner despawns it everywhere
 	free_t.start()
 	if killer == "":
+		if game.rewards != null:   # a lost fight: no member's Empowered call of this boss stands (the backend keeps each bound for a free retry)
+			for mm: DmRewardsMember in game.rewards.members.values():
+				if mm.empower_pending == boss.boss_id:
+					mm.empower_pending = ""
+					mm.empower_summon_id = 0
 		reset.emit(boss.boss_id)
 		return
 	defeated.emit(boss.boss_id, int(killer), at)
 	if game.rewards != null:
-		game.rewards.on_boss_defeated({"boss": boss.boss_id, "x": at.x, "z": at.z, "killer": game.body_of(int(killer)), "empowered": bool(ev.get("empowered", false))})
+		game.rewards.on_boss_defeated({"boss": boss.boss_id, "x": at.x, "z": at.z, "killer": game.body_of(int(killer)), "empowered": bool(ev.get("empowered", false)), "summoner": boss.summoner})
 		var m := member_of(int(killer))
 		if boss.boss_id == "prelate" and m != null and m.prog.can_ascend():
 			_say("can_ascend", {})

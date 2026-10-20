@@ -20,6 +20,11 @@ No rule is duplicated. `AUTHORITY_KILLS=off|audit|enforce` applies unchanged (of
    `kills` = the member's own cumulative count of kills it saw.
 4. Host `POST /api/sessions/:id/report {batch, members: [{characterId, groups, bosses}]}` during play. `groups`/`bosses` have the kill-report
    shape of `/api/kills/report` (area, def, level, elite, tier, diff, rank, xpMult, goldMult, shardMult, n).
+   **A member's first boss kill is the server's call.** A host cannot know whether a kill is a member's first, so it marks the member's boss entry `askFirst: true`: the ledger
+   reads the character's Chronicle counter `boss.<id>` (0 = never killed it), makes the first entry of a boss with none a first kill (`first: true` for one kill of it, so the kill rules
+   pay the first-kill shards) and counts every asked kill in that Chronicle, which is the trophy (once per batch number: a repeat of a batch counts nothing). The member's reply carries
+   `accepted.firstBosses` (the boss ids that were its first). Not for the Prelate; a name that is no boss is ignored; a Chronicle that cannot be written decides nothing. An entry without
+   `askFirst` is judged as before (its own `first`, which the Chronicle keeps for the client).
 5. Host `POST /api/sessions/:id/end {batch?, members?, summary?}` (an optional final batch, judged like any other). Idempotent.
 6. `POST /api/sessions/:id/leave {characterId}`: the member itself, or the host removing one. The host leaves by ending.
 7. `GET /api/sessions/:id` (host or member): status, roster, per-member reported/accepted counters, limits.

@@ -19,7 +19,7 @@ extends "res://tests/coop.gd"
 ##     cores; every body the guest holds is the host's at the snapshot's tick; the last phase's own attack is played once more (Bone Communion over real corpses, the Drowned Rite raising Risen from
 ##     them, Conflagration, the rain);
 ##   - the defeat by a cast of the guest: `defeated` names the guest, the boss is dead on both sides and its model fades, its adds left silently and BOTH accounts are paid (each member's rewards and
-##     report entry, the guest's drops and XP on its own account; a guest's first-kill bonus and trophy are its own backend's business, as in today's game).
+##     report entry, the guest's drops and XP on its own account, and the guest's first-kill bonus and trophy: the server's call from its own Chronicle, counted there).
 ## Second summon (the HOST asks): a wipe. Both heroes fall, the boss resets on both sides with nothing paid, its adds leave without a death, a corpse or a credit, both heroes get up and the bodies are freed
 ## on both sides.
 ## ZERO script errors or engine errors in the log. Gets the robber, the hound and the legionnaire into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd) ; a boss's own adds are drawn with the nearest baked model.
@@ -191,6 +191,7 @@ func _run() -> void:
 	mock = DmOffline.make_mock("")   # memory only: no file, no server
 	await account("hostess", 101, 2, 20)
 	await account("joiner", 102, 2, 20)
+	await account("third", 103, 2, 20)
 	open_seals("hostess")
 	open_seals("joiner")
 	cid_h = int(accounts["hostess"]["ch"]["id"])
@@ -204,6 +205,7 @@ func _run() -> void:
 		await fight(id)
 		await wipe(id)
 		print("INFO coop_bosses %s: %d s of real time; the relay forwarded %d packets, its rate limits dropped %d" % [id, (Time.get_ticks_msec() - t0) / 1000, int(relay.stats["forwarded"]), relay.rate_drops])
+	await empowered_guest()
 	await finish()
 
 
@@ -687,6 +689,40 @@ func specifics(id: String, bh: DmBoss, bg: DmBoss, tag: String) -> void:
 		var dh := int(h.enemy_fx.stats["zone"]) - zfx_h
 		var dg := int(g.enemy_fx.stats["zone"]) - zfx_g
 		check(dh >= 1 and dg == dh, "%s: and the guest's effects drew them as the host's did (%d visuals, %d on the host)" % [tag, dg, dh])
+	if id == "saint":
+		await late_joiner(id, bh, tag)
+
+
+## A player who joins while a boss's pools burn finds them burning: the host's baseline lists the core's zones and the late joiner's effects draw each one. The pools are made the way the Saint's and
+## the Regent's brains make them (core zones with the boss as their source), long-lived and harmless, so the rest of the fight is as it was.
+func late_joiner(id: String, bh: DmBoss, tag: String) -> void:
+	var made: Array = []   # [zone id, kind, x, z] of the two pools
+	var cb := func(zid: int, kind: int, source: int, x: float, z: float, _r: float, _s: float) -> void:
+		if source == bh.core_id and made.size() < 2 and absf(x - (arena_of(id).x + 9.0)) < 8.0 and absf(z - (arena_of(id).z - 9.0)) < 1.0:
+			made.append([zid, String(DmCoreEvents.ZONE_KINDS[kind]), x, z])
+	h.core_host.zone.connect(cb)
+	var spot := arena_of(id) + Vector3(9.0, 0.0, -9.0)
+	bh.world.add_hostile_pool(spot.x, spot.z, 3.0, 0.0, 120.0)
+	bh.world.ember_pool(spot.x + 7.0, spot.z, 3.0, 120.0, 0.0)
+	await ticks(20)
+	h.core_host.zone.disconnect(cb)
+	check(made.size() == 2 and made[0][1] == "toxic" and made[1][1] == "ember", "%s: a rot pool and a burning pool of the boss's are alight on the host (%s)" % [tag, str(made)])
+	var br := new_branch()
+	var late := await game(br, "third", {"areas": []})
+	var got: Array = await seat(late, func() -> void: late.party.join_by_code(h.party.code))
+	if got.size() != 2:
+		check(false, "%s: the late joiner could not take a seat" % tag)
+		return
+	var lg := await hand_over(late, br, "third", got[0], {"areas": []})
+	check(lg.ready_ and lg.is_guest, "%s: a third player joined mid-fight" % tag)
+	if lg.ready_ and made.size() == 2:
+		check(await until(func() -> bool: return lg.enemy_fx._zones.has(made[0][0]) and lg.enemy_fx._zones.has(made[1][0]), 6.0), "%s: and its effects drew the pools already burning, the host's (%s)" % [tag, str(made.map(func(m: Array) -> int: return m[0]))])
+		check(await until(func() -> bool: return lg.bosses.active_boss() != null and lg.bosses.active_boss().boss_id == id and lg.bosses.active_boss().bstate.active, 6.0), "%s: with the awake boss in front of it" % tag)
+	lg.party.leave()
+	await until(func() -> bool: return h.session.get_roster().size() == 2 and h.net.guests() == [2], 8.0)
+	lg.process_mode = Node.PROCESS_MODE_DISABLED
+	lg.queue_free()
+	await ticks(30)
 
 
 ## The boss to `frac` of its health through a blow of the guest's hero (so the guest has the credit), and the phase `n` on both sides.
@@ -777,6 +813,16 @@ func abbess_breaks(bh: DmBoss, bg: DmBoss, tag: String) -> void:
 	check(bh.hp < hp0 and h.core_host.core.corpse_count() == corpses0 and g.core_host.core.corpse_count() == corpses0, "%s: they tore at her and lay no corpse" % tag)
 
 
+## The bosses the backend's party session has accepted for each member so far (character id -> count).
+func accepted_bosses() -> Dictionary:
+	var out := {}
+	var r: DmResult = await h.rewards.members[cid_h].api.session_get(h.rewards.session_id)
+	if r.ok and r.data is Dictionary:
+		for m in r.data.get("members", []):
+			out[int(m["characterId"])] = int(m["acceptedBosses"])
+	return out
+
+
 ## The defeat by a cast of the guest, and what both accounts get.
 func defeat(id: String, bh: DmBoss, bg: DmBoss, tag: String) -> void:
 	await stand(id)
@@ -803,6 +849,7 @@ func defeat(id: String, bh: DmBoss, bg: DmBoss, tag: String) -> void:
 	var d0 := deaths.duplicate()
 	var corpses0: int = h.core_host.core.corpse_count()
 	var adds := living(h)
+	var acc0 := await accepted_bosses()
 	var killed := [false]
 	var cb := func(_r: String, hid: int, _a: float, _c: bool, k: bool) -> void: killed[0] = killed[0] or (hid == bh.core_id and k)
 	rites_hg.hit_resolved.connect(cb)
@@ -816,13 +863,13 @@ func defeat(id: String, bh: DmBoss, bg: DmBoss, tag: String) -> void:
 	check(bh.dead and killed[0], "%s: the guest's cast on the host's core took its last point" % tag)
 	if not bh.dead:
 		bh.take_damage(1.0e9, gb_h)
-	var pending_both: bool = hm.reporter.has_pending() and gm.reporter.has_pending()   # (the host's reports go out on its own clock)
 	check(await until(func() -> bool: return fell[0] != null, 3.0) and fell[0][0] == id and fell[0][1] == 2, "%s: `defeated` names the guest (%s)" % [tag, str(fell[0])])
 	check(await until(func() -> bool: return here(bg) and bg.bstate.state == "dead" and bg.hp <= 0.0 and not bg.bstate.active and g.bosses.active_boss() == null, 5.0), "%s: it is dead on the guest too (%s, %.0f hp)" % [tag, bg.bstate.state if here(bg) else "gone", bg.hp if here(bg) else 0.0])
 	check(await until(func() -> bool: return ev_h == ev_g and int(ev_g.get("defeated!", 0)) == 1, 3.0), "%s: the defeat was played on both sides (%d, %d events in all)" % [tag, _sum(ev_h), _sum(ev_g)])
 	check(g.ui_host.hud_state()["boss"] == null, "%s: the guest's plate is gone" % tag)
 	check(await until(func() -> bool: return not here(bg) or bg.view == null or not bg.view.is_shown(), 8.0), "%s: and its model fades out on the guest" % tag)
-	# both accounts are paid
+	# both accounts are paid (the guest's after the server has answered whether it is its first kill)
+	await until(func() -> bool: return earned_log.size() >= 2, 6.0)
 	var by_cid := {}
 	for e in earned_log:
 		by_cid[int(e[0])] = e
@@ -830,19 +877,167 @@ func defeat(id: String, bh: DmBoss, bg: DmBoss, tag: String) -> void:
 	if by_cid.has(cid_h):
 		check(bool(by_cid[cid_h][2]) == (id != "prelate"), "%s: the host's account got its first-kill bonus and trophy (the Prelate has none: its kill is the run's tally)" % tag)
 	if by_cid.has(cid_g):
-		check(not bool(by_cid[cid_g][2]), "%s: the guest's first-kill trophy is its own backend's business (later), as in today's game: no bonus" % tag)
+		check(bool(by_cid[cid_g][2]) == (id != "prelate"), "%s: and the guest's account got its own first-kill bonus and trophy, the server's call (the Prelate has none)" % tag)
+		var life_g: Dictionary = mock.db["accounts"][mock._character_owner(cid_g)].get("chronicle", {}).get("life", {})
+		check(float(life_g.get("boss." + id, 0)) == (0.0 if id == "prelate" else 1.0), "%s: the server counted the kill in the guest's own Chronicle: its trophy (%s)" % [tag, str(life_g.get("boss." + id, 0))])
 	check(int(hm.stats["bosses"]) == bosses_h + 1 and int(gm.stats["bosses"]) == bosses_g + 1, "%s: each member's kill count and report entry took the boss (%d, %d)" % [tag, int(hm.stats["bosses"]), int(gm.stats["bosses"])])
-	check(pending_both, "%s: both reports held the boss as it fell" % tag)
 	check(int(drops_h.get(cid_h, 0)) - dh >= 2 and int(drops_h.get(cid_g, 0)) - dg >= 2, "%s: gold and shards fell for each (%d for the host's, %d for the guest's)" % [tag, int(drops_h.get(cid_h, 0)) - dh, int(drops_h.get(cid_g, 0)) - dg])
 	check(await until(func() -> bool: return g.joiner.drops_received - received >= 3, 4.0), "%s: and reached the guest's own client, its drop event among them (%d)" % [tag, g.joiner.drops_received - received])
 	check(await until(func() -> bool: return int(jm.stats["xp_applied"]) > xp_g, 4.0) and int(hm.stats["xp_applied"]) > xp_h, "%s: both got the boss's XP, the guest's on its own account (%d, the host's %d)" % [tag, int(jm.stats["xp_applied"]) - xp_g, int(hm.stats["xp_applied"]) - xp_h])
 	await h.rewards.flush()
 	check(not hm.reporter.has_pending() and not gm.reporter.has_pending(), "%s: and the backend's party session took both reports" % tag)
+	var acc1 := await accepted_bosses()
+	check(int(acc1.get(cid_h, -1)) == int(acc0.get(cid_h, -2)) + 1 and int(acc1.get(cid_g, -1)) == int(acc0.get(cid_g, -2)) + 1, "%s: with the boss in each member's part (the session counts %s, was %s)" % [tag, str(acc1), str(acc0)])
 	if id == "prelate":
 		print("INFO coop_bosses prelate: the run's Prelate tally: the host's member %s, the guest's own progression %s, the guest's stand-in on the host %s" % [str(hm.prog.can_ascend()), str(g.joiner.prog.can_ascend()), str(gm.prog.can_ascend())])
 	# what it called left without a death
 	check(await until(func() -> bool: return living(h) == 0 and living(g) == 0, 3.0), "%s: its %d bodies left both cores" % [tag, adds])
 	check(deaths["host"] == d0["host"] and deaths["guest"] == d0["guest"] and h.core_host.core.corpse_count() == corpses0, "%s: with no death, no corpse and no credit" % tag)
+
+
+# ------------------------------------------------------------------------------------------------------------------ the guest's Covenant Seal
+
+## The Seals in the guest's bag, from its own account.
+func guest_seals() -> int:
+	var n := 0
+	for r in (await (accounts["joiner"]["api"] as DmApi).get_inventory(cid_g)).data:
+		if String(r.get("item_id", "")) == DmGoldSink.COVENANT_SEAL:
+			n += int(r.get("quantity", 1))
+	return n
+
+
+## A guest calls a boss Empowered at the altar with a Covenant Seal of its own bag: it pays the Seal and the gold on its own account (the server's bound summon), the host wakes the boss Empowered
+## and charges nobody's shards, remembers the summon for the kill's report, and when the report is in tells the guest to claim the Seal's prize, which drops at the corpse. A lost fight leaves the
+## summon bound: the altar offers it free.
+func empowered_guest() -> void:
+	var id := "abbess"
+	var bd: Dictionary = DmContent.boss(id)
+	var tag := "%s called Empowered by the guest" % String(bd["name"])
+	await to_site(id)
+	cur_core = 0
+	reset_watch()
+	earned_log.clear()
+	fell[0] = null
+	reset_n[0] = 0
+	var gapi: DmApi = accounts["joiner"]["api"]
+	var cost := DmGoldSink.empower_gold(int(bd["shards"]))
+	await gapi.save_inventory(cid_g, [{"slot_index": 0, "item_id": DmGoldSink.COVENANT_SEAL, "quantity": 2}])
+	g.loot.inventory.replace((await gapi.get_inventory(cid_g)).data)
+	g.joiner.prog.add_gold(float(cost + 1000))
+	var gm: DmRewardsMember = h.rewards.members.get(cid_g)
+	var hm: DmRewardsMember = h.rewards.members.get(cid_h)
+	var jm: DmRewardsMember = g.joiner.member
+	check(g.boss_meta != null and g.boss_meta.seals() == 2, "%s: the guest has its own Covenant Seal choice and two Seals in its bag" % tag)
+	var sent: Array = []   # [character id, boss entry] of every session report the host sends
+	var host_api: DmApi = accounts["hostess"]["api"]
+	var inner: Callable = host_api.transport
+	host_api.transport = func(req: Dictionary) -> Dictionary:
+		if String(req["url"]).ends_with("/report"):
+			var body: Variant = JSON.parse_string(String(req.get("body", "")))
+			if body is Dictionary:
+				for e in body.get("members", []):
+					for bo in e.get("bosses", []):
+						sent.append([int(e["characterId"]), bo])
+		return await inner.call(req)
+	var offers: Array = []
+	g.boss_meta.offered.connect(func(ctx: Dictionary) -> void: offers.append(ctx))
+	var shards_g := int(jm.prog.local["shards"])
+	var shards_h := int(hm.prog.local["shards"])
+	var gold0 := int(g.character["gold"])
+	# E at the altar: the guest's prompt opens, nothing wakes yet
+	var key_e := InputEventKey.new()
+	key_e.physical_keycode = KEY_E
+	key_e.pressed = true
+	g.bosses._unhandled_input(key_e)
+	check(offers.size() == 1 and not bool(offers[0]["bound"]) and int(offers[0]["seals"]) == 2 and g.ui.boss_key.visible and h.bosses.active_boss() == null, "%s: E at the altar opens the guest's boss-key prompt, nothing is awake" % tag)
+	g.ui.boss_key.emp_button.pressed.emit()   # the prompt's Empowered button
+	check(await until(func() -> bool: return h.bosses.active_boss() != null and h.bosses.active_boss().is_hittable(), 12.0), "%s: the host woke it" % tag)
+	var bh := h.bosses.active_boss()
+	if bh == null or bh.boss_id != id:
+		finish_early("%s did not wake" % tag)
+		return
+	cur_core = bh.core_id
+	check(bh.empowered and bool(bh.brain.state["empowered"]) and bh.summoner == 2, "%s: it is Empowered and the guest's call (summoner peer %d)" % [tag, bh.summoner])
+	check(await until(func() -> bool: return g.bosses.active_boss() != null and g.bosses.active_boss().bstate.empowered and g.bosses.active_boss().bstate.active, 8.0), "%s: and the guest's copy is Empowered too (its red-gold glow)" % tag)
+	var bg := g.bosses.active_boss()
+	check(await until(func() -> bool: return gold0 - int(g.character["gold"]) == cost and await_pending(), 6.0), "%s: the guest's own account paid the Seal's gold (%d)" % [tag, cost])
+	check(await guest_seals() == 1, "%s: and one Covenant Seal" % tag)
+	check(int(jm.prog.local["shards"]) == shards_g and int(hm.prog.local["shards"]) == shards_h, "%s: no soul shards were paid by anyone" % tag)
+	check(gm.empower_pending == id and gm.empower_summon_id != 0 and g.boss_meta.pending == id, "%s: the host remembers the guest's summon (backend id %d) for the kill's report" % [tag, gm.empower_summon_id])
+	var summon_id := gm.empower_summon_id
+	# a second call while it is awake: the host refuses in words and nobody is charged
+	var again: String = await g.bosses.ask_empowered(id, 0)
+	check(again == "busy" and gm.empower_summon_id == summon_id, "%s: a second call while it is awake is refused by the host (%s)" % [tag, again])
+	# the kill: the guest's blow; the backend wants the fight to have lasted a while
+	var prizes: Array = []
+	g.boss_meta.prize.connect(func(b: String, p: Dictionary) -> void: prizes.append([b, p]))
+	var offset := [20000]
+	mock.now_ms = func() -> int: return int(Time.get_unix_time_from_system() * 1000.0) + int(offset[0])
+	await stand(id)
+	bh.set_physics_process(false)
+	await ticks(3)
+	if bh.brain.state["state"] == "sunk":
+		bh.brain.state["state"] = "idle"
+		bh.bstate.state = "idle"
+	bh.take_damage(1.0e9, gb_h)
+	check(await until(func() -> bool: return fell[0] != null and fell[0][0] == id and fell[0][1] == 2, 4.0), "%s: it fell to the guest (%s)" % [tag, str(fell[0])])
+	check(await until(func() -> bool: return earned_log.size() >= 2, 6.0), "%s: both members were paid" % tag)
+	var mine: Array = sent.filter(func(e: Array) -> bool: return int(e[0]) == cid_g)
+	var theirs: Array = sent.filter(func(e: Array) -> bool: return int(e[0]) == cid_h)
+	check(mine.size() >= 1 and mine.all(func(e: Array) -> bool: return int(e[1].get("summon", 0)) == summon_id) and theirs.all(func(e: Array) -> bool: return not (e[1] as Dictionary).has("summon")), "%s: the guest's report entry carries its summon id and the host's carries none (%s)" % [tag, str(sent)])
+	check(await until(func() -> bool: return not prizes.is_empty(), 8.0), "%s: the Seal's prize was claimed from the backend by the guest" % tag)
+	if not prizes.is_empty():
+		var p: Dictionary = prizes[0][1]
+		var on_ground := false
+		for d in jm.loot_view._drops:
+			if d.get("kind", "") == "item" and String(d["item"].get("item_id", "")) == String(p["item_id"]):
+				on_ground = true
+		check(on_ground and int(p["instance_id"]) > 0, "%s: it lies on the guest's ground at the corpse (%s, a rolled piece)" % [tag, p["item_id"]])
+	check(g.boss_meta.pending == "" and not g.boss_meta.bound.has(id), "%s: nothing stays pending or bound after the prize" % tag)
+	var owner: String = mock._character_owner(cid_g)
+	var summons: Array = mock.db["accounts"][owner].get("empowered", [])
+	check(summons.size() == 1 and String(summons[0]["status"]) == "claimed", "%s: the guest's summon is claimed on its account (%s)" % [tag, str(summons.map(func(s: Dictionary) -> String: return String(s["status"])))])
+	check(not gm.reporter.has_pending() or await until(func() -> bool: return not gm.reporter.has_pending(), 8.0), "%s: and the report was sent" % tag)
+	# a lost fight stays bound: the guest's second Seal, the party wiped, the altar offers the summon free
+	await until(func() -> bool: return h.bosses.active_boss() == null and g.bosses.active_boss() == null, 6.0)
+	await until(func() -> bool: return h.bosses.bosses.is_empty() and g.bosses.bosses.is_empty(), 14.0)
+	await to_site(id)
+	offers.clear()
+	reset_n[0] = 0
+	g.joiner.prog.add_gold(float(cost + 1000))
+	g.bosses._unhandled_input(key_e)
+	check(offers.size() == 1 and not bool(offers[0]["bound"]) and not g.ui.boss_key.emp_button.disabled, "%s: the altar offers the second Seal" % tag)
+	g.ui.boss_key.emp_button.pressed.emit()
+	check(await until(func() -> bool: return h.bosses.active_boss() != null and h.bosses.active_boss().empowered, 12.0), "%s: a second call woke it" % tag)
+	var bh2 := h.bosses.active_boss()
+	check(await until(func() -> bool: return gm.empower_pending == id and g.boss_meta.pending == id, 4.0), "%s: with its new summon remembered" % tag)
+	gb_h.take_damage(1.0e9, 0)
+	hb.take_damage(1.0e9, 0)
+	check(await until(func() -> bool: return reset_n[0] == 1, 5.0), "%s: the party fell and it reset" % tag)
+	check(await until(func() -> bool: return g.boss_meta.bound.has(id) and g.boss_meta.pending == "" and gm.empower_pending == "" and gm.empower_summon_id == 0, 5.0), "%s: the guest's summon stays bound on its account and the host forgot it" % tag)
+	check(await until(func() -> bool: return hb.alive and gb_h.alive, 10.0), "%s: the heroes got up" % tag)
+	await until(func() -> bool: return h.bosses.bosses.is_empty() and g.bosses.bosses.is_empty(), 14.0)
+	await to_site(id)
+	offers.clear()
+	var gold1 := int(g.character["gold"])
+	g.bosses._unhandled_input(key_e)
+	check(offers.size() == 1 and bool(offers[0]["bound"]) and g.ui.boss_key.emp_button.text.contains("bound: free"), "%s: the altar offers the bound summon free" % tag)
+	g.ui.boss_key.emp_button.pressed.emit()
+	check(await until(func() -> bool: return h.bosses.active_boss() != null and h.bosses.active_boss().empowered and gm.empower_summon_id != 0, 12.0), "%s: and the retry woke it" % tag)
+	check(int(g.character["gold"]) == gold1 and await guest_seals() == 0, "%s: for no gold and no Seal (the lost fight's)" % tag)
+	if bh2 != null and is_instance_valid(bh2):
+		bh2.set_physics_process(false)
+	var bh3 := h.bosses.active_boss()
+	if bh3 != null:
+		bh3.take_damage(1.0e9, gb_h)
+	await until(func() -> bool: return h.bosses.active_boss() == null, 4.0)
+	mock.now_ms = Callable()
+	host_api.transport = inner
+
+
+## The guest's gold change has settled (the server's reply adopted) and its call is tracked.
+func await_pending() -> bool:
+	return g.boss_meta.pending != ""
 
 
 # ------------------------------------------------------------------------------------------------------------------ the second summon: a wipe

@@ -165,6 +165,7 @@ func _init() -> void:
 	fight()
 	wire_format()
 	puppet_refuses_and_answers()
+	core_built_after_a_boss()
 	silent_removal()
 	full_party()
 	snapshot_parts()
@@ -955,6 +956,20 @@ func silent_removal() -> void:
 	check(g.enemy_info(gone).is_empty() and g.enemy_count() == host.enemy_count() and keep_ids.all(func(i: int) -> bool: return not g.enemy_info(i).is_empty()),
 		"the guest dropped exactly that body and kept the others (%d left)" % g.enemy_count())
 	check(Array(g.enemy_ids()) == Array(host.enemy_ids()), "and its table is the host's, in the same order")
+
+
+## A boss's def is registered at run time in the shared enemy table (DmBoss.ensure_def, for the codex), so a core built after a boss woke in this process (a player who fought one in its own game and then
+## joins a party; a late joiner's game) must still hold the tables of a core built before: the host's first message is not refused as other game data.
+func core_built_after_a_boss() -> void:
+	var host := make_core(31)
+	host.set_replication(true)
+	hero(host, Vector2(0, 0))
+	var before := make_puppet()
+	check(before.apply_reliable(host.baseline()), "(a core built before any boss woke takes the host's baseline: %s)" % before.replication_error())
+	DmBoss.ensure_def("saint")
+	DmBoss.ensure_def("regent")
+	var late := make_puppet()
+	check(late.apply_reliable(host.baseline()), "a core built after bosses woke in this process takes the host's baseline too (%s)" % late.replication_error())
 
 
 func puppet_refuses_and_answers() -> void:

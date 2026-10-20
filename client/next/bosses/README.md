@@ -11,7 +11,7 @@ DmBossHost  (node "Bosses" under DmNextGame, every peer)   summon rules, spawner
        |- DmBossBrain (host only) <- DmBossNodeWorld       the brain, fed the core's world (heroes, the director's adds, thralls, corpses, zones)
        `- DmBossView (every peer)                          model / clips / glow (client/game/dm_boss_view.gd), fed a DmBossState
   `- DmBossFx (every peer)                                 brain events -> telegraphs, impacts, banners, sounds (client/game/dm_event_fx_boss.gd)
-  `- DmBossMeta (host)                                     Covenant Seal altar choice, Empowered summons, the prize (dm_boss_meta.gd)
+  `- DmBossMeta (host and party guest)                     Covenant Seal altar choice, Empowered summons, the prize (dm_boss_meta.gd)
 ```
 - **DmBoss** has no collider, navigation agent or state machine: it keeps what it needs of an enemy as fields (`hp`, `max_hp`, `radius`, `damaged`, `died`, `is_hittable()`), the brain owns movement, `take_damage` scales the blow by its status set's damage-taken multiplier (a player's Fracture, an enemy priest's Sanctify) and gives it to `brain.damage`,
   `stun` staggers it for at most 0.5 s every 8 s, and the net state carries the boss's core id. `ensure_def` registers `boss_<id>` in `DmSimData.ENEMIES` at runtime. Slow / root / chill are ignored on purpose (bosses are immune).
@@ -42,7 +42,7 @@ One suite for the King (`client/tests/boss.gd`), one for each of the other six o
 The recorded scenarios the brains are replayed against are recordings of the web game's brains (44 of them).
 
 ## Known gaps
-- Empowered choice is the host's own hero (a client's `request_summon` is the plain RPC); the prize claim window is the backend's (3 h).
+- A guest's Empowered call pays on its own account and the host wakes the boss on its word (`DmBossHost.ask_empowered`): the server's area gate is the guest's own (a boss's area its account has sealed refuses the Seal with the server's reason before anything is spent); the prize claim window is the backend's (3 h).
 - Pools of a boss that resets linger their remaining seconds (core zones have a lifetime, no owner to remove them).
 - The Mire Mother's flood shrinks the Fen's hummocks for the brain (`FEN_FLOOD_SCALE`); the event plays the rings, and nothing eases the drawn hummocks.
 - `can_ascend` after a Prelate kill is only a game event (no Altar: B36). Prelate Echoes are not played for the same reason (client/README.md "The bosses").

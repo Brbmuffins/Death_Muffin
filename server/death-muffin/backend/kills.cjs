@@ -19,6 +19,7 @@
  * staff accounts are exempt from every clamp. All functions take `db` (a pool or a connection) and an optional `now`/`env`/`log`.
  */
 const rules = require('./gathering/kill-rules.cjs');
+const lootRules = require('./gathering/loot-rules.cjs');
 const { audit, necroSummary } = require('./authority.cjs');
 const { GuardUnavailable } = require('./guard-error.cjs');
 const authorityRules = require('./gathering/authority-rules.cjs');
@@ -145,6 +146,55 @@ function ascensionRank(a) {
   return Math.max(0, num(a));
 }
 
+// ── A member's first kill of a boss (the server's call) ───────────────────────────────────────────────────────────────
+
+/** The boss ids a report's raw entries ask the server to judge (`askFirst: true`): a party host cannot know whether a member's kill is that member's first. */
+function askedFirsts(body) {
+  const out = new Set();
+  for (const b of Array.isArray(body && body.bosses) ? body.bosses : []) {
+    if (b && b.askFirst === true && typeof b.boss === 'string' && b.boss !== 'prelate' && typeof (lootRules.bossInfo(b.boss) || {}).area === 'string') out.add(b.boss);
+  }
+  return out;
+}
+
+/**
+ * Decide, for the bosses a report asks about, whether the character's kill is its FIRST (the +2 soul shards of the kill rules, and the trophy). The Chronicle's lifetime
+ * counter `boss.<id>` is the trophy record (the game's own Chronicle adds one for each kill it counts): 0 = never killed it. The first entry of a boss that has none gets
+ * `first` (one kill of it; the rest of that entry stays a plain kill), every kill asked about is counted in the Chronicle now (a member's own client keeps no Chronicle in a
+ * party), and the ledger judges the entries as they stand. The report is applied once (a party report is deduplicated by its batch number), so a repeat counts nothing twice.
+ * Returns the boss ids decided first. A Chronicle that cannot be read or written decides nothing (every entry stays a plain kill): it never costs the report.
+ */
+async function decideFirstKills(conn, characterId, report, asked, log = console) {
+  if (!asked.size || !report.bosses.length) return [];
+  try {
+    await conn.execute("INSERT IGNORE INTO character_chronicle (character_id, life, run) VALUES (?, '{}', '{}')", [characterId]);
+    const [[row]] = await conn.execute('SELECT life, run FROM character_chronicle WHERE character_id = ? FOR UPDATE', [characterId]);
+    const life = parseJson(row && row.life, {}) || {};
+    const run = parseJson(row && row.run, {}) || {};
+    const firsts = [];
+    const entries = [];
+    for (const b of report.bosses) {
+      if (!asked.has(b.boss)) { entries.push(b); continue; }
+      const key = `boss.${b.boss}`;
+      if (num(life[key]) <= 0 && !firsts.includes(b.boss)) {
+        firsts.push(b.boss);
+        entries.push({ ...b, first: true, n: 1 });
+        if (b.n > 1) entries.push({ ...b, first: false, n: b.n - 1 });
+      } else {
+        entries.push({ ...b, first: false });
+      }
+      life[key] = num(life[key]) + b.n;
+      run[key] = num(run[key]) + b.n;
+    }
+    await conn.execute('UPDATE character_chronicle SET life = ?, run = ? WHERE character_id = ?', [JSON.stringify(life), JSON.stringify(run), characterId]);
+    report.bosses = entries;
+    return firsts;
+  } catch (err) {
+    if (log && log.error) log.error(`[AUTHORITY] first kills undecided: ${err.code || err.message}`);
+    return [];
+  }
+}
+
 // ── POST /api/kills/report ────────────────────────────────────────────────────────────────────────────────────────────
 
 const ENFORCE_NOTICE = 'Some of your kills could not be verified against the time that passed, so the server did not count them.';
@@ -177,6 +227,8 @@ async function handleReport(pool, { char, accountId, body, account, carried = fa
       await conn.commit();
       return { status: 200, body: { success: true, data: { mode, duplicate: true } } };
     }
+    // A party host marks a member's boss entries `askFirst`: the server says which are the member's first kills (their +2 shards and trophy), before the ledger judges them.
+    const firstBosses = await decideFirstKills(conn, char.id, report, askedFirsts(body), log);
     const buckets = refill(ledger, necro.unlocked, now);
     // Bosses are backed by paid summons first (owner 2026-10-14: spamming bosses has no limit), then by the clock bucket.
     const summonsLeft = Math.max(0, (await summonCredit(conn, char.id)) - ledger.summonUsed);
@@ -213,7 +265,7 @@ async function handleReport(pool, { char, accountId, body, account, carried = fa
     // An Empowered boss's kill (gold sinks): tie it to the bound summon it names so the prize claim can see a reported kill.
     if (ev.bossesAccepted > 0) await require('./boss-key.cjs').markSummonKills(conn, char.id, report.bosses, log);
     await conn.commit();
-    const data = { mode, accepted: { kills: ev.killsAccepted, bosses: ev.bossesAccepted, floors: ev.floorsAccepted } };
+    const data = { mode, accepted: { kills: ev.killsAccepted, bosses: ev.bossesAccepted, floors: ev.floorsAccepted, ...(firstBosses.length ? { firstBosses } : {}) } };
     // `authority.message` sits at the top of the reply, where the client's notice listener reads it (api.ts).
     return { status: 200, body: { success: true, data, ...(mode === 'enforce' && dropped > 0 ? { authority: { message: ENFORCE_NOTICE } } : {}) } };
   } catch (err) {

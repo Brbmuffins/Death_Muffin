@@ -459,13 +459,17 @@ func _unlock(key: String) -> void:
 func _waystones() -> Array:
 	var out: Array = []
 	var unlocked: Array = game.progress.get("unlocked", [])
+	var party_world: Variant = game.get("shell")   # a party guest plays in the host's world: its map lists the areas the host has open (the jump is the host's to allow)
+	var in_host_world: bool = party_world != null and bool(party_world.get("is_guest"))
+	if in_host_world:
+		unlocked = party_world.world.unlocked.keys()
 	for a in DmContent.area_order():
 		var ar: Dictionary = DmContent.area(String(a))
 		if bool(ar.get("instance", false)):
 			continue
 		if unlocked.has(a):
 			out.append(a)
-		elif game.dev_access and _has_waystone(ar):
+		elif game.dev_access and not in_host_world and _has_waystone(ar):
 			out.append(a)  # GM / dev access: same rule as walking (open_areas), every area with a stone
 	return out
 

@@ -21,7 +21,7 @@ opts.hud:  true real HUD and panels, also for joiners  |  false none (a bare sce
 | loadout | `DmLoadout.load_rites` = kit `defaultLoadout` + `rmb` + the saved Grimoire choice; `set_rites()` writes it back |
 | casting | `DmNextInput.hotbar(slot, aim, enemy_id)` (LMB 0, keys 1-4, key 5 and RMB 5) -> `_on_hotbar` -> `DmRiteCaster.request_cast`. A rite missing from `DmRiteRegistry` gives a "not in the slice yet" float |
 | cooldown / rejection | `cast_rejected(rite, reason)` -> texts ("Not enough Grave Essence", "X is not ready", "X unlocks at level N"; busy / range / no_target silent), 1 per 600 ms |
-| float text | casters' `hit_number`, the hero's `hurt`, a thrall's blow and a DoT's lumps from the core host's events, heals / gold / shards; goes through `DmFloatBudget` (caps, see `client/next/feel/README.md`) and honours the damage-numbers setting |
+| float text | casters' `hit_number`, the hero's `hurt`, a thrall's blow (a guest's: the host's list of them, `DmNextNet`) and a DoT's lumps from the core host's events, heals / gold / shards; goes through `DmFloatBudget` (caps, see `client/next/feel/README.md`) and honours the damage-numbers setting |
 | toasts / banners | `game_event("toast" / "banner" / "loot" ...)` into `DmGameUi._on_game_event`; level-ups from `member_credited` |
 | belt | Q drinks the flask picked in the Heal slot (Reliquary potion belt or a drop on the chip), else the best one owned (`use_item`); elixir / tonic chips |
 | minimap | `DmHudMinimap` fed with enemies, thralls, corpses, areas / doors, the click-to-move goal (`destination`, shown while `has_target`; it is static, no `_process`); click -> `navigate` -> `DmNextInput.click_move` |

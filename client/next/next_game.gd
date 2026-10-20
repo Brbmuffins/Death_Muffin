@@ -87,11 +87,11 @@ var depths: DmDepths                           ## child "Depths" (host): the pro
 var gather: DmNextGather                        ## child "Gather" (every peer): gathering nodes, the gather loop (host), skills, AFK (next/gathering/)
 var acre: DmNextAcre                            ## child "Acre" (host, with the HUD): visible Grave Laborers, labor / garden notices, the first-hour guidance feeds (next/gathering/)
 var bosses: DmBossHost                          ## child "Bosses": summon rules, the boss body, its events and music
-var boss_meta: DmBossMeta                       ## child "BossMeta" (host): the Covenant Seal altar choice, Empowered summons, the Seal's prize (next/bosses/)
+var boss_meta: DmBossMeta                       ## child "BossMeta" (host and guest): the Covenant Seal altar choice, Empowered summons, the Seal's prize (next/bosses/)
 var rewards: DmSessionRewards                   ## child "Rewards" (host): kill credit, the backend's party session, loot rolls (next/rewards/)
 var progress: DmNextProgress                    ## child "Progress" (host): levels, upgrade tiers, the belt, the backend saves (next/progress/)
 var meta: DmNextMeta                            ## child "Meta" (host): difficulty, world vows, the Omen, Soul Harvest, the Kill Chain, Bonded Dead (next/meta/)
-var milestones: DmWaveMilestones                ## child "Milestones" (host): the Wave Speed milestones' banners and the Nightfall light
+var milestones: DmWaveMilestones                ## child "Milestones" (host and guest): the Wave Speed milestones' banners and the Nightfall light (a guest's follow the host's tier)
 var chron: DmNextChronicle                      ## child "Chronicle" (host): the one Chronicle every system feeds, first-kill trophies
 var codex: DmNextCodex                          ## child "Codex" (host): enemies met, areas entered, bosses woken (the Codex panel's journal)
 var loot: DmNextLoot                            ## child "Loot": this player's drops and bag (next/rewards/dm_next_loot.gd)
@@ -246,6 +246,10 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	add_child(gather)
 	await gather.setup(self)
 	if guest:
+		milestones = DmWaveMilestones.new()   # the host's world is at the host's Wave Speed tier: the guest's window dims for its Nightfall (the host tells it, `Net`)
+		milestones.name = "Milestones"
+		add_child(milestones)
+		milestones.setup(self)
 		session.session_started.connect(party.send_profile)
 		if _hold != null:
 			_hold.hold = false   # every node the host addresses exists now (Session, Net, Core, Bosses, Party, Look): deliver what queued while the world was built
@@ -265,6 +269,10 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		joiner.member.body = gb
 		await _start_loot()
 		joiner.event.connect(game_event)
+		boss_meta = DmBossMeta.new()   # the guest's own Covenant Seal at an altar: it pays on its account, the host wakes the boss (next/bosses/README.md)
+		boss_meta.name = "BossMeta"
+		add_child(boss_meta)
+		await boss_meta.setup(self)
 	else:
 		var b := local_body()
 		b.bind_character(character)

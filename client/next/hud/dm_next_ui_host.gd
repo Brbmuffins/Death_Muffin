@@ -170,6 +170,7 @@ func _watch_core() -> void:
 	ch.thrall_raised.connect(func(id: int, _k: String, _o: int, _sl: int, _em: bool, _c: bool, _x: float, _z: float, _y: float, _h: float) -> void: _thrall[id] = true)
 	ch.thrall_removed.connect(func(id: int) -> void: _thrall.erase(id))
 	ch.enemy_damaged.connect(_on_enemy_damaged)
+	shell.net.thrall_blows.connect(_on_thrall_blows)   # a guest: the host tells it every blow of a thrall (its puppet core derives none with a source)
 	ch.status_dot.connect(_on_status_dot)
 	ch.corpse_added.connect(func(_id: int, _k: int, _d: String, _e: bool, _a: String, x: float, z: float, _f: float, _sc: float) -> void:   # the counsel's Exhume tip
 		game_event.emit("corpse_near", {"area_safe": bool(DmContent.area(shell.area_id)["safe"]), "dist": _dist_hero(x, z)}))
@@ -185,13 +186,22 @@ func _on_enemy_spawned(id: int, def: String, _level: int, elite: bool, _area: St
 		game_event.emit("enemy_spawned", {"def": def, "elite": elite, "near": true, "area_safe": bool(DmContent.area(shell.area_id)["safe"])})
 
 
-## A thrall's blow on an enemy gets a number over the enemy (the old DmEventFx); the hero's own come from his caster's `hit_number`.
+## A thrall's blow on an enemy gets a number over the enemy (the old DmEventFx); the hero's own come from his caster's `hit_number`. A guest's puppet core derives its `damaged`
+## events from the snapshots (no source, a killing blow with its killer), so a guest takes the host's list instead (`_on_thrall_blows`).
 func _on_enemy_damaged(id: int, source: int, amount: float, _hp: float) -> void:
-	if not _thrall.has(source):
+	if shell.is_guest or not _thrall.has(source):
 		return
 	var p := shell.core_host.enemy_position(id)
 	if p != Vector3.INF:
 		float_text(p + Vector3(0, 1.4, 0), str(int(amount)), "thrall")
+
+
+## Guest: the thralls' blows since the host's last message ([enemy id, damage, ...], DmNextNet `_rpc_blows`): the same number over each enemy as the host's `_on_enemy_damaged` shows.
+func _on_thrall_blows(blows: PackedInt32Array) -> void:
+	for i in range(0, blows.size() - 1, 2):
+		var p := shell.core_host.enemy_position(blows[i])
+		if p != Vector3.INF:
+			float_text(p + Vector3(0, 1.4, 0), str(blows[i + 1]), "thrall")
 
 
 ## A Withered or other DoT lump: a small number over the burning enemy.
