@@ -161,7 +161,12 @@ func _on_kill_earned(cid: int, _def: String, at: Vector3) -> void:
 ## The Reaper's soul bag: the soul's wisp loops round the dead enemy for a second, then flies to her, and the soul is banked when it reaches her
 ## (without visuals there is no wisp, so it is banked at once). A full bag takes no soul.
 func _bank_reaper_soul(b: DmHeroBody, at: Vector3) -> void:
-	if b.p.is_empty() or not b.alive or int(b.p["souls"]) >= int(b.p["soulsMax"]):
+	if b.p.is_empty() or not b.alive:
+		return
+	if int(b.p["souls"]) >= int(b.p["soulsMax"]):
+		var caster := b.get_node_or_null("Rites") as DmRiteCaster   # the Scythe of Undeath: a soul with nowhere to go casts a free Haunting Wraith
+		if caster != null and bool(caster.mods.get("soulWraith", false)):
+			(DmRiteRegistry.module("haunting_wraith") as DmRiteModule).call(&"free_cast", caster)
 		return
 	var vfx := get_node_or_null("/root/Vfx")
 	if vfx == null or not shell._visual:

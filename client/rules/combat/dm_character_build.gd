@@ -43,6 +43,7 @@ static func apply_boons(base: Dictionary, boons: Dictionary, vows: Dictionary, w
 	# Armor set bonuses + worn affixes fold in last.
 	d["mods"] = DmSetBonuses.apply_set_mods(d["mods"], DmSetBonuses.resolve(slots)["totals"])
 	d["mods"] = DmReaperSet.apply(d["mods"], slots)   # Soul Harbinger's Raiment: rite keys, present only while worn
+	d["mods"] = DmUndeathScythe.apply(d["mods"], slots)   # Scythe of Undeath: rite keys, present only while in her hand
 	return d
 
 
