@@ -31,7 +31,7 @@ const git = (cwd, ...a) => execFileSync('git', ['-c', 'core.hooksPath=/dev/null'
 function installedPairs(repo) {
   const SRC = 'server/death-muffin/discord-agent';
   const runner = git(repo, 'ls-tree', '-r', '--name-only', REV, '--', `${SRC}/runner`).split('\n').filter(Boolean).map((f) => [f.slice(SRC.length + 1), f]);
-  const scripts = ['ship.sh', 'rollback.sh', 'sandbox-lib.sh', 'check-godot.sh', 'shot-godot.sh', 'preview-godot.sh', 'PROMPT-godot.md', 'agit'].map((f) => [f, `${SRC}/${f}`]);
+  const scripts = ['ship.sh', 'rollback.sh', 'sandbox-lib.sh', 'check-godot.sh', 'regen-godot.sh', 'shot-godot.sh', 'preview-godot.sh', 'PROMPT-godot.md', 'agit'].map((f) => [f, `${SRC}/${f}`]);
   return [...runner, ...scripts, ['prep.sh', 'tools/check/prep.sh'], ['ci.sh', 'tools/check/ci.sh']];
 }
 
@@ -57,7 +57,7 @@ class Msg {
 
 async function main() {
   const live = loadConfig(cfgFile);
-  if (live.mode !== 'godot') fail('config', `the agent is in ${live.mode} mode, not godot`);
+  if (live.baseBranch !== 'main') fail('config', `the agent works on ${live.baseBranch}, not main`);   // loadConfig itself refuses the retired web mode
   const repo = live.repo;
   git(repo, 'fetch', '-q', 'origin');
   // 1. installed copies = main (a stale install is what a promotion leaves behind)
