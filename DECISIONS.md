@@ -332,6 +332,13 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   and CI fails any change whose generated files are not exactly the generators' output. The sandbox is the boundary, and the agent already runs
   any code inside it through the tests it writes, so a new command inside it adds no reach: such commands are Claude's call from now on. Anything
   that reaches past the sandbox (deploying, publishing, pushing, spending, keys, the network, who may approve) still needs Helix.
+- **B66. A proposal gets as few pictures as show the change** (Helix, 2026-10-20: "why is the discord agent calling for before and after and low
+  and high quality screenshots when really sometimes only 1 high quality screenshot is required?", then "yes build it"). Every team PC picture
+  job used to render each shot four times: the unchanged game and the change, each on Low and Ultra. Now a shot is one AFTER picture on Ultra.
+  The agent's shot plan asks for more only when it helps: `"before": true` for BEFORE and AFTER pairs when the change reworks something that
+  already exists and the difference is easy to miss, and `"presets"` with Low for lights, shadows and effects that Low thins out. Anyone in the
+  thread can ask for them, also in words after `!shot`. The unchanged game is built only when BEFORE is asked for, so most picture jobs are
+  quicker too.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

@@ -1,7 +1,7 @@
 # Death Muffin Team (the team app)
 
 A small Windows app for the three team PCs (War, Muffins and Helix; DECISIONS B54 and B55). It sits in the tray and runs the jobs that need a
-real graphics card, which the server does not have. Its jobs: **screenshots of a Discord-agent proposal on Low and Ultra** (`shots`; also of a *before* and an *after* build, side by side),
+real graphics card, which the server does not have. Its jobs: **screenshots of a Discord-agent proposal on the graphics presets the job names** (`shots`; also of a *before* and an *after* build, side by side),
 **short videos of a change** (`clip`; one game run for each variant the team can choose between, such as three speeds of a spell), **the game's own benchmark of a release build**
 (`bench`, made by hand; the `release` job's bench step does it otherwise), run on a PC that is left alone, and **the checks of a revision before it goes live** (`release`: install, quit while loading, screens at four window sizes, stutter, bench and soak, one job and one report, asked for by whoever ships it; every publish also asks for the first two steps). It is not the players' launcher: it is installed only on those PCs, updates itself, and a bug in it never reaches players.
 

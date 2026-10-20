@@ -148,7 +148,7 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   account), runs only builds and kits our server made, and uploads only its results. Each PC can also run without asking (War's spare
   Alienware, if he sets it) or only on a yes. Every job asks the same way, benchmarks included (Helix, 2026-10-19). Its jobs, in this order
   (B58: all of them in Phase 1):
-  - Screenshots of a proposal on Low and Ultra, posted to the thread by our server. Live since 2026-10-19 and proven on Helix's PC that
+  - Screenshots of a proposal, posted to the thread by our server (one picture a shot on Ultra unless the change needs more, B66). Live since 2026-10-19 and proven on Helix's PC that
     night (0.1.1: four pictures in 40 s of play; 0.1.0 could not start the game and reported no graphics card). With a team PC online they
     replace the server's pictures; with none, the server renders them on `!shot`.
   - Benchmarks of a release build on a team PC, on the
@@ -158,7 +158,8 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
     the 5-minute wait until the person ends it or starts a game).
   - Built 2026-10-19 with app 0.3.0 (one release for all of these, B58):
     - Pictures without `!shot`: with a team PC online, the Discord agent writes a shot plan for every visible change and the team PC
-      renders it, before and after side by side (the unchanged game and the change), on Low and Ultra.
+      renders it: one AFTER picture a shot on Ultra, with BEFORE side by side (the unchanged game and the change) or Low too only
+      when the change needs them or someone asks (B66).
     - Clips and "pick one": a few seconds of a spell or effect recorded by the game itself (1920x1080 at 60 frames a second since app 0.4.5, made into an mp4 on the
       team PC; only the spell, not the loading), posted as videos; for a choice (War's Haunting Wraith at three speeds) each option is numbered and the thread
       asks which one. Model previews are clips too: the new piece worn by a hero, turning.

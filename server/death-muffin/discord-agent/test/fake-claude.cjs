@@ -125,10 +125,13 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   // asks for a plan, and with nobody online it renders on the server like SHOT-PNG.
   const teamOn = /A team PC is online right now/.test(p) || /a team PC is online, so write the shot plan/.test(p);
   if (teamOn && (/TEAM-SHOT/.test(p) || /a team PC is online, so write the shot plan/.test(p))) {
-    // TEAM-SHOT-2: two shots; TEAM-SHOTS=<n>: n shots (a, b, c, d); TEAM-RES=<sizes>: the plan's screen sizes
-    const nShots = /TEAM-SHOTS=(\d)/.exec(p), res = /TEAM-RES=([0-9x,]+)/.exec(p);
+    // TEAM-SHOT-2: two shots; TEAM-SHOTS=<n>: n shots (a, b, c, d); TEAM-RES=<sizes>: the plan's screen sizes; TEAM-BEFORE: BEFORE pictures too;
+    // TEAM-PRESETS=<presets>: the graphics presets (TEAM-PAIRS = TEAM-BEFORE TEAM-PRESETS=low,ultra)
+    const nShots = /TEAM-SHOTS=(\d)/.exec(p), res = /TEAM-RES=([0-9x,]+)/.exec(p), pairs = /TEAM-PAIRS/.test(p);
+    const presets = pairs ? ['low', 'ultra'] : (/TEAM-PRESETS=([a-z0-9,]+)/.exec(p) || [])[1];
     const shots = nShots ? ['a', 'b', 'c', 'd'].slice(0, +nShots[1]).map((name) => ({ name })) : /TEAM-SHOT-2/.test(p) ? [{ name: 'a' }, { name: 'bag-tooltip' }] : [{ name: 'a' }];
-    fs.writeFileSync('.dm-shot.json', JSON.stringify({ shots, ...(res ? { resolutions: res[1].split(',') } : {}) }));
+    fs.writeFileSync('.dm-shot.json', JSON.stringify({ shots, ...(res ? { resolutions: res[1].split(',') } : {}), ...(pairs || /TEAM-BEFORE/.test(p) ? { before: true } : {}),
+      ...(presets ? { presets: Array.isArray(presets) ? presets : presets.split(',') } : {}) }));
     if (!/\bGD-/.test(p)) text = 'Plan written.';
   }
   // Like the real agent, the screenshot comes after the last commit (only images newer than it go on the proposal).

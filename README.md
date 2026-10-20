@@ -26,7 +26,7 @@ Where to read next: [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNO
 | `server/death-muffin/site/` | The launcher download page |
 | `server/death-muffin/` (scripts) | `publish-godot-client.sh`, `set-online.sh`, `deploy-release.sh`, `announce-release.sh`, nginx and systemd files |
 | `launcher/windows/` | The Windows launcher (.NET Framework 4.8, version in `DeathMuffinLauncher.csproj`). See its README |
-| `teamapp/` | The team app (DECISIONS B54, B55): a Windows tray app for the three team PCs that runs jobs needing a real graphics card (screenshots of a proposal on Low and Ultra first), with its own updates; `teamapp/windows/` the app, `teamapp/tests/` its tests ([teamapp/README.md](teamapp/README.md)) |
+| `teamapp/` | The team app (DECISIONS B54, B55): a Windows tray app for the three team PCs that runs jobs needing a real graphics card (screenshots of a proposal first), with its own updates; `teamapp/windows/` the app, `teamapp/tests/` its tests ([teamapp/README.md](teamapp/README.md)) |
 | `tools/` | `tools/rebuild/` the game's test runner, suite selector and area builder; `tools/godot/` the release's art pack tools; `tools/assets/` the model check; `tools/ai/` Gemini and Tripo generation; `tools/blender*`, `tools/audio/`, SQL generators |
 | `public/`, `art-manifest/` | Source art, models and audio (the masters of what is in `client/assets/`); generation records |
 | `PATCH_NOTES.json` | Player-facing patch notes, newest first; published to the launcher and site by `announce-release.sh` |
@@ -90,7 +90,7 @@ the team ── Discord thread ── Muffin Core bot ── runner (VPS) ──
 - **Testing** ([tools/check/README.md](tools/check/README.md)): `tools/check/prep.sh` sets up any checkout, GitHub CI runs everything on every push,
   and `tools/check/ci.sh` reads its verdict; nothing is merged, deployed or published without a pass.
 - **The team app** ([teamapp/README.md](teamapp/README.md); its server side is "Team jobs" in [server/death-muffin/README.md](server/death-muffin/README.md)):
-  runs what needs a real graphics card on the team's PCs: before and after pictures and short videos for proposals, the start of every release
+  runs what needs a real graphics card on the team's PCs: pictures and short videos for proposals, the start of every release
   before players get it, and `server/death-muffin/team-check.sh` checks of a revision when whoever ships it asks.
 - The ops jobs ([server/death-muffin/ops/README.md](server/death-muffin/ops/README.md)) watch the live services and post to #build-alerts.
 

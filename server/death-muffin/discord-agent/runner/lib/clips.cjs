@@ -15,7 +15,9 @@
 // word is a game change the agent makes in its branch (the recorder's handler, the list, a test), and its videos can use it at once. The runner checks a
 // request against that list (known words, known arguments, their types and ranges); the recorder checks it again and carries it out.
 //
-// The shot plan (.dm-shot.json) may carry `resolutions`: the screen sizes a team PC renders every shot at (default: the one standard size). The list is checked here.
+// The shot plan (.dm-shot.json) may carry `resolutions`: the screen sizes a team PC renders every shot at (default: the one standard size), `before`: true to
+// render the unchanged game too (BEFORE and AFTER pairs), and `presets`: the graphics presets (default Ultra alone). By default a shot is one AFTER picture on
+// Ultra (Helix, 2026-10-20: "sometimes only 1 high quality screenshot is required"). All three are checked here.
 const fs = require('fs');
 const path = require('path');
 
@@ -32,6 +34,8 @@ const MAX_SETUP = 12, MAX_STEPS = 24;
 const WORD_RE = /^[a-z][a-z0-9_]{0,23}$/, ENEMY_RE = /^[a-z0-9_]{1,40}$/;
 // The screen sizes a shot plan may ask for (a team PC renders each shot at every size listed; with none the team app's standard 1920x1080 is used).
 const RESOLUTIONS = ['1920x1080', '2560x1440', '3840x2160', '3440x1440'];
+// The graphics presets a shot plan may ask for, lowest first (the team app knows these four); with none, Ultra alone.
+const SHOT_PRESETS = ['low', 'medium', 'high', 'ultra'], SHOT_PRESETS_DEFAULT = ['ultra'];
 const TUNE_KEY_RE = /^[A-Za-z0-9_][A-Za-z0-9_./-]{0,79}$/;
 const BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 // Playable disciplines by name -> class index (client/data/combat/disciplines.json by_index; the shot plan and the clip plan name one the same way).
@@ -208,19 +212,31 @@ function checkResolutions(v) {
   return { list: v.slice() };
 }
 
+// The graphics presets of a shot plan: undefined = none asked, { list } = valid (each once, lowest first), { error } = not usable (Ultra alone is used instead).
+function checkPresets(v) {
+  if (v === undefined) return {};
+  if (!Array.isArray(v) || v.length < 1 || v.length > SHOT_PRESETS.length || v.some((x) => !SHOT_PRESETS.includes(x)) || new Set(v).size !== v.length) {
+    return { error: `"presets" must be 1 to ${SHOT_PRESETS.length} different presets from ${SHOT_PRESETS.join(', ')}` };
+  }
+  return { list: SHOT_PRESETS.filter((x) => v.includes(x)) };
+}
+
 // The shot plan (.dm-shot.json) the agent leaves for a team PC: a JSON object with a list of shots, at most 32 KB (the game itself holds a plan to 4 shots).
-// null = none or unusable; otherwise { plan, notes }: the plan as it goes to the team PC (a `resolutions` list that is not allowed is left out and named in `notes`).
+// null = none or unusable; otherwise { plan, notes, before, presets }: the plan as it goes to the team PC (a `resolutions` list that is not allowed is left out and
+// named in `notes`), whether BEFORE pictures were asked for, and the presets. `before` and `presets` are the runner's, so they are taken out of the plan.
 function readShotPlan(wt) {
   const f = path.join(wt, '.dm-shot.json');
   try {
     const st = fs.lstatSync(f); if (!st.isFile() || st.size > MAX_BYTES) return null;
     const j = JSON.parse(fs.readFileSync(f, 'utf8'));
     if (!(isObj(j) && Array.isArray(j.shots) && j.shots.length >= 1 && j.shots.every(isObj))) return null;
-    const notes = [], r = checkResolutions(j.resolutions);
-    const plan = { ...j };
+    const notes = [], r = checkResolutions(j.resolutions), pr = checkPresets(j.presets);
+    const { before, presets, ...plan } = j;
     if (r.error) { delete plan.resolutions; notes.push(`The screen sizes asked for were not usable (${r.error}), so the standard size was used.`); }
-    return { plan, notes };
+    if (pr.error) notes.push(`The graphics presets asked for were not usable (${pr.error}), so Ultra was used.`);
+    if (before !== undefined && typeof before !== 'boolean') notes.push('"before" must be true or false, so there are no BEFORE pictures.');
+    return { plan, notes, before: before === true, presets: pr.list || SHOT_PRESETS_DEFAULT.slice() };
   } catch { return null; }
 }
 
-module.exports = { CLIP_FILE, STEPS_FILE, MAX_BYTES, MAX_VARIANTS, MAX_CLIPS, MAX_SECONDS, LABEL_RE, CLIP_NAME_RE, CLASSES, RESOLUTIONS, classOf, readClipRequest, clipMinutes, readShotPlan, checkResolutions, checkTune };
+module.exports = { CLIP_FILE, STEPS_FILE, MAX_BYTES, MAX_VARIANTS, MAX_CLIPS, MAX_SECONDS, LABEL_RE, CLIP_NAME_RE, CLASSES, RESOLUTIONS, SHOT_PRESETS, classOf, readClipRequest, clipMinutes, readShotPlan, checkResolutions, checkPresets, checkTune };

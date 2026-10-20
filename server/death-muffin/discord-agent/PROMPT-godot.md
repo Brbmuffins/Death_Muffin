@@ -118,10 +118,17 @@ has a real graphics card, so pictures need no `!shot`:
 - For every change players can SEE (windows, tooltips, the HUD, the hero's look and gear, how a spell or effect looks, a number shown on screen) write the plan
   to `.dm-shot.json` as described below and do NOT run `__TOOLS__/shot-godot.sh` or render anything yourself. Skip the plan for
   changes nobody can see (logic, data behind the scenes, server work, docs) and for pure Q&A. If someone says to skip pictures, write no plan.
-- After your proposal the runner builds your branch AND the unchanged game, a team PC renders the same plan on both (Low and Ultra) and the thread gets
-  BEFORE and AFTER pairs; the proposal says "Pictures from a team PC follow". You will not see them, so make the plan show exactly the change: the window
-  or hero view that proves it, with `give` / `equip` / `area` set up so it appears. Keep it to what the plan format below offers (a window or item only your
-  change adds cannot be shown BEFORE: that picture is then AFTER only).
+- After your proposal the runner builds your branch and a team PC renders the plan; the proposal says "Pictures from a team PC follow". You will not see
+  them, so make the plan show exactly the change: the window or hero view that proves it, with `give` / `equip` / `area` set up so it appears. Keep it to
+  what the plan format below offers.
+- Ask for as few pictures as show the change (Helix, 2026-10-20: "sometimes only 1 high quality screenshot is required"). By default each shot is ONE
+  AFTER picture on Ultra, and that is enough for most changes. Ask for more only when it helps people judge the change, or when someone in the thread
+  asks for it (words after `!shot` count too):
+  - `"before": true` (top of the plan): the unchanged game renders the same plan too, and the thread gets BEFORE and AFTER pairs. Use it when the
+    change reworks something that already exists and the difference is easy to miss (a redone window, a new look for existing gear, a resized HUD
+    element). Leave it out for something new (a window or item only your change adds cannot be shown BEFORE anyway) and for an obvious change.
+  - `"presets": ["low", "ultra"]` (top of the plan; from `low`, `medium`, `high`, `ultra`; default `["ultra"]`): add a lower preset only when the
+    change is about lights, shadows, particles or other effects that Low thins out, so people see it still reads there.
 - `!shot` still works: with a team PC online the message asks you for a plan only, and the runner sends it for the current change.
 - New models and gear: the Blender sheet (`render-model.sh`) is still yours to make and check; their in-game shots are a plan like any other (the pictures
   follow the proposal, so check fit and scale from the sheet).
@@ -173,10 +180,10 @@ Read them. The plan:
   `"view": "game"` is the normal game camera with the HUD hidden. Without `view` the shot is the normal screen, as before.
 - A plan holds at most 4 shots; for more angles run a second plan (change `.dm-shot.json`, run the script again).
 - `"resolutions"` (at the top of the plan, only with a team PC online): the screen sizes the team PC renders every shot at, from `1920x1080`, `2560x1440`, `3840x2160` and
-  `3440x1440` (at most 4, each once; without it only the standard 1920x1080 is rendered). For UI changes (a window, a tooltip, the HUD, anything that sits against a screen edge or
-  scales with the screen) ask for several: all four for a new window or a HUD change, one or two for a small tweak. Leave it out for how the hero, gear or a spell looks and
-  whenever no team PC is online (the server renders the standard size only). A list that is not allowed is dropped and the thread says so. More sizes mean more pictures, so
-  with many shots and sizes the team PC renders Ultra only.
+  `3440x1440` (at most 4, each once; without it only the standard 1920x1080 is rendered). For a new window or a change to the HUD's layout (anything that sits against a
+  screen edge or scales with the screen) ask for all four; leave it out for a small tweak, for how the hero, gear or a spell looks, and whenever no team PC is online (the
+  server renders the standard size only). A list that is not allowed is dropped and the thread says so. Every size multiplies the pictures, so with many shots and sizes
+  the team PC renders the highest preset only.
 - If a plan error is printed (unknown window and the like), fix the plan and run it again once.
 
 A set worn, seen from the front and the back:

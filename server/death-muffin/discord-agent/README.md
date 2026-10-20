@@ -130,12 +130,14 @@ default 2): Forward+ on the software Vulkan driver under `xvfb-run`, falling bac
 The label is burned in OUTSIDE the sandbox by `label-shot.py` (trusted code; Pillow): every raw PNG becomes `.dm-shots/<name>.png` with "BRANCH PREVIEW · not live · <branch>"; directory fds + `O_NOFOLLOW`, only real PNGs
 under 12 MB, names `[a-z0-9-]{1,40}.png`; anything else is skipped (exit 3) and nothing unlabelled is ever published, so a branch that edits the QA code cannot drop the label.
 The game's side is `client/main/qa_driver.gd` and `client/main/qa_ui_shots.gd`, started only by `--qa` / `--shot-plan=` on a dev-offline debug start.
-The agent is told (PROMPT-godot.md) to take pictures by default for visible changes (UI, windows, tooltips, HUD, visuals) and to skip them for logic/data/server work and pure Q&A.
+With no team PC online the agent is told (PROMPT-godot.md) to render pictures only when someone asks (`!shot`, "show me") and for new models and gear.
 On a proposal (`propose()`), when the agent left a plan and fresh pictures, the runner renders the same plan on an unchanged scratch worktree of the base (`base-<jobid>`, removed afterwards) and attaches
 AFTER pictures right away (the embed image is the first). BEFORE pictures are off (owner, 2026-10-10: each was one more software-GL render in the shared queue); with `cfg.beforeShots: true`, the BEFORE/AFTER pairs for the first two pictures (`before-<name>.png`, then `<name>.png`) follow as a separate message once the base is rendered in the background, so a busy renderer never holds the job's slot. If the base cannot render (for instance it predates the QA shot-plan code) no pair message follows.
 
 **Team PC pictures** (teamapp/README.md; the backend's "Team jobs" in server/death-muffin/README.md). A team PC (War's, Muffins' or Helix's) has a real graphics card, so with one
-online the pictures need no `!shot` and come as BEFORE and AFTER pairs:
+online the pictures need no `!shot`. By default a shot is one AFTER picture on Ultra (Helix, 2026-10-20: "sometimes only 1 high quality screenshot is required"); the plan
+asks for more with `"before": true` (BEFORE and AFTER pairs) and `"presets"` (from `low`, `medium`, `high`, `ultra`), which the prompt keeps for changes that need them or when someone
+in the thread asks (words after `!shot` go to the agent too):
 
 1. **The turn starts.** For every message that reaches the agent the runner asks the backend who is online (`GET /internal/team/pcs`: PCs seen in the last 2 minutes, a paused one
    left out because it declines every job). With one, the message gets a note ("A team PC is online right now ...") and the agent writes a shot plan (`.dm-shot.json`, PROMPT-godot.md
@@ -145,22 +147,26 @@ online the pictures need no `!shot` and come as BEFORE and AFTER pairs:
 2. **The proposal** goes out without server pictures. When the worktree has a plan and a PC is still online, its "Screenshots" field says "Pictures from a team PC follow" ("More pictures"
    when the agent rendered some on the server anyway; a plan with no PC left only offers `!shot`). A `!shot` on an open proposal (nothing changed) or on no proposal at all sends the plan
    for the current head the same way and says so in the thread.
-3. **Before and after** (`teamShots` in `runner/core.cjs`, in the background; `cfg.teamShots: false` turns all of it off). The runner builds the branch for the team PC
-   (`preview-godot.sh <jobid> --team`: a debug export, the live art pack hard-linked when the art is unchanged, files under `/var/www/death-muffin/team-files/<random>/`) and, when the
-   branch has commits, the unchanged game too (a scratch worktree `teambase-<jobid>` at `job.base`, built the same way, removed afterwards, 25 minute limit). It queues ONE `shots` job,
-   "Pictures of a change (before and after), about 3 minutes", whose payload carries `builds: [{label: "before", files}, {label: "after", files}]` instead of `files`, the shot plan and
-   the presets Low and Ultra, with `requestedBy` and `thread` (the thread starter's name and the thread's name, which the team app's job list shows; a clip job carries them too); the app runs every preset on each build, shares the files both builds have (same hash) and uploads `<label>_<preset>_<shot>.png`. The runner checks the job
-   every 20 s for up to 45 minutes and cancels it when a newer proposal, a discard or a thread delete makes the answer pointless.
-4. **The thread** gets, a preset at a time (Low, then Ultra) and in the plan's order, each shot as a pair: BEFORE (the game as it is now), then AFTER (this change), at most two pairs a
-   post and 20 MB (a post Discord refuses is lost), a pair never split. Every picture is labelled by `label-shot.py` like the server's ("BRANCH PREVIEW · not live · <branch>": the base branch's name on BEFORE, the job's branch on
-   AFTER) and posted only after the label step; names are `before-low-<shot>.png` / `after-low-<shot>.png`, and the post says whose PC and card made them (`bogar1's PC, Intel Arc B580`).
+3. **The job** (`teamShots` in `runner/core.cjs`, in the background; `cfg.teamShots: false` turns all of it off). `readShotPlan` (`runner/lib/clips.cjs`) reads the plan and takes
+   `before` and `presets` out of it (they are the runner's; an unusable value falls back to the default and the first post says so). The runner builds the branch for the team PC
+   (`preview-godot.sh <jobid> --team`: a debug export, the live art pack hard-linked when the art is unchanged, files under `/var/www/death-muffin/team-files/<random>/`) and queues ONE
+   `shots` job, "Screenshots of a change, about 2 minutes", with `files`, the shot plan and the presets (`["ultra"]` by default), plus `requestedBy` and `thread` (the thread starter's
+   name and the thread's name, which the team app's job list shows; a clip job carries them too). With `"before": true` and commits on the branch it also builds the unchanged game (a
+   scratch worktree `teambase-<jobid>` at `job.base`, built the same way, removed afterwards, 25 minute limit), and the job is "Pictures of a change (before and after), about 3 minutes",
+   whose payload carries `builds: [{label: "before", files}, {label: "after", files}]` instead of `files`. The app runs every preset on each build, shares the files both builds have (same
+   hash) and uploads `<preset>_<shot>.png` (`<label>_<preset>_<shot>.png` with builds). The runner checks the job every 20 s for up to 45 minutes and cancels it when a newer proposal,
+   a discard or a thread delete makes the answer pointless.
+4. **The thread** gets the pictures a preset at a time (lowest first) and in the plan's order; with BEFORE, each shot as a pair: BEFORE (the game as it is now), then AFTER (this change),
+   at most two pairs a post and 20 MB (a post Discord refuses is lost), a pair never split. Every picture is labelled by `label-shot.py` like the server's ("BRANCH PREVIEW · not live ·
+   <branch>": the base branch's name on BEFORE, the job's branch on AFTER) and posted only after the label step; names are `ultra-<shot>.png`, or `before-low-<shot>.png` /
+   `after-low-<shot>.png` for pairs, and the post says whose PC and card made them (`bogar1's PC, Intel Arc B580`).
 5. **Screen sizes.** A shot plan may carry `resolutions`: up to 4 different sizes from `1920x1080`, `2560x1440`, `3840x2160` and `3440x1440` (default: only the standard 1920x1080, team app 0.4.7), which
-   the prompt asks for on UI changes (windows, tooltips, the HUD). `readShotPlan` (`runner/lib/clips.cjs`) checks the list: a list that is not allowed is dropped and the first post says so
+   the prompt asks for on a new window or a change to the HUD's layout. `readShotPlan` (`runner/lib/clips.cjs`) checks the list: a list that is not allowed is dropped and the first post says so
    ("The screen sizes asked for were not usable ..., so the standard size was used"). A valid list stays in the plan the app gets and is also set beside it as the payload's `resolutions`;
    the app runs every size and the pictures keep their size in the name (`before-low-1920x1080-a.png`). A job holds at most 40 pictures (builds x presets x shots x sizes): over that the
-   job renders Ultra only, and when it is still too many the BEFORE pictures go; the first post says which.
-6. **Fallbacks, all best effort.** The base would not build, or the branch has no commits of its own: one job with one build (`files`, "Screenshots of a change, about 2 minutes") and AFTER
-   pictures only, flat as before ("Low then Ultra"; the post says there is no BEFORE). The pair's job fails (the plan uses a window or item only the change has, which the unchanged game
+   job renders the plan's highest preset only, and when it is still too many the BEFORE pictures go; the first post says which.
+6. **Fallbacks, all best effort.** BEFORE was asked for but the base would not build, or the branch has no commits of its own: one job with one build (`files`) and AFTER
+   pictures only (the post says there is no BEFORE). The pair's job fails (the plan uses a window or item only the change has, which the unchanged game
    cannot run): the same plan is asked again as one build, once. No team PC online by the time the proposal is posted: the server-rendered picture on request, as before. A failed build or
    job is audited (`team-shots`) and, when the proposal said pictures follow, said in the thread in one line ("⚠ No pictures from a team PC this time (<reason>). Say `!shot` to ask again.").
    Nothing here widens an approval: the team PC only renders, a human still ✅.

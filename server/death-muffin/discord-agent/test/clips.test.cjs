@@ -96,9 +96,20 @@ test('clips: shot plan screen sizes: from the four on the list, at most 4, each 
   assert.deepEqual(C.RESOLUTIONS, ['1920x1080', '2560x1440', '3840x2160', '3440x1440']);
   for (const bad of [[], '1920x1080', ['800x600'], ['1920x1080', '1920x1080'], ['1920x1080', '2560x1440', '3840x2160', '3440x1440', '1600x900'], [1920], null]) assert.ok(C.checkResolutions(bad).error, JSON.stringify(bad));
   const s = wt(); const put = (o) => fs.writeFileSync(path.join(s, '.dm-shot.json'), JSON.stringify(o));
-  put({ shots: [{ name: 'a' }], resolutions: ['2560x1440'] }); assert.deepEqual(C.readShotPlan(s), { plan: { shots: [{ name: 'a' }], resolutions: ['2560x1440'] }, notes: [] });
+  put({ shots: [{ name: 'a' }], resolutions: ['2560x1440'] }); assert.deepEqual(C.readShotPlan(s), { plan: { shots: [{ name: 'a' }], resolutions: ['2560x1440'] }, notes: [], before: false, presets: ['ultra'] });
   put({ shots: [{ name: 'a' }], resolutions: ['640x480'] }); const r = C.readShotPlan(s);
   assert.deepEqual(r.plan, { shots: [{ name: 'a' }] }); assert.match(r.notes[0], /screen sizes asked for were not usable.*so the standard size was used/);
+});
+
+test('clips: shot plan BEFORE and presets: one AFTER on Ultra by default; asked-for presets lowest first; both are taken out of the plan; anything else falls back with a note', () => {
+  assert.deepEqual(C.checkPresets(undefined), {}); assert.deepEqual(C.checkPresets(['ultra', 'low']), { list: ['low', 'ultra'] });
+  for (const bad of [[], 'ultra', ['potato'], ['low', 'low'], ['low', 'medium', 'high', 'ultra', 'low'], [1], null]) assert.ok(C.checkPresets(bad).error, JSON.stringify(bad));
+  const s = wt(); const put = (o) => fs.writeFileSync(path.join(s, '.dm-shot.json'), JSON.stringify(o));
+  put({ shots: [{ name: 'a' }], before: true, presets: ['ultra', 'high'] });
+  assert.deepEqual(C.readShotPlan(s), { plan: { shots: [{ name: 'a' }] }, notes: [], before: true, presets: ['high', 'ultra'] });
+  put({ shots: [{ name: 'a' }], before: 'yes', presets: ['potato'] }); const r = C.readShotPlan(s);
+  assert.deepEqual(r.plan, { shots: [{ name: 'a' }] }); assert.equal(r.before, false); assert.deepEqual(r.presets, ['ultra']);
+  assert.match(r.notes.join(' '), /graphics presets asked for were not usable.*so Ultra was used.*"before" must be true or false/);
 });
 
 test('clips: a symlink or a directory is not a request; classes and the shot plan', () => {
@@ -106,7 +117,7 @@ test('clips: a symlink or a directory is not a request; classes and the shot pla
   assert.match(C.readClipRequest(d).error, /regular file/);
   assert.equal(C.classOf('reaper'), 11); assert.equal(C.classOf('hero_gravecaller'), 2); assert.equal(C.classOf(4), 4); assert.equal(C.classOf(7), 0); assert.equal(C.classOf('nope'), 0); assert.equal(C.classOf(undefined), 0);
   const s = wt(); const put = (t) => fs.writeFileSync(path.join(s, '.dm-shot.json'), t);
-  assert.equal(C.readShotPlan(s), null); put('{"shots":[{"name":"a"}]}'); assert.deepEqual(C.readShotPlan(s), { plan: { shots: [{ name: 'a' }] }, notes: [] });
+  assert.equal(C.readShotPlan(s), null); put('{"shots":[{"name":"a"}]}'); assert.deepEqual(C.readShotPlan(s), { plan: { shots: [{ name: 'a' }] }, notes: [], before: false, presets: ['ultra'] });
   put('{"shots":[]}'); assert.equal(C.readShotPlan(s), null); put('[{"name":"a"}]'); assert.equal(C.readShotPlan(s), null); put('{"shots":["a"]}'); assert.equal(C.readShotPlan(s), null);
   put('nope'); assert.equal(C.readShotPlan(s), null); put(JSON.stringify({ shots: [{ name: 'a', pad: 'x'.repeat(40000) }] })); assert.equal(C.readShotPlan(s), null);
 });

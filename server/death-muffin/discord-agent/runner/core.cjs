@@ -365,11 +365,14 @@ function createRunner(cfgIn, opts = {}) {
         const why = requestTest(job, msg.userId);
         return why ? { action: 'reply', text: why } : { action: 'accepted' };
       }
-      case 'shot':
+      case 'shot': {
         if (job.turns >= cfg.maxTurnsPerJob) return { action: 'reply', text: 'This thread has hit its turn limit. Start a new request in the channel.' };
-        // shotCmd: with a team PC online processJob swaps this for the team wording (the plan only; the team PC renders it)
-        job.queue.push({ ...msg, shotCmd: true, text: 'Show me what your current change looks like: write a shot plan to .dm-shot.json and run shot-godot.sh, check the images yourself, and keep your reply to one or two lines. If you have not changed anything yet, capture the game as it is now for the thing we have been talking about.' });
+        // shotCmd: with a team PC online processJob swaps this for the team wording (the plan only; the team PC renders it). Words after `!shot` ("before and
+        // after", "on Low too") go to the agent with either wording.
+        const words = rest.join(' ').trim(), shotWords = words ? ` They added: "${clip(words, 300)}".` : '';
+        job.queue.push({ ...msg, shotCmd: true, shotWords, text: 'Show me what your current change looks like: write a shot plan to .dm-shot.json and run shot-godot.sh, check the images yourself, and keep your reply to one or two lines. If you have not changed anything yet, capture the game as it is now for the thing we have been talking about.' + shotWords });
         job.lastActive = now(); save(); pump(); return { action: 'accepted' };
+      }
       case 'clips': {
         if (!job.lastClip) return { action: 'reply', text: 'There is no short-video request in this thread yet. Ask me to show a change in motion, or to try a few options, and I will record them on a team PC.' };
         if (job.running) return { action: 'reply', text: 'Busy right now; try again in a minute.' };
@@ -627,13 +630,13 @@ function createRunner(cfgIn, opts = {}) {
     const artNotes = msgs.filter((m) => m.art).map((m) => m.text);
     if (artNotes.length) extra = (extra ? extra + '\n\n' : '') + artNotes.join('\n\n');
     // Team pictures (team helper wave 2): is a team PC online as this turn starts? Then the agent writes a shot plan for every visible change and does not
-    // render it itself (the team PC does, before and after, once the proposal is out); otherwise it works exactly as before.
+    // render it itself (the team PC does, once the proposal is out); otherwise it works exactly as before.
     job.teamTurn = false; job.shotAsked = false;
     if (real.length && teamEnabled()) {
       job.teamTurn = (await teamPcs()).length > 0;
       if (job.teamTurn && job.worktree) for (const f of ['.dm-shot.json', CL.CLIP_FILE]) { try { fs.rmSync(path.join(job.worktree, f), { force: true }); } catch { /* none */ } }   // a plan left from an earlier turn describes an earlier change
       if (real.some((m) => m.shotCmd)) job.shotAsked = job.teamTurn;
-      if (job.teamTurn) real = real.map((m) => (m.shotCmd ? { ...m, text: TEAM_SHOT_ASK } : m));
+      if (job.teamTurn) real = real.map((m) => (m.shotCmd ? { ...m, text: TEAM_SHOT_ASK + (m.shotWords || '') } : m));
       if (job.clipAsk) extra = (extra ? extra + '\n\n' : '') + clipChoiceNote(job.clipAsk);
       extra = (extra ? extra + '\n\n' : '') + (job.teamTurn ? TEAM_ON_NOTE : TEAM_OFF_NOTE);
     }
@@ -1002,7 +1005,7 @@ function createRunner(cfgIn, opts = {}) {
     const teamPcsNow = teamPlan && (shots.length || job.teamTurn || job.shotAsked) ? await teamPcs() : [];
     job.shotAsked = false; job.clipAsk = null;   // a change is proposed: the options people were asked about are settled
     if (shots.length) embed.image = { url: `attachment://${shots[0].name}` };
-    if (teamPcsNow.length) embed.fields.splice(embed.fields.length - 1, 0, { name: 'Screenshots', value: `${shots.length ? 'More pictures' : 'Pictures'} from a team PC follow (before and after, on a real graphics card; a few minutes).`, inline: false });
+    if (teamPcsNow.length) embed.fields.splice(embed.fields.length - 1, 0, { name: 'Screenshots', value: `${shots.length ? 'More pictures' : 'Pictures'} from a team PC follow (${teamPlan.before ? 'before and after, ' : ''}on a real graphics card; a few minutes).`, inline: false });
     // screenshots only on request (Helix, 2026-10-12): a proposal without pictures offers them
     else if (!shots.length) embed.fields.splice(embed.fields.length - 1, 0, { name: 'Screenshots', value: 'None taken. Say `!shot` to see this change.', inline: false });
     // no ping when the original approval is about to carry (it ships by itself; carryApproval pings if it cannot)
@@ -1047,12 +1050,13 @@ function createRunner(cfgIn, opts = {}) {
   // ---------- team PC pictures and short videos (teamapp/README.md; server/death-muffin/README.md "Team jobs"; README "Team PC pictures", "Clips and choices") ----------
   // A team PC (War's, Muffins', Helix's) has a real graphics card; the server's software renderer does not. When one is online as a turn starts, the agent is
   // told so: it writes a shot plan (.dm-shot.json) for every visible change and does not render. After the proposal the runner builds the branch for the team PC
-  // (preview-godot.sh --team; teamBuildCmd in tests) and the unchanged base too (a scratch worktree at job.base), queues ONE `shots` job with both builds, and
-  // posts the pairs (BEFORE then AFTER per shot and preset, labelled by label-shot.py). A base that cannot be built means AFTER pictures only. A `clip` job
+  // (preview-godot.sh --team; teamBuildCmd in tests) and queues ONE `shots` job: one AFTER picture a shot on Ultra unless the plan asks for more (`presets`; with
+  // `"before": true` the unchanged base is built too, in a scratch worktree at job.base, and the thread gets BEFORE then AFTER pairs per shot and preset, labelled
+  // by label-shot.py). A base that cannot be built means AFTER pictures only. A `clip` job
   // records the agent's .dm-clip.json (variants of a tune over the game's data), and the thread is asked which one people like best. Everything is best effort,
   // in the background, and never changes what is shipped: the team PC only renders, a human decides.
   const teamEnabled = () => cfg.teamShots !== false && !!cfg.teamApi;
-  const TEAM_ON_NOTE = '[A team PC is online right now. Pictures need no `!shot`: for every change players can see, write the shot plan `.dm-shot.json` (see "Screenshots", when a team PC is online) and do NOT render anything yourself; the team PC renders it after the proposal, before and after, on a real graphics card. Short videos and "pick one" options work too (see "Clips and choices").]';
+  const TEAM_ON_NOTE = '[A team PC is online right now. Pictures need no `!shot`: for every change players can see, write the shot plan `.dm-shot.json` (see "Screenshots", when a team PC is online) and do NOT render anything yourself; the team PC renders it after the proposal on a real graphics card, one AFTER picture a shot on Ultra unless the plan asks for more. Short videos and "pick one" options work too (see "Clips and choices").]';
   const TEAM_OFF_NOTE = '[No team PC is online right now. Pictures only on request (`!shot`), rendered on the server as described under "Screenshots"; short videos ("Clips and choices") are not possible this turn.]';
   const TEAM_SHOT_ASK = 'Show me what your current change looks like: a team PC is online, so write the shot plan to .dm-shot.json for it (do not render anything yourself; the team PC renders it, on a real graphics card) and keep your reply to one or two lines. If you have not changed anything yet, write the plan for the game as it is now, for the thing we have been talking about.';
   const CLIP_OFFLINE = 'Short videos need a team PC online, and none is right now, so I could not record them. Say `!clips` once a team PC is on, or tell me which option to apply.';
@@ -1142,23 +1146,23 @@ function createRunner(cfgIn, opts = {}) {
       const plan = sp.plan, notes = sp.notes.slice();
       const pcs = o.pcs && o.pcs.length ? o.pcs : await teamPcs();
       if (!pcs.length) { if (o.forced) say(job, 'No team PC is online right now, so there are no pictures from one. Say `!shot` again once one is on.'); return; }
-      if (o.forced) say(job, 'Pictures from a team PC follow in a few minutes (before and after).');
+      if (o.forced) say(job, `Pictures from a team PC follow in a few minutes${sp.before ? ' (before and after)' : ''}.`);
       const after = await teamBuild(job.worktree, job);
       if (after.error) return fail(`the game could not be built for the team PC: ${after.error}`);
       if (stale()) return;
-      let before = null;   // the unchanged game, when there is a change to compare with; no base build = AFTER pictures only
-      if (job.base && head !== job.base) {
+      let before = null;   // the unchanged game, when the plan asks for it (`"before": true`) and there is a change to compare with; no base build = AFTER pictures only
+      if (sp.before && job.base && head !== job.base) {
         const b = await teamBuildBase(job);
         if (b.error) audit.log('team-shots', { job: job.id, before: false, why: clip(b.error, 200) }); else before = b;
         if (stale()) return;
       }
       const cls = CL.classOf(plan.discipline) || 2;
-      // A job holds at most TEAM_FILES_PER_JOB pictures (the backend's limit): builds x presets x shots x screen sizes. When the plan asks for many sizes, Ultra alone
-      // is rendered (a screen size matters for the layout, a preset hardly), and when that is still too many the BEFORE pictures go.
+      // A job holds at most TEAM_FILES_PER_JOB pictures (the backend's limit): builds x presets x shots x screen sizes. When the plan asks for many sizes, its highest
+      // preset alone is rendered (a screen size matters for the layout, a preset hardly), and when that is still too many the BEFORE pictures go.
       const sizes = plan.resolutions && plan.resolutions.length ? plan.resolutions.length : 1;
       const fits = (builds, presets) => builds * presets.length * plan.shots.length * sizes <= TEAM_FILES_PER_JOB;
-      let presets = ['low', 'ultra'];
-      if (!fits(before ? 2 : 1, presets)) { presets = ['ultra']; notes.push('Only Ultra was rendered: both presets at every size would be more pictures than one job can hold.'); }
+      let presets = sp.presets;   // lowest first; Ultra alone unless the plan asks for more
+      if (presets.length > 1 && !fits(before ? 2 : 1, presets)) { presets = presets.slice(-1); notes.push(`Only ${presets[0].charAt(0).toUpperCase() + presets[0].slice(1)} was rendered: every preset at every size would be more pictures than one job can hold.`); }
       if (before && !fits(2, presets)) { before = null; notes.push('There are no BEFORE pictures: they would not fit in one job at this many sizes.'); }
       const common = { rev: head.slice(0, 12), godotVersion: '4.7.2.stable', plan, ...(plan.resolutions ? { resolutions: plan.resolutions } : {}), presets, args: ['--dev-offline', `--class=${cls}`, '--qa'] };
       const attempt = async (paired) => {
@@ -1177,7 +1181,7 @@ function createRunner(cfgIn, opts = {}) {
       if (paired && !r.stale && r.error && r.status === 'failed') { audit.log('team-shots', { job: job.id, teamJob: r.id, paired: false, retry: true, why: clip(r.error, 200) }); paired = false; r = await attempt(false); }
       if (r.stale || stale()) return;
       if (r.error) return fail(r.error, { teamJob: r.id });
-      const pics = await teamPictures(job, r.t, r.id, { paired, plan, who: whoOf(pcs, r.t), noBefore: !paired, notes });
+      const pics = await teamPictures(job, r.t, r.id, { paired, plan, who: whoOf(pcs, r.t), noBefore: sp.before && !paired, notes });
       if (!pics) return fail('the team PC finished without pictures that could be labelled', { teamJob: r.id });
       audit.log('team-shots', { job: job.id, teamJob: r.id, ok: true, pictures: pics, paired });
     } catch (e) { fail(e && e.message ? e.message : String(e)); } finally { teamBusy.delete(job.id); }
@@ -1186,7 +1190,7 @@ function createRunner(cfgIn, opts = {}) {
   // Names the app uploads: `<preset>_<shot>.png`, or `<before|after>_<preset>_<shot>.png` for a two-build job; Discord gets `low-a.png` / `before-low-a.png`.
   async function teamPictures(job, t, id, { paired, plan, who, noBefore, notes = [] }) {
     const dir = path.join(path.resolve(cfg.teamResultsDir), id);
-    const rank = (n) => (n.startsWith('low') ? 0 : n.startsWith('ultra') ? 1 : 2);
+    const rank = (n) => (CL.SHOT_PRESETS.includes(n) ? CL.SHOT_PRESETS.indexOf(n) : CL.SHOT_PRESETS.length);
     const items = [];   // { build, preset, shot, raw, src, buf }; `raw` is the neutral name label-shot.py gets (its names are short and fixed; the posted names carry the preset and shot)
     for (const f of (Array.isArray(t.files) ? t.files : [])) {
       if (!f || typeof f.name !== 'string' || typeof f.path !== 'string' || path.dirname(path.resolve(f.path)) !== dir) continue;   // only what the backend stored for this job
@@ -1215,7 +1219,7 @@ function createRunner(cfgIn, opts = {}) {
     const chunked = (groups) => { const out = []; let cur = [], bytes = 0; for (const g of groups) { const gb = g.reduce((n, x) => n + x.buf.length, 0); if (cur.length && (cur.length + g.length > SHOTS_PER_POST || bytes + gb > POST_MAX_BYTES)) { out.push(cur); cur = []; bytes = 0; } cur.push(...g); bytes += gb; } if (cur.length) out.push(cur); return out; };
     if (!paired) {
       const list = got.sort((a, b) => rank(a.preset) - rank(b.preset) || (`${a.preset}-${a.shot}` < `${b.preset}-${b.shot}` ? -1 : 1));
-      chunked(list.map((x) => [x])).forEach((c, i) => post({ threadId: job.threadId }, { content: i === 0 ? `📸 The same pictures on a real graphics card (${who}), ${presets.map(cap).join(' then ')}${noBefore ? ' (no BEFORE pictures this time)' : ''}${tail}` : '📸 (more)', files: c.map(file) }));
+      chunked(list.map((x) => [x])).forEach((c, i) => post({ threadId: job.threadId }, { content: i === 0 ? `📸 On a real graphics card (${who}), ${presets.map(cap).join(' then ')}${noBefore ? ' (no BEFORE pictures this time)' : ''}${tail}` : '📸 (more)', files: c.map(file) }));
       return list.length;
     }
     // pairs: BEFORE then AFTER for each shot, a preset at a time, in the plan's order; a pair never splits across two posts
