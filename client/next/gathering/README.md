@@ -1,7 +1,7 @@
 # client/next/gathering: gathering and professions
 
 `DmNextGather` (child `Gather` of `DmNextGame`, same path on every peer) wires gathering into DmNextGame. It adds no rules:
-`DmGatherLoop` (walk -> work -> batch -> adopt the server's answer; the batch the loop has not sent yet goes with the game's `flush_all` when the player leaves or closes the window), `DmGathering` (timings, yields, success chance, XP curve, blockers, Auto's next node),
+`DmGatherLoop` (walk -> work -> batch -> adopt the server's answer; the batch the loop has not sent yet goes with the game's `flush_all` when the player leaves, logs out, switches character or closes the window: first, before the Chronicle that counts its finds is saved, and it waits for a batch still out and sends what queued behind it), `DmGathering` (timings, yields, success chance, XP curve, blockers, Auto's next node),
 `DmSkills`, `DmNodeViews` (hover / selected ring, progress arc under the hero, spent look), `DmGatherSession` (AFK report) (all in `client/game/`) are used as they are.
 How it plays on the area scenes (a cycle, the server call and its refusals, the stops, AFK, the Acre's panels and notices, the laborers, cost and gaps) is client/README.md "Gathering and the Acre"; this guide keeps the numbers of the world and who owns what.
 
@@ -22,7 +22,7 @@ A client peer has the node set and views but no loop (its character has no backe
 Nothing is built, fetched or updated outside the Acre (`set_active(area == "acre")` from `area_changed`); `DmUiPanelsB` calls `on_labor_collected` / `on_garden_result` / `on_contract_delivered` when the host has them and `DmNextUiHost` forwards to `Acre`.
 
 ## Tests
-`client/tests/gathering.gd` (all 68 nodes hovered and clicked, a node worked through the server, the stops, AFK and its report, the laborers, the garden, a contract, the Sexton's guidance feeds, the idle cost of the Gather node and the glue); `client/tests/coop.gd` checks that a node the host spends is spent on the guest.
+`client/tests/gathering.gd` (all 68 nodes hovered and clicked, a node worked through the server, the stops, AFK and its report, the laborers, the garden, a contract, the Sexton's guidance feeds, the idle cost of the Gather node and the glue, leaving mid-gather); `client/tests/coop.gd` checks that a node the host spends is spent on the guest.
 
 ## Known gaps
 - Remote players do not see a gatherer's tool / gesture or the host's laborers; clients cannot start gathering (above).

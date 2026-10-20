@@ -13,7 +13,9 @@ extends RefCounted
 ##             necromancers and the Reaper: those rules are not in the rebuild)
 ##   action    every ACT_MS: one `select_action` (rite rotation, corpse rites, target priority) and one cast; a Healing flask under 42 % hp
 ##   movement  every MOVE_MS: `select_movement` (leave telegraphs / hostile pools first, close to the primary's range, back off a pack), sent as a
-##             direction intent (re-sent every RESEND_MS, one ZERO when it stops); 2 %/s regen for 5 s after a hit (the old game loop's Easy sustain)
+##             direction intent (re-sent every RESEND_MS, one ZERO when it stops); 2 %/s regen for 5 s after a hit (the old game loop's Easy sustain).
+##             Closing on an enemy it looks along the straight line 5 times a second and, when a grave or wall is in the way, walks the navmesh's path
+##             round it (asked once in 0.8 s, `DmAutoNav`); a walk that moves the hero less than STUCK_M in STUCK_MS takes that path for STUCK_ROUTE_MS
 ## Cost: one compare per physics frame; a decision reuses its enemy / corpse / hazard dictionaries (no per-enemy allocation): every 100 ms the tables are read (0.3 ms for 62 enemies and
 ## 31 corpses on the VPS) and every 180 ms DmAutoCombat chooses (0.6 ms); a hero that holds his ground reads them only when an action is due.
 
@@ -26,6 +28,9 @@ const REGEN_MS := 5000.0
 const FLASK_FRAC := 0.42
 const ZONE_PAD := 0.45               ## DmHostileZone.TARGET_PAD: a hero's radius added to a pool's
 const CORPSE_CAP := 256              ## DmAutoCombat inspects at most this many corpses
+const STUCK_MS := 1000.0             ## a walk that has moved the hero less than STUCK_M in this long is stuck (a pocket the line test missed, a crowd)
+const STUCK_M := 0.3
+const STUCK_ROUTE_MS := 2000.0       ## and takes the navmesh's path to the enemy for this long
 ## The slots of an enemy's record in `_facts` (an Array per enemy, written by the core host's signals; the bulk arrays carry only place and state).
 const F_RADIUS := 0
 const F_ELITE := 1
@@ -46,7 +51,8 @@ var gate_probe := Callable()                     ## () -> bool, tests swap it; d
 var telegraphs := DmBossTelegraphs.new()
 var mem: Dictionary = {}                         ## AutoMoveMemory
 var aim_active := false                          ## auto has a target: the standing mouse-aim leaves the hero alone
-var stats := {"ticks": 0, "actions": 0, "casts": 0, "moves": 0, "yields": 0, "flasks": 0, "fills": 0}   ## (fills: the times the core's tables were read for a decision)
+var stats := {"ticks": 0, "actions": 0, "casts": 0, "moves": 0, "yields": 0, "flasks": 0, "fills": 0, "stuck": 0}   ## (fills: the times the core's tables were read for a decision; stuck: walks sent round by the path)
+var nav := DmAutoNav.new()                       ## the walk's eyes on the navmesh: the straight line and the way round (counts its questions in `nav.queries`)
 var last_action: Variant = null                  ## the last select_action result (tests)
 var hold_position := false                       ## cast but never walk (the in-game benchmark keeps the hero at the room's centre)
 
@@ -56,6 +62,8 @@ var _last_ms := 0.0
 var _resend := 0.0
 var _dir_on := false
 var _dir := Vector3.ZERO
+var _still_p := Vector3.ZERO                     ## where the walk last saw the hero move, and since when (the stuck watch)
+var _still_at := 0.0
 var _wired := false
 var _pool: Array = []                            ## reused enemy dictionaries
 var _enemies: Array = []
@@ -68,7 +76,7 @@ var _zones := {}                                 ## zone id -> [x, z, radius]: t
 var _core_wired := false
 var _boss := {"active": false, "hp": 0.0, "state": "idle", "x": 0.0, "z": 0.0}
 var _ctx := {"player": {}, "enemies": null, "corpses": null, "boss": null, "thrallCount": 0, "thrallCap": 0, "ready": Callable(), "primary": "", "primaryRange": 0.0,
-	"selfId": "", "family": "necromancer", "signature": "", "now": 0.0, "nav": null, "hazards": null}
+	"selfId": "", "family": "necromancer", "signature": "", "now": 0.0, "nav": null, "routeNav": null, "hazards": null}
 var _slots: Array = ["", "", "", "", "", "", ""]
 var _boss_id := 0
 
@@ -182,7 +190,7 @@ func tick(now: float) -> void:
 		_next_act = now + ACT_MS
 		_act(b, c, ctx, p, now)
 	if not hold_position:
-		_move(ctx, dt, now)
+		_move(ctx, dt, now, p)
 
 
 ## Drop the target and stop the walk this adapter started (the gate closed, or a deliberate input took over).
@@ -313,7 +321,10 @@ func _fill(b: DmHeroBody, c: DmRiteCaster, p: Vector3, now: float) -> Dictionary
 	_ctx["selfId"] = str(c.peer_id)
 	_ctx["signature"] = _slots[6]
 	_ctx["now"] = now
-	_ctx["nav"] = null
+	_ctx["nav"] = null   # (the dodge's many candidate spots would each cost a look along the navmesh: only the walk toward an enemy gets `routeNav`)
+	if nav.world == null:
+		nav.world = game.world
+	_ctx["routeNav"] = nav
 	_ctx["hazards"] = _hazards
 	return _ctx
 
@@ -357,7 +368,7 @@ func _flask() -> void:
 		belt.drink_flask()
 
 
-func _move(ctx: Dictionary, dt: float, now: float) -> void:
+func _move(ctx: Dictionary, dt: float, now: float, p: Vector3) -> void:
 	var d: Variant = DmAutoCombat.select_movement(ctx, mem, now, dt)
 	if d == null:
 		mem["dir"] = null
@@ -371,5 +382,15 @@ func _move(ctx: Dictionary, dt: float, now: float) -> void:
 		_resend = now + RESEND_MS
 		stats["moves"] += 1
 		game.session.request_move_dir(v)
+	if not _dir_on or p.distance_squared_to(_still_p) > STUCK_M * STUCK_M:
+		_still_p = p
+		_still_at = now
+	elif now - _still_at >= STUCK_MS:
+		# walking and going nowhere: for a while the walk takes the navmesh's path to the enemy (a fresh one now), whatever the line test says
+		_still_at = now
+		stats["stuck"] += 1
+		mem["stuckUntil"] = now + STUCK_ROUTE_MS
+		mem["route"] = null
+		mem["sightAt"] = 0.0
 	_dir = v
 	_dir_on = true

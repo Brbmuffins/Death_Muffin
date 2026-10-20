@@ -64,8 +64,6 @@ player part of a gain until it is fixed; few real sessions ran on the gains save
 
 ## Combat and statuses
 
-- **Easy auto combat parks the hero in pockets of tombstones:** it steers straight at the nearest enemy, with no path round the graves (found
-  when the core was compared with the old game, DECISIONS B50).
 - Barrier has no decay (`client/next/status/README.md`), and the pools of a boss that resets linger their remaining seconds (`client/next/bosses/README.md`).
 
 ## Built but never shown

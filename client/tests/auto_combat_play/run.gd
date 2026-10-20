@@ -3,7 +3,7 @@ extends SceneTree
 ## The enemies are static bodies of the combat core (stunned for an hour, harmless), as tests/rites.gd has them; the hostile pool is the core host's `zone` event.
 ##   A gate (character flag, setting)    B target priority + a rite rotation    C corpse rites    D dodges a hostile pool / boss telegraph feed
 ##   E yields to deliberate input        F standing mouse-aim facing            G shake once per cast for every rite that shook before
-##   H per-frame cost, auto-combat on vs off
+##   H per-frame cost, auto-combat on vs off    I the Reaper plays too    J walks round the graves between it and an enemy instead of parking in a pocket of them
 
 const DT := 1.0 / 60.0
 
@@ -31,6 +31,13 @@ func check(ok: bool, what: String) -> void:
 	else:
 		failed += 1
 		print("FAIL: ", what)
+
+
+## The line test of a hero that cannot see what is in his way: every line is clear.
+class BlindNav extends DmAutoNav:
+	func clear_line(_ax: float, _az: float, _bx: float, _bz: float, _r: float = 0.45) -> bool:
+		queries["lines"] += 1
+		return true
 
 
 func ticks(n: int) -> void:
@@ -281,6 +288,65 @@ func _run() -> void:
 	var due := 3000.0 / ACT_MS()   # (one decision every ACT_MS: a quarter of that to a quarter more is throttled and working)
 	check(float(decisions) > due * 0.25 and float(decisions) < due * 1.25, "H: decisions are throttled (%d in 3 s, ~every %.0f ms)" % [decisions, ACT_MS()])
 
+	# ---- J: graves in the way. Auto steered straight at the nearest enemy and parked in the pocket between two graves; now it looks along the line, asks the navmesh for the way round
+	# and walks it. The places are the Graves' own: two graves close enough that the navmesh closes the gap between them, the hero on one side and an enemy out of reach on the other.
+	store.update({"auto_combat": true})
+	var pockets := graves_pockets(3, float(DmAbilities.def("bone_needle")["range"]))
+	check(pockets.size() == 3, "J: the Graves hold graves close enough to make pockets (%d found)" % pockets.size())
+	var reach_j := float(DmAbilities.def("bone_needle")["range"])
+	for i in pockets.size():
+		var at: Vector3 = pockets[i][0]
+		var to: Vector3 = pockets[i][1]
+		clear_foes()
+		await ticks(3)
+		reset_hero(at)
+		await ticks(3)
+		var far_foe := foe(to)
+		var ticks0: int = auto.stats["ticks"]
+		auto.nav.queries["lines"] = 0
+		auto.nav.queries["paths"] = 0
+		var got_in := await until(func() -> bool: return hero.position.distance_to(pos_of(far_foe)) <= reach_j, 12.0)
+		var d_j := hero.position.distance_to(pos_of(far_foe))
+		check(got_in, "J: pocket %d: it walked round the graves to its casting distance (%.1f m of %.1f, from %.1f m)" % [i + 1, d_j, reach_j, at.distance_to(to)])
+		check(await until(func() -> bool: return casts_of("bone_needle") >= 1, 3.0), "J: pocket %d: ...and cast at the enemy from there" % [i + 1])
+		var span_ms := float(auto.stats["ticks"] - ticks0) * DmNextAutoCombat.MOVE_MS
+		var q: Dictionary = auto.nav.queries
+		check(int(q["paths"]) >= 1 and int(q["lines"]) <= int(ceilf(span_ms / DmAutoCombat.SIGHT_MS)) + 2 and int(q["paths"]) <= int(ceilf(span_ms / DmAutoCombat.ROUTE_MS)) + 2, "J: pocket %d: it asked the navmesh for a path (%d) and looked along the line at most every %.0f ms (%d looks in %.0f ms), never per frame" % [i + 1, int(q["paths"]), DmAutoCombat.SIGHT_MS, int(q["lines"]), span_ms])
+
+	if not pockets.is_empty():
+		var a: Vector3 = pockets[0][0]
+		var b: Vector3 = pockets[0][1]
+		var open_to := a   # (the longest case of a look: a line all of whose samples are on the navmesh)
+		for k in 16:
+			var cand := a + Vector3(sin(TAU * float(k) / 16.0), 0.0, cos(TAU * float(k) / 16.0)) * a.distance_to(b)
+			if auto.nav.clear_line(a.x, a.z, cand.x, cand.z):
+				open_to = cand
+				break
+		var t0 := Time.get_ticks_usec()
+		for i in 50:
+			auto.nav.clear_line(a.x, a.z, open_to.x, open_to.z)
+		var t1 := Time.get_ticks_usec()
+		for i in 50:
+			auto.nav.find_path(a.x, a.z, b.x, b.z)
+		var t2 := Time.get_ticks_usec()
+		print("INFO J: a look along a clear %.0f m line %.0f us, a path round the graves %.0f us (at most %.1f looks and %.2f paths a second while closing)" % [a.distance_to(open_to), float(t1 - t0) / 50.0, float(t2 - t1) / 50.0, 1000.0 / DmAutoCombat.SIGHT_MS, 1000.0 / DmAutoCombat.ROUTE_MS])
+	# ...and a walk that goes nowhere takes the path whatever the line test says: the line test is blinded (always "clear") in the first pocket, so the hero walks into it and stands
+	if not pockets.is_empty():
+		var real_nav := auto.nav
+		var blind := BlindNav.new()
+		blind.world = g.world
+		auto.nav = blind
+		clear_foes()
+		await ticks(3)
+		reset_hero(pockets[0][0])
+		await ticks(3)
+		var stuck0: int = auto.stats["stuck"]
+		var blind_foe := foe(pockets[0][1])
+		var stuck_out := await until(func() -> bool: return hero.position.distance_to(pos_of(blind_foe)) <= reach_j, 12.0)
+		check(auto.stats["stuck"] > stuck0 and blind.queries["paths"] >= 1, "J: a walk that gets nowhere for a while is noticed (%d stuck) and asks for the path (%d)" % [auto.stats["stuck"] - stuck0, blind.queries["paths"]])
+		check(stuck_out, "J: ...and the path takes the hero out of the pocket to its casting distance (%.1f m of %.1f)" % [hero.position.distance_to(pos_of(blind_foe)), reach_j])
+		auto.nav = real_nav
+
 	# ---- I: the Reaper plays too (a second game, her own account)
 	var arena := Vector3(0, 0, -6)   # open ground near the start (the Graves' far end has walls the walk catches on)
 	store.update({"auto_combat": false})
@@ -333,6 +399,45 @@ func _run() -> void:
 	print("%d passed, %d failed" % [passed, failed])
 	print("%s auto_combat_play %d checks%s" % ["PASS" if failed == 0 else "FAIL", passed + failed, "" if failed == 0 else " (%d failed)" % failed])
 	quit(0 if failed == 0 else 1)
+
+
+## Places the navmesh closes between two graves of the Graves, from the world's own data: [from, to] pairs with the hero's side 3 m from the middle of two graves less than 3.2 m apart, the enemy's
+## side `reach + 6` m on the other side, both on the navmesh, the straight line between them cut by the graves and a way round that is no more than half as long again. The first `n`.
+func graves_pockets(n: int, reach: float) -> Array:
+	auto.nav.world = g.world
+	var circles: Array = []
+	for p in DmData.world()["props"]:
+		var o: Variant = p.get("obstacle")
+		if String(p.get("area", "")) == "graves" and o != null and String(o["kind"]) == "circle":
+			circles.append(Vector2(float(o["x"]), float(o["z"])))
+	var out: Array = []
+	for i in circles.size():
+		for j in range(i + 1, circles.size()):
+			var a: Vector2 = circles[i]
+			var b: Vector2 = circles[j]
+			if a.distance_to(b) > 3.2:
+				continue
+			var mid: Vector2 = (a + b) * 0.5
+			var side: Vector2 = (b - a).orthogonal().normalized()
+			for sign_ in [1.0, -1.0]:
+				var here: Vector2 = mid + side * 3.0 * sign_
+				var there: Vector2 = mid - side * (reach + 6.0) * sign_
+				if not on_ground(here) or not on_ground(there) or auto.nav.clear_line(here.x, here.y, there.x, there.y):
+					continue
+				var path := g.world.nav_path(Vector3(here.x, 0.0, here.y), Vector3(there.x, 0.0, there.y))
+				var long_ := 0.0
+				for k in range(1, path.size()):
+					long_ += path[k - 1].distance_to(path[k])
+				if long_ > 0.0 and long_ <= here.distance_to(there) * 1.5:
+					out.append([Vector3(here.x, 0.0, here.y), Vector3(there.x, 0.0, there.y)])
+					if out.size() >= n:
+						return out
+	return out
+
+
+func on_ground(pt: Vector2) -> bool:
+	var q: Vector3 = g.world.nav_closest(Vector3(pt.x, 0.0, pt.y))
+	return Vector2(q.x - pt.x, q.z - pt.y).length() < 0.05
 
 
 func ACT_MS() -> float:

@@ -7,8 +7,11 @@ extends RefCounted
 ##   enemies (Array or id->enemy Dictionary of DmSimEnemy / Dictionaries), corpses (same, DmSimCorpse), boss (DmBossState or Dictionary),
 ##   thrallCount, thrallCap, ready (Callable(id: String) -> bool), [primary, primaryRange, selfId, family, signature, now].
 ## Returns null or {"id": String, "target": {x, z, [boss: true | enemyId]}}.
-## select_movement(ctx, mem, now, dt) = selectAutoCombatMovement: ctx also carries [nav: DmNav, hazards: Array of dm_auto_dodge hazards].
-## `mem` is the AutoMoveMemory Dictionary, mutated in place (null = stateless). Returns null or {x, z}.
+## select_movement(ctx, mem, now, dt) = selectAutoCombatMovement: ctx also carries [nav: DmNav, routeNav, hazards: Array of dm_auto_dodge hazards].
+## `nav` serves the walk toward a target and the dodge's spots; `routeNav` (the game on the navmesh, where the dodge's many candidate spots would each cost a query) serves the walk toward
+## a target only, and stands in for `nav` there. Both answer `clear_line(ax, az, bx, bz, r)` and `find_path(fx, fz, tx, tz, r)` (Array of [x, z]).
+## `mem` is the AutoMoveMemory Dictionary, mutated in place (null = stateless); the caller may set `stuckUntil` (ms) to make the walk take the route round whatever holds the hero.
+## Returns null or {x, z}.
 ## Optional TS fields are read through _g(): a missing key, null, or (for sim objects) the field default stands for "undefined".
 
 const BOSS_RADIUS: float = DmSimConsts.BOSS_RADIUS
@@ -17,6 +20,8 @@ const CLOSE_START := 0.2
 const CLOSE_STOP := 1.1
 const EVADE_COMMIT_MS := 450.0
 const TURN_SECONDS := 0.1
+const SIGHT_MS := 200.0   ## how often the walk looks along the straight line to its target
+const ROUTE_MS := 800.0   ## how long a route round something in the way is followed before it is asked for again
 
 
 static func _g(o: Variant, name: String, def: Variant = null) -> Variant:
@@ -744,6 +749,7 @@ static func _raw_movement(ctx: Dictionary, mem: Variant, now: float) -> Variant:
 	var p_pt := {"x": px, "z": pz}
 	var p_area: String = str(_g(p, "area", ""))
 	var nav: Variant = ctx.get("nav")
+	var route_nav: Variant = ctx.get("routeNav", nav)
 	# Boss telegraphs, hymn cones and hostile pools come first: step out to the nearest safe spot, and (below) never walk back in.
 	var hazards: Variant = ctx.get("hazards")
 	var has_goal := false
@@ -838,20 +844,20 @@ static func _raw_movement(ctx: Dictionary, mem: Variant, now: float) -> Variant:
 		mem["closing"] = closing
 	if closing:
 		# A straight line into a tombstone makes the hero grind against it. When the target is out of sight, walk the nav path around.
-		if mem != null and nav != null:
+		if mem != null and route_nav != null:
 			if now >= float(_g(mem, "sightAt", 0.0)):
-				mem["sightAt"] = now + 200.0
-				mem["blocked"] = not nav.clear_line(px, pz, float(nearest["x"]), float(nearest["z"]), 0.45)
+				mem["sightAt"] = now + SIGHT_MS
+				mem["blocked"] = now < float(_g(mem, "stuckUntil", 0.0)) or not route_nav.clear_line(px, pz, float(nearest["x"]), float(nearest["z"]), 0.45)
 			if _tr((mem as Dictionary).get("blocked")):
 				var route: Variant = (mem as Dictionary).get("route")
 				if route == null or (route as Array).is_empty() or _g(mem, "routeFor", null) != nearest["id"] or now >= float(_g(mem, "routeAt", 0.0)):
-					var path: Array = nav.find_path(px, pz, float(nearest["x"]), float(nearest["z"]))
+					var path: Array = route_nav.find_path(px, pz, float(nearest["x"]), float(nearest["z"]))
 					var conv: Array = []
 					for w in path:
 						conv.append({"x": float(w[0]), "z": float(w[1])} if w is Array else {"x": float(w["x"]), "z": float(w["z"])})
 					mem["route"] = conv
 					mem["routeFor"] = nearest["id"]
-					mem["routeAt"] = now + 800.0
+					mem["routeAt"] = now + ROUTE_MS
 				var rt: Array = mem["route"]
 				while not rt.is_empty() and DmSimMath.hypot(float(rt[0]["x"]) - px, float(rt[0]["z"]) - pz) < 0.5:
 					rt.pop_front()

@@ -11,7 +11,9 @@
       "Haunting Wraith has no cooldown now, so you can cast it again while you have 5 souls to spend. With the Scythe of Undeath, every soul that lands on a full bag casts its own free Wraith, with no one-a-second limit.",
       "Toxic corpse pools now hurt at the level of the area they are in, not always like level 1: a deeper area's pools hit as hard as its monsters.",
       "A plague bearer thrall now leaves its rot pool where it falls: it slows and withers the monsters standing in it for 5 seconds.",
-      "The Mourning Bell now works: each hit of your wraiths heals you and the party members near them by 2% of their health."
+      "The Mourning Bell now works: each hit of your wraiths heals you and the party members near them by 2% of their health.",
+      "The last few seconds of gathering are no longer lost when you quit, log out or switch character: they are paid and counted before the game closes.",
+      "Easy auto combat now walks round gravestones instead of getting stuck in the gaps between them."
     ]
   },
   {
