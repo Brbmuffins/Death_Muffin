@@ -16,7 +16,7 @@ static func type_label(slot: Dictionary) -> String:
 	var id := String(slot.get("item_id", ""))
 	var t := String(slot.get("item_type", ""))
 	if t == "material":
-		if DmContent.healing_flasks().has(id) or DmContent.buff_flasks().has(id):
+		if DmContent.healing_flasks().has(id) or DmContent.brews().has(id):
 			return "potion"
 		if (DmContent.get_export("processing", "MEALS") as Dictionary).has(id):
 			return "meal"

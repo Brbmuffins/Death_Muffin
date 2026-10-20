@@ -31,8 +31,6 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
 
 ## Content pipelines
 
-- **Brew bonuses are stored twice** (found 2026-10-20 by the test audit): the items' `BUFF_FLASKS` and the brews' `BREWS` each hold every
-  flask's bonus, and only `BREWS` drives the rites, so editing the item copy changes nothing in play.
 - **An armor set touches about five files** (`server/rules/content/legendarySets.ts` or armorSets.ts, setBonuses.json, necro_gear.json,
   view_models.json, assets_used.json; `tools/generate-armor-assets.mjs` writes the rest).
 - The gear props' attachment rules (axes, size, grip point, anchor bone) live in the `_doc` of `client/data/slice/necro_gear.json`, not on a
@@ -98,9 +96,6 @@ polish list). Also:
 
 ## Party and online
 
-- **A late co-op joiner can hit a script error before its hero arrives** (found 2026-10-20 by the test audit): `client/next/next_game.gd` reads
-  `local_body().family` for the "world entered" event without the null check the lines above it have; one `coop` run in four failed with
-  "Invalid access ... 'family' on Nil" in the late joiner's start.
 - **No automatic rejoin** (D13). A dropped client returns to its own solo game and has to join again by hand (an Open party: Join; a Closed one: a new invite or Ask to join); a dropped host ends the session (D6).
 - **One area per session, Depths solo:** `client/next/areas/README.md`, `client/next/depths/README.md`.
 - **Part of a joiner's state does not reach the host's sim:** the host builds the joiner's hero from the server's record (level, gear,

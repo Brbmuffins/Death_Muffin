@@ -450,6 +450,15 @@
         "tools/hygiene/**",
         "server/death-muffin/discord-agent/install-runner.sh"
       ]
+    },
+    {
+      "id": "buff-flasks-copy",
+      "pattern": "DmContent\\.buff_flasks|static func buff_flasks",
+      "reason": "the brews (DmContent.brews, DmBrews.buff_flask) are the one home of a flask's bonus (2026-10-20)",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
     }
   ],
   "allowPaths": {

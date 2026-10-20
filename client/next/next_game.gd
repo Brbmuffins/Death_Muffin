@@ -317,7 +317,10 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		for id in ui_host.kit["grimoire"]:
 			if DmAbilities.unlock_level(id) <= rl and DmAbilities.unlock_level(id) > 1:
 				grim = true
-		game_event("world_entered", {"family": local_body().family, "level": int(lvl), "grimoire_unlocked": grim})
+		# the character's family, not the hero body's: a co-op guest's own hero can still be on its way from the host here (a late joiner's
+		# start stopped at this line, so `started`, going online and the update check never ran)
+		var fam := String(DmCharacterBuild.discipline_for(float(character.get("class_index", 0)))["family"])
+		game_event("world_entered", {"family": fam, "level": int(lvl), "grimoire_unlocked": grim})
 	load_ms = Time.get_ticks_msec() - t0
 	started.emit()
 	if ui_host != null and joiner != null and joiner.notice != "":   # the backend refused the party session before the HUD existed

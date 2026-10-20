@@ -359,7 +359,7 @@ func _extra_actions(it: Dictionary) -> Array:
 		out.append({"id": "legion", "label": "Give to legion", "hint": "Move it to the legion's %s slot; a piece already there returns to your bag" % String(legion["kit"]).capitalize()})
 	if DmGathering.tool_kind_of(id) != "":
 		out.append({"id": "toolbelt", "label": "Take off belt" if DmGathering.is_belt_slot(int(row["slot_index"])) else "Put on belt"})
-	if DmContent.healing_flasks().has(id) or DmContent.buff_flasks().has(id):
+	if DmContent.healing_flasks().has(id) or DmContent.brews().has(id):
 		out.append({"id": "use", "label": "Drink"})
 	if DmContent.healing_flasks().has(id):
 		out.append({"id": "belt", "label": "Put on belt (key Q)", "hint": "Q drinks this flask first, while you carry it"})
@@ -442,7 +442,7 @@ func _on_right_click(it: Dictionary) -> void:
 func primary_action(it: Dictionary) -> void:
 	var row: Dictionary = it["row"]
 	var id := String(row["item_id"])
-	if DmContent.healing_flasks().has(id) or DmContent.buff_flasks().has(id) or DmGathering_meals().has(id):
+	if DmContent.healing_flasks().has(id) or DmContent.brews().has(id) or DmGathering_meals().has(id):
 		use_item(id)
 	elif DmGathering.tool_kind_of(id) != "":
 		toggle_tool_belt(row)

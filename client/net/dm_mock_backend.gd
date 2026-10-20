@@ -197,7 +197,7 @@ static func catalog_from_content() -> Dictionary:
 	for id in items:
 		var m: Dictionary = items[id]
 		# What the hero drinks or eats is a consumable on the live server (its items table), whatever the content's display type says.
-		var drink := DmContent.healing_flasks().has(id) or DmContent.buff_flasks().has(id) or DmContent.brews().has(id) or DmBrews.meal(id) != null
+		var drink := DmContent.healing_flasks().has(id) or DmContent.brews().has(id) or DmBrews.meal(id) != null
 		cat[id] = {"name": m.get("name", id), "item_type": "consumable" if drink else m.get("type", "material"), "rarity": m.get("rarity", "common"),
 			"stat_bonus": m.get("offlineStats"), "sell_value": int(m.get("sell", 0)), "stack": m.get("stack")}
 	return cat

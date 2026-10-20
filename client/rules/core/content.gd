@@ -79,10 +79,6 @@ static func healing_flasks() -> Dictionary:
 	return _dict("items", "HEALING_FLASKS")
 
 
-static func buff_flasks() -> Dictionary:
-	return _dict("items", "BUFF_FLASKS")
-
-
 # ---- world content ----
 
 static func enemies() -> Dictionary:

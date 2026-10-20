@@ -87,7 +87,8 @@ static func meal(item_id: String) -> Variant:
 	return _d()["meals"].get(item_id)
 
 
-## BUFF_FLASKS entry for a brew id: {kind, value, seconds, label} from its first effect.
+## A brew's flask entry {kind, value, seconds, label} from its first effect: the brews are the one home of every flask's bonus (the server's
+## BUFF_FLASKS in items.ts is derived from them the same way).
 static func buff_flask(id: String) -> Variant:
 	var def: Variant = _d()["brews"].get(id)
 	if def == null:
