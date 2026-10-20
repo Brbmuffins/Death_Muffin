@@ -121,8 +121,7 @@
       "reason": "doc was deleted",
       "allow": [
         "DECISIONS.md",
-        "tools/hygiene/**",
-        "server/death-muffin/discord-agent/runner/lib/generated.cjs"
+        "tools/hygiene/**"
       ]
     },
     {
@@ -134,7 +133,6 @@
         "DECISIONS.md",
         "tools/hygiene/**",
         "server/death-muffin/backend/authority.test.cjs",
-        "server/death-muffin/discord-agent/preview.sh",
         "server/death-muffin/discord-agent/preview-godot.sh",
         "server/death-muffin/discord-agent/ship.sh",
         "server/death-muffin/discord-agent/runner/core.cjs",
@@ -441,6 +439,16 @@
         "tools/hygiene/**",
         "server/death-muffin/ops/install.sh",
         "server/death-muffin/ops/README.md"
+      ]
+    },
+    {
+      "id": "agent-web-mode",
+      "pattern": "(?<![-\\w/])(check|preview|shot|regen)\\.sh\\b|\\bshoot\\.cjs\\b|lib/generated\\.cjs|lib/numdelta\\.cjs|discord-agent/PROMPT\\.md|deploy-mobile|mobileBranch",
+      "reason": "the Discord agent's web mode is retired (2026-10-20): its scripts are check-godot.sh, regen-godot.sh, preview-godot.sh, shot-godot.sh",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**",
+        "server/death-muffin/discord-agent/install-runner.sh"
       ]
     }
   ],

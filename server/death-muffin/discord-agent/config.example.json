@@ -17,6 +17,5 @@
   "defaultModel": "sonnet",
   "maxConcurrentJobs": 1,
   "threadReplyRequiresMention": false,
-  "baseBranch": "master",
-  "mode": "web"
+  "baseBranch": "main"
 }

@@ -99,7 +99,7 @@ function readRequest(wt, file = REQUEST_FILE, max = MAX_SET) {
 // ---------- what the BASE branch already holds (never taken from the agent's worktree) ----------
 async function baseInfo(cfg, job) {
   const info = { rootPngs: new Set(), existing: new Set(), history: { ...DEFAULT_COSTS } };
-  const ref = job.base || `origin/${cfg.baseBranch || 'master'}`;
+  const ref = job.base || `origin/${cfg.baseBranch || 'main'}`;
   const ls = async (args) => { const r = await G.git(cfg.repo, ['ls-tree', ...args], { allowFail: true }); return r.code === 0 ? r.out.split('\n').filter(Boolean) : []; };
   for (const n of await ls(['--name-only', ref])) if (/^[A-Za-z0-9_-]+\.png$/.test(n)) info.rootPngs.add(n);
   for (const n of await ls(['--name-only', ref, 'art-manifest/tripo-specs/'])) { const m = /([a-z0-9_]+)\.json$/.exec(n); if (m) info.existing.add(m[1]); }

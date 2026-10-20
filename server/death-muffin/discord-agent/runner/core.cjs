@@ -28,7 +28,6 @@ const G = require('./lib/gitops.cjs');
 const TT = require('./lib/threadTitle.cjs');
 const { runTurn, buildPrompt, readResult, readHandoff } = require('./lib/agent.cjs');
 const { parseDiff, classifyDiff, tierLabel, approversFor } = require('./lib/tiers.cjs');
-const { verifyGenerated, describeMismatch } = require('./lib/generated.cjs');
 const { planReply } = require('./lib/discordText.cjs');
 const A = require('./lib/art.cjs');
 const S = require('./lib/sound.cjs');
@@ -77,17 +76,17 @@ const fmtList = (a, n) => (a.length > n ? a.slice(0, n).join('\n') + `\n… +${a
 function createRunner(cfgIn, opts = {}) {
   const cfg = typeof cfgIn === 'string' ? loadConfig(cfgIn) : cfgIn;
   const now = opts.now || (() => Date.now());
-  const BB = cfg.baseBranch || 'master', GODOT = cfg.mode === 'godot';   // loadConfig validates both; raw test configs fall back to web/master
-  const CHECK = GODOT ? 'check-godot.sh' : 'check.sh';
-  // What the agent itself runs (godot): only named suites (agent.cjs); code_load is the quickest one that also gives Godot's import of new art or audio.
-  const IMPORT_CHECK = GODOT ? `${cfg.toolsDir}/check-godot.sh --rerun code_load` : CHECK;
+  const BB = cfg.baseBranch || 'main';   // loadConfig validates it
+  const CHECK = 'check-godot.sh';
+  // What the agent itself runs: only named suites (agent.cjs); code_load is the quickest one that also gives Godot's import of new art or audio.
+  const IMPORT_CHECK = `${cfg.toolsDir}/check-godot.sh --rerun code_load`;
   fs.mkdirSync(cfg.stateDir, { recursive: true });
   const audit = createAudit(path.join(cfg.stateDir, 'audit.jsonl'));
   const auth = createAuth(cfg, now);
-  // Model generation (Gemini concept -> Tripo): Godot mode only. Keys, budgets and the ledger live outside every checkout (lib/art.cjs).
-  const art = GODOT ? A.createArt(cfg, { audit, now }) : null;
-  // Sound effects / music (ElevenLabs): Godot mode only, for cfg.soundUsers, no budget gate (lib/sound.cjs).
-  const sound = GODOT ? S.createSound(cfg, { now }) : null;
+  // Model generation (Gemini concept -> Tripo). Keys, budgets and the ledger live outside every checkout (lib/art.cjs).
+  const art = A.createArt(cfg, { audit, now });
+  // Sound effects / music (ElevenLabs), for cfg.soundUsers, no budget gate (lib/sound.cjs).
+  const sound = S.createSound(cfg, { now });
   let artBusy = false;     // one Tripo run at a time inside this process (art-run.sh also holds a flock across processes)
   const jobsFile = path.join(cfg.stateDir, 'jobs.json');
   const shipsFile = path.join(cfg.stateDir, 'ships.jsonl');
@@ -316,7 +315,7 @@ function createRunner(cfgIn, opts = {}) {
     // images already attached to messages that are waiting come along; the claude conversation file moves to the new project dir
     if (prev.worktree) { try { const inbox = path.join(prev.worktree, '.dm-inbox'); if (fs.existsSync(inbox)) fs.cpSync(inbox, path.join(w.worktree, '.dm-inbox'), { recursive: true }); else job.inboxBytes = 0; } catch { /* best effort */ } }
     else job.inboxBytes = 0;
-    const carry = (job.sessionMode || 'web') === cfg.mode;   // false: the earlier rounds were on the old web game
+    const carry = job.sessionMode === 'godot';   // false: the earlier rounds were on the retired web game
     job.sessionId = null;
     const earlier = (job.history || []).slice(-6).map((h) => `round ${h.round || 1} ${h.discarded ? 'discarded' : `shipped${h.shipSha ? ` (${String(h.shipSha).slice(0, 7)})` : ''}`}${h.title ? `: ${clip(h.title, 90)}` : ''}`).join('; ');
     if (prev.worktree) await G.removeJobArtifacts(cfg, { ...job, ...prev }).catch(() => {});
@@ -369,12 +368,9 @@ function createRunner(cfgIn, opts = {}) {
       case 'shot':
         if (job.turns >= cfg.maxTurnsPerJob) return { action: 'reply', text: 'This thread has hit its turn limit. Start a new request in the channel.' };
         // shotCmd: with a team PC online processJob swaps this for the team wording (the plan only; the team PC renders it)
-        job.queue.push({ ...msg, shotCmd: true, text: GODOT
-          ? 'Show me what your current change looks like: write a shot plan to .dm-shot.json and run shot-godot.sh, check the images yourself, and keep your reply to one or two lines. If you have not changed anything yet, capture the game as it is now for the thing we have been talking about.'
-          : 'Show me what your current change looks like: write a scenario to .dm-shot.json and run shot.sh, check the images yourself, and keep your reply to one or two lines. If you have not changed anything yet, capture the game as it is now for the thing we have been talking about.' });
+        job.queue.push({ ...msg, shotCmd: true, text: 'Show me what your current change looks like: write a shot plan to .dm-shot.json and run shot-godot.sh, check the images yourself, and keep your reply to one or two lines. If you have not changed anything yet, capture the game as it is now for the thing we have been talking about.' });
         job.lastActive = now(); save(); pump(); return { action: 'accepted' };
       case 'clips': {
-        if (!GODOT) return { action: 'reply', text: 'Short videos are only available in Godot mode.' };
         if (!job.lastClip) return { action: 'reply', text: 'There is no short-video request in this thread yet. Ask me to show a change in motion, or to try a few options, and I will record them on a team PC.' };
         if (job.running) return { action: 'reply', text: 'Busy right now; try again in a minute.' };
         clipsAgain(job).catch((e) => say(job, `The short videos failed to start: ${clip(redactText(e.message), 300)}`));
@@ -384,10 +380,10 @@ function createRunner(cfgIn, opts = {}) {
         if (!job.proposal || job.status !== 'proposed') return { action: 'reply', text: 'There is no open proposal to preview yet.' };
         if (job.running || job.previewBusy) return { action: 'reply', text: 'Busy right now; try again in a minute.' };
         job.previewBusy = true;
-        say(job, GODOT ? 'Building the Windows test build (a few minutes)…' : 'Rebuilding the playable preview (about a minute)…');
+        say(job, 'Building the Windows test build (a few minutes)…');
         buildPreview(job, job.proposal.title).then((pv) => {
           if (['discarded', 'shipped', 'shipping', 'deleted'].includes(job.status) || job.deleteRequested) { G.removePreview(cfg, job); return; }
-          say(job, pv.ok ? (GODOT ? `Playable preview (Windows: unzip, run Play Preview (offline).bat): ${pv.url}\nOffline sandbox copy of this change; nothing saves to your real character.` : `Playable preview: ${pv.url}\nOffline sandbox copy of this change; nothing saves to your real character.`) : `Preview build failed: ${pv.why}`);
+          say(job, pv.ok ? `Playable preview (Windows: unzip, run Play Preview (offline).bat): ${pv.url}\nOffline sandbox copy of this change; nothing saves to your real character.` : `Preview build failed: ${pv.why}`);
         }).finally(() => { job.previewBusy = false; });
         return { action: 'accepted' };
       }
@@ -591,7 +587,7 @@ function createRunner(cfgIn, opts = {}) {
     if (r.error && job.sessionId && /no conversation found/i.test(r.error)) {   // the earlier conversation could not be resumed from the new workspace: start a fresh one
       job.sessionId = null; r = await runTurn(cfg, job, `(The earlier conversation in this thread is not available; work from the request and the code.)\n\n${prompt}`, spawn);
     }
-    if (r.sessionId) { job.sessionId = r.sessionId; job.sessionMode = cfg.mode; }
+    if (r.sessionId) { job.sessionId = r.sessionId; job.sessionMode = 'godot'; }
     logRun(r);
     const maxHandoffs = cfg.maxHandoffs != null ? cfg.maxHandoffs : 5;
     for (let n = 1; r.maxTurns && !job.cancelRequested; n++) {
@@ -607,7 +603,7 @@ function createRunner(cfgIn, opts = {}) {
       r = await runTurn(cfg, job, '(You are continuing a task that an earlier session of yours started; that session reached its step limit. ' +
         (note ? `Its handoff note:)\n<handoff>\n${note}\n</handoff>` : 'It left no note: read agit log and agit status to see what is done.)') +
         `\n\nThe request that turn was working on:\n${prompt}\n\nContinue from the next step. Do not redo finished work.`, spawn);
-      if (r.sessionId) { job.sessionId = r.sessionId; job.sessionMode = cfg.mode; }
+      if (r.sessionId) { job.sessionId = r.sessionId; job.sessionMode = 'godot'; }
       logRun(r, { handoff: n, step: 'continue' });
     }
     job.proc = null;
@@ -679,7 +675,7 @@ function createRunner(cfgIn, opts = {}) {
     if (test) job.testing = true;
     try { await runJob(job, real, extra, { test, repost }); } finally { job.testing = false; clearInterval(ticker); syncName(job); }
   }
-  // ---------- screenshots (<worktree>/.dm-shots/*.png, written by the agent via shot.sh) ----------
+  // ---------- screenshots (<worktree>/.dm-shots/*.png, written by the agent via shot-godot.sh) ----------
   function listShots(job) {
     const dir = path.join(job.worktree || '', '.dm-shots'); let out = [];
     try {
@@ -703,21 +699,19 @@ function createRunner(cfgIn, opts = {}) {
     save();
   }
   // Only images taken after the branch's last commit show the change being approved; an older one could show a previous version.
-  // ---------- playable preview (preview.sh, or cfg.previewCmd in tests) ----------
-  const previewLink = (job) => `${String(cfg.previewUrl).replace(/\/?$/, '/')}${job.id}/`;
-  // Godot mode publishes one zip (preview-godot.sh) instead of a web page, so the link points at the file.
-  const previewZip = (job) => `${previewLink(job)}DeathMuffin-Preview-${job.id}-win64.zip`;
+  // ---------- playable preview (preview-godot.sh, or cfg.previewCmd in tests): one Windows zip, so the link points at the file ----------
+  const previewZip = (job) => `${String(cfg.previewUrl).replace(/\/?$/, '/')}${job.id}/DeathMuffin-Preview-${job.id}-win64.zip`;
   // Never throws, never blocks approval: resolves { ok, url } or { ok: false, why }.
   async function buildPreview(job, title) {
     if (!cfg.previewRoot && !cfg.previewCmd) return { ok: false, why: 'previews are switched off' };
     let basePath = '/death-muffin/preview'; try { basePath = new URL(cfg.previewUrl).pathname.replace(/\/$/, ''); } catch { /* default */ }
     const env = { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', DM_PREVIEW_ROOT: cfg.previewRoot || '', DM_PREVIEW_BASE: basePath, DM_PREVIEW_TITLE: String(title || '').slice(0, 120) };
     try {
-      const script = path.join(cfg.toolsDir, GODOT ? 'preview-godot.sh' : 'preview.sh');
+      const script = path.join(cfg.toolsDir, 'preview-godot.sh');
       const r = cfg.previewCmd
         ? await G.run('bash', ['-c', cfg.previewCmd, 'preview', job.id], { cwd: job.worktree, env, timeoutMs: 15 * 60000 })
-        : await G.run(script, [job.id], { cwd: job.worktree, env, timeoutMs: (GODOT ? 40 : 15) * 60000 });
-      if (r.code === 0 && !r.timedOut) { audit.log('preview', { job: job.id, ok: true }); return { ok: true, url: GODOT ? previewZip(job) : previewLink(job) }; }
+        : await G.run(script, [job.id], { cwd: job.worktree, env, timeoutMs: 40 * 60000 });
+      if (r.code === 0 && !r.timedOut) { audit.log('preview', { job: job.id, ok: true }); return { ok: true, url: previewZip(job) }; }
       const why = r.timedOut ? 'the build took too long' : redactText((r.out + r.err).trim().split('\n').slice(-3).join(' ') || `exit ${r.code}`);
       audit.log('preview', { job: job.id, ok: false, why: clip(why, 300) }); return { ok: false, why: clip(why, 300) };
     } catch (e) { return { ok: false, why: clip(e.message, 300) }; }
@@ -729,7 +723,7 @@ function createRunner(cfgIn, opts = {}) {
   // Godot mode: when the agent wrote a shot plan and took "after" pictures, render the same plan on the unchanged base (a scratch worktree at job.base,
   // shot-godot.sh, same sandbox) so the approver sees before and after. Best effort: any failure (or a base that predates the shot-plan QA code) = no "before".
   async function baseShots(job, afterNames) {
-    if (!GODOT || !afterNames.length || !job.worktree || !fs.existsSync(path.join(job.worktree, '.dm-shot.json'))) return [];
+    if (!afterNames.length || !job.worktree || !fs.existsSync(path.join(job.worktree, '.dm-shot.json'))) return [];
     const dir = path.join(cfg.worktreeRoot, `base-${job.id}`);
     try {
       say(job, 'Rendering the "before" pictures from the unchanged game (a minute or two)…');
@@ -761,7 +755,7 @@ function createRunner(cfgIn, opts = {}) {
     if (art && await conceptStage(job)) return;   // concept images are being made (or were refused): people look at them before anything is built
     if (art && await artStage(job)) return;       // a model request is waiting for an approver (or was refused): nothing to verify or propose yet
     if (sound && await soundStage(job)) return;   // a sound is being generated (or was refused): the agent continues once the takes exist
-    if (GODOT && await clipStage(job)) return;    // short videos of the options are on their way to a team PC: people pick one before any change is proposed
+    if (await clipStage(job)) return;    // short videos of the options are on their way to a team PC: people pick one before any change is proposed
     await afterTurn(job, readResult(job.worktree), o);
   }
 
@@ -810,7 +804,7 @@ function createRunner(cfgIn, opts = {}) {
   async function verify(job, { tests = true } = {}) {
     const wt = job.worktree;
     if (await G.mergeInProgress(wt) || await G.isDirty(wt)) return { ok: false, fixable: true, why: 'There are uncommitted changes (or an unfinished merge). Stage explicit paths with agit add and commit with agit commit -m "<one plain sentence>".' };
-    if (GODOT && cfg.syncBeforeCheck !== false) await (opts.syncBeforeCheck || syncBeforeCheck)(job);
+    if (cfg.syncBeforeCheck !== false) await (opts.syncBeforeCheck || syncBeforeCheck)(job);
     let commits = await G.commitsSince(wt, job.base);
     if (commits.some((c) => /^\s*co-authored-by:/im.test(c.body))) {
       await G.git(wt, ['filter-branch', '-f', '--msg-filter', "sed '/^[Cc]o-[Aa]uthored-[Bb]y:/d'", `${job.base}..HEAD`], { allowFail: true });
@@ -819,27 +813,24 @@ function createRunner(cfgIn, opts = {}) {
     const diff = await G.diffText(wt, job.base);
     if (!diff.trim()) return { ok: true, empty: true };
     const files = parseDiff(diff);
-    // (Godot mode has no tier-neutral generated files: server bundles are not rebuilt there, so they simply classify by path.)
-    // Generated files are tier-neutral only when a sandboxed regeneration reproduces them exactly (deterministic, not the model's say-so).
-    const gen = GODOT ? { derived: [], mismatched: [] } : await verifyGenerated({ toolsDir: cfg.toolsDir, repo: cfg.repo, scratchRoot: cfg.worktreeRoot, base: job.base, head: await G.head(wt), changedPaths: files.map((f) => f.path) });
-    if (gen.mismatched.length) return { ok: false, fixable: true, why: describeMismatch(gen) };
-    const cls = classifyDiff(files, cfg, gen.derived);
+    // Generated files classify by path like any other file (server bundles are sensitive); CI checks they are exactly the generators' output.
+    const cls = classifyDiff(files, cfg);
     if (cls.forbidden.length) return { ok: false, fixable: true, why: `These paths may not be changed by this agent: ${cls.forbidden.join(', ')}. Undo those changes (restore them to the original content) and commit.` };
     const secrets = G.scanDiffForSecrets(diff);
     if (secrets.length) return { ok: false, fixable: true, why: `The secret scan flagged ${secrets.map((s) => s.file).join(', ')}. Remove anything secret-like from the change.` };
     const migrations = G.migrationsFrom(files);
     if (migrations.length && !cfg.allowMigrations) return { ok: false, fixable: false, why: 'This change adds a database migration, which is switched off for this agent.' };
     if (!tests) return { ok: true, files, cls, migrations, tests: { ok: null, summary: 'not tested yet' }, untested: true, diff, commits };
-    let t = await (GODOT && cfg.ciGate ? (opts.ciCheck || ciCheck) : (opts.runChecks || runChecks))(job);
+    let t = await (cfg.ciGate ? (opts.ciCheck || ciCheck) : (opts.runChecks || runChecks))(job);
     // A few suites failing (often under load from another ship's client export, even after run-all-tests.sh retried them alone) get ONE more run of
     // just those suites before an agent turn is spent on them. A real failure fails again and goes to the agent as before.
-    const flaky = !t.ok && GODOT ? failedSuites(t.tail) : [];
+    const flaky = !t.ok ? failedSuites(t.tail) : [];
     if (flaky.length) {
       const r = await (opts.runChecks || runChecks)(job, ['--rerun', flaky.join(',')]);
       audit.log('flake-rerun', { job: job.id, suites: flaky, ok: r.ok });
       if (r.ok) t = { ...t, ok: true, summary: `${t.summary.replace(/ — .*$/, '')} — passed (${flaky.join(', ')} passed on a re-run)` };
     }
-    if (!t.ok && GODOT && cfg.baseCheck !== false) {
+    if (!t.ok && cfg.baseCheck !== false) {
       const failing = suitesFailing(t.tail).slice(0, 6);
       const b = failing.length ? await (opts.baseCheck || baseCheck)(job, failing) : { failing: [] };
       if (b.failing.length) return { ok: false, fixable: false, infra: b.failing, why: `${CHECK} failed:\n${t.tail}`, tests: t };
@@ -876,15 +867,15 @@ function createRunner(cfgIn, opts = {}) {
   }
   async function runChecks(job, args = []) {
     let r;
-    try { r = await G.run(path.join(cfg.toolsDir, CHECK), args, { cwd: job.worktree, env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: (GODOT ? 90 : 25) * 60000, onSpawn: (p) => checkProcs.set(job.id, p) }); }
+    try { r = await G.run(path.join(cfg.toolsDir, CHECK), args, { cwd: job.worktree, env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: 90 * 60000, onSpawn: (p) => checkProcs.set(job.id, p) }); }
     finally { checkProcs.delete(job.id); }
     const out = r.out + r.err;
-    // web: the node:test counters; godot: the last "GODOT TESTS: ..." line check-godot.sh prints
-    let sum = GODOT ? ((out.match(/^GODOT TESTS: .*$/gm) || []).pop() || '').replace(/^GODOT TESTS: /, '') : (out.match(/^# (tests|pass|fail) .*$/gm) || []).join(' · ').replace(/# /g, '');
+    // the last "GODOT TESTS: ..." line check-godot.sh prints
+    let sum = ((out.match(/^GODOT TESTS: .*$/gm) || []).pop() || '').replace(/^GODOT TESTS: /, '');
     // proposals and ships run the quick check (changed + affected suites + smoke set); only sensitive ships run the full suite (ship.sh)
-    const quick = GODOT && /^quick \((\d+) suites?([^)]*)\) — (.*)$/.exec(sum);
+    const quick = /^quick \((\d+) suites?([^)]*)\) — (.*)$/.exec(sum);
     if (quick) sum = `quick check: ${quick[1]} suites${quick[2]} — ${quick[3]}`;
-    return { ok: r.code === 0 && !r.timedOut, tail: out.trim().split('\n').filter((l) => !(GODOT && / exit=0 /.test(l))).slice(-30).join('\n'), summary: sum || (r.code === 0 ? (GODOT ? 'Godot test suites passed' : 'typecheck + client + server tests passed') : 'failed') };
+    return { ok: r.code === 0 && !r.timedOut, tail: out.trim().split('\n').filter((l) => !/ exit=0 /.test(l)).slice(-30).join('\n'), summary: sum || (r.code === 0 ? 'Godot test suites passed' : 'failed') };
   }
 
   // o.test: a test run (🧪 / !test, or CI failed what a ship would have shipped; o.repost then): the tests run on the change as it is, and a pass
@@ -931,9 +922,7 @@ function createRunner(cfgIn, opts = {}) {
       if (!v.fixable || attempt >= 2) { say(job, `I could not get this into a shippable state: ${clip(v.why, 900)}\nNothing was proposed. Tell me how to proceed or react ❌ / say !discard.`); job.status = 'idle'; return; }
       // the fix-up turn is internal (audit: verify-failed); no thread post (owner, 2026-10-10: fewer thread posts), except for a test someone asked for
       if (testRun && attempt === 0) say(job, `🧪 The tests failed (${clip((v.tests && v.tests.summary) || 'the review failed', 200)}). Fixing it; a tested version follows.`);
-      const r = await agentTurn(job, GODOT
-        ? `The automatic review failed. Fix this and commit. To see a failing suite again, run ${cfg.toolsDir}/check-godot.sh --rerun <suite>[,<suite>] (only those suites); the runner runs the whole check again after your turn:\n${v.why}`
-        : `The automatic review failed. Fix this, make sure ${CHECK} passes, and commit:\n${v.why}`);
+      const r = await agentTurn(job, `The automatic review failed. Fix this and commit. To see a failing suite again, run ${cfg.toolsDir}/check-godot.sh --rerun <suite>[,<suite>] (only those suites); the runner runs the whole check again after your turn:\n${v.why}`);
       if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return; }
       if (r.error) { say(job, (r.budgetOut ? r.error : `The agent hit an error: ${clip(redactText(r.error), 300)}`)); job.status = 'idle'; return; }
       postNewShots(job);
@@ -992,13 +981,13 @@ function createRunner(cfgIn, opts = {}) {
       ],
       footer: { text: `✅ ${v.untested ? 'test and ship' : 'ship'} (${owner.join(' / ')}) · ${v.untested ? '🧪 test · ' : ''}❌ discard · reply to keep iterating · ${job.id}` },
     };
-    // Godot: the Windows preview is built only on request (owner, 2026-10-10: 44 built in a day, none downloaded; each is a full import + export).
-    const onRequest = GODOT && cfg.previewOnProposal !== true;
+    // The Windows preview is built only on request (owner, 2026-10-10: 44 built in a day, none downloaded; each is a full import + export).
+    const onRequest = cfg.previewOnProposal !== true;
     const pv = onRequest ? { onRequest: true } : await buildPreview(job, title);
     if (job.status === 'discarded' || job.cancelRequested) { G.removePreview(cfg, job); return; }
     const previewField = pv.onRequest ? { name: 'Try it', value: 'Say `!preview` for a Windows test build of this change (a few minutes).', inline: false }
       : pv.ok
-      ? { name: GODOT ? 'Try it (Windows download)' : 'Try it (playable preview)', value: `${pv.url}\n${GODOT ? 'Unzip it and run Play Preview (offline).bat. ' : ''}Offline sandbox copy of this change: nothing saves to your real character.`, inline: false }
+      ? { name: 'Try it (Windows download)', value: `${pv.url}\nUnzip it and run Play Preview (offline).bat. Offline sandbox copy of this change: nothing saves to your real character.`, inline: false }
       : { name: 'Preview build failed', value: `${pv.why}\nThe proposal is still valid; review the diff, or say !preview to retry.`, inline: false };
     embed.fields.splice(embed.fields.length - 1, 0, previewField);
     for (const f of embed.fields) f.value = clip(f.value, 1024);   // Discord: field value <= 1024 chars (whole embed <= 6000; the caps above keep it well under)
@@ -1015,14 +1004,14 @@ function createRunner(cfgIn, opts = {}) {
     if (shots.length) embed.image = { url: `attachment://${shots[0].name}` };
     if (teamPcsNow.length) embed.fields.splice(embed.fields.length - 1, 0, { name: 'Screenshots', value: `${shots.length ? 'More pictures' : 'Pictures'} from a team PC follow (before and after, on a real graphics card; a few minutes).`, inline: false });
     // screenshots only on request (Helix, 2026-10-12): a proposal without pictures offers them
-    else if (GODOT && !shots.length) embed.fields.splice(embed.fields.length - 1, 0, { name: 'Screenshots', value: 'None taken. Say `!shot` to see this change.', inline: false });
+    else if (!shots.length) embed.fields.splice(embed.fields.length - 1, 0, { name: 'Screenshots', value: 'None taken. Say `!shot` to see this change.', inline: false });
     // no ping when the original approval is about to carry (it ships by itself; carryApproval pings if it cannot)
     post({ threadId: job.threadId }, { ...(job.carryApproval ? {} : pingRequester(job)), embed, ...(shots.length ? { files: shots } : {}), reactions: v.untested ? ['✅', '🧪', '❌'] : ['✅', '❌'] }, (res) => { if (res.messageId && job.proposal && job.proposal.head === head) { job.proposal.messageId = String(res.messageId); save(); } });
     // BEFORE pictures come after, in the background: rendering waits for the shared renderer lock (other renders can hold it for many
     // minutes), and a job waiting on it kept its slot and blocked other requests (2026-10-10). The pair is posted as a follow-up.
     // BEFORE pictures (the unchanged base rendered with the same shot plan) only when switched on: each is one more software-GL render
     // in the shared renderer queue (owner, 2026-10-10: "skip making before photos"). cfg.beforeShots: true brings them back.
-    if (GODOT && shots.length && cfg.beforeShots === true) postBeforeAfter(job, head, shots.slice(0, 2));
+    if (shots.length && cfg.beforeShots === true) postBeforeAfter(job, head, shots.slice(0, 2));
     if (teamPcsNow.length) teamShots(job, head, { pcs: teamPcsNow, say: !shots.length });
     carryApproval(job);
   }
@@ -1062,7 +1051,7 @@ function createRunner(cfgIn, opts = {}) {
   // posts the pairs (BEFORE then AFTER per shot and preset, labelled by label-shot.py). A base that cannot be built means AFTER pictures only. A `clip` job
   // records the agent's .dm-clip.json (variants of a tune over the game's data), and the thread is asked which one people like best. Everything is best effort,
   // in the background, and never changes what is shipped: the team PC only renders, a human decides.
-  const teamEnabled = () => GODOT && cfg.teamShots !== false && !!cfg.teamApi;
+  const teamEnabled = () => cfg.teamShots !== false && !!cfg.teamApi;
   const TEAM_ON_NOTE = '[A team PC is online right now. Pictures need no `!shot`: for every change players can see, write the shot plan `.dm-shot.json` (see "Screenshots", when a team PC is online) and do NOT render anything yourself; the team PC renders it after the proposal, before and after, on a real graphics card. Short videos and "pick one" options work too (see "Clips and choices").]';
   const TEAM_OFF_NOTE = '[No team PC is online right now. Pictures only on request (`!shot`), rendered on the server as described under "Screenshots"; short videos ("Clips and choices") are not possible this turn.]';
   const TEAM_SHOT_ASK = 'Show me what your current change looks like: a team PC is online, so write the shot plan to .dm-shot.json for it (do not render anything yourself; the team PC renders it, on a real graphics card) and keep your reply to one or two lines. If you have not changed anything yet, write the plan for the game as it is now, for the thing we have been talking about.';
@@ -1680,11 +1669,11 @@ function createRunner(cfgIn, opts = {}) {
         : null;
       if (why) { job.shipQueued = null; save(); audit.log('ship-queue-dropped', { job: job.id, why }); if (!gone) say(job, `Not shipped from the queue: ${why}.`); continue; }
       ready.push({ job, q });
-      if (!(GODOT && cfg.ciGate)) break;   // without the CI gate one ship at a time, the rest stay queued (and see it as waiting: DEFER_PUBLISH)
+      if (!cfg.ciGate) break;   // without the CI gate one ship at a time, the rest stay queued (and see it as waiting: DEFER_PUBLISH)
     }
     if (ready.length) {
       const [lead, ...rest] = ready;
-      const batch = GODOT && cfg.ciGate && !lead.q.solo ? rest.filter((x) => !x.q.solo) : [];
+      const batch = cfg.ciGate && !lead.q.solo ? rest.filter((x) => !x.q.solo) : [];
       const ids = batch.length ? [lead, ...batch].map((x) => x.job.id) : undefined;
       for (const x of [lead, ...batch]) { x.job.shipQueued = null; audit.log('ship-dequeued', { job: x.job.id, approver: x.q.approverId, ...(ids ? { batch: ids } : {}) }); }
       save();
@@ -1697,9 +1686,9 @@ function createRunner(cfgIn, opts = {}) {
   async function ship(job, approverId, batch = []) {
     setBusy(true, `ship ${job.id}`); job.status = 'shipping'; save();
     const p = job.proposal;
-    const CI = GODOT && cfg.ciGate;
+    const CI = !!cfg.ciGate;
     // without the CI gate: another approved ship waits, so merge now and leave the publish to the last one (with it, the batch below does that)
-    const defer = GODOT && !CI && shipQueue().some((j) => j !== job);
+    const defer = !CI && shipQueue().some((j) => j !== job);
     const titles = [p.title || job.title, ...batch.map((b) => b.job.proposal.title || b.job.title)];
     say(job, batch.length
       ? `Approved by ${nameOf(approverId)}. Shipping together with ${batch.length} other approved change${batch.length > 1 ? 's' : ''} (${batch.map((b) => `\`${b.job.id}\``).join(', ')}): one merge onto ${BB}, one CI run, one update for players.`
@@ -1716,8 +1705,7 @@ function createRunner(cfgIn, opts = {}) {
       ...(p.testsOk ? {} : { PROPOSAL_UNTESTED: '1' }),   // a draft: the local check (no CI gate) may not skip the merged tree as already tested
       ...(CI ? { CI_GATE: '1', CI_SCRIPT: cfg.ciScript } : {}),
       ...(batch.length ? { BATCH: batch.map((b) => `${b.job.id} ${b.job.branch} ${b.job.proposal.head} ${auth.maxTier(b.approverId) || 'casual'}`).join('\n') } : {}),
-      MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: migrations.join(' '), BASE_BRANCH: BB, MODE: GODOT ? 'godot' : 'web', DEPLOY_DIR: cfg.deployDir, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.backendDeployCmd ? { BACKEND_DEPLOY_CMD: cfg.backendDeployCmd } : {}), ...(cfg.lobbyDeployCmd ? { LOBBY_DEPLOY_CMD: cfg.lobbyDeployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}),
-      MOBILE_BRANCH: cfg.mobileBranch === undefined ? 'mobile' : String(cfg.mobileBranch), ...(cfg.mobileDeployScript ? { MOBILE_DEPLOY_SCRIPT: cfg.mobileDeployScript } : {}), ...(cfg.mobileDeployCmd ? { MOBILE_DEPLOY_CMD: cfg.mobileDeployCmd } : {}) };
+      MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: migrations.join(' '), BASE_BRANCH: BB, DEPLOY_DIR: cfg.deployDir, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}), ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.backendDeployCmd ? { BACKEND_DEPLOY_CMD: cfg.backendDeployCmd } : {}), ...(cfg.lobbyDeployCmd ? { LOBBY_DEPLOY_CMD: cfg.lobbyDeployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}) };
     let r;
     try { r = await G.run('bash', [path.join(cfg.toolsDir, 'ship.sh')], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 150 * 60000 }); }
     finally { setBusy(false); }
@@ -1773,13 +1761,8 @@ function createRunner(cfgIn, opts = {}) {
       healOtherPublishes(job, sha);
       logShip({ type: 'live', jobId: job.id, sha, approverId: String(approverId), approverName: nameOf(approverId), tier: p.tier, title: p.title, rollback: rb && rb !== 'none' ? rb : null });
       job.status = 'shipped'; job.proposal = { ...p, shipSha: sha }; (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, shipSha: sha, title: p.title, at: new Date(now()).toISOString() }); save(); syncName(job);
-      // Phones + offline edition are best effort (ship.sh prints one MOBILE: line); the PC release is live either way.
-      const mm = /^MOBILE: (\S+)\s*(.*)$/m.exec(out); const mkind = mm ? mm[1] : ''; const mwhy = mm ? clip(mm[2], 300) : '';
-      audit.log('mobile-result', { job: job.id, kind: mkind || 'none', detail: mwhy });
-      say(job, `🚀 Live. Release \`${sha}\` is on ${BB} and deployed${mkind === 'live' ? ' (phones and offline updated too)' : ''}. Thanks, ${nameOf(job.creatorId)}.`
-        // say plainly what did NOT update (owner, 2026-10-09): Godot ships publish the Windows client only; web mode without a mobile branch skips phones
-        + (GODOT ? '\nPlayers get it in the Windows launcher on next start. Phones and the old web/offline game do not get Godot changes.' : (mkind === 'skipped' || !mkind ? '\nPhones and offline were not updated.' : '')) + (mkind === 'pending' ? `\nPhones and offline will follow once the mobile branch is sorted out (${mwhy}).` : '') + '\nKeep going here for the next change.');
-      if (mkind === 'pending') ownerPing(pingTarget(job), `Mobile/offline did NOT update for \`${job.id}\` (PC is live as \`${sha}\`): ${mwhy}`);
+      say(job, `🚀 Live. Release \`${sha}\` is on ${BB} and deployed. Thanks, ${nameOf(job.creatorId)}.`
+        + '\nPlayers get it in the Windows launcher on next start.\nKeep going here for the next change.');
       // no owner ping for a ship: every release is announced in #build-alerts (announce-release.sh); failures still ping
       // A message that arrived during the ship starts the next round right away (its worktree is cut from the base branch we just shipped).
       if (job.queue.length && !job.deleteRequested) await beginRound(job);
@@ -1799,7 +1782,7 @@ function createRunner(cfgIn, opts = {}) {
       'sync-failed': `copying the change into the game (client/) failed, so nothing was pushed or published (${detail}). Ask the owner to look, then react ✅ again.\n${tail}`,
       'deploy-failed': `${BB} was pushed but the deploy script FAILED. The owner should look now.\n${tail}`,
     }[kind] || `unexpected failure (${kind}).\n${tail}`;
-    if (GODOT && kind === 'deploy-failed') {
+    if (kind === 'deploy-failed') {
       const sha = (detail.split(' ')[0] || '').trim();
       job.publishFailed = { sha, proposal: p, approverId: String(approverId), at: now(), autoRetried: false, messageId: null };
       job.status = 'idle'; job.proposal = null; save();
@@ -1828,7 +1811,7 @@ function createRunner(cfgIn, opts = {}) {
     }
     // The tests failed on what would ship (Helix, 2026-10-19: drafts are tested at ✅): the agent fixes it and a tested proposal comes back for one
     // more ✅. The test run merges the latest base in and starts from CI's verdict, so suites that fail on the base too stop it with a plain line.
-    if (kind === 'tests-failed' && GODOT && !job.deleteRequested && job.worktree && fs.existsSync(job.worktree)) {
+    if (kind === 'tests-failed' && !job.deleteRequested && job.worktree && fs.existsSync(job.worktree)) {
       const failing = suitesFailing(out);
       say(job, `❌ Not live: the tests failed on what would ship${failing.length ? ` (${failing.slice(0, 6).join(', ')})` : ''}. Fixing it now; a tested version follows for one more ✅.`);
       job.status = 'idle'; p.testsOk = false; p.draft = false;
@@ -1938,9 +1921,9 @@ function createRunner(cfgIn, opts = {}) {
   function newestBackup() {
     let ents = []; try { ents = fs.readdirSync(cfg.deployDir); } catch { return null; }
     // Each mode only ever rolls back its own releases: web = deploy-release.sh's backup-pre-release-<hex sha>-<stamp>, godot = ship.sh's backup-pre-release-godot-<stamp>.
-    const re = GODOT ? /^backup-pre-release-godot-(\d{8}T\d{6}Z)$/ : /^backup-pre-release-[0-9a-f]+-(\d{8}T\d{6}Z)$/;
+    const re = /^backup-pre-release-godot-(\d{8}T\d{6}Z)$/;
     const c = ents.map((n) => re.exec(n) && { n, stamp: re.exec(n)[1] }).filter(Boolean)
-      .filter((e) => { const d = path.join(cfg.deployDir, e.n); try { if (GODOT && !fs.lstatSync(d).isDirectory()) return false; } catch { return false; } return fs.existsSync(path.join(d, 'ROLLBACK.sh')); }).sort((a, b) => (a.stamp < b.stamp ? 1 : -1));
+      .filter((e) => { const d = path.join(cfg.deployDir, e.n); try { if (!fs.lstatSync(d).isDirectory()) return false; } catch { return false; } return fs.existsSync(path.join(d, 'ROLLBACK.sh')); }).sort((a, b) => (a.stamp < b.stamp ? 1 : -1));
     return c.length ? path.join(cfg.deployDir, c[0].n, 'ROLLBACK.sh') : null;
   }
   async function doRollback(msg, target) {
@@ -2009,7 +1992,7 @@ function createRunner(cfgIn, opts = {}) {
         post({ channelId: cfg.bugChannelId }, { content: p.content, file: p.file, newThread: { name: p.name, autoArchiveMin: 4320 } }, (res) => {
           if (!res || !res.threadId) { reportThreads[b.id] = { failedAt: new Date(now()).toISOString(), error: clip(String((res && res.error) || 'no thread'), 200) }; saveReports(); audit.log('report-thread-failed', { report: b.id, error: reportThreads[b.id].error }); return; }
           const job = newJob({ channelId: cfg.bugChannelId, userId: '' });
-          Object.assign(job, { threadId: String(res.threadId), bugReportId: b.id, round: 0, title: p.name, sessionMode: cfg.mode });
+          Object.assign(job, { threadId: String(res.threadId), bugReportId: b.id, round: 0, title: p.name, sessionMode: 'godot' });
           jobs[job.threadId] = job; renamer.setCurrent(job.threadId, p.name); save();
           reportThreads[b.id] = { threadId: job.threadId, job: job.id, at: new Date(now()).toISOString() }; saveReports();
           audit.log('report-thread', { report: b.id, job: job.id, threadId: job.threadId });

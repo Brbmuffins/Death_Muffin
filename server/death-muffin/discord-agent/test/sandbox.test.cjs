@@ -1,6 +1,6 @@
 'use strict';
-// The sandbox of EVERY script that runs untrusted code (check.sh, check-godot.sh, preview.sh, preview-godot.sh, shot.sh, shot-godot.sh, regen.sh, regen-godot.sh) goes through
-// sandbox-lib.sh. These tests run the real scripts (real unshare) on a throwaway repo whose "tools" (tsc, vitest, npm scripts, vite, godot) are
+// The sandbox of EVERY script that runs untrusted code (check-godot.sh, regen-godot.sh, preview-godot.sh, shot-godot.sh) goes through
+// sandbox-lib.sh. These tests run the real scripts (real unshare) on a throwaway repo whose "tools" (npm scripts, vitest, the generators, godot) are
 // stand-ins that probe the filesystem from INSIDE the sandbox: the live paths ubuntu owns must not be writable, the worktree and a private /tmp must be.
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -80,16 +80,6 @@ const prepStubs = (W, inside = '') => {
   return { DM_PREP: path.join(W.top, '.prep/prep.sh') };
 };
 
-test('sandbox: check.sh (tsc, vitest and npm scripts all run read-only except the worktree)', () => {
-  const W = world(); try {
-    const bin = (n, body) => W.w(`node_modules/.bin/${n}`, `#!/usr/bin/env bash\n${body}\n`, 0o755);
-    bin('tsc', probeCmd('check-tsc')); bin('vitest', probeCmd('check-vitest'));
-    W.w('package.json', JSON.stringify({ scripts: { 'test:server': `${probeCmd('check-server')}; echo '# tests 1'; echo '# pass 1'; echo '# fail 0'` } }));
-    const r = run(W, 'check.sh', []); assert.equal(r.status, 0, r.stdout + r.stderr);
-    for (const n of ['check-tsc', 'check-vitest', 'check-server']) verdict(W, n);
-  } finally { W.cleanup(); }
-});
-
 test('sandbox: check-godot.sh (the preparation and the suites)', () => {
   const W = world(); try {
     W.w('tools/rebuild/run-client-tests.sh', `[ "\${1:-}" = --list ] && { echo game; exit 0; }\n${probeCmd('godot-tests')}\nprintf "%-18s %-16s exit=%d  %s\\n" game game.gd 0 "1 passed"\n`);
@@ -140,23 +130,6 @@ test('sandbox: regen-godot.sh (the armor generator, the server rules build and t
   } finally { W.cleanup(); }
 });
 
-test('sandbox: regen.sh', () => {
-  const W = world(); try {
-    W.w('package.json', JSON.stringify({ scripts: { 'build:server-rules': probeCmd('regen-rules'), 'gen:loot': 'true' } })); W.w('tools/embed-realtime.mjs', '');
-    const r = run(W, 'regen.sh', []); assert.equal(r.status, 0, r.stdout + r.stderr);
-    verdict(W, 'regen-rules');
-  } finally { W.cleanup(); }
-});
-
-test('sandbox: preview.sh (vite build)', () => {
-  const W = world(); try {
-    const prev = path.join(W.root, 'preview'); fs.mkdirSync(prev);
-    W.w('node_modules/.bin/vite', `#!/usr/bin/env bash\n${probeCmd('preview-vite')}\nmkdir -p .dm-preview && echo '<html><head></head><body></body></html>' > .dm-preview/index.html\n`, 0o755);
-    const r = run(W, 'preview.sh', ['abc123'], { DM_PREVIEW_ROOT: prev, DM_PREVIEW_LINKDEST: '/nonexistent' }); assert.equal(r.status, 0, r.stdout + r.stderr);
-    verdict(W, 'preview-vite');
-  } finally { W.cleanup(); }
-});
-
 test('sandbox: preview-godot.sh (preparation + export + art pack)', () => {
   const W = world(); try {
     const prev = path.join(W.root, 'preview'); fs.mkdirSync(prev); W.w('client/project.godot', 'x');
@@ -165,17 +138,6 @@ test('sandbox: preview-godot.sh (preparation + export + art pack)', () => {
     const r = run(W, 'preview-godot.sh', ['abc123'], { DM_PREVIEW_ROOT: prev, GODOT: path.join(W.top, '.fake-godot'), GODOT_TEMPLATES: path.join(W.top, '.templates'),
       CLIENT_MANIFEST: '/nonexistent/manifest.json', ...prepStubs(W, probeCmd('preview-prep')) }); assert.equal(r.status, 0, r.stdout + r.stderr);
     verdict(W, 'preview-prep'); verdict(W, 'preview-godot'); verdict(W, 'preview-pack');
-  } finally { W.cleanup(); }
-});
-
-test('sandbox: shot.sh (dev server)', () => {
-  const W = world(); try {
-    W.w('.dm-shot.json', '{"shots":[]}');
-    W.w('node_modules/.bin/vite', `#!/usr/bin/env bash\n${probeCmd('shot-vite')}\nexec python3 -m http.server 5188 --bind 127.0.0.1 >/dev/null 2>&1\n`, 0o755);
-    // shoot.cjs fails fast without a browser; the probe has already run inside the sandbox by then
-    run(W, 'shot.sh', [], { DM_BROWSER_LOCK: path.join(W.root, 'lock'), DM_PLAYWRIGHT_MODULE: '/nonexistent' });
-    verdict(W, 'shot-vite');
-    spawnSync('pkill', ['-f', '[h]ttp.server 5188']);   // the stand-in dev server outlives shot.sh's kill of its npx wrapper
   } finally { W.cleanup(); }
 });
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Playable preview of a proposal, Godot mode: preview-godot.sh <jobid> [--team]   (run by the RUNNER from the job's worktree, never by the AI).
+# Playable preview of a proposal: preview-godot.sh <jobid> [--team]   (run by the RUNNER from the job's worktree, never by the AI).
 # 1. The game's build products: prep.sh --warm --windows (the shared cache, filled from the base revision), then inside the same sandbox as
 #    check-godot.sh (no network, the whole filesystem read-only via sandbox-lib.sh, private /tmp, only the worktree writable, fresh HOME / XDG dirs so
 #    Godot's user:// never touches the real home; the installed export templates are re-exposed read-only through XDG_DATA_HOME): prep.sh --read-only

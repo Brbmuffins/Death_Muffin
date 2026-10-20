@@ -235,7 +235,7 @@ for (const f of files) {
   const cfgFile = 'server/death-muffin/discord-agent/runner/lib/config.cjs';
   const allowed = Object.keys(config.staleGlobs || {});
   const globs = [];
-  for (const tier of Object.values(DEFAULTS.godotTiers || {})) for (const g of tier) globs.push(typeof g === 'string' ? g : g.glob);
+  for (const tier of Object.values(DEFAULTS.tiers || {})) for (const g of tier) globs.push(typeof g === 'string' ? g : g.glob);
   for (const g of DEFAULTS.forbiddenPaths || []) globs.push(g);
   const isTracked = (p) => files.includes(p) || files.some((f) => f.startsWith(p + '/'));
   const seen = new Set();

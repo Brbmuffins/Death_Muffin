@@ -372,7 +372,7 @@ test('flow: a runner that died mid-run settles the open ledger entry from the ba
 });
 async function until0(fn, ms = 15000) { const t0 = Date.now(); while (Date.now() - t0 < ms) { try { if (fn()) return; } catch { /* retry */ } await new Promise((r) => setTimeout(r, 50)); } throw new Error('timeout'); }
 
-test('safety: the agent environment and tool list hold no keys, the sandbox hides the key file, and web mode has no art at all', async () => {
+test('safety: the agent environment and tool list hold no keys, and the sandbox hides the key file', async () => {
   const savedT = process.env.TRIPO_API_KEY, savedG = process.env.GEMINI_API_KEY; process.env.TRIPO_API_KEY = KEYS[0]; process.env.GEMINI_API_KEY = KEYS[1];
   try {
     const { agentEnv, claudeArgs } = require('../runner/lib/agent.cjs'); const w = makeWorld({ godot: true });
@@ -381,10 +381,6 @@ test('safety: the agent environment and tool list hold no keys, the sandbox hide
     assert.ok(!/art-run|tripo|gemini|node |curl/i.test(allowed), 'the agent may not run art-run.sh, node, or any API tool: ' + allowed); assert.match(allowed, /build-art\.sh/);
   } finally { if (savedT === undefined) delete process.env.TRIPO_API_KEY; else process.env.TRIPO_API_KEY = savedT; if (savedG === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = savedG; }
   const sb = fs.readFileSync(path.join(__dirname, '..', 'sandbox-lib.sh'), 'utf8'); assert.match(sb, /\.ai-keys\.local/);
-  const web = makeWorld(); const dw = makeDiscord(web.runner);
-  const thread = await ask(dw, IDS.HELIX, 'GD-ART id=warlock make me a warlock');
-  await until(() => Object.values(web.runner.jobs())[0].status === 'idle' && !Object.values(web.runner.jobs())[0].running, dw.ad);
-  assert.equal(offerOf(thread), undefined); assert.deepEqual(calls(web), []);
 });
 
 test('install: the trusted art tools come from the committed revision, get their own sharp, and the budget file starts empty', () => {

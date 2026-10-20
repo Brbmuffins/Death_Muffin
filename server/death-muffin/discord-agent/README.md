@@ -33,7 +33,7 @@ check never skips an untested proposal (`PROPOSAL_UNTESTED`). A ship whose tests
 ❌ on a proposal asks first ("Discard this change?", audit `discard-asked`), and ❌ on that question discards (`discard-confirmed`); a typed
 `!discard` or "discard this" does not ask.
 
-**The CI gate (DECISIONS B59; `ciGate`, default on in godot mode).** `verify` pushes the job's branch and waits for GitHub CI's verdict on its exact
+**The CI gate (DECISIONS B59; `ciGate`, default on).** `verify` pushes the job's branch and waits for GitHub CI's verdict on its exact
 files (`ci.sh wait <head>`, audit `ci-check`): every suite, the backend and lobby tests, hygiene and the model check; the proposal's "Tests" reads
 `CI — every suite passed (<run link>)`. Failing suites come back from the run's annotations as `<suite> (CI) exit=1` lines, so 1-3 of them get one
 re-run here (`check-godot.sh --rerun`) and the clean-base check works as before; CI failing outside the suites runs the local check to say what it
@@ -72,7 +72,7 @@ the thread is told no game update went out, the ships log records `type: docs`).
 - A user id must be digits; anything else (placeholders) is dropped on load.
 
 Tiers come from the diff's **files** (`runner/lib/tiers.cjs`, rules in `lib/config.cjs`), strictest file wins:
-Tiers (godot mode, `godotTiers`): casual = `docs/**`, `*.md`,
+Tiers (`tiers`): casual = `docs/**`, `*.md`,
 `client/**/*.md`, PATCH_NOTES.json (any content); gameplay = the rest of `client/**`; sensitive = server, launcher, tools, CI, scripts, deploy, config,
 the combat core (`native/`), `project.godot`, `export_presets.cfg`, `client/main`, `client/core`, the files the art pack is fingerprinted by
 (`client/crowd/`, the creature and model code), and the client's net/front(login)/session code and anything named auth, session, online, save, offline,
@@ -205,13 +205,13 @@ team PC is online):
 A team PC can check a revision before it goes live (install and boot, quitting while the art loads, the standard screens at four sizes, a stutter
 pass over every rite, the benchmark, a soak): `server/death-muffin/team-check.sh`, run by a session when someone asks (server/death-muffin/README.md
 "Team jobs", DECISIONS B62); nothing runs after a release. Every client publish, the ship's included, first has a free team PC start the build and quit
-it while loading (`team-gate.sh`, B61). The agent does not start these checks: running them as silent tests at 🧪 and in the ship's CI wait is a
-ROADMAP Phase 1 Decide. PROMPT-godot.md only tells it they exist and where to point people.
+it while loading (`team-gate.sh`, B61). The agent does not start these checks and does not run them as part of its tests (Helix, 2026-10-20, B62). PROMPT-godot.md only tells it they
+exist and where to point people.
 
 ### Playable preview
-Godot mode builds the Windows zip (`preview-godot.sh`, see above) only on request: the proposal's "Try it" field says to use `!preview` (owner, 2026-10-10:
+The Windows zip (`preview-godot.sh`, see above) is built only on request: the proposal's "Try it" field says to use `!preview` (owner, 2026-10-10:
 44 previews were built in a day and none was downloaded; each is a full import + export). `cfg.previewOnProposal: true` brings back building one with every
-proposal (web mode always does). A failed build says so with a short reason. The
+proposal. A failed build says so with a short reason. The
 preview folder is deleted when the job ships, is discarded or is swept (`removeJobArtifacts`). `previewRoot` (default `/var/www/death-muffin/preview`, must exist and be
 writable by the runner user) and `previewCmd` (replaces the script, tests) are in config.
 
@@ -287,14 +287,16 @@ any thread: proposal, ✅ ships. A fix commit is titled `Bug report #<id>: …`,
 now"). Once a change is open in the thread, replies go to it without a mention. A report thread nobody picked up is archived after 48 h quiet
 (`archiveReportAfterMin`); the 7-day sweep skips report threads that never had a workspace. `!report` / `!report <id>` still work in any thread.
 
-## Under the hood: mode, checks, previews and the ship
+## Under the hood: checks, previews and the ship
 
-The live config must say `"mode": "godot", "baseBranch": "main"` (a restart picks changes up). Set both keys explicitly: the runner code still has a
-retired web mode and defaults to `mode: "web"`, `baseBranch: "master"`. `baseBranch` must match `^[A-Za-z0-9._/-]+$` (not start with `-`, contain `..`, `//`, end in `/` or `.lock`);
-a bad value or mode makes the runner refuse to start. It is used for the worktree base (`origin/<baseBranch>`), `!sync`, the ship merge and push, messages and the compare link.
+The agent works only on the game (`client/`, DECISIONS B57: the retired web game's mode, its scripts and its tests are gone; a config that says
+`"mode": "web"` is refused, `"mode": "godot"` is accepted and ignored). `baseBranch` (default `main`) must match `^[A-Za-z0-9._/-]+$` (not start with `-`,
+contain `..`, `//`, end in `/` or `.lock`); a bad value makes the runner refuse to start. It is used for the worktree base (`origin/<baseBranch>`), `!sync`,
+the ship merge and push, messages and the compare link.
 
-In godot mode: tests GitHub CI through `ci.sh` (`tools/check/ci.sh`, installed here; `check-godot.sh` for a re-run of 1-3 suites, the agent's `--rerun <suites>`, and everything with `ciGate: false`) · preview `preview-godot.sh` (a Windows `.zip`) · screenshots `shot-godot.sh` / `!shot` (or a team PC, no `!shot`)
-· prompt `PROMPT-godot.md` · tier rules `godotTiers` (picked into `cfg.tiers` by `loadConfig`) · ship: merge, check-godot, backup + `ROLLBACK.sh`, push,
+Tests: GitHub CI through `ci.sh` (`tools/check/ci.sh`, installed here; `check-godot.sh` for a re-run of 1-3 suites, the agent's `--rerun <suites>`, and everything
+with `ciGate: false`) · generated files `regen-godot.sh` · preview `preview-godot.sh` (a Windows `.zip`) · screenshots `shot-godot.sh` / `!shot` (or a team PC, no `!shot`)
+· prompt `PROMPT-godot.md` · tier rules `tiers` · ship: merge, CI or check-godot, backup + `ROLLBACK.sh`, push, backend and lobby when changed,
 `publish-godot-client.sh` · rollback folder `backup-pre-release-godot-<stamp>`.
 
 **Progress notes** while a turn runs: `🔧 <pct>% · <sentence> · ⏱ <min> min`. The agent writes `.dm-status` as `<pct>% · <sentence>` (prompt
@@ -303,7 +305,6 @@ In godot mode: tests GitHub CI through `ci.sh` (`tools/check/ci.sh`, installed h
 While `check-godot.sh` runs it keeps
 `<done> <total>` suites in `.dm-check-progress`, and the note's percentage moves from the agent's number toward 95% (`progressNote` in
 `runner/core.cjs`). Both files are git-ignored. Model generation posts `🎨 Still generating "<id>"` with the minutes instead.
-The web-mode scripts in this folder (`check.sh`, `preview.sh`, `shot.sh`, `regen.sh`) are unused.
 
 **The game's build products** (`tools/check/prep.sh`, installed here as `prep.sh`; the game's one setup, tools/check/README.md): a job's worktree has
 no combat core library, Godot import, crowd bakes or lobby packages (git does not hold them, and a fresh build takes minutes). `prep.sh --warm <base>
@@ -316,7 +317,7 @@ rebuilt there (the core on its own copy of godot-cpp in `.dm-native-cache/`, git
 A job that changes the lobby's `package-lock.json` gets a plain line that its packages are not cached (the sandbox cannot download them).
 `DM_PREP` names a stand-in (tests).
 
-**`check-godot.sh`**: the same sandbox as `check.sh` (`unshare -rnm`, loopback only, whole filesystem read-only, only the worktree writable, scratch tmpfs over
+**`check-godot.sh`**: the shared sandbox (`unshare -rnm`, loopback only, whole filesystem read-only, only the worktree writable, scratch tmpfs over
 `node_modules/.vite`), with `HOME` and the XDG dirs in a fresh `/tmp/dmgodot.*` (inside the sandbox's private /tmp) so Godot's `user://` never touches the real home. In order: the repo hygiene check
 (`tools/hygiene/check.mjs`, the same `npm run hygiene` CI runs: a stale doc link, missing path or retired term fails with `GODOT TESTS: repo hygiene FAILED`); a change
 that only touches Markdown files stops there (`GODOT TESTS: skipped, docs-only change`); the model check on the models the change adds or edits
@@ -340,7 +341,7 @@ test it wrote. The whole quick check is the runner's, after the turn, so a round
 `GODOT TESTS: quick (14 suites) — 14 passed` or `GODOT TESTS: full (109 suites) — 109 passed` (`, N FAILED` on failure; `targeting fell back to all` is noted); the proposal's
 "Tests" field reads `quick check: N suites — ...`. It exits non-zero on any failing suite or step, and has a hard 85 minute limit.
 
-**Before the check** (godot mode; `cfg.syncBeforeCheck: false` turns it off) the runner merges the latest base branch into the job's branch (a commit
+**Before the check** (`cfg.syncBeforeCheck: false` turns it off) the runner merges the latest base branch into the job's branch (a commit
 `Merge main into discord/<job> before the check`, audit `pre-sync`) and measures the job's work from it, so the check tests what a ship would merge and a ship of
 the same tree skips its tests; a conflict is undone (`pre-sync` with `ok: false`) and left to the ship's own sync. Merge commits never become a proposal's title
 or bullets. **After a failed check** (`cfg.baseCheck: false` turns it off) the failing suites, at most 6, run with `--rerun` on a clean copy of the base

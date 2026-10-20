@@ -29,34 +29,25 @@ const DEFAULTS = {
   rateLimit: { perUserPerHour: 12, perUserNewJobsPerDay: 8, fullApproverPerHour: 60, fullApproverNewJobsPerDay: 30 },
   casualShipsPerDay: 5,         // per LIMITED approver (may approve casual but not sensitive); full approvers and the owner are exempt
   allowMigrations: true,
-  numericTolerancePct: 25,
-  // Which game the agent works on. web = the three.js game on master (check.sh, preview.sh, shot.sh, PROMPT.md, `tiers`, deploy-release.sh,
-  // mobile step). godot = the Godot 4 client (set baseBranch to godot-next too): check-godot.sh, preview-godot.sh (offline .exe
-  // zip), PROMPT-godot.md, `godotTiers`, publish-godot-client.sh, no screenshots, no mobile step. baseBranch is where worktrees are cut from and
-  // where ships merge and push; it is passed to git as a ref, so it is validated in loadConfig.
-  baseBranch: 'master',
-  mode: 'web',
+  // baseBranch is where worktrees are cut from and where ships merge and push; it is passed to git as a ref, so it is validated in loadConfig.
+  baseBranch: 'main',
   runnerPort: 4321,
   repo: '/home/ubuntu/vps-handoffs/DeathMuffin/game',
   worktreeRoot: '/home/ubuntu/vps-handoffs/DeathMuffin/wt',
   stateDir: '/home/ubuntu/death-muffin/discord-agent/state',
   toolsDir: '/home/ubuntu/death-muffin/discord-agent',
   deployDir: '/home/ubuntu/death-muffin/deploy',
-  deployScript: 'server/death-muffin/deploy-release.sh',
-  clientManifest: '/var/www/death-muffin/client/manifest.json',   // godot mode: the live client's manifest; ship.sh reads `rev` from it to write ROLLBACK.sh before publishing
-  // Playable preview of each proposal (offline edition build, see preview.sh). previewCmd (tests) replaces preview.sh.
+  clientManifest: '/var/www/death-muffin/client/manifest.json',   // the live client's manifest; ship.sh reads `rev` from it to write ROLLBACK.sh before publishing
+  // Playable Windows preview of a proposal on !preview (preview-godot.sh). previewCmd (tests) replaces it.
   previewRoot: '/var/www/death-muffin/preview',
   previewUrl: 'https://muffindevelopment.com/death-muffin/preview/',
-  // Team PC pictures and short videos (godot mode): with a team PC online the agent writes a shot plan instead of rendering, and the team PC renders it
+  // Team PC pictures and short videos: with a team PC online the agent writes a shot plan instead of rendering, and the team PC renders it
   // after the proposal on Low and Ultra, before and after; it also records the agent's clips (teamShots: false = off for both).
   // teamApi: the backend the runner reaches /internal/team on ('' = off); teamResultsDir: where the backend keeps the uploaded pictures and videos; teamBuildCmd and
   // teamLabelCmd (tests) replace preview-godot.sh --team and label-shot.py; teamPollMs: how often a job is checked.
   teamShots: true,
   teamApi: 'http://127.0.0.1:5190',
   teamResultsDir: '/home/ubuntu/death-muffin/team-results',
-  // After a PC ship goes live, ship.sh best-effort merges master into this branch and publishes phones + the offline edition (empty = off).
-  mobileBranch: 'mobile',
-  mobileDeployScript: 'server/death-muffin/deploy-mobile.sh',
   // In-game bug reports (report threads, !report) through the DB helper installed beside the runner (reportsCmd replaces it in tests).
   reportsCli: '/home/ubuntu/death-muffin/discord-agent/reports-cli.cjs',
   githubRepo: 'Brbmuffins/Death_Muffin',
@@ -69,35 +60,11 @@ const DEFAULTS = {
   webDocDomains: ['docs.godotengine.org', 'godotengine.org', 'forum.godotengine.org', 'github.com', 'raw.githubusercontent.com',
     'docs.github.com', 'developer.mozilla.org', 'threejs.org', 'nodejs.org', 'www.typescriptlang.org', 'vitest.dev', 'vite.dev'],
   // Tier rules are deterministic path rules, never the model's opinion. First match wins inside a tier; a diff is as strict as its strictest file.
-  // sensitive > gameplay > casual. Files matching no rule: under src/ = gameplay, anything else = sensitive.
+  // sensitive > gameplay > casual. The game is client/ (DECISIONS B49, B57). It carries its own offline backend, saves, login and net code, so those
+  // are sensitive; unmatched paths (root files, native/) are sensitive too. gameplay = everything else under client/. A changed project.godot can add
+  // autoloads / main scene, so it is sensitive; so are the files the players' 500 MB asset pack is fingerprinted by (tools/godot/assets-fp.sh), whose
+  // change sends every player that download again.
   tiers: {
-    sensitive: [
-      'server/**', '**/migrations/**', '.github/**', 'package.json', 'package-lock.json', '**/package.json', '**/package-lock.json',
-      '**/*.sh', '**/deploy*', 'CLAUDE.md', '.claude/**', '**/.env*', 'vite.config.*', 'vitest.config.*', 'tsconfig*.json', 'launcher/**', 'tools/**',
-      'src/net/**', 'src/gameplay/progression*', 'src/**/auth*', 'src/**/session*', 'src/**/authority*', '.gitignore',
-    ],
-    casual: [
-      { glob: '**/*.css', mode: 'any' },
-      { glob: 'docs/**', mode: 'any' }, { glob: '*.md', mode: 'any' }, { glob: 'PATCH_NOTES.json', mode: 'any' },
-      { glob: 'src/content/codex.ts', mode: 'text', keys: '*' },
-      { glob: 'src/ui/Onboarding.ts', mode: 'text', keys: '*' },
-      { glob: 'src/content/items.ts', mode: 'text', keys: ['name', 'desc', 'description', 'flavor', 'flavour', 'lore'] },
-      { glob: 'src/content/abilities.ts', mode: 'text', keys: ['name', 'desc', 'description', 'tooltip'] },
-      { glob: 'src/content/enemies.ts', mode: 'text', keys: ['name', 'desc', 'description'] },
-      { glob: 'src/content/disciplines.ts', mode: 'text', keys: ['name', 'desc', 'description', 'tagline'] },
-      { glob: 'src/content/areas.ts', mode: 'text', keys: ['name', 'desc', 'description'] },
-      { glob: 'src/content/audioMap.ts', mode: 'any' }, { glob: 'src/audio/map*.ts', mode: 'any' },
-      { glob: 'src/content/enemies.ts', mode: 'numeric' }, { glob: 'src/content/abilities.ts', mode: 'numeric' },
-      { glob: 'src/content/upgrades.ts', mode: 'numeric' }, { glob: 'src/content/items.ts', mode: 'numeric' },
-    ],
-    gameplay: ['src/**'],
-  },
-  // Tier rules for mode 'godot' (replace `tiers`; same semantics): the game is client/ (DECISIONS B49, B57). It carries its own offline backend, saves,
-  // login and net code, so those are sensitive here exactly like server/auth are on the web side. First check is sensitive; unmatched paths (the
-  // frozen web src/, root files, native/) are sensitive too. gameplay = everything else under client/. A changed project.godot can add autoloads /
-  // main scene, so it is sensitive; so are the files the players' 500 MB asset pack is fingerprinted by (tools/godot/assets-fp.sh), whose change
-  // sends every player that download again.
-  godotTiers: {
     sensitive: [
       'server/**', 'launcher/**', 'tools/**', '.github/**', '**/*.sh', '**/deploy*', 'CLAUDE.md', '.claude/**', '**/.env*', '.gitignore',
       'native/**', 'client/project.godot', 'client/export_presets.cfg', 'client/net/**', 'client/front/**', 'client/session/**', 'client/addons/**',
@@ -108,7 +75,7 @@ const DEFAULTS = {
       'client/**/*offline*', 'client/**/*progress_sync*', 'client/**/*coop*', 'client/**/*login*', 'client/**/*account*', 'client/**/*token*',
       'client/**/*credential*', 'client/**/*relay*', 'client/**/*lobby*', 'client/**/*realtime*',
       'client/**/*.gdextension', 'client/**/*.dll', 'client/**/*.so', 'client/**/*.dylib', 'client/**/*.exe', 'client/**/*.pck',
-      // progression, unlocks, kills, gold sinks and other economy rules mirror the server's authority (web tiers: src/gameplay/progression*)
+      // progression, unlocks, kills, gold sinks and other economy rules mirror the server's authority
       'client/rules/progression/**', 'client/data/progression/**', 'client/**/*progression*', 'client/**/*authority*', 'client/**/*ledger*', 'client/**/*economy*', 'client/**/*spend*',
       'client/**/*kill*', 'client/**/*gold_sink*', 'client/**/*goldSink*', 'client/**/*vault_rules*', 'client/**/*vaultRules*', 'client/**/*labor_rules*', 'client/**/*laborRules*',
       'client/**/*legionRules*', 'client/**/*milestone*', 'client/**/*reward*', 'client/**/*tradeGoods*', 'client/**/*unlock*', 'client/**/*seal*',
@@ -119,17 +86,14 @@ const DEFAULTS = {
       'client/crowd/**', 'client/tools/bake_crowd*', 'client/game/view_models.json', 'client/game/dm_creature*', 'client/game/dm_gear_props.gd',
       'client/world/dm_models.gd', 'client/world/dm_animator.gd',
     ],
-    casual: [
-      { glob: 'docs/**', mode: 'any' }, { glob: '*.md', mode: 'any' }, { glob: 'client/**/*.md', mode: 'any' },
-      { glob: 'PATCH_NOTES.json', mode: 'any' },
-    ],
+    casual: ['docs/**', '*.md', 'client/**/*.md', 'PATCH_NOTES.json'],
     gameplay: ['client/**'],
   },
   // Paths the agent may never touch (proposal refused, not even for the owner to approve): secrets, and the agent's own rules/deploy scripts.
   // They are still "sensitive" if the owner removes them from this list and makes the change by hand.
   // The CI that grades a change and the game's setup and gate (tools/check/) are never the agent's to change (DECISIONS B59).
   forbiddenPaths: ['server/death-muffin/discord-agent/**', '**/deploy*.sh', '**/.env*', '.claude/**', 'client/export_presets.cfg', '.github/**', 'tools/check/**'],
-  // godot: GitHub CI is the gate (DECISIONS B59): a proposal waits for CI's verdict on its branch, a ship for CI on the merged tree (approvals that
+  // GitHub CI is the gate (DECISIONS B59): a proposal waits for CI's verdict on its branch, a ship for CI on the merged tree (approvals that
   // wait for a ship go out with it, one CI run and one publish), through ciScript (tools/check/ci.sh, installed beside the runner; null = there).
   // false = the fallback while GitHub is down: the local check (check-godot.sh) as before.
   ciGate: true,
@@ -161,10 +125,10 @@ function loadConfig(file) {
   // shapes git would read as an option or a revision range (leading '-', '..', '//', a trailing '/' or '.lock').
   c.baseBranch = String(c.baseBranch);
   if (!/^[A-Za-z0-9._\/-]+$/.test(c.baseBranch) || /^-|\.\.|\/\/|\/$|\.lock$/.test(c.baseBranch)) throw new Error(`Invalid baseBranch: ${JSON.stringify(c.baseBranch)}`);
-  if (!['web', 'godot'].includes(c.mode)) throw new Error(`Invalid mode: ${JSON.stringify(c.mode)}; must be 'web' or 'godot'`);
-  // Everything downstream (classifier, ship gate) reads cfg.tiers, so the mode picks the rule set here once.
-  if (c.mode === 'godot') c.tiers = c.godotTiers;
-  c.ciGate = c.mode === 'godot' && c.ciGate !== false;
+  // The agent works only on the game; the retired web game's mode is refused rather than half-run (a config may still say "mode": "godot").
+  if (c.mode !== undefined && c.mode !== 'godot') throw new Error(`Invalid mode: ${JSON.stringify(c.mode)}; the web mode is retired, leave mode out (or "godot")`);
+  delete c.mode;
+  c.ciGate = c.ciGate !== false;
   if (!c.ciScript) c.ciScript = require('path').join(c.toolsDir, 'ci.sh');
   c.drafts = c.ciGate && c.drafts !== false;   // drafts need CI: without it (GitHub down) every proposal is checked here first
   return c;

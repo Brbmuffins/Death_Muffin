@@ -35,15 +35,14 @@ Every item says what kind it is:
   core, the Discord agent working on the live game, document-only changes that ship no update, checks for War's content, play reports,
   shaders baked into every release, the old game's folder deleted (its tests moved to the game), and the team app's first job (pictures on a
   real graphics card, proven on Helix's PC) and its other jobs (B58, B62: checks of a revision before it goes live, clips and "pick one", before and after,
-  pictures without `!shot`), and a free team PC starting every release before players get it (B61). Left: War's PCs on the team app, the
-  stutter fixes the checks turn up on a weaker card, and the Ultra Low decision once the numbers are in.
+  pictures without `!shot`), and a free team PC starting every release before players get it (B61). Left: the stutter fixes the checks turn
+  up, and the Ultra Low decision once the play reports show how weaker PCs run. More team PCs join as more friends play.
 - Ascension (the Altar, vows and heat, Ashes, Covenant Boons) left on launch day and comes back redesigned in Phase 3 (B36). Players'
   saved Ascension data is kept.
 
 ## Waiting on Helix
 
-One open question: whether the Discord agent runs the team PCs' checks as tests at 🧪 and ✅ (built, on hold; Phase 1, the team app, with Claude's
-recommendation). Answered on 2026-10-18: the code stays public until 1.0 and goes private, with the game's files encrypted, for that
+Nothing right now. Answered on 2026-10-20: the Discord agent does not run the team PCs' checks during its tests (B62). Answered on 2026-10-18: the code stays public until 1.0 and goes private, with the game's files encrypted, for that
 first public release (B52); big changes get a test lane (B53); off-site backups go to a cloud storage bucket later (B51); the team PC
 helper is a separate team app for War, Muffins and Helix (B54, B55); the roadmap is slimmed as Claude advised (B56); the old game's code
 goes as soon as nothing depends on it (B57).
@@ -126,7 +125,7 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   casts went over 8 ms (Ossuary Wall 14, Grave Frost 10, Ivory Cleave 9, Exhume 8), and the casts still compiled 395 shader pipelines, the same
   ones again in every new game (Soul Siphon 18 each time). The two runs after the fix (releases 1852fe7 and 578df6f, 2026-10-19) had no cast
   over 8 ms (worst 6.6 and 6.5 ms, p99 2.4 ms; the third, of b0b717a, one: the Mourner's Bone Needle at 12.9 ms, 5.6 the run before) and still about 400 compilations, which Godot builds in the background, so on that card they no
-  longer show as hitches; a weaker card (War's GTX 970) is the open question. The repeats are not materials freed and made again (a material
+  longer show as hitches; weaker cards are the open question (the play reports and more team PCs will show). The repeats are not materials freed and made again (a material
   made again does not compile again in Godot 4.7.2: a small test on the server's software renderer, 2026-10-19). Since 2026-10-19 the stutter test
   counts each kind of compilation apart, and #build-alerts says how many ran in the background, so the next runs show which ones make a frame wait.
   After: the warm-up also draws what those casts compile, a new game compiles nothing the one before it did, and the next stutter test shows no
@@ -152,7 +151,7 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   - Screenshots of a proposal on Low and Ultra, posted to the thread by our server. Live since 2026-10-19 and proven on Helix's PC that
     night (0.1.1: four pictures in 40 s of play; 0.1.0 could not start the game and reported no graphics card). With a team PC online they
     replace the server's pictures; with none, the server renders them on `!shot`.
-  - Benchmarks of a release build on a team PC (a fast PC, War's Intel Arc, the Alienware's GTX 970: the weak-PC floor of B39), on the
+  - Benchmarks of a release build on a team PC, on the
     benchmarks page marked as team runs. A benchmark starts once the PC has been left alone, and a run disturbed halfway is thrown out
     and retried, so its numbers are honest. Built 2026-10-19 with app 0.2.0 (now a step of the checks below), which also brought silent runs, screenshot runs that never show a window, a fresh folder for every run, cancels that
     reach the PC within 30 s, and AFK mode (Helix's design: once a job ran by itself because nobody answered, the next jobs run without
@@ -173,11 +172,6 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
       the revision, runs the chosen steps on a team PC (with `--compare` the live build first, on the same PC, so every number reads live
       build -> this change) and writes a summary and contact sheets for whoever asked: a session posts them to a new thread or a DM (it
       asks the person which). Approval never waits for them.
-    - Decide: the Discord agent runs these checks as tests at its test runs (🧪 / `!test` and the ship's own CI): a pass posts nothing, a
-      failure is fixed and tested again, and the thread hears only what needs a person's review (before and after pictures of a visible
-      change, a choice, a problem it could not fix). Built on the server's side, on hold for Helix. Claude's recommendation: `screens` with
-      `--compare` only for changes to windows or the HUD, `stutter` only when a rite changes; the benchmark and the soak stay a session's,
-      on request (they hold a PC for 5 to 35 minutes).
     - Jobs reach a PC within about a second (the PC's check-in waits on the server).
   - Proven on Helix's PC (RTX 4070 SUPER) on 2026-10-19 with apps 0.3.1 to 0.3.9: a full release check with every step (24 pictures at
     their exact sizes, the stutter test, the benchmark at Low 691 and Medium 597 fps with no hitches, 30 minutes of soak with flat memory).
@@ -188,10 +182,8 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   - Decide: a team PC runs the Discord agent's branch before anyone has reviewed it (found 2026-10-19). Pictures and videos are made from the
     change itself, so its game code runs on Helix's PC; it runs offline in its own folder, but game code can still reach the PC (run a program,
     read a file). Today only War, Muffins and Helix can ask the agent for changes, which limits the risk. Claude's recommendation: before team PCs
-    take jobs from anyone else (or War's PCs join), scan the branch's game code for calls that reach outside the game (programs, files outside
+    take jobs from anyone else, scan the branch's game code for calls that reach outside the game (programs, files outside
     its folder, the network) and refuse a team build that has one; the video steps themselves (B64) are data and never bring code.
-  - Still to do: War's PCs (the Intel Arc and the Alienware's GTX 970) have not signed in to the app yet, so the release checks and
-    benchmarks cover one graphics card; the weak-PC floor (B39) and the Ultra Low decision below wait on them.
   - Fix: a release that does not start on Windows reached players before any team PC tried it (the server's boot test runs the Linux build).
     Done 2026-10-19 (B61): before the switch to a new build, a free team PC starts it to the first screen and quits one while it loads
     (about 10 seconds); if the game fails there, the build is not published and the publish says why. No free PC, or none taking it within
@@ -200,7 +192,7 @@ players' PCs. Everything here is done as soon as possible, in this order (Helix,
   - With the art rebuild (Phase 4): lighting bakes on the strongest graphics card available instead of by hand, the result coming back as
     a proposal.
   - Later: a co-op test between two team PCs.
-- [ ] **Decide: an "Ultra Low (old PCs)" option** (B35). Once the play reports and the GTX 970 benchmark show how Low runs on weak PCs: if
+- [ ] **Decide: an "Ultra Low (old PCs)" option** (B35). Once the play reports show how Low runs on weak PCs: if
   Low on the new renderer misses the laptop floor (60 fps in normal play, 45 in the biggest fight), add an option that restarts the game in
   the old, lighter renderer. Claude recommends deciding from those numbers, not before.
 
@@ -362,9 +354,9 @@ budgets for every kind of asset, and checks for everything but models.
   history kept in git and DECISIONS.
 - [ ] **New: one map of the docs:** which page holds which rule (the vision, How we work, the three standards pages, the pipelines, the
   recipes, each system), so the Discord agent and every session find the rule before they build.
-- [ ] **Fix: the Discord agent still carries the retired web game's mode** (KNOWN-GAPS "Tools and tests"). Now: the runner's defaults, five
-  scripts and a phone step belong to the web game, and about 70 of the agent's 126 end-to-end tests still run in that mode. After: the game is
-  its only mode, those tests run against it, and the web scripts are deleted and retired.
+- [x] **Fix: the Discord agent still carried the retired web game's mode.** Done 2026-10-20: the game is its only mode (a config naming the web
+  mode is refused), its tests run against a world shaped like the real repo, and the web scripts, the phone step and the web-only tier rules are
+  deleted and retired.
 - [ ] **Fix: the repository after the old game's folder went.** Now: leftovers of the two-game setup. After: each top-level folder has one stated
   purpose, nothing is left over, and README.md's layout is true.
 

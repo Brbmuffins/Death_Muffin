@@ -7,42 +7,28 @@ const SRC = path.resolve(__dirname, '..');
 const IDS = { OWNER: '100000000000000001', HELIX: '142812688358178816', LIMITED: '300000000000000003', STRANGER: '400000000000000004', BOT: '900000000000000009', CHAN: '700000000000000007', BUGS: '700000000000000008' };
 
 function sh(cwd, ...a) { return execFileSync('git', ['-c', 'user.name=T', '-c', 'user.email=t@t', ...a], { cwd, stdio: 'pipe' }).toString().trim(); }
-// over.godot = true: the same world but for mode 'godot': a `godot-port` branch (the base branch) holding a small client/ tree (the game), master keeping only the
-// publish script (as in the real repo, where publish-godot-client.sh lives on master), a client manifest naming the revision that is "live", fake
-// check-godot.sh / publish script, and a deploy hook that only logs.
+// The test world: one `main` branch shaped like the real repo (a small client/ tree is the game, the server files the ship and gate know, the publish
+// script), a client manifest naming the revision that is "live", fake check-godot.sh / ci.sh / publish, and deploy hooks that only log.
+// (over.godot is accepted and ignored: every world is the game's since the web mode was retired.)
 function makeWorld(over = {}) {
-  const godot = !!over.godot; delete over.godot;
+  delete over.godot;
   const T = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-e2e-'));
   const origin = path.join(T, 'origin.git'), repo = path.join(T, 'repo'), tools = path.join(T, 'tools'), deploy = path.join(T, 'deploy'), wtRoot = path.join(T, 'wt');
   fs.mkdirSync(wtRoot); fs.mkdirSync(deploy); fs.mkdirSync(path.join(T, 'preview'));
-  execFileSync('git', ['init', '-q', '--bare', '-b', 'master', origin]);
+  execFileSync('git', ['init', '-q', '--bare', '-b', 'main', origin]);
   execFileSync('git', ['clone', '-q', origin, repo], { stdio: 'pipe' });
   sh(repo, 'config', 'user.name', 'T'); sh(repo, 'config', 'user.email', 't@t');
   const w = (f, c) => { fs.mkdirSync(path.dirname(path.join(repo, f)), { recursive: true }); fs.writeFileSync(path.join(repo, f), c); };
-  w('package.json', '{"name":"x"}'); w('README.md', 'hi'); w('src/ui/ui.css', 'a{color:red}'); w('src/gameplay/a.ts', 'speed=1'); w('server/x.js', 'a=1'); w('server/death-muffin/deploy-release.sh', 'echo ok'); w('server/vps-handoff/necro-progress/necro-rules.cjs', 'SPEED=1');
-  sh(repo, 'checkout', '-q', '-b', 'master'); sh(repo, 'add', '-A'); sh(repo, 'commit', '-q', '-m', 'init'); sh(repo, 'push', '-q', 'origin', 'master');
-  // optional `mobile` branch on origin (phones). over.mobile = 'clean' | 'conflict' | 'failtests'
-  if (over.mobile) {
-    sh(repo, 'checkout', '-q', '-b', 'mobile');
-    if (over.mobile === 'conflict') w('src/gameplay/a.ts', 'speed=5'); else w('mobile-only.txt', 'touch'); 
-    if (over.mobile === 'failtests') w('FAILTESTS', 'x');
-    sh(repo, 'add', '-A'); sh(repo, 'commit', '-q', '-m', 'mobile work'); sh(repo, 'push', '-q', 'origin', 'mobile'); sh(repo, 'checkout', '-q', 'master');
-    delete over.mobile;
-  }
-  let liveRev = null;
-  if (godot) {
-    w('server/death-muffin/publish-godot-client.sh', '#!/usr/bin/env bash\n# stub of the real publisher: records what it was asked to publish, next to itself\necho "published $1 REPO=$REPO" >> "$(dirname "$0")/published.log"\n');
-    sh(repo, 'add', '-A'); sh(repo, 'commit', '-q', '-m', 'publish script on master'); sh(repo, 'push', '-q', 'origin', 'master');
-    sh(repo, 'checkout', '-q', '-b', 'godot-port');
-    w('client/project.godot', 'config_version=5'); w('client/README.md', 'client readme'); w('client/game/a.gd', 'speed=1'); w('client/ui/menu.gd', 'title=1'); w('client/net/dm_api.gd', 'url=1'); w('client/export_presets.cfg', '[preset.0]');
-    w('.gitignore', 'art-src/\naudio-src/\n');   // like the real repo: raw art outputs are never committed
-    sh(repo, 'add', '-A'); sh(repo, 'commit', '-q', '-m', 'client tree'); sh(repo, 'push', '-q', 'origin', 'godot-port');
-    liveRev = sh(repo, 'rev-parse', 'HEAD');
-    fs.mkdirSync(path.join(T, 'client')); fs.writeFileSync(path.join(T, 'client', 'manifest.json'), JSON.stringify({ version: 'v1', rev: liveRev.slice(0, 12) }));
-  }
+  w('package.json', '{"name":"x"}'); w('README.md', 'hi'); w('PATCH_NOTES.json', '{"accent":"color:red"}\n'); w('server/x.js', 'a=1'); w('server/death-muffin/deploy-release.sh', 'echo ok');
+  w('server/death-muffin/publish-godot-client.sh', '#!/usr/bin/env bash\n# stub of the real publisher: records what it was asked to publish, next to itself\necho "published $1 REPO=$REPO" >> "$(dirname "$0")/published.log"\n');
+  w('client/project.godot', 'config_version=5'); w('client/README.md', 'client readme'); w('client/game/a.gd', 'speed=1'); w('client/ui/menu.gd', 'title=1'); w('client/net/dm_api.gd', 'url=1'); w('client/export_presets.cfg', '[preset.0]');
+  w('.gitignore', 'art-src/\naudio-src/\n');   // like the real repo: raw art outputs are never committed
+  sh(repo, 'checkout', '-q', '-b', 'main'); sh(repo, 'add', '-A'); sh(repo, 'commit', '-q', '-m', 'init'); sh(repo, 'push', '-q', 'origin', 'main');
+  const liveRev = sh(repo, 'rev-parse', 'HEAD');
+  fs.mkdirSync(path.join(T, 'client')); fs.writeFileSync(path.join(T, 'client', 'manifest.json'), JSON.stringify({ version: 'v1', rev: liveRev.slice(0, 12) }));
   fs.mkdirSync(path.join(tools, 'state'), { recursive: true });
-  for (const f of ['ship.sh', 'rollback.sh', 'agit', 'PROMPT.md', 'PROMPT-godot.md', 'art-run.sh', 'build-art.sh']) fs.copyFileSync(path.join(SRC, f), path.join(tools, f));
-  // model generation (godot mode): fake Tripo/Gemini tools (no network, no credits), a fake account balance, fake keys, and the owner-edited budget file
+  for (const f of ['ship.sh', 'rollback.sh', 'agit', 'PROMPT-godot.md', 'art-run.sh', 'build-art.sh']) fs.copyFileSync(path.join(SRC, f), path.join(tools, f));
+  // model generation: fake Tripo/Gemini tools (no network, no credits), a fake account balance, fake keys, and the owner-edited budget file
   const artDir = path.join(T, 'art-tools'); fs.cpSync(path.join(__dirname, 'fake-art'), artDir, { recursive: true }); fs.writeFileSync(path.join(artDir, 'state.json'), JSON.stringify({ balance: 3910 }));
   fs.writeFileSync(path.join(T, 'keys.local'), 'TRIPO_API_KEY=tsk_FakeTripoKeyForTestsOnly000000000000\nGEMINI_API_KEY=AIzaFakeGeminiKeyForTestsOnly000000000000\n', { mode: 0o600 });
   fs.writeFileSync(path.join(T, 'budget.json'), '{}', { mode: 0o600 });
@@ -65,28 +51,21 @@ function makeWorld(over = {}) {
     'esac', 'exit 0', ''].join('\n'), { mode: 0o755 });
   // shot-godot.sh stand-in: writes a PNG-ish file; in a base-<id> scratch worktree it writes the BEFORE picture (unless NOBASE exists)
   fs.writeFileSync(path.join(tools, 'shot-godot.sh'), '#!/usr/bin/env bash\n[ -f .dm-shot.json ] || exit 2\nmkdir -p .dm-shots\ncase "$PWD" in */base-*) [ -e "$(dirname "$PWD")/NOBASE" ] && exit 1; echo PNG-before > .dm-shots/a.png;; *) echo PNG-after > .dm-shots/a.png;; esac\n', { mode: 0o755 });
-  fs.writeFileSync(path.join(tools, 'check.sh'), '#!/usr/bin/env bash\n[ -e FAILTESTS ] && { echo "boom"; exit 1; }\necho "# tests 3"; echo "# pass 3"; echo "# fail 0"\n', { mode: 0o755 });
-  // regen stub: the real generators need the whole game repo; this one derives necro-rules.cjs from src/gameplay/a.ts (upper-cased) and prints the status like the real one
-  fs.writeFileSync(path.join(tools, 'regen.sh'), '#!/usr/bin/env bash\nmkdir -p server/vps-handoff/necro-progress\ntr a-z A-Z < src/gameplay/a.ts > server/vps-handoff/necro-progress/necro-rules.cjs\necho "== regenerated"\ngit status --porcelain\n', { mode: 0o755 });
-  const backup = path.join(deploy, 'backup-pre-release-abc123456789-20261004T000000Z'); fs.mkdirSync(backup);
-  fs.writeFileSync(path.join(backup, 'ROLLBACK.sh'), 'echo rolled-back-ok\n');
   const cfgFile = path.join(tools, 'config.json');
   const raw = { channelId: IDS.CHAN, guildId: '1', ownerIds: [IDS.OWNER], names: { [IDS.HELIX]: 'Helix', [IDS.LIMITED]: 'Limited' },
     projects: { deathmuffin: { requesters: [IDS.HELIX, IDS.LIMITED], approvers: { casual: [IDS.HELIX, IDS.LIMITED], gameplay: [IDS.HELIX], sensitive: [IDS.HELIX] } } },
     repo, worktreeRoot: wtRoot, stateDir: path.join(tools, 'state'), toolsDir: tools, deployDir: deploy,
-    claudeCmd: path.join(__dirname, 'fake-claude.cjs'), deployCmd: `n=$(ls ${deploy} | grep -c backup); b=${deploy}/backup-pre-release-aaaaaaaaaa$(printf %02d $n)-$(printf '20261004T%02d0000Z' $n); mkdir -p $b; echo 'echo rolled-back-ok' > $b/ROLLBACK.sh; echo "Rollback: $b/ROLLBACK.sh"; echo deployed "$1"`, turnTimeoutMin: 1, mobileDeployCmd: `echo "$1" >> ${deploy}/mobile-deploys.log`,
+    claudeCmd: path.join(__dirname, 'fake-claude.cjs'), turnTimeoutMin: 1, ciGate: false, clientManifest: path.join(T, 'client', 'manifest.json'), deployCmd: `echo deployed "$1" >> ${deploy}/deploys.log`,
     artToolsDir: artDir, artKeysFile: path.join(T, 'keys.local'), artBudgetFile: path.join(T, 'budget.json'), artLedgerFile: path.join(T, 'ledger.json'), artLockFile: path.join(T, 'tripo.lock'), artLockWaitSec: 5,
     soundRunScript: path.join(SRC, 'sound-run.mjs'), soundKeyFile: path.join(T, 'eleven.key'), soundLedgerFile: path.join(T, 'eleven-ledger.json'),
     previewRoot: path.join(T, 'preview'), previewUrl: 'https://example.test/death-muffin/preview/',
     teamApi: '',   // team PC pictures off unless a test brings its own fake backend (never the real one)
-    previewCmd: 'if [ -e "$DM_PREVIEW_ROOT/../FAIL" ]; then echo "vite exploded"; exit 1; fi; mkdir -p "$DM_PREVIEW_ROOT/$1" && echo "$DM_PREVIEW_TITLE|$DM_PREVIEW_BASE" > "$DM_PREVIEW_ROOT/$1/index.html"',
-    ...(godot ? { baseBranch: 'godot-port', mode: 'godot', ciGate: false, clientManifest: path.join(T, 'client', 'manifest.json'), deployCmd: `echo deployed "$1" >> ${deploy}/deploys.log`,
-      previewCmd: 'if [ -e "$DM_PREVIEW_ROOT/../FAIL" ]; then echo "godot exploded"; exit 1; fi; mkdir -p "$DM_PREVIEW_ROOT/$1" && echo "$DM_PREVIEW_TITLE" > "$DM_PREVIEW_ROOT/$1/DeathMuffin-Preview-$1-win64.zip"' } : {}),
+    previewCmd: 'if [ -e "$DM_PREVIEW_ROOT/../FAIL" ]; then echo "godot exploded"; exit 1; fi; mkdir -p "$DM_PREVIEW_ROOT/$1" && echo "$DM_PREVIEW_TITLE" > "$DM_PREVIEW_ROOT/$1/DeathMuffin-Preview-$1-win64.zip"',
     ...over };
   fs.writeFileSync(cfgFile, JSON.stringify(raw));
   const cfg = loadConfig(cfgFile); cfg.__file = cfgFile;
   const runner = createRunner(cfg);
-  return { T, repo, origin, tools, deploy, backup, cfg, runner, sh, liveRev, artDir, budgetFile: path.join(T, 'budget.json'), ledgerFile: path.join(T, 'ledger.json') };
+  return { T, repo, origin, tools, deploy, cfg, runner, sh, liveRev, artDir, budgetFile: path.join(T, 'budget.json'), ledgerFile: path.join(T, 'ledger.json') };
 }
 
 // ---- fake Discord layer ----

@@ -31,7 +31,7 @@ const trim = async (p) => (await p).out.trim();
 async function createWorktree(cfg, job) {
   await git(cfg.repo, ['fetch', '-q', 'origin']);
   const wt = path.join(cfg.worktreeRoot, `discord-${job.id}${job.round > 1 ? '-' + job.round : ''}`);
-  await git(cfg.repo, ['worktree', 'add', '-q', '-b', job.branch, wt, `origin/${cfg.baseBranch || 'master'}`]);
+  await git(cfg.repo, ['worktree', 'add', '-q', '-b', job.branch, wt, `origin/${cfg.baseBranch || 'main'}`]);
   for (const rel of ['node_modules']) {
     const src = path.join(cfg.repo, rel);
     if (fs.existsSync(src)) { try { fs.symlinkSync(src, path.join(wt, rel)); } catch { /* exists */ } }
@@ -88,7 +88,7 @@ const MIGRATION_RE = /^server\/death-muffin\/backend\/migrations\/([^/]+\.sql)$/
 function migrationsFrom(files) { return files.filter((f) => f.status === 'add' && MIGRATION_RE.test(f.path)).map((f) => MIGRATION_RE.exec(f.path)[1]); }
 
 async function pushBranch(cfg, job) { await git(job.worktree, ['push', '-q', '--force', '-u', 'origin', `${job.branch}:refs/heads/${job.branch}`], { timeout: 180000 }); }
-const compareUrl = (cfg, branch) => `https://github.com/${cfg.githubRepo}/compare/${cfg.baseBranch || 'master'}...${branch}`;
+const compareUrl = (cfg, branch) => `https://github.com/${cfg.githubRepo}/compare/${cfg.baseBranch || 'main'}...${branch}`;
 
 // Every descendant of pid, read from /proc before anything is killed (so nothing has been reparented to init yet).
 function treePids(pid) {

@@ -4,8 +4,7 @@ const path = require('path');
 const { run } = require('./gitops.cjs');
 
 function systemPrompt(cfg, job) {
-  const promptFile = cfg.mode === 'godot' ? 'PROMPT-godot.md' : 'PROMPT.md';
-  let sp = fs.readFileSync(path.join(cfg.toolsDir, promptFile), 'utf8').replaceAll('__BRANCH__', job.branch).replaceAll('__TOOLS__', cfg.toolsDir).replaceAll('__BASE__', cfg.baseBranch || 'master');
+  let sp = fs.readFileSync(path.join(cfg.toolsDir, 'PROMPT-godot.md'), 'utf8').replaceAll('__BRANCH__', job.branch).replaceAll('__TOOLS__', cfg.toolsDir).replaceAll('__BASE__', cfg.baseBranch || 'main');
   if (cfg.webAnyHost) {
     sp = sp.replace(/WebFetch on documentation sites only \([^)]*\)\. Use it when/, 'WebFetch on any public web page. Use it for research (how other games handle\na mechanic, bug reports, engine issues, references someone mentions), when someone asks how an engine or library feature works, or');
   }
@@ -30,12 +29,9 @@ function agentEnv() {
     CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1', BASH_DEFAULT_TIMEOUT_MS: BASH_LIMIT_MS, BASH_MAX_TIMEOUT_MS: BASH_LIMIT_MS };
 }
 function claudeArgs(cfg, job, { maxTurns } = {}) {
-  // The only programs the agent may run: agit, and the mode's own check script (+ regen.sh on the web side only: Godot mode has no
-  // generated server bundles to rebuild; shot.sh on the web side, shot-godot.sh on the Godot side). On the Godot side only with --rerun and
-  // the suites it names: the whole check (often 20+ suites, ~20 min) is the runner's after the turn, and a turn that ran it too doubled every round.
-  const bash = cfg.mode === 'godot'
-    ? [`Bash(${cfg.toolsDir}/agit *)`, `Bash(${cfg.toolsDir}/check-godot.sh --rerun *)`, `Bash(${cfg.toolsDir}/regen-godot.sh)`, `Bash(${cfg.toolsDir}/shot-godot.sh)`, `Bash(${cfg.toolsDir}/shot-godot.sh *)`, `Bash(${cfg.toolsDir}/build-art.sh *)`, `Bash(${cfg.toolsDir}/render-model.sh *)`, `Bash(${cfg.toolsDir}/build-sound.sh *)`]
-    : [`Bash(${cfg.toolsDir}/agit *)`, `Bash(${cfg.toolsDir}/check.sh)`, `Bash(${cfg.toolsDir}/regen.sh)`, `Bash(${cfg.toolsDir}/shot.sh)`, `Bash(${cfg.toolsDir}/shot.sh *)`];
+  // The only programs the agent may run, all in the sandbox: agit, check-godot.sh only with --rerun and the suites it names (the whole check is
+  // the runner's, through CI), regen-godot.sh for generated files (B65), the screenshot, model and sound build scripts.
+  const bash = [`Bash(${cfg.toolsDir}/agit *)`, `Bash(${cfg.toolsDir}/check-godot.sh --rerun *)`, `Bash(${cfg.toolsDir}/regen-godot.sh)`, `Bash(${cfg.toolsDir}/shot-godot.sh)`, `Bash(${cfg.toolsDir}/shot-godot.sh *)`, `Bash(${cfg.toolsDir}/build-art.sh *)`, `Bash(${cfg.toolsDir}/render-model.sh *)`, `Bash(${cfg.toolsDir}/build-sound.sh *)`];
   // File tools are scoped to the worktree ("//" = absolute path): a bare "Read" grants every path on the machine (runner secret, /opt),
   // which matters more now that a WebFetch could carry what it read out. WebFetch is limited to documentation hosts (cfg.webDocDomains) unless the owner set cfg.webAnyHost.
   const wt = `/${job.worktree}/**`;

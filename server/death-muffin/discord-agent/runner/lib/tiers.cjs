@@ -1,6 +1,5 @@
 'use strict';
 const { matches, matchesAny } = require('./glob.cjs');
-const { numericOnly, textOnly } = require('./numdelta.cjs');
 
 const RANK = { casual: 0, gameplay: 1, sensitive: 2 };
 
@@ -22,41 +21,23 @@ function parseDiff(text) {
   return files;
 }
 
-const EXTERNAL_URL = /@import|url\(\s*['"]?(?:https?:)?\/\//i;
-function casualFilePasses(file, rules, tol) {
-  if (!rules.length) return false;
-  if (file.binary) return false;
-  if (file.hunks.length === 0 && file.status === 'modify') return false;     // mode change etc.
-  return file.hunks.every((h) => rules.some((r) => {
-    if (r.mode === 'any') return !(/\.css$/i.test(file.path) && h.added.some((l) => EXTERNAL_URL.test(l)));
-    if (file.status !== 'modify') return false;                              // new/deleted content files are not "casual number/text tweaks"
-    if (r.mode === 'numeric') return numericOnly(h, tol);
-    if (r.mode === 'text') return textOnly(h, r.keys || '*');
-    return false;
-  }));
-}
-
+// casual: documents and patch notes, any content; never a binary file or a change of mode only
 function classifyFile(file, cfg) {
-  const t = cfg.tiers, tol = cfg.numericTolerancePct || 25;
+  const t = cfg.tiers;
   if (matchesAny(t.sensitive, file.path)) return 'sensitive';
-  const rules = (t.casual || []).filter((r) => matches(r.glob, file.path));
-  if (casualFilePasses(file, rules, tol)) return 'casual';
+  if (matchesAny(t.casual || [], file.path) && !file.binary && !(file.hunks.length === 0 && file.status === 'modify')) return 'casual';
   if (matchesAny(t.gameplay, file.path)) return 'gameplay';
   return 'sensitive';
 }
 
-// -> { tier, perFile: [{path, tier}], forbidden: [paths] }. The diff's tier is its strictest file's.
-// `derived` = paths already PROVEN (by lib/generated.cjs) to be exactly what the generators produce from the committed sources: they are
-// tier-neutral (listed as 'derived', never escalate, never forbidden); the tier comes from the remaining files. A diff of only derived
-// files has nothing real to judge -> sensitive.
-function classifyDiff(diffText, cfg, derived = []) {
+// -> { tier, perFile: [{path, tier}], forbidden: [paths] }. The diff's tier is its strictest file's; an empty diff has nothing to judge -> sensitive.
+function classifyDiff(diffText, cfg) {
   const files = Array.isArray(diffText) ? diffText : parseDiff(diffText);
-  const skip = new Set(derived);
-  const perFile = files.map((f) => ({ path: f.path, tier: skip.has(f.path) ? 'derived' : classifyFile(f, cfg) }));
+  const perFile = files.map((f) => ({ path: f.path, tier: classifyFile(f, cfg) }));
   let tier = 'casual';
-  for (const f of perFile) if (f.tier !== 'derived' && RANK[f.tier] > RANK[tier]) tier = f.tier;
-  if (!perFile.some((f) => f.tier !== 'derived')) tier = 'sensitive';   // nothing to judge -> never casual
-  const forbidden = files.filter((f) => !skip.has(f.path) && matchesAny(cfg.forbiddenPaths || [], f.path)).map((f) => f.path);
+  for (const f of perFile) if (RANK[f.tier] > RANK[tier]) tier = f.tier;
+  if (!perFile.length) tier = 'sensitive';   // nothing to judge -> never casual
+  const forbidden = files.filter((f) => matchesAny(cfg.forbiddenPaths || [], f.path)).map((f) => f.path);
   return { tier, perFile, forbidden };
 }
 

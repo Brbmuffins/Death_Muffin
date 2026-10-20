@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Godot-mode counterpart of shot.sh: screenshots of the agent's branch. usage: shot-godot.sh [plan.json]   (default .dm-shot.json in the worktree;
+# Screenshots of the agent's branch on the server (with no team PC online). usage: shot-godot.sh [plan.json]   (default .dm-shot.json in the worktree;
 # the plan format is documented in client/main/qa_ui_shots.gd and PROMPT-godot.md: up to 4 shots of windows / tooltips / the hero wearing gear on the offline demo hero;
 # a plan "discipline" (ossuary|gravecaller|mourner|rotweaver|reaper, or the class number) picks the necromancer: it is mapped here to `--class=N`, default 2).
 # Same sandbox as check-godot.sh (sandbox-lib.sh): fresh user/network/mount namespaces, no network (loopback only), the WHOLE filesystem read-only, a private /tmp,

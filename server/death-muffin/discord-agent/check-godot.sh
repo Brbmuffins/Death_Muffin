@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Godot-mode counterpart of check.sh: the agent's only way to run the Godot client's tests, and what the runner / ship.sh run before a
-# proposal and before a deploy. Same sandbox as check.sh (sandbox-lib.sh): fresh user/network/mount namespaces, no network (loopback only), the WHOLE
+# The agent's only way to run the game's tests (--rerun <suites>), and the local check the runner / ship.sh run when the CI gate is off. The sandbox
+# (sandbox-lib.sh): fresh user/network/mount namespaces, no network (loopback only), the WHOLE
 # filesystem read-only (Godot binary, node_modules, the repo's .git stay readable), a private /tmp, only the worktree writable. HOME and the XDG dirs are a fresh temp dir, so Godot's
 # user:// (saves, settings) can never touch the real home. Hard limit 85 minutes for the whole run (the full suite outgrew 40 min on 2026-10-09).
 # Inside: the repo hygiene check (tools/hygiene/check.mjs = npm run hygiene, also on docs-only changes), the model check on the models the change adds or edits

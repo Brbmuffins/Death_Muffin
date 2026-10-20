@@ -13,7 +13,7 @@ A path below without a folder is under `client/`.
 ## Performance
 
 The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say otherwise.
-- **Weaker PCs are not measured:** no GTX 970-class PC or laptop has run the game's benchmark, so B39's floors are unproven.
+- **Weaker PCs are not measured:** no weaker PC or laptop has run the game's benchmark yet, so B39's floors are unproven; the play reports and more team PCs will show.
 - **Spikes:** a rite's cast takes 2 to 4 ms in the tick it is cast (1.2 to 1.9 ms of it its effects: `DmRiteCaster._play_event`, the `Vfx`
   nodes); a big kill's event handlers 2 to 9 ms (`DmCoreHost._dispatch`: rewards, loot, the counsel); Bone Fan's pick in Easy auto combat
   (`DmAutoCombat._primary_target`) tests every pair of targets, up to 4,000 calls, about 6 ms (the Gravecaller's default loadout does not use it).
@@ -142,9 +142,6 @@ polish list). Also:
   answers true for them. Nothing shows it today (character select and the benchmark list from `PLAYABLE_DISCIPLINES`).
 - `launcher/tests/LauncherTests.csproj` does not load in `dotnet build`: its XML comment contains `--project` ("XML comment cannot contain '--'"); CI does not
   build it, so `launcher/tests/run-local.sh` is the only way its tests run (found 2026-10-19).
-- **The Discord agent still carries the retired web mode** (found 2026-10-19): the runner's defaults are `mode: "web"`, `baseBranch: "master"`
-  (`runner/lib/config.cjs`; the live config sets both), `check.sh`, `preview.sh`, `shot.sh`, `regen.sh`, `shoot.cjs` and `PROMPT.md` are unused, and
-  `ship.sh` keeps a web deploy and a mobile-branch step (every ship audits `mobile-result` skipped).
 - `discord-agent/preview-godot.sh --team` still carries its own copy of the newest-6 clean-up of the preview folders in `team-files`; `server/death-muffin/team-files-prune.sh` is the shared rule it
   should call (found 2026-10-19).
 - `npm run typecheck` fails on six errors in the rules' parity tests (`server/rules/gameplay/__tests__/legionRules.parity.test.ts`, `necroRules.parity.test.ts`, `vaultRules.parity.test.ts`: fixture rows typed looser than the rule functions take); CI does not run it, so it went unnoticed (found 2026-10-19).

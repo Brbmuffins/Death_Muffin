@@ -302,10 +302,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   held the PC after each release and reported after players already had the build. Now `team-check.sh` builds a revision (its release
   build through the publish's own steps, publishing nothing, and its debug build), runs the steps its shipper picks on a team PC (with
   `--compare` the live build first on the same PC, so the numbers read live build -> this change) and writes a summary and contact sheets
-  for whoever asked; a session posts them to a new thread or a DM after asking the person which. For the Discord agent they are tests
-  (Helix, 2026-10-19: "it should post them for user review. if user review is not required then it doesnt post"): a check that passes
-  posts nothing, one that fails is fixed and tested again like a failing test, and the thread hears only what a person must look at
-  (before and after pictures of a visible change, a choice, a problem the agent could not fix). Approving a change never waits for them;
+  for whoever asked; a session posts them to a new thread or a DM after asking the person which. The Discord agent does not run them during its 🧪 and ✅ tests (planned as silent tests on 2026-10-19; Helix, 2026-10-20: "no to the team app tests"). Approving a change never waits for them;
   the publish's 14-second check (B61) is the one automatic check, and it runs before the switch. #build-alerts gets release notices and
   server alerts only.
 - **B63. Discord agent proposals are drafts; the tests run when someone asks or ships, and the next big change cannot break testing unnoticed**
