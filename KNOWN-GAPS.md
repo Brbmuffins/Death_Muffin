@@ -127,6 +127,9 @@ polish list). Also:
   `offline_load`, `offline_versions`, `offline_restore`, `offline_sync_stats` and `get_patch_notes`, `DmGatherLoop.api_post`, the forge
   panel's `set_bonus_claimed`, `DmStatusSet.is_stunned` and `is_silenced`, and the creature's `set_rise` (only tests use `recycle_reset`).
   Delete them with the next change in those files.
+- **A branch that changes `native/` cannot get team PC pictures or checks on its own** (2026-10-20): `preview-godot.sh --team` warms the shared cache from the
+  merge base and builds read-only in its sandbox, so a changed combat core has no Windows build there ("prep: building the Windows combat core failed").
+  Today: run `tools/check/prep.sh --windows` in the branch's worktree first (it stores the build), then the team check. The Discord agent never changes `native/`.
 - **The pre-release check is skipped while the team PC runs a long check** (B61, 2026-10-19): a shipper's checks (`team-check.sh`, B62) can
   hold the PC for minutes, and with Helix's PC the only one signed in, a release then goes live without a PC starting it first (the publish
   says so); in the app's "Ask" mode it needs a click within 2.5 minutes (AFK mode and "Run without asking" take it at once). The app's offer
