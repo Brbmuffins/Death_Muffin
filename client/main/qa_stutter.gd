@@ -24,6 +24,7 @@ var preset := "high"
 var window_s := WINDOW_S    ## (tests shorten these)
 var gap_s := GAP_S
 var settle_s := SETTLE_S
+var boot_opts: Dictionary = {}   ## merged into each game's start options (a probe turns the warm-up off: `{"warmup": false}`)
 var rows: Array = []
 var refused: Array = []
 var errors: Array = []
@@ -101,7 +102,7 @@ func run() -> int:
 func _discipline(disc: int, settings: Dictionary) -> void:
 	var who := name_of(disc)
 	var tree := get_tree()
-	var fight: Dictionary = await DmBenchFight.boot(self, disc, {"settings": settings}, AREA)
+	var fight: Dictionary = await DmBenchFight.boot(self, disc, {"settings": settings}.merged(boot_opts, true), AREA)
 	var game: DmNextGame = fight["game"]
 	var hero: DmHeroBody = fight["hero"]
 	var caster: DmRiteCaster = fight["caster"]

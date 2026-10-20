@@ -92,14 +92,25 @@ static func soft_quality(level: int) -> int:
 	return RenderingServer.SHADOW_QUALITY_HARD
 
 
-## Viewport + RenderingServer side of a preset (the world / crowd / fx side is DmNextPerf.apply).
+## The RenderingServer's soft-shadow filter quality as this game last set it (-1: not yet). Setting it, even to the value it has, makes Godot 4.7.2
+## drop every compiled pipeline of every 3D shader (the next draws compile them all again): it was set on every game start and every Settings
+## change, so a new game threw away what the loading screen had compiled and its first casts compiled again (2026-10-20, client/tools/compile_probe.gd).
+static var _soft_set := -1
+static var _atlas_set := -1
+
+
+## Viewport + RenderingServer side of a preset (the world / crowd / fx side is DmNextPerf.apply). The RenderingServer is told only what changed.
 static func apply_render(vp: Viewport, id: Variant) -> void:
 	var p := get_preset(id)
 	vp.msaa_3d = msaa_mode(int(p["msaa"]))
 	vp.anisotropic_filtering_level = aniso_mode(int(p["aniso"]))
 	vp.mesh_lod_threshold = float(p["lod"])
-	RenderingServer.directional_shadow_atlas_set_size(int(p["shadow_size"]), true)
-	RenderingServer.directional_soft_shadow_filter_set_quality(soft_quality(int(p["soft"])))
+	if int(p["shadow_size"]) != _atlas_set:
+		_atlas_set = int(p["shadow_size"])
+		RenderingServer.directional_shadow_atlas_set_size(_atlas_set, true)
+	if soft_quality(int(p["soft"])) != _soft_set:
+		_soft_set = soft_quality(int(p["soft"]))
+		RenderingServer.directional_soft_shadow_filter_set_quality(_soft_set)
 
 
 ## The environment side: bloom (DmWfxBloom) and, on Forward+, screen-space ambient occlusion.
