@@ -52,6 +52,7 @@ var fails := 0
 var checks := 0
 var errlog := ErrorLog.new()
 var g: DmNextGame
+var kept_mock: RefCounted
 
 
 func check(ok: bool, what: String) -> void:
@@ -78,6 +79,8 @@ func _main() -> void:
 	boot_hook()
 	scenario_gates()
 	await scene_setup()
+	await legion_shots()
+	await scene_clip()
 	await scripted_fight()
 	await fight_shot()
 	perf_shot_plan()
@@ -135,6 +138,30 @@ func plan_format() -> void:
 	check(DmQaUiShots.parse('{"shots":[{"view":"top"}]}')["ok"] == false and DmQaUiShots.parse('{"shots":[{"anim":"dance"}]}')["ok"] == false, "a bad view or pose is refused")
 	check(DmQaUiShots.parse('{"shots":[{"fight":true},{"fight":"yes"},{}]}')["shots"].map(func(sh: Dictionary) -> bool: return sh["fight"]) == [true, false, false], "\"fight\" is a true or false, false when it is not given")
 	check(DmQaUiShots.parse('{"shots":[{"name":"x"}]}')["bag"] == "demo" and DmQaUiShots.parse('{"bag":"keep","shots":[{}]}')["bag"] == "keep", "the demo bag is the default")
+	# the keys of the "draft" plans (a Legion kit, thralls, a place to stand, walking, candles put out)
+	var lp := DmQaUiShots.parse('{"legion":["a","","b","c"],"shots":[{"name":"kit","area":"graves","at":[0,-12.5],"thralls":{"mine":["warrior","archer"],"Ossuary":["hound"]},"walk":true,"candles_out":["west","east"]},{}]}')
+	check(not lp["ok"] and String(lp["error"]).contains("Ossuary"), "an owner of thralls is \"mine\" or a discipline by its lower-case name (%s)" % lp["error"])
+	lp = DmQaUiShots.parse('{"legion":["a","","b","c"],"shots":[{"name":"kit","area":"graves","at":[0,-12.5],"thralls":{"mine":["warrior","archer"],"ossuary":["hound"]},"walk":true,"candles_out":["west","east"]},{}]}')
+	check(lp["ok"] and lp["legion"] == ["a", "b"] and lp["legion"].size() <= DmQaUiShots.MAX_LEGION, "the legion list is parsed and capped (%s)" % str(lp["legion"]))
+	var ks: Dictionary = lp["shots"][0]
+	check(ks["at"] == Vector2(0.0, -12.5) and ks["thralls"] == {"mine": ["warrior", "archer"], "ossuary": ["hound"]} and ks["walk"] == true and ks["candles_out"] == ["west", "east"], "the shot's place, thralls, walk and candles are parsed")
+	var ds: Dictionary = lp["shots"][1]
+	check(ds["at"] == null and (ds["thralls"] as Dictionary).is_empty() and ds["walk"] == false and (ds["candles_out"] as Array).is_empty(), "and are none by default")
+	check(not DmQaUiShots.parse('{"shots":[{"at":[1]}]}')["ok"] and not DmQaUiShots.parse('{"shots":[{"at":"here"}]}')["ok"], "a place is two numbers")
+	check(not DmQaUiShots.parse('{"shots":[{"thralls":{"mine":["dragon"]}}]}')["ok"] and not DmQaUiShots.parse('{"shots":[{"thralls":{"mine":"warrior"}}]}')["ok"] and not DmQaUiShots.parse('{"shots":[{"thralls":[]}]}')["ok"], "an unknown kind, a kind that is no list and thralls that are no object are refused")
+	var many := []
+	for i in DmQaUiShots.MAX_THRALLS + 1:
+		many.append("warrior")
+	check(not DmQaUiShots.parse(JSON.stringify({"shots": [{"thralls": {"mine": many}}]}))["ok"], "more than MAX_THRALLS thralls are refused (%d)" % DmQaUiShots.MAX_THRALLS)
+	check(not DmQaUiShots.parse('{"shots":[{"thralls":{"mine":["hound"],"ossuary":["hound"],"rotweaver":["hound"],"mourner":["hound"],"reaper":["hound"]}}]}')["ok"], "and more owners than the hero and the stand-in spots")
+	check(not DmQaUiShots.parse('{"shots":[{"candles_out":["south"]}]}')["ok"], "a candle group the Sanctum does not have is refused")
+	var groups := {}
+	for a: String in DmWfxData.get_data()["flames"]:
+		for gn in DmWfxData.get_data()["flames"][a]["groups"]:
+			if gn != null:
+				groups[String(gn)] = true
+	check(DmQaUiShots.CANDLE_GROUPS.size() == groups.size() and DmQaUiShots.CANDLE_GROUPS.all(func(c: String) -> bool: return groups.has(c)),
+		"the candle groups the plan accepts are the dressing's data (%s)" % str(groups.keys()))
 	# the plan's words against the game's: a window id is a panel DmGameUi opens, the disciplines are the content's playable ones, the demo bag is real items that fit
 	var known: Array = DmGameUi.PANEL_KEYS.values() + DmGameUi.HOSTS.keys() + ["settings", "salvage", "shelf", "ascension", "class"]
 	for k in DmQaUiShots.WINDOWS:
@@ -230,6 +257,7 @@ func boot_hook() -> void:
 
 func scene_setup() -> void:
 	var mock := DmOffline.make_mock("")   # memory only: no file, no server
+	kept_mock = mock                      # (the game's api talks to it: the later parts of the suite need it alive)
 	var api := DmOffline.make_api(mock)
 	var reg := await api.register("qashots%d" % (Time.get_ticks_usec() % 100000), "q@example.com", "pw1234")
 	api.set_token(reg.data["token"])
@@ -326,6 +354,108 @@ func fight_shot() -> void:
 	g.core_host.enemy_damaged.disconnect(hit_cb)
 	for id in g.core_host.enemies_in_radius(hero.position, 400.0):
 		g.core_host.remove_enemy(id)
+
+
+## The draft plans' set-up on the game scene (the Graves): a Legion kit given through the Legion window's call, thralls of the hero and of stand-in owners round them, the hero's walk and the candles put out;
+## and all of it gone after the picture. The thralls' looks are the crowd's (client/crowd/README.md): the hero's wear the kit and the Gravecaller's look, a stand-in's its discipline's look.
+func legion_shots() -> void:
+	var hero := g.local_body()
+	var host := g.core_host
+	g.director.enabled = false
+	var plan := DmQaUiShots.parse('{"bag":"keep","legion":["leg_legion_unburied_chest","staff_gold","staff_moon"],"shots":[{"name":"kit","area":"graves","at":[0,-12],"wait_ms":2500,"view":"game",' \
+		+ '"thralls":{"mine":["warrior","archer","bonemage","hound"],"ossuary":["warrior","archer"],"rotweaver":["warrior"]},"candles_out":["west","east"]},{"name":"walk","walk":true,"wait_ms":1000}]}')
+	check(plan["ok"] and plan["legion"].size() == 2, "the draft plan parses and the third legion item is dropped")
+	await DmQaUiShots.prepare(g, plan)
+	var worn: Dictionary = DmLegion.kit_pieces(g.ui_host.inventory.slots)
+	check(worn.has("armor") and worn.has("weapon") and worn["armor"]["item_id"] == "leg_legion_unburied_chest" and worn["weapon"]["item_id"] == "staff_gold", "the plan's legion pieces are on the Legion (%s)" % str(worn.keys()))
+	var kit: Dictionary = g.look.descriptor().get("k", {})
+	check(kit.has("armor") and kit.has("weapon") and host._kits.get(hero, {}) == kit, "the hero's look carries the kit and the core host holds it for his thralls")
+	var heroes_before: int = host._heroes.size()
+	var s: Dictionary = plan["shots"][0]
+	var st := await DmQaUiShots.stage(root, g, s)
+	await ticks(60)
+	check(g.world.area_at(hero.position.x, hero.position.z) == "graves" and Vector2(hero.position.x, hero.position.z).distance_to(Vector2(0.0, -12.0)) < 1.5, "at: the hero stands at the asked point of the Graves (%s)" % str(hero.position))
+	check(host.thrall_count(hero.core_id) == 4 and host.thrall_count() == 7, "thralls: four for the hero and three for the stand-ins (%d, %d in all)" % [host.thrall_count(hero.core_id), host.thrall_count()])
+	check(host._heroes.size() == heroes_before + 2 and host.alive_count() == 0, "two stand-in owners are registered and no enemy is about")
+	var by_owner := {}
+	for tid in host.core.thrall_ids():
+		var info: Dictionary = host.core.thrall_info(tid)
+		by_owner[int(info["owner"])] = int(by_owner.get(int(info["owner"]), 0)) + 1
+	check(by_owner.size() == 3 and by_owner.get(hero.core_id, 0) == 4, "the thralls belong to three owners (%s)" % str(by_owner))
+	# each stand-in's thralls wear the look of its discipline
+	var looks: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://crowd/crowd_looks.json"))
+	var slugs := {}
+	for tid in host.core.thrall_ids():
+		var owner := int(host.core.thrall_info(tid)["owner"])
+		var slot := int(host.view.crowd.view_info(tid).get("model", -1))
+		for slug in host.view.model_slots():
+			if int(host.view.model_slots()[slug]) == slot:
+				slugs[owner] = String(slugs.get(owner, "")) + String(slug).split("+")[0] + " "
+	var stand_ins: Array = host._heroes.slice(heroes_before)
+	var ok := stand_ins.size() == 2
+	for body: Node3D in stand_ins:
+		var want := String(looks["legion"][body.get("discipline_id")]["slug"])
+		ok = ok and String(slugs.get(host._hero_ids[host._heroes.find(body)], "")).contains(want)
+	check(ok, "a stand-in's thralls wear its discipline's look (%s)" % str(slugs))
+	check(g.world.dressing.candle_off.has("west") and g.world.dressing.candle_off.has("east") and not g.world.dressing.candle_off.has("north"), "candles_out puts the asked groups out (%s)" % str(g.world.dressing.candle_off.keys()))
+	check(not g.director.enabled, "the waves are away for the shot")
+	DmQaUiShots.capture(root, g, s, st, OUT.path_join("kit.png"))
+	await ticks(30)
+	check(host.thrall_count() == 0 and host._heroes.size() == heroes_before and g.world.dressing.candle_off.is_empty(), "after the picture the thralls, the stand-ins and the candles' darkness are gone")
+	# the walk: over the wait the hero paces to and fro, and stands where he stood after it
+	var base := hero.position
+	var lo := [INF]
+	var hi := [-INF]
+	var spy := func() -> void:
+		lo[0] = minf(lo[0], hero.position.x)
+		hi[0] = maxf(hi[0], hero.position.x)
+	root.get_tree().physics_frame.connect(spy)
+	await DmQaUiShots._walk(root, g, 2.5)
+	root.get_tree().physics_frame.disconnect(spy)
+	check(hi[0] - lo[0] > 1.5 * DmQaUiShots.WALK_REACH and hi[0] - lo[0] <= 2.0 * DmQaUiShots.WALK_REACH + 0.1, "walk: the hero paces %.2f m across (reach %.1f either side)" % [hi[0] - lo[0], DmQaUiShots.WALK_REACH])
+	check(hero.position.distance_to(base) < 0.05, "walk: and stands where he stood after it")
+	g.director.enabled = false
+
+
+## A scene clip on the game scene: the setup's thralls (the hero's and a stand-in owner's) fight the mortal stand-ins, the hero stands at the setup's point and walks the step's path, a candle step puts a group out, and the clip puts everything back.
+func scene_clip() -> void:
+	var hero := g.local_body()
+	var host := g.core_host
+	var heroes_before: int = host._heroes.size()
+	var plan := DmQaClips.parse(JSON.stringify({"discipline": "gravecaller", "legion": ["leg_legion_unburied_chest", "staff_gold"], "clips": [{"name": "scene", "area": "graves", "seconds": 4, "enemies": 3,
+		"setup": [{"do": "stand_at", "at": [0, -12]}, {"do": "stand_ins", "health": 4, "harmless": true, "fight": true, "distance": 5}, {"do": "thralls", "owners": {"mine": ["warrior", "warrior"], "gravecaller": ["warrior"]}}],
+		"steps": [{"at": 0.5, "do": "walk", "to": [[-6, -12], [-6, -16]]}, {"at": 1.0, "do": "candles", "group": "west"}, {"at": 3.0, "do": "candles", "group": "west", "out": false}]}]}))
+	check(plan["ok"], "the scene plan parses (%s)" % plan["error"])
+	var clip: Dictionary = plan["clips"][0]
+	var seen := {"n": 0, "hurt": 0, "far": 0.0, "off_mid": false, "off_end": true, "owners": 0, "own": 0, "moved": false}
+	var start := Vector2(0.0, -12.0)
+	host.enemy_damaged.connect(func(_id: int, src: int, _amount: float, _hp: float) -> void: seen["hurt"] += 1 if src != hero.core_id else 0)
+	var fake := func() -> Image:
+		seen["n"] += 1
+		seen["far"] = maxf(float(seen["far"]), Vector2(hero.position.x, hero.position.z).distance_to(start))
+		if seen["n"] == 45:   # 1.5 s in: the candle step (1 s) went off
+			seen["off_mid"] = g.world.dressing.candle_off.has("west")
+			seen["owners"] = host.thrall_count()
+			seen["own"] = host.thrall_count(hero.core_id)
+		if seen["n"] == 110:   # 3.7 s: lit again at 3 s
+			seen["off_end"] = g.world.dressing.candle_off.has("west")
+		var img := Image.create_empty(401, 225, false, Image.FORMAT_RGBA8)
+		img.fill(Color.from_hsv(fmod(float(seen["n"]) * 0.02, 1.0), 0.7, 0.8))
+		return img
+	var dir := ProjectSettings.globalize_path(OUT.path_join("clips"))
+	DirAccess.make_dir_recursive_absolute(dir)
+	var r: Dictionary = await DmQaClips.record(root, g, clip, dir, fake)
+	check(r["ok"] and r["frames"] == 120 and r["casts"] == [], "the scene clip is recorded with no cast (%s)" % str(r))
+	check(seen["owners"] == 3 and seen["own"] == 2, "the thralls stand for the hero and the stand-in owner while it runs (%d, %d the hero's)" % [seen["owners"], seen["own"]])
+	check(seen["off_mid"] and not seen["off_end"], "the candle step put the west group out and lit it again")
+	check(float(seen["far"]) > 3.0, "the hero walked the step's path (%.1f m from where he stood)" % float(seen["far"]))
+	check(int(seen["hurt"]) > 0, "the thralls fight the stand-ins (%d blows that were not the hero's)" % int(seen["hurt"]))
+	var worn: Dictionary = DmLegion.kit_pieces(g.ui_host.inventory.slots)
+	check(worn.has("armor") and worn.has("weapon") and worn["armor"]["item_id"] == "leg_legion_unburied_chest" and worn["weapon"]["item_id"] == "staff_gold", "the plan's Legion kit is on the hero")
+	check(host.thrall_count() == 0 and host._heroes.size() == heroes_before and host.alive_count() == 0 and g.world.dressing.candle_off.is_empty() and not hero.has_target, "after the clip the thralls, the stand-in owner, the stand-ins and the candles' darkness are gone, the hero stands still")
+	check(not FileAccess.file_exists(dir.path_join("scene.mjpeg")) or r["ok"], "the clip's files are there only when it is")
+	g.ui.visible = true   # a clip hides the HUD for its own scene
+	g.director.enabled = false
 
 
 func until(cond: Callable, limit_s: float) -> bool:
@@ -574,6 +704,33 @@ func clip_plan_format() -> void:
 	for bad in refusals:
 		var r := DmQaClips.parse(String(bad))
 		check(not r["ok"] and String(r["error"]).contains(String(refusals[bad])), "refused, saying why: %s (%s)" % [String(bad).left(80), r["error"]])
+	# the camera's zoom: none is the game's default, a value is held to the recorder's range (the steps file's limits are the same numbers)
+	var zargs: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DmQaClips.STEPS_FILE))["setup"]["zoom"]["args"]["value"]
+	check(DmQaClips._setup_of([])["zoom"] == 0.0 and DmQaClips._setup_of([{"do": "zoom", "value": 0.55}])["zoom"] == 0.55 and DmQaClips._setup_of([{"do": "zoom", "value": 0.1}])["zoom"] == DmQaClips.ZOOM_MIN
+		and float(zargs["min"]) == DmQaClips.ZOOM_MIN and float(zargs["max"]) == DmQaClips.ZOOM_MAX, "a clip's zoom: left out it is the game's, set it is held to %.2f-%.2f" % [DmQaClips.ZOOM_MIN, DmQaClips.ZOOM_MAX])
+	# the scene words: the plan's Legion kit, a hero stood at a point, thralls, a walk and the Sanctum's candles (a clip of them casts nothing and needs no "cast")
+	var scene := DmQaClips.parse(JSON.stringify({"discipline": "gravecaller", "legion": ["leg_requiem_wraiths_chest", "staff_gold", "staff_moon"], "clips": [{"name": "scene", "area": "fen", "seconds": 6,
+		"setup": [{"do": "stand_at", "at": [-42, -80]}, {"do": "thralls", "owners": {"mine": ["warrior", "archer"], "ossuary": ["warrior"]}}],
+		"steps": [{"at": 4, "do": "candles", "group": "east"}, {"at": 0.5, "do": "walk", "to": [[-48, -78], [-38, -72]]}, {"at": 5, "do": "candles", "group": "east", "out": false}]}, {"name": "one", "seconds": 2, "steps": [{"at": 1, "do": "walk", "to": [1, 2]}]}]}))
+	var sc0: Dictionary = scene["clips"][0] if scene["ok"] else {}
+	check(scene["ok"] and scene["legion"] == ["leg_requiem_wraiths_chest", "staff_gold"] and (scene["notes"] as Array).size() == 1, "the plan's Legion kit is at most %d items, with a note (%s)" % [DmQaUiShots.MAX_LEGION, str(scene.get("notes", scene["error"]))])
+	check(scene["ok"] and sc0["cast"] == "" and sc0["setup"]["legion"] == scene["legion"] and sc0["setup"]["stand_at"] == Vector2(-42.0, -80.0) and sc0["setup"]["thralls"] == {"mine": ["warrior", "archer"], "ossuary": ["warrior"]},
+		"a scene clip carries the kit, the point the hero stands at and the thralls (%s)" % str(sc0.get("setup", scene["error"])))
+	check(scene["ok"] and (sc0["steps"] as Array).map(func(x: Dictionary) -> String: return x["do"]) == ["walk", "candles", "candles"] and sc0["steps"][0]["to"] == [[-48.0, -78.0], [-38.0, -72.0]] and sc0["steps"][1].get("out", true) == true and sc0["steps"][2]["out"] == false,
+		"its walk and candle steps run in the order of their times")
+	check(DmQaClips.points_of([1, 2]) == ([Vector3(1.0, 0.0, 2.0)] as Array[Vector3]) and DmQaClips.points_of([[1, 2], [3, 4]]) == ([Vector3(1.0, 0.0, 2.0), Vector3(3.0, 0.0, 4.0)] as Array[Vector3]), "a walk's `to` is one point or a list of them")
+	check(scene["ok"] and scene["clips"][1]["steps"][0]["to"] == [1.0, 2.0], "a walk to one point parses")
+	var scene_refusals := {'{"clips": [{"seconds": 2}]}': "unless its steps cast or the clip is a scene", '{"clips": [{"setup": [{"do": "thralls", "owners": {"nobody": ["warrior"]}}]}]}': "the owner is",
+			'{"clips": [{"setup": [{"do": "thralls", "owners": {"mine": ["dragon"]}}]}]}': "is no kind of thrall", '{"clips": [{"setup": [{"do": "thralls", "owners": [1]}]}]}': "object of owner",
+			'{"clips": [{"setup": [{"do": "thralls"}]}]}': "needs \"owners\"", '{"clips": [{"setup": [{"do": "thralls", "owners": {"mine": ["warrior"]}}, {"do": "stand_at", "at": [1]}]}]}': "must be a point",
+			'{"clips": [{"steps": [{"at": 1, "do": "walk", "to": []}]}]}': "must be a point [x, z] or a list", '{"clips": [{"steps": [{"at": 1, "do": "walk", "to": [[1, 2], [3]]}]}]}': "must be a point [x, z] or a list",
+			'{"clips": [{"steps": [{"at": 1, "do": "walk"}]}]}': "needs \"to\"", '{"clips": [{"steps": [{"at": 1, "do": "candles", "group": "south"}]}]}': "must be one of west",
+			'{"clips": [{"steps": [{"at": 1, "do": "candles", "group": "west", "out": "yes"}]}]}': "must be true or false", '{"legion": ["bone_meal"], "clips": [{"cast": "reap"}]}': "cannot go on the Legion",
+			'{"legion": "staff_gold", "clips": [{"cast": "reap"}]}': "must be a list of item ids"}
+	for bad in scene_refusals:
+		var r := DmQaClips.parse(String(bad))
+		check(not r["ok"] and String(r["error"]).contains(String(scene_refusals[bad])), "refused, saying why: %s (%s)" % [String(bad).left(80), r["error"]])
+	check(DmQaClips.parse('{"clips": [{"cast": "reap"}]}')["clips"][0]["setup"]["legion"] == [] and DmQaClips.parse('{"clips": [{"cast": "reap"}]}')["legion"] == [], "no Legion kit is none")
 	# where the stand-ins stand
 	var o := Vector3(10.0, 0.0, 5.0)
 	var pack := DmQaClips.layout("pack", 12, o)

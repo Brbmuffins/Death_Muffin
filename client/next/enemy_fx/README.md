@@ -9,7 +9,7 @@ var fx := DmEnemyFx.new()
 fx.player_pos = func() -> Vector3: return local_hero.global_position   # distance gating; default = camera position
 fx.host.hitstop_cb = hitstop_callable          # (seconds) for heavy hits / elite deaths near the hero
 fx.host.camera = camera_rig                    # optional, anything with shake(amount)
-fx.host.dressing = water_surface               # optional, add_ripple(x, z, size); no game scene sets it
+fx.host.dressing = world.dressing              # optional, add_ripple(x, z, size): the water's ripples (DmNextGame sets it)
 add_child(fx)
 fx.bind(core_host)                             # connects the core's signals; `watched()` counts what it holds, `clear()` lets it all go
 ```
@@ -52,6 +52,3 @@ Costs on the VPS in a Full Party frame are in client/README.md "The effects".
 ## Tests
 `client/tests/enemy_fx/run.gd` (the flask pool drawn for its life, a boss's pools ended at once by `remove_zones_of`), `client/tests/game_scene.gd` (deaths, rises, swings' impacts, corpse marks and dust, nothing held after a death or removal), `client/tests/world.gd` (the later kinds' effects: the acolyte's reach ring, the flask's ring and landing, status motes) and
 `client/tests/sound.gd` (the cues by name and count).
-
-## Known gaps
-- The water's ripples: `DmEnemyFxHost.dressing` is not set by any game scene (KNOWN-GAPS "Built but never shown"). 

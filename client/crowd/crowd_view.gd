@@ -9,6 +9,7 @@ extends Node3D
 ##   view.setup(core, DmContent.enemies(), Vector2(-60, -60), Vector2(60, 60))
 ##   view.focus = hero_xz                        # every tick: the hero (the knock pushes away from it, shadows go to the nearest to it)
 ##   view.set_owner_legion(hero_core_id, "gravecaller")
+##   view.set_owner_kit(hero_core_id, {"armor": ["set_gravecaller_chest", "epic"], "weapon": ["sword_gold", ""]})   # the Legion kit the hero's thralls wear
 
 const LOOKS_PATH := "res://crowd/crowd_looks.json"
 const BAKED_DIR := "res://assets/crowd/baked"   # generated, not in git: ships in the assets pack (publish-godot-client.sh)
@@ -23,6 +24,8 @@ const AREA_HEIGHT := Vector2(-4.0, 14.0)
 const ANIM_LOD := {"mid_m": 32.0, "mid_hz": 24.0, "far_m": 60.0, "far_hz": 10.0}
 ## Slots of the glow and rim palettes (DmCrowd's GLOW_SLOTS, the shader's array sizes): COLOR.a = slot * 2 + flash stays exact in a half float up to slot 127.
 const SLOTS := 128
+## Legion kits in play at once (DmCrowd's KIT_SLOTS, the shader's kit_pal): one per distinct kit worn, 0 = none.
+const KIT_SLOTS := 16
 
 var core: RefCounted
 var crowd: RefCounted   # DmCrowd
@@ -55,6 +58,7 @@ var _enemy_defs: Dictionary
 var _last_clock := -1.0
 var _materials: Array[ShaderMaterial] = []   # every model's material (the glow palette goes to each)
 var _glow_version := -1
+var _owners := {}         # core hero id -> {legion, ally, kit}, kept so `clear()` can put them back (the crowd forgets its owners with its creatures)
 
 
 ## `enemy_defs`: the ENEMIES dictionary of data/content/enemies.json (flying, inert, rig per def). `area_min`, `area_max`: the area's bounds, for the MultiMeshes'
@@ -111,12 +115,47 @@ func set_light_direction(direction: Vector3) -> void:
 
 ## Sets which discipline's legion a hero's thralls look like (a core hero id; "ossuary", "gravecaller", "rotweaver", "mourner", or "" for none).
 func set_owner_legion(owner_id: int, legion: String) -> void:
+	_owner(owner_id)["legion"] = legion
 	crowd.set_owner_legion(owner_id, _looks.legion_order.find(legion))
 
 
 ## Marks a hero's thralls as another player's (`ally`: their friend rim is weaker, as `_make_thrall`'s `own == false`); every hero is this player's until marked.
 func set_owner_ally(owner_id: int, ally: bool) -> void:
+	_owner(owner_id)["ally"] = ally
 	crowd.set_owner_ally(owner_id, ally)
+
+
+## The Legion kit a hero's thralls wear (the old game's `legion_kit_for`): `kit` = {"armor": [item id, rarity], "weapon": [item id, rarity]}, either one absent or null when that slot is empty, `{}` for none.
+## The warriors, shield bearers, archers and bone mages (`crowd_looks.json` `kit`) wear it: the armour piece's tier colour on their chest and hands (and its glow on the trim), the weapon's on their weapon.
+func set_owner_kit(owner_id: int, kit: Dictionary) -> void:
+	if (_owner(owner_id).get("kit", {}) as Dictionary) == kit:
+		return
+	_owner(owner_id)["kit"] = kit
+	_apply_kit(owner_id, kit)
+
+
+func _apply_kit(owner_id: int, kit: Dictionary) -> void:
+	var cfg: Dictionary = _looks.kit
+	var armor := Color(0, 0, 0, 0)
+	var glow := Color(0, 0, 0, 0)
+	var weapon := Color(0, 0, 0, 0)
+	if kit.get("armor") is Array:
+		var t := DmGearProps.tier(String(kit.armor[0]), String(kit.armor[1]))
+		armor = _color("%06x" % int(t.color))
+		armor.a = float(cfg.armor_strength)
+		if int(t.glow) >= 0:
+			glow = _color("%06x" % int(t.glow)) * float(cfg.glow_k)
+			glow.a = 1.0
+	if kit.get("weapon") is Array:
+		weapon = _color("%06x" % int(DmGearProps.tier(String(kit.weapon[0]), String(kit.weapon[1])).color))
+		weapon.a = 1.0
+	crowd.set_owner_kit(owner_id, armor, glow, weapon)
+
+
+func _owner(owner_id: int) -> Dictionary:
+	if not _owners.has(owner_id):
+		_owners[owner_id] = {}
+	return _owners[owner_id]
 
 
 ## Reads the core into the crowd: right after `core.step()`, before `core.take_events()`.
@@ -129,6 +168,14 @@ func sync() -> void:
 ## Forgets every creature: a new core or a new area (the models and looks stay).
 func clear() -> void:
 	crowd.clear()
+	for id: int in _owners:   # (whose thralls they are is not a creature: the heroes keep their look)
+		var o: Dictionary = _owners[id]
+		if o.has("legion"):
+			set_owner_legion(id, o.legion)
+		if o.has("ally"):
+			set_owner_ally(id, o.ally)
+		if o.has("kit"):
+			_apply_kit(id, o.kit)
 
 
 func stats() -> Dictionary:
@@ -180,14 +227,28 @@ static func _glow(pair: Variant) -> Color:
 	return c
 
 
-## The palettes (DmCrowd.glow_palette and rim_palette) on every model's material: SLOTS slots, unused ones dark.
+## The palettes (DmCrowd.glow_palette, rim_palette and the Legion kits') on every model's material: SLOTS slots, unused ones dark.
 func _push_glows() -> void:
 	_glow_version = crowd.glow_version()
 	var glows := _palette(crowd.glow_palette())
 	var rims := _palette(crowd.rim_palette())
+	var kit_of := PackedVector4Array()   # the Legion kit of each slot, four slots a vector
+	kit_of.resize(SLOTS / 4)
+	var of_slot: PackedFloat32Array = crowd.kit_of_slot()
+	for q in SLOTS / 4:
+		var four := Vector4()
+		for j in 4:
+			if q * 4 + j < of_slot.size():
+				four[j] = of_slot[q * 4 + j]
+		kit_of[q] = four
+	var kits := PackedVector4Array()
+	for c: Color in crowd.kit_palette():
+		kits.append(Vector4(c.r, c.g, c.b, c.a))
 	for mat: ShaderMaterial in _materials:
 		mat.set_shader_parameter("glow_palette", glows)
 		mat.set_shader_parameter("rim_palette", rims)
+		mat.set_shader_parameter("kit_slot", kit_of)
+		mat.set_shader_parameter("kit_pal", kits)
 
 
 static func _palette(pal: PackedColorArray) -> PackedVector4Array:
@@ -252,7 +313,7 @@ func _register_thralls() -> void:
 			var glow := _glow(tg.wraith) if kind == "wraith" else (_glow([look.emissive, look.glow]) if look != null and look.has("emissive")
 				else (_glow([legion.emissive, legion.get("glow", tg.default[1])]) if legion != null and legion.has("emissive") else _glow(tg.default)))
 			crowd.set_thrall_look(kind, li, {"model": _slot(slug), "hover": float(_looks.thrall_hover.get(kind, 0.0)), "scale": scale, "tint": _color(tint_hex),
-				"glow": glow, "glow_empowered": 0.0 if kind == "wraith" else float(tg.empowered)})
+				"glow": glow, "glow_empowered": 0.0 if kind == "wraith" else float(tg.empowered), "kit": (_looks.kit.bodies as Array).has(kind)})
 
 
 ## The model to draw `wanted` with: itself, else its rig fallback (`enemy_fallback`), else a baked model of the same rig, else any baked one.

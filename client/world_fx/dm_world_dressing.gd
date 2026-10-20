@@ -149,11 +149,11 @@ func set_candle_group(group: String, lit_on: bool) -> void:
 		DmWfxFlames.set_group_lit(area_flames[id], group, lit_on)
 
 func is_wet(x: float, z: float) -> bool:
-	return water != null and water.is_wet(x, z)
+	return water != null and _on("water") and water.is_wet(x, z)
 
 ## A ripple ring spreading from (x, z); does nothing on dry ground.
 func add_ripple(x: float, z: float, strength: float = 1.0) -> void:
-	if water != null:
+	if water != null and _on("water"):
 		water.add_ripple(x, z, strength)
 
 func detach() -> void:

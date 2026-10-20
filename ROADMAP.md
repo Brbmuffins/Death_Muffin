@@ -287,10 +287,9 @@ Worked through beside the phases, top first. Each change is shown to the team wi
     held the boss's entry of the shared enemy table and the host refused it as "other game data" → a core is built from the data files alone.
   - Done 2026-10-20: friends showed as online only once in the world → from sign-in, at character select and while the world loads (the
     launcher has no login, so not there).
-- [ ] **Decide + Fix: things built but never shown.** Now: thralls never wear their Legion kit or their discipline's look, water never
-  ripples, the Prelate's candles never gutter, and the Plague Doctor's flask leaves a pool that hurts but cannot be seen. After: each is
-  shown to the team with screenshots; what they keep is switched on (the invisible pool at least gets drawn, so players can dodge it) and
-  the rest is deleted.
+- [x] **Decide + Fix: things built but never shown.** Done 2026-10-20 (Helix kept all four after pictures and videos from a team PC: "all 4
+  are good"): thralls wear their owner's Legion kit and their discipline's legion look, water ripples under steps, deaths, the Fen Wisp and
+  the Mire Mother, and the Prelate's candles gutter in its second and third phases; the Plague Doctor's flask pool is drawn (2026-10-20).
 - [x] **Fix: Easy auto combat parks the hero between tombstones.** Done 2026-10-20: it walked straight at the nearest enemy and stopped in
   pockets between the graves → when a grave or wall is in the way it follows the navmesh's path round it.
 - [x] **Fix: seven tips never show.** Done 2026-10-20: the Depths (going in alone, a new floor, a floor's affix, and its chest), the

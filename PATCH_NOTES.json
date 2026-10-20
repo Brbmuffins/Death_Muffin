@@ -32,7 +32,11 @@
       "When a boss resets after a wipe, its pools and burning ground vanish at once instead of lingering.",
       "Settings now says the Catacomb Depths are a solo descent and the stair turns a party away, instead of saying a party steps out and rejoins.",
       "\"Point to it on the minimap\" works again: the minimap pings the spot the Next-step box suggests.",
-      "In the Hollow Graves the Next-step box now leads you to the Gravedigger King first (gather his soul shards, then wake him at the King's Grave); the Ossuary seal comes after he falls."
+      "In the Hollow Graves the Next-step box now leads you to the Gravedigger King first (gather his soul shards, then wake him at the King's Grave); the Ossuary seal comes after he falls.",
+      "Your thralls now wear your Legion kit: the armour piece colours their chests and hands, the weapon piece their blades and staves.",
+      "Each discipline's thralls now look like their own legion: the Ossuary's bone sentinels, the Gravecaller's legionnaires, the Rotweaver's plague thralls and the Mourner's wraiths. In a party everyone sees each owner's look.",
+      "Water ripples: rings spread from your steps in puddles and flooded halls, where bodies fall in water, from the Fen Wisp's pulse and the Mire Mother's rings.",
+      "The Sanctum's candles gutter as the Bell-Sworn Prelate grows stronger: the west ones die in its second phase, the east ones in its third, and they light again when the fight starts over or ends."
     ]
   },
   {

@@ -55,7 +55,7 @@ test('clips: every refusal is a readable line naming the problem', () => {
   bad((j) => { j.plan.clips[0].equip = ['Iron Staff']; }, /"equip" must be a list of 1 to 12 item ids/);
   bad((j) => { j.plan.equip = Array.from({ length: 13 }, (_, i) => `item_${i}`); }, /"plan": "equip" must be a list of 1 to 12 item ids/);
   bad((j) => { j.plan.equip = ['staff_moon', 'staff_moon']; }, /"equip" names an item twice/);
-  bad((j) => { j.plan.clips[0].cast = undefined; }, /"cast" must be a rite id.*only a "turntable" clip, or one whose steps cast, may leave it out/);
+  bad((j) => { j.plan.clips[0].cast = undefined; }, /"cast" must be a rite id.*only a "turntable" clip, one whose steps cast, or a scene of thralls or walks may leave it out/);
   bad((j) => { j.plan.clips[0].camera = 'orbit'; }, /"camera" must be "follow", "wide" or "turntable"/);
   bad((j) => { j.plan.clips[0].cast = 'Haunting Wraith'; }, /"cast" must be a rite id/);
   bad((j) => { j.plan.clips[0].exec = 'rm -rf'; }, /clip 1 has an unknown field "exec"/);
@@ -153,4 +153,24 @@ test('clips: setup and steps are checked against the branch\'s own word list, so
   bad((x) => { delete x.cast; x.setup = [{ do: 'hud', show: true }]; }, /"cast" must be a rite id .* whose steps cast/);
   bad((x) => { x.steps = [{ at: 1, do: 'cast', rite: 'reap' }]; }, /no list of setup and step words .* merge the latest main/, null);
   bad((x) => { x.steps = Array.from({ length: 25 }, (_, i) => ({ at: i / 10, do: 'cast', rite: 'reap' })); }, /"steps" has 25 entries \(at most 24\)/);
+});
+
+test('clips: the scene words (a Legion kit, a hero stood at a point, thralls, a zoom, a walk, the candles): a scene needs no "cast"', () => {
+  const j = GOOD(); j.plan.legion = ['leg_requiem_wraiths_chest', 'staff_gold'];
+  const c = j.plan.clips[0]; delete c.cast;
+  c.setup = [{ do: 'stand_at', at: [0, -12] }, { do: 'zoom', value: 0.6 }, { do: 'thralls', owners: { mine: ['warrior', 'archer'], ossuary: ['warrior'] } }];
+  c.steps = [{ at: 0.5, do: 'walk', to: [[1, -10], [2, -8]] }, { at: 2, do: 'candles', group: 'west' }, { at: 4, do: 'candles', group: 'west', out: false }];
+  const r = readWith(j);
+  assert.equal(r.error, undefined, r.error);
+  assert.deepEqual(r.plan.legion, ['leg_requiem_wraiths_chest', 'staff_gold'], 'the kit reaches the game');
+  const walkOnly = GOOD(); delete walkOnly.plan.clips[0].cast; walkOnly.plan.clips[0].steps = [{ at: 1, do: 'walk', to: [3, 4] }];
+  assert.equal(readWith(walkOnly).error, undefined, 'a single point is a walk too');
+  const bad = (f, re) => { const m = GOOD(); f(m.plan, m.plan.clips[0]); const r2 = readWith(m); assert.ok(r2 && r2.error, 'refused'); assert.match(r2.error, re); };
+  bad((p) => { p.legion = ['a', 'b', 'c']; }, /"plan.legion" must be a list of 1 to 2 item ids/);
+  bad((_p, x) => { x.setup = [{ do: 'stand_at', at: [1] }]; }, /"at" must be a point/);
+  bad((_p, x) => { x.setup = [{ do: 'thralls', owners: { necromancer: ['warrior'] } }]; }, /owner that is not "mine" or a discipline/);
+  bad((_p, x) => { x.setup = [{ do: 'thralls', owners: { mine: Array(41).fill('warrior') } }]; }, /raises 41 thralls \(at most 40\)/);
+  bad((_p, x) => { x.steps = [{ at: 1, do: 'walk', to: Array(9).fill([0, 0]) }]; }, /"to" must be a point \[x, z\] or a list of 1 to 8/);
+  bad((_p, x) => { x.steps = [{ at: 1, do: 'candles', group: 'West Side' }]; }, /"group" must be a candle group/);
+  bad((_p, x) => { x.setup = [{ do: 'zoom', value: 0.1 }]; }, /"value" must be from 0.4 to 1.45/);
 });

@@ -19,6 +19,11 @@ const ERROR_TARGET := 0.025
 const FPS_STEPS := [4.0, 6.0, 8.0, 12.0, 16.0, 20.0, 24.0, 30.0, 40.0, 50.0, 60.0]
 ## Texels per row at most (older phones guarantee 2048 or 4096); a frame wider than this takes several rows.
 const MAX_WIDTH := 2048
+## The floats a vertex has in CUSTOM0: x the animation id (a prop: which prop), y the material part, z and w its weight in the Legion kit's chest and hands regions.
+const CUSTOM_STRIDE := 4
+## The gear regions (`DmCreatureMat.REGION_OF_BONE` ids) the Legion kit's armour tint paints.
+const KIT_CHEST := 0
+const KIT_HANDS := 2
 ## Crowd models at most this many triangles (ROADMAP "Performance rules").
 const MAX_TRIANGLES := 5000
 ## Models allowed more, with why: the Bone Colossus is one large body (a thrall of the legion's, a few at most) whose 5,663 triangles Godot's simplified level
@@ -405,6 +410,31 @@ static func bake(host: Node, slug: String, out_dir: String, opts := {}) -> Dicti
 	return result
 
 
+## The gear regions of a rigged model's vertices that the Legion kit paints (gearTint.ts bakeMask, `DmCreatureMat.REGION_OF_BONE`): per vertex the skin weight on the chest and on the hands,
+## two floats a vertex (CUSTOM0.zw). A bone belongs to the first region whose pattern its name matches.
+static func kit_masks(skin: Skin, bones: PackedInt32Array, weights: PackedFloat32Array, per: int, vc: int) -> PackedFloat32Array:
+	var region := PackedInt32Array()
+	for i in skin.get_bind_count():
+		var r := -1
+		for rr in DmCreatureMat._regions():
+			if (rr[0] as RegEx).search(String(skin.get_bind_name(i))) != null:
+				r = rr[1]
+				break
+		region.append(r)
+	var out := PackedFloat32Array()
+	out.resize(vc * 2)
+	for v in vc:
+		for k in per:
+			var bi := bones[v * per + k]
+			if bi < 0 or bi >= region.size():
+				continue
+			if region[bi] == KIT_CHEST:
+				out[v * 2] += weights[v * per + k]
+			elif region[bi] == KIT_HANDS:
+				out[v * 2 + 1] += weights[v * per + k]
+	return out
+
+
 ## Animation ids: vertices that move alike (same place, normal and, for a rigged model, bones and weights; they differ only by UV seams) share one baked
 ## column. Returns {ids (per vertex), rep (id -> first vertex with it)}; `per` 0 for an unrigged model.
 static func _unique_ids(verts: PackedVector3Array, normals: PackedVector3Array, bones: PackedInt32Array, weights: PackedFloat32Array, per: int) -> Dictionary:
@@ -501,7 +531,7 @@ static func _bake_loaded(m: Dictionary, out_dir: String, opts: Dictionary, asset
 		meta.append({"source_length": src.length, "impact": float(timing[1]) if timing is Array and timing.size() > 1 else -1.0,
 			"landing": landing_time(src) if String(plan.name).rstrip("0123456789") == "death" else -1.0})
 	return _write(m, out_dir, opts, assets_dir, {"plans": plans, "sampled": sampled, "total": total, "uc": uc, "width": width, "rpf": rpf,
-		"ids": ids, "vc": vc, "rest_p": rest_p, "rest_n": rest_n, "uvs": uvs, "arrays": arrays, "roles": roles, "meta": meta,
+		"ids": ids, "masks": kit_masks((m.mesh_instance as MeshInstance3D).skin, bones, weights, per, vc), "vc": vc, "rest_p": rest_p, "rest_n": rest_n, "uvs": uvs, "arrays": arrays, "roles": roles, "meta": meta,
 		"source_triangles": indices.size() / 3})
 
 ## An unrigged model's bake: one baked loop, the wing beat for a winged model (FLAP_FRAMES frames over 2 pi / speed seconds) or a still pose
@@ -642,13 +672,17 @@ static func _write(m: Dictionary, out_dir: String, opts: Dictionary, assets_dir:
 	var pos_img := Image.create_from_data(width, height, false, Image.FORMAT_RGBA8, pos)
 	var nrm_img := Image.create_from_data(width, height, false, Image.FORMAT_RG8, nrm)
 
-	# The mesh: the rest pose in creature space, the animation id of every vertex in CUSTOM0 (y, the material part, 0 for the body), one index list per level.
+	# The mesh: the rest pose in creature space, the animation id of every vertex in CUSTOM0 (x; y the material part, 0 for the body; z, w the chest and hands weights of the Legion kit), one index list per level.
 	var rest_p: PackedVector3Array = w.rest_p
 	var rest_n: PackedVector3Array = w.rest_n
+	var masks: PackedFloat32Array = w.get("masks", PackedFloat32Array())   # an unrigged model has none: no vertex is the kit's
 	var ids_f := PackedFloat32Array()
-	ids_f.resize(vc * 2)
+	ids_f.resize(vc * CUSTOM_STRIDE)
 	for i in vc:
-		ids_f[i * 2] = float(ids[i])
+		ids_f[i * CUSTOM_STRIDE] = float(ids[i])
+		if not masks.is_empty():
+			ids_f[i * CUSTOM_STRIDE + 2] = masks[i * 2]
+			ids_f[i * CUSTOM_STRIDE + 3] = masks[i * 2 + 1]
 	var levels := _levels(arrays, int(opts.get("max_triangles", max_triangles_of(slug))))
 	var made := _make_meshes(levels, rest_p, rest_n, uvs, ids_f, aabb)
 
@@ -700,7 +734,7 @@ static func _write(m: Dictionary, out_dir: String, opts: Dictionary, assets_dir:
 		"pos_bytes": width * height * 4, "nrm_bytes": width * height * 2, "bytes": width * height * 6, "aabb": aabb, "pos_error": worst, "pos_radix": radix}
 
 
-## One mesh per level of detail from `levels` (`_levels`): the vertex arrays every level shares (CUSTOM0: x the animation id or the prop, y the material part)
+## One mesh per level of detail from `levels` (`_levels`): the vertex arrays every level shares (CUSTOM0: x the animation id or the prop, y the material part, z and w the chest and hands weights of the Legion kit)
 ## and its own index list; `custom_aabb` = the bounds of every baked pose. Returns {meshes, tris (per level)}.
 static func _make_meshes(levels: Dictionary, verts: PackedVector3Array, normals: PackedVector3Array, uvs: PackedVector2Array, custom: PackedFloat32Array, aabb: AABB) -> Dictionary:
 	var meshes: Array[Mesh] = []
@@ -714,7 +748,7 @@ static func _make_meshes(levels: Dictionary, verts: PackedVector3Array, normals:
 		a[Mesh.ARRAY_CUSTOM0] = custom
 		a[Mesh.ARRAY_INDEX] = idx
 		var mesh := ArrayMesh.new()
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a, [], {}, Mesh.ARRAY_CUSTOM_RG_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a, [], {}, Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)
 		mesh.custom_aabb = aabb
 		meshes.append(mesh)
 		tris.append((idx as PackedInt32Array).size() / 3)
@@ -958,13 +992,16 @@ static func _write_variant(m: Dictionary, slug: String, specs: Array, base: Crow
 	var all_n := rest_n.duplicate()
 	all_p.append_array(pv)
 	all_n.append_array(g.normals)
-	var custom := PackedFloat32Array()   # CUSTOM0: x the animation id (a prop: which prop), y the material part (0 the body)
-	custom.resize((vc + up) * 2)
+	var custom := PackedFloat32Array()   # CUSTOM0: x the animation id (a prop: which prop), y the material part (0 the body), z and w the chest and hands weights of the Legion kit (a prop has none)
+	custom.resize((vc + up) * CUSTOM_STRIDE)
+	var masks := kit_masks(mi.skin, bones, weights, per, vc)
 	for i in vc:
-		custom[i * 2] = float(ids[i])
+		custom[i * CUSTOM_STRIDE] = float(ids[i])
+		custom[i * CUSTOM_STRIDE + 2] = masks[i * 2]
+		custom[i * CUSTOM_STRIDE + 3] = masks[i * 2 + 1]
 	for j in up:
-		custom[(vc + j) * 2] = float(ow[j])
-		custom[(vc + j) * 2 + 1] = (g.part as PackedFloat32Array)[j]
+		custom[(vc + j) * CUSTOM_STRIDE] = float(ow[j])
+		custom[(vc + j) * CUSTOM_STRIDE + 1] = (g.part as PackedFloat32Array)[j]
 	var aabb := base.aabb.merge(AABB(lo, hi - lo))
 	var made := _make_meshes(levels, all_p, all_n, lod_uv, custom, aabb)
 
@@ -1006,6 +1043,7 @@ static func _write_variant(m: Dictionary, slug: String, specs: Array, base: Crow
 		data.part_albedo.append(pm.albedo)
 		data.part_pbr.append(Vector4(pm.metal, pm.rough, 0.0, 0.0))
 		data.part_emission.append(pm.emis)
+		data.part_kit.append(float(pm.kit))
 	data.meshes = _save_meshes(made.meshes, out_dir)
 	data.lod_triangles = made.tris
 	var err := ResourceSaver.save(data, out_dir.path_join("model.tres"))
@@ -1083,7 +1121,7 @@ static func _prop_geometry(specs: Array) -> Dictionary:
 			if mx.is_empty():
 				for i in mv.size():
 					mx.append(i)
-			var k := _part_of(parts, mi.material_override as BaseMaterial3D)
+			var k := _part_of(parts, mi.material_override as BaseMaterial3D, float(spec.get("kit", 0.0)))
 			var base := verts.size()
 			for i in mv.size():
 				verts.append(xf * mv[i])
@@ -1096,7 +1134,9 @@ static func _prop_geometry(specs: Array) -> Dictionary:
 	return {"verts": verts, "normals": normals, "part": part, "owner": owner, "indices": indices, "parts": parts}
 
 
-static func _part_of(parts: Array, mat: BaseMaterial3D) -> int:
+## The index of a prop material among the model's parts (made when it is new). `kit`: how far the owner's Legion weapon colour washes over it (0 none, 1 replaces it), for a part
+## that is not lit by itself (a glowing head or a bow's string keep their own).
+static func _part_of(parts: Array, mat: BaseMaterial3D, kit := 0.0) -> int:
 	var albedo := Color(0.8, 0.8, 0.8)
 	var metal := 0.0
 	var rough := 1.0
@@ -1109,7 +1149,7 @@ static func _part_of(parts: Array, mat: BaseMaterial3D) -> int:
 			emis = albedo
 		elif mat.emission_enabled:
 			emis = mat.emission.srgb_to_linear() * mat.emission_energy_multiplier
-	var rec := {"albedo": albedo, "metal": metal, "rough": rough, "emis": emis}
+	var rec := {"albedo": albedo, "metal": metal, "rough": rough, "emis": emis, "kit": kit if emis == Color(0, 0, 0) else 0.0}
 	for i in parts.size():
 		if parts[i] == rec:
 			return i

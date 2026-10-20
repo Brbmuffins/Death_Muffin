@@ -9,9 +9,11 @@ extends RefCounted
 ## set-up a plan asks for without a renderer, and `clip_rect` is a function of numbers.
 ##
 ## Plan: {"bag": "demo"|"keep", "give": ["item id", ...] (extra items, one each), "equip": ["item id", ...] (max 12, worn like a player equipping from the bag),
+##        "legion": ["item id", ...] (max 2: given to the Legion like the window's "give" button, so the hero's thralls wear them: one armour piece and one weapon),
 ##        "discipline": "ossuary"|"gravecaller"|"mourner"|"rotweaver"|"reaper" (or 1-4 / 11; read by the launching script, which passes --class=N: client/tools/qa_shots.sh),
 ##        "shots": [{"name", "open": "bag" | ["bag", ...], "hover": <bag slot 0-47> | "item:<item id>" | "worn:<equip slot>" | "belt:<tool>",
-##        "area": "<area id>", "wait_ms": 300, "clip": "window", "view": "hero" | "game", "turn": <degrees>, "anim": "idle" | "run" | "cast", "fight": true, "perf": true}]}.
+##        "area": "<area id>", "at": [x, z], "thralls": {"mine": [kind, ...], "ossuary": [kind, ...]}, "walk": true, "candles_out": ["west", ...],
+##        "wait_ms": 300, "clip": "window", "view": "hero" | "game", "turn": <degrees>, "anim": "idle" | "run" | "cast", "fight": true, "perf": true}]}.
 ## At most MAX_SHOTS shots per plan: a plan with more is refused (`QA-SHOTS plan error:`, exit code 2), not trimmed (run several plans for more). "open" lists are applied in order (the game keeps one window
 ## open at a time, so the last one stays). "clip": "window" crops to the open window (plus the tooltip when one is shown); default is the whole screen.
 ## "equip": each id is added to the bag (gear gets a real backend roll) and equipped through the backend's equip call, then the bag reloads, so the avatar
@@ -22,12 +24,23 @@ extends RefCounted
 ## "view": "hero" closes every window, hides the HUD and frames the hero full body close-up from the front (`turn` degrees: 0 faces the camera, 180 shows the
 ## back; `anim` poses the hero and freezes it after a short settle); "game" is the normal game camera with the HUD hidden. The camera, HUD and pose are restored after the shot.
 ## "perf": true shows the F3 performance overlay (hidden otherwise) and waits at least PERF_WAIT_MS so its numbers are drawn; a shot without it hides the overlay.
+## "at": [x, z] stands the hero at that ground point of the area (after "area"). "thralls": raises thralls for the shot (give it a wait of 2500 ms or more so they have risen): the keys are owners and the values the kinds
+## of thrall (DmThralls.KINDS, at most MAX_THRALLS in all); "mine" is the hero, who wears the plan's "legion" kit, and a discipline name is a stand-in owner of that discipline (standing STANDIN_SPOTS away, in the order given,
+## wearing no kit), so one shot shows a discipline's legion look beside the hero's, or a kit beside the same thralls without one. The waves and the enemies are away for the shot and the thralls and stand-ins are gone after it.
+## "walk": true paces the hero to and fro over the wait (a metre and a half either side, a walking pace), as a player walking through water does. "candles_out": puts those candle groups out (DmWorldDressing, "west", "east"
+## or "north": the Bell Sanctum's) for the shot, as the Prelate does in its fight, and lights them after it.
 ## Window ids (WINDOWS): bag/reliquary/inventory, character/gear/sheet, pets/cosmetics, legion, grimoire/spellbook, vault, forge, salvage, shelf,
 ## codex, atlas, ascension, map, class, settings, professions, garden, labor, contracts, social/friends, party.
 
 const MAX_SHOTS := 6
 const MAX_WAIT_MS := 5000
 const MAX_EQUIP := 12
+const MAX_LEGION := 2
+const MAX_THRALLS := 40      ## "thralls": raised for one shot (a Full Party fight has about 32)
+const STANDIN_SPOTS := [Vector2(-9.0, 0.0), Vector2(9.0, 0.0), Vector2(0.0, -8.0)]   ## "thralls": where the stand-in owners stand from the hero (left, right, up the screen)
+const WALK_REACH := 1.5      ## "walk": metres either side of where the hero stands
+const WALK_SPEED := 1.8      ## "walk": radians a second of the to-and-fro (a walking pace at that reach)
+const CANDLE_GROUPS := ["west", "east", "north"]   ## the Bell Sanctum's candle groups (data/world_fx/fx.json flames)
 const PERF_WAIT_MS := 800    ## "perf": the overlay repaints every 0.25 s, so the wait is at least this
 const FIGHT_FOES := 8        ## "fight": enemies made round the hero
 const FIGHT_STEP_S := 0.4    ## "fight": the hero casts this often
@@ -57,9 +70,9 @@ const DEMO_BAG := [
 
 
 ## Parses and validates plan text. Returns {ok, error, bag, give, equip, class_index (0 = not set), shots} with normalised shots
-## ({name, open: Array[String] of canonical window ids, hover: Variant (int|String|null), area, wait_ms, clip, view, turn (degrees), anim, fight, perf}).
+## ({name, open: Array[String] of canonical window ids, hover: Variant (int|String|null), area, wait_ms, clip, view, turn (degrees), anim, fight, perf, at (Vector2 or null), thralls ({owner: [kind]}), walk, candles_out}).
 static func parse(text: String) -> Dictionary:
-	var out := {"ok": false, "error": "", "bag": "demo", "give": [], "equip": [], "class_index": 0, "shots": []}
+	var out := {"ok": false, "error": "", "bag": "demo", "give": [], "equip": [], "legion": [], "class_index": 0, "shots": []}
 	var js := JSON.new()
 	var raw: Variant = js.data if js.parse(text) == OK else null
 	if not (raw is Dictionary):
@@ -76,6 +89,9 @@ static func parse(text: String) -> Dictionary:
 	for g in (raw.get("equip", []) if raw.get("equip", []) is Array else []):
 		if (out["equip"] as Array).size() < MAX_EQUIP and String(g) != "":
 			(out["equip"] as Array).append(String(g))
+	for g in (raw.get("legion", []) if raw.get("legion", []) is Array else []):
+		if (out["legion"] as Array).size() < MAX_LEGION and String(g) != "":
+			(out["legion"] as Array).append(String(g))
 	var disc: Variant = raw.get("discipline")
 	if disc != null:
 		var ci := class_index_of(disc)
@@ -119,6 +135,24 @@ static func parse(text: String) -> Dictionary:
 		if not ANIMS.has(anim):
 			out["error"] = "shot %d: anim must be idle, run or cast" % (i + 1)
 			return out
+		var at: Variant = s.get("at")
+		if at != null:
+			if not (at is Array and (at as Array).size() == 2 and (at[0] is float or at[0] is int) and (at[1] is float or at[1] is int)):
+				out["error"] = "shot %d: \"at\" is [x, z]" % (i + 1)
+				return out
+			at = Vector2(float(at[0]), float(at[1]))
+		var raised := thralls_of(s.get("thralls", {}))
+		if raised["error"] != "":
+			out["error"] = "shot %d: %s" % [i + 1, raised["error"]]
+			return out
+		var thralls: Dictionary = raised["thralls"]
+		var candles: Array[String] = []
+		for gname in (s.get("candles_out", []) if s.get("candles_out", []) is Array else []):
+			if not CANDLE_GROUPS.has(String(gname)):
+				out["error"] = "shot %d: candle group \"%s\" (known: %s)" % [i + 1, gname, ", ".join(CANDLE_GROUPS)]
+				return out
+			candles.append(String(gname))
+		var walk: Variant = s.get("walk", false)
 		var fight: Variant = s.get("fight", false)
 		var perf: Variant = s.get("perf", false)
 		var nm := String(s.get("name", "shot-%d" % (i + 1))).to_lower()
@@ -126,7 +160,8 @@ static func parse(text: String) -> Dictionary:
 		nm = rx.sub(nm, "-", true).substr(0, 40)
 		(out["shots"] as Array).append({"name": nm if nm != "" else "shot-%d" % (i + 1), "open": wins, "hover": hover, "area": String(s.get("area", "")),
 			"wait_ms": clampi(maxi(int(s.get("wait_ms", 300)), PERF_WAIT_MS if perf is bool and perf else 0), 0, MAX_WAIT_MS), "clip": "window" if String(s.get("clip", "")) == "window" else "",
-			"view": view, "turn": fmod(float(s.get("turn", DEFAULT_TURN)), 360.0), "anim": anim, "fight": fight is bool and fight, "perf": perf is bool and perf})
+			"view": view, "turn": fmod(float(s.get("turn", DEFAULT_TURN)), 360.0), "anim": anim, "fight": fight is bool and fight, "perf": perf is bool and perf,
+			"at": at, "thralls": thralls, "walk": walk is bool and walk, "candles_out": candles})
 		i += 1
 	out["ok"] = true
 	return out
@@ -165,6 +200,32 @@ static func run(root: Node, game: DmNextGame, plan_path: String, out_dir: String
 	tree.quit(1 if bad > 0 else 0)
 
 
+## A "thralls" request ({owner: [kind, ...]}; the shot plan's key and the clip plan's setup word) checked: {thralls (owner -> kinds, copied), error ("" = fine)}.
+static func thralls_of(raise: Variant) -> Dictionary:
+	var out := {"thralls": {}, "error": ""}
+	if not raise is Dictionary:
+		out["error"] = "\"thralls\" is an object of owner -> list of kinds"
+		return out
+	var total := 0
+	for owner in raise:
+		if String(owner) != "mine" and not DISCIPLINES.has(String(owner)):
+			out["error"] = "thralls of \"%s\": the owner is \"mine\" or a discipline (%s)" % [owner, ", ".join(DISCIPLINES.keys())]
+			return out
+		if not raise[owner] is Array:
+			out["error"] = "the thralls of \"%s\" are a list of kinds" % owner
+			return out
+		for kind in raise[owner]:
+			if not DmThralls.is_known_kind(kind):
+				out["error"] = "\"%s\" is no kind of thrall (%s)" % [kind, ", ".join(DmThralls.KINDS)]
+				return out
+			total += 1
+		out["thralls"][String(owner)] = (raise[owner] as Array).duplicate()
+	if total > MAX_THRALLS or (out["thralls"] as Dictionary).size() > STANDIN_SPOTS.size() + 1:
+		out["error"] = "at most %d thralls of %d owners" % [MAX_THRALLS, STANDIN_SPOTS.size() + 1]
+		out["thralls"] = {}
+	return out
+
+
 ## What the plan needs before its first shot: the bag (the demo items, the plan's "give" items, the "equip" gear), the offline backend seeded with it, the gear worn through the backend's
 ## equip call (the bag reloads and the hero's look follows), and the hero healed.
 static func prepare(game: DmNextGame, plan: Dictionary) -> void:
@@ -191,6 +252,16 @@ static func prepare(game: DmNextGame, plan: Dictionary) -> void:
 			print("QA-SHOTS equip: no bag room for ", id)
 		else:
 			wear.append(id)
+	var kit: Array = []
+	for id in plan.get("legion", []):   # into the bag first as well; given to the Legion below, once the bag is saved
+		var kdef := DmLootData.item(id)
+		var slot_id: Variant = DmLegion.kit_id_for_type(kdef.get("type"))
+		if kdef.is_empty() or slot_id == null:
+			print("QA-SHOTS legion: %s cannot go on the Legion" % id)
+		elif not inventory.add(await _drop(game, id, 1, 20)):
+			print("QA-SHOTS legion: no bag room for ", id)
+		else:
+			kit.append(id)
 	# The bag is the server's (DECISIONS B25): seed the offline backend with what was shown, as a GM would, and show its answer.
 	var seed: Array = []
 	for s in inventory.all():
@@ -204,19 +275,29 @@ static func prepare(game: DmNextGame, plan: Dictionary) -> void:
 	if int(plan["class_index"]) != 0 and int(plan["class_index"]) != int(game.character.get("class_index", 0)):
 		print("QA-SHOTS discipline: the game runs class %d, the plan wants %d (client/tools/qa_shots.sh and shot-godot.sh pass --class=N; a direct run needs it too)" % [int(game.character.get("class_index", 0)), int(plan["class_index"])])
 	await _wear(game, wear)
+	await _give_to_legion(game, kit)
 	game.local_body().heal(1e6)
 
 
 ## One shot's scene: the windows closed, the hero stood at the plan's area, the windows opened, the view framed (and the hero posed), the tooltip shown, then two frames to draw it.
-## Returns what `capture` needs: {saved (what `_view_end` puts back; empty without a view), tip (the tooltip's rect; empty without one)}.
+## Returns what `capture` needs: {saved (what `_view_end` puts back; empty without a view), tip (the tooltip's rect; empty without one), undo (what puts the shot's thralls and candles back, Callables)}.
 static func stage(root: Node, game: DmNextGame, s: Dictionary) -> Dictionary:
 	var tree := root.get_tree()
 	var ui: DmGameUi = game.ui
 	ui.close_panels()
+	var undo: Array[Callable] = []
 	if s["area"] != "":
 		go_area(game, s["area"])
+	if s["at"] != null:
+		game.chapterhouse.teleport_to(s["at"].x, s["at"].y)
 	for _i in 3:
 		await tree.process_frame
+	if not (s["thralls"] as Dictionary).is_empty():
+		undo.append_array(_thralls_begin(game, s["thralls"]))
+	for group in s["candles_out"]:
+		if game.world.dressing != null:
+			game.world.dressing.set_candle_group(group, false)
+			undo.append(game.world.dressing.set_candle_group.bind(group, true))
 	if s["fight"]:
 		_fight_begin(game)
 	for w in s["open"]:
@@ -237,12 +318,15 @@ static func stage(root: Node, game: DmNextGame, s: Dictionary) -> Dictionary:
 		tip_rect = await _hover(root, ui, s["hover"])
 	await tree.process_frame
 	await tree.process_frame
-	return {"saved": saved, "tip": tip_rect}
+	return {"saved": saved, "tip": tip_rect, "undo": undo}
 
 
 ## The shot's wait: `wait_ms` of game time (at least 0.15 s); a "fight" shot casts every FIGHT_STEP_S of it.
 static func _wait(root: Node, game: DmNextGame, s: Dictionary) -> void:
 	var secs := maxf(0.15, float(s["wait_ms"]) / 1000.0)
+	if s["walk"]:
+		await _walk(root, game, secs)
+		return
 	if not s["fight"]:
 		await root.get_tree().create_timer(secs).timeout
 		return
@@ -310,6 +394,8 @@ static func capture(root: Node, game: DmNextGame, s: Dictionary, staged: Diction
 			img = img.get_region(Rect2i(rect))
 	if not (staged["saved"] as Dictionary).is_empty():
 		_view_end(game, staged["saved"])
+	for undo: Callable in staged.get("undo", []):
+		undo.call()
 	return img != null and img.save_png(file) == OK
 
 
@@ -409,6 +495,86 @@ static func _wear(game: DmNextGame, ids: Array) -> void:
 	for _i in 4:
 		await game.get_tree().process_frame
 
+
+
+## The Legion kit of a plan: each item (already in the bag) given to the Legion through the Legion window's own call, so the hero's look and its thralls follow as in play.
+static func _give_to_legion(game: DmNextGame, ids: Array) -> void:
+	var host := game.ui_host
+	await host.refresh_inventory()
+	for id in ids:
+		var row: Dictionary = {}
+		for r: Dictionary in host.inventory.slots:
+			if String(r.get("item_id", "")) == id and int(r.get("equipped", 0)) == 0 and not DmGear.is_kit_slot(r.get("slot_index")):
+				row = r
+				break
+		if row.is_empty():
+			print("QA-SHOTS legion: %s is not in the bag" % id)
+			continue
+		await game.ui.inv.give_to_legion(row)
+	for _i in 4:
+		await game.get_tree().process_frame
+
+
+## What stands in for another player in a "thralls" shot: a body the core host knows as a hero (its place, `alive`, its discipline) that is never in the scene.
+class StandIn:
+	extends Node3D
+	var alive := true
+	var discipline_id := ""
+
+
+## "thralls": the waves and enemies away, the thralls raised (straight into the core, no corpses or cap) round their owners: the hero for "mine", a stand-in owner of a discipline STANDIN_SPOTS away from him for the rest.
+## `damage` is what each thrall hits for (0 = none, a shot's looks; a clip's thralls fight the enemies, with `clear` false so the enemies already about stay). Returns what puts it back: the thralls gone, the stand-ins unregistered, the waves as they were.
+static func _thralls_begin(game: DmNextGame, owners: Dictionary, damage := 0.0, clear := true) -> Array[Callable]:
+	var host := game.core_host
+	var hero := game.local_body()
+	var waves := game.director.enabled
+	game.director.enabled = false
+	if clear:
+		for id in host.enemies_in_radius(hero.position, 400.0):
+			host.remove_enemy(id)
+	var made: Array[StandIn] = []
+	var spot := 0
+	var raised := 0
+	for owner in owners:
+		var id := hero.core_id
+		var at := Vector2(hero.position.x, hero.position.z)
+		if owner != "mine":
+			var body := StandIn.new()
+			body.discipline_id = String(owner)
+			var off: Vector2 = STANDIN_SPOTS[spot]
+			spot += 1
+			body.position = Vector3(at.x + off.x, 0.0, at.y + off.y)
+			id = host.register_hero(body)
+			made.append(body)
+			at += off
+		var kinds: Array = owners[owner]
+		for k in kinds.size():
+			var kind := String(kinds[k])
+			var a := TAU * float(k) / float(maxi(1, kinds.size()))
+			var stats := DmThralls.raise_stats({"kind": kind, "hp": 1.0e6, "damage": damage, "attackSpeedMult": 1.0}, {"kind": "normal", "enemy": "risen", "elite": false}, 1.0, raised + 1, 0.0)
+			host.core.raise_thrall(stats, id, at + Vector2(cos(a), sin(a)) * 1.9, 0.0, -1.0)
+			raised += 1
+	var undo: Array[Callable] = []
+	undo.append(func() -> void:
+		for tid in host.core.thrall_ids():
+			host.core.kill_thrall(tid, "crumbled")
+		for body in made:
+			host.unregister_hero(body)
+			body.free()
+		game.director.enabled = waves)
+	return undo
+
+
+## "walk": the hero paces to and fro over `secs` of game time (WALK_REACH either side of where he stood, WALK_SPEED radians a second), so his steps ring the water he stands in; where he stood again after.
+static func _walk(root: Node, game: DmNextGame, secs: float) -> void:
+	var hero := game.local_body()
+	var base := hero.position
+	var t := 0.0
+	while t < secs:
+		await root.get_tree().physics_frame
+		t += 1.0 / float(Engine.physics_ticks_per_second)
+		hero.teleport(base + Vector3(sin(t * WALK_SPEED) * WALK_REACH, 0.0, 0.0))
+	hero.teleport(base)
 
 ## "view" shots: HUD and windows away; "hero" also frames the hero close-up and turns it. Returns what _view_end puts back.
 static func _view_begin(game: DmNextGame, s: Dictionary) -> Dictionary:

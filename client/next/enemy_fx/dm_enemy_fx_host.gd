@@ -21,7 +21,8 @@ var now_ms := 0.0
 var area_id := "graves"
 var mirror := World.new()
 var camera: Object = null          ## anything with shake(amount: float)
-var dressing: Object = null        ## anything with add_ripple(x, z, size) / is_wet(x, z)
+var dressing: Object = null        ## anything with add_ripple(x, z, size) / is_wet(x, z): the world dressing's water
+var candles: Object = null         ## anything with set_candle_group(group, lit): the world dressing's candle flames (the Prelate puts them out as it advances)
 var hitstop_cb := Callable()       ## (seconds: float)
 
 

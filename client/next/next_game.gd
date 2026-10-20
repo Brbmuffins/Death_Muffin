@@ -179,6 +179,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	enemy_fx.player_pos = func() -> Vector3: return local_body().global_position if local_body() != null else camera.global_position
 	enemy_fx.host.camera = camera
 	enemy_fx.host.hitstop_cb = hitstop
+	enemy_fx.host.dressing = world.dressing   # the water's ripples: the hero's steps, the Wisp's pulse, the deaths (client/README.md "World dressing"); null in a world with no lights
 	add_child(enemy_fx)
 	enemy_fx.bind(core_host)
 	bosses = DmBossHost.new()
@@ -189,6 +190,8 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	add_child(bosses)
 	bosses.fx.host.camera = camera
 	bosses.fx.host.hitstop_cb = hitstop
+	bosses.fx.host.dressing = world.dressing   # the Mire Mother's rings
+	bosses.fx.host.candles = world.dressing    # the Prelate's candle groups: its phases put them out, its defeat lights them (client/README.md "World dressing")
 	bosses.fx.player_pos = enemy_fx.player_pos
 	bosses.fx.host.sink = game_event   # banners / toasts -> the HUD
 	session.session_ended.connect(_on_session_ended)

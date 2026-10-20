@@ -44,7 +44,7 @@ The Weeping Seraph is a rigged character (idle, cast, hurt, death) that `wings` 
   2.9 mm (half floats would have a worst case of 2.4 mm in the same box); the baker prints the worst of each model. Normals are accurate to 1 degree.
 - **Layout:** one texel per animation id and frame; a frame is `tex_rows` rows of `tex_width` texels (at most 2048 wide, 4096 tall: phones). Vertices that move
   alike (same place, bones, weights and normal: UV seams only) share one id, so the robber's 5,635 vertices are 2,179 columns.
-- **Mesh:** rest pose in creature space, UVs for the albedo, the animation id in `CUSTOM0.x` (float), `custom_aabb` = bounds of every baked pose. One mesh per level
+- **Mesh:** rest pose in creature space, UVs for the albedo, the animation id in `CUSTOM0.x` (float), the vertex's weight in the chest and in the hands (the Legion kit's regions, from the skin weights, as `DmCreatureMat.baked_mesh` masks the creature's) in `CUSTOM0.zw`, `custom_aabb` = bounds of every baked pose. One mesh per level
   of detail; all levels share the vertex array, so one pair of textures serves them all. A model over its budget (5,000 triangles; the Bone Colossus 6,000, `CrowdBaker.MAX_TRIANGLES_OF`: Godot's simplified level made it a lump) takes Godot's own simplified level
   (`ImporterMesh.generate_lods`) as level 0, and is reported when none is small enough.
 - **Frames:** each clip gets the fewest frames per second (4 to 60, at most 128 frames) whose linear interpolation stays within 25 mm of the true pose
@@ -301,10 +301,17 @@ software Vulkan driver; the lighting alone, a thrall with no glow and no rim, co
   a distinct glow and rim: a thrall look x empowered x champion x ally. The slot is part of a body's look, so a change (empowered, champion, its owner marked an ally) refreshes its pose row on the next frame whatever its animation band, and a culled body keeps it for when it is back in view.
 - **The Leech's slither** (`crowd_looks.json` `wobble`): the root rolls and the body squashes with the clock and the id (`BF_WOBBLE` in `native/src/core/crowd_view.cpp`).
 
-Not drawn, and why: the legion kit's armour tint and its weapon's tier colour. The old game's per-creature view asked its host for `legion_kit_for` and no host had it, so a
-thrall was drawn plain, and nothing gives one a kit now. They need the gear regions baked per vertex (chest and hands, from the skin weights) and a kit per owner in the palette, and belong with whatever gives thralls a kit to show
-(KNOWN-GAPS "Built but never shown"). Nor the legions' own looks (the sentinel, legionnaire and plague thrall, their tints and glows): the old view asked its host for
-`discipline_id_for`, which no host had, so every thrall wears the default bone skeleton and teal glow; `DmCoreHost` gives the crowd no legion either (`set_owner_legion` is kept).
+**The Legion kit.** The thralls of an owner with a Legion kit (the character's Legion slots 120 and 121, filled in the Legion window) wear it: a warrior, shield bearer, archer or bone mage (`crowd_looks.json` `kit.bodies`, the old game's KIT_BODIES) shows the armour piece's
+tier colour (`DmGearProps.tier`) on its chest and hands at `kit.armor_strength`, the piece's glow (x `kit.glow_k`) on the trim of the cloth and the bone, and the weapon piece's tier colour on its weapon (the sword's blade; the wood of a bow or a staff 30%:
+`thrall_props` `kit`, baked as `CrowdVatData.part_kit`). `DmHeroLook` carries the kit in the look every peer shares (its `k`), `DmCoreHost.set_hero_kit` holds it per body and `CrowdView.set_owner_kit` hands it to the crowd, so in co-op each owner's thralls wear
+that owner's kit on every peer. Nothing is drawn extra: the kit rides the palette slot (`DmCrowd`'s palette has a kit index a slot, `kit_of_slot`, and up to `KIT_SLOTS` kits, `kit_palette`: the armour tint and strength, its glow, the weapon colour), so a thrall with a kit
+is a different slot of the same MultiMesh group and no instance data, group or draw call is added (an owner's kit makes the slots of its thralls' looks twice: the Full Party with four kits holds 14 groups with and without, and 17 palette slots where it held 8); a hound, a wraith, a plague bearer and
+a colossus stay bare, and so does any owner whose legion is empty. The fragment shader mixes the chest and hands by the weights exactly as `DmCreatureMat` does for the creature (the product in the same numbers, `0.22 + luminance x 1.5` of the tier colour), and only for an instance with a kit
+(`v_kit`); the vertex shader reads one more uniform per instance with a palette slot. `CrowdView.clear()` (a guest's baseline) puts the owners' legion, ally mark and kit back.
+
+**The legions' looks.** `DmCoreHost` (`_mark_allies`) tells the view each hero's discipline (`set_owner_legion`), so a hero's thralls wear its legion's model, tint and glow (`crowd_looks.json` `legion`: the Ossuary's sentinel, the Gravecaller's legionnaire,
+the Rotweaver's plague thrall, the Mourner's wraiths); a discipline with no legion (the Reaper's) and a thrall kind with a look of its own (archer, bone mage, plague bearer, colossus) keep theirs. In co-op every owner's thralls wear that owner's look, on every peer
+(a guest's `adopt_hero` does the same from the replicated `discipline_id`). The models are not extra work for the crowd: a model is a group of MultiMeshes whatever its owner, and the draw budget's Full Party already holds four legions (`DmDrawScene`).
 
 A spectral model (`crowd_looks.json` `spectral_models`: the wraiths) gets the same shader with SPECTRAL defined (`CrowdVatData.spectral_shader`: 0.55 opacity, no depth write, as DmCreature's fade variant) and
 casts no shadow (a sinking body and the Shrouded ward are "The alpha path"); the per-body glow comes from the palette (`DmCrowd.glow_palette`, the emissive colours and strengths from `crowd_looks.json`: an elite's purple, the risen's, a legion's thralls' with the

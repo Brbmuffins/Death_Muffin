@@ -127,7 +127,7 @@ func _test_model(slug: String) -> void:
 	for l in data.meshes.size():
 		var a := data.meshes[l].surface_get_arrays(0)
 		var custom: PackedFloat32Array = a[Mesh.ARRAY_CUSTOM0]
-		check(a[Mesh.ARRAY_VERTEX].size() == verts.size() and custom.size() == verts.size() * 2, "%s: level %d keeps the vertex array (CUSTOM0: id, part)" % [slug, l])
+		check(a[Mesh.ARRAY_VERTEX].size() == verts.size() and custom.size() == verts.size() * Baker.CUSTOM_STRIDE, "%s: level %d keeps the vertex array (CUSTOM0: id, part, chest and hands weights)" % [slug, l])
 		check((a[Mesh.ARRAY_INDEX] as PackedInt32Array).size() / 3 == data.lod_triangles[l], "%s: level %d triangle count" % [slug, l])
 		check(_extent(a[Mesh.ARRAY_INDEX]).y < verts.size(), "%s: level %d indexes the vertex array" % [slug, l])
 		check(a[Mesh.ARRAY_TEX_UV] == src[Mesh.ARRAY_TEX_UV], "%s: level %d keeps the UVs" % [slug, l])
@@ -135,9 +135,23 @@ func _test_model(slug: String) -> void:
 		if l == 0:
 			var body := true
 			for i in verts.size():
-				ids.append(int(custom[i * 2]))
-				body = body and custom[i * 2 + 1] == 0.0
+				ids.append(int(custom[i * Baker.CUSTOM_STRIDE]))
+				body = body and custom[i * Baker.CUSTOM_STRIDE + 1] == 0.0
 			check(body, "%s: every vertex is the body's (part 0)" % slug)
+			# the Legion kit's regions: the chest and hands weights are the creature's own gear masks (DmCreatureMat.baked_mesh: COLOR r = chest, b = hands)
+			var masks: PackedColorArray = DmCreatureMat.baked_mesh(m.mesh_instance as MeshInstance3D).surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+			var same := masks.size() == verts.size()
+			var chest := 0
+			var hands := 0
+			for i in mini(masks.size(), verts.size()):
+				var cw := custom[i * Baker.CUSTOM_STRIDE + 2]
+				var hw := custom[i * Baker.CUSTOM_STRIDE + 3]
+				same = same and absf(cw - masks[i].r) < 1e-5 and absf(hw - masks[i].b) < 1e-5
+				chest += 1 if cw > 0.5 else 0
+				hands += 1 if hw > 0.5 else 0
+			check(same, "%s: the chest and hands weights of every vertex are the creature's gear masks" % slug)
+			if slug == "skeleton_thrall":
+				check(chest > 0 and hands > 0, "%s: a humanoid has a chest (%d vertices) and hands (%d) for the kit to paint" % [slug, chest, hands])
 	check(ids.size() == verts.size() and _extent(ids) == Vector2i(0, data.anim_vertex_count - 1), "%s: animation ids cover 0..%d" % [slug, data.anim_vertex_count - 1])
 
 	# Rest pose: the glTF's inverse binds undo the rest skeleton up to one common transform (the dequantised GLBs carry a scale there), so the
@@ -407,7 +421,7 @@ func _test_shader() -> void:
 	for mt in re.search_all(sh.code):
 		uniforms[mt.get_string(1)] = true
 	for u in ["albedo_tex", "orm_tex", "normal_tex", "use_orm", "use_normal", "rough_f", "metal_f", "glow_palette", "rim_palette", "vat_pos", "vat_nrm", "vat_width", "vat_rows", "vat_clips",
-			"vat_lo", "vat_step", "vat_rx", "vat_ry", "vat_hi", "vat_track", "trk_clips"]:
+			"vat_lo", "vat_step", "vat_rx", "vat_ry", "vat_hi", "vat_track", "trk_clips", "kit_slot", "kit_pal", "part_kit"]:
 		check(uniforms.has(u), "shader declares uniform %s that CrowdVatData sets" % u)
 	check(sh.code.contains("trk_clips[%d]" % CrowdVatData.MAX_CLIPS), "shader track clip table matches MAX_CLIPS")
 	# the integer maths of the position codes stays in signed 32 bits and needs no shifts or unsigned types (Godot's shader language, Compatibility, Mobile)
@@ -598,7 +612,7 @@ func _test_unrigged(slug: String) -> void:
 	var custom: PackedFloat32Array = baked[Mesh.ARRAY_CUSTOM0]
 	var ids := PackedInt32Array()
 	for i in verts.size():
-		ids.append(int(custom[i * 2]))
+		ids.append(int(custom[i * Baker.CUSTOM_STRIDE]))
 	var pos_img := data.pos_tex.get_image()
 	var nrm_img := data.nrm_tex.get_image()
 	# The shader's frame (DmCreature: wing_vec, wing_root, wing_axis from the mesh's own box).
@@ -697,6 +711,11 @@ func _test_props(variant: String) -> void:
 	check(data.part_albedo.size() == 3 and data.part_pbr.size() == 3 and data.part_emission.size() == 3,
 		"%s: the sword's metal, the shield's wood and its glowing boss are its prop parts (%d)" % [variant, data.part_albedo.size()])
 	check(data.part_emission[2].v > 0.1 and data.part_emission[0].v == 0.0, "%s: only the shield boss glows, as today's" % variant)
+	# the Legion weapon's colour reaches the sword (crowd_looks.json thrall_props `kit`) and nothing else: not the shield, not the lit boss
+	var kit_parts := 0
+	for k in data.part_kit.size():
+		kit_parts += 1 if data.part_kit[k] > 0.0 else 0
+	check(data.part_kit.size() == data.part_albedo.size() and kit_parts == 1 and data.part_kit[0] > 0.0, "%s: the sword's metal takes the kit weapon's colour, the shield and its boss keep theirs (%s)" % [variant, str(data.part_kit)])
 	# the mesh: the body's vertices as the plain body has them (same animation ids), the props' in their own space with their prop and part
 	var a := data.meshes[0].surface_get_arrays(0)
 	var custom: PackedFloat32Array = a[Mesh.ARRAY_CUSTOM0]
@@ -709,11 +728,14 @@ func _test_props(variant: String) -> void:
 	var props_ok := true
 	for i in verts.size():
 		if i < src_vc:
-			body_ok = body_ok and custom[i * 2] == base_custom[i * 2] and custom[i * 2 + 1] == 0.0 and verts[i] == (base_a[Mesh.ARRAY_VERTEX] as PackedVector3Array)[i]
+			var S := Baker.CUSTOM_STRIDE
+			body_ok = body_ok and custom[i * S] == base_custom[i * S] and custom[i * S + 1] == 0.0 and custom[i * S + 2] == base_custom[i * S + 2] and custom[i * S + 3] == base_custom[i * S + 3] \
+				and verts[i] == (base_a[Mesh.ARRAY_VERTEX] as PackedVector3Array)[i]
 		else:
 			var j := i - src_vc
 			props_ok = props_ok and verts[i] == (g.verts as PackedVector3Array)[j] and norms[i].distance_to((g.normals as PackedVector3Array)[j]) < 1e-3 \
-				and int(custom[i * 2]) == (g.owner as PackedInt32Array)[j] and custom[i * 2 + 1] == (g.part as PackedFloat32Array)[j] and custom[i * 2 + 1] >= 1.0 and custom[i * 2 + 1] <= 3.0
+				and int(custom[i * Baker.CUSTOM_STRIDE]) == (g.owner as PackedInt32Array)[j] and custom[i * Baker.CUSTOM_STRIDE + 1] == (g.part as PackedFloat32Array)[j] and custom[i * Baker.CUSTOM_STRIDE + 1] >= 1.0 \
+				and custom[i * Baker.CUSTOM_STRIDE + 1] <= 3.0 and custom[i * Baker.CUSTOM_STRIDE + 2] == 0.0 and custom[i * Baker.CUSTOM_STRIDE + 3] == 0.0
 	check(parts_ok and body_ok, "%s: the body's %d vertices are the plain body's (part 0, its animation ids and rest pose)" % [variant, src_vc])
 	check(props_ok, "%s: the props' %d vertices follow in their own space, each with its prop (0 or 1) and part (1..3)" % [variant, up])
 	check(data.aabb.encloses(base.aabb) and data.meshes[0].custom_aabb == data.aabb, "%s: bounds hold the body's and the props'" % variant)

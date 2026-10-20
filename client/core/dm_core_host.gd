@@ -87,6 +87,7 @@ var dispatch_us := 0
 
 var _heroes: Array[Node3D] = []      ## registered hero bodies, parallel to _hero_ids (heroes are few: a handful, never per creature)
 var _hero_ids := PackedInt32Array()
+var _kits := {}                     ## hero body -> its Legion kit (set_hero_kit)
 var _bosses: Array[DmBoss] = []      ## registered boss bodies, parallel to _boss_ids (one awake at a time, never per creature)
 var _boss_ids := PackedInt32Array()
 var _focus_body: Node3D              ## puppet: the local hero, the centre of the crowd's level-of-detail (a host uses its first registered hero)
@@ -135,9 +136,8 @@ func setup(opts: Dictionary) -> void:
 # ---- heroes ------------------------------------------------------------------------------------------------------------------------
 
 ## Registers a hero body (a Node3D with `alive` and `discipline_id`) as an external of kind 0 and returns its core id. From now on its position and
-## alive flag are written every tick before the step. Its thralls wear the default look, whatever its discipline: the old game's DmEntityViews asked its host for
-## `discipline_id_for`, which no host had, so the legion looks (crowd_looks.json `legions`, `CrowdView.set_owner_legion`) never showed there
-## and do not show here (KNOWN-GAPS "Built but never shown").
+## alive flag are written every tick before the step. Its thralls wear its discipline's legion look (`_mark_allies`: the Ossuary's sentinel, the Gravecaller's legionnaire,
+## the Rotweaver's plague thrall, the Mourner's wraiths; crowd_looks.json `legion`).
 func register_hero(body: Node3D, radius := 0.4, weight := 1.0) -> int:
 	var id := int(core.add_external(0, radius, weight))
 	_heroes.append(body)
@@ -147,7 +147,7 @@ func register_hero(body: Node3D, radius := 0.4, weight := 1.0) -> int:
 
 
 ## Guest: a hero body of the session (any player's) is the host's external `core_id`: the ids in the core's events (the owner of a thrall, the source of a blow) name it; its
-## thralls wear the default look (register_hero). A second call moves the body to another id. Nothing is added to the core (a puppet has no externals).
+## thralls wear its discipline's legion look (register_hero). A second call moves the body to another id. Nothing is added to the core (a puppet has no externals).
 func adopt_hero(body: Node3D, core_id: int) -> void:
 	var i := _heroes.find(body)
 	if i >= 0:
@@ -168,6 +168,7 @@ func set_focus_body(body: Node3D) -> void:
 
 
 func unregister_hero(body: Node3D) -> void:
+	_kits.erase(body)
 	var i := _heroes.find(body)
 	if i < 0:
 		return
@@ -179,13 +180,27 @@ func unregister_hero(body: Node3D) -> void:
 
 
 ## The thralls of every hero but this player's wear a weaker friend rim. This player's hero is a host's first registered one and a guest's focus body;
-## until it is known every hero is this player's.
+## until it is known every hero is this player's. Each hero's thralls also wear the legion look of its discipline (a body with none, or the Reaper, gets the default bone skeleton).
 func _mark_allies() -> void:
 	if view == null or not is_instance_valid(view):   # a body leaving as the scene closes
 		return
 	var local: Node3D = _focus_body if puppet else (_heroes[0] if not _heroes.is_empty() else null)
 	for i in _heroes.size():
 		view.set_owner_ally(_hero_ids[i], local != null and _heroes[i] != local)
+		view.set_owner_kit(_hero_ids[i], _kits.get(_heroes[i], {}))
+		view.set_owner_legion(_hero_ids[i], String(_heroes[i].get("discipline_id")) if _heroes[i].get("discipline_id") != null else "")
+
+
+## A hero's Legion kit (`DmHeroLook`'s "k": {"weapon": [item id, rarity], "armor": [...]}): its thralls wear it (`CrowdView.set_owner_kit`). Held per body, so a hero registered after its
+## look arrived still gets it; `{}` takes it off.
+func set_hero_kit(body: Node3D, kit: Dictionary) -> void:
+	if (_kits.get(body, {}) as Dictionary) == kit:
+		return
+	if kit.is_empty():
+		_kits.erase(body)
+	else:
+		_kits[body] = kit
+	_mark_allies()
 
 
 ## The hero body behind a core id (the target of an EV_TARGET_HIT), null when it is not registered.

@@ -3,7 +3,7 @@ extends Node
 ## What every hero wears, on every peer: worn gear (DmAvatar.set_equipment: weapon, off-hand, helm, body tints, legendary aura), the cape, the
 ## pet (DmPetView) and, for the local hero, the hero ring / halo decals. Child "Look" of DmNextGame (same path on every peer).
 ##
-## A look is a compact descriptor {"g": {slot: [item_id, rarity]}, "c": cape_id, "p": pet_id}, ~100 B. Its owner builds it (the host from the
+## A look is a compact descriptor {"g": {slot: [item_id, rarity]}, "c": cape_id, "p": pet_id} (and "e", the weapon element, and "k", the Legion kit the hero's thralls wear), ~100 B. Its owner builds it (the host from the
 ## bag in memory + the Capes & Pets panel's selection; a joiner from its own backend), applies it locally and sends it reliably through the
 ## host, which relays it and replays every known look to a joiner. Receivers apply it to the puppet's avatar; a body whose avatar is not built yet
 ## is dressed when it is (`dress`). Only what changed is rebuilt: set_equipment diffs per slot, and an unchanged part is not even passed on.
@@ -31,6 +31,7 @@ var _ring_done := false
 var ring_k := RING_K            ## the opacity of the ring decals (the look probe tries others)
 var shadow_a := SHADOW_A        ## the opacity of the contact shadow
 var _gear: Dictionary = {}      ## the local look's parts (kept so each source updates its own)
+var _kit: Dictionary = {}       ## the local hero's Legion kit: {"weapon": [item_id, rarity], "armor": [...]}, a key only for a slot with a piece (the thralls wear it: `DmCoreHost.set_hero_kit`)
 var _element := ""              ## the weapon element the local hero's socketed runes give (DmGearFx.ELEMENTS key, "" = the weapon's own)
 var _cape := ""
 var _pet := ""
@@ -65,10 +66,21 @@ func set_gear_from_slots(slots: Array) -> void:
 		if slot in BODY_SLOTS:
 			g[slot] = [String(worn[slot]["item_id"]), String(worn[slot].get("rarity", ""))]
 	var el := DmGearFx.element_of_runes(DmRunes.sockets_of(slots))
-	if g != _gear or el != _element:
+	var kit := _kit_of(slots)
+	if g != _gear or el != _element or kit != _kit:
 		_gear = g
 		_element = el
+		_kit = kit
 		_publish()
+
+
+## The Legion kit in a bag's rows (slots 120 and 121, `DmLegion.kit_pieces`): {"weapon": [item_id, rarity], "armor": [...]} for the slots that hold a piece.
+static func _kit_of(slots: Array) -> Dictionary:
+	var out := {}
+	var pieces := DmLegion.kit_pieces(slots)
+	for id: String in pieces:
+		out[id] = [String(pieces[id]["item_id"]), String(pieces[id].get("rarity", ""))]
+	return out
 
 
 ## The Capes & Pets selection ({cape, pet}, null/"" = none).
@@ -93,6 +105,7 @@ func load_from_api() -> void:
 			if slot in BODY_SLOTS:
 				_gear[slot] = [String(worn[slot]["item_id"]), String(worn[slot].get("rarity", ""))]
 		_element = DmGearFx.element_of_runes(DmRunes.sockets_of(inv.data))
+		_kit = _kit_of(inv.data)
 	var cos: DmResult = await api.get_cosmetics(cid)
 	if cos.ok and cos.data is Dictionary and cos.data.get("selected") is Dictionary:
 		var sel: Dictionary = cos.data["selected"]
@@ -105,6 +118,8 @@ func descriptor() -> Dictionary:
 	var d := {"g": _gear, "c": _cape, "p": _pet}
 	if _element != "":
 		d["e"] = _element
+	if not _kit.is_empty():
+		d["k"] = _kit
 	return d
 
 
@@ -166,6 +181,13 @@ static func _valid(d: Dictionary) -> bool:
 		return false
 	if d.has("e") and not DmGearFx.valid_element(d["e"]):
 		return false
+	if d.has("k"):
+		var k: Variant = d["k"]
+		if not k is Dictionary:
+			return false
+		for id in k:
+			if not (id is String and (id == "weapon" or id == "armor") and k[id] is Array and k[id].size() == 2 and k[id][0] is String and k[id][1] is String and String(k[id][0]).length() <= 64):
+				return false
 	var g: Dictionary = d["g"]
 	if g.size() > BODY_SLOTS.size():
 		return false
@@ -188,6 +210,8 @@ func dress(b: DmHeroBody) -> void:
 func _apply(id: int) -> void:
 	var b := game.body_of(id) as DmHeroBody
 	var d: Dictionary = looks.get(id, {})
+	if b != null and not d.is_empty() and game.get("core_host") != null:
+		(game.core_host as DmCoreHost).set_hero_kit(b, d.get("k", {}))   # the hero's thralls wear its Legion kit (the avatar may not be built yet: the crowd does not need it)
 	if b == null or b.avatar == null or d.is_empty():
 		return
 	if _applied_gear.get(id) != d["g"]:

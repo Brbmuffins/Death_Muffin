@@ -120,6 +120,8 @@ func _initialize() -> void:
 	await no_nodes_per_creature()
 	await hover_pick()
 	await affixes()
+	await water_ripples()
+	candle_groups()
 	await timings()
 	await finish()
 
@@ -555,6 +557,76 @@ func shroud_ward(id: int) -> void:
 	check(bool(vi.veiled) and float(vi.opacity) < 0.42, "with the Miasma gone the ward holds again and the body is see-through (%.2f)" % float(vi.opacity))
 	check(int(g.enemy_fx.stats["shroud_smoke"]) - smoke0 - covered_smoke >= 1, "and smokes again (%d puffs in 5 s)" % (int(g.enemy_fx.stats["shroud_smoke"]) - smoke0 - covered_smoke))
 
+
+
+## The world dressing is the effects' surface for the water (client/README.md "World dressing"): the enemy fx and the boss fx hold it, a ripple rings only on wet ground (the data's puddles), the hero's steps
+## ring the water he walks, and a death, the Wisp's pulse and the Mire Mother's rings on a puddle do.
+func water_ripples() -> void:
+	var dr: DmWorldDressing = g.world.dressing
+	check(dr != null and g.enemy_fx.host.dressing == dr and g.bosses.fx.host.dressing == dr, "the enemy fx and the boss fx hold the world dressing for ripples")
+	if dr == null:
+		return
+	g.director.enabled = false
+	var puddle: Dictionary = {}
+	for p: Dictionary in DmWfxData.get_data()["water"]["puddles"]:
+		if String(p.get("area", "")) == "graves":
+			puddle = p
+			break
+	check(not puddle.is_empty(), "the Graves have a puddle in the dressing's data")
+	if puddle.is_empty():
+		return
+	var wet := Vector3(float(puddle.x), 0.0, float(puddle.z))
+	var dry := Vector3(1.0e5, 0.0, 1.0e5)
+	check(dr.is_wet(wet.x, wet.z) and not dr.is_wet(dry.x, dry.z), "a puddle's middle is wet and a point far from all water is not")
+	var water: DmWfxWater = dr.water
+	await ticks(150)   # earlier rings (deaths on the puddles) fade after 2.2 s
+	var base := water.active_ripples()
+	g.enemy_fx.fx.add_ripple(dry.x, dry.z, 1.0)
+	check(water.active_ripples() == base, "a ripple on dry ground is ignored")
+	g.enemy_fx.fx.add_ripple(wet.x, wet.z, 1.0)
+	check(water.active_ripples() == base + 1, "a ripple on the puddle rings it")
+	g.bosses.fx.fx.add_ripple(wet.x, wet.z, 3.0)
+	check(water.active_ripples() == base + 2, "and so does the boss fx's (the Mire Mother's rings)")
+	await ticks(150)
+	# the hero walks over the puddle: his steps ring the water (one ring every other 0.15 s tick of the walk)
+	var b := g.local_body()
+	var before := b.position
+	var rings0 := water.active_ripples()
+	for i in 90:
+		b.teleport(wet + Vector3(0.6 * sin(float(i) * 0.3), 0.0, 0.0))
+		await ticks(1)
+	check(water.active_ripples() > rings0, "the hero's steps on the puddle ring the water (%d rings, %d before)" % [water.active_ripples(), rings0])
+	b.teleport(before)
+	await ticks(150)
+	# an enemy that dies on the puddle rings it (a death far from water does not)
+	var rings1 := water.active_ripples()
+	var drowned := host.spawn_enemy("robber", wet + Vector3(0.0, 0.0, 0.3), 1, 1.0, 1.0, false, "graves", false)
+	host.damage(drowned, 1.0e9, b.core_id, false)
+	await ticks(6)
+	check(water.active_ripples() > rings1, "a body that dies on the puddle rings it (%d rings, %d before)" % [water.active_ripples(), rings1])
+
+
+
+## The Prelate's candle groups (client/README.md "World dressing"): the boss fx holds the dressing's candles, the Prelate's second phase puts the west group out, its third the east one, and its awakening and defeat light them all.
+## (What a group does to the flames of a loaded Sanctum is tests/dressing.gd's.)
+func candle_groups() -> void:
+	var dr: DmWorldDressing = g.world.dressing
+	check(dr != null and g.bosses.fx.host.candles == dr, "the boss fx holds the world dressing for the Prelate's candles")
+	if dr == null:
+		return
+	var play := func(kind: String, phase: int) -> void:
+		g.bosses.fx.fx.handle_now({"t": "boss", "kind": kind, "boss": "prelate", "phase": phase, "x": 0.0, "z": 0.0, "ms": 0.0})
+	play.call("phase", 2)
+	check(dr.candle_off.has("west") and not dr.candle_off.has("east"), "the Prelate's second phase puts the west candles out (%s)" % str(dr.candle_off.keys()))
+	play.call("phase", 3)
+	check(dr.candle_off.has("west") and dr.candle_off.has("east"), "and its third the east ones")
+	play.call("awaken", 1)
+	check(dr.candle_off.is_empty(), "waking the Prelate lights them all")
+	play.call("phase", 2)
+	g.bosses.fx.fx.set_candle_group("west", true)
+	check(dr.candle_off.is_empty(), "and lighting a group brings it back")
+	g.enemy_fx.fx.set_candle_group("west", false)
+	check(dr.candle_off.is_empty(), "the enemy fx has no candles of its own to put out")
 
 ## About 70 enemies in a fight: the crowd has a view per body and draws them.
 func timings() -> void:

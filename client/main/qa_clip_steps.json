@@ -1,5 +1,5 @@
 {
-  "about": "The words a clip's `setup` and `steps` may use (main/qa_clips.gd, client/README.md \"Clips and tune\"). Each word lists its arguments: a type (bool, number with min and max, rite, enemy) and whether it is required. The Discord agent's runner checks a clip request against the branch's copy of this file before it goes to a team PC, so a new word is an entry here, its handler in qa_clips.gd (SETUP_WORDS / STEP_WORDS) and a check in tests/qa_shots.gd; nothing in the runner.",
+  "about": "The words a clip's `setup` and `steps` may use (main/qa_clips.gd, client/README.md \"Clips and tune\"). Each word lists its arguments: a type (bool, number with min and max, rite, enemy, point, path, owners, candle_group) and whether it is required. The Discord agent's runner checks a clip request against the branch's copy of this file before it goes to a team PC, so a new word is an entry here, its handler in qa_clips.gd (SETUP_WORDS / STEP_WORDS) and a check in tests/qa_shots.gd; nothing in the runner.",
   "setup": {
     "hud": {
       "help": "show the HUD while recording (it is hidden when this is left out)",
@@ -28,6 +28,24 @@
       "args": {
         "on": { "type": "bool", "required": true }
       }
+    },
+    "stand_at": {
+      "help": "stand the hero at this point [x, z] of the area instead of at its waystone (before the stand-ins are placed, so they start ahead of that point)",
+      "args": {
+        "at": { "type": "point", "required": true }
+      }
+    },
+    "zoom": {
+      "help": "the camera's zoom for the clip (1 the game's default, 0.7 the closest a player can zoom, 1.45 the widest; it is 1 when this is left out): closer than a player gets is for looking at a detail",
+      "args": {
+        "value": { "type": "number", "min": 0.4, "max": 1.45, "required": true }
+      }
+    },
+    "thralls": {
+      "help": "raise thralls for the hero (\"mine\", who wears the plan's \"legion\" kit) and for stand-in owners of other disciplines standing 9 m to either side or 8 m up the screen, as {\"mine\": [kinds], \"gravecaller\": [kinds], ...} (at most 40 thralls of 4 owners); they cannot be hurt and fight the stand-in enemies, so give those health to lose (stand_ins health) and make them come (fight)",
+      "args": {
+        "owners": { "type": "owners", "required": true }
+      }
     }
   },
   "steps": {
@@ -35,6 +53,19 @@
       "help": "cast a rite at `at` seconds into the clip, aimed at the stand-ins; a rite that is busy or cooling down is tried again each frame. A clip with cast steps casts nothing by itself",
       "args": {
         "rite": { "type": "rite", "required": true }
+      }
+    },
+    "walk": {
+      "help": "the hero walks (real movement, so the water he wades rings) to a point [x, z] of the area, or along a list of up to 8 of them one after the other, from `at` seconds into the clip",
+      "args": {
+        "to": { "type": "path", "required": true }
+      }
+    },
+    "candles": {
+      "help": "put a Bell Sanctum candle group (west, east or north) out at `at` seconds, or light it again with out false; groups still out are lit after the clip",
+      "args": {
+        "group": { "type": "candle_group", "required": true },
+        "out": { "type": "bool" }
       }
     }
   }

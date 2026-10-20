@@ -21,8 +21,8 @@ replicated `discipline_id` (`DmHeroBody.family_of`), so a joining Reaper plays t
 - **Settings -> Hide helm** reaches the avatars (`DmAvatar.refresh_all` in `DmNextUiHost._apply_settings_side_effects`).
 
 ## Replication
-A look = `{"g": {slot: [item_id, rarity]}, "c": cape_id, "p": pet_id, "e": element}` (~320 B as a `var` with a full legendary set; `e` is optional: the weapon element the owner's socketed
-runes give, one of `DmGearFx.ELEMENTS`, absent when none). The owner builds it (the panels' bag signal and the Capes & Pets panel; without panels `Look.load_from_api()` reads the character's own backend), applies it locally and, only when it changed, sends it
+A look = `{"g": {slot: [item_id, rarity]}, "c": cape_id, "p": pet_id, "e": element, "k": kit}` (~320 B as a `var` with a full legendary set; `e` is optional: the weapon element the owner's socketed
+runes give, one of `DmGearFx.ELEMENTS`, absent when none; `k` is optional too: the Legion kit, `{"weapon": [item_id, rarity], "armor": [...]}` for the slots (120 and 121) that hold a piece, which `DmCoreHost.set_hero_kit` gives the crowd so the hero's thralls wear it, "client/crowd/README.md"). The owner builds it (the panels' bag signal and the Capes & Pets panel; without panels `Look.load_from_api()` reads the character's own backend), applies it locally and, only when it changed, sends it
 reliably: the host to everyone (`_rpc_look`), a joiner to the host (`_rpc_submit`), which stores it and relays it. The host replays every known look to
 a joiner 0.8 s after it joins. A body whose avatar is not built yet is dressed in `_make_avatar` (`Look.dress`). Descriptors from peers are shape-checked
 (`_valid`: known slots, string ids) and only ever name catalogue items, so a forged look can only show a catalogue piece.

@@ -137,6 +137,9 @@ func _run() -> void:
 	check(b.avatar.body_slug == base_body, "G: taking one piece off gives the hero's own body back")
 	await g.ui.inv.toggle_equip(row.call("leg_legion_unburied_head"))
 	await g.ui.inv.toggle_equip(row.call("leg_legion_unburied_chest"))
+	# ---- H: thralls wear their owner's discipline look (crowd_looks.json `legion`), whoever owns them
+	await _legion_looks(g)
+	await _legion_kit(g)
 	# ---- leaving: no pet left behind
 	var pet_root: Node3D = pet.c.root
 	var api0 := api
@@ -150,6 +153,90 @@ func _run() -> void:
 	print("%d passed, %d failed" % [passed, failed])
 	print("%s hero_look %d checks%s" % ["PASS" if failed == 0 else "FAIL", passed + failed, "" if failed == 0 else " (%d failed)" % failed])
 	quit(1 if failed > 0 else 0)
+
+
+## The model a thrall is drawn with (its slug, a hand-prop variant "<model>+<kind>" cut to the model), read from the crowd's view of it.
+func _thrall_model(host: DmCoreHost, owner_id: int, kind: String, at: Vector2) -> String:
+	var base: Array = [1.3, 1.0, 5.6]
+	var id: int = host.core.raise_thrall({"kind": kind, "hp": 1.0e6, "maxHp": 1.0e6, "damage": 0.0, "attackInterval": base[1], "range": base[0], "speed": base[2], "empowered": false,
+		"champion": false, "allyHeal": 0.0}, owner_id, at, 0.0, 20.0)
+	await ticks(3)
+	var slot := int(host.view.crowd.view_info(id).get("model", -1))
+	for slug in host.view.model_slots():
+		if int(host.view.model_slots()[slug]) == slot:
+			return String(slug).split("+")[0]
+	return ""
+
+
+## Each hero's thralls wear the legion look of its discipline (the Ossuary's sentinel, the Gravecaller's legionnaire, the Rotweaver's plague thrall), the local hero's and a
+## second player's side by side; a discipline with no legion look (the Reaper's) keeps the bone skeleton. Read from crowd_looks.json, not typed.
+func _legion_looks(g: DmNextGame) -> void:
+	var host := g.core_host
+	var looks: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://crowd/crowd_looks.json"))
+	var legion: Dictionary = looks["legion"]
+	var me := g.local_body()
+	var at := Vector2(me.position.x + 3.0, me.position.z + 3.0)
+	var want_mine := String(legion[me.discipline_id]["slug"]) if legion.has(me.discipline_id) else String(looks["thrall_model"]["warrior"])
+	var got: String = await _thrall_model(host, me.core_id, "warrior", at)
+	check(got == want_mine, "H: the local hero's (%s) warrior wears %s (drawn as %s)" % [me.discipline_id, want_mine, got])
+	var others: Array[DmHeroBody] = []
+	for d in ["ossuary", "rotweaver", "reaper"]:
+		var rp := DmHeroBody.new()
+		rp.discipline_id = d
+		root.add_child(rp)
+		rp.core_id = host.register_hero(rp)
+		others.append(rp)
+	for rp in others:
+		var want := String(legion[rp.discipline_id]["slug"]) if legion.has(rp.discipline_id) else String(looks["thrall_model"]["warrior"])
+		got = await _thrall_model(host, rp.core_id, "warrior", at + Vector2(2.0, 0.0))
+		check(got == want, "H: a %s player's warrior wears %s (drawn as %s)" % [rp.discipline_id, want, got])
+	check(want_mine != String(looks["legion"]["ossuary"]["slug"]) or me.discipline_id == "ossuary", "H: and the looks differ between owners")
+	for rp in others:
+		host.unregister_hero(rp)
+		rp.free()
+
+
+## The Legion kit (the character's Legion slots 120 and 121, filled through the real "Give to the legion" path) is in the look descriptor, and the hero's thralls wear it: the core host holds it for the
+## body and the crowd has a kit for the owner; taking a piece off changes both; a forged kit from another peer is refused.
+func _legion_kit(g: DmNextGame) -> void:
+	var look := g.look
+	var b := g.local_body()
+	var host := g.core_host
+	var row := func(id: String) -> Dictionary:
+		for s in g.ui_host.inventory.slots:
+			if s["item_id"] == id:
+				return s
+		return {}
+	var weapon_row: Dictionary = row.call("sword_copper")
+	if int(weapon_row.get("equipped", 0)) != 0:
+		await g.ui.inv.toggle_equip(weapon_row)
+	await g.ui.inv.give_to_legion(row.call("sword_copper"))
+	await g.ui.inv.give_to_legion(row.call("set_gravecaller_legs"))
+	var kit: Dictionary = look.looks[1].get("k", {})
+	check(kit.has("weapon") and kit["weapon"][0] == "sword_copper" and kit.has("armor") and kit["armor"][0] == "set_gravecaller_legs", "I: the legion's weapon and armour are in the look descriptor (%s)" % str(kit))
+	check(host.view._owners[b.core_id].get("kit", {}) == kit and host._kits.get(b, {}) == kit, "I: the core host holds the kit for the body and the crowd for its owner id")
+	var pal: PackedColorArray = host.view.crowd.kit_palette()
+	var armor := DmGearProps.tier("set_gravecaller_legs", String(kit["armor"][1]))
+	var weapon := DmGearProps.tier("sword_copper", String(kit["weapon"][1]))
+	var worn := false
+	for k in range(1, pal.size() / 3):
+		var a: Color = pal[k * 3]
+		var w: Color = pal[k * 3 + 2]
+		worn = worn or (a.a > 0.0 and w.a > 0.0 and is_equal_approx(a.r, CrowdView._color("%06x" % int(armor.color)).r) and is_equal_approx(w.g, CrowdView._color("%06x" % int(weapon.color)).g))
+	check(worn, "I: the crowd's kit palette has the armour piece's and the weapon's tier colours")
+	var sent := look.sent
+	look.set_gear_from_slots(g.ui_host.inventory.slots)
+	check(look.sent == sent, "I: an unchanged bag with a kit sends nothing")
+	var d := look.descriptor()
+	check(var_to_bytes(d).size() < 400, "I: the descriptor with a kit stays compact (%d B)" % var_to_bytes(d).size())
+	# taking a piece off the legion
+	var taken = await g.ui.inv.take_off_legion("weapon")
+	check(taken == null and not look.looks[1].get("k", {}).has("weapon") and look.looks[1]["k"].has("armor"), "I: taking the weapon off the legion leaves the armour in the look")
+	check(not (host.view._owners[b.core_id]["kit"] as Dictionary).has("weapon"), "I: and the thralls' kit loses the weapon")
+	taken = await g.ui.inv.take_off_legion("armor")
+	check(taken == null and not look.looks[1].has("k") and (host.view._owners[b.core_id]["kit"] as Dictionary).is_empty(), "I: and with the armour off the look has no kit and the thralls are bare")
+	check(DmHeroLook._valid({"g": {}, "c": "", "p": "", "k": {"armor": ["a", ""]}}) and not DmHeroLook._valid({"g": {}, "c": "", "p": "", "k": {"cape": ["a", ""]}}) \
+		and not DmHeroLook._valid({"g": {}, "c": "", "p": "", "k": {"armor": [1, 2]}}) and not DmHeroLook._valid({"g": {}, "c": "", "p": "", "k": 3}), "I: a forged kit (an unknown slot, ids that are not text) is refused")
 
 
 func _replication(api0: DmApi, ch: Dictionary) -> void:
@@ -168,7 +255,12 @@ func _replication(api0: DmApi, ch: Dictionary) -> void:
 	var sp := ENetMultiplayerPeer.new()
 	check(sp.create_server(PORT, 4) == OK, "F: ENet server")
 	# the host has a bag with the sword on and the cape + pet chosen
-	var e := await api0.equip_item(int(ch["id"]), 0, 1)
+	var bag: DmResult = await api0.get_inventory(int(ch["id"]))
+	var sword_slot := 0
+	for r: Dictionary in bag.data:
+		if r["item_id"] == "sword_copper":
+			sword_slot = int(r["slot_index"])
+	var e := await api0.equip_item(int(ch["id"]), sword_slot, 1)
 	await api0.select_cosmetics(int(ch["id"]), {"cape": "cape_mining", "pet": "pet_tithe_bat"})
 	await hg.start(ch, api0, {"peer": sp, "dressing": false, "persist": false, "waves": false, "audio": false, "hud": true})   # the HUD's host feeds the look (a host without it publishes none)
 	var cp := ENetMultiplayerPeer.new()

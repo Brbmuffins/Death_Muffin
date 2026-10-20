@@ -102,4 +102,4 @@ GPUParticles3D trails and sub-emitters were unsupported (fire sparks render as p
   `client/tests/dressing.gd` holds the Binbun shaders' colour.
 
 ## Known gaps
-KNOWN-GAPS.md "Performance" (pooled MultiMeshes with no instance, decals one draw call each, `DmFxBinbun.update` walking every live effect) and "Built but never shown" (the water's ripples, the Prelate's candle groups).
+KNOWN-GAPS.md "Performance" (pooled MultiMeshes with no instance, decals one draw call each, `DmFxBinbun.update` walking every live effect).

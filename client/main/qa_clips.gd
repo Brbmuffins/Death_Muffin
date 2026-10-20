@@ -8,13 +8,15 @@ extends RefCounted
 ##
 ## Plan: {"discipline": "reaper" (or 1-4 / 11; the game must have been started as that class: `--class=N`),
 ##        "equip": ["<item id>", ...] (at most DmQaUiShots.MAX_EQUIP, worn by the hero for every clip, through the backend's equip call like the shot plan's: the model previews),
+##        "legion": ["<item id>", ...] (at most DmQaUiShots.MAX_LEGION: given to the Legion like the shot plan's, so the hero's thralls wear them; one armour piece and one weapon),
 ##        "clips": [{"name": "wraith", "area": "graves", "cast": "<rite id, e.g. haunting_wraith>", "at": "pack" | "ahead", "enemies": 6, "seconds": 5, "camera": "follow" | "wide" | "turntable",
 ##                   "equip": ["<item id>", ...] (this clip's own list: it wins over the plan's; the pieces worn before that are not in it are taken off),
 ##                   "setup": [{"do": "<word>", <its arguments>}, ...] (how the scene is set before recording), "steps": [{"at": <seconds>, "do": "<word>", ...}, ...] (what happens when)}]}
 ## `setup` and `steps` use the words of STEPS_FILE (main/qa_clip_steps.json: each word, its arguments and their types), e.g. setup [{"do": "hud", "show": true}, {"do": "stand_ins", "health": 1,
 ## "harmless": false}, {"do": "souls", "value": 0}, {"do": "top_up", "on": false}] and steps [{"at": 0.3, "do": "cast", "rite": "reap"}, {"at": 2, "do": "cast", "rite": "haunting_wraith"}]: mortal
 ## stand-ins, the HUD on screen, an empty soul bag that fills from the kills, two casts at set times. The runner checks a request against the branch's copy of that file; a new word is an
-## entry there, its handler here (SETUP_WORDS / STEP_WORDS) and a check in tests/qa_shots.gd.
+## entry there, its handler here (SETUP_WORDS / STEP_WORDS) and a check in tests/qa_shots.gd. `stand_at` puts the hero at a point of the area, `thralls` raises thralls for the hero ("mine") and for stand-in owners of other disciplines
+## (the shot plan's, DmQaUiShots.thralls_of), and the steps `walk` (the hero walks to a point or along a path) and `candles` (a Sanctum candle group out or lit) make a scene with no rite in it: such a clip needs no `cast`.
 ## At most MAX_CLIPS clips (the rest are left out, with a note), `seconds` MIN_SECONDS to MAX_SECONDS and `enemies` 0 to MAX_ENEMIES (clamped, with a note). Defaults: area graves, at pack, 6 enemies, 5 s, follow.
 ## "at": "pack" = the enemies bunched PACK_AHEAD m in front of the hero (the rite is aimed at the middle of them: a burst, a cloud, a thrown thing); "ahead" = the enemies in a line down the way the
 ## hero faces, from LINE_FIRST m away, LINE_STEP m apart (the rite is aimed down the line: a thing that travels). "camera": "follow" = the game's own camera; "wide" = its widest zoom;
@@ -50,8 +52,13 @@ const FACING := Vector3(0.0, 0.0, -1.0)   ## the way the hero faces and casts: u
 const STEPS_FILE := "res://main/qa_clip_steps.json"   ## the words `setup` and `steps` may use, and their arguments
 const MAX_SETUP := 12
 const MAX_STEPS := 24
-const SETUP_WORDS := ["hud", "stand_ins", "souls", "top_up"]   ## the setup words this recorder carries out (stage, record); STEPS_FILE lists the same
-const STEP_WORDS := ["cast"]                                   ## the step words it carries out (record's loop)
+const ZOOM_MIN := 0.4      ## the setup's `zoom`: closer than a player can zoom (0.7) is for looking at a detail
+const ZOOM_MAX := 1.45
+const SETUP_WORDS := ["hud", "stand_ins", "souls", "top_up", "stand_at", "thralls", "zoom"]   ## the setup words this recorder carries out (stage, record); STEPS_FILE lists the same
+const STEP_WORDS := ["cast", "walk", "candles"]                                       ## the step words it carries out (record's loop)
+const MAX_WALK_POINTS := 8
+const THRALL_DAMAGE := 30.0     ## what a clip's thralls hit for (the bench fight's: a mortal stand-in goes down in a few blows); they cannot be hurt, so a clip shows the same fight every time
+const THRALL_RISE_S := 2.5      ## game seconds a clip with thralls stands still at least, so they have risen
 
 
 ## The run's recording options from the game's arguments: {fps, width, notes}. `--clip-fps=N` and `--clip-width=N` outside their ranges, or not whole numbers, keep the defaults (FPS, DmQaMjpeg.WIDTH) with a note.
@@ -72,7 +79,7 @@ static func options(args: PackedStringArray) -> Dictionary:
 ## Parses and validates plan text. Returns {ok, error, discipline (name or ""), class_index (0 = not set), equip (the plan's), clips, notes}; each clip is {name, area, cast, at, enemies, seconds, camera, equip (what it wears:
 ## its own list, else the plan's), dress (the plan names items somewhere: the run sets what is worn for every clip)}.
 static func parse(text: String) -> Dictionary:
-	var out := {"ok": false, "error": "", "discipline": "", "class_index": 0, "equip": [], "clips": [], "notes": []}
+	var out := {"ok": false, "error": "", "discipline": "", "class_index": 0, "equip": [], "legion": [], "clips": [], "notes": []}
 	var js := JSON.new()
 	var raw: Variant = js.data if js.parse(text) == OK else null
 	if not (raw is Dictionary):
@@ -95,6 +102,18 @@ static func parse(text: String) -> Dictionary:
 		out["error"] = worn["error"]
 		return out
 	out["equip"] = worn["ids"]
+	var kit: Variant = raw.get("legion", [])
+	if not kit is Array:
+		out["error"] = "the plan: \"legion\" must be a list of item ids"
+		return out
+	for id in kit:
+		if DmLegion.kit_id_for_type(DmLootData.item(String(id)).get("type")) == null:
+			out["error"] = "the plan: legion: \"%s\" cannot go on the Legion (an armour piece or a weapon)" % id
+			return out
+		if (out["legion"] as Array).size() >= DmQaUiShots.MAX_LEGION:
+			(out["notes"] as Array).append("the plan has more than %d Legion items, only the first %d are given" % [DmQaUiShots.MAX_LEGION, DmQaUiShots.MAX_LEGION])
+			break
+		(out["legion"] as Array).append(String(id))
 	var any_equip: bool = raw.has("equip")   # a plan that names items anywhere takes charge of what is worn for every clip
 	var seen := {}
 	var i := 0
@@ -117,8 +136,9 @@ static func parse(text: String) -> Dictionary:
 				out["error"] = w["error"]
 				return out
 		var cast_steps: bool = (steps["items"] as Array).any(func(st: Dictionary) -> bool: return st["do"] == "cast")
-		if cast == "" and camera != "turntable" and not cast_steps:
-			out["error"] = "clip %d: \"cast\" is the id of the rite to cast (e.g. haunting_wraith), unless its steps cast" % n
+		var scene: bool = (setup["items"] as Array).any(func(w: Dictionary) -> bool: return w["do"] == "thralls") or (steps["items"] as Array).any(func(w: Dictionary) -> bool: return w["do"] != "cast")
+		if cast == "" and camera != "turntable" and not cast_steps and not scene:
+			out["error"] = "clip %d: \"cast\" is the id of the rite to cast (e.g. haunting_wraith), unless its steps cast or the clip is a scene (thralls, a walk, candles)" % n
 			return out
 		if cast != "" and not DmRiteRegistry.has(cast):
 			out["error"] = "clip %d: unknown rite \"%s\" (a rite id of next/rites/dm_rite_registry.gd)" % [n, cast]
@@ -163,6 +183,7 @@ static func parse(text: String) -> Dictionary:
 		i += 1
 	for clip: Dictionary in out["clips"]:
 		clip["dress"] = any_equip
+		clip["setup"]["legion"] = out["legion"]
 	out["ok"] = true
 	return out
 
@@ -256,6 +277,14 @@ static func _arg_refusal(value: Variant, spec: Dictionary) -> String:
 			if (spec.has("min") and float(value) < float(spec["min"])) or (spec.has("max") and float(value) > float(spec["max"])):
 				return "must be from %s to %s" % [DmQaTune.fmt(spec.get("min", 0)), DmQaTune.fmt(spec.get("max", 0))]
 			return ""
+		"point":
+			return "" if _is_point(value) else "must be a point [x, z]"
+		"path":
+			return "" if _is_point(value) or (value is Array and not (value as Array).is_empty() and (value as Array).size() <= MAX_WALK_POINTS and (value as Array).all(_is_point)) else "must be a point [x, z] or a list of at most %d of them" % MAX_WALK_POINTS
+		"owners":
+			return String(DmQaUiShots.thralls_of(value)["error"])
+		"candle_group":
+			return "" if value is String and DmQaUiShots.CANDLE_GROUPS.has(value) else "must be one of %s" % ", ".join(DmQaUiShots.CANDLE_GROUPS)
 		"rite":
 			return "" if value is String and DmRiteRegistry.has(value) else "must be a rite id of next/rites/dm_rite_registry.gd"
 		"enemy":
@@ -263,9 +292,21 @@ static func _arg_refusal(value: Variant, spec: Dictionary) -> String:
 	return "has a type this recorder does not know (%s)" % str(spec.get("type", ""))
 
 
+static func _is_point(v: Variant) -> bool:
+	return v is Array and (v as Array).size() == 2 and ((v as Array)[0] is float or (v as Array)[0] is int) and ((v as Array)[1] is float or (v as Array)[1] is int)
+
+
+## A walk step's `to` as ground points: one [x, z] or a list of them.
+static func points_of(to: Variant) -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	for pt in ([to] if _is_point(to) else to):
+		out.append(Vector3(float(pt[0]), 0.0, float(pt[1])))
+	return out
+
+
 ## A clip's setup as the recorder reads it: every option with its default (the stand-ins as before, the HUD hidden, the souls as they are, topped up for each cast).
 static func _setup_of(items: Array) -> Dictionary:
-	var o := {"hud": false, "kind": DUMMY, "health": DUMMY_HP, "harmless": true, "fight": false, "distance": -1.0, "souls": -1.0, "top_up": true}
+	var o := {"hud": false, "kind": DUMMY, "health": DUMMY_HP, "harmless": true, "fight": false, "distance": -1.0, "souls": -1.0, "top_up": true, "stand_at": null, "thralls": {}, "legion": [], "zoom": 0.0}
 	for it: Dictionary in items:
 		match String(it["do"]):
 			"hud":
@@ -280,6 +321,12 @@ static func _setup_of(items: Array) -> Dictionary:
 				o["souls"] = float(it["value"])
 			"top_up":
 				o["top_up"] = bool(it["on"])
+			"stand_at":
+				o["stand_at"] = Vector2(float(it["at"][0]), float(it["at"][1]))
+			"thralls":
+				o["thralls"] = DmQaUiShots.thralls_of(it["owners"])["thralls"]
+			"zoom":
+				o["zoom"] = clampf(float(it["value"]), ZOOM_MIN, ZOOM_MAX)
 	return o
 
 
@@ -378,8 +425,9 @@ static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: Stri
 		return res
 	if clip["dress"]:
 		await dress(game, clip["equip"])
-	var staged: Dictionary = await stage(root, game, clip)
 	var opts: Dictionary = clip.get("setup", _setup_of([]))
+	await legion(game, opts["legion"])
+	var staged: Dictionary = await stage(root, game, clip)
 	var steps: Array = clip.get("steps", [])
 	var timed: bool = steps.any(func(st: Dictionary) -> bool: return st["do"] == "cast")   # cast steps say when; nothing is cast by itself then
 	if float(opts["souls"]) >= 0.0 and caster.p.has("soulsMax"):
@@ -404,6 +452,7 @@ static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: Stri
 	var casts: Array = res["casts"]
 	var failed := ""
 	var next_step := 0
+	var walk: Array[Vector3] = []   # the points the hero has still to walk to (the `walk` step)
 	while writer.frames < total and failed == "":
 		guard -= 1
 		if guard < 0:
@@ -421,19 +470,28 @@ static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: Stri
 			elif last[0] != "busy" and last[0] != "cooldown":   # those two are tried again next frame
 				failed = "the rite was refused (%s)" % last[0]
 				break
+		if not walk.is_empty() and not body.has_target:   # the hero walks on to the next point of the path as the last one is reached
+			body.set_move_target(walk.pop_front())
 		while next_step < steps.size() and float(writer.frames) / fps >= float(steps[next_step]["at"]):
 			var st: Dictionary = steps[next_step]
-			# "cast", the one step word (STEP_WORDS): the step waits while the rite is busy or cooling down, any other refusal fails the clip
-			if bool(opts["top_up"]):
-				_top_up(caster)
-			last[0] = ""
-			caster.request_cast(String(st["rite"]), staged["aim"], -1)
-			if last[0] == "busy" or last[0] == "cooldown":
-				break
-			if last[0] != "":
-				failed = "step %d (cast %s at %s s) was refused (%s)" % [next_step + 1, st["rite"], DmQaTune.fmt(st["at"]), last[0]]
-				break
-			casts.append(writer.frames)
+			match String(st["do"]):
+				"walk":
+					walk = points_of(st["to"])
+					body.set_move_target(walk.pop_front())
+				"candles":
+					if game.world.dressing != null:
+						game.world.dressing.set_candle_group(String(st["group"]), not bool(st.get("out", true)))
+				_:   # "cast": the step waits while the rite is busy or cooling down, any other refusal fails the clip
+					if bool(opts["top_up"]):
+						_top_up(caster)
+					last[0] = ""
+					caster.request_cast(String(st["rite"]), staged["aim"], -1)
+					if last[0] == "busy" or last[0] == "cooldown":
+						break
+					if last[0] != "":
+						failed = "step %d (cast %s at %s s) was refused (%s)" % [next_step + 1, st["rite"], DmQaTune.fmt(st["at"]), last[0]]
+						break
+					casts.append(writer.frames)
 			next_step += 1
 		if failed != "":
 			break
@@ -450,7 +508,7 @@ static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: Stri
 	caster.cast_rejected.disconnect(on_refused)
 	_clean_up(game, caster, _rites(rite, steps), staged)
 	if failed == "" and next_step < steps.size():
-		failed = "step %d (cast %s at %s s) never went off before the clip ended (%s)" % [next_step + 1, steps[next_step]["rite"], DmQaTune.fmt(steps[next_step]["at"]), last[0] if last[0] != "" else "no time left"]
+		failed = "step %d (%s at %s s) never went off before the clip ended (%s)" % [next_step + 1, steps[next_step]["do"], DmQaTune.fmt(steps[next_step]["at"]), last[0] if last[0] != "" else "no time left"]
 	if failed == "" and rite != "" and not timed and casts.is_empty():
 		failed = "the rite was never cast"
 	if failed != "":
@@ -472,7 +530,7 @@ static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: Stri
 
 
 ## The scene of one clip: the HUD away, no waves, the hero at the area's waystone facing FACING with the camera set, the stand-ins made and risen, the scene stood still for SETTLE_S, the caster fresh.
-## Returns {aim, ids (the stand-ins' core ids), saved (what the turntable's view changed, for `_view_end`; empty for the other cameras)}.
+## Returns {aim, ids (the stand-ins' core ids), saved (what the turntable's view changed, for `_view_end`; empty for the other cameras), undo (what takes the thralls and their stand-in owners away, Callables)}.
 static func stage(root: Node, game: DmNextGame, clip: Dictionary) -> Dictionary:
 	var tree := root.get_tree()
 	var core: DmCoreHost = game.core_host
@@ -493,7 +551,11 @@ static func stage(root: Node, game: DmNextGame, clip: Dictionary) -> Dictionary:
 		give_up -= 1
 	for _i in 3:
 		await tree.process_frame
-	var zoom := float(game.camera.cfg["zoomMax"]) if clip["camera"] == "wide" else 1.0
+	if opts["stand_at"] != null:   # the setup's `stand_at`: the hero stands there, not at the waystone
+		game.chapterhouse.teleport_to(opts["stand_at"].x, opts["stand_at"].y)
+		for _i in 2:
+			await tree.process_frame
+	var zoom := float(game.camera.cfg["zoomMax"]) if clip["camera"] == "wide" else (float(opts["zoom"]) if float(opts["zoom"]) > 0.0 else 1.0)   # the setup's `zoom` (0 = none)
 	game.camera.zoom = zoom
 	game.camera.target_zoom = zoom
 	body.heal(1e6)
@@ -508,18 +570,35 @@ static func stage(root: Node, game: DmNextGame, clip: Dictionary) -> Dictionary:
 			caster.mem(r).clear()
 	var spots := layout(clip["at"], int(clip["enemies"]), origin, float(opts["distance"]))
 	var ids := stand_ins(game, spots, opts)
+	var undo: Array[Callable] = []
+	var thralls: Dictionary = opts["thralls"]
+	if not thralls.is_empty():   # the setup's `thralls`: raised for the hero and the stand-in owners, after the stand-ins so they are not cleared, to fight them
+		undo.append_array(DmQaUiShots._thralls_begin(game, thralls, THRALL_DAMAGE, false))
 	var saved := {}
 	if clip["camera"] == "turntable":   # the hero's close-up from the front, the HUD away (the shot plan's "hero" view); the record loop turns the hero
 		saved = DmQaUiShots._view_begin(game, {"view": "hero", "turn": 0.0})
 	var settled := 0.0
 	var waited := 0.0
-	while waited < SETTLE_MAX_S and (settled < SETTLE_S or _rising(core, ids)):
+	var settle := maxf(SETTLE_S, THRALL_RISE_S) if not thralls.is_empty() else SETTLE_S
+	while waited < SETTLE_MAX_S and (settled < settle or _rising(core, ids)):
 		await tree.process_frame
 		var dt := root.get_process_delta_time()
 		waited += dt
 		if not _rising(core, ids):
 			settled += dt
-	return {"aim": aim_at(spots, origin), "ids": ids, "saved": saved}
+	return {"aim": aim_at(spots, origin), "ids": ids, "saved": saved, "undo": undo}
+
+
+## The plan's Legion kit on the hero, once: given to the Legion like the shot plan's `legion` (DmQaUiShots.prepare), unless those pieces are on it already (a clip after another one).
+static func legion(game: DmNextGame, ids: Array) -> void:
+	if ids.is_empty():
+		return
+	await game.ui_host.refresh_inventory()
+	var worn := DmLegion.kit_pieces(game.ui_host.inventory.slots)
+	var have := worn.values().map(func(row: Dictionary) -> String: return String(row.get("item_id", "")))
+	if ids.all(func(id: String) -> bool: return have.has(id)):
+		return
+	await DmQaUiShots.prepare(game, {"bag": "keep", "give": [], "equip": [], "legion": ids, "class_index": 0})
 
 
 ## What the hero wears for a clip: exactly the items of `wanted`. A piece worn that is not in the list is taken off (the backend's equip call, back to the bag), the ones missing are put on like the shot plan's `equip`
@@ -602,6 +681,13 @@ static func _rites(rite: String, steps: Array) -> Array[String]:
 static func _clean_up(game: DmNextGame, caster: DmRiteCaster, rites: Array[String], staged: Dictionary) -> void:
 	for id in staged["ids"]:
 		game.core_host.remove_enemy(id)
+	for undo: Callable in staged.get("undo", []):
+		undo.call()
+	game.local_body().stop()   # a walk the clip did not finish
+	var dressing = game.world.dressing   # candles a step put out are lit again
+	if dressing != null:
+		for group in (dressing.candle_off as Dictionary).keys():
+			dressing.set_candle_group(String(group), true)
 	for r in rites:
 		caster.mem(r).clear()
 	if not (staged["saved"] as Dictionary).is_empty():

@@ -341,6 +341,7 @@ func _initialize() -> void:
 	animation_bands()
 	await full_party()
 	await armed_variants()
+	kit_looks()
 	cam.get_parent().queue_free()
 	_remove_dir(OUT)
 	check(errlog.errors.is_empty(), "zero script errors or engine errors in the log (%d: %s)" % [errlog.errors.size(), "; ".join(errlog.errors.slice(0, 3))])
@@ -2090,6 +2091,104 @@ func armed_variants() -> void:
 	check(fades == 0, "and it has no fade group: its plain group is see-through already (%d)" % fades)
 	v2.queue_free()
 
+
+
+## The Legion kit the thralls wear (the old game's `legion_kit_for`, now `CrowdView.set_owner_kit`): the warriors, shield bearers, archers and bone mages of an owner with a kit have a palette slot of their own
+## that names the kit (`kit_of_slot`), whose entries (`kit_palette`) are the armour piece's tier colour at the looks' strength, its glow and the weapon's tier colour; a hound and an owner without a kit stay bare, owners with
+## the same kit share a slot, and a kit survives `clear()` (the guest's baseline) as the legion and the ally mark do.
+func kit_looks() -> void:
+	var enemies_json: Dictionary = DmCoreData.json(data_dir.path_join("data/content/enemies.json"))
+	var looks: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(CrowdView.LOOKS_PATH))
+	var core: RefCounted = ClassDB.instantiate("DmCore")
+	DmCoreData.load_all(core, data_dir)
+	core.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
+	var view := CrowdView.new()
+	view.auto_sync = false
+	root.add_child(view)
+	view.setup(core, enemies_json["ENEMIES"], Vector2(-60, -60), Vector2(60, 60), {"baked_dir": OUT, "assets_dir": live_assets})
+	var crowd: RefCounted = view.crowd
+	var armor_id := "set_gravecaller_chest"
+	var weapon_id := "sword_gold"
+	var armor := DmGearProps.tier(armor_id, "epic")
+	var weapon := DmGearProps.tier(weapon_id, "")
+	var full := {"armor": [armor_id, "epic"], "weapon": [weapon_id, ""]}
+	var owners := {}
+	var thralls := {}
+	for o in ["full", "armor", "bare"]:
+		owners[o] = core.add_external(0, 0.4, 1.0)
+		view.set_owner_legion(owners[o], "gravecaller")
+		core.set_external(owners[o], Vector2(-12.0 + 12.0 * owners.size(), 0.0), true)
+		for kind in ["warrior", "archer", "hound"]:
+			var b: Array = THRALL_BASE[kind]
+			thralls[o + "/" + kind] = core.raise_thrall({"kind": kind, "hp": 1.0e6, "maxHp": 1.0e6, "damage": 0.0, "attackInterval": b[1], "range": b[0], "speed": b[2],
+				"empowered": false, "champion": false, "allyHeal": 0.0}, owners[o], Vector2(-12.0 + 12.0 * owners.size() + 2.5 * float(thralls.size() % 3), 4.0), 0.0, 20.0)
+	view.set_owner_kit(owners.full, full)
+	view.set_owner_kit(owners.armor, {"armor": [armor_id, "epic"]})
+	var settle := func() -> void:
+		for f in 4:
+			core.step(DT)
+			view.sync()
+			crowd.draw(DT, 0.0, CAM)
+			core.take_events()
+	for f in 70:   # the rise
+		settle.call()
+	var slot_of := func(key: String) -> int:
+		var r: Dictionary = row_of(crowd, thralls[key])
+		return int(floor(float(r.color.a) * 0.5 + 0.001)) if not r.is_empty() else -1
+	var kit_of := func(key: String) -> int:
+		var s: int = slot_of.call(key)
+		var of: PackedFloat32Array = crowd.kit_of_slot()
+		return int(of[s]) if s >= 0 and s < of.size() else -1
+	var pal: PackedColorArray = crowd.kit_palette()
+	var full_kit: int = kit_of.call("full/warrior")
+	var armor_kit: int = kit_of.call("armor/warrior")
+	check(full_kit > 0 and armor_kit > 0 and full_kit != armor_kit, "an owner's warriors wear a kit of their own (%d), a different kit from the armour-only owner's (%d)" % [full_kit, armor_kit])
+	check(kit_of.call("full/archer") == full_kit and kit_of.call("armor/archer") == armor_kit, "its archers wear the same kit")
+	check(kit_of.call("full/hound") == 0 and kit_of.call("bare/warrior") == 0 and kit_of.call("bare/archer") == 0, "a hound is bare whatever its owner wears, and so is an owner with no kit")
+	check(pal.size() == CrowdView.KIT_SLOTS * 3 or pal.size() == 48, "the kit palette holds three entries a kit (%d)" % pal.size())
+	if full_kit > 0 and armor_kit > 0:
+		var want_armor := CrowdView._color("%06x" % int(armor.color))
+		var strength := float(looks.kit.armor_strength)
+		var a: Color = pal[full_kit * 3]
+		check(Vector3(a.r, a.g, a.b).is_equal_approx(Vector3(want_armor.r, want_armor.g, want_armor.b)) and is_equal_approx(a.a, strength), "the armour piece's tier colour tints the chest and hands at the looks' strength (%s)" % str(a))
+		var g: Color = pal[full_kit * 3 + 1]
+		if int(armor.glow) >= 0:
+			var wg := CrowdView._color("%06x" % int(armor.glow)) * float(looks.kit.glow_k)
+			check(Vector3(g.r, g.g, g.b).is_equal_approx(Vector3(wg.r, wg.g, wg.b)) and g.a == 1.0, "a glowing piece lights the trim at the looks' fraction of its glow (%s)" % str(g))
+		else:
+			check(g.a == 0.0, "a piece with no glow lights nothing")
+		var want_weapon := CrowdView._color("%06x" % int(weapon.color))
+		var w: Color = pal[full_kit * 3 + 2]
+		check(Vector3(w.r, w.g, w.b).is_equal_approx(Vector3(want_weapon.r, want_weapon.g, want_weapon.b)) and w.a == 1.0, "the weapon piece's tier colour goes to the thrall's weapon (%s)" % str(w))
+		check((pal[armor_kit * 3 + 2] as Color).a == 0.0 and (pal[armor_kit * 3] as Color).a > 0.0, "an owner with only armour on its legion shows no weapon colour")
+	# the slots are the palette's: two owners with the same kit share a slot; the materials hold the palette
+	var armor_slot: int = slot_of.call("armor/warrior")
+	view.set_owner_kit(owners.bare, {"armor": [armor_id, "epic"]})
+	for f in 8:
+		settle.call()
+	check(slot_of.call("bare/warrior") == armor_slot and kit_of.call("bare/warrior") == armor_kit, "owners with the same kit share one palette slot (%d)" % armor_slot)
+	view._push_glows()
+	var mat_slots: Variant = view._materials[0].get_shader_parameter("kit_slot")
+	var mat_kits: Variant = view._materials[0].get_shader_parameter("kit_pal")
+	var of: PackedFloat32Array = crowd.kit_of_slot()
+	check(mat_slots is PackedVector4Array and (mat_slots as PackedVector4Array).size() == CrowdView.SLOTS / 4 and mat_kits is PackedVector4Array and (mat_kits as PackedVector4Array).size() == pal.size(),
+		"every model's material has the kit of each slot and the kit palette")
+	if mat_slots is PackedVector4Array and armor_slot > 0:
+		check(int((mat_slots as PackedVector4Array)[armor_slot / 4][armor_slot % 4]) == armor_kit and int(of[armor_slot]) == armor_kit, "and the slot names its kit in the material")
+	# taking the kit off puts the thralls back on the bare slot; a change in the slot refreshes the instance whatever its animation band
+	var worn_slot: int = slot_of.call("full/warrior")
+	view.set_owner_kit(owners.full, {})
+	for f in 8:
+		settle.call()
+	check(kit_of.call("full/warrior") == 0 and slot_of.call("full/warrior") != worn_slot, "taking the kit off dresses the thralls bare again (a slot of no kit: %d, was %d)" % [slot_of.call("full/warrior"), worn_slot])
+	# the guest's baseline clears the crowd's creatures, not its owners: the kit, the legion and the ally mark come back with the creatures
+	view.set_owner_ally(owners.armor, true)
+	view.clear()
+	for f in 70:
+		settle.call()
+	check(kit_of.call("armor/warrior") == armor_kit and kit_of.call("bare/warrior") == armor_kit, "after clear() the kits are still worn")
+	check(view._owners[owners.armor].get("legion") == "gravecaller" and view._owners[owners.armor].get("ally") == true, "and the legion and the ally mark of an owner are put back too")
+	view.queue_free()
 
 ## A group is drawn only while it holds instances (`DmCrowd.set_group_nodes`): the renderer draws a MultiMesh with none all the same, one draw call, and one for every shadow cascade a caster meets.
 ## Its node is shown the frame its first instance is written and hidden once it has been empty for half a second (a body crossing a level of detail back and forth does not rebuild the instance).
