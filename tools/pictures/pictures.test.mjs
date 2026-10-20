@@ -109,7 +109,7 @@ test('build refuses an unknown kind, a bad name, a missing concept and a picture
 
 // Abilities whose icon is still another ability's. Remove a line when its own icon lands; the test fails while a listed one no longer
 // borrows, so the list only shrinks. Nothing may join it: a new ability gets its own icon (tools/pictures, ASSET_PIPELINE.md "Pictures").
-const STILL_BORROWING = ['scythe_sweep', 'scythe_throw', 'reap', 'wraith_walk', 'haunting_wraith', 'soul_burst', 'unleash_souls', 'soul_harvest', 'harvest_spin', 'scythe_weave'];
+const STILL_BORROWING = ['haunting_wraith', 'scythe_weave'];
 
 test('every ability has its own icon, and both copies of the ability data name the same one', () => {
   const combat = json('client/data/combat/abilities.json').abilities;

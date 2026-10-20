@@ -8406,5 +8406,169 @@
     "rawHash": "sha256:7bfd94adf22e45d30237105c8bd78c9bd7d2a9491c38044c698383c7a862cd39",
     "outHash": "sha256:d3e51b3ec374e24239b2e9f44f07c469d000e55e0addaff643f7e8172d0f0270",
     "generatedAt": "2026-10-20T21:02:43.611Z"
+  },
+  "picture_ability_icon_reaper-harvest-spin": {
+    "generator": "picture-build",
+    "kind": "ability_icon",
+    "from": "art-src/concepts/icon_reaper_harvest_spin.png",
+    "concept": "concept_icon_reaper_harvest_spin",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Subject: viewed from above, a scythe blade whirling in a complete circle around a small hooded figure at the centre, leaving a closed ring of pale bone-white and green slash light with fine speed lines. Palette: bone ivory, charcoal, acid-green glow (#7dff6a) accents; NO purple, NO red. No text, no border, no letters.",
+    "refs": [],
+    "sourceHash": "sha256:dbd0093f3c5764f37d5cceedc6faf8c46c7d96f28fde8a43f1704ee832f60862",
+    "tile": false,
+    "out": "client/assets/ui_art/art/abilities/reaper-harvest-spin.webp",
+    "size": [
+      256,
+      256
+    ],
+    "quality": 88,
+    "outHash": "sha256:2e240fb2bec73c4f04373e9ccf82bfe90f54b8f9d2e1804a21a3097b65eb55bb",
+    "builtAt": "2026-10-20T21:36:36.782Z"
+  },
+  "picture_ability_icon_reaper-reap": {
+    "generator": "picture-build",
+    "kind": "ability_icon",
+    "from": "art-src/concepts/icon_reaper_reap.png",
+    "concept": "concept_icon_reaper_reap",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Subject: a huge fan-shaped cone of death spreading from a scythe blade at the bottom, made of layered pale-bone and green slash marks, with a grinning skull at the centre of the fan. Palette: bone ivory, charcoal, acid-green glow (#7dff6a) accents; NO purple, NO red. No text, no border, no letters.",
+    "refs": [],
+    "sourceHash": "sha256:e534827c53cef4f6f06a9a77afcdab636bdf6d7ae90752f6f74796b7f823f75e",
+    "tile": false,
+    "out": "client/assets/ui_art/art/abilities/reaper-reap.webp",
+    "size": [
+      256,
+      256
+    ],
+    "quality": 88,
+    "outHash": "sha256:0d691922f3d14960c8e01c5fdeafffe0e06dc91775f753ae0bfcc43b31d52399",
+    "builtAt": "2026-10-20T21:36:37.166Z"
+  },
+  "picture_ability_icon_reaper-scythe-sweep": {
+    "generator": "picture-build",
+    "kind": "ability_icon",
+    "from": "art-src/concepts/icon_reaper_scythe_sweep.png",
+    "concept": "concept_icon_reaper_scythe_sweep",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Subject: a pale bone-handled reaper's scythe mid-swing leaving a wide crescent arc of acid-green light across the icon. Palette: bone ivory, charcoal, acid-green glow (#7dff6a) accents; NO purple, NO red. No text, no border, no letters.",
+    "refs": [],
+    "sourceHash": "sha256:a9e6be687a20b9182e2369d4f7ca855f0faa3d81b8817c35c770298030064950",
+    "frameCut": {
+      "left": 79,
+      "top": 79,
+      "width": 866,
+      "height": 866
+    },
+    "tile": false,
+    "out": "client/assets/ui_art/art/abilities/reaper-scythe-sweep.webp",
+    "size": [
+      256,
+      256
+    ],
+    "quality": 88,
+    "outHash": "sha256:5fc9f28c6ed298f774d296d13c664101b8d0332e9f086f05b47019091ee12540",
+    "builtAt": "2026-10-20T21:36:37.525Z"
+  },
+  "picture_ability_icon_reaper-scythe-throw": {
+    "generator": "picture-build",
+    "kind": "ability_icon",
+    "from": "art-src/concepts/icon_reaper_scythe_throw.png",
+    "concept": "concept_icon_reaper_scythe_throw",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Subject: a whole reaper's scythe spinning like a boomerang, blurred in a full circle of motion, with a spiral trail of acid-green light and small bone shards flying off. Palette: bone ivory, charcoal, acid-green glow (#7dff6a) accents; NO purple, NO red. No text, no border, no letters.",
+    "refs": [],
+    "sourceHash": "sha256:43ea19d204135f92a69dc462ca1497c31bd39318700801b4bd4ebcb3d73479ed",
+    "tile": false,
+    "out": "client/assets/ui_art/art/abilities/reaper-scythe-throw.webp",
+    "size": [
+      256,
+      256
+    ],
+    "quality": 88,
+    "outHash": "sha256:8a72be83fea354f87c4c9a25e356eb7109c18a4a8f9f1563cb2090e136f9b374",
+    "builtAt": "2026-10-20T21:36:37.878Z"
+  },
+  "picture_ability_icon_reaper-soul-burst": {
+    "generator": "picture-build",
+    "kind": "ability_icon",
+    "from": "art-src/concepts/icon_reaper_soul_burst.png",
+    "concept": "concept_icon_reaper_soul_burst",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Subject: a bright explosion of acid-green energy blasting outward from a central point, with many small screaming ghost faces and wisps flung out in all directions like a shockwave. Palette: acid-green glow (#7dff6a), pale bone white, charcoal; NO purple, NO red. No text, no border, no letters.",
+    "refs": [],
+    "sourceHash": "sha256:2909895b3a7524ecac213407d61cc8e6e933bb320488932c087a566a3275cb1e",
+    "tile": false,
+    "out": "client/assets/ui_art/art/abilities/reaper-soul-burst.webp",
+    "size": [
+      256,
+      256
+    ],
+    "quality": 88,
+    "outHash": "sha256:09c414c7b92db5553f52b80fa4c0f94314147258e4205d5d41fc3f8e51a2e9d4",
+    "builtAt": "2026-10-20T21:36:38.297Z"
+  },
+  "picture_ability_icon_reaper-soul-harvest": {
+    "generator": "picture-build",
+    "kind": "ability_icon",
+    "from": "art-src/concepts/icon_reaper_soul_harvest.png",
+    "concept": "concept_icon_reaper_soul_harvest",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Subject: a skeletal bone hand holding up a glass hourglass-shaped lantern while streams of green soul wisps are pulled in from all sides into it, a wide soft green glow around it. Palette: acid-green glow (#7dff6a), pale bone white, charcoal; NO purple, NO red. No text, no border, no letters.",
+    "refs": [],
+    "sourceHash": "sha256:d3e51b3ec374e24239b2e9f44f07c469d000e55e0addaff643f7e8172d0f0270",
+    "tile": false,
+    "out": "client/assets/ui_art/art/abilities/reaper-soul-harvest.webp",
+    "size": [
+      256,
+      256
+    ],
+    "quality": 88,
+    "outHash": "sha256:4eadc4be4070cf58000a5630e488d75f7903b3d3508bfa8031cf95643b3e4af1",
+    "builtAt": "2026-10-20T21:36:38.699Z"
+  },
+  "picture_ability_icon_reaper-unleash-souls": {
+    "generator": "picture-build",
+    "kind": "ability_icon",
+    "from": "art-src/concepts/icon_reaper_unleash_souls.png",
+    "concept": "concept_icon_reaper_unleash_souls",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Subject: a ring of small glowing green soul wisps with tiny skull heads and long comet tails streaking outward from a cracked glass soul jar at the centre, each one curving toward a target. Palette: acid-green glow (#7dff6a), pale bone white, charcoal; NO purple, NO red. No text, no border, no letters.",
+    "refs": [],
+    "sourceHash": "sha256:d46c3fb0b385115282131215976a5f8f04dd050e21e38b3fdb92e72dfbee193c",
+    "tile": false,
+    "out": "client/assets/ui_art/art/abilities/reaper-unleash-souls.webp",
+    "size": [
+      256,
+      256
+    ],
+    "quality": 88,
+    "outHash": "sha256:d6813f23cdbf1b3bac11b9228a50b79894fac828f94657253dc212b06f5c886b",
+    "builtAt": "2026-10-20T21:36:39.047Z"
+  },
+  "picture_ability_icon_reaper-wraith-walk": {
+    "generator": "picture-build",
+    "kind": "ability_icon",
+    "from": "art-src/concepts/icon_reaper_wraith_walk.png",
+    "concept": "concept_icon_reaper_wraith_walk",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Subject: a tall half-transparent hooded green wraith rushing forward with a skull face and two glowing eyes, its ragged cloak streaming behind it in trails of green flame. Palette: ghostly pale green, charcoal, bright acid-green flame (#7dff6a); NO purple, NO red. No text, no border, no letters.",
+    "refs": [],
+    "sourceHash": "sha256:a666d8245d211085b5a0777b02f4b325682c3e38b038b854ff28e4c25c7b52a3",
+    "frameCut": {
+      "left": 36,
+      "top": 36,
+      "width": 951,
+      "height": 957
+    },
+    "tile": false,
+    "out": "client/assets/ui_art/art/abilities/reaper-wraith-walk.webp",
+    "size": [
+      256,
+      256
+    ],
+    "quality": 88,
+    "outHash": "sha256:dabf51e7ac0de094fd758dcf6bdf1f3c722e88842e84cd7b2fecf6e76b48e6fb",
+    "builtAt": "2026-10-20T21:36:39.414Z"
   }
 }
