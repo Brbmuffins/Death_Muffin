@@ -35,6 +35,9 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
   view_models.json, assets_used.json; `tools/generate-armor-assets.mjs` writes the rest).
 - The gear props' attachment rules (axes, size, grip point, anchor bone) live in the `_doc` of `client/data/slice/necro_gear.json`, not on a
   standards page.
+- **A new weapon's Atlas row is written by hand** (War's Scythe of Undeath, 2026-10-20): `tools/generate-armor-assets.mjs` copies items.json
+  and computed.json for every item but adds `client/data/panels_a/atlas.json` rows for armor pieces only, so the `data` suite catches a
+  missing weapon row late (the agent's job lost a check run and a session handoff to it).
 
 ## Operations
 
