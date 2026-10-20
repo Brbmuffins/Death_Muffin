@@ -29,9 +29,12 @@ func _ready() -> void:
 	sb.set_corner_radius_all(6)
 	sb.set_content_margin_all(8)
 	panel.add_theme_stylebox_override("panel", sb)
-	panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	panel.position.y = 8
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE   # clicks go through it to the game and windows below
+	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 8)   # a corner clear of the HUD and the windows
+	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	label = Label.new()
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.add_theme_font_size_override("font_size", 13)
 	label.add_theme_font_override("font", _mono())
 	label.text = "measuring..."

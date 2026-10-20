@@ -4,7 +4,8 @@
     "title": "Small Fixes",
     "items": [
       "Item tooltips no longer squeeze a stat's name down to one letter per line when its explanation is long.",
-      "The Reaper's soul bag now fills when a soul actually reaches her, not the moment an enemy dies."
+      "The Reaper's soul bag now fills when a soul actually reaches her, not the moment an enemy dies.",
+      "The F3 performance monitor now sits in the bottom-right corner, out of the way of the HUD and windows, and you can click through it."
     ]
   },
   {
