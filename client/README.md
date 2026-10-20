@@ -780,6 +780,10 @@ Neither has a node or a call per creature: both are the core host's events and o
 | a fight: three living dead within 9 m of the hero, or the boss awake | `DmNextCounsel`, on the poll | holds calm tips back (`busy.combat`); the Grimoire's rune swap (`in_combat`) |
 | corpses within 7 m, a pack of three on a corpse, the thralls he owns | `DmNextCounsel`, on the poll | thrall, litany, burst |
 | kills, shards, gold, the bag, a boss site or a closed door near, the unlock set | the progression and the bag, on the poll | codex, wave, prelate, belt, tool, boss sites, gate |
+| the bag changed (`bag_changed` with the rites learned and the runes owned) and a level-up (`level_up`, which `DmGameUi` gives the same two counts) | `DmGameUi._on_inventory_changed` and `_on_game_event` | loadouts (six rites or two runes) |
+| the worn main-hand line changed (`necro_weapon_changed {main, was_main}`, not for a staff or taking it off) and an armor set bonus switched on (`set_bonus_gained {gained}`) | `DmCounselGear`, asked for each bag change by `DmGameUi._on_inventory_changed`: the first bag it sees is only remembered | necroWeapon, setBonus |
+| the hero stands in a hunting ground (`omen_told`, the Omen's chip is on screen there) | `DmGameUi`, on `area_changed` outside a safe place | omen (150 s later; dropped if he stands in a safe place when it falls due, told again at the next hunting ground) |
+| a Depths run began or the stair refused a party (`depths_solo`), a floor stands (`depths_floor`, and `depths_affix {extras}` from the first depth with extra affixes), the chest opened (`depths_chest`) | `DmDepths` (`enter`, `_refused`, `_load_floor`, `open_chest`) | the Depths' four tips |
 
 `DmNextCounsel.tick_ctx` (DmGameUi's 400 ms timer) asks the core: one radius query for the fight (the core measures to the edge, which finds everything the centre test finds, so a candidate is confirmed by
 its centre: a rising or burrowed body counts, a dead one does not), `corpses_in_radius` for the corpses and, for each, one more query for its pack, `thrall_count` for the legion: 0.18 ms a poll with
@@ -789,12 +793,11 @@ its centre: a rising or burrowed body counts, a dead one does not), `corpses_in_
 The welcome tip is a tip of the Acre (`HERE` in the tips data), so a new hero meets the belt's tip first (the bag's flask) and the welcome when he walks into the Acre. The Next-step box (`DmGuidanceHud`), the
 Prior's greeting and advice (`DmCovenantDialogue` over the same `guidance_state`), the HUD's progressive reveal, the NEW cues, Settings' "Show tips again" and "Don't show tips" (kept with the account) are
 `DmGameUi`'s; a party joiner whose kills the backend will not credit is told at the end of `start`. The poll says `altar: false` (`DmCounselEvents.tick_calls`),
-because the game has no Altar of Ascension (B36), which holds back the vows, altar_unlocks and boons tips; `can_ascend` (the Prelate's fall) stays unraised too. Not raised: the Depths' tips
-(`depths_solo`, `depths_floor`, `depths_affix`, `depths_chest`), `omen_told`, `set_bonus_gained`, `necro_weapon_changed` and `loadout_check` (`ui/onboarding/README.md`).
+because the game has no Altar of Ascension (B36), which holds back the vows, altar_unlocks and boons tips; `can_ascend` (the Prelate's fall) stays unraised too (`ui/onboarding/README.md`).
 
 `tests/counsel.gd` plays it on the whole world as a new Gravecaller: the poll against a brute-force reading of the core's tables (24 seeded placements, and the edges by hand: bodies whose edges are within 9 m and
 whose centres are not), every fact above through the real scene, each tip queued and shown once, the state-driven tips one fact at a time, the welcome held for the Acre, the
-Next-step box, the Prior, the reveal, an area's first entry, no Altar tips, Show tips again and Don't show tips.
+Next-step box, the Prior, the reveal, an area's first entry, no Altar tips, Show tips again and Don't show tips, then the Omen, the loadouts tip at the bag and at a level-up, and a new weapon line and a set bonus through the Reliquary's equip path; `tests/depths.gd` the Depths' tips, `tests/onboarding` `DmCounselGear` on its own.
 
 ## Sound
 

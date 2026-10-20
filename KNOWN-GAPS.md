@@ -118,6 +118,7 @@ polish list). Also:
 
 - **The Next-step box no longer pings the minimap:** `client/next/hud/dm_next_hud_vm.gd` sets `_map["ping"] = null` where the old game pointed it at the suggestion's target (elsewhere, or marked pingInPlace), yet Settings still offers "Point to it on the minimap" (found porting the Acre's tests).
 - **No in-game leaderboard panel.** `DmApi.get_leaderboard` exists; only the website shows it.
+- **Settings says a party steps out of the Depths and rejoins:** the solo note in `client/ui/panels/dm_settings_panel.gd` ("you step out, then rejoin"); the stair turns a party away (`DmDepths.PARTY_REFUSAL`) and nothing steps anyone out or back in.
 - Unraised counsel events: `client/ui/onboarding/README.md`. Hero gaps: `client/next/hero/README.md`.
 
 ## Tools and tests
@@ -207,6 +208,7 @@ Notes for the asset and effects work (ROADMAP):
 ## Leftovers from the web era
 
 - Bit-exact web math (fdlibm, exact-double loading) is still used by the Depths floor generator, auto-combat and the DB loader: `client/sim/README.md`.
+- `DmGameRewards.gain_xp` (`client/game/dm_game_rewards.gd`, the old game's XP and level-up path, which the live game does not seem to call: `DmNextProgress` levels the hero) calls `counsel_bag_ctx()`, which nothing defines. Delete the old kill and level-up path with the rest of its unused parts.
 - `client/data/slice/assets_used.json` (the models the game loads) is kept by hand: the exporter that wrote it (`export-slice.ts`) is gone.
 - A comment in `server/death-muffin/lobby/src/server.js` still names the relay script by the old game's path (`client/net/relay/dm_udp_relay.gd`
   now): fix it with the next real lobby change (a comment edit alone would make the next release wait for a lobby restart).

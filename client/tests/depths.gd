@@ -15,6 +15,7 @@ extends SceneTree
 ##   H leaving: the exit asks twice, the summary, the Warren's stair, everything torn down (picture, navmesh, the core's copy, interactables), the record on the backend, the stair's offer to
 ##     resume, a recall (T) out of a run, a second player joining;
 ##   I death: the run ends and the floor stays behind the death screen, no stairs or waves, the hero rises in the Chapterhouse, nothing taken, a new run possible;
+##   the counsel's Depths tips: a run begins with the solo tip, every floor tells its tips (the extra affixes from the first depth that has them, the chest on opening it), a party at the stair is told why;
 ##   ZERO script errors or engine errors in the log.
 ## Run: godot --headless --fixed-fps 60 --path client --script res://tests/depths.gd
 
@@ -71,6 +72,12 @@ func until(cond: Callable, limit_ticks: int) -> bool:
 
 func ev(id: String) -> Array:
 	return events.filter(func(e: Array) -> bool: return e[0] == id)
+
+
+## The counsel has the tip: waiting out its delay, queued, on the card or already shown.
+func told(tip: String) -> bool:
+	var c: DmCounsel = g.ui.counsel
+	return c.seen.has(tip) or c.pending.has(tip) or c._queued(tip) or String(c.shown.get("id", "")) == tip
 
 
 func _initialize() -> void:
@@ -424,6 +431,8 @@ func _c_way_in() -> void:
 	check(quota == int(DmSimDepthsRules.floor_kills(1.0)), "depth 1 asks %d kills" % quota)
 	check(its.size() == _stairs_and_chest(f) and its.any(func(it: Dictionary) -> bool: return it["kind"] == "depths_down") and its.any(func(it: Dictionary) -> bool: return it["kind"] == "depths_up"), "the floor's stairs are clickable things (and the chest, on a chest depth)")
 	check(d.prompt(_it("depths_down")).begins_with("The stair is sealed: slay %d more" % quota) and d.prompt(_it("depths_up")) == "Climb out (ends this run at depth 1)", "stair prompts: sealed with the count, the way up")
+	check(ev("depths_solo").size() == 1 and ev("depths_floor").size() == 1 and ev("depths_affix").is_empty() and told("depths_solo") and told("depths_floor") and not told("depths_affix"),
+		"a run begins: the counsel gets the solo tip and the floor's, and no affix tip on depth 1 (%d, %d, %d)" % [ev("depths_solo").size(), ev("depths_floor").size(), ev("depths_affix").size()])
 	var banner := ev("banner").filter(func(e: Array) -> bool: return String(e[1]["title"]) == "Depth 1")
 	check(not banner.is_empty() and String(banner[0][1]["sub"]).find("slay %d" % quota) >= 0 and String(banner[0][1]["sub"]).find("level %d dead" % lvl1) >= 0, "the arrival banner names the quota and the dead's level")
 	check(d.hud_state() == {"depth": 1, "kills": 0, "need": quota, "open": false, "chest": f["chest"] != null}, "HUD readout: depth 1, 0 / %d, sealed, a chest only on a chest depth" % quota)
@@ -652,11 +661,21 @@ func _f_descend() -> void:
 func _g_chest() -> void:
 	var run := d.run
 	var every := int(DmSimData.DEPTHS["chestEvery"])
+	var from_depth := run.depth
+	events.clear()
 	while run.floor_data["chest"] == null and run.depth < 4 * every:   # down to the first chest floor
 		check(await _clear_floor(), "floor %d cleared" % run.depth)
 		await d.descend()
 		await ticks(3)
 	peak = run.depth
+	# every floor reached told the counsel; the extra affixes only on the depths that have them, with how many
+	var with_extras: Array = []
+	for depth in range(from_depth + 1, peak + 1):
+		if DmSimDepthsRules.extra_affixes(float(depth)) > 0:
+			with_extras.append(DmSimDepthsRules.extra_affixes(float(depth)))
+	check(ev("depths_floor").size() == peak - from_depth, "each floor reached tells the counsel (%d)" % ev("depths_floor").size())
+	check(not with_extras.is_empty() and ev("depths_affix").map(func(e: Array) -> int: return int(e[1]["extras"])) == with_extras and told("depths_affix"),
+		"...and the depths with extra affixes tell their count (%s) and the affix tip is the counsel's" % str(with_extras))
 	check(run.depth % every == 0 and run.floor_data["chest"] != null, "depth %d has a chest" % peak)
 	var its := g.chapterhouse.interactables.filter(func(it: Dictionary) -> bool: return String(it["area"]) == "depths")
 	check(its.size() == _stairs_and_chest(run.floor_data) and its.any(func(it: Dictionary) -> bool: return it["kind"] == "depths_chest"), "the chest is a clickable thing")
@@ -681,6 +700,7 @@ func _g_chest() -> void:
 		"the chest's finds (the first is always gear; some of the rest turn to gold) are tape drops, claimed on pickup (%d: %s)" % [found.size(), str(dropped.map(func(dr: Dictionary) -> String: return String(dr.get("item_id", "?"))))])
 	check(not d.open_chest() and d.chest_done and not d.hud_state()["chest"] and _it("depths_chest").is_empty() and d.map_floor()["chest"] == null, "a chest opens once; it leaves the HUD, the map and the clickables")
 	check(ev("banner").any(func(e: Array) -> bool: return String(e[1]["title"]) == "The chest opens"), "a banner reports the chest")
+	check(ev("depths_chest").size() == 1 and told("depths_chest"), "the chest tells the counsel once")
 	# the server's side: a click on a find walks the hero to it and the server puts its own roll in the bag
 	if not found.is_empty():
 		var x: Dictionary = found[0]
@@ -751,6 +771,8 @@ func _h_leaving() -> void:
 	await ticks(3)
 	check(d.run == null and ended.size() == 1 and ended[0][0] == "party" and ev("toast").any(func(e: Array) -> bool: return String(e[1]["text"]).begins_with("A friend appeared on the descent")), "a second player ends the run (party) and the host climbs out")
 	check(g.area_of(1) == "warren" and d.can_enter() == "The Depths are a solo descent: your party must stay behind.", "...and the stair refuses while the party is two")
+	events.clear()
+	check(d.stair_clicked() == 0 and d.run == null and ev("depths_solo").size() == 1 and ev("toast").any(func(e: Array) -> bool: return String(e[1]["text"]) == DmDepths.PARTY_REFUSAL), "...a click on the stair says why, and the solo tip goes to the counsel")
 	g.session._roster.erase(7)
 	check(d.can_enter() == "" and g._joiner_spawn() != null, "alone again, the stair works")
 	# recall (T) out of a run ends it

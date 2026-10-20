@@ -20,6 +20,7 @@ const LEAVE_CONFIRM_MS := 5000                    ## the exit asks twice
 const FLUSH_S := 30.0
 const AGGRO := 36.0                               ## DmSimConsts.DEPTHS_AGGRO
 const LEASH := 90.0                               ## the floor is 40 x 36: never leash a hunter off it
+const PARTY_REFUSAL := "The Depths are a solo descent: your party must stay behind."
 const SHADOW_PASS_S := 0.25                       ## the builder's shadow-cell pass starts when its 0.25 s timer runs out: a new floor asks for one at once
 
 var game: DmNextGame
@@ -102,7 +103,7 @@ func _refusal() -> String:
 	if b == null or not b.alive:
 		return "You are in no state to descend."
 	if game.session.get_roster().size() > 1:
-		return "The Depths are a solo descent: your party must stay behind."
+		return PARTY_REFUSAL
 	if not game.world.has_area("warren"):   # (a test's world with no Warren has no stair, and the core's grid does not cover the Depths there)
 		return "There is no stair down here."
 	return ""
@@ -197,13 +198,20 @@ func _on_interacted(it: Dictionary) -> void:
 			open_chest()
 
 
+## The stair would not take the hero down: the reason, the error sound, and, for a party, the counsel's tip on the solo descent.
+func _refused(why: String) -> void:
+	_toast(why, "err")
+	_sfx("error")
+	if why == PARTY_REFUSAL:
+		_event("depths_solo", {})
+
+
 ## The Warren's stair: with a deeper floor on record offer the choice (game_event depths_stair_offer; the card calls enter_depths(depth)),
 ## otherwise start a run on depth 1. Returns the depth offered to resume at, or 0 when the run simply began (or could not).
 func stair_clicked() -> int:
 	var why := can_enter()
 	if why != "":
-		_toast(why, "err")
-		_sfx("error")
+		_refused(why)
 		return 0
 	var resume := resume_at()
 	if resume > 0:
@@ -217,8 +225,7 @@ func stair_clicked() -> int:
 func enter(depth: int = 1, seed_: int = -1) -> bool:
 	var why := can_enter()
 	if why != "":
-		_toast(why, "err")
-		_sfx("error")
+		_refused(why)
 		return false
 	_busy = true
 	if seed_ < 0:
@@ -228,8 +235,7 @@ func enter(depth: int = 1, seed_: int = -1) -> bool:
 	why = _refusal()   # (the hero may have fallen, or a friend joined, while the floor was made)
 	if why != "":
 		_busy = false
-		_toast(why, "err")
-		_sfx("error")
+		_refused(why)
 		return false
 	run = DmDepthsRun.create(seed_, depth, made)
 	_listen(true)
@@ -239,6 +245,7 @@ func enter(depth: int = 1, seed_: int = -1) -> bool:
 	chronicle.add("depths.runs")
 	chronicle.max_("peak.depth", float(run.depth))
 	run_started.emit(run.depth)
+	_event("depths_solo", {})   # the counsel's tip: a descent is a solo run (once, ever)
 	await _load_floor("You go down")
 	_busy = false
 	return true
@@ -323,6 +330,9 @@ func _load_floor(verb: String) -> void:
 	_sfx("gate", float(f["start"]["x"]), float(f["start"]["z"]))
 	if _vfx != null:
 		_vfx.light_flash(Vector3(float(f["start"]["x"]), 3.0, float(f["start"]["z"])), Color.hex(0xffb347ff), 40.0, 1.2)
+	_event("depths_floor", {})   # the counsel's tips for a floor (each shows once, ever): the quota and the stair, and the extra affixes from depth 5
+	if extras > 0:
+		_event("depths_affix", {"extras": extras})
 	await ground.merged()
 	if run == null:   # the run ended while the navigation server merged the floor
 		return
@@ -500,6 +510,7 @@ func open_chest() -> bool:
 	chronicle.add("depths.chests")
 	_event("banner", {"title": "The chest opens", "ms": BANNER_MS, "sub": "+%d gold · %d finds%s" % [gold, drops.size(), " · a rune among them" if rune else ""]})
 	_sfx("levelUp")
+	_event("depths_chest", {})   # the counsel's tip on the fifth floor's chest (once, ever)
 	if _vfx != null:
 		_vfx.emit({"x": x, "y": 0.8, "z": z, "count": 80, "color": 0xf3d27a, "spread": 0.8, "speed": 1.6, "up": 4.5, "life": 1.5, "size": 0.3})
 		_vfx.light_flash(Vector3(x, 2.0, z), Color.hex(0xf3d27aff), 70.0, 1.3)

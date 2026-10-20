@@ -12,6 +12,8 @@ extends SceneTree
 ##     guidance state, the HUD's progressive reveal, the first entry of an area, "Show tips again" and "Don't show tips";
 ##   - the auto cast's fact (`auto_combat_cast`), the gather bests kept in the store, GM mode (the Settings toggle, F9 break seals) for a dev account and never for a normal one;
 ##   - the counsel's pickup fact (`collected`), and the poll's state facts following the progression (shards, Ashes);
+##   - the tips that waited for an event nothing raised: the Omen (told in a hunting ground, dropped if the hero stands in a safe place when it falls due), a new weapon line and a set bonus
+##     switched on (equipped through the Reliquary's own path), the loadouts tip at the bag and at the level-up that teaches the sixth rite (the Depths' tips: tests/depths.gd);
 ##   - no node per creature (the node count does not move with the crowd or the polls) and ZERO script errors or engine errors in the log.
 ## Gets the robber and the hound into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd). Run: godot --headless --fixed-fps 60 --path client --script res://tests/counsel.gd  (--fixed-fps 60 runs the 400 ms polls and the tips' seconds as fast as the CPU allows)
 
@@ -140,6 +142,7 @@ func _main() -> void:
 	for id: String in shown_n:
 		if id != "minimap" and id != "belt" and id != "codex" and id != "atlas" and id != "grimoire":   # the replay shows those again by design
 			check(int(shown_n[id]) == 1, "tip %s was shown once (%d)" % [id, int(shown_n[id])])
+	await _moments_that_waited_for_an_event()
 	await _auto_cast_fact()
 	await _gather_bests()
 	await _gm_mode()
@@ -708,6 +711,123 @@ func _collected_fact() -> void:
 	await until(func() -> bool: return not since(m, "collected").is_empty(), 60 * 4)
 	var ev := since(m, "collected")
 	check(ev.size() == 1 and ev[0]["gear"] == true, "picking up gear emits the 'collected' counsel event once")
+
+
+# ------------------------------------------------------------------------------------------------------------------ the tips that waited for an event
+
+func _moments_that_waited_for_an_event() -> void:
+	_clear()
+	await ticks(2)
+	counsel.reset()
+	shown_n.clear()
+	# --- the Omen: told when the hero is in a hunting ground, where its chip is on screen; its tip waits out its delay
+	var delay := float(DmCounselEvents.calls("omen_told")[0]["delay"])
+	hero.teleport(_area_mid("acre"))
+	check(await until(func() -> bool: return g.area_id == "acre", 120) and ui.area_safe(), "the hero stands in the Acre, a safe place")
+	await ticks(4)
+	check(not counsel.pending.has("omen") and not fired("omen"), "the Acre does not tell the omen (its chip is hidden there)")
+	hero.teleport(_area_mid("graves"))
+	check(await until(func() -> bool: return g.area_id == "graves", 120) and not ui.area_safe(), "the hero walks into the Graves")
+	await ticks(4)
+	check(counsel.pending.has("omen"), "a hunting ground tells the omen: its tip is on its way (%d s)" % int(delay / 1000.0))
+	# back in the Acre when it falls due: the icon is not on screen, so the tip is dropped, not shown
+	hero.teleport(_area_mid("acre"))
+	await until(func() -> bool: return g.area_id == "acre", 120)
+	counsel.advance_to(counsel.now_ms + delay + 1000.0)
+	await ticks(4)
+	check(not fired("omen"), "...a hero in the Acre when it falls due is not told about an icon he cannot see")
+	hero.teleport(_area_mid("graves"))
+	await until(func() -> bool: return g.area_id == "graves", 120)
+	await ticks(4)
+	check(counsel.pending.has("omen"), "...the next hunting ground tells it again")
+	counsel.advance_to(counsel.now_ms + delay + 1000.0)
+	check(await until(func() -> bool: return fired("omen"), 60 * 5), "...and in the Graves when it falls due, the omen tip is shown")
+	_clear()
+	await ticks(2)
+
+	# --- the loadouts tip counts the rites learned and the runes owned: at the bag, and at the level-up that teaches the sixth rite
+	counsel.reset()
+	shown_n.clear()
+	var unlocks: Array = DmRites.assignable(DmAbilities.kit_for("necromancer")).map(func(id: String) -> float: return DmAbilities.unlock_level(id))
+	unlocks.sort()
+	var many := int(unlocks[5])   # the level of the sixth rite
+	check(unlocks.size() >= 6, "the Gravecaller's kit has six rites to juggle (%d)" % unlocks.size())
+	var saved_bag: Array = h.inventory.slots.duplicate(true)
+	h.inventory.slots = []
+	h.character["level"] = many - 1
+	h.inventory_changed.emit()
+	await ticks(4)
+	check(not fired("loadouts"), "the loadouts tip: not before the sixth rite (level %d)" % (many - 1))
+	h.character["level"] = many
+	h.inventory_changed.emit()
+	check(await until(func() -> bool: return fired("loadouts"), 60 * 5), "...a bag change at the level of the sixth rite (%d) tells it" % many)
+	_clear()
+	counsel.reset()
+	h.character["level"] = many - 1
+	h.inventory_changed.emit()
+	await ticks(2)
+	h.character["level"] = many   # the level-up itself, as the progression raises it: it counts the rites it taught (one), not the ones he has
+	h.game_event.emit("level_up", {"level": many, "grimoire_unlocked": true, "family": "necromancer", "learned_rites": 1})
+	check(await until(func() -> bool: return fired("loadouts"), 60 * 5), "...and the level-up that teaches the sixth rite tells it, before any bag change")
+	_clear()
+	h.character["level"] = 1
+	h.inventory.slots = saved_bag
+
+	# --- a new weapon line and a set bonus, through the Reliquary's own equip path (the server moves the item, the bag comes back changed)
+	counsel.reset()
+	shown_n.clear()
+	_clear()
+	await ticks(2)
+	var nw: Dictionary = DmCombatData.load_json("necro_weapons")
+	var weapon_of := func(kind: String) -> String:
+		for w: Dictionary in nw["weapons"]:
+			if w["kind"] == kind:
+				return String(w["id"])
+		return ""
+	var armor: Dictionary = DmCombatData.load_json("armor")
+	var set_id := ""
+	var first_at := 0
+	for sid: String in armor["set_bonuses"]:
+		var n := int(DmSetBonuses.bonuses_of(sid)[0]["pieces"])
+		if n >= 2 and armor["pieces"].filter(func(p: Dictionary) -> bool: return p["setId"] == sid).size() >= n:
+			set_id = sid
+			first_at = n
+			break
+	var pieces: Array = armor["pieces"].filter(func(p: Dictionary) -> bool: return p["setId"] == set_id).slice(0, first_at)
+	var ids: Array = [weapon_of.call("staff"), weapon_of.call("scythe")]
+	for p: Dictionary in pieces:
+		ids.append(String(p["id"]))
+	var rows: Array = []
+	for i in ids.size():
+		rows.append({"slot_index": i, "item_id": ids[i], "quantity": 1, "equipped": 0})
+	var cid := int(h.character["id"])
+	check((await g.api.save_inventory(cid, rows, 48)).ok, "the test bag: a staff, a scythe and %d pieces of one set (%s)" % [first_at, set_id])
+	await h.refresh_inventory()
+	await ticks(2)
+	var equip := func(item_id: String) -> void:
+		for s in h.inventory.slots:
+			if s["item_id"] == item_id:
+				await ui.inv.toggle_equip(s)
+				return
+		check(false, "%s is in the bag" % item_id)
+	await equip.call(ids[0])
+	await ticks(2)
+	check(not fired("necroWeapon"), "wearing a staff: no weapon tip (it keeps the left click as it is)")
+	await equip.call(ids[1])
+	check(await until(func() -> bool: return fired("necroWeapon"), 60 * 5), "wearing a scythe: the weapon tip")
+	for i in first_at - 1:
+		await equip.call(String(pieces[i]["id"]))
+	await ticks(2)
+	check(not fired("setBonus"), "%d of the set's %d pieces: no set bonus tip" % [first_at - 1, first_at])
+	await equip.call(String(pieces[first_at - 1]["id"]))
+	check(await until(func() -> bool: return fired("setBonus"), 60 * 5), "the piece that switches the first set bonus on: the set bonus tip")
+	for id: String in shown_n:
+		check(int(shown_n[id]) == 1, "tip %s was shown once (%d)" % [id, int(shown_n[id])])
+	_clear()
+	check((await g.api.save_inventory(cid, saved_bag, 48)).ok, "the bag is put back")
+	await h.refresh_inventory()
+	counsel.reset()
+	shown_n.clear()
 
 
 # ------------------------------------------------------------------------------------------------------------------ the auto cast, gather bests, GM mode

@@ -370,7 +370,7 @@
   },
   "depths_solo": {
    "title": "A descent for one",
-   "body": "Friends can share a world, but a descent is a solo run. When you take the stair from a party you step out of it automatically, go down alone, and rejoin your party when the run ends. Shared floors are on the list."
+   "body": "Friends can share a world, but a descent is a solo run: the stair takes one hero, so a party has to part first. Your run ends if you fall or leave; what you looted is yours. Shared floors are on the list."
   },
   "ghoul": {
    "title": "Barrow Ghoul",

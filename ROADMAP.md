@@ -444,9 +444,12 @@ Worked through beside the phases, top first. Each change is shown to the team wi
   the rest is deleted.
 - [ ] **Fix: two small bugs.** Gathering: now the last 8 seconds of gathering before quitting are lost; after, they are saved. Easy auto
   combat: now it walks the hero into pockets between tombstones and parks there; after, it walks around them.
-- [ ] **Fix: seven tips never show.** Now: the counsel has tips for the Depths (going in alone, a new floor, a floor's affix), a loadout
-  check, a weapon change, a set bonus gained and an Omen told, but nothing ever triggers them. After: each shows once at its moment, or is
-  deleted if the team does not want it.
+- [x] **Fix: seven tips never show.** Done 2026-10-20: each shows once at its moment. The Depths tips: "A descent for one" when a run begins (or
+  when the stair turns a party away), "Slay, then descend" when a floor stands, the extra-affix tip from depth 5, and the fifth floor's chest tip
+  when the chest opens. The Omen tip comes 2.5 minutes after the hero first stands in a hunting ground (never while he is in a safe place). The
+  weapon tip comes when he first wears a scythe, wand or sickle, and the set bonus tip when a set bonus first switches on (a hero who logs in
+  already wearing them is not told). The loadouts tip already showed when the bag changed; it now also shows at the level-up that teaches the
+  sixth rite. The Depths tip no longer says a party steps out by itself (the stair turns a party away).
 - [ ] **Decide: the first goal after the Hollow Graves.** Now: right after entering the Graves the Next-step line says "Ossuary seal: 0/300
   kills", a steep first goal. After: the team picks a softer first goal, and the Next-step box leads there.
 - [ ] **New: necromancer polish from playtests:** combat feel and loot, readability of rites and statuses, gear and affix legibility, the

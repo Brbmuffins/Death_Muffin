@@ -67,6 +67,7 @@ func _run() -> void:
 	_test_sequences(sequences)
 	_test_store()
 	_test_events()
+	_test_gear()
 	_test_callsites()
 	_test_tick_calls()
 	await _test_view()
@@ -351,6 +352,75 @@ func _test_events() -> void:
 	c.notify("souls_charged")
 	c.advance_to(3000.0)
 	_check(c.shown_id() == "souls", "notify -> card")
+
+
+## DmCounselGear: what the bag's worn rows make of the counsel's two gear moments (a new weapon line, a set bonus switched on), against the last bag it saw.
+func _test_gear() -> void:
+	var nw: Dictionary = DmCombatData.load_json("necro_weapons")
+	var necro: String = (nw["disciplines"] as Array)[0]
+	var other := ""
+	for id: String in DmCombatData.load_json("disciplines")["disciplines"]:
+		if not (nw["disciplines"] as Array).has(id):
+			other = id
+			break
+	var id_of := func(kind: String) -> String:
+		for w: Dictionary in nw["weapons"]:
+			if w["kind"] == kind:
+				return String(w["id"])
+		return ""
+	var scythe: String = id_of.call("scythe")
+	var wand: String = id_of.call("wand")
+	var staff: String = id_of.call("staff")
+	var worn := func(item_id: String, slot: int) -> Dictionary:   # a worn row, typed as the server types it
+		return {"slot_index": slot, "item_id": item_id, "quantity": 1, "equipped": 1, "item_type": String(DmContent.item(item_id).get("item_type", DmContent.item(item_id).get("type", "")))}
+	var main_hand := 105
+	_check(scythe != "" and wand != "" and staff != "" and other != "", "gear: the data has a scythe, a wand, a staff and a discipline without a weapon line (%s %s %s %s)" % [scythe, wand, staff, other])
+	# a set: its first bonus and the pieces to wear for it, from the armor data
+	var armor: Dictionary = DmCombatData.load_json("armor")
+	var set_id := ""
+	var first_at := 0
+	var pieces: Array = []
+	for sid: String in armor["set_bonuses"]:
+		var ps: Array = armor["pieces"].filter(func(p: Dictionary) -> bool: return p["setId"] == sid)
+		var at := int(DmSetBonuses.bonuses_of(sid)[0]["pieces"])
+		if ps.size() >= at and at >= 2:
+			set_id = sid
+			first_at = at
+			pieces = ps.slice(0, at)
+			break
+	_check(set_id != "", "gear: the data has a set with a first bonus (%s at %d pieces)" % [set_id, first_at])
+	var set_rows := func(n: int) -> Array:
+		var rows: Array = []
+		for i in n:
+			rows.append({"slot_index": 110 + i, "item_id": pieces[i]["id"], "quantity": 1, "equipped": 1, "item_type": "armor_" + String(pieces[i]["part"])})
+		return rows
+	# the first bag it sees is only remembered: a hero who logs in wearing a scythe and a whole set is told nothing
+	var gear := DmCounselGear.new()
+	var veteran: Array = [worn.call(scythe, main_hand)] + set_rows.call(first_at)
+	_check(gear.observe(veteran, necro).is_empty(), "gear: the first bag seen makes no event, whatever is worn")
+	_check(gear.observe(veteran + [{"slot_index": 3, "item_id": staff, "quantity": 1, "equipped": 0}], necro).is_empty(), "gear: a pickup (a row that is not worn) changes nothing")
+	# a weapon swap is a change of line, told with the line before and after
+	var ev := gear.observe([worn.call(wand, main_hand)] + set_rows.call(first_at), necro)
+	_check(ev.size() == 1 and ev[0][0] == "necro_weapon_changed" and ev[0][1] == {"main": "wand", "was_main": "scythe"}, "gear: scythe -> wand: necro_weapon_changed {wand, scythe} (%s)" % str(ev))
+	_check(not DmCounselEvents.calls("necro_weapon_changed", ev[0][1]).is_empty(), "gear: ...which the table turns into the weapon tip")
+	ev = gear.observe([worn.call(staff, main_hand)] + set_rows.call(first_at), necro)
+	_check(ev.size() == 1 and ev[0][1] == {"main": "staff", "was_main": "wand"} and DmCounselEvents.calls("necro_weapon_changed", ev[0][1]).is_empty(), "gear: wand -> staff is a change, and a staff makes no tip (%s)" % str(ev))
+	ev = gear.observe(set_rows.call(first_at), necro)
+	_check(ev.size() == 1 and ev[0][1] == {"main": "", "was_main": "staff"} and DmCounselEvents.calls("necro_weapon_changed", ev[0][1]).is_empty(), "gear: putting the weapon away makes no tip (%s)" % str(ev))
+	_check(gear.observe(set_rows.call(first_at), necro).is_empty(), "gear: the same bag again: nothing")
+	# a set bonus: one piece short of the first bonus is nothing; the piece that reaches it is told; taking a piece off, and putting it back, is told again
+	gear = DmCounselGear.new()
+	gear.observe([], necro)
+	_check(gear.observe(set_rows.call(first_at - 1), necro).is_empty(), "gear: %d of %d pieces: no bonus yet" % [first_at - 1, first_at])
+	ev = gear.observe(set_rows.call(first_at), necro)
+	_check(ev.size() == 1 and ev[0][0] == "set_bonus_gained" and (ev[0][1]["gained"] as PackedStringArray) == PackedStringArray(["%s:%d" % [set_id, first_at]]) and not DmCounselEvents.calls("set_bonus_gained", ev[0][1]).is_empty(),
+		"gear: the piece that reaches the first bonus: set_bonus_gained {%s:%d} and the set bonus tip (%s)" % [set_id, first_at, str(ev)])
+	_check(gear.observe(set_rows.call(first_at - 1), necro).is_empty(), "gear: losing the bonus is not a moment")
+	_check(gear.observe(set_rows.call(first_at), necro).size() == 1, "gear: ...and getting it back is")
+	# a discipline without a weapon line has no line to change
+	gear = DmCounselGear.new()
+	gear.observe([], other)
+	_check(gear.observe([worn.call(scythe, main_hand)], other).is_empty(), "gear: a %s wearing a scythe has no weapon line to change" % other)
 
 
 func _test_callsites() -> void:
