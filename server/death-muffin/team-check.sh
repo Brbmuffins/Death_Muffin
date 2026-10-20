@@ -4,12 +4,15 @@
 # waits on it: approving a change never waits for its checks (Helix, 2026-10-19). The 14-second pre-release check inside the publish is separate (team-gate.sh).
 #
 #   team-check.sh <rev> [--checks install,quit-loading,screens,stutter,bench,soak] [--compare] [--pc <pc id>] [--out <dir>] [--soak-minutes N] [--max-wait MINUTES]
+#                 [--screen-plan <plan.json>] [--resolutions WxH,...] [--preset low|medium|high|ultra]
 #
 # --checks     the release checks' steps to run (default install,quit-loading). install, quit-loading and bench run the RELEASE build; screens, stutter and soak the
 #              DEBUG build (the QA scenarios start only in a debug build).
 # --compare    the same steps on the LIVE build first, on the same PC, so every line reads live -> this change ("before" is what players have now).
 # --pc         the team PC that runs them (its id); default: a PC that can take a job soon (seen in the last 90 s, not paused, not in Death Muffin, not on battery, not
 #              running a release or bench job), else the PC seen most recently in the last 14 days (it takes the jobs when it is free).
+# --screen-plan  the screens step renders this shot plan (client/main/qa_ui_shots.gd's format, at most 32 KB and SCREEN_PLAN_MAX shots) instead of the standard UI shots:
+#              pictures of a change for the team (the default resolutions are then 1920x1080 alone). --resolutions and --preset (default high) set the sizes and the preset.
 # --out        the results' folder (default $DM_TEAM_CHECKS/<rev12>-<UTC stamp>; $DM_TEAM_CHECKS keeps its newest 20).
 #
 # 1. Builds what the steps need: the release build through publish-godot-client.sh with EXPORT_ONLY (the revision's own prepare, import, export with baked shaders,
@@ -58,6 +61,8 @@ STEP_S = {"install": 30, "quit-loading": 30, "screens": 150, "stutter": 210, "be
 GODOT_VERSION = "4.7.2.stable"   # CLAUDE.md: Godot stays 4.7.2 until a deliberate, benchmarked upgrade
 RESOLUTIONS = ["1920x1080", "2560x1440", "3840x2160", "3440x1440"]
 SCREENS_PRESET = "high"
+SCREEN_PLAN_MAX = 12          # shots in a --screen-plan (a job holds pictures x sizes: keep it small)
+SCREEN_PLAN_BYTES = 32 * 1024
 # The standard UI shots, in the format of client/main/qa_ui_shots.gd (the whole screen, not a window crop: the check is how the UI sits at each size and scale): the bag with
 # an item card, the character sheet, the spellbook, the vault (it opens only in the Chapterhouse), the map and the HUD in the Hollow Graves. Names: lowercase, digits and "-".
 SCREEN_PLAN = {"discipline": "gravecaller", "shots": [
@@ -616,7 +621,41 @@ def contact_sheets(entries, title):
 
 # ── the check ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-def payload_for(version, rev, steps, release, debug, soak_minutes):
+def screens_of_args(a, steps):
+    """The screens step's plan, sizes and preset from --screen-plan / --resolutions / --preset: {} for the standard ones (payload_for's), None (said why) for a usage error."""
+    if not (a.screen_plan or a.resolutions or a.preset):
+        return {}
+    if "screens" not in steps:
+        say("--screen-plan, --resolutions and --preset are for the screens check (--checks screens)")
+        return None
+    plan = SCREEN_PLAN
+    if a.screen_plan:
+        try:
+            if os.path.getsize(a.screen_plan) > SCREEN_PLAN_BYTES:
+                raise ValueError("over %d KB" % (SCREEN_PLAN_BYTES // 1024))
+            with open(a.screen_plan) as f:
+                plan = json.load(f)
+            shots = plan.get("shots") if isinstance(plan, dict) else None
+            if not isinstance(shots, list) or not 1 <= len(shots) <= SCREEN_PLAN_MAX:
+                raise ValueError("it needs 1 to %d shots" % SCREEN_PLAN_MAX)
+            names = [s.get("name") if isinstance(s, dict) else None for s in shots]
+            if not all(isinstance(n, str) and re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,47}", n) for n in names) or len(set(names)) != len(names):
+                raise ValueError("every shot needs its own name (lowercase, digits, - and _)")
+        except (OSError, ValueError) as e:
+            say("the screen plan %s is not usable: %s" % (a.screen_plan, e))
+            return None
+    sizes = [r.strip() for r in a.resolutions.split(",") if r.strip()] if a.resolutions else (["1920x1080"] if a.screen_plan else RESOLUTIONS)
+    if not sizes or any(r not in RESOLUTIONS for r in sizes) or len(set(sizes)) != len(sizes):
+        say("--resolutions takes sizes from %s" % ",".join(RESOLUTIONS))
+        return None
+    preset = a.preset or SCREENS_PRESET
+    if preset not in PRESETS:
+        say("--preset is one of %s" % ",".join(PRESETS))
+        return None
+    return {"plan": plan, "resolutions": sizes, "preset": preset}
+
+
+def payload_for(version, rev, steps, release, debug, soak_minutes, screens=None):
     builds = []
     if release is not None:
         builds.append({"label": "release", "files": release})
@@ -626,7 +665,7 @@ def payload_for(version, rev, steps, release, debug, soak_minutes):
     if "bench" in steps:
         p["setups"] = SETUPS
     if "screens" in steps:
-        p["screens"] = {"plan": SCREEN_PLAN, "resolutions": RESOLUTIONS, "preset": SCREENS_PRESET}
+        p["screens"] = screens or {"plan": SCREEN_PLAN, "resolutions": RESOLUTIONS, "preset": SCREENS_PRESET}
     if "soak" in steps:
         p["soak"] = {"minutes": soak_minutes}
     p["args"] = []
@@ -669,6 +708,9 @@ def main():
     ap.add_argument("--out", default="")
     ap.add_argument("--soak-minutes", type=int, default=30)
     ap.add_argument("--max-wait", type=float, default=120.0)
+    ap.add_argument("--screen-plan", default="")
+    ap.add_argument("--resolutions", default="")
+    ap.add_argument("--preset", default="")
     try:
         a = ap.parse_args(sys.argv[2:])
     except SystemExit:
@@ -680,6 +722,9 @@ def main():
             % (",".join(STEPS), " (unknown check: %s)" % ", ".join(bad) if bad else ""))
         return 2, None
     steps = [s for s in STEPS if s in steps]   # the order they run in
+    screens = screens_of_args(a, steps)
+    if screens is None:
+        return 2, None
     rp = git("rev-parse", "--verify", "-q", a.rev + "^{commit}")
     if rp.returncode != 0:
         say("the checkout %s has no revision %s" % (repo, a.rev))
@@ -750,7 +795,7 @@ def main():
         for label, version, brev, rel, dbg in builds:
             title = ("Checks of the live build %s" % version.split(" ")[-1]) if label == "live" else ("Checks of %s" % rev[:7])
             job = {"kind": "release", "title": title, "weightS": weight, "ttlS": TTL_S, "targetPc": pc["pcId"],
-                   "payload": payload_for(version.split(" ")[-1] if label == "live" else rev[:12], brev[:12], steps, rel, dbg, a.soak_minutes)}
+                   "payload": payload_for(version.split(" ")[-1] if label == "live" else rev[:12], brev[:12], steps, rel, dbg, a.soak_minutes, screens)}
             try:
                 made = call(secret, "POST", "/internal/team/jobs", job)
             except RuntimeError as e:

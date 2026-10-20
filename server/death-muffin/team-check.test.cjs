@@ -335,6 +335,36 @@ test('a failed step is in the summary (exit 0), and one never reached says so', 
   });
 });
 
+test('--screen-plan: the screens step renders a plan of the caller\'s (pictures of a change for the team) at 1920x1080 unless --resolutions says, on --preset', async () => {
+  await withWorld(async (w, backend) => {
+    const plan = { discipline: 'ossuary', shots: [{ name: 'thralls-kit', area: 'graves', view: 'game' }, { name: 'fen_water', area: 'fen', view: 'game' }] };
+    const file = path.join(w.checks, '..', 'plan.json');
+    fs.writeFileSync(file, JSON.stringify(plan));
+    let r = await check(w, backend, [w.c3, '--checks', 'screens', '--screen-plan', file, '--preset', 'ultra']);
+    assert.strictEqual(r.code, 0, r.all);
+    assert.deepStrictEqual(backend.jobs.at(-1).body.payload.screens, { plan, resolutions: ['1920x1080'], preset: 'ultra' });
+    r = await check(w, backend, [w.c3, '--checks', 'screens', '--screen-plan', file, '--resolutions', '1920x1080,2560x1440']);
+    assert.strictEqual(r.code, 0, r.all);
+    assert.deepStrictEqual(backend.jobs.at(-1).body.payload.screens, { plan, resolutions: ['1920x1080', '2560x1440'], preset: 'high' });
+    const n = backend.calls.length;
+    const bad = path.join(w.checks, '..', 'bad.json');
+    for (const [content, args] of [
+      [null, ['--checks', 'install', '--screen-plan', file]],                                   // not the screens check
+      [{ shots: [] }, ['--checks', 'screens', '--screen-plan', bad]],                            // no shot
+      [{ shots: [{ name: 'A b' }] }, ['--checks', 'screens', '--screen-plan', bad]],             // a name the results cannot carry
+      [{ shots: [{ name: 'x' }, { name: 'x' }] }, ['--checks', 'screens', '--screen-plan', bad]], // the same name twice
+      [{ shots: Array.from({ length: 13 }, (_, i) => ({ name: `s${i}` })) }, ['--checks', 'screens', '--screen-plan', bad]],   // too many
+      [null, ['--checks', 'screens', '--screen-plan', file, '--resolutions', '800x600']],        // a size the team app does not render
+      [null, ['--checks', 'screens', '--preset', 'insane']],
+    ]) {
+      if (content) fs.writeFileSync(bad, JSON.stringify(content));
+      r = await check(w, backend, [w.c3, ...args]);
+      assert.strictEqual(r.code, 2, JSON.stringify(args) + r.all);
+    }
+    assert.strictEqual(backend.calls.length, n, 'a usage error asks the backend nothing');
+  });
+});
+
 test('usage errors exit 2 with nothing done: no revision, an unknown one, an unknown check, a check twice, a soak too long, a bad PC id', async () => {
   await withWorld(async (w, backend) => {
     for (const args of [[], ['nope'], [w.c3, '--checks', 'install,dance'], [w.c3, '--checks', 'bench,bench'], [w.c3, '--checks', 'soak', '--soak-minutes', '500'], [w.c3, '--pc', '../x']]) {

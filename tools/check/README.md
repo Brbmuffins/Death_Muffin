@@ -22,7 +22,7 @@ node --test tools/check/test/*.test.mjs        # its tests, and ci.sh's (a throw
 | Before a merge, deploy or publish | `ci.sh wait <rev>`: the deploy and publish scripts refuse a revision CI has not passed | CI's verdict |
 | A Discord agent proposal | nothing while it is a draft; on 🧪 CI on its branch, on ✅ CI on the merged change; 1 to 3 suites that fail only in CI get one re-run here | CI, then the VPS |
 | Every client publish | a free team PC starts the release build and quits it while loading (`server/death-muffin/team-gate.sh`, B61) | a team PC |
-| Before live, when the shipper asks | install, screens, stutter, benchmark, soak beside the live build (`server/death-muffin/team-check.sh`, B62) | a team PC |
+| Before live, when the shipper asks | install, screens, stutter, benchmark, soak beside the live build (`server/death-muffin/team-check.sh`, B62; `--screen-plan` renders a shot plan of the caller's instead of the standard UI shots: pictures of a change for the team) | a team PC |
 | GitHub down | the full set here (`run-client-tests.sh`), `DM_CI_GATE=off`, and the agent's `ciGate: false` | the VPS |
 
 ## The pieces
