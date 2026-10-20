@@ -216,7 +216,7 @@
     "affixRanges": 14,
     "allClipNames": 318,
     "areaOrder": 13,
-    "itemIds": 309,
+    "itemIds": 310,
     "itemMetaSample": 4,
     "worldLayout1337": 12
    }
@@ -668,7 +668,7 @@
   "items": {
    "keys": 5,
    "counts": {
-    "ITEMS": 309,
+    "ITEMS": 310,
     "RARITY_COLOR": 5,
     "RARITY_MARK": 5,
     "BUFF_FLASKS": 15,
@@ -848,7 +848,7 @@
   }
  },
  "summary": {
-  "items": 309,
+  "items": 310,
   "enemies": 28,
   "areas": 13,
   "abilities": 70,

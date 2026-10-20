@@ -58,11 +58,11 @@ static func is_primary(id: String) -> bool:
 	return (C("PRIMARIES") as Array).has(id)
 
 
-## AbilitySystem.sp: spell power x Oath Unbroken x the active damage elixir (x the Reaper's soul bag: +2% a soul).
+## AbilitySystem.sp: spell power x Oath Unbroken x the active damage elixir (x the Reaper's soul bag: +2% a soul, more with the Scythe of Undeath).
 static func sp(p: Dictionary, now: float) -> float:
 	var oath: float = C("OATH_UNBROKEN")["damageMult"] if now < p["unbreakableUntil"] else 1.0
 	var flask := 1.0 + DmPlayerRules.brew_value(p, "damage", now)
-	var bag := 1.0 + float(C("REAPER")["damagePerSoul"]) * float(p["souls"]) if p.get("family") == "reaper" else 1.0
+	var bag := 1.0 + (float(C("REAPER")["damagePerSoul"]) + float(p.get("soulMight", 0.0))) * float(p["souls"]) if p.get("family") == "reaper" else 1.0   # soulMight: the Scythe of Undeath's extra per soul
 	var harvest: float = float(C("REAPER")["harvestNextMult"]) if p.get("harvestAmp", false) else 1.0
 	return float(p["stats"]["spellPower"]) * oath * flask * bag * harvest
 

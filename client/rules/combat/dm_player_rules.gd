@@ -153,6 +153,9 @@ static func take_damage(p: Dictionary, raw: float, ward_pct: float, now: float, 
 		if now < float(p.get("phasedUntil", 0.0)):
 			return 0.0
 		dmg *= float(DmCombatData.const_table("REAPER")["damageTakenMult"])
+		var soul_ward := float(p.get("soulWard", 0.0))   # the Scythe of Undeath: less damage taken for each soul in the bag
+		if soul_ward > 0.0:
+			dmg *= maxf(0.0, 1.0 - soul_ward * float(p["souls"]))
 	var B: Dictionary = DmCombatData.const_table("BULWARK")
 	if now < p["bulwarkUntil"] and blow_is_frontal(p, from):
 		p["lastBlock"] = "perfect" if now < p["bulwarkPerfectUntil"] else "front"

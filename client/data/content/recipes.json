@@ -2567,6 +2567,24 @@
      3
     ]
    ]
+  ],
+  [
+   "craft_scythe_of_undeath",
+   "Scythe of Undeath",
+   "mining",
+   1,
+   "scythe_of_undeath",
+   1,
+   [
+    [
+     "ingot_copper",
+     1
+    ],
+    [
+     "bones_old",
+     1
+    ]
+   ]
   ]
  ]
 }

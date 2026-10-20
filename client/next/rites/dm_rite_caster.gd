@@ -212,6 +212,9 @@ func refresh_stats(build: Dictionary) -> void:
 ## Runs once per gear / level / boon change (build time), so no cast or tick looks anything up.
 func _set_mods(m: Dictionary) -> void:
 	_mods = m
+	if not p.is_empty():   # the Scythe of Undeath's per-soul damage and defense, read by DmAbilities.sp and DmPlayerRules.take_damage
+		p["soulMight"] = float(m.get("soulMight", 0.0))
+		p["soulWard"] = float(m.get("soulWard", 0.0))
 	_legend = DmLegend.sim_legend_of(m)
 	push_legend()
 	if _legends == null and (float(m.get("corpseWisp", 0.0)) > 0.0 or float(m.get("wraithNova", 0.0)) > 0.0) and _is_host():

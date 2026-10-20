@@ -3021,6 +3021,18 @@
     "stat_agi": 7
    }
   },
+  "scythe_of_undeath": {
+   "name": "Scythe of Undeath",
+   "type": "weapon",
+   "rarity": "legendary",
+   "sell": 400,
+   "lore": "Test weapon. Haunting Wraith raises three wraiths in a cone. Each soul in your bag adds 2% damage and 1% less damage taken. A soul gained with a full bag casts a free Haunting Wraith.",
+   "icon": "art/items/scythe_of_undeath.svg",
+   "offlineStats": {
+    "stat_int": 26,
+    "stat_vit": 11
+   }
+  },
   "rune_splinter": {
    "name": "Rune of Splinters",
    "type": "rune",

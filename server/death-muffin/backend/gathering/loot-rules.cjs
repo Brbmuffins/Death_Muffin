@@ -2975,6 +2975,27 @@ var BASE_BREWS = {
 };
 var BREWS = { ...BASE_BREWS, ...REAGENT_BREWS };
 
+// server/rules/content/undeathScythe.ts
+var UNDEATH_SCYTHE = {
+  id: "scythe_of_undeath",
+  name: "Scythe of Undeath",
+  type: "weapon",
+  slot: "main_hand",
+  rarity: "legendary",
+  stats: { stat_int: 26, stat_vit: 11 },
+  sell: 400,
+  lore: "Test weapon. Haunting Wraith raises three wraiths in a cone. Each soul in your bag adds 2% damage and 1% less damage taken. A soul gained with a full bag casts a free Haunting Wraith."
+};
+var UNDEATH_RECIPE = [
+  "craft_scythe_of_undeath",
+  UNDEATH_SCYTHE.name,
+  "mining",
+  1,
+  UNDEATH_SCYTHE.id,
+  1,
+  [["ingot_copper", 1], ["bones_old", 1]]
+];
+
 // server/rules/content/items.ts
 var m = (name, rarity, sell, lore, icon) => ({
   name,
@@ -3085,6 +3106,15 @@ for (const w of NECRO_WEAPONS) ITEMS[w.id] = {
   lore: w.lore,
   icon: `art/items/${w.id}.svg`,
   offlineStats: w.stats
+};
+ITEMS[UNDEATH_SCYTHE.id] = {
+  name: UNDEATH_SCYTHE.name,
+  type: UNDEATH_SCYTHE.type,
+  rarity: UNDEATH_SCYTHE.rarity,
+  sell: UNDEATH_SCYTHE.sell,
+  lore: UNDEATH_SCYTHE.lore,
+  icon: `art/items/${UNDEATH_SCYTHE.id}.svg`,
+  offlineStats: UNDEATH_SCYTHE.stats
 };
 for (const r of Object.values(RUNES)) ITEMS[r.id] = { name: r.name, type: "rune", rarity: r.rarity, sell: r.sell, lore: r.lore, stack: 99 };
 var BUFF_FLASKS = Object.fromEntries(

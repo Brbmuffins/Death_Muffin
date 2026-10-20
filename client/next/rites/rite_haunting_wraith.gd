@@ -2,6 +2,7 @@ extends DmRiteModule
 ## Haunting Wraith (the Reaper, Grimoire only): a huge wraith rises at her feet and walks `range` (14 m) toward the cursor at `speed` (6 m/s: 2.3 s), hurting every enemy it
 ## touches (`radius` 2.2 m round it, plus the enemy's radius) every 0.25 s for `power` 0.5. 5 souls, 14 s. The numbers are the rite's row in data/combat/abilities.json. Host: `mem("haunting_wraith").walkers`
 ## (the damage is rolled once, at the cast); every peer draws the wraith from the cast event (its ghost model, `DmWraithGhost`) and from each tick's event.
+## Scythe of Undeath (DmUndeathScythe): raises three in a cone, and a soul earned with a full bag casts one free (`free_cast`).
 ## On the combat core: the wraith's targets are DmFoe snapshots from `DmReaperRites.cone`, a blow is `c.deal` (through `DmReaperRites.strike`).
 
 const TICK_S := 0.25    ## damage and drawing step
@@ -17,7 +18,53 @@ func validate(c: DmRiteCaster, intent: Dictionary) -> String:
 
 
 func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
-	var dir := DmReaperRites.facing(c, intent["aim"])
+	_raise_all(c, DmReaperRites.facing(c, intent["aim"]))
+	return ""
+
+
+## HOST. The wraiths of one cast: one (straight ahead), or `wraithCount` of them `wraithSpreadDeg` apart in a cone round `dir` (the Scythe of Undeath,
+## DmUndeathScythe). Only the first one's rise plays the sound and the shake.
+func _raise_all(c: DmRiteCaster, dir: Vector2) -> void:
+	var n := maxi(1, int(c.mods.get("wraithCount", 1.0)))
+	var spread := float(c.mods.get("wraithSpreadDeg", 0.0))
+	for i in n:
+		_raise(c, dir.rotated(deg_to_rad((float(i) - float(n - 1) * 0.5) * spread)), i == 0)
+
+
+## HOST, from the soul bank (DmNextMeta): a soul earned with the bag already full casts a free Wraith (no souls, no cooldown) with every effect above, at an
+## enemy within its walk picked at random, the near ones likelier (weight 1 / (1 + distance)). At most one a second. True when one was raised.
+func free_cast(c: DmRiteCaster) -> bool:
+	var mem := c.mem(id)
+	if not bool(c.mods.get("soulWraith", false)) or not bool(c.p["alive"]) or c.now_ms < float(mem.get("freeAt", 0.0)):
+		return false
+	var from := c.pos()
+	var picks: Array[Vector2] = []
+	var weights: Array[float] = []
+	var total := 0.0
+	for e: DmFoe in c.foes_in_radius(from, float(DmAbilities.def(id)["range"])):
+		if not e.alive() or not e.hittable():
+			continue
+		var d := Vector2(e.x - from.x, e.z - from.z)
+		if d.length() < 1e-4:
+			continue
+		picks.append(d.normalized())
+		weights.append(1.0 / (1.0 + d.length()))
+		total += weights[-1]
+	if picks.is_empty():
+		return false
+	var roll := c.rand() * total
+	var chosen := picks[picks.size() - 1]
+	for i in picks.size():
+		roll -= weights[i]
+		if roll < 0.0:
+			chosen = picks[i]
+			break
+	mem["freeAt"] = c.now_ms + DmUndeathScythe.FREE_COOLDOWN_MS
+	_raise_all(c, chosen)
+	return true
+
+
+func _raise(c: DmRiteCaster, dir: Vector2, first: bool) -> void:
 	var from := c.pos()
 	var def := DmAbilities.def(id)
 	var walkers: Array = c.mem(id).get_or_add("walkers", [])
@@ -26,8 +73,7 @@ func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
 		"dmg": DmAbilities.rite_damage(DmAbilities.sp(c.p, c.now_ms), id),
 		"until": c.now_ms + float(def["range"]) / speed * 1000.0, "next": c.now_ms + TICK_S * 1000.0})
 	c.broadcast({"t": "rise", "rite": id, "by": c.peer_id, "x": from.x, "z": from.z, "r": float(def["radius"]),
-		"dx": dir.x, "dz": dir.y, "speed": speed, "life": float(def["range"]) / speed})
-	return ""
+		"dx": dir.x, "dz": dir.y, "speed": speed, "life": float(def["range"]) / speed, "first": first})
 
 
 func step(c: DmRiteCaster, dt: float) -> void:
@@ -57,9 +103,10 @@ func play(c: DmRiteCaster, ev: Dictionary) -> void:
 		c.fx.decal("ring", DmReaperRites.GREEN, x, z, r * 1.6, 0.6, 0.9, {"growFrom": 0.3, "fadeOut": 0.4})
 		c.fx.smoke(x, 1.0, z, 4, DmReaperRites.DEEP, r * 0.8, 1.4, 0.9, 1.0, 1.2, {"shrink": -0.4})
 		c.fx.lf(x, 1.5, z, DmReaperRites.GREEN, 16.0, 0.3)
-		c.fx.sfx("wail", x, z, 1.0)
-		c.fx.sfx("banshee", x, z, 1.0)
-		c.shake_requested.emit(0.04)
+		if bool(ev.get("first", true)):   # a cone of three raises one wail
+			c.fx.sfx("wail", x, z, 1.0)
+			c.fx.sfx("banshee", x, z, 1.0)
+			c.shake_requested.emit(0.04)
 		DmWraithGhost.spawn(c, x, z, float(ev["dx"]), float(ev["dz"]), float(ev["speed"]), float(ev["life"]), "WraithGhost%d" % c.get_child_count())
 		return
 	# The wraith itself is the ghost model (see `rise`); here a wisp of smoke trailing it, a glow and a ring on the ground under it.

@@ -1542,6 +1542,7 @@ func t_reaper() -> void:
 	await _reaper_walk()
 	await _reaper_unleash()
 	await _reaper_raiment()
+	await _reaper_undeath()
 	await _reaper_auto()
 
 
@@ -1919,6 +1920,66 @@ func _reaper_raiment() -> void:
 			radii.append(float(sp["r"]))
 	check(radii.size() == 3 and radii.all(func(x: float) -> bool: return near(x, base_r * 2.0)), "raiment: 8 landed souls leave the capped 3 scythes, doubled by the 2-piece bonus (%s)" % str(radii))
 	c._set_mods(base_mods)
+
+
+## The Scythe of Undeath (DmUndeathScythe): its mods only while it is in her hand, three wraiths in a cone, more damage and less damage taken for each soul, and a free Wraith
+## from a soul earned with a full bag.
+func _reaper_undeath() -> void:
+	var mods_with := func(item_id: String) -> Dictionary:
+		var slots: Array = [] if item_id == "" else [{"slot_index": 0, "equipped": true, "item_id": item_id, "item_type": "weapon"}]
+		return DmCharacterBuild.build({"class_index": float(REAPER), "level": 20}, slots, {})["discipline"]["mods"]
+	var worn: Dictionary = mods_with.call(DmUndeathScythe.ITEM_ID)
+	var keys := ["wraithCount", "wraithSpreadDeg", "soulMight", "soulWard", "soulWraith"]
+	var other: Dictionary = mods_with.call("scythe_iron")
+	var bare: Dictionary = mods_with.call("")
+	check(keys.all(func(k: String) -> bool: return worn.has(k) and not other.has(k) and not bare.has(k)), "undeath: its five mods come with the scythe in her hand and with nothing else")
+	var mods := base_mods.duplicate(true)
+	for k: String in keys:
+		mods[k] = worn[k]
+	# damage and defense for each soul
+	await reaper_reset()
+	var per := float(DmReaperRites.k()["damagePerSoul"])
+	c.p["souls"] = 10
+	var sp0 := sp_now()
+	c._set_mods(mods)
+	check(near(sp_now() / sp0, (1.0 + (per + DmUndeathScythe.MIGHT_PER_SOUL) * 10.0) / (1.0 + per * 10.0)), "undeath: each soul adds %.0f %% more rite damage on top of the bag's" % (100.0 * DmUndeathScythe.MIGHT_PER_SOUL))
+	c.p["hp"] = c.max_hp()
+	var hit10 := hero.take_damage(100.0, 0, "melee")
+	c.p["hp"] = c.max_hp()
+	c.p["souls"] = 0
+	var hit0 := hero.take_damage(100.0, 0, "melee")
+	check(hit0 > 0.0 and near(hit10 / hit0, 1.0 - DmUndeathScythe.WARD_PER_SOUL * 10.0, 1e-4), "undeath: ten souls cut %.0f %% of the damage she takes (%.2f against %.2f)" % [100.0 * DmUndeathScythe.WARD_PER_SOUL * 10.0, hit10, hit0])
+	# three wraiths in a cone, the price of one
+	await reaper_reset()
+	c._set_mods(mods)
+	c.p["souls"] = 12
+	if accepted(cast("haunting_wraith", at(14.0)), "haunting_wraith"):
+		var rises := evs("haunting_wraith", "rise")
+		check(souls() == 7 and rises.size() == DmUndeathScythe.WRAITHS and (c.mem("haunting_wraith")["walkers"] as Array).size() == DmUndeathScythe.WRAITHS, "undeath: one cast raises %d wraiths for one price (%d souls left, %d raised)" % [DmUndeathScythe.WRAITHS, souls(), rises.size()])
+		if rises.size() == DmUndeathScythe.WRAITHS:
+			var d0 := Vector2(float(rises[0]["dx"]), float(rises[0]["dz"]))
+			var d1 := Vector2(float(rises[1]["dx"]), float(rises[1]["dz"]))
+			var d2 := Vector2(float(rises[2]["dx"]), float(rises[2]["dz"]))
+			check(d1.is_equal_approx(Vector2(dirv.x, dirv.z).normalized()) and near(rad_to_deg(d0.angle_to(d1)), DmUndeathScythe.SPREAD_DEG, 1e-3) and near(rad_to_deg(d1.angle_to(d2)), DmUndeathScythe.SPREAD_DEG, 1e-3)
+				and bool(rises[0]["first"]) and not bool(rises[1]["first"]) and not bool(rises[2]["first"]), "undeath: the middle wraith goes where she aims, the others %.0f degrees either side" % DmUndeathScythe.SPREAD_DEG)
+	# a soul earned with a full bag: nothing without the scythe, a free cone with it (no souls, no cooldown), at most one a second
+	await reaper_reset(8.0)
+	foe("robber", at(14.0))
+	foe("robber", at(10.0), 0.01)
+	cast("scythe_sweep", at(14.0))
+	await ticks(3)
+	check(evs("haunting_wraith", "rise").is_empty(), "undeath: without the scythe a soul at a full bag raises nothing")
+	await reaper_reset(8.0)
+	c._set_mods(mods)
+	foe("robber", at(14.0))
+	foe("robber", at(10.0), 0.01)
+	cast("scythe_sweep", at(14.0))
+	await ticks(3)
+	check(evs("haunting_wraith", "rise").size() == DmUndeathScythe.WRAITHS and souls() == int(c.p["soulsMax"]) and c.cooldown_left("haunting_wraith") == 0.0, "undeath: a soul at a full bag casts a free Haunting Wraith (%d raised, %d souls, cooldown %.0f)" % [evs("haunting_wraith", "rise").size(), souls(), c.cooldown_left("haunting_wraith")])
+	foe("robber", at(10.0), 0.01)
+	cast("scythe_sweep", at(14.0))
+	await ticks(3)
+	check(evs("haunting_wraith", "rise").size() == DmUndeathScythe.WRAITHS, "undeath: a second kill within a second raises no more")
 
 
 ## The easy auto-combat's pick for her (DmAutoCombat's Reaper branch, fed by the ported DmNextAutoCombat from the core's arrays).

@@ -7,6 +7,7 @@ import { BREWS, type BrewKind } from './brews';
 import { CHARM_ITEMS } from './cosmetics';
 import { ARMOR_PIECES } from './armorSets';
 import { NECRO_WEAPONS } from './necroWeapons';
+import { UNDEATH_SCYTHE } from './undeathScythe';
 import { REAGENT_BREW_ITEMS, REAGENT_ITEMS, reagentIcon } from './reagents';
 import { RUNES } from './runes';
 
@@ -148,6 +149,12 @@ for (const piece of ARMOR_PIECES) ITEMS[piece.id] = {
 for (const w of NECRO_WEAPONS) ITEMS[w.id] = {
   name: w.name, type: w.type, rarity: w.rarity, sell: w.sell, lore: w.lore,
   icon: `art/items/${w.id}.svg`, offlineStats: w.stats,
+};
+
+// The Scythe of Undeath, a test weapon (content/undeathScythe.ts; server row from migration 061-scythe-of-undeath.sql). It borrows the Moonreaper's art.
+ITEMS[UNDEATH_SCYTHE.id] = {
+  name: UNDEATH_SCYTHE.name, type: UNDEATH_SCYTHE.type, rarity: UNDEATH_SCYTHE.rarity, sell: UNDEATH_SCYTHE.sell, lore: UNDEATH_SCYTHE.lore,
+  icon: `art/items/${UNDEATH_SCYTHE.id}.svg`, offlineStats: UNDEATH_SCYTHE.stats,
 };
 
 // Relic runes (content/runes.ts; server rows from migration 024-relic-runes.sql). They stack to 99; the art is art/items/<id>.webp.
