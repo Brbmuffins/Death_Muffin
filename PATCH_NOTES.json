@@ -8,7 +8,8 @@
       "The Reaper's soul bag now fills when a soul actually reaches her, not the moment an enemy dies.",
       "The F3 performance monitor now sits in the bottom-right corner, out of the way of the HUD and windows, and you can click through it.",
       "New test weapon for the Reaper, the Scythe of Undeath (Smithing, level 1: one copper ingot and old bones): Haunting Wraith raises three wraiths in a cone, every soul in her bag adds damage and cuts damage taken, and a soul gained with a full bag casts a free Haunting Wraith.",
-      "Haunting Wraith has no cooldown now, so you can cast it again while you have 5 souls to spend. With the Scythe of Undeath, every soul that lands on a full bag casts its own free Wraith, with no one-a-second limit."
+      "Haunting Wraith has no cooldown now, so you can cast it again while you have 5 souls to spend. With the Scythe of Undeath, every soul that lands on a full bag casts its own free Wraith, with no one-a-second limit.",
+      "The Altar of Ascension is quiet until Ascension returns redesigned: it no longer opens its old window, the Prior no longer points you to it, and party and friends lists show the difficulty without Heat."
     ]
   },
   {

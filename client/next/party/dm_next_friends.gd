@@ -129,14 +129,18 @@ static func class_line(f: Dictionary) -> String:
 	return nm if lv == null else "%s · Lv %d" % [nm, int(lv)]
 
 
-## The host's world (DECISIONS B26), shown everywhere a session is: "Heat 3 · Hard", also "Heat 0 · Medium". `d` is a session's info or presence.
+## The host's world, shown everywhere a session is: its difficulty, "Hard" (also "Medium"). `d` is a session's info or presence. Heat
+## (B26) left with Ascension (B36): "Heat 3 · Hard" again only once the redesign brings it back.
 static func world_line(d: Dictionary) -> String:
 	var diff := String(d.get("difficulty", "medium")) if d.get("difficulty") != null else "medium"
 	var def := DmContent.difficulty(diff)
-	return "Heat %d · %s" % [int(d.get("heat", 0)) if d.get("heat") != null else 0, String(def.get("name", diff.capitalize())) if not def.is_empty() else diff.capitalize()]
+	var name := String(def.get("name", diff.capitalize())) if not def.is_empty() else diff.capitalize()
+	if not DmAscension.OPEN:
+		return name
+	return "Heat %d · %s" % [int(d.get("heat", 0)) if d.get("heat") != null else 0, name]
 
 
-## Where a friend is, for the list: "Sexton's Acre · in a party 2/4 · Heat 3 · Hard" ("" offline).
+## Where a friend is, for the list: "Sexton's Acre · in a party 2/4 · Hard" ("" offline).
 static func where_line(p: Dictionary) -> String:
 	if p.is_empty():
 		return ""

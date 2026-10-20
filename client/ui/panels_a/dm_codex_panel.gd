@@ -19,6 +19,11 @@ const TABS := [
 	["diocese", "The Diocese"], ["people", "People"], ["professions", "Professions"], ["lore", "Covenant Lore"], ["chronicle", "Chronicle"],
 ]
 
+## The tabs this build shows: TABS less the Altar page while Ascension is out (DECISIONS B36).
+static func shown_tabs() -> Array:
+	return TABS.filter(func(t: Array) -> bool: return t[0] != "altar" or DmAscension.OPEN)
+
+
 var discipline := "gravecaller"
 var journal_dead: Dictionary = {}
 var journal_area: Dictionary = {}
@@ -38,7 +43,7 @@ func _init() -> void:
 	panel_width = 680
 	_c = DmContent.file("codex")
 	_r = DmPaData.codex_rows()
-	for t in TABS:
+	for t in shown_tabs():
 		var v := VBoxContainer.new()
 		v.add_theme_constant_override("separation", 8)
 		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL

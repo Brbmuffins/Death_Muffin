@@ -158,13 +158,16 @@ func _part_a() -> void:
 	var tx := _texts(w.list_box)
 	check(tx.has("Open Crypt") and tx.has("1 / 4") and tx.has("4 / 4") and tx.has(DmUi.upper("Join")) and tx.has(DmUi.upper("Full")), "A: row shows name, players x/4 and Join / Full", str(tx))
 	check(tx.any(func(t: String) -> bool: return t.contains("Mira") and t.contains(String(DmContent.area("graves")["name"]))), "A: row shows host and the area's name", str(tx))
-	# The host's world (DECISIONS B26), always: a session without the fields reads Heat 0 · Medium.
+	# The host's world, always: its difficulty (a session without the field reads Medium). No Heat while Ascension is out (B36), even when the
+	# lobby still sends one.
 	var hard := String(DmContent.difficulty("hard")["name"])
 	var medium := String(DmContent.difficulty("medium")["name"])
-	check(tx.any(func(t: String) -> bool: return t.contains("Heat 5 · %s" % hard)), "A: row shows the host's heat and difficulty", str(tx))
-	check(tx.any(func(t: String) -> bool: return t.contains("Orrin") and t.contains("Heat 0 · %s" % medium)), "A: Heat 0 · Medium is shown too", str(tx))
-	check(DmNextFriends.world_line({}) == "Heat 0 · %s" % medium and DmNextFriends.world_line({"heat": 12, "difficulty": "hard"}) == "Heat 12 · %s" % hard, "A: world_line")
-	check(DmNextFriends.where_line({"area": "graves", "session": {"isHost": true, "players": 2, "max": 4, "open": true, "heat": 3, "difficulty": "hard"}}).ends_with("Heat 3 · %s" % hard), "A: a friend in a party shows its world")
+	check(tx.any(func(t: String) -> bool: return t.contains("Mira") and t.ends_with(hard)), "A: row shows the host's difficulty", str(tx))
+	check(tx.any(func(t: String) -> bool: return t.contains("Orrin") and t.ends_with(medium)), "A: no difficulty reads Medium", str(tx))
+	check(tx.all(func(t: String) -> bool: return not t.contains("Heat")), "A: no row shows Heat", str(tx))
+	check(DmNextFriends.world_line({}) == medium and DmNextFriends.world_line({"heat": 12, "difficulty": "hard"}) == hard, "A: world_line is the difficulty alone")
+	var where := DmNextFriends.where_line({"area": "graves", "session": {"isHost": true, "players": 2, "max": 4, "open": true, "heat": 3, "difficulty": "hard"}})
+	check(where.ends_with(" · %s" % hard) and not where.contains("Heat"), "A: a friend in a party shows its world", where)
 	var vow_defs: Dictionary = DmProgContent.vows()
 	var vows_in := {}
 	var self_want := 0
@@ -202,7 +205,7 @@ func _part_a() -> void:
 			{"peer_id": 2, "name": "Orrin", "discipline": "ossuary", "host": false, "you": false, "can_kick": true}]}
 	w.set_view(host_view)
 	check(w.party_box.visible and not w.solo_box.visible, "A: in a party the party sections replace the lobby ones")
-	check(w.session_label.text.contains("Heat 2 · %s" % hard), "A: the party header shows the host's world", w.session_label.text)
+	check(w.session_label.text.contains(hard) and not w.session_label.text.contains("Heat"), "A: the party header shows the host's world", w.session_label.text)
 	check(w.roster_box.get_child_count() == 2 and w.closed_check.visible and w.closed_check.button_pressed and w.closed_note.text.contains("invite"), "A: host sees two rows and the Closed toggle, on")
 	check(_buttons(w.roster_box, "Remove").size() == 1, "A: only the other player has a Remove button")
 	var kicked := [0]

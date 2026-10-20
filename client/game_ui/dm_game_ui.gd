@@ -452,8 +452,9 @@ func guidance_state() -> Dictionary:
 				dust += int(s["quantity"])
 	var unlocked: Array = loc.get("unlocked", []).duplicate()
 	var run: Dictionary = loc.get("run", {})
-	var ashes := _ashes_on_ascend()
-	return {"level": int(game.character.get("level", 1)), "area": String(game.area_id), "ascension": int(loc.get("ascension", 0)),
+	# while Ascension is out (B36) the guides neither offer the Altar nor talk about a rank
+	var ashes := _ashes_on_ascend() if DmAscension.OPEN else 0
+	return {"level": int(game.character.get("level", 1)), "area": String(game.area_id), "ascension": int(loc.get("ascension", 0)) if DmAscension.OPEN else 0,
 		"canAscend": ashes > 0, "ashesOnAscend": ashes, "shards": int(loc.get("shards", 0)), "unlocked": unlocked,
 		"areaKills": loc.get("areaKills", {}), "unlockMult": _unlock_mult(loc.get("boons", {})),
 		"bossesBeaten": _trophies(store.get_item(DmGuidance.boss_trophy_key(float(game.character["id"])))),
@@ -965,7 +966,8 @@ func open_station(id: String) -> void:
 			close_panels()
 			pb.open_forge(id)
 		"altar":
-			toggle_panel("ascension")
+			if DmAscension.OPEN:
+				toggle_panel("ascension")
 		"vault":
 			toggle_panel("vault")
 		"waystone":

@@ -130,7 +130,8 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 - **B36. Ascension leaves on launch day** (Helix, 2026-10-16: "it needs to be completely redesigned"). The Altar, vows, heat, Ashes and
   Covenant Boons are not rebuilt. Players' saved Ascension data stays on the server untouched; the redesign, the first feature after launch
   day, decides what it becomes. Heat leaves the party list, friends list and invites; the leaderboard ranks by boss kills, then total kills,
-  then level. B26's heat rules end with it.
+  then level. B26's heat rules end with it. Done 2026-10-20 (Helix: "hide both"): the Altar no longer opens the Ascension panel and no row
+  shows Heat, behind one switch (`DmAscension.OPEN`) the redesign turns back on.
 - **B37. The live game during the rebuild** (Helix, 2026-10-16). Bug fixes, warbogar's armor sets (also checked in the rebuild) and server
   safety work only. Feature requests went to the ROADMAP for after launch day. Ended on launch day (B49); the order since is B50.
 - **B38. A separate test build for the rebuild** (Helix, 2026-10-16: "its a huge overhaul"; the one exception to builds going straight to

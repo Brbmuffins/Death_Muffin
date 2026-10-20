@@ -857,7 +857,10 @@ The backend owns value (DECISIONS D1, B20, B32), and the game scene earns it as 
   `DmProgressSync`. The host's world (its difficulty) reaches the lobby (`DmNextParty.sync_world`).
 - **No Ascension** (DECISIONS B36): a character's saved vows, boons and Ashes stay on the server, untouched, and do nothing here: the world runs without vows (no heat,
   the rewards' rank 0, the base corpse lifetime), a build reads its progression without them (`DmNextGame.without_ascension`), no Covenant Boon acts (the Bonded Dead
-  do not rise) and the party's world carries no heat.
+  do not rise) and the party's world carries no heat. One switch, `DmAscension.OPEN` (false), hides what is left of it on screen: the
+  Chapterhouse's Altar is scenery (not interactable; the `altar` station opens nothing), the guides neither offer it nor name a rank
+  (`DmGameUi.guidance_state`), the Prior has no Altar topic, the Codex no Altar page (`DmCodexPanel.shown_tabs`), and party, friends and
+  invite rows show the host's difficulty without Heat (`DmNextFriends.world_line`). The redesign turns it back on.
 - **The loot node** (`next/rewards/dm_next_loot.gd`: the take, pickup, claim and rune-ownership paths, apart from the
   panels): a click on a drop walks the hero there and takes it on arrival (loot never flies; walking over it takes nothing); a drop rolled from the tape is claimed, and the server puts its
   own roll in the bag; a rune the character owns (learned, bag, Vault) never drops. The bag is the server's rows (`DmInventory`); worn gear feeds the build, and the belt drinks from it.
