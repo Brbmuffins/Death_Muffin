@@ -259,10 +259,9 @@ set with Helix then.
 ## Polish list
 
 Worked through beside the phases, top first. Each change is shown to the team with screenshots before it ships.
-- [ ] **Fix: three combat rules the rebuild found broken** (Helix, 2026-10-16: fix them after launch day; the old game had them too).
-  - Toxic corpse pools. Now: they always hurt as if at level 1. After: they hurt at the area's level.
-  - The plague bearer. Now: its toxic pool never appears when it dies. After: it leaves its pool.
-  - The Mourning Bell wraith. Now: its heal on the monsters around it never happens. After: it heals them, as designed.
+- [x] **Fix: three combat rules the rebuild found broken** (Helix, 2026-10-16). Done 2026-10-20: toxic corpse pools hurt at the level the
+  area's enemies are made at (were level 1); a fallen plague bearer leaves its rot pool (5 s, slows and withers); each Mourning Bell wraith
+  blow heals the heroes within 14 m, owner and party, by 2% of their health, as the item says (thralls are not healed, the old game's design).
 - [ ] **Fix: the look pass** (B49). Now: blended effects (decals, telegraphs, particles) look wider and brighter than in the old game, most
   on Low and Medium; the Depths' walls are darker; the hero reads darker in bright areas (the Coliseum, the Cloister, the Pyre, the Wing) and
   brighter in dark ones. After: every preset looks like the old game or better, and Helix has signed off each area on their PC.
@@ -270,8 +269,8 @@ Worked through beside the phases, top first. Each change is shown to the team wi
   set with its own body, but borrows the Mourner's body outside that set and other rites' icons, and has no runes. After: her own model,
   icons and runes.
 - [ ] **Fix: co-op gaps** (now → after; KNOWN-GAPS "Party and online"):
-  - A dropped player lands in their own solo game → is offered to rejoin the same party within a short window (a host who drops still ends
-    the session, D6).
+  - Done 2026-10-20: a dropped player landed in their own solo game → for 5 minutes a notice and a Rejoin button in Social offer the same
+    party back (a host who drops still ends the session, D6; no seat is held, so a party that filled up answers "full").
   - A guest's waystone map lists the guest's own unlocked areas → the host's world, where the party plays.
   - A guest sees only the killing blow of its thralls → every blow, as the host does.
   - A guest whose account has not opened a boss's area wakes the boss anyway, has its payment refused and is told afterwards → the team
@@ -282,16 +281,16 @@ Worked through beside the phases, top first. Each change is shown to the team wi
   - A guest cannot call an Empowered boss, and its Colossus Mantle effects, Covenant Seal and Nightfall dimming do not reach the host's
     game → a guest's gear and choices work in the party as they do solo.
   - Someone who joins during a boss fight does not see the pools already burning → sees the fight as it is.
-  - Friends show as online only once they are in the world → whenever the game is open.
+  - Done 2026-10-20: friends showed as online only once in the world → from sign-in, at character select and while the world loads (the
+    launcher has no login, so not there).
 - [ ] **Decide + Fix: things built but never shown.** Now: thralls never wear their Legion kit or their discipline's look, water never
   ripples, the Prelate's candles never gutter, and the Plague Doctor's flask leaves a pool that hurts but cannot be seen. After: each is
   shown to the team with screenshots; what they keep is switched on (the invisible pool at least gets drawn, so players can dodge it) and
   the rest is deleted.
-- [ ] **Fix: Easy auto combat parks the hero between tombstones.** Now: it walks straight at the nearest enemy and stops in pockets between
-  the graves. After: it walks around them.
-- [ ] **Fix: seven tips never show.** Now: the counsel has tips for the Depths (going in alone, a new floor, a floor's affix), a loadout
-  check, a weapon change, a set bonus gained and an Omen told, but nothing triggers them. After: each shows once at its moment, or is deleted
-  if the team does not want it.
+- [x] **Fix: Easy auto combat parks the hero between tombstones.** Done 2026-10-20: it walked straight at the nearest enemy and stopped in
+  pockets between the graves → when a grave or wall is in the way it follows the navmesh's path round it.
+- [x] **Fix: seven tips never show.** Done 2026-10-20: the Depths (going in alone, a new floor, a floor's affix, and its chest), the
+  loadouts, a weapon change, a set bonus gained and the Omen had tips nothing triggered → each shows once at its moment.
 - [ ] **Decide: the first goal after the Hollow Graves.** Now: right after entering the Graves the Next-step line says "Ossuary seal: 0/300
   kills", a steep first goal. After: the team picks a softer first goal, and the Next-step box leads there.
 - [ ] **New: necromancer polish from playtests:** combat feel and loot, readability of rites and statuses, gear and affix legibility, the
