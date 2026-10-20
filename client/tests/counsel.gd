@@ -243,6 +243,22 @@ func _first_hour() -> void:
 	var vm := ui.merged_vm()
 	check(ui.guidance_hud.current != null and vm["next"] != null and String(vm["next"]) != "", "the Next-step box has a suggestion for a new hero (%s)" % str(vm["next"]))
 	check(ui.last_guidance["level"] == 1 and ui.last_guidance["area"] == "chapterhouse" and ui.last_guidance["totalKills"] == 0 and ui.last_guidance["bagSize"] == DmLootData.bag_size(), "...from the live state (%s)" % str(ui.last_guidance["area"]))
+	# the minimap ping: "Point to it on the minimap" on points at the suggestion's target (here the Graves, a place elsewhere), off points nowhere
+	var sug: Dictionary = ui.guidance_hud.current
+	check(sug.get("target") != null and String(sug["place"]) != String(ui.last_guidance["area"]) and not bool(sug.get("pingInPlace", false)),
+		"the new hero's suggestion points at a place elsewhere (%s)" % str(sug.get("place")))
+	var ping: Variant = vm["minimap"]["ping"]
+	check(ping != null and is_equal_approx(float(ping["x"]), float(sug["target"]["x"])) and is_equal_approx(float(ping["z"]), float(sug["target"]["z"])),
+		"with the setting on the minimap pings the suggestion's target (%s)" % str(ping))
+	var s_off: Dictionary = h.settings.duplicate()
+	s_off["guide_ping"] = false
+	h.apply_settings(s_off)
+	await ticks(40)
+	check(ui.merged_vm()["minimap"]["ping"] == null, "with the setting off the minimap pings nothing")
+	s_off["guide_ping"] = true
+	h.apply_settings(s_off)
+	await ticks(40)
+	check(ui.merged_vm()["minimap"]["ping"] != null, "...and pings again when it is turned back on")
 	# the Prior's words
 	h.npc_interact.emit("prior")
 	check(ui.dialogue.is_open() and ui.dialogue.npc == "prior" and not ui.dialogue.lines.is_empty(), "the Prior greets him (%d lines)" % ui.dialogue.lines.size())

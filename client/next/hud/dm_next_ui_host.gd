@@ -779,7 +779,7 @@ func _on_hurt(amount: float, _source: Variant) -> void:
 	_hurt_feeds(b)
 
 
-## Who the gear text is for (DmGameRewards.stat_context): the compare / "worth wearing" rules read it.
+## Who the gear text is for (the original game's stat_context): the compare / "worth wearing" rules read it.
 func stat_context() -> Variant:
 	var b := build_cache()
 	return {"character": character, "slots": inventory.slots, "discipline": b["discipline"], "damageTier": float(progress.get("damageTier", 0)), "legion": b["legion"]}

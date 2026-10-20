@@ -36,7 +36,7 @@ A session whose host has been silent for 10 min counts as ended.
 ## Who gets credit (same rules as the game)
 
 The game pays personal rewards to every living player within `KILL_REWARD_RANGE` of a kill, each at their own multipliers; the chain bonus only
-to the killer (`dm_game_rewards.gd on_kill`). The host applies that proximity rule and sends each member the kills THAT member earned, with
+to the killer (`DmSessionRewards.on_kill`). The host applies that proximity rule and sends each member the kills THAT member earned, with
 that member's own multipliers. The backend cannot see positions; it bounds the result with the ledger caps below. A co-op guest earns at the
 host world's Ascension rank: the ledger's existing `COOP_RANK_ALLOWANCE` covers that. Depths floors/chests are solo-only and always dropped from host reports.
 **The whole party shares the objective.** A kill a member is not paid for (dead, or out of range) still counts toward that member's area kills and

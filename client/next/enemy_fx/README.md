@@ -30,7 +30,7 @@ textures and shaders exist before the first fight.
 | `enemy_died`, `enemy_removed` | `DmEventFx._death`: `enemyDeath` / `eliteDeath`, the death voice (<= 26 m), elite hitstop, ripple, fire-death flare, smoke, the elite's purple burst + light, the wraith thins to mist; the husk's last embers. A body removed alive swings no more |
 | `enemy_damaged` | the heavy-hit hitstop (a hit of 22 % of max health, 12 % for an elite, within 16 m). The hit flash is the crowd's |
 | `cue` | the cues that have a visual: the Templar's shield glance (spark + chime), Deacon / Seraph Sanctify (thread + halo), Acolyte Unbind (beam + sigil). Cues that are only a sound or a telegraph (`flask`, `slam`, `scream`, `hook`, `erupt`, `dig_in`) draw through their telegraphs and states |
-| `zone`, `zone_gone` | the dust cloud and the burning ground (decals + bonfire), up while the zone stands; a boss's pool is drawn the same way from its zone event |
+| `zone`, `zone_gone` | the dust cloud, the burning ground (decals + bonfire) and every toxic pool that has a source (a boss's rot, the Plague Doctor's flask pool: cracked green ground, the enemy toxic colours), up while the zone stands and ended by `zone_gone`; a burst corpse's pool (no source) is the corpse mark's green disc |
 | `affix_moment` | the elite beats `tell`, `toll`, `hungering`, `vengeful`, `unveil` |
 | `status_changed`, `statuses_cleared` | which bodies the ambient pass looks at for status tells |
 | `thrall_raised`, `thrall_died`, `thrall_removed` | `thrallRise`, `thrallDeath` (killed ones only), every thrall's ground ring (champion gold, an ally's dimmer; the plague bearer's and the colossus' larger) |
@@ -50,8 +50,8 @@ No new effects, textures or sounds: everything is existing Vfx decals/emitters/B
 Costs on the VPS in a Full Party frame are in client/README.md "The effects".
 
 ## Tests
-`client/tests/game_scene.gd` (deaths, rises, swings' impacts, corpse marks and dust, nothing held after a death or removal), `client/tests/world.gd` (the later kinds' effects: the acolyte's reach ring, the flask's ring and landing, status motes) and
+`client/tests/enemy_fx/run.gd` (the flask pool drawn for its life, a boss's pools ended at once by `remove_zones_of`), `client/tests/game_scene.gd` (deaths, rises, swings' impacts, corpse marks and dust, nothing held after a death or removal), `client/tests/world.gd` (the later kinds' effects: the acolyte's reach ring, the flask's ring and landing, status motes) and
 `client/tests/sound.gd` (the cues by name and count).
 
 ## Known gaps
-- The water's ripples: `DmEnemyFxHost.dressing` is not set by any game scene (KNOWN-GAPS "Built but never shown"). The Plague Doctor's flask leaves a 5 s toxic pool that hurts and is not drawn (same section).
+- The water's ripples: `DmEnemyFxHost.dressing` is not set by any game scene (KNOWN-GAPS "Built but never shown"). 

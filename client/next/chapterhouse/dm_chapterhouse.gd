@@ -564,7 +564,7 @@ func apply_seals() -> void:
 		game.party.send_seals()
 
 
-## DmGameRewards.check_unlocks: an area whose seal asks N kills in the area before it breaks (the Warren: 150 in the Graves, less with Swift Seals).
+## The original game's check_unlocks: an area whose seal asks N kills in the area before it breaks (the Warren: 150 in the Graves, less with Swift Seals).
 ## Returns the ids broken now.
 func check_seals() -> Array:
 	var prog := _prog()

@@ -119,6 +119,7 @@ func _run() -> void:
 			return
 	config_is_the_live_server()
 	scan_shipped_files()
+	asset_uids()
 	var shim := Shim.new()
 	shim.mock = DmOffline.make_mock("")   # memory only: no file, no server
 	var api := make_api(shim)
@@ -266,6 +267,25 @@ func boot_and_register(api: DmApi, shim: Shim) -> void:
 
 
 ## The progression a DmProgression holds after adopting the server's: what DmMain.load_build hands the game.
+## The art pack's uids (DmPacks.register_asset_uids, the list tools/godot/asset-uids.py writes at export): a new id is registered with its path, a known
+## one is left alone, and a missing or broken list changes nothing.
+func asset_uids() -> void:
+	var file := OUT.path_join("asset_uids.json")
+	var fresh := ResourceUID.create_id()
+	var known := ResourceUID.text_to_id(ResourceUID.path_to_uid("res://main/dm_packs.gd"))
+	var f := FileAccess.open(file, FileAccess.WRITE)
+	f.store_string(JSON.stringify({"res://assets/fake/made_up.png": str(fresh), "res://assets/fake/elsewhere.png": str(known), "res://assets/fake/bad.png": "x"}))
+	f.close()
+	check(DmPacks.register_asset_uids(file) == 1 and ResourceUID.has_id(fresh) and ResourceUID.get_id_path(fresh) == "res://assets/fake/made_up.png", "asset uids: a new id is registered with its path")
+	check(ResourceUID.get_id_path(known) == "res://main/dm_packs.gd", "asset uids: an id Godot knows keeps its own path")
+	ResourceUID.remove_id(fresh)
+	check(DmPacks.register_asset_uids(OUT.path_join("none.json")) == 0, "asset uids: no list, nothing changes")
+	f = FileAccess.open(file, FileAccess.WRITE)
+	f.store_string("not json")
+	f.close()
+	check(DmPacks.register_asset_uids(file) == 0, "asset uids: a broken list changes nothing")
+
+
 func local_of(character: Dictionary, progress: Dictionary) -> Dictionary:
 	var p := DmProgression.new(character)
 	p.adopt(progress)

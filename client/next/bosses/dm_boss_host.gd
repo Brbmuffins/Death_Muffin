@@ -418,6 +418,9 @@ func _on_defeated(boss: DmBoss, ev: Dictionary) -> void:
 	free_t.timeout.connect(boss.queue_free)   # the spawner despawns it everywhere
 	free_t.start()
 	if killer == "":
+		var chost := core_host()
+		if chost != null and boss.core_id != 0:   # a lost fight ends this boss's pools and coals at once (the core tells every peer); no other body's zone is touched
+			chost.core.remove_zones_of(boss.core_id)
 		if game.rewards != null:   # a lost fight: no member's Empowered call of this boss stands (the backend keeps each bound for a free retry)
 			for mm: DmRewardsMember in game.rewards.members.values():
 				if mm.empower_pending == boss.boss_id:

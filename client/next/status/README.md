@@ -51,7 +51,7 @@ core's bodies are `DmEnemyFx`'s (`client/next/enemy_fx/README.md`: the ambient p
 ## Tests / known gaps
 `client/tests/core_status.gd` holds the core's set (the 0.1 s step, DoT lumps, stacking and ownership, multipliers, stun, dig-in clear, Withered on death, wire bytes); `client/tests/rites.gd` and the boss suites
 use a hero's and a boss's set.
-- Player-side Bone Ward / Colossus guard stay in `DmPlayerRules` / `DmHeroBody._ward` (computed from the living thralls on every hit), not here. Barrier here has no decay (the 6 s duration only).
+- Player-side Bone Ward / Colossus guard stay in `DmPlayerRules` / `DmHeroBody._ward` (computed from the living thralls on every hit), not here. The status `barrier` here has no decay (the 6 s duration only) and nothing applies it today: the hero's own barrier (`DmPlayerRules`, `p.barrier`) holds for BONE_MANTLE.durationS and then wears off at 4 % of max health a second; no data file gives the status a decay (decision open in KNOWN-GAPS).
 - Bosses (`DmBoss`) carry a set and show `slow` / `root` / `chill` but the brain ignores them: bosses are immune to them. The damage-taken multipliers do count: `DmBoss.take_damage`
   scales every blow by `scale_taken` like any body (a Marrow Spear's Fracture makes the King take more, an enemy priest's Sanctify less), and `DmCoreHost.damage` reports the scaled blow. The
   brain's own Fracture is a separate source (only the Abbess's broken niches feed it) and multiplies with a player's.

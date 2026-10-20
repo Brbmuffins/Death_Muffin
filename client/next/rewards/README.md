@@ -27,10 +27,10 @@ await rewards.end_session({"seconds": n})            # final batch + session_end
 | Loot display | each member has its own `loot_view` (DmLootView, child of the node, visible only when `peer_id == local_peer_id`). For remote peers the shell mirrors the `loot_dropped(character_id, drop, pos)` / `loot_picked` / `loot_expired` signals to that peer. Bag: `member.bag` (cap 24) or set `member.take_item` (the loot node does). |
 | Signals | `session_opened`, `session_failed`, `session_closed`, `member_credited`, `member_refused`, `batch_reported`, `kill_earned`, `killer_paid`, `kill_counted`, `chain_tier_up`, `boss_earned`, `loot_dropped/picked/expired` |
 
-## Rules (`client/game/dm_game_rewards.gd`'s kill range, kept as the single source)
+## Rules (the original game's)
 
-- A kill pays every member that is alive and within `DmGameRewards.KILL_REWARD_RANGE` (38) of it, each at its own multipliers
-  (the node calls `DmGameRewards.boss_reward_eligible` itself, no copy). Inert defs pay nothing.
+- A kill pays every member that is alive and within `DmSessionRewards.KILL_REWARD_RANGE` (38) of it, each at its own multipliers
+  (`DmSessionRewards.reward_eligible`, also for a boss and a quelled surge). Inert defs pay nothing.
 - Per member: `DmLoot.roll_kill` (items/reagents/runes/shards/gold/xp), Kill Chain only for the killer in unsafe ground, the omen multiplier, wisdom on XP, new-blood XP catch-up, gold pooled over `goldEveryKills` kills (elites always pay out), "elite" gear quality.
   The world's heat is 0 in the game (no Ascension: B36), so the rank in the reports is 0.
 - Gold and shards are credited at once; items wait 3 min for a click (pickup within 1.3 m), loot never flies to anyone (DmLootView). A rune the owner already has (learned, bag, sockets, Vault) does not drop at all (`DmLootView.rune_owned`). Each member's `rune_dry` (elites in rune-shedding ground without a new rune) raises the next elite's rune chance (`DmLootRunes.pity_mult`, DECISIONS B17); a new rune resets it (a remote member's runes are not known to the host: any rune resets it).

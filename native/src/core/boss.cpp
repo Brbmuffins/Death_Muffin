@@ -35,6 +35,24 @@ void World::zones_of(int32_t p_kind, std::vector<float> &out) const {
 	}
 }
 
+int32_t World::remove_zones_of(int32_t p_source) {
+	if (p_source == 0) {
+		return 0;  // 0 is "no source" (a burst corpse's pool): never a body to clear
+	}
+	size_t w = 0;
+	int32_t n = 0;
+	for (size_t i = 0; i < zones.size(); i++) {
+		if (zones[i].source == p_source) {
+			events.push(EV_ZONE_GONE, zones[i].id, {}, {});
+			n++;
+			continue;
+		}
+		zones[w++] = zones[i];
+	}
+	zones.resize(w);
+	return n;
+}
+
 bool World::set_enemy_hp(int32_t p_id, double p_hp, double p_max_hp) {
 	const auto it = enemy_slot.find(p_id);
 	if (it == enemy_slot.end() || enemies[size_t(it->second)].state == DEAD || !(p_max_hp > 0.0)) {

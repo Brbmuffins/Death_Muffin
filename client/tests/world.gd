@@ -722,7 +722,8 @@ func _the_pyre_and_fen() -> void:
 	await ticks(2)
 	host.damage(husk, 1.0e9, hero.core_id, false)
 	await ticks(3)
-	check(zones.any(func(z: Array) -> bool: return z[1] == &"ember" and z[2] == husk) and int(g.enemy_fx.stats["zone"]) == zone0 + 1 and g.enemy_fx._zones.size() == 1, "the Husk's last embers are a pool of kind ember, and the fx drew it")
+	var husk_zones := zones.filter(func(z: Array) -> bool: return z[1] == &"ember" and z[2] == husk)   # (a pool of the Fen's fight, a flask's, may still burn and be drawn)
+	check(husk_zones.size() == 1 and int(g.enemy_fx.stats["zone"]) == zone0 + 1 and g.enemy_fx._zones.has(int(husk_zones[0][0])) if not husk_zones.is_empty() else false, "the Husk's last embers are a pool of kind ember, and the fx drew it")
 	var pool_s := float(DmSimData.EMBER_DEATH["poolS"])
 	await ticks(130)   # 2.2 s of the pool, or what is left of it
 	var burns_due := maxi(1, int(minf(pool_s - 0.5, 2.0)))   # a burn a second while the pool lasts

@@ -11,6 +11,8 @@ extends RefCounted
 const LABOR_READY_MS := 1800000.0
 const BAG_FULL_FRACTION := 0.85
 const GRAVE_DUST_FOR_TONIC := 4
+const FIRST_BOSS := "gravedigger"      ## the Hollow Graves' boss: the first goal after the Graves (B69)
+const KING_FIRST_PRIORITY := 65        ## above the seal (60), below the Altar (72) and a boss whose shards are in hand (86)
 const SIDE_AREAS: Array[String] = ["warren", "coliseum", "depths"]
 const TOPIC_OF := {"prior": "route", "sexton": "acre", "apothecary": "brew"}
 const NPC_IDS: Array[String] = ["prior", "sexton", "apothecary"]
@@ -199,7 +201,8 @@ static func suggestions(s: Dictionary) -> Array:
 			break
 	if short != null:
 		var b2 := boss(short)
-		_add(out, {"id": "boss-short:%s" % short, "kind": "boss-short", "topic": "route", "priority": 50,
+		# The Graves' boss comes first: until the Gravedigger King has fallen his shards lead the Next line, above the Ossuary seal (B69).
+		_add(out, {"id": "boss-short:%s" % short, "kind": "boss-short", "topic": "route", "priority": KING_FIRST_PRIORITY if short == FIRST_BOSS else 50,
 			"text": "Soul shards for %s: %s / %s (elites carry them)" % [b2["name"], DmJsFmt.num_str(_f(s["shards"])), DmJsFmt.num_str(float(b2["shards"]))],
 			"place": b2["area"],
 			"data": {"boss": b2["name"], "at": lower_the(b2["summonLabel"]), "shards": b2["shards"], "have": s["shards"], "area": lower_the(String(area(b2["area"])["name"]))}})

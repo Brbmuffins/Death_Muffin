@@ -152,6 +152,7 @@ func _run() -> void:
 	await ticks(3)
 	await _t_kinds()
 	await _t_elite_censer()
+	await _t_pools()
 	g.queue_free()
 	await ticks(3)
 	await _t_net()
@@ -294,6 +295,46 @@ func _t_kinds() -> void:
 	var before_flash := vf.count("play")
 	fxn.fx._death(ev)
 	check(vf.count("play") > before_flash, "fire-death flare reuses the current game's burst")
+
+
+## The Plague Doctor's flask pool is drawn for its whole life (a toxic zone with a body of the core as its source), a burst corpse's pool (no source) is not drawn here, and a boss
+## that resets ends its pools at once: the zone-gone event takes the drawing with it, and a zone of another source stays.
+func _t_pools() -> void:
+	await new_arena()
+	var zf = fxn.fx.zones_fx
+	var made: Array = []   # [id, seconds] of every zone the core announced
+	var cb := func(id: int, _k: int, _s: int, _x: float, _z: float, _r: float, seconds: float) -> void: made.append([id, seconds])
+	host.zone.connect(cb)
+	var doc := kind("plague_doctor", 6.0)
+	var seen := await until(func() -> bool: return int(fxn.stats["zone"]) >= 1, 20.0)
+	check(seen >= 0.0 and made.size() == 1, "flask: its toxic pool was announced and drawn (zone %d)" % fxn.stats["zone"])
+	check(vf.has_tex("disc") and vf.has_tex("cracks") and vf.danger_decals >= 2, "flask: the pool is cracked ground inside danger() (%s)" % str(vf.decals))
+	check(zf.zone_fx.size() == 1, "flask: the drawing is held while the pool stands (%d)" % zf.zone_fx.size())
+	core.stun(doc, 3600.0)
+	await ticks(int(ceil(float(made[0][1]) / DT)) + 30)
+	check(zf.zone_fx.is_empty(), "flask: the drawing ends with the pool (%d held)" % zf.zone_fx.size())
+	host.zone.disconnect(cb)
+	# a burst corpse's pool has no source: its disc is the corpse mark's, not a zone drawing
+	var before: int = fxn.stats["zone"]
+	var corpse_pool: int = core.add_zone("toxic", Vector2(origin.x + 4.0, origin.z), 1.5, 3.0, 0.0, 0)
+	await ticks(3)
+	check(corpse_pool > 0 and fxn.stats["zone"] == before and zf.zone_fx.is_empty(), "a pool with no source is not drawn here")
+	# a boss's pools (its id is an external of the core) and another body's pool; the boss resets: only its own end, at once, drawing and all
+	var boss_id: int = core.add_external(1, 1.0, 1.0)
+	var toxic0: int = core.zones("toxic").size()   # floats: x, z, radius per zone (the corpse pool above may still stand)
+	var mine: int = core.add_zone("toxic", Vector2(origin.x + 4.0, origin.z + 4.0), 1.5, 30.0, 0.0, boss_id)
+	var mine2: int = core.add_zone("ember", Vector2(origin.x + 6.0, origin.z + 4.0), 1.5, 30.0, 0.0, boss_id)
+	var other: int = core.add_zone("toxic", Vector2(origin.x + 8.0, origin.z + 4.0), 1.5, 30.0, 0.0, doc)
+	await ticks(3)
+	check(zf.zone_fx.has(mine) and zf.zone_fx.has(mine2) and zf.zone_fx.has(other), "boss pools: all three drawn")
+	check(core.remove_zones_of(boss_id) == 2, "boss pools: the reset ends both of the boss's zones")
+	await ticks(3)
+	check(not zf.zone_fx.has(mine) and not zf.zone_fx.has(mine2) and zf.zone_fx.has(other), "boss pools: its drawings are gone at once, the other body's pool still stands")
+	check(core.zones("toxic").size() == toxic0 + 3 and core.zones("ember").is_empty(), "boss pools: only the other body's pool is left in the core")
+	check(core.remove_zones_of(0) == 0 and core.zones("toxic").size() == toxic0 + 3, "no source (0) clears nothing")
+	core.remove_zones_of(doc)
+	core.remove_external(boss_id)
+	await ticks(3)
 
 
 func _t_elite_censer() -> void:

@@ -82,6 +82,7 @@ public:
 	bool set_enemy_hp(int64_t p_id, double p_hp, double p_max_hp);  // a boss gives a body its health (the Abbess's niches); guests learn the maximum by a wire record. False for a dead or unknown id
 	// A boss's hostile ground zone ("toxic" rot, "ember" coals, "dust"): pulses dps x 1 s at the heroes and thralls within radius + 0.45, `source` the boss's id. Returns its id (EV_ZONE tells the rest).
 	int64_t add_zone(const godot::String &p_kind, const godot::Vector2 &p_pos, double p_radius, double p_seconds, double p_dps, int64_t p_source);
+	int64_t remove_zones_of(int64_t p_source);  // ends every zone made with this source at once (a boss that resets); returns how many
 	godot::PackedFloat32Array zones(const godot::String &p_kind) const;  // the live zones of one kind: x, z, radius each
 	void stun(int64_t p_id, double p_seconds);
 	// DmStatusSet.apply: params dps (bleed, withered), cap (withered stack cap / barrier cap), amount (barrier).

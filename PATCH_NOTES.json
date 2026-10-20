@@ -26,7 +26,13 @@
       "Co-op: a guest now gets its own first-kill bonus and trophy for a boss (the server checks your own record), not just the host.",
       "Co-op: a guest can now call a boss Empowered with a Covenant Seal from its own bag at the altar and claim the prize, and its screen dims for Nightfall along with the host's world.",
       "Joining a friend's party after you have woken a boss in your own game no longer fails with a \"co-op data mismatch\".",
-      "In a party, you can now wake any boss your host has opened, even one in an area you have not opened yourself yet; you still pay with your own soul shards (or your own Covenant Seal for an Empowered boss)."
+      "In a party, you can now wake any boss your host has opened, even one in an area you have not opened yourself yet; you still pay with your own soul shards (or your own Covenant Seal for an Empowered boss).",
+      "Joining a party late no longer sometimes leaves the doors to areas the host has opened shut in front of you.",
+      "The Plague Doctor's flask pool is now drawn on the ground for as long as it hurts, so you can see it and step out.",
+      "When a boss resets after a wipe, its pools and burning ground vanish at once instead of lingering.",
+      "Settings now says the Catacomb Depths are a solo descent and the stair turns a party away, instead of saying a party steps out and rejoins.",
+      "\"Point to it on the minimap\" works again: the minimap pings the spot the Next-step box suggests.",
+      "In the Hollow Graves the Next-step box now leads you to the Gravedigger King first (gather his soul shards, then wake him at the King's Grave); the Ossuary seal comes after he falls."
     ]
   },
   {

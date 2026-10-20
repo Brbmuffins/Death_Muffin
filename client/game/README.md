@@ -8,7 +8,7 @@ Enemies and thralls are not drawn here: the crowd draws them (client/crowd/READM
 | Views | `dm_creature*.gd` (the hero, bosses, hub people, laborers and pets are skeleton nodes), `dm_avatar.gd`, `dm_boss_view.gd`, `dm_pet_view.gd`, `dm_npc_views.gd`, `dm_node_views.gd`, `dm_laborer_views.gd`, `dm_gear_props.gd`. Model rows come from `view_models.json` (the crowd's baker reads them too) |
 | Player | `dm_loadout.gd`, `dm_inventory.gd`, `dm_progress_sync.gd` (debounced saves to the backend) |
 | Combat helpers | `dm_auto_combat.gd` and `dm_auto_dodge.gd` (Easy auto combat's decisions: `client/next/feel/README.md`), `dm_boss_telegraphs.gd`, `dm_fdlibm_x.gd`, `dm_hitstop.gd`, `dm_rite_fx.gd` |
-| Leftovers | `dm_game_hud.gd`: only the static `DmGameHud.art(path)` icon helper and `interact_prompt` are used (the HUD view-model is `DmNextHudVm`, shape in `client/ui/hud/README.md`). `dm_game_rewards.gd` is used only for its kill-range rule (`DmSessionRewards` keeps an instance); the rest of it and `dm_player.gd` are not called by the game; live rewards are `client/next/rewards/` |
+| Leftovers | `dm_game_hud.gd`: only the static `DmGameHud.art(path)` icon helper and `interact_prompt` are used (the HUD view-model is `DmNextHudVm`, shape in `client/ui/hud/README.md`). `dm_player.gd` is not called by the game; live rewards are `client/next/rewards/` |
 | Gathering / labor | `dm_gather_loop.gd`, `dm_gather_session.gd`, `dm_skills.gd`, `dm_game_labor.gd` |
 | Settings / perf | `dm_settings.gd`, `dm_graphics_preset.gd`, `dm_resolution_governor.gd`, `dm_warmup.gd` |
 | Offline | `dm_offline.gd`: mock backend with the item catalogue, used by `-- --dev-offline` and by tests |

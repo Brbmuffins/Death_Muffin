@@ -1065,31 +1065,16 @@ func _moon_k(area_id: String) -> float:
 	return float(DmWorldBuilder.AREA_MOON_K.get(area_id, 1.0))
 
 
-## The factors the old game's DmGameRewards.tick_milestones writes in its source, `(<acre> if orchard else (<wing> if acre else <other>)) / <other>`: [acre, wing, other] over `other`, or [] when the line is not found.
-func _legacy_factors(src: String, key: String) -> Array:
-	var re := RegEx.create_from_string("%s = [\\w.]+ \\* \\(\\(([\\d.]+) if orchard else \\(([\\d.]+) if acre else ([\\d.]+)\\)\\) / ([\\d.]+)\\)" % key)
-	var m := re.search(src)
-	if m == null:
-		return []
-	var base := m.get_string(4).to_float()
-	return [m.get_string(1).to_float() / base, m.get_string(2).to_float() / base, m.get_string(3).to_float() / base]
-
-
-## The Acre's and the Wing's brighter light: the builder's constants (AREA_HEMI_K, AREA_MOON_K) are the factors the old game's DmGameRewards.tick_milestones still writes (its source is read: the rebuild does not run it),
-## and `set_area` applies them as a ratio to the energies, so another writer's scaling (the Nightfall dimming) composes with a change of area.
+## The Acre's and the Wing's brighter light: the builder's constants (AREA_HEMI_K, AREA_MOON_K, the old game's factors) hold those two areas and no
+## other, and `set_area` applies them as a ratio to the energies, so another writer's scaling (the Nightfall dimming) composes with a change of area.
 func _test_area_light() -> void:
 	_id = "world"
-	var src := FileAccess.get_file_as_string("res://game/dm_game_rewards.gd")
-	var legacy_moon := _legacy_factors(src, "g.builder.moon.light_energy")
-	var legacy_hemi := _legacy_factors(src, "g.builder.env.ambient_light_energy")
-	_check(legacy_moon.size() == 3 and legacy_hemi.size() == 3, "the old game's moon and hemisphere factors are in game/dm_game_rewards.gd")
-	var consts_ok := legacy_moon.size() == 3 and legacy_hemi.size() == 3 and _near(legacy_moon[2], 1.0) and _near(legacy_hemi[2], 1.0)
-	if consts_ok:
-		var keys: Array = DmWorldBuilder.AREA_HEMI_K.keys()
-		keys.sort()
-		consts_ok = keys == ["acre", "alchemist_wing"] and DmWorldBuilder.AREA_MOON_K.size() == keys.size()
-		consts_ok = consts_ok and _near(_hemi_k("acre"), legacy_hemi[0]) and _near(_hemi_k("alchemist_wing"), legacy_hemi[1]) and _near(_moon_k("acre"), legacy_moon[0]) and _near(_moon_k("alchemist_wing"), legacy_moon[1])
-	_check(consts_ok, "the builder's AREA_HEMI_K and AREA_MOON_K are the old game's factors for the Acre and the Wing and no other area")
+	var keys: Array = DmWorldBuilder.AREA_HEMI_K.keys()
+	keys.sort()
+	var moon_keys: Array = DmWorldBuilder.AREA_MOON_K.keys()
+	moon_keys.sort()
+	_check(keys == ["acre", "alchemist_wing"] and moon_keys == keys and keys.all(func(k: String) -> bool: return _hemi_k(k) > 1.0 and _moon_k(k) > 1.0),
+		"the builder's AREA_HEMI_K and AREA_MOON_K brighten the Acre and the Wing and no other area")
 	var b := DmWorldBuilder.new()
 	b.world = _world
 	b._make_environment()

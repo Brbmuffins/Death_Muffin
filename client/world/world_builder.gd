@@ -22,7 +22,7 @@ const AMBIENT_LUMA_FLOOR := 0.3
 const AMBIENT_GROUND_MIX := 0.3
 const AMBIENT_MAX_BOOST := 2.4
 const POINT_K := 0.18
-## The Acre (the orchard) and the Alchemist Wing are lit brighter than every other area: DmGameRewards.tick_milestones scales the moon by 3.4 / 2.4 and 2.65 / 2.4 and the hemisphere by
+## The Acre (the orchard) and the Alchemist Wing are lit brighter than every other area (the old game's factors): the moon by 3.4 / 2.4 and 2.65 / 2.4 and the hemisphere by
 ## 2.0 / 0.95 and 1.12 / 0.95 there. `set_area` applies them to the live lights, and the area converter (`client/tools/build_area.gd`) bakes the hemisphere's factor into the area's lightmap.
 const AREA_MOON_K := {"acre": 3.4 / 2.4, "alchemist_wing": 2.65 / 2.4}
 const AREA_HEMI_K := {"acre": 2.0 / 0.95, "alchemist_wing": 1.12 / 0.95}

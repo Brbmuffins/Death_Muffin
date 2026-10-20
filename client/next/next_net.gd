@@ -91,8 +91,17 @@ func add_guest(peer: int) -> void:
 	stats["baselines"] += 1
 	stats["baseline_bytes"] += base.size()
 	send_heroes()
+	_send_world(peer)
+
+
+## Host: what of the party's world is not the core's present, to one guest: its Wave Speed tier (Nightfall) and its seals and doors (DmNextParty).
+## Sent with every baseline, the first and each one asked again: a message lost on the way (a relay drops a packet for a player it does not know yet)
+## then heals with the present, as the core's state does; a guest left with the doors shut would walk into a sealed gate.
+func _send_world(peer: int) -> void:
 	if game.milestones != null and game.milestones.seen_tier >= 0.0:
 		_rpc_tier.rpc_id(peer, game.milestones.seen_tier)
+	if game.party != null:
+		game.party.send_seals(peer)
 
 
 ## Host: a player left. The last one out turns the collecting off.
@@ -347,4 +356,5 @@ func _rpc_need_baseline() -> void:
 	_rpc_baseline.rpc_id(peer, base)
 	stats["baselines"] += 1
 	stats["baseline_bytes"] += base.size()
+	_send_world(peer)
 

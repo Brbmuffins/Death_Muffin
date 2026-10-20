@@ -45,7 +45,7 @@ Before launch the core was checked against the old per-creature game: its rules 
   `EV_ENEMY_SPAWNED` there, but join the table in `flush_spawns()`, at the end of the tick or of the `DmCore` call that killed (a kill can happen
   while the caller holds a reference into the table: a DoT lump, a swing that kills a bursting thrall).
 - **What a boss asks of the core (boss.cpp, niche.cpp):** a hostile ground zone of its own (`add_zone(kind, pos, radius, seconds, dps, source)`: kinds dust, toxic and ember; the core pulses it once a second, dps x 1 s, on every hero
-  and living thrall within radius + 0.45, hit kinds dust, toxic and burn, the boss's id as the source; `zones(kind)` lists the live ones as x, z, radius for the Plague Saint's "am I standing in rot"), and a body's health
+  and living thrall within radius + 0.45, hit kinds dust, toxic and burn, the boss's id as the source; `zones(kind)` lists the live ones as x, z, radius for the Plague Saint's "am I standing in rot"; `remove_zones_of(source)` ends every zone of one source at once, a zone-gone event each, which a boss that resets calls: 0 clears nothing), and a body's health
   (`set_enemy_hp(id, hp, max_hp)`: the Abbess gives each Skull Niche a share of her own maximum; guests learn the maximum from a wire record). The Skull Niche is the `inert` def of enemies.json: it rises, then only stands.
 - **Numbers from data, not retyped:** `load_enemy_defs` / `load_tuning` (enemies.json), `load_status_defs`, `load_legion_tuning` (abilities RALLY, fen
   HAG_HEX, statuses PLAGUE_BURST, gameplay_legendary LEGEND, runes RUNE_TUNING.colossus, combat/enemies damage_scale) and `load_sim_consts` (the
@@ -220,8 +220,8 @@ Numbers from the def and `enemies.json` (WARD, PLAGUE_FLASK, FRENZY). With them 
   is derived from the ATTACK edge, and the cues and the blessings are the reliable events. **Not drawn:** the wing beat (the crowd bakes a rigged model's clips alone and adds no beat, so the seraph hovers with still wings).
 - **Plague Doctor** (the cloister casters' walk, silence-aware, as the acolyte's): the flask is a ring of PLAGUE_FLASK.radius at the aim fixed when the wind-up began; at its end every hero and thrall within the radius of the aim takes the body's damage
   (hit kind toxic), however far from the body, a toxic pool stays there for poolS seconds and pulses every second (the dust cloud's clock: `ZONE_TOXIC`, source the doctor) for damage x poolDpsMult to everything within radius + 0.45, and the cue `flask` is told
-  at the aim. Its corpse is toxic (the existing rupture). **On a guest** the ring is derived from the ATTACK edge (the blow `flask`), and the pool and the cue are the host's events. Neither the pool nor the flask's landing has a visual of its own
-  (`DmEnemyFx` draws dust and ember zones only, and the flask's ring is the router's): a player sees the ring and then, for five seconds, only the damage. The pool steps in the enemy phase with the other hostile zones.
+  at the aim. Its corpse is toxic (the existing rupture). **On a guest** the ring is derived from the ATTACK edge (the blow `flask`), and the pool and the cue are the host's events. The flask's ring is the router's and the pool is drawn on every peer from its zone event
+  (`DmEnemyFx`, cracked green ground for its whole life), so a player sees the ring, then the pool, and can step out of it. The pool steps in the enemy phase with the other hostile zones.
 - **Flagellant:** nothing of its own in the brain. Its def's `frenzy` is the status set's: at its 0.1 s step, with the health strictly under FRENZY.atFrac of the maximum, the body has the status `frenzy` for good (x1.45 feet, x1.6
   blows, the cooldown running x1.6 as fast), and loses it above. `DmEnemyFx` sheds its blood motes (5 a second, near the hero) from the status.
 - The telegraph, cue and blow `flask` are in the name tables; the content hash covers the seraph's `ward` flag and the flask's radius.

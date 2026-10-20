@@ -87,6 +87,7 @@ void DmCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_enemy_hp", "id", "hp", "max_hp"), &DmCore::set_enemy_hp);
 	ClassDB::bind_method(D_METHOD("add_zone", "kind", "pos", "radius", "seconds", "dps", "source"), &DmCore::add_zone);
 	ClassDB::bind_method(D_METHOD("zones", "kind"), &DmCore::zones);
+	ClassDB::bind_method(D_METHOD("remove_zones_of", "source"), &DmCore::remove_zones_of);
 	ClassDB::bind_method(D_METHOD("stun", "id", "seconds"), &DmCore::stun);
 	ClassDB::bind_method(D_METHOD("apply_status", "id", "status", "source", "stacks", "duration", "params"), &DmCore::apply_status, DEFVAL(1.0), DEFVAL(-1.0), DEFVAL(Dictionary()));
 	ClassDB::bind_method(D_METHOD("remove_status", "id", "status"), &DmCore::remove_status);
@@ -716,6 +717,14 @@ int64_t DmCore::add_zone(const String &p_kind, const Vector2 &p_pos, double p_ra
 		return 0;
 	}
 	return world.add_zone(k, p_pos.x, p_pos.y, p_radius, p_seconds, p_dps, int32_t(p_source));
+}
+
+// Ends every zone made with `source` now (a boss that wiped or lost its party): each raises zone gone, so the effects and the guests end it too. Zones of other sources are untouched.
+int64_t DmCore::remove_zones_of(int64_t p_source) {
+	if (refused("remove_zones_of")) {
+		return 0;
+	}
+	return world.remove_zones_of(int32_t(p_source));
 }
 
 // The live zones of one kind, x, z, radius each (the Plague Saint's "am I standing in rot"). Empty on a puppet (a guest's zones are the host's events).

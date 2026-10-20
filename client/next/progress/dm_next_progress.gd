@@ -151,7 +151,7 @@ func _on_credited(cid: int, delta: Dictionary) -> void:
 	_check_milestones()
 
 
-## XP that does not come from a kill report (a Depths floor or chest, as DmGameRewards.gain_xp): new-blood catch-up, then the level-up path.
+## XP that does not come from a kill report (a Depths floor or chest, as the original game's gain_xp): new-blood catch-up, then the level-up path.
 func grant_xp(xp: float) -> int:
 	var x := DmMath.js_round(xp * DmEnemyStats.new_blood_xp_mult(String(member.discipline["family"]), float(shell.character["level"])))
 	var gained := prog.add_xp(float(x))

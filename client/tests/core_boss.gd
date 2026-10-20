@@ -163,6 +163,7 @@ func _init() -> void:
 	set_hp()
 	zones_hurt()
 	zones_edges()
+	zones_removed_by_source()
 	on_the_wire()
 	if fails == 0:
 		print("PASS core_boss %d checks" % checks)
@@ -432,6 +433,24 @@ func zones_hurt() -> void:
 	run(d, 130, log2)
 	check(of(log2, EV_HIT, src).filter(func(e: Dictionary) -> bool: return e["ints"][1] == 4).size() == zone_mirror(2.0, float(K["TICK_S"]))["pulses"].size() and dz > 0, "and a dust zone as dust")
 	check(d.add_zone("lava", Vector2(0, 0), 1.0, 1.0, 1.0, src) == 0, "an unknown kind makes nothing")
+
+
+## A boss that resets ends its own zones now (`remove_zones_of`): a zone-gone event each, the zones of other sources and of no source stay, 0 clears nothing.
+func zones_removed_by_source() -> void:
+	var c := make()
+	var a1: int = c.add_zone("toxic", Vector2(0, 0), 2.0, 30.0, 1.0, 11)
+	var a2: int = c.add_zone("ember", Vector2(5, 0), 2.0, 30.0, 1.0, 11)
+	var b1: int = c.add_zone("toxic", Vector2(9, 0), 2.0, 30.0, 1.0, 12)
+	var n1: int = c.add_zone("toxic", Vector2(12, 0), 2.0, 30.0, 1.0, 0)
+	var log := []
+	drain(c, log)
+	check(c.remove_zones_of(0) == 0 and c.zones("toxic").size() == 9, "no source clears nothing")
+	check(c.remove_zones_of(11) == 2, "remove_zones_of answers how many it ended")
+	log.clear()
+	drain(c, log)
+	check(of(log, EV_ZONE_GONE, a1).size() == 1 and of(log, EV_ZONE_GONE, a2).size() == 1 and of(log, EV_ZONE_GONE, b1).is_empty() and of(log, EV_ZONE_GONE, n1).is_empty(), "a zone-gone event for each of its zones and none for the others")
+	check(c.zones("toxic").size() == 6 and c.zones("ember").is_empty(), "the others still stand")
+	check(c.remove_zones_of(11) == 0, "and nothing is left to end twice")
 
 
 func zones_edges() -> void:

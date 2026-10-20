@@ -293,6 +293,8 @@ struct World {
 	int32_t add_zone(int32_t p_kind, float p_x, float p_z, double p_radius, double p_seconds, double p_dps, int32_t p_source);
 	// The live zones of one kind as x, z, radius (the Plague Saint stands in her own rot).
 	void zones_of(int32_t p_kind, std::vector<float> &out) const;
+	// Ends every live zone made with `p_source` at once (EV_ZONE_GONE each, so the effects and the guests end them too); a boss that resets calls it. Returns how many.
+	int32_t remove_zones_of(int32_t p_source);
 	// DmBossNodeWorld.set_enemy_hp: the boss gives a body (a niche) its health, at its spawn. False for a dead or unknown id, or a maximum of zero or less.
 	bool set_enemy_hp(int32_t p_id, double p_hp, double p_max_hp);
 	void queue_enemy_max_hp(int32_t p_id);                // a wire record: a guest knows health as a fraction of the maximum

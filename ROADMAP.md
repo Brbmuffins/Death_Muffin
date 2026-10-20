@@ -295,8 +295,9 @@ Worked through beside the phases, top first. Each change is shown to the team wi
   pockets between the graves → when a grave or wall is in the way it follows the navmesh's path round it.
 - [x] **Fix: seven tips never show.** Done 2026-10-20: the Depths (going in alone, a new floor, a floor's affix, and its chest), the
   loadouts, a weapon change, a set bonus gained and the Omen had tips nothing triggered → each shows once at its moment.
-- [ ] **Decide: the first goal after the Hollow Graves.** Now: right after entering the Graves the Next-step line says "Ossuary seal: 0/300
-  kills", a steep first goal. After: the team picks a softer first goal, and the Next-step box leads there.
+- [x] **Decide: the first goal after the Hollow Graves.** Done 2026-10-20 (B69): right after entering the Graves the Next-step line said "Ossuary
+  seal: 0/300 kills", a steep first goal → until the Gravedigger King has been beaten the box leads to him (his 2 soul shards, then the King's
+  Grave), and the Ossuary seal comes after he falls.
 - [ ] **New: necromancer polish from playtests:** combat feel and loot, readability of rites and statuses, gear and affix legibility, the
   rest of the first hour (the Next-step box, counsel tips, guide NPCs).
 - [ ] **New: small additions:** colours in the chat window; an in-game leaderboard panel (today only the website shows it).

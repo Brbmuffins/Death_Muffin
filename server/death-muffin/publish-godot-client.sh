@@ -100,6 +100,8 @@ STEP_T=$SECONDS; took() { echo "== $1: $(( SECONDS - STEP_T )) s"; STEP_T=$SECON
 took "prepared (the shared setup, tools/check/prep.sh)"
 "$GODOT" --headless --path "$WT/$PROJECT" --import >"$STAGE/import.log" 2>&1 || { tail -30 "$STAGE/import.log" >&2; echo "godot import failed" >&2; exit 1; }
 took "imported"
+# the art pack's uids, carried by the main pack (DmPacks registers them; without them every uid reference inside the art falls back to its path with a warning)
+[ ! -f "$WT/tools/godot/asset-uids.py" ] || python3 "$WT/tools/godot/asset-uids.py" "$WT/$PROJECT" || { echo "the art's uid list failed" >&2; exit 1; }
 bash "$WT/tools/godot/export-baked.sh" "$WT/$PROJECT" release "$PRESET" "$STAGE/DeathMuffin.exe" "$GODOT" || exit 1   # baked shaders when a renderer is free (the script says)
 took "exported"
 rm -f "$STAGE/import.log" "$STAGE/export.log"

@@ -30,7 +30,7 @@ opts.hud:  true real HUD and panels, also for joiners  |  false none (a bare sce
 | sounds | loot drop / coin / shard sounds, `play_loot`, hurt + lowHealth (< 30 %); each also raises `sfx(name)` |
 | counsel | `DmNextCounsel` (`counsel_busy()` / `counsel_tick_ctx()`): hurt / combat (three dead within 9 m or a boss awake) / dead flags, its facts read from the core. Raised events include `world_entered`, `brew_drunk`, `meal_eaten`, `minimap_travel`, `enemy_spawned`, `sanctify_near`, `corpse_near`, `auto_combat_cast` (client/README.md "Tips and onboarding") |
 | Legion | `buy_legion()`: backend `necro_purchase`, `refresh_progress` adopts the tier; the thrall cap comes from boons and weapons, not the tier |
-| guidance | `DmGameUi.guidance_state()` reads the shared progression; the adapter feeds `skills`, `bossesBeaten` (chronicle `boss.<id>`), `labor`, `contracts` (`client/next/gathering/dm_next_acre.gd`) and recomputes at once (`ui._guide_t = 0`). The minimap ping reads the Next-step box's suggestion |
+| guidance | `DmGameUi.guidance_state()` reads the shared progression; the adapter feeds `skills`, `bossesBeaten` (chronicle `boss.<id>`), `labor`, `contracts` (`client/next/gathering/dm_next_acre.gd`) and recomputes at once (`ui._guide_t = 0`). The minimap ping reads the Next-step box's suggestion: with "Point to it on the minimap" on, `DmGameUi._refresh_ping` puts its target on the minimap (a place elsewhere, or here when marked `pingInPlace`), worked out when the suggestion, the area or the setting changes |
 | elite chips | the target frame's chips come from the affix list of the core's body, cached per target |
 
 **GM mode** (`_is_dev_account` / `_apply_dev_access`, setting `dev_access`, off by default): a dev account plus the Settings toggle opens rites (`DmRiteCaster.dev`), sealed halls and gathering tiers,
@@ -50,5 +50,5 @@ adopts the server's bag, draws the piece at the hero's feet (`DmLootView.shared_
 `client/tests/coop.gd` (a guest's window). `client/tests/hud_feeds.gd` (`HudFeeds.full()`) fills every view-model key for the tests that draw every piece. Counsel tips (queue, cadence, card): `client/ui/onboarding/README.md`.
 
 ## Known gaps
-- After entering the Graves the Next line is "Ossuary seal: 0/300 kills" (shared `DmGuidance`, priority 60); a softer first goal means changing the shared rules. The Gravedigger shard hint is priority 50, so it only shows once shards are in hand.
+- After entering the Graves the Next line leads to the Gravedigger King until he has been beaten (B69): his shard hint is priority 65 (`DmGuidance.KING_FIRST_PRIORITY`), above the Ossuary seal (60), and "waits at the King's Grave" (86) takes over once the shards are in hand.
 - Counsel events that are defined but never raised: `client/ui/onboarding/README.md`.

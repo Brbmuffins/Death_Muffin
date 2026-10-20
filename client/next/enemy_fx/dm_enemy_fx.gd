@@ -30,7 +30,7 @@ extends Node
 ## Not this node's: the shrouded body's fade (the crowd's alpha path: the body eases to 0.38 while the ward is up, `DmCrowd` flag BF_SHROUDED) and the elite's body glow (the crowd's glow
 ## palette); the shroud's smoke here follows the same ward (`view_info(id).veiled`: it stops while a Miasma covers the body and when the shroud is stripped).
 ## The Weeping Seraph's blessing is the Deacon's cue (`sanctify`, a thread and a halo per ally), the Plague Doctor's flask is the router's telegraph (a rot-green ring and the lobbed
-## flask, `flask`); its toxic pool has no visual of its own (only the dust and ember zones are drawn).
+## flask, `flask`); its toxic pool is a zone event drawn like a boss's rot pool (see `_on_zone`).
 
 const AMBIENT_S := 0.2
 const NEAR_X := 24.0               ## ambient motes only near the hero (DmEntityViews near_fx)
@@ -531,11 +531,11 @@ func affix_marks() -> int:
 
 
 ## A dust cloud (the moth's), burning ground (a boss's coals, the firebreak and the embers, the coal's, the slag slam's, the Husk's embers) and a boss's rot pool: the router's zone visual.
-## The toxic pool of a burst corpse has no visual of its own (its aura is the corpse's), nor has a flask's (the Plague Doctor's): a boss's pool is the toxic one whose
-## source is not a body of the core's table (a boss is an external of it, on a guest too); a corpse's has no source and a thrower's is its own body.
+## Every toxic pool with a source is drawn for its whole life, on every peer (a boss's rot, the Plague Doctor's flask pool: its source is its own body); a burst corpse's pool has no
+## source and no zone drawing (its green disc is the corpse mark's).
 func _on_zone(id: int, kind: int, source: int, x: float, z: float, radius: float, seconds: float) -> void:
 	var zk: StringName = DmCoreEvents.ZONE_KINDS[kind]
-	if zk != &"dust" and zk != &"ember" and (zk != &"toxic" or source == 0 or not core_host.core.enemy_info(source).is_empty()):
+	if zk != &"dust" and zk != &"ember" and (zk != &"toxic" or source == 0):   # a burst corpse's pool (no source): its green disc is the corpse mark's
 		return
 	stats["zone"] += 1
 	_zone["id"] = id

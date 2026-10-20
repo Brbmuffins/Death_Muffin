@@ -105,7 +105,7 @@ func build() -> void:
 			_row(s4, "Who is here, Open or Closed", _button("Open the Party tab (F)", "party_window", true))
 			_row(s4, "Done playing together?", _button("Leave party (play solo)", "party_leave", true))
 		else:
-			_note(s4, "You are playing solo. Add friends in the Social window (O): you see who is online, join their Open party, ask to come along, or invite them. In a party you share one world and its enemies; the Catacomb Depths stay a solo descent (you step out, then rejoin).")
+			_note(s4, "You are playing solo. Add friends in the Social window (O): you see who is online, join their Open party, ask to come along, or invite them. In a party you share one world and its enemies; the Catacomb Depths are a solo descent, so the stair turns a party away and says why.")
 			_row(s4, "Friends", _button("Open the Social window (O)", "social_window", true))
 			_row(s4, "Start a party (Closed)", _button("Make a party", "party_make", true))
 			_row(s4, "Open parties and the list", _button("Open the Party tab (F)", "party_window", true))

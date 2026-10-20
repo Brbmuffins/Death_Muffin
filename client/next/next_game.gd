@@ -524,8 +524,7 @@ func _on_player_joined(id: int) -> void:
 	var b := body_of(id)
 	if b != null and b.core_id == 0:
 		_register_body(b)
-	net.add_guest(id)
-	party.send_seals(id)   # the host's seals and doors (the baseline above is the core's present; the world's is told here)
+	net.add_guest(id)   # the core's present, and the world's beside it: the tier, the seals and doors (`DmNextNet._send_world`, again with every baseline asked for)
 
 
 ## Host: a player left: its legion goes with it, the others learn the new table of heroes.

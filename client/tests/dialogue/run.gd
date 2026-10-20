@@ -16,6 +16,7 @@ func _initialize() -> void:
 		quit(1)
 		return
 	_guidance()
+	_king_first()
 	_talk()
 	_advice()
 	_misc()
@@ -161,6 +162,24 @@ func _talk() -> void:
 			check("first_sight", [f1, f2, mem.met(npc)], [o["first"], o["first2"], o["metAfter"]], lab)
 			check("memory dict", mem.to_dict(), o["mem"], lab)
 		i += 1
+
+
+## B69: until the Gravedigger King has fallen, the Next line leads to him (his shards, then the King's Grave) and the Ossuary seal waits behind him.
+func _king_first() -> void:
+	var king: Dictionary = DmGuidance.boss(DmGuidance.FIRST_BOSS)
+	var need := float(king["shards"])
+	var seal_area := "ossuary"
+	var kills := float(DmGuidance.seal_need(DmGuidance.base_state(), seal_area))   # the seal is full: the longest a seal can lead
+	var s := DmGuidance.base_state({"area": "graves", "totalKills": 40, "areaKills": {"graves": kills}, "shards": 0})
+	var n: Dictionary = DmGuidance.next_suggestion(s)
+	check("king first: shards lead", n["id"], "boss-short:%s" % DmGuidance.FIRST_BOSS)
+	check("king first: the seal is next", DmGuidance.suggestions(s).map(func(x: Dictionary) -> String: return x["id"]).find("seal:%s" % seal_area) == 1, true)
+	check("king first: the Prior leads with him", DmGuidance.suggestion_for("prior", s)["id"], n["id"])
+	s["shards"] = need
+	check("king first: shards in hand, summon him", DmGuidance.next_suggestion(s)["id"], "boss-ready:%s" % DmGuidance.FIRST_BOSS)
+	s["shards"] = 0
+	s["bossesBeaten"] = [DmGuidance.FIRST_BOSS]
+	check("king first: once beaten the seal leads", DmGuidance.next_suggestion(s)["id"], "seal:%s" % seal_area)
 
 
 func _advice() -> void:

@@ -2,7 +2,7 @@ class_name DmWaveMilestones
 extends Node
 ## Wave-milestone presentation of the rebuild (child "Milestones" of DmNextGame, the host's and a party guest's): the banner when the Wave Speed tier crosses a milestone
 ## (Elite Vanguard 3, Restless Crypts 6, Nightfall 8), the "fades" toast when it drops back, and the Nightfall light dimming (the original game's
-## DmGameRewards.tick_milestones). The VARIANTS themselves (the vanguard elite, shrouded commons, sooner surges) are the director's
+## milestone tick). The VARIANTS themselves (the vanguard elite, shrouded commons, sooner surges) are the director's
 ## (`DmWaveDirector.milestone`). Event driven: `on_tier` is called when the tier changes (DmNextProgress.apply_progress; a guest's: the host's word, `DmNextNet.send_tier`),
 ## and `_process` only runs while the light is easing toward its target (about 4 s per change), never otherwise.
 ## The lights are the world's (DmNextWorld.builder holds them), the banners go through the game's `game_event`.

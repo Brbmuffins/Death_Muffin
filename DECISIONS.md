@@ -346,6 +346,10 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   area open in the host's world, even one its own account has not opened, and pays for it itself: its own soul shards, or its own Covenant
   Seal and gold for an Empowered call. The server judges the summon in the host's world only for a live party the guest is an active member
   of (`party-sessions.cjs partyHostOf`); the guest's own seals stay as they are, and outside a party nothing changes.
+- **B69. The first goal after the Hollow Graves is the Gravedigger King** (Helix, 2026-10-20: "go with your rec"). Right after entering the
+  Graves the Next-step line said "Ossuary seal: 0/300 kills", a steep first goal. Until the Gravedigger King has been beaten, the Next-step
+  box and the Prior's advice lead to him first: gather his 2 soul shards, then summon him at the King's Grave; the Ossuary seal comes after
+  he falls. Only the order changes (his shard hint is priority 65, above the seal's 60; a boss whose shards are in hand stays 86).
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

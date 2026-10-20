@@ -29,6 +29,8 @@ teamapp/tests/obj/
 
 # The game (client/) and its C++ core (native/): godot-cpp is fetched by native/build.sh; built libraries are not committed
 client/.godot/
+# The art pack's uid list, written at export by tools/godot/asset-uids.py (main/dm_packs.gd)
+client/main/asset_uids.json
 # The QA driver's default folder for its pictures (`--shots=`, client/README.md "Screenshots for proposals")
 /shots/
 client/bin/*.so

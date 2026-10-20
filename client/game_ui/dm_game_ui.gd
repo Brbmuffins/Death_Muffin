@@ -66,6 +66,9 @@ var stair_prompt: DmDepthsStairPrompt
 var binds: Dictionary = {}
 var skills: Dictionary = {}                ## profession_id -> level (for the guidance state)
 var labor_summary: Variant = null
+var _ping: Variant = null                   ## the minimap's guidance ping ({x, z}) or null (_refresh_ping)
+var _ping_pt := {"x": 0.0, "z": 0.0}
+var _ping_key: Array = [null]
 var last_guidance: Dictionary = {}          ## the state of the latest 0.5 s tick (shared by whoever polls the same facts: the hub's NPC "!")
 var contract_summary: Variant = null
 var codex_journal := {"dead": {}, "area": {}}
@@ -508,6 +511,27 @@ func _tick_guidance(dt: float) -> void:
 	_guide_t = 0.5
 	last_guidance = guidance_state()
 	guidance_hud.update(last_guidance, bool(game.settings.get("guidance", true)))
+	_refresh_ping(bool(game.settings.get("guide_ping", true)))
+
+
+## The minimap's guidance ping: the shown suggestion's target while "Point to it on the minimap" is on, else nothing. The suggestion points to a spot in another
+## area, or here when it is marked pingInPlace (a nearby altar, a summon spot); a suggestion with no spot, or one already underfoot, pings nothing. Worked out
+## when the suggestion, the hero's area or the setting changes (the 0.5 s tick finds no change on most calls), then merged_vm hands the same dictionary over.
+func _refresh_ping(on: bool) -> void:
+	var cur: Variant = guidance_hud.current if on else null
+	var key := [String(cur["id"]), String(last_guidance.get("area", ""))] if cur != null else []
+	if key == _ping_key:
+		return
+	_ping_key = key
+	_ping = null
+	if cur == null or cur.get("target") == null:
+		return
+	var here := String(last_guidance.get("area", "")) == String(cur.get("place", ""))
+	if here and not bool(cur.get("pingInPlace", false)):
+		return
+	_ping_pt["x"] = float(cur["target"]["x"])
+	_ping_pt["z"] = float(cur["target"]["z"])
+	_ping = _ping_pt
 
 
 func _load_side_data() -> void:
@@ -781,6 +805,8 @@ func merged_vm() -> Dictionary:
 		for i in mini(5, sl.size()):
 			sl[i]["swap"] = swap
 	v["next"] = guidance_hud.text() if guidance_hud.current != null else null
+	if v.get("minimap") is Dictionary:
+		(v["minimap"] as Dictionary)["ping"] = _ping
 	if not v.has("area_name"):
 		v["area_name"] = String(DmContent.area(String(game.area_id)).get("name", ""))
 	if not v.has("auto_combat"):

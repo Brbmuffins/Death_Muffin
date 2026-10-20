@@ -194,7 +194,7 @@ func _t_solo() -> void:
 
 	# loot expires, never flies: stand away, drops do not move
 	hero.position = Vector3(30, 0, 0)
-	_kill(_robber(shell, Vector3(30, 0, DmGameRewards.KILL_REWARD_RANGE * 0.2)), hero)
+	_kill(_robber(shell, Vector3(30, 0, DmSessionRewards.KILL_REWARD_RANGE * 0.2)), hero)
 	await _wait_gear(r)
 	var before: Array = m.loot_view.debug_drops()
 	ok(before.size() > 0, "a far kill still dropped loot (within the reward range)")
@@ -312,7 +312,7 @@ func _t_two_members() -> void:
 	root.add_child(shell)
 	var r := _new_rewards(shell)
 	var a_body := _body(Vector3(0, 0, 0))
-	var reach := DmGameRewards.KILL_REWARD_RANGE
+	var reach := DmSessionRewards.KILL_REWARD_RANGE
 	var b_body := _body(Vector3(5.0 + reach * 0.4, 0, 0), 2)   # (the kill below is at x = 5: bob is well inside its range, cara well outside)
 	var c_body := _body(Vector3(5.0 + reach * 2.5, 0, 0), 3)
 	var a := DmRewardsMember.make(ua[1], 1, a_body, ua[0])
@@ -327,8 +327,7 @@ func _t_two_members() -> void:
 	ok(sv.ok and sv.data["members"].size() == 3, "members joined with their own APIs", str(sv.data))
 	ok(a.loot_view.visible and not b.loot_view.visible, "a view is visible only to its own peer (local peer 1)")
 
-	# proximity parity with the current game's rule
-	var rules := DmGameRewards.new(null)
+	# proximity: the kill path pays exactly whom the rule says
 	var parity_ok := true
 	for dist in [0.0, reach * 0.25, reach - 0.1, reach, reach + 0.1, reach * 2.0]:
 		for alive in [true, false]:
@@ -344,12 +343,12 @@ func _t_two_members() -> void:
 			probe.add_member(tmp)
 			probe.on_kill({"def": "robber", "area": "graves", "level": 1, "elite": false, "x": 0.0, "z": 0.0, "killer": null})
 			got = tmp.stats["kills_earned"] == 1
-			if got != rules.boss_reward_eligible(alive, float(dist)):
+			if got != DmSessionRewards.reward_eligible(alive, float(dist)):
 				parity_ok = false
 				print("  parity mismatch at ", dist, " alive=", alive)
 			probe.queue_free()
 			body.queue_free()
-	ok(parity_ok, "who earns a kill matches DmGameRewards.boss_reward_eligible (its range, alive)")
+	ok(parity_ok, "who earns a kill matches DmSessionRewards.reward_eligible (its range, alive)")
 
 	var e := _robber(shell, Vector3(5, 0, 0))
 	_kill(e, a_body)   # alice kills at x=5: alice 5 m away, bob inside the range, cara outside it

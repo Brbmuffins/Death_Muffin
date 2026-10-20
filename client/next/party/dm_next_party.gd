@@ -940,7 +940,8 @@ func sync_levels() -> void:
 
 
 ## Host: the party plays in the host's world, so a guest's seals, doors and open areas are the host's (the world's `unlocked`; what a guest's own account has broken is its own
-## business in its own world). Told to a guest as it joins (`to` = its peer id: the doors just stand open for it, silently) and to every guest whenever the host's seals change.
+## business in its own world). Told to a guest with every baseline (`to` = its peer id: the doors just stand open for it, silently; DmNextNet._send_world, so a lost
+## message heals with the next baseline the guest asks for) and to every guest whenever the host's seals change.
 func send_seals(to := 0) -> void:
 	if not shell.session.is_host() or not shell.session.is_active():
 		return

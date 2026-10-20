@@ -5,7 +5,7 @@ extends Node
 ## EV_ENEMY_DIED; the killer is a peer, and its member's body is the killer), not as each enemy's `died`; lifesteal hears the core host's `struck` (a hero's
 ## direct blow; a DoT tick or a thrall's swing never is one).
 ##
-##  1. every credited kill -> who earned it (the original game's rule: a living member within DmGameRewards.KILL_REWARD_RANGE,
+##  1. every credited kill -> who earned it (the original game's rule: a living member within KILL_REWARD_RANGE,
 ##     each at ITS OWN multipliers; the Kill Chain only for the killer, only in unsafe ground),
 ##  2. credit through the backend: session_open (host) / session_join + session_heartbeat (members, own API) / session_report (numbered
 ##     batches every `flush_interval` s and at the end) / session_end. XP and kill counts are applied from what the backend ACCEPTED,
@@ -63,7 +63,8 @@ var ended: bool = false
 var batch_no: int = 0
 var members: Dictionary = {}        ## character_id -> DmRewardsMember
 
-var _rules := DmGameRewards.new(null)   ## the original game's proximity rule, reused as the single source
+const KILL_REWARD_RANGE := 38.0     ## a kill (and a boss, a quelled surge) pays every living member within this many metres of it (the original game's rule)
+
 var _core_host: DmCoreHost              ## the game's (attach_game): who a blow's source is
 var _inflight: Dictionary = {}          ## the batch sent but not confirmed: re-sent under the SAME number until the backend answers
 var _busy := false
@@ -496,8 +497,13 @@ func _on_kill_credited(enemy_id: int, def: String, level: int, elite: bool, area
 	on_kill({"def": def, "area": area if area != "" else area_id, "level": float(level), "elite": elite, "x": x, "z": z, "killer": killer, "enemy": enemy_id})
 
 
+## Whether a member is paid for a kill (a boss, a quelled surge) that far away: alive, and within KILL_REWARD_RANGE.
+static func reward_eligible(alive: bool, distance: float) -> bool:
+	return alive and distance < KILL_REWARD_RANGE
+
+
 ## Decide who earned a kill and reward each. ev: {def, area, level, elite, x, z, killer: Node|null, enemy: core id (optional)}. Public so a shell with its own
-## death pipeline can call it directly. Mirrors DmGameRewards.on_kill per eligible member.
+## death pipeline can call it directly. The original game's on_kill, per eligible member.
 func on_kill(ev: Dictionary) -> void:
 	if ended:
 		return
@@ -510,7 +516,7 @@ func on_kill(ev: Dictionary) -> void:
 		if m.blocked != "":
 			continue
 		var dist := DmSimMath.hypot(kx - m.pos().x, kz - m.pos().z)
-		if not _rules.boss_reward_eligible(m.alive(), dist):
+		if not reward_eligible(m.alive(), dist):
 			_count_only(m, ev)
 			continue
 		_reward(m, ev, ev.get("killer") != null and ev["killer"] == m.body)
@@ -518,7 +524,7 @@ func on_kill(ev: Dictionary) -> void:
 
 ## A boss died (the boss host calls it): ev {boss, x, z, killer: Node|null, empowered}. The normal-kill rule decides who is paid (alive, within
 ## KILL_REWARD_RANGE); each gets its own roll (DmLoot.roll_boss), a first-kill bonus (+2 shards, a rare relic, a trophy), the relic rune, XP now,
-## and a boss entry in its report (the backend's kill ledger). Mirrors DmGameRewards.on_boss_defeated. A first kill is this character's own record:
+## and a boss entry in its report (the backend's kill ledger), as the original game paid a boss. A first kill is this character's own record:
 ## a local member's is its Chronicle's (`claim_trophy`), a remote member's (a party guest) is the SERVER's call, asked in its report entry (`_pay_remote_boss`).
 func on_boss_defeated(ev: Dictionary) -> void:
 	var id := String(ev["boss"])
@@ -527,7 +533,7 @@ func on_boss_defeated(ev: Dictionary) -> void:
 	var at := Vector3(float(ev["x"]), 0, float(ev["z"]))
 	for cid in members:
 		var m: DmRewardsMember = members[cid]
-		if m.blocked != "" or not _rules.boss_reward_eligible(m.alive(), DmSimMath.hypot(at.x - m.pos().x, at.z - m.pos().z)):
+		if m.blocked != "" or not reward_eligible(m.alive(), DmSimMath.hypot(at.x - m.pos().x, at.z - m.pos().z)):
 			continue
 		if m.remote and id != "prelate" and session_id != "" and not legacy_ledger:
 			_pay_remote_boss(m, ev)
@@ -609,7 +615,7 @@ func _pay_boss(m: DmRewardsMember, ev: Dictionary, first: bool, queue: bool) -> 
 
 
 ## A Grave Surge was quelled (DmGraveSurge): every member the normal-kill rule pays gets a guaranteed item from the area's table plus bonus gold
-## on the ground at the crypt. ev {area, x, z}. Mirrors DmGameRewards.on_surge_cleared.
+## on the ground at the crypt. ev {area, x, z}, as the original game paid a quelled surge.
 func on_surge_cleared(ev: Dictionary) -> void:
 	if ended:
 		return
@@ -618,7 +624,7 @@ func on_surge_cleared(ev: Dictionary) -> void:
 	var gold := DmMath.js_round((24.0 + 10.0 * level) * float(DmWaveUpgrades.wave_modifiers(wave_tier)["rewardMult"]) * float(DmContent.difficulty(difficulty)["rewardMult"]))
 	for cid in members:
 		var m: DmRewardsMember = members[cid]
-		if m.blocked != "" or not _rules.boss_reward_eligible(m.alive(), DmSimMath.hypot(at.x - m.pos().x, at.z - m.pos().z)):
+		if m.blocked != "" or not reward_eligible(m.alive(), DmSimMath.hypot(at.x - m.pos().x, at.z - m.pos().z)):
 			continue
 		var rolled := _roll_event(m, "surge", {"area": String(ev["area"]), "level": level}, at)
 		_drop_items(m, at, rolled["items"] if rolled.has("items") else [DmLoot.roll_surge_item(String(ev["area"]), rng, String(m.discipline["id"]))], level, "surge")

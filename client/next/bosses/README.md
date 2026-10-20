@@ -46,7 +46,6 @@ The recorded scenarios the brains are replayed against are recordings of the web
 
 ## Known gaps
 - A guest's Empowered call pays on its own account and the host wakes the boss on its word (`DmBossHost.ask_empowered`): the server's area gate is the host's world (B68: an area neither the guest's account nor its host has opened refuses the Seal with the server's reason before anything is spent); the prize claim window is the backend's (3 h).
-- Pools of a boss that resets linger their remaining seconds (core zones have a lifetime, no owner to remove them).
 - The Mire Mother's flood shrinks the Fen's hummocks for the brain (`FEN_FLOOD_SCALE`); the event plays the rings, and nothing eases the drawn hummocks.
 - `can_ascend` after a Prelate kill is only a game event (no Altar: B36). Prelate Echoes are not played for the same reason (client/README.md "The bosses").
 - The Prelate tally is validated by the backend only for a bell it was told of (online `spend_shards` queues `summon_prelate`).

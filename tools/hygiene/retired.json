@@ -459,6 +459,12 @@
         "DECISIONS.md",
         "tools/hygiene/**"
       ]
+    },
+    {
+      "id": "game-rewards",
+      "pattern": "DmGameRewards|dm_game_rewards",
+      "reason": "the old game's kill and level-up path, never called by the live game; its kill range is DmSessionRewards.KILL_REWARD_RANGE (2026-10-20)",
+      "allow": ["DECISIONS.md", "tools/hygiene/**"]
     }
   ],
   "allowPaths": {

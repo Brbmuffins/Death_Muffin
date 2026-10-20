@@ -60,6 +60,7 @@ export DM_PAYLOAD='
   ln -s "$GODOT_TEMPLATES" "$XDG_DATA_HOME/godot/export_templates"
   cd "$TOP"
   bash "$DM_PREP" --read-only --windows "$TOP"
+  [ ! -f tools/godot/asset-uids.py ] || python3 tools/godot/asset-uids.py client   # the uids of the art pack, for the main pack (DmPacks)
   "$GODOT" --headless --path client "$EXPORT" "Windows Desktop" "$OUT/$EXE" > "$SCR/export.log" 2>&1 || { tail -15 "$SCR/export.log"; echo "godot export failed"; exit 1; }
   if [ -z "$SAME_ART" ]; then
     echo "the art differs from the live build: the preview carries its own pack"

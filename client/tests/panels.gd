@@ -198,6 +198,19 @@ func _settings() -> void:
 			floats0[0] += 1)
 	g.ui_host.float_text(hero.position, "12", "hit")
 	check(floats0[0] == 0, "damage numbers off: no hit number reaches the HUD")
+	# the Co-op note tells the truth about the Depths: solo only, the stair turns a party away (it used to say a party steps out and rejoins)
+	g.ui.set_ui.open()
+	await ticks(2)
+	var notes: Array = []
+	var stack: Array = [g.ui]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is Label and (n as Label).text.contains("Social window (O)") and (n as Label).text.contains("Catacomb Depths"):
+			notes.append((n as Label).text)
+		stack.append_array(n.get_children())
+	check(notes.size() == 1 and notes[0].contains("solo descent") and notes[0].contains("turns a party away") and not notes[0].to_lower().contains("rejoin"),
+		"Settings says the Depths are solo and the stair turns a party away (%s)" % str(notes))
+	g.ui.close_panels()
 
 
 # ------------------------------------------------------------------------------------------------------------------ chat

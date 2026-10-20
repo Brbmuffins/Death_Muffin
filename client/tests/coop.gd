@@ -1225,6 +1225,13 @@ func seals() -> void:
 		return
 	check(await until(func() -> bool: return lg.world.unlocked.has("warren") and _gate(lg, door) == "open", 4.0), "it finds the Warren open and the gate up as the host has them (%s)" % _gate(lg, door))
 	check(lg.world.unlocked.keys() == h.world.unlocked.keys() and (doors_log[lg] as Array).is_empty(), "with the host's open areas and no door rising for it (the gate sound is for a seal breaking: %s)" % str(doors_log[lg]))
+	# the seals message lost on the way (a relay drops a packet for a player it does not know yet): the next whole present it asks for brings the doors too
+	lg.world.set_unlocked([], true)
+	await ticks(2)   # (the collider switches a frame later)
+	check(_gate(lg, door) == "closed" and not lg.world.unlocked.has("warren"), "(the late joiner's seals lost: its door is down)")
+	lg.net._rpc_need_baseline.rpc_id(1)
+	check(await until(func() -> bool: return lg.world.unlocked.has("warren") and _gate(lg, door) == "open", 4.0), "a baseline asked for again brings the host's seals back with it (%s)" % _gate(lg, door))
+	check((doors_log[lg] as Array).is_empty(), "silently: no door rises for it (%s)" % str(doors_log[lg]))
 	lg.party.leave()
 	check(await until(func() -> bool: return h.session.get_roster().size() == 2 and h.net.guests() == [2], 6.0), "it leaves again: the host's roster is the one guest's")
 	lg.process_mode = Node.PROCESS_MODE_DISABLED

@@ -61,7 +61,7 @@ player part of a gain until it is fixed; few real sessions ran on the gains save
 
 ## Combat and statuses
 
-- Barrier has no decay (`client/next/status/README.md`), and the pools of a boss that resets linger their remaining seconds (`client/next/bosses/README.md`).
+- The status set's `barrier` (`client/next/status/README.md`) has no decay, only its 6 s hold; nothing applies it today (the hero's own barrier decays), so no data says how it should wear off.
 
 ## Built but never shown
 
@@ -74,7 +74,6 @@ Looks and effects that exist in the code but no game scene wires up (the old gam
   `legion` for it.
 - The water's ripples (under the hero, the Mire Mother's rings, the Wisp's pulse) and the Prelate's candle groups: `DmEventFx.add_ripple` and
   `set_candle_group` call a `game.dressing` that no game scene sets (client/README.md "World dressing").
-- The Plague Doctor's flask leaves a 5 s toxic pool that hurts but is not drawn (`DmEnemyFx` draws only dust and ember zones).
 
 ## Look
 
@@ -101,9 +100,7 @@ polish list). Also:
 
 ## UI
 
-- **The Next-step box no longer pings the minimap:** `client/next/hud/dm_next_hud_vm.gd` sets `_map["ping"] = null` where the old game pointed it at the suggestion's target (elsewhere, or marked pingInPlace), yet Settings still offers "Point to it on the minimap" (found porting the Acre's tests).
 - **No in-game leaderboard panel.** `DmApi.get_leaderboard` exists; only the website shows it.
-- **Settings says a party steps out of the Depths and rejoins:** the solo note in `client/ui/panels/dm_settings_panel.gd` ("you step out, then rejoin"); the stair turns a party away (`DmDepths.PARTY_REFUSAL`) and nothing steps anyone out or back in.
 - Unraised counsel events: `client/ui/onboarding/README.md`. Hero gaps: `client/next/hero/README.md`.
 
 ## Tools and tests
@@ -136,8 +133,6 @@ polish list). Also:
   box describes every `release` job with the full checks' note (benchmark and soak), whatever steps it has.
 - **The lobby suite failed once in a full run on the VPS** (2026-10-19): it expected "the host ended the party" and got "Co-op data mismatch:
   the host's enemy and status tables differ"; it passes alone and in CI. Likely two suites reaching each other's local lobby at the same time.
-- **The coop suite's seals part failed in 3 of about 12 runs on a loaded VPS** (2026-10-20, load around 10, with and without the wave director's change): "it finds the Warren open and the gate up as the host
-  has them (closed)", and then the guest's waystone checks after it (`seals` and `guest_travel` in `client/tests/coop.gd`); the late joiner finds the Warren's gate still closed. It passes on a quiet machine.
 - **A team app test fails now and then** (2026-10-19, 1 run in 3 on the VPS): `teamapp/tests/LogCancelTests.cs` "and the exit report is not", which reads a real
   process's filtered output right after it exits; the next two runs passed.
 - **Typed lists in game code that a new boss or area must be added to by hand** (found by the content-count pass, 2026-10-19): `DmBossHost`'s
@@ -182,9 +177,6 @@ polish list). Also:
 ## Assets and effects
 
 Notes for the asset and effects work (ROADMAP):
-- Fix (2026-10-19, seen in a team PC's clip run): some Binbun materials under `client/assets/fx/binbun/lib/` (MagicOrbsVFX `magic_orb_flash_02`, MagicAreaVFX `ripple_area_02`, `pulse_area_03`)
-  name their shader by a uid Godot no longer has (`uid://cxgc3o7ygtvmo`, `uid://bgxf20vtx55u7`), so `DmRiteFx.warm` prints a WARNING with a backtrace for each at every start ("invalid UID ... using text path instead");
-  they load through the path. After: the `.tres` files carry the shaders' current uids and a start prints none.
 - The baked crowd is 234 MB (positions 140, normals 70, level-of-detail meshes 23); each level of detail's mesh repeats the vertex arrays,
   where one array with Godot's own mesh LODs would share them.
 - The Bone Colossus's rim reads fuller than the old game's (a pose that differs, or the baked normals at its hard edges).
@@ -195,7 +187,6 @@ Notes for the asset and effects work (ROADMAP):
 ## Leftovers from the web era
 
 - Bit-exact web math (fdlibm, exact-double loading) is still used by the Depths floor generator, auto-combat and the DB loader: `client/sim/README.md`.
-- `DmGameRewards.gain_xp` (`client/game/dm_game_rewards.gd`, the old game's XP and level-up path, which the live game does not seem to call: `DmNextProgress` levels the hero) calls `counsel_bag_ctx()`, which nothing defines. Delete the old kill and level-up path with the rest of its unused parts.
 - `client/data/slice/assets_used.json` (the models the game loads) is kept by hand: the exporter that wrote it (`export-slice.ts`) is gone.
 - A comment in `server/death-muffin/lobby/src/server.js` still names the relay script by the old game's path (`client/net/relay/dm_udp_relay.gd`
   now): fix it with the next real lobby change (a comment edit alone would make the next release wait for a lobby restart).
