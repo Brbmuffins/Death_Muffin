@@ -13,8 +13,8 @@ question only the team can answer, with Claude's recommendation).
 - **The rebuilt game is live** since launch day, 2026-10-18 (B49): the same game on a C++ combat core and Forward+ graphics, its biggest
   fight 3 to 4 times faster (the Bell Sanctum's Full Party on Ultra, Helix's PC: 61 to 224 fps). The old game is retired (B57, tag
   `archive/old-game`): a rollback publishes an earlier build of the game.
-- **Now: Phase 1, settle the launch.** Everything in it is built; left are the stutter fixes, two decisions and a week of play reports
-  (2026-10-26 at the earliest).
+- **Now: Phase 1, settle the launch.** Everything in it is built; left are two decisions and a week of play reports (2026-10-26 at the
+  earliest).
 - **Next:** Phase 2, the foundation's core (the vision, how we work, the standards, content in one place with checks, recipes, the server
   owning every value); Phase 3, Ascension redesigned (it left on launch day; players' saved Ascension data is kept, B36); Phase 4, new
   content (the look of the world, places, enemies and bosses, the other five classes, quests, endgame). **Later:** off-site backups, phones,
@@ -57,16 +57,14 @@ Done, 2026-10-18 to 2026-10-20 (how each works is in the page named):
   (client/next/perf/README.md "Play reports").
 - [x] **New: the team app** (B54, B55, B58, B60-B62, B64, B66). A tray app on the three team PCs that makes proposal pictures and videos,
   runs benchmarks and release checks, and starts every release before players get it; proven on Helix's PC, app 0.4.7 (teamapp/README.md).
+- [x] **Fix: first-use stutters.** Done 2026-10-20: every new game, and every Settings save, threw away the shader pipelines the loading
+  screen had compiled (setting the soft-shadow filter, even to its own value, makes Godot 4.7.2 drop them all), so each game compiled about
+  420 again while casting → the preset tells the renderer only what changed. The stutter test on Brbmuffins' RX 6600, the live build against
+  the fix: 424 compilations (237 making a frame wait) → 10, all in the background; the worst cast 19.4 ms (Wraith Walk) → 6.5 ms, none over
+  8 ms. The warm-up's blind spots (lighting variants, other presets, areas and bosses, panels, death, other players' effects) remain
+  (`client/tests/warm_coverage.gd`); weaker cards are watched through the play reports.
 
 Open:
-- [ ] **Fix: first-use stutters.** Now: every release bakes its shaders into its pack (the art pack's on its next art change), and the
-  loading screen draws every material play uses, with a test that fails when one is missed (`client/tests/warm_coverage.gd`; it cannot see
-  lighting variants, presets other than High, the other areas and bosses, UI panels, death and respawn, or other players' effects). The
-  latest stutter test on Helix's RTX 4070 SUPER (2026-10-19, every rite of every discipline once, High): p99 2.5 ms, one cast over 8 ms (the
-  Gravecaller's Bone Needle, 9.9 ms); each new game still compiles about 410 shader pipelines, the same ones every time, 186 in the
-  background and 224 while a frame waits, too briefly on that card to show as hitches. Weaker cards are the open question (the play reports
-  and more team PCs will show). After: the warm-up also draws what those casts compile, a new game compiles nothing the one before it did,
-  and no cast goes over 8 ms.
 - [ ] **Decide: a team PC runs the Discord agent's unreviewed branch** (found 2026-10-19). Pictures and videos are made from the change
   itself, so its game code runs on the team PC: offline and in its own folder, but able to reach the PC (run a program, read a file). Today
   only War, Muffins and Helix can ask the agent for changes, which limits the risk. Claude recommends: before team PCs take jobs from anyone
