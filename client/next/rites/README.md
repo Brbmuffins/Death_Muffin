@@ -21,7 +21,7 @@ ossuary_wall, command_rend, dirge, plague_bloom. Numbers come from the shared ru
 How the rites sit on the combat core (the rites are GDScript and call the core synchronously, so a kill resolves inside the cast; an enemy is an id or a `DmFoe` snapshot; what a module reaches creatures through; where a rite meets the core) is
 client/README.md "The Gravecaller's rites".
 
-Other files: `dm_rite_hotbar.gd` (`DmRiteHotbar.rite_for_slot` / `wire(game)`: LMB = kit `defaultPrimary`, 1-4 = `defaultLoadout`, RMB = kit `rmb`,
+Other files: `dm_legion_events.gd` (`DmLegionEvents`, the host's, held by `DmNextGame.legion_events`: acts on two events of the core, a Mourning Bell wraith's blow, which heals every living hero within the bell's range for its share of THEIR maximum health, and a fallen plague bearer, which leaves its owner's friendly rot cloud through `rite_miasma.gd` `plague_pool` (Miasma's rules, kind `rot`, drawn on every peer by the caster's `pool` event)), `dm_rite_hotbar.gd` (`DmRiteHotbar.rite_for_slot` / `wire(game)`: LMB = kit `defaultPrimary`, 1-4 = `defaultLoadout`, RMB = kit `rmb`,
 slot 6 / R = the discipline's signature at level 10), `dm_rite_gestures.gd` (cast gestures; the Reaper's rites play the Mourner rig's own combat clips, `DmAvatar.REAPER_CLIPS`: sweep / spin = `sweep`, reap = `slam`, throw = `flick`, wraith walk = `channel`, soul burst = `summon`, each timed so its release frame lands on the cast and played faster the shorter the rite's cooldown got, e.g. under haste), `dm_rite_legends.gd` (legendary-set effects),
 `client/game/dm_rite_fx.gd` (`DmRiteFx`, all visuals and sounds).
 

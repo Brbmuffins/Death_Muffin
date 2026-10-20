@@ -74,6 +74,7 @@ signal kill_credited(enemy_id: int, def: String, level: int, elite: bool, area: 
 @onready var input: DmNextInput = $Input
 @onready var camera: DmCameraRig = $Camera
 var enemy_fx: DmEnemyFx                         ## child "EnemyFx": the core's events as effects
+var legion_events: DmLegionEvents               ## host: the Mourning Bell's heal and a fallen plague bearer's pool, from the core's thrall events (next/rites/dm_legion_events.gd)
 var look: DmHeroLook                            ## child "Look": the hero's ring and worn gear (next/hero/README.md)
 var party: DmNextParty                          ## child "Party" (every peer): the lobby link, hosting / joining, the roster controls, the guest's profile (next/party/)
 var friends: DmNextFriends                      ## child "Friends": the account's friends and friend requests (the test backend's friends routes; next/party/)
@@ -166,6 +167,8 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	core_host.target_hit.connect(_on_target_hit)
 	core_host.target_effect.connect(_on_target_effect)
 	core_host.enemy_died.connect(_on_enemy_died)
+	if not guest:
+		legion_events = DmLegionEvents.new(self)
 	perf = DmNextPerf.new()
 	perf.name = "Perf"
 	perf.game = self

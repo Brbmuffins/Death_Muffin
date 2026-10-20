@@ -12,6 +12,8 @@ extends Node
 ##   4. `core.take_events()` is read ONCE and dispatched in order, one signal per event.
 ## Per rendered frame `CrowdView._process` draws, interpolated with `Engine.get_physics_interpolation_fraction()`.
 ## Ids are the core's: enemies, thralls, heroes (externals) and bosses share one counter. A corpse's id and a zone's id are their own numbers.
+## An area's level: the core scales a toxic corpse's pool by the level of the area it was laid in (`DmCore.set_area_level`), and this host keeps it current from the
+## enemies it sees made there (their level, the one the director, the Depths and the bosses' adds gave them), once per change.
 ##
 ## A GUEST's host (`setup({puppet: true})`, 2-player co-op, client/README.md "Co-op on the core") owns a PUPPET core: it simulates nothing. Its bodies come from the host's reliable
 ## batches and snapshots (`apply_reliable`, `apply_snapshot`, called by DmNextNet), its tick is the same step / sync / events, so the crowd, the effects and the HUD run from the
@@ -62,8 +64,8 @@ signal thrall_damaged(id: int, source: int, amount: float, hp: float)
 signal thrall_died(id: int, reason: String, owner: int, kind: String, source: int, x: float, z: float)
 signal thrall_removed(id: int)
 signal thrall_status(id: int, target: int, status: int, seconds: float)
-signal thrall_bell_heal(x: float, z: float, fraction: float)
-signal thrall_plague_pool(x: float, z: float, radius: float, seconds: float, dps: float)
+signal thrall_bell_heal(id: int, x: float, z: float, fraction: float)                        ## a wraith with a Mourning Bell struck: `id` is the wraith, `fraction` the share of their health the heroes near it get (DmLegionEvents)
+signal thrall_plague_pool(id: int, x: float, z: float, radius: float, seconds: float, dps: float)   ## a plague bearer `id` fell (not crumbled): the pool it leaves, dps a second of Withered (DmLegionEvents)
 signal thrall_hit_external(id: int, target: int, kind: String, damage: float)                  ## a thrall's blow on a boss: the boss brain takes it
 ## After a tick's events: the tick's length. For listeners that only care that a tick happened (the HUD's refresh timer, the benchmark).
 signal ticked(dt: float)
@@ -90,6 +92,7 @@ var _boss_ids := PackedInt32Array()
 var _focus_body: Node3D              ## puppet: the local hero, the centre of the crowd's level-of-detail (a host uses its first registered hero)
 var _dying := 0                      ## bodies that died and are not removed yet: they count toward the global cap, not toward the living
 var _names := {}                     ## int -> String, the core's def and area names, fetched once
+var _area_levels := {}               ## area -> the level of the last enemy made there, as told to the core (`set_area_level`: a toxic corpse's pool hurts at it)
 
 
 func _init() -> void:
@@ -103,6 +106,7 @@ func _init() -> void:
 func setup(opts: Dictionary) -> void:
 	data_dir = String(opts.get("data_dir", DEFAULT_DATA))
 	core = ClassDB.instantiate("DmCore")
+	_area_levels.clear()                    # a new core knows no area's level
 	core.set_seed(int(opts["seed"]) if opts.has("seed") else randi())
 	DmCoreData.load_all(core, data_dir)
 	puppet = bool(opts.get("puppet", false))
@@ -274,7 +278,11 @@ func _dispatch(raw: Array) -> void:
 		var b := i + 4                       # the event's first int
 		match type:
 			DmCoreEvents.ENEMY_SPAWNED:
-				enemy_spawned.emit(id, _def(ints[b]), ints[b + 1], ints[b + 2] != 0, _area(ints[b + 3]), ints[b + 4], floats[f], floats[f + 1], floats[f + 2])
+				var born_in := _area(ints[b + 3])
+				if not puppet and _area_levels.get(born_in, 0) != ints[b + 1]:   # a new level only: the core's toxic pools hurt at the level the area's enemies are made at
+					_area_levels[born_in] = ints[b + 1]
+					core.set_area_level(born_in, ints[b + 1])
+				enemy_spawned.emit(id, _def(ints[b]), ints[b + 1], ints[b + 2] != 0, born_in, ints[b + 4], floats[f], floats[f + 1], floats[f + 2])
 			DmCoreEvents.ENEMY_STATE:
 				enemy_state.emit(id, ints[b], ints[b + 1])
 			DmCoreEvents.ENEMY_DAMAGED:
@@ -333,9 +341,9 @@ func _dispatch(raw: Array) -> void:
 			DmCoreEvents.THRALL_STATUS:
 				thrall_status.emit(id, ints[b], ints[b + 1], floats[f])
 			DmCoreEvents.THRALL_BELL_HEAL:
-				thrall_bell_heal.emit(floats[f], floats[f + 1], floats[f + 2])
+				thrall_bell_heal.emit(id, floats[f], floats[f + 1], floats[f + 2])
 			DmCoreEvents.THRALL_PLAGUE_POOL:
-				thrall_plague_pool.emit(floats[f], floats[f + 1], floats[f + 2], floats[f + 3], floats[f + 4])
+				thrall_plague_pool.emit(id, floats[f], floats[f + 1], floats[f + 2], floats[f + 3], floats[f + 4])
 			DmCoreEvents.THRALL_HIT_EXTERNAL:
 				thrall_hit_external.emit(id, ints[b], core.thrall_kind_name(ints[b + 1]), floats[f])
 			DmCoreEvents.AFFIX_MOMENT:

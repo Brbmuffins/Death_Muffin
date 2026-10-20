@@ -5,6 +5,8 @@ extends SceneTree
 ##   A  player-side Bone Ward / Colossus guard: stat-based on hit exactly as the old game's DmPlayerRules / DmGameCombat.on_hurt (no timed status exists there either)
 ##   B  bosses ignore slow / root / chill like the old game's boss controller (the brain owns speed; only stun is capped, see DmBoss.stun)
 ##   C  the necromancer's primary weapon variants (staff pierce, sickle Withered, scythe arc) and the Splinters / Volley / Marrow-Tap runes on them
+##   E  the legion's two moments and the toxic pool: a toxic corpse's pool hurts at the level of the area it lies in, a Mourning Bell wraith's blow mends the heroes near it, and a plague bearer
+##      that falls leaves its owner's rot pool (the core's events, DmCoreHost -> DmLegionEvents)
 ##   D  rite sound coverage: every registered rite (the registry lists exactly the rite_<id>.gd files) plays the sounds the old game's DmAbilitySystem played (REF_SOUNDS: a table recorded from it before it was removed; the newer rites' are what they were written to play)
 ##      and gives a visible and an audible cue in the 0.25 s after the press (never silent, never only on landing)
 
@@ -204,6 +206,7 @@ func _run() -> void:
 	await _weapons()
 	await _bosses()
 	await _player_ward()
+	await _legion_events()
 	await _sounds()
 	check(errlog.errors.is_empty(), "no engine errors in the log (%d: %s)" % [errlog.errors.size(), ", ".join(errlog.errors.slice(0, 3))])
 	OS.remove_logger(errlog)
@@ -520,6 +523,154 @@ func _scythe(lo: Dictionary) -> void:
 	check(got > 0.0 and absf(got - want) < 0.05 * 3.0, "C: scythe on the boss - struck from %.1f m (%.1f of %.1f)" % [hb.position.distance_to(bp), got, want])
 	await end_fight()
 	reset()
+
+
+# =========================================================================================================================== E: the legion's events, the toxic pool's level
+
+## Every "toxic" blow on the hero and every bell heal / plague pool the core told, for the cases below (a lambda cannot count into a local, so a Dictionary).
+var _seen := {"toxic": [], "heals": 0, "swings": 0, "pools": []}
+
+
+func _legion_events() -> void:
+	host.target_hit.connect(func(_id: int, target: int, kind: int, damage: float) -> void:
+		if target == hb.core_id and DmCoreEvents.HIT_KINDS[kind] == "toxic":
+			(_seen["toxic"] as Array).append(damage))
+	host.thrall_bell_heal.connect(func(_id: int, _x: float, _z: float, _f: float) -> void: _seen["heals"] = int(_seen["heals"]) + 1)
+	host.thrall_swing.connect(func(_id: int, _sw: int, _t: int, _ax: float, _az: float, _d: float) -> void: _seen["swings"] = int(_seen["swings"]) + 1)
+	host.thrall_plague_pool.connect(func(id: int, x: float, z: float, r: float, secs_: float, dps: float) -> void: (_seen["pools"] as Array).append([id, x, z, r, secs_, dps]))
+	await _toxic_level()
+	await _bell()
+	await _plague_pool()
+
+
+## The damage a toxic pool's pulse does at an area level, from the data (the core's TOXIC_DMG x the damage scale of combat/enemies.json).
+func toxic_pulse(level: int) -> float:
+	var ds: Dictionary = DmCombatData.enemies()["damage_scale"]
+	return float(core.tuning()["TOXIC_DMG"]) * (float(ds["base"]) + float(ds["per_level"]) * float(level - 1))
+
+
+## A Carrion Sac made at `level` in `area` falls beside the hero and its toxic corpse ruptures into a pool under him: the first pulse's damage (-1 when none came).
+func first_pulse(area: String, level: int, where: Vector3) -> float:
+	reset()
+	hb.teleport(where)
+	(_seen["toxic"] as Array).clear()
+	var sac := host.spawn_enemy("sac", where + Vector3(0.5, 0.0, 0.0), level, 1.0, 1.0, false, area, false)
+	core.stun(sac, 3600.0)
+	host.damage(sac, 1.0e9, 0)
+	var wait := float(core.tuning()["TOXIC_RUPTURE"]) + 2.0 * float(core.tuning()["TOXIC_TICK"]) + 1.5   # the rupture, then the first pulse
+	await until(func() -> bool: return not (_seen["toxic"] as Array).is_empty(), wait)
+	var got: Array = _seen["toxic"]
+	hb.teleport(where + Vector3(0.0, 0.0, 12.0))   # out of the pool, which runs on for its seconds
+	hb.heal(1e6)
+	return float(got[0]) if not got.is_empty() else -1.0
+
+
+func _toxic_level() -> void:
+	var lv_a := 9
+	var lv_b := 23
+	var lv_c := 14
+	var a := await first_pulse("graves", lv_a, Vector3(0, 0, -18))
+	check(a > 0.0 and absf(a - toxic_pulse(lv_a)) < 0.001, "E: a toxic corpse's pool hurts at the area's level: level %d, %.2f a pulse, want %.2f (level 1 would be %.2f)" % [lv_a, a, toxic_pulse(lv_a), toxic_pulse(1)])
+	var b := await first_pulse("graves", lv_b, Vector3(14, 0, -18))
+	check(b > 0.0 and absf(b - toxic_pulse(lv_b)) < 0.001, "E: ...and follows the area when its enemies are made at another level: level %d, %.2f, want %.2f" % [lv_b, b, toxic_pulse(lv_b)])
+	var c := await first_pulse("ossuary", lv_c, Vector3(28, 0, -18))
+	check(c > 0.0 and absf(c - toxic_pulse(lv_c)) < 0.001, "E: ...each area has its own: the Ossuary at level %d, %.2f, want %.2f (the Graves are at %d)" % [lv_c, c, toxic_pulse(lv_c), lv_b])
+
+
+## A wraith raised with the Mourning Bell strikes a foe: each blow mends the hero near it for the bell's share of HIS maximum health. Out of the bell's range nothing.
+func _bell() -> void:
+	reset()
+	var tuning: Dictionary = DmCombatData.load_json("necro_weapons")["tuning"]["mourning_bell"]
+	var frac := float(tuning["allyHealFrac"])
+	var spec := SCYTHE_SPEC.duplicate()
+	spec["kind"] = "wraith"
+	spec["allyHeal"] = frac
+	_seen["heals"] = 0
+	_seen["swings"] = 0
+	var wraith := raise_at(hb.position + Vector3(2.0, 0.0, 0.0), spec)
+	check(wraith != 0 and absf(float(core.thrall_info(wraith)["ally_heal"]) - frac) < 1e-6, "E: a wraith raised with the Mourning Bell carries its share (%.3f)" % frac)
+	foe(hb.position + Vector3(2.0, 0.0, 5.0))
+	var max_hp := float(hb.p["stats"]["maxHp"])
+	hb.p["hp"] = max_hp * 0.3
+	var plain: Array[float] = []   # what a tick with no bell heal gives the hero (his own regeneration)
+	var healed: Array[float] = []  # a tick with one
+	var heals_before := 0
+	var prev := float(hb.p["hp"])
+	for i in 900:
+		await physics_frame
+		var now_hp := float(hb.p["hp"])
+		if int(_seen["heals"]) > heals_before:
+			healed.append(now_hp - prev)
+		else:
+			plain.append(now_hp - prev)
+		heals_before = int(_seen["heals"])
+		prev = now_hp
+		if healed.size() >= 3:
+			break
+	check(healed.size() >= 3 and int(_seen["heals"]) == int(_seen["swings"]), "E: the wraith strikes and the core tells a bell heal at each blow (%d heals, %d blows)" % [int(_seen["heals"]), int(_seen["swings"])])
+	plain.sort()
+	var regen := plain[plain.size() / 2] if not plain.is_empty() else 0.0
+	var ok := not healed.is_empty()
+	for d in healed:
+		ok = ok and absf((d - regen) - max_hp * frac) < max_hp * 0.0005
+	check(ok, "E: each blow mends the hero by %.2f%% of his maximum health (%s beyond the %.3f a tick he mends alone)" % [frac * 100.0, ", ".join(healed.map(func(d: float) -> String: return "%.2f" % (d - regen))), regen])
+	# The reach, exactly: the point of the blow 1 m inside the bell's range heals him, 1 m outside does not (the signal the core's event becomes).
+	var reach := float(tuning["allyHealRange"])
+	hb.p["hp"] = max_hp * 0.3
+	var at := hb.position
+	host.thrall_bell_heal.emit(0, at.x + reach + 1.0, at.z, frac)
+	check(absf(float(hb.p["hp"]) - max_hp * 0.3) < 1e-6, "E: a blow %.0f m from him (the bell reaches %.0f) mends nobody" % [reach + 1.0, reach])
+	host.thrall_bell_heal.emit(0, at.x + reach - 1.0, at.z, frac)
+	check(absf(float(hb.p["hp"]) - (max_hp * 0.3 + max_hp * frac)) < 1e-3, "E: a blow %.0f m from him mends him %.2f" % [reach - 1.0, max_hp * frac])
+	hb.p["hp"] = 0.0
+	hb.p["alive"] = false
+	host.thrall_bell_heal.emit(0, at.x, at.z, frac)
+	check(float(hb.p["hp"]) == 0.0, "E: ...and a fallen hero is not mended")
+	hb.p["alive"] = true
+	hb.heal(1e6)
+
+
+## A plague bearer falls beside a foe: the pool it leaves is the owner's rot cloud, it slows and withers what stands in it, and it runs out. A crumbled bearer leaves none.
+func _plague_pool() -> void:
+	reset()
+	var P: Dictionary = DmCombatData.statuses()["PLAGUE_BURST"]
+	var at := hb.position + Vector3(3.0, 0.0, 0.0)
+	var bearer := _bearer(at)
+	check(bearer != 0 and String(core.thrall_info(bearer)["kind"]) == "plaguebearer", "E: a corpse of a Carrion Sac rises as a plague bearer")
+	var victim := foe(at + Vector3(float(P["poolRadius"]) * 0.5, 0.0, 0.0))
+	(_seen["pools"] as Array).clear()
+	var dmg := float(core.thrall_info(bearer)["damage"])
+	var zones_before := (caster.mem("miasma").get("zones", []) as Array).size()
+	core.kill_thrall(bearer, "killed")
+	await ticks(3)
+	var pools: Array = _seen["pools"]
+	check(pools.size() == 1 and absf(float(pools[0][3]) - float(P["poolRadius"])) < 1e-4 and absf(float(pools[0][4]) - float(P["poolMs"]) / 1000.0) < 1e-4 and absf(float(pools[0][5]) - dmg * float(P["poolDpsShare"])) < 1e-3 * dmg,
+		"E: the core tells one pool, %s m wide for %s s at the bearer's damage x %s" % [str(P["poolRadius"]), str(float(P["poolMs"]) / 1000.0), str(P["poolDpsShare"])])
+	var zones: Array = caster.mem("miasma").get("zones", [])
+	var made: Dictionary = zones.back() if zones.size() > zones_before else {}
+	check(not made.is_empty() and made["kind"] == "rot" and absf(float(made["x"]) - at.x) < 0.01 and absf(float(made["z"]) - at.z) < 0.01 and absf(float(made["r"]) - float(P["poolRadius"])) < 1e-4,
+		"E: the fallen bearer's owner now has a rot pool where it stood (%d zones, was %d)" % [zones.size(), zones_before])
+	check(not made.is_empty() and absf(float(made["dps"]) - dmg * float(P["poolDpsShare"])) < 1e-3 * dmg, "E: ...its Withered does the bearer's damage x the pool share a second")
+	var drawn := evs_of("miasma", "pool")
+	check(drawn.size() == 1 and absf(float(drawn[0]["ev"]["r"]) - float(P["poolRadius"])) < 1e-4 and absf(float(drawn[0]["ev"]["life"]) - float(P["poolMs"]) / 1000.0) < 1e-4, "E: ...and every peer is told to draw it (one \"pool\" event, %d)" % drawn.size())
+	await secs(1.3)   # the first pulse
+	check(status_stacks(victim, &"withered") >= 1 and status_stacks(victim, &"slow") >= 1, "E: a foe in the pool is withered (%d) and slowed (%d)" % [status_stacks(victim, &"withered"), status_stacks(victim, &"slow")])
+	await secs(float(P["poolMs"]) / 1000.0)
+	zones = caster.mem("miasma").get("zones", [])
+	check(zones.size() == zones_before and status_stacks(victim, &"slow") == 0, "E: the pool runs out after %s s and the slow lifts with it" % str(float(P["poolMs"]) / 1000.0))
+	# A bearer that crumbles (over the cap, its owner gone) does not burst and leaves nothing.
+	var crumbler := _bearer(hb.position + Vector3(-3.0, 0.0, 0.0))
+	(_seen["pools"] as Array).clear()
+	core.kill_thrall(crumbler, "crumbled")
+	await ticks(3)
+	check((_seen["pools"] as Array).is_empty() and (caster.mem("miasma").get("zones", []) as Array).size() == zones_before, "E: a crumbled plague bearer leaves no pool")
+
+
+## A plague bearer of the hero's legion at `pos`: a toxic corpse of a Carrion Sac raised by an ordinary exhume (the rising thrall stands up after a moment).
+func _bearer(pos: Vector3) -> int:
+	g.corpses.add_corpse(pos.x, pos.z, "toxic", "sac", false, 0.0, 1.0, "graves")
+	var r: Dictionary = legion().raise(SCYTHE_SPEC, pos)
+	return int((r["thralls"] as Array)[0]) if bool(r["ok"]) and not (r["thralls"] as Array).is_empty() else 0
 
 
 # =========================================================================================================================== D: sounds

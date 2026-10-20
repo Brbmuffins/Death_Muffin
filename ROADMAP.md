@@ -408,10 +408,13 @@ set with Helix then.
 ## Polish list
 
 Worked through beside the phases, top first. Each change is shown to the team with screenshots before it ships.
-- [ ] **Fix: four combat rules the rebuild found broken** (Helix, 2026-10-16: fix them after launch day; the old game had them too).
-  - Toxic corpse pools. Now: they always hurt as if at level 1. After: they hurt at the area's level.
-  - The plague bearer. Now: its toxic pool never appears when it dies. After: it leaves its pool.
-  - The Mourning Bell wraith. Now: its heal on the monsters around it never happens. After: it heals them, as designed.
+- [x] **Fix: four combat rules the rebuild found broken** (Helix, 2026-10-16: fix them after launch day; the old game had them too).
+  - Toxic corpse pools. Done 2026-10-20: they always hurt as if at level 1 → they hurt at the area's level (the level its enemies are made at: a
+    pool in a deeper area, or on a deeper Depths floor, hits as hard as that area's enemies do).
+  - The plague bearer. Done 2026-10-20: its toxic pool never appeared when it died → it leaves its pool, the owner's rot cloud (it slows and
+    withers what stands in it for 5 seconds, and the owner gets the kills).
+  - The Mourning Bell wraith. Done 2026-10-20: its heal never happened → each wraith blow heals every hero near it (the owner and the party,
+    within 14 metres) for 2% of their health, as the item says. The thralls are not healed (the old game's design); say if they should be.
   - Bosses and statuses. Done 2026-10-19: Fracture (Marrow Spear, Ivory Cleave, Bone Prison) did nothing to a boss → a boss takes 15% more
     a stack, up to 45%, like any enemy, so those rites shorten boss fights. (Sanctify is an enemy priest's blessing that makes its target
     take less; it now protects a boss too.)
@@ -501,6 +504,8 @@ KNOWN-GAPS.md instead.
 - The party session on each drop (a column on `character_drop_events` set from the claim's session id) and the XP and gold a member earns in
   a session on its `party_session_members` row, so the play reports' server numbers get drops per hour and an exact XP and gold per
   session instead of the progress saves' time window. Section: Phase 2, track D. 2026-10-18.
+- A green "+N" over a hero when a Mourning Bell wraith heals them (today the bell's 2% shows only in the health bar). Section: polish list,
+  necromancer polish. 2026-10-20.
 - Split the Discord agent runner's `runner/core.cjs` (about 2,000 lines) by job: pictures and videos, ships, threads, so each change to it is
   smaller and its reinstall and practice run less risky. Section: Phase 2, track E. 2026-10-19.
 
