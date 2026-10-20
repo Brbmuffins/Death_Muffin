@@ -64,9 +64,6 @@ player part of a gain until it is fixed; few real sessions ran on the gains save
 
 ## Combat and statuses
 
-- **Found while building the core, approved to fix** (Helix, 2026-10-16; the core already emits each one; ROADMAP polish list): toxic corpse pools
-  always hit as at level 1 (nothing sets the area level); a fallen plague bearer's pool never appears and the Mourning Bell wraith's ally heal
-  never happens (signals nobody listens to).
 - **Easy auto combat parks the hero in pockets of tombstones:** it steers straight at the nearest enemy, with no path round the graves (found
   when the core was compared with the old game, DECISIONS B50).
 - Barrier has no decay (`client/next/status/README.md`), and the pools of a boss that resets linger their remaining seconds (`client/next/bosses/README.md`).

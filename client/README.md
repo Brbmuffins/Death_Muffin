@@ -35,7 +35,7 @@ One short README per system folder: how the system works and its known gaps (thi
 | Loot drops, item cards, tooltips, dropped gear | `next/rewards/`, `loot_view/`, `ui/widgets/dm_item_card.gd`, `ui/widgets/dm_item_tooltip.gd`, `game_ui/dm_ui_inventory.gd` (Drop); rules and data `rules/loot/`, `data/content/` | `loot.cjs`, `loot-instances.cjs`, `ground.cjs` |
 | Enemies, bosses, Grave Surges | the combat core ([native/README.md](../native/README.md)), `next/spawn/`, `next/areas/` (the surges), `next/bosses/`, `game/dm_boss_view.gd`, `crowd/`; data `data/combat/enemies.json`, `sim/` | `kills.cjs`, `boss-key.cjs` |
 | Hero body, avatar, death pose | `next/hero/dm_hero_body.gd`, `game/dm_avatar.gd` | |
-| Thralls, corpses, affixes | the combat core (native/README.md "Affixes, corpses and thralls"), `core/dm_core_legion.gd`, `core/dm_core_corpses.gd`, `core/dm_affix_roll.gd` | |
+| Thralls, corpses, affixes | the combat core (native/README.md "Affixes, corpses and thralls"), `core/dm_core_legion.gd`, `core/dm_core_corpses.gd`, `core/dm_affix_roll.gd`; the Mourning Bell's heal and a fallen plague bearer's pool `next/rites/dm_legion_events.gd` | |
 | Co-op party, friends, Social window | `session/`, `net/relay/`, `next/party/`, `next/next_net.gd`, `ui/panels/dm_social_window.gd`, `game_ui/dm_ui_social.gd` | `party-sessions.cjs`, `friends.cjs` (and the lobby, `server/death-muffin/lobby/`) |
 | Crafting, gathering, garden, labor | `ui/panels_b/`, `next/gathering/`; rules and data `rules/gathering/`, `data/gathering/` | `gathering/`, `garden.cjs`, `labor.cjs` |
 | F3 performance overlay | `main/perf_overlay.gd`, `next/perf/` | |
@@ -360,6 +360,9 @@ Timers are the caster's (`c.after(ms, fn)` on the body's clock, a physics tick).
 - **A status on an enemy or thrall is the core's** (`apply_status`): the hero is its source, so the last stacker of a Withered owns the kill; the Miasma's lift of the Shrouded ward is `cover_miasma` (0.35 s of game time, native/README.md "Affixes"), asked for every enemy in a cloud (the core ignores a body
   without the ward).
 - **Carrion Seed's fields live in the corpse field's notes** (`DmCoreCorpses.notes`, dropped with the corpse); its arming and expiry run on the caster's clock in ms, and a seed ends with its corpse.
+- **Two of the legion's moments are the core's events that the game acts on** (`DmLegionEvents`, `next/rites/dm_legion_events.gd`, the host's): a wraith raised with the Mourning Bell heals every living hero within the bell's range for its share of THEIR maximum health at each blow
+  (`DmCoreHost.thrall_bell_heal`), and a plague bearer that falls other than crumbling leaves its owner's friendly rot cloud (`thrall_plague_pool` -> `rite_miasma.gd` `plague_pool`, the toxic Corpse Explosion's rules; the cloud is drawn on every peer by the caster's event).
+  The core's toxic corpse pools hurt at the area's level: `DmCoreHost` hands the core the level of the enemies made in each area (`set_area_level`, once per change), which the director, the Depths floors and the bosses' adds already give them.
 - **Spear rally's mark** is written to each thrall by the rite each tick while the mark lasts (`set_thrall_mark` from `thrall_info`'s target); the thrall does not read it. Legion size bounds the cost (Legion Champion 5 only).
 - **Wraith Walk's green flame is the core's status** (`wraithfire`, a damage over time like Hemorrhage, its damage a second set by the cast), so its kill credit comes from the event buffer at the end of the tick, as Withered's does; the Reaper's swings, harvest and wisps strike through `deal` and
   know their kills at once. Her life steal counts the enemies a swing struck.

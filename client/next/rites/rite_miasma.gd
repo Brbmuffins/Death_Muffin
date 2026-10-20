@@ -40,7 +40,7 @@ func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
 	return ""
 
 
-## A friendly Withered cloud (also what a toxic Corpse Explosion leaves: sim kind "rot", same rules). Host.
+## A friendly Withered cloud (also what a toxic Corpse Explosion and a fallen plague bearer leave: sim kind "rot", same rules). Host.
 func add_zone(c: DmRiteCaster, x: float, z: float, r: float, dps: float, duration_ms: float, cap: float, kind: String = "miasma") -> Dictionary:
 	var mm := c.mem(id)
 	var zones: Array = mm.get_or_add("zones", [])
@@ -50,6 +50,13 @@ func add_zone(c: DmRiteCaster, x: float, z: float, r: float, dps: float, duratio
 		"acc": 0.0, "mv": 0.0, "kind": kind}
 	zones.append(zone)
 	return zone
+
+
+## Host: the rot pool a fallen plague bearer of this caster's legion leaves (the core's `thrall_plague_pool`, told by DmLegionEvents): a friendly rot cloud by the rules of
+## the toxic Corpse Explosion's (kind "rot", the rot's Withered cap), `r` wide for `seconds`, its `dps` the bearer's damage x PLAGUE_BURST.poolDpsShare. Every peer draws it.
+func plague_pool(c: DmRiteCaster, x: float, z: float, r: float, dps: float, seconds: float) -> void:
+	add_zone(c, x, z, r, dps, seconds * 1000.0, float(DmSimData.DETONATE["rotWitheredCap"]), "rot")
+	c.broadcast({"t": "pool", "rite": id, "by": c.peer_id, "x": x, "z": z, "r": r, "life": seconds})
 
 
 func _land(c: DmRiteCaster, m: Dictionary) -> void:
@@ -241,6 +248,8 @@ func play(c: DmRiteCaster, ev: Dictionary) -> void:
 				vis[int(ev["zid"])] = v
 				follow = func() -> Variant: return _follow(v)
 			c.fx.miasma_land(float(ev["x"]), float(ev["z"]), float(ev["r"]), creep > 0.0, follow, bool(ev.get("contagion", false)))
+		"pool":
+			c.fx.rot_pool(float(ev["x"]), float(ev["z"]), float(ev["r"]), float(ev["life"]))
 		"move":
 			var vs: Dictionary = c.mem(id).get("vis", {})
 			if vs.has(int(ev["zid"])):
