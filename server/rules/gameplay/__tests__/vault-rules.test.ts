@@ -12,9 +12,12 @@ const info: VaultInfo = (id) => TABLE[id] ?? { maxStack: 1, itemType: 'material'
 const row = (slot: number, itemId: string, qty = 1, fixed = false): VaultRow => ({ slot, itemId, qty, ...(fixed ? { fixed } : {}) });
 
 describe('vault rules', () => {
-  it('sizes: a 48-slot bag and a 120-slot vault', () => {
-    expect(BAG_SLOTS).toBe(48);
-    expect(VAULT_SLOTS).toBe(120);
+  it('the bag and the vault take exactly their own number of slots (client parity pins the sizes themselves)', () => {
+    for (const [side, size] of [['bag', BAG_SLOTS], ['vault', VAULT_SLOTS]] as const) {
+      expect(Number.isInteger(size) && size > 0, side).toBe(true);
+      expect(moveToSlot([row(0, 'staff')], [], 'bag', 0, side, size - 1, undefined, info).ok, `${side} last slot`).toBe(true);
+      expect(moveToSlot([row(0, 'staff')], [], 'bag', 0, side, size, undefined, info).ok, `${side} past the end`).toBe(false);
+    }
   });
 
   it('deposits stack first, never mutate their inputs, and move partial quantities', () => {

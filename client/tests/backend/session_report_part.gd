@@ -67,7 +67,7 @@ func _main() -> void:
 	ok(not (await stranger.session_get(sid)).ok, "a stranger cannot read the session")
 	# bounds
 	var big := []
-	for i in 81:
+	for i in DmOfflineSessions.MAX_GROUPS_PER_MEMBER + 1:
 		big.append(_group(1))
 	ok(not (await host.session_report(sid, 3, [{"characterId": fc, "groups": big, "bosses": []}])).ok, "too many groups is refused")
 	ok(not (await host.session_report(sid, 0, [{"characterId": fc, "groups": grp, "bosses": []}])).ok, "batch 0 is refused")

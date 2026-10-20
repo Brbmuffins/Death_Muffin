@@ -38,10 +38,11 @@ func _run() -> void:
 	_check(DmHudBrewChip.sub_text("elixir", false, false, 0, 3) == "×3", "belt: count")
 	_check(DmHudBrewChip.sub_text("elixir", false, false, 0, 0) == "ready", "belt: ready")
 	_check(DmHudKit.commas(1234567) == "1,234,567" and DmHudKit.commas(999) == "999" and DmHudKit.commas(0) == "0", "number commas")
-	_check(DmHud.wave_milestone_text(0) == ["Elite Vanguard at tier 3", false], "milestone: next one to reach")
-	_check(DmHud.wave_milestone_text(3) == ["Elite Vanguard", true], "milestone: first active")
-	_check(DmHud.wave_milestone_text(6) == ["Restless Crypts +1", true], "milestone: top + count")
-	_check(DmHud.wave_milestone_text(8) == ["Nightfall +2", true], "milestone: all three")
+	# the dial's line, from the wave milestones of the data (first to last, by tier): the next one to reach, then the top active one with the count of the others
+	var ms: Array = DmProgContent.upgrades()["waveMilestones"]
+	_check(not ms.is_empty() and DmHud.wave_milestone_text(int(ms[0]["tier"]) - 1) == ["%s at tier %d" % [ms[0]["name"], int(ms[0]["tier"])], false], "milestone: next one to reach")
+	for k in ms.size():
+		_check(DmHud.wave_milestone_text(int(ms[k]["tier"])) == [String(ms[k]["name"]) + (" +%d" % k if k > 0 else ""), true], "milestone: tier %d has %d active" % [int(ms[k]["tier"]), k + 1])
 
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -105,7 +106,7 @@ func _run() -> void:
 	_check(not hud.dmg_buy.disabled, "can afford damage")
 	_check(hud.wave_cost.text == "1,126g" and not hud.wave_buy.disabled, "wave cost")
 	_check(hud.dial_tier.text == "Tier 4 / 4" and hud.dial_plus.disabled and not hud.dial_minus.disabled, "dial at its ceiling")
-	_check(hud.dial_ms.text == "Elite Vanguard", "dial milestone line")
+	_check(hud.dial_ms.text == String(DmHud.wave_milestone_text(int(DmHudMock.combat()["wave"]["active"]))[0]), "dial milestone line")
 	var poor := DmHudMock.combat()
 	poor["gold"] = 100
 	hud.apply(poor)
@@ -296,10 +297,13 @@ func _hud_scale_tests(sz: Vector2i) -> void:
 	sv.add_child(hud)
 	await _frames(3)
 	var tag := " [%dx%d]" % [sz.x, sz.y]
-	_check(is_equal_approx(DmSettings.clamp_hud_scale(0.1), 0.75) and is_equal_approx(DmSettings.clamp_hud_scale(9), 1.3) and DmSettings.clamp_hud_scale("x") == 1.0, "clamp_hud_scale bounds")
+	_check(is_equal_approx(DmSettings.clamp_hud_scale(0.1), DmHud.HUD_SCALE_MIN) and is_equal_approx(DmSettings.clamp_hud_scale(9), DmHud.HUD_SCALE_MAX) and DmSettings.clamp_hud_scale("x") == 1.0, "clamp_hud_scale bounds")
 	# fit rule: never forced below 100 %, never above what the frame width allows
-	_check(DmHud.fit_scale(1.3, 1600.0) < 1.3 and DmHud.fit_scale(1.3, 1600.0) >= 1.0, "130%% is held back on the narrowest frame (%.3f)" % DmHud.fit_scale(1.3, 1600.0))
-	_check(DmHud.fit_scale(1.3, 2400.0) == 1.3 and DmHud.fit_scale(0.75, 800.0) == 0.75 and DmHud.fit_scale(1.3, 900.0) == 1.0, "fit_scale: roomy frame keeps it, shrink is never limited, tiny frame floors at 100%")
+	var big := DmHud.HUD_SCALE_MAX
+	var small := DmHud.HUD_SCALE_MIN
+	var narrow := DmHud.MIN_FIT_WIDTH * 1.07   # a frame that holds a little more than 100 %
+	_check(DmHud.fit_scale(big, narrow) < big and DmHud.fit_scale(big, narrow) >= 1.0, "the largest size is held back on a narrow frame (%.3f)" % DmHud.fit_scale(big, narrow))
+	_check(DmHud.fit_scale(big, DmHud.MIN_FIT_WIDTH * big + 100.0) == big and DmHud.fit_scale(small, 800.0) == small and DmHud.fit_scale(big, DmHud.MIN_FIT_WIDTH * 0.6) == 1.0, "fit_scale: roomy frame keeps it, shrink is never limited, tiny frame floors at 100%")
 	var m := DmHudMock.combat()
 	m["minimap"] = DmHudMock.minimap()
 	hud.apply(m)
@@ -308,7 +312,7 @@ func _hud_scale_tests(sz: Vector2i) -> void:
 	var menu_btn: Button = hud.menu_btns["inventory"]
 	menu_btn.pressed.connect(func() -> void: hits["menu"] += 1)
 	hud.navigate.connect(func(_x: float, _z: float) -> void: hits["nav"] += 1)
-	for want in [1.0, 0.75, 1.3, 1.0]:
+	for want in [1.0, DmHud.HUD_SCALE_MIN, DmHud.HUD_SCALE_MAX, 1.0]:
 		hud.set_hud_scale(want)
 		await _frames(3)
 		var s := hud.effective_scale
@@ -349,7 +353,7 @@ func _hud_scale_tests(sz: Vector2i) -> void:
 			var dx: float = got[1].x - got[0].x
 			_check(absf(dx - 20.0 / s / DmHudMinimap.SCALE) < 0.01, "minimap click offset follows the scale at %s (dx %.3f)%s" % [str(want), dx, tag])
 	# node tip stays on the screen when the frame is scaled
-	for want in [0.75, 1.3]:
+	for want in [DmHud.HUD_SCALE_MIN, DmHud.HUD_SCALE_MAX]:
 		hud.set_hud_scale(want)
 		await _frames(2)
 		hud.node_tip("<b>Oak</b><div>12 XP</div>", hud.size.x - 4.0, hud.size.y - 4.0)

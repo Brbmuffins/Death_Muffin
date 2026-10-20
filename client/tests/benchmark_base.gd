@@ -7,8 +7,6 @@ extends SceneTree
 const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const SCRATCH_ROOT := "user://benchmark_test"   ## every run of this suite makes its own folder in here and removes it at the end
 const BAKE := ["grave_robber", "bone_hound"]
-const STD_HP := 272.928627      ## the health every enemy has (today's DmBenchmark.standard_stats at c47c35a1)
-const STD_DMG := 10.848627
 
 
 class ErrorLog:

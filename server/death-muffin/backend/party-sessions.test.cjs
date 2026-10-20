@@ -18,6 +18,8 @@ const NECRO = { unlockedAreas: ['chapterhouse', 'graves'], ascension: 0 };
 const CHARS = { 11: { id: 11, account_id: 1, level: 10 }, 12: { id: 12, account_id: 2, level: 10 }, 13: { id: 13, account_id: 3, level: 10 }, 14: { id: 14, account_id: 4, level: 10 }, 15: { id: 15, account_id: 5, level: 10 }, 19: { id: 19, account_id: 9, level: 10 } };
 const group = (over = {}) => ({ area: 'graves', def: 'robber', level: 1, elite: false, tier: 0, diff: 'medium', rank: 0, xpMult: 1, goldMult: 1, shardMult: 1, n: 50, ...over });
 const mixed = (k) => [['robber', 30], ['hound', 25], ['penitent', 20], ['bat', 10], ['moth', 10], ['rat', 5]].map(([def, n]) => group({ def, n: n * k }));
+/** A batch small enough for any kind to pass the kill ledger's mix rule whole. */
+const FEW = Math.min(10, rules.KILLS.MIX_FLAT);
 const mixedXp = (k) => [['robber', 30], ['hound', 25], ['penitent', 20], ['bat', 10], ['moth', 10], ['rat', 5]].reduce((s, [def, n]) => s + n * k * Math.round(rules.killXpBase(def, 1, false, 0, 'medium')), 0);
 
 function setup(env = ENFORCE, extra = {}) {
@@ -178,10 +180,11 @@ test('caps apply per member exactly as for a solo report: rate, level, ground, e
   // Rate: a fresh ledger starts with a few minutes in the bank; 100k kills in one batch is cut to the bucket.
   const r = await t.report(sid, 1, { batch: 1, members: [entry(12, mixed(1000))] });
   const m = r.body.data.members[0];
-  assert.ok(m.claimedKills === 100_000 && m.accepted.kills < 2_000, `rate cap cut ${m.claimedKills} to ${m.accepted.kills}`);
+  const firstBank = rules.killsPerMin(NECRO.unlockedAreas) * rules.KILLS.FIRST_MINUTES;
+  assert.ok(m.claimedKills === 100_000 && m.accepted.kills <= firstBank, `rate cap cut ${m.claimedKills} to ${m.accepted.kills}`);
   assert.ok(t.fake.audit.some((a) => a.kind === 'kill_rate' && a.character_id === 12));
-  // Level plausibility: a level-900 robber is not plausible (a locked ground is no longer a reason: a carried member's kills count, see below).
-  const r2 = await t.report(sid, 1, { batch: 2, members: [entry(13, [group({ level: 900, n: 20 })])] });
+  // Level plausibility: a robber one level above what the ground can field is not plausible (a locked ground is no longer a reason: a carried member's kills count, see below).
+  const r2 = await t.report(sid, 1, { batch: 2, members: [entry(13, [group({ level: rules.maxEnemyLevel('graves', CHARS[13].level, 0) + 1, n: 20 })])] });
   assert.equal(r2.body.data.members[0].accepted.kills, 0);
   assert.ok(t.fake.audit.filter((a) => a.kind === 'kill_invalid' && a.character_id === 13).length >= 1);
   // Elites are capped by share.
@@ -189,8 +192,8 @@ test('caps apply per member exactly as for a solo report: rate, level, ground, e
   assert.ok(r3.body.data.members[0].accepted.kills < 420);
   assert.ok(t.fake.audit.some((a) => (a.kind === 'kill_elite' || a.kind === 'kill_mix') && a.character_id === 11), 'elite/mix cap fired');
   // Bosses: rate-limited to the member's own boss bucket.
-  const r4 = await t.report(sid, 1, { batch: 4, members: [entry(12, [], { bosses: [{ boss: 'gravedigger_king', tier: 0, diff: 'medium', first: true, n: 20 }] })] });
-  assert.ok(r4.body.data.members[0].accepted.bosses < 20);
+  const r4 = await t.report(sid, 1, { batch: 4, members: [entry(12, [], { bosses: [{ boss: 'gravedigger', tier: 0, diff: 'medium', first: true, n: 20 }] })] });
+  assert.ok(r4.body.data.members[0].accepted.bosses > 0 && r4.body.data.members[0].accepted.bosses < 20);
   // The same member alone, same claims, gets the same verdict from the ledger directly.
   const solo = sessionsFake({ characters: CHARS, necro: NECRO });
   const kills = require('./kills.cjs');
@@ -249,8 +252,8 @@ test('bounds: malformed, oversized and repeated-member reports are refused whole
   await bad({ batch: 'x', members: [entry(12, mixed(1))] }, 'batch must be a number');
   await bad({ batch: 1, members: [] }, 'empty');
   await bad({ batch: 1, members: [entry(12, mixed(1)), entry(12, mixed(1))] }, 'duplicate member');
-  await bad({ batch: 1, members: [1, 2, 3, 4, 5].map((i) => entry(10 + i, mixed(1)))}, 'five members');
-  await bad({ batch: 1, members: [entry(12, Array.from({ length: 81 }, () => group()))] }, 'too many groups');
+  await bad({ batch: 1, members: Array.from({ length: ps.LIMITS.MAX_MEMBERS + 1 }, (_, i) => entry(11 + i, mixed(1))) }, 'more members than a party holds');
+  await bad({ batch: 1, members: [entry(12, Array.from({ length: ps.LIMITS.MAX_GROUPS_PER_MEMBER + 1 }, () => group()))] }, 'too many groups');
   await bad({ batch: 1, members: [{ groups: mixed(1) }] }, 'no characterId');
   assert.equal((await t.report('zzz', 1, { batch: 1, members: [entry(12, mixed(1))] })).status, 400);
   assert.equal((await t.report('a'.repeat(32), 1, { batch: 1, members: [entry(12, mixed(1))] })).status, 404);
@@ -263,7 +266,7 @@ test('rate limits: per session and per host', async () => {
     const r = await t.report(sid, 1, { batch: i, members: [entry(12, [group({ n: 1 })])] });
     if (r.status === 429) limited++;
   }
-  assert.equal(limited, 5, 'the 31st..35th report in a minute are refused');
+  assert.equal(limited, 5, 'the five reports past the minute\'s limit are refused');
   const refused = await t.report(sid, 1, { batch: 99, members: [entry(12, [group({ n: 1 })])] });
   assert.equal(refused.body.code, 'rate_limited');
   assert.equal((await t.view(sid, 1)).body.data.lastBatch, ps.LIMITS.REPORTS_PER_SESSION_MIN, 'a refused batch is not consumed: the host may resend it');
@@ -369,10 +372,10 @@ test('routes: wired through requireAuth with the account from the token', async 
 
 test('a carried member earns kills in a ground it has not opened; the Depths and a bad enemy are still refused', async () => {
   const { t, sid } = await party();
-  const nave = [group({ area: 'nave', def: 'robber', level: 9, n: 20 })];
+  const nave = [group({ area: 'nave', def: 'robber', level: 9, n: FEW })];
   const r = await t.report(sid, 1, { batch: 1, members: [entry(13, nave)] });
-  assert.equal(r.body.data.members[0].accepted.kills, 20, "13 has only the Graves open and still gets the Nave kills");
-  assert.equal(JSON.parse(t.fake.ledger(13).kill_credit).nave, 20, 'and the ledger backs them for its next necromancer save');
+  assert.equal(r.body.data.members[0].accepted.kills, FEW, "13 has only the Graves open and still gets the Nave kills");
+  assert.equal(JSON.parse(t.fake.ledger(13).kill_credit).nave, FEW, 'and the ledger backs them for its next necromancer save');
   const d = await t.report(sid, 1, { batch: 2, members: [entry(13, [group({ area: 'depths', def: 'robber', n: 5 })])] });
   assert.equal(d.body.data.members[0].accepted.kills, 0, 'the Depths stay a solo descent');
   const solo = sessionsFake({ characters: CHARS, necro: NECRO });
@@ -383,14 +386,16 @@ test('a carried member earns kills in a ground it has not opened; the Depths and
 test('an objective group (a party kill the member was not paid for) counts kills and earns no XP, gold or shards', async () => {
   const { t, sid } = await party();
   const paid = await t.report(sid, 1, { batch: 1, members: [entry(12, [group({ def: 'robber', elite: true, n: 10 })])] });
-  assert.equal(paid.body.data.members[0].accepted.kills, 9, 'the elite share caps the batch');
+  const eliteRoom = Math.ceil(10 * rules.maxEliteShare('graves') * rules.KILLS.ELITE_FACTOR) + rules.KILLS.ELITE_FLAT;
+  const paidKills = paid.body.data.members[0].accepted.kills;
+  assert.equal(paidKills, Math.min(10, eliteRoom), 'the elite share caps the batch');
   const xp1 = t.fake.ledger(12).xp_credit;
   const gold1 = t.fake.ledger(12).gold_credit;
   const shards1 = t.fake.ledger(12).shard_credit;
   assert.ok(xp1 > 0 && shards1 > 0);
-  const o = await t.report(sid, 1, { batch: 2, members: [entry(12, [group({ def: 'robber', n: 10, objective: true })])] });
-  assert.equal(o.body.data.members[0].accepted.kills, 10);
-  assert.equal(JSON.parse(t.fake.ledger(12).kill_credit).graves, 19, 'the area tally moves');
+  const o = await t.report(sid, 1, { batch: 2, members: [entry(12, [group({ def: 'robber', n: FEW, objective: true })])] });
+  assert.equal(o.body.data.members[0].accepted.kills, FEW);
+  assert.equal(JSON.parse(t.fake.ledger(12).kill_credit).graves, paidKills + FEW, 'the area tally moves');
   assert.equal(t.fake.ledger(12).xp_credit, xp1, 'no xp');
   assert.equal(t.fake.ledger(12).gold_credit, gold1, 'no gold');
   assert.equal(t.fake.ledger(12).shard_credit, shards1, 'no shards');

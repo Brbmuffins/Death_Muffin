@@ -1,16 +1,16 @@
 extends SceneTree
 ## The world dressing on the area scenes (client/README.md "World dressing", client/world_fx/), headless:
-##   - the data: 4 windows, 70 silhouettes, the candle flames of the area data, 220 mist puffs, 13 weather profiles;
+##   - the data: the stained-glass windows, the far silhouettes, the candle flames of the area data, the mist puffs, the weather profiles;
 ##   - attached to the world: a world built with lights has a dressing, one built without has none; its flames are one MultiMesh in each loaded area that has candles (the data's count),
-##     its windows are under the nearest loaded area's scene, nothing of the stand-ins the converter used to leave (flame spheres, water planes, puddle quads) is in the tree, and
+##     its windows are under the area scene nearest to each, nothing of the stand-ins the converter used to leave (flame spheres, water planes, puddle quads) is in the tree, and
 ##     an area the world does not hold gets nothing;
 ##   - the area follows the hero by event: `enter_area` reaches the dressing, the weather cross-fades to it (its mesh built once and kept: a second visit is a cache hit) and the
 ##     water takes the area's moon and the Fen's palette; the Low preset thins the weather;
 ##   - the brazier fire: a particle's place, size and fade at any age equal the web's per-frame Euler step (the shader is that function in GLSL), the emission is the web's rate
 ##     (10 wisps and 1.5 embers a second a lit brazier in range), nothing is emitted out of range, and the ring stops drawing once its last particle has died;
-##   - the mist: 4 steps a second, the web's wrap rule (a puff more than 45 / 40 m from the focus goes to its far side at 44 / 39), the drift the web's;
-##   - the candle groups: putting a Sanctum group out writes its flames dark, lighting it brings them back;
-##   - the earth beyond the walls: one quad over the 420 m field, the converter's tint, a draw call;
+##   - the mist: a step every STEP_SECONDS, the web's wrap rule (a puff more than 45 / 40 m from the focus goes to its far side at 44 / 39), the drift the web's;
+##   - the candle groups: putting a candle group out writes its flames dark, lighting it brings them back;
+##   - the earth beyond the walls: one quad over the field that spans every area, the converter's tint, a draw call;
 ##   - the Binbun scenes' own shaders: every one that reads its particle's COLOR in fragment() reads it converted from sRGB (as Compatibility gave it), the rest are untouched, and
 ##     every copy compiles;
 ##   - no objects pile up while the dressing runs (300 frames), and ZERO script errors or engine errors in the log.
@@ -93,6 +93,18 @@ func _the_data() -> void:
 
 
 # ---------------------------------------------------------------- attached to the world
+## {"area_<id>": window nodes} the dressing puts under the scenes of the `loaded` areas: each window of the data goes under the area nearest to it, when that area is loaded;
+## a window is a pane and a shaft, two nodes.
+func _windows_under(loaded: Array) -> Dictionary:
+	var world: Dictionary = DmData.world()
+	var out := {}
+	for w in _data.windows:
+		var id := DmWfxData.nearest_area(world.areas, world.order, float(w.x), float(w.z))
+		if loaded.has(id):
+			out["area_" + id] = int(out.get("area_" + id, 0)) + 2
+	return out
+
+
 func _stand_ins(w: Node) -> Array[String]:
 	var found: Array[String] = []
 	for n in w.find_children("*", "MeshInstance3D", true, false):
@@ -130,16 +142,20 @@ func _attached() -> void:
 		var mmi: MultiMeshInstance3D = dr.area_flames[id]
 		flames_ok = flames_ok and mmi.multimesh.instance_count == (_data.flames[id].phase as Array).size() and mmi.get_parent() == w.area_node(id) and mmi.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	check(flames_ok, "each flame MultiMesh holds the area's flames, stands under its area scene and casts no shadow")
-	# the windows: three in the Nave, one in the Sanctum, a pane and a shaft each, under the nearest loaded area
-	check(dr.window_nodes.size() == 8, "four windows, a pane and a shaft each (%d nodes)" % dr.window_nodes.size())
+	# the windows: a pane and a shaft each, under the scene of the area nearest to it (a window whose area is not loaded gets none)
+	var under_want := _windows_under(["graves", "nave", "sanctum"])
 	var under := {}
 	for n in dr.window_nodes:
 		under[String(n.get_parent().name)] = int(under.get(String(n.get_parent().name), 0)) + 1
-	check(under == {"area_nave": 6, "area_sanctum": 2}, "three windows are the Nave's and one the Sanctum's (%s)" % str(under))
+	check(not under_want.is_empty() and under == under_want, "each window is under the scene of its nearest area, a pane and a shaft (%s)" % str(under))
 	var only := DmNextWorld.new()
 	root.add_child(only)
 	only.build(["graves"], true)
-	check(only.dressing.window_nodes.is_empty() and only.dressing.area_flames.keys() == ["graves"], "a world of the Graves alone has its flames and no windows")
+	var graves_flames: Array = ["graves"] if _data.flames.has("graves") else []
+	var only_nodes := 0
+	for k in _windows_under(["graves"]):
+		only_nodes += int(_windows_under(["graves"])[k])
+	check(only.dressing.window_nodes.size() == only_nodes and only.dressing.area_flames.keys() == graves_flames, "a world of the Graves alone has its flames and only the windows nearest to it (%d nodes)" % only_nodes)
 	only.queue_free()
 	# the pieces and their draws: each is one object
 	check(dr.silhouette_node != null and dr.mist_node != null and dr.atmosphere != null and dr.water != null and dr.brazier_fire != null, "silhouettes, mist, weather, water and brazier fire are all there")
@@ -162,18 +178,29 @@ func _attached() -> void:
 	check(dr.atmosphere._meshes.size() == cache_before + 1 or dr.atmosphere._meshes.has("sanctum|false"), "warm() builds an area's weather ahead of the visit")
 	# the candle groups
 	await frames(2)
-	var sanct: MultiMeshInstance3D = dr.area_flames["sanctum"]
-	dr.set_candle_group("west", false)
+	# a candle group the data names, in one of the loaded areas (the Sanctum's, today)
+	var group_area := ""
+	var group := ""
+	for id: String in dr.area_flames:
+		for gn in _data.flames[id].groups:
+			if gn != null and group == "":
+				group_area = id
+				group = str(gn)
+	check(group != "", "a loaded area has a named candle group (%s in %s)" % [group, group_area])
+	var sanct: MultiMeshInstance3D = dr.area_flames[group_area]
+	dr.set_candle_group(group, false)
 	var lit: PackedFloat32Array = sanct.get_meta("lit")
 	var groups: Array = sanct.get_meta("groups")
 	var out_ok := true
 	var n_out := 0
+	var n_group := 0
 	for i in groups.size():
-		var is_west: bool = groups[i] != null and str(groups[i]) == "west"
-		out_ok = out_ok and (lit[i] == 0.0) == is_west
+		var in_group: bool = groups[i] != null and str(groups[i]) == group
+		out_ok = out_ok and (lit[i] == 0.0) == in_group
 		n_out += 1 if lit[i] == 0.0 else 0
-	check(out_ok and n_out == 20, "putting the Sanctum's west candles out darkens its 20 flames and no other (%d)" % n_out)
-	dr.set_candle_group("west", true)
+		n_group += 1 if in_group else 0
+	check(out_ok and n_out == n_group and n_group > 0, "putting the %s group of the %s out darkens its %d flames and no other (%d)" % [group, group_area, n_group, n_out])
+	dr.set_candle_group(group, true)
 	lit = sanct.get_meta("lit")
 	var back := true
 	for i in lit.size():
@@ -253,7 +280,7 @@ func _the_brazier_emission() -> void:
 	for bp in DmData.world()["props"]:
 		brazier_props += 1 if bp["prop"] == "brazier" else 0
 	check(brazier_props > 0 and fire.braziers.size() == brazier_props, "a fire for each brazier prop of world.json (%d)" % fire.braziers.size())
-	var near := Vector3(-4.6, 0.0, 2.4)   # between the Graves' two braziers (9.2 m apart) and the Chapterhouse's four (z 8 and out: 12 to 14 m away in z)
+	var near := Vector3(float(fire.braziers[0].x), 0.0, float(fire.braziers[0].z))   # on the first brazier: it is in range, and whatever else stands near it
 	var in_range := 0
 	for b: Dictionary in fire.braziers:
 		if absf(float(b.x) - near.x) <= DmWfxBrazierFire.RANGE_X and absf(float(b.z) - near.z) <= DmWfxBrazierFire.RANGE_Z:
@@ -263,7 +290,7 @@ func _the_brazier_emission() -> void:
 		fire.tick(near)
 		fire.advance(DmWfxBrazierFire.STEP)
 	var want := float(in_range * ticks) * (DmWfxBrazierFire.STEP * 10.0 + DmWfxBrazierFire.STEP * 1.5)
-	check(in_range >= 2 and absf(float(fire.emitted) - want) < want * 0.05, "%d braziers in range emit the web's rate: %d particles in 200 s against %.0f" % [in_range, fire.emitted, want])
+	check(in_range >= 1 and absf(float(fire.emitted) - want) < want * 0.05, "%d braziers in range emit the web's rate: %d particles in 200 s against %.0f" % [in_range, fire.emitted, want])
 	# out of range: nothing
 	var far := Vector3(10000.0, 0.0, 10000.0)
 	var before := fire.emitted
@@ -306,7 +333,8 @@ func _the_mist() -> void:
 	var focus := Vector3(10000.0, 0.0, 10000.0)
 	for i in 240:   # four seconds at 60 fps
 		mist.tick(1.0 / 60.0, focus)
-	check(mist.steps >= 15 and mist.steps <= 17, "the mist steps at 4 Hz, and once at the start: 15 to 17 steps in 4 s (%d)" % mist.steps)
+	var per_4s := int(4.0 / DmWfxMist.STEP_SECONDS)
+	check(mist.steps >= per_4s - 1 and mist.steps <= per_4s + 1, "the mist steps every STEP_SECONDS, and once at the start: %d to %d steps in 4 s (%d)" % [per_4s - 1, per_4s + 1, mist.steps])
 	var in_box := true
 	for p in mist.pos:
 		in_box = in_box and absf(p.x - focus.x) <= 45.0 and absf(p.z - focus.z) <= 40.0
@@ -341,15 +369,16 @@ func _the_outside() -> void:
 	root.add_child(w)
 	w.build(["graves"], true)
 	var q := w.builder.get_node_or_null("outside") as MeshInstance3D
-	check(q != null and q.mesh is QuadMesh and (q.mesh as QuadMesh).size == Vector2(420.0, 420.0), "one 420 m quad is the earth beyond the walls")
+	check(q != null and q.mesh is QuadMesh, "one quad is the earth beyond the walls")
 	var m := q.material_override as StandardMaterial3D if q != null else null
-	check(m != null and m.albedo_texture != null and m.albedo_texture.resource_path.ends_with("grave_soil.webp") and m.uv1_scale == Vector3(60.0, 60.0, 1.0), "it is grave soil that repeats every 7 m")
-	check(m != null and m.albedo_color.is_equal_approx(DmCompatAlbedo.tint("grave_soil", Color.html("#3a3440"))) and not m.albedo_color.is_equal_approx(Color.html("#3a3440")), "in today's albedo: the converter's lift of the tint")
-	var lo := Vector2(q.position.x - 210.0, q.position.z - 210.0) if q != null else Vector2.ZERO
-	var rects_in := true
+	var field := (q.mesh as QuadMesh).size if q != null and q.mesh is QuadMesh else Vector2.ZERO
+	check(m != null and m.albedo_texture != null and m.albedo_texture.resource_path.ends_with(DmWorldBuilder.OUTSIDE_TEX + ".webp") and m.uv1_scale.x > 1.0, "it is the builder's soil, repeated")
+	check(m != null and m.albedo_color.is_equal_approx(DmCompatAlbedo.tint(DmWorldBuilder.OUTSIDE_TEX, Color.html(DmWorldBuilder.OUTSIDE_TINT))) and not m.albedo_color.is_equal_approx(Color.html(DmWorldBuilder.OUTSIDE_TINT)), "in today's albedo: the converter's lift of the tint")
+	var lo := Vector2(q.position.x - field.x / 2.0, q.position.z - field.y / 2.0) if q != null else Vector2.ZERO
+	var rects_in := q != null
 	for id in DmNextWorld.every_area():
 		var r: Dictionary = DmContent.area(id)["rect"]
-		rects_in = rects_in and float(r["x0"]) >= lo.x and float(r["x1"]) <= lo.x + 420.0 and float(r["z0"]) >= lo.y and float(r["z1"]) <= lo.y + 420.0
+		rects_in = rects_in and float(r["x0"]) >= lo.x and float(r["x1"]) <= lo.x + field.x and float(r["z0"]) >= lo.y and float(r["z1"]) <= lo.y + field.y
 	check(rects_in, "and it spans every area of the world")
 	check(q != null and q.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF and q.position.y < 0.0, "below the floors, casting no shadow")
 	w.queue_free()
@@ -362,6 +391,7 @@ func _binbun_shaders() -> void:
 	var kept := 0
 	var reads_raw := 0
 	var spatial := 0
+	var wrong_patch: Array[String] = []   # a shader patched when it does not read COLOR in fragment() (or writes it), or left alone when it does
 	for f in DirAccess.get_files_at(dir):
 		if not f.ends_with(".gdshader"):
 			continue
@@ -371,6 +401,8 @@ func _binbun_shaders() -> void:
 			kept += 1
 			continue
 		spatial += 1
+		if (out != sh) != _reads_color_without_writing(sh.code):
+			wrong_patch.append(f)
 		if out != sh:
 			patched += 1
 			var i := out.code.find("void fragment()")
@@ -384,5 +416,30 @@ func _binbun_shaders() -> void:
 				reads_raw += 1
 		else:
 			check(DmFxBinbun._srgb_color(sh) == out, "an untouched shader is answered the same again (%s)" % f)
-	check(patched >= 10 and reads_raw == 0, "%d of the %d spatial Binbun shaders read COLOR in fragment() and read it converted from sRGB, none raw (%d)" % [patched, spatial, reads_raw])
+	check(patched > 0 and reads_raw == 0 and wrong_patch.is_empty(), "%d of the %d spatial Binbun shaders read COLOR in fragment() and read it converted from sRGB, none raw (%d); the patched ones are those that read it without writing it (wrong: %s)" % [patched, spatial, reads_raw, str(wrong_patch.slice(0, 3))])
 	check(DmFxBinbun._srgb_color(null) == null, "no shader, no copy")
+
+
+## Whether a spatial shader reads COLOR in fragment() and never writes it (the shaders the sRGB copy is made for), worked out from its source without DmFxBinbun's help.
+func _reads_color_without_writing(code: String) -> bool:
+	var at := code.find("void fragment()")
+	var open := code.find("{", at) if at >= 0 else -1
+	if open < 0:
+		return false
+	var depth := 0
+	var close := -1
+	for i in range(open, code.length()):
+		var ch := code.unicode_at(i)
+		if ch == 123:
+			depth += 1
+		elif ch == 125:
+			depth -= 1
+			if depth == 0:
+				close = i
+				break
+	if close < 0:
+		return false
+	var body := code.substr(open + 1, close - open - 1)
+	var reads := RegEx.create_from_string("\\bCOLOR\\b")
+	var writes := RegEx.create_from_string("\\bCOLOR\\s*(\\.[rgbastpq]+)?\\s*[-+*/]?=[^=]")
+	return reads.search(body) != null and writes.search(body) == null

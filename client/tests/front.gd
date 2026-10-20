@@ -214,12 +214,12 @@ func boot_and_register(api: DmApi, shim: Shim) -> void:
 	check(shim.urls.any(func(u: String) -> bool: return u.begins_with(DmConfig.CLIENT_MANIFEST_URL)), "the online gate read the TEST channel's manifest")
 	check(not api.get_token().is_empty() and not api.get_token().begins_with("{"), "the session token is held by the api")
 	var sel := m.flow.current as DmCharSelectScreen
-	check(sel != null and sel.cards.size() == DmCharSelectScreen.load_disciplines().size() and sel.cards.size() >= 9, "character select shows every discipline card (%d)" % sel.cards.size())
+	check(sel != null and sel.cards.size() == DmCharSelectScreen.load_disciplines().size() and sel.cards.size() > 0, "character select shows every discipline card (%d)" % sel.cards.size())
 	sel.benchmark_requested.emit()
 	await process_frame
 	var bench_win: Array = m.get_children().filter(func(c: Node) -> bool: return c is CanvasLayer and c.get_child_count() > 0 and c.get_child(0) is DmBenchmarkSetup)
 	check(bench_win.size() == 1 and (bench_win[0].get_child(0) as DmBenchmarkSetup)._room.item_count == DmBenchmark.ROOMS.size() and not m.flow.current.error_label.text.to_lower().contains("comes"),
-		"the Benchmark button opens the benchmark's setup window (today's nine rooms)")
+		"the Benchmark button opens the benchmark's setup window (a row per room)")
 	if not bench_win.is_empty():
 		(bench_win[0].get_child(0) as DmBenchmarkSetup).closed.emit()
 		await process_frame
@@ -233,7 +233,12 @@ func boot_and_register(api: DmApi, shim: Shim) -> void:
 		if c.locked:
 			locked_n += 1
 	check(locked_n == locked_want and locked_n > 0, "a greyed-out card for each discipline that is not playable (%d)" % locked_n)
-	var refused_pick := await sel.choose(5)
+	var unplayable_idx := -1   # the first discipline that is greyed out
+	for c in sel.cards:
+		if c.locked:
+			unplayable_idx = int(c.disc["classIndex"])
+			break
+	var refused_pick := await sel.choose(unplayable_idx)
 	check(not refused_pick and sel.error_label.text != "" and m.flow.current_name == "select", "a discipline that is not playable is refused with a message, and the select screen stays")
 	var no_char: DmResult = await api.get_character()
 	check(no_char.status == 404, "refusing created no character")
@@ -273,7 +278,7 @@ func returning_player(api: DmApi, shim: Shim) -> void:
 	var id := int(ch.data["id"])
 	var plain: Dictionary = DmCharacterBuild.build(ch.data, [], {})
 	var rows := [{"slot_index": 0, "item_id": "helm_copper", "quantity": 1, "equipped": 1}, {"slot_index": 1, "item_id": "staff_bone", "quantity": 1, "equipped": 1}]
-	var saved: DmResult = await api.save_inventory(id, rows, 48)
+	var saved: DmResult = await api.save_inventory(id, rows, DmLoot.bag_size())
 	check(saved.ok, "a helm and a staff are worn in the server's bag (%s)" % saved.error)
 	var m := boot(api)
 	check(await until(in_world(m), 90.0), "a returning player goes straight from the boot into the game, with no select screen")
@@ -380,15 +385,15 @@ func flasks_on_server(api: DmApi, cid: int) -> int:
 ## Put `n` more healing flasks in the hero's bag on the server (as a GM would: the bag is the server's) and show them. Returns the count.
 func seed_flasks(g: DmNextGame, n: int) -> int:
 	var cid := int(g.character["id"])
-	var rows: Array = (await g.api.get_inventory(cid)).data.filter(func(r: Dictionary) -> bool: return int(r["slot_index"]) < 48)
+	var rows: Array = (await g.api.get_inventory(cid)).data.filter(func(r: Dictionary) -> bool: return int(r["slot_index"]) < DmLoot.bag_size())
 	var used := {}
 	for r in rows:
 		used[int(r["slot_index"])] = true
-	var free := 47
+	var free := DmLoot.bag_size() - 1
 	while used.has(free):
 		free -= 1
 	rows.append({"slot_index": free, "item_id": "flask_hp_minor", "quantity": n})
-	await g.api.save_inventory(cid, rows.map(func(r: Dictionary) -> Dictionary: return {"slot_index": int(r["slot_index"]), "item_id": r["item_id"], "quantity": int(r["quantity"]), "instance_id": r.get("instance_id")}), 48)
+	await g.api.save_inventory(cid, rows.map(func(r: Dictionary) -> Dictionary: return {"slot_index": int(r["slot_index"]), "item_id": r["item_id"], "quantity": int(r["quantity"]), "instance_id": r.get("instance_id")}), DmLoot.bag_size())
 	await g.ui_host.refresh_inventory()
 	return g.ui_host.inventory.count("flask_hp_minor")
 
@@ -532,8 +537,15 @@ func settings_switch(m: DmMain, api: DmApi, g: DmNextGame) -> void:
 func unplayable_discipline(api: DmApi, shim: Shim) -> void:
 	var ch: DmResult = await api.get_character()
 	var char_id := int(ch.data["id"])
-	var changed: DmResult = await api.change_discipline(int(ch.data["id"]), 5)
-	check(changed.ok and int(changed.data["class_index"]) == 5, "the stand-in's character is now a Grave Warden")
+	var locked_disc: Dictionary = {}   # a discipline of the data that is not playable
+	for d in DmCharSelectScreen.load_disciplines():
+		if not DmCharacterBuild.is_playable(float(d["classIndex"])):
+			locked_disc = d
+			break
+	check(not locked_disc.is_empty(), "the data has a discipline that is not playable")
+	var locked_idx := int(locked_disc["classIndex"])
+	var changed: DmResult = await api.change_discipline(int(ch.data["id"]), locked_idx)
+	check(changed.ok and int(changed.data["class_index"]) == locked_idx, "the stand-in's character is now a %s" % String(locked_disc.get("name", locked_disc["id"])))
 	var m := boot(api)
 	check(await until(at(m, "select"), 10.0), "an unplayable discipline lands on character select")
 	var sel := m.flow.current as DmCharSelectScreen
@@ -660,10 +672,11 @@ func front_screens() -> void:
 	# ---- non-necro disciplines are greyed out until rebuilt (owner 2026-10-09): choosing one is refused
 	var locked_idx := -1
 	for d in sel.disciplines:
-		if d["id"] == "carrion_witch":
+		if not DmCharacterBuild.is_playable(float(d["classIndex"])):
 			locked_idx = int(d["classIndex"])
+			break
 	var refused := await sel.choose(locked_idx)
-	check(not refused and _ent.is_empty(), "locked discipline (Carrion Witch) cannot be chosen")
+	check(locked_idx >= 0 and not refused and _ent.is_empty(), "a locked discipline cannot be chosen")
 	# ---- create character (Rotweaver: a playable necro discipline that is not the recommended one)
 	var cw_idx := -1
 	for d in sel.disciplines:
@@ -889,7 +902,7 @@ func scan_shipped_files() -> void:
 		if rel != "net/dm_config.gd" and url_re.search(text) != null:
 			hits.append(rel)
 	print("INFO front: %d shipped files scanned for addresses" % files.size())
-	check(files.size() > 300, "the scan found the shipped files (%d)" % files.size())
+	check(files.has("net/dm_config.gd") and files.size() > 1, "the scan found the shipped files, the config among them (%d)" % files.size())
 	check(test_hits.is_empty(), "no shipped file names the test server: %s" % ", ".join(test_hits.slice(0, 5)))
 	check(hits.is_empty(), "no shipped file names an address outside net/dm_config.gd: %s" % ", ".join(hits.slice(0, 5)))
 

@@ -6,14 +6,18 @@ const mountVault = require('./vault.cjs');
 const mountSalvage = require('./salvage.cjs');
 const mountToolBelt = require('./tool-belt.cjs');
 const sync = require('./offline-full-sync.cjs');
-const { replaceBag, resolveInstances, CANT_VERIFY } = require('./inventory-save.cjs');
+const { LEGACY_BAG_SLOTS: LEGACY, replaceBag, resolveInstances, CANT_VERIFY } = require('./inventory-save.cjs');
 const affix = require('./gathering/affix-rules.cjs');
 const { fakeDb, harness } = require('./bag-fake-db.cjs');
+const { BAG_SLOTS: BAG } = require('./gathering/gathering-rules.cjs');
 
-const A = [{ id: 'p_thrall_dmg', v: 90 }, { id: 's_thrall_hp', v: 160 }];
+/** The stock rolled piece: item level 12 and two affixes, each at the low end of what that item level allows (a legal roll whatever the ranges are). */
+const ILVL = 12;
+const low = (id, ilvl = ILVL) => affix.affixRange(id, ilvl)[0];
+const A = [{ id: 'p_thrall_dmg', v: low('p_thrall_dmg') }, { id: 's_thrall_hp', v: low('s_thrall_hp') }];
 const gear = (slot_index, id, item_id = 'helm_iron', extra = {}) => ({ slot_index, item_id, quantity: 1, instance_id: id, ...extra });
-const loot = (id, item_id = 'helm_iron', extra = {}) => ({ id, item_id, ilvl: 12, affixes: A, ...extra });
-const save = (db, slots, bagSize = 48, accountId = 7) => replaceBag(db.conn, 1, slots, bagSize, accountId);
+const loot = (id, item_id = 'helm_iron', extra = {}) => ({ id, item_id, ilvl: ILVL, affixes: A, ...extra });
+const save = (db, slots, bagSize = BAG, accountId = 7) => replaceBag(db.conn, 1, slots, bagSize, accountId);
 const refused = (p) => assert.rejects(p, (e) => e.refusal === true && e.message === CANT_VERIFY);
 
 // --- bag save -------------------------------------------------------------------------------------------------------------------
@@ -24,16 +28,16 @@ test('a save may attach an instance the server rolled for this account, and GET 
   assert.equal(db.inv.find((r) => r.slot_index === 3).instance_id, 1);
   const [rows] = await db.conn.execute('SELECT inv.id FROM inventory inv WHERE inv.character_id = ?', [1]);
   assert.equal(rows[0].instance_id, 1);
-  assert.equal(rows[0].ilvl, 12);
+  assert.equal(rows[0].ilvl, ILVL);
   assert.deepEqual(rows[0].affixes, A);
 });
 
 test('a save cannot mint or alter a roll: affixes/ilvl in the payload are ignored, unknown ids are refused', async () => {
   const db = fakeDb({ loot: [loot(1)] });
-  const forged = { ...gear(0, 1), ilvl: 99, affixes: [{ id: 'p_thrall_dmg', v: 150 }, { id: 's_thrall_hp', v: 200 }] };
+  const forged = { ...gear(0, 1), ilvl: affix.ILVL_MAX, affixes: A.map((a) => ({ ...a, v: a.v + 50 })) };
   await save(db, [forged]);
   assert.equal(db.loot.length, 1);
-  assert.equal(db.loot[0].ilvl, 12, 'the stored roll is untouched');
+  assert.equal(db.loot[0].ilvl, ILVL, 'the stored roll is untouched');
   assert.deepEqual(db.loot[0].affixes, A);
   const before = JSON.stringify(db.inv);
   await refused(save(db, [gear(0, 55)]));
@@ -101,10 +105,11 @@ test('a stale tab that changed the item in a slot does not inherit the old slot\
   assert.equal(db.inv[0].instance_id, null);
 });
 
-test('a stale 24-slot save cannot detach or delete rolls in slots 24-47', async () => {
-  const db = fakeDb({ loot: [loot(1), loot(2)], bag: [gear(2, 1), gear(30, 2)] });
-  await save(db, [{ slot_index: 2, item_id: 'helm_iron', quantity: 1 }], 24);
-  assert.equal(db.inv.find((r) => r.slot_index === 30).instance_id, 2);
+test('a stale save of the legacy bag size cannot detach or delete rolls in the slots above it', async () => {
+  const outside = LEGACY + 6;
+  const db = fakeDb({ loot: [loot(1), loot(2)], bag: [gear(2, 1), gear(outside, 2)] });
+  await save(db, [{ slot_index: 2, item_id: 'helm_iron', quantity: 1 }], LEGACY);
+  assert.equal(db.inv.find((r) => r.slot_index === outside).instance_id, 2);
   assert.deepEqual(db.loot.map((l) => l.id).sort(), [1, 2]);
 });
 
@@ -113,7 +118,7 @@ test('a stale 24-slot save cannot detach or delete rolls in slots 24-47', async 
 test('resolveInstances treats worn rows as outside the bag range, and the tool belt never carries a roll', async () => {
   const db = fakeDb({ loot: [loot(1)], equipped: [{ slot_index: 100, item_id: 'helm_iron', equipped_slot: 'head', instance_id: 1 }] });
   const bySlot = new Map();
-  await assert.rejects(resolveInstances(db.conn, 7, 1, [gear(0, 1)], bySlot, 48), (e) => e.refusal);
+  await assert.rejects(resolveInstances(db.conn, 7, 1, [gear(0, 1)], bySlot, BAG), (e) => e.refusal);
   // The belt moves tools by row id and only reads item ids: a rolled piece is not a tool and is refused.
   const bag = fakeDb({ loot: [loot(1)], bag: [gear(0, 1)] });
   const r = (await harness(mountToolBelt, bag)('POST /api/inventory/belt', { body: { characterId: 1, slot_index: 0, equipped: 1 } })).json;
@@ -137,7 +142,7 @@ test('depositing and withdrawing rolled gear moves the instance with the row; it
   assert.equal(w.success, true, w.error);
   assert.deepEqual(db.inv.map((r) => [r.item_id, r.instance_id]), [['helm_iron', 2]]);
   assert.deepEqual(db.vault.map((r) => r.instance_id), [1]);
-  assert.deepEqual(w.data.bag.map((r) => [r.instance_id, r.ilvl]), [[2, 12]]);
+  assert.deepEqual(w.data.bag.map((r) => [r.instance_id, r.ilvl]), [[2, ILVL]]);
   assert.deepEqual(w.data.vault.map((r) => r.affixes), [A]);
   assert.equal(db.loot.length, 2, 'moving never creates or deletes a roll');
 });
@@ -152,7 +157,7 @@ test('deposit-all moves every rolled piece with its roll, and a plain duplicate 
 
 test('sorting the Vault keeps every roll attached, best first', async () => {
   const db = fakeDb({
-    loot: [loot(1, 'helm_iron', { affixes: [A[0]] }), loot(2, 'helm_iron', { affixes: A, ilvl: 20 }), loot(3, 'helm_iron', { affixes: [A[0], A[1], { id: 'p_withered', v: 1 }] })],
+    loot: [loot(1, 'helm_iron', { affixes: [A[0]] }), loot(2, 'helm_iron', { affixes: A, ilvl: ILVL + 8 }), loot(3, 'helm_iron', { affixes: [A[0], A[1], { id: 'p_withered', v: low('p_withered') }] })],
     vault: [{ slot_index: 5, item_id: 'helm_iron', quantity: 1, instance_id: 1 }, { slot_index: 9, item_id: 'helm_iron', quantity: 1, instance_id: 2 }, { slot_index: 11, item_id: 'helm_iron', quantity: 1, instance_id: 3 }, { slot_index: 20, item_id: 'ore_copper', quantity: 4 }],
   });
   const r = (await v(db)('POST /api/vault/sort', { body: { characterId: 1 } })).json;
@@ -163,7 +168,7 @@ test('sorting the Vault keeps every roll attached, best first', async () => {
 });
 
 test('a withdraw that will not fit leaves the instance in the Vault', async () => {
-  const bag = Array.from({ length: 48 }, (_, i) => ({ slot_index: i, item_id: 'staff_oak', quantity: 1 }));
+  const bag = Array.from({ length: BAG }, (_, i) => ({ slot_index: i, item_id: 'staff_oak', quantity: 1 }));
   const db = fakeDb({ loot: [loot(1)], bag, vault: [{ slot_index: 0, item_id: 'helm_iron', quantity: 1, instance_id: 1 }] });
   const r = (await v(db)('POST /api/vault/withdraw', { body: { characterId: 1, vaultSlot: 0 } })).json;
   assert.equal(r.success, false);
@@ -178,7 +183,7 @@ test('salvaging a rolled piece deletes its instance and pays a little more than 
   const seq = () => { let i = 0; const s = [0.5, 0.99, 0.5, 0.99, 0.99, 0.99, 0.99, 0.99]; return () => s[i++ % s.length]; };
   const plain = fakeDb({ bag: [{ slot_index: 0, item_id: 'helm_iron', quantity: 1 }] });
   const p = (await salvage(plain, seq())('POST /api/salvage', { body: { characterId: 1, slots: [0] } })).json;
-  const rolled = fakeDb({ loot: [loot(1, 'helm_iron', { ilvl: 30, affixes: [...A, { id: 'p_withered', v: 2 }] })], bag: [gear(0, 1)] });
+  const rolled = fakeDb({ loot: [loot(1, 'helm_iron', { ilvl: 30, affixes: [...A, { id: 'p_withered', v: low('p_withered', 30) }] })], bag: [gear(0, 1)] });
   // rand() low on the extra-material roll: the third affix piece always gets the extra material.
   const lowAtEnd = (() => { const base = seq(); let n = 0; return () => (++n > 8 ? 0 : base()); })();
   const r = (await salvage(rolled, lowAtEnd)('POST /api/salvage', { body: { characterId: 1, slots: [0] } })).json;
@@ -190,7 +195,7 @@ test('salvaging a rolled piece deletes its instance and pays a little more than 
 });
 
 test('salvage that will not fit keeps the item AND its roll', async () => {
-  const bag = [gear(0, 1), ...Array.from({ length: 47 }, (_, i) => ({ slot_index: i + 1, item_id: 'staff_oak', quantity: 1 }))];
+  const bag = [gear(0, 1), ...Array.from({ length: BAG - 1 }, (_, i) => ({ slot_index: i + 1, item_id: 'staff_oak', quantity: 1 }))];
   const db = fakeDb({ loot: [loot(1)], bag });
   const r = (await salvage(db, () => 0.5)('POST /api/salvage', { body: { characterId: 1, slots: [0] } })).json;
   assert.equal(r.success, false);
@@ -226,18 +231,22 @@ const save1 = (slots) => ({
 });
 
 test('a save import validates imported rolls: unknown affixes, out-of-range values and too many are refused', () => {
-  const ok = { slot_index: 0, item_id: 'helm_iron', quantity: 1, inst: { ilvl: 12, affixes: A } };
+  const ok = { slot_index: 0, item_id: 'helm_iron', quantity: 1, inst: { ilvl: ILVL, affixes: A } };
   assert.doesNotThrow(() => sync.validate(save1([ok]), 2));
+  // one more affix than an item may carry, each a legal roll of its own group, so only the count is wrong
+  const crowd = [];
+  for (const a of affix.AFFIXES) if (!crowd.some((c) => affix.affixDef(c.id).group === a.group) && crowd.length <= affix.MAX_AFFIXES) crowd.push({ id: a.id, v: low(a.id) });
+  assert.equal(crowd.length, affix.MAX_AFFIXES + 1);
   for (const inst of [
-    { ilvl: 12, affixes: [{ id: 'p_fake', v: 3 }] },
-    { ilvl: 12, affixes: [{ id: 'p_thrall_dmg', v: 5000 }] },
-    { ilvl: 12, affixes: [{ id: 'p_thrall_dmg', v: 0 }] },
-    { ilvl: 12, affixes: [A[0], A[0]] },
-    { ilvl: 12, affixes: [A[0], A[1], { id: 'p_withered', v: 1 }, { id: 'p_str', v: 1 }] },
+    { ilvl: ILVL, affixes: [{ id: 'p_fake', v: 3 }] },
+    { ilvl: ILVL, affixes: [{ id: 'p_thrall_dmg', v: affix.affixAcceptRange('p_thrall_dmg', ILVL)[1] + 1 }] },
+    { ilvl: ILVL, affixes: [{ id: 'p_thrall_dmg', v: affix.affixAcceptRange('p_thrall_dmg', ILVL)[0] - 1 }] },
+    { ilvl: ILVL, affixes: [A[0], A[0]] },
+    { ilvl: ILVL, affixes: crowd },
     { ilvl: 0, affixes: [] },
-    { ilvl: 100, affixes: [] },
+    { ilvl: affix.ILVL_MAX + 1, affixes: [] },
     { ilvl: 12.5, affixes: [] },
-    { ilvl: 12, affixes: 'x' },
+    { ilvl: ILVL, affixes: 'x' },
   ]) assert.throws(() => sync.validate(save1([{ ...ok, inst }]), 2), RangeError, JSON.stringify(inst));
   assert.throws(() => sync.validate(save1([{ ...ok, quantity: 2 }]), 2), RangeError);
 });
@@ -262,13 +271,14 @@ test('applying a save creates FRESH instances for the imported rolls and deletes
     if (sql.startsWith('SELECT account_id FROM characters')) return [[{ account_id: 7 }]];
     try { return await realExecute(sql, p); } catch (e) { if (/unexpected SQL/.test(e.message)) return [{}]; throw e; } // the rest of apply() (chronicle, contracts...) is not under test
   };
-  const imported = { slot_index: 3, item_id: 'helm_iron', quantity: 1, inst: { ilvl: 22, affixes: [{ id: 'p_thrall_dmg', v: 100, extra: 'ignored' }] } };
+  const v22 = low('p_thrall_dmg', 22);
+  const imported = { slot_index: 3, item_id: 'helm_iron', quantity: 1, inst: { ilvl: 22, affixes: [{ id: 'p_thrall_dmg', v: v22, extra: 'ignored' }] } };
   await sync.apply(conn, 1, save1([imported])).catch((e) => { if (!(e instanceof TypeError)) throw e; });
   assert.equal(db.loot.find((l) => l.id === 1), undefined, 'the replaced inventory\'s roll was deleted');
   const made = db.loot.find((l) => l.ilvl === 22);
   assert.ok(made && made.id >= 1000, 'a fresh instance, not the offline save\'s id');
-  assert.deepEqual(made.affixes, [{ id: 'p_thrall_dmg', v: 100 }], 'only id and value are stored');
+  assert.deepEqual(made.affixes, [{ id: 'p_thrall_dmg', v: v22 }], 'only id and value are stored');
   assert.equal(db.inv[0].instance_id, made.id);
-  const bad = { ...imported, inst: { ilvl: 22, affixes: [{ id: 'p_thrall_dmg', v: 5000 }] } };
+  const bad = { ...imported, inst: { ilvl: 22, affixes: [{ id: 'p_thrall_dmg', v: affix.affixAcceptRange('p_thrall_dmg', 22)[1] + 1 }] } };
   await assert.rejects(() => sync.apply(conn, 1, save1([bad])), /out of range/);
 });

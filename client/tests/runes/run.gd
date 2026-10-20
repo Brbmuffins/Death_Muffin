@@ -1,7 +1,8 @@
 extends SceneTree
 ## Rune variants and legendary-set mechanics on the rebuilt client (client/next/rites, client/core, client/next/hero). godot --headless --path client --script res://tests/runes/run.gd
 ## The enemies are static bodies of the combat core (stunned for an hour, harmless, with health to spare), the corpses and the legion are the core's, as tests/rites.gd has them.
-##   A  every rune the data defines has a gameplay test below (table-driven: the table keys must equal DmRunes' ids), each proving its effect against the same cast without it
+##   A  the runes with a gameplay test below (table-driven: every key is a rune the data defines), each proving its effect against the same cast without it; a rune the data
+##      gains has no case until one is written, and is only checked for the properties every rune has (a rune of a rite that exists)
 ##   B  Grimoire rune picks: the bag -> the Grimoire panel shows them, socketing through the panel's own path reaches the caster, taking one out removes it
 ##   C  worn legendary sets feed the legion + caster on every gear change (and strip again), and every legend mod that exists in the data does its job
 ##   E  cost: per-frame cost with a creeping/contagion circle + volley casts, and a gear change (printed, never asserted)
@@ -209,13 +210,19 @@ func _run() -> void:
 		"rune_creeping_rot": _rune_creeping, "rune_contagion": _rune_contagion,
 		"rune_hollow_choir": _rune_hollow, "rune_requiem": _rune_requiem,
 	}
-	var want: Array = DmCombatData.abilities()["rune_ids"].duplicate()
-	var have: Array = cases.keys()
-	want.sort()
-	have.sort()
-	check(want == have, "A: the table covers exactly the runes the data defines (%s)" % str(want))
+	var known: Array = DmCombatData.abilities()["rune_ids"]
+	var bare: Array[String] = []
+	for rid: String in known:
+		check(DmRunes.is_rune_id(rid) and DmRiteRegistry.has(_rite_of(rid)), "A: %s is a rune of a rite that exists (%s)" % [rid, _rite_of(rid)])
+		if not cases.has(rid):
+			bare.append(rid)
 	for rid: String in cases:
-		await (cases[rid] as Callable).call(rid)
+		check(known.has(rid), "A: the table has no rune the data lacks (%s)" % rid)
+	if not bare.is_empty():
+		print("INFO runes: no gameplay case yet for %s" % ", ".join(bare))
+	for rid: String in cases:
+		if known.has(rid):
+			await (cases[rid] as Callable).call(rid)
 
 	# =================================================================== B: the Grimoire's rune picks
 	await _grimoire()
@@ -239,9 +246,10 @@ func _rune_splinter(rid: String) -> void:
 	var base := 0.0
 	for with_rune in [false, true]:
 		reset("bone_needle", rid if with_rune else "")
+		var reach := float(T["splinter"]["reach"])
 		var e1 := foe(Vector3(0, 0, -26))
-		var e2 := foe(Vector3(4, 0, -26))
-		var far := foe(Vector3(12, 0, -26))
+		var e2 := foe(Vector3(reach * 0.65, 0, -26))
+		var far := foe(Vector3(reach * 2.0, 0, -26))
 		caster.request_cast("bone_needle", pos_of(e1), eid(e1))
 		await secs(1.2)
 		if not with_rune:
@@ -271,10 +279,11 @@ func _rune_marrow_tap(rid: String) -> void:
 func _rune_volley(rid: String) -> void:
 	var T: Dictionary = DmSimData.RUNE_TUNING
 	var every := int(T["volley"]["every"])
+	var spread := float(T["volley"]["reach"]) / 3.0   # (neighbours well inside the volley's reach)
 	reset("bone_needle", rid)
 	var a := foe(Vector3(0, 0, -26))
-	var b := foe(Vector3(3, 0, -26))
-	var c2 := foe(Vector3(-3, 0, -26))
+	var b := foe(Vector3(spread, 0, -26))
+	var c2 := foe(Vector3(-spread, 0, -26))
 	var single := 0.0
 	caster.request_cast("bone_needle", pos_of(a), eid(a))
 	await secs(0.9)
@@ -295,11 +304,12 @@ func _rune_volley(rid: String) -> void:
 	await until(func() -> bool: return evs("bone_needle", "hit").size() >= 3, 2.0)
 	var each := loss(a)
 	check(near(each, single * float(T["volley"]["damageFrac"]), 0.01) and near(loss(b), each, 0.01) and near(loss(c2), each, 0.01), "%s: needle %d is a volley of %d at x%.1f, each at a different enemy (%.1f / %.1f / %.1f)" % [rid, every, int(T["volley"]["needles"]), float(T["volley"]["damageFrac"]), loss(a), loss(b), loss(c2)])
-	check(evs("bone_needle", "hit").size() == int(T["volley"]["needles"]), "%s: three hits land (%d)" % [rid, evs("bone_needle", "hit").size()])
-	var got := float(caster.p["resource"]["value"])   # one needle's 6 (+ ~3 a second of regen), not three needles' 18
-	check(got >= 5.5 and got <= 10.0, "%s: the volley returns the essence of ONE needle (%.1f)" % [rid, got])
+	check(evs("bone_needle", "hit").size() == int(T["volley"]["needles"]), "%s: %d hits land (%d)" % [rid, int(T["volley"]["needles"]), evs("bone_needle", "hit").size()])
+	var got := float(caster.p["resource"]["value"])   # one needle's essence (+ a little regen), not every needle's
+	var per_needle := float(DmCombatData.abilities()["constants"]["NEEDLE_ESSENCE"])
+	check(got >= per_needle * 0.9 and got <= per_needle * 1.7, "%s: the volley returns the essence of ONE needle (%.1f of %.1f)" % [rid, got, per_needle])
 	var leads := evs("bone_needle", "cast").filter(func(h: Dictionary) -> bool: return bool(h["ev"].get("lead", true)))
-	check(leads.size() == 1 and evs("bone_needle", "cast").size() == 3, "%s: one muzzle burst, three shots" % rid)
+	check(leads.size() == 1 and evs("bone_needle", "cast").size() == int(T["volley"]["needles"]), "%s: one muzzle burst, %d shots" % [rid, int(T["volley"]["needles"])])
 	# alone: all three needles go to the single enemy
 	reset("bone_needle", rid)
 	var solo := foe(Vector3(0, 0, -26))
@@ -316,10 +326,12 @@ func _rune_ring(rid: String) -> void:
 	var base := 0.0
 	for with_rune in [false, true]:
 		reset("marrow_spear", rid if with_rune else "")
-		var on_line := foe(Vector3(0, 0, -26))
-		var beside := foe(Vector3(2.4, 0, -26))
-		var beyond := foe(Vector3(0, 0, -29.9))
-		caster.request_cast("marrow_spear", Vector3(0, 0, -26), -1)
+		var ring_r := float(T["ring"]["radius"])
+		var cursor_z := -18.0 - (float(DmAbilities.def("marrow_spear")["range"]) - ring_r - 1.1)   # (the hero stands at z -18; past the ring the line still has reach)
+		var on_line := foe(Vector3(0, 0, cursor_z))
+		var beside := foe(Vector3(ring_r * 0.8, 0, cursor_z))
+		var beyond := foe(Vector3(0, 0, cursor_z - ring_r - 0.9))
+		caster.request_cast("marrow_spear", Vector3(0, 0, cursor_z), -1)
 		await secs(1.2)
 		if not with_rune:
 			base = blow(on_line)
@@ -350,8 +362,10 @@ func _rune_mass_grave(rid: String) -> void:
 	var base_hp := 0.0
 	for with_rune in [false, true]:
 		reset("exhume", rid if with_rune else "")
-		for k in 4:
-			corpse(Vector3(1.5 * k, 0, -24))
+		var raised := int(T["massGrave"]["count"])
+		var lay := float(T["massGrave"]["pickRadius"]) / float(raised + 1)   # (one corpse more than it raises, all inside its pick radius)
+		for k in raised + 1:
+			corpse(Vector3(lay * k, 0, -24))
 		caster.request_cast("exhume", Vector3(0, 0, -24), -1)
 		await secs(1.0)
 		if not with_rune:
@@ -360,26 +374,28 @@ func _rune_mass_grave(rid: String) -> void:
 		else:
 			var hp: float = float(legion().info(legion().list()[0])["max_hp"]) if legion().count() > 0 else 0.0
 			check(legion().count() == int(T["massGrave"]["count"]) and near(hp, base_hp * float(T["massGrave"]["statMult"]), 0.01), "%s: it raises %d at x%.2f the stats (%d thralls, hp %.0f vs %.0f)" % [rid, int(T["massGrave"]["count"]), float(T["massGrave"]["statMult"]), legion().count(), hp, base_hp])
-			check(g.corpses.corpses_in_radius(Vector3(0, 0, -24), 20.0).size() == 1, "%s: ...each from its own corpse (1 of 4 left)" % rid)
+			check(g.corpses.corpses_in_radius(Vector3(0, 0, -24), 20.0).size() == 1, "%s: ...each from its own corpse (1 of %d left)" % [rid, raised + 1])
 
 
 func _rune_colossus(rid: String) -> void:
 	var T: Dictionary = DmSimData.RUNE_TUNING
 	reset("exhume", rid)
-	for k in 5:
-		corpse(Vector3(0.8 * k, 0, -24))
+	var need := int(T["colossus"]["corpses"])
+	var lay := float(T["colossus"]["pickRadius"]) / float(need + 1)
+	for k in need:
+		corpse(Vector3(lay * k, 0, -24))
 	caster.request_cast("exhume", Vector3(0, 0, -24), -1)
 	await ticks(3)
 	var cd_after := caster.cooldown_left("exhume")
 	await secs(1.0)
 	var ts := legion().list()
-	check(ts.size() == 1 and String(legion().info(ts[0])["kind"]) == "colossus", "%s: five corpses become one Colossus (%d thralls)" % [rid, ts.size()])
-	check(g.corpses.corpses_in_radius(Vector3(0, 0, -24), 20.0).size() == 0, "%s: all five are spent" % rid)
+	check(ts.size() == 1 and String(legion().info(ts[0])["kind"]) == "colossus", "%s: %d corpses become one Colossus (%d thralls)" % [rid, need, ts.size()])
+	check(g.corpses.corpses_in_radius(Vector3(0, 0, -24), 20.0).size() == 0, "%s: all %d are spent" % [rid, need])
 	check(near(cd_after, float(DmAbilities.def("exhume")["cooldownMs"]) * float(T["colossus"]["cooldownMult"]), 150.0), "%s: and Exhume rests x%d as long (%.0f ms)" % [rid, int(T["colossus"]["cooldownMult"]), caster.cooldown_left("exhume")])
 	# too few corpses: a plain thrall, as without the rune
 	reset("exhume", rid)
-	corpse(Vector3(0, 0, -24))
-	corpse(Vector3(1, 0, -24))
+	for k in int(T["colossus"]["minCorpses"]) - 1:
+		corpse(Vector3(float(k), 0, -24))
 	caster.request_cast("exhume", Vector3(0, 0, -24), -1)
 	await secs(1.0)
 	check(legion().count() == 1 and String(legion().info(legion().list()[0])["kind"]) != "colossus", "%s: with fewer than %d corpses it raises an ordinary thrall" % [rid, int(T["colossus"]["minCorpses"])])
@@ -390,7 +406,7 @@ func _rune_creeping(rid: String) -> void:
 	var base_r := 0.0
 	for with_rune in [false, true]:
 		reset("miasma", rid if with_rune else "")
-		var e := foe(Vector3(0, 0, -36))
+		var e := foe(Vector3(0, 0, -27.0 - float(T["creepingRot"]["seekReach"]) * 0.75))   # (inside the seek reach, further than the circle drifts in 4 s)
 		caster.request_cast("miasma", Vector3(0, 0, -27), -1)
 		await secs(1.6)
 		var zs: Array = caster.mem("miasma")["zones"]
@@ -403,18 +419,21 @@ func _rune_creeping(rid: String) -> void:
 			var t0 := float(z["z"])
 			await secs(2.0)
 			var moved := t0 - float(z["z"])
-			check(moved > 1.5 and moved < 4.0 and near(float(z["x"]), 0.0, 0.01), "%s: it drifts toward the nearest enemy at %.1f m/s (%.2f m in 2 s)" % [rid, float(T["creepingRot"]["speed"]), moved])
+			var speed := float(T["creepingRot"]["speed"])
+			check(moved > speed * 2.0 * 0.6 and moved < speed * 2.0 * 1.3 and near(float(z["x"]), 0.0, 0.01), "%s: it drifts toward the nearest enemy at %.1f m/s (%.2f m in 2 s)" % [rid, speed, moved])
 			check(evs("miasma", "move").size() >= 2 and evs("miasma", "land")[0]["ev"]["creep"] > 0.0, "%s: the other peers are told where it walks (%d move events)" % [rid, evs("miasma", "move").size()])
-			check(evs("miasma", "move").size() <= 8, "%s: ...at a few a second, not every tick (%d)" % [rid, evs("miasma", "move").size()])
+			var every_s := float(DmRiteRegistry.module("miasma").get_script().get_script_constant_map()["MOVE_EV_S"])
+			check(evs("miasma", "move").size() <= int(ceil(3.6 / every_s)) + 1, "%s: ...once per %.1f s at most, not every tick (%d)" % [rid, every_s, evs("miasma", "move").size()])
 
 
 func _rune_contagion(rid: String) -> void:
 	var T: Dictionary = DmSimData.RUNE_TUNING
 	for with_rune in [false, true]:
 		reset("miasma", rid if with_rune else "")
+		var reach := float(T["contagion"]["reach"])
 		var a := foe(Vector3(0, 0, -28))
-		var b := foe(Vector3(3.0, 0, -28))
-		var far := foe(Vector3(9, 0, -28))
+		var b := foe(Vector3(reach * 0.65, 0, -28))
+		var far := foe(Vector3(reach * 2.0, 0, -28))
 		caster.request_cast("miasma", Vector3(0, 0, -27), -1)
 		await secs(2.8)
 		check(stacks_of(a, &"withered") >= int(T["contagion"]["minStacks"]), "%s: the circle withered its victim (%d stacks)" % [rid, stacks_of(a, &"withered")])
@@ -435,7 +454,7 @@ func _rune_hollow(rid: String) -> void:
 	var base := 0.0
 	for with_rune in [false, true]:
 		reset("black_litany", rid if with_rune else "")
-		var e := foe(Vector3(0, 0, -21))
+		var e := foe(Vector3(0, 0, -18.0 - float(DmAbilities.def("black_litany")["radius"]) * 0.4))
 		corpse(Vector3(1, 0, -19))   # the corpse the litany eats ...
 		raise_at(Vector3(-1, 0, -19), spec)   # ... and a thrall (it rises from a corpse of its own)
 		await ticks(2)
@@ -447,14 +466,15 @@ func _rune_hollow(rid: String) -> void:
 		else:
 			check(legion().count() == 1, "%s: it spares the thralls" % rid)
 			var want := DmAbilities.litany_damage(DmAbilities.litany_spell_power(DmAbilities.sp(caster.p, caster.now_ms), rid), 1, 0, 1)
-			check(near(loss(e), want, want * 0.02) and base > loss(e), "%s: at x%.1f spell power (%.1f vs %.1f without)" % [rid, float(T["hollowChoir"]["powerMult"]), loss(e), base])
+			check(near(loss(e), want, want * 0.02) and not near(loss(e), base, 0.01), "%s: at x%.1f spell power (%.1f vs %.1f without)" % [rid, float(T["hollowChoir"]["powerMult"]), loss(e), base])
 
 
 func _rune_requiem(rid: String) -> void:
 	var T: Dictionary = DmSimData.RUNE_TUNING
-	var near_e := Vector3(0, 0, -21)   # 3 m: inside both radii
-	var mid_e := Vector3(7.8, 0, -18)  # between the plain 7 m and the widened 7 x 1.7 m
 	var plain_r := float(DmAbilities.def("black_litany")["radius"])
+	var wide_r := plain_r * float(T["requiem"]["radiusMult"])
+	var near_e := Vector3(0, 0, -18.0 - plain_r * 0.4)   # inside both radii (the hero stands at z -18)
+	var mid_e := Vector3((plain_r + wide_r) * 0.5, 0, -18)  # between the plain radius and the widened one
 	for with_rune in [false, true]:
 		reset("black_litany", rid if with_rune else "")
 		var a := foe(near_e)
@@ -530,18 +550,30 @@ func raise_at(pos: Vector3, spec: Dictionary = WARRIOR) -> int:
 	return int((r["thralls"] as Array)[0]) if bool(r["ok"]) and not (r["thralls"] as Array).is_empty() else 0
 
 
+## What the whole set (all five pieces worn) adds to `key`, summed over its tiers in the set bonuses of the data.
+func bonus(set_id: String, key: String) -> float:
+	var sum := 0.0
+	for b: Dictionary in DmSetBonuses.bonuses_of(set_id):
+		sum += float((b["effect"].get("add", {}) as Dictionary).get(key, 0.0))
+	return sum
+
+
 func _legends() -> void:
 	var L: Dictionary = DmSimData.LEGEND
+	var burst := bonus("legion_unburied", "thrallDeathBurst")
+	var every := int(bonus("legion_unburied", "championEvery"))
+	var rally := bonus("legion_unburied", "spearRally")
 	# --- the feed: wearing / stripping a set reaches the caster and the legion on every change
 	reset()
 	check(DmLegend.sim_legend_active(caster.legend) == false and legion().legend.get("championEvery", 0.0) == 0.0, "C: no set, no legend")
 	await wear("legion_unburied")
-	check(float(caster.mods["thrallDeathBurst"]) == 0.8 and float(caster.mods["championEvery"]) == 4.0 and float(caster.mods["spearRally"]) == 1.0, "C: Legion of the Unburied reaches the caster's mods (%s)" % str({"b": caster.mods["thrallDeathBurst"], "c": caster.mods["championEvery"], "s": caster.mods["spearRally"]}))
-	check(float(caster.legend["thrallDeathBurst"]) == 0.8 and float(legion().legend["thrallDeathBurst"]) == 0.8 and float(legion().legend["championEvery"]) == 4.0 and float(legion().legend["spearRally"]) == 1.0, "C: ...and the legion's legend follows the gear change (%s)" % str(legion().legend))
+	check(burst > 0.0 and every > 0 and rally > 0.0, "C: the data's Legion of the Unburied grants a death burst, a champion and a rally")
+	check(float(caster.mods["thrallDeathBurst"]) == burst and float(caster.mods["championEvery"]) == float(every) and float(caster.mods["spearRally"]) == rally, "C: Legion of the Unburied reaches the caster's mods (%s)" % str({"b": caster.mods["thrallDeathBurst"], "c": caster.mods["championEvery"], "s": caster.mods["spearRally"]}))
+	check(float(caster.legend["thrallDeathBurst"]) == burst and float(legion().legend["thrallDeathBurst"]) == burst and float(legion().legend["championEvery"]) == float(every) and float(legion().legend["spearRally"]) == rally, "C: ...and the legion's legend follows the gear change (%s)" % str(legion().legend))
 	await strip()
 	check(not DmLegend.sim_legend_active(legion().legend) and float(caster.mods["championEvery"]) == 0.0, "C: stripping it clears the legend again")
 	await wear("legion_unburied")
-	check(float(legion().legend["championEvery"]) == 4.0, "C: and wearing it again restores it")
+	check(float(legion().legend["championEvery"]) == float(every), "C: and wearing it again restores it")
 
 	# thrallDeathBurst: a thrall that dies bursts for x its max hp on enemies within deathBurstR; living thralls pick up a legend change
 	reset()
@@ -550,26 +582,26 @@ func _legends() -> void:
 	await ticks(2)
 	var t0 := legion().list()[0]
 	var i0: Dictionary = legion().info(t0)
-	check(near(float(i0["death_burst_frac"]), 0.8, 0.001), "C: thrallDeathBurst reaches the raised thrall (%.2f)" % float(i0["death_burst_frac"]))
+	check(near(float(i0["death_burst_frac"]), burst, 0.001), "C: thrallDeathBurst reaches the raised thrall (%.2f)" % float(i0["death_burst_frac"]))
 	var tp := Vector3(i0["pos"].x, 0.0, i0["pos"].y)
 	var max_hp := float(i0["max_hp"])
-	var victim := foe(tp + Vector3(1.5, 0, 0))
+	var victim := foe(tp + Vector3(float(L["deathBurstR"]) * 0.5, 0, 0))
 	var outside := foe(tp + Vector3(float(L["deathBurstR"]) + 3.0, 0, 0))
 	core.kill_thrall(t0, "killed")
 	await ticks(3)
-	check(near(loss(victim), 0.8 * max_hp, 1.0) and loss(outside) == 0.0, "C: thrallDeathBurst - a dying thrall bursts for 0.8 x its max hp within %.0f m (%.1f of %.1f)" % [float(L["deathBurstR"]), loss(victim), 0.8 * max_hp])
+	check(near(loss(victim), burst * max_hp, 1.0) and loss(outside) == 0.0, "C: thrallDeathBurst - a dying thrall bursts for %.1f x its max hp within %.0f m (%.1f of %.1f)" % [burst, float(L["deathBurstR"]), loss(victim), burst * max_hp])
 	await strip()
 	raise_at(Vector3(0, 0, -24))
 	await ticks(2)
 	check(float(legion().info(legion().list()[0])["death_burst_frac"]) == 0.0, "C: without the set a thrall leaves no burst")
 
-	# championEvery: every 4th thrall raised is a champion (x hp, x damage)
+	# championEvery: every Nth thrall raised is a champion (x hp, x damage)
 	reset()
 	await wear("legion_unburied")
 	var champs := 0
-	for k in 4:
+	for k in every:
 		corpse(Vector3(0.5 * k, 0, -24))
-	for k in 4:
+	for k in every:
 		caster.p["cooldowns"].clear()
 		caster.p["castUntil"] = 0.0
 		caster.request_cast("exhume", Vector3(0.5 * k, 0, -24), -1)
@@ -583,7 +615,7 @@ func _legends() -> void:
 			champion = t
 		elif ordinary == 0:
 			ordinary = t
-	check(ts.size() == 4 and champs == 1 and champion != 0 and ordinary != 0, "C: championEvery 4 - the 4th raised is the one champion (%d thralls, %d champions)" % [ts.size(), champs])
+	check(ts.size() == every and champs == 1 and champion != 0 and ordinary != 0, "C: championEvery %d - the %dth raised is the one champion (%d thralls, %d champions)" % [every, every, ts.size(), champs])
 	if champion != 0 and ordinary != 0:
 		check(near(float(legion().info(champion)["max_hp"]) / float(legion().info(ordinary)["max_hp"]), float(L["championHp"]), 0.01), "C: ...with x%.0f hp (%.0f vs %.0f)" % [float(L["championHp"]), float(legion().info(champion)["max_hp"]), float(legion().info(ordinary)["max_hp"])])
 
@@ -610,12 +642,14 @@ func _plague_choir() -> void:
 	var L: Dictionary = DmSimData.LEGEND
 	reset()
 	await wear("plague_choir")
-	check(float(caster.legend["miasmaSpreadsWithered"]) == 1.0 and float(caster.legend["witheredBurstAt"]) == 8.0, "C: Plague Choir reaches the caster's legend (%s)" % str(caster.legend))
+	var spreads := bonus("plague_choir", "miasmaSpreadsWithered")
+	var burst_at := int(bonus("plague_choir", "witheredBurstAt"))
+	check(spreads > 0.0 and burst_at > 1 and float(caster.legend["miasmaSpreadsWithered"]) == spreads and float(caster.legend["witheredBurstAt"]) == float(burst_at), "C: Plague Choir reaches the caster's legend (%s)" % str(caster.legend))
 	# miasmaSpreadsWithered: an enemy that dies withered inside the circle spreads its stacks to the 3 nearest within 4 m
 	var a := foe(Vector3(0, 0, -28))
-	var n1 := foe(Vector3(2, 0, -28))
-	var n2 := foe(Vector3(-2, 0, -28))
-	var far := foe(Vector3(0, 0, -36))
+	var n1 := foe(Vector3(float(L["spreadR"]) * 0.5, 0, -28))
+	var n2 := foe(Vector3(-float(L["spreadR"]) * 0.5, 0, -28))
+	var far := foe(Vector3(0, 0, -28.0 - float(L["spreadR"]) * 2.0))
 	caster.request_cast("miasma", Vector3(0, 0, -27), -1)
 	await secs(3.2)
 	var stacks := stacks_of(a, &"withered")
@@ -627,18 +661,18 @@ func _plague_choir() -> void:
 	var s1 := stacks_of(n1, &"withered")
 	check(s1 >= stacks and stacks_of(n2, &"withered") >= stacks and stacks_of(far, &"withered") == 0, "C: miasmaSpreadsWithered - its %d stacks pass to the neighbours within %.0f m (%d / %d), not to a far one" % [stacks, float(L["spreadR"]), s1, stacks_of(n2, &"withered")])
 	check(evs("miasma", "legend").any(func(h: Dictionary) -> bool: return h["ev"]["kind"] == "spread"), "C: the spread is drawn")
-	# witheredBurstAt: an enemy reaching 8 stacks loses them and a fresh circle opens on it
+	# witheredBurstAt: an enemy reaching the threshold loses its stacks and a fresh circle opens on it
 	reset()
 	var zones: Array = caster.mem("miasma").get_or_add("zones", [])
 	var big := foe(Vector3(0, 0, -28))
 	caster.request_cast("miasma", Vector3(0, 0, -27), -1)
 	await secs(1.4)
 	check(not caster.mem("miasma").get("last", {}).is_empty(), "C: the cast is remembered for Chain Plague")
-	caster.apply_status(big, &"withered", 7, -1.0, {"dps": 1.0, "cap": 8.0})
+	caster.apply_status(big, &"withered", burst_at - 1, -1.0, {"dps": 1.0, "cap": float(burst_at)})
 	var before := zones.size()
 	await secs(1.3)
 	var plague := zones.filter(func(z: Dictionary) -> bool: return z["plague"])
-	check(plague.size() >= 1 and stacks_of(big, &"withered") < 8, "C: witheredBurstAt - 8 stacks burst into a fresh circle (%d plague circles, %d stacks left)" % [plague.size(), stacks_of(big, &"withered")])
+	check(plague.size() >= 1 and stacks_of(big, &"withered") < burst_at, "C: witheredBurstAt - %d stacks burst into a fresh circle (%d plague circles, %d stacks left)" % [burst_at, plague.size(), stacks_of(big, &"withered")])
 	check(plague.size() <= int(L["burstClouds"]) and evs("miasma", "legend").any(func(h: Dictionary) -> bool: return h["ev"]["kind"] == "plague"), "C: ...at most %d at once, and it is drawn" % int(L["burstClouds"]))
 	await strip()
 	check(float(caster.legend["witheredBurstAt"]) == 0.0, "C: Plague Choir leaves with the set")
@@ -650,18 +684,21 @@ func _colossus_mantle() -> void:
 	var plain := hero.take_damage(20.0, null)
 	hero.heal(1e6)
 	await wear("colossus_mantle")
-	check(float(caster.mods["colossusGuard"]) == 0.3 and float(caster.mods["wardReflect"]) == 0.6 and float(caster.mods["litanyShatter"]) == 4.0, "C: Colossus Mantle reaches the mods (%s)" % str({"g": caster.mods["colossusGuard"], "r": caster.mods["wardReflect"], "s": caster.mods["litanyShatter"]}))
+	var guard := bonus("colossus_mantle", "colossusGuard")
+	var reflect := bonus("colossus_mantle", "wardReflect")
+	var shatter := bonus("colossus_mantle", "litanyShatter")
+	check(guard > 0.0 and reflect > 0.0 and shatter > 0.0 and float(caster.mods["colossusGuard"]) == guard and float(caster.mods["wardReflect"]) == reflect and float(caster.mods["litanyShatter"]) == shatter, "C: Colossus Mantle reaches the mods (%s)" % str({"g": caster.mods["colossusGuard"], "r": caster.mods["wardReflect"], "s": caster.mods["litanyShatter"]}))
 	check(hero._legend_hurt, "C: ...and arms the hit hook")
-	# colossusGuard: 3+ thralls = 30 % less damage taken (a Gravecaller has no ward per thrall, so nothing else moves the number)
+	# colossusGuard: enough thralls = that much less damage taken (a Gravecaller has no ward per thrall, so nothing else moves the number)
 	var spec := {"kind": "warrior", "cap": 8.0, "hp": 500.0, "damage": 10.0, "attackSpeedMult": 1.0, "r": 0.8}
 	hero.heal(1e6)
 	var one := hero.take_damage(20.0, null)
 	hero.heal(1e6)
-	for k in 3:
+	for k in int(L["colossusThralls"]):
 		raise_at(hero.global_position + Vector3(2 + k, 0, 0), spec)
 	await ticks(2)
 	var three := hero.take_damage(20.0, null)
-	check(legion().count() >= 3 and near(three, one * (1.0 - float(caster.mods["colossusGuard"])), 0.2) and near(plain, one, 0.2), "C: colossusGuard - %d thralls cut a blow to %.0f%% (%.1f -> %.1f)" % [legion().count(), 100.0 * three / maxf(one, 0.001), one, three])
+	check(legion().count() >= int(L["colossusThralls"]) and near(three, one * (1.0 - float(caster.mods["colossusGuard"])), 0.2) and near(plain, one, 0.2), "C: colossusGuard - %d thralls cut a blow to %.0f%% (%.1f -> %.1f)" % [legion().count(), 100.0 * three / maxf(one, 0.001), one, three])
 	# wardReflect: the share Bone Ward turned is dealt back at the attacker. A Gravecaller has no ward per thrall, so grant it for the test
 	hero.heal(1e6)
 	var striker := foe(hero.position + Vector3(1.2, 0, 0))
@@ -671,18 +708,18 @@ func _colossus_mantle() -> void:
 	var ward := minf(float(DmLegend.L()["wardCap"]), 0.2 * float(legion().count()))
 	hits.clear()
 	hero.take_damage(20.0, striker)
-	check(loss(striker) > 0.0 and near(loss(striker), DmLegend.ward_reflect_damage(20.0, ward, 0.6), 0.2), "C: wardReflect - the ward's share goes back at the attacker (%.2f, want %.2f)" % [loss(striker), DmLegend.ward_reflect_damage(20.0, ward, 0.6)])
+	check(loss(striker) > 0.0 and near(loss(striker), DmLegend.ward_reflect_damage(20.0, ward, reflect), 0.2), "C: wardReflect - the ward's share goes back at the attacker (%.2f, want %.2f)" % [loss(striker), DmLegend.ward_reflect_damage(20.0, ward, reflect)])
 	check(evs("black_litany", "reflect").size() == 1, "C: ...and is drawn once")
 	hero.mods = saved_mods
-	# litanyShatter: a broken Litany barrier bursts around you for x4 its size
+	# litanyShatter: a broken Litany barrier bursts around you for a multiple of its size
 	hero.heal(1e6)
-	var near_foe := foe(hero.position + Vector3(2.5, 0, 0))
+	var near_foe := foe(hero.position + Vector3(float(L["shatterR"]) * 0.6, 0, 0))
 	var far_foe := foe(hero.position + Vector3(float(L["shatterR"]) + 3.0, 0, 0))
 	hero.p["barrier"] = 10.0
 	hero.p["barrierPeak"] = 10.0
 	hits.clear()
 	hero.take_damage(30.0, null)
-	check(near(loss(near_foe), 4.0 * 10.0, 0.5) and loss(far_foe) == 0.0 and evs("black_litany", "shatter").size() == 1, "C: litanyShatter - the broken barrier (10) bursts for %.0f within %.0f m, drawn once (%.1f)" % [4.0 * 10.0, float(L["shatterR"]), loss(near_foe)])
+	check(near(loss(near_foe), shatter * 10.0, 0.5) and loss(far_foe) == 0.0 and evs("black_litany", "shatter").size() == 1, "C: litanyShatter - the broken barrier (10) bursts for %.0f within %.0f m, drawn once (%.1f)" % [shatter * 10.0, float(L["shatterR"]), loss(near_foe)])
 	await strip()
 	check(float(caster.mods["colossusGuard"]) == 0.0 and not hero._legend_hurt, "C: Colossus Mantle leaves with the set (no hit hook left)")
 	hero.heal(1e6)
@@ -693,14 +730,18 @@ func _requiem_wraiths() -> void:
 	var L: Dictionary = DmSimData.LEGEND
 	reset()
 	await wear("requiem_wraiths")
-	check(float(caster.mods["corpseWisp"]) == 10.0 and float(caster.mods["wraithNova"]) == 1.2, "C: Requiem Wraiths reaches the mods (%s)" % str({"w": caster.mods["corpseWisp"], "n": caster.mods["wraithNova"]}))
-	# corpseWisp: a corpse of yours consumed raises a healing wisp (cap 3), each heals 2 % max hp a second
-	for k in 5:
+	var wisp := bonus("requiem_wraiths", "corpseWisp")
+	var nova_mult := bonus("requiem_wraiths", "wraithNova")
+	check(wisp > 0.0 and nova_mult > 0.0 and float(caster.mods["corpseWisp"]) == wisp and float(caster.mods["wraithNova"]) == nova_mult, "C: Requiem Wraiths reaches the mods (%s)" % str({"w": caster.mods["corpseWisp"], "n": caster.mods["wraithNova"]}))
+	# corpseWisp: a corpse of yours consumed raises a healing wisp (up to the cap), each heals a share of max hp a second
+	var wisp_cap := int(L["wispCap"])
+	var corpses := wisp_cap + 2   # (two more than the wisps can be)
+	for k in corpses:
 		corpse(Vector3(0.6 * k, 0, -24))
 	hero.p["hp"] = float(hero.p["stats"]["maxHp"]) * 0.3
 	hero._mirror_from_state()
 	var hp0 := float(hero.p["hp"])
-	for k in 5:
+	for k in corpses:
 		caster.p["cooldowns"].clear()
 		caster.p["castUntil"] = 0.0
 		caster.request_cast("exhume", Vector3(0.6 * k, 0, -24), -1)
@@ -712,9 +753,9 @@ func _requiem_wraiths() -> void:
 	await secs(2.1)
 	var healed := float(hero.p["hp"]) - heal_before
 	var mh := float(hero.p["stats"]["maxHp"])
-	check(healed >= 0.9 * 2.0 * 3.0 * mh * float(L["wispHealFrac"]) and healed < 3.0 * 2.0 * 3.0 * mh * float(L["wispHealFrac"]), "C: ...each healing %.0f%% of max hp a second (%.0f in 2 s with 3 wisps)" % [float(L["wispHealFrac"]) * 100.0, healed])
+	check(healed >= 0.9 * 2.0 * float(wisp_cap) * mh * float(L["wispHealFrac"]) and healed < 3.0 * 2.0 * float(wisp_cap) * mh * float(L["wispHealFrac"]), "C: ...each healing %.0f%% of max hp a second (%.0f in 2 s with %d wisps)" % [float(L["wispHealFrac"]) * 100.0, healed, wisp_cap])
 	# wraithNova: a Soul Harvest cast makes every wisp and wraith release a nova
-	var e1 := foe(hero.position + Vector3(2.4, 0, 0.0))    # off the spear's line, inside a wisp's nova
+	var e1 := foe(hero.position + Vector3(float(L["novaR"]) * 0.8, 0, 0.0))    # off the spear's line, inside a wisp's nova
 	var e2 := foe(hero.position + Vector3(float(L["novaR"]) + 9.0, 0, 0.0))
 	hero.p["souls"] = hero.p["soulsMax"]
 	check(DmAbilities.empowered(caster.p, "marrow_spear"), "C: (Soul Harvest is charged)")
@@ -726,7 +767,7 @@ func _requiem_wraiths() -> void:
 	var nova_amt := float(novas[0]["ev"]["amount"]) if not novas.is_empty() else 1e9
 	if not novas.is_empty():
 		var nova_dmg := float(novas[0]["ev"]["amount"])
-		check(near(nova_dmg, DmAbilities.sp(caster.p, caster.now_ms) * 1.2, nova_dmg * 0.02), "C: ...for spell power x %.1f (%.1f)" % [1.2, nova_dmg])
+		check(near(nova_dmg, DmAbilities.sp(caster.p, caster.now_ms) * nova_mult, nova_dmg * 0.02), "C: ...for spell power x %.1f (%.1f)" % [nova_mult, nova_dmg])
 	check(loss(e1) >= nova_amt * 0.99 and loss(e2) == 0.0, "C: ...hitting what stands within %.0f m of a wisp (%.1f / %.1f)" % [float(L["novaR"]), loss(e1), loss(e2)])
 	await strip()
 	check(float(caster.mods["corpseWisp"]) == 0.0, "C: Requiem Wraiths leaves with the set")

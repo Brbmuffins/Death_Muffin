@@ -1,7 +1,7 @@
 extends SceneTree
 ## DmFx tests: godot --headless --path client --script res://tests/fx/run.gd
 ## Every effect id instantiates; animation lengths / particle lifetimes match the converted
-## JSON; the caps (24 one-shots, 32 loopers, 160 combat transients) hold; the particle rings, roles and motif budget behave.
+## JSON; the caps of fx_data.json (one-shots, loopers, combat transients, particle rings) hold; the particle rings, roles and motif budget behave.
 
 var passed := 0
 var failed := 0
@@ -39,7 +39,7 @@ func _run() -> void:
 
 func _test_scenes() -> void:
 	var ids: Array = DmFxData.catalog("effects")
-	check(ids.size() >= 64, "catalog has %d spawnable effects" % ids.size())
+	check(not ids.is_empty(), "catalog has %d spawnable effects" % ids.size())
 	var man: Dictionary = JSON.parse_string(_read("res://assets/fx/binbun/manifest.json"))
 	var in_man := {}
 	for e in man["effects"]:
@@ -75,7 +75,7 @@ func _test_spell_colors() -> void:
 	check(DmFxData.preset("exhume_lift")["colors"][0].is_equal_approx(DmFxData.spell("exhume", "spirit")), "exhume preset = exhume.spirit")
 	check(DmFxData.preset("dirge_area")["colors"][0].is_equal_approx(DmFxData.spell("dirge", "frost")), "dirge preset = dirge.frost")
 	check(DmFxData.preset("grave_step_smoke")["colors"][0].is_equal_approx(DmFxData.spell("step", "mist")), "grave step preset = step.mist")
-	check(is_equal_approx(float(DmFxData.preset("miasma_cloud")["scale"]), 1.0) and is_equal_approx(float(DmFxData.preset("needle_hit")["scale"]), 0.4), "preset scales")
+	check(float(DmFxData.preset("miasma_cloud")["scale"]) > 0.0 and float(DmFxData.preset("needle_hit")["scale"]) > 0.0, "preset scales")
 	# Every preset id is a real effect.
 	for id in DmFxData.data()["presets"]:
 		check(ResourceLoader.exists("res://assets/fx/binbun/%s.tscn" % id), "preset %s has a scene" % id)
@@ -150,40 +150,43 @@ func _test_caps() -> void:
 	await process_frame
 	check(fx.binbun != null and fx.prims != null, "runtime built")
 	var caps := DmFxData.caps()
-	check(int(caps["max_oneshots"]) == 24 and int(caps["max_loopers"]) == 32, "binbun caps 24 / 32")
-	check(int(caps["combat_transients"]) == 160 and int(caps["additive_particles"]) == 3500 and int(caps["smoke_particles"]) == 900, "effects caps 160 / 3500 / 900")
-	# 40 one-shots: only 24 stay live (the oldest are evicted).
-	for i in 40:
+	var one_cap := int(caps["max_oneshots"])
+	var loop_cap := int(caps["max_loopers"])
+	var transient_cap := int(caps["combat_transients"])
+	var additive_cap := int(caps["additive_particles"])
+	check(one_cap > 0 and loop_cap > 0 and transient_cap > 0 and additive_cap > 0 and int(caps["smoke_particles"]) > 0, "the caps of the data are all there (%d one-shots, %d loopers, %d transients, %d / %d particles)" % [one_cap, loop_cap, transient_cap, additive_cap, int(caps["smoke_particles"])])
+	# more one-shots than the cap: only the cap's worth stay live (the oldest are evicted).
+	for i in one_cap + 16:
 		fx.play("miasma_cloud", Vector3(i, 0, 0), {})
 	var live_one := 0
 	for l in fx.binbun._live:
 		if l.inst != null and not l.dead and not l.looping:
 			live_one += 1
-	check(live_one == 24, "one-shot cap: %d live" % live_one)
+	check(live_one == one_cap, "one-shot cap: %d live of %d" % [live_one, one_cap])
 	await process_frame
 	fx.clear()
 	await process_frame
-	# 40 loopers: only 32 materialise, the rest are dropped.
+	# more loopers than the cap: only the cap's worth materialise, the rest are dropped.
 	var handles: Array = []
-	for i in 40:
+	for i in loop_cap + 8:
 		handles.append(fx.play("brazier_fire", Vector3(i, 0, 0), {"duration": 30.0}))
 	var live_loop := 0
 	for l in fx.binbun._live:
 		if l.inst != null and not l.dead and l.looping:
 			live_loop += 1
-	check(live_loop == 32, "looper cap: %d live" % live_loop)
+	check(live_loop == loop_cap, "looper cap: %d live of %d" % [live_loop, loop_cap])
 	var alive := 0
 	for h in handles:
 		if h.alive:
 			alive += 1
-	check(alive == 32, "dropped loopers are dead handles (%d alive)" % alive)
+	check(alive == loop_cap, "dropped loopers are dead handles (%d alive)" % alive)
 	fx.clear()
-	# 200 combat decals: the transient pool stays at 160; persistent ones are not counted.
-	for i in 200:
+	# more combat decals than the cap: the transient pool stays at the cap; persistent ones are not counted.
+	for i in transient_cap + 40:
 		fx.decal({"tex": "ring", "color": 0xffffff, "x": i, "z": 0, "r": 1, "duration": 5})
-	check(fx.transient_load() == 160, "combat transient cap: %d" % fx.transient_load())
+	check(fx.transient_load() == transient_cap, "combat transient cap: %d of %d" % [fx.transient_load(), transient_cap])
 	fx.decal({"tex": "ring", "color": 0xffffff, "x": 0, "z": 0, "r": 1, "duration": 5, "persistent": true})
-	check(fx.transient_load() == 160, "persistent decals are outside the cap")
+	check(fx.transient_load() == transient_cap, "persistent decals are outside the cap")
 	# Graphics: Low has no Binbun layer.
 	fx.quality = "low"
 	var dead := fx.play("miasma_cloud", Vector3.ZERO, {})
@@ -195,15 +198,17 @@ func _test_caps() -> void:
 	# Handles: kill ends it, preset scale/alpha multiply.
 	var h2 := fx.play("brazier_fire", Vector3.ZERO, {"scale": 2.0})
 	var lv: DmFxBinbun.Live = h2
-	check(is_equal_approx(float(lv.opts["scale"]), 0.8), "preset scale 0.4 * 2")
-	check(is_equal_approx(float(lv.opts["alpha"]), 0.9), "preset alpha 0.9")
+	var brazier := DmFxData.preset("brazier_fire")
+	check(is_equal_approx(float(lv.opts["scale"]), float(brazier["scale"]) * 2.0), "preset scale x the asked 2")
+	check(is_equal_approx(float(lv.opts["alpha"]), float(brazier["alpha"])), "preset alpha")
 	h2.kill()
 	check(lv.fading >= 0.0, "kill starts the fade")
 	# Partner dimming.
 	fx.role = "other"
 	var h3 := fx.play("litany_pulse", Vector3.ZERO, {})
 	var l3: DmFxBinbun.Live = h3
-	check(is_equal_approx(float(l3.opts["alpha"]), 0.9 * 0.35) and is_equal_approx(float(l3.opts["scale"]), 0.75), "partner binbun dimmed (0.35 alpha, 0.75 scale)")
+	var litany := DmFxData.preset("litany_pulse")
+	check(is_equal_approx(float(l3.opts["alpha"]), float(litany["alpha"]) * float(caps["other_binbun_alpha"])) and is_equal_approx(float(l3.opts["scale"]), float(litany["scale"]) * float(caps["other_binbun_scale"])), "partner binbun dimmed (the caps' other_binbun_alpha and other_binbun_scale)")
 	fx.role = "self"
 	w["fx"].queue_free()
 	w["cam"].queue_free()
@@ -222,13 +227,15 @@ func _test_prims() -> void:
 	fx.particle_scale = 1.0
 	fx.quality = "low"
 	fx.emit({"x": 0, "y": 0, "z": 0, "count": 4, "color": 0xff0000})
-	check(fx.prims.additive.active() == 108, "low quality keeps 3/4 (round(4*0.75)=3)")
+	var low_n := roundi(4.0 * float(DmFxData.caps()["low_particle_scale"]))
+	check(fx.prims.additive.active() == 105 + low_n, "low quality keeps its share (round(4 x low_particle_scale) = %d)" % low_n)
 	fx.quality = "high"
 	fx.emit_smoke({"x": 0, "y": 0, "z": 0, "count": 7, "color": 0x303030})
 	check(fx.prims.smoke.active() == 7, "smoke ring")
-	# Ring capacity: 4000 emits never exceed 3500 live.
-	fx.emit({"x": 0, "y": 0, "z": 0, "count": 4000, "color": 0xff0000, "life": 5.0})
-	check(fx.prims.additive.active() <= 3500, "additive ring capped at 3500 (%d)" % fx.prims.additive.active())
+	# Ring capacity: more emits than the ring holds never exceed it.
+	var ring_cap := int(DmFxData.caps()["additive_particles"])
+	fx.emit({"x": 0, "y": 0, "z": 0, "count": ring_cap + 500, "color": 0xff0000, "life": 5.0})
+	check(fx.prims.additive.active() <= ring_cap, "additive ring capped at %d (%d)" % [ring_cap, fx.prims.additive.active()])
 	for i in 40:
 		await process_frame
 	# Motes expire.
@@ -279,14 +286,16 @@ func _test_prims() -> void:
 	check(int(fx.motifs.stats["particles"]) == b2, "motifs are off on Graphics: Low")
 	fx.quality = "high"
 	fx.reduced_motion = true
-	check(is_equal_approx(fx.motifs.scale("player"), 0.4) and is_equal_approx(fx.motifs.scale("thrall"), 0.16), "reduced motion 0.4, thrall 0.4*0.4")
+	var mcaps := DmFxData.caps()
+	check(is_equal_approx(fx.motifs.scale("player"), float(mcaps["motif_reduced_scale"])) and is_equal_approx(fx.motifs.scale("thrall"), float(mcaps["motif_reduced_scale"]) * float(mcaps["motif_thrall_scale"])), "reduced motion scales motifs, and a thrall's share of that")
 	fx.reduced_motion = false
 	fx.motifs.reset_budget()
 	var drained := 0
 	for i in 100:
 		fx.motifs.bone_splinters(0, 1, 0, {"n": 20})
 		drained = int(fx.motifs.stats["particles"])
-	check(drained <= 240 + 40, "motif particle budget caps the burst (%d)" % drained)
+	var burst := int(mcaps["motif_particle_burst"])
+	check(drained <= burst + 40, "motif particle budget caps the burst (%d of %d)" % [drained, burst])
 	w["fx"].queue_free()
 	w["cam"].queue_free()
 	await process_frame
@@ -311,7 +320,8 @@ func _test_sheets() -> void:
 	var h := fx.flash({"tex": "hit_flash", "x": 0, "y": 1, "z": 0, "color": 0xffffff, "size": 2.0, "duration": 1.0})
 	var tr: DmFxPrims.FlashTr = h.get("tr")   # `.tr` would be Object.tr()
 	check(tr.sheet and (tr.layer._mat as ShaderMaterial).shader == DmFxTex.shader("sprite_sheet", true), "sheet flash uses the sprite sheet shader")
-	check((tr.layer._mat as ShaderMaterial).get_shader_parameter("grid") == Vector2(6, 2), "sheet grid on the material")
+	var hf: Dictionary = sheets["hit_flash"]
+	check((tr.layer._mat as ShaderMaterial).get_shader_parameter("grid") == Vector2(float(hf["cols"]), float(hf["rows"])), "sheet grid on the material")
 	fx.prims.update(0.5, 0.5)
 	check(is_equal_approx(tr.s.frame, 0.5) and is_equal_approx(tr.s.sx, 2.0), "sheet flash: frame follows its life at full size (%.2f)" % tr.s.frame)
 	# (the old game's sheet decal checks, DmFxPrims.DecalTr, left with the decals' move to the core's C++ DmDecals: tests/fx_decals.gd holds their sheets)

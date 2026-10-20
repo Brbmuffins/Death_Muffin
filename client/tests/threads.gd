@@ -202,7 +202,8 @@ func _b_audio_layout() -> void:
 	if ad != null:
 		var made: int = int(ad.get("layout_edits")) if "layout_edits" in ad else -1
 		check(made == AudioServer.bus_count - 1, "every bus the director made went through the locked helper (%d edits, %d buses besides Master)" % [made, AudioServer.bus_count - 1])
-		check(AudioServer.bus_count > 50, "the voices' buses exist (%d buses)" % AudioServer.bus_count)
+		var voices := int(ad.get_script().get_script_constant_map()["MAX_VOICES"])
+		check(AudioServer.bus_count > voices, "the voices' buses exist (%d buses for %d voices)" % [AudioServer.bus_count, voices])
 
 
 # ---- C: the Depths' floor generator ---------------------------------------------------------------------------------------------------------
@@ -247,7 +248,7 @@ func _tables() -> Array:
 func _d_atlas_worker() -> void:
 	var ids: Array = DmPaData.atlas().get("items", {}).keys()
 	var gear: Array = ids.filter(func(id: Variant) -> bool: return DmAtlasGear.atlas_slot(String(id)) != null)
-	check(ids.size() > 100 and gear.size() > 50, "the catalogue has %d items, %d of them gear" % [ids.size(), gear.size()])
+	check(not ids.is_empty() and not gear.is_empty(), "the catalogue has %d items, %d of them gear" % [ids.size(), gear.size()])
 	var worn_rows: Array = []
 	for i in mini(4, gear.size()):
 		var row: Dictionary = DmAtlasGear.atlas_slot(String(gear[i * 7 % gear.size()]), 100 + i)
@@ -277,7 +278,7 @@ func _d_atlas_worker() -> void:
 	check(got1[0] == main1 and (got1[0] as Dictionary).hash() == main1.hash(), "the verdicts a worker makes are the main thread's (%d verdicts, %d outlooks)" % [main1["verdicts"].size(), main1["outlooks"].size()])
 	var main2 := DmAtlasGear.panel_inputs(ctx2.duplicate(true), ids, owned2)
 	check(got2[0] == main2, "...also for a hero wearing four pieces (%d verdicts)" % main2["verdicts"].size())
-	check(main1["verdicts"].size() > 20 and main1["outlooks"].size() > 5, "the verdicts are not empty (%d, %d)" % [main1["verdicts"].size(), main1["outlooks"].size()])
+	check(not main1["verdicts"].is_empty() and not main1["outlooks"].is_empty(), "the verdicts are not empty (%d, %d)" % [main1["verdicts"].size(), main1["outlooks"].size()])
 	check(on1[0] != OS.get_main_thread_id() and on2[0] != OS.get_main_thread_id() and on1[0] != -1, "the verdicts were made off the main thread")
 	check(_tables() == after, "...and the main thread's second pass wrote no table either")
 

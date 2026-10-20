@@ -1,17 +1,17 @@
 extends SceneTree
 ## The Catacomb Depths on the combat core (client/README.md "The Depths"): the game scene as a player gets it (the whole world, the HUD), offline on the
 ## local mock, headless. Today's tests/next_depths replayed on the core. Checks:
-##   A the rules, no game: floors per seed (sound, deterministic, a chest every fifth depth), quota, pacing, affixes, rosters (and the kinds the core does not run yet left out), levels,
-##     the first wave, the stair opening once, the loot ground by depth;
+##   A the rules, no game: floors per seed (sound, deterministic, a chest every `chestEvery` depths), quota, pacing, affixes (the shape of each formula and the data's numbers; the server rules' own answers for
+##     the rosters and the loot ground), levels, the first wave, the stair opening once;
 ##   B the world: the Depths node and the Warren's stair, the Depths' rect in the core's bounds and in no area until a run opens it, nothing on the core before a run;
 ##   C the way in: the Warren's seal broken, waystone travel, a click on the stair walks the hero to it and starts a run; floor 1 stands (drawn, the hero at its way in, in the Depths,
 ##     the stairs clickable, the arrival banner, the HUD's readout and map, the prompts), its navmesh is baked, on the navigation map and the core's own copy of it, which answers
 ##     what the navigation server answers; a run is solo;
-##   D the dead: bodies of the core at the depth's level, in the Depths' area and on the floor, hunting the hero across the rooms (aggro 36), fighting back; elites bear the depth's affixes;
+##   D the dead: bodies of the core at the depth's level, in the Depths' area and on the floor, hunting the hero across the rooms (the Depths' aggro), fighting back; elites bear the depth's affixes;
 ##     none of the kinds the core does not run yet;
-##   E the quota: the hero's kills (through the core, credited once) open the stair at the 10th, the floor pays (gold, XP, a tape item) and is reported, kills are paid on the Depths' ground;
+##   E the quota: the hero's kills (through the core, credited once) open the stair at the quota, the floor pays (gold, XP, a tape item) and is reported, kills are paid on the Depths' ground;
 ##   F descending: floor 2 of the same seed, the dead and corpses of floor 1 gone from the core, the hero at the way in, the core's navmesh replaced (not added to), a new quota;
-##   G the chest on depth 5: its tape finds on the ground (a claim picks one into the bag on the server), once, off the HUD and the map;
+##   G the chest on the first chest depth: its tape finds on the ground (a claim picks one into the bag on the server), once, off the HUD and the map;
 ##   H leaving: the exit asks twice, the summary, the Warren's stair, everything torn down (picture, navmesh, the core's copy, interactables), the record on the backend, the stair's offer to
 ##     resume, a recall (T) out of a run, a second player joining;
 ##   I death: the run ends and the floor stays behind the death screen, no stairs or waves, the hero rises in the Chapterhouse, nothing taken, a new run possible;
@@ -29,6 +29,8 @@ class ErrorLog:
 const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://depths_test"
 const BAKE := ["grave_robber", "bone_hound"]
+## What the run's code does that is in neither the Depths data nor the server's answers (next/depths/dm_depths_run.gd): the first wave is at least this many, whatever the wave size.
+const FIRST_WAVE_MIN := 8
 
 var fails := 0
 var checks := 0
@@ -42,6 +44,7 @@ var character: Dictionary
 var events: Array = []          ## [id, ctx] of the HUD's game events
 var immortal := true            ## re-applied every frame: a level-up (floor XP) rebuilds the stats and would leave the hero mortal
 var tri_base := 0               ## the core's navmesh triangles outside a run
+var peak := 0                   ## the depth of the first chest the descent reaches (the deepest it goes in section G)
 var _last_us := 0
 var worst_us := 0               ## the longest physics frame since the last reset (INFO only: tests never assert wall-clock time)
 
@@ -144,6 +147,17 @@ func _floor_json(f: Dictionary) -> String:
 	return JSON.stringify(f)
 
 
+## The dead's level on `depth` for a hero of `hero_level`: max(minLevel, hero) + depth x levelsPerDepth, from the Depths data (not through the run).
+func _depth_level(depth: float, hero_level: float) -> float:
+	var D: Dictionary = DmSimData.DEPTHS
+	return maxf(float(D["minLevel"]), floorf(hero_level)) + floorf(maxf(1.0, depth) * float(D["levelsPerDepth"]))
+
+
+## The floor's clickable things: the stairs down and up, and the chest on a chest depth.
+func _stairs_and_chest(f: Dictionary) -> int:
+	return 2 + (1 if f["chest"] != null else 0)
+
+
 func _ids(roster: Array) -> Array:
 	return roster.map(func(e: Dictionary) -> String: return String(e["id"]))
 
@@ -190,86 +204,146 @@ func _exit_run() -> void:
 # ---- A: the rules --------------------------------------------------------------------------------------------------------------
 
 func _a_rules() -> void:
+	var D: Dictionary = DmSimData.DEPTHS
+	var every := int(D["chestEvery"])
 	var same := true
 	var sound := true
 	var chests_ok := true
-	for depth in range(1, 16):
+	var floors_n := 3 * every   # three chest depths of floors
+	for depth in range(1, floors_n + 1):
 		var a := DmDepthsRun.generate(1000 + depth, depth)
 		var b := DmDepthsRun.generate(1000 + depth, depth)
 		same = same and _floor_json(a) == _floor_json(b)
 		sound = sound and DmDepthsFloor.floor_problems(a).is_empty()
-		chests_ok = chests_ok and ((a["chest"] != null) == (depth % 5 == 0))
+		chests_ok = chests_ok and ((a["chest"] != null) == (depth % every == 0))
 	check(same, "a floor is deterministic per (seed, depth)")
-	check(sound, "15 generated floors have no unreachable stair / chest / breach")
-	check(chests_ok, "a chest on every fifth depth (5, 10, 15) and no other")
+	check(sound, "%d generated floors have no unreachable stair / chest / breach" % floors_n)
+	check(chests_ok, "a chest on every %dth depth and no other" % every)
 	check(_floor_json(DmDepthsRun.generate(1, 3)) != _floor_json(DmDepthsRun.generate(2, 3)) and _floor_json(DmDepthsRun.generate(1, 3)) != _floor_json(DmDepthsRun.generate(1, 4)), "another seed or depth gives another floor")
-	var D: Dictionary = DmSimData.DEPTHS
-	check(DmSimDepthsRules.floor_kills(1.0) == 10.0 and DmSimDepthsRules.floor_kills(5.0) == 14.0 and DmSimDepthsRules.floor_kills(40.0) == 30.0, "quota: 9 + depth, at most 30")
-	check(DmSimDepthsRules.depth_wave_size(1.0) == 5.0 and DmSimDepthsRules.depth_wave_size(12.0) == 7.0 and DmSimDepthsRules.depth_wave_size(60.0) == 9.0, "wave size: 5 + depth / 6, at most 9")
-	check(is_equal_approx(DmSimDepthsRules.depth_wave_gap_s(1.0), 4.35) and DmSimDepthsRules.depth_wave_gap_s(60.0) == 2.4, "wave gap: 4.4 - 0.05 depth, at least 2.4 s")
-	check(DmSimDepthsRules.extra_affixes(4.0) == 0 and DmSimDepthsRules.extra_affixes(5.0) == 1 and DmSimDepthsRules.extra_affixes(15.0) == 3 and DmSimDepthsRules.extra_affixes(99.0) == 3, "elite affixes: one more every 5 depths, at most 3 extra")
-	check(is_equal_approx(DmSimDepthsRules.depth_elite_bonus(10.0), 0.05) and DmSimDepthsRules.depth_elite_bonus(99.0) == 0.14, "elite chance +0.5% per depth, at most +14%")
-	check(int(D["cap"]) == 24 and int(D["chestEvery"]) == 5 and float(D["firstWaveDelayS"]) == 1.4, "DEPTHS: cap 24, a chest every 5, first wave after 1.4 s")
-	var base := ["rat", "robber", "ghoul", "bat", "sac", "hound"]
-	var r1 := _ids(DmSimDepthsRules.depth_roster(1.0))
-	var r5 := _ids(DmSimDepthsRules.depth_roster(5.0))
-	var r10 := _ids(DmSimDepthsRules.depth_roster(10.0))
-	var r15 := _ids(DmSimDepthsRules.depth_roster(15.0))
-	check(r1 == base, "depth 1 roster: the six base kinds")
-	check(r5.has("penitent") and r5.has("moth") and not r5.has("templar"), "depth 5 adds penitent / deacon / acolyte / wraith / moth")
-	check(r10.has("templar") and r10.has("plague_doctor") and not r10.has("golem"), "depth 10 adds templar / censer / gargoyle / seraph / plague doctor / flagellant")
-	check(r15.has("golem") and r15.has("drowned_sexton") and r15.size() == 24, "depth 15 adds the Cinder and Fen kinds (24 kinds)")
-	var w1 := _w(DmSimDepthsRules.depth_roster(1.0), "rat")
-	check(w1 == 30.0 and _w(DmSimDepthsRules.depth_roster(5.0), "rat") == 18.0 and _w(DmSimDepthsRules.depth_roster(15.0), "rat") == 6.0 and _w(DmSimDepthsRules.depth_roster(40.0), "hound") >= 3.0, "base kinds fade 40% per band after the first (30 -> 18 -> ... never under 3)")
+	check(int(D["cap"]) > 0 and every >= 1 and float(D["firstWaveDelayS"]) >= 0.0 and int(D["extraAffixEvery"]) >= 1 and int(D["maxExtraAffixes"]) >= 0, "DEPTHS: a cap, a chest and affix cadence, a first-wave delay")
+	# the formulas: their shape (how a quota, a wave and its gap move with the depth, and where they stop), never their numbers; the data's numbers are checked against the data
+	var shape_ok := true
+	var prev_kills := 0.0
+	var prev_size := 0.0
+	var prev_gap := INF
+	var prev_bonus := 0.0
+	var prev_aff := 0
+	for depth in range(1, 121):
+		var dd := float(depth)
+		var q := DmSimDepthsRules.floor_kills(dd)
+		var sz := DmSimDepthsRules.depth_wave_size(dd)
+		var gp := DmSimDepthsRules.depth_wave_gap_s(dd)
+		var eb := DmSimDepthsRules.depth_elite_bonus(dd)
+		var af := DmSimDepthsRules.extra_affixes(dd)
+		shape_ok = shape_ok and q >= prev_kills and q >= 1.0 and sz >= prev_size and sz >= 1.0 and gp <= prev_gap and gp > 0.0 and eb >= prev_bonus and eb >= 0.0 and af >= prev_aff
+		# elite affixes: one more every extraAffixEvery depths, at most maxExtraAffixes (the data's numbers)
+		shape_ok = shape_ok and af == mini(int(D["maxExtraAffixes"]), int(floorf(dd / float(D["extraAffixEvery"]))))
+		prev_kills = q
+		prev_size = sz
+		prev_gap = gp
+		prev_bonus = eb
+		prev_aff = af
+	check(shape_ok, "quota, wave size, wave gap and elite chance move one way with the depth, extra affixes follow the data (every %d depths, at most %d)" % [int(D["extraAffixEvery"]), int(D["maxExtraAffixes"])])
+	check(DmSimDepthsRules.floor_kills(1000.0) == DmSimDepthsRules.floor_kills(120.0) and DmSimDepthsRules.depth_wave_size(1000.0) == DmSimDepthsRules.depth_wave_size(120.0) and DmSimDepthsRules.depth_wave_gap_s(1000.0) == DmSimDepthsRules.depth_wave_gap_s(120.0)
+		and DmSimDepthsRules.depth_elite_bonus(1000.0) == DmSimDepthsRules.depth_elite_bonus(120.0), "each of them stops at a cap or a floor deep enough")
+	# the rosters: the server rules' answer for every depth the content holds (client/data/content/computed.json), and the loot ground likewise
+	var rosters_ok := true
+	var loot_ok := true
+	var computed: Dictionary = DmContent.file("computed")
+	for depth in range(1, 61):
+		var mine := DmSimDepthsRules.depth_roster(float(depth))
+		var theirs: Array = DmContent.depth_roster(depth)
+		rosters_ok = rosters_ok and mine.size() == theirs.size() and not theirs.is_empty()
+		for i in mini(mine.size(), theirs.size()):
+			rosters_ok = rosters_ok and String(mine[i]["id"]) == String(theirs[i]["id"]) and float(mine[i]["weight"]) == float(theirs[i]["weight"])
+		loot_ok = loot_ok and DmDepthsRewards.depth_loot_area(float(depth)) == String(computed["depthLootAreas"][str(depth)])
+	check(rosters_ok, "the roster of every depth is the server rules' (computed.json)")
+	check(loot_ok, "the loot ground of every depth is the server rules' (computed.json)")
+	var bands: Array = DmSimDepthsRules.BANDS
+	var base := _ids(DmSimDepthsRules.depth_roster(1.0))
+	var first_band: Array = []
+	for e: Array in bands[0]["add"]:
+		first_band.append(String(e[0]))
+	check(base == first_band, "depth 1 roster: the first band's kinds")
+	var all_ids := {}
+	for band: Dictionary in bands:
+		for e: Array in band["add"]:
+			all_ids[String(e[0])] = true
+	var deepest := _ids(DmSimDepthsRules.depth_roster(float(bands[-1]["from"])))
+	check(deepest.size() == all_ids.size() and deepest.all(func(k: String) -> bool: return all_ids.has(k)), "the deepest band's roster holds every kind of every band (%d)" % all_ids.size())
+	var grows := true
+	var last_n := 0
+	for depth in range(1, 61):
+		var n := DmSimDepthsRules.depth_roster(float(depth)).size()
+		grows = grows and n >= last_n
+		last_n = n
+	check(grows, "a deeper floor never has fewer kinds")
+	var w_first := _w(DmSimDepthsRules.depth_roster(1.0), String(bands[0]["add"][0][0]))
+	var w_deep := _w(DmSimDepthsRules.depth_roster(float(bands[-1]["from"])), String(bands[0]["add"][0][0]))
+	var w_deepest := _w(DmSimDepthsRules.depth_roster(60.0), String(bands[0]["add"][1][0]))
+	check(w_deep < w_first and w_deepest > 0.0, "the first band's kinds fade as the bands arrive, and never to nothing")
 	var run := DmDepthsRun.create(7, 1)
-	check(run.enemy_level(1.0) == 13.0 and run.enemy_level(30.0) == 31.0, "enemy level: max(12, hero) + depth (1: 13 for a level-1 hero, 31 for level 30)")
+	check(run.enemy_level(1.0) == _depth_level(1.0, 1.0) and run.enemy_level(30.0) == _depth_level(1.0, 30.0), "enemy level on depth 1: max(minLevel, hero) + the depth (%d for a level-1 hero, %d for level 30)" % [int(_depth_level(1.0, 1.0)), int(_depth_level(1.0, 30.0))])
 	run.depth = 9
-	check(run.enemy_level(1.0) == 21.0, "enemy level rises by one per depth (9 -> 21)")
+	check(run.enemy_level(1.0) == _depth_level(9.0, 1.0) and run.enemy_level(1.0) == _depth_level(1.0, 1.0) + 8.0 * float(D["levelsPerDepth"]), "enemy level rises by levelsPerDepth a depth (depth 9: %d)" % int(_depth_level(9.0, 1.0)))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5
 	run = DmDepthsRun.create(11, 1)
 	var f: Dictionary = run.floor_data
 	var hero_at := Vector2(float(f["start"]["x"]), float(f["start"]["z"]))
-	check(run.plan_wave(0.5, 0, 0, [hero_at], rng, 0.06).is_empty(), "no wave before the first-wave delay")
-	var orders := run.plan_wave(1.0, 0, 0, [hero_at], rng, 0.06)
-	check(orders.size() == 8, "the first wave is 8 (%d)" % orders.size())
+	var delay := float(D["firstWaveDelayS"])
+	check(run.plan_wave(delay * 0.5, 0, 0, [hero_at], rng, 0.06).is_empty(), "no wave before the first-wave delay")
+	var orders := run.plan_wave(delay, 0, 0, [hero_at], rng, 0.06)
+	var first_wave := mini(mini(int(run.need), int(D["cap"])), maxi(int(DmSimDepthsRules.depth_wave_size(1.0)), FIRST_WAVE_MIN))
+	check(orders.size() == first_wave, "the first wave is %d (%d)" % [first_wave, orders.size()])
 	var in_hero_room := orders.any(func(o: Dictionary) -> bool: return DmDepthsFloor.room_at(f, float(o["x"]), float(o["z"])) == DmDepthsFloor.room_at(f, hero_at.x, hero_at.y))
 	check(not in_hero_room or f["breaches"].size() == 0, "waves climb out of other rooms than the hero's")
 	check(orders.all(func(o: Dictionary) -> bool: return base.has(String(o["def"]))), "depth-1 waves draw only from the depth-1 roster")
-	check(run.plan_wave(0.1, 8, 8, [hero_at], rng, 0.06).is_empty() and run.wave_t > 3.0, "the next wave waits out the gap (%.2f s)" % run.wave_t)
+	var alive := maxi(1, int(run.need) - 2)
+	check(run.plan_wave(0.1, alive, alive, [hero_at], rng, 0.06).is_empty() and absf(run.wave_t - (DmSimDepthsRules.depth_wave_gap_s(1.0) - 0.1)) < 1e-6, "the next wave waits out the gap (%.2f s)" % run.wave_t)
 	run.wave_t = 0.0
-	check(run.plan_wave(0.1, 8, 8, [hero_at], rng, 0.06).size() == 2, "only as many as the quota still needs (10 - 8 alive = 2)")
+	check(run.plan_wave(0.1, alive, alive, [hero_at], rng, 0.06).size() == mini(2, int(run.need) - alive), "only as many as the quota still needs (%d - %d alive = %d)" % [int(run.need), alive, int(run.need) - alive])
 	run.wave_t = 0.0
-	check(run.plan_wave(0.1, 24, 24, [hero_at], rng, 0.06).is_empty(), "never more than the cap alive")
+	check(run.plan_wave(0.1, int(D["cap"]), int(D["cap"]), [hero_at], rng, 0.06).is_empty(), "never more than the cap alive")
 	# every kind of every band is on the core (a band that gained a kind the core lacks would fail here): the rosters are today's, kind for kind and weight for weight
 	var whole := true
-	for depth in [1, 4, 5, 9, 10, 14, 15, 30, 60]:
+	var probe_depths: Array = []
+	for band: Dictionary in bands:
+		probe_depths.append(maxi(1, int(band["from"]) - 1))
+		probe_depths.append(int(band["from"]))
+	for depth in probe_depths:
 		for e: Dictionary in DmSimDepthsRules.depth_roster(float(depth)):
 			whole = whole and DmWaveDirector.runs_on_core(String(e["id"]))
 	check(whole, "every kind on every depth's roster is a kind the core runs, so the rosters are today's")
-	run = DmDepthsRun.create(11, 15)
+	var top := int(bands[-1]["from"])
+	run = DmDepthsRun.create(11, top)
 	var seen := {}
-	var start15 := Vector2(float(run.floor_data["start"]["x"]), float(run.floor_data["start"]["z"]))
+	var start_top := Vector2(float(run.floor_data["start"]["x"]), float(run.floor_data["start"]["z"]))
 	for i in 150:
 		run.wave_t = 0.0
 		run.waved = false
 		run.floor_t = 100.0
-		for o: Dictionary in run.plan_wave(0.1, 0, 0, [start15], rng, 0.06):
+		for o: Dictionary in run.plan_wave(0.1, 0, 0, [start_top], rng, 0.06):
 			seen[String(o["def"])] = true
-	check(seen.size() == DmSimDepthsRules.depth_roster(15.0).size(), "150 waves on depth 15 draw all %d kinds of its roster (%d seen)" % [DmSimDepthsRules.depth_roster(15.0).size(), seen.size()])
+	check(seen.size() == DmSimDepthsRules.depth_roster(float(top)).size(), "150 waves on depth %d draw all %d kinds of its roster (%d seen)" % [top, DmSimDepthsRules.depth_roster(float(top)).size(), seen.size()])
 	run = DmDepthsRun.create(11, 1)
+	var quota := int(run.need)
 	var opened := 0
-	for i in 12:
+	for i in quota + 2:
 		if run.record_kill():
 			opened += 1
-	check(opened == 1 and run.stair_open and run.floors == 1 and run.total_kills == 12, "the 10th kill opens the stair, once")
+	check(opened == 1 and run.stair_open and run.floors == 1 and run.total_kills == quota + 2, "the kill that meets the quota (%d) opens the stair, once" % quota)
 	run.descend()
-	check(run.depth == 2 and run.peak == 2 and run.kills == 0 and not run.stair_open and run.need == 11.0 and run.total_kills == 12, "descending: depth 2, quota 11, the totals carry")
-	check(run.summary() == "The descent ends at depth 2 · 12 slain · 1 floor cleared. What you looted is yours.", "the summary line")
-	var areas: Array = []
-	for depth in [1, 4, 5, 9, 10, 14, 15, 19, 20, 29, 30, 60]:
-		areas.append(DmDepthsRewards.depth_loot_area(float(depth)))
-	check(areas == ["ossuary", "ossuary", "coliseum", "coliseum", "sanctum", "sanctum", "cloister", "cloister", "pyre", "pyre", "fen", "fen"], "loot ground by depth: ossuary / coliseum / sanctum / cloister / pyre / fen at 1 / 5 / 10 / 15 / 20 / 30")
+	check(run.depth == 2 and run.peak == 2 and run.kills == 0 and not run.stair_open and run.need == DmSimDepthsRules.floor_kills(2.0) and run.total_kills == quota + 2, "descending: depth 2, its quota, the totals carry")
+	check(run.summary() == "The descent ends at depth 2 · %d slain · 1 floor cleared. What you looted is yours." % (quota + 2), "the summary line")
+	# the chest's size: never falls with the depth (the first find is always gear)
+	var chest_ok := true
+	var last_chest := 0
+	for depth in range(1, 61):
+		var cn := DmDepthsRewards.chest_drops(float(depth))
+		chest_ok = chest_ok and cn >= last_chest and cn >= 1
+		last_chest = cn
+	check(chest_ok, "a chest never holds fewer finds on a deeper floor")
 
 
 # ---- B: the world ----------------------------------------------------------------------------------------------------------------
@@ -345,16 +419,19 @@ func _c_way_in() -> void:
 	check(not root3d.find_children("*", "MultiMeshInstance3D", true, false).is_empty() and not root3d.find_children("*", "MeshInstance3D", true, false).is_empty(), "...walls, floors and prop batches")
 	check(g.world.builder._depths_stair_mat != null and g.world.builder._depths_stair_mat.emission_energy_multiplier < 0.5, "the stair down glows dim while it is sealed")
 	var its := g.chapterhouse.interactables.filter(func(it: Dictionary) -> bool: return String(it["area"]) == "depths")
-	check(its.size() == 2 and its.any(func(it: Dictionary) -> bool: return it["kind"] == "depths_down") and its.any(func(it: Dictionary) -> bool: return it["kind"] == "depths_up"), "the floor's stairs are clickable things (no chest on depth 1)")
-	check(d.prompt(_it("depths_down")).begins_with("The stair is sealed: slay 10 more") and d.prompt(_it("depths_up")) == "Climb out (ends this run at depth 1)", "stair prompts: sealed with the count, the way up")
+	var quota := int(run.need)
+	var lvl1 := int(_depth_level(1.0, float(character["level"])))
+	check(quota == int(DmSimDepthsRules.floor_kills(1.0)), "depth 1 asks %d kills" % quota)
+	check(its.size() == _stairs_and_chest(f) and its.any(func(it: Dictionary) -> bool: return it["kind"] == "depths_down") and its.any(func(it: Dictionary) -> bool: return it["kind"] == "depths_up"), "the floor's stairs are clickable things (and the chest, on a chest depth)")
+	check(d.prompt(_it("depths_down")).begins_with("The stair is sealed: slay %d more" % quota) and d.prompt(_it("depths_up")) == "Climb out (ends this run at depth 1)", "stair prompts: sealed with the count, the way up")
 	var banner := ev("banner").filter(func(e: Array) -> bool: return String(e[1]["title"]) == "Depth 1")
-	check(not banner.is_empty() and String(banner[0][1]["sub"]).find("slay 10") >= 0 and String(banner[0][1]["sub"]).find("level 13 dead") >= 0, "the arrival banner names the quota and the dead's level")
-	check(d.hud_state() == {"depth": 1, "kills": 0, "need": 10, "open": false, "chest": false}, "HUD readout: depth 1, 0 / 10, sealed, no chest")
+	check(not banner.is_empty() and String(banner[0][1]["sub"]).find("slay %d" % quota) >= 0 and String(banner[0][1]["sub"]).find("level %d dead" % lvl1) >= 0, "the arrival banner names the quota and the dead's level")
+	check(d.hud_state() == {"depth": 1, "kills": 0, "need": quota, "open": false, "chest": f["chest"] != null}, "HUD readout: depth 1, 0 / %d, sealed, a chest only on a chest depth" % quota)
 	var mf: Variant = d.map_floor()
-	check(mf != null and mf["rooms"].size() >= 4 and not mf["down"]["open"] and mf["chest"] == null, "the minimap draws the floor's rooms")
+	check(mf != null and mf["rooms"].size() == f["rooms"].size() and not mf["down"]["open"] and (mf["chest"] != null) == (f["chest"] != null), "the minimap draws the floor's rooms")
 	await ticks(12)   # the HUD refreshes at 20 Hz
 	var vm: Dictionary = g.ui_host.vm.build()
-	check(vm["depth"] != null and int(vm["depth"]["need"]) == 10 and vm["minimap"]["depths"] != null and String(vm["area_progress"]) == "Level <b>13</b> dead", "the HUD view-model carries the Depths readout, the map and the area line (%s)" % str(vm["area_progress"]))
+	check(vm["depth"] != null and int(vm["depth"]["need"]) == quota and vm["minimap"]["depths"] != null and String(vm["area_progress"]) == "Level <b>%d</b> dead" % lvl1, "the HUD view-model carries the Depths readout, the map and the area line (%s)" % str(vm["area_progress"]))
 	# the navmesh: baked, on the navigation map, and the core's own copy of it
 	var core: RefCounted = g.core_host.core
 	check(d.ground.region.enabled and d.ground.region.navigation_mesh.get_polygon_count() > 20, "the floor's navmesh is baked (%d polygons) and on the region" % d.ground.region.navigation_mesh.get_polygon_count())
@@ -427,11 +504,13 @@ func _reachable(f: Dictionary) -> bool:
 func _d_the_dead() -> void:
 	var core: RefCounted = g.core_host.core
 	var run := d.run
-	check(await until(func() -> bool: return _depths_enemies().size() >= 8, 60 * 8), "the floor's first wave climbs out (8)")
+	var first_wave := mini(mini(int(run.need), int(DmSimData.DEPTHS["cap"])), maxi(int(DmSimDepthsRules.depth_wave_size(1.0)), FIRST_WAVE_MIN))
+	check(await until(func() -> bool: return _depths_enemies().size() >= first_wave, 60 * 8), "the floor's first wave climbs out (%d)" % first_wave)
 	var es := _depths_enemies()
-	var base := ["rat", "robber", "ghoul", "bat", "sac", "hound"]
+	var base := _ids(DmSimDepthsRules.depth_roster(1.0))
 	var rect: Dictionary = DmContent.area("depths")["rect"]
-	var hp_mult := DmEnemyStats.hp_scale(13.0) * float(DmContent.difficulty(g.director.difficulty)["enemyHpMult"])
+	var lvl1 := int(_depth_level(1.0, float(character["level"])))
+	var hp_mult := DmEnemyStats.hp_scale(float(lvl1)) * float(DmContent.difficulty(g.director.difficulty)["enemyHpMult"])
 	var lvl_ok := true
 	var hp_ok := true
 	var kind_ok := true
@@ -440,15 +519,15 @@ func _d_the_dead() -> void:
 	var aggro_ok := true
 	for info: Dictionary in es:
 		var at: Vector2 = info["pos"]
-		lvl_ok = lvl_ok and int(info["level"]) == 13
+		lvl_ok = lvl_ok and int(info["level"]) == lvl1
 		hp_ok = hp_ok and (bool(info["elite"]) or is_equal_approx(float(info["max_hp"]), float(DmSimData.ENEMIES[String(info["def"])]["hp"]) * hp_mult))
 		kind_ok = kind_ok and base.has(String(info["def"])) and String(info["area"]) == "depths"
 		pos_ok = pos_ok and at.x > float(rect["x0"]) and at.x < float(rect["x1"]) and at.y > float(rect["z0"]) and at.y < float(rect["z1"])
 		nav_ok = nav_ok and core.nav_closest(Vector3(at.x, 0.0, at.y)).distance_to(Vector3(at.x, 0.0, at.y)) < 0.3
-		aggro_ok = aggro_ok and float(info["aggro"]) == DmSimConsts.DEPTHS_AGGRO and float(info["leash"]) == 90.0
-	check(lvl_ok and hp_ok, "the dead are level 13 on depth 1 (hp x%.2f, the director's scaling)" % hp_mult)
+		aggro_ok = aggro_ok and float(info["aggro"]) == DmSimConsts.DEPTHS_AGGRO and float(info["leash"]) == DmDepths.LEASH
+	check(lvl_ok and hp_ok, "the dead are level %d on depth 1 (hp x%.2f, the director's scaling)" % [lvl1, hp_mult])
 	check(kind_ok and pos_ok and nav_ok, "kinds from the depth roster, in the Depths' area, standing on the floor's ground")
-	check(aggro_ok, "hunters notice the hero across the floor: aggro 36 and leash 90 on their bodies in the core")
+	check(aggro_ok, "hunters notice the hero across the floor: aggro %.0f and leash %.0f on their bodies in the core" % [DmSimConsts.DEPTHS_AGGRO, DmDepths.LEASH])
 	check(d._living.size() == es.size() and _depths_enemies().size() <= int(DmSimData.DEPTHS["cap"]), "the Depths know their living bodies, and never more than the cap alive")
 	# they hunt the hero through the doors and hit him
 	var near := await until(func() -> bool:
@@ -460,11 +539,12 @@ func _d_the_dead() -> void:
 	check(strayed.is_empty(), "the hunters stay on the floor's ground as they walk (%d off it)" % strayed.size())
 	var hit := await until(func() -> bool: return g.hits_taken.values().reduce(func(a: int, b: int) -> int: return a + b, 0) > 0, 60 * 20)
 	check(hit, "and fight back (%s)" % str(g.hits_taken))
-	# an elite on depth 15 carries the depth's extra affixes, at level 12 + 15
-	var affixes := PackedStringArray([DmSimData.AFFIX_ORDER[0], DmSimData.AFFIX_ORDER[1], DmSimData.AFFIX_ORDER[2], DmSimData.AFFIX_ORDER[3]])
-	var el: int = g.director.spawn("robber", hero.position + Vector3(2, 0, 0), [hero], true, {}, {"area": "depths", "depth": 15, "aggro": 36.0, "leash": 90.0, "affix_list": affixes})
+	# an elite on depth 15 carries the affixes it is given (the test's own: all the pool), at the depth's level
+	var affixes := PackedStringArray(DmSimData.AFFIX_ORDER)
+	var el: int = g.director.spawn("robber", hero.position + Vector3(2, 0, 0), [hero], true, {}, {"area": "depths", "depth": 15, "aggro": DmDepths.AGGRO, "leash": DmDepths.LEASH, "affix_list": affixes})
 	var info: Dictionary = core.enemy_info(el)
-	check(el > 0 and bool(info["elite"]) and (info["affixes"] as PackedStringArray).size() == 4 and int(info["level"]) == 27, "an elite on depth 15 bears 4 affixes at level 27 (12 + 15)")
+	var lvl15 := int(_depth_level(15.0, float(character["level"])))
+	check(el > 0 and bool(info["elite"]) and (info["affixes"] as PackedStringArray).size() == affixes.size() and int(info["level"]) == lvl15, "an elite on depth 15 bears %d affixes at level %d" % [affixes.size(), lvl15])
 	core.remove_enemy(el)
 	await ticks(3)
 	check(run.kills == 0, "nothing was killed yet: the quota is untouched")
@@ -495,8 +575,8 @@ func _e_quota() -> void:
 	g.kill_credited.connect(func(id: int, _d: String, _l: int, _e: bool, a: String, peer: int, _x: float, _z: float) -> void: credited.append([id, a, peer]))
 	check(await _clear_floor(), "killing the quota opens the stair (%d / %d)" % [run.kills, int(run.need)])
 	await ticks(5)
-	check(run.stair_open and cleared[0] == 1 and run.floors == 1 and run.kills >= 10, "the stair opens once, at the 10th kill (kills %d)" % run.kills)
-	check(credited.size() >= 10 and credited.all(func(c: Array) -> bool: return c[1] == "depths" and int(c[2]) == g.session.get_my_id()), "each kill was credited once, to the hero, in the Depths (%d)" % credited.size())
+	check(run.stair_open and cleared[0] == 1 and run.floors == 1 and float(run.kills) >= run.need, "the stair opens once, when the quota is met (kills %d of %d)" % [run.kills, int(run.need)])
+	check(float(credited.size()) >= run.need and credited.all(func(c: Array) -> bool: return c[1] == "depths" and int(c[2]) == g.session.get_my_id()), "each kill was credited once, to the hero, in the Depths (%d)" % credited.size())
 	check(d.prompt(_it("depths_down")) == "Descend to depth 2" and d.hud_state()["open"] and d.map_floor()["down"]["open"], "the stair's prompt, the HUD and the minimap show it open")
 	check(g.world.builder._depths_stair_mat.emission_energy_multiplier > 1.0, "the stair down glows bright once open")
 	check(ev("banner").any(func(e: Array) -> bool: return String(e[1]["title"]) == "The stair opens"), "a banner says so")
@@ -505,7 +585,7 @@ func _e_quota() -> void:
 	await until(func() -> bool: return not g.progress.psync.reporter.has_pending(), 60 * 5)
 	check(not g.progress.psync.reporter.has_pending(), "the floor report was sent and acknowledged by the backend")
 	await g.rewards.flush()
-	check(int(m.stats["kills_earned"]) >= 10 and g.progress.prog.kills("depths") == 0, "kills are paid and reported, but do not count towards an area seal")
+	check(float(m.stats["kills_earned"]) >= run.need and g.progress.prog.kills("depths") == 0, "kills are paid and reported, but do not count towards an area seal")
 	check(String(g.rewards.loot_area_of.call("depths")) == DmDepthsRewards.depth_loot_area(1.0) and g.rewards.loot_area_of.call("graves") == null, "loot of a depth-1 kill rolls from the Ossuary's table")
 	var floor_drops: Array = m.loot_view._drops.filter(func(x: Dictionary) -> bool: return (x["item"] as Dictionary).has("claim") and String(x["item"]["claim"]["kind"]) == "floor")
 	print("INFO depths: the floor clear's item from the tape: %s" % ("yes" if not floor_drops.is_empty() else "none this time"))
@@ -533,17 +613,18 @@ func _f_descend() -> void:
 	await ticks(3)
 	print("INFO depths: the descent to floor 2: the longest frame in it %.0f ms" % (float(worst_us) / 1000.0))
 	check(run.depth == 2 and run.peak == 2 and _floor_json(run.floor_data) == _floor_json(DmDepthsRun.generate(seed, 2)) and _floor_json(run.floor_data) != f1, "depth 2: the next floor of the same run seed")
-	check(run.kills == 0 and not run.stair_open and run.need == 11.0 and d.hud_state()["need"] == 11, "a new quota (11) and a sealed stair")
+	check(run.kills == 0 and not run.stair_open and run.need == DmSimDepthsRules.floor_kills(2.0) and d.hud_state()["need"] == int(run.need), "a new quota (%d) and a sealed stair" % int(run.need))
 	check(old_living.all(func(id: int) -> bool: return core.enemy_info(id).is_empty()) and _depths_enemies().all(func(info: Dictionary) -> bool: return not old_living.has(int(info["id"]))), "the last floor's living dead are out of the core (%d)" % old_living.size())
 	check(g.corpses.corpses_in_radius(mid, 40.0, Callable(), "depths").is_empty(), "the last floor's corpses are gone")
 	var f: Dictionary = run.floor_data
 	check(Vector2(hero.position.x - float(f["start"]["x"]), hero.position.z - float(f["start"]["z"])).length() < 0.5, "the hero stands at floor 2's way in")
 	check(far_thrall > 0 and (hero.get_node("Rites") as DmRiteCaster).thralls().near(hero.position, 3.5).has(far_thrall), "a thrall 9 m away came with him (recalled)")
-	check(g.chapterhouse.interactables.filter(func(it: Dictionary) -> bool: return String(it["area"]) == "depths").size() == 2, "the floor's interactables were replaced, not stacked")
+	check(g.chapterhouse.interactables.filter(func(it: Dictionary) -> bool: return String(it["area"]) == "depths").size() == _stairs_and_chest(f), "the floor's interactables were replaced, not stacked")
 	var tri2: int = core.nav_triangle_count()
 	check(tri2 - tri_base == _triangles(d.ground.region.navigation_mesh), "the core's navmesh was replaced, not added to (%d + %d triangles)" % [tri_base, tri2 - tri_base])
 	check(_reachable(f), "navmesh of floor 2: stair down, way up and breaches reachable")
-	check(await until(func() -> bool: return _depths_enemies().size() >= 2, 60 * 8) and _depths_enemies().all(func(info: Dictionary) -> bool: return int(info["level"]) == 14), "floor 2's dead are level 14")
+	var lvl2 := int(_depth_level(2.0, float(character["level"])))
+	check(await until(func() -> bool: return _depths_enemies().size() >= 2, 60 * 8) and _depths_enemies().all(func(info: Dictionary) -> bool: return int(info["level"]) == lvl2), "floor 2's dead are level %d" % lvl2)
 	# floor 3: the real way, a click on the open stair walks the hero across the floor's rooms on the core's navmesh and takes it
 	check(await _clear_floor(), "floor 2 quota met")
 	var down := _it("depths_down")
@@ -553,13 +634,16 @@ func _f_descend() -> void:
 	check(await until(func() -> bool: return run.depth == 3 and not d._busy, 60 * 60), "a click on the open stair walks the hero to it and descends (he walked %.0f m, from %s)" % [from_start.distance_to(stair_at), str(from_start)])
 	await ticks(3)
 	check(run.depth == 3 and run.peak == 3 and core.nav_triangle_count() - tri_base == _triangles(d.ground.region.navigation_mesh), "descended to depth 3, the core holds this floor's triangles only")
-	# floor 4
-	for target in [4]:
-		check(await _clear_floor(), "floor %d quota met" % (target - 1))
+	# on down to the floor before the first chest (none if floor 3 is already a chest floor), a chest only where the cadence says
+	var every := int(DmSimData.DEPTHS["chestEvery"])
+	var chest_rule: bool = (run.floor_data["chest"] != null) == (run.depth % every == 0)
+	while run.depth < every - 1:
+		check(await _clear_floor(), "floor %d quota met" % run.depth)
 		await d.descend()
 		await ticks(3)
-		check(run.depth == target and run.peak == target and core.nav_triangle_count() - tri_base == _triangles(d.ground.region.navigation_mesh), "descended to depth %d, the core holds this floor's triangles only" % target)
-	check(d.hud_state()["chest"] == false, "no chest on depth 4")
+		chest_rule = chest_rule and (run.floor_data["chest"] != null) == (run.depth % every == 0)
+		check(run.peak == run.depth and core.nav_triangle_count() - tri_base == _triangles(d.ground.region.navigation_mesh), "descended to depth %d, the core holds this floor's triangles only" % run.depth)
+	check(chest_rule and d.hud_state()["chest"] == (run.floor_data["chest"] != null), "a chest only on every %dth depth" % every)
 	print("INFO depths: floor 2: main thread %d ms, bake %d ms on the worker, the whole load %d ms" % [d.ground.build_ms, d.ground.bake_ms, d.ground.nav_ms])
 
 
@@ -567,15 +651,20 @@ func _f_descend() -> void:
 
 func _g_chest() -> void:
 	var run := d.run
-	check(await _clear_floor(), "floor 4 cleared")
-	await d.descend()
-	await ticks(3)
-	check(run.depth == 5 and run.floor_data["chest"] != null, "depth 5 has a chest")
+	var every := int(DmSimData.DEPTHS["chestEvery"])
+	while run.floor_data["chest"] == null and run.depth < 4 * every:   # down to the first chest floor
+		check(await _clear_floor(), "floor %d cleared" % run.depth)
+		await d.descend()
+		await ticks(3)
+	peak = run.depth
+	check(run.depth % every == 0 and run.floor_data["chest"] != null, "depth %d has a chest" % peak)
 	var its := g.chapterhouse.interactables.filter(func(it: Dictionary) -> bool: return String(it["area"]) == "depths")
-	check(its.size() == 3 and its.any(func(it: Dictionary) -> bool: return it["kind"] == "depths_chest"), "the chest is a clickable thing")
+	check(its.size() == _stairs_and_chest(run.floor_data) and its.any(func(it: Dictionary) -> bool: return it["kind"] == "depths_chest"), "the chest is a clickable thing")
 	check(d.hud_state()["chest"] and d.map_floor()["chest"] != null and d.prompt(_it("depths_chest")) == "Open the chest", "HUD and minimap show the chest")
-	check(String(g.rewards.loot_area_of.call("depths")) == "coliseum", "depth 5 loots from the Coliseum")
-	check(d.progress_line().ends_with(" · elites bear <b>2</b> affixes") and d.progress_line().begins_with("Level <b>%d</b> dead" % int(run.enemy_level(float(character["level"])))), "the area line names the level and the affixes an elite bears (%s)" % d.progress_line())
+	var loot_ground := String(DmContent.file("computed")["depthLootAreas"][str(peak)])
+	check(String(g.rewards.loot_area_of.call("depths")) == loot_ground, "depth %d loots from the %s's table (the server rules' ground)" % [peak, loot_ground])
+	var bear := 1 + DmSimDepthsRules.extra_affixes(float(peak))
+	check(d.progress_line().ends_with(" · elites bear <b>%d</b> affixes" % bear) and d.progress_line().begins_with("Level <b>%d</b> dead" % int(run.enemy_level(float(character["level"])))), "the area line names the level and the affixes an elite bears (%s)" % d.progress_line())
 	var drops0: int = m.loot_view._drops.size()
 	var dropped: Array = []
 	g.rewards.loot_dropped.connect(func(_cid: int, dr: Dictionary, _at: Vector3) -> void: dropped.append(dr))
@@ -592,7 +681,6 @@ func _g_chest() -> void:
 		"the chest's finds (the first is always gear; some of the rest turn to gold) are tape drops, claimed on pickup (%d: %s)" % [found.size(), str(dropped.map(func(dr: Dictionary) -> String: return String(dr.get("item_id", "?"))))])
 	check(not d.open_chest() and d.chest_done and not d.hud_state()["chest"] and _it("depths_chest").is_empty() and d.map_floor()["chest"] == null, "a chest opens once; it leaves the HUD, the map and the clickables")
 	check(ev("banner").any(func(e: Array) -> bool: return String(e[1]["title"]) == "The chest opens"), "a banner reports the chest")
-	check(DmDepthsRewards.chest_drops(5.0) == 3 and DmDepthsRewards.chest_drops(15.0) == 4 and DmDepthsRewards.chest_drops(4.0) == 3, "chest size: 3 at depth 5, one more every ten floors")
 	# the server's side: a click on a find walks the hero to it and the server puts its own roll in the bag
 	if not found.is_empty():
 		var x: Dictionary = found[0]
@@ -607,7 +695,7 @@ func _g_chest() -> void:
 		check(not m.loot_view._drops.has(x), "the click and the walk claim the find (%d frames)" % k)
 		check(_count_of(String(item["claim"]["expect"])) > bag0, "the server's roll of %s is in the bag" % String(item["claim"]["expect"]))
 	var life: Dictionary = d.chronicle.view()["life"]
-	check(float(life.get("depths.floors", 0.0)) >= 4.0 and float(life.get("depths.chests", 0.0)) == 1.0 and float(life.get("peak.depth", 0.0)) == 5.0, "the chronicle counts floors (%d), the chest and the deepest floor" % int(life.get("depths.floors", 0.0)))
+	check(float(life.get("depths.floors", 0.0)) >= float(run.floors) and float(life.get("depths.chests", 0.0)) == 1.0 and float(life.get("peak.depth", 0.0)) == float(peak), "the chronicle counts floors (%d), the chest and the deepest floor" % int(life.get("depths.floors", 0.0)))
 
 
 func _count_of(item_id: String) -> int:
@@ -629,10 +717,10 @@ func _h_leaving() -> void:
 	var ended: Array = []
 	d.run_ended.connect(func(why: String, note: String) -> void: ended.append([why, note]))
 	events.clear()
-	check(not d.leave() and d.run != null and ev("toast").any(func(e: Array) -> bool: return String(e[1]["text"]).begins_with("Climbing out ends this run at depth 5")), "the exit asks twice (the first click only warns)")
+	check(not d.leave() and d.run != null and ev("toast").any(func(e: Array) -> bool: return String(e[1]["text"]).begins_with("Climbing out ends this run at depth %d" % peak)), "the exit asks twice (the first click only warns)")
 	check(d.leave() and d.run == null, "the second click ends the run")
 	await ticks(3)
-	check(ended.size() == 1 and ended[0][0] == "left" and String(ended[0][1]).begins_with("The descent ends at depth 5"), "run_ended(left) with the summary")
+	check(ended.size() == 1 and ended[0][0] == "left" and String(ended[0][1]).begins_with("The descent ends at depth %d" % peak), "run_ended(left) with the summary")
 	check(Vector2(hero.position.x - float(s["x"]), hero.position.z - (float(s["z"]) + 2.3)).length() < 0.5 and g.area_of(1) == "warren", "back at the Warren's stair")
 	check(g.world.builder._depths_floor_root == null or not is_instance_valid(g.world.builder._depths_floor_root), "the floor's picture is torn down")
 	check(not d.ground.region.enabled and core.nav_triangle_count() == tri_base, "the floor's navmesh region is off and out of the core (%d triangles, as before the run)" % core.nav_triangle_count())
@@ -642,17 +730,17 @@ func _h_leaving() -> void:
 	# the record: the deepest floor persists on the chronicle (backend)
 	await d.flush()
 	var ch: DmResult = await api.get_chronicle(int(character["id"]))
-	check(ch.ok and float(ch.data["life"].get("peak.depth", 0.0)) == 5.0 and float(ch.data["life"].get("depths.runs", 0.0)) == 1.0, "the backend's chronicle records peak depth 5 and the run")
-	check(d.resume_at() == 5, "the stair now offers to resume at depth 5")
+	check(ch.ok and float(ch.data["life"].get("peak.depth", 0.0)) == float(peak) and float(ch.data["life"].get("depths.runs", 0.0)) == 1.0, "the backend's chronicle records peak depth %d and the run" % peak)
+	check(d.resume_at() == peak, "the stair now offers to resume at depth %d" % peak)
 	var stair := _it("depths_stair")
 	events.clear()
-	check(d.stair_clicked() == 5 and ev("depths_stair_offer").size() == 1 and int(ev("depths_stair_offer")[0][1]["deepest"]) == 5 and not d.active(), "the stair offers 'start at 1' or 'resume at 5'")
-	check(d.prompt(stair).find("resume at depth 5") >= 0, "the stair's prompt names the resume depth")
-	g.ui_host.enter_depths(5)   # what the card's Resume does
+	check(d.stair_clicked() == peak and ev("depths_stair_offer").size() == 1 and int(ev("depths_stair_offer")[0][1]["deepest"]) == peak and not d.active(), "the stair offers 'start at 1' or 'resume at %d'" % peak)
+	check(d.prompt(stair).find("resume at depth %d" % peak) >= 0, "the stair's prompt names the resume depth")
+	g.ui_host.enter_depths(peak)   # what the card's Resume does
 	await until(func() -> bool: return d.run != null and not d._busy, 60 * 20)
 	await ticks(2)
-	check(d.run != null and d.run.depth == 5 and d.run.peak == 5 and d.run.floors == 0 and d.run.floor_data["chest"] != null, "resume: a new run starts at depth 5 (a fifth floor, so a chest waits)")
-	check(d.run.enemy_level(1.0) == 17.0, "its dead are level 17 (12 + 5)")
+	check(d.run != null and d.run.depth == peak and d.run.peak == peak and d.run.floors == 0 and d.run.floor_data["chest"] != null, "resume: a new run starts at depth %d (a chest floor, so a chest waits)" % peak)
+	check(d.run.enemy_level(1.0) == _depth_level(float(peak), 1.0), "its dead are level %d" % int(_depth_level(float(peak), 1.0)))
 	# a second player ends it: the Depths are a solo descent
 	ended.clear()
 	events.clear()
@@ -714,7 +802,7 @@ func _i_death() -> void:
 	check(hero.alive and g.area_of(1) == "chapterhouse" and g.area_id == "chapterhouse", "back in the hub, alive")
 	check(ev("toast").any(func(e: Array) -> bool: return String(e[1]["text"]).begins_with("The descent ends at depth 2")), "the summary is told once more on rising")
 	check(_depths_enemies().is_empty() and not d.ground.region.enabled and core.nav_triangle_count() == tri_base, "the floor, its dead and its navmesh are gone")
-	check(int(character["gold"]) >= gold_before and float(d.chronicle.view()["life"].get("peak.depth", 0.0)) >= 5.0, "death takes nothing: gold kept, the best depth (5) still on record")
+	check(int(character["gold"]) >= gold_before and float(d.chronicle.view()["life"].get("peak.depth", 0.0)) >= float(peak), "death takes nothing: gold kept, the best depth (%d) still on record" % peak)
 	check(g.loot.slots().size() >= bag_before, "death takes nothing: the bag keeps its items")
 	check(int((await api.get_character()).data["level"]) >= int(character["level"]) - 1, "the character is intact on the backend")
 	hero.teleport(Vector3(float(s["x"]), 0.0, float(s["z"]) + 2.0))
@@ -742,7 +830,8 @@ func _j_many_floors() -> void:
 	var async_all := true
 	var cells_ok := true
 	var cells_max := 0
-	for i in 14:
+	var descents := 14   # (the test's own: floors down)
+	for i in descents:
 		check(await _clear_floor(), "floor %d cleared" % d.run.depth)
 		worst_us = 0
 		await d.descend()
@@ -761,17 +850,17 @@ func _j_many_floors() -> void:
 		tri_ok = tri_ok and core.nav_triangle_count() - tri_base == _triangles(d.ground.region.navigation_mesh)
 		async_all = async_all and d.ground.async_ok
 	var depth := d.run.depth
-	check(depth == 15, "descended to depth %d" % depth)
+	check(depth == 1 + descents, "descended to depth %d" % depth)
 	check(tri_ok, "on every floor the core holds that floor's triangles only")
 	check(async_all, "every floor's navmesh came from the worker thread")
 	var early := _mean(nodes.slice(0, 3))
 	var late := _mean(nodes.slice(-3))
-	check(late - early < 60.0, "no node leak over 14 floors: %.0f -> %.0f nodes (bound +60)" % [early, late])
+	check(late - early < 60.0, "no node leak over %d floors: %.0f -> %.0f nodes (bound +60)" % [descents, early, late])
 	check(_depths_enemies().size() <= int(DmSimData.DEPTHS["cap"]) and d._living.size() == _depths_enemies().size(), "the Depths' living set agrees with the core (%d)" % d._living.size())
 	var kinds := {}
 	for info in _depths_enemies():
 		kinds[String(info["def"])] = true
-	check(kinds.keys().all(func(k: String) -> bool: return DmWaveDirector.runs_on_core(k)), "depth 15's dead are all kinds the core runs (%s)" % str(kinds.keys()))
+	check(kinds.keys().all(func(k: String) -> bool: return DmWaveDirector.runs_on_core(k)), "depth %d's dead are all kinds the core runs (%s)" % [depth, str(kinds.keys())])
 	check(cells_ok and cells_max < 80, "the builder's shadow-cell list holds only the standing floor's cells on every floor (at most %d), each following the range rule" % cells_max)
 	print("INFO depths: 14 floors: main thread %.1f ms a floor (worst %d), load to merge %.0f ms (worst %d), the longest frame in a descent %.0f ms; nodes %.0f -> %.0f; shadow cells at most %d" % [
 		_mean(builds), builds.max(), _mean(loads), loads.max(), float(worst) / 1000.0, early, late, cells_max])

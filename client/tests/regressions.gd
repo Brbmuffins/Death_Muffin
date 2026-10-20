@@ -81,7 +81,7 @@ func _graphics() -> void:
 	var hi := DmGraphicsPreset.get_preset("high")
 	_check(float(hi["shadow_dist"]) == 45.0 and int(hi["shadow_size"]) == 2048, "High keeps the old High's shadow reach and atlas (same cost; smoothing + floor are the gain)")
 	_check(float(ult["shadow_dist"]) > float(hi["shadow_dist"]) and int(ult["soft"]) > int(hi["soft"]) and int(ult["aniso"]) == 16 and float(ult["lod"]) < 1.0, "Ultra beats High on shadows, softness, aniso, LOD")
-	_check(DmGraphicsPreset.options().size() == 4, "Settings panel offers four options")
+	_check(DmGraphicsPreset.options().size() == DmGraphicsPreset.IDS.size(), "Settings panel offers an option for each preset")
 	_check(DmGraphicsPreset.msaa_mode(4) == Viewport.MSAA_4X and DmGraphicsPreset.msaa_mode(0) == Viewport.MSAA_DISABLED, "msaa samples -> Viewport mode")
 
 	# --- settings migration --------------------------------------------------------------------
@@ -98,22 +98,22 @@ func _graphics() -> void:
 
 	# --- brightness + lighting lift -------------------------------------------------------------
 	_check(is_equal_approx(float(DmSettings.new("user://nonexistent_gfx.json", false).values["brightness"]), 1.0), "brightness defaults to 100%")
-	for pair in [[0.1, 0.8], [5.0, 1.3], [1.15, 1.15], ["x", 1.0]]:
+	for pair in [[0.1, DmSettings.BRIGHTNESS_MIN], [5.0, DmSettings.BRIGHTNESS_MAX], [1.15, 1.15], ["x", 1.0]]:
 		var bf := FileAccess.open(path, FileAccess.WRITE)
 		bf.store_string(JSON.stringify({"brightness": pair[0]}))
 		bf.close()
 		_check(is_equal_approx(float(DmSettings.new(path, true).values["brightness"]), float(pair[1])), "saved brightness %s loads as %s" % [str(pair[0]), str(pair[1])])
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
-	# --- HUD size (75-130 %, snapped, default 100 %) ------------------------------------------
+	# --- HUD size (between the HUD's smallest and largest, snapped, default 100 %) ------------------
 	_check(is_equal_approx(float(DmSettings.new("user://nonexistent_gfx.json", false).values["hud_scale"]), 1.0), "hud_scale defaults to 100%")
-	for pair in [[0.1, 0.75], [5.0, 1.3], [1.15, 1.15], [0.85, 0.85], [1.12, 1.1], ["x", 1.0], [null, 1.0]]:
+	for pair in [[0.1, DmHud.HUD_SCALE_MIN], [5.0, DmHud.HUD_SCALE_MAX], [1.15, 1.15], [0.85, 0.85], [1.12, 1.1], ["x", 1.0], [null, 1.0]]:
 		var hf := FileAccess.open(path, FileAccess.WRITE)
 		hf.store_string(JSON.stringify({"hud_scale": pair[0]}))
 		hf.close()
 		_check(is_equal_approx(float(DmSettings.new(path, true).values["hud_scale"]), float(pair[1])), "saved hud_scale %s loads as %s" % [str(pair[0]), str(pair[1])])
 	var hs := DmSettings.new(path, true)
-	hs.update({"hud_scale": 1.3})
-	_check(is_equal_approx(float(DmSettings.new(path, true).values["hud_scale"]), 1.3), "hud_scale persists across a reload")
+	hs.update({"hud_scale": DmHud.HUD_SCALE_MAX})
+	_check(is_equal_approx(float(DmSettings.new(path, true).values["hud_scale"]), DmHud.HUD_SCALE_MAX), "hud_scale persists across a reload")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	_check(float(DmGraphicsPreset.get_preset("high")["lift"]) == 1.0 and float(DmGraphicsPreset.get_preset("ultra")["lift"]) == 1.0, "High/Ultra are the lighting reference (lift 1.0)")
 	# (the client's lift belongs to the area: Medium, High and Ultra share the reference, Low's moon casts no shadow so its factor is DmGraphicsPreset.LIFT_LOW, 0.96)
@@ -184,21 +184,22 @@ func _gold_regressions() -> void:
 	var server: Dictionary = (await api.get_character()).data
 	_check(int(server["gold"]) == g0 + 175, "the save keeps it: backend %s" % str(server["gold"]))
 	# ---- Legion tier spend
-	host.character["gold"] = 5000
+	var tier0 := int(host.progress.get("legionTier", 0))
+	var funds := maxi(5000, DmUpgrades.legion_cost(tier0) * 2)   # plenty for the tier's price, whatever it is
+	host.character["gold"] = funds
 	host.prog.add_gold(0.0)
 	await game.flush_all()
-	var tier0 := int(host.progress.get("legionTier", 0))
 	var res: DmResult = await host.psync.spend_on_server(func() -> DmResult: return await host.api.necro_purchase(host.hero_id, "legion"))
 	_check(res.ok, "legion purchase succeeds: %s" % res.error)
 	await host.refresh_progress()
 	await host.refresh_character()
-	var cost := 5000 - int(host.character["gold"])
+	var cost := funds - int(host.character["gold"])
 	_check(cost > 0, "the client paid for the tier: %d gold" % cost)
 	_check(int(host.progress.get("legionTier", 0)) == tier0 + 1, "legion tier %d -> %s" % [tier0, str(host.progress.get("legionTier", 0))])
 	host.prog.save_dirty = true
 	await game.flush_all()
 	server = (await api.get_character()).data
-	_check(int(server["gold"]) == 5000 - cost, "the next save keeps the spend: client %d, backend %s" % [int(host.character["gold"]), str(server["gold"])])
+	_check(int(server["gold"]) == funds - cost, "the next save keeps the spend: client %d, backend %s" % [int(host.character["gold"]), str(server["gold"])])
 	game.queue_free()
 	for i in 3:
 		await process_frame

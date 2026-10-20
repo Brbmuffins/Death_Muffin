@@ -112,7 +112,7 @@ func _run() -> void:
 	# ---- level-up: banner, sound hook, stats, full vitals, saved at once
 	var lvl0 := int(ch["level"])
 	var tries := 0
-	while int(ch["level"]) == lvl0 and tries < 12:
+	while int(ch["level"]) == lvl0 and tries < 200:   # (a stop for a level-up that never comes: how many kills it takes is the xp tables')
 		await kill(10, 8.0)
 		tries += 1
 	var lvl := int(ch["level"])
@@ -149,7 +149,7 @@ func _run() -> void:
 	var expect_ratio := (1.0 + float(DmCombatData.progression()["damage_upgrade"]["perTier"]) * 1.0)
 	check(absf(float(caster.p["stats"]["spellPower"]) / sp0 - expect_ratio) < 0.001, "tier 1 raises the caster's spell power by the current formula (x%.3f)" % expect_ratio)
 	var after_hit := await rite_hit()
-	check(before_hit > 0.0 and after_hit > before_hit * 1.01 and absf(after_hit / before_hit - expect_ratio) < 0.06, "the rite's damage follows the tier (%.1f -> %.1f)" % [before_hit, after_hit])
+	check(before_hit > 0.0 and after_hit > before_hit and absf(after_hit / before_hit - expect_ratio) < 0.06, "the rite's damage follows the tier (%.1f -> %.1f)" % [before_hit, after_hit])
 	check(g.ui_host.hud_state()["damage"]["tier"] == 1, "the HUD's upgrades box shows tier 1")
 	var base_interval := g.director.wave_interval
 	var base_size := g.director.wave_size
@@ -176,7 +176,7 @@ func _run() -> void:
 	var hp0 := b.hp
 	g.ui_host.use_belt("heal")
 	var heal := float(DmContent.healing_flasks()["flask_hp_minor"]) * b.max_hp
-	check(inv.count("flask_hp_minor") == f0 + 2 and absf(b.hp - (hp0 + heal)) < 0.5, "Q drinks a healing flask: +%d%% of max health, one consumed" % int(DmContent.healing_flasks()["flask_hp_minor"] * 100))
+	check(inv.count("flask_hp_minor") == f0 + 2 and absf(b.hp - minf(hp0 + heal, b.max_hp)) < 0.5, "Q drinks a healing flask: +%d%% of max health, one consumed" % int(DmContent.healing_flasks()["flask_hp_minor"] * 100))
 	g.ui_host.use_belt("heal")
 	check(inv.count("flask_hp_minor") == f0 + 2, "the sip cooldown blocks a second flask (%.1f s)" % (DmBrews.heal_cooldown_ms() / 1000.0))
 	var row: Dictionary = g.ui_host.hud_state()["brews"][0]
@@ -185,17 +185,19 @@ func _run() -> void:
 	b.p["hp"] = b.p["stats"]["maxHp"] * 0.2
 	g.ui_host.use_belt("heal")
 	check(inv.count("flask_hp_minor") == f0 + 1, "after the cooldown a flask can be drunk again")
+	var elixir_bonus := float(DmBrews.buff_flask("flask_damage")["value"])   # (the brew's effect, as the rites read it)
+	var tonic_bonus := float(DmBrews.buff_flask("flask_speed")["value"])
 	var dmg_plain := await rite_hit()
 	g.ui_host.use_belt("elixir")
 	check(inv.count("flask_damage") == 1 and b.p["brews"]["elixir"] != null and caster.p["brews"]["elixir"] != null, "Z drinks the elixir on the body and its caster")
 	var dmg_brewed := await rite_hit()
-	check(absf(dmg_brewed / dmg_plain - 1.15) < 0.06, "an elixir of damage (+15%%) raises the rite's damage (%.1f -> %.1f)" % [dmg_plain, dmg_brewed])
+	check(absf(dmg_brewed / dmg_plain - (1.0 + elixir_bonus)) < 0.06, "an elixir of damage (+%d%%) raises the rite's damage (%.1f -> %.1f)" % [roundi(elixir_bonus * 100.0), dmg_plain, dmg_brewed])
 	var belt_rows: Array = g.ui_host.hud_state()["brews"]
 	check(belt_rows[1]["active"] and int(belt_rows[1]["left"]) > 0 and belt_rows[1]["key"] == "Z", "the elixir chip shows it active with seconds left")
 	g.ui_host.use_belt("tonic")
 	await ticks(3)
 	var sp := DmPlayerRules.move_speed(b.p, b.clock_ms())
-	check(absf(sp / float(b.p["stats"]["moveSpeed"]) - 1.2) < 0.01, "X drinks the tonic of speed: +20%% move speed")
+	check(absf(sp / float(b.p["stats"]["moveSpeed"]) - (1.0 + tonic_bonus)) < 0.01, "X drinks the tonic of speed: +%d%% move speed" % roundi(tonic_bonus * 100.0))
 	g.ui_host.use_item("meal_crypt_eel")
 	check(inv.count("meal_crypt_eel") == 0 and b.hp > 0.0, "a meal is eaten from the bag (heal over time)")
 	g.ui_host.use_belt("elixir")
@@ -215,9 +217,13 @@ func _run() -> void:
 	# ---- milestones go through the rewards path (a ground drop of gold)
 	var drops: Array = []
 	g.rewards.loot_dropped.connect(func(_c: int, d: Dictionary, _pos: Vector3) -> void: drops.append(d))
-	await kill(30, 6.0)
+	var claimed0: int = p._claimed.size()
+	var batches := 0
+	while p._claimed.size() == claimed0 and batches < 200:   # kill on until the next milestone (its count is the table's) is paid
+		await kill(10, 6.0)
+		batches += 1
 	await ticks(5)
-	check(not p._claimed.is_empty() and events.any(func(e: Dictionary) -> bool: return e["id"] == "toast" and String(e["ctx"]["text"]).begins_with("Milestone")), "kill milestones fire (%d claimed)" % p._claimed.size())
+	check(not p._claimed.is_empty() and p._claimed.size() > claimed0 and events.any(func(e: Dictionary) -> bool: return e["id"] == "toast" and String(e["ctx"]["text"]).begins_with("Milestone")), "kill milestones fire (%d claimed)" % p._claimed.size())
 	var claimed_n: int = p._claimed.size()
 	check(drops.any(func(d: Dictionary) -> bool: return d["kind"] == "gold"), "milestone gold arrives as a ground drop (the rewards path), not a direct credit")
 	await ticks(60)

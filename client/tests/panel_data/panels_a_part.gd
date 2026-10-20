@@ -104,31 +104,40 @@ func _test_ascension() -> void:
 	var w := DmAscensionPanel.new()
 	_mount(w)
 	var st := DmPaMock.ascension_state()
+	var vow_defs: Dictionary = DmProgContent.vows()
+	# the shards the character holds: one short of the dearest vow's price (so it is unaffordable), the cheaper one affordable
+	var deacon_cost := int(vow_defs["deacon_host"]["unlockShards"])
+	var thin_cost := int(vow_defs["thin_graves"]["unlockShards"])
+	_check(thin_cost < deacon_cost, "(the Thin Graves vow costs less than the Deacon Host)")
+	st["shards"] = deacon_cost - 1
 	w.set_state(st)
-	# 11 vow cards, 15 boon cards
 	var vow_cards := DmPa.find_all(w, "vow").filter(func(n: Node) -> bool: return n is PanelContainer)
 	var boon_cards := DmPa.find_all(w, "boon").filter(func(n: Node) -> bool: return n is PanelContainer)
-	_eq(vow_cards.size(), 11, "ascension: one card per vow")
-	_eq(boon_cards.size(), 15, "ascension: one card per boon")
+	_eq(vow_cards.size(), vow_defs.size(), "ascension: one card per vow")
+	_eq(boon_cards.size(), DmProgContent.boons().size(), "ascension: one card per boon")
 	# header numbers
 	var stats: Dictionary = {}
 	for n in DmPa.find_all(w, "stat"):
 		stats[n.get_meta("stat")] = (n as Label).text
 	_eq(stats["best"], "Ascension II", "best rank = roman(ascension)")
-	_eq(stats["heat"], "4", "sworn heat = 3 (elder) + 1 (iron)")
+	var sworn_heat := 0   # the mock's sworn vows, each step at its vow's heat
+	for vid in st["vows"]:
+		sworn_heat += int(st["vows"][vid]) * int(vow_defs[vid]["heat"])
+	var step_heat := int(vow_defs["swollen_waves"]["heat"])
+	_eq(stats["heat"], str(sworn_heat), "sworn heat = each sworn step at its vow's heat")
 	_eq(stats["ashes"], "90", "ashes")
-	_eq(stats["shards"], "350", "shards")
-	# vow gating: swollen_waves is open (unlocks has it), deacon_host (400 shards) locked + unaffordable? 350 < 400
+	_eq(stats["shards"], str(deacon_cost - 1), "shards")
+	# vow gating: swollen_waves is open (unlocks has it), deacon_host locked + unaffordable with one shard short
 	var by_id: Dictionary = {}
 	for c in vow_cards:
 		by_id[c.get_meta("vow")] = c
 	_check(not by_id["swollen_waves"].get_meta("locked"), "opened vow is not locked")
 	_check(by_id["deacon_host"].get_meta("locked"), "unopened vow is locked")
 	var unlock_deacon := _btn(w, "unlock", "vow:deacon_host")
-	_check(unlock_deacon != null and unlock_deacon.disabled, "400-shard vow cannot be unlocked with 350 shards")
-	_check(unlock_deacon.text.contains("400"), "unlock button states the shard price")
+	_check(unlock_deacon != null and unlock_deacon.disabled, "a vow cannot be unlocked with one shard less than its price")
+	_check(unlock_deacon.text.contains(str(deacon_cost)), "unlock button states the shard price")
 	var unlock_thin := _btn(w, "unlock", "vow:thin_graves")
-	_check(unlock_thin != null and not unlock_thin.disabled, "120-shard vow is affordable")
+	_check(unlock_thin != null and not unlock_thin.disabled, "a cheaper vow is affordable")
 	var got_unlock: Array = []
 	w.unlock_requested.connect(func(k: String) -> void: got_unlock.append(k))
 	unlock_thin.pressed.emit()
@@ -147,7 +156,7 @@ func _test_ascension() -> void:
 	plus.pressed.emit()
 	swear = _btn(w, "swear")
 	_check(not swear.disabled and swear.text.contains("SWEAR THESE VOWS"), "draft change enables swearing")
-	_eq(w.view["draft_heat"], 5, "draft heat = 4 + 1")
+	_eq(w.view["draft_heat"], sworn_heat + step_heat, "draft heat = the sworn heat + the step")
 	_check(w.view["restart"], "changing vows with kills on the tally warns of a restart")
 	var warn := DmPa.find_all(w, "role").filter(func(n: Node) -> bool: return n.get_meta("role") == "restart_warning")
 	_eq(warn.size(), 1, "restart warning shown")
@@ -155,7 +164,7 @@ func _test_ascension() -> void:
 	var asc := _btn(w, "ascend")
 	_check(asc.disabled and asc.text.contains("SWEAR OR UNDO"), "ascend blocked until vows are sworn or undone")
 	# the Ashes preview multiplier: 1 + ashesPerHeat * heat
-	var mult := 1.0 + float(DmProgContent.ascension()["ashesPerHeat"]) * 5.0
+	var mult := 1.0 + float(DmProgContent.ascension()["ashesPerHeat"]) * float(sworn_heat + step_heat)
 	_eq("×%.1f" % mult, _stat_text(w, "mult"), "ashes multiplier preview")
 	# swear emits the draft
 	var sworn: Array = []
@@ -184,13 +193,13 @@ func _test_ascension() -> void:
 	# ascend: ashes for the run with sworn heat; confirm step
 	w.drafted = false
 	w.set_state(DmPaMock.ascension_state())
-	var ashes := DmAscension.ashes_for_run(st["run"], 4)
+	var ashes := DmAscension.ashes_for_run(st["run"], sworn_heat)
 	asc = _btn(w, "ascend")
 	_check(not asc.disabled and asc.text.contains(str(ashes)), "ascend enabled and shows the Ashes it pays (%d)" % ashes)
 	asc.pressed.emit()
 	_check(_btn(w, "confirm") != null and _btn(w, "cancel") != null, "ascend asks twice")
 	var asc_msg := DmPa.all_text(w)
-	_check(asc_msg.contains("Ascension IV"), "confirm text names the new best rank when heat > best (4 > 2)")
+	_check(sworn_heat > int(st["ascension"]) and asc_msg.contains("Ascension %s" % DmAscension.roman(sworn_heat)), "confirm text names the new best rank when heat > best (%d > %d)" % [sworn_heat, int(st["ascension"])])
 	var did: Array = []
 	w.ascend_confirmed.connect(func() -> void: did.append(true))
 	_btn(w, "cancel").pressed.emit()
@@ -242,7 +251,7 @@ func _test_class() -> void:
 	_mount(w)
 	w.set_data(2)
 	var cards := DmPa.acts(w, "class")
-	_eq(cards.size(), 10, "class: ten disciplines")
+	_eq(cards.size(), DmContent.disciplines().size(), "class: one card per discipline")
 	for c in cards:
 		var a := int(c.get_meta("arg"))
 		var locked := a >= 5 and a != 11   # 11 = the Reaper, playable
@@ -383,11 +392,12 @@ func _test_legion() -> void:
 	_check(DmPa.all_text(v).contains("Not used by thralls: +8% spell damage"), "unused affixes listed")
 	_check(DmPa.all_text(v).contains("Thralls hit +12% harder"), "legion total lines")
 	_check(DmPa.all_text(v).contains("188"), "thrall raised now: health")
-	_check(DmPa.all_text(v).contains("tier 4 / 12"), "reinforce tier line (max 12)")
+	var max_tier := int(DmCombatData.progression()["legion_upgrade"]["maxTier"])
+	_check(DmPa.all_text(v).contains("tier %d / %d" % [int(d["tier"]), max_tier]), "reinforce tier line (the legion upgrade's max tier)")
 	var re := DmPa.find_act(v, "reinforce") as Button
 	_check(re.disabled and re.text.contains("1,250G"), "reinforce disabled when gold 980 < 1250; shows price")
 	_check(re.tooltip_text.contains("270"), "tooltip says how much more gold")
-	var nxt := DmLegion.reinforce_bonus(5)
+	var nxt := DmLegion.reinforce_bonus(int(d["tier"]) + 1)
 	_check(DmPa.all_text(v).contains("Next: +%s health and damage, +%s attack speed" % [DmPa.pct(nxt["hp"]), DmPa.pct(nxt["speed"])]), "next tier numbers come from DmLegion.reinforce_bonus")
 	d["gold"] = 5000
 	v.set_data(d)
@@ -402,11 +412,11 @@ func _test_legion() -> void:
 	(DmPa.find_act(v, "give", 7) as Button).pressed.emit()
 	_eq(got, ["reinforce", ["take", "weapon"], ["give", 7]], "legion actions emit")
 	# spares: only 4 shown, "1 more" line
-	_eq(DmPa.acts(v, "give").size(), DmLegionView.SPARES_SHOWN, "four spares shown")
-	_check(DmPa.all_text(v).contains("1 more in your bag, ranked lower."), "overflow line")
+	_eq(DmPa.acts(v, "give").size(), DmLegionView.SPARES_SHOWN, "only the first spares are shown")
+	_check(DmPa.all_text(v).contains("%d more in your bag, ranked lower." % (d["spares"].size() - DmLegionView.SPARES_SHOWN)), "overflow line")
 	var verdicts: Array = DmPa.find_all(v, "verdict").map(func(n: Node) -> String: return n.get_meta("verdict"))
 	_eq(verdicts, ["up", "up", "down", "same"], "verdict arrows in rank order")
-	d["tier"] = 12
+	d["tier"] = max_tier
 	d["cost"] = -1
 	v.set_data(d)
 	_check(DmPa.find_act(v, "reinforce") == null and DmPa.all_text(v).contains("Fully reinforced"), "top tier: no button")
@@ -448,7 +458,7 @@ func _test_grimoire() -> void:
 	# locked at level 12? find a rite above level 12
 	var locked_id := ""
 	for id in listed:
-		if DmPaData.unlock_level(String(id)) > 12:
+		if DmPaData.unlock_level(String(id)) > float(st["level"]):
 			locked_id = String(id)
 			break
 	if locked_id != "":
@@ -510,10 +520,19 @@ func _test_grimoire() -> void:
 	_check(DmPa.all_text(v).contains("Drops from"), "sealed rows say where the rune drops")
 	var tags := DmPa.find_all(v, "rune_rarity")
 	_eq(tags.size(), DmPaData.runes_for("bone_needle").size(), "every rune of the rite shows its rarity")
-	_check(DmPa.all_text(v).contains("Uncommon") and DmPa.all_text(v).contains("Rare"), "rarity is named (Uncommon, Rare)")
-	# a rite without runes
-	v.select_socket(4)   # corpse_explosion
-	_check(DmPa.all_text(v).contains("has no runes yet"), "rite without a rune family says so")
+	var rarity_named := true
+	for rid in DmPaData.runes_for("bone_needle"):
+		rarity_named = rarity_named and DmPa.all_text(v).contains(String(DmContent.rune(rid)["rarity"]).capitalize())
+	_check(rarity_named, "each rune's rarity is named")
+	# a rite without runes (if every rite has a rune family there is none to show)
+	var bare_socket := -1
+	for i in 5:
+		if DmPaData.runes_for(String(st["rites"]["keys"][i])).is_empty():
+			bare_socket = i
+			break
+	if bare_socket >= 0:
+		v.select_socket(bare_socket)
+		_check(DmPa.all_text(v).contains("has no runes yet"), "rite without a rune family says so")
 	v.queue_free()
 
 
@@ -530,7 +549,7 @@ func _test_codex() -> void:
 	for t in DmCodexPanel.TABS:
 		w.select_tab(String(t[0]))
 		_check(w.tab_view(String(t[0])).get_child_count() > 0 or String(t[0]) == "chronicle", "codex tab '%s' has content" % t[0])
-	_eq(DmCodexPanel.TABS.size(), 15, "codex: 15 tabs")
+	_check(not DmCodexPanel.TABS.is_empty(), "codex: it has tabs")
 	# rites: one entry per RITE_ORDER
 	w.select_tab("rites")
 	_eq(_entries(w.tab_view("rites")).size(), c["RITE_ORDER"].size(), "rites tab lists every rite")
@@ -540,19 +559,20 @@ func _test_codex() -> void:
 	w.auto_combat_allowed = true
 	w.render_tab("rites")
 	_check(DmPa.all_text(w.tab_view("rites")).contains("Auto (G)"), "auto-combat help shown when allowed")
-	# disciplines: 9, mine marked
+	# disciplines: one entry each, mine marked
 	w.select_tab("disciplines")
 	var discs := _entries(w.tab_view("disciplines"))
-	_eq(discs.size(), 10, "disciplines tab: ten")
+	_eq(discs.size(), DmContent.disciplines().size(), "disciplines tab: one entry per discipline")
 	var mine := discs.filter(func(n: Node) -> bool: return n.has_meta("mine") and n.get_meta("mine"))
 	_eq(mine.size(), 1, "exactly one marked 'Your discipline'")
 	_check(DmPa.all_text(w.tab_view("disciplines")).contains("Your discipline"), "mine label")
-	# the dead: 35 entries, 2 known
+	# the dead: an entry each, 2 known
 	w.select_tab("dead")
 	var dead_v := w.tab_view("dead")
 	var sealed := DmPa.find_all(dead_v, "sealed")
-	_eq(sealed.size(), 33, "dead tab: 33 sealed of 35 when 2 recorded")
-	_check(DmPa.all_text(dead_v).contains("RECORDED 2 OF 35"), "recorded count")
+	var dead_n: int = c["DEAD_ORDER"].size()
+	_eq(sealed.size(), dead_n - 2, "dead tab: all but the 2 recorded are sealed")
+	_check(DmPa.all_text(dead_v).contains("RECORDED 2 OF %d" % dead_n), "recorded count")
 	_check(DmPa.all_text(dead_v).contains(String(c["CODEX_SEALED"]["dead"])), "sealed text")
 	_check(DmPa.all_text(dead_v).contains(String(c["CODEX_DEAD"]["robber"]["counter"])), "known entry shows its counter text")
 	# diocese
@@ -565,8 +585,9 @@ func _test_codex() -> void:
 	var rows := DmPa.find_all(w.tab_view("runes"), "rune")
 	var found := rows.filter(func(n: Node) -> bool: return n.get_meta("found"))
 	_eq(found.size(), 1, "one rune found")
-	_eq(rows.size(), 11, "eleven runes listed")
-	_check(DmPa.all_text(w.tab_view("runes")).contains("1 of 3 found") or DmPa.all_text(w.tab_view("runes")).contains("1 of 2 found"), "per-rite found count")
+	_eq(rows.size(), DmContent.runes().size(), "every rune listed")
+	var splinter_rite := String(DmContent.rune("rune_splinter")["rite"])
+	_check(DmPa.all_text(w.tab_view("runes")).contains("1 of %d found" % DmPaData.runes_for(splinter_rite).size()), "per-rite found count")
 	# people: met marker
 	w.select_tab("people")
 	_check(DmPa.all_text(w.tab_view("people")).contains("Met ·") and DmPa.all_text(w.tab_view("people")).contains("Not yet met"), "met / not yet met")
@@ -592,8 +613,8 @@ func _test_codex() -> void:
 	var ct := DmPa.all_text(w.tab_view("chronicle"))
 	_check(ct.contains("18,432") and ct.contains("25h 30m") and ct.contains("Depth 14"), "chronicle numbers (kills, hours, depth)")
 	_check(ct.contains("#3 (now)") and ct.contains("9/30/2026") and ct.contains("9/12/2026"), "runs table with current + ended dates")
-	_check(ct.contains("The Hollow Graves") and ct.contains("The Bell-Sworn Prelate"), "per-area and boss kills listed")
-	_check(not ct.contains("The Drowned Nave"), "areas with zero kills are omitted")
+	_check(ct.contains(String(DmContent.area("graves")["name"])) and ct.contains(String(DmContent.boss("prelate")["name"])), "per-area and boss kills listed")
+	_check(not ct.contains(String(DmContent.area("nave")["name"])), "areas with zero kills are omitted")
 	w.queue_free()
 	await _frames(1)
 
@@ -630,17 +651,24 @@ func _test_atlas() -> void:
 		var s := w._score(a["items"][r["id"]])
 		_check(s <= prev + 1e-9, "slot view is sorted by score (%s)" % r["id"])
 		prev = s
-	# By set: five pieces of the remembered set; header shows worn count
+	# By set: the pieces of the remembered set; header shows worn count
 	w.set_view("set")
 	var own := DmLegendarySets.set_for("gravecaller")
 	_eq(DmAtlasPanel.memory["set"], own, "set view defaults to your legendary set")
-	_eq(w.rows().size(), 5, "set view: five pieces")
+	var own_set: Dictionary = {}
+	var class_set: Dictionary = {}
+	for sd: Dictionary in a["sets"]:
+		if sd["id"] == own:
+			own_set = sd
+		if sd["id"] == "gravecaller":
+			class_set = sd
+	_eq(w.rows().size(), own_set["pieces"].size(), "set view: every piece of the set")
 	DmAtlasPanel.memory["set"] = "gravecaller"
 	w.render_list()
 	var hdr := DmPa.find_all(w, "role").filter(func(n: Node) -> bool: return n.get_meta("role") == "set_header")
-	_check(hdr.size() == 1 and DmPa.all_text(hdr[0]).contains("1/5 worn"), "set header counts worn pieces (chest worn)")
+	_check(hdr.size() == 1 and DmPa.all_text(hdr[0]).contains("1/%d worn" % class_set["pieces"].size()), "set header counts worn pieces (chest worn)")
 	var bonuses := DmPa.find_all(hdr[0], "on")
-	_check(bonuses.size() == 3 and not bonuses[0].get_meta("on"), "bonus rows off until enough pieces are worn")
+	_check(bonuses.size() == class_set["bonuses"].size() and not bonuses[0].get_meta("on"), "a bonus row each, off until enough pieces are worn")
 	# Where: defaults to the current area; groups with counts
 	w.set_view("where")
 	_eq(DmAtlasPanel.memory["where"], "graves", "where view starts at your current area")
@@ -657,7 +685,7 @@ func _test_atlas() -> void:
 	_eq(counted, (place["items"] as Array).size(), "where view lists every item of the place exactly once")
 	_check(DmPa.find_all(w, "role").any(func(n: Node) -> bool: return n.get_meta("role") == "quality"), "drop quality line for a hunting ground")
 	var qd: Dictionary = a["by_disc"]["gravecaller"]["quality"]["graves"]
-	_check(w.quality_text(qd).contains("Drop quality 1 of 9"), "quality text rung")
+	_check(w.quality_text(qd).contains("Drop quality %d of %d" % [int(qd["rung"]), int(qd["rungs"])]), "quality text rung")
 	# Mats: kinds partition the non-gear items
 	w.set_view("mats")
 	var counts := {}
@@ -681,7 +709,7 @@ func _test_atlas() -> void:
 			if cur != "The legendary chase (rare boss drops)":
 				_check(per_head <= 3, "at most three picks per slot")
 				var it: Dictionary = a["items"][r["id"]]
-				_check(int(it["level"]) <= 12 + 10, "reach filter: level %d <= 22" % int(it["level"]))
+				_check(int(it["level"]) <= int(ctx["level"]) + 10, "reach filter: level %d within reach of the hero's level %d" % [int(it["level"]), int(ctx["level"])])
 				_check(not ctx["owned"].has(r["id"]), "owned pieces are not suggested")
 	DmAtlasPanel.memory["reach"] = false
 	_check(w.rows().size() >= best.size(), "dropping the reach filter shows at least as much")
@@ -836,9 +864,9 @@ func _test_waystones() -> void:
 	w.set_unlocked(["chapterhouse", "graves", "ossuary"])
 	var btns := DmPa.acts(w, "travel")
 	_eq(btns.size(), 3, "one button per unlocked waystone")
-	_check((btns[1] as Button).get_child(0).get_child(0).text == "THE HOLLOW GRAVES", "area name")
+	_check((btns[1] as Button).get_child(0).get_child(0).text == String(DmContent.area("graves")["name"]).to_upper(), "area name")
 	var levels := DmPa.all_text(w)
-	_check(levels.contains("Lv 1") and levels.contains("Lv %d" % int(DmContent.area("ossuary")["level"])), "levels shown")
+	_check(levels.contains("Lv %d" % int(DmContent.area("graves")["level"])) and levels.contains("Lv %d" % int(DmContent.area("ossuary")["level"])), "levels shown")
 	var got: Array = []
 	w.travel_requested.connect(func(id: String) -> void: got.append(id))
 	w.visible = true

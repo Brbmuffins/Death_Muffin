@@ -8,7 +8,7 @@ const { fakeDb, harness } = require('./bag-fake-db.cjs');
 
 const belt = (db, slot_index, equipped, opts) => harness(mountBelt, db, opts)('POST /api/inventory/belt', { body: { characterId: 1, slot_index, equipped } });
 const at = (db, slot) => db.inv.find((r) => r.slot_index === slot);
-const fullBag = (extra = []) => Array.from({ length: 48 }, (_, i) => extra.find((e) => e.slot_index === i) || { slot_index: i, item_id: 'staff_oak', quantity: 1 });
+const fullBag = (extra = []) => Array.from({ length: gather.BAG_SLOTS }, (_, i) => extra.find((e) => e.slot_index === i) || { slot_index: i, item_id: 'staff_oak', quantity: 1 });
 
 test('belt slots: hatchet 110, pickaxe 111, rod 112, spade 113', () => {
   assert.deepEqual(gather.BELT_KINDS.map((k, i) => [k, gather.BELT_BASE + i]), [['hatchet', 110], ['pickaxe', 111], ['rod', 112], ['spade', 113]]);
@@ -32,7 +32,7 @@ test('a second tool of the same kind swaps with the belt tool, even with a full 
   assert.equal(r.success, true);
   assert.equal(at(db, 110).item_id, 'tool_hatchet_iron');
   assert.deepEqual([at(db, 9).item_id, at(db, 9).equipped, at(db, 9).equipped_slot], ['tool_hatchet_copper', 0, null]);
-  assert.equal(db.inv.length, 49, 'nothing created or lost');
+  assert.equal(db.inv.length, gather.BAG_SLOTS + 1, 'nothing created or lost');
 });
 
 test('only gathering tools go on the belt, and only from the bag', async () => {
@@ -74,9 +74,9 @@ test('a bag save (any bag, including an empty one) leaves belt and gear rows int
     bag: [{ slot_index: 0, item_id: 'ore_copper', quantity: 3 }],
     equipped: [{ slot_index: 110, item_id: 'tool_hatchet_copper', equipped_slot: 'belt_hatchet' }, { slot_index: 113, item_id: 'tool_spade_copper', equipped_slot: 'belt_spade' }, { slot_index: 105, item_id: 'staff_oak' }],
   });
-  await replaceBag(db.conn, 1, [{ slot_index: 4, item_id: 'bone_meal', quantity: 2 }], saveBagSize(48));
+  await replaceBag(db.conn, 1, [{ slot_index: 4, item_id: 'bone_meal', quantity: 2 }], saveBagSize(gather.BAG_SLOTS));
   assert.deepEqual(db.inv.map((r) => r.slot_index).sort((a, b) => a - b), [4, 105, 110, 113]);
-  await replaceBag(db.conn, 1, [], saveBagSize(48));
+  await replaceBag(db.conn, 1, [], saveBagSize(gather.BAG_SLOTS));
   assert.deepEqual(db.inv.map((r) => r.slot_index).sort((a, b) => a - b), [105, 110, 113]);
   assert.equal(at(db, 110).equipped_slot, 'belt_hatchet');
 });

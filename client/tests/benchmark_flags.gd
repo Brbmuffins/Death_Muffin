@@ -32,7 +32,7 @@ func launch_flags() -> void:
 	var settings_had := FileAccess.file_exists(DmSettings.FILE)
 	var settings_was := FileAccess.get_file_as_string(DmSettings.FILE) if settings_had else ""
 	var own_preset := String(DmBenchmark.user_settings()["graphics"])
-	var asked := "low" if own_preset != "low" else "medium"
+	var asked: String = DmGraphicsPreset.IDS[0] if own_preset != DmGraphicsPreset.IDS[0] else DmGraphicsPreset.IDS[1]
 	var trial := own.path_join("team-run")
 	var o4: Array = []
 	var c4 := OS.execute(exe, ["--headless", "--fixed-fps", "60", "--path", proj, "--", "--benchmark", "--bench-room=graves", "--bench-class=2", "--bench-size=light", "--bench-length=quick", "--bench-warm=1",
@@ -48,7 +48,19 @@ func launch_flags() -> void:
 		check(last.get("preset") == asked and last.get("room") == "graves" and int(last.get("discipline", 0)) == 2 and last.get("size") == "light" and last.get("length") == "quick" and not bool(last.get("cancelled", true)) and (last.get("metrics", {}) as Dictionary).has("avg_fps"),
 			"the queued run has the preset and the setup that were asked for and a result (the payload the app sends)")
 	check(FileAccess.file_exists(DmSettings.FILE) == settings_had and (not settings_had or FileAccess.get_file_as_string(DmSettings.FILE) == settings_was), "the launch left the player's settings file as it was")
-	for pair in [["--bench-room=depths", "'depths'", "graves"], ["--bench-room=nowhere", "'nowhere'", "fen"], ["--bench-class=5", "class 5", "2 Gravecaller"], ["--bench-preset=max", "'max'", "low, medium, high, ultra"]]:
+	var unlisted := ""   # an area of the world the benchmark does not list as a room
+	for id in DmContent.area_order():
+		if not DmBenchmark.ROOMS.has(String(id)):
+			unlisted = String(id)
+			break
+	var bad_class := 0   # a class index no benchmark class has
+	while DmBenchmark.class_indices().has(bad_class):
+		bad_class += 1
+	var first_class: int = DmBenchmark.class_indices()[0]
+	var refusals: Array = [["--bench-room=nowhere", "'nowhere'", DmBenchmark.ROOMS[-1]], ["--bench-class=%d" % bad_class, "class %d" % bad_class, "%d %s" % [first_class, DmBenchmark.class_name_of(first_class)]], ["--bench-preset=nopreset", "'nopreset'", ", ".join(DmGraphicsPreset.IDS)]]
+	if unlisted != "":
+		refusals.append(["--bench-room=" + unlisted, "'%s'" % unlisted, DmBenchmark.ROOMS[0]])
+	for pair in refusals:
 		var o2: Array = []
 		var c2 := OS.execute(exe, ["--headless", "--path", proj, "--", "--benchmark", pair[0]], o2, true)
 		var t2 := "\n".join(PackedStringArray(o2))

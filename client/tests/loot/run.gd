@@ -96,7 +96,7 @@ func _run() -> void:
 	check(await until(func() -> bool: return m.tape.ready_for("elite"), 4.0), "tape: seeds are dealt")
 	var before: int = lv._drops.size()
 	var tries := 0
-	while lv._drops.size() == before and tries < 200:
+	while lv._drops.size() == before and tries < 2000:   # (a stop for a tape that never drops: the odds are the area's itemChance)
 		tries += 1
 		g.rewards.on_kill({"def": "robber", "area": "graves", "level": 5.0, "elite": true, "x": b.position.x + 0.5, "z": b.position.z, "killer": b})
 		await physics_frame
@@ -167,7 +167,7 @@ func _run() -> void:
 	n0 = h.slots.size()
 	check(lv.drop({"item_id": "rune_splinter", "quantity": 1}, b.position, true) == "auto" and h.slots.size() == n0 + 1, "a new rune goes straight into the bag")
 	var chat := ids("chat")
-	check(chat.size() == 1 and String(chat[0]["ctx"]["text"]).begins_with("You found the Rune of Splinters"), "a chat line names it %s" % [chat])
+	check(chat.size() == 1 and String(chat[0]["ctx"]["text"]).begins_with("You found the %s" % DmContent.item("rune_splinter")["name"]), "a chat line names it %s" % [chat])
 	check(ids("loot").size() == 1, "and the loot toast")
 	check(lv.drop({"item_id": "rune_splinter", "quantity": 1}, b.position, true) == "owned", "owned in the bag: nothing drops")
 	check(lv.drop({"item_id": vault_rune, "quantity": 1}, b.position, true) == "owned", "owned in the Vault: nothing drops")
@@ -236,7 +236,7 @@ func _run() -> void:
 	var tight := 0
 	for i in lv._drops.size():
 		for j in range(i + 1, lv._drops.size()):
-			if Vector2(lv._drops[i]["x"] - lv._drops[j]["x"], lv._drops[i]["z"] - lv._drops[j]["z"]).length() < 0.3:
+			if Vector2(lv._drops[i]["x"] - lv._drops[j]["x"], lv._drops[i]["z"] - lv._drops[j]["z"]).length() < DmLootView.ITEM_SPACING * 0.5:
 				tight += 1
 	check(tight == 0, "six drops from one kill do not stack on each other (%d too close)" % tight)
 

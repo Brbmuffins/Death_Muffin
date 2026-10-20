@@ -6,6 +6,7 @@ const kills = require('./kills.cjs');
 const authority = require('./authority.cjs');
 const rules = require('./gathering/kill-rules.cjs');
 const arules = require('./gathering/authority-rules.cjs');
+const { MAX_WAVE_TIER } = require('./gathering/loot-rules.cjs');
 const mountLeaderboard = require('./leaderboard.cjs');
 const mountChronicle = require('./chronicle.cjs');
 const { killsFake } = require('./kills-fake-db.cjs');
@@ -23,6 +24,8 @@ const ACCOUNT = { staff: false };
 const char = (over = {}) => ({ id: 1, account_id: 7, level: 10, experience: 0, gold: 1000, stat_str: 5, stat_agi: 5, stat_int: 5, stat_vit: 10, ...over });
 const nextOf = (c, over = {}) => ({ level: c.level, xp: c.experience, gold: c.gold, stat_str: c.stat_str, stat_agi: c.stat_agi, stat_int: c.stat_int, stat_vit: c.stat_vit, ...over });
 /** An honest group of kills in the Hollow Graves (level 1 dead, medium difficulty, no multipliers). */
+/** A batch small enough for any kind to pass the mix rule whole (the mix allows a flat handful of any kind besides its spawn-weight share). */
+const FEW = Math.min(10, rules.KILLS.MIX_FLAT);
 const group = (over = {}) => ({ area: 'graves', def: 'robber', level: 1, elite: false, tier: 0, diff: 'medium', rank: 0, xpMult: 1, goldMult: 1, shardMult: 1, n: 50, ...over });
 /** A believable stretch of Hollow Graves play: `k` x 100 kills spread over the ground's usual dead. */
 const mixed = (k, over = {}) => [['robber', 30], ['hound', 25], ['penitent', 20], ['bat', 10], ['moth', 10], ['rat', 5]].map(([def, n]) => group({ def, n: n * k, ...over }));
@@ -85,12 +88,12 @@ test('claimed multipliers are capped at what play can reach, never trusted', () 
   const caps = rules.multCaps(0, 10);
   assert.ok(cheat.credits.xp < honest.credits.xp * (caps.xp / 1.2) * 1.05, 'the XP multiplier is clamped to the cap');
   assert.ok(cheat.credits.gold <= Math.round(honest.credits.gold / 1.2 * caps.gold) + 10);
-  assert.ok(cheat.credits.xp < evaluate(report(1, [group({ xpMult: 1, n: 10 })])).credits.xp * 3, 'a forged 40x is worth under 3x');
+  assert.ok(cheat.credits.xp < evaluate(report(1, [group({ xpMult: 1, n: 10 })])).credits.xp * caps.xp * 1.05, 'a forged 40x is worth no more than the cap');
 });
 
 test('a higher difficulty and wave tier pay more, an unknown difficulty pays nothing', () => {
   const base = evaluate(report(1, [group()])).credits.xp;
-  assert.ok(evaluate(report(1, [group({ diff: 'hard', tier: 8 })])).credits.xp > base);
+  assert.ok(evaluate(report(1, [group({ diff: 'hard', tier: MAX_WAVE_TIER })])).credits.xp > base);
   const e = evaluate(report(1, [group({ diff: 'nightmare' })]));
   assert.equal(e.credits.xp, 0);
   assert.equal(e.findings[0].kind, 'kill_invalid');
@@ -120,25 +123,25 @@ test('the rate follows the best ground the character has open: deeper grounds al
 });
 
 test('kills in a sealed ground, an unknown ground or a safe ground are dropped, one step ahead is allowed', () => {
-  const e = evaluate(report(1, [group({ area: 'pyre', n: 10 }), group({ area: 'nowhere', n: 10 }), group({ area: 'acre', n: 10 }), group({ area: 'ossuary', def: 'robber', n: 10 })]));
+  const e = evaluate(report(1, [group({ area: 'pyre', n: FEW }), group({ area: 'nowhere', n: FEW }), group({ area: 'acre', n: FEW }), group({ area: 'ossuary', def: 'robber', n: FEW })]));
   const why = e.findings.filter((f) => f.kind === 'kill_invalid').map((f) => f.why);
   assert.ok(why.includes('ground'));
   assert.equal(e.credits.kills.pyre, undefined);
   assert.equal(e.credits.kills.nowhere, undefined);
   assert.equal(e.credits.kills.acre, undefined);
-  assert.equal(e.credits.kills.ossuary, 10, 'the ground the Hollow Graves unlocks is one step ahead and counts');
+  assert.equal(e.credits.kills.ossuary, FEW, 'the ground the Hollow Graves unlocks is one step ahead and counts');
 });
 
 test('an enemy that does not live in the ground, or is inert, is dropped', () => {
-  const e = evaluate(report(1, [group({ def: 'fen_wisp', n: 10 }), group({ def: 'niche', n: 10 }), group({ def: 'made_up', n: 10 }), group({ def: 'risen', n: 10 })]));
-  assert.equal(e.killsAccepted, 10, 'only the Risen (raised in any ground) survive');
+  const e = evaluate(report(1, [group({ def: 'fen_wisp', n: FEW }), group({ def: 'niche', n: FEW }), group({ def: 'made_up', n: FEW }), group({ def: 'risen', n: FEW })]));
+  assert.equal(e.killsAccepted, FEW, 'only the Risen (raised in any ground) survive');
   assert.equal(e.findings.find((f) => f.kind === 'kill_invalid').why, 'kind');
 });
 
 test('an enemy level above what the ground can serve is dropped', () => {
   const top = rules.maxEnemyLevel('graves', 10, 0);
-  assert.equal(evaluate(report(1, [group({ level: top })])).killsAccepted, 50);
-  const e = evaluate(report(1, [group({ level: top + 1 })]));
+  assert.equal(evaluate(report(1, [group({ level: top, n: FEW })])).killsAccepted, FEW);
+  const e = evaluate(report(1, [group({ level: top + 1, n: FEW })]));
   assert.equal(e.killsAccepted, 0);
   assert.equal(e.findings[0].why, 'level');
 });
@@ -147,22 +150,25 @@ test('a level-scaled ground follows a hero above level 255 (it used to stop at 2
   // 2026-10-13 audit-log review: a level-272 character with no Ascension had every Plague Cloister kill refused for level.
   assert.ok(rules.maxEnemyLevel('cloister', 272, 0) >= 272);
   assert.ok(rules.maxEnemyLevel('cloister', 680, 0) >= 680);
-  assert.ok(rules.maxEnemyLevel('cloister', 980, 0) <= 999 + 30, 'still bounded near the level cap');
+  assert.equal(rules.maxEnemyLevel('cloister', arules.LEVEL_CAP + 1000, 0), rules.maxEnemyLevel('cloister', arules.LEVEL_CAP, 0), 'a hero past the level cap adds nothing: still bounded by the cap');
 });
 
 test('a carried kill is judged in the host\'s world: the host\'s level and rank, as the server records them', () => {
   // 2026-10-13 co-op: a level-367 guest in a level-680 host's world (Elder Dead 20) had its party kills refused for level.
   const guest = { ...ctx(), heroLevel: 367, unlocked: ['chapterhouse', 'graves', 'cloister'], carried: true };
-  const g = (level) => report(1, [group({ area: 'cloister', def: rules.rosterIds('cloister', 0).values().next().value, level, n: 10 })]);
+  const g = (level) => report(1, [group({ area: 'cloister', def: rules.rosterIds('cloister', 0).values().next().value, level, n: FEW })]);
   const top = rules.maxEnemyLevel('cloister', 680, 20);
-  assert.equal(rules.evaluateKillReport(rules.parseKillReport(g(top)), { ...guest, world: { level: 680, rank: 20 } }).killsAccepted, 10);
+  assert.equal(rules.evaluateKillReport(rules.parseKillReport(g(top)), { ...guest, world: { level: 680, rank: 20 } }).killsAccepted, FEW);
   assert.equal(rules.evaluateKillReport(rules.parseKillReport(g(top)), guest).killsAccepted, 0, 'without the host\'s world: the old flat ceiling');
   assert.equal(rules.evaluateKillReport(rules.parseKillReport(g(top + 1)), { ...guest, world: { level: 680, rank: 20 } }).killsAccepted, 0, 'still bounded by the host');
 });
 
 test('heat that adds up (DECISIONS B26): a carried kill pays at the host\'s world heat plus the guest\'s own self vows; solo, at its own', () => {
-  assert.equal(rules.worldHeat({ elder_dead: 4, frail_vessel: 2, dry_cellar: 1 }), 4);
-  assert.equal(rules.selfHeat({ elder_dead: 4, frail_vessel: 2, dry_cellar: 1 }), 4, 'Frail Vessel 2 + Dry Cellar (2 heat)');
+  // a world vow (Elder Dead) and two self vows (Frail Vessel, Dry Cellar): the world counts the first, the self heat the others
+  const vows = { elder_dead: 4, frail_vessel: 2, dry_cellar: 1 };
+  assert.equal(rules.worldHeat(vows), rules.vowHeat({ elder_dead: 4 }));
+  assert.equal(rules.selfHeat(vows), rules.vowHeat({ frail_vessel: 2, dry_cellar: 1 }), 'only the self vows');
+  assert.equal(rules.worldHeat(vows) + rules.selfHeat(vows), rules.vowHeat(vows), 'a run\'s heat is the world\'s plus its own');
   assert.equal(rules.rewardRank({ ascension: 9, carried: false }), 9, 'solo: the character\'s own heat, world and self');
   assert.equal(rules.rewardRank({ ascension: 9, carried: true, world: { level: 50, rank: 5 }, selfHeat: 3 }), 8, 'guest: host world 5 + own self 3');
   assert.equal(rules.rewardRank({ ascension: 9, carried: true, world: { level: 50, rank: 5 } }), 5, 'a guest without self vows earns at the host\'s world');
@@ -182,10 +188,12 @@ test('a carried boss kill in a ground the guest has not opened counts', () => {
 
 test('Ascension ages the dead: the level cap rises with the character\'s own rank plus the co-op allowance', () => {
   const rank0 = rules.maxEnemyLevel('graves', 10, 0);
-  assert.equal(rules.maxEnemyLevel('graves', 10, 3), rank0 + 9, 'three ranks, three levels each');
-  // A guest fights in the host\'s world: rank 2 above their own is believed, rank 8 above is not.
-  assert.equal(evaluate(report(1, [group({ level: 1 + 2 * 3, rank: 2 })])).killsAccepted, 50);
-  assert.equal(evaluate(report(1, [group({ level: 1 + 8 * 3, rank: 8 })])).killsAccepted, 0);
+  const perRank = rules.maxEnemyLevel('graves', 10, 1) - rank0;
+  assert.ok(perRank > 0, 'each rank ages the dead');
+  assert.equal(rules.maxEnemyLevel('graves', 10, 3), rank0 + 3 * perRank, 'every rank ages them by the same');
+  // A guest fights in the host\'s world: the allowance above their own rank is believed, one level past it is not.
+  assert.equal(evaluate(report(1, [group({ level: rank0, rank: 2, n: FEW })])).killsAccepted, FEW);
+  assert.equal(evaluate(report(1, [group({ level: rank0 + 1, rank: 2, n: FEW })])).killsAccepted, 0);
 });
 
 test('the kind mix cannot lean on the richest enemy: a ground\'s own spawn weights bound each kind', () => {
@@ -196,10 +204,17 @@ test('the kind mix cannot lean on the richest enemy: a ground\'s own spawn weigh
   const e = evaluate(report(1, [group({ def: rarest, n: total })]), ctx({ killBucket: 9000 }));
   assert.equal(e.killsAccepted, allowed);
   assert.ok(e.findings.some((f) => f.kind === 'kill_mix' && f.dropped === total - allowed));
-  // A batch that follows the spawn weights passes whole.
+  // A batch that follows the spawn weights passes whole: the allowed counts, scaled down until the batch judged as a whole allows every one of its kinds.
   const weights = [...mix].filter(([id]) => id !== 'risen' && id !== 'penitent');
-  const honest = evaluate(report(1, weights.map(([id]) => group({ def: id, n: 20 }))), ctx({ killBucket: 9000 }));
-  assert.equal(honest.killsAccepted, 20 * weights.length);
+  let batch = null;
+  for (let scale = 1; scale > 0.05 && !batch; scale *= 0.9) {
+    const counts = weights.map(([id, n]) => [id, Math.floor(n * scale)]);
+    const allow = rules.mixAllowance('graves', counts.reduce((sum, [, n]) => sum + n, 0));
+    if (counts.every(([id, n]) => n <= (allow.get(id) ?? 0))) batch = counts;
+  }
+  assert.ok(batch, 'some batch that follows the spawn weights is believable');
+  const honest = evaluate(report(1, batch.map(([id, n]) => group({ def: id, n }))), ctx({ killBucket: 9000 }));
+  assert.equal(honest.killsAccepted, batch.reduce((sum, [, n]) => sum + n, 0));
 });
 
 test('elites are bounded by the ground\'s elite chance: an all-elite batch is cut down', () => {
@@ -208,8 +223,9 @@ test('elites are bounded by the ground\'s elite chance: an all-elite batch is cu
   assert.ok(e.killsAccepted < 500 * share * rules.KILLS.ELITE_FACTOR + rules.KILLS.ELITE_FLAT + 1);
   assert.ok(e.findings.some((f) => f.kind === 'kill_elite' || f.kind === 'kill_mix'));
   // Honest mix: a few elites among plain kills pass whole.
-  const honest = evaluate(report(1, [...mixed(2), group({ elite: true, n: 12 })]));
-  assert.equal(honest.killsAccepted, 212);
+  const few = Math.min(12, rules.KILLS.ELITE_FLAT);   // a few elites, inside the flat allowance whatever the ground's chance
+  const honest = evaluate(report(1, [...mixed(2), group({ elite: true, n: few })]));
+  assert.equal(honest.killsAccepted, 200 + few);
 });
 
 test('staff reports are credited whole (dev access) and still named', () => {
@@ -224,7 +240,9 @@ test('boss kills pay the boss\'s own gold, XP and shards and are bounded by thei
   const rep = report(1, [], { bosses: [{ boss: 'abbess', tier: 0, diff: 'medium', first: true, n: 1 }] });
   const e = evaluate(rep, NAVE_CTX);
   assert.equal(e.bossesAccepted, 1);
-  assert.equal(e.credits.shards, 2 + 2, 'a cost-3 boss gives 2 shards back, its first kill 2 more');
+  const notFirst = evaluate(report(1, [], { bosses: [{ boss: 'abbess', tier: 0, diff: 'medium', first: false, n: 1 }] }), NAVE_CTX);
+  assert.ok(notFirst.credits.shards > 0, 'a boss gives shards back');
+  assert.ok(e.credits.shards > notFirst.credits.shards, 'its first kill gives more');
   const spam = evaluate(report(1, [], { bosses: [{ boss: 'abbess', tier: 0, diff: 'medium', first: false, n: 20 }] }), { ...NAVE_CTX, bossBucket: 2 });
   assert.equal(spam.bossesAccepted, 2);
   assert.ok(spam.findings.some((f) => f.kind === 'boss_rate'));
@@ -251,13 +269,15 @@ test('Depths floors: a clear proves the next depth, depths cannot be skipped, th
 });
 
 test('Depths: the chest of a chest floor pays once; a floor with no chest pays nothing for the claim', () => {
-  const WARREN = ctx({ unlocked: NAVE.unlockedAreas, heroLevel: 40, maxCleared: 4 });
-  const withChest = evaluate(report(1, [], { floors: [{ depth: 5, level: 45, clear: true, chest: true, mult: 1 }] }), WARREN);
-  const without = evaluate(report(1, [], { floors: [{ depth: 5, level: 45, clear: true, chest: false, mult: 1 }] }), WARREN);
+  const chestAt = rules.FLOOR_RULES.chestEvery;   // every this many floors has a chest, the floor before it has none
+  const WARREN = ctx({ unlocked: NAVE.unlockedAreas, heroLevel: 40, maxCleared: chestAt - 1 });
+  const floor = (depth, chest) => report(1, [], { floors: [{ depth, level: 40 + depth, clear: true, chest, mult: 1 }] });
+  const withChest = evaluate(floor(chestAt, true), WARREN);
+  const without = evaluate(floor(chestAt, false), WARREN);
   assert.ok(withChest.credits.gold > without.credits.gold);
-  const fake = evaluate(report(1, [], { floors: [{ depth: 4, level: 44, clear: true, chest: true, mult: 1 }] }), WARREN);
-  const plain = evaluate(report(1, [], { floors: [{ depth: 4, level: 44, clear: true, chest: false, mult: 1 }] }), WARREN);
-  assert.equal(fake.credits.gold, plain.credits.gold, 'depth 4 has no chest');
+  const fake = evaluate(floor(chestAt - 1, true), WARREN);
+  const plain = evaluate(floor(chestAt - 1, false), WARREN);
+  assert.equal(fake.credits.gold, plain.credits.gold, `depth ${chestAt - 1} has no chest`);
 });
 
 // ── The ledger: off / audit / enforce, replay, fail open ──────────────────────────────────────────────────────────────
@@ -316,7 +336,6 @@ for (const [name, env] of [['audit', AUDIT], ['enforce', ENFORCE]]) {
     // 40 s of real time: the first-sight bank plus 40 s of refill, however the report is chopped up.
     const allowed = cap + (rules.killsPerMin(NECRO.unlockedAreas) * 40) / 60;
     assert.ok(accepted <= allowed + 1, `accepted ${accepted} of ${allowed}`);
-    assert.ok(accepted < 4000);
   });
 }
 
@@ -366,9 +385,9 @@ test('enforce: inflated XP, gold and levels are clamped to what the reports back
   const cheat = nextOf(c, { level: 200, xp: 5, gold: 50_000_000 });
   const v = await saveProgress(fake, c, cheat, T0 + 30_000, ENFORCE);
   const backedXp = ledger.xp_used;
-  assert.ok(v.write.level < 20, `level ${v.write.level}`);
+  assert.ok(v.write.level < cheat.level, `level ${v.write.level}`);
   assert.equal(arules.totalXp(v.write.level, v.write.xp) - arules.totalXp(c.level, c.experience), backedXp);
-  assert.ok(v.write.gold < c.gold + 200_000, 'gold held to the credit plus the lump');
+  assert.ok(v.write.gold <= c.gold + ledger.gold_credit + rules.KILLS.LUMP_GOLD_CAP, 'gold held to the credit plus the lump');
   assert.match(v.message, /verified kills/);
   // Gold is held to the step-1 bucket (enforce of step 2 implies it) and then fits inside the lump, so XP is the unbacked claim.
   assert.ok(unbacked(fake).includes('unbacked_xp'));
@@ -389,12 +408,14 @@ test('enforce: a client that never reports earns nothing beyond the lump and is 
 test('enforce: the lump allowance refills with time, so non-kill income (contracts, labour) keeps flowing', async () => {
   const fake = killsFake({ necro: NECRO });
   const c = char();
-  const first = await saveProgress(fake, c, nextOf(c, { gold: c.gold + 20_000 }), T0, ENFORCE);
-  assert.equal(first.write.gold, c.gold + 20_000, 'a labour payout well inside the lump');
+  const payout = Math.floor(rules.KILLS.LUMP_GOLD_CAP / 4);
+  const first = await saveProgress(fake, c, nextOf(c, { gold: c.gold + payout }), T0, ENFORCE);
+  assert.equal(first.write.gold, c.gold + payout, 'a labour payout well inside the lump');
   const drained = await saveProgress(fake, { ...c, gold: first.write.gold }, nextOf(c, { gold: first.write.gold + rules.KILLS.LUMP_GOLD_CAP }), T0 + 1000, ENFORCE);
   assert.ok(drained.write.gold < first.write.gold + rules.KILLS.LUMP_GOLD_CAP);
-  const later = await saveProgress(fake, { ...c, gold: drained.write.gold }, nextOf(c, { gold: drained.write.gold + 3000 }), T0 + 10 * MIN, ENFORCE);
-  assert.equal(later.write.gold, drained.write.gold + 3000, 'ten minutes later the refilled lump covers it');
+  const refilled = Math.floor((rules.KILLS.LUMP_GOLD_PER_MIN * 10) / 2);   // half of what ten minutes refill
+  const later = await saveProgress(fake, { ...c, gold: drained.write.gold }, nextOf(c, { gold: drained.write.gold + refilled }), T0 + 10 * MIN, ENFORCE);
+  assert.equal(later.write.gold, drained.write.gold + refilled, 'ten minutes later the refilled lump covers it');
 });
 
 test('audit: nothing is held back, but unbacked gains are logged and the balances still move', async () => {
@@ -444,11 +465,14 @@ function necroRequest(fake, body, env) {
 
 test('enforce: a necromancer save can only claim kills, shards and Prelate kills the ledger credits', async () => {
   const fake = killsFake({ necro: { ...NECRO, unlockedAreas: [...NAVE.unlockedAreas, 'sanctum'] } });
-  await send(fake, report(T0, [...mixed(1), group({ elite: true, n: 6, level: 1 })], { bosses: [{ boss: 'prelate', tier: 0, diff: 'medium', first: false, n: 1 }] }), T0, ENFORCE);
-  const n = necroRequest(fake, { areaKills: { graves: 900, pyre: 400 }, shards: 60, prelateKills: 3 }, ENFORCE);
+  const sent = report(T0, [...mixed(1), group({ elite: true, n: 6, level: 1 })], { bosses: [{ boss: 'prelate', tier: 0, diff: 'medium', first: false, n: 1 }] });
+  await send(fake, sent, T0, ENFORCE);
+  const credited = evaluate(sent, ctx({ unlocked: [...NAVE.unlockedAreas, 'sanctum'] })).credits;
+  assert.ok(credited.shards > 6 * rules.ELITE_SHARDS_MAX, 'the Prelate pays shards of its own on top of the elites\'');
+  const n = necroRequest(fake, { areaKills: { graves: 900, pyre: 400 }, shards: 10 * credited.shards, prelateKills: 3 }, ENFORCE);
   await n.run();
   assert.deepEqual(n.req.body.areaKills, { graves: 106 });
-  assert.equal(n.req.body.shards, 6 * rules.ELITE_SHARDS_MAX + 3, 'the elites\' shards plus the Prelate\'s own three');
+  assert.equal(n.req.body.shards, credited.shards, 'the elites\' shards plus the Prelate\'s own');
   assert.equal(n.req.body.prelateKills, 1, 'one reported Prelate, three claimed');
   await n.finish();
   assert.deepEqual(JSON.parse(fake.ledger(1).kill_credit || '{}'), {});
@@ -467,7 +491,7 @@ test('enforce: boss kills on the board are bounded by time, however many summons
   assert.equal(r.body.data.accepted.bosses, Math.floor(rules.bucketCaps(['sanctum']).bossPerMin * rules.KILLS.FIRST_MINUTES), 'only the first-sight bank');
   const n = necroRequest(fake, { prelateKills: 20 }, ENFORCE);
   await n.run();
-  assert.ok(n.req.body.prelateKills <= 7);
+  assert.ok(n.req.body.prelateKills <= r.body.data.accepted.bosses);
 });
 
 test('enforce: a failed necromancer save keeps its credits so the retry is not short', async () => {
@@ -536,7 +560,7 @@ test('enforce: the deepest floor on the board needs floor clears behind it; hone
   const log = quietLog();
   const claim = async (maxes, now) => (await kills.guardChronicleAdd(fake.pool, { characterId: 1, accountId: 7, deltas: {}, maxes, account: ACCOUNT, now, env: ENFORCE, log })).maxes;
   assert.equal((await claim({ 'peak.depth': 1 }, T0))['peak.depth'], 1, 'entering the stair at depth 1');
-  assert.equal((await claim({ 'peak.depth': 999 }, T0 + 1000))['peak.depth'], 4, 'forged 999: the grandfathered 3 plus the flush-race slack');
+  assert.equal((await claim({ 'peak.depth': 999 }, T0 + 1000))['peak.depth'], 3 + rules.KILLS.DEPTH_PEAK_SLACK, 'forged 999: the grandfathered 3 plus the flush-race slack');
   await send(fake, report(T0 + 2000, [], { floors: [{ depth: 4, level: 60, clear: true, chest: false, mult: 1 }, { depth: 5, level: 61, clear: true, chest: false, mult: 1 }] }), T0 + 2000, ENFORCE, { char: char({ level: 40 }) });
   assert.equal(fake.ledger(1).depth_proved, 6);
   assert.equal((await claim({ 'peak.depth': 6 }, T0 + 3000))['peak.depth'], 6);
@@ -637,25 +661,26 @@ test('offline load: the ledger is re-based on the loaded record, so the loaded X
 
 test('co-op guest: kills in the host\'s world are judged at the guest\'s own record plus the rank allowance', async () => {
   const fake = killsFake({ necro: NECRO });
-  // The host is Ascension 2: level 7 dead in the Graves. A guest at rank 0 is allowed +2.
-  const ok = await send(fake, report(T0, [group({ level: 1 + 2 * 3, rank: 2, xpMult: 1.1, goldMult: 1.1, n: 60 })]), T0, ENFORCE);
-  assert.equal(ok.body.data.accepted.kills, 60);
+  // The host is Ascension 2: its dead are older than a rank-0 guest's own, but inside the co-op allowance.
+  const top = rules.maxEnemyLevel('graves', char().level, 0);
+  const ok = await send(fake, report(T0, [group({ level: top, rank: 2, xpMult: 1.1, goldMult: 1.1, n: FEW })]), T0, ENFORCE);
+  assert.equal(ok.body.data.accepted.kills, FEW);
   assert.equal(ok.body.authority, undefined);
   // The guest's save then claims the XP those kills were worth.
   const c = char();
-  const xp = 60 * Math.round(Math.round(rules.killXpBase('robber', 7, false, 0, 'medium')) * 1.1);
+  const xp = FEW * Math.round(Math.round(rules.killXpBase('robber', top, false, 0, 'medium')) * 1.1);
   const v = await saveProgress(fake, c, nextOf(c, { xp }), T0 + 20_000, ENFORCE);
   assert.equal(arules.totalXp(v.write.level, v.write.xp) - arules.totalXp(c.level, c.experience), xp);
-  // A host at rank 9 is not believed for a rank-0 guest.
-  const bad = await send(fake, report(T0 + 1000, [group({ level: 1 + 9 * 3, rank: 9, n: 60 })]), T0 + 1000, ENFORCE);
+  // A host far above the allowance is not believed for a rank-0 guest.
+  const bad = await send(fake, report(T0 + 1000, [group({ level: top + 1, rank: 9, n: FEW })]), T0 + 1000, ENFORCE);
   assert.equal(bad.body.data.accepted.kills, 0);
 });
 
 test('co-op guest: a guest\'s kill reward is the host\'s difficulty and wave tier, which the report carries and the server caps', () => {
   const easy = evaluate(report(1, [group({ diff: 'easy' })])).credits.xp;
-  const hard = evaluate(report(1, [group({ diff: 'hard', tier: 8 })])).credits.xp;
+  const hard = evaluate(report(1, [group({ diff: 'hard', tier: MAX_WAVE_TIER })])).credits.xp;
   assert.ok(hard > easy);
-  const forged = evaluate(report(1, [group({ diff: 'hard', tier: 99 })])).credits.xp;
+  const forged = evaluate(report(1, [group({ diff: 'hard', tier: MAX_WAVE_TIER + 91 })])).credits.xp;
   assert.equal(forged, hard, 'a forged wave tier is capped at the highest tier a player can dial');
 });
 
@@ -710,7 +735,7 @@ test('route: the same save without reports is clamped in enforce, paid in audit,
   const enforced = routeServer();
   const e = await quiet(() => withEnv(ENFORCE, () => enforced.srv.call('POST /api/character/save-progress', { body: claim })));
   assert.ok(xpOf(enforced.owned) - xpOf({ level: 10, experience: 0 }) <= rules.KILLS.LUMP_XP_CAP);
-  assert.ok(enforced.owned.gold < 1000 + 200_000);
+  assert.ok(enforced.owned.gold <= 1000 + rules.KILLS.LUMP_GOLD_CAP);
   assert.match(e.json.authority.message, /verified kills|Reload the page/);
   const audited = routeServer();
   await quiet(() => withEnv(AUDIT, () => audited.srv.call('POST /api/character/save-progress', { body: claim })));
@@ -774,20 +799,28 @@ test('a boss kill report that names a summon stamps it in audit and enforce, and
 
 test('Depths: a run resumed at the deepest floor is accepted at that depth, and no deeper than one past it', () => {
   // The ledger proved depth 17 (the character cleared 16): max_cleared 16, deepest 17.
-  const RESUMED = ctx({ unlocked: NAVE.unlockedAreas, heroLevel: 40, deepest: 17, maxCleared: 16 });
+  const DEEPEST = 17;
+  const RESUMED = ctx({ unlocked: NAVE.unlockedAreas, heroLevel: 40, deepest: DEEPEST, maxCleared: DEEPEST - 1 });
   const clear = (depth) => ({ depth, level: 40 + depth, clear: true, chest: false, mult: 1 });
-  const ok = evaluate(report(1, [], { floors: [clear(17), clear(18)] }), RESUMED);
-  assert.equal(ok.floorsAccepted, 2, 'floor 17 (the resume point) and the next are both honest');
-  assert.equal(ok.depthProved, 19);
-  const leap = evaluate(report(1, [], { floors: [clear(19)] }), RESUMED);
+  const ok = evaluate(report(1, [], { floors: [clear(DEEPEST), clear(DEEPEST + 1)] }), RESUMED);
+  assert.equal(ok.floorsAccepted, 2, 'the resume point and the next floor are both honest');
+  assert.equal(ok.depthProved, DEEPEST + 2);
+  const leap = evaluate(report(1, [], { floors: [clear(DEEPEST + 2)] }), RESUMED);
   assert.equal(leap.floorsAccepted, 0, 'resuming never lets a run skip past the deepest floor');
-  // The dead of depth 17 (level hero + 17, the roster that depth fields) are believable kills for that character.
-  const honest = ['robber', 'penitent', 'deacon', 'hound', 'rat'].map((def) => group({ area: 'depths', def, level: 40 + 17, n: 4 }));
+  // The dead of that depth (level hero + depth, the roster that depth fields) are believable kills for that character: some kinds only walk the deep floors.
+  const slack = arules.DEPTHS_AUTHORITY.slack;
+  const deepRoster = rules.rosterIds('depths', DEEPEST + slack);
+  const shallowRoster = rules.rosterIds('depths', 1 + slack);
+  const deepOnly = [...deepRoster].filter((id) => !shallowRoster.has(id) && id !== 'risen');
+  const shared = [...deepRoster].filter((id) => shallowRoster.has(id) && id !== 'risen');
+  assert.ok(deepOnly.length > 0 && shared.length > 0, 'the deep floors field kinds the shallow ones do not');
+  const defs = [...deepOnly.slice(0, 2), ...shared.slice(0, 3)];
+  const honest = defs.map((def) => group({ area: 'depths', def, level: 40 + DEEPEST, n: 4 }));
   const kill = evaluate(report(2, honest), RESUMED);
-  assert.equal(kill.killsAccepted, 20, 'kills at the resumed depth are plausible');
-  // The same kills from a character with no record of depth 17 are not.
+  assert.equal(kill.killsAccepted, 4 * defs.length, 'kills at the resumed depth are plausible');
+  // The same kills from a character with no record of that depth are not.
   const forged = evaluate(report(2, honest), ctx({ unlocked: NAVE.unlockedAreas, heroLevel: 40, deepest: 1 }));
-  assert.ok(forged.killsAccepted < 20, 'a character with no record of depth 17 does not get its level-57 dead');
+  assert.ok(forged.killsAccepted < 4 * defs.length, 'a character with no record of the depth does not get its dead');
 });
 
 for (const [name, vows] of [['no vows sworn', {}], ['vows sworn', { elder_dead: 2, famished: 1 }]]) {

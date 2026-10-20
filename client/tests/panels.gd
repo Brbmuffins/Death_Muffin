@@ -20,6 +20,8 @@ class ErrorLog:
 			errors.append("%s:%d %s %s %s" % [file, line, function, code, rationale])
 
 
+const HERO_LEVEL := 12   ## the dev character's level: the rites it knows (the Grimoire section) are the ones unlocked by then
+
 var fails := 0
 var checks := 0
 var errlog := ErrorLog.new()
@@ -60,7 +62,7 @@ func _main() -> void:
 	var reg := await api.register("panels%d" % (Time.get_ticks_usec() % 100000), "p@example.com", "pw1234")
 	api.set_token(reg.data["token"])
 	var ch := await api.load_or_create_character(2)
-	DmDevMock.set_level(mock, ch.data, 12)
+	DmDevMock.set_level(mock, ch.data, HERO_LEVEL)
 	g = load("res://next/next_game.tscn").instantiate()
 	g.name = "NextGame"
 	root.add_child(g)
@@ -158,7 +160,7 @@ func _grimoire() -> void:
 	var host := g.ui_host
 	var other := ""
 	for id: String in host.kit["primaries"] + host.kit["grimoire"]:
-		if not host.keys.has(id) and id != host.primary and DmAbilities.unlock_level(id) <= 12 and DmRiteRegistry.has(id) and not DmNextHudVm.NEEDS.has(id):
+		if not host.keys.has(id) and id != host.primary and DmAbilities.unlock_level(id) <= HERO_LEVEL and DmRiteRegistry.has(id) and not DmNextHudVm.NEEDS.has(id):
 			other = id
 			break
 	check(other != "", "a rite the character knows that is not on the hotbar (%s)" % other)

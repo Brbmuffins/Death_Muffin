@@ -63,14 +63,15 @@ func t_click_pickup() -> void:
 	var v := _view()
 	var bag := [true]
 	v.try_take = func(_d): return bag[0]
+	var reach := DmLootView.ITEM_PICKUP_RADIUS
 	v.item(Vector3(2, 0, 0), {"item_id": "ore_copper", "quantity": 3}, true)
 	ok(v.count() == 1, "item lands")
 	ok(v.tick(0.5, Vector3(2, 0, 0)).is_empty() and v.count() == 1, "standing on it takes nothing")
 	var d := v._drops[-1]
 	v.request_pickup(d)
-	ok(v.tick(0.1, Vector3(10, 0, 0)).is_empty() and v.count() == 1, "far away: still waiting")
+	ok(v.tick(0.1, Vector3(2.0 + reach * 6.0, 0, 0)).is_empty() and v.count() == 1, "far away: still waiting")
 	ok(not v.pickup_target().is_empty(), "the target is kept while walking")
-	var ev := v.tick(0.1, Vector3(1.0, 0, 0))
+	var ev := v.tick(0.1, Vector3(2.0 - reach * 0.5, 0, 0))
 	ok(ev.size() == 1 and ev[0]["kind"] == "item" and int(ev[0]["amount"]) == 3 and v.count() == 0, "reached: taken %s" % [ev])
 	ok(v.pickup_target().is_empty(), "target cleared after the pickup")
 	# full bag: the item stays and the request ends
@@ -98,11 +99,12 @@ func t_expiry_and_cap() -> void:
 	v.tick(2.0, Vector3(99, 0, 99))
 	ok(v.count() == 0 and exp == ["ttl"] and v.pickup_target().is_empty(), "gone after 3 minutes, request dropped with it")
 	exp.clear()
-	for i in 62:
+	var cap := DmLootView.LOOT_ITEM_CAP
+	for i in cap + 2:
 		v.item(Vector3.ZERO, {"item_id": "ore_copper", "quantity": 1})
 	v.item(Vector3.ZERO, {"item_id": "leg_legion_unburied_head", "quantity": 1})
 	v.tick(0.01, Vector3(99, 0, 99))
-	ok(v.count() == 60 and exp == ["cap", "cap", "cap"], "cap: %d left, %s" % [v.count(), exp])
+	ok(v.count() == cap and exp == ["cap", "cap", "cap"], "cap: %d left, %s" % [v.count(), exp])
 	var prize := false
 	for d in v.debug_drops():
 		prize = prize or d["prize"]
@@ -163,7 +165,7 @@ func t_shared() -> void:
 	v.shared_item(entry)
 	ok(v.count() == 1 and legs.is_empty(), "a shared drop lands once, without a legendary line")
 	ok(v.debug_drops()[0]["drop_id"] == "d1" and is_inf(float(v.debug_drops()[0]["ttl"])), "it never expires")
-	for i in 61:
+	for i in DmLootView.LOOT_ITEM_CAP + 1:
 		v.item(Vector3(9, 0, 9), {"item_id": "ore_copper", "quantity": 1})
 	v.tick(600.0, Vector3(99, 0, 99))
 	var shared_left := v.debug_drops().filter(func(d): return d["drop_id"] == "d1").size()
@@ -190,9 +192,10 @@ func t_pick() -> void:
 	v.item(Vector3(0, 0, 0), {"item_id": "ore_copper", "quantity": 1}, true)
 	v.item(Vector3(3, 0, 0), {"item_id": "ore_copper", "quantity": 2}, true)
 	var at := cam.unproject_position(Vector3(3, 0.7, 0))
-	var d := v.pick(at + Vector2(5, -5), cam)
+	var near := Vector2(1, -1) * (DmLootView.PICK_PX * 0.1)
+	var d := v.pick(at + near, cam)
 	ok(not d.is_empty() and int(d["amount"]) == 2, "click next to the second icon picks it")
-	ok(v.pick(at + Vector2(400, 300), cam).is_empty(), "a click far from every icon picks nothing")
+	ok(v.pick(at + Vector2(10, 7.5) * DmLootView.PICK_PX, cam).is_empty(), "a click far from every icon picks nothing")
 	cam.free()
 	v.free()
 
@@ -209,9 +212,8 @@ func t_render_budget() -> void:
 		v.drop({"item_id": "leg_legion_unburied_head", "quantity": 1}, Vector3(i, 0, 3))
 	ok(v.find_children("*", "Light3D", true, false).is_empty(), "drops carry no lights")
 	var mats := {}
-	for b in v.find_children("*", "MeshInstance3D", true, false):
-		var mi := b as MeshInstance3D
-		if mi.mesh is CylinderMesh and (mi.mesh as CylinderMesh).height == 6.0:
-			mats[mi.material_override] = true
+	for d in v._drops:
+		if d["beam"] != null:
+			mats[(d["beam"] as MeshInstance3D).material_override] = true
 	ok(mats.size() == 1, "beams of one rarity share one material (%d materials)" % mats.size())
 	v.queue_free()

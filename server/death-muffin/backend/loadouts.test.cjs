@@ -3,6 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const mountLoadouts = require('./loadouts.cjs');
 const { fakeDb, harness, qty } = require('./bag-fake-db.cjs');
+const { BAG_SLOTS, MAX_PRESETS } = require('./gathering/loadout-rules.cjs');
 
 const KEYS = ['bone_needle', 'marrow_spear', 'exhume', 'miasma', 'black_litany'];
 const preset = (over = {}) => ({ name: 'Colossus', rites: { primary: 'bone_needle', keys: KEYS }, runes: {}, weapon: null, offhand: null, ...over });
@@ -11,7 +12,7 @@ const save = (db, slot, p) => call(db, 'POST /api/loadouts/save', { slot, preset
 const apply = (db, slot) => call(db, 'POST /api/loadouts/apply', { slot });
 const gear = (...rows) => rows.map((r) => ({ quantity: 1, ...r }));
 const at = (db, slot) => db.inv.find((r) => r.slot_index === slot);
-const fullBag = (extra = []) => Array.from({ length: 48 }, (_, i) => extra.find((e) => e.slot_index === i) || { slot_index: i, item_id: 'ore_copper', quantity: 1 });
+const fullBag = (extra = []) => Array.from({ length: BAG_SLOTS }, (_, i) => extra.find((e) => e.slot_index === i) || { slot_index: i, item_id: 'ore_copper', quantity: 1 });
 
 test('save, list, overwrite, delete; names tidy and presets are validated', async () => {
   const db = fakeDb();
@@ -30,7 +31,7 @@ test('save, list, overwrite, delete; names tidy and presets are validated', asyn
 
 test('bad presets and slots are refused and nothing is stored', async () => {
   const db = fakeDb();
-  assert.equal((await save(db, 6, preset())).status, 400);
+  assert.equal((await save(db, MAX_PRESETS, preset())).status, 400);
   assert.equal((await save(db, -1, preset())).status, 400);
   assert.equal((await save(db, 0, preset({ name: '' }))).json.success, false);
   assert.equal((await save(db, 0, preset({ runes: { exhume: 'rune_volley' } }))).json.success, false);
@@ -123,7 +124,7 @@ test('a full bag: a one-for-one weapon swap and a rune swap still work, and noth
   assert.equal(at(db, 3).item_id, 'staff_oak');
   assert.equal(at(db, 130).item_id, 'rune_volley');
   assert.equal(db.inv.reduce((n, x) => n + x.quantity, 0), before);
-  assert.equal(db.inv.filter((x) => x.slot_index >= 0 && x.slot_index < 48).length, 48);
+  assert.equal(db.inv.filter((x) => x.slot_index >= 0 && x.slot_index < BAG_SLOTS).length, BAG_SLOTS);
 });
 
 test('applying an empty slot is a readable refusal; applying again changes nothing', async () => {

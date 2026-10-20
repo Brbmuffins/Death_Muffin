@@ -11,7 +11,7 @@ extends SceneTree
 ##   E the brews: the tonic's wisdom is read per kill; lifesteal heals on the hero's direct blows (DmCoreHost.struck) only, never on a DoT tick, a thrall's swing or a
 ##     blow with no hero behind it (today's tests/brews_affixes B, by DmBrews.lifesteal_heal);
 ##   F the meta: difficulty reaches the director, the rewards and the bosses; the Omen's multipliers the member; saved vows and boons do nothing (B36);
-##   G the belt: Q drinks a flask from the bag (the mock's new character carries three);
+##   G the belt: Q drinks a flask from the bag (the mock's new character carries some);
 ##   H saving: flush_all ends the session with its last batch, and the character the backend holds carries the XP, level and gold.
 ## ZERO script errors or engine errors in the log. Run: godot --headless --fixed-fps 60 --path client --script res://tests/value.gd
 
@@ -106,7 +106,8 @@ func _a_start() -> void:
 	check(g.progress != null and g.progress.prog == m.prog and m.prog.mode == "server", "the progression is the member's and talks to the server (%s)" % m.prog.mode)
 	check(g.chron != null and m.trophy_store.is_valid(), "the Chronicle keeps the first-kill trophies")
 	check(g.meta != null and g.meta.member == m and not g.meta.omen.is_empty(), "the meta world: this member, the week's Omen")
-	check(g.loot != null and g.loot.inventory != null and g.loot.slots().size() == 2, "the bag is the server's (%d rows)" % (g.loot.slots().size() if g.loot != null else -1))
+	var server_rows: Array = (await api.get_inventory(int(g.character["id"]))).data
+	check(g.loot != null and g.loot.inventory != null and not server_rows.is_empty() and g.loot.slots().size() == server_rows.size(), "the bag is the server's (%d rows, the server has %d)" % [g.loot.slots().size() if g.loot != null else -1, server_rows.size()])
 	check(g.ui_host.prog == m.prog and g.ui_host.character == g.character and m.prog.character == g.character, "the HUD's adapter reads the member's progression and the game's character")
 	check(m.take_item.is_valid() and m.loot_view.rune_owned.is_valid() and m.loot_view.claim_requested.is_connected(g.loot._on_claim), "the loot node takes, claims and knows the runes owned")
 
@@ -184,7 +185,7 @@ func _c_purse() -> void:
 func _d_drops() -> void:
 	var d: Dictionary = {}
 	var n := 0
-	while d.is_empty() and n < 40:
+	while d.is_empty() and n < 400:   # (a stop for a tape that never drops: the odds are the area's itemChance)
 		await _kill(_enemy(3.0, true))
 		for x: Dictionary in m.loot_view._drops:
 			if (x["item"] as Dictionary).has("claim"):
@@ -227,7 +228,8 @@ func _e_brews() -> void:
 	var e := _enemy(3.0)
 	m.wisdom = 0.0
 	await _kill(e)
-	check(is_equal_approx(m.wisdom, 0.15), "a kill reads the tonic's wisdom before the reward (%s)" % m.wisdom)
+	var wisdom := float(DmBrews.buff_flask("tonic_insight")["value"])
+	check(is_equal_approx(m.wisdom, wisdom), "a kill reads the tonic's wisdom before the reward (%s of %s)" % [m.wisdom, wisdom])
 	hero.p["brews"]["tonic"] = null
 	# lifesteal: the hero's direct blows only
 	var cap: float = float(DmCombatData.load_json("brews")["lifesteal_hit_cap"])
@@ -238,12 +240,13 @@ func _e_brews() -> void:
 	host.damage(foe, 100.0, hero.core_id)
 	g.rewards._flush_lifesteal()   # the end-of-frame flush, without a frame of regen
 	check(is_equal_approx(hero.hp, hp0), "no elixir, no heal")
-	hero.apply_brew("elixir_leechblood")   # 4 %
+	hero.apply_brew("elixir_leechblood")
+	var leech := float(DmBrews.buff_flask("elixir_leechblood")["value"])
 	hp0 = hero.hp
 	host.damage(foe, 100.0, hero.core_id)
 	g.rewards._flush_lifesteal()
-	var want := DmBrews.lifesteal_heal(100.0, 1.0, 0.04, hero.max_hp)
-	check(want >= 1.0 and is_equal_approx(hero.hp - hp0, want), "leechblood heals 4%% of a 100 blow: %.2f (got %.2f)" % [want, hero.hp - hp0])
+	var want := DmBrews.lifesteal_heal(100.0, 1.0, leech, hero.max_hp)
+	check(want > 0.0 and is_equal_approx(hero.hp - hp0, want), "leechblood heals %.1f%% of a 100 blow: %.2f (got %.2f)" % [leech * 100.0, want, hero.hp - hp0])
 	hp0 = hero.hp
 	host.damage(foe, 1.0e4, hero.core_id)
 	g.rewards._flush_lifesteal()

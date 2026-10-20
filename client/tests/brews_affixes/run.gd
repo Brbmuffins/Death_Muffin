@@ -42,25 +42,38 @@ func _main() -> void:
 	quit(1 if failed > 0 else 0)
 
 
+## What a brew's effect of `kind` is worth, as the data has it (0 when it has none).
+func _brew_worth(brew_id: String, kind: String) -> float:
+	var def: Dictionary = DmCombatData.load_json("brews")["brews"][brew_id]
+	var sum := 0.0
+	for e: Dictionary in def["effects"]:
+		if e["kind"] == kind:
+			sum += float(e["value"])
+	return sum
+
+
 func _a_rewards(g: DmNextGame) -> void:
 	var b := g.local_body()
+	var wisdom := _brew_worth("tonic_insight", "wisdom")
+	var fortune := _brew_worth("tonic_graveluck", "fortune")
+	ok(wisdom > 0.0 and fortune > 0.0, "A: the tonics of insight and grave-luck are worth something in the data (%s, %s)" % [wisdom, fortune])
 	var m: DmRewardsMember = g.rewards.members[int(g.character.get("id", 0))]
 	m.sync_brews()
 	ok(m.wisdom == 0.0 and m.fortune == 0.0, "A: no brew, no bonus")
 	var now := b.clock_ms()
 	b.apply_brew("tonic_insight")
 	m.sync_brews()
-	ok(is_equal_approx(m.wisdom, DmBrews.brew_value(b.p["brews"], "wisdom", now)) and is_equal_approx(m.wisdom, 0.15) and m.fortune == 0.0, "A: tonic of insight -> wisdom 0.15 (%s)" % m.wisdom)
+	ok(is_equal_approx(m.wisdom, DmBrews.brew_value(b.p["brews"], "wisdom", now)) and is_equal_approx(m.wisdom, wisdom) and m.fortune == 0.0, "A: tonic of insight -> wisdom %s (%s)" % [wisdom, m.wisdom])
 	b.apply_brew("tonic_graveluck")   # same slot: replaces
 	m.sync_brews()
-	ok(is_equal_approx(m.fortune, 0.15) and m.wisdom == 0.0, "A: grave-luck replaces insight (tonic slot): fortune 0.15, wisdom 0")
+	ok(is_equal_approx(m.fortune, fortune) and m.wisdom == 0.0, "A: grave-luck replaces insight (tonic slot): fortune %s, wisdom 0" % fortune)
 	# the kill path syncs by itself: the reward reads the member's multipliers
 	m.fortune = 0.0
 	m.wisdom = 0.0
 	b.apply_brew("tonic_insight")
 	var pos := b.global_position
 	g.rewards.on_kill({"def": "robber", "x": pos.x, "z": pos.z, "area": "graves", "level": 1.0, "elite": false, "killer": b})
-	ok(is_equal_approx(m.wisdom, 0.15), "A: a kill syncs wisdom before the reward (%s)" % m.wisdom)
+	ok(is_equal_approx(m.wisdom, wisdom), "A: a kill syncs wisdom before the reward (%s)" % m.wisdom)
 	b.p["brews"]["tonic"]["until"] = 0.0   # expired
 	m.sync_brews()
 	ok(m.wisdom == 0.0 and m.fortune == 0.0, "A: expired brew clears the bonus")

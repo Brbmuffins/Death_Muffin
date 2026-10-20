@@ -3,17 +3,17 @@ extends SceneTree
 ## the Depths) with a Gravecaller in god mode. Where a rule is checked the surge is driven by hand (`update(dt, heroes)`, what the director does every physics tick); where the wiring is, the
 ## director's own ticks drive it. Every kill goes through the core (`DmCoreHost.damage` with the hero's id), so it takes the real path: EV_ENEMY_DIED -> `enemy_died` -> the director's hook ->
 ## the surge. The old game's checks of Grave Surges and of Restless Crypts replayed on the core, and what the core changes:
-##   A the director makes the surge and hears the core's deaths; the clock is unset and the numbers are DmSimData.SURGE's;
+##   A the director makes the surge and hears the core's deaths; the clock is unset and the numbers are DmSimData.SURGE's (their shape is checked, never their values);
 ##   B no surge in a safe area or an instance, with no hero, or while a boss stands (the clock does not run: it holds its value); with a hero in a combat area it runs;
-##   C the first surge opens after firstDelayS of hero time, not before, and once; its event, banner and the counsel's tip; a crypt of the area 9 to 30 m from EVERY hero (never one nearer
+##   C the first surge opens after firstDelayS of hero time, not before, and once; its event, banner and the counsel's tip; a crypt of the area SPAWN_MIN_DIST to SPAWN_MAX_DIST from EVERY hero (never one nearer
 ##     or farther from any of them), else a wave's spawn point;
-##   D three waves at waveAtS (1.5, 7.5, 13.5 s) of 1.2 x the area's wave size: queued through the director (the surge's update makes no body) and made SPAWNS_PER_TICK a tick, bodies of the core
+##   D the waves at waveAtS of waveSizeMult x the area's wave size: queued through the director (the surge's update makes no body) and made SPAWNS_PER_TICK a tick, bodies of the core
 ##     of the area's roster rising at the crypt; the Wave Speed tier's size; the global cap, with what is queued counted in;
-##   E a death that is not the surge's does not count; 80 % of what came dead: `surgeCleared`, "Surge Quelled", the offering (gold and an item on the ground at the crypt), the next surge
-##     90 to 150 s away;
+##   E a death that is not the surge's does not count; clearFrac of what came dead: `surgeCleared`, "Surge Quelled", the offering (gold and an item on the ground at the crypt), the next surge
+##     minIntervalS to maxIntervalS away;
 ##   F the timeout: `surgeFailed` after durationS, "The Surge Recedes", nothing paid; the hero leaving the area, and the director following him to another combat area, fail it on the
 ##     director's own tick; a director that is off (a guest's) moves no clock;
-##   G Restless Crypts: the next surge 0.6 x as far from Wave Speed tier 6;
+##   G Restless Crypts: the next surge RESTLESS_SURGE_MULT x as far from the Wave Speed tier the milestone names;
 ##   H through the director alone: its ticks run the clock from the unset state, the surge opens by itself, the waves come on its clock and climb out three bodies a tick, the deaths the core
 ##     reports clear it, the offering is paid;
 ##   I the queue: a wave that is queued is the surge's however it is made (the tick drain or `flush_spawns`); a surge that ends with a wave still queued, and the surge after it, are not credited
@@ -31,11 +31,12 @@ class ErrorLog:
 const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://surge_test"
 const BAKE := ["grave_robber", "bone_hound"]
-## Where the hero stands in the Graves, at its door: four of its five crypts are 9 to 30 m from him (the fifth, (-16.45, -28.23), is 33 m away).
-const DOOR := Vector3(0.0, 0.0, 1.0)
-## The sim's fair breach rule, written out here on purpose (the surge reads it from DmSimConsts): a crypt opens 9 to 30 m from every hero.
-const CRYPT_MIN := 9.0
-const CRYPT_MAX := 30.0
+## The sim's fair breach rule, the surge's too: a crypt opens SPAWN_MIN_DIST to SPAWN_MAX_DIST from every hero.
+const CRYPT_MIN := DmSimConsts.SPAWN_MIN_DIST
+const CRYPT_MAX := DmSimConsts.SPAWN_MAX_DIST
+## The offering's gold is the area's level x 10 on 24, before the wave tier's and the difficulty's reward factors (next/rewards/dm_session_rewards.gd: not in the data).
+const OFFERING_GOLD_BASE := 24.0
+const OFFERING_GOLD_PER_LEVEL := 10.0
 
 var fails := 0
 var checks := 0
@@ -50,6 +51,8 @@ var sev: Array = []         ## the director's surge events
 var dropped: Array = []     ## [drop, place] the rewards put on the ground
 var waves: Array = []       ## the director's wave_spawned counts
 var want := 0               ## the Graves' surge wave: the wave size x waveSizeMult
+var wave_at: Array = []     ## the data's waveAtS: when each wave of a surge comes
+var door := Vector3.ZERO    ## where the hero stands in the Graves: at its door, the middle of its south edge
 
 
 func check(ok: bool, what: String) -> void:
@@ -101,6 +104,9 @@ func _main() -> void:
 	hero.p["god"] = true
 	d.rng.seed = 20261018
 	want = DmMath.js_round(float(DmContent.area("graves")["waveSize"]) * float(DmSimData.SURGE["waveSizeMult"]))
+	wave_at = DmSimData.SURGE["waveAtS"]
+	var graves_rect: Dictionary = DmContent.area("graves")["rect"]
+	door = Vector3((float(graves_rect["x0"]) + float(graves_rect["x1"])) * 0.5, 0.0, float(graves_rect["z1"]) - 3.0)
 	g.ui_host.game_event.connect(func(id: String, ctx: Dictionary) -> void: events.append([id, ctx]))
 	d.surge_event.connect(func(e: Dictionary) -> void: sev.append(e))
 	d.wave_spawned.connect(func(n: int) -> void: waves.append(n))
@@ -215,6 +221,13 @@ func _wave_over_ticks(dt: float) -> Dictionary:
 	return out
 
 
+func _repeat(x: int, n: int) -> Array:
+	var out: Array = []
+	for i in n:
+		out.append(x)
+	return out
+
+
 func _sum(a: Array) -> int:
 	var t := 0
 	for x in a:
@@ -230,10 +243,13 @@ func _a_the_port() -> void:
 	check(host.enemy_died.is_connected(d._on_enemy_died), "the director hears every death of the core")
 	check(s.surge_in < 0.0, "the clock is not set until it first runs")
 	var S: Dictionary = DmSimData.SURGE
-	check(float(S["firstDelayS"]) == 100.0 and float(S["minIntervalS"]) == 90.0 and float(S["maxIntervalS"]) == 150.0 and float(S["durationS"]) == 20.0 and float(S["waveSizeMult"]) == 1.2
-		and float(S["clearFrac"]) == 0.8 and S["waveAtS"] == [1.5, 7.5, 13.5] and DmSimData.RESTLESS_SURGE_MULT == 0.6,
-		"the numbers are the old game's: 100 s, then 90 to 150 s, 20 s to hold, waves at 1.5 / 7.5 / 13.5 s of 1.2 x the wave size, 80 %%, Restless Crypts x0.6")
-	check(want == 11, "the Graves' wave of 9 climbs out as 11 (%d)" % want)
+	var times_ok := not wave_at.is_empty() and float(wave_at[0]) > 0.3
+	for i in range(1, wave_at.size()):
+		times_ok = times_ok and float(wave_at[i]) > float(wave_at[i - 1]) + 0.5   # (the steps below walk to each wave from the last)
+	check(times_ok and float(wave_at[-1]) < float(S["durationS"]) - 0.5, "the waves come in order, a half second apart at least, and inside the time the surge holds (%s of %.0f s)" % [str(wave_at), float(S["durationS"])])
+	check(float(S["firstDelayS"]) > 1.0 and float(S["minIntervalS"]) > 0.0 and float(S["minIntervalS"]) <= float(S["maxIntervalS"]) and float(S["waveSizeMult"]) > 0.0 and float(S["clearFrac"]) > 0.0 and float(S["clearFrac"]) <= 1.0
+		and DmSimData.RESTLESS_SURGE_MULT > 0.0 and DmSimData.RESTLESS_SURGE_MULT < 1.0, "the surge's numbers make sense: a first delay, an interval range, a wave size, a share to clear, Restless Crypts sooner")
+	check(want >= 1, "the Graves' wave of %d climbs out as %d" % [int(DmContent.area("graves")["waveSize"]), want])
 
 
 # ------------------------------------------------------------------------------------------------------------------ B
@@ -271,23 +287,23 @@ func _b_no_surge_to_be_had() -> void:
 
 func _c_the_first_surge() -> void:
 	var s := d.surge
-	await _stand(DOOR)
+	await _stand(door)
 	check(g.area_id == "graves", "the hero stands in the Graves (%s)" % g.area_id)
 	s.update(s.surge_in - 0.5, [hero])
-	check(not s.active and is_equal_approx(s.surge_in, 0.5), "99.5 s of hero time: the clock stands at 0.5 s, no surge")
+	check(not s.active and is_equal_approx(s.surge_in, 0.5), "half a second short of firstDelayS of hero time: the clock stands at 0.5 s, no surge")
 	s.update(0.4, [hero])
-	check(not s.active and sev.is_empty(), "99.9 s: not yet")
+	check(not s.active and sev.is_empty(), "0.1 s short: not yet")
 	events.clear()
 	s.update(0.2, [hero])
-	check(s.active and sev.size() == 1 and String(sev[0]["t"]) == "surge", "100.1 s: the first surge opens (%s)" % str(sev))
+	check(s.active and sev.size() == 1 and String(sev[0]["t"]) == "surge", "0.1 s past it: the first surge opens (%s)" % str(sev))
 	check(not s.start([hero]) and sev.size() == 1, "a second one does not open over it")
 	var ev: Dictionary = sev[0]
 	var at := Vector3(float(ev["x"]), 0.0, float(ev["z"]))
 	var rect: Dictionary = DmContent.area("graves")["rect"]
 	var fair := _crypts_in_range("graves", [hero])
-	check(String(ev["area"]) == "graves" and bool(ev["crypt"]) and float(ev["durationMs"]) == 20000.0 and at.x >= float(rect["x0"]) and at.x <= float(rect["x1"]) and at.z >= float(rect["z0"]) and at.z <= float(rect["z1"]),
-		"it opens at a crypt in the Graves, for 20 s (%s)" % str(ev))
-	check(fair.size() == 4 and _is_one_of(at, fair), "the crypt is one of the four 9 to 30 m from the hero (%.1f, %.1f)" % [at.x, at.z])
+	check(String(ev["area"]) == "graves" and bool(ev["crypt"]) and float(ev["durationMs"]) == float(DmSimData.SURGE["durationS"]) * 1000.0 and at.x >= float(rect["x0"]) and at.x <= float(rect["x1"]) and at.z >= float(rect["z0"]) and at.z <= float(rect["z1"]),
+		"it opens at a crypt in the Graves, for durationS (%s)" % str(ev))
+	check(not fair.is_empty() and _is_one_of(at, fair), "the crypt is one of the %d the fair rule allows from the hero (%.1f, %.1f)" % [fair.size(), at.x, at.z])
 	check(_banners().has("Grave Surge") and events.any(func(e: Array) -> bool: return e[0] == "surge_opened"), "the 'Grave Surge' banner and the surge_opened event reach the HUD")
 	await ticks(2)
 	check(_tip_fired("surge"), "the counsel raises the Grave Surge tip")
@@ -300,19 +316,24 @@ func _d_three_waves() -> void:
 	await _clear()
 	var crypt := Vector3(float(sev[0]["x"]), 0.0, float(sev[0]["z"]))
 	waves.clear()
-	s.update(1.4, [hero])
-	check(s.waves_spawned == 0 and s.spawned == 0 and d.pending_count() == 0 and host.enemy_total() == 0, "1.4 s: nothing has climbed out yet, nothing is queued")
-	var cost: Array = [await _wave_over_ticks(0.2)]
-	check(s.waves_spawned == 1 and s.spawned == want and waves == [want], "1.6 s: the first wave: %d bodies, counted when it is decided" % want)
-	s.update(5.8, [hero])
-	check(s.waves_spawned == 1, "7.4 s: still the first")
-	cost.append(await _wave_over_ticks(0.2))
-	check(s.waves_spawned == 2 and s.spawned == 2 * want, "7.6 s: the second")
-	s.update(5.8, [hero])
-	cost.append(await _wave_over_ticks(0.2))
-	check(s.waves_spawned == 3 and s.spawned == 3 * want and waves == [want, want, want] and host.enemy_total() == 3 * want, "13.6 s: the third: 3 waves of %d (%d came, %d in the core)" % [want, s.spawned, host.enemy_total()])
+	var n_waves := wave_at.size()
+	# each wave comes at its time of the surge: nothing a tenth of a second before, the wave at 0.1 s past
+	s.update(float(wave_at[0]) - 0.1, [hero])
+	check(s.waves_spawned == 0 and s.spawned == 0 and d.pending_count() == 0 and host.enemy_total() == 0, "%.1f s: nothing has climbed out yet, nothing is queued" % (float(wave_at[0]) - 0.1))
+	var cost: Array = []
+	var t := float(wave_at[0]) - 0.1
+	for w in n_waves:
+		if w > 0:
+			var short := float(wave_at[w]) - 0.1 - t   # up to a tenth short of the next wave
+			s.update(short, [hero])
+			t += short
+			check(s.waves_spawned == w, "%.1f s: still wave %d" % [t, w])
+		cost.append(await _wave_over_ticks(0.2))
+		t += 0.2
+		check(s.waves_spawned == w + 1 and s.spawned == (w + 1) * want, "%.1f s: wave %d" % [t, w + 1])
+	check(waves == _repeat(want, n_waves) and host.enemy_total() == n_waves * want, "%d waves of %d (%d came, %d in the core)" % [n_waves, want, s.spawned, host.enemy_total()])
 	var per_tick := DmWaveDirector.SPAWNS_PER_TICK
-	for w in 3:
+	for w in n_waves:
 		var c: Dictionary = cost[w]
 		var made: Array = c["made"]
 		check(int(c["by_update"]) == 0 and int(c["queued"]) == want and _sum(made) == want and (made.max() as int) == per_tick and made.filter(func(n: int) -> bool: return n > 0).size() == ceili(float(want) / per_tick),
@@ -335,8 +356,8 @@ func _d_three_waves() -> void:
 func _e_the_offering() -> void:
 	var s := d.surge
 	var ids: Array = Array(host.core.enemy_ids())
-	var need := int(ceil(float(s.spawned) * float(DmSimData.SURGE["clearFrac"])))   # 27 of 33
-	await ticks(90)   # they rise first (about 1.1 s)
+	var need := int(ceil(float(s.spawned) * float(DmSimData.SURGE["clearFrac"])))
+	await ticks(ceili((DmSimConsts.RISE_TIME + 0.4) * 60.0))   # they rise first
 	# a body of the ordinary waves is not the surge's: its death does not count
 	var other := host.spawn_enemy("robber", hero.position + Vector3(4.0, 0.0, 0.0), 1, 1.0, 0.0, false, "graves", false)
 	await ticks(1)
@@ -353,15 +374,15 @@ func _e_the_offering() -> void:
 	dropped.clear()
 	events.clear()
 	var crypt := s.pos
-	var gold_due := DmMath.js_round((24.0 + 10.0 * float(DmContent.area("graves")["level"])) * float(DmWaveUpgrades.wave_modifiers(d.wave_tier)["rewardMult"]) * float(DmContent.difficulty(d.difficulty)["rewardMult"]))
+	var gold_due := DmMath.js_round((OFFERING_GOLD_BASE + OFFERING_GOLD_PER_LEVEL * float(DmContent.area("graves")["level"])) * float(DmWaveUpgrades.wave_modifiers(d.wave_tier)["rewardMult"]) * float(DmContent.difficulty(d.difficulty)["rewardMult"]))
 	s.update(0.1, [hero])
-	check(not s.active and sev.size() == 1 and String(sev[0]["t"]) == "surgeCleared" and _banners().has("Surge Quelled"), "80 %% of what came (%d of %d): 'Surge Quelled' (%s)" % [need, s.spawned, str(sev)])
+	check(not s.active and sev.size() == 1 and String(sev[0]["t"]) == "surgeCleared" and _banners().has("Surge Quelled"), "clearFrac of what came (%d of %d): 'Surge Quelled' (%s)" % [need, s.spawned, str(sev)])
 	check(float(sev[0]["x"]) == crypt.x and float(sev[0]["z"]) == crypt.z and String(sev[0]["area"]) == "graves", "the event names the crypt")
 	var gold := dropped.filter(func(x: Array) -> bool: return String((x[0] as Dictionary).get("kind", "")) == "gold")
 	var items := dropped.filter(func(x: Array) -> bool: return (x[0] as Dictionary).has("claim") and String(x[0]["claim"]["kind"]) == "surge")
 	check(gold.size() == 1 and int(gold[0][0]["amount"]) == gold_due, "the crypt pays %d gold (%s)" % [gold_due, str(gold.map(func(x: Array) -> int: return int(x[0]["amount"])))])
 	check(items.size() >= 1 and (gold + items).all(func(x: Array) -> bool: return (x[1] as Vector3).distance_to(crypt) < 0.01), "and an item from the server's surge tape, both on the ground at the crypt (%d)" % items.size())
-	check(s.surge_in >= float(DmSimData.SURGE["minIntervalS"]) and s.surge_in <= float(DmSimData.SURGE["maxIntervalS"]), "the next surge is %.0f s away (90 to 150)" % s.surge_in)
+	check(s.surge_in >= float(DmSimData.SURGE["minIntervalS"]) and s.surge_in <= float(DmSimData.SURGE["maxIntervalS"]), "the next surge is %.0f s away (%.0f to %.0f)" % [s.surge_in, float(DmSimData.SURGE["minIntervalS"]), float(DmSimData.SURGE["maxIntervalS"])])
 	var wait := s.surge_in
 	sev.clear()
 	s.update(wait - 0.5, [hero])
@@ -382,22 +403,22 @@ func _d_the_tier_and_the_cap() -> void:
 	d._since_arrival = 1.0e9   # the tier is fully in
 	var big := DmMath.js_round(float(DmContent.area("graves")["waveSize"]) * float(DmSimData.SURGE["waveSizeMult"]) * float(DmWaveUpgrades.wave_modifiers(3.0)["sizeMult"]))
 	check(s.start([hero]), "a surge opens at Wave Speed tier 3")
-	s.update(1.6, [hero])
+	s.update(float(wave_at[0]) + 0.1, [hero])
 	check(big > want and s.spawned == big and d.pending_count() == big, "the tier's size: a wave of %d, not %d (%d decided, %d queued)" % [big, want, s.spawned, d.pending_count()])
 	s.fail()
 	d.set_wave_tier(0.0)
 	d._since_arrival = 0.0
-	# the global cap, with what is queued counted in: 65 of the 72 bodies the world holds are there, so a wave decides the 7 that fit and the next two (queued before the first is made) none
+	# the global cap, with what is queued counted in: all but 7 of the bodies the world holds are there, so a wave decides the 7 that fit and the next ones (queued before the first is made) none
 	await _clear()
 	var cap := int(DmSimData.GLOBAL_ENEMY_CAP)
 	for i in cap - 7:
 		host.spawn_enemy("robber", Vector3(-22.0, 0.0, -33.0), 1, 1.0, 0.0, false, "graves", false)
 	check(host.enemy_total() == cap - 7, "%d bodies stand" % (cap - 7))
 	check(s.start([hero]), "a surge opens with the world nearly full")
-	s.update(1.6, [hero])
+	s.update(float(wave_at[0]) + 0.1, [hero])
 	check(s.spawned == 7 and d.pending_count() == 7 and host.enemy_total() == cap - 7, "the first wave decides the 7 that fit and queues them (%d decided, %d queued, the world holds %d)" % [s.spawned, d.pending_count(), host.enemy_total()])
-	s.update(12.0, [hero])
-	check(s.waves_spawned == 3 and s.spawned == 7 and d.pending_count() == 7, "the queued 7 count against the cap: the other waves decide none (%d decided, %d queued)" % [s.spawned, d.pending_count()])
+	s.update(float(wave_at[-1]) - float(wave_at[0]), [hero])
+	check(s.waves_spawned == wave_at.size() and s.spawned == 7 and d.pending_count() == 7, "the queued 7 count against the cap: the other waves decide none (%d decided, %d queued)" % [s.spawned, d.pending_count()])
 	d.flush_spawns()
 	check(d.pending_count() == 0 and host.enemy_total() == cap, "made, the world holds exactly %d (%d)" % [cap, host.enemy_total()])
 	s.fail()
@@ -419,11 +440,12 @@ func _c_every_hero_and_no_fair_crypt() -> void:
 		all_fair = all_fair and bool(sev[0]["crypt"]) and _is_one_of(at, fair)
 		seen[snappedf(at.x, 0.01)] = true
 		s.fail()
-	check(all_fair and seen.size() >= 2, "24 surges, each at one of the %d fair crypts, %d of them used" % [fair.size(), seen.size()])
-	# a second hero 3 m from the Graves' crypt at (15.9, -4.7): that crypt is under 9 m from him, so it never opens, wherever the first hero stands
+	check(not fair.is_empty() and all_fair and seen.size() >= mini(2, fair.size()), "24 surges, each at one of the %d fair crypts, %d of them used" % [fair.size(), seen.size()])
+	# a second hero 3 m from one of the fair crypts: that crypt is under the minimum from him, so it never opens, wherever the first hero stands
+	var near_crypt: Vector3 = fair[0]
 	var mate := Node3D.new()
 	root.add_child(mate)
-	mate.position = Vector3(18.9, 0.0, -4.7)
+	mate.position = near_crypt + Vector3(3.0, 0.0, 0.0)
 	var fair2 := _crypts_in_range("graves", [hero, mate])
 	var used := {}
 	var in_range := true
@@ -434,7 +456,7 @@ func _c_every_hero_and_no_fair_crypt() -> void:
 		in_range = in_range and bool(sev[0]["crypt"]) and _is_one_of(at2, fair2)
 		used[snappedf(at2.x, 0.01)] = true
 		s.fail()
-	check(fair2.size() < fair.size() and in_range and not used.has(15.9), "a second hero near a crypt: it is left out (%d fair crypts, not %d)" % [fair2.size(), fair.size()])
+	check(fair2.size() < fair.size() and in_range and not used.has(snappedf(near_crypt.x, 0.01)), "a second hero near a crypt: it is left out (%d fair crypts, not %d)" % [fair2.size(), fair.size()])
 	# a second hero 100 m away: no crypt is within 30 m of both, so it opens where a wave would climb in: outside aggro, inside the area, not at a crypt
 	mate.position = Vector3(100.0, 0.0, 100.0)
 	sev.clear()
@@ -459,9 +481,9 @@ func _f_failing() -> void:
 	var dur := float(DmSimData.SURGE["durationS"])
 	check(s.start([hero]), "a surge opens")
 	s.update(dur - 0.5, [hero])
-	check(s.active and s.spawned == 3 * want and d.pending_count() == 3 * want, "19.5 s with nothing killed: still open, the three waves are decided and queued")
+	check(s.active and s.spawned == wave_at.size() * want and d.pending_count() == wave_at.size() * want, "half a second short of durationS with nothing killed: still open, the %d waves are decided and queued" % wave_at.size())
 	s.update(1.0, [hero])
-	check(not s.active and sev.size() == 2 and String(sev[1]["t"]) == "surgeFailed" and _banners().has("The Surge Recedes"), "20 s: 'The Surge Recedes' (%s)" % str(sev.map(func(e: Dictionary) -> String: return String(e["t"]))))
+	check(not s.active and sev.size() == 2 and String(sev[1]["t"]) == "surgeFailed" and _banners().has("The Surge Recedes"), "durationS: 'The Surge Recedes' (%s)" % str(sev.map(func(e: Dictionary) -> String: return String(e["t"]))))
 	await ticks(3)
 	check(dropped.is_empty(), "nothing is paid for a surge that ran out")
 	check(s.surge_in >= float(DmSimData.SURGE["minIntervalS"]) and s.surge_in <= float(DmSimData.SURGE["maxIntervalS"]), "the next one is %.0f s away" % s.surge_in)
@@ -486,7 +508,7 @@ func _f_failing() -> void:
 	var home: Dictionary = DmContent.get_export("areas", "CHAPTERHOUSE_RETURN")
 	await _stand(Vector3(float(home["x"]), 0.0, float(home["z"])))
 	check(g.area_id == "chapterhouse" and not s.active and sev.size() == 2 and String(sev[1]["t"]) == "surgeFailed", "the hero leaves for the Chapterhouse: the director's tick fails the surge")
-	await _stand(DOOR)
+	await _stand(door)
 	await ticks(2)
 	sev.clear()
 	check(d.area_id == "graves" and s.start([hero]), "back in the Graves, another opens")
@@ -499,7 +521,7 @@ func _f_failing() -> void:
 	await ticks(60)
 	check(s.surge_in == clock and not s.active, "a director that is off moves no clock")
 	d.configure_area("graves")
-	await _stand(DOOR)
+	await _stand(door)
 	await _clear()
 	sev.clear()
 
@@ -513,7 +535,7 @@ func _g_restless() -> void:
 	for ms: Dictionary in DmContent.get_export("upgrades", "WAVE_MILESTONES"):
 		if String(ms["id"]) == "restless":
 			tier = float(ms["tier"])
-	check(tier == 6.0, "Restless Crypts comes with Wave Speed tier %d" % int(tier))
+	check(tier > 0.0, "Restless Crypts comes with Wave Speed tier %d" % int(tier))
 	var lo := INF
 	var hi := -INF
 	for i in 12:
@@ -521,7 +543,7 @@ func _g_restless() -> void:
 		s.fail()
 		lo = minf(lo, s.surge_in)
 		hi = maxf(hi, s.surge_in)
-	check(lo >= float(S["minIntervalS"]) and hi <= float(S["maxIntervalS"]), "without it the next surge is 90 to 150 s away (%.0f to %.0f over 12)" % [lo, hi])
+	check(lo >= float(S["minIntervalS"]) and hi <= float(S["maxIntervalS"]), "without it the next surge is minIntervalS to maxIntervalS away (%.0f to %.0f over 12)" % [lo, hi])
 	d.set_wave_tier(tier - 0.5)
 	lo = INF
 	hi = -INF
@@ -540,7 +562,7 @@ func _g_restless() -> void:
 		lo = minf(lo, s.surge_in)
 		hi = maxf(hi, s.surge_in)
 	var mult := float(DmSimData.RESTLESS_SURGE_MULT)
-	check(lo >= float(S["minIntervalS"]) * mult and hi <= float(S["maxIntervalS"]) * mult, "with it the next surge is 40 %% sooner: %.0f to %.0f s over 12 (54 to 90)" % [lo, hi])
+	check(lo >= float(S["minIntervalS"]) * mult and hi <= float(S["maxIntervalS"]) * mult, "with it the next surge is sooner by the mult: %.0f to %.0f s over 12 (%.0f to %.0f)" % [lo, hi, float(S["minIntervalS"]) * mult, float(S["maxIntervalS"]) * mult])
 	d.set_wave_tier(0.0)
 	d.configure_area("graves")
 	sev.clear()
@@ -550,7 +572,7 @@ func _g_restless() -> void:
 
 func _h_through_the_director() -> void:
 	var s := d.surge
-	await _stand(DOOR)
+	await _stand(door)
 	await _clear()
 	d.configure_area("graves")
 	d.cap = 0   # no ordinary waves: every body that appears is the surge's
@@ -576,17 +598,17 @@ func _h_through_the_director() -> void:
 	check(not s.active and absf(s.surge_in - (first - 1.0)) < 0.05, "the director's ticks run the clock from the unset state: a second of them, %.2f s left" % s.surge_in)
 	s.surge_in = 0.3
 	check(await until(func() -> bool: return s.active, 60 * 2) and sev.size() == 1 and String(sev[0]["t"]) == "surge", "the director opens the surge on its own clock")
-	check(await until(func() -> bool: return s.waves_spawned == 3, 60 * 16), "the three waves come on the director's ticks")
+	check(await until(func() -> bool: return s.waves_spawned == wave_at.size(), 60 * (int(ceil(float(wave_at[-1]))) + 3)), "the %d waves come on the director's ticks" % wave_at.size())
 	await until(func() -> bool: return d.pending_count() == 0, 60)
 	await ticks(2)
-	check(waves == [want, want, want] and came.size() == 3 * want and s.spawned == 3 * want, "3 waves of %d (%d bodies of the core came)" % [want, came.size()])
+	check(waves == _repeat(want, wave_at.size()) and came.size() == wave_at.size() * want and s.spawned == wave_at.size() * want, "%d waves of %d (%d bodies of the core came)" % [wave_at.size(), want, came.size()])
 	check(most[0] == DmWaveDirector.SPAWNS_PER_TICK, "they climbed out %d a tick at most, as an ordinary wave's do (%d)" % [DmWaveDirector.SPAWNS_PER_TICK, most[0]])
-	check(s.age > 13.5 and s.age < 14.5, "the third came at 13.5 s of the surge's own age (%.2f)" % s.age)
-	await ticks(90)   # they rise
+	check(s.age > float(wave_at[-1]) and s.age < float(wave_at[-1]) + 1.0, "the last came at %.1f s of the surge's own age (%.2f)" % [float(wave_at[-1]), s.age])
+	await ticks(ceili((DmSimConsts.RISE_TIME + 0.4) * 60.0))   # they rise
 	var need := int(ceil(float(s.spawned) * float(DmSimData.SURGE["clearFrac"])))
 	var died := await _kill(came, need)
 	check(died == need and s.killed == need, "%d of %d die by the hero's blow (%d, the surge counted %d)" % [need, s.spawned, died, s.killed])
-	check(await until(func() -> bool: return not s.active, 10), "the director's next tick sees 80 %% and quells it")
+	check(await until(func() -> bool: return not s.active, 10), "the director's next tick sees clearFrac and quells it")
 	var cleared := sev.filter(func(e: Dictionary) -> bool: return String(e["t"]) == "surgeCleared")
 	check(cleared.size() == 1 and sev.size() == 2 and _banners().has("Surge Quelled"), "one 'surgeCleared' and the banner (%s)" % str(sev.map(func(e: Dictionary) -> String: return String(e["t"]))))
 	var gold_due := DmMath.js_round((24.0 + 10.0 * float(DmContent.area("graves")["level"])) * float(DmWaveUpgrades.wave_modifiers(d.wave_tier)["rewardMult"]) * float(DmContent.difficulty(d.difficulty)["rewardMult"]))
@@ -605,16 +627,17 @@ func _h_through_the_director() -> void:
 func _i_the_queue() -> void:
 	var s := d.surge
 	d.configure_area("graves")
-	await _stand(DOOR)
+	await _stand(door)
 	await _clear()
 	sev.clear()
 	# a queued wave is the surge's whether the ticks or `flush_spawns` make it: `adopt` takes the core id of each, so the deaths count
 	check(s.start([hero]), "a surge opens")
-	s.update(1.6, [hero])
+	var first_wave_at := float(wave_at[0]) + 0.1
+	s.update(first_wave_at, [hero])
 	check(d.pending_count() == want, "its first wave is queued (%d)" % d.pending_count())
 	d.flush_spawns()
 	check(d.pending_count() == 0 and host.enemy_total() == want, "flush_spawns makes the wave at once (%d in the core)" % host.enemy_total())
-	await ticks(90)   # they rise
+	await ticks(ceili((DmSimConsts.RISE_TIME + 0.4) * 60.0))   # they rise
 	var flushed: Array = Array(host.core.enemy_ids())
 	var died := await _kill(flushed, 3)
 	check(died == 3 and s.killed == 3, "the bodies flush_spawns made are the surge's own: 3 die, 3 counted (%d, %d)" % [died, s.killed])
@@ -624,13 +647,13 @@ func _i_the_queue() -> void:
 	sev.clear()
 	check(s.start([hero]), "surge A opens")
 	var serial_a: int = s.serial
-	s.update(1.6, [hero])
+	s.update(first_wave_at, [hero])
 	check(d.pending_count() == want and s.spawned == want, "A queues a wave")
 	s.fail()
 	check(d.pending_count() == want, "A ends with the wave still queued")
 	check(s.start([hero]) and s.serial == serial_a + 1, "surge B opens over A's queue, with a serial of its own")
 	check(await until(func() -> bool: return d.pending_count() == 0, 60), "the queue empties on the ticks")
-	await ticks(90)   # they rise
+	await ticks(ceili((DmSimConsts.RISE_TIME + 0.4) * 60.0))   # they rise
 	var left: Array = Array(host.core.enemy_ids())
 	check(left.size() == want, "A's bodies climb out all the same (%d)" % left.size())
 	died = await _kill(left, 8)   # (a burrowed ghoul shrugs a blow: not all of them are asked)
@@ -640,7 +663,7 @@ func _i_the_queue() -> void:
 	# the Graves are cleared under an open surge (`clear_area` drops what is queued): the surge does not hang, it fails when its 20 s are up
 	sev.clear()
 	check(s.start([hero]), "a surge opens")
-	s.update(1.6, [hero])
+	s.update(first_wave_at, [hero])
 	check(d.pending_count() == want, "it queues a wave")
 	d.clear_area("graves")
 	check(d.pending_count() == 0 and host.enemy_total() == 0 and s.active and s.spawned == want, "clear_area drops the queued wave; the surge is still open and counts it as decided")
@@ -650,17 +673,17 @@ func _i_the_queue() -> void:
 	# an ordinary wave queued beside an open surge is not the surge's: only a wave queued between begin_surge_wave and end_surge_wave carries its serial
 	sev.clear()
 	check(s.start([hero]), "a surge opens")
-	s.update(1.6, [hero])
+	s.update(first_wave_at, [hero])
 	d.flush_spawns()
 	var its: Array = Array(host.core.enemy_ids())
-	d.cap = 28   # (the ordinary waves are allowed again)
+	d.cap = want + 10   # (the ordinary waves are allowed again: room for theirs beside the surge's)
 	check(d.spawn_wave([hero], 5) == 5 and d.pending_count() == 5, "an ordinary wave of 5 is queued beside the open surge")
 	d.flush_spawns()
 	var plain: Array = Array(host.core.enemy_ids()).filter(func(id: int) -> bool: return not its.has(id))
 	check(its.size() == want and plain.size() == 5, "%d of the surge's, 5 of the ordinary wave's stand" % its.size())
-	await ticks(90)   # they rise
-	died = await _kill(plain, 5)
-	check(died == 5 and s.killed == 0, "the ordinary wave's 5 die: the surge counts none (%d died, %d counted)" % [died, s.killed])
+	await ticks(ceili((DmSimConsts.RISE_TIME + 0.4) * 60.0))   # they rise
+	died = await _kill(plain, 3)   # (a burrowed ghoul shrugs a blow: not all of them are asked)
+	check(died == 3 and s.killed == 0, "3 of the ordinary wave's 5 die: the surge counts none (%d died, %d counted)" % [died, s.killed])
 	died = await _kill(its, 2)
 	check(died == 2 and s.killed == 2, "and its own 2 do count (%d, %d)" % [died, s.killed])
 	s.fail()

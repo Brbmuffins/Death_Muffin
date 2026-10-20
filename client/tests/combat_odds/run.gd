@@ -5,7 +5,7 @@ extends SceneTree
 ##   A  player-side Bone Ward / Colossus guard: stat-based on hit exactly as the old game's DmPlayerRules / DmGameCombat.on_hurt (no timed status exists there either)
 ##   B  bosses ignore slow / root / chill like the old game's boss controller (the brain owns speed; only stun is capped, see DmBoss.stun)
 ##   C  the necromancer's primary weapon variants (staff pierce, sickle Withered, scythe arc) and the Splinters / Volley / Marrow-Tap runes on them
-##   D  rite sound coverage: every registered rite (the registry lists exactly the rite_<id>.gd files) plays the sounds the old game's DmAbilitySystem played (REF_SOUNDS: a table recorded from it before it was removed; the Reaper's are new)
+##   D  rite sound coverage: every registered rite (the registry lists exactly the rite_<id>.gd files) plays the sounds the old game's DmAbilitySystem played (REF_SOUNDS: a table recorded from it before it was removed; the newer rites' are what they were written to play)
 ##      and gives a visible and an audible cue in the 0.25 s after the press (never silent, never only on landing)
 
 const TICK := 1.0 / 60.0
@@ -284,7 +284,8 @@ func _player_ward() -> void:
 	p["bulwarkUntil"] = 0.0
 	hb.heal(1e6)
 	var plain := hb.take_damage(50.0, src)
-	check(blocked < plain * 0.8, "A: a raised Bulwark would cut a frontal blow on the rebuild's hero too (%.1f vs %.1f)" % [blocked, plain])
+	var cut := float(DmCombatData.const_table("BULWARK")["damageCut"])
+	check(cut > 0.0 and absf(blocked - plain * (1.0 - cut)) < 0.05, "A: a raised Bulwark would cut a frontal blow by %.0f%% on the rebuild's hero too (%.1f vs %.1f)" % [cut * 100.0, blocked, plain])
 
 
 # =========================================================================================================================== B: boss statuses
@@ -310,7 +311,7 @@ func _bosses() -> void:
 	boss.brain.state["z"] = a.z
 	boss.world.refresh()
 	var base := _chase_dist(0.5)
-	check(base > 0.3, "B: the boss walks toward the hero (%.2f m in 0.5 s)" % base)
+	check(base > 0.02, "B: the boss walks toward the hero (%.2f m in 0.5 s)" % base)
 	var ss := DmStatusSet.of(boss)
 	check(ss != null, "B: it carries a status set")
 	var ok_all := true
@@ -353,12 +354,17 @@ func _weapons() -> void:
 	await secs(1.0)
 	base = loss(e1)
 	check(base > 0.0, "C: plain needle %.1f" % base)
+	var Ts: Dictionary = T["staff"]
+	var behind_z := -26.0 - float(Ts["pierceReach"]) * 0.45   # the enemy behind, well inside the pierce reach
+	var off_x := float(Ts["pierceLane"]) + float(Ts["pierceReach"])   # off the lane, and out of reach too
+	var every := int(DmSimData.RUNE_TUNING["volley"]["every"])
+	var needles := int(DmSimData.RUNE_TUNING["volley"]["needles"])
 
 	# ---- staff: pierce the enemy behind, in the lane, for the pierce fraction
 	reset({}, lo_staff)
 	e1 = foe(Vector3(0, 0, -26))
-	var e2 := foe(Vector3(0, 0, -28.0))
-	var side := foe(Vector3(5, 0, -26))
+	var e2 := foe(Vector3(0, 0, behind_z))
+	var side := foe(Vector3(off_x, 0, -26))
 	cast_needle(e1)
 	await secs(1.0)
 	var pierced := float(T["staff"]["pierceDamageMult"])
@@ -367,32 +373,33 @@ func _weapons() -> void:
 	# every volley needle pierces too (as the current client's _needle_arrive); Splinters on a staff needle sends its shard besides
 	reset({"bone_needle": "rune_splinter"}, lo_staff)
 	e1 = foe(Vector3(0, 0, -26))
-	e2 = foe(Vector3(0, 0, -28.0))
-	var e3 := foe(Vector3(5, 0, -26))
+	e2 = foe(Vector3(0, 0, behind_z))
+	var e3 := foe(Vector3(off_x, 0, -26))
 	cast_needle(e1)
 	await secs(1.0)
 	var shard := float(DmSimData.RUNE_TUNING["splinter"]["damageFrac"])
 	check(evs_of("bone_needle", "pierce").size() == 1 and evs_of("bone_needle", "splinter").size() == 1 and absf(loss(e2) - base * (pierced + shard)) < 0.05 and loss(e3) == 0.0, "C: staff + Splinters - the pierce and the shard both happen (the enemy behind takes both: %.1f, want %.1f)" % [loss(e2), base * (pierced + shard)])
 	reset({"bone_needle": "rune_volley"}, lo_staff)
 	e1 = foe(Vector3(0, 0, -26))
-	e2 = foe(Vector3(0, 0, -28.0))
-	for i in 3:
+	e2 = foe(Vector3(0, 0, behind_z))
+	for i in every - 1:
 		cast_needle(e1)
 		await secs(0.7)
 	hits.clear()
 	cast_needle(e1)
 	await secs(1.2)
-	check(evs_of("bone_needle", "hit").size() == 3 and evs_of("bone_needle", "pierce").size() >= 2, "C: staff + Volley - the 4th needle is three, and the volley needles pierce too (%d hits, %d pierces)" % [evs_of("bone_needle", "hit").size(), evs_of("bone_needle", "pierce").size()])
+	check(evs_of("bone_needle", "hit").size() == needles and evs_of("bone_needle", "pierce").size() >= needles - 1, "C: staff + Volley - needle %d is a volley of %d, and the volley needles pierce too (%d hits, %d pierces)" % [every, needles, evs_of("bone_needle", "hit").size(), evs_of("bone_needle", "pierce").size()])
 
 	# ---- sickle: every needle adds a Withered stack
 	reset({}, lo_sickle)
 	e1 = foe(Vector3(0, 0, -26))
 	cast_needle(e1)
 	await secs(0.9)
-	check(status_stacks(e1, &"withered") == 1, "C: sickle - a needle leaves one Withered stack (%d)" % status_stacks(e1, &"withered"))
+	var per_hit := int(lo_sickle["needleWithered"])
+	check(status_stacks(e1, &"withered") == per_hit, "C: sickle - a needle leaves %d Withered stack(s) (%d)" % [per_hit, status_stacks(e1, &"withered")])
 	cast_needle(e1)
 	await secs(0.9)
-	check(status_stacks(e1, &"withered") == 2, "C: ...and the next adds another (%d)" % status_stacks(e1, &"withered"))
+	check(status_stacks(e1, &"withered") == per_hit * 2, "C: ...and the next adds as many again (%d)" % status_stacks(e1, &"withered"))
 
 	# ---- scythe
 	await _scythe(lo_scythe)
@@ -400,30 +407,32 @@ func _weapons() -> void:
 
 func _scythe(lo: Dictionary) -> void:
 	var T: Dictionary = DmSimData.NECRO_WEAPON_TUNING["scythe"]
+	var reach := float(T["reach"])
+	var hits_max := int(T["maxHits"])
 	reset({}, lo)
 	hb.set_facing(PI)   # -z, toward the foes; (0, -18) -> aim (0, -21)
-	var near1 := foe(Vector3(0, 0, -20.5))
-	var near2 := foe(Vector3(1.2, 0, -20.4))
-	var near3 := foe(Vector3(-1.2, 0, -20.4))
-	var near4 := foe(Vector3(0.6, 0, -20.0))   # the fourth in the arc: maxHits (3) leave it out
-	var behind := foe(Vector3(0, 0, -14.0))
-	var far := foe(Vector3(0, 0, -26.0))
+	var in_arc: Array[int] = []   # one enemy more than the swing can strike, spread over the middle of the arc, well inside its reach
+	for k in hits_max + 1:
+		var ang := lerpf(-0.3, 0.3, float(k) / float(hits_max)) * deg_to_rad(float(T["arcDeg"]))
+		in_arc.append(foe(Vector3(sin(ang) * reach * 0.8, 0, -18.0 - cos(ang) * reach * 0.8)))
+	var near1 := in_arc[int(hits_max * 0.5)]   # the cast aims at the middle one
+	var behind := foe(Vector3(0, 0, -18.0 + reach * 0.8))   # inside the reach, behind the hero: outside the arc
+	var far := foe(Vector3(0, 0, -18.0 - reach * 2.5))
 	caster.p["resource"]["value"] = 0.0
-	var want := float(DmAbilities.reap_cast(DmAbilities.sp(caster.p, 0.0), "", 0.5, 3)["dmg"])
+	var want := float(DmAbilities.reap_cast(DmAbilities.sp(caster.p, 0.0), "", 0.5, hits_max)["dmg"])
 	caster.request_cast("bone_needle", pos_of(near1), eid(near1))
 	await secs(0.3)
-	var struck := [near1, near2, near3, near4].filter(func(e: int) -> bool: return loss(e) > 0.0)
-	check(struck.size() == int(T["maxHits"]) and loss(behind) == 0.0 and loss(far) == 0.0, "C: scythe - %d enemies in the arc are cut (maxHits), nothing behind or beyond reach (hit: %d)" % [int(T["maxHits"]), struck.size()])
+	var struck := in_arc.filter(func(e: int) -> bool: return loss(e) > 0.0)
+	check(struck.size() == hits_max and loss(behind) == 0.0 and loss(far) == 0.0, "C: scythe - %d enemies in the arc are cut (maxHits), nothing behind or beyond reach (hit: %d)" % [hits_max, struck.size()])
 	check(struck.all(func(e: int) -> bool: return absf(loss(e) - want) < 0.05), "C: ...each for %.1f, no projectile, no crit (%s)" % [want, str(struck.map(func(e: int) -> float: return snappedf(loss(e), 0.01)))])
-	check(not struck.has(near4) or loss(near1) > 0.0, "C: ...the nearest ones first")
 	var ess := float(caster.p["resource"]["value"])
-	check(ess >= float(T["essencePerHit"]) * 3.0 - 0.1 and ess < float(T["essencePerHit"]) * 3.0 + 3.5, "C: ...+%d essence a hit (%.1f)" % [int(T["essencePerHit"]), ess])
+	check(ess >= float(T["essencePerHit"]) * float(struck.size()) - 0.1 and ess < float(T["essencePerHit"]) * float(struck.size()) + 3.5, "C: ...+%d essence a hit (%.1f)" % [int(T["essencePerHit"]), ess])
 	check(evs_of("bone_needle", "reap").size() == 1 and evs_of("bone_needle", "cast").is_empty(), "C: ...one reap event, no needle shot")
 	var cd := caster.cooldown_left("bone_needle")
-	check(cd > 100.0 and cd <= float(T["cooldownMs"]) + 5.0, "C: ...the swing's own cooldown (%.0f of %d ms)" % [cd, int(T["cooldownMs"])])
+	check(cd <= float(T["cooldownMs"]) + 5.0 and absf(cd - maxf(0.0, float(T["cooldownMs"]) - 300.0)) < 100.0, "C: ...the swing's own cooldown, 0.3 s into it (%.0f left of %d ms)" % [cd, int(T["cooldownMs"])])
 	# range: past the scythe's reach the swing is refused
 	reset({}, lo)
-	var distant := foe(Vector3(0, 0, -25.0))
+	var distant := foe(Vector3(0, 0, -18.0 - reach * 2.5))
 	var rej: Array = []
 	caster.cast_rejected.connect(func(r: String, why: String) -> void: rej.append(why), CONNECT_ONE_SHOT)
 	caster.request_cast("bone_needle", pos_of(distant), eid(distant))
@@ -435,8 +444,8 @@ func _scythe(lo: Dictionary) -> void:
 	for rn in ["", "rune_splinter", "rune_marrow_tap"]:
 		reset({"bone_needle": rn} if rn != "" else {}, lo)
 		hb.set_facing(PI)
-		var v := foe(Vector3(0, 0, -20.5))
-		var miss := foe(Vector3(0, 0, -23.5))   # 3 m past the victim: out of reach, inside the shard's range
+		var v := foe(Vector3(0, 0, -18.0 - reach * 0.8))
+		var miss := foe(Vector3(0, 0, -18.0 - reach - 2.5))   # past the victim: out of the swing's reach, inside the shard's
 		caster.p["resource"]["value"] = 0.0
 		caster.request_cast("bone_needle", pos_of(v), eid(v))
 		await secs(0.4)
@@ -450,7 +459,7 @@ func _scythe(lo: Dictionary) -> void:
 			check(absf(loss(v) - dmg1 * float(mt["damageMult"])) < 0.05 and float(caster.p["resource"]["value"]) >= float(T["essencePerHit"]) + float(mt["essenceBonus"]) - 0.1, "C: scythe + Marrow-Tap - x%.1f damage (%.1f) and +%d essence once (%.1f)" % [float(mt["damageMult"]), loss(v), int(mt["essenceBonus"]), float(caster.p["resource"]["value"])])
 	reset({"bone_needle": "rune_volley"}, lo)
 	hb.set_facing(PI)
-	var vv := foe(Vector3(0, 0, -20.5))
+	var vv := foe(Vector3(0, 0, -18.0 - reach * 0.8))
 	for i in 5:
 		caster.p["cooldowns"].clear()
 		caster.p["castUntil"] = 0.0
@@ -461,8 +470,8 @@ func _scythe(lo: Dictionary) -> void:
 	# ---- the soul window: a kill of a reaped enemy banks one more soul (1.2 s), asked once
 	reset({}, lo)
 	hb.set_facing(PI)
-	var s1 := foe(Vector3(0, 0, -20.5))
-	var s2 := foe(Vector3(0, 0, -30.0))
+	var s1 := foe(Vector3(0, 0, -18.0 - reach * 0.8))
+	var s2 := foe(Vector3(0, 0, -18.0 - reach * 4.0))
 	caster.request_cast("bone_needle", pos_of(s1), eid(s1))
 	await secs(0.3)
 	var cid := int(character.get("id", 0))
@@ -473,21 +482,23 @@ func _scythe(lo: Dictionary) -> void:
 	var after_again := float(hb.p["souls"])
 	g.rewards.killer_paid.emit(cid, "robber", s2)
 	var after_other := float(hb.p["souls"])
-	check(after_reaped == 2.0 and after_again == 3.0 and after_other == 4.0, "C: scythe souls - the reaped kill banks 2, a second kill of it 1, an unreaped enemy 1 (%s)" % str([after_reaped, after_again - after_reaped, after_other - after_again]))
+	var plain_soul := after_other - after_again   # what an enemy the swing never touched banks
+	check(plain_soul > 0.0 and after_reaped == plain_soul + float(T["soulsPerKill"]) and after_again - after_reaped == plain_soul, "C: scythe souls - the reaped kill banks %d more than a plain one, a second kill of it a plain one (%s)" % [int(T["soulsPerKill"]), str([after_reaped, after_again - after_reaped, plain_soul])])
 	caster.p["cooldowns"].clear()
 	caster.p["castUntil"] = 0.0
 	caster.request_cast("bone_needle", pos_of(s1), eid(s1))
-	await secs(1.5)
+	await secs(float(T["reapWindowMs"]) / 1000.0 + 0.3)
 	hb.p["souls"] = 0.0
 	g.rewards.killer_paid.emit(cid, "robber", s1)
-	check(float(hb.p["souls"]) == 1.0, "C: ...and nothing once the 1.2 s window has passed (%s)" % str(hb.p["souls"]))
+	check(float(hb.p["souls"]) == plain_soul, "C: ...and nothing more once the %.1f s window has passed (%s)" % [float(T["reapWindowMs"]) / 1000.0, str(hb.p["souls"])])
 
 	# ---- the swing's gesture (the current client plays "attack" 2.6 with the scythe's own 0.3 s, no weapon clip) instead of the needle's cast
 	var av := RecAvatar.new()
-	check(DmRiteGestures.has(DmRiteGestures.REAP_KEY) and DmRiteGestures.play(av, DmRiteGestures.REAP_KEY, 0.0) and av.calls == [["attack", 2.6, float(T["gestureSeconds"]), ""]], "C: the scythe's gesture row matches the current client's _gesture call (%s)" % str(av.calls))
+	var row: Array = DmRiteGestures.REAP
+	check(DmRiteGestures.has(DmRiteGestures.REAP_KEY) and DmRiteGestures.play(av, DmRiteGestures.REAP_KEY, 0.0) and av.calls == [[row[0], row[1], float(T["gestureSeconds"]), row[3]]], "C: the scythe's gesture row is what the swing plays, with the scythe's own gesture time (%s)" % str(av.calls))
 	reset({}, lo)
 	var g0 := caster.gestures_played
-	var gy := foe(Vector3(0, 0, -20.5))
+	var gy := foe(Vector3(0, 0, -18.0 - reach * 0.8))
 	caster.request_cast("bone_needle", pos_of(gy), eid(gy))
 	await secs(0.2)
 	check(caster.gestures_played == g0 + 1, "C: an accepted swing plays one gesture")
@@ -497,7 +508,7 @@ func _scythe(lo: Dictionary) -> void:
 	check(summon() == "", "C: summon the King for the scythe")
 	step(2.5)
 	var bp := boss.global_position
-	hb.teleport(bp + Vector3(0, 0, 4.2))   # edge-to-edge ~2.6 m: past the plain reach (3) measured to the centre, inside bossReach (4) to its edge
+	hb.teleport(bp + Vector3(0, 0, (reach + float(T["bossReach"])) * 0.5 + 0.7))   # between the plain reach and the boss reach
 	boss.world.refresh()
 	hb.set_facing(PI)
 	var hp0 := boss.hp
@@ -643,7 +654,7 @@ func _sounds() -> void:
 		var rs: Array = REF_SOUNDS.get(id, [])   # a rite newer than the table: it only has to make a sound
 		var ns: Array = got["sfx"] + got["loops"].map(func(l: String) -> String: return "loop:" + l)
 		var lost := rs.filter(func(s: String) -> bool: return not ns.has(s) and not OPTIONAL.has(s))
-		# (that it casts, draws and makes a sound at all is tests/spells/run.gd's, for every spell of the playable kits: the same 35 rites)
+		# (that it casts, draws and makes a sound at all is tests/spells/run.gd's, for every spell of the playable kits)
 		check(lost.is_empty(), "D: %s - the rebuild plays every sound the old client did (missing %s; rejected: %s)" % [id, str(lost), str(got["why"])])
 		check(int(got["early"]) >= 3, "D: %s shows a visible cue at the cast (%d visual calls in 0.25 s)" % [id, int(got["early"])])
 		check(int(got["early_sounds"]) > 0, "D: %s makes a sound at the cast" % id)

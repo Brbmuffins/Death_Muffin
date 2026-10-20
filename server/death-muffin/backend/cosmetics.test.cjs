@@ -2,6 +2,8 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const mountCosmetics = require('./cosmetics.cjs');
+const rules = require('./gathering/cosmetic-rules.cjs');
+const { ALL_SKILLS, LEVEL_CAP } = require('./gathering/gathering-rules.cjs');
 
 function fakeDb({ levels = {}, bag = [] } = {}) {
   let inv = bag.map((b, i) => ({ id: i + 1, equipped: 0, character_id: 1, ...b }));
@@ -40,45 +42,49 @@ function harness(db, { owned = true } = {}) {
   };
 }
 
-const ALL99 = { woodcutting: 99, mining: 99, fishing: 99, gravedigging: 99, gardening: 99, alchemy: 99, salvaging: 99 };
+const ALL99 = Object.fromEntries(ALL_SKILLS.map((id) => [id, LEVEL_CAP]));
+/** Two mastery capes (a skill's cape comes at the level cap in that skill) and two pets with their charms. */
+const [CAPE, OTHER_CAPE] = rules.CAPES.filter((c) => c.skill);
+const [PET, OTHER_PET] = rules.PETS;
 
 test('a new character has no capes or pets, and nothing worn', async () => {
   const call = harness(fakeDb());
   const v = (await call('GET /api/cosmetics/:characterId', { params: { characterId: '1' } })).json.data;
-  assert.ok(v.capes.length >= 9);
+  assert.equal(v.capes.length, rules.CAPES.length);
+  assert.equal(v.pets.length, rules.PETS.length);
   assert.ok(v.capes.every((c) => !c.unlocked));
   assert.ok(v.pets.every((p) => !p.adopted));
   assert.deepEqual(v.selected, { cape: null, pet: null });
 });
 
 test('a cape must be earned before it can be worn, and can be put away', async () => {
-  const db = fakeDb({ levels: { woodcutting: 99 } });
+  const db = fakeDb({ levels: { [CAPE.skill]: LEVEL_CAP } });
   const call = harness(db);
   const sel = async (body) => (await call('POST /api/cosmetics/select', { body: { characterId: 1, ...body } })).json;
-  assert.match((await sel({ cape: 'cape_mining' })).error, /not earned/);
+  assert.match((await sel({ cape: OTHER_CAPE.id })).error, /not earned/);
   assert.match((await sel({ cape: 'cape_nonsense' })).error, /not earned/);
-  const ok = await sel({ cape: 'cape_woodcutting' });
+  const ok = await sel({ cape: CAPE.id });
   assert.equal(ok.success, true);
-  assert.equal(ok.data.selected.cape, 'cape_woodcutting');
+  assert.equal(ok.data.selected.cape, CAPE.id);
   assert.equal((await sel({ cape: null })).data.selected.cape, null);
 });
 
 test('total-level mantles and the Sexton\'s Mantle unlock from combined levels', async () => {
   const call = harness(fakeDb({ levels: ALL99 }));
   const v = (await call('GET /api/cosmetics/:characterId', { params: { characterId: '1' } })).json.data;
-  assert.ok(v.capes.every((c) => c.unlocked), 'every cape at all 99');
-  assert.equal(v.totalLevel, 693);
+  assert.ok(v.capes.every((c) => c.unlocked), 'every cape at every skill maxed');
+  assert.equal(v.totalLevel, rules.totalLevel(ALL99));
 });
 
 test('adopting spends exactly one charm, keeps the pet for good, and walks the first one out', async () => {
-  const db = fakeDb({ bag: [{ slot_index: 3, item_id: 'charm_grave_rat', quantity: 1 }, { slot_index: 4, item_id: 'charm_grave_rat', quantity: 1 }] });
+  const db = fakeDb({ bag: [{ slot_index: 3, item_id: PET.charm, quantity: 1 }, { slot_index: 4, item_id: PET.charm, quantity: 1 }] });
   const call = harness(db);
-  const r = (await call('POST /api/cosmetics/adopt', { body: { characterId: 1, petId: 'pet_grave_rat' } })).json;
+  const r = (await call('POST /api/cosmetics/adopt', { body: { characterId: 1, petId: PET.id } })).json;
   assert.equal(r.success, true);
-  assert.equal(r.data.adopted, 'pet_grave_rat');
-  assert.equal(r.data.selected.pet, 'pet_grave_rat');
+  assert.equal(r.data.adopted, PET.id);
+  assert.equal(r.data.selected.pet, PET.id);
   assert.equal(db.inv.length, 1, 'one charm was spent, the spare stays');
-  const again = (await call('POST /api/cosmetics/adopt', { body: { characterId: 1, petId: 'pet_grave_rat' } })).json;
+  const again = (await call('POST /api/cosmetics/adopt', { body: { characterId: 1, petId: PET.id } })).json;
   assert.equal(again.success, false);
   assert.match(again.error, /already yours/);
   assert.equal(db.inv.length, 1, 'a repeat adoption did not eat the spare charm');
@@ -87,19 +93,19 @@ test('adopting spends exactly one charm, keeps the pet for good, and walks the f
 test('you cannot adopt without the charm, or call a pet you have not adopted', async () => {
   const db = fakeDb();
   const call = harness(db);
-  assert.match((await call('POST /api/cosmetics/adopt', { body: { characterId: 1, petId: 'pet_tithe_bat' } })).json.error, /no Tithe Bat Charm/);
+  assert.match((await call('POST /api/cosmetics/adopt', { body: { characterId: 1, petId: OTHER_PET.id } })).json.error, new RegExp(`no ${OTHER_PET.name} Charm`));
   assert.match((await call('POST /api/cosmetics/adopt', { body: { characterId: 1, petId: 'pet_nope' } })).json.error, /no such companion/);
-  assert.match((await call('POST /api/cosmetics/select', { body: { characterId: 1, pet: 'pet_tithe_bat' } })).json.error, /not adopted/);
+  assert.match((await call('POST /api/cosmetics/select', { body: { characterId: 1, pet: OTHER_PET.id } })).json.error, /not adopted/);
   assert.equal(db.pets.size, 0);
 });
 
 test('selecting one slot leaves the other alone', async () => {
-  const db = fakeDb({ levels: { woodcutting: 99 }, bag: [{ slot_index: 0, item_id: 'charm_tithe_bat', quantity: 1 }] });
+  const db = fakeDb({ levels: { [CAPE.skill]: LEVEL_CAP }, bag: [{ slot_index: 0, item_id: OTHER_PET.charm, quantity: 1 }] });
   const call = harness(db);
-  await call('POST /api/cosmetics/adopt', { body: { characterId: 1, petId: 'pet_tithe_bat' } });
-  await call('POST /api/cosmetics/select', { body: { characterId: 1, cape: 'cape_woodcutting' } });
+  await call('POST /api/cosmetics/adopt', { body: { characterId: 1, petId: OTHER_PET.id } });
+  await call('POST /api/cosmetics/select', { body: { characterId: 1, cape: CAPE.id } });
   const r = (await call('POST /api/cosmetics/select', { body: { characterId: 1, pet: null } })).json;
-  assert.deepEqual(r.data.selected, { cape: 'cape_woodcutting', pet: null });
+  assert.deepEqual(r.data.selected, { cape: CAPE.id, pet: null });
 });
 
 test('someone else\'s character is refused', async () => {

@@ -42,9 +42,12 @@ func _run() -> void:
 			mat = String(id)
 			break
 	var flask := String(DmContent.healing_flasks().keys()[0])
-	# The bag is the server's (DECISIONS B25): seed it on the mock, as a GM would, then load it.
-	check((await api.save_inventory(cid, [{"slot_index": 10, "item_id": mat, "quantity": 5}, {"slot_index": 20, "item_id": mat, "quantity": 4},
-		{"slot_index": 30, "item_id": flask, "quantity": 3}], 48)).ok, "seed the bag")
+	# The bag is the server's (DECISIONS B25): seed it on the mock, as a GM would, then load it. The slots are spread over the bag's size, which the data holds.
+	var bag_size := DmLootData.bag_size()
+	var slot_a := bag_size / 4
+	var slot_b := bag_size / 2
+	check((await api.save_inventory(cid, [{"slot_index": slot_a, "item_id": mat, "quantity": 5}, {"slot_index": slot_b, "item_id": mat, "quantity": 4},
+		{"slot_index": bag_size - 1, "item_id": flask, "quantity": 3}], bag_size)).ok, "seed the bag")
 	await h.refresh_inventory()
 	var server := func(id: String) -> int:
 		var n := 0
@@ -65,14 +68,14 @@ func _run() -> void:
 	check((await h.bag_commit()) == "" and h.inventory.state == "saved", "the batch reaches the server")
 	check(await server.call(flask) == 1 and h.inventory.count(flask) == 1, "the server spent the two flasks")
 	# Selling is the server's: it takes the items and answers its bag.
-	var row: Dictionary = h.slots.filter(func(s: Dictionary) -> bool: return s["item_id"] == mat and int(s["slot_index"]) == 10)[0]
+	var row: Dictionary = h.slots.filter(func(s: Dictionary) -> bool: return s["item_id"] == mat and int(s["slot_index"]) == slot_a)[0]
 	check((await h.sell_items([{"slot_index": int(row["slot_index"]), "quantity": 2}])).ok, "a partial sale")
 	check(await server.call(mat) == 7 and h.inventory.count(mat) == 7, "the server took two")
 	# Sorting is the server's: the two stacks merge, the moves come back for slot-keyed state, nothing is saved by the client.
 	var moved := {}
 	check((await h.bag_sort(func(m: Dictionary) -> void: moved.merge(m))) == "", "a sort")
 	var mats: Array = h.slots.filter(func(s: Dictionary) -> bool: return s["item_id"] == mat)
-	check(mats.size() == 1 and int(mats[0]["quantity"]) == 7 and moved.has(10) and moved.has(20) and int(moved[10]) == int(moved[20]), "the stacks merged and both old slots map to the new one")
+	check(mats.size() == 1 and int(mats[0]["quantity"]) == 7 and moved.has(slot_a) and moved.has(slot_b) and int(moved[slot_a]) == int(moved[slot_b]), "the stacks merged and both old slots map to the new one")
 	# A failing batch: toasted once, retried, then 'Bag saved.'
 	toasts.clear()
 	h.inventory.save_failed.emit("boom")

@@ -13,6 +13,13 @@ const { createMemoryGatherStore } = require('./gather-store.cjs');
 const GEAR = new Set(['ring_copper', 'helm_gold', 'chest_iron', 'kit_iron_warden']);
 const ITEMS = Object.fromEntries(rules.grantableItems().map((id) => [id, GEAR.has(id) ? 1 : 250]));
 
+/** The starter oak, and the deepest woodcutting post (a node nobody has the level for yet). */
+const OAK = rules.NODES.coffin_oak;
+const WOODCUTTING = Object.values(rules.NODES).filter((n) => n.skill === 'woodcutting');
+const DEEP = WOODCUTTING.reduce((a, b) => (b.level > a.level ? b : a));
+/** The tool of a given tier for a skill (tier 1 = the first metal). */
+const tool = (skill, tier) => rules.toolItemId(skill, tier);
+
 function harness({ owner = true, char = {}, items = ITEMS, rng = () => 0 } = {}) {
   let clock = 1_000_000;
   const store = createMemoryGatherStore({ characters: { 7: char }, items });
@@ -33,11 +40,11 @@ test('a batch rolls items and XP server-side and stores them in the bag', async 
   assert.equal(r.status, 200);
   assert.equal(r.json.data.accepted, 3);
   assert.equal(r.json.data.successes, 3);
-  assert.equal(r.json.data.xp, 18);
-  const logs = r.json.data.items.find((g) => g.itemId === 'log_oak');
+  assert.equal(r.json.data.xp, OAK.xp * 3);
+  const logs = r.json.data.items.find((g) => g.itemId === OAK.item);
   assert.equal(logs.qty, 3);
-  assert.equal(char().bag.find((b) => b.itemId === 'log_oak').qty, 3);
-  assert.deepEqual(char().skills.woodcutting, { level: 1, xp: 18 });
+  assert.equal(char().bag.find((b) => b.itemId === OAK.item).qty, 3);
+  assert.deepEqual(char().skills.woodcutting, { level: 1, xp: OAK.xp * 3 });
 });
 
 test('ownership, ids and node names are enforced', async () => {
@@ -52,25 +59,28 @@ test('ownership, ids and node names are enforced', async () => {
 
 test('the skill level gates the node with a readable error', async () => {
   const { call, char } = harness();
-  const r = await call({ nodeType: 'churchyard_yew', actions: 2 });
+  const r = await call({ nodeType: DEEP.id, actions: 2 });
   assert.equal(r.status, 400);
-  assert.equal(r.json.error, 'Requires Woodcutting level 45');
+  assert.equal(r.json.error, `Requires Woodcutting level ${DEEP.level}`);
   assert.equal(char().bag.length, 0, 'nothing written');
 });
 
 test('the time budget clamps claimed actions and refuses an empty window', async () => {
   const { call, tick } = harness();
-  const first = await call({ nodeType: 'coffin_oak', actions: 40 });
-  // First batch: one 30 s window of credit (30000 / 2400 = 12) + burst 3.
-  assert.equal(first.json.data.accepted, 15);
-  const again = await call({ nodeType: 'coffin_oak', actions: 40 });
-  assert.equal(again.json.data.accepted, 3, 'no time passed: burst only');
-  tick(9600); // four actions' worth
-  const later = await call({ nodeType: 'coffin_oak', actions: 40 });
-  assert.equal(later.json.data.accepted, 4 + 3);
+  const ms = rules.actionMs(OAK);
+  // One window of credit (GATHER_MAX_WINDOW_MS worth of actions) plus the burst.
+  const window = Math.floor(rules.GATHER_MAX_WINDOW_MS / ms) + rules.GATHER_BURST;
+  const first = await call({ nodeType: OAK.id, actions: rules.GATHER_MAX_BATCH });
+  assert.equal(first.json.data.accepted, Math.min(rules.GATHER_MAX_BATCH, window));
+  const again = await call({ nodeType: OAK.id, actions: rules.GATHER_MAX_BATCH });
+  assert.equal(again.json.data.accepted, rules.GATHER_BURST, 'no time passed: burst only');
+  const earned = Math.max(1, Math.min(4, Math.floor(rules.GATHER_MAX_WINDOW_MS / ms))); // a few actions' worth, inside one window
+  tick(ms * earned);
+  const later = await call({ nodeType: OAK.id, actions: rules.GATHER_MAX_BATCH });
+  assert.equal(later.json.data.accepted, earned + rules.GATHER_BURST);
   tick(60 * 60 * 1000); // an hour idle earns only one window, not an hour
-  const idle = await call({ nodeType: 'coffin_oak', actions: 40 });
-  assert.equal(idle.json.data.accepted, 15);
+  const idle = await call({ nodeType: OAK.id, actions: rules.GATHER_MAX_BATCH });
+  assert.equal(idle.json.data.accepted, Math.min(rules.GATHER_MAX_BATCH, window));
 });
 
 test('the hourly ledger caps actions and rolls over', async () => {
@@ -86,21 +96,23 @@ test('the hourly ledger caps actions and rolls over', async () => {
 });
 
 test('levels roll over mid-batch and the reply carries the new level', async () => {
-  const { call } = harness({ char: { skills: { woodcutting: { level: 1, xp: 45 } } } });
-  const r = await call({ nodeType: 'coffin_oak', actions: 1 });
+  // one find short of the next level: the oak's XP carries her over, with one point to spare
+  const { call } = harness({ char: { skills: { woodcutting: { level: 1, xp: rules.xpToNext(1) - OAK.xp + 1 } } } });
+  const r = await call({ nodeType: OAK.id, actions: 1 });
   assert.equal(r.json.data.leveledUp, true);
   assert.deepEqual(r.json.data.skills[0], { profession_id: 'woodcutting', skill_level: 2, skill_xp: 1 });
 });
 
 test('a full bag rejects what does not fit but still grants XP', async () => {
-  const bag = Array.from({ length: 48 }, (_, i) => ({ slot: i, itemId: i === 0 ? 'log_oak' : 'staff_oak', qty: i === 0 ? 249 : 1 }));
+  // the log stack has room for one more (the harness gives every material a 250 stack)
+  const bag = Array.from({ length: rules.BAG_SLOTS }, (_, i) => ({ slot: i, itemId: i === 0 ? OAK.item : 'staff_oak', qty: i === 0 ? 249 : 1 }));
   const { call, char } = harness({ char: { bag } });
-  const r = await call({ nodeType: 'coffin_oak', actions: 3 });
+  const r = await call({ nodeType: OAK.id, actions: 3 });
   assert.equal(r.status, 200);
-  assert.deepEqual(r.json.data.items.find((g) => g.itemId === 'log_oak'), { itemId: 'log_oak', qty: 1 });
-  assert.equal(r.json.data.rejected.find((g) => g.itemId === 'log_oak').qty, 2);
+  assert.deepEqual(r.json.data.items.find((g) => g.itemId === OAK.item), { itemId: OAK.item, qty: 1 });
+  assert.equal(r.json.data.rejected.find((g) => g.itemId === OAK.item).qty, 2);
   assert.equal(char().bag[0].qty, 250);
-  assert.equal(char().skills.woodcutting.xp, 18);
+  assert.equal(char().skills.woodcutting.xp, OAK.xp * 3);
 });
 
 test('gravedigging pays gold into the character', async () => {
@@ -157,7 +169,7 @@ test('AFK accepts a background minute in batches without losing remaining earned
 test('AFK starts check ownership, level and preserve the hourly limit', async () => {
   assert.equal((await harness({ owner: false }).call({ nodeType: 'coffin_oak' }, 'startAfk')).status, 403);
   const h = harness({ char: { ledger: { lastAt: 1, hourStart: 1000000, hourActions: rules.GATHER_MAX_ACTIONS_PER_HOUR } } });
-  assert.equal((await h.call({ nodeType: 'bone_elder' }, 'startAfk')).status, 400);
+  assert.equal((await h.call({ nodeType: DEEP.id }, 'startAfk')).status, 400);
   await h.call({ nodeType: 'coffin_oak' }, 'startAfk');h.tick(60000);
   assert.equal((await h.call({ nodeType: 'coffin_oak', actions: 40, afk: true })).status, 400);
   assert.equal(h.char().ledger.hourActions, rules.GATHER_MAX_ACTIONS_PER_HOUR);
@@ -174,31 +186,34 @@ test('staff skip the level gate (only): budget still applies, XP lands on the re
     await h.gather({ body: { characterId: 7, ...body }, staff }, res);
     return { status, json };
   };
-  assert.equal((await call({ nodeType: 'bone_elder', actions: 2 }, false)).status, 400, 'a normal account is still gated');
-  const r = await call({ nodeType: 'bone_elder', actions: 2 }, true);
+  assert.equal((await call({ nodeType: DEEP.id, actions: 2 }, false)).status, 400, 'a normal account is still gated');
+  const r = await call({ nodeType: DEEP.id, actions: 2 }, true);
   assert.equal(r.status, 200);
   assert.equal(r.json.data.successes, 2, 'rolls as if at the node level');
   assert.equal(r.json.data.skills[0].skill_level > 1, true, 'real XP on the real level');
-  const burst = await call({ nodeType: 'bone_elder', actions: 40 }, true);
+  const burst = await call({ nodeType: DEEP.id, actions: rules.GATHER_MAX_BATCH }, true);
   assert.equal(burst.json.data.accepted, rules.GATHER_BURST, 'the time budget still clamps staff');
 });
 
 test('tools on the belt count like tools in the bag: the best of belt and bag wins', async () => {
   const tier = async (char) => (await harness({ char }).call({ nodeType: 'coffin_oak', actions: 1 })).json.data.toolTier;
+  const top = rules.TOOL_METALS.length;
+  const [low, mid, high] = [1, 2, top];
   assert.equal(await tier({}), 0);
-  assert.equal(await tier({ belt: ['tool_hatchet_iron'] }), 2);
-  assert.equal(await tier({ bag: [{ slot: 0, itemId: 'tool_hatchet_copper', qty: 1 }] }), 1);
-  assert.equal(await tier({ belt: ['tool_hatchet_copper'], bag: [{ slot: 0, itemId: 'tool_hatchet_steel', qty: 1 }] }), 4, 'a better bag tool still wins');
-  assert.equal(await tier({ belt: ['tool_hatchet_steel'], bag: [{ slot: 0, itemId: 'tool_hatchet_copper', qty: 1 }] }), 4);
-  assert.equal(await tier({ belt: ['tool_pickaxe_moon'] }), 0, 'another kind of tool does nothing');
+  assert.equal(await tier({ belt: [tool('woodcutting', mid)] }), mid);
+  assert.equal(await tier({ bag: [{ slot: 0, itemId: tool('woodcutting', low), qty: 1 }] }), low);
+  assert.equal(await tier({ belt: [tool('woodcutting', low)], bag: [{ slot: 0, itemId: tool('woodcutting', high), qty: 1 }] }), high, 'a better bag tool still wins');
+  assert.equal(await tier({ belt: [tool('woodcutting', high)], bag: [{ slot: 0, itemId: tool('woodcutting', low), qty: 1 }] }), high);
+  assert.equal(await tier({ belt: [tool('mining', high)] }), 0, 'another kind of tool does nothing');
 });
 
 test('a belt tool also counts for AFK gathering and takes no bag space', async () => {
-  const bag = Array.from({ length: 48 }, (_, i) => ({ slot: i, itemId: i === 0 ? 'log_oak' : 'staff_oak', qty: i === 0 ? 10 : 1 }));
-  const h = harness({ char: { belt: ['tool_hatchet_hell'], bag } });
+  const bag = Array.from({ length: rules.BAG_SLOTS }, (_, i) => ({ slot: i, itemId: i === 0 ? 'log_oak' : 'staff_oak', qty: i === 0 ? 10 : 1 }));
+  const tier = rules.TOOL_METALS.length - 1;
+  const h = harness({ char: { belt: [tool('woodcutting', tier)], bag } });
   await h.call({ nodeType: 'coffin_oak' }, 'startAfk');
   h.tick(60000);
   const r = await h.call({ nodeType: 'coffin_oak', actions: 2, afk: true });
-  assert.equal(r.json.data.toolTier, 5);
-  assert.equal(h.char().bag.length, 48, 'the belt is not part of the bag');
+  assert.equal(r.json.data.toolTier, tier);
+  assert.equal(h.char().bag.length, rules.BAG_SLOTS, 'the belt is not part of the bag');
 });

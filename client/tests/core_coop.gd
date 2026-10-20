@@ -51,12 +51,14 @@ const WAVE := ["robber", "hound", "robber", "penitent", "bat", "ghoul", "robber"
 const THRALL_BASE := {"warrior": [1.3, 1.0, 5.6], "shieldbearer": [1.3, 1.25, 5.2], "hound": [1.2, 0.7, 7.2], "wraith": [5.5, 1.1, 5.8],
 	"archer": [7.5, 1.3, 5.4], "bonemage": [6.5, 1.8, 5.2], "plaguebearer": [1.3, 1.2, 4.8]}
 const BUDGET_BYTES := 2048
+const BODY_INTS := 8   ## ints a crowd row holds per body: id, kind, model, state, flags, swing, def, glow
 
 var fails := 0
 var checks := 0
 var data_dir: String   ## this project's data/ (res://): the same files the game loads
 var runes: Dictionary
 var enemies_json: Dictionary
+var enemy_cap := 0   ## the most enemies the game holds at once (areas.json GLOBAL_ENEMY_CAP): the Full Party's enemies
 var soft_n := {}
 var soft_bad := {}
 var keep := []
@@ -158,6 +160,7 @@ func _init() -> void:
 	data_dir = "res://"
 	runes = DmCoreData.json(data_dir.path_join("data/content/runes.json"))
 	enemies_json = DmCoreData.json(data_dir.path_join("data/content/enemies.json"))
+	enemy_cap = int(DmCoreData.json(data_dir.path_join("data/content/areas.json"))["GLOBAL_ENEMY_CAP"])
 	check(ClassDB.class_exists("DmCore") and int(DmCore.wire_version()) >= 1, "the core has a wire version, callable on the class (%d)" % DmCore.wire_version())
 	fight()
 	wire_format()
@@ -742,7 +745,7 @@ func crowd_on_puppet(host: RefCounted, pup: RefCounted) -> void:
 	var b: Dictionary = cp.last_feed()
 	var ai: PackedInt32Array = a["body_ints"]
 	var bi: PackedInt32Array = b["body_ints"]
-	check(ai == bi and ai.size() > 7 * 40, "DmCrowd reads the same body rows from a puppet as from the host: ids, kinds, models, states, flags, swings, defs (%d rows)" % (ai.size() / 7))
+	check(ai == bi and ai.size() > BODY_INTS * 40, "DmCrowd reads the same body rows from a puppet as from the host: ids, kinds, models, states, flags, swings, defs (%d rows)" % (ai.size() / BODY_INTS))
 	var af: PackedFloat32Array = a["body_floats"]
 	var bf: PackedFloat32Array = b["body_floats"]
 	var worst := 0.0
@@ -750,8 +753,12 @@ func crowd_on_puppet(host: RefCounted, pup: RefCounted) -> void:
 	var same := af.size() == bf.size()
 	if same:
 		for i in range(0, af.size(), 11):
-			worst = maxf(worst, Vector2(af[i], af[i + 1]).distance_to(Vector2(bf[i], bf[i + 1])))
-			yaw_worst = maxf(yaw_worst, absf(angle_difference(af[i + 2], bf[i + 2])))
+			# a dead body is never in a snapshot: the guest leaves it where it last drew it (native/README.md "Deaths come as events"), so only the living are compared for their place
+			var row := i / 11 * BODY_INTS
+			var thrall := ai[row + 1] == 1
+			if ai[row + 3] != (T_DEAD if thrall else DEAD):
+				worst = maxf(worst, Vector2(af[i], af[i + 1]).distance_to(Vector2(bf[i], bf[i + 1])))
+				yaw_worst = maxf(yaw_worst, absf(angle_difference(af[i + 2], bf[i + 2])))
 			same = same and is_equal_approx(af[i + 5], bf[i + 5]) and is_equal_approx(af[i + 6], bf[i + 6]) and is_equal_approx(af[i + 7], bf[i + 7])
 	check(same and worst <= 0.0072 + 1e-3 and yaw_worst <= 0.02, "the rows' places are within the quantization (%.4f m, %.4f rad), their action time, scale and hover the same" % [worst, yaw_worst])
 	check(a["corpse_ints"] == b["corpse_ints"] and a["corpse_floats"] == b["corpse_floats"] and a["corpse_ints"].size() > 0, "and the corpse rows are the same (%d corpses)" % (a["corpse_ints"].size() / 3))
@@ -960,12 +967,16 @@ func puppet_refuses_and_answers() -> void:
 	for k in ["warrior", "wraith", "archer"]:
 		host.raise_thrall(thrall_stats(k), h, Vector2(1, 1), 0.0, 8.0)
 	spawn_wave(host, rng, 16, 4.0, 14.0, false)
+	var chilled := 0
+	var withered := 0
 	for i in 240:
 		host.step(DT)
 		events(host)
 		if i == 100:
-			host.apply_status(alive_enemies(host)[0], "chill", h)
-			host.apply_status(alive_enemies(host)[1], "withered", h, 2.0, -1.0, {"dps": 3.0})
+			chilled = alive_enemies(host)[0]
+			withered = alive_enemies(host)[1]
+			host.apply_status(chilled, "chill", h, 1.0, 60.0)   # (a duration of the scenario's own: they last to the end of it)
+			host.apply_status(withered, "withered", h, 2.0, 60.0, {"dps": 3.0})
 	var g := make_puppet()
 	g.apply_reliable(host.take_reliable())
 	g.apply_snapshot(host.snapshot(240))
@@ -1033,8 +1044,8 @@ func puppet_refuses_and_answers() -> void:
 			for k in range(0, gs.size(), 4):
 				st_ok = st_ok and gs[k] == hs[k] and gs[k + 1] == hs[k + 1]
 	check(st_ok, "statuses(id) lists the host's statuses (ids and stacks) on a puppet")
-	check(host.statuses(alive_enemies(host)[0]).size() > 0 or host.statuses(alive_enemies(host)[1]).size() > 0, "(the host had statuses to compare)")
-	check(g.status_stacks(alive_enemies(g)[1], "withered") == host.status_stacks(alive_enemies(host)[1], "withered"), "status_stacks answers")
+	check(host.statuses(chilled).size() > 0 or host.statuses(withered).size() > 0, "(the host had statuses to compare)")
+	check(g.status_stacks(withered, "withered") == host.status_stacks(withered, "withered"), "status_stacks answers")
 	var cp: PackedInt32Array = g.corpse_ids()
 	check(cp == host.corpse_ids(), "corpse queries have the host's corpses (%d)" % cp.size())
 	if cp.size() > 0:
@@ -1073,10 +1084,10 @@ func full_party() -> void:
 		var a := float(tick) / 60.0 * 0.3
 		for k in 4:
 			host.set_external(heroes[k], Vector2(-6.0 + 4.0 * k, 0.0) + Vector2(cos(a + k), sin(a + k)) * 2.5, true)
-		# the director keeps 72 enemies on the field and the legions at 32 (the party's thralls are sturdy; fallen ones are raised again)
+		# the director keeps the global enemy cap on the field and the legions at 32 (the party's thralls are sturdy; fallen ones are raised again)
 		if tick % 6 == 0:
 			var live := alive_enemies(host).size()
-			for i in maxi(0, 72 - live):
+			for i in maxi(0, enemy_cap - live):
 				var ang := rng.randf() * TAU
 				var rad := rng.randf_range(10.0, 24.0)
 				host.spawn_enemy(WAVE[rng.randi() % WAVE.size()], Vector2(cos(ang), sin(ang)) * rad, 1, 1.0, 1.0, tick % 12 == 0 and i == 0, "graves", false)
@@ -1100,7 +1111,7 @@ func full_party() -> void:
 				rel_total += rel.size()
 				snap_sizes.append(snap.size())
 				var live_e := alive_enemies(host).size()
-				if live_e == 72 and host.thrall_count(0) == 32:
+				if live_e == enemy_cap and host.thrall_count(0) == 32:
 					maxed += 1
 				party_ticks += 1
 	var biggest := 0
@@ -1111,7 +1122,7 @@ func full_party() -> void:
 		smallest = mini(smallest, s)
 		total += s
 	var secs := float(party_ticks) / 20.0
-	print("INFO Full Party (72 enemies, 32 thralls, a continuous fight): snapshot %d B on average, %d B smallest, %d B largest; budget %d B" % [total / snap_sizes.size(), smallest, biggest, BUDGET_BYTES])
+	print("INFO Full Party (%d enemies, 32 thralls, a continuous fight): snapshot %d B on average, %d B smallest, %d B largest; budget %d B" % [enemy_cap, total / snap_sizes.size(), smallest, biggest, BUDGET_BYTES])
 	print("INFO Full Party bandwidth at 20 Hz: snapshots %.1f KB/s, reliable events %.2f KB/s (%d B in %.0f s), together %.1f KB/s" % [float(total) / secs / 1024.0, float(rel_total) / secs / 1024.0, rel_total, secs, float(total + rel_total) / secs / 1024.0])
 	check(maxed > 40, "the fight held the Full Party for %d sends" % maxed)
 	check(held_host > 0 and held_pup >= 0 and message_buffers(host) == held_host and message_buffers(pup) == held_pup, "the message and event buffers did not grow over the last 900 ticks of the fight: nothing allocated per tick (host %d B, guest %d B held)" % [held_host, held_pup])
@@ -1135,12 +1146,14 @@ func snapshot_parts() -> void:
 	for k in 4:
 		for j in 8:
 			host.raise_thrall(thrall_stats(kinds[j], 900.0, 14.0), heroes[k], Vector2(-6.0 + 4.0 * k + float(j) - 3.0, 3.0), 0.0, 20.0)
-	spawn_wave(host, rng, 72, 8.0, 22.0, false)
+	spawn_wave(host, rng, enemy_cap, 8.0, 22.0, false)
 	for t in 240:   # a few seconds of fighting: states, aims, affixes and health all over the place
 		host.step(DT)
 		events(host)
 	var whole: PackedByteArray = host.snapshot(500)
-	var limits := [900, 700, 100, 1]
+	var big := whole.size() * 3 / 4     # packet limits as fractions of the whole snapshot, so it is cut into two parts or more whatever the fight holds
+	var mid := whole.size() / 2
+	var limits := [big, mid, 100, 1]
 	var made := {}
 	for limit in limits:
 		var parts: Array = host.snapshot_parts(1000, limit)
@@ -1183,12 +1196,12 @@ func snapshot_parts() -> void:
 		live += 1 if st_e != DEAD else 0
 	for st_t in host.thrall_states():
 		live += 1 if st_t != T_DEAD else 0
-	check(made[900].size() >= 2 and made[1].size() == live, "the Full Party needs %d parts at 900 B, one body per part at 1 B (%d parts for about %d bodies)" % [made[900].size(), made[1].size(), live])
-	print("INFO snapshot_parts: the Full Party (%d bodies) as %d parts at 900 B (whole snapshot %d B), %d at 700 B" % [live, made[900].size(), whole.size(), made[700].size()])
+	check(made[big].size() >= 2 and made[1].size() == live, "the Full Party needs %d parts at %d B, one body per part at 1 B (%d parts for about %d bodies)" % [made[big].size(), big, made[1].size(), live])
+	print("INFO snapshot_parts: the Full Party (%d bodies) as %d parts at %d B (whole snapshot %d B), %d at %d B" % [live, made[big].size(), big, whole.size(), made[mid].size(), mid])
 	# stale and repeated parts: only a newer tick is applied; the rest of a lost part's bodies catch up with the next snapshot
 	var pup2 := make_puppet()
 	pup2.apply_reliable(host.baseline())
-	var ps: Array = host.snapshot_parts(2000, 700)
+	var ps: Array = host.snapshot_parts(2000, mid)
 	check(pup2.apply_snapshot(ps[1]) and pup2.apply_snapshot(ps[0]) and pup2.apply_snapshot(ps[1]), "parts that arrive out of order or twice are not an error")
 	var st2: Dictionary = pup2.replication_stats()
 	check(st2["snapshots_applied"] == 1 and st2["snapshots_stale"] == 2, "only the newest tick applied (applied %d, stale %d): the older part waits for the next snapshot" % [st2["snapshots_applied"], st2["snapshots_stale"]])

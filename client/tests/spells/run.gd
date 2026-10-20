@@ -350,7 +350,7 @@ func arena(legion: bool) -> Dictionary:
 	if legion:
 		for pt in [at(2.0, 2.0), at(2.5, -2.0), at(1.5, 0.0)]:
 			raise_at(pt)
-		await secs(1.6)   # (a rising thrall cannot act yet)
+		await secs(DmSimConsts.THRALL_RISE_TIME + 0.7)   # (a rising thrall cannot act yet: the rules' rising time, and a moment more)
 	await ticks(3)
 	return {"foe": foes[0], "corpse_at": spots[0]}
 
@@ -434,8 +434,9 @@ func thrall_checks(disc: Dictionary) -> void:
 	var did := String(disc["id"])
 	await arena(false)
 	var cap := int(c.mods["thrallCap"])
+	var gap := minf(1.0, (float(DmAbilities.def("exhume")["range"]) - 3.5) / float(cap))   # (every corpse inside Exhume's range, whatever the cap)
 	for k in cap + 1:
-		var pt := at(3.0 + float(k), 1.5 * float(k % 2))
+		var pt := at(3.0 + gap * float(k), 1.5 * float(k % 2))
 		field.add_corpse(pt.x, pt.z, "normal", "robber", false, 0.0, 1.0, "graves")
 		c.p["castUntil"] = 0.0
 		c.p["cooldowns"].erase("exhume")
@@ -591,8 +592,9 @@ func spell_case(disc: Dictionary, id: String, is_sig: bool) -> void:
 		chk("cast", rejected == "cooldown", "%s: a second cast inside the cooldown is refused by the cooldown (%s)" % [id, rejected])
 	else:
 		chk("cast", rejected != "cooldown", "%s: the row has no cooldown and none refuses (%s)" % [id, rejected])
-	# 4: effect and sound, warmed
-	for k in 45:
+	# 4: effect and sound, warmed (three quarters of a second, or the spell's own cast lock and gesture and a half second more when those take longer)
+	var flow := DmAbilities.cast_flow(id)
+	for k in maxi(45, int((float(flow["lockMs"]) / 1000.0 + float(flow.get("gestureSeconds", 0.0))) * 60.0) + 30):
 		await physics_frame
 		poll_fx()
 	chk("effect", not ev_log.is_empty(), "%s: the cast plays events (%d)" % [id, ev_log.size()])

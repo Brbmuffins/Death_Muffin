@@ -5,14 +5,14 @@ import { ALCHEMY_RECIPES } from '../../content/alchemy';
 import { REAGENT_RECIPES } from '../../content/reagents';
 import { ITEMS } from '../../content/items';
 import { MEALS, PROCESSING_ITEMS, PROCESSING_RECIPES } from '../../content/processing';
-import { NODES, TOOL_KIND, toolItemId, toolTierFor, rollBatch, type SkillId } from '../gatheringRules';
+import { ALL_SKILLS, NODES, TOOL_KIND, TOOL_METALS, toolItemId, toolTierFor, rollBatch, type SkillId } from '../gatheringRules';
 
 describe('Professions G6: processing', () => {
   it('every recipe uses and makes items the client knows, with icons on disk', () => {
     for (const [id, , prof, level, result, qty, ings] of PROCESSING_RECIPES) {
       expect(ITEMS[result], `${id} result`).toBeDefined();
       for (const [item, n] of ings) expect(ITEMS[item], `${id} needs ${item}`).toBeDefined(), expect(n).toBeGreaterThan(0);
-      expect(['mining', 'fishing', 'woodcutting', 'gravedigging']).toContain(prof);
+      expect(ALL_SKILLS, `${id} profession`).toContain(prof);
       expect(level).toBeGreaterThanOrEqual(1);
       expect(qty).toBeGreaterThanOrEqual(1);
     }
@@ -28,16 +28,18 @@ describe('Professions G6: processing', () => {
   });
 
   it('the best tool carried sets the tier, and tools raise the odds', () => {
-    expect(toolTierFor('woodcutting', ['tool_hatchet_iron', 'tool_hatchet_steel', 'tool_pickaxe_moon'])).toBe(4);
-    expect(toolTierFor('mining', ['tool_hatchet_moon'])).toBe(0);
-    expect(toolTierFor('gardening' as SkillId, ['tool_spade_moon'])).toBe(0);
-    for (const skill of Object.keys(TOOL_KIND) as SkillId[]) for (let t = 1; t <= 6; t++) expect(ITEMS[toolItemId(skill, t)]).toBeDefined();
+    const top = TOOL_METALS.length;
+    // a low and a high hatchet in the bag, and the top pickaxe: the hatchet kind answers with its best hatchet, the pickaxe doesn't count
+    expect(toolTierFor('woodcutting', [toolItemId('woodcutting', 1), toolItemId('woodcutting', top - 1), toolItemId('mining', top)])).toBe(top - 1);
+    expect(toolTierFor('mining', [toolItemId('woodcutting', top)])).toBe(0);
+    expect(toolTierFor('gardening' as SkillId, [toolItemId('mining', top)])).toBe(0);
+    for (const skill of Object.keys(TOOL_KIND) as SkillId[]) for (let t = 1; t <= top; t++) expect(ITEMS[toolItemId(skill, t)]).toBeDefined();
     const def = NODES.seam_copper;
     let seed = 1;
     const rng = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     const bare = rollBatch(def, { level: 1, xp: 0 }, 400, rng, 0).successes;
     seed = 1;
-    const tooled = rollBatch(def, { level: 1, xp: 0 }, 400, rng, 6).successes;
+    const tooled = rollBatch(def, { level: 1, xp: 0 }, 400, rng, top).successes;
     expect(tooled).toBeGreaterThan(bare);
   });
 

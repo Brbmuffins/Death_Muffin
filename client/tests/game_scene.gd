@@ -1,7 +1,7 @@
 extends SceneTree
 ## The game scene on the core (client/README.md "The game scene and the dev entry"): an offline solo run in the Hollow Graves, headless. It starts the real
-## scene (client/next/next_game.tscn) with a dev character on the local mock backend, plays 3600 physics ticks (60 s of game time; with the engine argument
-## `--fixed-fps 60` they run as fast as the CPU allows, without it they take a minute) and checks:
+## scene (client/next/next_game.tscn) with a dev character on the local mock backend, plays 3600 physics ticks (60 s of game time, or as long as three waves of the area take
+## to arrive when that is more; with the engine argument `--fixed-fps 60` they run as fast as the CPU allows, without it they take a minute) and checks:
 ##   - the wave director spawned waves through the core, up to the area's cap; every spawn event is a core body (ids, not nodes);
 ##   - NO NODE PER CREATURE: the scene tree's node count is the same with 0, 35 and 70 more idle enemies in the core, and no enemy has a node;
 ##   - enemies reach and hit the hero: the hero's health drops through the core's EV_TARGET_HIT, with kinds as today;
@@ -21,7 +21,7 @@ extends SceneTree
 
 const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://game_scene_test"
-const RUN_TICKS := 3600
+const RUN_TICKS := 3600   ## the least the run plays; the_run() plays longer when the area's waves come further apart
 const BAKE := ["grave_robber", "bone_hound"]
 
 
@@ -218,7 +218,8 @@ func walk_to_nearest() -> void:
 func the_run() -> void:
 	var b := g.local_body()
 	var t0 := Time.get_ticks_msec()
-	for t in RUN_TICKS:
+	var run_ticks := maxi(RUN_TICKS, int((g.director.first_wave_delay + g.director.wave_interval * 3.0 + 5.0) * 60.0))   # three waves arrive at the area's own pace
+	for t in run_ticks:
 		await physics_frame
 		if t % 90 == 30:
 			walk_to_nearest()
@@ -228,10 +229,10 @@ func the_run() -> void:
 		if t % 60 == 59:
 			samples.append([host.alive_count(), scene_nodes(), nodes()])
 	print("INFO the run: %d ticks in %.1f s, %d bodies spawned (%d waves), %d died, %d removed, max %d alive / %d with the dying, hero min hp %.0f of %.0f, died %d, got up %d, blows on him %s, %d events" % [
-		RUN_TICKS, float(Time.get_ticks_msec() - t0) / 1000.0, spawned, g.director.waves_spawned, died, removed, max_alive, max_total, min_hero_hp, b.max_hp, hero_died_n, hero_respawned_n,
+		run_ticks, float(Time.get_ticks_msec() - t0) / 1000.0, spawned, g.director.waves_spawned, died, removed, max_alive, max_total, min_hero_hp, b.max_hp, hero_died_n, hero_respawned_n,
 		str(g.hits_taken), host.events_total])
 	check(g.director.waves_spawned >= 3 and g.director.alive_count() <= g.director.cap + 1, "the director spawned waves (%d) up to the area's cap" % g.director.waves_spawned)
-	check(spawned >= 20 and spawned == spawned_ids.size(), "every body is a core body with its own id (%d spawn events)" % spawned)
+	check(spawned >= g.director.wave_size and spawned == spawned_ids.size(), "every body is a core body with its own id (%d spawn events)" % spawned)
 	check(max_alive <= g.director.cap + 1, "the area's cap holds (%d alive, cap %d)" % [max_alive, g.director.cap])
 	check(max_total <= int(DmSimData.GLOBAL_ENEMY_CAP), "the global cap counts the dying (%d <= %d)" % [max_total, int(DmSimData.GLOBAL_ENEMY_CAP)])
 	check(attack_events > 0, "enemies swung (%d attack events, %d telegraphs)" % [attack_events, tele_events])
@@ -261,7 +262,7 @@ func kinds() -> void:
 	var b := g.local_body()
 	if hero_dead:
 		var w := 0
-		while hero_dead and w < 400:
+		while hero_dead and w < _get_up_ticks():
 			await physics_frame
 			w += 1
 	b.restore_vitals()
@@ -303,7 +304,9 @@ func kinds() -> void:
 	var incense_seen := false
 	host.damage(ids["ghoul"], float(host.enemy_info(ids["ghoul"])["max_hp"]) * 0.6, b.core_id)   # under half its health it digs in
 	var mound_seen := [false, false]   # [a mound while it was underground, none once it was up again]
-	for t in 720:
+	var t := -1
+	while t < 719 or (t < 3600 and not _kinds_seen(seen_before, cues_before, int(ids["gargoyle"]))):   # twelve seconds, and on until a slower kind has shown itself (a minute at most)
+		t += 1
 		await physics_frame
 		if t % 10 == 0:
 			b.restore_vitals()   # he is only the target: his death would end every body's hunt before the Gargoyle's mark (the blows take him in about 110 ticks)
@@ -343,6 +346,24 @@ func kinds() -> void:
 			host.damage(ids[k], 1.0e9, b.core_id, false)
 
 
+## The ticks the hero needs to get up after he falls: the respawn time, and a moment more.
+func _get_up_ticks() -> int:
+	return int((DmHeroBody.RESPAWN_S + 2.7) * 60.0)
+
+
+## True when every kind of blow `kinds()` is for has shown itself since the fight began.
+func _kinds_seen(tells_before: Dictionary, cues_before: Dictionary, gargoyle: int) -> bool:
+	for k in ["cone", "dust", "slam", "scream", "erupt"]:
+		if int(tells.get(k, 0)) - int(tells_before.get(k, 0)) < 1:
+			return false
+	if int(tells.get("curse", 0)) - int(tells_before.get("curse", 0)) < 2:
+		return false
+	for k in ["scream", "shield_block"]:
+		if int(cue_seen.get(k, 0)) - int(cues_before.get(k, 0)) < 1:
+			return false
+	return int(dive_marks.get(gargoyle, 0)) >= 1 and int(slam_stones.get(gargoyle, 0)) >= 1
+
+
 func hero_death() -> void:
 	var b := g.local_body()
 	g.director.enabled = false
@@ -357,7 +378,7 @@ func hero_death() -> void:
 	var died_before := hero_died_n
 	# let him get up: 4 s after he fell
 	var wait := 0
-	while hero_dead and wait < 400:
+	while hero_dead and wait < _get_up_ticks():
 		await physics_frame
 		wait += 1
 	check(hero_respawned_n >= 1 and b.alive and not hero_dead, "the hero got up again (%d ticks after the check)" % wait)
@@ -487,13 +508,14 @@ func affixes() -> void:
 	check(int(g.enemy_fx.stats["affix_mark"]) - marks_before == 4, "each affixed elite stands on its affix's mark (%d)" % (int(g.enemy_fx.stats["affix_mark"]) - marks_before))
 	await shroud_ward(shroud)
 	host.damage(food, 1.0e6, b.core_id)            # a corpse beside the hungry one
-	host.damage(hungry, 200.0, b.core_id)          # hurt, so it wants to eat
+	host.damage(hungry, float(host.enemy_info(hungry)["max_hp"]) * 0.2, b.core_id)   # hurt, so it wants to eat
 	check(host.core.strip_shroud(shroud), "the shroud of an elite lifts for good")
 	var status_motes := int(g.enemy_fx.stats["status_mote"])
 	host.apply_status(bell, "chill", b.core_id, 1.0, 6.0)   # a status tell near the hero: frost motes
 	var kill := host.damage(veng, 1.0e9, b.core_id)
 	check(kill["killed"], "the Vengeful elite falls")
-	await ticks(500)                               # the bell tolls every 6 s (0.9 s wind-up), the meal every 4 s
+	var at: Dictionary = DmSimData.AFFIX_TUNING
+	await ticks(int((maxf(float(at["bellTolled"]["intervalS"]) + float(at["bellTolled"]["windupS"]), float(at["hungering"]["intervalS"])) + 1.4) * 60.0))   # the bell tolls every interval (after its wind-up), the meal every interval of its own
 	host.affix_moment.disconnect(moment_cb)
 	host.enemy_spawned.disconnect(spawn_cb)
 	var risen_before: int = risen[0]
@@ -558,17 +580,18 @@ func timings() -> void:
 		if int(inf["state"]) == DmCoreEvents.State.BURROW:
 			underground += 1   # a tunnelling ghoul cannot be hurt until it surfaces
 	check(host.enemy_total() == underground, "the field is empty again, but for ghouls underground (%d bodies: %s)" % [host.enemy_total(), str(left)])
-	g.director.cap = 72
-	g.director.wave_size = 72
-	g.director.enemy_limit = 90
+	var full := int(DmSimData.GLOBAL_ENEMY_CAP)   # the biggest crowd the game holds
+	g.director.cap = full
+	g.director.wave_size = full
+	g.director.enemy_limit = full + 18
 	g.director.spawn_min = 6.0   # close around the hero, so the whole crowd is in the fight at once
 	g.director.spawn_max = 12.0
 	g.director.enabled = true
-	var room := 72 - host.alive_count()
-	var made := g.director.spawn_wave([b], 72)
+	var room := full - host.alive_count()
+	var made := g.director.spawn_wave([b], full)
 	g.director.flush_spawns()
-	check(made == room and host.alive_count() == 72, "the director made a wave of %d through the core (%d, %d alive)" % [room, made, host.alive_count()])
-	await ticks(90)   # the rise
+	check(made == room and host.alive_count() == full, "the director made a wave of %d through the core (%d, %d alive)" % [room, made, host.alive_count()])
+	await ticks(int((DmSimConsts.RISE_TIME + 0.4) * 60.0))   # the rise
 	await ticks(30)   # the crowd draws a few frames
 	var st: Dictionary = view.stats()
 	check(int(st.get("bodies", 0)) >= host.alive_count() - 2, "the crowd has a view per body (%s)" % str(st))

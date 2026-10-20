@@ -21,6 +21,31 @@ func _keys(d: Variant) -> Array:
 	return k
 
 
+## The item fields the loot view keeps (DmDb.loot_view).
+const LOOT_ITEM_FIELDS := ["name", "type", "rarity", "sell", "stack", "offlineStats"]
+
+
+## Equal as the JSON says: numbers by value (the views turn whole numbers into ints), lists and objects entry by entry.
+func _same(a: Variant, b: Variant) -> bool:
+	if (a is float or a is int) and (b is float or b is int):
+		return is_equal_approx(float(a), float(b))
+	if a is Dictionary and b is Dictionary:
+		if a.size() != b.size():
+			return false
+		for k in a:
+			if not b.has(k) or not _same(a[k], b[k]):
+				return false
+		return true
+	if a is Array and b is Array:
+		if a.size() != b.size():
+			return false
+		for i in a.size():
+			if not _same(a[i], b[i]):
+				return false
+		return true
+	return a == b
+
+
 func _check_loot_view() -> void:
 	var v := DmDb.loot_view()
 	var want_top := ["areas", "armor", "bagSlots", "depths", "difficulty", "disciplineFamily", "elite", "enemies", "items", "legendary", "necroWeapons", "reagents", "runes"]
@@ -29,7 +54,7 @@ func _check_loot_view() -> void:
 	ok(not items.is_empty() and _keys(v["items"]) == _keys(items), "loot view: one entry per content item")
 	var bad := []
 	for id in items:
-		for f in ["name", "type", "rarity", "sell", "stack", "offlineStats"]:
+		for f in LOOT_ITEM_FIELDS:
 			if v["items"][id].get(f) != items[id].get(f):
 				bad.append("%s.%s" % [id, f])
 	ok(bad.is_empty(), "loot view: items carry the table's name, type, rarity, sell, stack, offlineStats %s" % [bad.slice(0, 5)])
@@ -161,36 +186,83 @@ func _initialize() -> void:
 	_check_progression_view()
 	_check_combat_progression()
 
-	# --- wrappers delegate and keep their values (snapshots from the pre-registry loaders) ---
+	# --- wrappers delegate and keep the values of the tables they read ---
 	ok(DmLootData.content() == DmDb.loot_view(), "DmLootData reads the registry")
-	ok(DmLootData.bag_size() == 48, "bag size")
-	var it := DmLootData.item("log_oak")
-	ok(it["name"] == "Oak Log" and it["rarity"] == "common" and int(it["sell"]) == 1 and int(it["stack"]) == 250 and it["offlineStats"] == null and it.size() == 6, "loot item")
-	var rat := DmLootData.enemy("rat")
-	ok(int(rat["gold"][0]) == 0 and int(rat["gold"][1]) == 1 and int(rat["xp"]) == 1, "loot enemy")
-	ok(is_equal_approx(DmLootData.difficulty_reward_mult("hard"), 1.3), "difficulty reward")
+	ok(DmLootData.bag_size() == int(DmDb.content("gameplay_gatheringRules").get("BAG_SLOTS")), "bag size is the gathering rules' BAG_SLOTS")
+	var items_src: Dictionary = DmDb.content("items").get("ITEMS", {})
+	var bad := []
+	for id in items_src:
+		var it := DmLootData.item(id)
+		if it.size() != LOOT_ITEM_FIELDS.size():
+			bad.append(id)
+		for f in LOOT_ITEM_FIELDS:
+			if it.get(f) != items_src[id].get(f):
+				bad.append("%s.%s" % [id, f])
+	ok(not items_src.is_empty() and bad.is_empty() and DmLootData.item("no_such_item_x").is_empty(), "loot item: the table's fields for each item, {} for an unknown one %s" % [bad.slice(0, 5)])
+	var enemies_src: Dictionary = DmDb.content("enemies").get("ENEMIES", {})
+	bad = []
+	for id in enemies_src:
+		if not _same(DmLootData.enemy(id)["gold"], enemies_src[id].get("gold")) or not _same(DmLootData.enemy(id)["xp"], enemies_src[id].get("xp")):
+			bad.append(id)
+	ok(not enemies_src.is_empty() and bad.is_empty(), "loot enemy: each enemy's gold and xp %s" % [bad])
+	var diffs: Dictionary = DmDb.content("difficulty").get("DIFFICULTIES", {})
+	bad = []
+	for id in diffs:
+		if not is_equal_approx(DmLootData.difficulty_reward_mult(id), float(diffs[id]["rewardMult"])):
+			bad.append(id)
+	ok(not diffs.is_empty() and bad.is_empty(), "difficulty reward: each difficulty's rewardMult %s" % [bad])
 	ok(not DmLootData.content()["armor"].is_empty() and not DmLootData.content()["necroWeapons"].is_empty(), "armor/necro tables are there")
-	ok(is_equal_approx(float(DmLootData.area("graves")["itemChance"]), 0.062089552238805974), "area itemChance")
-	ok(DmProgContent.vows()["elder_dead"]["maxRank"] == 20 and typeof(DmProgContent.vows()["elder_dead"]["maxRank"]) == TYPE_INT, "prog vow int")
+	var areas_src: Dictionary = DmDb.content("areas").get("AREAS", {})
+	bad = []
+	for id in areas_src:
+		if not _same(DmLootData.area(id).get("itemChance"), areas_src[id].get("itemChance")):
+			bad.append(id)
+	ok(bad.is_empty(), "area itemChance: each area's own %s" % [bad])
+	var vows_src: Dictionary = DmDb.content("ascension").get("VOWS", {})
+	bad = []
+	for id in vows_src:
+		if DmProgContent.vows()[id]["maxRank"] != int(vows_src[id]["maxRank"]) or typeof(DmProgContent.vows()[id]["maxRank"]) != TYPE_INT:
+			bad.append(id)
+	ok(not vows_src.is_empty() and bad.is_empty(), "prog vows: each vow's maxRank, as a whole number %s" % [bad])
 	ok(DmProgContent.boon_order().size() == DmProgContent.boons().size() and DmProgContent.vow_order().size() == DmProgContent.vows().size() and not DmProgContent.boon_order().is_empty(), "prog orders list every boon and vow")
-	ok(DmProgContent.upgrades()["damage"]["costBase"] == 40 and is_equal_approx(DmProgContent.upgrades()["legion"]["costGrowth"], 1.65), "upgrade costs")
+	var costs: Dictionary = DmDb.raw("progression/extras")["upgradeCosts"]
+	bad = []
+	for k in costs:
+		var got: Dictionary = DmProgContent.upgrades()[k]
+		if got["costBase"] != int(costs[k]["costBase"]) or not is_equal_approx(got["costGrowth"], float(costs[k]["costGrowth"])):
+			bad.append(k)
+	ok(not costs.is_empty() and bad.is_empty(), "upgrade costs: each upgrade's base and growth from the progression extras %s" % [bad])
 	var ms: Array = DmProgContent.get_data()["milestones"]
 	var ms_ids := {}
 	for m in ms:
 		ms_ids[String(m["id"])] = true
 	ok(not ms.is_empty() and ms_ids.size() == ms.size(), "milestones: some, each id once")
-	ok(DmProgContent.areas()["ossuary"]["unlock"] == {"area": "graves", "kills": 300}, "area unlock")
-	ok(DmProgContent.is_always_open("graves") and not DmProgContent.is_always_open("ossuary"), "always open")
-	ok(DmProgContent.get_data()["startAreas"] == ["chapterhouse", "graves"], "start areas")
-	ok(not DmContent.items().is_empty() and int(DmContent.item("log_oak")["sell"]) == 1, "content items")
-	ok(DmContent.file_names().size() > 60, "content file names")
+	bad = []
+	for id in areas_src:
+		var a: Dictionary = DmProgContent.areas()[id]
+		var open: bool = areas_src[id].get("unlock") == null and not bool(areas_src[id].get("instance", false))
+		if not _same(a["unlock"], areas_src[id].get("unlock")) or DmProgContent.is_always_open(id) != open:
+			bad.append(id)
+	ok(not areas_src.is_empty() and bad.is_empty(), "area unlock and always-open: each area's own seal %s" % [bad])
+	ok(_same(DmProgContent.get_data()["startAreas"], DmDb.raw("progression/extras")["startAreas"]), "start areas")
+	ok(not DmContent.items().is_empty() and DmContent.item(String(items_src.keys()[0])) == items_src[items_src.keys()[0]], "content items")
+	var on_disk_content := []
+	for f in DirAccess.get_files_at("res://data/content"):
+		if f.ends_with(".json") and f != "manifest.json":
+			on_disk_content.append(f.trim_suffix(".json"))
+	var listed := Array(DmContent.file_names())
+	on_disk_content.sort()
+	listed.sort()
+	ok(not listed.is_empty() and listed == on_disk_content, "content file names: the manifest lists the files of data/content")
 	ok(DmContent.get_export("areas", "AREA_ORDER").size() == DmData.world()["order"].size(), "content export: the areas' order lists the world's areas")
 	ok(DmContent.file("items") == DmDb.content("items"), "DmContent delegates")
 	var combat_abilities: Dictionary = DmCombatData.abilities()["abilities"]   # the combat table and the content table list the same abilities
-	ok(combat_abilities.has("bone_needle") and combat_abilities.size() == (DmContent.file("abilities")["ABILITIES"] as Dictionary).size(), "combat abilities")
+	var content_abilities: Dictionary = DmContent.file("abilities")["ABILITIES"]
+	ok(not combat_abilities.is_empty() and _keys(combat_abilities) == _keys(content_abilities), "combat abilities: the same ids as the content table")
 	var prog: Dictionary = DmCombatData.load_json("progression")
-	ok(prog["vows"]["elder_dead"]["maxRank"] == 20 and prog["chain"]["windowMs"] == 4000 and prog["boon_order"].size() == DmProgContent.boon_order().size(), "combat progression composed")
-	ok(prog["kit"]["base"] == 120 and prog["new_blood"]["damage_mult"] == 1.5, "combat progression residual")
+	var own_prog: Dictionary = DmDb.raw("combat/progression")
+	ok(_same(prog["vows"], vows_src) and _same(prog["chain"], DmDb.content("gameplay_killChain").get("CHAIN")) and prog["boon_order"].size() == DmProgContent.boon_order().size(), "combat progression composed: the content table's vows and chain, one entry per boon")
+	ok(not own_prog.is_empty() and _same(prog["kit"], own_prog["kit"]) and _same(prog["new_blood"], own_prog["new_blood"]), "combat progression residual: its own file's kit and new blood")
 	ok(DmGatherData.get_data()["nodes"].size() == (DmContent.get_export("gameplay_gatheringRules", "NODES") as Dictionary).size() and not DmGatherData.get_data()["nodes"].is_empty(), "gathering nodes: the data holds the rules' node types")
 	ok(DmCounselData.order().size() == DmCounselData.tips().size() and not DmCounselData.order().is_empty(), "counsel tips: the order lists every tip")
 	ok(DmData.world()["areas"].size() == DmData.world()["order"].size() and not DmData.world()["order"].is_empty(), "slice world: an entry for each area in the order")
@@ -211,7 +283,13 @@ func _initialize() -> void:
 			print("necro_gear model missing: ", m)
 	ok(not ng_props.is_empty() and ng_bad == 0, "necro gear table: %d models listed in assets_used and imported" % ng_props.size())
 	var asets: Dictionary = DmContent.get_export("armorSets", "ARMOR_SETS")
-	ok(ng["mantle_by_set_id"].has("gravecaller") and ng["mantle_by_set_id"].has("rotweaver_ascended") and asets.has("gravecaller"), "necro gear table: class and ascended mantle ids")
+	var ascended: Dictionary = DmContent.get_export("armorSets", "ASCENDED_ARMOR_SETS")
+	var mantle_bad := []
+	for k in ng["mantle_by_set_id"]:
+		var base := String(k).trim_suffix("_ascended")
+		if not (asets.has(k) or (k != base and ascended.has(base))):
+			mantle_bad.append(k)
+	ok(not ng["mantle_by_set_id"].is_empty() and mantle_bad.is_empty(), "necro gear table: each mantle id is a class set or an ascended one %s" % [mantle_bad])
 	for k in ng["legendary_hero_by_set_id"]:
 		ok(DmContent.get_export("armorSets", "ARMOR_BY_ID").has("leg_%s_chest" % k), "necro gear table: legendary set %s exists" % k)
 	ok(DmWfxData.get_data().has("windows") and not DmWfxData.get_data()["windows"].is_empty(), "world fx")

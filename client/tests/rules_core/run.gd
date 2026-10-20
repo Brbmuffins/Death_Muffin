@@ -34,6 +34,11 @@ func load_fx(name: String) -> Variant:
 	return JSON.parse_string(f.get_as_text())
 
 
+## A file of data/content, parsed straight from disk (the accessors under test read it through DmDb).
+func _content_file(name: String) -> Dictionary:
+	return JSON.parse_string(FileAccess.get_file_as_string("res://data/content/%s.json" % name))
+
+
 func _test_rng() -> void:
 	for c in load_fx("rng_mulberry32"):
 		var r := Rng.new(c["seed"])
@@ -87,18 +92,63 @@ func _test_content() -> void:
 		n_files += 1
 	ok(n_files == (man["files"] as Dictionary).size() and n_files > 0, "every file the manifest lists was read (%d)" % n_files)
 	ok(not C.items().is_empty() and not C.enemies().is_empty() and not C.areas().is_empty() and not C.abilities().is_empty() and not C.disciplines().is_empty(), "the item, enemy, area, ability and discipline tables are not empty")
-	# typed accessors
-	ok(C.item("material_copper_shard")["name"] == "Copper Shard", "item lookup")
+	# typed accessors: each one answers what the file under data/content holds (read here straight from the file, not through the accessor)
+	var items_file := _content_file("items")["ITEMS"] as Dictionary
+	var bad := []
+	for id in items_file:
+		if C.item(id) != items_file[id]:
+			bad.append(id)
+	ok(not items_file.is_empty() and C.items().size() == items_file.size() and bad.is_empty(), "item lookup: every item as the file has it %s" % [bad.slice(0, 5)])
 	ok(C.item("nope_x")["name"] == "nope x" and int(C.item("nope_x")["sell"]) == 0, "item fallback")
-	ok(C.enemy("robber")["name"] == "Grave Robber" and int(C.enemy("robber")["hp"]) == 68, "enemy lookup")
-	ok(C.area("graves").has("rect") and C.area("graves")["loot"].size() > 0, "area lookup")
-	ok(C.area_order().size() > 5, "area_order")
-	ok(C.upgrade_cost("damage", 0) == 40 and C.upgrade_cost("damage", 1) == 60, "upgrade_cost")
-	ok(C.recipes().size() == C.get_export("recipes", "ALL_RECIPE_ROWS").size(), "recipes parsed")
-	ok(C.recipe("smelt_copper_ingot")["inputs"][0]["item"] == "ore_copper", "recipe lookup")
-	ok(C.affix_range(str(C.affixes()[0]["id"]), 1).size() == 2, "affix_range")
-	ok(C.smart_loot_table("graves", "gravecaller").size() == C.area("graves")["loot"].size(), "smart table")
-	ok(C.tips().size() > 20, "tips")
+	var enemies_file := _content_file("enemies")["ENEMIES"] as Dictionary
+	bad = []
+	for id in enemies_file:
+		if C.enemy(id) != enemies_file[id]:
+			bad.append(id)
+	ok(not enemies_file.is_empty() and C.enemies().size() == enemies_file.size() and bad.is_empty(), "enemy lookup: every enemy as the file has it %s" % [bad.slice(0, 5)])
+	var areas_file := _content_file("areas")
+	bad = []
+	for id in areas_file["AREAS"]:
+		if C.area(id) != areas_file["AREAS"][id] or not C.area(id).has("rect"):
+			bad.append(id)
+	ok(not (areas_file["AREAS"] as Dictionary).is_empty() and bad.is_empty(), "area lookup: every area as the file has it, with a rect %s" % [bad])
+	ok(C.area_order() == areas_file["AREA_ORDER"] and not C.area_order().is_empty(), "area_order")
+	var costs_file := _content_file("computed")["upgradeCosts"] as Dictionary
+	bad = []
+	for kind in costs_file:
+		for tier in costs_file[kind].size():
+			if C.upgrade_cost(kind, tier) != int(costs_file[kind][tier]):
+				bad.append("%s %d" % [kind, tier])
+		if C.upgrade_cost(kind, -1) != -1 or C.upgrade_cost(kind, costs_file[kind].size()) != -1:
+			bad.append("%s out of range" % kind)
+	ok(not costs_file.is_empty() and bad.is_empty(), "upgrade_cost: each kind's cost per tier from computed, -1 past the ends %s" % [bad.slice(0, 5)])
+	var rows_file: Array = _content_file("recipes")["ALL_RECIPE_ROWS"]
+	ok(C.recipes().size() == C.get_export("recipes", "ALL_RECIPE_ROWS").size() and C.recipes().size() == rows_file.size(), "recipes parsed")
+	bad = []
+	for row in rows_file:
+		var r := C.recipe(row[0])
+		var inputs_ok: bool = r.get("inputs", []).size() == row[6].size()
+		for i in row[6].size() if inputs_ok else 0:
+			inputs_ok = inputs_ok and r["inputs"][i]["item"] == row[6][i][0] and r["inputs"][i]["qty"] == int(row[6][i][1])
+		if r.get("name") != row[1] or r.get("skill") != row[2] or r.get("level") != int(row[3]) or r.get("result") != row[4] or r.get("qty") != int(row[5]) or not inputs_ok:
+			bad.append(row[0])
+	ok(not rows_file.is_empty() and bad.is_empty(), "recipe lookup: every recipe's name, skill, level, result, quantity and inputs as the file has them %s" % [bad.slice(0, 5)])
+	var ranges_file := _content_file("computed")["affixRanges"] as Dictionary
+	bad = []
+	for a in C.affixes():
+		var id := str(a["id"])
+		var rows: Array = ranges_file.get(id, [])
+		if rows.is_empty() or C.affix_range(id, 1).size() != 2 or C.affix_range(id, 1) != rows[0] or C.affix_range(id, rows.size() + 50) != rows[rows.size() - 1]:
+			bad.append(id)
+	ok(not C.affixes().is_empty() and bad.is_empty(), "affix_range: [min, max] from computed, the last row past the end %s" % [bad])
+	var tables_file := _content_file("computed")["smartTables"] as Dictionary
+	bad = []
+	for aid in tables_file:
+		for did in tables_file[aid]:
+			if C.smart_loot_table(aid, did) != tables_file[aid][did] or C.smart_loot_table(aid, did).size() != C.area(aid)["loot"].size():
+				bad.append("%s/%s" % [aid, did])
+	ok(not tables_file.is_empty() and bad.is_empty(), "smart table: from computed, one row per drop of the area %s" % [bad.slice(0, 5)])
+	ok(not C.tips().is_empty() and C.tips().size() == (_content_file("onboarding")["TIPS"] as Dictionary).size(), "tips")
 	# every item reference in area loot tables exists
 	for aid in C.areas():
 		for e in C.area(aid)["loot"]:

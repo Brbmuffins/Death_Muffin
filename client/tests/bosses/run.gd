@@ -3,8 +3,11 @@ extends SceneTree
 ## Replays every scenario in tests/bosses/fixtures (*.json.gz, captured from the real TS BossBrain; committed answer keys) through the
 ## GDScript brains and compares, per tick: the boss state, the ordered world-call log (events, spawns, pools, removals) and the
 ## entities left in the world. First mismatch per scenario is reported. The one place the recorded scenarios are replayed (boss.gd and the boss_* suites do not).
+## The recordings are of the retired TS brains with the boss data of the day, so the data the brains read is put back as it was (fixtures/recorded_data.json, the exports of bosses, fen, abilities, difficulty,
+## the Seal's EMPOWER and the areas' levels) for this run: retuning the boss data in the game never breaks a recording, and a recording is only ever compared with the numbers it was made with.
 
 const FX := "res://tests/bosses/fixtures/"
+const RECORDED_DATA := "res://tests/bosses/fixtures/recorded_data.json"
 const Brains := preload("res://sim/bosses/boss_brains.gd")
 const FakeWorld := preload("res://tests/bosses/fake_world.gd")
 const DeepDiff := preload("res://tests/bosses/deep_diff.gd")
@@ -13,7 +16,20 @@ var pass_n := 0
 var fail_n := 0
 
 
+## The data the brains read, as it was when the scenarios were recorded, into the registry's cache ({<DmDb path>: {<export>: value}}): `Content.get_export` serves it to every brain made after this.
+func _freeze_data() -> bool:
+	var snap: Variant = JSON.parse_string(FileAccess.get_file_as_string(RECORDED_DATA))
+	if not snap is Dictionary:
+		return false
+	for rel: String in snap:
+		var node: Dictionary = DmDb.raw(rel)
+		for key: String in snap[rel]:
+			node[key] = snap[rel][key]
+	return true
+
+
 func _init() -> void:
+	ok(_freeze_data(), "the data of the recordings is there (fixtures/recorded_data.json)")
 	var dir := DirAccess.open(FX)
 	var files: Array = []
 	if dir != null:
@@ -27,13 +43,14 @@ func _init() -> void:
 		quit(1)
 		return
 	files.sort()
-	# every boss of the data has recorded scenarios (the six boss_* suites and boss.gd used to count their own)
-	for id in Brains.BOSS_IDS:
-		ok(files.any(func(f: String) -> bool: return f.begins_with(String(id) + "_")), "recorded scenarios exist for %s" % id)
+	# every recording is of a boss of the data (the recordings come from the retired TS brains, so a boss added since has none and needs none here; the boss_* suites and boss.gd test the scenes)
+	var orphans: Array = files.filter(func(f: String) -> bool: return not Brains.BOSS_IDS.any(func(id: String) -> bool: return f.begins_with(id + "_")))
+	ok(orphans.is_empty(), "every recorded scenario is of a boss the data names (not: %s)" % str(orphans))
 	_test_factory()
 	_test_nav_chase()
 	for f in files:
 		_run_scenario(f)
+	DmDb.reset()
 	print("bosses: %d passed, %d failed" % [pass_n, fail_n])
 	print("%s bosses %d checks%s" % ["PASS" if fail_n == 0 else "FAIL", pass_n + fail_n, "" if fail_n == 0 else " (%d failed)" % fail_n])
 	quit(1 if fail_n > 0 else 0)

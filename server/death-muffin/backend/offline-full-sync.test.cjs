@@ -1,6 +1,8 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const sync = require('./offline-full-sync.cjs');
+const { LEVEL_CAP } = require('./gathering/authority-rules.cjs');
+const { BAG_SLOTS, BELT_SLOT_COUNT } = require('./gathering/gathering-rules.cjs');
 
 const save = (patch = {}) => ({
   username: 'tester',
@@ -20,8 +22,8 @@ test('the saves must share a discipline', () => {
   assert.throws(() => sync.validate(save(), 3), RangeError);
 });
 
-test('levels past the old 255 cap validate, up to 999', () => {
-  for (const level of [256, 300, 999]) {
+test('levels past the old 255 cap validate, up to the level cap', () => {
+  for (const level of [...new Set([Math.min(256, LEVEL_CAP), Math.min(300, LEVEL_CAP), LEVEL_CAP])]) {
     const s = save();
     Object.assign(s.character, { level, experience: level * 100 - 1 });
     assert.doesNotThrow(() => sync.validate(s, 2), `level ${level}`);
@@ -29,16 +31,16 @@ test('levels past the old 255 cap validate, up to 999', () => {
 });
 
 test('character stats are bounded', () => {
-  for (const bad of [{ level: 0 }, { level: 1000 }, { experience: -1 }, { gold: -5 }, { gold: 1.5 }, { stat_vit: 70000 }]) {
+  for (const bad of [{ level: 0 }, { level: LEVEL_CAP + 1 }, { experience: -1 }, { gold: -5 }, { gold: 1.5 }, { stat_vit: 70000 }]) {
     const s = save();
     Object.assign(s.character, bad);
     assert.throws(() => sync.validate(s, 2), RangeError, JSON.stringify(bad));
   }
 });
 
-test('inventory slots must be bag (0-47) or equipment (100-108), unique, with sane ids and quantities', () => {
+test('inventory slots must be bag or equipment (100-108), unique, with sane ids and quantities', () => {
   const bad = [
-    [{ slot_index: 48, item_id: 'staff_oak', quantity: 1 }],
+    [{ slot_index: BAG_SLOTS, item_id: 'staff_oak', quantity: 1 }],
     [{ slot_index: 99, item_id: 'staff_oak', quantity: 1 }],
     [{ slot_index: 0, item_id: 'staff_oak', quantity: 1 }, { slot_index: 0, item_id: 'bone_meal', quantity: 1 }],
     [{ slot_index: 1, item_id: 'DROP TABLE', quantity: 1 }],
@@ -46,7 +48,7 @@ test('inventory slots must be bag (0-47) or equipment (100-108), unique, with sa
     [{ slot_index: 1, item_id: 'bone_meal', quantity: 10000 }],
   ];
   for (const slots of bad) assert.throws(() => sync.validate(save({ slots }), 2), RangeError, JSON.stringify(slots));
-  assert.doesNotThrow(() => sync.validate(save({ slots: [{ slot_index: 47, item_id: 'staff_oak', quantity: 1 }] }), 2));
+  assert.doesNotThrow(() => sync.validate(save({ slots: [{ slot_index: BAG_SLOTS - 1, item_id: 'staff_oak', quantity: 1 }] }), 2));
   assert.doesNotThrow(() => sync.validate(save({ slots: [{ slot_index: 105, item_id: 'staff_oak', quantity: 1 }] }), 2));
 });
 
@@ -105,7 +107,7 @@ test('tool belt slots 110-113 are valid for their own tool kind only', () => {
   assert.doesNotThrow(() => ok(113, 'tool_spade_moon'));
   assert.throws(() => ok(114, 'tool_spade_moon'), RangeError);
   assert.throws(() => ok(109, 'tool_spade_moon'), RangeError);
-  assert.throws(() => sync.validate(save({ slots: Array.from({ length: 48 + 9 + 4 + 1 }, (_, i) => ({ slot_index: i, item_id: 'bone_meal', quantity: 1 })) }), 2), RangeError);
+  assert.throws(() => sync.validate(save({ slots: Array.from({ length: BAG_SLOTS + 9 + BELT_SLOT_COUNT + 1 }, (_, i) => ({ slot_index: i, item_id: 'bone_meal', quantity: 1 })) }), 2), RangeError);
 });
 
 test('applying a save writes belt rows as equipped with their belt equipped_slot, and rejects a mismatched tool', async () => {

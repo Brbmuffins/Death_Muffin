@@ -289,7 +289,7 @@ func _clear_enemies() -> void:
 
 func _start_up() -> void:
 	check(proxy.applied >= 1, "Settings reached the AudioDirector at the start (apply_settings, %d)" % proxy.applied)
-	check(proxy.areas.size() >= 1 and proxy.areas[0] == "chapterhouse", "the first area the hooks told the director of is the Chapterhouse (%s)" % str(proxy.areas))
+	check(proxy.areas.size() >= 1 and proxy.areas[0] == g.area_id, "the first area the hooks told the director of is the one the hero starts in (%s, %s)" % [g.area_id, str(proxy.areas)])
 	var applied := proxy.applied
 	g.ui.update_setting({"vol_music": 0.3})
 	check(proxy.applied > applied, "a volume slider in Settings reaches the director at once (apply_settings, %d -> %d)" % [applied, proxy.applied])
@@ -298,7 +298,7 @@ func _start_up() -> void:
 
 
 func _to_the_graves() -> void:
-	hero.teleport(Vector3(0.0, 0.0, -10.0))   # the Graves' middle
+	hero.teleport(_area_mid("graves"))
 	await until(func() -> bool: return g.area_id == "graves", 120)
 	check(g.area_id == "graves" and proxy.areas[-1] == "graves", "the hero is in the Hollow Graves and the director was told (%s)" % str(proxy.areas))
 	await ticks(30)
@@ -329,11 +329,11 @@ func _deaths() -> void:
 	_clear_enemies()
 
 
-## Elites that rise: within 40 m the aggro sound, past it none; a plain body, an elite that was not rising (a Vengeful's Risen) none.
+## Elites that rise: within the aggro range the aggro sound, past it none; a plain body, an elite that was not rising (a Vengeful's Risen) none.
 func _elite_aggro() -> void:
 	_spawn("robber", Vector3(10.0, 0.0, 0.0), true, true)
 	_spawn("hound", Vector3(-12.0, 0.0, 6.0), true, true)
-	_spawn("robber", Vector3(41.0, 0.0, 0.0), true, true)   # past 40 m
+	_spawn("robber", Vector3(DmEnemyFx.ELITE_AGGRO_RANGE + 1.0, 0.0, 0.0), true, true)   # past the aggro range
 	_spawn("robber", Vector3(6.0, 0.0, 6.0), false, true)
 	_spawn("robber", Vector3(-6.0, 0.0, 6.0), true, false)
 	await ticks(2)
@@ -360,8 +360,22 @@ func _the_fight() -> void:
 		await physics_frame
 		if t == 300 and host.enemy_alive(ids["vengeful"]):
 			host.damage(ids["vengeful"], 1.0e9, hero.core_id, false)
+	# (an enemy that swings or tolls less often than the nine seconds is no reason to fail: the fight goes on, up to a minute more, until it has shown every cue it is here for)
+	var more := 0
+	while more < 3600 and not _fight_cues_seen():
+		await ticks(60)
+		more += 60
 	_clear_enemies()
 	await ticks(3)
+
+
+## True when today's rules have a reason for every cue the scripted fight is for.
+func _fight_cues_seen() -> bool:
+	var lo: Dictionary = _expected()["lo"]
+	for n in ["tellStrike", "tollSmall", "boneHit", "burst", "toll", "raise"]:
+		if int(lo.get(n, 0)) < 1:
+			return false
+	return true
 
 
 ## Thralls: four raised through the core, one by an Exhume cast; then killed, crumbled, sacrificed and decayed.
@@ -432,7 +446,7 @@ func _expected() -> Dictionary:
 	for e: Dictionary in evs:
 		match e["k"]:
 			"spawn":
-				if e["elite"] and e["rising"] and (e["hero"] as Vector2).distance_to(e["at"]) < 40.0:
+				if e["elite"] and e["rising"] and (e["hero"] as Vector2).distance_to(e["at"]) < DmEnemyFx.ELITE_AGGRO_RANGE:
 					add.call("eliteAggro")
 			"tele":
 				add.call("tollSmall" if e["kind"] == "cone" or e["kind"] == "toll" else ("raise" if e["kind"] == "raise" else ("curse" if e["kind"] == "curse" else "tellStrike")))

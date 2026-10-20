@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyLoadout, captureGear, normalizePreset, BAG_SLOTS, type ItemInfo, type Row } from '../loadoutRules';
+import { applyLoadout, captureGear, normalizePreset, BAG_SLOTS, NAME_MAX, type ItemInfo, type Row } from '../loadoutRules';
 
 const INFO: Record<string, ItemInfo> = {
   staff: { maxStack: 1, equipSlot: 'main_hand', twoHanded: true },
@@ -44,8 +44,8 @@ describe('normalizePreset', () => {
     expect(normalizePreset(null)).toMatchObject({ ok: false });
   });
   it('clips a long name and strips markup characters', () => {
-    const r = normalizePreset({ ...good, name: '<b>' + 'x'.repeat(60) });
-    expect(r.ok && r.preset.name.length).toBeLessThanOrEqual(24);
+    const r = normalizePreset({ ...good, name: '<b>' + 'x'.repeat(NAME_MAX * 3) });
+    expect(r.ok && r.preset.name.length).toBeLessThanOrEqual(NAME_MAX);
     expect(r.ok && r.preset.name).not.toContain('<');
   });
 });
@@ -64,7 +64,7 @@ describe('applyLoadout', () => {
     expect(at(out, 105)!.item_id).toBe('sickle');
     expect(at(out, 106)!.item_id).toBe('bell');
     expect(at(out, 105)!.equipped_slot).toBe('main_hand');
-    expect(out.filter((r) => r.slot_index < 48).map((r) => r.item_id).sort()).toEqual(['skull', 'wand']);
+    expect(out.filter((r) => r.slot_index < BAG_SLOTS).map((r) => r.item_id).sort()).toEqual(['skull', 'wand']);
     expect(report.skipped).toEqual([]);
     expect(report.applied).toHaveLength(2);
   });
@@ -111,7 +111,7 @@ describe('applyLoadout', () => {
     expect(at(out, 130)!.item_id).toBe('rune_volley');
     expect(at(out, 131)).toBeUndefined();
     expect(units(out, 'rune_splinter')).toBe(0);
-    expect(out.filter((r) => r.slot_index < 48).every((r) => r.item_id === 'junk')).toBe(true);
+    expect(out.filter((r) => r.slot_index < BAG_SLOTS).every((r) => r.item_id === 'junk')).toBe(true);
   });
   it('a full bag: a two-handed swap that displaces two pieces needs two places and is refused with only the vacated one', () => {
     const rows = fullBag([row(3, 'staff'), row(105, 'wand'), row(106, 'skull')]);

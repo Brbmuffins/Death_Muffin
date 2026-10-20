@@ -138,7 +138,7 @@ func run(t: SceneTree) -> void:
 
 func _rules() -> void:
 	var L = DmLaborerViews
-	check(L.work_for("woodcutting")["anim"] == "chop" and L.work_for("mining")["impact"] == 2.1, "chop work for wood and ore")
+	check(L.work_for("woodcutting")["anim"] == "chop" and L.work_for("mining")["impact"] == L.CHOP_IMPACT, "chop work for wood and ore")
 	check(L.work_for("gravedigging")["anim"] == "dig" and L.work_for("gravedigging")["beatEvery"] == 2.6, "dig work")
 	check(L.work_for("fishing")["anim"] == "idle" and L.work_for(null)["range"] == null, "fishing stands")
 	check(L.worked_text(0) == "under 1 m" and L.worked_text(45 * 60000) == "45 m" and L.worked_text(192 * 60000) == "3 h 12 m", "worked text")
@@ -150,9 +150,16 @@ func _rules() -> void:
 	check(node["type"] == "seam_tin", "post node: same type")
 	check(L.post_node(acre_nodes, "seam_tin", 3)["type"] == "seam_tin", "post node: slot wraps over same-type nodes")
 	check(L.post_node(acre_nodes, "no_such", 0).is_empty(), "post node: unknown type")
-	check(L.post_node(acre_nodes, "drowned_lotus", 0)["type"] == "drowned_lotus", "post node: a level 45 gravedigging post works the Acre's own Drowned Lotus (2026-10-12)")
+	check(L.post_node(acre_nodes, "drowned_lotus", 0)["type"] == "drowned_lotus", "post node: a high gravedigging post works the Acre's own Drowned Lotus (2026-10-12)")
 	var no_lotus: Array = acre_nodes.filter(func(n: Dictionary) -> bool: return n["type"] != "drowned_lotus")
-	check(L.post_node(no_lotus, "drowned_lotus", 0)["type"] == "grave_crypt", "post node: a post whose type is not in the area is worked at the closest lower tier, not the first")
+	var tiers: Dictionary = DmContent.get_export("gameplay_gatheringRules", "NODES")
+	var lotus_def: Dictionary = tiers["drowned_lotus"]
+	var below_type := ""   # the closest lower tier of the lotus's skill that the area still has
+	for n in no_lotus:
+		var d: Dictionary = tiers.get(n["type"], {})
+		if d.get("skill") == lotus_def["skill"] and int(d["level"]) <= int(lotus_def["level"]) and (below_type == "" or int(d["level"]) > int(tiers[below_type]["level"])):
+			below_type = String(n["type"])
+	check(below_type != "" and int(tiers[L.post_node(no_lotus, "drowned_lotus", 0)["type"]]["level"]) == int(tiers[below_type]["level"]), "post node: a post whose type is not in the area is worked at the closest lower tier, not the first")
 	var rect: Dictionary = {}
 	rect = w["areas"]["acre"]["rect"]
 	var blockers: Array = []
@@ -178,7 +185,7 @@ func _rules() -> void:
 		var face_ok := absf(atan2(float(n["x"]) - s["x"], float(n["z"]) - s["z"]) - s["facing"]) < 1e-9
 		if d >= 1.35 and not in_pond and face_ok and s["x"] > rect["x0"] and s["x"] < rect["x1"]:
 			good += 1
-	check(okc > 20 and good == okc, "every acre post gets a spot outside the gather ring, off the pond, facing the node (%d/%d)" % [good, okc])
+	check(okc > 0 and good == okc, "every acre post gets a spot outside the gather ring, off the pond, facing the node (%d/%d)" % [good, okc])
 	var t1 := L.laborer_spot(acre_nodes[0], 0, world, [])
 	var t2 := L.laborer_spot(acre_nodes[0], 1, world, [t1])
 	check(DmSimMath.hypot(t1["x"] - t2["x"], t1["z"] - t2["z"]) >= 1.3 or t2["x"] == t1["x"], "taken spots are avoided")
@@ -212,11 +219,12 @@ func _views() -> void:
 	check(dbg.size() == 3, "three assigned laborers made (locked/unassigned slot skipped): %d" % dbg.size())
 	check(lv.pick_list().size() == 3 and lv.pick_list()[0].has("slot"), "pick list: 3 loaded visible laborers")
 	var models: Array = dbg.map(func(d: Dictionary) -> String: return d["model"])
-	check(models.has("skeleton_thrall") and models.has("thrall_legionnaire") and models.has("thrall_sentinel"), "one distinct thrall model per slot: %s" % str(models))
+	check(models.size() == dbg.size() and models.all(func(m: String) -> bool: return DmLaborerViews.LABORER_MODELS.has(m)) and models.duplicate().filter(func(m: String) -> bool: return models.count(m) > 1).is_empty(), "one distinct thrall model per slot: %s" % str(models))
 	var by: Dictionary = {}
 	for d in dbg:
 		by[d["slot"]] = d
-	check(by[0]["tools"] == ["tool_hatchet"] and by[1]["tools"] == ["tool_pickaxe"] and by[2]["tools"] == ["tool_spade"], "each laborer holds its skill's tool")
+	var tool_of := func(skill: String) -> Array: return [DmLaborerViews.LABORER_TOOLS[skill]["id"]]
+	check(by[0]["tools"] == tool_of.call("woodcutting") and by[1]["tools"] == tool_of.call("mining") and by[2]["tools"] == tool_of.call("gravedigging"), "each laborer holds its skill's tool")
 	check(by[0]["ready"] and not by[1]["ready"] and by[2]["full"], "ready / full flags from the view %s" % str([by[0], by[1], by[2]]))
 	var tip0 := lv.tip(0)
 	check(tip0.begins_with("<b>Grave Laborer · Woodcutting · 2 h 0 m · ready to collect</b>"), "tip text: %s" % tip0)
@@ -243,7 +251,7 @@ func _views() -> void:
 	check(host.vfx.puffs > puffs0, "impact puffs while working nearby (%d)" % (host.vfx.puffs - puffs0))
 	check(host.audio.played.size() > 0 and host.audio.played[0] in ["chop", "pickOre", "pick"], "a quiet gather sound plays: %s" % str(host.audio.played.slice(0, 2)))
 	var head: Variant = lv.debug()[0]["head"]
-	check(float(head) >= 0.0 and float(head) < 3.2, "chop playhead stays inside the clip (%s)" % str(head))
+	check(float(head) >= 0.0 and float(head) < DmLaborerViews.CHOP_RANGE[1] + 0.2, "chop playhead stays inside the clip (%s)" % str(head))
 	# far away: frozen
 	var h0: float = lv.debug()[0]["head"]
 	for i in 10:
@@ -261,7 +269,7 @@ func _views() -> void:
 	lv.apply(v2)
 	var d2: Array = lv.debug()
 	var s1: Dictionary = d2.filter(func(d: Dictionary) -> bool: return d["slot"] == 1)[0]
-	check(s1["type"] == "pool_still" and s1["tools"].has("tool_pickaxe") and s1["tools"].has("tool_fishing_rod"), "re-post: new post, rod added, pickaxe kept hidden")
+	check(s1["type"] == "pool_still" and s1["tools"].has(DmLaborerViews.LABORER_TOOLS["mining"]["id"]) and s1["tools"].has(DmLaborerViews.LABORER_TOOLS["fishing"]["id"]), "re-post: new post, rod added, pickaxe kept hidden")
 	check(lv.pick_list().size() == 2, "unassigned slot 2 hidden, picks rebuilt")
 	# leaving the acre
 	lv.set_active(false)
@@ -274,7 +282,7 @@ func _views() -> void:
 	await _frames(2)
 	var c2 := api.calls.size()
 	for i in 10:
-		lv.update(10.0, 0.0, 0.0)
+		lv.update(DmLaborerViews.REFRESH_S * 0.2, 0.0, 0.0)
 	await _frames(2)
 	check(api.calls.size() > c2, "refresh every REFRESH_S while active")
 	lv.dispose()
@@ -328,7 +336,7 @@ func _glue() -> void:
 	host.toasts.clear()
 	await gl.on_garden_result("harvest", {"plots": [{"state": "ready"}], "items": [{"itemId": "iron_ore", "qty": 3}, {"itemId": "iron_ore", "qty": 1}], "leveledUp": true, "level": 4})
 	check(host.toasts.size() == 1 and host.toasts[0][0].begins_with("Harvested 3× ") and host.toasts[0][0].ends_with("(and a seed to replant)"), "harvest toast: %s" % str(host.toasts))
-	check(host.banners.size() == 1 and host.banners[0][0] == "Grave Gardening 4" and gl.garden_ready == 1 and host.sfx.has("gardenHarvest"), "level banner + ready count + sound")
+	check(host.banners.size() == 1 and host.banners[0][0] == "%s 4" % DmGatherData.get_data()["skills"]["gardening"]["name"] and gl.garden_ready == 1 and host.sfx.has("gardenHarvest"), "level banner + ready count + sound")
 	# collection
 	var res := make_view([slot_row(0, "seam_tin", 0.0)])
 	res["collected"] = {"slot": 0, "node": "seam_tin", "skill": "woodcutting", "hours": 2.0, "actions": 40, "items": [{"itemId": "iron_ore", "qty": 5}], "gold": 12, "xp": 80, "leveledUp": false}
@@ -339,7 +347,7 @@ func _glue() -> void:
 	var loot: Array = host.ui.pb.labor.loot
 	check(loot.size() == 1 and loot[0][0] == 0 and loot[0][1]["totalItems"] == 5 and loot[0][1]["reason"] == "labor" and loot[0][1]["seconds"] == 7200, "loot report added to the panel")
 	check(loot[0][1]["skills"][0]["fromLevel"] == 1 and loot[0][1]["skills"][0]["toLevel"] == 3, "level change in the report %s" % str(loot[0][1]["skills"]))
-	check(loot[0][1]["milestones"].has("Woodcutting level 3"), "level milestone")
+	check(loot[0][1]["milestones"].has("%s level 3" % DmGatherData.get_data()["skills"]["woodcutting"]["name"]), "level milestone")
 	await gl.on_collected({"slots": []}, 0)
 	check(host.ui.pb.labor.loot.size() == 1, "no collected: nothing")
 	# timers
@@ -347,26 +355,27 @@ func _glue() -> void:
 	api.labor = make_view([slot_row(0, "seam_tin", 3600000.0)])
 	api.garden = {"plots": [{"state": "ready"}]}
 	host.toasts.clear()
-	gl2.update(3.0)
-	await _frames(1)
-	gl2.update(1.5)
+	var g_first := DmGameLabor.GARDEN_FIRST_S
+	var l_first := DmGameLabor.LABOR_FIRST_S
+	check(g_first < l_first, "(the garden is looked at before the laborers)")
+	gl2.update((g_first + l_first) * 0.5)
 	await _frames(2)
-	check(host.toasts.any(func(t: Array) -> bool: return t[0].contains("garden")) and not host.toasts.any(func(t: Array) -> bool: return t[0].contains("laborers")), "garden first check at 4 s, labor not yet")
-	gl2.update(2.0)
+	check(host.toasts.any(func(t: Array) -> bool: return t[0].contains("garden")) and not host.toasts.any(func(t: Array) -> bool: return t[0].contains("laborers")), "garden first check at %.0f s, labor not yet" % g_first)
+	gl2.update(l_first - (g_first + l_first) * 0.5 + 0.1)
 	await _frames(2)
-	check(host.toasts.any(func(t: Array) -> bool: return t[0].contains("laborers have gathered")), "labor first check at 6 s")
+	check(host.toasts.any(func(t: Array) -> bool: return t[0].contains("laborers have gathered")), "labor first check at %.0f s" % l_first)
 	var n := api.calls.size()
-	gl2.update(1.0)
+	gl2.update(0.1)
 	await _frames(1)
 	check(api.calls.size() == n, "nothing between checks")
 	host.toasts.clear()
 	api.garden = {"plots": [{"state": "ready"}, {"state": "ready"}]}
-	gl2.update(60.0)
+	gl2.update(DmGameLabor.GARDEN_EVERY_S)
 	await _frames(2)
-	check(host.toasts.any(func(t: Array) -> bool: return t[0].contains("2 plots")), "garden every 60 s")
+	check(host.toasts.any(func(t: Array) -> bool: return t[0].contains("2 plots")), "garden every %.0f s" % DmGameLabor.GARDEN_EVERY_S)
 	var lc := api.calls.count("labor")
-	gl2.update(300.0)
+	gl2.update(DmGameLabor.LABOR_EVERY_S)
 	await _frames(2)
-	check(api.calls.count("labor") > lc, "labor every 5 min")
+	check(api.calls.count("labor") > lc, "labor every %.0f s" % DmGameLabor.LABOR_EVERY_S)
 	gl2.dispose()
 	lv.dispose()

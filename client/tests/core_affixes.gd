@@ -31,6 +31,7 @@ var checks := 0
 var data := {}
 var T: Dictionary   # AFFIX_TUNING
 var tick := 0
+var risen_n := 0    # how many Risen a Vengeful elite bursts into (AFFIX_TUNING.vengeful.risen)
 
 
 func check(ok: bool, what: String) -> void:
@@ -186,6 +187,7 @@ func _init() -> void:
 	for n in ["enemies", "abilities", "statuses"]:
 		data[n] = load_json(n)
 	T = data["enemies"]["AFFIX_TUNING"]
+	risen_n = int(T["vengeful"]["risen"])
 	spawn_data()
 	bell()
 	bell_paused()
@@ -209,7 +211,13 @@ func spawn_data() -> void:
 	check(c.version() == "dmcore 0.17", "core version")
 
 
+## The ticks of a few bell cycles (interval + wind-up), so a scenario sees several rings whatever the tuning.
+func bell_run() -> int:
+	return ceili((float(T["bellTolled"]["intervalS"]) + float(T["bellTolled"]["windupS"])) * 60.0 * 2.5) + 60
+
+
 func bell() -> void:
+	var n := bell_run()
 	var c := make()
 	var h: int = c.add_external(0, 0.4, 1.0)
 	c.set_external(h, Vector2(0, 0), true)
@@ -218,45 +226,47 @@ func bell() -> void:
 	var e: int = c.spawn_enemy("robber", Vector2(2, 0), 1, 1.0, 1.0, true, "graves", false, PackedStringArray(["bellTolled"]))
 	var log := []
 	drain(c, log)
-	run(c, 900, log)
-	var st := states(log, e, IDLE, 900)
-	var m := bell_mirror(900, acting(st))
+	run(c, n, log)
+	var st := states(log, e, IDLE, n)
+	var m := bell_mirror(n, acting(st))
 	var tells := ticks_of(of(log, EV_AFFIX, e, AM_TELL))
 	var tolls := ticks_of(of(log, EV_AFFIX, e, AM_TOLL))
 	check(tells.size() >= 2 and tells == m["tells"], "the bell rings on today's ticks %s (got %s)" % [str(m["tells"]), str(tells)])
 	check(tolls.size() >= 2 and tolls == m["tolls"], "and sounds windupS later on %s (got %s)" % [str(m["tolls"]), str(tolls)])
 	var tg := of(log, EV_TELEGRAPH, e, TELL_TOLL)
 	check(ticks_of(tg) == tells, "each ring is a toll telegraph")
-	check(not tg.is_empty() and is_equal_approx(tg[0]["floats"][4], 3.0) and is_equal_approx(tg[0]["floats"][5], 0.9) \
-		and tg[0]["floats"][0] == tg[0]["floats"][2] and tg[0]["floats"][1] == tg[0]["floats"][3], "the telegraph: from = aim = where the body stood, r 3, 0.9 s")
+	check(not tg.is_empty() and is_equal_approx(tg[0]["floats"][4], float(T["bellTolled"]["r"])) and is_equal_approx(tg[0]["floats"][5], float(T["bellTolled"]["windupS"])) \
+		and tg[0]["floats"][0] == tg[0]["floats"][2] and tg[0]["floats"][1] == tg[0]["floats"][3], "the telegraph: from = aim = where the body stood, the ring's r and wind-up")
 	var dmg := float(c.enemy_info(e)["damage"]) * float(T["bellTolled"]["damageMult"])
 	var hits := log.filter(func(x: Dictionary) -> bool: return x["type"] == EV_TARGET_HIT and x["ints"][1] == HK_TOLL)
 	check(ticks_of(hits) == tolls, "the hero inside the ring is hit once per toll")
-	check(hits.all(func(x: Dictionary) -> bool: return x["ints"][0] == h and is_equal_approx(x["floats"][0], dmg)), "for damage x 0.6 (%.2f), kind toll; the far hero never" % dmg)
+	check(hits.all(func(x: Dictionary) -> bool: return x["ints"][0] == h and is_equal_approx(x["floats"][0], dmg)), "for damage x damageMult (%.2f), kind toll; the far hero never" % dmg)
 	var toll := of(log, EV_AFFIX, e, AM_TOLL)
-	check(not toll.is_empty() and toll[0]["floats"][0] == tg[0]["floats"][0] and is_equal_approx(toll[0]["floats"][4], 3.0), "the toll sounds where the ring was drawn")
+	check(not toll.is_empty() and toll[0]["floats"][0] == tg[0]["floats"][0] and is_equal_approx(toll[0]["floats"][4], float(T["bellTolled"]["r"])), "the toll sounds where the ring was drawn")
 
 
 ## A stun (HURT) stops the affix clock: the ring comes exactly as many ticks later as the body spent unable to act.
 func bell_paused() -> void:
+	var n := bell_run()
+	var before := ceili(float(T["bellTolled"]["intervalS"]) * 30.0)   # the stun comes half way to the first ring
 	var c := make()
 	var h: int = c.add_external(0, 0.4, 1.0)
 	c.set_external(h, Vector2(0, 0), true)
 	var e: int = c.spawn_enemy("robber", Vector2(2, 0), 1, 1.0, 1.0, true, "graves", false, PackedStringArray(["bellTolled"]))
 	var log := []
 	drain(c, log)
-	run(c, 200, log)
+	run(c, before, log)
 	c.stun(e, 1.0)
 	drain(c, log)
-	run(c, 700, log)
-	var st := states(log, e, IDLE, 900)
+	run(c, n - before, log)
+	var st := states(log, e, IDLE, n)
 	var hurt := 0
-	for i in range(1, 901):
+	for i in range(1, n + 1):
 		if st[i] == HURT:
 			hurt += 1
-	var m := bell_mirror(900, acting(st))
+	var m := bell_mirror(n, acting(st))
 	var tells := ticks_of(of(log, EV_AFFIX, e, AM_TELL))
-	var free := bell_mirror(900, func(_i: int) -> bool: return true)
+	var free := bell_mirror(n, func(_i: int) -> bool: return true)
 	check(hurt >= 59 and tells == m["tells"], "stunned for %d ticks: the ring follows the paused clock %s (got %s)" % [hurt, str(m["tells"]), str(tells)])
 	check(not tells.is_empty() and int(tells[0]) - int(free["tells"][0]) == hurt, "and comes exactly %d ticks later than without the stun" % hurt)
 
@@ -269,7 +279,7 @@ func bell_thrall() -> void:
 	var e: int = c.spawn_enemy("robber", Vector2(2, 0), 1, 1.0, 1.0, true, "graves", false, PackedStringArray(["bellTolled"]))
 	var log := []
 	drain(c, log)
-	run(c, 600, log)
+	run(c, bell_run(), log)
 	var dmg := float(c.enemy_info(e)["damage"]) * float(T["bellTolled"]["damageMult"])
 	var tolls := ticks_of(of(log, EV_AFFIX, e, AM_TOLL))
 	var thrall_tolls := of(log, EV_THRALL_DAMAGED, t).filter(func(x: Dictionary) -> bool: return tolls.has(x["tick"]) and x["ints"][0] == e and is_equal_approx(x["floats"][0], dmg))
@@ -277,29 +287,34 @@ func bell_thrall() -> void:
 
 
 func hunger() -> void:
+	var reach := float(T["hungering"]["reach"])
+	var look_s := float(T["hungering"]["intervalS"])
 	var c := make()
 	var e: int = c.spawn_enemy("robber", Vector2(0, 0), 1, 1.0, 1.0, true, "graves", false, PackedStringArray(["hungering"]))
 	var max_hp := float(c.enemy_info(e)["max_hp"])
 	c.damage(e, max_hp * 0.5, 0, false)
-	var near: int = c.corpse_add(Vector2(3, 0), "normal", "robber", false, 0.0, 1.0, "graves")
-	var other: int = c.corpse_add(Vector2(0, 2), "normal", "robber", false, 0.0, 1.0, "sanctum")
-	var beyond: int = c.corpse_add(Vector2(6, 0), "normal", "robber", false, 0.0, 1.0, "graves")
+	# the corpses stand inside the reach (nearest one first), one in another area, one beyond it
+	var near_x := reach * 0.6
+	var near: int = c.corpse_add(Vector2(near_x, 0), "normal", "robber", false, 0.0, 1.0, "graves")
+	var other: int = c.corpse_add(Vector2(0, reach * 0.4), "normal", "robber", false, 0.0, 1.0, "sanctum")
+	var beyond: int = c.corpse_add(Vector2(reach * 1.2, 0), "normal", "robber", false, 0.0, 1.0, "graves")
 	var log := []
 	drain(c, log)
-	run(c, 300, log)
+	var first: int = hunger_mirror(ceili(look_s * 60.0) + 60, func(_i: int) -> bool: return true)[0]
+	run(c, first + 60, log)
 	var heal := minf(max_hp * 0.5, max_hp * float(T["hungering"]["healFrac"]))
-	var first: int = hunger_mirror(300, func(_i: int) -> bool: return true)[0]
 	var eat := of(log, EV_AFFIX, e, AM_HUNGERING)
 	check(eat.size() == 1 and eat[0]["tick"] == first, "the first meal on today's tick %d (got %s)" % [first, str(ticks_of(eat))])
 	var con := of(log, EV_CORPSE_CONSUMED, near)
 	check(con.size() == 1 and con[0]["ints"][0] == 1 and con[0]["ints"][1] == CR_DEVOURED, "the nearest corpse in its own area goes, by 1, reason devoured")
-	check(not eat.is_empty() and is_equal_approx(eat[0]["floats"][2], 3.0) and is_equal_approx(eat[0]["floats"][4], heal), "the moment points at the corpse and says the heal (%.1f)" % heal)
-	check(is_equal_approx(float(c.enemy_info(e)["hp"]), max_hp * 0.5 + heal), "health: half + 15% of max")
-	check(of(log, EV_CORPSE_CONSUMED, other).is_empty() and of(log, EV_CORPSE_CONSUMED, beyond).is_empty(), "a corpse in another area or past 5 m stays")
-	# Nothing in reach at the next look (4 s later): it looks again every 0.5 s; a corpse laid after that look goes at the first retry.
-	run(c, 200, log)
+	check(not eat.is_empty() and is_equal_approx(eat[0]["floats"][2], near_x) and is_equal_approx(eat[0]["floats"][4], heal), "the moment points at the corpse and says the heal (%.1f)" % heal)
+	check(is_equal_approx(float(c.enemy_info(e)["hp"]), max_hp * 0.5 + heal), "health: half + healFrac of max")
+	check(of(log, EV_CORPSE_CONSUMED, other).is_empty() and of(log, EV_CORPSE_CONSUMED, beyond).is_empty(), "a corpse in another area or past the reach stays")
+	# Nothing in reach at the next look (intervalS later): it looks again every 0.5 s; a corpse laid after that look goes at the first retry.
+	var second_look: int = hunger_mirror(first + ceili(look_s * 60.0) + 60, func(i: int) -> bool: return i == first)[1]
+	run(c, second_look + 5 - tick, log)
 	var added := tick
-	var fresh: int = c.corpse_add(Vector2(-4, 0), "normal", "robber", false, 0.0, 1.0, "graves")
+	var fresh: int = c.corpse_add(Vector2(-reach * 0.8, 0), "normal", "robber", false, 0.0, 1.0, "graves")
 	run(c, 100, log)
 	var state := {"ate": 0}
 	var eats := func(i: int) -> bool:
@@ -307,7 +322,7 @@ func hunger() -> void:
 		if ok and i != first:
 			state["ate"] = i
 		return ok
-	var looks := hunger_mirror(600, eats)
+	var looks := hunger_mirror(tick, eats)
 	var eat2 := of(log, EV_AFFIX, e, AM_HUNGERING)
 	check(eat2.size() == 2 and eat2[1]["tick"] == state["ate"] and looks[looks.find(state["ate"]) - 1] < added and state["ate"] - looks[looks.find(state["ate"]) - 1] <= 31 \
 		and of(log, EV_CORPSE_CONSUMED, fresh).size() == 1,
@@ -317,7 +332,7 @@ func hunger() -> void:
 	var full: int = d.spawn_enemy("robber", Vector2(0, 0), 1, 1.0, 1.0, true, "graves", false, PackedStringArray(["hungering"]))
 	var c2: int = d.corpse_add(Vector2(1, 0), "normal", "robber", false, 0.0, 1.0, "graves")
 	var log2 := []
-	run(d, 600, log2)
+	run(d, ceili(look_s * 60.0) * 2 + 60, log2)
 	check(of(log2, EV_AFFIX, full).is_empty() and of(log2, EV_CORPSE_CONSUMED, c2).is_empty(), "at full health the corpse stays")
 
 
@@ -380,8 +395,8 @@ func vengeful() -> void:
 	var moment: Array = idx.call(func(x: Dictionary) -> bool: return x["type"] == EV_AFFIX and x["ints"][0] == AM_VENGEFUL)
 	var spawned: Array = idx.call(func(x: Dictionary) -> bool: return x["type"] == EV_SPAWNED)
 	var died: Array = idx.call(func(x: Dictionary) -> bool: return x["type"] == EV_DIED)
-	check(r["killed"] and moment.size() == 1 and spawned.size() == int(T["vengeful"]["risen"]) and died.size() == 1, "a Vengeful elite bursts into %d Risen" % int(T["vengeful"]["risen"]))
-	check(moment.size() == 1 and spawned.size() == 3 and died.size() == 1 and moment[0] < spawned[0] and spawned[2] < died[0], "inside the kill, in today's order: burst, the Risen, then the death")
+	check(r["killed"] and moment.size() == 1 and spawned.size() == risen_n and died.size() == 1, "a Vengeful elite bursts into %d Risen" % risen_n)
+	check(moment.size() == 1 and spawned.size() == risen_n and died.size() == 1 and moment[0] < spawned[0] and spawned[-1] < died[0], "inside the kill, in today's order: burst, the Risen, then the death")
 	var ids := []
 	var ring := true
 	var pts := []
@@ -391,9 +406,12 @@ func vengeful() -> void:
 		var p := Vector2(s["floats"][0], s["floats"][1])
 		pts.append(p)
 		ring = ring and absf(p.distance_to(Vector2(5, 5)) - 1.4) < 1e-4 and c.def_name(s["ints"][0]) == "risen" and Array(s["ints"]).slice(1) == [4, 0, s["ints"][3], 0]
-	check(ring and absf(pts[0].distance_to(pts[1]) - 1.4 * sqrt(3.0)) < 1e-3, "on a 1.4 m ring, a third of a turn apart, level 4, not elite, no affixes")
-	check(ids == [e + 1, e + 2, e + 3], "the next ids")
-	check(c.enemy_count() == 4, "they are in the table when the call returns (the elite's body lingers)")
+	check(ring and (risen_n < 2 or absf(pts[0].distance_to(pts[1]) - 2.0 * 1.4 * sin(PI / float(risen_n))) < 1e-3), "on a 1.4 m ring (compiled in), evenly spread, level 4, not elite, no affixes")
+	var next_ids := []
+	for k in risen_n:
+		next_ids.append(e + 1 + k)
+	check(ids == next_ids, "the next ids")
+	check(c.enemy_count() == risen_n + 1, "they are in the table when the call returns (the elite's body lingers)")
 	var ri: Dictionary = c.enemy_info(ids[0])
 	check(ri["state"] == RISING and ri["area"] == "graves" and is_equal_approx(ri["max_hp"], float(risen_def["hp"]) * 2.0) and is_equal_approx(ri["damage"], float(risen_def["damage"]) * 1.5),
 		"rising, in its area, as strong as the elite's multipliers (hp x2, damage x1.5)")
@@ -402,7 +420,7 @@ func vengeful() -> void:
 	events(d)
 	d.damage(e2, 1.0e7, 0)
 	var ev2 := of(events(d), EV_SPAWNED)
-	check(ev2.size() == 3 and ev2[0]["floats"] == ev[spawned[0]]["floats"], "the same seed puts them in the same places")
+	check(ev2.size() == risen_n and ev2[0]["floats"] == ev[spawned[0]]["floats"], "the same seed puts them in the same places")
 
 
 ## Killed by a DoT lump inside the tick (the status code holds references to the body): the Risen still come, after the tick.
@@ -415,11 +433,11 @@ func vengeful_dot() -> void:
 	run(c, 60, log)
 	var died := of(log, EV_DIED, e)
 	var sp := of(log, EV_SPAWNED).filter(func(x: Dictionary) -> bool: return x["id"] != e)
-	check(died.size() == 1 and sp.size() == 3 and sp.all(func(x: Dictionary) -> bool: return x["tick"] == died[0]["tick"]), "a DoT kill: three Risen in the same tick")
-	check(log.find(sp[2]) < log.find(died[0]) if sp.size() == 3 and died.size() == 1 else false, "spawned before the death event")
+	check(died.size() == 1 and sp.size() == risen_n and sp.all(func(x: Dictionary) -> bool: return x["tick"] == died[0]["tick"]), "a DoT kill: the Risen in the same tick")
+	check(log.find(sp[-1]) < log.find(died[0]) if sp.size() == risen_n and died.size() == 1 else false, "spawned before the death event")
 	run(c, 80, log)
 	var up := of(log, EV_STATE).filter(func(x: Dictionary) -> bool: return x["id"] != e and x["ints"][0] == RISING)
-	check(up.size() == 3, "and they rise (%d)" % up.size())
+	check(up.size() == risen_n, "and they rise (%d)" % up.size())
 
 
 func plain() -> void:

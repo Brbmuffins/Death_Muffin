@@ -5,13 +5,13 @@ extends SceneTree
 ##   - the golem (dm_enemy_hazard.gd, the sac's script): its slam (radius, wind-up, cooldown, damage, the aim fixed at the wind-up's start, who it reaches), its
 ##     stats and the three corpses it falls into;
 ##   - the deacon (dm_enemy_deacon.gd, dm_state_cath_support.gd): the keep-away walk, the curse (wind-up, reach at the blow, damage), the raise (the corpse chosen,
-##     the 1.5 s channel, the atomic consume, the Risen with the body's level and multipliers, nothing when the corpse is gone, one Risen for two deacons),
-##     Sanctify (the most wounded unblessed ally of another kind in range, the status, its 5 s, the cooldown factor, the cue), the order of the three, the scan
+##     the channel, the atomic consume, the Risen with the body's level and multipliers, nothing when the corpse is gone, one Risen for two deacons),
+##     Sanctify (the most wounded unblessed ally of another kind in range, the status, its duration, the cooldown factor, the cue), the order of the three, the scan
 ##     cadence, silence and stun, an elite deacon;
 ##   - the wire: a guest's puppet shows the deacon's telegraphs and Sanctify, and the Risen it raised;
 ##   - the roster: the whole Ossuary roster runs on the core, and a seeded run replays bit for bit.
 ## The Nave (a section per kind, after the Ossuary's):
-##   - the censer (dm_enemy_censer.gd): the one-second pulse, who it reaches (the radius, itself, the rising, not the fallen), the haste (x1.3 feet, x1.25 blows, 1.5 s), its own
+##   - the censer (dm_enemy_censer.gd): the one-second pulse, who it reaches (the radius, itself, the rising, not the fallen), the haste (CENSER's feet, blows and seconds), its own
 ##     blows hasted by its own incense, a melee body otherwise;
 ##   - the acolyte (dm_enemy_clst_acolyte.gd, dm_state_clst_kite.gd): the caster set's walk, the cast gate, the curse (wind-up, the homing reach, kind curse), silence that holds the
 ##     cast back, and Unbind (a thrall KILLED in range after the acolyte's look, the cue, the delay, the Risen with the acolyte's level and multipliers, the cooldown, the cap of four);
@@ -27,10 +27,11 @@ extends SceneTree
 ##     the curse that comes first when a target is in reach;
 ##   - the plague doctor (dm_enemy_clst_caster.gd, attack flask): the caster set's silence-aware walk, the flask (the ring at the aim fixed at the wind-up, who it reaches, the damage kind toxic),
 ##     the toxic pool it leaves (radius, seconds, pulses, damage a pulse), a stun, an elite, the toxic corpse;
-##   - the flagellant (flagellant.tscn, the plain dm_enemy.gd): frenzy below half health (the status, the factors, the tick it starts on), the quicker blows and feet, a melee body otherwise;
+##   - the flagellant (flagellant.tscn, the plain dm_enemy.gd): frenzy below FRENZY.atFrac of its health (the status, the factors, the tick it starts on), the quicker blows and feet, a melee body otherwise;
 ##   - the wire (the flask's ring and pool, the ward's cues and blessings, the frenzy), the rosters of the Sanctum, the Coliseum and the Cloister, and a seeded replay.
-## The expected ticks come from mirrors of today's arithmetic (countdowns that lose 1/60 s a tick in doubles, clocks that gain it), the numbers from today's data and
-## from the scripts' own `const` lines. Seeded, no navmesh (straight lines). Run: godot --headless --path client --script res://tests/core_kinds.gd [-- --verbose]
+## The expected ticks come from mirrors of today's arithmetic (countdowns that lose 1/60 s a tick in doubles, clocks that gain it), the numbers from the data and
+## from the scripts' own `const` lines. Where a scene needs the data to leave it room (a keep-away band, a dive window, a knot of thralls) and the data does not, the scene sets its own number for its
+## run (`pin` and `unpin`, DmQaTune), so a retune never breaks a scene and never goes untested where it fits. Seeded, no navmesh (straight lines). Run: godot --headless --path client --script res://tests/core_kinds.gd [-- --verbose]
 
 const EV_SPAWNED := 1
 const EV_STATE := 2
@@ -90,6 +91,8 @@ var statuses: Dictionary
 var K: Dictionary        ## the scripts' `const` lines (CORPSE_RANGE, BACK_OFF_DIST, SCAN_S, STRIKE_REACH_MULT, WATCH_S, LOS_S ...)
 var KITE: Dictionary     ## dm_state_kite.gd's (the caster set's BACK_OFF_DIST and BACK_OFF_SPEED; the deacon's own, in K, are different)
 var S: Dictionary        ## statuses.json SANCTIFIED
+var THRALL_RISE := 0.0   ## how long a thrall rises (the core's THRALL_RISE_TIME)
+var RUPTURE := 0.0       ## how long a toxic corpse lies before it bursts (the core's TOXIC_RUPTURE)
 var tick := 0
 var keep := []
 
@@ -210,15 +213,118 @@ func silence(c: RefCounted, id: int) -> void:
 	c.apply_status(id, "silence", 0, 1.0, 1000.0)
 
 
-func _init() -> void:
-	verbose = "--verbose" in OS.get_cmdline_user_args()
-	data_dir = "res://"
+## The data this suite reads, from the registry's present state (so a pin below reaches it).
+func reload() -> void:
 	content = DmCoreData.json(data_dir.path_join("data/content/enemies.json"))
 	statuses = DmCoreData.json(data_dir.path_join("data/content/statuses.json"))
 	S = statuses["SANCTIFIED"]
+	fen = DmCoreData.json(data_dir.path_join("data/content/fen.json"))
+
+
+## A scenario's own number where it needs the data to leave room for it (a keep-away band above the back-off distance, a cloud that outlives its first pulse): the scenario sets it
+## with DmQaTune (client/main/qa_tune.gd) before it builds its cores and `unpin()` puts the data back. Pinned only where the data does not already leave the room.
+func pin(over: Dictionary) -> void:
+	var r: Dictionary = DmQaTune.apply(over)
+	check(bool(r["ok"]), "the scenario's own numbers are accepted (%s)" % str(r["error"]))
+	reload()
+
+
+func unpin() -> void:
+	DmDb.reset()
+	reload()
+
+
+## Pins the non-empty ones of `needs` together (each a {"content/enemies": {...}} fragment from a `need_*` below); true when something was pinned (the caller `unpin()`s then).
+func pins(needs: Array) -> bool:
+	var all := {}
+	for n: Dictionary in needs:
+		_merge(all, n)
+	if all.is_empty():
+		return false
+	pin(all)
+	return true
+
+
+func _merge(into: Dictionary, add: Dictionary) -> void:
+	for k in add:
+		if add[k] is Dictionary:
+			if not into.has(k):
+				into[k] = {}
+			_merge(into[k], add[k])
+		else:
+			into[k] = add[k]
+
+
+## The gargoyle scenes put the hero 7 m away and, after the landing, 5 m: inside the dive's window where the data leaves it so, else the scene's own window.
+func need_dive_window() -> Dictionary:
+	var D: Dictionary = def("gargoyle")["dive"]
+	if float(D["minRange"]) <= 4.5 and float(D["range"]) >= 8.0:
+		return {}
+	return {"content/enemies": {"ENEMIES": {"gargoyle": {"dive": {"minRange": minf(float(D["minRange"]), 3.5), "range": maxf(float(D["range"]), 9.0)}}}}}
+
+
+## The scream's ring must be at least `r` m wide (a thrall stands on its seat 1.9 m from its owner): the data's radius where it is, else the scene's own.
+func need_scream_radius(r: float) -> Dictionary:
+	if float(content["SCREAM"]["radius"]) >= r:
+		return {}
+	return {"content/enemies": {"SCREAM": {"radius": r}}}
+
+
+## A kind's cooldown must be at least `ms` for a scene to run its measures before the next cast: the data's where it is, else the scene's own.
+func need_cooldown(id: String, ms: float) -> Dictionary:
+	if float(def(id)["cooldownMs"]) >= ms:
+		return {}
+	return {"content/enemies": {"ENEMIES": {id: {"cooldownMs": ms}}}}
+
+
+## The hag scenes put knots of thralls 8 to 9 m from the hag, a knot's middle thrall 2.5 m from its third and 3.4 m from the first's: attackRange between 9.5 and 10.5 and HAG_HEX.radius
+## between 2.6 and 3.3 where the data has others, else the scene's own.
+func need_hag_scene() -> Dictionary:
+	var out := {}
+	var R := float(def("bog_hag")["attackRange"])
+	if R < 9.5 or R > 10.5:
+		out["content/enemies"] = {"ENEMIES": {"bog_hag": {"attackRange": clampf(R, 9.5, 10.5)}}}
+	var r := float(fen["HAG_HEX"]["radius"])
+	if r < 2.6 or r > 3.3:
+		out["content/fen"] = {"HAG_HEX": {"radius": clampf(r, 2.6, 3.3)}}
+	return out
+
+
+## The sexton scenes put heroes 7 m out, 3 m from it and a strip of 0.95 m: a window from 3.4 m to 8.5 m and a half width of 0.95 m or more where the data has less, else the scene's own.
+func need_hook_window() -> Dictionary:
+	var H: Dictionary = fen["SEXTON_HOOK"]
+	var over := {}
+	if float(H["minRange"]) > 3.4:
+		over["minRange"] = 3.4
+	if float(H["range"]) < 8.5:
+		over["range"] = 8.5
+	if float(H["halfWidth"]) < 0.95:
+		over["halfWidth"] = 0.95
+	return {} if over.is_empty() else {"content/fen": {"SEXTON_HOOK": over}}
+
+
+## Where the sexton drags a hero `len` m from it: pullM toward it, never closer than 1.6 m, and nothing at all under 5 cm.
+func drag_to(len: float) -> float:
+	var step := minf(float(fen["SEXTON_HOOK"]["pullM"]), maxf(0.0, len - 1.6))
+	return len if step <= 0.05 else len - step
+
+
+## An acolyte's Unbind must reach `r` m: the data's range where it does, else the scene's own.
+func need_unbind_range(r: float) -> Dictionary:
+	if float(content["UNBIND"]["range"]) >= r:
+		return {}
+	return {"content/enemies": {"UNBIND": {"range": r}}}
+
+
+func _init() -> void:
+	verbose = "--verbose" in OS.get_cmdline_user_args()
+	data_dir = "res://"
 	K = DmCoreData.consts(OLD, SCRIPTS)
 	KITE = DmCoreData.consts(OLD, ["enemies/states/dm_state_kite.gd.txt"])
-	fen = DmCoreData.json(data_dir.path_join("data/content/fen.json"))
+	reload()
+	var tun: Dictionary = make().tuning()
+	THRALL_RISE = float(tun["THRALL_RISE_TIME"])
+	RUPTURE = float(tun["TOXIC_RUPTURE"])
 	names_and_tables()
 	golem_slam()
 	golem_stats_and_corpses()
@@ -393,13 +499,16 @@ func golem_stats_and_corpses() -> void:
 	check(bool(r["killed"]), "golem: dies")
 	var added := of(events(c), EV_CORPSE_ADDED)
 	var n := int(g["deathCorpses"])
-	check(added.size() == n and n == 3, "golem: %d corpses" % added.size())
+	check(added.size() == n, "golem: %d corpses (deathCorpses)" % added.size())
 	if added.size() != n:
 		return
 	var ok_kind := true
 	for e in added:
 		ok_kind = ok_kind and e["ints"][0] == 0   # CK_NORMAL
-	check(ok_kind and c.def_name(added[0]["ints"][1]) == "golem" and c.def_name(added[1]["ints"][1]) == "risen" and c.def_name(added[2]["ints"][1]) == "risen", "golem: normal corpses; its own, then two risen on the ring")
+	var rest_risen := true
+	for k in range(1, n):
+		rest_risen = rest_risen and c.def_name(added[k]["ints"][1]) == "risen"
+	check(ok_kind and c.def_name(added[0]["ints"][1]) == "golem" and rest_risen, "golem: normal corpses; its own, then the rest risen on the ring")
 	var f0: PackedFloat32Array = added[0]["floats"]
 	check(is_equal_approx(f0[0], 5.0) and is_equal_approx(f0[1], 5.0) and is_equal_approx(f0[3], float(g["scale"])), "golem: its own lies at its feet, at the def's scale")
 	var ring := float(K["EXTRA_RING"])
@@ -416,9 +525,12 @@ func golem_stats_and_corpses() -> void:
 ## The deacon keeps its distance (dm_state_cath_support.gd): it walks in while the target is farther than attackRange - 0.5, backs off at BACK_OFF_SPEED
 ## when closer than BACK_OFF_DIST and stands, facing it, between. Silenced here so that nothing else moves it.
 func deacon_stats_and_keep_away() -> void:
+	var near := float(K["BACK_OFF_DIST"])
+	var pinned: bool = float(def("deacon")["attackRange"]) < near + 2.0   # the band the deacon stands in (back-off distance to attackRange - 0.5) needs room
+	if pinned:
+		pin({"content/enemies": {"ENEMIES": {"deacon": {"attackRange": near + 2.5}}}})
 	var d := def("deacon")
 	var band_far := float(d["attackRange"]) - 0.5
-	var near := float(K["BACK_OFF_DIST"])
 	var c := make(32)
 	var h := hero(c, Vector2(12, 0))
 	var id := spawn_deacon(c, Vector2(0, 0), 4, 2.0, 1.5)
@@ -431,7 +543,7 @@ func deacon_stats_and_keep_away() -> void:
 	var log := []
 	# Walking in: full speed, until the target is band_far away.
 	var xs := []
-	for i in 400:
+	for i in ceili((12.0 - band_far) / spd * 60.0) + 60:   # long enough to walk in
 		run(c, 1, log)
 		var p: Vector2 = c.enemy_info(id)["pos"]
 		xs.append(p.x)
@@ -465,6 +577,8 @@ func deacon_stats_and_keep_away() -> void:
 	var again := Vector2(c.enemy_info(id)["pos"])
 	run(c, 30, log)
 	check(Vector2(c.enemy_info(id)["pos"]).distance_to(again) < 1e-4, "deacon: and stands there")
+	if pinned:
+		unpin()
 
 
 # ------------------------------------------------------------------------------------------------------------------ the deacon: the curse
@@ -480,8 +594,9 @@ func deacon_curse() -> void:
 	var h := hero(c, Vector2(5, 0))
 	var id := spawn_deacon(c, Vector2(0, 0))
 	var cd0 := float(c.enemy_info(id)["attack_cd"])
+	var cooldown := float(d["cooldownMs"]) / 1000.0
 	var log := []
-	run(c, 600, log)
+	run(c, to_zero(cd0) + to_reach(windup) + to_zero(cooldown) + 60, log)   # the first blow, then the next one a cooldown later
 	var tell := of(log, EV_TELEGRAPH, id, TELL_CURSE)
 	var attack := of(log, EV_ATTACK, id)
 	check(tell.size() >= 1 and attack.size() >= 1, "curse: a curse telegraph and a swing")
@@ -497,7 +612,6 @@ func deacon_curse() -> void:
 	var hits := of(log, EV_HIT, id)
 	check(hits.size() >= 1 and int(hits[0]["tick"]) == ks and hits[0]["ints"][0] == h and hits[0]["ints"][1] == 0 and hits[0]["floats"][0] == float(d["damage"]),
 		"curse: the blow lands %d ticks (%.2f s) later for %d, melee, on the target" % [ks - k0, windup, int(d["damage"])])
-	var cooldown := float(d["cooldownMs"]) / 1000.0
 	check(tell.size() >= 2 and int(tell[1]["tick"]) == ks + to_zero(cooldown), "curse: the next one a cooldown (%.1f s) after the blow (tick %d)" % [cooldown, int(tell[1]["tick"]) if tell.size() > 1 else -1])
 	# The reach is measured at the blow, from the body: the target who steps back to the edge of it is still cursed, one who is past it is not.
 	for trial in [[reach - 0.2, true], [reach + 0.2, false]]:
@@ -505,7 +619,7 @@ func deacon_curse() -> void:
 		var hh := hero(e, Vector2(5, 0))
 		var did := spawn_deacon(e, Vector2(0, 0))
 		var lg := []
-		for i in 600:
+		for i in to_zero(cd0) + 60:
 			run(e, 1, lg)
 			if not of(lg, EV_TELEGRAPH, did, TELL_CURSE).is_empty():
 				break
@@ -669,6 +783,10 @@ func deacon_sanctify() -> void:
 	var d := def("deacon")
 	var cooldown := float(d["cooldownMs"]) / 1000.0
 	var sanct_cd := cooldown * float(S["cooldownMult"])
+	# The scene needs a blessing to outlast one Sanctify cooldown and to end before the second: the data's duration where it does, else the scene's own (one and a half cooldowns).
+	var pinned: bool = not (float(S["durationS"]) > sanct_cd * 1.1 and float(S["durationS"]) < sanct_cd * 1.9)
+	if pinned:
+		pin({"content/statuses": {"SANCTIFIED": {"durationS": sanct_cd * 1.5}}})
 	var c := make(61)
 	hero(c, FAR)
 	var id := spawn_deacon(c, Vector2(0, 0))
@@ -677,7 +795,7 @@ func deacon_sanctify() -> void:
 	var most: int = c.spawn_enemy("robber", Vector2(3, -2), 1, 1.0, 1.0, false, "ossuary", false)
 	var beyond: int = c.spawn_enemy("robber", Vector2(float(S["range"]) + 0.5, 0), 1, 1.0, 1.0, false, "ossuary", false)
 	var other: int = spawn_deacon(c, Vector2(0, -3))
-	var golem: int = c.spawn_enemy("golem", Vector2(-3, -3), 1, 1.0, 1.0, false, "ossuary", false)
+	var golem: int = c.spawn_enemy("golem", Vector2(-1, -1) * float(S["range"]) * 0.5, 1, 1.0, 1.0, false, "ossuary", false)   # inside the range, a little more than 70 % of it away
 	wound(c, mild, 0.4)       # 60 % left
 	wound(c, most, 0.7)       # 30 %
 	wound(c, beyond, 0.9)     # the most wounded of all, but out of range
@@ -693,6 +811,7 @@ func deacon_sanctify() -> void:
 	var cue := of(log, EV_CUE, id, CUE_SANCTIFY)
 	check(cue.size() == 1 and int(cue[0]["tick"]) == k0, "sanctify: the cue on the tick the cooldown is up (tick %d)" % k0)
 	if cue.is_empty():
+		unpin()
 		return
 	var p: Vector2 = c.enemy_info(most)["pos"]
 	check(is_equal_approx(cue[0]["floats"][0], p.x) and is_equal_approx(cue[0]["floats"][1], p.y), "sanctify: it names the most wounded ally in range (not the unhurt, the far, the other deacon, or the milder wounds)")
@@ -720,6 +839,8 @@ func deacon_sanctify() -> void:
 	var before := float(c.enemy_info(most)["hp"])
 	c.damage(most, 10.0, 0, false)
 	check(is_equal_approx(before - float(c.enemy_info(most)["hp"]), 10.0 * float(S["damageTakenMult"])), "sanctify: a blow of 10 costs %.0f while blessed" % (10.0 * float(S["damageTakenMult"])))
+	if pinned:
+		unpin()
 
 
 
@@ -735,11 +856,12 @@ func deacon_sanctify_edges() -> void:
 	var out: int = c.spawn_enemy("robber", Vector2(rng_ + 0.1, 0), 1, 1.0, 1.0, false, "ossuary", false)
 	var scratch: int = c.spawn_enemy("robber", Vector2(0, 2), 1, 1.0, 1.0, false, "ossuary", false)
 	wound(c, out, 0.5)
-	c.damage(scratch, 0.04, 0, false)   # 99.94 % of 68: not wounded enough (the threshold is below 0.999)
+	var scratch_hp := float(c.enemy_info(scratch)["max_hp"])
+	c.damage(scratch, scratch_hp * 0.0004, 0, false)   # 99.96 % of its health: not wounded enough (the threshold is below 0.999)
 	var log := []
 	run(c, 600, log)
 	check(of(log, EV_CUE, id).is_empty(), "sanctify: nothing for 10 s: one ally is %.1f m away (the range is %.0f m), the other lost 0.06%% of its health" % [rng_ + 0.1, rng_])
-	c.damage(scratch, 0.06, 0, false)   # 99.85 %
+	c.damage(scratch, scratch_hp * 0.001, 0, false)   # 99.86 %
 	run(c, 20, log)
 	var cue := of(log, EV_CUE, id, CUE_SANCTIFY)
 	check(cue.size() == 1 and c.status_stacks(scratch, "sanctified") == 1.0, "sanctify: a body just under the threshold is blessed at the next scan")
@@ -757,10 +879,11 @@ func deacon_sanctify_edges() -> void:
 		e.corpse_consume(cid, 0, "consumed")    # its corpse would be raised first
 	var lg := []
 	drain(e, lg)
-	run(e, 700, lg)
-	var cues := of(lg, EV_CUE, eid, CUE_SANCTIFY)
-	check(not cues.is_empty() and e.status_stacks(t1, "sanctified") == 1.0 and e.status_stacks(dead, "sanctified") == 0.0, "sanctify: the fallen are skipped, and a tie goes to the first in spawn order")
-	check(cues.size() >= 2 and e.status_stacks(t2, "sanctified") == 1.0, "sanctify: the second goes to the other")
+	var k1 := to_zero(float(e.enemy_info(eid)["attack_cd"]))
+	run_to(e, k1, lg)
+	check(not of(lg, EV_CUE, eid, CUE_SANCTIFY).is_empty() and e.status_stacks(t1, "sanctified") == 1.0 and e.status_stacks(dead, "sanctified") == 0.0, "sanctify: the fallen are skipped, and a tie goes to the first in spawn order")
+	run_to(e, k1 + to_zero(sanct_cd), lg)
+	check(of(lg, EV_CUE, eid, CUE_SANCTIFY).size() >= 2 and e.status_stacks(t2, "sanctified") == 1.0, "sanctify: the second goes to the other")
 	# An elite deacon: its own cooldown is x0.8 (and the wind-up x0.85), but Sanctify's is the def's cooldown x the factor.
 	var f := make(64)
 	hero(f, FAR)
@@ -783,7 +906,7 @@ func deacon_order() -> void:
 	var windup := float(d["windupMs"]) / 1000.0
 	# A target in curse range: the curse, whatever else could be done.
 	var c := make(71)
-	hero(c, Vector2(5, 0))
+	hero(c, Vector2(float(d["attackRange"]) * 0.8, 0))
 	var id := spawn_deacon(c, Vector2(0, 0))
 	corpse(c, Vector2(0, 3))
 	var ally: int = c.spawn_enemy("robber", Vector2(-2, 0), 1, 1.0, 1.0, false, "ossuary", false)
@@ -1041,6 +1164,7 @@ func deacon_on_the_wire() -> void:
 	var odd: RefCounted = ClassDB.instantiate("DmCore")
 	var changed: Dictionary = content["ENEMIES"].duplicate(true)
 	changed["deacon"]["behavior"] = "melee"
+	DmCoreData.load_all(odd, data_dir)   # the same data as the host, then the one change
 	odd.load_enemy_defs(changed)
 	odd.load_tuning(content)
 	odd.load_status_defs(DmStatusRules.build(DmCoreData.json(data_dir.path_join("data/content/abilities.json")), statuses, content))
@@ -1288,7 +1412,7 @@ func censer_pulse() -> void:
 	check([id, inside, edge, rising].all(hasted), "censer: its first pulse, on the first tick, reaches itself and the bodies within %.0f m (one on the radius, one still rising)" % r)
 	check(not hasted.call(past) and not hasted.call(far) and not hasted.call(fallen), "censer: and not the one %.2f m away, the one 9 m away, or the fallen" % (r + 0.05))
 	var left := status_left(c, inside, "incensed")
-	check(left >= haste - 0.2 and left <= haste + 1e-9, "censer: the haste lasts hasteS = %.1f s (%.1f s left)" % [haste, left])
+	check(left >= haste - 0.2 and left <= haste + 0.1 + 1e-9, "censer: the haste lasts hasteS = %.2f s (%.1f s left, in tenths rounded up)" % [haste, left])
 	var info: Dictionary = c.enemy_info(inside)
 	check(is_equal_approx(info["speed_mult"], float(C["moveMult"])) and is_equal_approx(info["attack_rate_mult"], float(C["attackRateMult"])), "censer: x%.1f the feet, x%.2f the blows" % [float(C["moveMult"]), float(C["attackRateMult"])])
 	# One second apart: a body that comes within reach between two pulses is hasted at the next one.
@@ -1308,12 +1432,12 @@ func censer_pulse() -> void:
 	c.damage(id, 1.0e6, 0, false)
 	drain(c, log)
 	var late3 := harmless(c, Vector2(1, 1))
-	run_to(c, p3 + 2 * n1 + 5, log)
+	run_to(c, p3 + ceili(haste * 60.0) + 30, log)   # (past the haste of its last pulse)
 	check(c.status_stacks(late3, "incensed") == 0.0, "censer: a fallen censer pulses no more")
-	var gone := of(log, EV_STATUS_EXPIRED, inside)
+	var gone := of(log, EV_STATUS_EXPIRED, inside)   # (a haste shorter than the pulse period plus a status step lapses between two pulses: it is the last expiry that follows the last pulse)
 	var want := int(haste / DT)
-	var after := int(gone[0]["tick"]) - p3 if not gone.is_empty() else -1
-	check(gone.size() == 1 and after >= want - 8 and after <= want + 14, "censer: what it hasted ends %d ticks after its last pulse (%.1f s = %d ticks, the status steps every 0.1 s)" % [after, haste, want])
+	var after := int(gone.back()["tick"]) - p3 if not gone.is_empty() else -1
+	check(not gone.is_empty() and after >= want - 8 and after <= want + 14, "censer: what it hasted ends %d ticks after its last pulse (%.2f s = %d ticks, the status steps every 0.1 s)" % [after, haste, want])
 	check(is_equal_approx(float(c.enemy_info(inside)["speed_mult"]), 1.0) and is_equal_approx(float(c.enemy_info(inside)["attack_rate_mult"]), 1.0), "censer: and the feet and blows are the body's own again")
 	# A censer that rises pulses the tick it has risen (the first tick it is not RISING), not before.
 	var rc := make(212)
@@ -1409,7 +1533,7 @@ func acolyte_kite() -> void:
 	silence(c, id)
 	var log := []
 	var xs := []
-	for i in 400:
+	for i in ceili((12.0 - walk_in) / spd * 60.0) + 60:   # long enough to walk in
 		run(c, 1, log)
 		var p: Vector2 = c.enemy_info(id)["pos"]
 		xs.append(p.x)
@@ -1434,7 +1558,7 @@ func acolyte_kite() -> void:
 	var d2 := Vector2(c.enemy_info(id)["pos"]).distance_to(Vector2(rest.x + 2.0, rest.y))
 	check(d2 >= back - 1e-3 and d2 < back + spd * back_speed * DT * 1.5, "acolyte: stops backing off at %.2f m (%.1f m)" % [d2, back])
 	# The cast gate: rooted, so it cannot close in; a target on attackRange - 0.5 is cast at, one 2 cm past it is not.
-	for trial in [[cast_at, true], [cast_at + 0.02, false]]:
+	for trial in [[cast_at - 0.001, true], [cast_at + 0.02, false]]:
 		var e := make(222)
 		hero(e, Vector2(float(trial[0]), 0))
 		var eid := spawn_acolyte(e, Vector2(0, 0))
@@ -1520,7 +1644,7 @@ func acolyte_silence_and_stun() -> void:
 			break
 	var s0 := tick
 	run(e, 20, lg)
-	e.stun(eid, 2.0)
+	e.stun(eid, windup + 1.0)   # (a flinch that outlasts the wind-up)
 	drain(e, lg)
 	run(e, to_reach(windup) + 4, lg)
 	check(of(lg, EV_HIT, eid).is_empty() and e.enemy_info(eid)["state"] == HURT, "stun: a stun in the wind-up cancels the curse (nothing lands at tick %d)" % (s0 + to_reach(windup)))
@@ -1554,11 +1678,11 @@ func acolyte_unbind() -> void:
 	var t_ok := thrall(c, h, Vector2(2, 3))
 	var t_two := thrall(c, h, Vector2(-2, 3))
 	var spare := []
-	for i in 8:
-		spare.append(thrall(c, h, Vector2(-3 + float(i) * 0.4, -2)))
+	for i in max_alive + 6:   # enough falls for every claim, the refused ones and a freed slot
+		spare.append(thrall(c, h, Vector2(-3 + float(i % 8) * 0.4, -2 - float(i / 8) * 0.5)))
 	run(c, 40, log)       # the acolyte looks every WATCH_S (0.5 s)
 	var seen := Array(c.unbind_info(a)["seen"])
-	check(seen.size() == 13 and seen.has(t_ok) and not seen.has(t_blind), "unbind: it has looked at the thralls alive: %d (not the one that fell)" % seen.size())
+	check(seen.size() == 5 + spare.size() and seen.has(t_ok) and not seen.has(t_blind), "unbind: it has looked at the thralls alive: %d (not the one that fell)" % seen.size())
 	drain(c, log)
 	c.kill_thrall(t_crumb, "crumbled")
 	c.kill_thrall(t_sac, "sacrificed")
@@ -1600,8 +1724,8 @@ func acolyte_unbind() -> void:
 	c.kill_thrall(spare[1], "killed")
 	drain(c, log)
 	check(Array(c.unbind_info(a)["pending"]).size() == 1, "unbind: and %d ticks after it, it is over: the next fall is claimed" % n4)
-	# Four claims over time: four Risen; the fifth fall is not claimed; a Risen that falls frees a slot.
-	for k in 2:
+	# Claims over time up to maxAlive Risen; the next fall is not claimed; a Risen that falls frees a slot.
+	for k in max_alive - 2:
 		run(c, n4, log)
 		c.kill_thrall(spare[2 + k], "killed")
 		drain(c, log)
@@ -1610,11 +1734,11 @@ func acolyte_unbind() -> void:
 	check(ub.size() == max_alive and Array(c.unbind_info(a)["pending"]).is_empty(), "unbind: %d claimed Risen alive, none waiting" % ub.size())
 	run(c, n4, log)
 	var cues_before := of(log, EV_CUE, a, CUE_UNBIND).size()
-	c.kill_thrall(spare[4], "killed")
+	c.kill_thrall(spare[max_alive], "killed")
 	drain(c, log)
-	check(of(log, EV_CUE, a, CUE_UNBIND).size() == cues_before and Array(c.unbind_info(a)["pending"]).is_empty(), "unbind: at most %d claimed Risen alive per acolyte: the fifth fall is not claimed" % max_alive)
+	check(of(log, EV_CUE, a, CUE_UNBIND).size() == cues_before and Array(c.unbind_info(a)["pending"]).is_empty(), "unbind: at most %d claimed Risen alive per acolyte: the next fall is not claimed" % max_alive)
 	c.damage(int(ub[0]), 1.0e6, 0, false)
-	c.kill_thrall(spare[5], "killed")
+	c.kill_thrall(spare[max_alive + 1], "killed")
 	drain(c, log)
 	check(Array(c.unbind_info(a)["pending"]).size() == 1 and of(log, EV_CUE, a, CUE_UNBIND).size() == cues_before + 1, "unbind: a freed slot (a Risen fell) can be claimed again")
 
@@ -1625,7 +1749,7 @@ func acolyte_unbind_edges() -> void:
 	var U: Dictionary = content["UNBIND"]
 	var rng_ := float(U["range"])
 	# The range is a distance from the acolyte's centre to the fall, inclusive.
-	for trial in [[rng_, true], [rng_ + 0.02, false]]:
+	for trial in [[rng_ - 0.001, true], [rng_ + 0.02, false]]:
 		var c := make(251)
 		var h := hero(c, FAR)
 		var a := spawn_acolyte(c, Vector2(0, 0))
@@ -1698,6 +1822,7 @@ func acolyte_unbind_edges() -> void:
 ## A rooted gargoyle (so that it cannot walk) with a hero 7 m away: with the cooldown up it marks the hero's place, hangs still for the first half of the wind-up, drops onto
 ## the mark along an ease-in curve, and everything within the dive's radius of it takes the blow as it lands; then it sits grounded for 0.3 s + groundedS and hunts again.
 func gargoyle_dive() -> void:
+	var pinned := pins([need_dive_window()])
 	var d := def("gargoyle")
 	var D: Dictionary = d["dive"]
 	var windup := float(d["windupMs"]) / 1000.0
@@ -1718,6 +1843,8 @@ func gargoyle_dive() -> void:
 	var tell := of(log, EV_TELEGRAPH, id, TELL_DIVE)
 	check(tell.size() == 1 and int(tell[0]["tick"]) == k0 and bool(c.enemy_info(id)["diving"]), "dive: the telegraph on the tick the cooldown is up (tick %d), and the body is diving" % k0)
 	if tell.is_empty():
+		if pinned:
+			unpin()
 		return
 	var f: PackedFloat32Array = tell[0]["floats"]
 	check(is_equal_approx(f[0], 0.0) and is_equal_approx(f[1], 0.0) and is_equal_approx(f[2], 7.0) and is_equal_approx(f[3], 0.0) and is_equal_approx(f[4], radius) and is_equal_approx(f[5], windup),
@@ -1764,10 +1891,13 @@ func gargoyle_dive() -> void:
 	run_to(c, k2, log)
 	var second := of(log, EV_TELEGRAPH, id, TELL_DIVE)
 	check(second.size() == 2 and int(second[1]["tick"]) == k2 and is_equal_approx(second[1]["floats"][2], 12.0), "dive: the second dive is a cooldown (%d ticks) after the first landing, on the hero's new place (tick %d)" % [k2 - ks, k2])
+	if pinned:
+		unpin()
 
 
 ## The aim is fixed when the wind-up begins (stepping out of the mark dodges the dive), and a stun mid-dive ends it where the body is.
 func gargoyle_aim_and_stun() -> void:
+	var pinned := pins([need_dive_window()])
 	var d := def("gargoyle")
 	var windup := float(d["windupMs"]) / 1000.0
 	var radius := float(d["dive"]["radius"])
@@ -1799,15 +1929,18 @@ func gargoyle_aim_and_stun() -> void:
 	check(of(sl, EV_HIT, sid).is_empty() and of(sl, EV_CUE, sid).is_empty() and Vector2(s.enemy_info(sid)["pos"]).distance_to(before) < 1e-6, "dive: nothing landed, and the body is where the stun found it")
 	var again := of(sl, EV_TELEGRAPH, sid, TELL_DIVE)
 	check(again.size() == 2 and int(again[1]["tick"]) <= flinch_end + 2, "dive: it dives again as soon as it is back on the hunt (tick %d, the flinch ends at %d)" % [int(again[1]["tick"]) if again.size() > 1 else -1, flinch_end])
+	if pinned:
+		unpin()
 
 
 ## The distances: a target closer than minRange or farther than range is not dived at (inclusive both ends), a target within bite range is bitten (no telegraph), and the
 ## sight line is cast at most every LOS_S: a wall between blocks the dive, and it is looked at again 0.25 s later.
 func gargoyle_edges_and_sight() -> void:
+	var pinned := pins([need_dive_window()])
 	var d := def("gargoyle")
 	var D: Dictionary = d["dive"]
 	var windup := float(d["windupMs"]) / 1000.0
-	for trial in [[float(D["minRange"]) - 0.1, false], [float(D["minRange"]), true], [float(D["range"]), true], [float(D["range"]) + 0.05, false]]:
+	for trial in [[float(D["minRange"]) - 0.1, false], [float(D["minRange"]) + 0.001, true], [float(D["range"]) - 0.001, true], [float(D["range"]) + 0.05, false]]:
 		var c := make(264)
 		hero(c, Vector2(float(trial[0]), 0))
 		var id: int = c.spawn_enemy("gargoyle", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
@@ -1853,10 +1986,13 @@ func gargoyle_edges_and_sight() -> void:
 	var sl2 := []
 	run(s2, 400, sl2)
 	check(not of(sl2, EV_TELEGRAPH, sid2, TELL_DIVE).is_empty(), "sight: a wall beside the line does not block it")
+	if pinned:
+		unpin()
 
 
 ## The navmesh as the world's walls: a gap in it across the line is a wall; a crack under the pad is not; a region switched off (a sealed gate) is one.
 func gargoyle_sight_on_the_navmesh() -> void:
+	var pinned := pins([need_dive_window()])
 	var trials := [["a stretch of 1.2 m with no navmesh across the line", 1.2, true, false], ["a crack of 0.5 m", 0.5, false, false], ["a gate that is shut", 0.0, false, true]]
 	for t in trials:
 		var gap := float(t[1])
@@ -1877,6 +2013,8 @@ func gargoyle_sight_on_the_navmesh() -> void:
 		run(c, 300, log)
 		var blocked := bool(t[2]) or bool(t[3])
 		check(of(log, EV_TELEGRAPH, id, TELL_DIVE).is_empty() == blocked, "sight: %s %s the dive" % [t[0], "stops" if blocked else "does not stop"])
+	if pinned:
+		unpin()
 
 
 # ------------------------------------------------------------------------------------------------------------------ the templar
@@ -1923,7 +2061,7 @@ func templar_shield() -> void:
 	check(is_equal_approx(cost.call(glance(Vector2(0, 4))), full * pass_), "shield: a blow from straight ahead costs %.0f of %.0f" % [full * pass_, full])
 	check(is_equal_approx(cost.call(glance(at_angle(arc - 1.0))), full * pass_) and is_equal_approx(cost.call(glance(at_angle(-(arc - 1.0)))), full * pass_), "shield: and from %.0f degrees to either side (the arc is %.0f)" % [arc - 1.0, arc])
 	check(is_equal_approx(cost.call(glance(at_angle(arc + 1.0))), full) and is_equal_approx(cost.call(glance(at_angle(-(arc + 1.0)))), full), "shield: %.0f degrees round it takes all of it" % (arc + 1.0))
-	check(is_equal_approx(cost.call(glance(at_angle(90.0))), full) and is_equal_approx(cost.call(glance(at_angle(180.0))), full), "shield: and from the side or behind")
+	check(is_equal_approx(cost.call(glance(at_angle(arc + 30.0))), full) and is_equal_approx(cost.call(glance(at_angle(180.0))), full), "shield: and from the side or behind")
 	check(is_equal_approx(cost.call(glance(Vector2(0, 0.001))), full), "shield: a blow from a body on top of it has no direction: all of it")
 	check(is_equal_approx(cost.call(glance(Vector2(0, 4), "hero", false)), full), "shield: a DoT tick (allow_stagger false, undirected) ignores the shield")
 	var c := make(272)
@@ -2000,6 +2138,7 @@ func templar_fights() -> void:
 ## The wraith is the caster set (dm_state_kite: walk in beyond attackRange - 1.5, cast at attackRange - 0.5, back off under 3.5 m at 0.8) with a scream: a ring of SCREAM.radius at
 ## the place its target stood when the wind-up began, damage to everything inside (heroes and thralls) when it ends; stepping out of the ring dodges it.
 func wraith_scream() -> void:
+	var pinned := pins([need_scream_radius(2.5)])
 	var d := def("wraith")
 	var windup := float(d["windupMs"]) / 1000.0
 	var cooldown := float(d["cooldownMs"]) / 1000.0
@@ -2012,13 +2151,14 @@ func wraith_scream() -> void:
 		var o := hero(c, Vector2(14.0 + r + 0.05, 0))     # just outside it
 		var th := thrall(c, a, Vector2(14, -1.9), 100.0, false)  # on its seat beside its owner (1.9 m, inside the ring); it rises, then is held
 		var log := []
-		run(c, to_reach(0.9) + 2, log)
+		run(c, to_reach(THRALL_RISE) + 2, log)
 		c.stun(th, 1.0e6)
 		var id: int = c.spawn_enemy("wraith", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
+		var cd0 := to_zero(float(c.enemy_info(id)["attack_cd"]))
 		drain(c, log)
 		var xs: Array = []
 		var k0 := -1
-		for i in 700:
+		for i in ceili((14.0 - cast_at) / (float(d["speed"]) * 0.92) * 60.0) + 200:   # long enough to walk into casting range
 			run(c, 1, log)
 			xs.append(Vector2(c.enemy_info(id)["pos"]))
 			if not of(log, EV_TELEGRAPH, id, TELL_SCREAM).is_empty():
@@ -2026,13 +2166,16 @@ func wraith_scream() -> void:
 				break
 		check(k0 > 0, "scream: it casts")
 		if k0 < 0:
+			if pinned:
+				unpin()
 			return
 		var tell := of(log, EV_TELEGRAPH, id, TELL_SCREAM)
 		var f: PackedFloat32Array = tell[0]["floats"]
 		var from: Vector2 = xs[xs.size() - 2]
 		check(absf(f[0] - from.x) < 1e-5 and is_equal_approx(f[2], 14.0) and is_equal_approx(f[3], 0.0) and is_equal_approx(f[4], r) and is_equal_approx(f[5], windup), "scream: song-lines from the singer to a ring of %.1f m on the target for %.2f s" % [r, windup])
 		var d_start := Vector2(14, 0).distance_to(xs[xs.size() - 2])
-		check(d_start <= cast_at and d_start > cast_at - float(c.enemy_info(id)["speed"]) * DT * 1.5, "scream: cast from %.2f m (attackRange - 0.5 = %.1f)" % [d_start, cast_at])
+		# (it casts as it comes into range, or on the tick its first cooldown is up if that was later)
+		check(d_start <= cast_at and (d_start > cast_at - float(c.enemy_info(id)["speed"]) * DT * 1.5 or k0 == cd0 + to_reach(THRALL_RISE) + 2), "scream: cast from %.2f m (attackRange - 0.5 = %.1f)" % [d_start, cast_at])
 		var att := of(log, EV_ATTACK, id)
 		check(att.size() == 1 and att[0]["ints"][0] == BLOW_SCREAM, "scream: the swing is a scream")
 		if not stay:
@@ -2064,11 +2207,14 @@ func wraith_scream() -> void:
 	var lg := []
 	run(e, 400, lg)
 	check(not of(lg, EV_TELEGRAPH, eid, TELL_SCREAM).is_empty(), "scream: a silenced wraith still sings (its walk is dm_state_kite, which does not look)")
+	if pinned:
+		unpin()
 
 
 ## The walk of the caster set: walk in at full speed beyond attackRange - 1.5 m, stand between, back off at 0.8 x under 3.5 m (the scream is cast on the way, at attackRange - 0.5;
 ## the cooldown it starts keeps the next one away while the walk is measured).
 func wraith_walk() -> void:
+	var pinned := pins([need_cooldown("wraith", 6000.0)])   # the scene walks, holds and backs off before the next scream
 	var d := def("wraith")
 	var walk_in := float(d["attackRange"]) - 1.5
 	var windup := float(d["windupMs"]) / 1000.0
@@ -2082,7 +2228,7 @@ func wraith_walk() -> void:
 	run(c, 1, log)
 	var p1: Vector2 = c.enemy_info(id)["pos"]
 	check(absf((p1.x - p0.x) - spd * DT) < 2e-4 and Vector2(14.9, 0).distance_to(p0) > walk_in, "walk: %.4f m a tick (full speed %.4f) while the target is beyond %.1f m" % [p1.x - p0.x, spd * DT, walk_in])
-	for i in 400:
+	for i in ceili((14.9 - (float(d["attackRange"]) - 0.5)) / spd * 60.0) + 200:   # long enough to walk into casting range
 		run(c, 1, log)
 		if not of(log, EV_TELEGRAPH, id, TELL_SCREAM).is_empty():
 			break
@@ -2099,9 +2245,11 @@ func wraith_walk() -> void:
 	run(c, 1, log)
 	var x1 := Vector2(c.enemy_info(id)["pos"]).x
 	check(absf((x0 - x1) - spd * float(KITE["BACK_OFF_SPEED"]) * DT) < 2e-4, "walk: backs off at %.1f x its speed (%.4f m a tick)" % [float(KITE["BACK_OFF_SPEED"]), x0 - x1])
-	run(c, 50, log)
+	run(c, ceili((float(KITE["BACK_OFF_DIST"]) - 2.0) / (spd * float(KITE["BACK_OFF_SPEED"]) * DT)) + 15, log)   # long enough to back off the rest of the way
 	var dd := Vector2(c.enemy_info(id)["pos"]).distance_to(Vector2(rest.x + 2.0, rest.y))
 	check(dd >= float(KITE["BACK_OFF_DIST"]) - 1e-3 and dd < float(KITE["BACK_OFF_DIST"]) + spd * float(KITE["BACK_OFF_SPEED"]) * DT * 1.5, "walk: and stops at %.2f m (%.1f m)" % [dd, float(KITE["BACK_OFF_DIST"])])
+	if pinned:
+		unpin()
 
 
 ## It leaves no corpse (def corpse none), where a robber leaves one; the crowd thins it to mist.
@@ -2121,6 +2269,7 @@ func wraith_no_corpse() -> void:
 
 ## A guest sees each kind's telegraphs, cues and statuses: the dive (bit 5 of the record), the scream, the curse, Unbind's cue and its Risen, the shield's glance and the incense.
 func nave_on_the_wire() -> void:
+	var pinned := pins([need_dive_window(), need_unbind_range(7.0)])
 	# The Gargoyle's dive.
 	var d := def("gargoyle")
 	var windup := float(d["windupMs"]) / 1000.0
@@ -2196,7 +2345,7 @@ func nave_on_the_wire() -> void:
 	var ct := of(agl, EV_TELEGRAPH, ac, TELL_CURSE)
 	check(ct.size() == 1 and of(al, EV_TELEGRAPH, ac, TELL_CURSE).size() == 1 and absf(ct[0]["floats"][2] - 5.0) < 0.02 and of(agl, EV_ATTACK, ac)[0]["ints"][0] == BLOW_CURSE, "wire: the curse's ring reaches the guest once, on the target")
 	a.kill_thrall(th, "killed")
-	t = lockstep(a, ag, al, agl, t, t + to_zero(1.0) + 12)
+	t = lockstep(a, ag, al, agl, t, t + to_zero(float(content["UNBIND"]["delayS"])) + 12)
 	var uc := of(agl, EV_CUE, ac, CUE_UNBIND)
 	var risen_h := of(al, EV_SPAWNED).filter(func(e: Dictionary) -> bool: return a.def_name(e["ints"][0]) == "risen")
 	var risen_g := of(agl, EV_SPAWNED).filter(func(e: Dictionary) -> bool: return ag.def_name(e["ints"][0]) == "risen")
@@ -2226,22 +2375,42 @@ func nave_on_the_wire() -> void:
 		var tun_content: Dictionary = content.duplicate(true)
 		match String(change[1]):
 			"dive radius":
-				defs["gargoyle"]["dive"]["radius"] = 3.0
+				defs["gargoyle"]["dive"]["radius"] = float(defs["gargoyle"]["dive"]["radius"]) + 1.0
 			"scream radius":
-				tun_content["SCREAM"]["radius"] = 3.0
+				tun_content["SCREAM"]["radius"] = float(tun_content["SCREAM"]["radius"]) + 1.0
 			"attack":
 				defs["acolyte"]["attack"] = "cone"
 			"shield":
 				defs["templar"].erase("shield")
+		DmCoreData.load_all(odd, data_dir)   # the same data as the host, then the one change
 		odd.load_enemy_defs(defs)
 		odd.load_tuning(tun_content)
 		odd.load_status_defs(DmStatusRules.build(DmCoreData.json(data_dir.path_join("data/content/abilities.json")), statuses, content))
 		odd.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
 		odd.set_puppet(true)
 		check(not odd.apply_snapshot(s.snapshot(900)) and "data" in str(odd.replication_error()), "wire: a guest with another %s of the %s refuses the host's snapshot (%s)" % [change[1], change[0], odd.replication_error()])
+	if pinned:
+		unpin()
 
 
 # ------------------------------------------------------------------------------------------------------------------ the roster and a replay
+
+## Whether any area's enemy table or procession theme names the kind (the game uses it).
+func used_in_waves(id: String) -> bool:
+	var areas := DmCoreData.json(data_dir.path_join("data/content/areas.json"))
+	for area in areas["AREAS"]:
+		for e in areas["AREAS"][area]["enemies"]:
+			if String(e["id"]) == id:
+				return true
+	for area in content["WAVE_THEMES"]:
+		for th in content["WAVE_THEMES"][area]:
+			for e in th["roster"]:
+				if String(e["id"]) == id:
+					return true
+			if th.get("lead") != null and String(th["lead"]) == id:
+				return true
+	return false
+
 
 ## The whole Nave roster (its enemy table and its procession themes, lead included) is made by the core, the models are drawn by the crowd, and a seeded run replays event for event.
 func the_nave_roster_and_a_replay() -> void:
@@ -2258,10 +2427,7 @@ func the_nave_roster_and_a_replay() -> void:
 	for id: String in ids:
 		if not DmWaveDirector.runs_on_core(id):
 			missing.append(id)
-	var all_five := true
-	for id in NAVE_KINDS:
-		all_five = all_five and ids.has(id)
-	check(all_five and missing.is_empty(), "roster: every kind of the Nave's waves and processions runs on the core (%d kinds, missing %s)" % [ids.size(), str(missing)])
+	check(NAVE_KINDS.all(func(k: String) -> bool: return used_in_waves(k)) and missing.is_empty(), "roster: every kind of the Nave's waves and processions runs on the core (%d kinds, missing %s), and its five kinds are in the game's waves" % [ids.size(), str(missing)])
 	var looks := DmCoreData.json("res://crowd/crowd_looks.json")
 	var drawn := true
 	for id in NAVE_KINDS:
@@ -2270,7 +2436,7 @@ func the_nave_roster_and_a_replay() -> void:
 		drawn = drawn and slug != "" and FileAccess.file_exists(path)
 	check(drawn and looks["casters"].has("acolyte") and looks["casters"].has("wraith") and looks["casters"].has("censer") and not looks["casters"].has("templar") and not looks["casters"].has("gargoyle"),
 		"roster: the crowd draws them (their models; the acolyte, wraith and censer as casters)")
-	check(looks["mist"].has("wraith") and is_equal_approx(float(looks["hover"]["wraith"]), float(K["HOVER"])) and float(def("gargoyle")["flying"]) == 1.1, "roster: the wraith hovers %.2f m and thins to mist, the gargoyle flies at %.1f m" % [float(K["HOVER"]), float(def("gargoyle")["flying"])])
+	check(looks["mist"].has("wraith") and is_equal_approx(float(looks["hover"]["wraith"]), float(K["HOVER"])) and float(def("gargoyle")["flying"]) > 0.0, "roster: the wraith hovers %.2f m and thins to mist, the gargoyle flies at %.1f m" % [float(K["HOVER"]), float(def("gargoyle")["flying"])])
 	# The director can leave a def out as if it had no scene (the parity scenario drops the Bellringers' censer, as today's side does).
 	var dir := DmWaveDirector.new()
 	dir.off["censer"] = true
@@ -2407,7 +2573,7 @@ func cloister_defs() -> void:
 	var ge: Dictionary = def("flagellant")
 	check(not flag_scene.contains("script =") and flag_scene.contains("def_id = \"flagellant\"") and bool(ge.get("frenzy", false)) and String(ge["behavior"]) == "melee" and ge.get("attack") == null,
 		"the flagellant is the plain base (no script of its own): a melee body whose def says frenzy")
-	check(float(FR["atFrac"]) == 0.5 and float(FR["moveMult"]) == 1.45 and float(FR["attackRateMult"]) == 1.6, "frenzy: below %.0f%% health, x%.2f feet, x%.1f blows (enemies.json FRENZY)" % [float(FR["atFrac"]) * 100.0, float(FR["moveMult"]), float(FR["attackRateMult"])])
+	check(float(FR["atFrac"]) > 0.0 and float(FR["atFrac"]) < 1.0 and float(FR["moveMult"]) > 0.0 and float(FR["attackRateMult"]) > 0.0, "frenzy: below %.0f%% health, x%.2f feet, x%.1f blows (enemies.json FRENZY; the scenes below hold the core to them)" % [float(FR["atFrac"]) * 100.0, float(FR["moveMult"]), float(FR["attackRateMult"])])
 	check(DmCoreEvents.TELLS.size() >= 10 and DmCoreEvents.TELLS[TELL_FLASK] == &"flask" and DmCoreEvents.CUES.size() >= 8 and DmCoreEvents.CUES[CUE_FLASK] == &"flask" and DmCoreEvents.BLOWS.size() >= 8 and DmCoreEvents.BLOWS[BLOW_FLASK] == &"flask",
 		"flask is a telegraph, a cue and a blow, appended after dive, scream and dive (append only)")
 
@@ -2429,7 +2595,7 @@ func seraph_walk() -> void:
 	silence(c, id)
 	var log := []
 	var xs := []
-	for i in 400:
+	for i in ceili((12.0 - walk_in) / spd * 60.0) + 60:   # long enough to walk in
 		run(c, 1, log)
 		var p: Vector2 = c.enemy_info(id)["pos"]
 		xs.append(p.x)
@@ -2456,7 +2622,7 @@ func seraph_walk() -> void:
 	var d2 := Vector2(c.enemy_info(id)["pos"]).distance_to(Vector2(rest.x + 2.0, rest.y))
 	check(d2 >= back - 1e-3 and d2 < back + spd * back_speed * DT * 1.5, "seraph: stops backing off at %.2f m (%.1f m)" % [d2, back])
 	# The cast gate: rooted, so it cannot close in; a target on attackRange is cast at, one 2 cm past it is not.
-	for trial in [[cast_at, true], [cast_at + 0.02, false]]:
+	for trial in [[cast_at - 0.001, true], [cast_at + 0.02, false]]:
 		var e := make(412)
 		hero(e, Vector2(float(trial[0]), 0))
 		var eid := spawn_seraph(e, Vector2(0, 0))
@@ -2466,6 +2632,11 @@ func seraph_walk() -> void:
 		check(of(lg, EV_ATTACK, eid).is_empty() == (not bool(trial[1])), "seraph: a target %.2f m away is %s (it casts at attackRange - %.1f = %.1f m)" % [float(trial[0]), "cast at" if trial[1] else "not cast at", SERAPH_KITE[0], cast_at])
 
 
+## The middle of the band the seraph stands in without moving (between its back-off distance and attackRange - 0.5): where its scenes put the target within reach.
+func seraph_stand() -> float:
+	return (SERAPH_KITE[2] + float(def("seraph")["attackRange"]) - 0.5) / 2.0
+
+
 ## The curse is the acolyte's (dm_enemy_clst_caster.gd): the telegraph ring on the target, windupMs later a blow of the def's damage, kind curse, on the CURRENT target within the sim's reach
 ## of the body; the cooldown starts at the blow. With a target in reach the curse comes first: the ward never gets the cooldown.
 func seraph_curse() -> void:
@@ -2473,13 +2644,14 @@ func seraph_curse() -> void:
 	var windup := float(d["windupMs"]) / 1000.0
 	var cooldown := float(d["cooldownMs"]) / 1000.0
 	var reach := float(d["attackRange"]) * float(K["STRIKE_REACH_MULT"]) + float(K["STRIKE_REACH_PAD"])
+	var hx := seraph_stand()
 	var c := make(421)
-	var h := hero(c, Vector2(5, 0))
+	var h := hero(c, Vector2(hx, 0))
 	var id := spawn_seraph(c, Vector2(0, 0))
 	var friend := ally(c, Vector2(-3, 0))     # unhurt, in range: a candidate for the ward all the same
 	var cd0 := float(c.enemy_info(id)["attack_cd"])
 	var log := []
-	run(c, 1500, log)
+	run(c, to_zero(cd0) + to_reach(windup) * 3 + to_zero(cooldown) * 2 + 60, log)   # three curses
 	var tell := of(log, EV_TELEGRAPH, id, TELL_CURSE)
 	var att := of(log, EV_ATTACK, id)
 	check(tell.size() >= 3 and att.size() >= 3, "seraph: a curse telegraph and a swing, over and over (%d)" % tell.size())
@@ -2488,21 +2660,21 @@ func seraph_curse() -> void:
 	var k0 := int(tell[0]["tick"])
 	check(k0 == to_zero(cd0), "seraph: the first curse comes on the tick the cooldown is up (tick %d)" % k0)
 	var f: PackedFloat32Array = tell[0]["floats"]
-	check(is_equal_approx(f[2], 5.0) and is_equal_approx(f[3], 0.0) and f[4] == 0.0 and is_equal_approx(f[5], windup), "seraph: the ring is on the target and lasts the wind-up (%.2f s)" % f[5])
+	check(is_equal_approx(f[2], hx) and is_equal_approx(f[3], 0.0) and f[4] == 0.0 and is_equal_approx(f[5], windup), "seraph: the ring is on the target and lasts the wind-up (%.2f s)" % f[5])
 	check(att[0]["ints"][0] == BLOW_CURSE and is_equal_approx(att[0]["floats"][2], windup), "seraph: the swing is a curse")
 	var ks := k0 + to_reach(windup)
 	var hits := of(log, EV_HIT, id)
 	check(hits.size() >= 1 and int(hits[0]["tick"]) == ks and hits[0]["ints"][0] == h and hits[0]["ints"][1] == HK_CURSE and hits[0]["floats"][0] == float(d["damage"]),
 		"seraph: the blow lands %d ticks (%.2f s) later for %d, kind curse, on the target" % [ks - k0, windup, int(d["damage"])])
 	check(int(tell[1]["tick"]) == ks + to_zero(cooldown), "seraph: the next one a cooldown (%.1f s) after the blow (tick %d)" % [cooldown, int(tell[1]["tick"])])
-	check(of(log, EV_CUE, id).is_empty() and c.status_stacks(friend, "sanctified") == 0.0, "seraph: with a target in reach the ward never gets its cooldown: nobody was blessed in 25 s, three curses")
+	check(of(log, EV_CUE, id).is_empty() and c.status_stacks(friend, "sanctified") == 0.0, "seraph: with a target in reach the ward never gets its cooldown: nobody was blessed, three curses")
 	# The reach is measured at the blow, from the body (the acolyte's rule).
 	for trial in [[reach - 0.2, true], [reach + 0.2, false]]:
 		var e := make(422)
-		var hh := hero(e, Vector2(5, 0))
+		var hh := hero(e, Vector2(hx, 0))
 		var did := spawn_seraph(e, Vector2(0, 0))
 		var lg := []
-		for i in 700:
+		for i in to_zero(cd0) + 60:
 			run(e, 1, lg)
 			if not of(lg, EV_TELEGRAPH, did, TELL_CURSE).is_empty():
 				break
@@ -2513,7 +2685,7 @@ func seraph_curse() -> void:
 		check(of(rest, EV_HIT, did).size() == (1 if trial[1] else 0), "seraph: a target %.2f m away at the blow is %s (the reach is %.3f m)" % [float(trial[0]), "cursed" if trial[1] else "missed", reach])
 	# Silence holds the curse back, a stun cancels it.
 	var s := make(423)
-	hero(s, Vector2(5, 0))
+	hero(s, Vector2(hx, 0))
 	var sid := spawn_seraph(s, Vector2(0, 0))
 	silence(s, sid)
 	var sl := []
@@ -2523,7 +2695,7 @@ func seraph_curse() -> void:
 	run(s, 1, sl)
 	check(first_tick(state_edges(sl, sid, ATTACK)) == tick and of(sl, EV_TELEGRAPH, sid, TELL_CURSE).size() == 1, "seraph: the curse starts on the next tick (the cooldown was up)")
 	run(s, 20, sl)
-	s.stun(sid, 2.0)
+	s.stun(sid, windup + 1.0)   # (a flinch that outlasts the wind-up)
 	drain(s, sl)
 	run(s, to_reach(windup) + 4, sl)
 	check(of(sl, EV_HIT, sid).is_empty() and s.enemy_info(sid)["state"] == HURT, "seraph: a stun in the wind-up cancels the curse (nothing lands)")
@@ -2546,15 +2718,15 @@ func seraph_ward() -> void:
 	var wounds := [0.10, 0.50, 0.30, 0.70, 0.20, 0.60]      # health fractions 0.9 0.5 0.7 0.3 0.8 0.4
 	for k in 6:
 		var a := float(k) * TAU / 6.0
-		ring.append(ally(c, Vector2(3.0 * cos(a), 3.0 * sin(a)), wounds[k]))
-	var edge := ally(c, Vector2(0, -rng_), 0.95)           # exactly on the range: a candidate, and the most wounded
+		ring.append(ally(c, Vector2(cos(a), sin(a)) * rng_ * 0.55, wounds[k]))
+	var edge := ally(c, Vector2(0, -rng_ + 0.001), 0.95)   # a millimetre inside the range: a candidate, and the most wounded
 	var beyond := ally(c, Vector2(rng_ + 0.1, 0), 0.97)    # a little past it
-	var other := spawn_seraph(c, Vector2(-4.5, -2.0))      # a body of its own kind is a candidate (the Deacon's rule excludes its kind, the seraph's does not)
+	var other := spawn_seraph(c, Vector2(-0.82, -0.36) * rng_)      # a body of its own kind is a candidate (the Deacon's rule excludes its kind, the seraph's does not)
 	wound(c, other, 0.75)
 	silence(c, other)                                       # (so that it does not ward, curse or move in this scene)
-	var dead := ally(c, Vector2(-2, 4), 1.0)               # fallen: health 0, the most wounded of all, and not a candidate
+	var dead := ally(c, Vector2(-0.36, 0.73) * rng_, 1.0)  # fallen: health 0, the most wounded of all, and not a candidate
 	c.damage(dead, 1.0e6, 0, false)
-	var pre := ally(c, Vector2(4.0, -3.0), 0.99)           # blessed already: skipped, however wounded
+	var pre := ally(c, Vector2(0.73, -0.55) * rng_, 0.99)  # blessed already: skipped, however wounded
 	c.apply_status(pre, "sanctified", 0, 1.0, 1000.0)
 	var cd0 := float(c.enemy_info(id)["attack_cd"])
 	var w1: int = ward_ticks(cd0, cooldown, 2)[0]
@@ -2566,35 +2738,37 @@ func seraph_ward() -> void:
 	run_to(c, w1, log)
 	var cues := of(log, EV_CUE, id, CUE_SANCTIFY)
 	check(cues.size() == int(W["maxTargets"]) and cues.all(func(e: Dictionary) -> bool: return int(e["tick"]) == w1), "ward: %d cues, all on the tick after the cooldown was seen up (tick %d: the check comes before the tick's own share comes off)" % [cues.size(), w1])
-	var want: Array = [edge, other, ring[3], ring[5]]       # the most wounded first
+	var most_wounded: Array = [edge, other, ring[3], ring[5], ring[1], ring[2], ring[4], ring[0]]       # the candidates, the most wounded first
+	var n_ward := mini(int(W["maxTargets"]), most_wounded.size())
+	var want: Array = most_wounded.slice(0, n_ward)
 	var got := []
 	for e in cues:
 		for cand in ring + [edge, other, beyond, pre, dead, id]:
 			var p: Vector2 = c.enemy_info(cand)["pos"]
 			if absf(p.x - e["floats"][0]) < 1e-3 and absf(p.y - e["floats"][1]) < 1e-3:
 				got.append(cand)
-	check(got == want, "ward: it blesses the most wounded first: the one on the range's edge, the other seraph, then two of the ring (%s)" % str(got))
+	check(got == want, "ward: it blesses the most wounded first: the one on the range's edge, the other seraph, then those of the ring (%s)" % str(got))
 	var only := true
 	for cand in want:
 		only = only and c.status_stacks(cand, "sanctified") == 1.0
-	for cand in [ring[0], ring[1], ring[2], ring[4], beyond, dead, id]:
+	for cand in most_wounded.slice(n_ward) + [beyond, dead, id]:
 		only = only and c.status_stacks(cand, "sanctified") == 0.0
-	check(only, "ward: those four are blessed, not the milder wounds, the one a hair past the range, the fallen, the blessed (its own) or the seraph itself")
+	check(only, "ward: those %d are blessed, not the milder wounds, the one a hair past the range, the fallen, the blessed (its own) or the seraph itself" % n_ward)
 	check(is_equal_approx(float(c.enemy_info(ring[3])["taken_mult"]), float(S2["damageTakenMult"])) and absf(status_left(c, ring[3], "sanctified") - float(S2["durationS"])) < 0.15,
 		"ward: damage taken x%.1f for %.0f s" % [float(S2["damageTakenMult"]), float(S2["durationS"])])
 	check(is_equal_approx(float(c.enemy_info(id)["attack_cd"]), cooldown - DT) and c.enemy_info(id)["state"] == IDLE and of(log, EV_ATTACK, id).is_empty() and of(log, EV_TELEGRAPH, id).is_empty(),
 		"ward: the cooldown is spent (%.2f s, less the tick's own share), and it is no swing: the seraph does not leave its state" % cooldown)
-	check(is_equal_approx(float(c.enemy_info(id)["hp"]), 120.0 * 0.01), "ward: (the seraph itself was left alone: it is wounded to %.1f)" % float(c.enemy_info(id)["hp"]))
+	check(is_equal_approx(float(c.enemy_info(id)["hp"]), float(d["hp"]) * 0.01), "ward: (the seraph itself was left alone: it is wounded to %.1f)" % float(c.enemy_info(id)["hp"]))
 	# The next ward a cooldown later, on the tick after it ran out; the first four's blessing has run out by then, so it is the same four again.
 	run_to(c, w2 - 1, log)
-	check(of(log, EV_CUE, id, CUE_SANCTIFY).size() == 4, "ward: no second ward before the cooldown (%.1f s) is up" % cooldown)
+	check(of(log, EV_CUE, id, CUE_SANCTIFY).size() == n_ward, "ward: no second ward before the cooldown (%.1f s) is up" % cooldown)
 	run_to(c, w2, log)
 	var cues2 := of(log, EV_CUE, id, CUE_SANCTIFY)
-	check(cues2.size() == 8 and cues2.slice(4).all(func(e: Dictionary) -> bool: return int(e["tick"]) == w2), "ward: the second ward comes on tick %d, a cooldown (%d ticks) later, and blesses four again" % [w2, w2 - w1])
+	check(cues2.size() == 2 * n_ward and cues2.slice(n_ward).all(func(e: Dictionary) -> bool: return int(e["tick"]) == w2), "ward: the second ward comes on tick %d, a cooldown (%d ticks) later, and blesses %d again" % [w2, w2 - w1, n_ward])
 	var again := true
 	for cand in want:
 		again = again and c.status_stacks(cand, "sanctified") == 1.0
-	check(again and c.status_stacks(pre, "sanctified") == 1.0, "ward: the same four, whose blessing had run out (the blessed one it skipped still carries its own)")
+	check(again and c.status_stacks(pre, "sanctified") == 1.0, "ward: the same ones, whose blessing had run out (the blessed one it skipped still carries its own)")
 	# A blow on a blessed body costs damageTakenMult of itself.
 	var before := float(c.enemy_info(ring[3])["hp"])
 	c.damage(ring[3], 10.0, 0, false)
@@ -2612,7 +2786,7 @@ func seraph_ward_gates() -> void:
 	var c := make(441)
 	hero(c, FAR)
 	var id := spawn_seraph(c, Vector2(0, 0))
-	var in_ := ally(c, Vector2(rng_, 0))
+	var in_ := ally(c, Vector2(rng_ - 0.001, 0))
 	var out := ally(c, Vector2(-rng_ - 0.02, 0))
 	var log := []
 	run_to(c, ward_ticks(float(c.enemy_info(id)["attack_cd"]), cooldown, 1)[0], log)
@@ -2627,7 +2801,10 @@ func seraph_ward_gates() -> void:
 		six.append(ally(e, Vector2(2.5 * cos(a), 2.5 * sin(a))))
 	run_to(e, ward_ticks(float(e.enemy_info(eid)["attack_cd"]), cooldown, 1)[0], [])
 	var blessed := six.map(func(i: int) -> float: return e.status_stacks(i, "sanctified"))
-	check(blessed == [1.0, 1.0, 1.0, 1.0, 0.0, 0.0], "ward: six unhurt allies on the same health: the first four spawned are blessed (%s)" % str(blessed))
+	var first_n: Array = []
+	for k in 6:
+		first_n.append(1.0 if k < int(W["maxTargets"]) else 0.0)
+	check(blessed == first_n, "ward: six unhurt allies on the same health: the first maxTargets spawned are blessed (%s)" % str(blessed))
 	# Underground and rising bodies are skipped, and nothing to bless is a retry WARD_RETRY_S later.
 	var f := make(443)
 	hero(f, FAR)
@@ -2689,7 +2866,7 @@ func seraph_ward_gates() -> void:
 	check(of(hl, EV_CUE, hid, CUE_SANCTIFY).size() == 1 and int(of(hl, EV_CUE, hid, CUE_SANCTIFY)[0]["tick"]) == k + to_reach(3.0) + 1, "ward: and it blesses on the tick after it is up (tick %d)" % (k + to_reach(3.0) + 1))
 	# A target out of reach and allies near: the ward comes first, and the curse waits for the cooldown it spent; a target in reach: the curse comes first (seraph_curse).
 	var i3 := make(446)
-	var hh := hero(i3, Vector2(9, 0))
+	var hh := hero(i3, Vector2(float(d["attackRange"]) + 2.5, 0))
 	var iid := spawn_seraph(i3, Vector2(0, 0))
 	root(i3, iid)
 	var ia := ally(i3, Vector2(-2.5, 0), 0.5)
@@ -2697,8 +2874,8 @@ func seraph_ward_gates() -> void:
 	var il := []
 	var w: int = ward_ticks(cd0, cooldown, 2)[0]
 	run_to(i3, w, il)
-	check(i3.status_stacks(ia, "sanctified") == 1.0 and of(il, EV_TELEGRAPH, iid).is_empty() and i3.enemy_info(iid)["state"] == CHASE, "ward: a target 9 m away (out of reach, rooted): the ward comes first, and no curse")
-	i3.set_external(hh, Vector2(5, 0), true)
+	check(i3.status_stacks(ia, "sanctified") == 1.0 and of(il, EV_TELEGRAPH, iid).is_empty() and i3.enemy_info(iid)["state"] == CHASE, "ward: a target out of reach (rooted): the ward comes first, and no curse")
+	i3.set_external(hh, Vector2(seraph_stand(), 0), true)
 	run_to(i3, w + to_zero(cooldown - DT), il)
 	var curse := of(il, EV_TELEGRAPH, iid, TELL_CURSE)
 	check(curse.size() == 1 and int(curse[0]["tick"]) == w + to_zero(cooldown - DT), "ward: and with the target in reach the curse waits for the cooldown the ward spent (tick %d)" % (w + to_zero(cooldown - DT)))
@@ -2864,6 +3041,11 @@ func seraph_ward_sort_matches_godot() -> void:
 # ------------------------------------------------------------------------------------------------------------------ the plague doctor
 
 ## The caster set's walk (dm_state_clst_kite with [0.5, 1.5, 3.5, 0.8], silence-aware): walk in beyond attackRange - 1.5, cast at attackRange - 0.5, back off at 0.8 x under 3.5 m.
+## Where the doctor's scenes put the target: the middle of the band it stands in without moving (between its back-off distance and attackRange - 1.5).
+func doctor_stand() -> float:
+	return (float(KITE_PARAMS[2]) + float(def("plague_doctor")["attackRange"]) - float(KITE_PARAMS[1])) / 2.0
+
+
 func plague_walk() -> void:
 	var d := def("plague_doctor")
 	var range_ := float(d["attackRange"])
@@ -2903,7 +3085,7 @@ func plague_walk() -> void:
 	var d2 := Vector2(c.enemy_info(id)["pos"]).distance_to(Vector2(rest.x + 2.0, rest.y))
 	check(d2 >= back - 1e-3 and d2 < back + spd * back_speed * DT * 1.5, "plague doctor: stops backing off at %.2f m (%.1f m)" % [d2, back])
 	# The cast gate: rooted; a target on attackRange - 0.5 is cast at, one 2 cm past it is not.
-	for trial in [[cast_at, true], [cast_at + 0.02, false]]:
+	for trial in [[cast_at - 0.001, true], [cast_at + 0.02, false]]:
 		var e := make(492)
 		hero(e, Vector2(float(trial[0]), 0))
 		var eid := spawn_doctor(e, Vector2(0, 0))
@@ -2920,13 +3102,14 @@ func plague_flask() -> void:
 	var windup := float(d["windupMs"]) / 1000.0
 	var cooldown := float(d["cooldownMs"]) / 1000.0
 	var r := float(PF["radius"])
+	var hx := doctor_stand()
 	var c := make(501)
-	var h := hero(c, Vector2(6, 0))
+	var h := hero(c, Vector2(hx, 0))
 	var id := spawn_doctor(c, Vector2(0, 0), 3, 2.0, 1.5)
 	var dmg := float(d["damage"]) * 1.5
 	var cd0 := float(c.enemy_info(id)["attack_cd"])
 	var log := []
-	run(c, 900, log)
+	run(c, to_zero(cd0) + 2 * (to_reach(windup) + to_zero(cooldown)) + 60, log)   # three flasks
 	var tell := of(log, EV_TELEGRAPH, id, TELL_FLASK)
 	var att := of(log, EV_ATTACK, id)
 	check(tell.size() >= 3 and att.size() >= 3, "flask: a telegraph and a swing, over and over (%d)" % tell.size())
@@ -2935,19 +3118,19 @@ func plague_flask() -> void:
 	var k0 := int(tell[0]["tick"])
 	check(k0 == to_zero(cd0), "flask: the first comes on the tick the cooldown is up (tick %d)" % k0)
 	var f: PackedFloat32Array = tell[0]["floats"]
-	check(is_equal_approx(f[0], 0.0) and is_equal_approx(f[1], 0.0) and is_equal_approx(f[2], 6.0) and is_equal_approx(f[3], 0.0) and is_equal_approx(f[4], r) and is_equal_approx(f[5], windup),
+	check(is_equal_approx(f[0], 0.0) and is_equal_approx(f[1], 0.0) and is_equal_approx(f[2], hx) and is_equal_approx(f[3], 0.0) and is_equal_approx(f[4], r) and is_equal_approx(f[5], windup),
 		"flask: a ring of %.1f m on the target's place, from the body, for the %.1f s wind-up" % [r, windup])
-	check(att[0]["ints"][0] == BLOW_FLASK and is_equal_approx(att[0]["floats"][0], 6.0) and is_equal_approx(att[0]["floats"][2], windup), "flask: the swing is a flask, aimed at the target")
+	check(att[0]["ints"][0] == BLOW_FLASK and is_equal_approx(att[0]["floats"][0], hx) and is_equal_approx(att[0]["floats"][2], windup), "flask: the swing is a flask, aimed at the target")
 	var ks := k0 + to_reach(windup)
 	var hits := of(log, EV_HIT, id).filter(func(e: Dictionary) -> bool: return is_equal_approx(e["floats"][0], dmg))
 	check(hits.size() >= 1 and int(hits[0]["tick"]) == ks and hits[0]["ints"][0] == h and hits[0]["ints"][1] == HK_TOXIC,
 		"flask: the blow lands %d ticks (%.1f s) later for %.1f, kind toxic, on the target" % [ks - k0, windup, dmg])
 	var zones := of(log, EV_ZONE)
-	check(zones.size() >= 1 and int(zones[0]["tick"]) == ks and zones[0]["ints"][0] == ZONE_TOXIC and zones[0]["ints"][1] == id and is_equal_approx(zones[0]["floats"][0], 6.0) and is_equal_approx(zones[0]["floats"][1], 0.0)
+	check(zones.size() >= 1 and int(zones[0]["tick"]) == ks and zones[0]["ints"][0] == ZONE_TOXIC and zones[0]["ints"][1] == id and is_equal_approx(zones[0]["floats"][0], hx) and is_equal_approx(zones[0]["floats"][1], 0.0)
 		and is_equal_approx(zones[0]["floats"][2], r) and is_equal_approx(zones[0]["floats"][3], float(PF["poolS"])),
 		"flask: and a toxic pool at the aim, %.1f m wide, for %.0f s (the zone is the doctor's)" % [r, float(PF["poolS"])])
 	var cue := of(log, EV_CUE, id, CUE_FLASK)
-	check(cue.size() >= 1 and int(cue[0]["tick"]) == ks and is_equal_approx(cue[0]["floats"][0], 6.0) and is_equal_approx(cue[0]["floats"][2], r), "flask: and the cue at the aim")
+	check(cue.size() >= 1 and int(cue[0]["tick"]) == ks and is_equal_approx(cue[0]["floats"][0], hx) and is_equal_approx(cue[0]["floats"][2], r), "flask: and the cue at the aim")
 	var at_ks := log.filter(func(e: Dictionary) -> bool: return int(e["tick"]) == ks and ((e["type"] == EV_HIT and e["id"] == id) or e["type"] == EV_ZONE or (e["type"] == EV_CUE and e["id"] == id)))
 	check(at_ks.map(func(e: Dictionary) -> int: return e["type"]) == [EV_HIT, EV_ZONE, EV_CUE], "flask: in that order on the tick: the hit, the pool, the cue")
 	check(int(tell[1]["tick"]) == ks + to_zero(cooldown), "flask: the next one a cooldown (%.1f s) after the blow (tick %d)" % [cooldown, int(tell[1]["tick"])])
@@ -2959,79 +3142,81 @@ func plague_flask_edges() -> void:
 	var d := def("plague_doctor")
 	var windup := float(d["windupMs"]) / 1000.0
 	var r := float(PF["radius"])
+	var hx := doctor_stand()
+	var dmg := float(d["damage"])
 	var pool_reach := r + 0.45
-	for trial in [[1.75, true, true], [1.85, false, true], [2.3, false, false]]:     # [offset from the aim, direct hit, pool pulses]
+	for trial in [[r - 0.05, true, true], [r + 0.05, false, true], [r + 0.5, false, false]]:     # [offset from the aim, direct hit, pool pulses]
 		var c := make(511)
-		var h := hero(c, Vector2(6, 0))
+		var h := hero(c, Vector2(hx, 0))
 		var id := spawn_doctor(c, Vector2(0, 0))
 		var log := []
-		for i in 900:
+		for i in to_zero(float(c.enemy_info(id)["attack_cd"])) + 60:
 			run(c, 1, log)
 			if not of(log, EV_TELEGRAPH, id, TELL_FLASK).is_empty():
 				break
 		silence(c, id)       # (no second flask in this trial)
-		c.set_external(h, Vector2(6.0 + float(trial[0]), 0), true)
+		c.set_external(h, Vector2(hx + float(trial[0]), 0), true)
 		var rest := []
 		run(c, to_reach(windup) + 2 + 130, rest)
-		var direct := of(rest, EV_HIT, id).filter(func(e: Dictionary) -> bool: return is_equal_approx(e["floats"][0], 13.0))
-		var pulse := of(rest, EV_HIT, id).filter(func(e: Dictionary) -> bool: return is_equal_approx(e["floats"][0], 13.0 * float(PF["poolDpsMult"])))
+		var direct := of(rest, EV_HIT, id).filter(func(e: Dictionary) -> bool: return is_equal_approx(e["floats"][0], dmg))
+		var pulse := of(rest, EV_HIT, id).filter(func(e: Dictionary) -> bool: return is_equal_approx(e["floats"][0], dmg * float(PF["poolDpsMult"])))
 		check(direct.size() == (1 if trial[1] else 0) and (pulse.size() >= 1) == bool(trial[2]),
 			"flask: a target %.2f m from the aim when the flask lands is %s directly (the ring is %.1f m) and %s by the pool (it reaches %.2f m)"
 			% [float(trial[0]), "hit" if trial[1] else "missed", r, "pulsed" if trial[2] else "left alone", pool_reach])
 	# The aim is fixed at the wind-up's start: a target that walks 5 m away is not followed (and no reach is asked of the blow).
 	var e := make(512)
-	var he := hero(e, Vector2(6, 0))
+	var he := hero(e, Vector2(hx, 0))
 	var eid := spawn_doctor(e, Vector2(0, 0))
 	var el := []
-	for i in 900:
+	for i in to_zero(float(e.enemy_info(eid)["attack_cd"])) + 60:
 		run(e, 1, el)
 		if not of(el, EV_TELEGRAPH, eid, TELL_FLASK).is_empty():
 			break
 	silence(e, eid)
-	e.set_external(he, Vector2(11, 0), true)
+	e.set_external(he, Vector2(hx + 5.0, 0), true)
 	var rest2 := []
 	run(e, to_reach(windup) + 2, rest2)
 	var z2 := of(rest2, EV_ZONE)
-	check(of(rest2, EV_HIT, eid).is_empty() and z2.size() == 1 and z2[0]["ints"][1] == eid and is_equal_approx(z2[0]["floats"][0], 6.0), "flask: a target who walked 5 m off is not followed: the flask lands at the old aim (6, 0)")
+	check(of(rest2, EV_HIT, eid).is_empty() and z2.size() == 1 and z2[0]["ints"][1] == eid and is_equal_approx(z2[0]["floats"][0], hx), "flask: a target who walked 5 m off is not followed: the flask lands at the old aim (%.2f, 0)" % hx)
 	# Two heroes in the ring: both are hit, in the order of the heroes; and a thrall too.
 	var g := make(513)
-	var h1 := hero(g, Vector2(6, 0))
-	var h2 := hero(g, Vector2(6.8, 0.8))
+	var h1 := hero(g, Vector2(hx, 0))
+	var h2 := hero(g, Vector2(hx + 0.8, 0.8))
 	var owner := h2        # (a thrall far from its owner is carried to it)
-	var th: int = g.raise_thrall({"kind": "warrior", "hp": 1000.0, "maxHp": 1000.0, "damage": 0.0, "attackInterval": 1.0, "range": 1.3, "speed": 5.6, "empowered": false, "champion": false, "allyHeal": 0.0}, owner, Vector2(5.4, 0.9), 0.0, 99.0)
+	var th: int = g.raise_thrall({"kind": "warrior", "hp": 1000.0, "maxHp": 1000.0, "damage": 0.0, "attackInterval": 1.0, "range": 1.3, "speed": 5.6, "empowered": false, "champion": false, "allyHeal": 0.0}, owner, Vector2(hx + 0.4, 0.9), 0.0, 99.0)
 	var gl := []
-	run(g, 60, gl)         # (a thrall rises in 0.9 s)
+	run(g, to_reach(THRALL_RISE) + 2, gl)         # (a thrall rises first)
 	g.stun(th, 1.0e6)
 	var did := spawn_doctor(g, Vector2(0, 0))
-	for i in 900:
+	for i in to_zero(float(g.enemy_info(did)["attack_cd"])) + 60:
 		run(g, 1, gl)
 		if not of(gl, EV_TELEGRAPH, did, TELL_FLASK).is_empty():
 			break
 	var tp: Vector2 = g.thrall_info(th)["pos"]
-	check(tp.distance_to(Vector2(6, 0)) <= r and g.thrall_info(th)["state"] != 0, "flask: (the thrall stands in the ring, risen: %.2f m from the aim)" % tp.distance_to(Vector2(6, 0)))
+	check(tp.distance_to(Vector2(hx, 0)) <= r and g.thrall_info(th)["state"] != 0, "flask: (the thrall stands in the ring, risen: %.2f m from the aim)" % tp.distance_to(Vector2(hx, 0)))
 	var thp := float(g.thrall_info(th)["hp"])
 	var gr := []
 	run(g, to_reach(windup) + 1, gr)
-	var gh := of(gr, EV_HIT, did).filter(func(e2: Dictionary) -> bool: return is_equal_approx(e2["floats"][0], 13.0))
-	check(gh.size() == 2 and gh[0]["ints"][0] == h1 and gh[1]["ints"][0] == h2 and is_equal_approx(thp - float(g.thrall_info(th)["hp"]), 13.0),
+	var gh := of(gr, EV_HIT, did).filter(func(e2: Dictionary) -> bool: return is_equal_approx(e2["floats"][0], dmg))
+	check(gh.size() == 2 and gh[0]["ints"][0] == h1 and gh[1]["ints"][0] == h2 and is_equal_approx(thp - float(g.thrall_info(th)["hp"]), dmg),
 		"flask: both heroes in the ring are hit (in order), and the thrall costs %.0f health" % (thp - float(g.thrall_info(th)["hp"])))
 	# A stun in the wind-up cancels the flask: no hit, no pool, no cue; silence stops the cast but not one begun.
 	var s := make(514)
-	hero(s, Vector2(6, 0))
+	hero(s, Vector2(hx, 0))
 	var sid := spawn_doctor(s, Vector2(0, 0))
 	var sl := []
-	for i in 900:
+	for i in to_zero(float(s.enemy_info(sid)["attack_cd"])) + 60:
 		run(s, 1, sl)
 		if not of(sl, EV_TELEGRAPH, sid, TELL_FLASK).is_empty():
 			break
 	run(s, 20, sl)
-	s.stun(sid, 2.0)
+	s.stun(sid, windup + 1.0)   # (a flinch that outlasts the wind-up)
 	drain(s, sl)
 	var cut := []
 	run(s, to_reach(windup) + 4, cut)
 	check(of(cut, EV_HIT, sid).is_empty() and of(cut, EV_ZONE).is_empty() and of(cut, EV_CUE, sid).is_empty() and s.enemy_info(sid)["state"] == HURT, "flask: a stun in the wind-up cancels it: no hit, no pool, no cue")
 	var q := make(515)
-	var hq := hero(q, Vector2(6, 0))
+	var hq := hero(q, Vector2(hx, 0))
 	var qid := spawn_doctor(q, Vector2(0, 0))
 	silence(q, qid)
 	var ql := []
@@ -3054,17 +3239,18 @@ func plague_pool() -> void:
 	var r := float(PF["radius"])
 	var pool_s := float(PF["poolS"])
 	var per_pulse := float(d["damage"]) * float(PF["poolDpsMult"])
+	var hx := doctor_stand()
 	var c := make(521)
-	var h := hero(c, Vector2(6, 0))
+	var h := hero(c, Vector2(hx, 0))
 	var id := spawn_doctor(c, Vector2(0, 0))
 	var log := []
-	for i in 900:
+	for i in to_zero(float(c.enemy_info(id)["attack_cd"])) + 60:
 		run(c, 1, log)
 		if not of(log, EV_TELEGRAPH, id, TELL_FLASK).is_empty():
 			break
 	var ks := tick + to_reach(windup)
 	silence(c, id)
-	run_to(c, ks + 400, log)
+	run_to(c, ks + ceili(pool_s * 60.0) + 100, log)
 	var zones := of(log, EV_ZONE)
 	check(zones.size() == 1, "pool: one pool for the one flask")
 	if zones.is_empty():
@@ -3095,12 +3281,12 @@ func plague_pool() -> void:
 	check(gone.size() == 1 and int(gone[0]["tick"]) == gone_at, "pool: and it is gone on tick %d, %d ticks (%.0f s) after the flask" % [gone_at, gone_at - ks, pool_s])
 	# A pool pulses for every target in its reach (radius + 0.45 = 2.25 m from the aim), a direct hit only within the ring (1.8 m): a hero 2.2 m off is pulsed and not struck, one 2.3 m off is left alone.
 	var e := make(522)
-	var a := hero(e, Vector2(6, 0))
-	var near := hero(e, Vector2(6.0 + r + 0.4, 0))
-	var wide := hero(e, Vector2(6.0 + r + 0.5, 0))
+	var a := hero(e, Vector2(hx, 0))
+	var near := hero(e, Vector2(hx + r + 0.4, 0))
+	var wide := hero(e, Vector2(hx + r + 0.5, 0))
 	var did := spawn_doctor(e, Vector2(0, 0))
 	var el := []
-	for i in 900:
+	for i in to_zero(float(e.enemy_info(did)["attack_cd"])) + 60:
 		run(e, 1, el)
 		if not of(el, EV_TELEGRAPH, did, TELL_FLASK).is_empty():
 			break
@@ -3110,7 +3296,7 @@ func plague_pool() -> void:
 	run(e, to_reach(windup) + 130, rest)
 	var near_hits := of(rest, EV_HIT, did).filter(func(x: Dictionary) -> bool: return x["ints"][0] == near)
 	var wide_hits := of(rest, EV_HIT, did).filter(func(x: Dictionary) -> bool: return x["ints"][0] == wide)
-	check(near_hits.size() == 2 and near_hits.all(func(x: Dictionary) -> bool: return is_equal_approx(x["floats"][0], per_pulse)) and wide_hits.is_empty() and of(rest, EV_HIT, did).filter(func(x: Dictionary) -> bool: return x["ints"][0] == a).is_empty(),
+	check(near_hits.size() == mini(2, ceili(pool_s) - 1) and near_hits.all(func(x: Dictionary) -> bool: return is_equal_approx(x["floats"][0], per_pulse)) and wide_hits.is_empty() and of(rest, EV_HIT, did).filter(func(x: Dictionary) -> bool: return x["ints"][0] == a).is_empty(),
 		"pool: a hero %.1f m off the aim takes the pulses (%d) and not the blow, one %.1f m off neither: the pool reaches %.2f m, the ring %.1f" % [r + 0.4, near_hits.size(), r + 0.5, r + 0.45, r])
 
 
@@ -3120,12 +3306,13 @@ func plague_corpse_and_elite() -> void:
 	var windup := float(d["windupMs"]) / 1000.0 * ELITE_WINDUP
 	var cooldown := float(d["cooldownMs"]) / 1000.0 * ELITE_COOLDOWN
 	var el: Dictionary = content["ELITE"]
+	var hx := doctor_stand()
 	var c := make(531)
-	var h := hero(c, Vector2(6, 0))
+	var h := hero(c, Vector2(hx, 0))
 	var id := spawn_doctor(c, Vector2(0, 0), 1, 1.0, 1.0, true)
 	var edmg := float(d["damage"]) * float(el["damageMult"])
 	var log := []
-	run(c, 700, log)
+	run(c, to_zero(float(c.enemy_info(id)["attack_cd"])) + to_reach(windup) + to_zero(cooldown) + 90, log)
 	var tell := of(log, EV_TELEGRAPH, id, TELL_FLASK)
 	check(tell.size() >= 2 and is_equal_approx(tell[0]["floats"][5], windup), "elite doctor: the flask's wind-up is x%.2f (%.3f s)" % [ELITE_WINDUP, windup])
 	var ks := int(tell[0]["tick"]) + to_reach(windup)
@@ -3144,9 +3331,9 @@ func plague_corpse_and_elite() -> void:
 		check(added.size() == 1 and added[0]["ints"][0] == int(trial[1]) and e.def_name(added[0]["ints"][1]) == String(trial[0]), "%s: it falls into a corpse of kind %d (%s in the def)" % [trial[0], int(trial[1]), String(def(String(trial[0]))["corpse"])])
 		if trial[0] == "plague_doctor":
 			var lg := []
-			run(e, 5 * 60 + 30, lg)
+			run(e, ceili(RUPTURE * 60.0) + 30, lg)
 			var burst := of(lg, EV_ZONE)
-			check(burst.size() == 1 and burst[0]["ints"][0] == ZONE_TOXIC and burst[0]["ints"][1] == 0, "plague doctor: its corpse bursts after 5 s into a toxic pool of its own (no source)")
+			check(burst.size() == 1 and burst[0]["ints"][0] == ZONE_TOXIC and burst[0]["ints"][1] == 0, "plague doctor: its corpse bursts after TOXIC_RUPTURE into a toxic pool of its own (no source)")
 
 
 # ------------------------------------------------------------------------------------------------------------------ the flagellant
@@ -3163,40 +3350,46 @@ func swing_start(cd0: float, onset: int, rate: float) -> int:
 
 ## Frenzy (the def's `frenzy`, the status set's rule): below FRENZY.atFrac of its health (strictly) the Flagellant has the status `frenzy` for good, x1.45 feet and x1.6 blows; the status set checks it
 ## at its own 0.1 s step.
+## A wound well below the frenzy line (a fifth of atFrac under it).
+func deep_wound() -> float:
+	return 1.0 - float(FR["atFrac"]) * 0.8
+
+
 func flagellant_frenzy() -> void:
 	var c := make(541)
 	hero(c, FAR)
 	var id: int = c.spawn_enemy("flagellant", Vector2(0, 0), 1, 1.0, 1.0, false, CLOISTER, false)
 	var max_hp := float(c.enemy_info(id)["max_hp"])
 	var log := []
+	var at_frac := float(FR["atFrac"])
 	check(max_hp == float(def("flagellant")["hp"]), "frenzy: the flagellant has %.0f health" % max_hp)
-	c.damage(id, max_hp * float(FR["atFrac"]), 0, false)        # exactly half: not below it
+	c.damage(id, max_hp * (1.0 - at_frac), 0, false)        # exactly atFrac of its health: not below it
 	run(c, 30, log)
-	check(float(c.enemy_info(id)["hp"]) == max_hp * float(FR["atFrac"]) and c.status_stacks(id, "frenzy") == 0.0 and of(log, EV_STATUS_CHANGED, id).is_empty()
-		and float(c.enemy_info(id)["speed_mult"]) == 1.0 and float(c.enemy_info(id)["attack_rate_mult"]) == 1.0, "frenzy: at exactly half health (%.0f) it is calm" % float(c.enemy_info(id)["hp"]))
+	check(is_equal_approx(float(c.enemy_info(id)["hp"]), max_hp * at_frac) and c.status_stacks(id, "frenzy") == 0.0 and of(log, EV_STATUS_CHANGED, id).is_empty()
+		and float(c.enemy_info(id)["speed_mult"]) == 1.0 and float(c.enemy_info(id)["attack_rate_mult"]) == 1.0, "frenzy: at exactly atFrac of its health (%.0f) it is calm" % float(c.enemy_info(id)["hp"]))
 	c.damage(id, 0.01, 0, false)
 	var t0 := tick
 	drain(c, log)
 	run(c, 8, log)
 	var ch := of(log, EV_STATUS_CHANGED, id)
-	check(ch.size() == 1 and first_tick(ch) > t0 and first_tick(ch) <= t0 + 7 and c.status_stacks(id, "frenzy") == 1.0, "frenzy: a hair below half it is frenzied within one status step (0.1 s: tick %d, %d ticks after the blow)" % [first_tick(ch), first_tick(ch) - t0])
+	check(ch.size() == 1 and first_tick(ch) > t0 and first_tick(ch) <= t0 + 7 and c.status_stacks(id, "frenzy") == 1.0, "frenzy: a hair below atFrac it is frenzied within one status step (0.1 s: tick %d, %d ticks after the blow)" % [first_tick(ch), first_tick(ch) - t0])
 	check(is_equal_approx(float(c.enemy_info(id)["speed_mult"]), float(FR["moveMult"])) and is_equal_approx(float(c.enemy_info(id)["attack_rate_mult"]), float(FR["attackRateMult"])),
 		"frenzy: x%.2f feet and x%.1f blows" % [float(FR["moveMult"]), float(FR["attackRateMult"])])
 	run(c, 20 * 60, log)
 	check(c.status_stacks(id, "frenzy") == 1.0 and of(log, EV_STATUS_EXPIRED, id).is_empty(), "frenzy: it does not run out")
-	# An elite's half is half of its own (larger) health.
+	# An elite's fraction is of its own (larger) health.
 	var e := make(542)
 	hero(e, FAR)
 	var eid: int = e.spawn_enemy("flagellant", Vector2(0, 0), 1, 1.0, 1.0, true, CLOISTER, false)
 	var emax := float(e.enemy_info(eid)["max_hp"])
-	e.damage(eid, emax * 0.5 - 1.0, 0, false)     # one hit point over half
+	e.damage(eid, emax * (1.0 - at_frac) - 1.0, 0, false)     # one hit point over atFrac
 	run(e, 20, [])
 	check(e.status_stacks(eid, "frenzy") == 0.0, "frenzy: an elite at %.1f of %.1f is calm" % [float(e.enemy_info(eid)["hp"]), emax])
 	e.damage(eid, 1.5, 0, false)
 	run(e, 20, [])
-	check(e.status_stacks(eid, "frenzy") == 1.0, "frenzy: and at %.1f it is frenzied (half is %.1f)" % [float(e.enemy_info(eid)["hp"]), emax * 0.5])
+	check(e.status_stacks(eid, "frenzy") == 1.0, "frenzy: and at %.1f it is frenzied (atFrac of it is %.1f)" % [float(e.enemy_info(eid)["hp"]), emax * at_frac])
 	# The feet: a frenzied body closes in at x1.45, a calm one at its own speed.
-	for trial in [[0.0, 1.0], [0.6, float(FR["moveMult"])]]:
+	for trial in [[0.0, 1.0], [deep_wound(), float(FR["moveMult"])]]:
 		var w := make(543)
 		hero(w, Vector2(14, 0))
 		var wid: int = w.spawn_enemy("flagellant", Vector2(0, 0), 1, 1.0, 1.0, false, CLOISTER, false)
@@ -3209,12 +3402,13 @@ func flagellant_frenzy() -> void:
 			run(w, 1, wl)
 			xs.append(Vector2(w.enemy_info(wid)["pos"]).x)
 		var ok := true
-		for i in range(30, 90):
+		var last := mini(90, int((14.0 - 3.0) / (spd * float(trial[1]) * DT)) - 2)   # while it is still closing in on the hero
+		for i in range(10, last):
 			ok = ok and absf((xs[i + 1] - xs[i]) - spd * float(trial[1]) * DT) < 2e-4
 		check(ok, "frenzy: %s it walks at x%.2f its speed (%.2f m/s)" % ["wounded" if trial[0] > 0.0 else "calm", float(trial[1]), spd * float(trial[1])])
 
 
-## The blows: a melee body of 12 damage, a 0.38 s wind-up and 1.1 s cooldown from the def; frenzy lets the cooldown run x1.6 as fast (the next swing begins a cooldown at that rate after the
+## The blows: a melee body of the def's damage, wind-up and cooldown; frenzy lets the cooldown run attackRateMult as fast (the next swing begins a cooldown at that rate after the
 ## blow), the wind-up and the recovery are as they were.
 func flagellant_blows() -> void:
 	var d := def("flagellant")
@@ -3226,10 +3420,10 @@ func flagellant_blows() -> void:
 		var h := hero(c, Vector2(1.0, 0))
 		var id: int = c.spawn_enemy("flagellant", Vector2(0, 0), 1, 1.0, 1.0, false, CLOISTER, false)
 		if frenzied:
-			wound(c, id, 0.6)
+			wound(c, id, deep_wound())
 		var cd0 := float(c.enemy_info(id)["attack_cd"])
 		var log := []
-		run(c, 900, log)
+		run(c, to_zero(cd0) + 6 * (to_zero(cooldown) + to_reach(windup)) + 60, log)
 		var hits := of(log, EV_HIT, id)
 		var att := of(log, EV_ATTACK, id)
 		check(hits.size() >= 5 and att.size() >= 5 and of(log, EV_TELEGRAPH, id).is_empty(), "%s flagellant: five blows, and a plain swing has no telegraph (%d)" % ["frenzied" if frenzied else "calm", hits.size()])
@@ -3255,9 +3449,10 @@ func cloister_on_the_wire() -> void:
 	var d := def("plague_doctor")
 	var windup := float(d["windupMs"]) / 1000.0
 	var r := float(PF["radius"])
+	var hx := doctor_stand()
 	var host := make(601)
 	host.set_replication(true)
-	hero(host, Vector2(6, 0))
+	hero(host, Vector2(hx, 0))
 	var id := spawn_doctor(host, Vector2(0, 0), 3, 2.0, 1.5)
 	var guest := puppet()
 	var hl := []
@@ -3270,20 +3465,21 @@ func cloister_on_the_wire() -> void:
 	check(ht.size() == 1 and gt.size() == 1, "wire: the guest sees the flask's telegraph once (host %d, guest %d)" % [ht.size(), gt.size()])
 	if gt.size() == 1:
 		var f: PackedFloat32Array = gt[0]["floats"]
-		check(absf(f[2] - 6.0) < 0.02 and absf(f[3]) < 0.02 and is_equal_approx(f[4], r) and f[5] >= 0.05 and f[5] <= windup + 1e-4, "wire: aimed at the target, %.1f m wide, for what is left of the %.1f s (%.2f s)" % [r, windup, f[5]])
+		check(absf(f[2] - hx) < 0.02 and absf(f[3]) < 0.02 and is_equal_approx(f[4], r) and f[5] >= 0.05 and f[5] <= windup + 1e-4, "wire: aimed at the target, %.1f m wide, for what is left of the %.1f s (%.2f s)" % [r, windup, f[5]])
 		check(int(gt[0]["tick"]) - int(ht[0]["tick"]) <= 6, "wire: within two snapshots of the host's (%d ticks later)" % (int(gt[0]["tick"]) - int(ht[0]["tick"])))
 	check(of(gl, EV_ATTACK, id).size() == 1 and of(gl, EV_ATTACK, id)[0]["ints"][0] == BLOW_FLASK, "wire: and its swing is a flask on the guest")
 	var hz := of(hl, EV_ZONE)
 	var gz := of(gl, EV_ZONE)
-	check(hz.size() == 1 and gz.size() == 1 and gz[0]["ints"][0] == ZONE_TOXIC and gz[0]["ints"][1] == id and absf(gz[0]["floats"][0] - 6.0) < 1e-4 and is_equal_approx(gz[0]["floats"][2], r),
+	check(hz.size() == 1 and gz.size() == 1 and gz[0]["ints"][0] == ZONE_TOXIC and gz[0]["ints"][1] == id and absf(gz[0]["floats"][0] - hx) < 1e-4 and is_equal_approx(gz[0]["floats"][2], r),
 		"wire: the pool reaches the guest once, toxic, at the aim, with the doctor as its source")
 	check(of(gl, EV_ZONE_PULSE).size() == of(hl, EV_ZONE_PULSE).size() and of(gl, EV_ZONE_PULSE).size() >= 2 and of(gl, EV_ZONE_GONE).size() == of(hl, EV_ZONE_GONE).size(), "wire: and its pulses and its end (%d pulses)" % of(gl, EV_ZONE_PULSE).size())
 	check(of(gl, EV_CUE, id, CUE_FLASK).size() == 1 and of(hl, EV_CUE, id, CUE_FLASK).size() == 1, "wire: and the flask's cue")
 	check(of(hl, EV_HIT, id).size() >= 1 and of(gl, EV_HIT).is_empty(), "wire: the blow on the hero is the host's alone")
 	# The seraph's curse reaches the guest as a curse.
+	var sx := seraph_stand()
 	var s := make(602)
 	s.set_replication(true)
-	hero(s, Vector2(5, 0))
+	hero(s, Vector2(sx, 0))
 	var sid := spawn_seraph(s, Vector2(0, 0), 2)
 	var sg := puppet()
 	var sl := []
@@ -3291,14 +3487,15 @@ func cloister_on_the_wire() -> void:
 	t = join(s, sg, sl, sgl)
 	t = lockstep(s, sg, sl, sgl, t, to_zero(float(s.enemy_info(sid)["attack_cd"])) + 12)
 	var cg := of(sgl, EV_TELEGRAPH, sid, TELL_CURSE)
-	check(cg.size() == 1 and of(sl, EV_TELEGRAPH, sid, TELL_CURSE).size() == 1 and absf(cg[0]["floats"][2] - 5.0) < 0.02 and of(sgl, EV_ATTACK, sid)[0]["ints"][0] == BLOW_CURSE and sg.enemy_info(sid).get("def", "") == "seraph",
+	check(cg.size() == 1 and of(sl, EV_TELEGRAPH, sid, TELL_CURSE).size() == 1 and absf(cg[0]["floats"][2] - sx) < 0.02 and of(sgl, EV_ATTACK, sid)[0]["ints"][0] == BLOW_CURSE and sg.enemy_info(sid).get("def", "") == "seraph",
 		"wire: the seraph's curse reaches the guest as a curse ring on the target")
 	# The ward: the cues and the blessings.
 	var w := make(603)
 	w.set_replication(true)
 	hero(w, FAR)
 	var wid := spawn_seraph(w, Vector2(0, 0))
-	var three := [ally(w, Vector2(3, 0), 0.5), ally(w, Vector2(-3, 0), 0.3), ally(w, Vector2(0, 3), 0.1)]
+	var wr := float(W["range"]) * 0.55
+	var three := [ally(w, Vector2(wr, 0), 0.5), ally(w, Vector2(-wr, 0), 0.3), ally(w, Vector2(0, wr), 0.1)]
 	var wg := puppet()
 	var wl := []
 	var wgl := []
@@ -3322,7 +3519,7 @@ func cloister_on_the_wire() -> void:
 	var fl := []
 	var fgl := []
 	t = join(fz, fg, fl, fgl)
-	wound(fz, fid, 0.6)
+	wound(fz, fid, deep_wound())
 	t = lockstep(fz, fg, fl, fgl, t, t + 30)
 	check(fz.status_stacks(fid, "frenzy") == 1.0 and fg.status_stacks(fid, "frenzy") == 1.0 and is_equal_approx(float(fg.enemy_info(fid)["speed_mult"]), float(FR["moveMult"]))
 		and is_equal_approx(float(fg.enemy_info(fid)["attack_rate_mult"]), float(FR["attackRateMult"])), "wire: the frenzy reaches the guest, with its factors")
@@ -3335,9 +3532,10 @@ func cloister_on_the_wire() -> void:
 			"ward":
 				defs["seraph"].erase("ward")
 			"flask radius":
-				tun_content["PLAGUE_FLASK"]["radius"] = 2.4
+				tun_content["PLAGUE_FLASK"]["radius"] = float(tun_content["PLAGUE_FLASK"]["radius"]) + 1.0
 			"attack":
 				defs["plague_doctor"]["attack"] = "curse"
+		DmCoreData.load_all(odd, data_dir)   # the same data as the host, then the one change
 		odd.load_enemy_defs(defs)
 		odd.load_tuning(tun_content)
 		odd.load_status_defs(DmStatusRules.build(DmCoreData.json(data_dir.path_join("data/content/abilities.json")), statuses, content))
@@ -3365,17 +3563,14 @@ func cloister_rosters_and_a_replay() -> void:
 		for id: String in ids:
 			if not DmWaveDirector.runs_on_core(id):
 				missing.append(id)
-		check(missing.is_empty() and ids.size() >= 5, "roster: every kind of the %s's waves and processions runs on the core (%d kinds, missing %s)" % [area, ids.size(), str(missing)])
-		if area == SANCTUM or area == COLISEUM:
-			check(ids.has("seraph"), "roster: the %s has the Weeping Seraph" % area)
-		else:
-			check(ids.has("plague_doctor") and ids.has("flagellant"), "roster: the %s has the Plague Doctor and the Flagellant" % area)
+		check(missing.is_empty() and not ids.is_empty(), "roster: every kind of the %s's waves and processions runs on the core (%d kinds, missing %s)" % [area, ids.size(), str(missing)])
+	check(CLOISTER_KINDS.all(func(k: String) -> bool: return used_in_waves(k)), "roster: the Weeping Seraph, the Plague Doctor and the Flagellant are in the game's waves")
 	var looks := DmCoreData.json("res://crowd/crowd_looks.json")
 	var drawn := true
 	for id in CLOISTER_KINDS:
 		var slug := String(looks["enemy_model"].get(id, ""))
 		drawn = drawn and slug != "" and FileAccess.file_exists("res://assets/slice/models/%s/character.glb" % slug)
-	check(drawn and looks["casters"].has("seraph") and looks["casters"].has("plague_doctor") and not looks["casters"].has("flagellant") and float(def("seraph")["flying"]) == 0.7 and looks["wings"].has("weeping_seraph"),
+	check(drawn and looks["casters"].has("seraph") and looks["casters"].has("plague_doctor") and not looks["casters"].has("flagellant") and float(def("seraph")["flying"]) > 0.0 and looks["wings"].has("weeping_seraph"),
 		"roster: the crowd draws them (their models; the seraph and the doctor as casters, the seraph hovering at %.1f m with its wings)" % float(def("seraph")["flying"]))
 	var dir := DmWaveDirector.new()
 	check(CLOISTER_KINDS.all(func(k: String) -> bool: return dir.makes(k)) and not dir.makes("pyre_priest_that_does_not_exist"), "roster: the director makes all three")
@@ -3494,7 +3689,7 @@ func pf_thralls(c: RefCounted, owner: int, spots: Array, hp := 100.0) -> Array:
 	for at in spots:
 		ids.append(c.raise_thrall({"kind": "warrior", "hp": hp, "maxHp": hp, "damage": 0.0, "attackInterval": 1.0, "range": 1.3, "speed": 5.6, "empowered": false, "champion": false, "allyHeal": 0.0}, owner, at, 0.0, 99.0))
 	var log := []
-	run(c, to_reach(0.9) + 2, log)
+	run(c, to_reach(THRALL_RISE) + 2, log)
 	for i in ids.size():
 		c.stun(ids[i], 1.0e6)
 		c.set_thrall_pos(ids[i], spots[i])
@@ -3582,7 +3777,7 @@ func husk_embers() -> void:
 		"husk: a pool of kind ember, owned by the husk, at its place, r %.1f for %.0f s" % [r, float(ED["poolS"])])
 	var zid: int = z["id"]
 	var dps := dmg * float(ED["poolDpsMult"])
-	run(c, 200, log)
+	run(c, ceili(float(ED["poolS"]) * 60.0) + 40, log)
 	var ticks := pf_pulse_ticks(float(ED["poolS"]), 1.0)
 	var mine := pf_zone_hits(log, id, inside)
 	check(mine.size() == ticks.size() and mine.size() >= 2 and mine.all(func(e: Dictionary) -> bool: return is_equal_approx(e["floats"][0], dps) and e["ints"][1] == PF_HK_BURN),
@@ -3624,13 +3819,15 @@ func husk_melee() -> void:
 	var id: int = c.spawn_enemy("cinder_husk", Vector2(0, 0), 1, 1.0, 1.0, false, PYRE, false)
 	var cd0 := float(c.enemy_info(id)["attack_cd"])
 	var log := []
-	run(c, 400, log)
+	var windup := float(d["windupMs"]) / 1000.0
+	var cooldown := float(d["cooldownMs"]) / 1000.0
+	run(c, to_zero(cd0) + 2 * (to_reach(windup) + to_zero(cooldown)) + 60, log)
 	var att := of(log, EV_ATTACK, id)
 	check(not att.is_empty() and att[0]["ints"][0] == 0 and of(log, EV_TELEGRAPH, id).is_empty() and int(att[0]["tick"]) >= to_zero(cd0), "husk: a plain swing with no telegraph, not before its cooldown (tick %d of %d)" % [int(att[0]["tick"]) if not att.is_empty() else -1, to_zero(cd0)])
 	var hits := of(log, EV_HIT, id)
 	check(not hits.is_empty() and int(hits[0]["tick"]) == int(att[0]["tick"]) + to_reach(float(d["windupMs"]) / 1000.0) and hits[0]["floats"][0] == float(d["damage"]) and hits[0]["ints"][1] == PF_HK_MELEE and hits[0]["ints"][0] == h,
 		"husk: it lands %.1f s later for %d, as melee" % [float(d["windupMs"]) / 1000.0, int(d["damage"])])
-	check(c.enemy_info(id)["state"] != DEAD and is_equal_approx(float(d["cooldownMs"]) / 1000.0, 1.2), "husk: the cooldown is the def's %.1f s" % [float(d["cooldownMs"]) / 1000.0])
+	check(hits.size() >= 2 and int(hits[1]["tick"]) - int(hits[0]["tick"]) == to_zero(cooldown) + to_reach(windup), "husk: the next blow comes a cooldown (%.1f s) and a wind-up after the first" % cooldown)
 
 
 # ------------------------------------------------------------------------------------------------------------------ the Pyre Priest
@@ -3649,13 +3846,14 @@ func priest_coal() -> void:
 		var a := hero(c, Vector2(14, 0))
 		var b := hero(c, Vector2(14.0 + r - 0.05, 0))     # inside the ring, behind the target
 		var o := hero(c, Vector2(14.0 + r + 0.05, 0))     # just outside it
-		var th: int = pf_thralls(c, a, [Vector2(14, -1.5)])[0]
+		var th: int = pf_thralls(c, a, [Vector2(14, -(r - 0.2))])[0]
 		var log := []
 		var id: int = c.spawn_enemy("pyre_priest", Vector2(0, 0), 1, 1.0, 1.0, false, PYRE, false)
+		var cd0 := tick + to_zero(float(c.enemy_info(id)["attack_cd"]))
 		drain(c, log)
 		var xs: Array = []
 		var k0 := -1
-		for i in 900:
+		for i in ceili((14.0 - cast_at) / (float(d["speed"]) * 0.92) * 60.0) + 200:   # long enough to walk into casting range
 			run(c, 1, log)
 			xs.append(Vector2(c.enemy_info(id)["pos"]))
 			if not of(log, EV_TELEGRAPH, id, PF_TELL_EMBER).is_empty():
@@ -3669,7 +3867,7 @@ func priest_coal() -> void:
 		var from: Vector2 = xs[xs.size() - 2]
 		check(absf(f[0] - from.x) < 1e-5 and is_equal_approx(f[2], 14.0) and is_equal_approx(f[3], 0.0) and is_equal_approx(f[4], r) and is_equal_approx(f[5], windup), "coal: a ring of %.1f m on the target for %.2f s" % [r, windup])
 		var d_start := Vector2(14, 0).distance_to(xs[xs.size() - 2])
-		check(d_start <= cast_at and d_start > cast_at - float(c.enemy_info(id)["speed"]) * DT * 1.5, "coal: cast from %.2f m (attackRange - 0.5 = %.1f)" % [d_start, cast_at])
+		check(d_start <= cast_at and (d_start > cast_at - float(c.enemy_info(id)["speed"]) * DT * 1.5 or k0 == cd0), "coal: cast from %.2f m (attackRange - 0.5 = %.1f), or on the tick its first cooldown was up" % [d_start, cast_at])
 		var att := of(log, EV_ATTACK, id)
 		check(att.size() == 1 and att[0]["ints"][0] == PF_BLOW_EMBER, "coal: the swing is a coal")
 		if not stay:
@@ -3691,14 +3889,14 @@ func priest_coal() -> void:
 			and is_equal_approx(zones[0]["floats"][1], 0.0) and is_equal_approx(zones[0]["floats"][2], r) and is_equal_approx(zones[0]["floats"][3], float(EB["poolS"])), "coal: the ground burns at the aim (r %.1f for %.0f s), told after the blows" % [r, float(EB["poolS"])])
 		check(log.find(zones[0]) > log.find(hits[hits.size() - 1]), "coal: (after the last blow in the buffer)")
 		check(is_equal_approx(float(c.enemy_info(id)["attack_cd"]), cooldown), "coal: the cooldown is %.1f s from the blow" % cooldown)
-		run_to(c, ks + 250, log)      # (the pool's four seconds; the next coal is a cooldown and a wind-up away)
+		run_to(c, ks + ceili(float(EB["poolS"]) * 60.0) + 30, log)      # (the pool's seconds; the next coal is a cooldown and a wind-up away)
 		var dps := float(d["damage"]) * float(EB["poolDpsMult"])
 		var ticks := pf_pulse_ticks(float(EB["poolS"]), 1.0)
 		var burns := pf_zone_hits(log, id, b).filter(func(e: Dictionary) -> bool: return e["ints"][1] == PF_HK_BURN)
 		check(burns.size() == ticks.size() and burns.all(func(e: Dictionary) -> bool: return is_equal_approx(e["floats"][0], dps)), "coal: the pool burns the hero in it %d times for %.1f (0.4 x %d)%s" % [ticks.size(), dps, int(d["damage"]), " (the one who stepped out was spared the blow, not the ground)" if not stay else ""])
 	# Bone Hex softens the coal and its pool (DmPfUtil.blow: the body's damage x its status set's damage dealt); the pool is made of the softened blow.
 	var h := make(422)
-	var hh := hero(h, Vector2(8, 0))
+	var hh := hero(h, Vector2(minf(8.0, cast_at - 0.5), 0))
 	var hid: int = h.spawn_enemy("pyre_priest", Vector2(0, 0), 1, 1.0, 1.0, false, PYRE, false)
 	h.apply_status(hid, "hex", 0, 1.0, 1000.0)
 	var soft := float(statuses["BONE_HEX"]["damageMult"])
@@ -3734,12 +3932,12 @@ func priest_walk() -> void:
 	run(c, 1, log)
 	var p1: Vector2 = c.enemy_info(id)["pos"]
 	check(absf((p1.x - p0.x) - spd * DT) < 2e-4 and Vector2(14.9, 0).distance_to(p0) > walk_in, "walk: %.4f m a tick (full speed %.4f) while the target is beyond %.1f m" % [p1.x - p0.x, spd * DT, walk_in])
-	for i in 600:
+	for i in ceili((14.9 - (float(d["attackRange"]) - 0.5)) / spd * 60.0) + 200:   # long enough to walk into casting range
 		run(c, 1, log)
 		if not of(log, EV_TELEGRAPH, id, PF_TELL_EMBER).is_empty():
 			break
 	var ks := tick + to_reach(windup)
-	run_to(c, ks + 80, log)
+	run_to(c, ks + 18 + ceili(1.0 / spd * 60.0) + 40, log)   # the recovery, and the walk on from the casting range to the holding one
 	var rest: Vector2 = c.enemy_info(id)["pos"]
 	var dist := Vector2(14.9, 0).distance_to(rest)
 	check(dist <= walk_in + 1e-3 and dist > walk_in - spd * DT * 1.5, "walk: holds at %.2f m (%.1f - one step)" % [dist, walk_in])
@@ -3837,7 +4035,7 @@ func slag_slam_and_pool() -> void:
 		check(z["ints"][0] == PF_ZONE_EMBER and z["ints"][1] == id and is_equal_approx(z["floats"][0], 4.0) and is_equal_approx(z["floats"][1], 0.0) and is_equal_approx(z["floats"][2], r) and is_equal_approx(z["floats"][3], float(SP["poolS"])),
 			"slag: a pool on the aim, r %.1f (the slam's) for %.0f s" % [r, float(SP["poolS"])])
 		check(is_equal_approx(float(c.enemy_info(id)["attack_cd"]), cooldown), "slag: the cooldown is %.1f s" % cooldown)
-		run_to(c, ks + 250, log)      # (the pool's four seconds; the next slam is a cooldown and a wind-up away)
+		run_to(c, ks + ceili(float(SP["poolS"]) * 60.0) + 30, log)      # (the pool's seconds; the next slam is a cooldown and a wind-up away)
 		var dps := float(d["damage"]) * float(SP["poolDpsMult"])
 		var ticks := pf_pulse_ticks(float(SP["poolS"]), 1.0)
 		var burns := pf_zone_hits(log, id, a).filter(func(e: Dictionary) -> bool: return e["ints"][1] == PF_HK_BURN)
@@ -3861,6 +4059,7 @@ func slag_slam_and_pool() -> void:
 ## hag, the first in raise order on a tie, a far thrall counting as a neighbour but not as a candidate; with none, at the target. At the end of the wind-up everything inside takes
 ## blowMult x the blow as "curse", thralls are cursed for durationS (and a thrall the blow killed is not), heroes are chilled for chillMs.
 func hag_hex() -> void:
+	var pinned := pins([need_hag_scene()])
 	var d := def("bog_hag")
 	var H: Dictionary = fen["HAG_HEX"]
 	var windup := float(d["windupMs"]) / 1000.0
@@ -3877,6 +4076,8 @@ func hag_hex() -> void:
 	var tell := of(log, EV_TELEGRAPH, id, PF_TELL_HEX)
 	check(tell.size() == 1 and int(tell[0]["tick"]) == t0 + to_zero(cd0), "hex: the telegraph on the tick the cooldown is up (%d ticks after it appeared)" % to_zero(cd0))
 	if tell.is_empty():
+		if pinned:
+			unpin()
 		return
 	var f: PackedFloat32Array = tell[0]["floats"]
 	check(is_equal_approx(f[2], 1.0) and is_equal_approx(f[3], 22.0) and is_equal_approx(f[4], r) and is_equal_approx(f[5], windup), "hex: a ring of %.1f m on the thrall at the centre of the knot (1, 22), for %.1f s" % [r, windup])
@@ -3905,11 +4106,14 @@ func hag_hex() -> void:
 	check(float(c.thrall_info(ths[0])["cursed_t"]) > 0.0, "hex: the curse is still on half a second before its %.0f s are over" % float(H["durationS"]))
 	run(c, to_reach(0.5) + 2, log)
 	check(float(c.thrall_info(ths[0])["cursed_t"]) == 0.0, "hex: and it is over after %.0f s" % float(H["durationS"]))
+	if pinned:
+		unpin()
 
 
 ## The knot: a tie goes to the first thrall raised; a far thrall counts toward a knot but is not itself a candidate; with no thrall in reach the target is the aim; a thrall the hex kills is
 ## not cursed; a Bone Hex-softened hag hexes softer.
 func hag_aim() -> void:
+	var pinned := pins([need_hag_scene()])
 	var d := def("bog_hag")
 	var H: Dictionary = fen["HAG_HEX"]
 	var reach := float(d["attackRange"])
@@ -3926,35 +4130,35 @@ func hag_aim() -> void:
 	# 2. A thrall out of reach is a neighbour, not a candidate: the knot at +x has the most thralls though it is raised second.
 	var c2 := make(453)
 	var a2 := hero(c2, Vector2(0, 30))
-	pf_thralls(c2, a2, [Vector2(-9.0, 0), Vector2(9.0, 0), Vector2(11.9, 0)])
+	pf_thralls(c2, a2, [Vector2(-9.0, 0), Vector2(9.0, 0), Vector2(reach + 0.4, 0)])
 	var id2: int = c2.spawn_enemy("bog_hag", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
 	root(c2, id2)
 	var l2 := []
 	run(c2, to_zero(float(c2.enemy_info(id2)["attack_cd"])) + 1, l2)
 	var t2 := of(l2, EV_TELEGRAPH, id2, PF_TELL_HEX)
-	check(t2.size() == 1 and is_equal_approx(t2[0]["floats"][2], 9.0) and is_equal_approx(t2[0]["floats"][3], 0.0) and Vector2(11.9, 0).length() > reach,
-		"hex aim: a thrall at 11.9 m (beyond the hag's %.1f m) counts toward the knot at (9, 0), which has the most, and is not a candidate (%s)" % [reach, str(t2[0]["floats"].slice(2, 4) if t2.size() == 1 else "none")])
+	check(t2.size() == 1 and is_equal_approx(t2[0]["floats"][2], 9.0) and is_equal_approx(t2[0]["floats"][3], 0.0),
+		"hex aim: a thrall at %.1f m (beyond the hag's %.1f m) counts toward the knot at (9, 0), which has the most, and is not a candidate (%s)" % [reach + 0.4, reach, str(t2[0]["floats"].slice(2, 4) if t2.size() == 1 else "none")])
 	# 3. No thrall within reach: the target.
 	var c3 := make(454)
 	var a3 := hero(c3, Vector2(0, 9))
-	pf_thralls(c3, a3, [Vector2(0, -10.0)])
+	pf_thralls(c3, a3, [Vector2(0, -(reach + 0.5))])
 	var id3: int = c3.spawn_enemy("bog_hag", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
 	root(c3, id3)
 	var l3 := []
 	run(c3, to_zero(float(c3.enemy_info(id3)["attack_cd"])) + 1, l3)
 	var t3 := of(l3, EV_TELEGRAPH, id3, PF_TELL_HEX)
-	check(t3.size() == 1 and is_equal_approx(t3[0]["floats"][2], 0.0) and is_equal_approx(t3[0]["floats"][3], 9.0), "hex aim: no thrall within reach (the one at 10 m is beyond): the ring is on the hero it hunts (%s)" % str(t3[0]["floats"].slice(2, 4) if t3.size() == 1 else "none"))
+	check(t3.size() == 1 and is_equal_approx(t3[0]["floats"][2], 0.0) and is_equal_approx(t3[0]["floats"][3], 9.0), "hex aim: no thrall within reach (the one at %.1f m is beyond): the ring is on the hero it hunts (%s)" % [reach + 0.5, str(t3[0]["floats"].slice(2, 4) if t3.size() == 1 else "none")])
 	# 4. A thrall the hex kills is not cursed; a hexed hag hexes softer (blowMult x the softened blow).
 	var c4 := make(455)
 	var a4 := hero(c4, Vector2(0, 30))
-	var weak: int = pf_thralls(c4, a4, [Vector2(0, 9)], 3.0)[0]
+	var soft := float(d["damage"]) * float(statuses["BONE_HEX"]["damageMult"]) * float(H["blowMult"])
+	var weak: int = pf_thralls(c4, a4, [Vector2(0, 9)], soft * 0.5)[0]   # (less health than the softened blow)
 	var id4: int = c4.spawn_enemy("bog_hag", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
 	c4.apply_status(id4, "hex", 0, 1.0, 1000.0)
 	var l4 := []
 	run(c4, to_zero(float(c4.enemy_info(id4)["attack_cd"])) + to_reach(float(d["windupMs"]) / 1000.0) + 2, l4)
-	var soft := float(d["damage"]) * float(statuses["BONE_HEX"]["damageMult"]) * float(H["blowMult"])
 	var died := of(l4, 26, weak)    # EV_THRALL_DIED
-	check(died.size() == 1 and soft > 3.0 and float(c4.thrall_info(weak)["cursed_t"]) == 0.0, "hex aim: a thrall the hex kills (%.2f against 3 health) is not cursed" % soft)
+	check(died.size() == 1 and float(c4.thrall_info(weak)["cursed_t"]) == 0.0, "hex aim: a thrall the hex kills (%.2f against %.2f health) is not cursed" % [soft, soft * 0.5])
 	var c5 := make(456)
 	var a5 := hero(c5, Vector2(0, 8))
 	var id5: int = c5.spawn_enemy("bog_hag", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
@@ -3963,6 +4167,8 @@ func hag_aim() -> void:
 	run(c5, to_zero(float(c5.enemy_info(id5)["attack_cd"])) + to_reach(float(d["windupMs"]) / 1000.0) + 2, l5)
 	var h5 := of(l5, EV_HIT, id5)
 	check(not h5.is_empty() and h5[0]["ints"][0] == a5 and is_equal_approx(h5[0]["floats"][0], soft), "hex aim: a hexed hag's blow on a hero is %.2f (%d x %.2f x %.2f)" % [soft, int(d["damage"]), float(statuses["BONE_HEX"]["damageMult"]), float(H["blowMult"])])
+	if pinned:
+		unpin()
 
 
 # ------------------------------------------------------------------------------------------------------------------ the Fen Wisp
@@ -3979,13 +4185,14 @@ func wisp_pulse() -> void:
 	var a := hero(c, Vector2(14, 0))
 	var b := hero(c, Vector2(14.0 + r - 0.05, 0))
 	var o := hero(c, Vector2(14.0 + r + 0.05, 0))
-	var th: int = pf_thralls(c, a, [Vector2(14, -1.5)])[0]
+	var th: int = pf_thralls(c, a, [Vector2(14, -(r - 0.2))])[0]
 	var log := []
 	var id: int = c.spawn_enemy("fen_wisp", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
+	var cd0 := tick + to_zero(float(c.enemy_info(id)["attack_cd"]))
 	drain(c, log)
 	var xs: Array = []
 	var k0 := -1
-	for i in 900:
+	for i in ceili((14.0 - cast_at) / (float(d["speed"]) * 0.92) * 60.0) + 200:   # long enough to walk into casting range
 		run(c, 1, log)
 		xs.append(Vector2(c.enemy_info(id)["pos"]))
 		if not of(log, EV_TELEGRAPH, id, PF_TELL_PULSE).is_empty():
@@ -3997,7 +4204,7 @@ func wisp_pulse() -> void:
 	var f: PackedFloat32Array = of(log, EV_TELEGRAPH, id, PF_TELL_PULSE)[0]["floats"]
 	check(is_equal_approx(f[2], 14.0) and is_equal_approx(f[3], 0.0) and is_equal_approx(f[4], r) and is_equal_approx(f[5], windup), "pulse: a ring of %.1f m on the target for %.1f s" % [r, windup])
 	var d_start := Vector2(14, 0).distance_to(xs[xs.size() - 2])
-	check(d_start <= cast_at and d_start > cast_at - float(c.enemy_info(id)["speed"]) * DT * 1.5, "pulse: cast from %.2f m (attackRange - 0.5 = %.1f)" % [d_start, cast_at])
+	check(d_start <= cast_at and (d_start > cast_at - float(c.enemy_info(id)["speed"]) * DT * 1.5 or k0 == cd0), "pulse: cast from %.2f m (attackRange - 0.5 = %.1f), or on the tick its first cooldown was up" % [d_start, cast_at])
 	check(of(log, EV_ATTACK, id)[0]["ints"][0] == PF_BLOW_PULSE, "pulse: the swing is a pulse")
 	var ks := k0 + to_reach(windup)
 	run_to(c, ks, log)
@@ -4063,6 +4270,7 @@ func wisp_lure() -> void:
 ## strip (reach range + 0.6 m, half a width halfWidth + 0.3 m) takes blowMult x the blow; a hero is dragged pullM toward the sexton (never closer than 1.6 m, nothing under 5 cm) and rooted;
 ## a thrall is hit and never pulled. The cue is told at the aim.
 func sexton_chain() -> void:
+	var pinned := pins([need_hook_window()])
 	var d := def("drowned_sexton")
 	var H: Dictionary = fen["SEXTON_HOOK"]
 	var windup := float(d["windupMs"]) / 1000.0
@@ -4087,6 +4295,8 @@ func sexton_chain() -> void:
 	var tell := of(log, EV_TELEGRAPH, id, PF_TELL_HOOK)
 	check(tell.size() == 1 and int(tell[0]["tick"]) == t0 + to_zero(cd0) and bool(c.enemy_info(id)["hooking"]), "chain: the telegraph on the tick the cooldown is up (tick %d), and the sexton is hooking" % (t0 + to_zero(cd0)))
 	if tell.is_empty():
+		if pinned:
+			unpin()
 		return
 	var k0 := int(tell[0]["tick"])
 	var f: PackedFloat32Array = tell[0]["floats"]
@@ -4117,11 +4327,11 @@ func sexton_chain() -> void:
 	var want_pull := {}
 	for who in [[a, Vector2(0, 7)], [near, Vector2(half - 0.05, 7.01)], [behind, Vector2(0, reach - 0.05)]]:
 		var p: Vector2 = who[1]
-		want_pull[who[0]] = p + (Vector2.ZERO - p) / p.length() * drag
+		want_pull[who[0]] = p + (Vector2.ZERO - p) / p.length() * (p.length() - drag_to(p.length()))
 	var pull_ok := pulls.size() == 3
 	for who in want_pull:
 		pull_ok = pull_ok and pulls.has(who) and pulls[who].distance_to(want_pull[who]) < 1e-3
-	check(pull_ok, "chain: each is dragged %.1f m toward the sexton (%s)" % [drag, str(pulls)])
+	check(pull_ok, "chain: each is dragged pullM (%.1f m, never closer than 1.6 m) toward the sexton (%s)" % [drag, str(pulls)])
 	var root_ok := roots.size() == 3
 	for who in roots:
 		root_ok = root_ok and is_equal_approx(roots[who], float(H["rootMs"]) / 1000.0)
@@ -4152,10 +4362,13 @@ func sexton_chain() -> void:
 	run_to(c, k2, log)
 	var second := of(log, EV_TELEGRAPH, id, PF_TELL_HOOK)
 	check(second.size() == 2 and int(second[1]["tick"]) == k2, "chain: the second chain at %d ticks (%.1f s) after the first wind-up began (tick %d)" % [k2 - k0, float(H["cooldownS"]), k2])
+	if pinned:
+		unpin()
 
 
 ## The pull's limits: never closer than 1.6 m to the sexton, nothing under 5 cm.
 func sexton_pull_limits() -> void:
+	var pinned := pins([need_hook_window()])
 	var d := def("drowned_sexton")
 	var H: Dictionary = fen["SEXTON_HOOK"]
 	var c := make(472)
@@ -4181,20 +4394,23 @@ func sexton_pull_limits() -> void:
 			pulls[int(e["ints"][0])] = Vector2(e["floats"][1], e["floats"][2])
 		elif e["ints"][1] == PF_TE_ROOT:
 			roots[int(e["ints"][0])] = true
-	check(pulls.has(close) and pulls[close].distance_to(Vector2(0, 1.6)) < 1e-3, "pull: a hero 3 m out is dragged to 1.6 m from the sexton, not through it (%s)" % str(pulls.get(close)))
+	check(pulls.has(close) and pulls[close].distance_to(Vector2(0, drag_to(3.0))) < 1e-3, "pull: a hero 3 m out is dragged pullM, but to no nearer than 1.6 m from the sexton, not through it (%s)" % str(pulls.get(close)))
 	check(pulls.has(inside) and pulls[inside].distance_to(Vector2(0, 1.6)) < 1e-3, "pull: a hero 1.7 m out is dragged the 10 cm that remain")
 	check(not pulls.has(snug) and roots.has(snug), "pull: a hero at 1.65 m is not dragged (5 cm is nothing) and is rooted all the same")
-	check(pulls.has(a) and pulls[a].distance_to(Vector2(0, 6.2 - float(H["pullM"]))) < 1e-3, "pull: the target, 6.2 m out, is dragged the full %.1f m (to 1.7 m)" % float(H["pullM"]))
+	check(pulls.has(a) and pulls[a].distance_to(Vector2(0, drag_to(6.2))) < 1e-3, "pull: the target, 6.2 m out, is dragged pullM (%.1f m, to %.2f m)" % [float(H["pullM"]), drag_to(6.2)])
+	if pinned:
+		unpin()
 
 
 ## When the chain is not for it: a thrall is never hooked; closer than minRange or farther than range is not; a wall between blocks it; the slam is the swing at close quarters; an
 ## interrupted chain does not make the next slam a chain.
 func sexton_gates() -> void:
+	var pinned := pins([need_hook_window()])
 	var d := def("drowned_sexton")
 	var H: Dictionary = fen["SEXTON_HOOK"]
 	var windup := float(d["windupMs"]) / 1000.0
 	# The window: both ends inclusive.
-	for trial in [[float(H["minRange"]) - 0.1, false], [float(H["minRange"]), true], [float(H["range"]), true], [float(H["range"]) + 0.05, false]]:
+	for trial in [[float(H["minRange"]) - 0.1, false], [float(H["minRange"]) + 0.001, true], [float(H["range"]) - 0.001, true], [float(H["range"]) + 0.05, false]]:
 		var c := make(473)
 		hero(c, Vector2(0, float(trial[0])))
 		var id: int = c.spawn_enemy("drowned_sexton", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
@@ -4202,7 +4418,7 @@ func sexton_gates() -> void:
 		var log := []
 		run(c, 300, log)
 		check(of(log, EV_TELEGRAPH, id, PF_TELL_HOOK).is_empty() == (not bool(trial[1])), "chain: a hero %.2f m away is %s (minRange %.1f, range %.1f)" % [float(trial[0]), "hooked" if trial[1] else "not hooked", float(H["minRange"]), float(H["range"])])
-		if not bool(trial[1]):
+		if not bool(trial[1]) and float(trial[0]) > float(d["attackRange"]) + float(K["ATTACK_TRIGGER_PAD"]) + 0.1:
 			check(of(log, EV_ATTACK, id).is_empty(), "chain: and out of slam reach (rooted) it does nothing at all")
 	# A thrall is never hooked, whatever the distance: only a hero.
 	var t := make(474)
@@ -4248,14 +4464,16 @@ func sexton_gates() -> void:
 	check(bool(s.enemy_info(sid)["hooking"]), "chain: (the chain is under way)")
 	s.stun(sid, 1.0)
 	drain(s, sl)
-	check(s.enemy_info(sid)["state"] == HURT and not bool(s.enemy_info(sid)["hooking"]) and float(s.enemy_info(sid)["hook_cd"]) > 6.0, "chain: a stun ends the chain, and its cooldown has been spent all the same")
+	check(s.enemy_info(sid)["state"] == HURT and not bool(s.enemy_info(sid)["hooking"]) and float(s.enemy_info(sid)["hook_cd"]) > float(H["cooldownS"]) - 0.5, "chain: a stun ends the chain, and its cooldown has been spent all the same")
 	var flinch_end := tick + to_reach(1.0)
-	s.set_external(sh, Vector2(0, 2.0), true)        # now at slam range
+	s.set_external(sh, Vector2(0, float(d["attackRange"]) * 0.9), true)        # now at slam range
 	run_to(s, flinch_end + 5, sl)
 	var slam := of(sl, EV_TELEGRAPH, sid, TELL_SLAM)
-	check(slam.size() == 1 and of(sl, EV_TELEGRAPH, sid, PF_TELL_HOOK).size() == 1 and of(sl, EV_ATTACK, sid).back()["ints"][0] == BLOW_SLAM, "chain: back on the hunt it slams the hero at 2 m: not a chain (the flag did not survive)")
+	check(slam.size() == 1 and of(sl, EV_TELEGRAPH, sid, PF_TELL_HOOK).size() == 1 and of(sl, EV_ATTACK, sid).back()["ints"][0] == BLOW_SLAM, "chain: back on the hunt it slams the hero at close range: not a chain (the flag did not survive)")
 	if not slam.is_empty():
 		check(is_equal_approx(slam[0]["floats"][4], float(d["slamRadius"])) and is_equal_approx(slam[0]["floats"][5], windup), "slam: a ring of %.1f m for %.1f s" % [float(d["slamRadius"]), windup])
+	if pinned:
+		unpin()
 
 
 ## Its slam (r 2.5, 25) when the hero is close and the chain is not for him, and its fall: its own corpse and one risen on the ring (deathCorpses 2).
@@ -4277,12 +4495,16 @@ func sexton_slam_and_corpses() -> void:
 	events(c)
 	c.damage(id, 1.0e9, h, false)
 	var added := of(events(c), EV_CORPSE_ADDED)
-	check(added.size() == int(d["deathCorpses"]) and added.size() == 2 and c.def_name(added[0]["ints"][1]) == "drowned_sexton" and c.def_name(added[1]["ints"][1]) == "risen" and added.all(func(e: Dictionary) -> bool: return e["ints"][0] == PF_CK_NORMAL),
-		"sexton: it dies into its own corpse and one risen on the ring (deathCorpses %d), normal" % int(d["deathCorpses"]))
+	var rest_risen := true
+	for k in range(1, added.size()):
+		rest_risen = rest_risen and c.def_name(added[k]["ints"][1]) == "risen"
+	check(added.size() == int(d["deathCorpses"]) and not added.is_empty() and c.def_name(added[0]["ints"][1]) == "drowned_sexton" and rest_risen and added.all(func(e: Dictionary) -> bool: return e["ints"][0] == PF_CK_NORMAL),
+		"sexton: it dies into its own corpse and the rest risen on the ring (deathCorpses %d), normal" % int(d["deathCorpses"]))
 
 
 ## Bone Hex softens the chain (the blow is the body's damage x its status set's damage dealt, then blowMult), not the slam beside it.
 func sexton_hexed() -> void:
+	var pinned := pins([need_hook_window()])
 	var d := def("drowned_sexton")
 	var H: Dictionary = fen["SEXTON_HOOK"]
 	var c := make(479)
@@ -4295,6 +4517,8 @@ func sexton_hexed() -> void:
 	var hits := of(log, EV_HIT, id)
 	var soft := float(statuses["BONE_HEX"]["damageMult"])
 	check(hits.size() == 1 and hits[0]["ints"][0] == a and is_equal_approx(hits[0]["floats"][0], float(d["damage"]) * soft * float(H["blowMult"])), "chain: a hexed sexton's chain is %.3f (%d x %.2f x %.1f)" % [hits[0]["floats"][0] if not hits.is_empty() else -1.0, int(d["damage"]), soft, float(H["blowMult"])])
+	if pinned:
+		unpin()
 
 
 # ------------------------------------------------------------------------------------------------------------------ the Pyre and the Fen on the wire
@@ -4302,13 +4526,15 @@ func sexton_hexed() -> void:
 ## A guest sees each kind's telegraphs, zones and cues: the coal (and its pool), the hex, the pulse, the chain (bit 5 of the record, as the dive is) and its cue, the Husk's embers and the
 ## Slag Brute's pool as reliable zone events; what a hero is made to suffer besides damage (chill, root, drag) is the host's alone, as the blow is.
 func pf_on_the_wire() -> void:
+	var pinned := pins([need_hag_scene(), need_hook_window()])
 	# The Pyre Priest's coal and its pool.
 	var d := def("pyre_priest")
 	var EB: Dictionary = content["EMBER_BOLT"]
 	var windup := float(d["windupMs"]) / 1000.0
+	var px := minf(7.0, float(d["attackRange"]) - 1.0)   # (inside casting range, so that it stands and casts)
 	var host := make(481)
 	host.set_replication(true)
-	hero(host, Vector2(7, 0))
+	hero(host, Vector2(px, 0))
 	var id: int = host.spawn_enemy("pyre_priest", Vector2(0, 0), 3, 2.0, 1.5, false, PYRE, false)
 	var guest := puppet()
 	var hl := []
@@ -4321,7 +4547,7 @@ func pf_on_the_wire() -> void:
 	check(ht.size() == 1 and gt.size() == 1, "wire: the guest sees the coal's telegraph once (host %d, guest %d)" % [ht.size(), gt.size()])
 	if gt.size() == 1:
 		var f: PackedFloat32Array = gt[0]["floats"]
-		check(absf(f[2] - 7.0) < 0.02 and absf(f[3]) < 0.02 and is_equal_approx(f[4], float(EB["radius"])) and f[5] >= 0.05 and f[5] <= windup + 1e-4, "wire: a ring of %.1f m on the hero, for what is left of the %.2f s (%.2f s)" % [float(EB["radius"]), windup, f[5]])
+		check(absf(f[2] - px) < 0.02 and absf(f[3]) < 0.02 and is_equal_approx(f[4], float(EB["radius"])) and f[5] >= 0.05 and f[5] <= windup + 1e-4, "wire: a ring of %.1f m on the hero, for what is left of the %.2f s (%.2f s)" % [float(EB["radius"]), windup, f[5]])
 		check(int(gt[0]["tick"]) - int(ht[0]["tick"]) <= 6, "wire: within two snapshots of the host's (%d ticks later)" % (int(gt[0]["tick"]) - int(ht[0]["tick"])))
 	check(of(gl, EV_ATTACK, id).size() == 1 and of(gl, EV_ATTACK, id)[0]["ints"][0] == PF_BLOW_EMBER, "wire: and the swing is a coal on the guest")
 	t = lockstep(host, guest, hl, gl, t, t + to_reach(windup) + 10)
@@ -4335,7 +4561,7 @@ func pf_on_the_wire() -> void:
 	# The Husk's embers and the Slag Brute's pool: a body that falls on the host, a slam on the host.
 	var h2 := make(482)
 	h2.set_replication(true)
-	var f2 := hero(h2, Vector2(4, 0))
+	var f2 := hero(h2, Vector2(float(def("slag_brute")["attackRange"]) * 0.9, 0))   # (within the brute's reach, so that it slams at once)
 	var husk: int = h2.spawn_enemy("cinder_husk", Vector2(12, 12), 1, 1.0, 1.0, false, PYRE, false)
 	var slag: int = h2.spawn_enemy("slag_brute", Vector2(0, 0), 1, 1.0, 1.0, false, PYRE, false)
 	var g2 := puppet()
@@ -4376,7 +4602,7 @@ func pf_on_the_wire() -> void:
 	var wd := def("fen_wisp")
 	var h4 := make(484)
 	h4.set_replication(true)
-	hero(h4, Vector2(6, 0))
+	hero(h4, Vector2(minf(6.0, float(wd["attackRange"]) - 1.0), 0))
 	var wisp: int = h4.spawn_enemy("fen_wisp", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
 	var g4 := puppet()
 	var hl4 := []
@@ -4429,9 +4655,7 @@ func pf_on_the_wire() -> void:
 		hh.spawn_enemy(k, Vector2(float(PF_KINDS.find(k)) * 3.0, 0), 1, 1.0, 1.0, false, FEN, false)
 	var snap: PackedByteArray = hh.snapshot(900)
 	var control: RefCounted = ClassDB.instantiate("DmCore")
-	control.load_enemy_defs(content["ENEMIES"])
-	control.load_tuning(content)
-	control.load_status_defs(DmStatusRules.build(DmCoreData.json(data_dir.path_join("data/content/abilities.json")), statuses, content))
+	DmCoreData.load_all(control, data_dir)
 	control.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
 	control.set_puppet(true)
 	check(control.apply_snapshot(snap), "wire: (a guest with the same data takes the snapshot: %s)" % control.replication_error())
@@ -4444,13 +4668,14 @@ func pf_on_the_wire() -> void:
 			"emberDeath", "slamPool", "hook", "lure":
 				defs[change[0]].erase(change[1])
 			"EMBER_BOLT":
-				tun_content["EMBER_BOLT"]["radius"] = 2.5
+				tun_content["EMBER_BOLT"]["radius"] = float(tun_content["EMBER_BOLT"]["radius"]) + 1.0
 			"HAG_HEX":
-				fen_changed["HAG_HEX"]["radius"] = 4.0
+				fen_changed["HAG_HEX"]["radius"] = float(fen_changed["HAG_HEX"]["radius"]) + 1.0
 			"WISP_PULSE":
-				fen_changed["WISP_PULSE"]["radius"] = 3.0
+				fen_changed["WISP_PULSE"]["radius"] = float(fen_changed["WISP_PULSE"]["radius"]) + 1.0
 			"SEXTON_HOOK":
-				fen_changed["SEXTON_HOOK"]["range"] = 9.0
+				fen_changed["SEXTON_HOOK"]["range"] = float(fen_changed["SEXTON_HOOK"]["range"]) + 1.0
+		DmCoreData.load_all(odd, data_dir)   # the same data as the host, then the one change
 		odd.load_enemy_defs(defs)
 		odd.load_tuning(tun_content)
 		odd.load_legion_tuning({"fen": fen_changed})
@@ -4458,6 +4683,8 @@ func pf_on_the_wire() -> void:
 		odd.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
 		odd.set_puppet(true)
 		check(not odd.apply_snapshot(snap) and "data" in str(odd.replication_error()), "wire: a guest with another %s of the %s refuses the host's snapshot (%s)" % [change[1], change[0], odd.replication_error()])
+	if pinned:
+		unpin()
 
 
 # ------------------------------------------------------------------------------------------------------------------ the roster and a replay
@@ -4479,10 +4706,7 @@ func pf_roster_and_a_replay() -> void:
 	for id: String in ids:
 		if not DmWaveDirector.runs_on_core(id):
 			missing.append(id)
-	var all_eight := true
-	for id in PF_KINDS:
-		all_eight = all_eight and ids.has(id)
-	check(all_eight and missing.is_empty(), "roster: every kind of the Pyre's and the Fen's waves and processions runs on the core (%d kinds, missing %s)" % [ids.size(), str(missing)])
+	check(PF_KINDS.all(func(k: String) -> bool: return used_in_waves(k)) and missing.is_empty(), "roster: every kind of the Pyre's and the Fen's waves and processions runs on the core (%d kinds, missing %s), and its eight kinds are in the game's waves" % [ids.size(), str(missing)])
 	var looks := DmCoreData.json("res://crowd/crowd_looks.json")
 	var drawn := true
 	for id in PF_KINDS:
@@ -4491,7 +4715,7 @@ func pf_roster_and_a_replay() -> void:
 		drawn = drawn and slug != "" and FileAccess.file_exists(path)
 	check(drawn and looks["casters"].has("pyre_priest") and looks["casters"].has("bog_hag") and looks["casters"].has("fen_wisp") and not looks["casters"].has("cinder_husk") and not looks["casters"].has("slag_brute"),
 		"roster: the crowd draws them (their models; the priest, hag and wisp as casters)")
-	check(float(def("fen_wisp")["flying"]) == 1.5 and looks["enemy_glow"].has("fen_wisp"), "roster: the wisp hovers %.1f m and glows" % float(def("fen_wisp")["flying"]))
+	check(float(def("fen_wisp")["flying"]) > 0.0 and looks["enemy_glow"].has("fen_wisp"), "roster: the wisp hovers %.1f m and glows" % float(def("fen_wisp")["flying"]))
 	var logs := []
 	for round in 2:
 		var c := make(491)

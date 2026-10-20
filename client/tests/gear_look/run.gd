@@ -103,13 +103,16 @@ func _run() -> void:
 
 	# ---- cast clips: the staff's bolts and the scythe's strikes use clips that move the weapon hand
 	var cc := DmContent.file("castClips")
-	check(cc.WEAPON_CLIPS["staff"]["bolt"] == "flick" and cc.WEAPON_CLIPS["none"]["bolt"] == "flick", "staff bolts use the flick (the staff hand throws the cast)")
+	var staff_clips: Dictionary = cc.WEAPON_CLIPS["staff"]
+	var bolt_role: String = cc.ABILITY_ROLE["marrow_spear"]
+	check(staff_clips[bolt_role] != null, "a staff's cast of %s has a clip (the staff hand throws the cast)" % bolt_role)
 	var ch: Variant = av2._cast_clip_for("staff", "marrow_spear")
-	check(ch != null and ch.clip == "flick" and absf(ch.releaseAt - 0.619) < 0.01, "marrow_spear with a staff plays the flick, released at 0.619")
+	check(ch != null and ch.clip == staff_clips[bolt_role] and absf(ch.releaseAt - float(cc.CLIP_RELEASE[staff_clips[bolt_role]])) < 0.01, "marrow_spear with a staff plays its %s clip, released where the data says" % staff_clips[bolt_role])
 	var rpath := {}
-	for clip in ["flick", "slam", "summon", "cast", "sweep", "channel"]:
+	for clip in [staff_clips["bolt"], staff_clips["big"], staff_clips["summon"]]:
 		rpath[clip] = _hand_path(av2, clip, "R_Hand")
-	check(rpath["flick"] > 1.0 and rpath["slam"] > 1.0 and rpath["summon"] > 1.0, "the staff's bolt / big / summon clips move the weapon hand a lot (%s)" % [rpath])
+	var weak: Array = rpath.keys().filter(func(c: String) -> bool: return float(rpath[c]) <= 1.0)
+	check(weak.is_empty(), "the staff's bolt / big / summon clips move the weapon hand a lot (%s)" % [rpath])
 	av2.dispose()
 
 	# ---- tint: light, the base texture keeps its detail, trim carries the tier signal
@@ -142,8 +145,14 @@ func _run() -> void:
 		halo.append((sprite as Sprite3D).pixel_size if sprite != null else 0.0)
 		motes.append(_count(fx, "Motes", "amount"))
 		w.free()
-	check(halo[0] == 0.0 and halo[1] == 0.0 and halo[2] > 0.0 and halo[3] > halo[2] and halo[4] > halo[3], "outer halo grows from rare to legendary (%s)" % [halo])
-	check(motes == [0, 0, 5, 10, 16], "motes escalate rare 5, epic 10, legendary 16 and none below (%s)" % [motes])
+	var look: Array = DmGearFx.LOOK
+	var halo_ok := true
+	for i in look.size():
+		halo_ok = halo_ok and (halo[i] > 0.0) == (float(look[i]["outer"]) > 0.0)
+		if i > 0 and float(look[i]["outer"]) > 0.0 and float(look[i - 1]["outer"]) > 0.0:
+			halo_ok = halo_ok and (halo[i] > halo[i - 1]) == (float(look[i]["halo"]) > float(look[i - 1]["halo"]))
+	check(halo_ok and halo.any(func(h: float) -> bool: return h > 0.0), "the outer halo is there where the rarity's look has one, and grows with its size (%s)" % [halo])
+	check(motes == look.map(func(l: Dictionary) -> int: return int(l["motes"])), "the weapon's motes are the rarity's look: %s" % [motes])
 	check(DmGearFx.MAX_MOTES == 16 and motes.max() <= DmGearFx.MAX_MOTES, "motes are capped")
 	var plain := DmGearProps.build_weapon("staff_iron", "common")
 	check(DmGearFx.dress_weapon(plain, "common", "") == null and plain.get_node_or_null("GearFx") == null, "a plain common weapon gets nothing")
@@ -162,12 +171,14 @@ func _run() -> void:
 	var av4 := await _avatar("hero_ossuary")
 	av4.set_equipment({"main_hand": {"item_id": "staff_hell", "rarity": "epic"}})
 	var mh: Node3D = av4._worn.main_hand.obj
-	check((mh.get_meta("tip") as Node3D).get_node_or_null("GearFx") != null and _count((mh.get_meta("tip") as Node3D).get_node("GearFx"), "Motes", "amount") == 10, "a worn epic hell staff shows halo and 10 fire motes")
+	var epic_motes := int(look[DmGearFx.RARITIES.find("epic")]["motes"])
+	var legend_motes := int(look[DmGearFx.RARITIES.find("legendary")]["motes"])
+	check((mh.get_meta("tip") as Node3D).get_node_or_null("GearFx") != null and _count((mh.get_meta("tip") as Node3D).get_node("GearFx"), "Motes", "amount") == epic_motes, "a worn epic hell staff shows halo and %d fire motes" % epic_motes)
 	av4.set_weapon_element("not_an_element")
 	av4.set_weapon_element("frost")
-	check(av4._element == "frost" and _count((mh.get_meta("tip") as Node3D).get_node("GearFx"), "Motes", "amount") == 10, "a rune element replaces the tier's, rarity unchanged; bad names are refused")
+	check(av4._element == "frost" and _count((mh.get_meta("tip") as Node3D).get_node("GearFx"), "Motes", "amount") == epic_motes, "a rune element replaces the tier's, rarity unchanged; bad names are refused")
 	av4.set_equipment({"main_hand": {"item_id": "staff_hell", "rarity": "legendary"}})
-	check(_count((av4._worn.main_hand.obj.get_meta("tip") as Node3D).get_node("GearFx"), "Motes", "amount") == 16, "the same staff at a new rarity is redressed")
+	check(_count((av4._worn.main_hand.obj.get_meta("tip") as Node3D).get_node("GearFx"), "Motes", "amount") == legend_motes, "the same staff at a new rarity is redressed")
 	av4.set_equipment({})
 	check(av4._staff.visible and av4._staff.get_meta("tip").get_node_or_null("GearFx") != null, "the default staff shows the rune element too")
 
@@ -189,7 +200,7 @@ func _run() -> void:
 	check(schemes == [false, false, true, true, true], "the set's colour scheme comes on from 3 pieces (%s)" % [schemes])
 	check(av5.set_id == "gravecaller" and av5.set_pieces == 5 and seen.size() == 4 and seen[0] == ["gravecaller", 2] and seen[-1] == ["gravecaller", 5], "set_look_changed fires once per change (%s)" % [seen])
 	var auras := av5.c.root.get_children().filter(func(n: Node) -> bool: return n is CPUParticles3D)
-	check(auras.size() == 1 and (auras[0] as CPUParticles3D).amount == DmGearFx.AURA_MOTES[2], "one aura emitter, 14 motes at 4+ pieces")
+	check(auras.size() == 1 and (auras[0] as CPUParticles3D).amount == DmGearFx.AURA_MOTES[2], "one aura emitter, the motes of aura level 2 at 4+ pieces")
 	check(av5.c._gear_glow[0] != Vector3.ZERO, "worn pieces glow in the scheme colour")
 	av5.set_look("gravecaller", 5)
 	check(seen.size() == 4, "the same look again changes nothing")
@@ -437,7 +448,8 @@ func _models() -> void:
 	await _settle(sh)
 	check(sh.body_slug == "hero_leg_soul_harbingers" and scythe_file.call(sh._staff) == "gear_greenbone_scythe" and sh._staff.visible and not sh._worn.head.obj.visible, "Soul Harbinger, 3 pieces: the set's body (its own hood, no prop over it) and the green bone scythe (body %s)" % sh.body_slug)
 	check(sh.c.clip_duration("sweep") > 0.0 and sh.c.clip_duration("flick") > 0.0, "Soul Harbinger body: the Reaper's combat clips")
-	check(sh.c._params.has("rim") and is_equal_approx((sh.c._params["rim"] as Color).a, 0.5), "Soul Harbinger body: a soft green edge glow")
+	var rim: Variant = DmGearModels.legendary_rim("soul_harbingers")
+	check(rim != null and sh.c._params.has("rim") and is_equal_approx((sh.c._params["rim"] as Color).a, float(rim["strength"])), "Soul Harbinger body: a soft edge glow of the strength the data gives it")
 	shg["main_hand"] = {"item_id": "scythe_iron", "rarity": "rare"}
 	sh.set_equipment(shg)
 	check(scythe_file.call(sh._worn.main_hand.obj) == "gear_greenbone_scythe" and not sh._staff.visible, "Soul Harbinger: an equipped scythe shows as the set's too")

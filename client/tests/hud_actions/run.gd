@@ -240,9 +240,9 @@ func panels(cid: int) -> void:
 	await frames(2)
 	# seed the bag through the adapter's bag (it flushes to the backend like the game)
 	var weapon := item_of_type(["weapon"])
-	var seeded: Array = (await api.get_inventory(cid)).data.filter(func(r: Dictionary) -> bool: return int(r["slot_index"]) < 48)
-	seeded.append({"slot_index": 47, "item_id": weapon, "quantity": 1})   # the bag is the server's (DECISIONS B25): seeded on the mock, as a GM would
-	await api.save_inventory(cid, seeded.map(func(r: Dictionary) -> Dictionary: return {"slot_index": int(r["slot_index"]), "item_id": r["item_id"], "quantity": int(r["quantity"]), "instance_id": r.get("instance_id")}), 48)
+	var seeded: Array = (await api.get_inventory(cid)).data.filter(func(r: Dictionary) -> bool: return int(r["slot_index"]) < DmLoot.bag_size())
+	seeded.append({"slot_index": DmLoot.bag_size() - 1, "item_id": weapon, "quantity": 1})   # the bag is the server's (DECISIONS B25): seeded on the mock, as a GM would
+	await api.save_inventory(cid, seeded.map(func(r: Dictionary) -> Dictionary: return {"slot_index": int(r["slot_index"]), "item_id": r["item_id"], "quantity": int(r["quantity"]), "instance_id": r.get("instance_id")}), DmLoot.bag_size())
 	await h.refresh_inventory()
 	var meta := DmContent.item(weapon)
 

@@ -1,6 +1,6 @@
 extends "res://tests/common/dm_suite_part.gd"
 ## Reliquary window size is stable (godot --headless --path client --script res://tests/ui/reliquary_size_run.gd):
-## selecting items of any shape must not change the window's size, and all 48 bag cells stay reachable at small and large viewports.
+## selecting items of any shape must not change the window's size, and every bag cell stays reachable at small and large viewports.
 
 var _pass := 0
 var _fail := 0
@@ -44,8 +44,8 @@ func _run() -> void:
 		r.has_sell = true
 		r.at_grinder = false
 		var bag: Array = []
-		bag.resize(48)
-		for i in 48:
+		bag.resize(DmLoot.bag_size())
+		for i in DmLoot.bag_size():
 			bag[i] = {}
 		bag[0] = {"id": 1, "name": "Ore", "rarity": "common", "quantity": 40, "sell_value": 3, "type_label": "material"}
 		bag[1] = _rich(0)
@@ -97,10 +97,10 @@ func _run() -> void:
 				ok = false
 			if s.get_global_rect().end.x > r.get_global_rect().end.x:
 				ok = false   # a cell pushed out past the window edge (a wide detail line once did this)
-		_check(ok and r._slots.size() == 48, "all 48 bag cells have their full size%s" % tag)
+		_check(ok and r._slots.size() == DmLoot.bag_size(), "all %d bag cells have their full size%s" % [DmLoot.bag_size(), tag])
 		# the panel never exceeds the viewport height, and what does not fit is reachable by the body scroll
 		_check(r.size.y <= float(vp.y) + 1.0, "window fits the viewport height%s (%s of %d)" % [tag, str(r.size.y), vp.y])
-		var last: Control = r._slots[47]
+		var last: Control = r._slots[DmLoot.bag_size() - 1]
 		var body_h := r._content_margin.get_combined_minimum_size().y
 		var view_h := r.scroll.size.y
 		_check(view_h >= body_h - 0.5 or r.scroll.get_v_scroll_bar().max_value >= body_h - 1.0, "the bag grid stays in the scrollable body%s" % tag)
@@ -111,22 +111,23 @@ func _run() -> void:
 	var rq := DmReliquaryPanel.new()
 	root.add_child(rq)
 	var bg: Array = []
-	bg.resize(48)
-	for i in 48:
+	bg.resize(DmLoot.bag_size())
+	for i in DmLoot.bag_size():
 		bg[i] = {}
 	bg[2] = {"id": 2, "item_id": "ore_copper", "name": "Ore", "rarity": "common", "quantity": 40, "row": {"slot_index": 2, "item_id": "ore_copper", "quantity": 40}}
 	bg[7] = {"id": 7, "item_id": "log_oak", "name": "Log", "rarity": "common", "quantity": 3, "row": {"slot_index": 7, "item_id": "log_oak", "quantity": 3}}
 	rq.set_inventory(bg, {}, {})
 	rq.open()
 	await _frames(3)
+	var far_cell: int = DmLoot.bag_size() * 5 / 8   # a cell well past the first rows
 	var moves := []
 	rq.bag_move_requested.connect(func(f: int, t: int) -> void: moves.append([f, t]))
 	var pay: Variant = rq._slots[2].drag_data
 	_check(pay != null, "a plain (non-gear) bag item can be dragged")
-	_check(rq._slots[30]._can_drop_data(Vector2.ZERO, pay) and not rq._slots[2]._can_drop_data(Vector2.ZERO, pay), "any other bag cell takes it, its own cell does not")
-	rq._slots[30]._drop_data(Vector2.ZERO, pay)
+	_check(rq._slots[far_cell]._can_drop_data(Vector2.ZERO, pay) and not rq._slots[2]._can_drop_data(Vector2.ZERO, pay), "any other bag cell takes it, its own cell does not")
+	rq._slots[far_cell]._drop_data(Vector2.ZERO, pay)
 	rq._slots[7]._drop_data(Vector2.ZERO, pay)
-	_check(moves == [[2, 30], [2, 7]], "drops ask to move to the empty cell and to swap with another item (%s)" % str(moves))
+	_check(moves == [[2, far_cell], [2, 7]], "drops ask to move to the empty cell and to swap with another item (%s)" % str(moves))
 	# the selected item's buttons survive a bag change in another cell (a fight refreshes the bag all the time, and a rebuild between a press and its release
 	# swallowed the click: a Drop took several tries), and are rebuilt when the selected item itself changes
 	rq._slots[7].pressed.emit(rq._slots[7])

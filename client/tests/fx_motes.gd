@@ -32,7 +32,8 @@ func _main() -> void:
 	today.source_code = src.replace("class_name DmFxRing\n", "")
 	check(today.reload() == OK, "today's ring compiles in this project")
 	var tex := ImageTexture.create_from_image(Image.create(4, 4, false, Image.FORMAT_RGBA8))
-	for cfg in [[3500, true, "the additive ring (3,500)"], [900, false, "the smoke ring (900)"]]:
+	var caps := DmFxData.caps()
+	for cfg in [[int(caps["additive_particles"]), true, "the additive ring (%d)" % int(caps["additive_particles"])], [int(caps["smoke_particles"]), false, "the smoke ring (%d)" % int(caps["smoke_particles"])]]:
 		_compare(today, int(cfg[0]), bool(cfg[1]), tex, String(cfg[2]))
 	_end()
 
@@ -59,9 +60,10 @@ func _compare(today: GDScript, cap: int, additive: bool, tex: Texture2D, label: 
 	var saw_full := false
 	var wrapped := false
 	var emitted := 0
+	var more := maxf(1.0, float(cap) / 3500.0)   # (the bursts below were sized to wrap a ring of 3,500 within the run: a bigger ring gets bigger bursts)
 	for f in 900:
 		if f % 3 == 0 and f < 700:
-			var o := {"x": opts.randf_range(-20, 20), "y": opts.randf_range(0, 2), "z": opts.randf_range(-20, 20), "count": opts.randi_range(1, 140 if f > 200 else 30),
+			var o := {"x": opts.randf_range(-20, 20), "y": opts.randf_range(0, 2), "z": opts.randf_range(-20, 20), "count": opts.randi_range(1, int((140 if f > 200 else 30) * more)),
 				"color": _color(opts, f / 3), "spread": opts.randf_range(0.0, 2.0), "speed": opts.randf_range(0.0, 6.0), "up": opts.randf_range(-1.0, 3.0),
 				"life": opts.randf_range(0.2, 2.5), "size": opts.randf_range(0.05, 0.6), "gravity": opts.randf_range(-2.0, 9.0), "drag": opts.randf_range(0.0, 4.0),
 				"shrink": opts.randf_range(-1.0, 1.0), "inward": opts.randf() < 0.3}

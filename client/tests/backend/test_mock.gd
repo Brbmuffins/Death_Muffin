@@ -26,7 +26,8 @@ static func run(t: SceneTree) -> Array:
 	var noch := await api.get_character()
 	check.call(not noch.ok and noch.status == 404, "no character yet")
 	var ch := await api.load_or_create_character(7)
-	check.call(ch.ok and ch.data["class_index"] == 7 and ch.data["class_name"] == "Carrion Witch" and ch.data["level"] == 1, "create character + discipline")
+	var disc_name := String(DmContent.discipline(String(DmCombatData.disciplines()["by_index"]["7"]))["name"])   # the data's name for discipline 7
+	check.call(ch.ok and ch.data["class_index"] == 7 and ch.data["class_name"] == disc_name and ch.data["level"] == 1, "create character + discipline")
 	var cid: int = ch.data["id"]
 	var inv := await api.get_inventory(cid)
 	check.call(inv.ok and inv.data.size() == 2 and inv.data[0]["item_id"] == "staff_oak", "starter inventory")
@@ -62,7 +63,7 @@ static func run(t: SceneTree) -> Array:
 	var preset := {"name": "x", "rites": {"primary": "bone_needle", "keys": ["a", "b", "c", "d", "e"]}}
 	var sl := await api.save_loadout(cid, 2, preset)
 	var dl := await api.delete_loadout(cid, 2)
-	var badslot := await api.save_loadout(cid, 9, preset)
+	var badslot := await api.save_loadout(cid, DmMockBackend.MAX_PRESETS, preset)   # the first slot past the last
 	var badpreset := await api.save_loadout(cid, 2, {"name": "x"})
 	check.call(sl.ok and sl.data.size() == 1 and dl.ok and dl.data.size() == 0 and not badslot.ok and not badpreset.ok and badpreset.error == "A loadout holds a primary and five rites.", "loadouts")
 	var unknown := await api.craft(cid, "recipe_x")

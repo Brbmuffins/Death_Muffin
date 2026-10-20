@@ -865,7 +865,7 @@ func guest_death() -> void:
 	check(await until(func() -> bool: return not gb_g.alive, 2.0) and gb_g.hp <= 0.0, "the guest's body died on the guest: the vitals arrived")
 	await ticks(30)
 	check(bool(g.ui_host.hud_state()["death"]["show"]), "the guest's HUD shows the death veil")
-	check(await until(func() -> bool: return up[0] == 1 and gb_g.alive, 8.0), "the hero got up on both sides after the respawn time")
+	check(await until(func() -> bool: return up[0] == 1 and gb_g.alive, DmHeroBody.RESPAWN_S + 4.0), "the hero got up on both sides after the respawn time")
 	await ticks(30)
 	check(not bool(g.ui_host.hud_state()["death"]["show"]) and gb_g.hp > 0.0, "and the veil is gone")
 
@@ -914,15 +914,17 @@ func guest_window() -> void:
 	var f0_h := tap_h.duplicate(true)
 	var f0_g := tap_g.duplicate(true)
 	var dropped := 0
+	# a round spaces its two casts by more than the needle's own cooldown, so every cast is taken whatever the cooldown is
+	var cd_ticks := int(ceil(float(DmAbilities.def("bone_needle")["cooldownMs"]) / 1000.0 * 60.0)) + 6
 	for i in 6:
 		# (the HUD's budget of numbers on screen counts real time, 850 ms a number: a fresh one for each round keeps this run's count the same on a quick machine and a slow one)
 		h.ui_host.floats = DmFloatBudget.new()
 		g.ui_host.floats = DmFloatBudget.new()
 		vpos = h.core_host.enemy_position(victim)
 		rites_g.request_cast("bone_needle", vpos, victim)
-		await ticks(20)
+		await ticks(maxi(20, cd_ticks))
 		rites_h.request_cast("bone_needle", vpos, victim)
-		await ticks(45)
+		await ticks(maxi(45, cd_ticks))
 		dropped += h.ui_host.floats.dropped + g.ui_host.floats.dropped
 	rites_hg.random = Callable()
 	var hit_h := tapped(tap_h, "floats", "hit") + tapped(tap_h, "floats", "crit") - tapped(f0_h, "floats", "hit") - tapped(f0_h, "floats", "crit")
@@ -1009,7 +1011,7 @@ func guest_window() -> void:
 	check((tap_h["info_text"] as Array).count("Dragged!") == w_h + 1 and (tap_g["info_text"] as Array).count("Dragged!") == w_g + 1, "and of the host's hero on the host's window only")
 
 	# ---- the killing blow is a hurt too (once); the respawn, which raises the health, is none
-	await until(func() -> bool: return hb.alive and gb_h.alive, 10.0)
+	await until(func() -> bool: return hb.alive and gb_h.alive, DmHeroBody.RESPAWN_S + 6.0)
 	gb_h.p["stats"]["maxHp"] = 400.0
 	gb_h.p["hp"] = 400.0
 	gb_h._mirror_from_state()
@@ -1023,7 +1025,7 @@ func guest_window() -> void:
 	await ticks(10)
 	check(tap_g["hurt_text"].size() == kb["hurt_text"].size() + 1 and tap_g["hurt_text"][-1] == "-%d" % DmMath.js_round(hp_before) and tap_g["flash"] == kb["flash"] + 1 and tapped(tap_g, "sfx", "lowHealth") == tapped(kb, "sfx", "lowHealth"), "the blow that killed is a number (the health it took, %s) and a flash, with no low-health sound" % str(tap_g["hurt_text"][-1]))
 	var dead_at := tap_g.duplicate(true)
-	check(await until(func() -> bool: return up[0] == 1 and gb_g.alive, 8.0), "and it got up")
+	check(await until(func() -> bool: return up[0] == 1 and gb_g.alive, DmHeroBody.RESPAWN_S + 4.0), "and it got up")
 	await ticks(30)
 	check(tap_g["hurt_text"].size() == dead_at["hurt_text"].size() and tap_g["flash"] == dead_at["flash"], "getting up is no hurt")
 
@@ -1122,16 +1124,29 @@ func seals() -> void:
 	var u: Dictionary = DmContent.area("warren")["unlock"]
 	check(hp.kills(String(u["area"])) < hp.unlock_kills(float(u["kills"])), "(the host's own kills have not broken it yet: %d of %d)" % [hp.kills(String(u["area"])), hp.unlock_kills(float(u["kills"]))])
 	hp.local["areaKills"][String(u["area"])] = hp.unlock_kills(float(u["kills"]))
+	var kills_set := hp.unlock_kills(float(u["kills"]))
+	var broken_want: Array = []   # every seal the data lets that many kills in the Graves break
+	for a in DmContent.area_order():
+		var ua: Variant = DmContent.area(String(a)).get("unlock")
+		if ua is Dictionary and String(ua["area"]) == String(u["area"]) and hp.unlock_kills(float(ua["kills"])) <= kills_set and not hp.really_unlocked(String(a)):
+			broken_want.append(String(a))
 	var broken: Array = h.chapterhouse.check_seals()
-	check(broken == ["warren"], "the Graves' kills break the Warren's seal on the host (%s)" % str(broken))
+	var broken_got := broken.duplicate()
+	broken_got.sort()
+	broken_want.sort()
+	check(broken.has("warren") and broken_got == broken_want, "the Graves' kills break the Warren's seal on the host, and the seals the data lets them break (%s)" % str(broken))
 	check(await until(func() -> bool: return _gate(h, door) == "open", 3.0), "its gate is up on the host (%s)" % _gate(h, door))   # (the collider switches off a frame later)
 	check(await until(func() -> bool: return g.world.unlocked.has("warren") and _gate(g, door) == "open", 3.0), "and on the guest: the Warren is open and its gate is up (%s)" % _gate(g, door))
 	check(h.world.unlocked.keys() == g.world.unlocked.keys(), "the guest's open areas are the host's (%s)" % str(g.world.unlocked.keys()))
 	check(doors_log[h] == [door] and doors_log[g] == [door], "the door rose once on each side, the event the gate sound plays on (host %s, guest %s)" % [str(doors_log[h]), str(doors_log[g])])
-	var banners := gevents.filter(func(e: Array) -> bool: return e[0] == "banner" and String(e[1].get("title", "")) == "A seal breaks")
-	check(banners.size() == 1 and String(banners[0][1]["sub"]).contains("Warren"), "the guest saw the banner of the broken seal (%s)" % str(banners.map(func(e: Array) -> String: return String(e[1]["sub"]))))
-	var from := g.world.nav_closest(Vector3(0.0, 0.0, -16.0))
-	var goal := g.world.nav_closest(Vector3(-52.0, 0.0, -30.0))
+	var warren_name := String(DmContent.area("warren")["name"])
+	var warren_banners := func() -> Array: return gevents.filter(func(e: Array) -> bool: return e[0] == "banner" and String(e[1].get("title", "")) == "A seal breaks" and String(e[1].get("sub", "")).contains(warren_name))
+	var banners: Array = warren_banners.call()
+	check(banners.size() == 1, "the guest saw the banner of the broken seal (%s)" % str(banners.map(func(e: Array) -> String: return String(e[1]["sub"]))))
+	var rect_graves: Dictionary = g.world.area_rect("graves")   # from the middle of the Graves to the middle of the Warren
+	var rect_warren: Dictionary = g.world.area_rect("warren")
+	var from := g.world.nav_closest(Vector3((float(rect_graves["x0"]) + float(rect_graves["x1"])) * 0.5, 0.0, (float(rect_graves["z0"]) + float(rect_graves["z1"])) * 0.5))
+	var goal := g.world.nav_closest(Vector3((float(rect_warren["x0"]) + float(rect_warren["x1"])) * 0.5, 0.0, (float(rect_warren["z0"]) + float(rect_warren["z1"])) * 0.5))
 	var way := [PackedVector3Array()]
 	await until(func() -> bool:   # the navigation server merges the opened regions on its own thread, a few frames later
 		way[0] = g.world.nav_path(from, goal)
@@ -1142,7 +1157,7 @@ func seals() -> void:
 	g.chapterhouse.apply_seals()
 	h.chapterhouse.apply_seals()
 	await ticks(10)
-	check(_gate(g, door) == "open" and g.world.unlocked.has("warren") and doors_log[g] == [door] and gevents.filter(func(e: Array) -> bool: return e[0] == "banner" and String(e[1].get("title", "")) == "A seal breaks").size() == 1,
+	check(_gate(g, door) == "open" and g.world.unlocked.has("warren") and doors_log[g] == [door] and warren_banners.call().size() == 1,
 		"the guest's own seals do not close the door, and a repeat of the host's state raises nothing again")
 
 	# a player who joins now finds the door open, without a sound or a banner
@@ -1203,7 +1218,13 @@ func guest_travel() -> void:
 	check(await until(func() -> bool: return gb.position.distance_to(ws) < 0.5 and went == ["warren"], 3.0), "the guest sees itself there and its jump played (%s, %s)" % [str(gb.position), str(went)])
 	# an area still sealed in the host's world: the host refuses and the guest is told why
 	toasts.clear()
-	g.party.ask_travel("ossuary")
+	var sealed := ""
+	for a in DmContent.area_order():
+		if DmContent.area(String(a)).get("unlock") is Dictionary and not h.world.unlocked.has(String(a)):
+			sealed = String(a)
+			break
+	check(sealed != "", "(an area the host's world still has sealed: %s)" % sealed)
+	g.party.ask_travel(sealed)
 	check(await until(func() -> bool: return toasts.any(func(t: String) -> bool: return t.contains("still sealed")), 3.0) and hb.position.distance_to(ws) < 0.1,
 		"a sealed area: the host refuses, the guest is told why and stays (%s)" % str(toasts))
 	# the recall (T) home: the host takes the guest's body to the Chapterhouse's return spot

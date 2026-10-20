@@ -3,6 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const ground = require('./ground.cjs');
 const { LIMITS } = require('./party-sessions.cjs');
+const { BAG_SLOTS } = require('./gathering/gathering-rules.cjs');
 
 const S = 'a'.repeat(32);       // the party session
 const OLD = 'b'.repeat(32);     // another session
@@ -162,7 +163,7 @@ test('only gear, never worn, never an empty slot, only from inside a live sessio
 });
 
 test('a full bag refuses the pickup and the piece stays on the ground', async () => {
-  const bag = Array.from({ length: 48 }, (_, i) => ({ character_id: 2, slot_index: i, item_id: 'ore_copper', quantity: 1 }));
+  const bag = Array.from({ length: BAG_SLOTS }, (_, i) => ({ character_id: 2, slot_index: i, item_id: 'ore_copper', quantity: 1 }));
   const f = party({ inventory: [{ character_id: 1, slot_index: 0, item_id: 'helm_iron', instance_id: 50 }, ...bag] });
   const { dropId } = await dropAs(f, 0);
   await refused(pickAs(f, dropId, 2, 8), 'bag_full');

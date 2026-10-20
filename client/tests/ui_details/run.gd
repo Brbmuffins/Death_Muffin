@@ -1,6 +1,8 @@
 extends SceneTree
 ## UI parity wave: tooltips, clickable toasts, chat commands, bug report in Settings, art, login backdrop.
 ##   godot --headless --path client --script res://tests/ui_details/run.gd
+## The spell card's cases (fixtures/spelltip.json) are a golden recording of the card for each rite and state: they carry the rites' numbers, so after a rite is
+## retuned or a new one added, remake them from the data now with:  godot --headless --path client --script res://tests/ui_details/run.gd -- --regen
 
 var _fail := 0
 var _pass := 0
@@ -64,8 +66,10 @@ func _eq(a: Variant, b: Variant) -> bool:
 
 
 func _run_spelltip() -> void:
-	var cases: Array = JSON.parse_string(FileAccess.get_file_as_string(FIX + "spelltip.json"))["cases"]
+	var doc: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(FIX + "spelltip.json"))
+	var cases: Array = doc["cases"]
 	var discs: Dictionary = DmContent.get_export("disciplines", "DISCIPLINES")
+	var regen := OS.get_cmdline_user_args().has("--regen")
 	var bad := 0
 	for c in cases:
 		var inp: Dictionary = c["in"]
@@ -75,6 +79,9 @@ func _run_spelltip() -> void:
 			st["kit"] = DmAbilities.kit_for(String(inp["family"]))
 		st["auto"] = inp["auto"]
 		var got := DmSpellTooltip.build(String(inp["id"]), d, st)
+		if regen:
+			c["out"] = got
+			continue
 		if _eq(got, c["out"]):
 			_pass += 1
 		else:
@@ -84,6 +91,11 @@ func _run_spelltip() -> void:
 				for k in got:
 					if not _eq(got[k], c["out"].get(k)):
 						printerr("FAIL spelltip %s %s %s: %s\n   got  %s\n   want %s" % [inp["id"], inp["discipline"], inp["state"], k, got[k], c["out"].get(k)])
+	if regen:
+		var f := FileAccess.open(FIX + "spelltip.json", FileAccess.WRITE)
+		f.store_string(JSON.stringify(doc))
+		f.close()
+		print("ui_details: fixtures/spelltip.json remade from the data (%d cases)" % cases.size())
 
 
 func _run() -> void:

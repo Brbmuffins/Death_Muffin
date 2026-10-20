@@ -7,9 +7,15 @@ const sinks = require('./gathering/gold-sink-rules.cjs');
 const affix = require('./gathering/affix-rules.cjs');
 
 const [LO, HI] = affix.affixRange('p_str', 20);
+const fmt = (n) => Number(n).toLocaleString('en-US');
+/** The stock piece below: item level 20, an uncommon base (the fake items table says so). Its price with this many affixes and reforges done. */
+const ILVL = 20;
+const price = (affixCount, rerolls = 0) => sinks.reforgeCost(ILVL, 'uncommon', affixCount, rerolls);
+/** More gold than any reforge can ever cost. */
+const RICH = sinks.REFORGE.cap * 2;
 
 /** The reforge SQL on top of fakeDb: the character's gold, the reforge counter, and instance rows (shared with fakeDb's loot table). */
-function setup({ gold = 100000, bag, equipped, loot, otherAccount = false } = {}) {
+function setup({ gold = RICH, bag, equipped, loot, otherAccount = false } = {}) {
   const state = { gold, rerolls: new Map(), calls: 0 };
   let db;
   const extra = (sql, p) => {
@@ -32,7 +38,7 @@ function setup({ gold = 100000, bag, equipped, loot, otherAccount = false } = {}
   db = fakeDb({
     bag: bag ?? [{ slot_index: 0, item_id: 'helm_iron', quantity: 1, instance_id: 1000 }, { slot_index: 1, item_id: 'helm_copper', quantity: 1 }],
     equipped,
-    loot: loot ?? [{ id: 1000, item_id: 'helm_iron', ilvl: 20, affixes: [{ id: 'p_str', v: LO }] }],
+    loot: loot ?? [{ id: 1000, item_id: 'helm_iron', ilvl: ILVL, affixes: [{ id: 'p_str', v: LO }] }],
     extra,
   });
   const call = (opts) => harness(mountReforge, db, opts);
@@ -41,23 +47,29 @@ function setup({ gold = 100000, bag, equipped, loot, otherAccount = false } = {}
 const go = (c, body) => c('POST /api/reforge', { body: { characterId: 1, slot_index: 0, affix_index: 0, ...body } });
 const valueOf = (db, id = 1000) => db.loot.find((l) => l.id === id).affixes;
 
-test('the curve: ilvl x 40 x rarity, x1.25 per reforge, capped', () => {
-  assert.equal(sinks.reforgeCost(20, 'uncommon', 1, 0), 800);
-  assert.equal(sinks.reforgeCost(20, 'uncommon', 1, 1), 1000);
-  assert.equal(sinks.reforgeCost(20, 'uncommon', 2, 0), 1200, 'two affixes shows rare: x1.5');
-  assert.equal(sinks.reforgeCost(99, 'common', 3, 0), 9900, 'three affixes shows epic: x2.5');
-  assert.equal(sinks.reforgeCost(99, 'legendary', 3, 100), sinks.reforgeCost(99, 'legendary', 3, 20), 'the price stops rising after 20 reforges');
-  assert.ok(sinks.reforgeCost(99, 'legendary', 3, 100) <= 2000000);
-  assert.ok(sinks.reforgeCost(99, 'epic', 3, 5) < sinks.reforgeCost(99, 'epic', 3, 6));
+test('the curve: gold per item level x rarity shown, x growth per reforge, stops rising after maxSteps, capped', () => {
+  const R = sinks.REFORGE;
+  const expected = (ilvl, shown, rerolls) => Math.min(R.cap, Math.max(1, Math.round(R.goldPerIlvl * ilvl * R.rarityMult[shown] * Math.pow(R.growth, Math.min(R.maxSteps, rerolls)))));
+  for (const rerolls of [0, 1, 5, R.maxSteps, R.maxSteps + 80]) {
+    assert.equal(sinks.reforgeCost(20, 'uncommon', 1, rerolls), expected(20, affix.effectiveRarity('uncommon', 1), rerolls));
+    assert.equal(sinks.reforgeCost(99, 'legendary', 3, rerolls), expected(99, affix.effectiveRarity('legendary', 3), rerolls));
+  }
+  // the affix count lifts the rarity a piece shows, and a rarer piece never costs less
+  assert.equal(sinks.reforgeCost(20, 'uncommon', 2, 0), expected(20, affix.effectiveRarity('uncommon', 2), 0), 'two affixes shows the rarity two affixes make');
+  assert.equal(sinks.reforgeCost(99, 'common', 3, 0), expected(99, affix.effectiveRarity('common', 3), 0), 'three affixes shows the rarity three make');
+  for (let n = 1; n < 3; n++) assert.ok(sinks.reforgeCost(99, 'common', n + 1, 0) >= sinks.reforgeCost(99, 'common', n, 0), 'more affixes never cost less');
+  assert.equal(sinks.reforgeCost(99, 'legendary', 3, R.maxSteps + 80), sinks.reforgeCost(99, 'legendary', 3, R.maxSteps), 'the price stops rising after maxSteps reforges');
+  assert.ok(sinks.reforgeCost(99, 'legendary', 3, R.maxSteps + 80) <= R.cap);
+  assert.ok(sinks.reforgeCost(20, 'uncommon', 1, 1) > sinks.reforgeCost(20, 'uncommon', 1, 0), 'every reforge raises the price');
 });
 
 test('a reforge redraws only the value, charges the server price and counts the reforge', async () => {
   const t = setup();
   const r = (await go(t.call({ random: () => 0.999 }))).json;
   assert.equal(r.success, true, r.error);
-  assert.equal(r.data.cost, 800);
-  assert.equal(r.data.gold, 100000 - 800);
-  assert.equal(t.state.gold, 100000 - 800);
+  assert.equal(r.data.cost, price(1));
+  assert.equal(r.data.gold, RICH - price(1));
+  assert.equal(t.state.gold, RICH - price(1));
   assert.deepEqual(valueOf(t.db), [{ id: 'p_str', v: HI }], 'same affix, new value, inside the range');
   assert.equal(r.data.from, LO);
   assert.equal(r.data.to, HI);
@@ -66,40 +78,41 @@ test('a reforge redraws only the value, charges the server price and counts the 
 });
 
 test('the price rises with every reforge of the same piece and follows the affix count', async () => {
-  const t = setup({ loot: [{ id: 1000, item_id: 'helm_iron', ilvl: 20, affixes: [{ id: 'p_str', v: LO }, { id: 's_vit', v: affix.affixRange('s_vit', 20)[0] }] }] });
+  const t = setup({ loot: [{ id: 1000, item_id: 'helm_iron', ilvl: ILVL, affixes: [{ id: 'p_str', v: LO }, { id: 's_vit', v: affix.affixRange('s_vit', ILVL)[0] }] }] });
   const c = t.call({ random: () => 0.999 });
   const first = (await go(c, { affix_index: 0 })).json;
   const second = (await go(c, { affix_index: 1 })).json;
-  assert.equal(first.data.cost, 1200);
-  assert.equal(second.data.cost, 1500, '1200 x 1.25');
-  assert.equal(t.state.gold, 100000 - 1200 - 1500);
+  assert.equal(first.data.cost, price(2, 0));
+  assert.equal(second.data.cost, price(2, 1));
+  assert.ok(second.data.cost > first.data.cost);
+  assert.equal(t.state.gold, RICH - price(2, 0) - price(2, 1));
 });
 
 test('a roll already at the top of its range is refused for free', async () => {
-  const t = setup({ loot: [{ id: 1000, item_id: 'helm_iron', ilvl: 20, affixes: [{ id: 'p_str', v: HI }] }] });
+  const t = setup({ loot: [{ id: 1000, item_id: 'helm_iron', ilvl: ILVL, affixes: [{ id: 'p_str', v: HI }] }] });
   const r = (await go(t.call())).json;
   assert.equal(r.success, false);
   assert.match(r.error, /as high/);
-  assert.equal(t.state.gold, 100000);
+  assert.equal(t.state.gold, RICH);
 });
 
 test('not enough gold changes nothing', async () => {
-  const t = setup({ gold: 799 });
+  const t = setup({ gold: price(1) - 1 });
   const r = (await go(t.call({ random: () => 0.999 }))).json;
   assert.equal(r.success, false);
-  assert.match(r.error, /800 gold \(you have 799\)/);
-  assert.equal(t.state.gold, 799);
+  assert.match(r.error, new RegExp(`${fmt(price(1))} gold \\(you have ${fmt(price(1) - 1)}\\)`));
+  assert.equal(t.state.gold, price(1) - 1);
   assert.equal(valueOf(t.db)[0].v, LO);
   assert.equal(t.state.rerolls.size, 0);
 });
 
 test('a price the player did not see is refused (another reforge landed first)', async () => {
   const t = setup();
-  const r = (await go(t.call({ random: () => 0.999 }), { expect_cost: 500 })).json;
+  const r = (await go(t.call({ random: () => 0.999 }), { expect_cost: price(1) - 1 })).json;
   assert.equal(r.success, false);
-  assert.match(r.error, /price is now 800/);
-  assert.equal(t.state.gold, 100000);
-  const ok = (await go(t.call({ random: () => 0.999 }), { expect_cost: 800 })).json;
+  assert.match(r.error, new RegExp(`price is now ${fmt(price(1))}`));
+  assert.equal(t.state.gold, RICH);
+  const ok = (await go(t.call({ random: () => 0.999 }), { expect_cost: price(1) })).json;
   assert.equal(ok.success, true);
 });
 
@@ -107,7 +120,7 @@ test('tampering: a client-sent price, value, gold or item is ignored', async () 
   const t = setup();
   const r = (await go(t.call({ random: () => 0 }), { cost: 1, price: 1, value: 9999, v: 9999, gold: 1e9, item_id: 'helm_gold', affixes: [{ id: 'p_str', v: 9999 }] })).json;
   assert.equal(r.success, true);
-  assert.equal(t.state.gold, 100000 - 800);
+  assert.equal(t.state.gold, RICH - price(1));
   const v = valueOf(t.db)[0].v;
   assert.ok(v >= LO && v <= HI, 'the value is the server\'s draw');
 });
@@ -122,7 +135,7 @@ test('refusals: other accounts, empty slots, plain gear, bad indexes, someone el
   assert.match((await go(c, { affix_index: -1 })).json.error, /Choose one of the affixes/);
   assert.match((await go(c, { slot_index: 'x' })).json.error, /Choose a piece/);
   assert.match((await go(setup({ otherAccount: true }).call())).json.error, /cannot be reforged/);
-  assert.equal(t.state.gold, 100000);
+  assert.equal(t.state.gold, RICH);
   assert.equal(valueOf(t.db)[0].v, LO);
 });
 

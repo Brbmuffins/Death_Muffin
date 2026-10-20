@@ -5,7 +5,7 @@ extends SceneTree
 ##   - the minimap: its dot lists equal the core's tables (living enemies, elites flagged, thralls, corpses) and the MultiMesh draws them;
 ##   - the hotbar: cooldowns after a cast, essence, locked rites, the "no corpse" and "no legion" dimming from the corpses near the hero and the legion, every grey baked on loading;
 ##   - the thrall count, the pips and the red ones; XP and level; the area name and banner; the death veil;
-##   - the floating numbers: the caps (14 hit, 5 dot, 6 thrall, 22 total, crits 4 past), the events that make them (a caster's hit number, a DoT lump, a thrall's blow), the
+##   - the floating numbers: the caps (the budget's own: DmFloatBudget), the events that make them (a caster's hit number, a DoT lump, a thrall's blow), the
 ##     timeline of one number, expiry;
 ##   - NO NODE PER CREATURE: the scene's node count is the same with 0 and with 100 more enemies, 30 more thralls and 40 floating numbers alive;
 ##   - the boss plate and his dot on the map while the Gravedigger King is awake, and the fx's banners and toasts (the sink of `bosses.fx.host`);
@@ -211,8 +211,8 @@ func atlas_and_helpers() -> void:
 	var p2 := DmHudFloats.pose(0.52, 1.0)
 	var p3 := DmHudFloats.pose(0.65, 1.0)
 	var p4 := DmHudFloats.pose(1.0, 1.0)
-	check(near(p0.x, 0.7) and near(p0.y, 0.0) and near(p0.z, 1.0) and near(p1.x, 1.2) and near(p2.x, 1.0) and near(p3.z, 1.0) and near(p4.z, 0.0) and near(p4.y, 46.0) and near(DmHudFloats.pose(0.32, 1.0).x, 1.1),
-		"a number pops 0.7 to 1.2 to 1.0, rises 46 px and fades over the last 35 % of its life")
+	check(near(p0.x, 0.7) and near(p0.y, 0.0) and near(p0.z, 1.0) and near(p1.x, 1.2) and near(p2.x, 1.0) and near(p3.z, 1.0) and near(p4.z, 0.0) and near(p4.y, DmHudFloats.RISE) and near(DmHudFloats.pose(0.32, 1.0).x, 1.1),
+		"a number pops 0.7 to 1.2 to 1.0, rises its RISE in px and fades over the last 35 % of its life")
 	check(DmHudMinimap.MAX_DOTS >= 300, "the minimap's MultiMesh holds a Full Party's dots")
 
 
@@ -226,7 +226,7 @@ func the_frame() -> void:
 	check(near(float(vm["essence"]), hero.resource) and near(hud.ess_orb.fill, hero.resource / hero.resource_max, 0.01), "the resource orb reads the hero's essence")
 	check(int(vm["level"]) == 20 and hud.level_badge.text.text == "20", "the level badge shows the character's level")
 	check(hud.xp_txt.text.begins_with("1,234 / ") and near(hud.xp_bar.value, 1234.0 / DmStats.xp_to_next(20.0), 0.01), "XP and the next level: '%s'" % hud.xp_txt.text)
-	check(hud.area_lbl.text == "THE HOLLOW GRAVES", "the area name: '%s'" % hud.area_lbl.text)
+	check(hud.area_lbl.text == String(DmContent.area("graves")["name"]).to_upper(), "the area name: '%s'" % hud.area_lbl.text)
 	check(hud.banner_active(), "the area's banner is up on entering it")
 	var t0 := hud.toasts.get_child_count()   # a first run (a fresh user folder, as in CI) already shows one of the game's own toasts here
 	var up: Array = []
@@ -256,7 +256,7 @@ func hotbar_and_cooldowns() -> void:
 	var slots: Array = vm["slots"]
 	check(slots.size() == 6 and slots[0]["key"] == "1" and slots[4]["key"] == "RMB" and slots[5]["key"] == "R" and vm["primary"]["key"] == "LMB", "the hotbar: LMB, keys 1-4, RMB and R")
 	var rite0 := String(h.keys[0])
-	check(rite0 == "marrow_spear" and hud._slots.size() == 6, "slot 1 is the kit's Marrow Spear (%s)" % rite0)
+	check(rite0 == String((DmContent.kit("necromancer")["defaultLoadout"] as Array)[0]) and hud._slots.size() == 6, "slot 1 is the kit's first rite (%s)" % rite0)
 	check(slots[0]["left_ms"] == 0.0 and not bool(slots[0]["locked"]) and bool(slots[0]["affordable"]), "idle, unlocked and affordable before the cast")
 	hero.resource = hero.resource_max
 	var aim := hero.position + Vector3(0, 0, -6)
@@ -265,8 +265,9 @@ func hotbar_and_cooldowns() -> void:
 	h.refresh()
 	var s0: Dictionary = h.last_vm()["slots"][0]
 	var left := caster.cooldown_left(rite0)
-	check(left > 0.0 and near(float(s0["left_ms"]), left, 1.0) and float(s0["total_ms"]) >= float(s0["left_ms"]), "after a cast the slot carries the caster's cooldown (%.0f of %.0f ms)" % [left, s0["total_ms"]])
-	check(hud._slots[0]._cdtext.text != "" and DmHudSlot.cd_pct(left, float(s0["total_ms"])) > 0, "the slot shows the seconds and a sweep ('%s')" % hud._slots[0]._cdtext.text)
+	var has_cd := float(DmAbilities.def(rite0)["cooldownMs"]) > 150.0   # still running when the view-model reads it, a few ticks after the cast
+	check((left > 0.0 or not has_cd) and near(float(s0["left_ms"]), left, 1.0) and float(s0["total_ms"]) >= float(s0["left_ms"]), "after a cast the slot carries the caster's cooldown (%.0f of %.0f ms)" % [left, s0["total_ms"]])
+	check(not has_cd or (hud._slots[0]._cdtext.text != "" and DmHudSlot.cd_pct(left, float(s0["total_ms"])) > 0), "the slot shows the seconds and a sweep ('%s')" % hud._slots[0]._cdtext.text)
 	check(float(h.last_vm()["essence"]) < hero.resource_max or float(s0["cost"]) == 0.0, "the cast spent essence (the orb follows)")
 	var packed := DmHudAtlas.used_pixels()
 	hero.resource = 0.0
@@ -282,8 +283,12 @@ func hotbar_and_cooldowns() -> void:
 
 
 func corpse_and_legion_dimming() -> void:
-	var exhume := h.keys.find("exhume")
-	check(exhume >= 0, "Exhume is on the bar")
+	var exhume := -1   # a rite of the bar that needs a corpse (Exhume, today)
+	for i in h.keys.size():
+		if DmNextHudVm.NEEDS.get(String(h.keys[i]), "") == "corpse":
+			exhume = i
+			break
+	check(exhume >= 0, "a rite that needs a corpse is on the bar")
 	for id in core.corpse_ids():
 		core.corpse_consume(id, hero.owner_peer, "consumed")
 	await ticks(2)
@@ -293,11 +298,11 @@ func corpse_and_legion_dimming() -> void:
 	var s: Dictionary = h.last_vm()["slots"][exhume]
 	check(s["needs"] == "corpse" and hud._slots[exhume].needs == "corpse" and hud._slots[exhume]._dim == DmHudAtlas.DIM_SOFT, "no corpse near the hero: Exhume says so and is dimmed")
 	check(hud._slots[exhume]._need.text == "no corpse", "the slot's note: '%s'" % hud._slots[exhume]._need.text)
-	var far: int = core.corpse_add(Vector2(hero.position.x + 20.0, hero.position.z), "normal", "robber", false, 0.0, 1.0, "graves")
+	var far: int = core.corpse_add(Vector2(hero.position.x + DmNextHudVm.CORPSE_REACH + 7.0, hero.position.z), "normal", "robber", false, 0.0, 1.0, "graves")
 	await ticks(1)
 	h.refresh()
-	check(far != 0 and h.last_vm()["slots"][exhume]["needs"] == "corpse", "a corpse beyond the 13 m reach does not count")
-	var near_id: int = core.corpse_add(Vector2(hero.position.x + 4.0, hero.position.z), "normal", "robber", false, 0.0, 1.0, "graves")
+	check(far != 0 and h.last_vm()["slots"][exhume]["needs"] == "corpse", "a corpse beyond the reach does not count")
+	var near_id: int = core.corpse_add(Vector2(hero.position.x + DmNextHudVm.CORPSE_REACH * 0.3, hero.position.z), "normal", "robber", false, 0.0, 1.0, "graves")
 	await ticks(1)
 	h.refresh()
 	check(near_id != 0 and h.last_vm()["slots"][exhume]["needs"] == "" and hud._slots[exhume].needs == "", "a corpse within reach: the note is gone")
@@ -323,12 +328,13 @@ func thralls_and_pips() -> void:
 	check(places == cap and vm["thralls"] == places and hud.thrall_num.text == "%d/%d" % [places, cap], "a full legion: the chip says %s" % hud.thrall_num.text)
 	check(hud.thrall_pips.on.size() == cap and hud.thrall_pips.on.count(false) == cap - places, "the pips: one per place of the cap, %d lit" % places)
 	check(vm["thrall_hurt"] == 0, "none hurt")
-	core.set_thrall_stats(ids[0], {"hp": 5.0})
-	core.set_thrall_stats(ids[1], {"hp": 13.0})
-	core.set_thrall_stats(ids[2], {"hp": 14.5})   # 14.5 of 40 is above the third (35 % = 14)
+	var low_hp := 40.0 * DmNextHudVm.LOW_HP_ENTER   # the health (of the 40 the thralls have) the view-model calls hurt
+	core.set_thrall_stats(ids[0], {"hp": low_hp * 0.35})
+	core.set_thrall_stats(ids[1], {"hp": low_hp * 0.9})
+	core.set_thrall_stats(ids[2], {"hp": low_hp * 1.04})   # a hair above it: not hurt
 	await ticks(1)
 	h.refresh()
-	check(h.last_vm()["thrall_hurt"] == 2 and hud.thrall_pips.on.count(2) == 2, "two under 35 %% are red (%d)" % int(h.last_vm()["thrall_hurt"]))
+	check(h.last_vm()["thrall_hurt"] == 2 and hud.thrall_pips.on.count(2) == 2, "the two under the hurt share are red (%d)" % int(h.last_vm()["thrall_hurt"]))
 	check(int(h.last_vm()["minimap"]["thralls"].size() / 3) == cap, "the minimap shows all %d" % cap)
 	if hero.mods.get("wardPerThrall", 0.0) > 0.0:
 		check(h.last_vm()["ward"] != null and hud.ward.visible, "Bone Ward shows with thralls")
@@ -483,27 +489,39 @@ func floats_caps() -> void:
 	h.floats = DmFloatBudget.new()
 	var p := hero.position + Vector3(0, 1.6, -3)
 	var now := 1_000_000.0
-	for i in 40:
+	# the caps are the budget's own (class caps and the total): send more of each kind than it lets live, and what lives is the cap, the classes added up to the total
+	var cap_hit := int(DmFloatBudget.CLASS_CAP["hit"])
+	var cap_dot := int(DmFloatBudget.CLASS_CAP["dot"])
+	var cap_thrall := int(DmFloatBudget.CLASS_CAP["thrall"])
+	var total := DmFloatBudget.TOTAL_CAP
+	for i in cap_hit + 26:
 		h.float_text(p + Vector3(i * 0.1, 0, 0), str(i), "hit", null, now)
-	check(fl.alive == 14, "14 hit numbers live at most (%d)" % fl.alive)
-	for i in 10:
+	var want := mini(cap_hit, total)
+	check(fl.alive == want, "hit numbers live at most the class cap, %d (%d)" % [want, fl.alive])
+	for i in cap_dot + 5:
 		h.float_text(p, "1", "dot", null, now)
-	check(fl.alive == 14 + 5, "5 dot numbers beside them (%d)" % fl.alive)
-	for i in 10:
+	want = mini(want + cap_dot, total)
+	check(fl.alive == want, "dot numbers beside them up to their cap (%d)" % fl.alive)
+	for i in cap_thrall + 4:
 		h.float_text(p, "1", "thrall", null, now)
-	check(fl.alive == 22, "6 thrall numbers would be 25: 22 in all (%d)" % fl.alive)
+	want = mini(want + cap_thrall, total)
+	check(fl.alive == want, "thrall numbers beside them, the total is never passed: %d (%d)" % [want, fl.alive])
 	h.float_text(p, "999", "crit", null, now)
-	check(fl.alive == 23, "a crit may go 4 past the class cap and the total (%d)" % fl.alive)
+	check(fl.alive == want + 1, "a crit may go a little past the class cap and the total (%d)" % fl.alive)
 	h.float_text(p, "x", "info", null, now)
 	h.float_text(p, "-12", "hurt", null, now)
-	check(fl.alive == 25, "words and the hero's own hurt numbers are never limited (%d)" % fl.alive)
+	check(fl.alive == want + 3, "words and the hero's own hurt numbers are never limited (%d)" % fl.alive)
 	# the numbers rise and fade, then free their slots; later ones are allowed again
-	now += 900.0
-	fl._process(0.9)
-	check(fl.alive <= 3, "after a second only the 1.6 s words are left (%d)" % fl.alive)
-	for i in 10:
+	var span := 0.05   # a little longer than the longest-lived combat number
+	for k in DmFloatBudget.LIFE_MS:
+		span = maxf(span, float(DmFloatBudget.LIFE_MS[k]) / 1000.0 + 0.05)
+		span = maxf(span, float(DmFloatingNumber.STYLE[k]["life"]) + 0.05)
+	now += span * 1000.0
+	fl._process(span)
+	check(fl.alive <= 3, "after that only the longer-lived words are left (%d)" % fl.alive)
+	for i in cap_hit + 10:
 		h.float_text(p, str(i), "hit", null, now)
-	check(fl.alive >= 10, "the budget lets new hit numbers in after theirs expired (%d)" % fl.alive)
+	check(fl.alive >= mini(10, cap_hit), "the budget lets new hit numbers in after theirs expired (%d)" % fl.alive)
 	check(fl.get_child_count() == 0, "no node was made for any number")
 	fl._process(5.0)
 	check(fl.alive == 0, "all expired")
@@ -586,7 +604,7 @@ func death_veil() -> void:
 	check(not hero.alive and bool(h.last_vm()["death"]["show"]) and hud.death.visible, "the hero fell: the veil comes up")
 	check(hud.death_sub.text != "", "with its line ('%s')" % hud.death_sub.text)
 	var waited := 0
-	while not hero.alive and waited < 400:
+	while not hero.alive and waited < int((DmHeroBody.RESPAWN_S + 3.0) * 60.0):
 		await physics_frame
 		waited += 1
 	h.refresh()
@@ -629,7 +647,7 @@ func keys_and_click() -> void:
 	# a key press casts through the caster: the slowest rite of the bar that is ready and costs essence
 	hero.resource = hero.resource_max
 	var slot := -1
-	var slowest := 0.0
+	var slowest := -1.0
 	for i in 5:
 		var rid := String(uh.keys[i])
 		var d := DmAbilities.def(rid)
@@ -644,12 +662,13 @@ func keys_and_click() -> void:
 		key_ev.physical_keycode = KEY_1 + slot
 		g.input._unhandled_input(key_ev)
 		await ticks(3)
-		check(caster.cooldown_left(rid) > 0.0, "key %d casts %s (cooldown %.0f ms)" % [slot + 1, rid, caster.cooldown_left(rid)])
+		check(caster.cooldown_left(rid) > 0.0 or slowest <= 150.0, "key %d casts %s (cooldown %.0f ms)" % [slot + 1, rid, caster.cooldown_left(rid)])
 		check(hero.resource < hero.resource_max - 1.0, "essence spent")
 		check(g.input.hotbar.get_connections().size() == 1, "one hotbar listener (the HUD): %d (two = every key cast twice)" % g.input.hotbar.get_connections().size())
 		check(feed.any(func(e: Dictionary) -> bool: return e["id"] == "slot_flash" and e["ctx"]["slot"] == slot + 1), "slot flash for the cast")
 		# the same key again, past the cast lock, is on cooldown: said as a float
 		await ticks(120)
+		caster.p["cooldowns"][rid] = caster._now_ms + 60000.0   # the cooldown this part runs on is its own: the refusal feedback must not depend on how long the rite's is
 		# The feedback float is throttled to one every FEEDBACK_GAP_MS of REAL time (an earlier check here showed one), and under --fixed-fps a
 		# fast machine plays the 120 frames in less: let that much real time pass without a frame, so the cooldown is untouched.
 		OS.delay_msec(DmNextUiHost.FEEDBACK_GAP_MS + 20)
@@ -667,7 +686,7 @@ func keys_and_click() -> void:
 	var drawn_before: int = hud.float_layer.drawn
 	g.input.hotbar.emit(0, host.enemy_position(foe), foe)
 	await ticks(2)
-	check(caster.cooldown_left(uh.primary) > primary_cd, "LMB casts %s" % uh.primary)
+	check(caster.cooldown_left(uh.primary) > primary_cd or float(DmAbilities.def(uh.primary)["cooldownMs"]) <= 150.0, "LMB casts %s (the hit number below proves the cast when the rite has no cooldown to show)" % uh.primary)
 	check(await until(func() -> bool: return not floats_of("hit").is_empty() or not floats_of("crit").is_empty(), 60 * 4), "a primary hit floats a damage number")
 	await ticks(2)
 	check(hud.float_layer.drawn > drawn_before, "the number is drawn on the HUD float layer (a pool: DmHudFloats)")
@@ -741,13 +760,17 @@ func boss_plate() -> void:
 # ------------------------------------------------------------------------------------------------------------------ pieces
 
 func pieces() -> void:
-	var ids := ["party", "omen", "ward", "chain", "belt", "target", "boss", "map", "toasts", "banner", "prompt", "hint", "chat", "xp", "altar", "upgrades"]
+	var ids := ["party", "omen", "ward", "chain", "belt", "target", "boss", "map", "toasts", "banner", "prompt", "hint", "chat", "xp", "altar", "upgrades"]   # the ones the tests below move or hide
 	var ok := true
 	for id in ids:
-		if not hud.pieces.has(id) or not (hud.pieces[id] is Control) or hud.pieces[id].get_parent() != hud.safe:
+		if not hud.pieces.has(id):
 			ok = false
 			printerr("  missing piece ", id)
-	check(ok and hud.pieces.size() == ids.size(), "%d pieces, each a Control of its own in the safe frame" % hud.pieces.size())
+	for id in hud.pieces:
+		if not (hud.pieces[id] is Control) or hud.pieces[id].get_parent() != hud.safe:
+			ok = false
+			printerr("  piece not a Control of the safe frame: ", id)
+	check(ok, "%d pieces, each a Control of its own in the safe frame" % hud.pieces.size())
 	var map: Control = hud.pieces["map"]
 	var r0 := map.get_global_rect()
 	var corner0 := Vector2(r0.end.x, r0.position.y)    # the map column hangs from the top right

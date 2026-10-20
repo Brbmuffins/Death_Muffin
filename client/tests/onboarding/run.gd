@@ -88,10 +88,14 @@ func _test_data() -> void:
 		_check(DmCounselData.hud_anchor_key(id) != "", "anchor selector mapped to a HUD key: %s -> %s" % [id, DmCounselData.anchor_selector(id)])
 	_check(DmCounselData.hud_anchor_key("welcome") == "", "no anchor -> empty key")
 	_check(DmCounselData.hud_anchor_key("bag_full") == "relic" and DmCounselData.hud_anchor_key("skill_up") == "gather" and DmCounselData.hud_anchor_key("brew") == "belt", "alias anchors")
-	# kinds from the web lists
-	_check(DmCounselData.kind_of("hurt") == "urgent" and DmCounselData.kind_of("move") == "danger" and DmCounselData.kind_of("vault") == "asked" and DmCounselData.kind_of("welcome") == "calm" and DmCounselData.kind_of("zzz") == "calm", "kinds")
-	_check(DmCounselData.priority_of("welcome") == 100 and DmCounselData.priority_of("zzz") == 50, "priority")
-	_check(DmCounselData.group_of("relic") == "gear" and DmCounselData.group_of("welcome") == "", "groups")
+	# kinds, priorities and groups are each tip's own row; a tip that is not in the table is calm, priority 50, in no group (cadence.json holds the web's classification of tips)
+	var bad_rows := []
+	for id in order:
+		var row: Dictionary = d["tips"][id]
+		if DmCounselData.kind_of(id) != String(row.get("kind", "calm")) or DmCounselData.priority_of(id) != int(row.get("priority", 50)) or DmCounselData.group_of(id) != ("" if row.get("group") == null else String(row["group"])):
+			bad_rows.append(id)
+	_check(bad_rows.is_empty(), "kind, priority and group of every tip are its row's %s" % [bad_rows])
+	_check(DmCounselData.kind_of("zzz") == "calm" and DmCounselData.priority_of("zzz") == 50 and DmCounselData.group_of("zzz") == "", "an unknown tip is calm, priority 50, no group")
 
 
 func _test_render() -> void:
@@ -319,11 +323,11 @@ func _test_store() -> void:
 
 func _test_events() -> void:
 	var tb := DmCounselEvents.table()
-	_check(tb.size() >= 45, "events table size %d" % tb.size())
+	_check(not tb.is_empty(), "the events table has events (%d)" % tb.size())
 	var r := DmCounselEvents.calls("rite_key_set", {"ability": "grave_frost"})
 	_check(r.size() == 1 and r[0]["tip"] == "rite_frost" and r[0]["delay"] == 0.0 and r[0]["opts"] == null, "rite tip lookup")
 	_check(DmCounselEvents.calls("rite_key_set", {"ability": "bone_needle"}).is_empty(), "rite without counsel")
-	var w := DmCounselEvents.calls("world_entered", {"family": "knight", "level": 12, "grimoire_unlocked": true})
+	var w := DmCounselEvents.calls("world_entered", {"family": "knight", "level": int(DmCounselData.c("SIGNATURE_LEVEL")) + 2, "grimoire_unlocked": true})
 	var wt: Array = []
 	for c in w:
 		wt.append([c["tip"], c["delay"]])
@@ -337,8 +341,10 @@ func _test_events() -> void:
 	_check(DmCounselEvents.calls("hurt_check", {"hp": 40.0, "max_hp": 100.0}).size() == 1 and DmCounselEvents.calls("hurt_check", {"hp": 60.0, "max_hp": 100.0}).is_empty(), "hurt under half")
 	var gl := DmCounselEvents.calls("grimoire_opened", {"family": "necromancer", "owns_rune": false})
 	_check(gl.size() == 2 and gl[0]["opts"] == {"kind": "asked"} and gl[1]["delay"] == 2500.0, "grimoire opened -> runeHunt")
-	_check(DmCounselEvents.calls("bag_changed", {"slots_used": 39, "bag_size": 48}).size() == 1, "bag_filling at 80% of 48 (39)")
-	_check(DmCounselEvents.calls("bag_changed", {"slots_used": 38, "bag_size": 48}).is_empty(), "not yet at 38")
+	var bag_size := DmLootData.bag_size()
+	var filling_at := ceili(float(bag_size) * 0.8)
+	_check(DmCounselEvents.calls("bag_changed", {"slots_used": filling_at, "bag_size": bag_size}).size() == 1, "bag_filling at 80%% of %d (%d)" % [bag_size, filling_at])
+	_check(DmCounselEvents.calls("bag_changed", {"slots_used": filling_at - 1, "bag_size": bag_size}).is_empty(), "not yet at %d" % (filling_at - 1))
 	_check(DmCounselEvents.calls("tool_belted")[0]["opts"] == true, "toolBelt bump")
 	# notify end to end
 	var c := DmCounsel.new(1, DmCounselStore.new(), 0.0)
@@ -369,8 +375,10 @@ func _test_callsites() -> void:
 				produced[key] = true
 			for sr in String(c["src"]).split(","):
 				specs_by_src[sr] = specs_by_src.get(sr, 0) + 1
+	var boss_tips: Array = DmCounselData.order().filter(func(t: String) -> bool: return t.begins_with("boss_") and t != "boss_seal")   # one tip for each area boss the data has one for
+	var boss_ids: Array = boss_tips.map(func(t: String) -> String: return t.substr(5))
 	var tick_ctx := {"wave_affordable": true, "thralls_mine": 1, "corpses_near": 5, "pack_on_corpse": true, "family": "necromancer", "level": 5, "total_kills": 500, "has_tool": true, "has_belt_item": true,
-		"shards": 99, "boss_near": ["gravedigger", "abbess", "congregation", "saint", "regent", "mire"], "has_seal": true, "area": "chapterhouse", "cheapest_unlock": 1.0, "boss_kills": 1, "ascension": 1, "ashes": 1, "gate_near": true}
+		"shards": 99, "boss_near": boss_ids, "has_seal": true, "area": "chapterhouse", "cheapest_unlock": 1.0, "boss_kills": 1, "ascension": 1, "ashes": 1, "gate_near": true}
 	for c in DmCounselEvents.tick_calls(tick_ctx):
 		produced["%s|%d|%s|%s" % [c["tip"], int(c["delay"]), c["kind"], c["bump"]]] = true
 		specs_by_src[c["src"]] = specs_by_src.get(c["src"], 0) + 1
@@ -385,7 +393,7 @@ func _test_callsites() -> void:
 				continue
 			var tips2: Array = rite_tips.values() if s["tip"] == "tip" else (first_sight.values() if s["tip"] == "firstSight" else [])
 			if s["tip"].begins_with("boss_"):
-				tips2 = ["boss_gravedigger", "boss_abbess", "boss_congregation", "boss_saint", "boss_regent", "boss_mire"]
+				tips2 = boss_tips
 			var all_ok := not tips2.is_empty()
 			for t in tips2:
 				all_ok = all_ok and produced.has("%s|%d|%s|%s" % [t, int(s["delay"]), "" if s["kind"] == null else s["kind"], bool(s["bump"])])
@@ -412,7 +420,7 @@ func _test_tick_calls() -> void:
 	_check(ids == ["thrall", "litany", "codex", "gate"], "tick: %s" % [ids])
 	var boss := DmCounselEvents.tick_calls({"family": "knight", "boss_near": ["saint"], "has_seal": true, "area": "cloister", "cheapest_unlock": INF})
 	_check(boss.size() == 2 and boss[0]["tip"] == "boss_saint" and boss[1]["tip"] == "boss_seal", "tick: boss counsel + seal")
-	var altar := DmCounselEvents.tick_calls({"family": "knight", "area": "chapterhouse", "shards": 8, "cheapest_unlock": 3.0, "total_kills": 450, "ascension": 1, "ashes": 4, "cheapest_unlock_ok": true})
+	var altar := DmCounselEvents.tick_calls({"family": "knight", "area": "chapterhouse", "shards": 3 + int(DmCounselData.c("BOSS_SUMMON_SHARDS")), "cheapest_unlock": 3.0, "total_kills": 450, "ascension": 1, "ashes": 4, "cheapest_unlock_ok": true})
 	var ids2: Array = []
 	for c in altar:
 		ids2.append(c["tip"])

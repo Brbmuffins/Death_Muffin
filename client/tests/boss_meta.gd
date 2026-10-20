@@ -2,12 +2,12 @@ extends "res://tests/boss_base.gd"
 ## The Covenant Seal's Empowered call and the first-kill trophies on the combat core (DmBossMeta, the HUD's boss-key prompt; archive/old-game:godot/tests/next_boss_meta/run.gd on today's game), on the local mock
 ## backend (its `/api/boss-key/*` routes): nothing here talks to a real server.
 ##   - the first-kill trophy: the King's first kill pays the first-kill bonus once and is the Chronicle's `boss.gravedigger` (the backend has it after a flush), a second kill is no first kill and
-##     the counter says 2; the Abbess's trophy likewise (+2 shards, her own area's drop);
+##     the counter says 2; the Abbess's trophy likewise (the first-kill bonus, her own area's drop);
 ##   - the altar's choice: with a Covenant Seal in the bag a boss that can be Empowered offers it (`boss_key_offer`: the HUD's prompt opens, its two buttons answer for the host), a Seal-less
 ##     hero and the Prelate (not in DmGoldSink.EMPOWERABLE) are woken with shards at once;
-##   - the Empowered call: the backend takes exactly the price in gold and one Seal, a boss the hero could not wake is refused before anything is spent, the awake boss is Empowered (+6 levels +15 %,
-##     hp x1.4, the red-gold glow flag), a second call while it is awake is refused (busy) and spends nothing, the kill's report carries the backend's summon id, the Seal's prize is claimed
-##     from the backend after the report (the mock wants the fight to have lasted 10 s) and dropped at the corpse;
+##   - the Empowered call: the backend takes exactly the price in gold and one Seal, a boss the hero could not wake is refused before anything is spent, the awake boss is Empowered (more levels,
+##     hp x EMPOWER's hpMult, the red-gold glow flag), a second call while it is awake is refused (busy) and spends nothing, the kill's report carries the backend's summon id, the Seal's prize is claimed
+##     from the backend after the report (the mock wants the fight to have lasted a while) and dropped at the corpse;
 ##   - a lost Empowered fight stays bound on the backend: the next call is free (no gold), and the altar offers the choice again ("your summon is bound: free").
 ## Run: godot --headless --path client --script res://tests/boss_meta.gd [--fixed-fps 60 before --path runs it faster than real time]
 
@@ -85,7 +85,7 @@ func t_trophies() -> void:
 	await g.chron.flush()
 	check(float((await backend_chronicle()).get("boss." + BOSS, 0)) == 2.0, "the kill counter says 2")
 	await dismiss()
-	# the Abbess: her own trophy, her own shards (3), the first-kill bonus
+	# the Abbess: her own trophy, her own shards, the first-kill bonus
 	boss_id = "abbess"
 	clear_logs()
 	check(wake() == "", "the Abbess is woken at the Ossuary's Reliquary")

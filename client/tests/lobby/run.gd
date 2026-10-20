@@ -372,7 +372,9 @@ func _part_polish(jg: DmNextGame) -> void:
 	# ---- shared objectives: a party kill counts for every member's own area tally, and a joiner's own seal breaks on its own account
 	var hmem: DmRewardsMember = hg.rewards.members[int(ch_h["id"])]
 	var jprog: DmProgression = jg.joiner.prog
-	var need := jprog.unlock_kills(300.0)
+	var seal: Dictionary = DmContent.area("ossuary")["unlock"]   # the Ossuary's seal: kills in another area
+	var seal_area := String(seal["area"])
+	var need := jprog.unlock_kills(float(seal["kills"]))
 	var hk0 := hmem.prog.kills("graves")
 	var jk0 := jprog.kills("graves")
 	var warren_before := jprog.really_unlocked("ossuary")
@@ -397,7 +399,7 @@ func _part_polish(jg: DmNextGame) -> void:
 	check(jg.joiner.member.stats["xp_applied"] == xp_before and jg.joiner.drops_received == drops_before, "party objective: but it earns no XP and no loot for them")
 	check(hg.ui_host == null or hg.ui_host.kills_in("graves") >= 4, "party objective: the host's HUD tally agrees")
 	jbody.teleport(hb.position + Vector3(2.0, 0.0, 0.0))
-	jprog.local["areaKills"]["graves"] = need   # the seal check itself, on the joiner's account
+	jprog.local["areaKills"][seal_area] = need   # the seal check itself, on the joiner's account
 	var toasts := []
 	jg.joiner.event.connect(func(_id: String, ctx: Dictionary) -> void: toasts.append(String(ctx.get("text", ""))))
 	jg.joiner._check_unlocks()   # (the backend owns the unlock: with only 9 real kills it takes the flag back at the next sync)
@@ -410,7 +412,9 @@ func _part_polish(jg: DmNextGame) -> void:
 	check(hg.director.scaling_levels([jbody]) == [25.0], "scaling: and to the leader even when only the friend is in the area")
 	var e := hg.director.spawn("robber", hb.position, heroes, false, {}, {"area": "cloister"})   # a body of the core: an id
 	var e_level := int(hg.core_host.enemy_info(e)["level"]) if e > 0 else 0
-	check(e > 0 and e_level == 25, "scaling: a Cloister dead rises at the leader's level 25, not the friend's 60 (%d)" % e_level)
+	var at_leader := int(DmEnemyStats.area_level("cloister", [25.0], float(hg.director.vow_fx.get("levels", 0.0))))   # the area's level for a hero of 25 (its floor, or the hero's)
+	var at_friend := int(DmEnemyStats.area_level("cloister", [60.0], float(hg.director.vow_fx.get("levels", 0.0))))
+	check(e > 0 and e_level == at_leader and at_leader != at_friend, "scaling: a Cloister dead rises at the leader's level (%d), not the friend's (%d): %d" % [at_leader, at_friend, e_level])
 	if e > 0:
 		hg.core_host.remove_enemy(e)
 	jbody.character["level"] = 12
@@ -463,7 +467,7 @@ func _part_guest_belt_and_summon(jg: DmNextGame) -> void:
 	var jprog: DmProgression = jg.joiner.prog
 	# the belt: built as DmNextUiHost._make_guest_belt does (this joiner runs without a HUD), on the joiner's own bag
 	await api_j.save_inventory(int(ch_j["id"]), [{"slot_index": 0, "item_id": "flask_hp_minor", "quantity": 2, "equipped": 0},
-		{"slot_index": 1, "item_id": "flask_speed", "quantity": 1, "equipped": 0}], 48)
+		{"slot_index": 1, "item_id": "flask_speed", "quantity": 1, "equipped": 0}], DmLoot.bag_size())
 	var inv := DmInventory.new(api_j, int(ch_j["id"]))
 	inv.replace((await api_j.get_inventory(int(ch_j["id"]))).data)
 	var belt := DmNextBelt.new()

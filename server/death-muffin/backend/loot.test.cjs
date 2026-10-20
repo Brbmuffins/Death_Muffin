@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const mountLoot = require('./loot.cjs');
 const affix = require('./gathering/affix-rules.cjs');
-const { fakeDb, harness } = require('./bag-fake-db.cjs');
+const { fakeDb, harness, ITEMS } = require('./bag-fake-db.cjs');
 
 const seeded = (seed = 7) => () => {
   seed = (seed * 1664525 + 1013904223) % 4294967296;
@@ -40,7 +40,7 @@ test('materials and unknown ids: materials answer no instance, unknown items are
 test('bad requests are refused with readable errors and write nothing', async () => {
   const db = fakeDb();
   const c = harness(mountLoot, db, { random: seeded() });
-  for (const drops of [[], Array.from({ length: 13 }, () => drop('staff_oak')), [drop('staff_oak', 5, 'jackpot')], [{ item_id: 'staff_oak; DROP', level: 3, source: 'kill' }], 'x']) {
+  for (const drops of [[], Array.from({ length: mountLoot.MAX_DROPS + 1 }, () => drop('staff_oak')), [drop('staff_oak', 5, 'jackpot')], [{ item_id: 'staff_oak; DROP', level: 3, source: 'kill' }], 'x']) {
     const r = (await roll(c, drops)).json;
     assert.equal(r.success, false, JSON.stringify(drops));
     assert.equal(typeof r.error, 'string');
@@ -54,16 +54,17 @@ test('the claimed level is clamped to what the character could reach, so a scrip
   const db = fakeDb({ charLevel: 5 });
   const r = (await roll(harness(mountLoot, db, { random: seeded() }), [drop('staff_oak', 99, 'boss')])).json;
   assert.equal(r.data[0].ilvl, affix.itemLevelFor(5 + affix.ILVL_REACH, 'boss'));
-  assert.ok(r.data[0].ilvl <= 5 + affix.ILVL_REACH + 4);
 });
 
-test('bosses and first kills guarantee affixes', async () => {
+test('bosses and first kills guarantee the affixes the rules guarantee them', async () => {
+  // the fewest affixes a source can ever give an item of this rarity, found by sweeping every roll the rules could be handed
+  const fewest = (item_id, source) => Math.min(...Array.from({ length: 1001 }, (_, i) => affix.rollAffixCount(ITEMS[item_id].rarity, source, () => i / 1001)));
   const db = fakeDb();
   const c = harness(mountLoot, db, { random: seeded(3) });
   for (let i = 0; i < 20; i++) {
     const r = (await roll(c, [drop('staff_oak', 6, 'first_kill'), drop('ring_copper', 6, 'boss')])).json;
-    assert.ok(r.data[0].affixes.length >= 2, 'first kill: at least two');
-    assert.ok(r.data[1].affixes.length >= 1, 'boss: at least one');
+    assert.ok(r.data[0].affixes.length >= fewest('staff_oak', 'first_kill'), 'first kill: at least its guarantee');
+    assert.ok(r.data[1].affixes.length >= fewest('ring_copper', 'boss'), 'boss: at least its guarantee');
   }
 });
 

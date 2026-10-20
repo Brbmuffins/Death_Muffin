@@ -100,7 +100,7 @@ func _gains_save() -> void:
 	var ps := DmProgressSync.new(api, prog, int(ch["id"]), false)
 	var gold0 := int(ch.get("gold", 0))
 	prog.add_gold(50.0)
-	prog.add_xp(250.0)   # level 1 costs 100: level 2 with 150 of its 200 (the backend works it out from the XP)
+	prog.add_xp(250.0)   # enough to level (the backend works the level out from the XP)
 	ch["gold"] = 999999   # a total the client "claims": never sent
 	var r := await ps.save_gains()
 	var srv: Dictionary = (await api.get_character()).data

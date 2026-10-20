@@ -109,7 +109,7 @@ func _test_consts() -> void:
 	eq(G.TOOL_KIND, c["TOOL_KIND"], "tool kind")
 	eq(G.SKILL_IDS, c["SKILLS"], "skills")
 	ok(G.RICH_YIELD == c["RICH_YIELD"] and G.RICH_RESPAWN == c["RICH_RESPAWN"], "rich")
-	ok(Data.get_data()["nodes"].size() == 30, "30 nodes loaded")
+	ok(not Data.get_data()["nodes"].is_empty() and Data.get_data()["nodes"].size() == (DmContent.get_export("gameplay_gatheringRules", "NODES") as Dictionary).size(), "a node type loaded for each of the rules'")
 
 
 func _test_xp() -> void:
@@ -477,7 +477,7 @@ func _test_vault() -> void:
 	ok(slots.call(m6["bag"]).has([5, "staff", 1]) and slots.call(m6["vault"]).has([7, "flask", 18]), "move_to_slot: swap across sides")
 	ok(not Vault.move_to_slot(bag, vault, "bag", 0, "bag", 1, 5, mi)["ok"], "move_to_slot: part of a stack onto another item refuses")
 	ok(not Vault.move_to_slot(bag, vault, "bag", 2, "bag", 20, null, mi)["ok"] and not Vault.move_to_slot(bag, vault, "bag", 1, "bag", 2, null, mi)["ok"], "move_to_slot: equipped gear neither moves nor swaps")
-	ok(not Vault.move_to_slot(bag, vault, "bag", 1, "bag", 48, null, mi)["ok"] and Vault.move_to_slot(bag, vault, "bag", 1, "vault", 119, null, mi)["ok"], "move_to_slot: bounds")
+	ok(not Vault.move_to_slot(bag, vault, "bag", 1, "bag", Bag.BAG_SIZE, null, mi)["ok"] and Vault.move_to_slot(bag, vault, "bag", 1, "vault", Vault.VAULT_SLOTS - 1, null, mi)["ok"], "move_to_slot: bounds")
 
 
 func _test_potion_belt() -> void:

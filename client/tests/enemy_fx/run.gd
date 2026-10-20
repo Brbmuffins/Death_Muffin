@@ -216,6 +216,12 @@ func kind(def_id: String, along: float, rising := false, elite := false, across 
 	return host.spawn_enemy(def_id, at(along, across), 1, 1.0, 1.0, elite, "graves", rising)
 
 
+## How long a body of `def` standing `along` metres from the hero can take to land its first blow: it walks up, winds up and may wait out its cooldown (twelve seconds at the least).
+func swing_limit(def: String, along: float) -> float:
+	var e: Dictionary = DmSimData.ENEMIES[def]
+	return maxf(12.0, DmSimConsts.RISE_TIME + along / maxf(0.1, float(e["speed"])) + float(e["windupMs"]) / 1000.0 + float(e["cooldownMs"]) / 1000.0 + 4.0)
+
+
 ## Run one full swing of `id` (its first impact), then freeze it.
 func one_swing(id: int, limit_s: float = 12.0) -> bool:
 	var s0: int = fxn.stats["strike"]
@@ -228,23 +234,25 @@ func one_swing(id: int, limit_s: float = 12.0) -> bool:
 
 func _t_kinds() -> void:
 	var cases := [
-		# def, spawn distance from the hero (along the arena), telegraph count, telegraph sfx, expected decal textures, voice family
-		["robber", 6.0, 0, "", [], "Humanoid"],
-		["hound", 6.0, 0, "", [], "Beast"],
-		["bat", 6.0, 0, "", [], "Beast"],
-		["risen", 6.0, 0, "", [], "Humanoid"],
-		["penitent", 5.0, 1, "tollSmall", ["cone", "coneEdge", "ring"], "Humanoid"],
-		["sac", 5.0, 1, "tellStrike", ["disc"], "Brute"],
-		["moth", 8.0, 1, "tellStrike", ["disc", "ring"], "Spirit"],
+		# def, spawn distance from the hero (along the arena), telegraph count, telegraph sfx, expected decal textures (the voices are the audio map's own: DmAudioMap.enemy_voice)
+		["robber", 6.0, 0, "", []],
+		["hound", 6.0, 0, "", []],
+		["bat", 6.0, 0, "", []],
+		["risen", 6.0, 0, "", []],
+		["penitent", 5.0, 1, "tollSmall", ["cone", "coneEdge", "ring"]],
+		["sac", 5.0, 1, "tellStrike", ["disc"]],
+		["moth", 8.0, 1, "tellStrike", ["disc", "ring"]],
 	]
 	for c in cases:
 		var d: String = c[0]
 		await new_arena()
 		var id := kind(d, float(c[1]))
-		check(await one_swing(id), "%s: completes a swing" % d)
+		var voice := DmAudioMap.enemy_voice(d)
+		check(voice != "", "%s: has a voice family in the audio map" % d)
+		check(await one_swing(id, swing_limit(d, float(c[1]))), "%s: completes a swing" % d)
 		check(fxn.stats["telegraph"] == c[2], "%s: %d telegraph(s) (%d)" % [d, c[2], fxn.stats["telegraph"]])
 		check(fxn.stats["strike"] == 1, "%s: exactly one impact (%d)" % [d, fxn.stats["strike"]])
-		check(au.count("enemyAttack" + String(c[5])) == 1, "%s: attack voice once (%s)" % [d, str(au.sfx)])
+		check(au.count(DmAudioMap.voice_attack(voice)) == 1, "%s: attack voice once (%s)" % [d, str(au.sfx)])
 		if c[3] != "":
 			check(au.count(c[3]) == 1, "%s: telegraph sound %s once" % [d, c[3]])
 			check(vf.danger_decals >= 1, "%s: telegraph drawn inside danger()" % d)
@@ -264,7 +272,7 @@ func _t_kinds() -> void:
 		core.damage(id, 1e9, hero.core_id)
 		await ticks(2)
 		check(fxn.stats["death"] == 1 and au.count("enemyDeath") == 1, "%s: death sound once" % d)
-		check(au.count("enemyDeath" + String(c[5])) == 1, "%s: death voice once" % d)
+		check(au.count(DmAudioMap.voice_death(voice)) == 1, "%s: death voice once" % d)
 		check(au.total() - before == 2, "%s: death makes exactly 2 sounds (%d)" % [d, au.total() - before])
 		check(fxn.stats["hit"] == 1, "%s: damaged seen once" % d)
 	# Barrow Ghoul: spawn (rising) -> burrow -> telegraphed eruption -> burst -> melee
@@ -272,12 +280,13 @@ func _t_kinds() -> void:
 	var gh := kind("ghoul", 11.0, true)
 	await ticks(2)   # the core's events reach the fx at the end of the tick
 	check(fxn.stats["spawn"] == 1, "ghoul: spawn fx once")
-	var t := await until(func() -> bool: return int(core.enemy_info(gh)["state"]) == S_ERUPT, 15.0)
+	var burrow: Dictionary = DmSimData.BURROW
+	var t := await until(func() -> bool: return int(core.enemy_info(gh)["state"]) == S_ERUPT, maxf(15.0, DmSimConsts.RISE_TIME + 11.0 / float(burrow["speed"]) + float(burrow["digS"]) + 8.0))
 	check(t >= 0.0 and fxn.stats["telegraph"] == 1 and vf.has_tex("cracks"), "ghoul: erupt telegraph once (cracks ring)")
 	t = await until(func() -> bool: return int(core.enemy_info(gh)["state"]) == S_EMERGE, 3.0)
 	check(t >= 0.0 and fxn.stats["erupt"] == 1 and au.count("burst") == 1, "ghoul: eruption burst + sound once")
 	var mx := float(core.enemy_info(gh)["max_hp"])
-	core.damage(gh, mx * 0.8, hero.core_id)   # below digAtFrac: dig in
+	core.damage(gh, mx * (1.0 - float(burrow["digAtFrac"]) * 0.4), hero.core_id)   # below digAtFrac: dig in
 	await ticks(4)
 	check(fxn.stats["dig"] == 1, "ghoul: dig-in smoke once")
 	# Fire death goes through the router (the pyre kinds): the flare reuses the current game's burst
@@ -293,7 +302,7 @@ func _t_elite_censer() -> void:
 	await ticks(2)
 	check(fxn.stats["spawn"] == 1 and au.count("eliteAggro") == 1, "elite: spawn fx + aggro sound once")
 	check(vf.has_tex("ring") and vf.decals.count("ring") == 1, "elite: purple aura ring once")
-	await secs(1.3)
+	await secs(DmEnemyFx.RISE_S + 0.2)
 	core.stun(el, 3600.0)
 	core.damage(el, 1e9, hero.core_id)
 	await ticks(2)
@@ -318,9 +327,9 @@ func _t_elite_censer() -> void:
 	check(fxn.watched() == 0, "a removed enemy is let go (%d held)" % fxn.watched())
 	# a rising spawn plays rise motes only near the hero
 	await new_arena()
-	var far := host.spawn_enemy("robber", origin + dirv * 55.0, 1, 1.0, 1.0, false, "graves", true)
+	var far := host.spawn_enemy("robber", origin + dirv * (maxf(DmEnemyFx.ELITE_AGGRO_RANGE, maxf(DmEnemyFx.NEAR_X, DmEnemyFx.NEAR_Z)) + 15.0), 1, 1.0, 1.0, false, "graves", true)
 	var near := kind("robber", 10.0, true)
-	await secs(0.9)
+	await secs(DmEnemyFx.RISE_S * 0.8)
 	check(vf.count("smoke") >= 2, "rising bodies shed dust")
 	core.stun(far, 3600.0)
 	core.stun(near, 3600.0)
@@ -376,7 +385,10 @@ func _t_net() -> void:
 		ids.append(hg.core_host.spawn_enemy(defs[i], spots[i], 1, 1.0, 1.0, false, "graves", defs[i] == "ghoul"))
 	await ticks(3)
 	var n := 0
-	for _i in 1500:   # up to 25 s of physics ticks: let the room swing
+	var swing_s := 25.0   # up to 25 s of physics ticks, or longer when the slowest of them needs it: let the room swing
+	for d: String in defs:
+		swing_s = maxf(swing_s, swing_limit(d, 11.0) * 2.0)
+	for _i in int(swing_s * 60.0):
 		if tlog_h.size() >= 4 and hg.enemy_fx.stats["strike"] >= 3:
 			break
 		await physics_frame

@@ -182,12 +182,25 @@ func part_milestones() -> void:
 	var prog: DmProgression = g.progress.prog
 	prog.local["waveTierActive"] = 0.0
 	g.progress.apply_progress()
-	prog.local["waveTierActive"] = 3.0
+	# the milestones are the upgrades data's (WAVE_MILESTONES: id, tier): reaching a tier announces every milestone it crosses, in the data's order
+	var milestones: Array = DmContent.get_export("upgrades", "WAVE_MILESTONES")
+	var tiers: Array = []
+	for m in milestones:
+		if not tiers.has(float(m["tier"])):
+			tiers.append(float(m["tier"]))
+	tiers.sort()
+	var crossed := func(from: float, to: float) -> Array:
+		return milestones.filter(func(m: Dictionary) -> bool: return to >= float(m["tier"]) and from < float(m["tier"])).map(func(m: Dictionary) -> String: return "banner:" + String(m["id"]))
+	var first_tier: float = tiers[0]
+	var top_tier: float = tiers[-1]
+	prog.local["waveTierActive"] = first_tier
 	g.progress.apply_progress()
-	check(seen == ["banner:vanguard"], "M: tier 3 announces Elite Vanguard (%s)" % str(seen))
-	prog.local["waveTierActive"] = 8.0
+	var expect: Array = crossed.call(0.0, first_tier)
+	check(not expect.is_empty() and seen == expect, "M: tier %d announces what it crosses (%s, wanted %s)" % [int(first_tier), str(seen), str(expect)])
+	prog.local["waveTierActive"] = top_tier
 	g.progress.apply_progress()
-	check(seen == ["banner:vanguard", "banner:restless", "banner:nightfall"], "M: tier 8 announces Restless Crypts and Nightfall (%s)" % str(seen))
+	expect.append_array(crossed.call(first_tier, top_tier))
+	check(seen == expect and DmWaveUpgrades.milestone_active("nightfall", top_tier), "M: tier %d announces the rest, Nightfall among them (%s)" % [int(top_tier), str(seen)])
 	g.director._since_arrival = 1.0e6   # the Wave Speed ramp is fully in
 	check(g.director.milestone("vanguard") and g.director.milestone("restless") and g.director.milestone("nightfall"), "M: the director reads all three milestones in force")
 	# Nightfall dims the moon and the hemisphere, easing in (and out), and only while easing does it run.
@@ -199,7 +212,7 @@ func part_milestones() -> void:
 	for i in 600:
 		ms._process(0.05)
 	check(not ms.is_processing() and is_equal_approx(ms.night_k, 1.0), "M: it settles at full night and stops running")
-	check(is_equal_approx(bld.moon.light_energy, moon0 * 0.4) and is_equal_approx(bld.env.ambient_light_energy, amb0 * 0.7), "M: the moon is x0.4 and the hemisphere x0.7")
+	check(is_equal_approx(bld.moon.light_energy, moon0 * (1.0 - DmWaveMilestones.MOON_DIM)) and is_equal_approx(bld.env.ambient_light_energy, amb0 * (1.0 - DmWaveMilestones.AMBIENT_DIM)), "M: the moon and the hemisphere are dimmed by the milestone's factors (x%.2f, x%.2f)" % [1.0 - DmWaveMilestones.MOON_DIM, 1.0 - DmWaveMilestones.AMBIENT_DIM])
 	# The Acre stays lit.
 	g.area_id = "acre"
 	g.area_changed.emit("acre")
@@ -214,7 +227,10 @@ func part_milestones() -> void:
 	var b := g.local_body()
 	var shrouded := 0
 	var total := 0
-	for i in 120:   # enough picks for a binomial check (35 was too few: one seed read 27 of 35)
+	var chance := float(DmContent.get_export("upgrades", "NIGHTFALL_SHROUD_CHANCE"))
+	for i in 600:   # picks until there are enough commons for a binomial check (35 was too few: one seed read 27 of 35)
+		if total >= 150:
+			break
 		g.director._vanguard = false
 		var made: Array = []
 		g.director.spawn_group(b.position + Vector3(8, 0, 0), [b], 1, "robber", [], made)
@@ -226,7 +242,8 @@ func part_milestones() -> void:
 				if (info["affixes"] as PackedStringArray).has("shrouded"):
 					shrouded += 1
 			g.core_host.remove_enemy(int(id))
-	check(total >= 80 and shrouded > total * 0.35 and shrouded < total * 0.65, "M: about half the common dead rise Shrouded (%d of %d)" % [shrouded, total])
+	var spread := 4.0 * sqrt(float(total) * chance * (1.0 - chance)) + 1.0   ## four standard deviations of a binomial
+	check(total >= 150 and absf(float(shrouded) - float(total) * chance) <= spread, "M: the share of common dead that rise Shrouded is the data's %.2f (%d of %d)" % [chance, shrouded, total])
 	# Elite Vanguard: the wave's first plain pick is an elite.
 	await ticks(2)
 	# The pick is random: a pack kind (bats / rats) or a Risen is never the Vanguard's elite and leaves the flag up, so draw again until a
@@ -250,7 +267,10 @@ func part_milestones() -> void:
 	# Dropping back below a milestone says so and the light returns.
 	prog.local["waveTierActive"] = 0.0
 	g.progress.apply_progress()
-	check(seen.slice(3) == ["fades:nightfall", "fades:restless", "fades:vanguard"] or seen.count("fades:nightfall") == 1, "M: falling back announces what fades (%s)" % str(seen.slice(3)))
+	var faded := true
+	for m in milestones:
+		faded = faded and seen.count("fades:" + String(m["id"])) == 1
+	check(faded, "M: falling back announces what fades, each once (%s)" % str(seen.slice(expect.size())))
 	for i in 600:
 		ms._process(0.05)
 	check(is_equal_approx(bld.moon.light_energy, moon0) and ms.night_k == 0.0, "M: and the light is back")

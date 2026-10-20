@@ -90,6 +90,26 @@ func spawn_stats() -> Dictionary:
 	return out
 
 
+## The shard amounts six elite kills drop under the Omen in force. The kills roll from the drop roll pinned low, not from the drop tape (its seeds differ from
+## one event to the next), so every call rolls the same six drops and the amounts differ only by the Omen.
+func elite_shards() -> Array:
+	var b := g.local_body()
+	var tape := member().tape
+	member().tape = null
+	var drops: Array = []
+	var cb := func(_c: int, drop: Dictionary, _pos: Vector3) -> void:
+		if drop.get("kind", "") == "shard":
+			drops.append(int(drop["amount"]))
+	g.rewards.loot_dropped.connect(cb)
+	g.rewards.rng = func() -> float: return 0.0
+	for i in 6:
+		g.rewards.on_kill({"def": "robber", "area": "graves", "level": 5.0, "elite": true, "x": b.position.x, "z": b.position.z, "killer": null})
+	g.rewards.rng = Callable()
+	g.rewards.loot_dropped.disconnect(cb)
+	member().tape = tape
+	return drops
+
+
 func event_ids() -> Array:
 	return events.map(func(e: Dictionary) -> String: return String(e["id"]))
 
@@ -137,14 +157,19 @@ func _run() -> void:
 
 	# ================================================================ the weekly Omen
 	var order: Array = DmContent.get_export("omens", "OMEN_ORDER")
-	var same := true
-	var want_ids := ["tolling", "blood_moon", "tolling", "blood_moon", "drowned_week", "tolling"]   ## recorded from the old client's _omen_for (removed 2026-10-09)
-	var stamps := [259200000.0, 345600000.0, 1791072000000.0, 1791244800000.0, 1791763200000.0, 1792368000000.0]
-	for i in stamps.size():
-		same = same and DmNextMeta.omen_for(stamps[i])["id"] == want_ids[i]
-	check(same and DmNextMeta.omen_for(1791244800000.0)["id"] == "blood_moon" and DmNextMeta.omen_for(1791763200000.0)["id"] == "drowned_week" and DmNextMeta.omen_for(1792368000000.0)["id"] == "tolling" and DmNextMeta.omen_for(1792972800000.0)["id"] == "blood_moon", "the weekly rotation is the current client's (Monday 12 Oct 2026 = Drowned Week, then The Tolling)")
+	# The rotation: a week starts on a Monday (UTC) and the Omens step through OMEN_ORDER one per week, wrapping, before and after any date.
+	var week_ms := 7.0 * 24.0 * 3600.0 * 1000.0
+	var monday := 1791763200000.0   # Monday 12 Oct 2026, 00:00 UTC
+	var start_ix := order.find(String(DmNextMeta.omen_for(monday)["id"]))
+	var rotation := start_ix >= 0
+	for k in range(-order.size(), order.size() * 2 + 1):
+		var week_start := monday + float(k) * week_ms
+		var want_id := String(order[posmod(start_ix + k, order.size())]) if start_ix >= 0 else ""
+		rotation = rotation and DmNextMeta.omen_for(week_start)["id"] == want_id and DmNextMeta.omen_for(week_start + week_ms - 1.0)["id"] == want_id
+	check(rotation, "the weekly rotation: one Omen per Monday-to-Sunday week, in the order of OMEN_ORDER (%d weeks either side)" % order.size())
 	var omens: Dictionary = DmContent.get_export("omens", "OMENS")
 	var xp_plain := xp_for(20)
+	var base_shards := elite_shards()   # under the neutral week: the shards six elite kills drop with no Omen
 	var shards := {}
 	for oid in order:
 		var o: Dictionary = omens[oid]
@@ -153,27 +178,19 @@ func _run() -> void:
 		check(near(d.size_extra, float(o["waveSizeMult"])) and near(d.elite_chance(), float(DmContent.area("graves")["eliteChance"]) + float(o["eliteBonus"]), 0.0001), "%s: wave size x%s, elite chance +%s" % [o["name"], o["waveSizeMult"], o["eliteBonus"]])
 		check(near(member().omen_reward, float(o["rewardMult"])) and near(member().omen_shard, float(o["shardMult"])), "%s: rewards x%s, shards x%s on the member" % [o["name"], o["rewardMult"], o["shardMult"]])
 		check(near(xp_for(20) / xp_plain, float(o["rewardMult"]), 0.02), "%s: kills pay x%s xp and gold" % [o["name"], o["rewardMult"]])
-		var drops: Array = []
-		var cb := func(_c: int, drop: Dictionary, _pos: Vector3) -> void:
-			if drop.get("kind", "") == "shard":
-				drops.append(int(drop["amount"]))
-		g.rewards.loot_dropped.connect(cb)
-		g.rewards.rng = func() -> float: return 0.0
-		for i in 6:
-			g.rewards.on_kill({"def": "robber", "area": "graves", "level": 5.0, "elite": true, "x": b.position.x, "z": b.position.z, "killer": null})
-		g.rewards.rng = Callable()
-		g.rewards.loot_dropped.disconnect(cb)
-		shards[oid] = drops
+		shards[oid] = elite_shards()
+		var shards_ok: bool = shards[oid].size() == base_shards.size()
+		for i in mini(shards[oid].size(), base_shards.size()):
+			var scaled := float(base_shards[i]) * float(o["shardMult"])   # (each drop rounds up to a whole shard)
+			shards_ok = shards_ok and float(shards[oid][i]) >= scaled - 0.0001 and float(shards[oid][i]) < scaled + 1.0
+		check(shards_ok, "%s: the shards elites drop are x%s of the plain week's (%s vs %s)" % [o["name"], o["shardMult"], shards[oid], base_shards])
 		var hud: Variant = g.ui_host.hud_state()["omen"]
 		check(hud != null and hud["name"] == o["name"] and hud["blurb"] == o["blurb"] and bool(hud["visible"]) == (g.area_id != "chapterhouse"), "%s: the HUD chip shows its name and blurb (visible in hunting grounds)" % o["name"])
-	var sum_a := 0
-	var sum_b := 0
-	for v in shards["blood_moon"]:
-		sum_a += v
-	for v in shards["tolling"]:
-		sum_b += v
-	check(sum_a > 0 and sum_b == sum_a * 2, "The Tolling doubles the shards elites drop (%d vs %d)" % [sum_b, sum_a])
-	g.meta.omen = omens["blood_moon"]
+	var base_sum := 0
+	for v in base_shards:
+		base_sum += v
+	check(base_sum > 0, "elite kills drop shards in a plain week (%d)" % base_sum)
+	g.meta.omen = NEUTRAL
 	g.meta.sync()
 	b.teleport(Vector3(float(DmContent.get_export("areas", "CHAPTERHOUSE_RETURN")["x"]), 0.0, float(DmContent.get_export("areas", "CHAPTERHOUSE_RETURN")["z"])))
 	await until(func() -> bool: return g.area_id == "chapterhouse", 3.0)
@@ -188,32 +205,43 @@ func _run() -> void:
 	await until(func() -> bool: return g.area_id == "graves", 3.0)
 	events.clear()
 	var chain: DmKillChain = member().chain
+	var cdata: Dictionary = DmProgContent.get_data()["chain"]
+	var tiers: Array = cdata["tiers"]
+	var window_ms := int(cdata["windowMs"])
+	var gap_ms := window_ms / 8   # kills this far apart keep one chain going
+	var first_at := int(tiers[0]["at"])
+	var second_at := int(tiers[1]["at"])
 	chain.reset()
-	for i in 4:
-		clock += 500
+	for i in first_at - 1:
+		clock += gap_ms
 		g.rewards.on_kill({"def": "robber", "area": "graves", "level": 60.0, "elite": false, "x": b.position.x, "z": b.position.z, "killer": b})
 	var c4: Variant = g.ui_host.hud_state()["chain"]
-	check(c4 != null and int(c4["count"]) == 4 and int(c4["tier"]) == 0 and not events.any(func(e: Dictionary) -> bool: return e["id"] == "float" and e["ctx"]["kind"] == "big"), "4 quick kills: a chain of 4, no tier yet")
+	check(c4 != null and int(c4["count"]) == first_at - 1 and int(c4["tier"]) == 0 and not events.any(func(e: Dictionary) -> bool: return e["id"] == "float" and e["ctx"]["kind"] == "big"), "%d quick kills: a chain of %d, no tier yet" % [first_at - 1, first_at - 1])
 	var pending := member().pending_xp
-	clock += 500
+	clock += gap_ms
 	g.rewards.on_kill({"def": "robber", "area": "graves", "level": 60.0, "elite": false, "x": b.position.x, "z": b.position.z, "killer": b})
 	var tier_xp := member().pending_xp - pending
-	check(events.any(func(e: Dictionary) -> bool: return e["id"] == "float" and e["ctx"]["kind"] == "big" and String(e["ctx"]["text"]).begins_with("STIRRING")), "the 5th kill crosses into Stirring: the tier banner")
+	check(events.any(func(e: Dictionary) -> bool: return e["id"] == "float" and e["ctx"]["kind"] == "big" and String(e["ctx"]["text"]).begins_with(String(tiers[0]["name"]).to_upper())), "kill %d crosses into %s: the tier banner" % [first_at, tiers[0]["name"]])
 	var c5: Variant = g.ui_host.hud_state()["chain"]
-	check(int(c5["count"]) == 5 and int(c5["tier"]) == 1 and c5["name"] == "Stirring" and near(float(c5["bonus"]), 0.05) and float(c5["frac"]) > 0.8, "the chain meter shows x5 Stirring +5%% with its window (%.2f)" % float(c5["frac"]))
+	check(int(c5["count"]) == first_at and int(c5["tier"]) == 1 and c5["name"] == tiers[0]["name"] and near(float(c5["bonus"]), float(tiers[0]["bonus"])) and float(c5["frac"]) > 0.8, "the chain meter shows x%d %s +%d%% with its window (%.2f)" % [first_at, tiers[0]["name"], roundi(float(tiers[0]["bonus"]) * 100.0), float(c5["frac"])])
 	var xp_no_chain := xp_for(1)
-	check(near(tier_xp / xp_no_chain, 1.05, 0.03), "the tier's +5%% pays (xp %.0f vs %.0f for the same kill)" % [tier_xp, xp_no_chain])
-	for i in 7:
-		clock += 500
+	check(near(tier_xp / xp_no_chain, 1.0 + float(tiers[0]["bonus"]), 0.03), "the tier's +%d%% pays (xp %.0f vs %.0f for the same kill)" % [roundi(float(tiers[0]["bonus"]) * 100.0), tier_xp, xp_no_chain])
+	# the chain runs on to the second tier and past the length the break is reported from
+	var long_chain := maxi(second_at, int(cdata["reportAt"]))
+	for i in second_at - first_at:
+		clock += gap_ms
 		g.rewards.on_kill({"def": "robber", "area": "graves", "level": 60.0, "elite": false, "x": b.position.x, "z": b.position.z, "killer": b})
 	var c12: Variant = g.ui_host.hud_state()["chain"]
-	check(int(c12["count"]) == 12 and c12["name"] == "Rampage" and int(c12["tier"]) == 2, "12 kills: Rampage (tier 2)")
+	check(int(c12["count"]) == second_at and c12["name"] == tiers[1]["name"] and int(c12["tier"]) == 2, "%d kills: %s (tier 2)" % [second_at, tiers[1]["name"]])
+	for i in long_chain - second_at:
+		clock += gap_ms
+		g.rewards.on_kill({"def": "robber", "area": "graves", "level": 60.0, "elite": false, "x": b.position.x, "z": b.position.z, "killer": b})
 	events.clear()
-	clock += 4500
+	clock += window_ms + gap_ms
 	await until(func() -> bool: return chain.count == 0, 2.0)   # the Meta node ticks the chain on the next rendered frame
-	check(g.ui_host.hud_state()["chain"] == null and events.any(func(e: Dictionary) -> bool: return e["id"] == "float" and String(e["ctx"]["text"]) == "Chain broken: 12"), "the chain breaks after its 4 s window: the meter clears, 'Chain broken: 12'")
+	check(g.ui_host.hud_state()["chain"] == null and events.any(func(e: Dictionary) -> bool: return e["id"] == "float" and String(e["ctx"]["text"]) == "Chain broken: %d" % long_chain), "the chain breaks after its %.0f s window: the meter clears, 'Chain broken: %d'" % [window_ms / 1000.0, long_chain])
 	for i in 3:
-		clock += 500
+		clock += gap_ms
 		g.rewards.on_kill({"def": "robber", "area": "graves", "level": 60.0, "elite": false, "x": b.position.x, "z": b.position.z, "killer": b})
 	check(chain.count == 3, "a new chain starts at 1 after a break")
 	b.take_damage(1e9, null)
@@ -244,7 +272,8 @@ func _run() -> void:
 		if s["empowered"]:
 			emp_ids.append(s["key"])
 	check(not emp_ids.is_empty(), "the charged rites show as empowered on the hotbar (%s)" % ",".join(emp_ids))
-	# The next Marrow Spear is free and 1.5x as long; the meter empties.
+	# The next Marrow Spear is free and its Soul Harvest times as long; the meter empties.
+	var area_mult := float(DmCombatData.const_table("SOUL_HARVEST")["areaMult"])
 	var plays: Array = []
 	caster.event_played.connect(func(ev: Dictionary) -> void: plays.append(ev))
 	var foe: int = d.spawn("robber", b.position + Vector3(6, 0, 0), [b])   # a body of the core: an id
@@ -255,13 +284,13 @@ func _run() -> void:
 	caster.request_cast("marrow_spear", g.core_host.enemy_position(foe), foe)
 	await until(func() -> bool: return plays.any(func(ev: Dictionary) -> bool: return ev.get("t") == "line"), 3.0)
 	var line: Dictionary = plays.filter(func(ev: Dictionary) -> bool: return ev.get("t") == "line")[0] if not plays.is_empty() else {}
-	check(not line.is_empty() and near(float(line["rng"]), spear_range * 1.5) and near(float(line["mult"]), 1.5), "the charged Marrow Spear reaches %.1f m (12 x 1.5)" % float(line.get("rng", 0.0)))
+	check(not line.is_empty() and near(float(line["rng"]), spear_range * area_mult) and near(float(line["mult"]), area_mult), "the charged Marrow Spear reaches %.1f m (%.1f x %.2f)" % [float(line.get("rng", 0.0)), spear_range, area_mult])
 	check(float(b.p["souls"]) == 0.0 and float(b.p["resource"]["value"]) >= ess0 - 0.5, "it costs the souls, not essence (essence %.1f -> %.1f)" % [ess0, b.p["resource"]["value"]])
 	check(not DmPlayerRules.souls_charged(b.p) and float(g.ui_host.hud_state()["souls"]) == 0.0, "the meter is empty again")
 	b.p["cooldowns"].clear()
 	caster.request_cast("marrow_spear", g.core_host.enemy_position(foe), foe)
 	await ticks(3)
-	check(float(b.p["resource"]["value"]) < ess0 - 10.0, "an uncharged Marrow Spear costs essence again (%.1f)" % float(b.p["resource"]["value"]))
+	check(float(b.p["resource"]["value"]) < ess0 - float(DmAbilities.def("marrow_spear")["essenceCost"]) * 0.5, "an uncharged Marrow Spear costs essence again (%.1f)" % float(b.p["resource"]["value"]))
 	g.core_host.remove_enemy(foe)
 	await ticks(2)
 	# Miasma and Black Litany are the other two.
@@ -275,7 +304,7 @@ func _run() -> void:
 		await until(func() -> bool: return plays.any(func(ev: Dictionary) -> bool: return ev.get("t") == want), 3.0)
 		var evx: Array = plays.filter(func(ev: Dictionary) -> bool: return ev.get("t") == want)
 		var def_r2 := float(DmAbilities.def(id)["radius"]) * (float(b.mods["miasmaRadiusMult"]) if id == "miasma" else 1.0)
-		check(not evx.is_empty() and near(float(evx[0]["r"]), def_r2 * 1.5), "the charged %s is 1.5x wider (r %.2f)" % [id, float(evx[0]["r"]) if not evx.is_empty() else 0.0])
+		check(not evx.is_empty() and near(float(evx[0]["r"]), def_r2 * area_mult), "the charged %s is %.2fx wider (r %.2f)" % [id, area_mult, float(evx[0]["r"]) if not evx.is_empty() else 0.0])
 		check(float(b.p["souls"]) == 0.0, "%s spent the souls" % id)
 
 
@@ -284,7 +313,8 @@ func _run() -> void:
 	check(rc.ok, "the backend takes the Reaper (%s)" % rc.error)
 	await launch()
 	b = g.local_body()
-	check(b.family == "reaper" and float(b.p["soulsMax"]) == 30.0 and b.p["resource"]["kind"] == "reaper", "a Reaper character plays the reaper family with a 30-soul bag")
+	var bag_max := int(DmCombatData.const_table("REAPER")["soulBagMax"])
+	check(b.family == "reaper" and float(b.p["soulsMax"]) == float(bag_max) and b.p["resource"]["kind"] == "reaper", "a Reaper character plays the reaper family with a %d-soul bag" % bag_max)
 	b.teleport(graves_at)
 	await ticks(2)
 	b.p["souls"] = 0
@@ -296,19 +326,21 @@ func _run() -> void:
 			break
 		await g.get_tree().process_frame
 	var rhs: Dictionary = g.ui_host.hud_state()
-	check(int(b.p["souls"]) == 2 and int(rhs["souls"]) == 2 and bool(rhs["soul_bag"]) and int(rhs["souls_max"]) == 30, "every enemy that dies near her banks one soul, whoever struck it, and the HUD reads the bag 2 / 30")
-	check(String(rhs["resource_label"]) == "Soul Bag" and String(rhs["resource_color"]) == "#6ee7a0", "the HUD names her green resource the Soul Bag")
-	check(float(rhs["essence"]) == 2.0 and float(rhs["max_essence"]) == 30.0, "the energy orb reads the bag (2 / 30)")
+	check(int(b.p["souls"]) == 2 and int(rhs["souls"]) == 2 and bool(rhs["soul_bag"]) and int(rhs["souls_max"]) == bag_max, "every enemy that dies near her banks one soul, whoever struck it, and the HUD reads the bag 2 / %d" % bag_max)
+	check(String(rhs["resource_label"]) == DmResources.label_for("reaper") and String(rhs["resource_color"]) == DmResources.color_for("reaper"), "the HUD names her resource and colours it as the Reaper's")
+	check(float(rhs["essence"]) == 2.0 and float(rhs["max_essence"]) == float(bag_max), "the energy orb reads the bag (2 / %d)" % bag_max)
 	var rslots: Array = rhs["slots"]
-	check(int(rslots[1]["cost"]) == 5 and bool(rslots[1]["affordable"]) == false, "a slot's cost is in souls (Reap 5) and dims below it")
-	b.p["souls"] = 29
+	var second_rite := String(DmContent.kit("reaper")["defaultLoadout"][1])
+	var second_cost := int(DmAbilities.def(second_rite)["soulCost"])
+	check(int(rslots[1]["cost"]) == second_cost and bool(rslots[1]["affordable"]) == (int(b.p["souls"]) >= second_cost), "a slot's cost is in souls (%s %d) and dims below it" % [second_rite, second_cost])
+	b.p["souls"] = bag_max - 1
 	for i in 3:
 		g.rewards.on_kill({"def": "robber", "area": "graves", "level": 5.0, "elite": false, "x": b.position.x, "z": b.position.z, "killer": b})
 	for _i in 900:
 		if int(b.p["souls"]) >= 30:
 			break
 		await g.get_tree().process_frame
-	check(int(b.p["souls"]) == 30 and not event_ids().has("souls_charged"), "the bag holds 30 and a full bag never charges Soul Harvest")
+	check(int(b.p["souls"]) == bag_max and not event_ids().has("souls_charged"), "the bag holds %d and a full bag never charges Soul Harvest" % bag_max)
 	await close()
 	print("%d passed, %d failed" % [passed, failed])
 	print("%s meta_systems %d checks%s" % ["PASS" if failed == 0 else "FAIL", passed + failed, "" if failed == 0 else " (%d failed)" % failed])

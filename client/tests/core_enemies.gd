@@ -2,7 +2,8 @@ extends SceneTree
 ## The core's enemy brain against the first game's rules (archive/old-game:godot/enemies, combat map sections 2 and 12): chase and bite timing, the penitent's cone,
 ## the moth's dust cloud, the sac's slam, the bat's hit-and-run, the ghoul's tunnel and eruption, leash and return, stagger and stun, and the
 ## crowd spacing that replaces RVO.
-## Seeded and without a navmesh (straight lines). Run: godot --headless --path client --script res://tests/core_enemies.gd
+## Seeded and without a navmesh (straight lines). Every number a kind has (damage, wind-up, cooldown, burrow and cloud timings) is read from enemies.json; what is compiled
+## into the core with no data twin (the flinch, the recovery, the aggro ranges, a def's default slam radius) stays typed. Run: godot --headless --path client --script res://tests/core_enemies.gd
 
 const EV_STATE := 2
 const EV_DIED := 4
@@ -84,6 +85,24 @@ func run_until(c: RefCounted, pred: Callable, max_ticks: int, log: Array = []) -
 	return [-1, {}]
 
 
+## An enemies.json def, and its wind-up / cooldown in seconds.
+func def(id: String) -> Dictionary:
+	return content["ENEMIES"][id]
+
+
+func wind(id: String) -> float:
+	return float(def(id)["windupMs"]) / 1000.0
+
+
+func cool(id: String) -> float:
+	return float(def(id)["cooldownMs"]) / 1000.0
+
+
+## The ticks a span of seconds takes at 60 Hz.
+func ticks(seconds: float) -> int:
+	return roundi(seconds * 60.0)
+
+
 func states_of(log: Array, id: int) -> Array:
 	return log.filter(func(e: Dictionary) -> bool: return e["type"] == EV_STATE and e["id"] == id).map(func(e: Dictionary) -> int: return e["ints"][1])
 
@@ -107,8 +126,9 @@ func _init() -> void:
 	quit(1 if fails > 0 else 0)
 
 
-## The robber walks in, bites for its damage at the end of the 0.42 s wind-up, then bites again one cooldown (1.3 s = 78 ticks) later.
+## The robber walks in, bites for its damage at the end of its wind-up, then bites again one cooldown later.
 func robber() -> void:
+	var rd := def("robber")
 	var c := make()
 	var h := hero(c, Vector2(10, 0))
 	var r: int = c.spawn_enemy("robber", Vector2(0, 0), 1, 1.0, 1.0, false, "graves", false)
@@ -117,80 +137,93 @@ func robber() -> void:
 	check(first[0] > 0, "robber: a bite lands")
 	if first[0] < 0:
 		return
-	check(first[1]["id"] == r and first[1]["ints"][0] == h and first[1]["ints"][1] == 0 and is_equal_approx(first[1]["floats"][0], 11.0), "robber: bites the hero for 11, melee")
+	check(first[1]["id"] == r and first[1]["ints"][0] == h and first[1]["ints"][1] == 0 and is_equal_approx(first[1]["floats"][0], float(rd["damage"])), "robber: bites the hero for its damage, melee")
 	check(states_of(log, r).slice(0, 2) == [CHASE, ATTACK], "robber: IDLE -> CHASE -> ATTACK")
 	var swing: Array = log.filter(func(e: Dictionary) -> bool: return e["type"] == EV_ATTACK)
 	check(swing.size() == 1 and swing[0]["floats"][0] == 10.0, "robber: the swing aims at the hero")
-	var travel_s: float = (10.0 - (1.3 + 0.35)) / float(c.enemy_info(r)["speed"])
-	check(first[0] * DT > travel_s and first[0] * DT < travel_s + 0.42 + 0.5, "robber: first bite after the walk plus the wind-up (%.2f s)" % (first[0] * DT))
-	var second := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_HIT, 300)
-	# The cooldown (1.3 s, 78 ticks) starts at impact; the next swing's 0.42 s wind-up (26 ticks) follows it.
-	check(second[0] >= 103 and second[0] <= 105, "robber: the next bite one cooldown plus one wind-up later (%d ticks, want 103-105)" % second[0])
+	var travel_s: float = (10.0 - (float(rd["attackRange"]) + 0.35)) / float(c.enemy_info(r)["speed"])
+	check(first[0] * DT > travel_s and first[0] * DT < travel_s + wind("robber") + 0.5, "robber: first bite after the walk plus the wind-up (%.2f s)" % (first[0] * DT))
+	var second := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_HIT, ticks(cool("robber") + wind("robber")) + 60)
+	# The cooldown starts at impact; the next swing's wind-up follows it.
+	var want := floori((cool("robber") + wind("robber")) * 60.0)
+	check(second[0] >= want and second[0] <= want + 2, "robber: the next bite one cooldown plus one wind-up later (%d ticks, want %d-%d)" % [second[0], want, want + 2])
 
 
-## The penitent holds range and tolls a cone: a hero inside the cone at the end of the 1.1 s wind-up is hit, one who steps out is not.
+## The penitent holds range and tolls a cone: a hero inside the cone at the end of the wind-up is hit, one who steps out is not.
 func penitent() -> void:
+	var pd := def("penitent")
+	var w := ticks(wind("penitent"))
 	var c := make()
 	var h := hero(c, Vector2(6, 0))
 	var p: int = c.spawn_enemy("penitent", Vector2(0, 0), 1, 1.0, 1.0, false, "graves", false)
 	var log := []
 	var tell := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_TELEGRAPH, 300, log)
-	check(tell[0] > 0 and tell[1]["ints"][0] == 0 and is_equal_approx(tell[1]["floats"][5], 1.1), "penitent: a cone telegraph with the 1.1 s wind-up")
-	var hit := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_HIT, 80)
-	check(hit[0] >= 65 and hit[0] <= 67 and is_equal_approx(hit[1]["floats"][0], 18.0), "penitent: the toll lands 1.1 s later for 18 (%d ticks)" % hit[0])
+	check(tell[0] > 0 and tell[1]["ints"][0] == 0 and is_equal_approx(tell[1]["floats"][5], wind("penitent")), "penitent: a cone telegraph with its wind-up")
+	var hit := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_HIT, w + 14)
+	check(hit[0] >= w - 1 and hit[0] <= w + 1 and is_equal_approx(hit[1]["floats"][0], float(pd["damage"])), "penitent: the toll lands one wind-up later for its damage (%d ticks, want %d)" % [hit[0], w])
 	# Next swing: the hero walks out of the cone during the wind-up.
-	var tell2 := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_TELEGRAPH, 400)
+	var tell2 := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_TELEGRAPH, ticks(cool("penitent") + wind("penitent")) + 60)
 	check(tell2[0] > 0, "penitent: casts again after its cooldown")
 	c.set_external(h, Vector2(0, 6), true)   # 90 degrees off the aim
-	var miss := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_HIT, 70)
+	var miss := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_HIT, w + 10)
 	check(miss[0] < 0, "penitent: stepping out of the cone dodges the toll")
 
 
-## The moth dusts where the hero stood: a burst of its damage, then a 3.5 s cloud that pulses 3.5 a second (damage x 0.35) at 1, 2 and 3 s.
+## The moth dusts where the hero stood: a burst of its damage, then a cloud (DUST in enemies.json) that pulses once a second, damage x cloudDpsMult, for as many whole seconds as it lasts.
 func moth() -> void:
+	var md := def("moth")
+	var dust: Dictionary = content["DUST"]
 	var c := make()
 	var h := hero(c, Vector2(5, 0))
 	c.spawn_enemy("moth", Vector2(0, 0), 1, 1.0, 1.0, false, "graves", false)
 	var log := []
 	run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_ZONE, 400, log)
 	var burst: Array = log.filter(func(e: Dictionary) -> bool: return e["type"] == EV_HIT)
-	check(burst.size() == 1 and is_equal_approx(burst[0]["floats"][0], 10.0) and burst[0]["ints"][1] == 4, "moth: the burst hits for 10, kind dust")
+	check(burst.size() == 1 and is_equal_approx(burst[0]["floats"][0], float(md["damage"])) and burst[0]["ints"][1] == 4, "moth: the burst hits for its damage, kind dust")
 	var zlog := []
-	run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_ZONE_GONE, 300, zlog)
+	run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_ZONE_GONE, ticks(float(dust["cloudS"])) + 60, zlog)
 	var pulses: Array = zlog.filter(func(e: Dictionary) -> bool: return e["type"] == EV_ZONE_PULSE)
-	var cloud_hits: Array = zlog.filter(func(e: Dictionary) -> bool: return e["type"] == EV_HIT and is_equal_approx(e["floats"][0], 3.5))
-	check(pulses.size() == 3 and cloud_hits.size() == 3, "moth: the cloud pulses 3 times for 3.5 (pulses %d, hits %d)" % [pulses.size(), cloud_hits.size()])
+	var pulse_dmg := float(md["damage"]) * float(dust["cloudDpsMult"])
+	var cloud_hits: Array = zlog.filter(func(e: Dictionary) -> bool: return e["type"] == EV_HIT and is_equal_approx(e["floats"][0], pulse_dmg))
+	var whole := floori(float(dust["cloudS"]))
+	check(pulses.size() == whole and cloud_hits.size() == whole, "moth: the cloud pulses once a second, %d times, for %s (pulses %d, hits %d)" % [whole, pulse_dmg, pulses.size(), cloud_hits.size()])
 	c.set_external(h, Vector2(30, 30), true)
 
 
-## The sac slams the ground at the aim: everything within 1.9 m of it.
+## The sac slams the ground at the aim: everything within its slam radius of it (a def without a slamRadius gets the core's default, 1.9 m, compiled in).
 func sac() -> void:
 	var c := make()
 	hero(c, Vector2(4, 0))
 	c.spawn_enemy("sac", Vector2(0, 0), 1, 1.0, 1.0, false, "graves", false)
 	var log := []
 	var hit := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_HIT, 900, log)
-	check(hit[0] > 0 and is_equal_approx(hit[1]["floats"][0], 15.0), "sac: the slam lands for 15")
+	check(hit[0] > 0 and is_equal_approx(hit[1]["floats"][0], float(def("sac")["damage"])), "sac: the slam lands for its damage")
 	var tells: Array = log.filter(func(e: Dictionary) -> bool: return e["type"] == EV_TELEGRAPH and e["ints"][0] == 1)
 	var cues: Array = log.filter(func(e: Dictionary) -> bool: return e["type"] == EV_CUE and e["ints"][0] == 0)
-	check(tells.size() == 1 and is_equal_approx(tells[0]["floats"][4], 1.9) and cues.size() == 1, "sac: a slam telegraph (r 1.9) and a slam cue")
+	check(tells.size() == 1 and is_equal_approx(tells[0]["floats"][4], float(def("sac").get("slamRadius", 1.9))) and cues.size() == 1, "sac: a slam telegraph (its slam radius) and a slam cue")
 
 
-## The bat bites and flits off for 0.8 s (FLEE), then comes back (CHASE).
+## The bat bites and flits off for its hitRun seconds (FLEE), then comes back (CHASE).
 func bat() -> void:
+	var run := ticks(float(def("bat")["hitRun"]))
 	var c := make()
 	hero(c, Vector2(6, 0))
 	var b: int = c.spawn_enemy("bat", Vector2(0, 0), 1, 1.0, 1.0, false, "graves", false)
 	var log := []
 	run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_STATE and e["id"] == b and e["ints"][1] == FLEE, 600, log)
-	var flee := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_STATE and e["id"] == b, 120)
+	var flee := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_STATE and e["id"] == b, run + 72)
 	check(log.filter(func(e: Dictionary) -> bool: return e["type"] == EV_HIT).size() == 1, "bat: one bite before it flees")
-	check(flee[0] >= 48 and flee[0] <= 50 and flee[1]["ints"][1] == CHASE, "bat: flees 0.8 s, then chases (%d ticks)" % flee[0])
+	check(flee[0] >= run and flee[0] <= run + 2 and flee[1]["ints"][1] == CHASE, "bat: flees its hitRun, then chases (%d ticks, want %d)" % [flee[0], run])
 
 
-## The ghoul spawns underground (untouchable), tunnels at the hero, erupts under it after the 1.0 s Graves wind-up, recovers 0.3 s, fights;
-## the first fall below half health digs it back in (0.8 s) for another tunnel run.
+## The ghoul spawns underground (untouchable), tunnels at the hero, erupts under it after the Graves wind-up (BURROW.eruptMsGraves), recovers (0.3 s, compiled in), fights;
+## the first fall below the dig-in fraction of its health (BURROW.digAtFrac) digs it back in (BURROW.digS) for another tunnel run.
 func ghoul() -> void:
+	var gd := def("ghoul")
+	var burrow: Dictionary = content["BURROW"]
+	var erupt_s := float(burrow["eruptMsGraves"]) / 1000.0
+	var erupt_t := ticks(erupt_s)
+	var dig_t := ticks(float(burrow["digS"]))
 	var c := make()
 	var h := hero(c, Vector2(9, 0))
 	var g: int = c.spawn_enemy("ghoul", Vector2(0, 0), 1, 1.0, 1.0, false, "graves", true)
@@ -201,19 +234,19 @@ func ghoul() -> void:
 	var erupt := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_STATE and e["id"] == g and e["ints"][1] == ERUPT, 300, log)
 	check(erupt[0] > 0, "ghoul: erupts near the hero")
 	var tell: Array = log.filter(func(e: Dictionary) -> bool: return e["type"] == EV_TELEGRAPH)
-	check(tell.size() == 1 and tell[0]["ints"][0] == 3 and is_equal_approx(tell[0]["floats"][5], 1.0), "ghoul: an erupt telegraph with the 1.0 s Graves wind-up")
-	var hit := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_HIT, 80)
-	check(hit[0] >= 59 and hit[0] <= 61 and is_equal_approx(hit[1]["floats"][0], 12.0), "ghoul: the eruption hits for 12 (x1.0 in the Graves) after 1.0 s (%d ticks)" % hit[0])
+	check(tell.size() == 1 and tell[0]["ints"][0] == 3 and is_equal_approx(tell[0]["floats"][5], erupt_s), "ghoul: an erupt telegraph with the Graves wind-up")
+	var hit := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_HIT, erupt_t + 20)
+	check(hit[0] >= erupt_t - 1 and hit[0] <= erupt_t + 1 and is_equal_approx(hit[1]["floats"][0], float(gd["damage"]) * float(burrow["eruptMultGraves"])), "ghoul: the eruption hits for its damage x eruptMultGraves after the wind-up (%d ticks, want %d)" % [hit[0], erupt_t])
 	var p: Vector2 = c.enemy_info(g)["pos"]
 	check(p.distance_to(Vector2(9, 0)) < 0.01, "ghoul: surfaces at the aim")
 	var emerge := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_STATE and e["id"] == g, 30)
 	check(emerge[1].get("ints", [0, 0])[1] == CHASE and emerge[0] >= 18 and emerge[0] <= 20, "ghoul: EMERGE 0.3 s, then CHASE")
 	var dlog := []
-	c.damage(g, 35.0, h)   # 60 hp -> 25, below half
+	c.damage(g, float(gd["hp"]) * (1.0 - float(burrow["digAtFrac"])) + 1.0, h)   # one point below the dig-in fraction
 	dlog.append_array(events(c))
-	check(states_of(dlog, g).has(DIG), "ghoul: below half health it digs in")
-	var back := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_STATE and e["id"] == g and e["ints"][1] == BURROW, 70)
-	check(back[0] >= 47 and back[0] <= 50, "ghoul: dig 0.8 s, then underground again (%d ticks)" % back[0])
+	check(states_of(dlog, g).has(DIG), "ghoul: below the dig-in fraction of its health it digs in")
+	var back := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_STATE and e["id"] == g and e["ints"][1] == BURROW, dig_t + 22)
+	check(back[0] >= dig_t - 1 and back[0] <= dig_t + 2, "ghoul: dig for digS, then underground again (%d ticks, want %d)" % [back[0], dig_t])
 
 
 ## A target that runs past aggro x 1.5 (22.5 m) is dropped; the body walks home and idles.
@@ -243,12 +276,12 @@ func aggro_override() -> void:
 	check(states_of(log, hunter).has(CHASE) and not states_of(log, plain).has(CHASE), "aggro: at 25 m the hunter chases and the plain body, past its 15 m, idles")
 	# a target that runs to 45 m: the plain body's aggro x 1.5 is 22.5 (dropped, as in leash()); the hunter's is 54 (kept)
 	var c2 := make()
-	var h2 := hero(c2, Vector2(8, 0))
+	var h2 := hero(c2, Vector2(13, 0))
 	var a: int = c2.spawn_enemy("robber", Vector2(0, 0), 1, 1.0, 1.0, false, "graves", false)
 	var b: int = c2.spawn_enemy("robber", Vector2(0, 3), 1, 1.0, 1.0, false, "depths", false)
 	c2.set_enemy_aggro(b, 36.0, 90.0)
-	run_until(c2, func(e: Dictionary) -> bool: return false, 90)   # (each body notices the hero on its own scan phase)
-	check(int(c2.enemy_info(a)["state"]) == CHASE and int(c2.enemy_info(b)["state"]) == CHASE, "aggro: both chase a hero at 8 m")
+	run_until(c2, func(e: Dictionary) -> bool: return false, 30)   # (each body notices the hero on its own scan phase)
+	check(int(c2.enemy_info(a)["state"]) == CHASE and int(c2.enemy_info(b)["state"]) == CHASE, "aggro: both chase a hero at 13 m")
 	c2.set_external(h2, Vector2(45, 0), true)
 	var log2 := []
 	run_until(c2, func(e: Dictionary) -> bool: return false, 30, log2)
@@ -302,10 +335,14 @@ func crowd_spacing() -> void:
 	var ids: PackedInt32Array = c.enemy_ids()
 	var pos: PackedFloat32Array = c.enemy_positions()
 	var rad := []
-	var near := 0
 	for i in ids.size():
 		rad.append(float(c.enemy_info(ids[i])["radius"]))
-		if Vector2(pos[i * 3], pos[i * 3 + 1]).length() < 3.5:
+	var reach := 0.0   # the rows of bodies that stand around him: their attack range and about five radii
+	for id in ["robber", "hound"]:
+		reach = maxf(reach, float(def(id)["attackRange"]) + 5.0 * float(def(id)["radius"]))
+	var near := 0
+	for i in ids.size():
+		if Vector2(pos[i * 3], pos[i * 3 + 1]).length() < reach:
 			near += 1
 	var overlaps := 0
 	var deep := 0
@@ -319,7 +356,7 @@ func crowd_spacing() -> void:
 				worst = maxf(worst, (rr - d) / rr)
 				if d < rr * 0.5:
 					deep += 1
-	check(near >= 20, "the crowd reached the hero (%d within 3.5 m)" % near)
+	check(near >= 20, "the crowd reached the hero (%d within %.1f m)" % [near, reach])
 	check(deep == 0 and worst < 0.15, "after 10 s around the hero no two bodies sink into each other (%d overlap, the deepest by %d%% of their radii)" % [overlaps, int(worst * 100.0)])
 	# A body blocked head-on goes around: a hound with a stunned robber standing exactly between it and the hero reaches him and bites.
 	var d := make(5)

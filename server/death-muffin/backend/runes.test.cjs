@@ -10,10 +10,11 @@ const rules = require('./gathering/rune-rules.cjs');
 const salvageRules = require('./gathering/salvage-rules.cjs');
 const authority = require('./gathering/authority-rules.cjs');
 const { fakeDb, harness, qty } = require('./bag-fake-db.cjs');
+const { BAG_SLOTS } = require('./gathering/gathering-rules.cjs');
 
 const rune = (db, rite, itemId, opts) => harness(mountRunes, db, opts)('POST /api/inventory/rune', { body: { characterId: 1, rite, itemId } });
 const at = (db, slot) => db.inv.find((r) => r.slot_index === slot);
-const fullBag = (extra = []) => Array.from({ length: 48 }, (_, i) => extra.find((e) => e.slot_index === i) || { slot_index: i, item_id: 'wand_iron', quantity: 1 });
+const fullBag = (extra = []) => Array.from({ length: BAG_SLOTS }, (_, i) => extra.find((e) => e.slot_index === i) || { slot_index: i, item_id: 'wand_iron', quantity: 1 });
 
 test('sockets: 130 needle, 131 spear, 132 exhume, 133 miasma, 134 litany, clear of the kit (120-121) and the belt (110-113)', () => {
   const rites = ['bone_needle', 'marrow_spear', 'exhume', 'miasma', 'black_litany'];
@@ -66,7 +67,7 @@ test('socket: any learned rune of the rite goes in (replacing the old one) witho
   const r = (await rune(db, 'exhume', 'rune_mass_grave')).json;
   assert.equal(r.success, true, r.error);
   assert.equal(at(db, 132).item_id, 'rune_mass_grave');
-  assert.equal(db.inv.length, 49, 'the bag is untouched');
+  assert.equal(db.inv.length, BAG_SLOTS + 1, 'the bag is untouched');
   assert.equal(qty(db.inv, 'rune_bone_colossus'), 0, 'the old rune stays learned, not an item');
   assert.ok(r.data.some((s) => s.slot_index === 132 && s.item_id === 'rune_mass_grave'), 'the reply is the bag with the socket row');
 });
@@ -76,7 +77,7 @@ test('null empties the socket without needing bag room; the rune stays learned',
   const r = (await rune(db, 'marrow_spear', null)).json;
   assert.equal(r.success, true, r.error);
   assert.equal(at(db, 131), undefined);
-  assert.equal(db.inv.length, 48);
+  assert.equal(db.inv.length, BAG_SLOTS);
   assert.deepEqual(db.learned, ['rune_impale']);
 });
 
@@ -107,7 +108,7 @@ test('a character that is not yours is refused; a malformed body is a 400', asyn
   assert.equal(bad.status, 400);
 });
 
-test('socket rows are invisible to the bag save, the Vault and the Bone Grinder (they only ever look at slots 0-47)', async () => {
+test('socket rows are invisible to the bag save, the Vault and the Bone Grinder (they only ever look at the bag slots)', async () => {
   const db = fakeDb({ bag: [{ slot_index: 2, item_id: 'rune_volley', quantity: 2 }], equipped: [{ slot_index: 130, item_id: 'rune_splinter', equipped_slot: 'rune_bone_needle' }, { slot_index: 133, item_id: 'rune_contagion', equipped_slot: 'rune_miasma' }] });
   // Deposit all empties the bag and leaves both sockets
   const vault = harness(mountVault, db);
@@ -122,7 +123,7 @@ test('socket rows are invisible to the bag save, the Vault and the Bone Grinder 
   // a bag save never touches the sockets (and a save that echoes them is the route's job to filter; replaceBag only writes 0..bagSize-1)
   const conn = db.conn;
   await conn.beginTransaction();
-  await replaceBag(conn, 1, [{ slot_index: 0, item_id: 'ore_copper', quantity: 1 }], 48, 7);
+  await replaceBag(conn, 1, [{ slot_index: 0, item_id: 'ore_copper', quantity: 1 }], BAG_SLOTS, 7);
   await conn.commit();
   assert.equal(at(db, 130).item_id, 'rune_splinter');
   assert.equal(at(db, 133).item_id, 'rune_contagion');
@@ -141,7 +142,8 @@ test('salvage grinds ONE rune of a stack into reagents only and leaves the rest'
   assert.equal(at(db, 3).quantity, 2);
   assert.ok(r.data.gained.length > 0);
   for (const g of r.data.gained) assert.match(g.item_id, /^(reagent_|bone_meal)/, `${g.item_id} is a reagent`);
-  assert.ok(r.data.gained.some((g) => g.item_id === 'reagent_grave_dust' && g.quantity >= 2));
+  const dust = salvageRules.salvagePreview({ id: 'rune_volley', item_type: 'rune', rarity: 'rare' }).reagents.find((x) => x.id === 'reagent_grave_dust');
+  assert.ok(r.data.gained.some((g) => g.item_id === 'reagent_grave_dust' && g.quantity >= dust.qty[0]), 'at least the least dust a rune gives');
   assert.ok(r.data.xp > 0);
   // the last rune empties the slot
   const one = fakeDb({ bag: [{ slot_index: 3, item_id: 'rune_requiem', quantity: 1 }] });
@@ -157,7 +159,7 @@ test('salvage rules: runes are salvageable, gear still is, materials still are n
 });
 
 test('the authority guard knows runes are ground drops (a client save may add a few)', () => {
-  for (const id of ['rune_splinter', 'rune_bone_colossus', 'rune_requiem']) assert.ok(authority.itemCap(id) >= 4, id);
+  for (const id of ['rune_splinter', 'rune_bone_colossus', 'rune_requiem']) assert.ok(authority.itemCap(id) >= authority.AUTHORITY.ITEM_MIN_BURST, id);
   assert.equal(authority.itemCap('rune_nope'), 0);
 });
 

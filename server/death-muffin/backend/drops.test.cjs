@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const rules = require('./gathering/loot-rules.cjs');
-const { issueTape, claimDrop, creditSummon, summonCredits, seedFor, tapeKey, AHEAD } = require('./drops.cjs');
+const { issueTape, claimDrop, creditSummon, summonCredits, seedFor, tapeKey, AHEAD, SLACK } = require('./drops.cjs');
 
 const ENV = { JWT_SECRET: 'test-secret', DROPS_MODE: 'audit' };
 const ENFORCE = { JWT_SECRET: 'test-secret' };   // enforce is the default
@@ -60,7 +60,7 @@ function fakeDb({ level = 30, cls = 2, unlocked = ['chapterhouse', 'graves', 'os
     if (q.startsWith('SELECT COUNT(*) AS n FROM inventory WHERE character_id = ? AND item_id = ?')) return [[{ n: db.inv.filter((r) => r.item_id === p[1]).length }]];
     if (q.startsWith('SELECT COUNT(*) AS n FROM account_vault')) return [[{ n: db.vault.includes(p[1]) ? 1 : 0 }]];
     if (q.startsWith('SELECT stackable, max_stack_size FROM items')) return [[{ stackable: rules.canRoll(p[0]) ? 0 : 1, max_stack_size: rules.canRoll(p[0]) ? 1 : 250 }]];
-    if (q.startsWith('SELECT id, slot_index, item_id, quantity, instance_id FROM inventory')) return [db.inv.filter((r) => r.slot_index < 48)];
+    if (q.startsWith('SELECT id, slot_index, item_id, quantity, instance_id FROM inventory')) return [db.inv.filter((r) => r.slot_index <= p[1])];
     if (q.startsWith('INSERT INTO loot_instances')) { db.instances.push({ item: p[1], ilvl: p[2], affixes: p[3] }); return [{ insertId: db.instances.length }]; }
     if (q.startsWith('INSERT INTO inventory')) {
       db.inv.push({ id: db.inv.length + 1, slot_index: p[1], item_id: p[2], quantity: q.includes('instance_id') ? 1 : p[3], instance_id: q.includes('instance_id') ? p[3] : null });
@@ -75,7 +75,19 @@ function fakeDb({ level = 30, cls = 2, unlocked = ['chapterhouse', 'graves', 'os
   return { db, pool: { execute: run, query: run, getConnection: async () => conn } };
 }
 
-const roll = (kind, n, facts) => rules.rollEvent(kind, facts, rules.eventStreams(kind, seedFor(tapeKey(ENV), 1, kind, n))).items;
+const roll = (kind, n, facts, env = ENV) => rules.rollEvent(kind, facts, rules.eventStreams(kind, seedFor(tapeKey(env), 1, kind, n))).items;
+/**
+ * A tape (the secret is the test's own input) in which `find(roll)` turns something up. Which elite sheds a rune, and which floor clear
+ * drops, depends on the drop chances, so a scenario that needs one hunts a tape that has it instead of trusting today's chances.
+ */
+function huntTape(find, extraEnv = { DROPS_MODE: 'audit' }) {
+  for (let i = 0; i < 500; i++) {
+    const env = { JWT_SECRET: `hunt-${i}`, ...extraEnv };
+    const hit = find((kind, n, facts) => roll(kind, n, facts, env));
+    if (hit) return { env, hit };
+  }
+  throw new Error('no tape in 500 has what the scenario needs');
+}
 const killFacts = (over = {}) => ({ def: 'robber', area: 'graves', level: 12, waveTier: 0, difficulty: 'medium', itemChanceMult: 1, ...over });
 /** The first index of `kind` whose server roll drops something (with these facts), scanning from 0. */
 function firstDropping(kind, facts, ctx = { characterLevel: 30, disciplineId: 'gravecaller', owned: [] }) {
@@ -96,10 +108,11 @@ test('the tape deals the next seeds of every kind, derived from the secret, and 
     assert.equal(a.tape[kind].seeds.length, AHEAD[kind]);
     assert.deepEqual(a.tape[kind].seeds[3], seedFor(tapeKey(ENV), 1, kind, 3));
   }
-  const b = await issueTape(f.pool, { characterId: 1, next: { kill: 100 }, env: ENV });
-  assert.equal(b.tape.kill.from, 100, 'the client says where it is');
+  const ahead = AHEAD.kill;
+  const b = await issueTape(f.pool, { characterId: 1, next: { kill: ahead - 1 }, env: ENV });
+  assert.equal(b.tape.kill.from, ahead - 1, 'the client says where it is');
   const c = await issueTape(f.pool, { characterId: 1, next: { kill: 99999 }, env: ENV });
-  assert.ok(c.tape.kill.from <= 228, 'never past what was dealt');
+  assert.ok(c.tape.kill.from <= ahead + b.tape.kill.from, 'never past what was dealt (the first deal plus the second)');
   assert.notDeepEqual(seedFor(tapeKey(ENV), 1, 'kill', 0), seedFor(tapeKey({ JWT_SECRET: 'other' }), 1, 'kill', 0), 'another secret, another tape');
 });
 
@@ -136,28 +149,37 @@ test('facts the server knows are its own: another discipline or level in the cla
 });
 
 test('broken bounds are findings: audit lets the claim through clamped, enforce refuses it', async () => {
-  for (const [env, ok] of [[ENV, true], [ENFORCE, false]]) {
+  const facts = killFacts({ area: 'nave', def: 'robber', itemChanceMult: 5, waveTier: 8 });   // the Nave needs the Ossuary open (the Graves alone open only the Ossuary's seal)
+  const fresh = async (env, n) => {
     const f = fakeDb({ unlocked: ['chapterhouse', 'graves'] });
     await issueTape(f.pool, { characterId: 1, env });
-    const facts = killFacts({ area: 'nave', def: 'robber', itemChanceMult: 5, waveTier: 8 });   // the Nave needs the Ossuary open (the Graves alone open only the Ossuary's seal)
-    const server = { ...facts, itemChanceMult: 1.3, waveTier: 0 };
-    const { n } = firstDropping('kill', server);
-    const r = await claim(f, { kind: 'kill', n, index: 0, facts }, env);
-    assert.equal(r.body.success, ok, JSON.stringify(r.body));
-    assert.deepEqual(f.db.audit.map((a) => a.kind).sort(), ['drop_area', 'drop_fortune', 'drop_wave']);
-    if (!ok) assert.equal(f.db.inv.length, 0, 'enforce: nothing granted');
+    return { f, r: await claim(f, { kind: 'kill', n, index: 0, facts }, env) };
+  };
+  const kinds = (f) => f.db.audit.map((a) => a.kind).sort();
+  // audit: the first kill in the tape that drops something once the claim is clamped to its bounds goes through
+  let granted = null;
+  for (let n = 0; n < AHEAD.kill && !granted; n++) {
+    const { f, r } = await fresh(ENV, n);
+    if (r.body.success) granted = { f, n };
   }
+  assert.ok(granted, 'some kill in the tape drops something');
+  assert.deepEqual(kinds(granted.f), ['drop_area', 'drop_fortune', 'drop_wave']);
+  // enforce: the same broken claim is refused and nothing is granted
+  const { f: e, r: refused } = await fresh(ENFORCE, 0);
+  assert.equal(refused.body.success, false, JSON.stringify(refused.body));
+  assert.deepEqual(kinds(e), ['drop_area', 'drop_fortune', 'drop_wave']);
+  assert.equal(e.db.inv.length, 0, 'enforce: nothing granted');
 });
 
 test('the tape is spent no faster than the kill ledger accepts kills', async () => {
   const f = fakeDb({ kills: 0 });
   await issueTape(f.pool, { characterId: 1, env: ENFORCE });
   f.db.ledger.kills_total = 0;
-  const r = await claim(f, { kind: 'kill', n: 100, index: 0, facts: killFacts() }, ENFORCE);   // 101 kills spent, none reported
+  const r = await claim(f, { kind: 'kill', n: SLACK.kills, index: 0, facts: killFacts() }, ENFORCE);   // one kill more than the slack allows, none reported
   assert.equal(r.body.success, false);
   assert.equal(f.db.audit[0].kind, 'drop_budget');
   assert.deepEqual(r.body.resync, { kind: 'kill', spent: 0 }, 'the client is told where the server\'s tape is, to go back there');
-  f.db.ledger.kills_total = 200;   // the kill reports arrive
+  f.db.ledger.kills_total = AHEAD.kill;   // the kill reports arrive
   const ok = firstDropping('kill', killFacts());
   const r2 = await claim(f, { kind: 'kill', n: ok.n, index: 0, facts: killFacts() }, ENFORCE);
   assert.equal(r2.body.success, true, JSON.stringify(r2.body));
@@ -167,7 +189,8 @@ test('a boss\'s first-kill drop comes once per character', async () => {
   const f = fakeDb();
   await issueTape(f.pool, { characterId: 1, env: ENV });
   const facts = { boss: 'gravedigger', level: 10, waveTier: 0, difficulty: 'medium', first: true };
-  const first = roll('boss', 0, { ...facts, area: 'graves', costShards: 2, characterLevel: 30, disciplineId: 'gravecaller', owned: [] });
+  const info = rules.bossInfo('gravedigger');
+  const first = roll('boss', 0, { ...facts, area: info.area, costShards: info.shards, characterLevel: 30, disciplineId: 'gravecaller', owned: [] });
   assert.ok(first.some((d) => d.source === 'first_kill'));
   await claim(f, { kind: 'boss', n: 0, index: 0, facts });
   await claim(f, { kind: 'boss', n: 1, index: 0, facts });
@@ -196,29 +219,35 @@ test('gear lands as a new instance carrying the server roll\'s item level and af
 });
 
 test('a rune the character already has is not granted (it never dropped for them)', async () => {
+  const facts = { def: 'robber', area: 'graves', level: 12, waveTier: 0, difficulty: 'medium', itemChanceMult: 1.3, runePity: 1 };
+  const ctx = { characterLevel: 30, disciplineId: 'gravecaller', owned: [] };
+  // a tape in which some elite sheds a rune
+  const { env, hit } = huntTape((rollIn) => {
+    for (let n = 0; n < AHEAD.elite; n++) {
+      const items = rollIn('elite', n, { ...facts, ...ctx });
+      const i = items.findIndex((d) => d.item_id.startsWith('rune_'));
+      if (i >= 0) return { n, i, rune: items[i].item_id };
+    }
+    return null;
+  });
   const f = fakeDb({ unlocked: ['chapterhouse', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'fen'] });
-  await issueTape(f.pool, { characterId: 1, env: ENV });
-  let hit = null;
-  for (let n = 0; n < AHEAD.elite && !hit; n++) {
-    const facts = { def: 'robber', area: 'graves', level: 12, waveTier: 0, difficulty: 'medium', itemChanceMult: 1.3, runePity: 1 };
-    const items = roll('elite', n, { ...facts, characterLevel: 30, disciplineId: 'gravecaller', owned: [] });
-    const i = items.findIndex((d) => d.item_id.startsWith('rune_'));
-    if (i >= 0) hit = { n, i, facts, rune: items[i].item_id };
-  }
-  assert.ok(hit, 'some elite in the tape sheds a rune');
+  await issueTape(f.pool, { characterId: 1, env });
   f.db.runes.push(hit.rune);
-  const r = await claim(f, { kind: 'elite', n: hit.n, index: hit.i, facts: hit.facts });
+  const r = await claim(f, { kind: 'elite', n: hit.n, index: hit.i, facts }, env);
   assert.equal(r.body.success, false);
   assert.match(r.body.error, /already have that rune/);
   assert.ok(!f.db.inv.some((row) => row.item_id === hit.rune));
 });
 
-/** The first elite index from `from` whose roll at full rising chance (3x) sheds a rune but would not at the bound `atPity`. */
-function runeOnlyWithPity(from, atPity, facts) {
+/** The strongest rising rune chance the rules reach (its multiplier of the base chance, after enough dry elites). */
+const MAX_PITY = rules.runePityMult(1e6);
+
+/** The first elite index whose roll at the strongest rising chance sheds a rune but would not at the bound `atPity`, in the tape `rollIn` reads. */
+function runeOnlyWithPity(rollIn, atPity, facts) {
   const ctx = { characterLevel: 30, disciplineId: 'gravecaller', owned: [] };
-  for (let n = from; n < AHEAD.elite; n++) {
-    const hi = roll('elite', n, { ...facts, ...ctx, runePity: 3 });
-    const lo = roll('elite', n, { ...facts, ...ctx, runePity: atPity });
+  for (let n = 0; n < AHEAD.elite; n++) {
+    const hi = rollIn('elite', n, { ...facts, ...ctx, runePity: MAX_PITY });
+    const lo = rollIn('elite', n, { ...facts, ...ctx, runePity: atPity });
     const i = hi.findIndex((d) => d.item_id.startsWith('rune_'));
     if (i >= 0 && !lo.some((d) => d.item_id.startsWith('rune_'))) return { n, i, rune: hi[i].item_id };
   }
@@ -226,57 +255,64 @@ function runeOnlyWithPity(from, atPity, facts) {
 }
 
 test('audit never changes what dropped: a rising rune chance past the bound is logged, and the rune the client showed is granted', async () => {
-  const f = fakeDb();
-  await issueTape(f.pool, { characterId: 1, env: ENV });
   const facts = { def: 'robber', area: 'graves', level: 12, waveTier: 0, difficulty: 'medium', itemChanceMult: 1 };
-  const hit = runeOnlyWithPity(0, rules.runePityMult(0), facts);
-  assert.ok(hit, 'some elite sheds a rune only at the higher chance');
-  // Bound for index n with no rune before it: n elites dry. Claim with 3x where the bound is lower: audit grants the client's roll.
-  const r = await claim(f, { kind: 'elite', n: hit.n, index: hit.i, facts: { ...facts, runePity: 3 }, expect: hit.rune });
-  if (rules.runePityMult(hit.n) < 3) assert.ok(f.db.audit.some((a) => a.kind === 'drop_pity'));
+  const { env, hit } = huntTape((rollIn) => runeOnlyWithPity(rollIn, rules.runePityMult(0), facts));
+  const f = fakeDb();
+  await issueTape(f.pool, { characterId: 1, env });
+  // Bound for index n with no rune before it: n elites dry. Claim at the strongest chance where the bound is lower: audit grants the client's roll.
+  const r = await claim(f, { kind: 'elite', n: hit.n, index: hit.i, facts: { ...facts, runePity: MAX_PITY }, expect: hit.rune }, env);
+  if (rules.runePityMult(hit.n) < MAX_PITY) assert.ok(f.db.audit.some((a) => a.kind === 'drop_pity'));
   assert.equal(r.body.success, true, JSON.stringify(r.body));
   assert.equal(r.body.data.item.item_id, hit.rune);
   assert.ok(!f.db.audit.some((a) => a.kind === 'drop_mismatch'));
 });
 
 test('the rising rune chance follows roll order: a rune picked up later does not shorten an earlier elite\'s bound', async () => {
-  const f = fakeDb();
-  await issueTape(f.pool, { characterId: 1, env: ENFORCE });
   const facts = { def: 'robber', area: 'graves', level: 12, waveTier: 0, difficulty: 'medium', itemChanceMult: 1 };
   const ctx = { characterLevel: 30, disciplineId: 'gravecaller', owned: [] };
-  // A rune at a later elite, claimed first.
-  let later = null;
-  for (let n = 20; n < AHEAD.elite && !later; n++) {
-    const items = roll('elite', n, { ...facts, ...ctx, runePity: rules.runePityMult(n) });
-    const i = items.findIndex((d) => d.item_id.startsWith('rune_'));
-    if (i >= 0) later = { n, i };
-  }
-  assert.ok(later, 'a later elite sheds a rune');
-  const r1 = await claim(f, { kind: 'elite', n: later.n, index: later.i, facts: { ...facts, runePity: rules.runePityMult(later.n) } }, ENFORCE);
+  const withPity = (n) => ({ ...facts, runePity: rules.runePityMult(n) });
+  // A tape with a rune at a later elite, and an earlier one (already ten dry) that drops something too.
+  const { env, hit } = huntTape((rollIn) => {
+    for (let n = 20; n < AHEAD.elite; n++) {
+      const i = rollIn('elite', n, { ...withPity(n), ...ctx }).findIndex((d) => d.item_id.startsWith('rune_'));
+      if (i < 0) continue;
+      for (let early = 10; early < n; early++) if (rollIn('elite', early, { ...withPity(early), ...ctx }).length) return { later: { n, i }, early };
+    }
+    return null;
+  }, {});
+  const f = fakeDb();
+  await issueTape(f.pool, { characterId: 1, env });
+  // The rune at the later elite, claimed first.
+  const r1 = await claim(f, { kind: 'elite', n: hit.later.n, index: hit.later.i, facts: withPity(hit.later.n) }, env);
   assert.equal(r1.body.success, true, JSON.stringify(r1.body));
-  // Then an earlier elite (dry 10) whose drop is picked up afterwards: its bound counts from before it, not from the later rune.
-  let early = null;
-  for (let n = 10; n < later.n && !early; n++) if (roll('elite', n, { ...facts, ...ctx, runePity: rules.runePityMult(n) }).length) early = n;
-  assert.ok(early != null);
-  const r2 = await claim(f, { kind: 'elite', n: early, index: 0, facts: { ...facts, runePity: rules.runePityMult(early) } }, ENFORCE);
+  // Then the earlier elite whose drop is picked up afterwards: its bound counts from before it, not from the later rune.
+  const r2 = await claim(f, { kind: 'elite', n: hit.early, index: 0, facts: withPity(hit.early) }, env);
   assert.equal(r2.body.success, true, JSON.stringify(r2.body));
   assert.ok(!f.db.audit.some((a) => a.kind === 'drop_pity'), JSON.stringify(f.db.audit));
 });
 
 test('the Catacomb Depths: a floor clear and a fifth floor\'s chest come from the tape, within the floors the ledger proved', async () => {
-  const f = fakeDb({ depth: 12, floors: 40 });
-  await issueTape(f.pool, { characterId: 1, env: ENFORCE });
+  const PROVED = 12;
   const ctx = { characterLevel: 30, disciplineId: 'gravecaller', owned: [] };
-  let floorN = -1;
-  for (let n = 0; n < AHEAD.floor && floorN < 0; n++) if (roll('floor', n, { area: 'depths', depth: 7, level: 20, ...ctx }).length) floorN = n;
-  assert.ok(floorN >= 0, 'some floor clear drops an item');
-  const r = await claim(f, { kind: 'floor', n: floorN, index: 0, facts: { depth: 7, level: 20 } }, ENFORCE);
+  const depths = Array.from({ length: PROVED }, (_, i) => i + 1);
+  const chestDepth = depths.find((d) => rules.hasChest(d));
+  const bareDepth = depths.find((d) => !rules.hasChest(d) && d > chestDepth);
+  const floorDepth = depths.find((d) => !rules.hasChest(d)) ?? 1;
+  assert.ok(chestDepth && bareDepth, 'the proved floors include one with a chest and a later one without');
+  // a tape in which some floor clear drops an item
+  const { env, hit: floorN } = huntTape((rollIn) => {
+    for (let n = 0; n < AHEAD.floor; n++) if (rollIn('floor', n, { area: 'depths', depth: floorDepth, level: 20, ...ctx }).length) return n;
+    return null;
+  }, {});
+  const f = fakeDb({ depth: PROVED, floors: 40 });
+  await issueTape(f.pool, { characterId: 1, env });
+  const r = await claim(f, { kind: 'floor', n: floorN, index: 0, facts: { depth: floorDepth, level: 20 } }, env);
   assert.equal(r.body.success, true, JSON.stringify(r.body));
-  const chest = roll('chest', 0, { area: 'depths', depth: 10, level: 20, ...ctx });
-  const c = await claim(f, { kind: 'chest', n: 0, index: 0, facts: { depth: 10, level: 20 } }, ENFORCE);
+  const chest = roll('chest', 0, { area: 'depths', depth: chestDepth, level: 20, ...ctx }, env);
+  const c = await claim(f, { kind: 'chest', n: 0, index: 0, facts: { depth: chestDepth, level: 20 } }, env);
   assert.equal(c.body.data.item.item_id, chest[0].item_id, 'the chest\'s first drop is its gear');
-  assert.match((await claim(f, { kind: 'chest', n: 1, index: 0, facts: { depth: 11, level: 20 } }, ENFORCE)).body.error, /could not be found/, 'no chest on floor 11');
-  const deep = await claim(f, { kind: 'floor', n: floorN + 1, index: 0, facts: { depth: 30, level: 20 } }, ENFORCE);
+  assert.match((await claim(f, { kind: 'chest', n: 1, index: 0, facts: { depth: bareDepth, level: 20 } }, env)).body.error, /could not be found/, `no chest on floor ${bareDepth}`);
+  const deep = await claim(f, { kind: 'floor', n: floorN + 1, index: 0, facts: { depth: PROVED + 18, level: 20 } }, env);
   assert.equal(deep.body.success, false, 'a floor far below what the ledger proved is refused');
   assert.ok(f.db.audit.some((a) => a.kind === 'drop_depth'));
 });
@@ -286,10 +322,12 @@ test('boss drops are backed by paid summons, with no limit on how fast: a summon
   await issueTape(f.pool, { characterId: 1, env: ENFORCE });
   f.db.ledger.bosses_total = 10;   // the ledger refused every Prelate of the spree (its rate), so it backs none
   const facts = { boss: 'prelate', level: 40, waveTier: 0, difficulty: 'medium', first: false };
-  const ctx = { area: 'sanctum', costShards: 5, characterLevel: 30, disciplineId: 'gravecaller', owned: [] };
+  const info = rules.bossInfo('prelate');
+  const ctx = { area: info.area, costShards: info.shards, characterLevel: 30, disciplineId: 'gravecaller', owned: [] };
   const pick = (n) => roll('boss', n, { ...facts, ...ctx }).length > 0;
-  let n = 5;
+  let n = SLACK.bosses;   // one boss more than the slack allows is over budget without a summon
   while (!pick(n)) n++;
+  assert.ok(n < AHEAD.boss, 'the boss is inside the dealt tape');
   const refused = await claim(f, { kind: 'boss', n, index: 0, facts }, ENFORCE);
   assert.equal(refused.body.success, false, 'no summons yet: over budget');
   f.db.tape.boss_credit = n + 1;   // the summons were paid (summonCredits)

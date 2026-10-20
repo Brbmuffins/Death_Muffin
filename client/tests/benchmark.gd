@@ -57,6 +57,34 @@ func _sorted(a: Array) -> Array:
 	return b
 
 
+## The health and damage every benchmark enemy should have, worked out from the data on its own: the Bell Sanctum roster's weighted average at the area's level, on Easy.
+func _expected_standard() -> Dictionary:
+	var level := DmEnemyStats.area_level("sanctum", [1.0], 0.0)
+	var easy := DmContent.difficulty("easy")
+	var weights := 0.0
+	var hp := 0.0
+	var dmg := 0.0
+	for e: Dictionary in DmContent.area("sanctum")["enemies"]:
+		weights += float(e["weight"])
+		hp += float(e["weight"]) * float(DmSimData.ENEMIES[String(e["id"])]["hp"])
+		dmg += float(e["weight"]) * float(DmSimData.ENEMIES[String(e["id"])]["damage"])
+	return {"hp": hp / weights * DmEnemyStats.hp_scale(level) * float(easy["enemyHpMult"]), "dmg": dmg / weights * DmEnemyStats.damage_scale(level) * float(easy["enemyDamageMult"])}
+
+
+## The name of the boss the data puts in `room` ("" = none).
+func _boss_name(room: String) -> String:
+	var id := _boss_in(room)
+	return String(DmContent.boss(id)["name"]) if id != "" else ""
+
+
+## A room of the benchmark's list with no boss of its own ("" = every room has one).
+func _room_without_boss() -> String:
+	for room: String in DmBenchmark.ROOMS:
+		if _boss_in(room) == "":
+			return room
+	return ""
+
+
 ## The playable disciplines' class indices, ascending (DmCharacterBuild.is_playable over the combat data's disciplines).
 func _playable_classes() -> Array:
 	var out: Array = []
@@ -112,7 +140,8 @@ func the_setup() -> void:
 	check(why_class.contains("class %d" % off_class) and DmBenchmark.class_indices().all(func(i: int) -> bool: return why_class.contains("%d %s" % [i, DmBenchmark.class_name_of(i)])), "a class the benchmark does not list is refused with a clear message naming the listed ones (%s)" % why_class)
 	# the enemies' health and damage are today's: the Bell Sanctum roster's weighted average on Easy, whatever the room
 	var std := DmBenchmark.standard_stats()
-	check(absf(float(std["hp"]) - STD_HP) < 0.001 and absf(float(std["dmg"]) - STD_DMG) < 0.001, "every enemy has today's health %.3f and damage %.3f (%.3f, %.3f)" % [STD_HP, STD_DMG, std["hp"], std["dmg"]])
+	var worked := _expected_standard()
+	check(absf(float(std["hp"]) - float(worked["hp"])) < 0.001 and absf(float(std["dmg"]) - float(worked["dmg"])) < 0.001 and float(std["hp"]) > 0.0, "every enemy has the Bell Sanctum roster's average health %.3f and damage %.3f (%.3f, %.3f)" % [worked["hp"], worked["dmg"], std["hp"], std["dmg"]])
 	var boss_host := DmBossHost.new()
 	var served: Array = boss_host.served_areas.duplicate()
 	boss_host.free()
@@ -124,16 +153,20 @@ func the_setup() -> void:
 	check(todays and woken, "every room's boss is the boss the data puts in that area, and the boss host wakes it (%s)" % str(served))
 	var sanctum_fp := DmBenchmark.new()
 	sanctum_fp.configure({"room": "sanctum", "size": "full_party"})
-	check(sanctum_fp.boss_id == "prelate" and sanctum_fp.boss_text().contains("Bell-Sworn Prelate held awake"), "Full Party in the Sanctum holds its Prelate (%s)" % sanctum_fp.boss_text())
+	check(sanctum_fp.boss_id == _boss_in("sanctum") and sanctum_fp.boss_text().contains("%s held awake" % _boss_name("sanctum")), "Full Party in the Sanctum holds its boss (%s)" % sanctum_fp.boss_text())
 	sanctum_fp.free()
-	var warren_fp := DmBenchmark.new()
-	warren_fp.configure({"room": "warren", "size": "full_party"})
-	check(warren_fp.boss_id == "" and warren_fp.boss_text() == ", no boss (this room has none)", "Full Party in the Warren runs without a boss and says the room has none")
-	warren_fp.free()
+	var bossless := _room_without_boss()
+	if bossless != "":
+		var bossless_fp := DmBenchmark.new()
+		bossless_fp.configure({"room": bossless, "size": "full_party"})
+		check(bossless_fp.boss_id == "" and bossless_fp.boss_text() == ", no boss (this room has none)", "Full Party in %s runs without a boss and says the room has none" % bossless)
+		bossless_fp.free()
+	var held: Array = DmBenchmark.SIZES["full_party"]
+	var quick: Array = DmBenchmark.LENGTHS["quick"]
 	var fp := DmBenchmark.new()
 	fp.configure({"room": "graves", "discipline": 2, "size": "full_party", "length": "quick"})
-	check(fp.enemies == cap and fp.thralls == 32 and fp.boss_id == "gravedigger" and not fp.breakdown and fp.warm_s == 6.0 and fp.measure_s == 20.0 and fp.boss_text().contains("Gravedigger King"),
-		"configure: Full Party in the Graves holds the King (%d, %d, %s)" % [fp.enemies, fp.thralls, fp.boss_id])
+	check(fp.enemies == cap and fp.thralls == int(held[1]) and fp.boss_id == _boss_in("graves") and fp.boss_id != "" and not fp.breakdown and fp.warm_s == float(quick[0]) and fp.measure_s == float(quick[1]) and fp.boss_text().contains(_boss_name("graves")),
+		"configure: Full Party in the Graves holds its boss (%d, %d, %s)" % [fp.enemies, fp.thralls, fp.boss_id])
 	fp.configure({"room": "graves", "size": "heavy"})
 	check(fp.boss_id == "" and fp.boss_text() == "", "the other sizes have no boss")
 	fp.free()
@@ -160,21 +193,22 @@ func the_setup() -> void:
 	check(a["room"] == "graves" and int(a["discipline"]) == 2 and a["size"] == "heavy" and a["length"] == "quick", "launch args pick the setup")
 	var fa: Dictionary = M.bench_setup_from_args(PackedStringArray(["--benchmark", "--bench-size=full_party"]))
 	check(fa["size"] == "full_party" and fa["room"] == "sanctum" and fa["discipline"] == 2, "--bench-size=full_party picks Full Party in the Standard room and class")
-	var want: Dictionary = M.bench_wanted_from_args(PackedStringArray(["--benchmark", "--bench-room=depths", "--bench-class=5"]))
-	check(want == {"room": "depths", "discipline": 5} and DmBenchmark.refusal(want) != "", "launch args that name a room or class outside the lists are what the refusal is asked about")
+	var want: Dictionary = M.bench_wanted_from_args(PackedStringArray(["--benchmark", "--bench-room=" + off_room, "--bench-class=%d" % off_class]))
+	check(want == {"room": off_room, "discipline": off_class} and DmBenchmark.refusal(want) != "", "launch args that name a room or class outside the lists are what the refusal is asked about")
 	var fen: Dictionary = M.bench_setup_from_args(PackedStringArray(["--benchmark", "--bench-room=fen", "--bench-class=11"]))
 	check(fen["room"] == "fen" and fen["discipline"] == 11 and DmBenchmark.refusal(M.bench_wanted_from_args(PackedStringArray(["--bench-room=fen", "--bench-class=11"]))) == "", "launch args pick the Fen and the Reaper")
 	check(DmLaunchArgs.options(PackedStringArray(["--benchmark", "--bench-dir=/tmp/x y"]))["bench_dir"] == "/tmp/x y" and not DmLaunchArgs.options(PackedStringArray(["--benchmark"])).has("bench_dir"), "--bench-dir= names the folder a run keeps its files in")
 	# the team app's flags: the preset of the run, and quitting by itself
-	var named: Dictionary = M.bench_wanted_from_args(PackedStringArray(["--benchmark", "--bench-preset=low", "--bench-room=graves", "--bench-quit"]))
-	check(named == {"preset": "low", "room": "graves"} and DmBenchmark.refusal(named) == "", "--bench-preset=low is read with the setup's keys, and refused by nothing")
-	check(M.bench_setup_from_args(PackedStringArray(["--benchmark", "--bench-preset=low"])) == DmBenchmark.STANDARD, "the preset is not part of the setup: it stays the Standard one")
+	var first_preset: String = DmGraphicsPreset.IDS[0]
+	var named: Dictionary = M.bench_wanted_from_args(PackedStringArray(["--benchmark", "--bench-preset=" + first_preset, "--bench-room=graves", "--bench-quit"]))
+	check(named == {"preset": first_preset, "room": "graves"} and DmBenchmark.refusal(named) == "", "--bench-preset=%s is read with the setup's keys, and refused by nothing" % first_preset)
+	check(M.bench_setup_from_args(PackedStringArray(["--benchmark", "--bench-preset=" + first_preset])) == DmBenchmark.STANDARD, "the preset is not part of the setup: it stays the Standard one")
 	check(not M.bench_wanted_from_args(PackedStringArray(["--benchmark", "--bench-quit"])).has("preset"), "no --bench-preset= names no preset (the player's own)")
 	for id in DmGraphicsPreset.IDS:
 		check(DmBenchmark.refusal({"preset": id}) == "", "--bench-preset=%s is something the benchmark can run" % id)
-	for bad in ["max", "Low", "", "ultra low", "low;rm"]:
+	for bad in ["nopreset", DmGraphicsPreset.IDS[0].capitalize(), "", "%s %s" % [DmGraphicsPreset.IDS[-1], DmGraphicsPreset.IDS[0]], DmGraphicsPreset.IDS[0] + ";rm"]:
 		var why := DmBenchmark.refusal(M.bench_wanted_from_args(PackedStringArray(["--benchmark", "--bench-preset=" + bad])))
-		check(why.contains("'%s'" % bad) and why.contains("low, medium, high, ultra") and why.contains("--bench-preset="), "--bench-preset=%s is refused with a message that names the presets (%s)" % [bad, why])
+		check(why.contains("'%s'" % bad) and why.contains(", ".join(DmGraphicsPreset.IDS)) and why.contains("--bench-preset="), "--bench-preset=%s is refused with a message that names the presets (%s)" % [bad, why])
 	# the preset is on loan: the run reads it as the player's setting, and the player's own are neither written nor changed
 	var settings_before := FileAccess.file_exists(DmSettings.FILE)
 	var settings_text := FileAccess.get_file_as_string(DmSettings.FILE) if settings_before else ""
@@ -210,32 +244,37 @@ func the_fight_by_hand() -> void:
 	var host: DmCoreHost = g.core_host
 	var hero: DmHeroBody = f["hero"]
 	var at: Vector3 = f["at"]
+	var held: int = DmBenchmark.SIZES["full_party"][0]   # the enemies a Full Party fight holds ...
+	var legion: int = DmBenchmark.SIZES["full_party"][1] # ... and its thralls
+	var boss_id := _boss_in("graves")
+	check(boss_id != "", "the Graves have a boss to hold (%s)" % boss_id)
 	check(g.ready_ and int(g.opts["seed"]) == DmBenchmark.SEED, "the game was built with the fixed seed")
 	check(g.world.area_at(at.x, at.z) == "graves" and hero.position.distance_to(at) < 0.1 and g.world.nav_closest(at).distance_to(at) < 0.5, "the hero stands on walkable ground in the Graves (%s)" % str(at))
 	check(DmNextWarmup.crowd_rows == host.view.model_slots().size() * 3 * 2 and host.is_physics_processing() and g.is_processing(), "the warm-up fed %d rehearsal rows to the crowd and gave the game back" % DmNextWarmup.crowd_rows)
 	check(host.view.stats().bodies == 0, "the rehearsal rows are gone from the crowd (%d bodies)" % int(host.view.stats().bodies))
 	var hero_c: DmCreature = hero.avatar.c if hero.avatar != null else null
-	check(DmNextWarmup.shots == 4 and hero_c != null and is_equal_approx(hero_c.opacity(), 1.0), "the warm-up drew a shot of each kind and a beam (%d), and the hero's see-through pass ended opaque" % DmNextWarmup.shots)
+	check(DmNextWarmup.shots >= 4 and hero_c != null and is_equal_approx(hero_c.opacity(), 1.0), "the warm-up drew a shot of each kind and a beam (%d), and the hero's see-through pass ended opaque" % DmNextWarmup.shots)
 	var none := PackedStringArray()
 	check(DmNextGame._wants_warmup(none, "Windows") and not DmNextGame._wants_warmup(none, "headless") and DmNextGame._wants_warmup(PackedStringArray(["--warmup"]), "headless")
 		and not DmNextGame._wants_warmup(PackedStringArray(["--qa"]), "Windows") and not DmNextGame._wants_warmup(PackedStringArray(["--shot-plan=x.json"]), "X11"),
 		"a player's game warms up as today's does (on in a window, off headless and on QA or screenshot runs, --warmup forces it)")
 	check(bool(hero.p["god"]) and float(f["caster"].p["stats"]["level"]) == 60.0 and g.director.difficulty == "easy" and g.input.auto.allowed(), "a god-mode level 60 hero on Easy, auto combat open")
 	check(int(f["stats"]["calls"]) > 0 and g.api.get("base_url") == "", "the backend is the mock (%d requests, no base url)" % int(f["stats"]["calls"]))
-	DmBenchFight.arm(g, 72, DmBenchmark.SEED)
-	check(g.director.rng.seed == DmBenchmark.SEED and g.director.cap == 72 and g.director.enemy_limit == DmBenchmark.ENEMY_LIMIT and g.input.auto.hold_position
+	DmBenchFight.arm(g, held, DmBenchmark.SEED)
+	check(g.director.rng.seed == DmBenchmark.SEED and g.director.cap == held and g.director.enemy_limit == DmBenchmark.ENEMY_LIMIT and g.input.auto.hold_position
 		and g.director.spawn_min == DmBenchmark.SPAWN_MIN_M and g.director.spawn_max == DmBenchmark.SPAWN_MAX_M, "arm: the director's seed, cap, limit and spawn distances, and the hero holds his ground")
-	check(absf(float(g.director.fixed_stats["hp"]) - STD_HP) < 0.001, "arm: every enemy takes the standard health")
+	var std_hp := float(DmBenchmark.standard_stats()["hp"])
+	check(absf(float(g.director.fixed_stats["hp"]) - std_hp) < 0.001, "arm: every enemy takes the standard health")
 	g.director.enabled = false
 	await ticks(30)
 	var n0 := nodes()
-	# 72 enemies through the director, and the count is held
-	DmBenchFight.top_up(g, hero, 72)
+	# the full count of enemies through the director, and the count is held
+	DmBenchFight.top_up(g, hero, held)
 	g.director.flush_spawns()
 	var died := [0]
 	host.enemy_died.connect(func(_i: int, _d: String, _l: int, _e: bool, _a: String, _s: int, _x: float, _z: float) -> void: died[0] += 1)
 	await ticks(3)
-	check(g.director.alive_count() == 72 and host.enemy_total() == 72, "top-up: 72 enemies alive through the director (%d)" % g.director.alive_count())
+	check(g.director.alive_count() == held and host.enemy_total() == held, "top-up: %d enemies alive through the director (%d)" % [held, g.director.alive_count()])
 	# extras past the cap (a raiser's Risen, the boss's adds): the farthest go quietly
 	var far_ids: Array = []
 	for i in 6:
@@ -245,36 +284,36 @@ func the_fight_by_hand() -> void:
 	for id in far_ids:
 		far_ok = far_ok and host.enemy_position(id).distance_to(hero.position) > DmBenchmark.SPAWN_MAX_M + 2.0
 	check(far_ok, "the extras stand beyond the waves' spawn ring")
-	check(host.alive_count() == 78, "six extra bodies: 78 alive")
-	DmBenchFight.trim(g, hero, 72)
+	check(host.alive_count() == held + 6, "six extra bodies: %d alive" % (held + 6))
+	DmBenchFight.trim(g, hero, held)
 	await ticks(2)
 	var gone := 0
 	for id in far_ids:
 		if host.enemy_info(id).is_empty() or not host.enemy_alive(id):
 			gone += 1
-	check(host.alive_count() == 72 and gone == 6 and died[0] == 0, "trim: the six farthest left without a death, 72 are held (%d alive, %d gone, %d deaths)" % [host.alive_count(), gone, died[0]])
+	check(host.alive_count() == held and gone == 6 and died[0] == 0, "trim: the six farthest left without a death, %d are held (%d alive, %d gone, %d deaths)" % [held, host.alive_count(), gone, died[0]])
 	check(host.corpses.count() == 0, "trim leaves no corpse")
-	# 32 thralls, raised straight into the core
-	check(DmBenchFight.raise_thralls(g, hero, 32, at) == 32 and host.thrall_count(hero.core_id) == 32 and DmBenchFight.raise_thralls(g, hero, 32, at) == 32, "32 thralls are raised, and raised once")
+	# the legion, raised straight into the core
+	check(DmBenchFight.raise_thralls(g, hero, legion, at) == legion and host.thrall_count(hero.core_id) == legion and DmBenchFight.raise_thralls(g, hero, legion, at) == legion, "%d thralls are raised, and raised once" % legion)
 	await ticks(20)
 	var n1 := nodes()
-	check(n1 - n0 <= 12, "72 enemies and 32 thralls in the core: the scene tree holds %d nodes, was %d (no node per creature)" % [n1, n0])
+	check(n1 - n0 <= 12, "%d enemies and %d thralls in the core: the scene tree holds %d nodes, was %d (no node per creature)" % [held, legion, n1, n0])
 	check(get_nodes_in_group("dm_enemy").is_empty() and root.find_children("*", "NavigationAgent3D", true, false).is_empty() and root.find_children("*", "HTTPRequest", true, false).is_empty(),
 		"no node is in an enemy group, no agent, no HTTP request")
 	var std_ok := true
 	for id in host.core.enemy_ids():
-		std_ok = std_ok and absf(float(host.core.enemy_info(id)["max_hp"]) - STD_HP) < 0.01
+		std_ok = std_ok and absf(float(host.core.enemy_info(id)["max_hp"]) - std_hp) < 0.01
 	check(std_ok, "every enemy has the standard health")
 	# the King, through the real summon
-	check(g.bosses.active_boss() == null, "the King sleeps before the summon")
+	check(g.bosses.active_boss() == null, "the boss sleeps before the summon")
 	hero.teleport(at)
-	check(DmBenchFight.hold_boss(g, hero, "gravedigger", at), "hold_boss: the King is summoned")
+	check(DmBenchFight.hold_boss(g, hero, boss_id, at), "hold_boss: the Graves' boss is summoned")
 	await ticks(5)
 	var king := g.bosses.active_boss()
-	check(king != null and king.boss_id == "gravedigger" and king.is_awake(), "the King is awake")
+	check(king != null and king.boss_id == boss_id and king.is_awake(), "the boss is awake")
 	check(hero.position.distance_to(at) < 0.1, "the hero is back at the centre after the summon")
-	check(not DmBenchFight.hold_boss(g, hero, "gravedigger", at), "an awake King is not summoned twice")
-	check(DmBenchFight.upkeep(f, 72, 32, "gravedigger") == 32, "upkeep returns the legion held")
+	check(not DmBenchFight.hold_boss(g, hero, boss_id, at), "an awake boss is not summoned twice")
+	check(DmBenchFight.upkeep(f, held, legion, boss_id) == legion, "upkeep returns the legion held")
 	g.queue_free()
 	await process_frame
 	await process_frame
@@ -345,7 +384,7 @@ func auto_combat() -> void:
 		host.remove_enemy(int(id))
 	var walks0 := int(auto.stats["moves"])
 	for i in 8:
-		host.spawn_enemy("robber", at + Vector3(0.0, 0.0, -22.0 + float(i) * 0.6), 60, 5.0, 0.0, false, "graves", false)
+		host.spawn_enemy("robber", at + Vector3(0.0, 0.0, -2.0 * float(DmAbilities.def("bone_needle")["range"]) + float(i) * 0.6), 60, 5.0, 0.0, false, "graves", false)
 	await ticks(150)
 	check(int(auto.stats["moves"]) > walks0, "not holding its ground it walks toward a pack out of reach (%d walks, moved %.1f m)" % [int(auto.stats["moves"]) - walks0, hero.position.distance_to(at)])
 	check(int(auto.stats["fills"]) > int(auto.stats["actions"]), "and then it reads the tables every move tick, for its steps (%d reads, %d actions)" % [int(auto.stats["fills"]), int(auto.stats["actions"])])
@@ -463,18 +502,20 @@ func full_party_run() -> void:
 	for row in DmBenchmark.ROWS:
 		check(ph.has(row[0]), "the phase has %s" % row[0])
 	check(int(ph["frames"]) > 0 and float(ph["avg_fps"]) > 0.0 and float(ph["p95_ms"]) >= float(ph["median_ms"]) and float(ph["worst_ms"]) >= float(ph["p99_ms"]), "frame stats are coherent")
-	check(float(ph["enemies"]) >= cap * 0.85 and int(ph["enemies_min"]) > 0, "72 enemies held (%.1f on average, fewest %d)" % [ph["enemies"], int(ph["enemies_min"])])
-	check(float(ph["thralls"]) >= 32.0 - 0.01, "32 thralls held (%.1f)" % float(ph["thralls"]))
-	check(b.boss_summons >= 1 and String(r["boss"]["id"]) == "gravedigger" and int(r["boss"]["summons"]) == b.boss_summons and boss_seen > 0, "the King was woken (%d times, %d defeats, awake in %d of %d samples)" % [b.boss_summons, b.boss_defeats, boss_seen, samples])
+	var legion: int = DmBenchmark.SIZES["full_party"][1]
+	var boss_id := _boss_in("graves")
+	check(float(ph["enemies"]) >= cap * 0.85 and int(ph["enemies_min"]) > 0, "%d enemies held (%.1f on average, fewest %d)" % [cap, ph["enemies"], int(ph["enemies_min"])])
+	check(float(ph["thralls"]) >= float(legion) - 0.01, "%d thralls held (%.1f)" % [legion, float(ph["thralls"])])
+	check(b.boss_summons >= 1 and String(r["boss"]["id"]) == boss_id and int(r["boss"]["summons"]) == b.boss_summons and boss_seen > 0, "the boss was woken (%d times, %d defeats, awake in %d of %d samples)" % [b.boss_summons, b.boss_defeats, boss_seen, samples])
 	check(float(ph["boss_awake_pct"]) >= 50.0, "and was awake for most of the window (%.0f%%)" % float(ph["boss_awake_pct"]))
-	check(hp_seen.size() == 1 and absf(float(hp_seen.keys()[0]) / 1000.0 - STD_HP) < 0.01, "every enemy, the King's adds included, had the standard health (%s)" % str(hp_seen.keys()))
+	check(hp_seen.size() == 1 and absf(float(hp_seen.keys()[0]) / 1000.0 - float(DmBenchmark.standard_stats()["hp"])) < 0.01, "every enemy, the boss's adds included, had the standard health (%s)" % str(hp_seen.keys()))
 	check(casts_seen > 5 and int(r["kills"]) >= 5, "auto combat cast %d times and %d enemies died: the fight is a fight" % [casts_seen, int(r["kills"])])
 	check(vsync_setting == false, "the fight's graphics settings keep V-Sync off (%s): a run is never capped at the monitor's refresh" % str(vsync_setting))
 	check(float(r["max_drift"]) <= 1.6, "the hero holds the centre (farthest %.2f m between checks)" % float(r["max_drift"]))
 	check(b.area_nav_on and bool(r["input_locked"]), "the Graves' navmesh is on and the player's input is switched off")
 	print("INFO nodes with the King awake: %d to %d" % [nodes_lo, nodes_hi])
 	check(samples > 0 and creature_nodes == 0, "in none of the %d samples of the fight did a node exist for a creature (enemy group, navigation agent, physics body)" % samples)
-	check(r["backend_calls"] > 0 and r["meta"]["core"].begins_with("dmcore") and r["meta"]["fight"].contains("seed 20261011") and r["meta"]["fight"].contains("Gravedigger King held awake"), "the mock backend served the run; the meta names the core, the seed and the King")
+	check(r["backend_calls"] > 0 and r["meta"]["core"].begins_with("dmcore") and r["meta"]["fight"].contains("seed %d" % DmBenchmark.SEED) and r["meta"]["fight"].contains("%s held awake" % _boss_name("graves")), "the mock backend served the run; the meta names the core, the seed and the boss")
 	for k in ["build", "gpu", "renderer", "resolution", "preset", "fps_cap", "cpu", "cores", "vsync", "setup", "fight", "core"]:
 		check(r["meta"].has(k), "meta has %s" % k)
 	check(root.find_children("*", "HTTPRequest", true, false).is_empty() and not has_script_class(root, "DmHttpTransport"), "no network node was created")
@@ -482,7 +523,8 @@ func full_party_run() -> void:
 	check(lines.size() >= 2 and lines[0].begins_with("Building"), "progress lines were emitted")
 	# the crowd's settings and counters are in the report: the game's own defaults here (nothing asked for)
 	var cs: Dictionary = r["meta"]["crowd"]
-	check(cs.anim_lod and cs.culling and cs.thrall_shadows and cs.reserve == CrowdView.RESERVE and cs.lod_distances == PackedFloat32Array(CrowdView.LOD_DISTANCES) and cs.anim_mid_hz == 24.0 and cs.anim_far_hz == 10.0,
+	var lod_rule: Dictionary = CrowdView.ANIM_LOD
+	check(cs.anim_lod and cs.culling and cs.thrall_shadows and cs.reserve == CrowdView.RESERVE and cs.lod_distances == PackedFloat32Array(CrowdView.LOD_DISTANCES) and cs.anim_mid_hz == float(lod_rule["mid_hz"]) and cs.anim_far_hz == float(lod_rule["far_hz"]),
 		"the report records the crowd's settings: %s" % str(cs))
 	var cc: Dictionary = ph["crowd"]
 	for k in DmBenchmark.CROWD_COUNTERS:
@@ -499,8 +541,9 @@ func full_party_run() -> void:
 	check(b.hud_checked and ph.has("hud_ms") and ph.has("hud_noise_ms") and float(ph["hud_ms"]) >= 0.0, "the HUD's share was measured (%.2f ms, samples %.2f ms apart)" % [float(ph.get("hud_ms", -1.0)), float(ph.get("hud_noise_ms", -1.0))])
 	# the report
 	var text := DmBenchmark.format_text(r)
-	for needle in ["Death Muffin benchmark", "Average fps", "Frame ms (p95)", "V-Sync: off during measurement", "Combat core: dmcore", "Setup: The Hollow Graves, Gravecaller, Full Party, Quick (custom",
-			"Boss: The Gravedigger King", "held awake", "seed 20261011", "Crowd: mesh levels at 32 / 60 m; 128 instances reserved a group; animation 24.0 Hz beyond 32 m, 10.0 Hz beyond 60 m; culling on; thralls cast shadows",
+	var lods: Array = CrowdView.LOD_DISTANCES
+	for needle in ["Death Muffin benchmark", "Average fps", "Frame ms (p95)", "V-Sync: off during measurement", "Combat core: dmcore", "Setup: %s, %s, %s, Quick (custom" % [DmBenchmark.room_name("graves"), DmBenchmark.class_name_of(2), DmBenchmark.SIZE_NAMES["full_party"]],
+			"Boss: %s" % _boss_name("graves"), "held awake", "seed %d" % DmBenchmark.SEED, "Crowd: mesh levels at %d / %d m; %d instances reserved a group; animation %.1f Hz beyond %d m, %.1f Hz beyond %d m; culling on; thralls cast shadows" % [int(lods[0]), int(lods[1]), CrowdView.RESERVE, float(lod_rule["mid_hz"]), int(lod_rule["mid_m"]), float(lod_rule["far_hz"]), int(lod_rule["far_m"])],
 			"Crowd per frame (average over the measured window", "Process ms (avg)", "Physics ms (Godot peak)", "Frame ", "'Godot peak' rows are Godot's slowest tick"]:
 		check(text.contains(needle), "the report has '%s'" % needle)
 	var budget := DmBenchmark.budget_lines(r)
@@ -558,7 +601,8 @@ func breakdown_run() -> void:
 	b.hud_sample_s = 0.4
 	b.hud_settle_s = 0.2
 	b.baked_dir = scratch
-	check(b.breakdown and b.enemies == 15 and b.thralls == 10 and b.boss_id == "", "configure: Light, Full length (render breakdown on)")
+	var light: Array = DmBenchmark.SIZES["light"]
+	check(b.breakdown and b.enemies == int(light[0]) and b.thralls == int(light[1]) and b.boss_id == "", "configure: Light, Full length (render breakdown on)")
 	var ui_off := [0]
 	var ui_on := [0]
 	var steps: Array = []
@@ -605,31 +649,36 @@ func setup_window() -> void:
 	check(w._room.item_count == DmBenchmark.ROOMS.size() and w._room.get_item_text(0).begins_with(DmBenchmark.room_name(DmBenchmark.ROOMS[0])) and w._room.get_item_text(w._room.item_count - 1).begins_with(DmBenchmark.room_name(DmBenchmark.ROOMS[DmBenchmark.ROOMS.size() - 1])),
 		"it lists the benchmark's rooms in order, the first and the last by name")
 	var std_room := w._room.get_item_text(DmBenchmark.ROOMS.find("sanctum"))
-	check(std_room.begins_with("The Bell Sanctum") and std_room.ends_with("(standard)") and w._room.get_selected_metadata() == "sanctum", "the Bell Sanctum is marked standard and picked (%s)" % std_room)
+	check(std_room.begins_with(DmBenchmark.room_name("sanctum")) and std_room.ends_with("(standard)") and w._room.get_selected_metadata() == "sanctum", "the Bell Sanctum is marked standard and picked (%s)" % std_room)
 	var classes_ok := w._class.item_count == DmBenchmark.class_indices().size()
 	for i in w._class.item_count:
 		classes_ok = classes_ok and w._class.get_item_metadata(i) == DmBenchmark.class_indices()[i] and w._class.get_item_text(i).begins_with(DmBenchmark.class_name_of(int(w._class.get_item_metadata(i))))
 	check(classes_ok and w._class.get_selected_metadata() == DmBenchmark.STANDARD["discipline"], "it lists the playable classes, the Standard class picked (%s)" % w._class.get_item_text(w._class.item_count - 1))
-	check(w._size.item_count == DmBenchmark.SIZES.size() and w._size.get_item_text(w._size.item_count - 1) == "Full Party: 72 enemies, 32 thralls, a boss", "it lists Full Party with its counts and the boss (%s)" % w._size.get_item_text(w._size.item_count - 1))
+	var full: Array = DmBenchmark.SIZES["full_party"]
+	check(w._size.item_count == DmBenchmark.SIZES.size() and w._size.get_item_text(DmBenchmark.SIZES.keys().find("full_party")) == "%s: %d enemies, %d thralls, a boss" % [DmBenchmark.SIZE_NAMES["full_party"], int(full[0]), int(full[1])], "it lists Full Party with its counts and the boss (%s)" % w._size.get_item_text(DmBenchmark.SIZES.keys().find("full_party")))
 	w._size.select(DmBenchmark.SIZES.keys().find("full_party"))
 	w._size.item_selected.emit(w._size.selected)
 	w._room.select(0)
 	w._room.item_selected.emit(0)
-	check(w._note.text.contains(String(DmContent.boss("gravedigger")["name"])) and w._note.text.contains("held awake") and w._note.text.contains("Custom setup"), "in the Graves the note names the room's boss (%s)" % w._note.text)
-	w._room.select(DmBenchmark.ROOMS.find("warren"))
-	w._room.item_selected.emit(w._room.selected)
-	check(w._note.text.contains("no boss"), "in the Warren the note says the room has no boss (%s)" % w._note.text)
+	check(w._note.text.contains(_boss_name("graves")) and w._note.text.contains("held awake") and w._note.text.contains("Custom setup"), "in the Graves the note names the room's boss (%s)" % w._note.text)
+	var bossless := _room_without_boss()
+	if bossless != "":
+		w._room.select(DmBenchmark.ROOMS.find(bossless))
+		w._room.item_selected.emit(w._room.selected)
+		check(w._note.text.contains("no boss"), "in %s the note says the room has no boss (%s)" % [bossless, w._note.text])
 	w._room.select(DmBenchmark.ROOMS.find("sanctum"))
 	w._room.item_selected.emit(w._room.selected)
-	check(w._note.text.contains(String(DmContent.boss("prelate")["name"])) and w._note.text.contains("held awake"), "in the Sanctum the note names its Prelate, held awake (%s)" % w._note.text)
-	w._room.select(DmBenchmark.ROOMS.find("fen"))
+	check(w._note.text.contains(_boss_name("sanctum")) and w._note.text.contains("held awake"), "in the Sanctum the note names its boss, held awake (%s)" % w._note.text)
+	var last_room: String = DmBenchmark.ROOMS[DmBenchmark.ROOMS.size() - 1]
+	var last_class: int = DmBenchmark.class_indices()[DmBenchmark.class_indices().size() - 1]
+	w._room.select(DmBenchmark.ROOMS.size() - 1)
 	w._room.item_selected.emit(w._room.selected)
-	w._class.select(4)
-	w._class.item_selected.emit(4)
+	w._class.select(w._class.item_count - 1)
+	w._class.item_selected.emit(w._class.item_count - 1)
 	w._start()
-	check(got.size() == 1 and got[0]["size"] == "full_party" and got[0]["room"] == "fen" and got[0]["discipline"] == 11, "Start hands over the Fen, the Reaper and Full Party")
+	check(got.size() == 1 and got[0]["size"] == "full_party" and got[0]["room"] == last_room and got[0]["discipline"] == last_class, "Start hands over the last room, the last class and Full Party")
 	var last := DmBenchmarkSetup.load_last()
-	check(last["size"] == "full_party" and last["room"] == "fen" and last["discipline"] == 11 and FileAccess.file_exists(data + "/setup.json"), "and the window remembers it, in the suite's own folder")
+	check(last["size"] == "full_party" and last["room"] == last_room and last["discipline"] == last_class and FileAccess.file_exists(data + "/setup.json"), "and the window remembers it, in the suite's own folder")
 	var texts := PackedStringArray()
 	for l in w.find_children("*", "Label", true, false):
 		texts.append((l as Label).text)

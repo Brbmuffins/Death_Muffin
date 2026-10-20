@@ -3,9 +3,7 @@ extends SceneTree
 ## Every enemy of a fresh wave must stand beyond the core's aggro range of the hero it was spawned around, measured before it can move.
 ## godot --headless --fixed-fps 60 --path client --script res://tests/spawn_aggro/run.gd
 
-const AREAS := ["graves", "ossuary", "nave", "sanctum", "cloister", "pyre", "warren", "coliseum", "fen"]
 const WAVES_PER_AREA := 12
-const AGGRO_RANGE := 15.0   ## every body's notice distance in the combat core (tests/core_enemies.gd: "every body's defaults are 15 and 30")
 
 var passed := 0
 var failed := 0
@@ -31,6 +29,15 @@ func ticks(n: int) -> void:
 		await physics_frame
 
 
+## The areas that run waves: the world's areas (the Depths are an instance with its own tests) that have a roster to spawn.
+func combat_areas() -> Array[String]:
+	var out: Array[String] = []
+	for id in DmNextWorld.every_area():
+		if not bool(DmContent.area(id).get("safe", false)) and not (DmContent.area(id).get("enemies", []) as Array).is_empty():
+			out.append(id)
+	return out
+
+
 func center(id: String) -> Vector3:
 	var r: Dictionary = DmContent.area(id)["rect"]
 	return Vector3((float(r["x0"]) + float(r["x1"])) * 0.5, 0.0, (float(r["z0"]) + float(r["z1"])) * 0.5)
@@ -49,13 +56,16 @@ func _run() -> void:
 	d = g.director
 	g.world.set_unlocked(DmNextWorld.every_area(), true)   # the client's navmesh of an area is on only while the area is unlocked: the spawn ring needs it
 	await ticks(10)
-	check(DmWaveDirector.SPAWN_MIN > AGGRO_RANGE + 2.2, "spawn ring starts beyond aggro plus a group's fan-out")
+	check(DmWaveDirector.SPAWN_MIN > DmSimConsts.AGGRO_RANGE + 2.2, "spawn ring starts beyond aggro plus a group's fan-out")
 	var core: DmCore = g.core_host.core
-	for area_id in AREAS:
+	var areas := combat_areas()
+	check(not areas.is_empty(), "the world has areas that run waves (%s)" % ", ".join(areas))
+	for area_id in areas:
 		d.configure_area(area_id)
 		var at := center(area_id)
 		g.local_body().teleport(at)
 		await ticks(3)
+		var margin := INF   ## the least a fresh enemy stands beyond ITS OWN notice distance (the combat core's `aggro` of the body)
 		var nearest := INF
 		var count := 0
 		for w in WAVES_PER_AREA:
@@ -69,12 +79,14 @@ func _run() -> void:
 					continue
 				count += 1
 				var ep: Vector3 = g.core_host.enemy_position(int(id))
-				nearest = minf(nearest, Vector2(ep.x - at.x, ep.z - at.z).length())
+				var far := Vector2(ep.x - at.x, ep.z - at.z).length()
+				nearest = minf(nearest, far)
+				margin = minf(margin, far - float(core.enemy_info(int(id))["aggro"]))
 			for id in core.enemy_ids():
 				g.core_host.remove_enemy(int(id))
 			await ticks(1)
 		check(count > 0, "%s: waves spawned (%d enemies)" % [area_id, count])
-		check(nearest > AGGRO_RANGE, "%s: nearest fresh enemy %.1f m, beyond aggro %.0f m" % [area_id, nearest, AGGRO_RANGE])
+		check(margin > 0.0, "%s: nearest fresh enemy %.1f m, %.1f m beyond its own notice distance" % [area_id, nearest, margin])
 		print("%s: %d enemies over %d waves, nearest %.1f m" % [area_id, count, WAVES_PER_AREA, nearest])
 	print("%d passed, %d failed" % [passed, failed])
 	print("%s spawn_aggro %d checks%s" % ["PASS" if failed == 0 else "FAIL", passed + failed, "" if failed == 0 else " (%d failed)" % failed])

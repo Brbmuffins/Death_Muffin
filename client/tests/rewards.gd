@@ -193,11 +193,10 @@ func _t_solo() -> void:
 
 	# loot expires, never flies: stand away, drops do not move
 	hero.position = Vector3(30, 0, 0)
-	hero.position = Vector3(30, 0, 0)
-	_kill(_robber(shell, Vector3(30, 0, 8)), hero)
+	_kill(_robber(shell, Vector3(30, 0, DmGameRewards.KILL_REWARD_RANGE * 0.2)), hero)
 	await _wait_gear(r)
 	var before: Array = m.loot_view.debug_drops()
-	ok(before.size() > 0, "a far kill still dropped loot (8 m is in range)")
+	ok(before.size() > 0, "a far kill still dropped loot (within the reward range)")
 	var exp_seen := []
 	r.loot_expired.connect(func(cid, d, reason): exp_seen.append(reason))
 	r.tick(10.0)
@@ -255,8 +254,9 @@ func _t_two_members() -> void:
 	root.add_child(shell)
 	var r := _new_rewards(shell)
 	var a_body := _body(Vector3(0, 0, 0))
-	var b_body := _body(Vector3(20, 0, 0), 2)
-	var c_body := _body(Vector3(100, 0, 0), 3)
+	var reach := DmGameRewards.KILL_REWARD_RANGE
+	var b_body := _body(Vector3(5.0 + reach * 0.4, 0, 0), 2)   # (the kill below is at x = 5: bob is well inside its range, cara well outside)
+	var c_body := _body(Vector3(5.0 + reach * 2.5, 0, 0), 3)
 	var a := DmRewardsMember.make(ua[1], 1, a_body, ua[0])
 	var b := DmRewardsMember.make(ub[1], 2, b_body, ub[0])
 	var c := DmRewardsMember.make(uc[1], 3, c_body, uc[0])
@@ -272,7 +272,7 @@ func _t_two_members() -> void:
 	# proximity parity with the current game's rule
 	var rules := DmGameRewards.new(null)
 	var parity_ok := true
-	for dist in [0.0, 10.0, 37.9, 38.0, 38.1, 80.0]:
+	for dist in [0.0, reach * 0.25, reach - 0.1, reach, reach + 0.1, reach * 2.0]:
 		for alive in [true, false]:
 			var got := false
 			var body: Node3D = _body(Vector3(float(dist), 0, 0)) if alive else DeadBody.new()
@@ -291,10 +291,10 @@ func _t_two_members() -> void:
 				print("  parity mismatch at ", dist, " alive=", alive)
 			probe.queue_free()
 			body.queue_free()
-	ok(parity_ok, "who earns a kill matches DmGameRewards.boss_reward_eligible (range 38, alive)")
+	ok(parity_ok, "who earns a kill matches DmGameRewards.boss_reward_eligible (its range, alive)")
 
 	var e := _robber(shell, Vector3(5, 0, 0))
-	_kill(e, a_body)   # alice kills at x=5: alice 5 m, bob 15 m, cara 95 m
+	_kill(e, a_body)   # alice kills at x=5: alice 5 m away, bob inside the range, cara outside it
 	ok(a.stats["kills_earned"] == 1 and b.stats["kills_earned"] == 1 and c.stats["kills_earned"] == 0, "killer and the party in range earn it, far member does not", str([a.stats["kills_earned"], b.stats["kills_earned"], c.stats["kills_earned"]]))
 	ok(a.chain.count == 1 and b.chain.count == 0, "kill chain only for the killer")
 	await _wait_gear(r)
@@ -322,7 +322,7 @@ func _t_two_members() -> void:
 	ok(counts[ua[1]] == 4 and counts[ub[1]] == 4 and counts[uc[1]] == 4, "per-member counters on the backend", str(counts))
 	# heartbeats go out with each member's own API
 	_clock[0] += 30000
-	r.tick(21.0)
+	r.tick(DmSessionRewards.HEARTBEAT_S + 1.0)
 	await create_timer(0.05).timeout
 	var hb: DmResult = await ub[0].session_heartbeat(r.session_id, ub[1], 4)
 	ok(hb.ok and hb.data.get("throttled", false), "the host's tick already heartbeated bob (a second call is throttled)", str(hb.data))

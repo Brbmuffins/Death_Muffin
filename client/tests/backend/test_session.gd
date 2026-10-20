@@ -63,13 +63,14 @@ func _run(t: SceneTree) -> void:
 	api.set_token(reg.data["token"])
 	var ch := await api.load_or_create_character(2)
 	var cid: int = ch.data["id"]
+	var kit_rows: int = (await api.get_inventory(cid)).data.size()   # the starter bag the backend deals a new character
 	var game: DmNextGame = load("res://next/next_game.tscn").instantiate()
 	t.root.add_child(game)
 	await game.start(ch.data, api, {"visual": false, "persist": false, "waves": false, "audio": false, "hud": true, "name": "sessionist"})
 	var host := game.ui_host   # the DmGameUi contract the panels read (bag, progress, refreshes)
 	_ok(game.ready_, "DmNextGame started on the offline backend")
 	_ok(host.prog.mode == "server", "progress runs in server mode against the offline backend", host.prog.mode)
-	_ok(host.slots.size() == 2, "starter kit loaded by the game", str(host.slots.size()))
+	_ok(host.slots.size() == kit_rows and kit_rows > 0, "starter kit loaded by the game", str(host.slots.size()))
 	await _gold(api, cid, 5_000_000)
 
 	# --- craft ---
@@ -81,7 +82,7 @@ func _run(t: SceneTree) -> void:
 	var rows: Array = []
 	for i in rec["ingredients"].size():
 		rows.append(_row(i, rec["ingredients"][i]["item_id"], int(rec["ingredients"][i]["quantity"]) * 4))
-	await api.save_inventory(cid, rows, 48)
+	await api.save_inventory(cid, rows, DmLoot.bag_size())
 	var cr := await api.craft(cid, rec["id"])
 	_ok(cr.ok and _count(cr.data["updatedInventory"], rec["result_item_id"]) >= int(rec["result_quantity"]), "craft", cr.error)
 	_ok(cr.ok and int(cr.data["updatedProfession"]["skill_xp"]) > 0, "craft pays skill xp")
@@ -116,7 +117,7 @@ func _run(t: SceneTree) -> void:
 	for d in rolled.data:
 		keep.append(_row(free, d["item_id"], 1, {"instance_id": d["instance_id"]}))
 		free += 1
-	var sv := await api.save_inventory(cid, keep, 48)
+	var sv := await api.save_inventory(cid, keep, DmLoot.bag_size())
 	_ok(sv.ok, "save inventory naming rolls", sv.error)
 	var piece_slot := 21
 	var sl := await api.salvage_gear(cid, [20])
@@ -147,7 +148,7 @@ func _run(t: SceneTree) -> void:
 	_ok(not stale.ok and stale.error != "", "reforge refuses a wrong price or empty slot", stale.error)
 
 	# --- vault ---
-	await api.save_inventory(cid, [_row(0, "ingot_copper", 60), _row(1, "ore_copper", 30), _row(piece_slot, "chest_iron", 1, {"instance_id": rolled.data[2]["instance_id"]})], 48)
+	await api.save_inventory(cid, [_row(0, "ingot_copper", 60), _row(1, "ore_copper", 30), _row(piece_slot, "chest_iron", 1, {"instance_id": rolled.data[2]["instance_id"]})], DmLoot.bag_size())
 	var vd := await api.vault_deposit(cid, 0, 25)
 	_ok(vd.ok and vd.data["vault"].size() == 1, "vault deposit", vd.error)
 	var va := await api.vault_deposit_all(cid, "materials", [])
@@ -161,38 +162,43 @@ func _run(t: SceneTree) -> void:
 	# exact-slot moves (the offline backend runs the same rules as vault.cjs /api/vault/move)
 	var vbag: Array = vw.data["bag"]
 	var any_bag_slot := int(vbag[0]["slot_index"]) if not vbag.is_empty() else -1
-	var vm := await api.vault_move(cid, "bag", any_bag_slot, "vault", 77)
-	_ok(vm.ok and vm.data["vault"].any(func(r: Dictionary) -> bool: return int(r["slot_index"]) == 77), "vault move to an exact vault slot", vm.error)
-	var vr := await api.vault_move(cid, "vault", 77, "vault", 101)
-	_ok(vr.ok and vr.data["vault"].any(func(r: Dictionary) -> bool: return int(r["slot_index"]) == 101), "vault move: rearrange inside the vault", vr.error)
-	var vb := await api.vault_move(cid, "vault", 101, "bag", 40)
-	_ok(vb.ok and vb.data["bag"].any(func(r: Dictionary) -> bool: return int(r["slot_index"]) == 40), "vault move to an exact bag slot", vb.error)
-	_ok(not (await api.vault_move(cid, "bag", 40, "moon", 1)).ok, "vault move refuses a bad side")
+	var v_mid: int = DmVault.VAULT_SLOTS / 2        # two slots of the vault and a late one of the bag (all inside their sizes)
+	var v_last: int = DmVault.VAULT_SLOTS - 1
+	var b_late: int = DmLoot.bag_size() - 8
+	var vm := await api.vault_move(cid, "bag", any_bag_slot, "vault", v_mid)
+	_ok(vm.ok and vm.data["vault"].any(func(r: Dictionary) -> bool: return int(r["slot_index"]) == v_mid), "vault move to an exact vault slot", vm.error)
+	var vr := await api.vault_move(cid, "vault", v_mid, "vault", v_last)
+	_ok(vr.ok and vr.data["vault"].any(func(r: Dictionary) -> bool: return int(r["slot_index"]) == v_last), "vault move: rearrange inside the vault", vr.error)
+	var vb := await api.vault_move(cid, "vault", v_last, "bag", b_late)
+	_ok(vb.ok and vb.data["bag"].any(func(r: Dictionary) -> bool: return int(r["slot_index"]) == b_late), "vault move to an exact bag slot", vb.error)
+	_ok(not (await api.vault_move(cid, "bag", b_late, "moon", 1)).ok, "vault move refuses a bad side")
 
 	# --- contract ---
 	var view: Dictionary = (await api.get_contracts(cid)).data
-	var crows: Array = []
-	for i in view["contracts"].size():
-		var c: Dictionary = view["contracts"][i]
-		crows.append(_row(i * 2, c["itemId"], mini(int(c["qty"]), 99)))
-		if int(c["qty"]) > 99:
-			crows.append(_row(i * 2 + 1, c["itemId"], int(c["qty"]) - 99))
-	await api.save_inventory(cid, crows, 48)
+	var crows: Array = []   # each order's goods, in stacks of the item's own cap
+	for c: Dictionary in view["contracts"]:
+		var stack: Variant = DmContent.item(String(c["itemId"])).get("stack")
+		var left := int(c["qty"])
+		var per := mini(left, int(stack)) if stack != null else left
+		while left > 0:
+			crows.append(_row(crows.size(), c["itemId"], mini(left, per)))
+			left -= mini(left, per)
+	await api.save_inventory(cid, crows, DmLoot.bag_size())
 	var d0 := await api.deliver_contract(cid, 0)
 	_ok(d0.ok and int(d0.data["gold"]) > 0, "contract delivered", d0.error)
-	for s in [1, 2]:
+	for s in range(1, view["contracts"].size()):
 		await api.deliver_contract(cid, s)
 	var vnow: Dictionary = (await api.get_contracts(cid)).data
-	_ok(vnow["bonus"]["claimed"] == true and vnow["contracts"].all(func(c): return c["done"]), "all three orders filled, bonus claimed")
+	_ok(vnow["bonus"]["claimed"] == true and vnow["contracts"].all(func(c): return c["done"]), "every order of the day filled (%d), bonus claimed" % view["contracts"].size())
 	_ok(int(vnow["streak"]) >= 1, "streak counts the day")
 
 	# --- garden ---
-	await api.save_inventory(cid, [_row(0, "seed_mourning_moss", 3), _row(1, "bone_meal", 2)], 48)
+	await api.save_inventory(cid, [_row(0, "seed_mourning_moss", 3), _row(1, "bone_meal", 2)], DmLoot.bag_size())
 	var pl := await api.plant_garden(cid, "h0", "seed_mourning_moss", true)
 	_ok(pl.ok and pl.data["plots"][0]["state"] == "growing", "plant", pl.error)
 	var early := await api.harvest_garden(cid, "h0")
 	_ok(not early.ok and early.error == "It is not ready yet.", "harvest too early")
-	_clock[0] += 3600_000
+	_clock[0] += DmGarden.grow_ms(DmGarden.seed_def("seed_mourning_moss"), true) + 1000   # planted with compost: the composted growing time, and a second
 	var hv := await api.harvest_garden(cid, "h0")
 	_ok(hv.ok and hv.data["items"].size() >= 1 and hv.data["plots"][0]["state"] == "empty", "harvest", hv.error)
 
@@ -204,17 +210,17 @@ func _run(t: SceneTree) -> void:
 			break
 	var la := await api.assign_labor(cid, 0, lnode)
 	_ok(la.ok and la.data["slots"][0]["nodeType"] == lnode, "labor assign", la.error)
-	_clock[0] += 4 * 3600_000
+	_clock[0] += DmLabor.CAP_MS   # the longest a laborer works for
 	var lc := await api.collect_labor(cid, 0)
 	_ok(lc.ok and int(lc.data["collected"]["actions"]) > 0, "labor collect", lc.error)
 
 	# --- cosmetics ---
-	await api.save_inventory(cid, [_row(0, "charm_tithe_bat", 1)], 48)
+	await api.save_inventory(cid, [_row(0, "charm_tithe_bat", 1)], DmLoot.bag_size())
 	var ad := await api.adopt_pet(cid, "pet_tithe_bat")
 	_ok(ad.ok and ad.data["adopted"] == "pet_tithe_bat", "adopt a pet", ad.error)
 
 	# --- loadouts ---
-	await api.save_inventory(cid, [_row(0, "sword_copper", 1), _row(1, "rune_splinter", 2)], 48)
+	await api.save_inventory(cid, [_row(0, "sword_copper", 1), _row(1, "rune_splinter", 2)], DmLoot.bag_size())
 	var lr := await api.rune_learn(cid, 1)
 	_ok(lr.ok and lr.data["learned"] == ["rune_splinter"] and lr.data["socketed"], "learn a rune (it fills the empty socket)", lr.error)
 	var lr2 := await api.rune_learn(cid, 1)

@@ -6,8 +6,8 @@ extends SceneTree
 ##   - the payload against the contract (the keys, the types, the ranges, the enums, the string and list caps, nothing personal), and what happens to a value outside it;
 ##   - a real offline game scene: the frames of an attached scene (none before it is attached or after it is detached), the area it follows, a death per area (a fallen hero counted once), the level and
 ##     discipline, the party's size and who hosted, the backend session ids across two game scenes (a hand-over), the preset, window, V-Sync and fps cap read from the game;
-##   - the save and the crash: the autosave at 10 s of play and then each minute, a live file found at the next start becomes a "crash" report (a fresh one is left alone, a short or damaged one only removed),
-##     a finished session is queued, a short one is dropped, the queue keeps 10;
+##   - the save and the crash: the autosave at the minimum session length (DmPlayReport.MIN_SECONDS) and then at each DmPlayReport.SAVE_EVERY_MS, a live file found at the next start becomes a "crash" report (a fresh one is left alone, a short or damaged one only removed),
+##     a finished session is queued, a short one is dropped, the queue keeps its newest few (DmPlayReportQueue.KEEP);
 ##   - sending through the mock: in order, a resend of the same reportId is one row, what the server refuses (400) leaves the queue and what it cannot take now (503, 429, 401, an older server's 404, no login) stays,
 ##     a report queued while another is on its way is not lost;
 ##   - nothing leaves a script run: the one gate (`DmPlayReportQueue.records`) refuses a debug build, a script run, dev-offline, the benchmark and a test's mode, and `flush` refuses a real transport from a script;
@@ -18,6 +18,7 @@ extends SceneTree
 const CONTRACT_KEYS := ["reportId", "version", "seconds", "endReason", "endArea", "discipline", "level", "partySize", "host", "preset", "gpu", "driver", "os", "cpuCores", "ramMb", "resolution", "vsync", "fpsCap", "frames", "areas", "sessionIds"]
 const FRAME_KEYS := ["count", "avgMs", "p50Ms", "p99Ms", "worstMs", "hitches", "hist"]
 const AREA_KEYS := ["seconds", "deaths", "avgMs"]
+const FRAME_MS := 16.6   ## the length of the frames a test feeds a collector by hand
 
 
 class ErrorLog:
@@ -103,6 +104,16 @@ func ref_bucket(ms: float) -> int:
 ## The p-quantile by the textbook rule the collector's comment states: the ceil(q * n)-th smallest frame.
 func exact_rank(sorted_ms: Array, q: float) -> float:
 	return float(sorted_ms[clampi(ceili(q * sorted_ms.size()), 1, sorted_ms.size()) - 1])
+
+
+## Frames of FRAME_MS that make `seconds` of play (the session minimum and the autosave interval are the collector's own constants, so these counts follow them).
+func frames_for(seconds: float) -> int:
+	return ceili(seconds * 1000.0 / FRAME_MS)
+
+
+func feed(c: DmPlayReport, seconds: float) -> void:
+	for i in frames_for(seconds):
+		c.frame(FRAME_MS)
 
 
 func a_collector() -> DmPlayReport:
@@ -448,26 +459,23 @@ func the_save_and_the_crash() -> void:
 	r.set_area("graves")
 	var live := DmPlayReportQueue.live_path(r.report_id)
 	check(not FileAccess.file_exists(live), "a new session has no live file")
-	for i in 400:   # 6.6 s
-		r.frame(16.6)
-	check(not FileAccess.file_exists(live), "nothing is saved in the first 10 s")
-	for i in 250:   # 10.8 s in all
-		r.frame(16.6)
-	check(FileAccess.file_exists(live), "at 10 s of play the first save is made")
+	var min_s := DmPlayReport.MIN_SECONDS
+	var every_s := DmPlayReport.SAVE_EVERY_MS / 1000.0
+	feed(r, min_s * 0.66)
+	check(not FileAccess.file_exists(live), "nothing is saved before the minimum session length")
+	feed(r, min_s * 0.42)   # a little over it in all
+	check(FileAccess.file_exists(live), "at the minimum session length the first save is made")
 	var s1: Variant = JSON.parse_string(FileAccess.get_file_as_string(live))
 	var count1 := int(s1["count"]) if s1 is Dictionary else -1
-	check(s1 is Dictionary and count1 >= 600 and count1 <= 650 and String(s1["reportId"]) == r.report_id, "it is the session's state at that point (%d of %d frames)" % [count1, r.count])
-	for i in 3000:   # 50 s more: 60 s in all
-		r.frame(16.6)
+	check(s1 is Dictionary and count1 >= frames_for(min_s) and count1 <= frames_for(min_s) + 50 and String(s1["reportId"]) == r.report_id, "it is the session's state at that point (%d of %d frames)" % [count1, r.count])
+	feed(r, every_s * 0.8)   # most of the interval
 	var s2: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(live))
-	check(int(s2["count"]) == count1, "no save at every slow tick: nothing new in the first minute after the first save (%d)" % int(s2["count"]))
-	for i in 800:   # 13 s more: 73 s in all, a minute after the first save
-		r.frame(16.6)
+	check(int(s2["count"]) == count1, "no save at every slow tick: nothing new before the interval after the first save has passed (%d)" % int(s2["count"]))
+	feed(r, every_s * 0.2 + min_s * 0.2)   # past the interval
 	var s3: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(live))
-	check(int(s3["count"]) > count1 and int(s3["count"]) <= r.count, "the next save came a minute after the first (%d, then %d of %d)" % [count1, int(s3["count"]), r.count])
+	check(int(s3["count"]) > count1 and int(s3["count"]) <= r.count, "the next save came an interval after the first (%d, then %d of %d)" % [count1, int(s3["count"]), r.count])
 	var count3 := int(s3["count"])
-	for i in 300:
-		r.frame(16.6)
+	feed(r, every_s * 0.1)
 	s3 = JSON.parse_string(FileAccess.get_file_as_string(live))
 	check(int(s3["count"]) == count3, "and none in between (%d)" % int(s3["count"]))
 	print("INFO play_report: the live file is %d bytes" % FileAccess.get_file_as_string(live).length())
@@ -480,8 +488,7 @@ func the_save_and_the_crash() -> void:
 	root.add_child(short)
 	short.begin("dev")
 	short.set_area("graves")
-	for i in 100:
-		short.frame(16.6)
+	feed(short, min_s * 0.2)
 	short.autosave = true
 	short.save_live()
 	DmPlayReportQueue.write_live("garbage-file-0123456789", {"x": 1})
@@ -500,8 +507,7 @@ func the_save_and_the_crash() -> void:
 	var done := a_collector()
 	done.autosave = true
 	done.set_area("warren")
-	for i in 700:
-		done.frame(16.6)
+	feed(done, min_s * 1.1)
 	check(FileAccess.file_exists(DmPlayReportQueue.live_path(done.report_id)), "the finished session had a live file")
 	check(DmPlayReportQueue.end_session(done, "switch") and not FileAccess.file_exists(DmPlayReportQueue.live_path(done.report_id)), "ending it queues the report and removes the live file")
 	var qq := DmPlayReportQueue.pending()
@@ -509,9 +515,8 @@ func the_save_and_the_crash() -> void:
 	var tiny := a_collector()
 	tiny.autosave = true
 	tiny.set_area("graves")
-	for i in 300:   # 5 s
-		tiny.frame(16.6)
-	check(not DmPlayReportQueue.end_session(tiny, "quit") and DmPlayReportQueue.pending_count() == 2, "a session of 5 s is not worth a report: nothing is queued")
+	feed(tiny, min_s * 0.5)
+	check(not DmPlayReportQueue.end_session(tiny, "quit") and DmPlayReportQueue.pending_count() == 2, "a session of half the minimum is not worth a report: nothing is queued")
 	var none := a_collector()
 	check(not DmPlayReportQueue.end_session(none, "quit") and DmPlayReportQueue.pending_count() == 2, "nor one with no frame")
 	for c: DmPlayReport in [r, short, done, tiny, none]:
@@ -523,8 +528,7 @@ func the_save_and_the_crash() -> void:
 func a_report(i: int) -> Dictionary:
 	var c := a_collector()
 	c.set_area("graves")
-	for k in 700:
-		c.frame(16.6)
+	feed(c, DmPlayReport.MIN_SECONDS * 1.1)
 	var p := c.finish("quit")
 	p["reportId"] = "queued-report-%04d-abcdef" % i
 	c.queue_free()
@@ -533,14 +537,15 @@ func a_report(i: int) -> Dictionary:
 
 func the_queue() -> void:
 	_remove_tree(ProjectSettings.globalize_path(scratch))
-	for i in 12:
+	var keep := DmPlayReportQueue.KEEP
+	for i in keep + 2:
 		DmPlayReportQueue.add(a_report(i))
 	var q := DmPlayReportQueue.pending()
-	check(q.size() == DmPlayReportQueue.KEEP and DmPlayReportQueue.KEEP == 10, "the queue keeps 10")
-	check(q[0]["reportId"] == "queued-report-0002-abcdef" and q[9]["reportId"] == "queued-report-0011-abcdef", "the oldest two were dropped, the order is oldest first")
-	DmPlayReportQueue.add(a_report(11))
-	check(DmPlayReportQueue.pending_count() == 10, "a report already queued is not queued twice")
-	check(FileAccess.get_file_as_string(DmPlayReportQueue.queue_file()).length() < 20000, "the queue file is small (%d bytes for 10 reports)" % FileAccess.get_file_as_string(DmPlayReportQueue.queue_file()).length())
+	check(q.size() == keep, "the queue keeps its newest %d" % keep)
+	check(q[0]["reportId"] == "queued-report-0002-abcdef" and q[keep - 1]["reportId"] == "queued-report-%04d-abcdef" % (keep + 1), "the oldest two were dropped, the order is oldest first")
+	DmPlayReportQueue.add(a_report(keep + 1))
+	check(DmPlayReportQueue.pending_count() == keep, "a report already queued is not queued twice")
+	check(FileAccess.get_file_as_string(DmPlayReportQueue.queue_file()).length() < 2000 * keep, "the queue file is small (%d bytes for %d reports)" % [FileAccess.get_file_as_string(DmPlayReportQueue.queue_file()).length(), keep])
 
 
 # ------------------------------------------------------------------------------------------------------------------ sending
@@ -667,8 +672,7 @@ func dm_main_wiring() -> void:
 	for i in 30:
 		await process_frame
 	check(m.report.count >= 20, "the scene's own frames are counted from the moment it is attached (%d)" % m.report.count)
-	for i in 700:   # the headless frames run too fast to make 10 s of play: some frames are fed by hand
-		m.report.frame(16.6)
+	feed(m.report, DmPlayReport.MIN_SECONDS * 1.1)   # the headless frames run too fast to make the minimum session: some frames are fed by hand
 	check(await until(func() -> bool: return m.slice.party_session_id() != "", 10.0), "the scene's backend session opened")
 	var first_scene := m.slice.get_instance_id()
 	var sid1 := String(m.slice.party_session_id())
@@ -680,8 +684,7 @@ func dm_main_wiring() -> void:
 	m.report.poll()
 	check(m.report.session_ids.size() == 2 and m.report.session_ids[0] == sid1 and m.report.discipline == 11, "it names both sessions and the hero is a Reaper now (%s, %d)" % [m.report.session_ids, m.report.discipline])
 	check(DmPlayReportQueue.pending_count() == 0 and mock.play_reports.is_empty(), "a hand-over queues and sends nothing")
-	for i in 100:
-		m.report.frame(16.6)
+	feed(m.report, DmPlayReport.MIN_SECONDS * 0.15)
 	# Switch character: the report is queued as "switch" at once, and the select screen sends it
 	m.slice.ui_host.switch_character()
 	check(await until(func() -> bool: return m.slice == null and m.flow != null and m.flow.current_name == "select", 30.0), "Switch character lands on the select screen")
@@ -691,13 +694,12 @@ func dm_main_wiring() -> void:
 	print("INFO play_report: a report as the server received it (a Gravecaller turned Reaper, through the real game scenes and the mock; 30 real headless frames, the rest of the time fed by hand; no GPU or window here):\n%s" % JSON.stringify(sent))
 	check(sent.get("reportId") == first_id and sent.get("endReason") == "switch" and contract_problems(sent).is_empty() and DmPlayReportQueue.pending_count() == 0,
 		"it is the same session, ended \"switch\", in the contract's shape, and the queue is empty (%s)" % [contract_problems(sent)])
-	check(sent.get("sessionIds", []).size() == 2 and sent.get("discipline") == 11 and float(sent.get("seconds", 0.0)) >= 12.0, "with both backend sessions, the Reaper and %s s of play" % sent.get("seconds"))
+	check(sent.get("sessionIds", []).size() == 2 and sent.get("discipline") == 11 and float(sent.get("seconds", 0.0)) >= DmPlayReport.MIN_SECONDS * 1.2, "with both backend sessions, the Reaper and %s s of play" % sent.get("seconds"))
 	var sel := m.flow.current as DmCharSelectScreen
 	check(sel != null and await sel.choose(11), "picking the Reaper there ...")
 	check(await until(func() -> bool: return m.slice != null and m.slice.ready_ and DmLoadingScreen.current == null, 90.0), "... goes back into the game")
 	check(m.report != null and m.report.report_id != first_id, "a new session, a new report id")
-	for i in 700:
-		m.report.frame(16.6)
+	feed(m.report, DmPlayReport.MIN_SECONDS * 1.1)
 	var second_id := m.report.report_id
 	# Log out: queued as "logout" and sent before the token is dropped (2026-10-19: it used to wait for the next login)
 	m.slice.ui_host.leave_world()
@@ -709,8 +711,7 @@ func dm_main_wiring() -> void:
 	check(mock.play_reports.size() == 2 and DmPlayReportQueue.pending_count() == 0, "nothing was left to send at the next start")
 	check(m.report != null and m.report.report_id != second_id, "...beside a third session")
 	var third_id := m.report.report_id
-	for i in 700:
-		m.report.frame(16.6)
+	feed(m.report, DmPlayReport.MIN_SECONDS * 1.1)
 	# quit: the report is queued first, before the save
 	var last := m.slice
 	m.save_all()   # (a coroutine: what runs before its first await is what a quit does first)

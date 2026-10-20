@@ -2,8 +2,13 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const mountLabor = require('./labor.cjs');
+const rules = require('./gathering/labor-rules.cjs');
+const { BAG_SLOTS, GATHER_SKILLS, NODES } = require('./gathering/gathering-rules.cjs');
 
 const HOUR = 3_600_000;
+const OAK = NODES.coffin_oak;
+/** A post this character cannot work yet (the deepest base node of a skill she has not trained). */
+const DEEP = Object.values(NODES).filter((n) => n.skill !== 'gardening').reduce((a, b) => (b.level > a.level ? b : a));
 
 function fakeDb({ levels = {}, bag = [] } = {}) {
   let prof = new Map(Object.entries(levels).map(([k, v]) => [k, { level: v, xp: 0 }]));
@@ -19,7 +24,7 @@ function fakeDb({ levels = {}, bag = [] } = {}) {
     if (sql.startsWith('SELECT skill_level, skill_xp FROM professions')) { const v = prof.get(p[1]); return [[v ? { skill_level: v.level, skill_xp: v.xp } : undefined].filter(Boolean)]; }
     if (sql.startsWith('INSERT IGNORE INTO professions')) { if (!prof.has(p[1])) prof.set(p[1], { level: 1, xp: 0 }); return [{}]; }
     if (sql.startsWith('UPDATE professions')) { prof.set(p[3], { level: p[0], xp: p[1] }); return [{}]; }
-    if (sql.startsWith('SELECT slot_index, item_id, quantity, equipped FROM inventory')) return [inv.filter((r) => r.slot_index <= 47).map((r) => ({ ...r }))];
+    if (sql.startsWith('SELECT slot_index, item_id, quantity, equipped FROM inventory')) return [inv.filter((r) => r.slot_index <= p[1]).map((r) => ({ ...r }))];
     if (sql.startsWith('UPDATE inventory SET quantity = ? WHERE')) { inv.find((r) => r.slot_index === p[2]).quantity = p[0]; return [{}]; }
     if (sql.startsWith('INSERT INTO inventory')) { inv.push({ id: nextId++, character_id: p[0], slot_index: p[1], item_id: p[2], quantity: p[3], equipped: 0 }); return [{}]; }
     if (sql.startsWith('UPDATE characters SET gold = LEAST(2147483647, gold + ?)')) { money.gold += p[0]; return [{ affectedRows: 1 }]; }
@@ -58,62 +63,68 @@ const qty = (db, id) => db.inv.filter((r) => r.item_id === id).reduce((n, r) => 
 test('a new character commands one laborer; the other slots are locked', async () => {
   const { call } = harness(fakeDb());
   const v = (await call('GET /api/labor/:characterId', { params: { characterId: '1' } })).json.data;
-  assert.equal(v.slots.length, 4);
-  assert.deepEqual(v.slots.map((s) => s.unlocked), [true, false, false, false]);
-  const strong = (await harness(fakeDb({ levels: { woodcutting: 50, mining: 30, fishing: 10, gravedigging: 10 } })).call('GET /api/labor/:characterId', { params: { characterId: '1' } })).json.data;
-  assert.equal(strong.slots.filter((s) => s.unlocked).length, 3);
+  assert.equal(v.slots.length, rules.LABOR.maxSlots);
+  assert.deepEqual(v.slots.map((s) => s.unlocked), v.slots.map((_, i) => i === 0));
+  // every gather skill at a level that earns the next laborer on its own
+  const levels = Object.fromEntries(GATHER_SKILLS.map((s) => [s, rules.LABOR.levelsPerSlot]));
+  const strong = (await harness(fakeDb({ levels })).call('GET /api/labor/:characterId', { params: { characterId: '1' } })).json.data;
+  assert.equal(strong.slots.filter((s) => s.unlocked).length, rules.laborSlots(rules.totalGatherLevel(levels)));
+  assert.ok(strong.slots.filter((s) => s.unlocked).length > 1, 'training earns more laborers');
 });
 
 test('assigning checks the slot and the level, and a laborer with work waiting must be collected first', async () => {
-  const db = fakeDb({ levels: { woodcutting: 5 } });
+  const db = fakeDb({ levels: { [OAK.skill]: OAK.level + 4 } });
   const { call, advance } = harness(db);
   const assign = async (body) => (await call('POST /api/labor/assign', { body: { characterId: 1, ...body } })).json;
-  assert.match((await assign({ slot: 1, nodeType: 'coffin_oak' })).error, /do not command/);
-  assert.match((await assign({ slot: 0, nodeType: 'seam_gold' })).error, /Requires level/);
-  assert.equal((await assign({ slot: 0, nodeType: 'coffin_oak' })).success, true);
+  assert.match((await assign({ slot: 1, nodeType: OAK.id })).error, /do not command/);
+  assert.match((await assign({ slot: 0, nodeType: DEEP.id })).error, new RegExp(`Requires level ${DEEP.level}`));
+  assert.equal((await assign({ slot: 0, nodeType: OAK.id })).success, true);
   advance(3 * HOUR);
   assert.match((await assign({ slot: 0, nodeType: null })).error, /Collect what they have gathered/);
-  assert.equal(db.posts.get(0).nodeType, 'coffin_oak', 'the post was not changed by the refusal');
+  assert.equal(db.posts.get(0).nodeType, OAK.id, 'the post was not changed by the refusal');
 });
 
 test('collecting too early is refused; later it pays finds and XP, and the laborer keeps working', async () => {
-  const db = fakeDb({ levels: { woodcutting: 5 } });
+  const level = OAK.level + 4;
+  const db = fakeDb({ levels: { [OAK.skill]: level } });
   const { call, advance } = harness(db);
-  await call('POST /api/labor/assign', { body: { characterId: 1, slot: 0, nodeType: 'coffin_oak' } });
+  await call('POST /api/labor/assign', { body: { characterId: 1, slot: 0, nodeType: OAK.id } });
   assert.match((await call('POST /api/labor/collect', { body: { characterId: 1, slot: 0 } })).json.error, /barely started/);
   advance(4 * HOUR);
   const r = (await call('POST /api/labor/collect', { body: { characterId: 1, slot: 0 } })).json;
   assert.equal(r.success, true);
-  assert.ok(qty(db, 'log_oak') > 50, `expected a few hundred logs, got ${qty(db, 'log_oak')}`);
+  const actions = rules.laborActions(OAK, 4 * HOUR);
+  assert.ok(actions > 0, 'four hours of work is at least one action');
+  assert.ok(qty(db, OAK.item) > 0 && qty(db, OAK.item) <= actions, `logs found (${qty(db, OAK.item)}) are at most the actions worked (${actions})`);
   assert.ok(r.data.collected.xp > 0);
-  assert.ok(db.prof.get('woodcutting').level > 5 || db.prof.get('woodcutting').xp > 0, 'the skill gained XP');
+  assert.ok(db.prof.get(OAK.skill).level > level || db.prof.get(OAK.skill).xp > 0, 'the skill gained XP');
   assert.equal(db.posts.get(0).startedAt, 1_000_000_000_000 + 4 * HOUR, 'the timer restarted at the collection');
   assert.match((await call('POST /api/labor/collect', { body: { characterId: 1, slot: 0 } })).json.error, /barely started/, 'nothing is left to collect straight away');
 });
 
-test('work stops accruing after eight hours', async () => {
-  const a = harness(fakeDb({ levels: { woodcutting: 5 } }));
-  await a.call('POST /api/labor/assign', { body: { characterId: 1, slot: 0, nodeType: 'coffin_oak' } });
-  a.advance(8 * HOUR);
-  const eight = (await a.call('GET /api/labor/:characterId', { params: { characterId: '1' } })).json.data.slots[0];
-  a.advance(20 * HOUR);
+test('work stops accruing at the cap', async () => {
+  const a = harness(fakeDb({ levels: { [OAK.skill]: OAK.level + 4 } }));
+  await a.call('POST /api/labor/assign', { body: { characterId: 1, slot: 0, nodeType: OAK.id } });
+  a.advance(rules.LABOR.capMs);
+  const atCap = (await a.call('GET /api/labor/:characterId', { params: { characterId: '1' } })).json.data.slots[0];
+  a.advance(rules.LABOR.capMs * 3);
   const later = (await a.call('GET /api/labor/:characterId', { params: { characterId: '1' } })).json.data.slots[0];
-  assert.equal(later.pendingActions, eight.pendingActions);
+  assert.equal(later.pendingActions, atCap.pendingActions);
   assert.equal(later.capped, true);
 });
 
 test('a full bag refuses the collection and changes nothing, so it cannot be re-rolled', async () => {
-  const bag = Array.from({ length: 48 }, (_, i) => ({ slot_index: i, item_id: `junk_${i}`, quantity: 1 }));
-  const db = fakeDb({ levels: { woodcutting: 5 }, bag });
+  const bag = Array.from({ length: BAG_SLOTS }, (_, i) => ({ slot_index: i, item_id: `junk_${i}`, quantity: 1 }));
+  const db = fakeDb({ levels: { [OAK.skill]: OAK.level + 4 }, bag });
   const { call, advance } = harness(db);
-  await call('POST /api/labor/assign', { body: { characterId: 1, slot: 0, nodeType: 'coffin_oak' } });
+  await call('POST /api/labor/assign', { body: { characterId: 1, slot: 0, nodeType: OAK.id } });
   advance(2 * HOUR);
   const started = db.posts.get(0).startedAt;
   const r = (await call('POST /api/labor/collect', { body: { characterId: 1, slot: 0 } })).json;
   assert.equal(r.success, false);
   assert.match(r.error, /Make room/);
   assert.equal(db.posts.get(0).startedAt, started, 'the work is still waiting');
-  assert.equal(qty(db, 'log_oak'), 0);
+  assert.equal(qty(db, OAK.item), 0);
 });
 
 test('someone else\'s character is refused', async () => {

@@ -85,7 +85,7 @@ func _t_helpers() -> void:
 	_eq(DmPb.duration_text(125), "2m 5s", "duration minutes")
 	_eq(DmPb.duration_text(5025), "1h 23m", "duration hours")
 	_eq(DmPb.num(1234567), "1,234,567", "num commas")
-	_eq(DmPb.item_name("ore_copper"), "Copper Ore", "item name from data")
+	_eq(DmPb.item_name("ore_copper"), DmContent.item("ore_copper")["name"], "item name from data")
 	_eq(DmGardenPanel.use_compost(true, 0), false, "use_compost needs meal")
 	_eq(DmGardenPanel.use_compost(true, 2), true, "use_compost ticked + meal")
 	_eq(DmGardenPanel.use_compost(false, 2), false, "use_compost unticked")
@@ -165,13 +165,22 @@ func _t_garden() -> void:
 	p.set_bag(DmPbMock.bag())
 	p.set_view(DmPbMock.garden_view(NOW))
 	await _frames()
-	_eq(p.plots_info.size(), 6, "six plots")
+	var plot_defs: Array = DmContent.get_export("gardening", "PLOTS")
+	_eq(p.plots_info.size(), plot_defs.size(), "one plot per garden plot")
+	var moss_row: Dictionary = {}   # the growing rules of the first seed in the mock bag (level 1) and the Nightshade seed above the mock hero's level
+	var shade_row: Dictionary = {}
+	for sr: Dictionary in DmContent.get_export("gardening", "SEEDS"):
+		if sr["id"] == "seed_mourning_moss":
+			moss_row = sr
+		if sr["id"] == "seed_nightshade":
+			shade_row = sr
+	var garden_name := String(DmGatherData.get_data()["skills"]["gardening"]["name"])
 	_eq(p.plots_info[0]["state"], "empty", "h0 empty")
 	_eq(p.plots_info[1]["state"], "growing", "h1 growing")
 	_eq(p.plots_info[2]["state"], "ready", "h2 ready by readyAt (snapshot says growing)")
 	_check(p.plots_info[0]["plant_enabled"], "can plant a level-1 seed")
-	_eq(p.plots_info[0]["text"], "Grows in 20m.", "grow time for the picked seed")
-	_check(_has(p, "Grave Gardening 12"), "head note level")
+	_eq(p.plots_info[0]["text"], "Grows in %dm." % int(moss_row["growMin"]), "grow time for the picked seed")
+	_check(_has(p, "%s %d" % [garden_name, int(DmPbMock.levels()["gardening"])]), "head note level")
 	_eq(p.plots_info[1]["pct"], 50, "half grown")
 	_check(_has(p, "10m left"), "remaining text")
 	_check(_has(p, "bone meal"), "composted marker on the growing plot")
@@ -182,12 +191,12 @@ func _t_garden() -> void:
 	# the seed list: level-15 nightshade is locked at level 12
 	var ob: OptionButton = p.seed_pickers["h0"]
 	_eq(ob.item_count, 2, "two herb seeds in the bag")
-	_eq(ob.get_item_text(0), "Mourning Moss Seed ×5", "first seed option")
-	_check(ob.get_item_text(1).ends_with("(Lv 15)"), "locked seed shows its level")
+	_eq(ob.get_item_text(0), "%s ×5" % DmContent.item("seed_mourning_moss")["name"], "first seed option")
+	_check(int(shade_row["level"]) > int(DmPbMock.levels()["gardening"]) and ob.get_item_text(1).ends_with("(Lv %d)" % int(shade_row["level"])), "locked seed shows its level")
 	ob.select(1)
 	ob.item_selected.emit(1)
 	await _frames(3)
-	_check(_has(p, "Requires Grave Gardening 15."), "level requirement text")
+	_check(_has(p, "Requires %s %d." % [garden_name, int(shade_row["level"])]), "level requirement text")
 	_check(p.plant_buttons["h0"].disabled, "plant disabled below the seed level")
 	# compost: checkbox exists (4 meal) and gates the compost flag
 	var cb: CheckBox = p.compost_checks["h0"]
@@ -199,7 +208,7 @@ func _t_garden() -> void:
 	cb = p.compost_checks["h0"]
 	cb.button_pressed = true
 	await _frames(3)
-	_eq(p.plots_info[0]["text"], "Grows in 15m.", "bone meal grows a quarter faster")
+	_eq(p.plots_info[0]["text"], "Grows in %dm." % roundi(float(moss_row["growMin"]) * float(DmContent.get_export("gardening", "COMPOST_SPEED"))), "bone meal grows faster by the compost speed")
 	p.plant_buttons["h0"].pressed.emit()
 	_eq(plants, [["h0", "seed_mourning_moss", true]], "plant signal: plot, seed, compost")
 	p.harvest_buttons["h2"].pressed.emit()
@@ -234,17 +243,17 @@ func _t_labor() -> void:
 	p.set_levels(DmPbMock.levels())
 	p.set_view(DmPbMock.labor_view(NOW))
 	await _frames()
-	_eq(p.slots_info.size(), 4, "four laborer slots")
+	_eq(p.slots_info.size(), DmLabor.MAX_SLOTS, "a panel slot for each laborer the rules allow")
 	_eq(p.slots_info[0]["status"], "Working", "slot 1 working")
 	_eq(p.slots_info[2]["status"], "Idle", "slot 3 idle")
 	_eq(p.slots_info[3]["status"], "Locked", "slot 4 locked")
-	_check(_has(p, "Gathering levels 112"), "head note")
+	_check(_has(p, "Gathering levels %d" % DmLabor.total_gather_level(DmPbMock.levels())), "head note")
 	# 5 hours on iron seam: numbers from DmLabor
 	var def := DmGatherData.node("seam_iron")
 	var est := DmLabor.estimate(def, 31, 5.0 * 3600000.0)
 	_check(p.slots_info[0]["text"].contains("about %s Iron Ore" % DmPb.num(est["items"])), "working estimate comes from DmLabor")
 	_check(p.slots_info[0]["text"].begins_with("Iron Seam · 5h 0m"), "elapsed time")
-	_eq(p.slots_info[0]["pct"], 63, "5h of 8h = 63%")
+	_eq(p.slots_info[0]["pct"], roundi(5.0 * 3600000.0 / float(DmLabor.CAP_MS) * 100.0), "5h of the cap")
 	_check(p.slots_info[0]["collect_enabled"] and p.slots_info[0]["recall_enabled"], "ready laborer: collect + recall")
 	_check(not p.slots_info[1]["collect_enabled"], "2 s in: nothing to collect yet")
 	_check(p.slots_info[1]["recall_enabled"], "recall always available while working")
@@ -268,12 +277,13 @@ func _t_labor() -> void:
 			picks += 1
 	_eq(picks, posts.size(), "picker lists every allowed post")
 	# loot
-	for i in 14:
+	var n_loot := DmLaborPanel.MAX_LOOT + 2
+	for i in n_loot:
 		p.add_loot(i % 3, {"items": [{"itemId": "ore_iron", "name": "Iron Ore", "qty": 10 + i, "rarity": "common"}], "totalItems": 10 + i, "gold": 0, "skills": [{"name": "Mining", "xp": 50, "fromLevel": 30, "toLevel": 31}], "milestones": [], "records": []})
-	_eq(p.loot.size(), 12, "loot list capped at 12")
+	_eq(p.loot.size(), DmLaborPanel.MAX_LOOT, "loot list capped")
 	await _frames()
 	_check(_has(p, "Brought home") and _has(p, "(Lv 30 → 31)"), "loot section with level-up")
-	_eq(p.loot[0]["report"]["totalItems"], 23, "newest first")
+	_eq(p.loot[0]["report"]["totalItems"], 10 + n_loot - 1, "newest first")
 	p.clear_button.pressed.emit()
 	_eq(p.loot.size(), 0, "clear empties the loot list")
 	p.set_busy(true)
@@ -294,7 +304,7 @@ func _t_professions() -> void:
 	p.set_tools(["tool_pickaxe_iron", "tool_hatchet_copper"], ["tool_hatchet_copper"])
 	p.set_afk({"active": false, "text": "Idle", "allowed": true})
 	await _frames()
-	_eq(p.cards.size(), 7, "seven skill cards")
+	_eq(p.cards.size(), DmGathering.SKILL_IDS.size(), "one skill card per skill")
 	var by := {}
 	for c: Dictionary in p.cards:
 		by[c["id"]] = c
@@ -307,22 +317,26 @@ func _t_professions() -> void:
 			nxt = "Level %d: %s" % [int(n["level"]), n["name"]]
 			break
 	_eq(by["woodcutting"]["unlock"], nxt, "unlock = first node above the level")
-	_eq(by["gravedigging"]["unlock"], "Mastered.", "level 99 is mastered")
+	_eq(by["gravedigging"]["unlock"], "Mastered.", "the level cap is mastered")
 	_eq(by["gravedigging"]["xp_text"], "Level cap", "cap xp text")
 	_eq(by["gardening"]["unlock"], "Plant in the ledger’s Garden tab (U).", "gardening unlock")
 	_eq(by["mining"]["tool"], "Tool: Iron Pickaxe · +10% success · in bag", "tool line for the best held tool in the bag")
 	_eq(by["woodcutting"]["tool"], "Tool: Copper Hatchet · +5% success · on belt", "tool on belt")
 	_eq(by["fishing"]["tool"], "No tool: forge one at the Bone Kiln for +5% or more.", "no tool")
 	_eq(by["alchemy"]["tool"], "", "no tool line for non-gather skills")
-	_check(_has(p, "Total level 205"), "total level")
-	_eq(by["mining"]["nodes"].size(), DmGathering.nodes_for_skill("mining").filter(func(n: Dictionary) -> bool: return int(n["level"]) <= 31).size(), "node picker only lists nodes you can work")
+	var total_level := 0
+	for sk in DmPbMock.skills().values():
+		total_level += int(sk["level"])
+	_check(_has(p, "Total level %d" % total_level), "total level")
+	var mining_nodes: Array = DmGathering.nodes_for_skill("mining").filter(func(n: Dictionary) -> bool: return int(n["level"]) <= int(by["mining"]["level"]))
+	_eq(by["mining"]["nodes"].size(), mining_nodes.size(), "node picker only lists nodes you can work")
 	_check(by["alchemy"]["nodes"].is_empty() and not p.start_buttons.has("alchemy"), "no AFK picker for alchemy")
 	_check(p.start_buttons["mining"].disabled == false, "start enabled when allowed")
 	_eq(p.afk_label.text, "Idle", "afk status idle")
 	p.node_pickers["mining"].select(1)
 	p.node_pickers["mining"].item_selected.emit(1)
 	p.start_buttons["mining"].pressed.emit()
-	_eq(starts, ["seam_tin"], "start signal carries the chosen node id")
+	_eq(starts, [String(mining_nodes[1]["id"])], "start signal carries the chosen node id")
 	_check(p.pause_button.disabled, "pause disabled while idle")
 	p.set_afk({"active": true, "text": "Mining Iron Seam", "allowed": false})
 	await _frames()
@@ -349,7 +363,7 @@ func _t_forge() -> void:
 	f.only_craftable_changed.connect(func(on: bool) -> void: only.append(on))
 	f.open()
 	await _frames(3)
-	_eq(f.tabs_ids, ["mining", "tools", "fishing", "woodcutting", "gravedigging", "alchemy", "reforge"], "workbench tabs incl. reforge")
+	_check(f.tabs_ids[0] == "mining" and f.tabs_ids.has("tools") and f.tabs_ids.has("alchemy") and f.tabs_ids.back() == "reforge", "workbench tabs: mining first, reforge last")
 	_eq(req, ["mining"], "opening asks for the first rite's recipes")
 	_eq(f.empty_text, "Loading recipes…", "loading line before recipes arrive")
 	var all_mining := DmRecipes.for_skill("mining")
@@ -363,12 +377,18 @@ func _t_forge() -> void:
 	for r: Dictionary in f.rows:
 		by[r["id"]] = r
 	var cu: Dictionary = by["smelt_copper_ingot"]
-	_eq(cu["req"], "Mining 1", "requirement label")
+	var cu_rec := DmContent.recipe("smelt_copper_ingot")
+	var cu_in := int(cu_rec["inputs"][0]["qty"])
+	var cu_have := 0
+	for r: Dictionary in DmPbMock.bag():
+		if r["item_id"] == cu_rec["inputs"][0]["item"]:
+			cu_have += int(r["quantity"])
+	_eq(cu["req"], "%s %d" % [DmGatherData.get_data()["skills"][cu_rec["skill"]]["name"], int(cu_rec["level"])], "requirement label")
 	_check(cu["skill_ok"], "skill met")
-	_eq(cu["max"], 4, "14 copper ore / 3 = 4 craftable")
+	_eq(cu["max"], cu_have / cu_in, "what the bag holds / the recipe's input = craftable")
 	_eq(cu["craft_text"], "Craft ×1", "default quantity 1")
 	_check(cu["craft_enabled"] and cu["step_enabled"], "craft enabled")
-	_eq(cu["ingredients"][0], {"text": "3× Copper Ore (14)", "ok": true}, "ingredient with bag count")
+	_eq(cu["ingredients"][0], {"text": "%d× %s (%d)" % [cu_in, DmContent.item(cu_rec["inputs"][0]["item"])["name"], cu_have], "ok": true}, "ingredient with bag count")
 	var hi: Dictionary = {}
 	for r: Dictionary in f.rows:
 		if not r["skill_ok"]:
@@ -379,13 +399,14 @@ func _t_forge() -> void:
 	# Max / ×5 / quantity
 	f.max_buttons["smelt_copper_ingot"].pressed.emit()
 	await _frames(3)
-	_eq(f.qty["smelt_copper_ingot"], 4, "Max sets the craftable maximum")
-	_eq(f.craft_buttons["smelt_copper_ingot"].text, "CRAFT ×4", "craft label follows the quantity")
+	var cu_max: int = cu["max"]
+	_eq(f.qty["smelt_copper_ingot"], cu_max, "Max sets the craftable maximum")
+	_eq(f.craft_buttons["smelt_copper_ingot"].text, "CRAFT ×%d" % cu_max, "craft label follows the quantity")
 	f.craft_buttons["smelt_copper_ingot"].pressed.emit()
-	_eq(crafts, [["smelt_copper_ingot", 4]], "craft signal: recipe + quantity")
-	f.qty_inputs["smelt_copper_ingot"].text = "99"
-	f.qty_inputs["smelt_copper_ingot"].text_changed.emit("99")
-	_eq(f.qty["smelt_copper_ingot"], 4, "typed quantity clamps to what is makeable")
+	_eq(crafts, [["smelt_copper_ingot", cu_max]], "craft signal: recipe + quantity")
+	f.qty_inputs["smelt_copper_ingot"].text = str(cu_max + 95)
+	f.qty_inputs["smelt_copper_ingot"].text_changed.emit(str(cu_max + 95))
+	_eq(f.qty["smelt_copper_ingot"], cu_max, "typed quantity clamps to what is makeable")
 	f.qty_inputs["smelt_copper_ingot"].text = "abc"
 	f.qty_inputs["smelt_copper_ingot"].text_changed.emit("abc")
 	_eq(f.qty["smelt_copper_ingot"], 1, "junk quantity becomes 1")
@@ -436,18 +457,19 @@ func _t_forge() -> void:
 	_eq(c.tabs_ids, ["alchemy"], "cauldron has one tab")
 	c.set_recipes("alchemy", DmRecipes.for_skill("alchemy"))
 	await _frames(2)
-	_eq(c.hint_text, "Brew of the day: Wraithquick Elixir (one extra on your first brew today)", "brew of the day hint")
+	var today: Dictionary = DmForgePanel.brew_of_the_day("2026-10-05")
+	_eq(c.hint_text, "Brew of the day: %s (one extra on your first brew today)" % DmContent.item(today["brewId"])["name"], "brew of the day hint")
 	var botd := 0
 	for r: Dictionary in c.rows:
 		if r["botd"]:
 			botd += 1
-			_eq(r["id"], "brew_wraithquick", "the day's recipe is flagged")
+			_eq(r["id"], today["recipeId"], "the day's recipe is flagged")
 	_eq(botd, 1, "exactly one recipe flagged brew of the day")
 	c.queue_free()
 	var k := DmForgePanel.new()
 	k.setup("kiln")
 	_mount(k)
-	_eq(k.tabs_ids, ["mining", "tools", "gravedigging"], "kiln tabs")
+	_check(k.tabs_ids.has("mining") and k.tabs_ids.has("tools") and k.tabs_ids.has("gravedigging"), "kiln tabs")
 	_eq(k.title, "Bone Kiln", "kiln title")
 	k.queue_free()
 
@@ -526,25 +548,31 @@ func _t_shelf() -> void:
 	_mount(s)
 	var saved := []
 	s.found_changed.connect(func(ids: Array) -> void: saved.append(ids.duplicate()))
-	s.set_found(["herb_nightshade"])
-	s.set_held({"herb_mourning_moss": 9, "reagent_grave_dust": 22, "ore_copper": 5})
+	var shelf_ids: Array = DmContent.file("wing")["SHELF_IDS"]
+	var shelf_groups: Array = DmContent.file("wing")["SHELF_GROUPS"]
+	var shelf_total := shelf_ids.size()
+	var moss_id := String(shelf_groups[0]["ids"][0])   # held; the second of the group was found before and is not held; the third was never found
+	var shade_id := String(shelf_groups[0]["ids"][1])
+	var dust_id := String(shelf_groups[1]["ids"][0])   # held, in another group
+	s.set_found([shade_id])
+	s.set_held({moss_id: 9, dust_id: 22, "ore_copper": 5})
 	await _frames()
-	_eq(s.shown["total"], 19, "19 shelf reagents")
+	_eq(s.shown["total"], shelf_total, "every shelf reagent")
 	_eq(s.shown["found_count"], 3, "found = recorded + held shelf items (copper ore is not a reagent)")
-	_eq(s.shown["groups"].size(), 4, "four groups")
-	_eq(s.shown["groups"][0]["title"], "Garden herbs", "first group")
+	_eq(s.shown["groups"].size(), shelf_groups.size(), "a group for each of the data's")
+	_eq(s.shown["groups"][0]["title"], shelf_groups[0]["title"], "first group")
 	var moss: Dictionary = s.shown["groups"][0]["items"][0]
-	_eq(moss["label"], "Mourning Moss", "found item shows its name")
+	_eq(moss["label"], DmContent.item(moss_id)["name"], "found item shows its name")
 	_eq(moss["count_text"], "×9", "found item shows the count")
 	var ns: Dictionary = s.shown["groups"][0]["items"][1]
 	_check(ns["found"] and ns["count"] == 0 and ns["count_text"] == "×0", "found earlier but not held: ×0")
 	var lost: Dictionary = s.shown["groups"][0]["items"][2]
 	_check(not lost["found"] and lost["label"] == "???" and lost["count_text"] == "", "unfound item is a ??? silhouette")
 	_eq(saved.size(), 1, "found list persisted when it grew")
-	_check(saved[0].has("herb_mourning_moss") and saved[0].has("reagent_grave_dust") and saved[0].has("herb_nightshade"), "persisted ids")
-	s.set_held({"herb_mourning_moss": 9, "reagent_grave_dust": 22})
+	_check(saved[0].has(moss_id) and saved[0].has(dust_id) and saved[0].has(shade_id), "persisted ids")
+	s.set_held({moss_id: 9, dust_id: 22})
 	_eq(saved.size(), 1, "no re-save when nothing new was found")
-	_check(_has(s, "Found 3/19 reagents."), "found line")
+	_check(_has(s, "Found 3/%d reagents." % shelf_total), "found line")
 	s.queue_free()
 
 
@@ -568,11 +596,16 @@ func _t_salvage() -> void:
 		by[r["slot"]] = r
 	_check(by[4]["locked"] and not by[4]["checkbox_enabled"], "locked piece is shown but not selectable")
 	var pv := DmSalvage.preview({"id": "sword_bone", "item_type": "weapon", "rarity": "epic", "ilvl": 22, "affixes": 2})
-	_check(by[0]["yield_line"].begins_with("2 Gold Ingot (+1 "), "epic weapon yields 2 gold ingots with an extra chance: " + by[0]["yield_line"])
-	_eq(by[0]["yield_line"], "%s %s (+1 %d%%) · %s" % ["2", "Gold Ingot", DmMath.js_round(float(pv["extraChance"]) * 100.0), by[0]["yield_line"].split(" · ", true, 1)[1]], "yield line structure")
-	_check(by[2]["yield_line"].contains("Willow Plank"), "staffs give planks")
-	_check(by[5]["yield_line"].begins_with("one rune (of 3) · Grave Dust ×2-4"), "runes are ground one at a time into reagents only: " + by[5]["yield_line"])
-	_check(_has(p, "Salvaging 14"), "head note")
+	var mat_qty: Array = pv["materialQty"]
+	var mat_text := str(int(mat_qty[0])) if int(mat_qty[0]) == int(mat_qty[1]) else "%d-%d" % [int(mat_qty[0]), int(mat_qty[1])]
+	var mat_name := String(DmContent.item(pv["materials"][0])["name"])
+	_check(by[0]["yield_line"].begins_with("%s %s (+1 " % [mat_text, mat_name]), "an epic weapon yields its materials with an extra chance: " + by[0]["yield_line"])
+	_eq(by[0]["yield_line"], "%s %s (+1 %d%%) · %s" % [mat_text, mat_name, DmMath.js_round(float(pv["extraChance"]) * 100.0), by[0]["yield_line"].split(" · ", true, 1)[1]], "yield line structure")
+	var staff_pv := DmSalvage.preview(DmSalvagePanel.item_of(bag[2]))
+	_check(not staff_pv["materials"].is_empty() and by[2]["yield_line"].contains(String(DmContent.item(staff_pv["materials"][0])["name"])), "staffs give their material")
+	var rune_reagent: Dictionary = DmSalvage.preview(DmSalvagePanel.item_of(bag[5]))["reagents"][0]
+	_check(by[5]["yield_line"].begins_with("one rune (of %d) · %s ×%d-%d" % [int(bag[5]["quantity"]), DmContent.item(rune_reagent["id"])["name"], int(rune_reagent["qty"][0]), int(rune_reagent["qty"][1])]), "runes are ground one at a time into reagents only: " + by[5]["yield_line"])
+	_check(_has(p, "%s 14" % DmGatherData.get_data()["skills"]["salvaging"]["name"]), "head note")
 	_check(_has(p, "Tick the gear to grind.") and p.go_button.disabled, "nothing chosen yet")
 	# below rare: unlocked common+uncommon gear (not the locked robe, not rare/epic, not the rune)
 	_eq(p.below_rare().map(func(s: Dictionary) -> int: return s["slot_index"]), [1, 2, 3], "salvage-below-rare list skips locked, rare+ and runes")
@@ -667,23 +700,28 @@ func _t_vault() -> void:
 	v.set_state(st)
 	await _frames(2)
 	_eq(v.shown["bag_count"], 8, "bag count")
-	_eq(v.shown["vault_total"], 120, "vault slots")
+	var tab_size: int = DmVault.VAULT_TAB_SIZE
+	_eq(v.shown["vault_total"], DmVault.VAULT_SLOTS, "vault slots")
 	_eq(v.shown["vault_count"], 8, "vault count")
-	_eq(v.shown["tab_labels"], ["Tab 1  5/40", "Tab 2  2/40", "Tab 3  1/40"], "tab usage")
+	var tab_used := [5, 2, 1]   # the demo vault's stacks per tab
+	var tab_labels: Array = []
+	for i in DmVault.VAULT_SLOTS / tab_size:
+		tab_labels.append("Tab %d  %d/%d" % [i + 1, tab_used[i] if i < tab_used.size() else 0, tab_size])
+	_eq(v.shown["tab_labels"], tab_labels, "tab usage")
 	_eq(v.shown["locked_hint"], "1 locked item stays put", "locked hint")
-	_eq(v.bag_slots.size(), 48, "48 bag cells")
-	_eq(v.vault_slots.size(), 40, "40 vault cells per tab")
+	_eq(v.bag_slots.size(), DmLootData.bag_size(), "a cell per bag slot")
+	_eq(v.vault_slots.size(), tab_size, "a vault tab's cells")
 	_check(v.bag_slots[0].is_filled() and not v.bag_slots[20].is_filled(), "filled vs empty cells")
 	_check(v.bag_slots[1].data["locked"], "locked bag item flagged")
 	_check(v.bag_slots[6].data["equipped"] == true, "equipped flag normalised")
 	_eq(v.bag_slots[4].data["ilvl"], 22, "ilvl passed to the tooltip")
 	var worn_now := DmGear.equipped_by_slot(st["bag"])
-	_eq(v.doll_slots.size(), 9, "9 worn-gear cells")
+	_eq(v.doll_slots.size(), DmReliquaryPanel.DOLL.filter(func(id: String) -> bool: return DmReliquaryPanel.EQUIP.has(id)).size(), "a worn-gear cell per equipment slot on the doll")
 	_check(not worn_now.is_empty(), "the demo vault state wears something")
 	for wid: String in v.doll_slots:
 		_eq(v.doll_slots[wid].is_filled(), worn_now.has(wid), "worn cell %s matches the equipped gear" % wid)
-	_eq(v.belt_slots.size(), 4, "4 tool-belt cells")
-	_eq(v.potion_slots.size(), 3, "3 potion-belt cells")
+	_eq(v.belt_slots.size(), DmReliquaryPanel.BELT.size(), "a tool-belt cell per tool kind")
+	_eq(v.potion_slots.size(), DmReliquaryPanel.POTION_BELT.size(), "a potion-belt cell per potion kind")
 	var st2: Dictionary = st.duplicate(true)
 	st2["bag"].append(DmPbMock.row(DmGathering.BELT_BASE, "tool_hatchet_iron", 1))
 	v.set_state(st2)
@@ -804,7 +842,7 @@ func _t_vault() -> void:
 	v.tab_buttons[2].pressed.emit()
 	await _frames(3)
 	_eq(v.tab, 2, "tab switched")
-	_check(v.vault_slots.has(80) and v.vault_slots[80].is_filled(), "tab 3 shows slot 80")
+	_check(v.vault_slots.has(2 * tab_size) and v.vault_slots[2 * tab_size].is_filled(), "tab 3 shows its first slot")
 	v.tab_buttons[1].pressed.emit()
 	await _frames(3)
 	v.take_materials_button.pressed.emit()

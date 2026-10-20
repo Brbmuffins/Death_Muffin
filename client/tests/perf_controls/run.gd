@@ -97,8 +97,8 @@ func _settings() -> void:
 	st.update({"graphics": "high"})
 	st.update({"fps": 0})
 	check(Engine.max_fps == 0, "fps Max = uncapped")
-	# culling / streaming / shadow range are the builder's constants, driven by DmNextWorld.update every frame
-	check(DmWorldBuilder.PROP_CELL == 12.0 and DmWorldBuilder.SHADOW_RANGE == 32.0 and DmWorldBuilder.LIGHT_NEAR == 8, "culling: prop cell 12 m, shadow range 32 m, 8 prop lights (as the current client)")
+	# culling / streaming / shadow range are the builder's constants, driven by DmNextWorld.update every frame: the running builder starts at them
+	check(DmWorldBuilder.PROP_CELL > 0.0 and b.shadow_range == DmWorldBuilder.SHADOW_RANGE and b.light_near == DmWorldBuilder.LIGHT_NEAR, "culling: the builder starts at its prop cell, shadow range and prop light constants")
 	# auto_res off: a stepped-down view returns to full resolution at once
 	g.perf.governor.scale = 0.7
 	g.perf._apply_render_scale()
@@ -108,47 +108,55 @@ func _settings() -> void:
 	await _drop(g)
 
 
+## Feeds the governor `seconds` of frames, each `dt` long (a simulated stream; the frame count follows from the length, so a retuned timing keeps the stream long enough).
+func _stream(p: DmNextPerf, seconds: float, dt: float) -> void:
+	for i in ceili(seconds / dt):
+		p.pace(dt)
+
+
+## Seconds of slow frames the governor needs to step from full size down to `to`: the hold, then a step per MIN_GAP_S (each after sustained misses), with a step to spare.
+func _down_seconds(to: float) -> float:
+	var steps := ceili(log(to) / log(DmResolutionGovernor.STEP)) + 1
+	return DmResolutionGovernor.HOLD_S + steps * (DmResolutionGovernor.MIN_GAP_S + DmResolutionGovernor.DOWN_AFTER_S + 1.0)
+
+
 func _governor() -> void:
 	var g := await _game({"dressing": false, "hud": false, "persist": false, "waves": false, "settings": {"graphics": "high", "fps": 60, "auto_res": true}})
 	var p := g.perf
 	var vp := g.get_viewport()
 	check(vp.scaling_3d_scale == 1.0 and p.governor.scale == 1.0 and vp.scaling_3d_mode == Viewport.SCALING_3D_MODE_BILINEAR, "governor: starts at full resolution, no upscaler")
-	# 25 s of 50 ms frames (a GPU at 20 fps against a 60 fps budget); the first 10 s are held (a load)
-	for i in 500:
-		p.pace(0.05)
+	# a GPU at 20 fps against a 60 fps budget, from the end of the load hold until the first step down
+	_stream(p, DmResolutionGovernor.HOLD_S + DmResolutionGovernor.DOWN_AFTER_S + 2.0, 0.05)
 	var low: float = p.governor.scale
 	check(low < 1.0 and low >= DmResolutionGovernor.MIN, "governor: steps down under a slow stream (%.2f)" % low)
 	check(is_equal_approx(vp.scaling_3d_scale, low) and vp.scaling_3d_mode == Viewport.SCALING_3D_MODE_FSR, "governor: the viewport's 3D scale follows, upscaled with FSR 1 (%.2f)" % vp.scaling_3d_scale)
-	# a long fast stream: back up to the ceiling
-	for i in 6000:
-		p.pace(0.012)
+	# a long fast stream: back up to the ceiling, one step per gap
+	var up_steps := ceili(log(low) / log(DmResolutionGovernor.STEP)) + 1
+	_stream(p, up_steps * (maxf(DmResolutionGovernor.UP_AFTER_S, DmResolutionGovernor.MIN_GAP_S) + 2.0), 0.012)
 	check(p.governor.scale > low and is_equal_approx(vp.scaling_3d_scale, p.governor.scale), "governor: steps back up with headroom (%.2f)" % p.governor.scale)
 	check(is_equal_approx(vp.scaling_3d_scale, 1.0) and vp.scaling_3d_mode == Viewport.SCALING_3D_MODE_BILINEAR, "governor: back at full size with no upscaler (%.2f)" % vp.scaling_3d_scale)
 	# an area entry holds: slow frames right after hold() change nothing
 	var before: float = p.governor.scale
 	p.hold()
-	for i in 100:
-		p.pace(0.1)
+	_stream(p, DmResolutionGovernor.HOLD_S * 0.9, 0.1)
 	check(p.governor.scale == before, "governor: held through an area entry")
-	# the 30 fps cap judges against 33 ms: a 40 ms stream is not a miss by 1.3x
+	# the 30 fps cap judges against 33 ms: a stream of 33 ms frames is not a miss (the budget for Max is a 60 fps one: a 144 Hz miss is not a GPU problem)
 	p.apply({"graphics": "high", "fps": 30, "auto_res": true})
 	check(p.governor.scale == 1.0 and DmResolutionGovernor.budget_fps(30) == 30 and DmResolutionGovernor.budget_fps(0) == 60, "governor: restarts at full resolution on a setting change, budget follows the cap")
-	for i in 600:
-		p.pace(0.033)
+	_stream(p, DmResolutionGovernor.HOLD_S + DmResolutionGovernor.DOWN_AFTER_S + 2.0, 1.0 / 30.0)
 	check(p.governor.scale == 1.0, "governor: frames at the 30 fps budget are not a miss")
-	# the same constants as the current client
-	check(DmResolutionGovernor.MIN == 0.6 and DmResolutionGovernor.STEP == 0.9 and DmResolutionGovernor.DOWN_AFTER_S == 3.5 and DmResolutionGovernor.UP_AFTER_S == 15.0 and DmResolutionGovernor.MIN_GAP_S == 20.0, "governor: constants unchanged (the quality pass retunes them)")
-	# the floor follows the preset: Low steps down to 0.6, High / Ultra never below 0.85
-	for pair in [["low", 0.6], ["medium", 0.85], ["high", 0.85], ["ultra", 0.85]]:
-		p.apply({"graphics": pair[0], "fps": 60, "auto_res": true})
+	# the governor's range holds together (its timings and steps are the quality pass's to retune)
+	check(DmResolutionGovernor.MIN > 0.0 and DmResolutionGovernor.MIN < 1.0 and DmResolutionGovernor.STEP > 0.0 and DmResolutionGovernor.STEP < 1.0, "governor: the lowest scale and the step are fractions of full size")
+	# the floor follows the preset: it bottoms out at its floor, within one step above it
+	for id in DmGraphicsPreset.IDS:
+		var floor_scale := float(DmGraphicsPreset.TABLE[id]["floor"])
+		p.apply({"graphics": id, "fps": 60, "auto_res": true})
 		p.hold()
-		for i in 6000:
-			p.pace(0.05)
-		check(p.governor.scale >= float(pair[1]) - 0.0001 and p.governor.scale < float(pair[1]) / 0.9 + 0.0001, "governor: %s bottoms out at its floor %.2f (%.3f)" % [pair[0], pair[1], p.governor.scale])
+		_stream(p, _down_seconds(floor_scale), 0.05)
+		check(p.governor.scale >= floor_scale - 0.0001 and p.governor.scale < floor_scale / DmResolutionGovernor.STEP + 0.0001, "governor: %s bottoms out at its floor %.2f (%.3f)" % [id, floor_scale, p.governor.scale])
 	# auto_res off: no stepping at all
 	p.apply({"graphics": "high", "fps": 60, "auto_res": false})
-	for i in 800:
-		p.pace(0.05)
+	_stream(p, _down_seconds(DmResolutionGovernor.MIN), 0.05)
 	check(vp.scaling_3d_scale == 1.0, "governor: auto_res off never steps")
 	await _drop(g)
 

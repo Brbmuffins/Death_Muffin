@@ -7,11 +7,12 @@ const mountSalvage = require('./salvage.cjs');
 const { replaceBag, saveBagSize } = require('./inventory-save.cjs');
 const sync = require('./offline-full-sync.cjs');
 const legion = require('./gathering/legion-rules.cjs');
+const { BAG_SLOTS } = require('./gathering/gathering-rules.cjs');
 const { fakeDb, harness } = require('./bag-fake-db.cjs');
 
 const kit = (db, slot_index, equipped, opts) => harness(mountKit, db, opts)('POST /api/inventory/kit', { body: { characterId: 1, slot_index, equipped } });
 const at = (db, slot) => db.inv.find((r) => r.slot_index === slot);
-const fullBag = (extra = []) => Array.from({ length: 48 }, (_, i) => extra.find((e) => e.slot_index === i) || { slot_index: i, item_id: 'wand_iron', quantity: 1 });
+const fullBag = (extra = []) => Array.from({ length: BAG_SLOTS }, (_, i) => extra.find((e) => e.slot_index === i) || { slot_index: i, item_id: 'wand_iron', quantity: 1 });
 
 test('kit slots: weapon 120, armour 121, clear of the gear (100-108) and the tool belt (110-113)', () => {
   assert.deepEqual(legion.KIT_IDS.map((k) => legion.kitSlotIndex(k)), [120, 121]);
@@ -41,7 +42,7 @@ test('a second piece swaps with the kit piece even with a full bag, and nothing 
   assert.equal(r.success, true);
   assert.equal(at(db, 120).item_id, 'staff_moon');
   assert.deepEqual([at(db, 9).item_id, at(db, 9).equipped, at(db, 9).equipped_slot], ['staff_oak', 0, null]);
-  assert.equal(db.inv.length, 49);
+  assert.equal(db.inv.length, BAG_SLOTS + 1);
 });
 
 test('a rolled piece keeps its item level and affixes on the way in and out', async () => {
@@ -91,9 +92,9 @@ test('a bag save (any bag, including an empty one) leaves kit, belt and gear row
     bag: [{ slot_index: 0, item_id: 'ore_copper', quantity: 3 }],
     equipped: [{ slot_index: 120, item_id: 'staff_oak', equipped_slot: 'kit_weapon' }, { slot_index: 121, item_id: 'chest_iron', equipped_slot: 'kit_armor' }, { slot_index: 110, item_id: 'tool_hatchet_copper', equipped_slot: 'belt_hatchet' }, { slot_index: 105, item_id: 'staff_oak' }],
   });
-  await replaceBag(db.conn, 1, [{ slot_index: 4, item_id: 'bone_meal', quantity: 2 }], saveBagSize(48));
+  await replaceBag(db.conn, 1, [{ slot_index: 4, item_id: 'bone_meal', quantity: 2 }], saveBagSize(BAG_SLOTS));
   assert.deepEqual(db.inv.map((r) => r.slot_index).sort((a, b) => a - b), [4, 105, 110, 120, 121]);
-  await replaceBag(db.conn, 1, [], saveBagSize(48));
+  await replaceBag(db.conn, 1, [], saveBagSize(BAG_SLOTS));
   assert.deepEqual(db.inv.map((r) => r.slot_index).sort((a, b) => a - b), [105, 110, 120, 121]);
   assert.equal(at(db, 121).equipped_slot, 'kit_armor');
 });
@@ -104,7 +105,7 @@ test('the Vault and Salvage cannot touch a kit piece', async () => {
     equipped: [{ slot_index: 120, item_id: 'staff_oak', equipped_slot: 'kit_weapon' }, { slot_index: 121, item_id: 'chest_iron', equipped_slot: 'kit_armor' }],
   });
   const salvage = harness(mountSalvage, db, { random: () => 0 });
-  for (const slot of [120, 121]) assert.match((await salvage('POST /api/salvage', { body: { characterId: 1, slots: [slot] } })).json.error, /slots 0 to 47/);
+  for (const slot of [120, 121]) assert.match((await salvage('POST /api/salvage', { body: { characterId: 1, slots: [slot] } })).json.error, new RegExp(`slots 0 to ${BAG_SLOTS - 1}`));
   const vault = harness(mountVault, db);
   assert.equal((await vault('POST /api/vault/deposit', { body: { characterId: 1, bagSlot: 120 } })).json.success, false);
   const all = (await vault('POST /api/vault/deposit-all', { body: { characterId: 1, kind: 'all', exceptSlots: [] } })).json;

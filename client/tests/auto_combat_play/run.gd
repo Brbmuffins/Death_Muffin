@@ -156,7 +156,8 @@ func _run() -> void:
 			rites[s["rite"]] = true
 	check(rites.size() >= 2 and rites.has("bone_needle"), "B: it rotates rites over a pack (%s)" % [str(rites.keys())])
 	var d_pack := hero.position.distance_to(pos_of(near))
-	check(d_pack <= 12.0 and d_pack >= 1.0, "B: it holds a casting distance (%.1f m)" % d_pack)
+	var cast_reach := float(DmAbilities.def("bone_needle")["range"]) + 1.0
+	check(d_pack <= cast_reach and d_pack >= 1.0, "B: it holds a casting distance (%.1f m of %.1f)" % [d_pack, cast_reach])
 	check(auto.stats["moves"] >= 0 and hero.position.distance_to(base) < 30.0, "B: stayed in the arena")
 
 	# ---- C: corpse rites
@@ -277,7 +278,8 @@ func _run() -> void:
 	var st0: Dictionary = auto.stats.duplicate()
 	await ticks(180)
 	var decisions: int = auto.stats["actions"] - int(st0["actions"])
-	check(decisions > 5 and decisions < 25, "H: decisions are throttled (%d in 3 s, ~every %.0f ms)" % [decisions, ACT_MS()])
+	var due := 3000.0 / ACT_MS()   # (one decision every ACT_MS: a quarter of that to a quarter more is throttled and working)
+	check(float(decisions) > due * 0.25 and float(decisions) < due * 1.25, "H: decisions are throttled (%d in 3 s, ~every %.0f ms)" % [decisions, ACT_MS()])
 
 	# ---- I: the Reaper plays too (a second game, her own account)
 	var arena := Vector3(0, 0, -6)   # open ground near the start (the Graves' far end has walls the walk catches on)
@@ -312,15 +314,16 @@ func _run() -> void:
 	clear_foes()
 	await ticks(3)
 	reset_hero(arena)
-	caster.p["souls"] = 20
+	var full_bag := int(caster.p["soulsMax"])
+	caster.p["souls"] = full_bag
 	for i in 7:
 		foe(arena + Vector3(cos(float(i)) * 2.4, 0, sin(float(i)) * 2.4 - 1.0))
 	check(await until(func() -> bool: return seen_rite.call("soul_burst") or seen_rite.call("reap") or seen_rite.call("harvest_spin"), 4.0), "I: a full bag among a pack is spent on a rite (%s)" % str(seen.map(func(s: Dictionary) -> String: return s["rite"])))
-	check(int(caster.p["souls"]) < 20, "I: the souls were paid (%s left)" % str(caster.p["souls"]))
+	check(int(caster.p["souls"]) < full_bag, "I: the souls were paid (%s left of %d)" % [str(caster.p["souls"]), full_bag])
 	clear_foes()
 	await ticks(3)
 	reset_hero(arena)
-	caster.p["souls"] = 8
+	caster.p["souls"] = int(DmAbilities.def("wraith_walk")["soulCost"]) * 2   # (enough to pay for it)
 	hero.p["hp"] = hero.max_hp * 0.2   # the body mirrors p each tick
 	var chaser := foe(arena + Vector3(0, 0, -2.5))
 	check(await until(func() -> bool: return seen_rite.call("wraith_walk"), 4.0), "I: low on health with a foe on her she Wraith Walks away")

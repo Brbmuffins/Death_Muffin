@@ -4,6 +4,7 @@ const assert = require('node:assert');
 const mountContracts = require('./contracts.cjs');
 const { removeFromBag, addToBag } = mountContracts;
 const rules = require('./gathering/contract-rules.cjs');
+const { BAG_SLOTS } = require('./gathering/gathering-rules.cjs');
 
 /** In-memory stand-in for the tables contracts.cjs touches, dispatched on the SQL text. */
 function fakeDb({ bag = [], levels = { woodcutting: 20, mining: 20, fishing: 20, gravedigging: 20 } } = {}) {
@@ -86,7 +87,7 @@ test('removeFromBag takes across stacks and refuses, changing nothing, when shor
 });
 
 test('addToBag stacks first, then fills free slots, and reports what did not fit', async () => {
-  const bag = Array.from({ length: 47 }, (_, i) => ({ character_id: 1, slot_index: i, item_id: `junk_${i}`, quantity: 1 }));
+  const bag = Array.from({ length: BAG_SLOTS - 1 }, (_, i) => ({ character_id: 1, slot_index: i, item_id: `junk_${i}`, quantity: 1 }));
   bag[3] = { character_id: 1, slot_index: 3, item_id: 'gem_grave_garnet', quantity: 98 };
   const db = fakeDb({ bag });
   const conn = await db.pool.getConnection();
@@ -101,7 +102,7 @@ test('delivering an order takes the items, pays once, and cannot be repeated', a
   const db = fakeDb();
   const call = harness(db);
   const board = (await call('GET /api/contracts/:characterId', { params: { characterId: '1' } })).json.data;
-  assert.equal(board.contracts.length, 3);
+  assert.equal(board.contracts.length, rules.CONTRACT_SLOTS);
   const c = board.contracts[0];
   db.inv.push({ id: 900, character_id: 1, slot_index: 0, item_id: c.itemId, quantity: c.qty + 5, equipped: 0 });
 
@@ -127,7 +128,7 @@ test('finishing all three pays the day\'s bonus exactly once, and a streak build
   const board = (await call('GET /api/contracts/:characterId', { params: { characterId: '1' } })).json.data.contracts;
   board.forEach((c, i) => db.inv.push({ id: 800 + i, character_id: 1, slot_index: i, item_id: c.itemId, quantity: c.qty, equipped: 0 }));
   let last;
-  for (let slot = 0; slot < 3; slot++) last = (await call('POST /api/contracts/deliver', { body: { characterId: 1, slot } })).json;
+  for (let slot = 0; slot < rules.CONTRACT_SLOTS; slot++) last = (await call('POST /api/contracts/deliver', { body: { characterId: 1, slot } })).json;
   assert.equal(last.success, true);
   assert.ok(last.data.paidBonus && last.data.paidBonus.gold > 0, 'the third order pays the bonus');
   assert.equal(last.data.bonus.claimed, true);
@@ -137,20 +138,28 @@ test('finishing all three pays the day\'s bonus exactly once, and a streak build
 });
 
 test('a full bag refuses a reward and nothing is lost', async () => {
-  // A fixed day: the board rotates daily, and on a day whose hard order rewards the very item it asks for (2026-10-14: Grave Garnets for a
-  // Grave Garnet) the reward stacks into the leftover and the bag is never full.
+  // The board rotates daily, and on a day whose hard order rewards the very item it asks for (Grave Garnets for a Grave Garnet) the reward
+  // stacks into the leftover and the bag is never full. So the test walks forward from a fixed day to the first day that is not like that,
+  // whatever the content makes of each day's board.
   const realNow = Date.now;
-  Date.now = () => Date.UTC(2026, 9, 13, 12);
   try {
-    const db = fakeDb();
-    const call = harness(db);
-    const board = (await call('GET /api/contracts/:characterId', { params: { characterId: '1' } })).json.data.contracts;
-    const hard = board[2];
-    assert.ok(hard.rewardItem && hard.rewardItem.itemId !== hard.itemId, 'the fixed day\'s hard order rewards another item');
-    // The bag is packed with the ordered item plus 47 other things: taking the order frees slots, but only if it is one slot...
+    let day = Date.UTC(2026, 9, 13, 12);
+    let db;
+    let call;
+    let hard;
+    for (let i = 0; i < 90; i++, day += 86_400_000) {
+      Date.now = () => day;
+      db = fakeDb();
+      call = harness(db);
+      const board = (await call('GET /api/contracts/:characterId', { params: { characterId: '1' } })).json.data.contracts;
+      hard = board[rules.CONTRACT_SLOTS - 1];
+      if (hard.rewardItem && hard.rewardItem.itemId !== hard.itemId) break;
+    }
+    assert.ok(hard.rewardItem && hard.rewardItem.itemId !== hard.itemId, 'some day within three months has a hard order that rewards another item');
+    // The bag is packed with the ordered item plus the other slots full of other things: taking the order frees slots, but only if it is one slot...
     db.inv.push({ id: 700, character_id: 1, slot_index: 0, item_id: hard.itemId, quantity: hard.qty + 1, equipped: 0 });
-    for (let i = 1; i < 48; i++) db.inv.push({ id: 700 + i, character_id: 1, slot_index: i, item_id: `junk_${i}`, quantity: 1, equipped: 0 });
-    const r = (await call('POST /api/contracts/deliver', { body: { characterId: 1, slot: 2 } })).json;
+    for (let i = 1; i < BAG_SLOTS; i++) db.inv.push({ id: 700 + i, character_id: 1, slot_index: i, item_id: `junk_${i}`, quantity: 1, equipped: 0 });
+    const r = (await call('POST /api/contracts/deliver', { body: { characterId: 1, slot: rules.CONTRACT_SLOTS - 1 } })).json;
     assert.equal(r.success, false);
     assert.match(r.error, /Make room/);
     assert.equal(db.inv.find((x) => x.id === 700).quantity, hard.qty + 1, 'the order was rolled back, not half taken');

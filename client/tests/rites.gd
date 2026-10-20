@@ -363,8 +363,17 @@ func the_catalogue() -> void:
 		check(DmRiteRegistry.module(rite) != null and DmRiteRegistry.module(rite).id == rite, "%s has its module" % rite)
 	check(DmRiteCaster.WITHERED_WIRE == DmStatusSet.IDS.find(&"withered"), "the caster reads Withered by its wire id")
 	await reset_and_wait()
-	var r := cast("flail_swing", at(2.0))
-	check(not r["ok"] and r["reason"] == "unavailable", "a rite of a kit that comes later (the Grave Warden's flail_swing) is refused `unavailable` (%s)" % r["reason"])
+	var later := ""   # a rite only a kit that is not playable yet has (read from the data: a class that becomes playable needs no edit)
+	for d in (DmCombatData.disciplines()["disciplines"] as Dictionary).values():
+		if later == "" and not DmCharacterBuild.is_playable(float(d["classIndex"])) and not families.has(String(d["family"])):
+			for r0 in DmContent.kit(String(d["family"])).get("hotbar", []):
+				if later == "" and not want.has(String(r0)) and DmAbilities.defs().has(String(r0)):
+					later = String(r0)
+	if later == "":
+		print("INFO every kit is playable: no rite of a later class to refuse")
+	else:
+		var r := cast(later, at(2.0))
+		check(not r["ok"] and r["reason"] == "unavailable", "a rite of a kit that comes later (%s) is refused `unavailable` (%s)" % [later, r["reason"]])
 	check(c.hero_id == hero.core_id and c.hero_id > 0, "the caster's hero id is the body's id in the core (%d)" % c.hero_id)
 	check(c.p["stats"]["level"] == 20.0 and String(c.body.get("discipline_id")) == "gravecaller", "the hero is a level-20 Gravecaller")
 
@@ -1637,10 +1646,11 @@ func _reaper_swings() -> void:
 	if accepted(cast("scythe_sweep", at(14.0)), "scythe_sweep"):
 		await ticks(2)   # the core reports its blows on its next tick
 		check(near(first_blow(front, m), dmg) and blows(behind, m) == 0 and blows(wide, m) == 0, "sweep: hits the enemy in front (%.1f of %.1f), not the one behind or off to the side" % [first_blow(front, m), dmg])
-		check(souls() == s0, "sweep: costs no souls")
+		check(souls() == s0 - DmAbilities.soul_cost(c.p, "scythe_sweep"), "sweep: pays its %d souls" % DmAbilities.soul_cost(c.p, "scythe_sweep"))
 	c.p["souls"] = 0
-	check(bool(cast("scythe_sweep", at(14.0))["ok"]), "sweep: swings with an empty bag")
-	check(evs("scythe_sweep", "sweep").size() == 2, "sweep: one event a swing")
+	var sweep_free := DmAbilities.soul_cost(c.p, "scythe_sweep") == 0
+	check(bool(cast("scythe_sweep", at(14.0))["ok"]) == sweep_free, "sweep: with an empty bag it %s (its cost from the data)" % ("swings" if sweep_free else "is refused"))
+	check(evs("scythe_sweep", "sweep").size() == (2 if sweep_free else 1), "sweep: one event a swing")
 	var r := cast("scythe_sweep", hero.position)
 	check(not r["ok"] and r["reason"] == "no_target", "sweep: refused with the cursor on her (%s)" % r["reason"])
 	await ticks(2)   # the last swing's blow reported
@@ -1663,17 +1673,19 @@ func _reaper_swings() -> void:
 	cast("scythe_weave", at(14.0))
 	await ticks(2)
 	check(int(c.p["weaveStroke"]) == 1 and blows(front, m) == 2, "weave: the next press is the rising cut and hits again")
-	check(souls() == 12 and evs("scythe_weave", "weave").size() == 2, "weave: free, one event a stroke")
+	check(souls() == 12 - 2 * DmAbilities.soul_cost(c.p, "scythe_weave") and evs("scythe_weave", "weave").size() == 2, "weave: pays its %d souls a stroke, one event a stroke" % DmAbilities.soul_cost(c.p, "scythe_weave"))
 	r = cast("scythe_weave", hero.position)
 	check(not r["ok"] and r["reason"] == "no_target", "weave: refused with the cursor on her (%s)" % r["reason"])
-	# Haunting Wraith: 5 souls, no cooldown; walks toward the cursor and hurts what it passes through every quarter second
+	# Haunting Wraith: its souls and cooldown from the data; walks toward the cursor and hurts what it passes through every quarter second
 	await reaper_reset()
 	var hw_in := foe("robber", at(6.0))
 	var hw_out := foe("robber", at(6.0, 9.0))
 	c.p["souls"] = 12
 	m = dmg_log.size()
 	if accepted(cast("haunting_wraith", at(14.0)), "haunting_wraith"):
-		check(souls() == 7 and c.cooldown_left("haunting_wraith") == 0.0, "wraith: pays 5 souls, no cooldown (%d left)" % souls())
+		var hw_cd := float(DmAbilities.def("haunting_wraith")["cooldownMs"])
+		check(souls() == 12 - DmAbilities.soul_cost(c.p, "haunting_wraith") and (c.cooldown_left("haunting_wraith") > 0.0) == (hw_cd > 0.0),
+			"wraith: pays its %d souls (%d left), and goes on cooldown only when its data has one (%.0f ms)" % [DmAbilities.soul_cost(c.p, "haunting_wraith"), souls(), hw_cd])
 		await secs(2.5)
 		check(blows(hw_in, m) >= 2 and blows(hw_out, m) == 0, "wraith: hurts the enemy in its path more than once, not the one off to the side (%d, %d)" % [blows(hw_in, m), blows(hw_out, m)])
 		check(evs("haunting_wraith", "rise").size() == 1 and evs("haunting_wraith", "walk").size() >= 2, "wraith: one rise event, then one event each step")
@@ -1878,8 +1890,8 @@ func _reaper_raiment() -> void:
 	var m2: Dictionary = mods_of.call(2)
 	var m4: Dictionary = mods_of.call(4)
 	var m5: Dictionary = mods_of.call(5)
-	check(not m1.has("scytheRadiusMult") and float(m2.get("scytheRadiusMult", 0.0)) == 2.0 and not m2.has("soulShield") and bool(m4.get("soulShield", false)) and not m4.has("soulScythes")
-		and int(m5.get("soulScythes", 0)) == 15, "raiment: 2 pieces double the throw, 4 add the shield, 5 the scythes (one piece nothing)")
+	check(not m1.has("scytheRadiusMult") and float(m2.get("scytheRadiusMult", 0.0)) == DmReaperSet.SCYTHE_RADIUS_MULT and not m2.has("soulShield") and bool(m4.get("soulShield", false)) and not m4.has("soulScythes")
+		and int(m5.get("soulScythes", 0)) == DmReaperSet.MAX_SCYTHES, "raiment: 2 pieces widen the throw, 4 add the shield, 5 the scythes (one piece nothing)")
 	await reaper_reset()
 	cast("scythe_throw", at(5.0))
 	var base_r := float(evs("scythe_throw", "throw")[0]["r"])

@@ -22,6 +22,7 @@ func run_suite() -> void:
 func every_room() -> void:
 	var total := 0
 	var cap := int(DmSimData.GLOBAL_ENEMY_CAP)
+	var legion: int = DmBenchmark.SIZES["full_party"][1]
 	for room: String in DmBenchmark.ROOMS:
 		var o := await short_run(room, 2, "full_party", 2.0, 6.0)
 		var r: Dictionary = o["r"]
@@ -46,7 +47,7 @@ func every_room() -> void:
 		check(w.defs.size() >= mini(3, roster.size()) and b.spawns >= cap, "%s: %d bodies of %d kinds spawned" % [room, b.spawns, w.defs.size()])
 		check(b.area_nav_on and w.hero_floor == room and b._at.x >= float(rect["x0"]) and b._at.x <= float(rect["x1"]) and b._at.z >= float(rect["z0"]) and b._at.z <= float(rect["z1"]),
 			"%s: the room's navmesh is on and the hero stands on its floor (%s)" % [room, str(b._at)])
-		check(not ph.is_empty() and float(ph["enemies"]) >= cap * 0.8 and float(ph["thralls"]) >= 31.99, "%s: 72 enemies and 32 thralls are held (%.1f, %.1f)" % [room, float(ph.get("enemies", 0.0)), float(ph.get("thralls", 0.0))])
+		check(not ph.is_empty() and float(ph["enemies"]) >= cap * 0.8 and float(ph["thralls"]) >= float(legion) - 0.01, "%s: %d enemies and %d thralls are held (%.1f, %.1f)" % [room, cap, legion, float(ph.get("enemies", 0.0)), float(ph.get("thralls", 0.0))])
 		# the boss: today's room has one, it is held awake the whole fight (the first look is before the first upkeep wakes it); a room without one runs without
 		if boss != "":
 			check(b.boss_id == boss and r["boss"]["id"] == boss and w.boss_ids.keys() == [boss], "%s: %s is the boss held (%s)" % [room, boss, str(w.boss_ids.keys())])
@@ -58,7 +59,7 @@ func every_room() -> void:
 			check(b.boss_id == "" and String(r["boss"]["id"]) == "" and b.boss_summons == 0 and w.boss_looks == 0 and not ph.has("boss_awake_pct") and outside.is_empty(), "%s: no boss, none woken, no foreign body (%s)" % [room, str(outside)])
 			check(DmBenchmark.format_text(r).contains("no boss (this room has none)") and not DmBenchmark.format_text(r).contains("Boss:"), "%s: the report says the room has none" % room)
 		var text := DmBenchmark.format_text(r)
-		check(text.contains("Setup: %s, Gravecaller, Full Party, Quick (custom" % DmBenchmark.room_name(room)) and text.contains("Budgets (ROADMAP") and text.contains("Combat core per tick"), "%s: the report names the room and has its budget section" % room)
+		check(text.contains("Setup: %s, %s, %s, Quick (custom" % [DmBenchmark.room_name(room), DmBenchmark.class_name_of(2), DmBenchmark.SIZE_NAMES["full_party"]]) and text.contains("Budgets (ROADMAP") and text.contains("Combat core per tick"), "%s: the report names the room and has its budget section" % room)
 		check(text.contains("Process ms (avg)") and text.contains("Physics ms (avg)") and text.contains("Slowest tick ms") and text.contains("Process ms (Godot peak)") and text.contains("Physics ms (Godot peak)") and text.contains("\nFrame ")
 			and float(ph["physics_avg_ms"]) > 0.0 and float(ph["process_avg_ms"]) > 0.0 and float(ph["physics_worst_ms"]) >= float(ph["physics_tick_ms"]),
 			"%s: the report has the frame's physics and process averages beside Godot's peaks (physics %.2f, process %.2f ms)" % [room, float(ph.get("physics_avg_ms", 0.0)), float(ph.get("process_avg_ms", 0.0))])

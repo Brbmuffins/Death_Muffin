@@ -78,24 +78,24 @@ func _run() -> void:
 func _budget() -> void:
 	var b := DmFloatBudget.new()
 	var ok := 0
-	for i in 40:
+	for i in int(DmFloatBudget.CLASS_CAP["thrall"]) + 20:   # (more tries than the cap)
 		if b.allow("thrall", 1000.0):
 			ok += 1
 	check(ok == DmFloatBudget.CLASS_CAP["thrall"], "thrall numbers are capped at %d alive (got %d)" % [DmFloatBudget.CLASS_CAP["thrall"], ok])
 	check(b.allow("thrall", 1000.0 + DmFloatBudget.LIFE_MS["thrall"] + 1.0), "room again once they have faded")
 	b = DmFloatBudget.new()
 	ok = 0
-	for i in 40:
+	for i in int(DmFloatBudget.CLASS_CAP["dot"]) + 20:
 		if b.allow("dot", 0.0):
 			ok += 1
 	check(ok == DmFloatBudget.CLASS_CAP["dot"], "dot numbers are capped at %d alive (got %d)" % [DmFloatBudget.CLASS_CAP["dot"], ok])
 	b = DmFloatBudget.new()
-	for i in 30:
+	for i in int(DmFloatBudget.CLASS_CAP["hit"]) + 2:
 		b.allow("hit", 0.0)
 	check(not b.allow("hit", 0.0) and b.allow("crit", 0.0), "a full hit class still has room for a crit")
 	b = DmFloatBudget.new()
 	var shown := 0
-	for i in 60:
+	for i in int(DmFloatBudget.TOTAL_CAP) + 20:
 		for k in ["hit", "dot", "thrall", "crit"]:
 			if b.allow(k, 0.0):
 				shown += 1
@@ -194,10 +194,10 @@ func _game() -> void:
 	vm = g.ui_host.hud_state()
 	check(not corpse_slot.call(), "a corpse within reach clears the flag")
 	g.corpses.consume(cpse, 1, "consumed")
-	corpse(b.global_position + Vector3(40.0, 0, 0))
+	corpse(b.global_position + Vector3(DmNextHudVm.CORPSE_REACH * 3.0, 0, 0))
 	g.ui_host.vm._refresh_needs(b)   # the needs are read once per refresh, not at every state build
 	vm = g.ui_host.hud_state()
-	check(corpse_slot.call(), "a corpse 40 m away does not count")
+	check(corpse_slot.call(), "a corpse far past the corpse rites' reach does not count")
 
 	# the legion: hurt pips
 	clear_world()
@@ -209,13 +209,14 @@ func _game() -> void:
 	vm = g.ui_host.hud_state()
 	check(int(vm["thrall_hurt"]) == 0, "a healthy legion shows no red pips (%d)" % int(vm["thrall_hurt"]))
 	var max0 := float(legion().info(ts[0])["max_hp"])
-	core.set_thrall_stats(ts[0], {"hp": max0 * 0.2})
+	var low := DmNextHudVm.LOW_HP_ENTER
+	core.set_thrall_stats(ts[0], {"hp": max0 * low * 0.5})
 	await frames(3)
 	vm = g.ui_host.hud_state()
-	check(int(vm["thrall_hurt"]) == 1, "a thrall at 20 %% health turns one pip red (%d)" % int(vm["thrall_hurt"]))
-	core.set_thrall_stats(ts[0], {"hp": max0 * 0.8})   # a Rally heal
+	check(int(vm["thrall_hurt"]) == 1, "a thrall at half the hurt line turns one pip red (%d)" % int(vm["thrall_hurt"]))
+	core.set_thrall_stats(ts[0], {"hp": max0 * (low + (1.0 - low) * 0.5)})   # a Rally heal
 	await frames(3)
-	check(int(g.ui_host.hud_state()["thrall_hurt"]) == 0, "healed past a third: the pip goes back")
+	check(int(g.ui_host.hud_state()["thrall_hurt"]) == 0, "healed past the hurt line: the pip goes back")
 	# the HUD part: Diamonds paint a state of 2 red
 	var d := DmHudParts.Diamonds.new()
 	d.set_state([2, 1, false])

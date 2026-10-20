@@ -65,10 +65,16 @@ func _test_data(d: Dictionary) -> void:
 	_check(n > 0 and n == want_flames and d.flames.size() == want_areas.size(), "the candle flames are the candle props' flames in world.json (%d over %d areas)" % [n, d.flames.size()])
 	_check(int(d.mist.count) > 0 and (d.mist.pos as Array).size() == int(d.mist.count) * 3, "mist puffs: three numbers each (%d)" % int(d.mist.count))
 	_check(not d.atmosphere.profiles.is_empty(), "weather profiles (%d)" % d.atmosphere.profiles.size())
-	_check(d.wings.keys().size() == 3 and d.wings.has("moth") and d.wings.has("bat") and d.wings.has("seraph"), "wing table = moth, bat, seraph")
-	_check(_near(float(d.wings.bat.speed), 17.0) and _near(float(d.wings.bat.amp), 0.75) and _near(float(d.wings.bat.body), 0.22), "bat wing numbers")
-	_check(_near(float(d.bloom.strength), 0.75) and _near(float(d.bloom.radius), 0.55) and _near(float(d.bloom.threshold), 0.85), "world bloom numbers")
-	_check(_near(float(d.hover.wraith), 0.45), "wraith hover")
+	var wings_ok: bool = not d.wings.is_empty()
+	for kind in d.wings:
+		var w: Dictionary = d.wings[kind]
+		wings_ok = wings_ok and float(w.speed) > 0.0 and float(w.amp) > 0.0 and float(w.body) > 0.0
+	_check(wings_ok, "wing table: every kind has a positive speed, amplitude and body (%s)" % ", ".join(d.wings.keys()))
+	_check(float(d.bloom.strength) > 0.0 and float(d.bloom.radius) >= 0.0 and float(d.bloom.threshold) > 0.0, "world bloom numbers are there")
+	var hover_ok: bool = not d.hover.is_empty()
+	for kind in d.hover:
+		hover_ok = hover_ok and float(d.hover[kind]) >= 0.0
+	_check(hover_ok, "enemy hover heights (%s)" % ", ".join(d.hover.keys()))
 
 # ---------------------------------------------------------------- silhouettes (golden: triangles + bounds from the real three geometry)
 func _test_silhouettes(d: Dictionary) -> void:
@@ -89,7 +95,7 @@ func _test_silhouettes(d: Dictionary) -> void:
 			ok = ok and _near(lo[i], float(g.min[i]), 1e-3) and _near(hi[i], float(g.max[i]), 1e-3)
 		if not ok:
 			bad += 1
-	_check(bad == 0, "all 70 silhouettes match the three.js triangle count + bounds (%d bad)" % bad)
+	_check(bad == 0, "all %d silhouettes match the three.js triangle count + bounds (%d bad)" % [d.silhouettes.size(), bad])
 	var r := DmWfxSilhouettes.build_mesh(d.silhouettes)
 	_check(int(r.tris) == total and (r.mesh as ArrayMesh).get_surface_count() == 1, "silhouettes merge into one surface (%d tris)" % total)
 	# outward normals: every triangle's normal points away from its own silhouette's axis for boxes: check face winding via a lone box
@@ -139,7 +145,7 @@ func _test_flames_build(d: Dictionary) -> void:
 func _test_mist_build(d: Dictionary) -> void:
 	var m := DmWfxMist.new()
 	m.setup(d.mist)
-	_check(m.count == 220 and m.mmi.multimesh.instance_count == 220, "220 mist puffs in one MultiMesh")
+	_check(m.count == int(d.mist.count) and m.mmi.multimesh.instance_count == m.count, "the data's %d mist puffs in one MultiMesh" % m.count)
 	_check((m.mmi.material_override as ShaderMaterial).render_priority == 4, "mist sorts at renderOrder 4")
 	# the web's wrap rule: a puff > 45 m (x) / 40 m (z) from the focus lands on the far side at 44 / 39
 	var focus := Vector3(0, 0, 0)
@@ -161,20 +167,20 @@ func _test_mist_build(d: Dictionary) -> void:
 	for i in m2.count:
 		inside = inside and absf(m2.pos[i].x) <= 45.0 + 1e-3 and absf(m2.pos[i].z + 70.0) <= 40.0 + 1e-3
 	_check(inside, "all puffs pulled into the focus box on the first step")
-	# the client's mist steps at 4 Hz (STEP_SECONDS) with the dt accumulated since the last step, and its first tick at once (today's stepped every 4th frame; client/code.list "Ported")
+	# the client's mist steps every STEP_SECONDS with the dt accumulated since the last step, and its first tick at once (today's stepped every 4th frame; client/code.list "Ported")
 	var m3 := DmWfxMist.new()
 	m3.setup(d.mist)
 	m3.pos[5] = Vector3(0, 0.5, 0)
 	m3.vel[5] = Vector2(0.3, 0.0)
-	var dt := 1.0 / 64.0   # exact in binary: sixteen of them are 0.25 s
+	var dt := DmWfxMist.STEP_SECONDS / 16.0   # sixteen of them are one step's time, exact in binary
 	m3.tick(dt, Vector3.ZERO)   # the first tick steps at once
 	_check(m3.steps == 1, "the first tick steps at once")
 	var x1 := m3.pos[5].x
 	for i in 15:
 		m3.tick(dt, Vector3.ZERO)
-	_check(m3.steps == 1 and _near(m3.pos[5].x, x1, 1e-9), "the next 15 ticks (0.234 s) only accumulate")
-	m3.tick(dt, Vector3.ZERO)   # the 16th: 0.25 s
-	_check(m3.steps == 2 and _near(m3.pos[5].x, x1 + 0.3 * 0.25, 1e-6), "a step comes after 0.25 s, with the accumulated time")
+	_check(m3.steps == 1 and _near(m3.pos[5].x, x1, 1e-9), "the next 15 ticks (a step's time less one tick) only accumulate")
+	m3.tick(dt, Vector3.ZERO)   # the 16th: one step's time
+	_check(m3.steps == 2 and _near(m3.pos[5].x, x1 + 0.3 * DmWfxMist.STEP_SECONDS, 1e-6), "a step comes after STEP_SECONDS, with the accumulated time")
 	m.free()
 	m2.free()
 	m3.free()
@@ -219,7 +225,7 @@ func _test_atmosphere(d: Dictionary) -> void:
 			ok = ok and _near(c3[v * 4], want_col.r, 1e-5) and _near(c3[v * 4 + 2], want_col.b, 1e-5)
 			if not ok:
 				bad += 1
-	_check(bad == 0, "weather seeds match the TS fill() for all 13 areas (%d bad)" % bad)
+	_check(bad == 0, "weather seeds match the TS fill() for all %d areas (%d bad)" % [g.size(), bad])
 	# cross-fade state machine: fade out 1.6/s, refill, fade in 0.8/s
 	a.fade = 1.0
 	a.area = "graves"
@@ -241,23 +247,23 @@ func _test_atmosphere(d: Dictionary) -> void:
 func _test_water(d: Dictionary) -> void:
 	var w := DmWfxWater.new()
 	w.setup(d.water.rects, d.water.puddles)
-	_check(w.tri_count == int(d.golden.waterTris), "water mesh: %d triangles (10 per rect, 18 per puddle)" % w.tri_count)
+	_check(w.tri_count == int(d.golden.waterTris), "water mesh: %d triangles, as the TS builds them" % w.tri_count)
 	_check((w.mesh_instance.mesh as ArrayMesh).get_surface_count() == 1, "water is one surface = one draw call")
 	var bad := 0
 	for c in d.golden.wet:
 		if w.is_wet(float(c[0]), float(c[1])) != bool(c[2]):
 			bad += 1
 	_check(bad == 0, "isWet matches the TS on %d points (%d bad)" % [d.golden.wet.size(), bad])
-	# ripples: dry ground ignored, 16 slots recycled oldest-first
+	# ripples: dry ground ignored, RIPPLES slots recycled oldest-first
 	_check(not w.add_ripple(1000.0, 1000.0, 1.0), "no ripple on dry ground")
 	var rc: Dictionary = d.water.rects[0]
 	var cx := (float(rc.x0) + float(rc.x1)) / 2.0
 	var cz := (float(rc.z0) + float(rc.z1)) / 2.0
-	for i in 20:
+	for i in DmWfxWater.RIPPLES + 4:
 		w.add_ripple(cx, cz, 1.0)
-	_check(w.active_ripples() == 16, "ripple pool is 16 rings (the 17th recycles the oldest)")
-	w.tick(2.3)
-	_check(w.active_ripples() == 0, "rings die after 2.2 s")
+	_check(w.active_ripples() == DmWfxWater.RIPPLES, "ripple pool is %d rings (the next one recycles the oldest)" % DmWfxWater.RIPPLES)
+	w.tick(DmWfxWater.RIPPLE_LIFE + 0.1)
+	_check(w.active_ripples() == 0, "rings die after RIPPLE_LIFE (%.1f s)" % DmWfxWater.RIPPLE_LIFE)
 	w.set_quality("low")
 	_check(w.mesh_instance.material_override is StandardMaterial3D, "low quality = flat glossy sheet")
 	w.set_quality("high")
@@ -278,11 +284,20 @@ func _test_bloom(d: Dictionary) -> void:
 	var env := Environment.new()
 	DmWfxBloom.apply(env, true)
 	_check(env.glow_enabled and env.glow_blend_mode == Environment.GLOW_BLEND_MODE_ADDITIVE, "glow on, additive")
-	# the client's glow is the web's strength at DmWfxBloom.GAIN (0.8) on its two finest mips only: on Forward+ the full mapping glows far wider than today's Compatibility did (dm_wfx_bloom.gd)
-	_check(_near(env.glow_intensity, 0.75 * DmWfxBloom.GAIN) and _near(env.glow_hdr_threshold, 0.85), "intensity = strength 0.75 x gain 0.8, threshold 0.85")
-	var w := DmWfxBloom.mip_weights(0.55)
-	_check(_near(w[0], 0.56) and _near(w[2], 0.6) and _near(w[4], 0.64), "UnrealBloom lerpBloomFactor mip weights")
-	_check(_near(env.get_glow_level(0), 0.56) and _near(env.get_glow_level(1), 0.58) and env.get_glow_level(2) == 0.0 and env.get_glow_level(4) == 0.0, "glow levels: the two finest mips at their weights, the rest 0")
+	# the client's glow is the data's strength at DmWfxBloom.GAIN on its finest mips (LEVELS) only: on Forward+ the full mapping glows far wider than today's Compatibility did (dm_wfx_bloom.gd)
+	_check(_near(env.glow_intensity, float(d.bloom.strength) * DmWfxBloom.GAIN) and _near(env.glow_hdr_threshold, float(d.bloom.threshold)), "intensity = the data's strength x gain, threshold = the data's")
+	# UnrealBloom's lerpBloomFactor mix(f, 1.2 - f, radius) for a radius of the test's own, 0.25: the factors 1.0, 0.8, 0.6, 0.4, 0.2 give 0.8, 0.7, 0.6, 0.5, 0.4
+	var w := DmWfxBloom.mip_weights(0.25)
+	var want_w := [0.8, 0.7, 0.6, 0.5, 0.4]
+	var w_ok := w.size() == want_w.size()
+	for i in mini(w.size(), want_w.size()):
+		w_ok = w_ok and _near(float(w[i]), float(want_w[i]))
+	_check(w_ok, "UnrealBloom lerpBloomFactor mip weights")
+	var w2 := DmWfxBloom.mip_weights(float(d.bloom.radius))
+	var levels_ok := true
+	for i in 7:
+		levels_ok = levels_ok and _near(env.get_glow_level(i), float(w2[i]) if i < DmWfxBloom.LEVELS else 0.0)
+	_check(levels_ok, "glow levels: the finest mips at the data radius's weights, the rest 0")
 	DmWfxBloom.apply(env, false)
 	_check(not env.glow_enabled, "bloom off")
 

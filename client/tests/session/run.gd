@@ -141,11 +141,11 @@ func _part_a() -> void:
 					return false
 		return true
 	ok(await wait_for(converged), "A: clients converge on host positions")
-	# speed clamp: 10 units in <= ~2s at 5 u/s means not instant
+	# speed clamp: the far target is 36 units off, half a second at the session's speed covers a small part of it, not an instant jump
 	var p0 := hs.get_body(id1).position
 	(cs[0][0] as DmSession).request_move_to(Vector3(-30, 0, 2))
 	await create_timer(0.5).timeout
-	ok(hs.get_body(id1).position.distance_to(p0) < 5.0 * 0.5 + 0.3, "A: host clamps speed")
+	ok(hs.get_body(id1).position.distance_to(p0) < DmSession.MOVE_SPEED * 0.5 + 0.3, "A: host clamps speed")
 	(cs[0][0] as DmSession).request_move_to(Vector3(1e9, 0, 0))
 	(cs[0][0] as DmSession).request_move_to(Vector3(INF, 0, 0))
 	ok(await wait_for(func(): return hs.rejected_intents >= 1), "A: non-finite intent rejected")
@@ -158,9 +158,9 @@ func _part_a() -> void:
 	# dir intent + ttl
 	var pd := hs.get_body(id2).position
 	(cs[1][0] as DmSession).request_move_dir(Vector3(1, 0, 0))
-	await create_timer(0.6).timeout
+	await create_timer(DmSessionBody.DIR_TTL + 0.35).timeout   # the intent's life and a little longer: it ran its life and stopped, not the whole wait
 	var moved := hs.get_body(id2).position.x - pd.x
-	ok(moved > 0.1 and moved < 1.5, "A: dir intent moves then expires without resend (moved %.2f)" % moved)
+	ok(moved > 0.1 and moved < DmSession.MOVE_SPEED * (DmSessionBody.DIR_TTL + 0.15), "A: dir intent moves then expires without resend (moved %.2f)" % moved)
 	# full session: 5th player
 	var c4 := _mk("C4")
 	_client(c4[0])

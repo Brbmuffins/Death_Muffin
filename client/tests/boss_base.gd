@@ -17,6 +17,11 @@ extends SceneTree
 const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://boss_test"
 const DT := 1.0 / 60.0
+## The brains' rules that are in their code and not in the boss data (sim/bosses/boss_brain.gd): a boss enters phase 2 at 60 % of its health and phase 3 at 30 % (`update`), what it calls climbs out at 0.85 of
+## the arena's radius (`_rim`), and its blow on a thrall is 20 before the level and difficulty (`_hurt_thralls`). Every suite takes them from here, so a change is one edit.
+const PHASE_AT := [0.6, 0.3]
+const RIM := 0.85
+const THRALL_BLOW := 20.0
 
 
 class ErrorLog:
@@ -280,9 +285,9 @@ func site() -> Vector3:
 	return g.bosses.site_pos(boss_id)
 
 
-## 2 m in front of the summoning site (inside the 4 m summon range).
+## Half the summon range in front of the summoning site (inside the range).
 func near_site() -> Vector3:
-	return site() + Vector3(0.0, 0.0, 2.0)
+	return site() + Vector3(0.0, 0.0, DmBossHost.SUMMON_RANGE * 0.5)
 
 
 func member() -> DmRewardsMember:
@@ -294,8 +299,18 @@ func set_shards(n: int) -> void:
 	member().prog.local["shards"] = n
 
 
+## The level the awake boss's brain fights at.
+func level() -> float:
+	return float(boss.brain.state["level"])
+
+
+## The level an area's bodies have for the hero of this suite (the area's own, or the hero's when the area scales to him): what the boss's brain is told.
+func area_level() -> int:
+	return int(DmEnemyStats.area_level(area(), g.director.scaling_levels([hb]), 0.0))
+
+
 func dmg_scale() -> float:
-	return (1.0 + 0.15 * (float(boss.brain.state["level"]) - 1.0)) * float(DmContent.get_export("difficulty", "DIFFICULTIES")["medium"]["enemyDamageMult"])
+	return DmEnemyStats.damage_scale(level()) * float(DmContent.difficulty(String(g.bosses.difficulty))["enemyDamageMult"])
 
 
 ## The scaled damage of a base number (DmBossBrain._dmg).
@@ -448,6 +463,16 @@ func wound(frac: float) -> void:
 	step(0.1)
 
 
+## The share of its max hp the boss is dropped to to enter phase `n` (2 or 3): just under the phase's threshold.
+func just_into(n: int) -> float:
+	return float(PHASE_AT[n - 2]) - 0.01
+
+
+## Drop the boss into phase `n` and run one tick so the phase change fires.
+func wound_into(n: int) -> void:
+	wound(just_into(n))
+
+
 ## A thrall of the hero's, rising: 0.9 s before it acts. `hold` stuns it for good so it stands where it is (it still falls to blows and still is a target).
 func thrall(at: Vector3, hp := 4000.0, damage := 40.0) -> int:
 	var t := int(core.raise_thrall({"kind": "warrior", "hp": hp, "maxHp": hp, "damage": damage, "attackInterval": 1.0, "range": 1.3, "speed": 5.6, "empowered": false, "champion": false},
@@ -475,18 +500,20 @@ func hits_of(rite: String, mark := 0) -> Array:
 	return out
 
 
-## The awaken numbers: hp = baseHp x (1 + 0.22 (level - 1)) x the difficulty's health.
+## The awaken numbers: hp = baseHp x the level's health scale x the difficulty's health.
 func awaken_hp_ok(base_hp: float) -> bool:
-	var diff: Dictionary = DmContent.get_export("difficulty", "DIFFICULTIES")["medium"]
-	var want: float = base_hp * (1.0 + 0.22 * (float(boss.brain.state["level"]) - 1.0)) * float(diff["enemyHpMult"])
+	var diff: Dictionary = DmContent.difficulty(String(g.bosses.difficulty))
+	var want: float = base_hp * DmEnemyStats.hp_scale(level()) * float(diff["enemyHpMult"])
 	return near(boss.max_hp, want) and boss.hp == boss.max_hp
 
 
 # ------------------------------------------------------------------------------------------------------------------------ summoning
 
-## The hub's prompt at the site, the refusals and the boss's price, key E, busy, the awaken numbers and the boss's registration with the core. `cost` is its soul shards, `base_hp` its baseHp.
+## The hub's prompt at the site, the refusals and the boss's price, key E, busy, the awaken numbers and the boss's registration with the core. The price is the boss data's `shards`, the health its `baseHp`.
 ## Leaves nothing awake.
-func t_summon(cost: int, base_hp: float) -> void:
+func t_summon() -> void:
+	var cost := int(def()["shards"])
+	var base_hp := float(def()["baseHp"])
 	await ticks(2)
 	var ch: DmChapterhouse = g.chapterhouse
 	var label := String(def()["summonLabel"])
@@ -498,7 +525,7 @@ func t_summon(cost: int, base_hp: float) -> void:
 	await ticks(45)   # past the host's 0.5 s tick
 	check(g.area_of(me) == area(), "the hero is in the %s" % area())
 	var s := site()
-	check(s != Vector3.INF and g.bosses.site_near(hb.position, 4.0) == boss_id, "at %s the site is %s's (%s)" % [label, boss_id, str(s)])
+	check(s != Vector3.INF and g.bosses.site_near(hb.position, DmBossHost.SUMMON_RANGE) == boss_id, "at %s the site is %s's (%s)" % [label, boss_id, str(s)])
 	# the hub's prompt: nothing fades, it reads the price; away from the site there is none; the hover prompt asks for a click
 	ch._update_prompt(hb)
 	check(ch.prompt_text == "<kbd>E</kbd> Summon %s · %d shards" % [def()["name"], cost], "at the site the hub prompt reads '%s'" % str(ch.prompt_text))
@@ -525,7 +552,8 @@ func t_summon(cost: int, base_hp: float) -> void:
 	var why_text := g.bosses.why_text("shards", boss_id, me)
 	check(why_text.contains(label) and why_text.contains("(you have %d)" % (cost - 1)), "the refusal names the site and the count (%s)" % why_text)
 	# key E at the site wakes it
-	set_shards(cost + 2)
+	var spare := 2   # (the shards the test gives beyond the price: these are left)
+	set_shards(cost + spare)
 	var summoned: Array = []
 	g.bosses.summoned.connect(func(b: String, p: int) -> void: summoned.append([b, p]))
 	var spawned: Array = []
@@ -540,8 +568,8 @@ func t_summon(cost: int, base_hp: float) -> void:
 		return
 	boss.set_physics_process(false)
 	boss.world.refresh()
-	check(int(prog.local["shards"]) == 2 and summoned == [[boss_id, me]] and spawned.size() == 1, "the summon took its %d soul shards (%d left) and `summoned` and `boss_spawned` fired once" % [cost, int(prog.local["shards"])])
-	check(g.bosses.try_summon(me, boss_id) == "busy" and int(prog.local["shards"]) == 2, "a second summon while it is awake is refused (busy), no shards taken")
+	check(int(prog.local["shards"]) == spare and summoned == [[boss_id, me]] and spawned.size() == 1, "the summon took its %d soul shards (%d left) and `summoned` and `boss_spawned` fired once" % [cost, int(prog.local["shards"])])
+	check(g.bosses.try_summon(me, boss_id) == "busy" and int(prog.local["shards"]) == spare, "a second summon while it is awake is refused (busy), no shards taken")
 	check(boss.is_in_group(&"dm_boss") and boss.get_parent().get_parent() == g.bosses, "the body is a DmBoss under the Bosses host")
 	ch._update_prompt(hb)
 	check(ch.prompt_text == null, "the prompt hides while a boss is awake")
@@ -552,7 +580,7 @@ func t_summon(cost: int, base_hp: float) -> void:
 	check(boss.view != null and boss.view.boss_id == boss_id and boss.view.slug == String(def()["modelSlug"]), "the current client's DmBossView with the model %s" % str(def()["modelSlug"]))
 	check(boss.core_id > 0 and host.boss_for(boss.core_id) == boss, "the body registered with the core's host as an external (id %d)" % boss.core_id)
 	var info: Dictionary = host.enemy_info(boss.core_id)
-	check(not info.is_empty() and bool(info["boss"]) and info["def"] == "boss_" + boss_id and near(float(info["radius"]), 1.6) and near(float(info["hp"]), boss.hp) and info["area"] == area(), "the host's record of it: boss, def, radius 1.6, health, area")
+	check(not info.is_empty() and bool(info["boss"]) and info["def"] == "boss_" + boss_id and near(float(info["radius"]), DmSimConsts.BOSS_RADIUS) and near(float(info["hp"]), boss.hp) and info["area"] == area(), "the host's record of it: boss, def, radius %.1f, health, area" % DmSimConsts.BOSS_RADIUS)
 	check(core.enemy_info(boss.core_id).is_empty(), "the core's own table has no enemy of that id")
 	await ticks(2)
 	check(boss.is_hittable() and host.enemy_alive(boss.core_id), "it is alive for the queries")
@@ -576,7 +604,7 @@ func before_thralls() -> void:
 	pass
 
 
-## A thrall picks the boss by the edge rule (its centre is farther than the 10 m engage range, its edge is not), its blows come back as EV_THRALL_HIT_EXTERNAL naming the thrall, the boss
+## A thrall picks the boss by the edge rule (its centre is farther than the legion's engage range, its edge is not), its blows come back as EV_THRALL_HIT_EXTERNAL naming the thrall, the boss
 ## and its kind, each one goes to the brain with the owner's credit, and the boss's sweep reaches the thrall by `core.damage` on its id. Leaves the boss free of the engine again.
 func t_thralls() -> void:
 	clear_logs()
@@ -586,11 +614,13 @@ func t_thralls() -> void:
 	var bp := boss.global_position
 	put(bp + toward * 8.0)
 	await ticks(2)
-	var t1 := thrall(bp + toward * 11.2)
+	var engage := float(core.tuning()["ENGAGE_RANGE"])
+	var away := engage + 0.75 * DmSimConsts.BOSS_RADIUS   # past the engage range from its centre, inside it from its edge
+	var t1 := thrall(bp + toward * away)
 	core.set_thrall_stats(t1, {"hp": 4000.0})
 	var hp0 := boss.hp
 	var engaged := await until(func() -> bool: return int(core.thrall_info(t1)["target"]) == boss.core_id, 4.0)
-	check(engaged, "the thrall picks it though its centre is 11.2 m away: the boss rule counts from the edge")
+	check(engaged, "the thrall picks it though its centre is %.1f m away (engage range %.0f m): the boss rule counts from the edge" % [away, engage])
 	core.set_thrall_pos(t1, Vector2(bp.x + toward.x * 2.6, bp.z + toward.z * 2.6))   # next to it: the walk round a wall of some arenas is the navmesh's business, not this part's
 	var hit := await until(func() -> bool: return thrall_hits.size() >= 3, 12.0)
 	check(hit and thrall_hits.all(func(h: Array) -> bool: return h[0] == t1 and h[1] == boss.core_id and h[2] == "warrior"), "its blows come back as EV_THRALL_HIT_EXTERNAL naming the thrall, the boss and its kind (%d)" % thrall_hits.size())
@@ -613,13 +643,15 @@ func t_rites() -> void:
 	var bp := boss.global_position
 	await ticks(2)
 	put(bp + Vector3(8.0, 0.0, 0.0))
-	check(g.enemies_in_radius(bp + Vector3(5.0, 0.0, 0.0), 3.4).has(bid) and not g.enemies_in_radius(bp + Vector3(5.0, 0.0, 0.0), 3.39).has(bid), "the query measures to its edge: 5 m away, radius 3.4 reaches it (5 - 1.6) and 3.39 does not")
+	var br := DmSimConsts.BOSS_RADIUS
+	check(g.enemies_in_radius(bp + Vector3(5.0, 0.0, 0.0), 5.0 - br).has(bid) and not g.enemies_in_radius(bp + Vector3(5.0, 0.0, 0.0), 5.0 - br - 0.01).has(bid), "the query measures to its edge: 5 m away, radius %.2f reaches it (5 - %.1f) and %.2f does not" % [5.0 - br, br, 5.0 - br - 0.01])
 	var foes := host.foes_in_radius(bp, 2.0)
 	check(foes.size() >= 1 and foes[foes.size() - 1].boss and foes[foes.size() - 1].id == bid and foes[foes.size() - 1].def == "boss_" + boss_id, "as a DmFoe snapshot: the boss, its def")
 	c.p["resource"]["value"] = 50.0
-	put(bp + Vector3(12.0, 0.0, 0.0))
+	var reach := float(DmAbilities.def("bone_needle")["range"]) + br   # the needle's range counts the boss's radius
+	put(bp + Vector3(reach - 0.4, 0.0, 0.0))
 	var r := cast("bone_needle", bp, bid)
-	check(bool(r["ok"]), "Bone Needle at 12 m is accepted (range 11 + its radius 1.6): %s" % r["reason"])
+	check(bool(r["ok"]), "Bone Needle at %.1f m is accepted (range %.0f + its radius %.1f): %s" % [reach - 0.4, float(DmAbilities.def("bone_needle")["range"]), br, r["reason"]])
 	var hp0 := boss.hp
 	var nc := DmAbilities.needle_cast(sp_now(), c.p["loadout"], "", 0, 0.5)
 	var hit := DmAbilities.needle_hit(nc["dmg"], 0.5)
@@ -627,11 +659,11 @@ func t_rites() -> void:
 	check(near(hp0 - boss.hp, float(hit["amount"])), "the needle took %.3f from it (the formula %.3f)" % [hp0 - boss.hp, float(hit["amount"])])
 	var h := hits_of("bone_needle")
 	check(h.size() == 1 and h[0][1] == bid and not bool(h[0][4]) and boss.brain.last_hit_by == str(me), "one hit credited to the hero on its id, not a kill; the brain's credit is the hero")
-	put(bp + Vector3(13.0, 0.0, 0.0))
+	put(bp + Vector3(reach + 0.4, 0.0, 0.0))
 	r = cast("bone_needle", bp, bid)
-	check(not bool(r["ok"]) and r["reason"] == "range", "at 13 m it is refused `range` (%s)" % r["reason"])
+	check(not bool(r["ok"]) and r["reason"] == "range", "at %.1f m it is refused `range` (%s)" % [reach + 0.4, r["reason"]])
 	boss.stun(5.0)
-	check(boss.brain.stagger_t > 0.0 and boss.brain.stagger_t <= DmBoss.STUN_CAP_S, "a stun staggers it at most 0.5 s (%.2f)" % boss.brain.stagger_t)
+	check(boss.brain.stagger_t > 0.0 and boss.brain.stagger_t <= DmBoss.STUN_CAP_S, "a stun staggers it at most %.1f s (%.2f)" % [DmBoss.STUN_CAP_S, boss.brain.stagger_t])
 	var st0: float = boss.brain.stagger_t
 	boss.stun(5.0)
 	check(near(boss.brain.stagger_t, st0), "and has a cooldown (no stun-lock)")

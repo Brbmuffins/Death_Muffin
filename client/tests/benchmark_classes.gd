@@ -31,7 +31,7 @@ func every_class() -> void:
 		var name_ := DmBenchmark.class_name_of(disc)
 		check(not r["cancelled"] and r["setup"]["discipline"] == disc and w.family == want, "%s: the short run completes with a %s hero (%s)" % [name_, want, w.family])
 		check(w.casts > 0 and (r["phases"] as Array).size() == 1 and int(r["phases"][0]["frames"]) > 0, "%s: auto combat cast %d times" % [name_, w.casts])
-		check(DmBenchmark.format_text(r).contains("Setup: The Hollow Graves, %s, Light, Quick" % name_), "%s: the report names the class" % name_)
+		check(DmBenchmark.format_text(r).contains("Setup: %s, %s, %s, Quick" % [DmBenchmark.room_name("graves"), name_, DmBenchmark.SIZE_NAMES["light"]]), "%s: the report names the class" % name_)
 		print("INFO bench class %s: %d casts, %d kills, avg %.2f ms, run took %.1f s" % [name_, w.casts, int(r["kills"]), float(r["phases"][0]["avg_ms"]) if not (r["phases"] as Array).is_empty() else 0.0, float(o["ms"]) / 1000.0])
 		(o["b"] as DmBenchmark).queue_free()
 		await process_frame
@@ -58,7 +58,7 @@ func screen_and_upload() -> void:
 	s.measure_s = 2.0
 	s.baked_dir = scratch
 	s.setup = {"room": "graves", "discipline": 2, "size": "light", "length": "quick"}
-	s.graphics_preset = "low" if DmBenchmark.user_settings()["graphics"] != "low" else "medium"   # the run's preset (--bench-preset=), not the player's
+	s.graphics_preset = DmGraphicsPreset.IDS[0] if DmBenchmark.user_settings()["graphics"] != DmGraphicsPreset.IDS[0] else DmGraphicsPreset.IDS[1]   # the run's preset (--bench-preset=), not the player's
 	s.api = test_api
 	var closed := [false]
 	s.closed.connect(func() -> void: closed[0] = true)

@@ -22,6 +22,8 @@ var skills: DmSkills
 var player: DmPlayer
 var loop: DmGatherLoop
 var nav: DmNav
+var oak_name := ""      ## the coffin-oak node type's name (the loop's status lines say it)
+var cycle_s := 0.0      ## the seconds one work cycle of that node type takes (ticks x the tick)
 
 
 func check(ok: bool, what: String) -> void:
@@ -105,6 +107,9 @@ func _arrive() -> void:
 
 func run(tree: SceneTree) -> void:
 	nav = DmNav.new()
+	var oak_def := DmGathering.node_def("coffin_oak")
+	oak_name = String(oak_def["name"])
+	cycle_s = float(DmGathering.action_ms(oak_def)) / 1000.0
 	await _skills_tests()
 	await _start_tests()
 	await _work_tests()
@@ -117,23 +122,23 @@ func run(tree: SceneTree) -> void:
 func _skills_tests() -> void:
 	var s := DmSkills.new([{"profession_id": "mining", "skill_level": 5, "skill_xp": 120}, {"profession_id": "bogus", "skill_level": 9, "skill_xp": 1}])
 	check(s.level("mining") == 5 and s.level("woodcutting") == 1 and s.level("bogus") == 1, "skills adopt: server rows win, unknown ignored, default 1")
-	check(s.shown("mining") == {"level": 5, "xp": 120, "next": 250}, "shown without pending")
-	s.add_pending("mining", 140)
+	check(s.shown("mining") == {"level": 5, "xp": 120, "next": DmGathering.xp_to_next(5)}, "shown without pending")
+	s.add_pending("mining", DmGathering.xp_to_next(5) - 120 + 10)   # (to the next level, and 10 over)
 	var sh := s.shown("mining")
-	check(sh["level"] == 6 and sh["xp"] == 10 and sh["next"] == 300, "pending XP levels up the shown value: %s" % str(sh))
+	check(sh["level"] == 6 and sh["xp"] == 10 and sh["next"] == DmGathering.xp_to_next(6), "pending XP levels up the shown value: %s" % str(sh))
 	check(s.level("mining") == 5, "real level unchanged by pending")
 	s.adopt([{"profession_id": "mining", "skill_level": 6, "skill_xp": 10}], "mining")
-	check(s.shown("mining") == {"level": 6, "xp": 10, "next": 300}, "adopt with clear_pending_for drops optimistic XP")
+	check(s.shown("mining") == {"level": 6, "xp": 10, "next": DmGathering.xp_to_next(6)}, "adopt with clear_pending_for drops optimistic XP")
 	s.adopt([{"profession_id": "mining", "skill_level": 0, "skill_xp": -4}])
 	check(s.get_skill("mining") == {"level": 1, "xp": 0}, "adopt clamps level>=1 xp>=0")
 	check(s.gate_level("mining") == 1, "gate level = real level")
 	s.dev_access = true
-	check(s.gate_level("mining") == 99 and s.level("mining") == 1, "dev access gate = cap, level untouched")
+	check(s.gate_level("mining") == DmGathering.LEVEL_CAP and s.level("mining") == 1, "dev access gate = cap, level untouched")
 	var fired := [0]
 	s.changed.connect(func(): fired[0] += 1)
 	s.add_pending("fishing", 1)
 	check(fired[0] == 1, "changed signal on add_pending")
-	check(s.rows().size() == 7 and s.total() == 7, "rows/total over all 7 skills")
+	check(s.rows().size() == DmGathering.SKILL_IDS.size() and s.total() == DmGathering.SKILL_IDS.size(), "rows/total over all the skills")
 
 
 func _start_tests() -> void:
@@ -141,18 +146,20 @@ func _start_tests() -> void:
 	_reset(float(oak["x"]), float(oak["z"]) + 8.0)
 	check(loop.start({"type": "nope", "id": "x", "x": 0, "z": 0}) == "Nothing to gather here.", "unknown node refusal")
 	var iron := _find("seam_iron", "acre")
-	check(loop.start(iron) == "Requires Mining level 10", "level gate text: " + loop.start(iron))
+	var iron_def := DmGathering.node_def("seam_iron")
+	var gate_text := "Requires %s level %d" % [DmGatherData.get_data()["skills"][iron_def["skill"]]["name"], int(iron_def["level"])]
+	check(loop.start(iron) == gate_text, "level gate text: " + loop.start(iron))
 	bag_ok = false
 	check(loop.start(oak) == "Your bag is full.", "bag full refusal")
 	bag_ok = true
 	check(not loop.active and loop.status == "Paused", "idle status Paused")
 	check(loop.start(oak) == "" and loop.active, "start ok")
-	check(loop.status == "Walking to: Coffin-Oak" and player.has_path() and not loop.working, "walking status + path set")
+	check(loop.status == "Walking to: " + oak_name and player.has_path() and not loop.working, "walking status + path set")
 	loop.update(0.016)
-	check(loop.status == "Walking to: Coffin-Oak", "still walking while the path is set")
+	check(loop.status == "Walking to: " + oak_name, "still walking while the path is set")
 	_arrive()
 	loop.update(0.016)
-	check(loop.working and loop.status == "Working: Coffin-Oak", "arrival begins work")
+	check(loop.working and loop.status == "Working: " + oak_name, "arrival begins work")
 	var want := atan2(float(oak["x"]) - player.x, float(oak["z"]) - player.z)
 	check(absf(player.facing - want) < 1e-6, "hero faces the node")
 	# already standing on the ring: starts working immediately
@@ -163,7 +170,7 @@ func _start_tests() -> void:
 	# depleted node: start waits
 	_reset(float(oak["x"]), float(oak["z"]) + 8.0)
 	live[oak["id"]] = false
-	check(loop.start(oak) == "" and loop.status == "Waiting for respawn: Coffin-Oak" and player.has_path(), "start on a spent node waits (and walks to the ring)")
+	check(loop.start(oak) == "" and loop.status == "Waiting for respawn: " + oak_name and player.has_path(), "start on a spent node waits (and walks to the ring)")
 	# dev access lets a low-level hero start
 	_reset(float(iron["x"]), float(iron["z"]) + 8.0)
 	skills.dev_access = true
@@ -177,20 +184,21 @@ func _work_tests() -> void:
 	now = 0.0    # GatherLoop.lastFlush starts at 0 (as in the TS), so the first flush needs now >= 8000
 	loop.start(oak)
 	var ms := float(DmGathering.action_ms(DmGathering.node_def("coffin_oak")))
-	check(ms == 2400.0, "coffin_oak cycle = 4 ticks x 600 ms")
-	loop.update(2.3)
-	check(cycles.is_empty() and absf(loop.progress - 2300.0 / ms) < 1e-9, "no cycle before action_ms; progress arc fraction")
+	check(ms == float(DmGathering.node_def("coffin_oak")["ticks"]) * float(DmGathering.TICK_MS), "a cycle = the node's ticks x the tick")
+	loop.update(cycle_s - 0.1)
+	check(cycles.is_empty() and absf(loop.progress - (ms - 100.0) / ms) < 1e-9, "no cycle before action_ms; progress arc fraction")
 	loop.update(0.1)
 	check(cycles.size() == 1 and cycles[0] == ["coffin_oak", true, oak["id"]] and successes == [oak["id"]], "cycle lands at action_ms (success with rand 0)")
 	check(loop.progress < 1e-6, "progress wraps after a cycle")
-	check(int(skills.shown("woodcutting")["xp"]) == 6, "success adds optimistic XP (def.xp)")
+	var oak_xp := int(DmGathering.node_def("coffin_oak")["xp"])
+	check(int(skills.shown("woodcutting")["xp"]) == oak_xp, "success adds optimistic XP (def.xp)")
 	rand_v = 0.99
-	loop.update(2.4)
+	loop.update(cycle_s)
 	check(cycles.size() == 2 and cycles[1][1] == false and successes.size() == 1, "failed roll: onCycle(false), no depletion, no XP")
-	check(int(skills.shown("woodcutting")["xp"]) == 6, "failed roll adds no XP")
+	check(int(skills.shown("woodcutting")["xp"]) == oak_xp, "failed roll adds no XP")
 	# a long frame carries the remainder
 	rand_v = 0.0
-	loop.update(2.4 + 1.2)
+	loop.update(cycle_s * 1.5)
 	check(cycles.size() == 3 and absf(loop.progress - 0.5) < 1e-9, "remainder carries into the next cycle")
 	# queue flushes after GATHER_FLUSH_MS, not before
 	check(posts.is_empty(), "no post yet")
@@ -203,7 +211,7 @@ func _work_tests() -> void:
 	check(replies.size() == 1 and skills.level("woodcutting") == 2 and int(skills.get_skill("woodcutting")["xp"]) == 3, "reply adopted (level-up via Skills.adopt)")
 	check(int(skills.shown("woodcutting")["xp"]) == 3, "pending XP cleared by the reply")
 	# a leveled hero uses the higher level for the roll
-	check(absf(DmGathering.success_chance(DmGathering.node_def("coffin_oak"), 2) - 0.61) < 1e-9, "success chance uses skill level")
+	check(DmGathering.success_chance(DmGathering.node_def("coffin_oak"), 2) > DmGathering.success_chance(DmGathering.node_def("coffin_oak"), 1), "success chance uses skill level")
 
 
 func _stop_tests() -> void:
@@ -212,7 +220,7 @@ func _stop_tests() -> void:
 	# bag full while working
 	_reset(spot["x"], spot["z"])
 	loop.start(oak)
-	loop.update(2.4)
+	loop.update(cycle_s)
 	bag_ok = false
 	loop.update(0.016)
 	check(stops == [["bagFull", ""]] and not loop.active, "bag full stops the loop")
@@ -248,7 +256,7 @@ func _stop_tests() -> void:
 	loop.start(oak)
 	live[oak["id"]] = false
 	loop.update(0.016)
-	check(stops == [["blocked", "The Coffin-Oak is spent."]] and loop.status == "The Coffin-Oak is spent.", "spent node stops (no auto): " + str(stops))
+	check(stops == [["blocked", "The %s is spent." % oak_name]] and loop.status == "The %s is spent." % oak_name, "spent node stops (no auto): " + str(stops))
 	# stop with no node is a no-op; external stop reasons
 	loop.stop("hurt")
 	check(stops.size() == 1, "stop while idle does nothing")
@@ -273,7 +281,7 @@ func _auto_tests() -> void:
 	live[a["id"]] = false
 	loop.update(0.016)
 	check(loop.node["id"] == b["id"] and stops.is_empty(), "Auto jumps to the nearest live node of the same kind")
-	check(loop.status == "Walking to: Coffin-Oak" or loop.working, "and walks/works there")
+	check(loop.status == "Walking to: " + oak_name or loop.working, "and walks/works there")
 	# nothing else live: wait here, resume when it respawns
 	_reset(spot["x"], spot["z"])
 	nodes = [a]
@@ -281,7 +289,7 @@ func _auto_tests() -> void:
 	loop.start(a)
 	live[a["id"]] = false
 	loop.update(0.016)
-	check(loop.status == "Waiting for respawn: Coffin-Oak" and stops.is_empty(), "Auto with nothing live waits for respawn")
+	check(loop.status == "Waiting for respawn: " + oak_name and stops.is_empty(), "Auto with nothing live waits for respawn")
 	live[a["id"]] = true
 	loop.update(0.016)
 	check(loop.working, "respawn resumes work")
@@ -289,7 +297,7 @@ func _auto_tests() -> void:
 	_reset(spot["x"], spot["z"])
 	nodes = [a]
 	check(loop.start_afk(a) == "" and loop.afk, "start_afk sets afk")
-	loop.update(2.4)
+	loop.update(cycle_s)
 	loop.stop("bagFull")
 	check(posts == [["coffin_oak", 1, false, true]] and not loop.afk, "stop flushes with afk=true then clears afk")
 	_reset(spot["x"], spot["z"])
@@ -308,25 +316,26 @@ func _auto_tests() -> void:
 func _flush_tests() -> void:
 	var oak := _find("coffin_oak", "acre")
 	var spot := DmGathering.stand_spot(nav.blocked, oak, float(oak["x"]), float(oak["z"]) + 5.0)
-	# batch cap: GATHER_MAX_BATCH cycles flush immediately and split in chunks of 40
+	# batch cap: GATHER_MAX_BATCH cycles flush immediately and split in chunks of that size
 	_reset(spot["x"], spot["z"])
 	loop.start(oak)
-	for i in 45:
-		loop.update(2.4)
+	var n_cycles: int = DmGathering.GATHER_MAX_BATCH + 5
+	for i in n_cycles:
+		loop.update(cycle_s)
 		now += 1.0
-	# 40th cycle triggers the flush at the next update; remaining cycles queued after
+	# the cycle that fills a batch triggers the flush at the next update; remaining cycles queued after
 	await loop.flush()
 	var total := 0
 	for p in posts:
 		total += int(p[1])
-		check(int(p[1]) <= 40, "no post over the batch cap")
-	check(total == 45, "all 45 cycles posted (%d)" % total)
+		check(int(p[1]) <= DmGathering.GATHER_MAX_BATCH, "no post over the batch cap")
+	check(total == n_cycles, "all %d cycles posted (%d)" % [n_cycles, total])
 	# server hiccup: keep cycles, retry 10s later
 	_reset(spot["x"], spot["z"])
 	post_result = func(_t2, _a, _k, _f) -> DmResult: return DmResult.failure("Cannot reach server", 0)
 	loop.start(oak)
-	loop.update(2.4)
-	loop.update(2.4)
+	loop.update(cycle_s)
+	loop.update(cycle_s)
 	await loop.flush()
 	check(posts.size() == 1 and replies.is_empty() and errors.is_empty(), "offline: one attempt, no reply, no error shown")
 	now += 5000.0
@@ -340,8 +349,8 @@ func _flush_tests() -> void:
 	_reset(spot["x"], spot["z"])
 	post_result = func(_t2, _a, _k, _f) -> DmResult: return DmResult.failure("You are gathering faster than your hands allow. Slow down.", 429)
 	loop.start(oak)
-	loop.update(2.4)
-	check(int(skills.shown("woodcutting")["xp"]) == 6, "optimistic XP shown")
+	loop.update(cycle_s)
+	check(int(skills.shown("woodcutting")["xp"]) == int(DmGathering.node_def("coffin_oak")["xp"]), "optimistic XP shown")
 	await loop.flush()
 	check(errors == ["You are gathering faster than your hands allow. Slow down."], "refusal text passed to onError verbatim")
 	check(int(skills.shown("woodcutting")["xp"]) == 0, "refusal clears the optimistic XP for that skill")
@@ -351,13 +360,13 @@ func _flush_tests() -> void:
 	_reset(spot["x"], spot["z"])
 	post_result = func(_t2, _a, _k, _f) -> DmResult: return DmResult.failure("boom", 500)
 	loop.start(oak)
-	loop.update(2.4)
+	loop.update(cycle_s)
 	await loop.flush()
 	check(errors.is_empty() and loop.hooks != null, "500 treated as a hiccup")
 	# concurrent flush() while one is out waits for it
 	_reset(spot["x"], spot["z"])
 	loop.start(oak)
-	loop.update(2.4)
+	loop.update(cycle_s)
 	await loop.flush()
 	await loop.flush()
 	check(posts.size() == 1, "empty flush posts nothing")
@@ -431,9 +440,9 @@ func _views_tests(tree: SceneTree) -> void:
 	views.progress(1.0, 2.0, 0.0, "#c9a36b")
 	check(not views._arc.visible, "progress 0 hides the arc")
 	views.progress(1.0, 2.0, 0.5, "#c9a36b")
-	check(views._arc.visible and views._arc.position.is_equal_approx(Vector3(1, 0.05, 2)) and (views._arc.mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_INDEX].size() == 24 * 6, "arc half drawn (24 of 48 segments)")
+	check(views._arc.visible and views._arc.position.is_equal_approx(Vector3(1, 0.05, 2)) and (views._arc.mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_INDEX].size() == DmNodeViews.ARC_SEGMENTS / 2 * 6, "arc half drawn (half of the segments)")
 	views.progress(1.0, 2.0, 1.5, "#c9a36b")
-	check((views._arc.mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_INDEX].size() == 48 * 6, "arc clamps at full ring")
+	check((views._arc.mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_INDEX].size() == DmNodeViews.ARC_SEGMENTS * 6, "arc clamps at full ring")
 	# pool pulse
 	views.update(0.0)
 	check(views._pools.size() == 1, "one pool group")

@@ -13,9 +13,7 @@ const EPS := 0.0005
 ## The lightmap density of a floor quad, metres a texel: the bake's detail on the ground, so a candle's pool keeps its shape (client/addons/dm_bake/README.md). A different number is a different bake.
 const FLOOR_TEXEL := 0.125
 const LIGHTMAP_LIMIT := 4096   # the bake's largest texture: no quad's lightmap may need more
-## What today's DmGameRewards.tick_milestones scales the Acre's and the Wing's hemisphere energy by (its source holds these numbers: `_test_area_light` reads it), and so the bake's ambient there.
-const AREA_HEMI := {"acre": 2.0 / 0.95, "alchemist_wing": 1.12 / 0.95}
-const AREA_MOON := {"acre": 3.4 / 2.4, "alchemist_wing": 2.65 / 2.4}
+## The Acre's and the Wing's brighter light is the builder's (DmWorldBuilder.AREA_HEMI_K / AREA_MOON_K, which set_area applies and the bake takes its ambient from): `_hemi_k` and `_moon_k` read them.
 ## What world_builder hard-codes: the one hall with no gate, always open (`_gates`, `_apply_unlock_state`), and the area that draws each list
 ## that names none (`_water`, `_wing_floor`, `_hummocks`).
 const ALWAYS_OPEN_DOOR := "chapter_graves"
@@ -339,7 +337,7 @@ func _check_each(label: String, results: Dictionary) -> void:
 
 func _test_floor(a: Dictionary) -> void:
 	var r: Dictionary = a.rect
-	_check_each("the ground", _floor_quad(_scene.get_node_or_null("Floor/ground") as MeshInstance3D, r.x0 - 0.8, r.z0 - 0.8, r.x1 + 0.8, r.z1 + 0.8, a.theme, 0.0))
+	_check_each("the ground", _floor_quad(_scene.get_node_or_null("Floor/ground") as MeshInstance3D, r.x0 - Build.FLOOR_OUTSET, r.z0 - Build.FLOOR_OUTSET, r.x1 + Build.FLOOR_OUTSET, r.z1 + Build.FLOOR_OUTSET, a.theme, 0.0))
 	# world_builder draws every path in the nave's flagstone at y 0.008; an area holds the paths whose centre lies in it.
 	var expect: Array[String] = []
 	var acc: Dictionary = {}
@@ -1026,7 +1024,7 @@ func _test_lightmap(a: Dictionary, scene_path: String) -> void:
 	var lm := found[0] as LightmapGI
 	# The Environment's ambient colour is sRGB, which the renderer converts to linear light; the bake takes its colour as linear light as it is, so it gets the converted one (the sRGB value
 	# made the baked shadows 3 to 5 times brighter than the real-time ambient), at the hemisphere's energy times the area's factor (the Acre's and the Wing's are brighter).
-	var hemi_k: float = AREA_HEMI.get(_id, 1.0)
+	var hemi_k := _hemi_k(_id)
 	var linear := _ambient(a).srgb_to_linear()
 	_check(lm.environment_mode == LightmapGI.ENVIRONMENT_MODE_CUSTOM_COLOR and lm.environment_custom_color.is_equal_approx(linear)
 		and _near(lm.environment_custom_energy, float(_world.lighting.hemiIntensity) * DmWorldBuilder.HEMI_K * hemi_k), "the bake's ambient is set_area's colour for this area as linear light, at the hemisphere's energy x %.3f" % hemi_k)
@@ -1059,30 +1057,53 @@ func _test_lightmap(a: Dictionary, scene_path: String) -> void:
 	_check(data.get_user_count() > 0 and missing.is_empty(), "the bake fits the scene: all %d baked meshes are there (%d missing: %s)" % [data.get_user_count(), missing.size(), str(missing.slice(0, 3))])
 
 
-## The Acre's and the Wing's brighter light: today's numbers (`DmGameRewards.tick_milestones`, whose source this reads: the rebuild does not run it), the builder's constants, and `set_area` applying them as a ratio
-## to the energies, so another writer's scaling (the Nightfall dimming) composes with a change of area.
+func _hemi_k(area_id: String) -> float:
+	return float(DmWorldBuilder.AREA_HEMI_K.get(area_id, 1.0))
+
+
+func _moon_k(area_id: String) -> float:
+	return float(DmWorldBuilder.AREA_MOON_K.get(area_id, 1.0))
+
+
+## The factors the old game's DmGameRewards.tick_milestones writes in its source, `(<acre> if orchard else (<wing> if acre else <other>)) / <other>`: [acre, wing, other] over `other`, or [] when the line is not found.
+func _legacy_factors(src: String, key: String) -> Array:
+	var re := RegEx.create_from_string("%s = [\\w.]+ \\* \\(\\(([\\d.]+) if orchard else \\(([\\d.]+) if acre else ([\\d.]+)\\)\\) / ([\\d.]+)\\)" % key)
+	var m := re.search(src)
+	if m == null:
+		return []
+	var base := m.get_string(4).to_float()
+	return [m.get_string(1).to_float() / base, m.get_string(2).to_float() / base, m.get_string(3).to_float() / base]
+
+
+## The Acre's and the Wing's brighter light: the builder's constants (AREA_HEMI_K, AREA_MOON_K) are the factors the old game's DmGameRewards.tick_milestones still writes (its source is read: the rebuild does not run it),
+## and `set_area` applies them as a ratio to the energies, so another writer's scaling (the Nightfall dimming) composes with a change of area.
 func _test_area_light() -> void:
 	_id = "world"
 	var src := FileAccess.get_file_as_string("res://game/dm_game_rewards.gd")
-	_check(src.contains("(3.4 if orchard else (2.65 if acre else 2.4)) / 2.4") and src.contains("(2.0 if orchard else (1.12 if acre else 0.95)) / 0.95"), "today's moon and hemisphere factors of the Acre and the Wing are still 3.4, 2.65 / 2.4 and 2.0, 1.12 / 0.95 (game/dm_game_rewards.gd)")
-	var consts_ok := DmWorldBuilder.AREA_HEMI_K.size() == AREA_HEMI.size() and DmWorldBuilder.AREA_MOON_K.size() == AREA_MOON.size()
-	for k: String in AREA_HEMI:
-		consts_ok = consts_ok and _near(float(DmWorldBuilder.AREA_HEMI_K.get(k, 0.0)), AREA_HEMI[k]) and _near(float(DmWorldBuilder.AREA_MOON_K.get(k, 0.0)), AREA_MOON[k])
-	_check(consts_ok, "the builder's AREA_HEMI_K and AREA_MOON_K are those factors for the Acre and the Wing and no other area")
+	var legacy_moon := _legacy_factors(src, "g.builder.moon.light_energy")
+	var legacy_hemi := _legacy_factors(src, "g.builder.env.ambient_light_energy")
+	_check(legacy_moon.size() == 3 and legacy_hemi.size() == 3, "the old game's moon and hemisphere factors are in game/dm_game_rewards.gd")
+	var consts_ok := legacy_moon.size() == 3 and legacy_hemi.size() == 3 and _near(legacy_moon[2], 1.0) and _near(legacy_hemi[2], 1.0)
+	if consts_ok:
+		var keys: Array = DmWorldBuilder.AREA_HEMI_K.keys()
+		keys.sort()
+		consts_ok = keys == ["acre", "alchemist_wing"] and DmWorldBuilder.AREA_MOON_K.size() == keys.size()
+		consts_ok = consts_ok and _near(_hemi_k("acre"), legacy_hemi[0]) and _near(_hemi_k("alchemist_wing"), legacy_hemi[1]) and _near(_moon_k("acre"), legacy_moon[0]) and _near(_moon_k("alchemist_wing"), legacy_moon[1])
+	_check(consts_ok, "the builder's AREA_HEMI_K and AREA_MOON_K are the old game's factors for the Acre and the Wing and no other area")
 	var b := DmWorldBuilder.new()
 	b.world = _world
 	b._make_environment()
 	var moon0 := b.moon.light_energy
 	var hemi0 := b.env.ambient_light_energy
 	b.set_area("acre")
-	var ok := _near(b.moon.light_energy, moon0 * AREA_MOON["acre"]) and _near(b.env.ambient_light_energy, hemi0 * AREA_HEMI["acre"])
+	var ok := _near(b.moon.light_energy, moon0 * _moon_k("acre")) and _near(b.env.ambient_light_energy, hemi0 * _hemi_k("acre"))
 	b.moon.light_energy *= 0.5   # Nightfall's ratio on the moon, another writer
 	b.env.ambient_light_energy *= 0.7
 	b.set_area("alchemist_wing")
-	ok = ok and _near(b.moon.light_energy, moon0 * 0.5 * AREA_MOON["alchemist_wing"]) and _near(b.env.ambient_light_energy, hemi0 * 0.7 * AREA_HEMI["alchemist_wing"])
+	ok = ok and _near(b.moon.light_energy, moon0 * 0.5 * _moon_k("alchemist_wing")) and _near(b.env.ambient_light_energy, hemi0 * 0.7 * _hemi_k("alchemist_wing"))
 	b.set_area("graves")
 	ok = ok and _near(b.moon.light_energy, moon0 * 0.5) and _near(b.env.ambient_light_energy, hemi0 * 0.7)
-	_check(ok, "set_area scales the moon and the ambient by the area's factors as a ratio: the Acre %.3f / %.3f, the Wing %.3f / %.3f, any other area 1, and a dimming in between stays" % [AREA_MOON["acre"], AREA_HEMI["acre"], AREA_MOON["alchemist_wing"], AREA_HEMI["alchemist_wing"]])
+	_check(ok, "set_area scales the moon and the ambient by the area's factors as a ratio: the Acre %.3f / %.3f, the Wing %.3f / %.3f, any other area 1, and a dimming in between stays" % [_moon_k("acre"), _hemi_k("acre"), _moon_k("alchemist_wing"), _hemi_k("alchemist_wing")])
 	b.free()
 	# ... and the world reaches it: the hero entering an area (`DmNextWorld.enter_area`) lights it with the area's factors.
 	var w := DmNextWorld.new()
@@ -1092,9 +1113,9 @@ func _test_area_light() -> void:
 	var moon_g := w.builder.moon.light_energy
 	var hemi_g := w.builder.env.ambient_light_energy
 	w.enter_area("acre")
-	var in_acre := _near(w.builder.moon.light_energy, moon_g * AREA_MOON["acre"]) and _near(w.builder.env.ambient_light_energy, hemi_g * AREA_HEMI["acre"])
+	var in_acre := _near(w.builder.moon.light_energy, moon_g * _moon_k("acre")) and _near(w.builder.env.ambient_light_energy, hemi_g * _hemi_k("acre"))
 	w.enter_area("alchemist_wing")
-	var in_wing := _near(w.builder.moon.light_energy, moon_g * AREA_MOON["alchemist_wing"]) and _near(w.builder.env.ambient_light_energy, hemi_g * AREA_HEMI["alchemist_wing"])
+	var in_wing := _near(w.builder.moon.light_energy, moon_g * _moon_k("alchemist_wing")) and _near(w.builder.env.ambient_light_energy, hemi_g * _hemi_k("alchemist_wing"))
 	w.enter_area("graves")
 	var back := _near(w.builder.moon.light_energy, moon_g) and _near(w.builder.env.ambient_light_energy, hemi_g)
 	_check(in_acre and in_wing and back, "entering the Acre, the Wing and the Graves again in a world lights them with the moon and ambient energies of the area (%.3f / %.3f in the Graves)" % [moon_g, hemi_g])
@@ -1268,7 +1289,7 @@ func _fresh_bake(r: Dictionary) -> NavigationMesh:
 	var d := Vector3(r.x0, 0, r.z1)
 	src.add_faces(PackedVector3Array([a, b, c, a, c, d]), Transform3D.IDENTITY)
 	for o: Array in _obstacles:
-		if o[2] > r.x0 - 1.5 and o[0] < r.x1 + 1.5 and o[3] > r.z0 - 1.5 and o[1] < r.z1 + 1.5:
+		if o[2] > r.x0 - Build.NAV_PAD and o[0] < r.x1 + Build.NAV_PAD and o[3] > r.z0 - Build.NAV_PAD and o[1] < r.z1 + Build.NAV_PAD:
 			src.add_projected_obstruction(o[4], -0.5, 3.0, true)
 	var nm := NavigationMesh.new()
 	nm.cell_size = 0.25
@@ -1523,8 +1544,8 @@ func _test_bounds(a: Dictionary) -> void:
 		var b := mi.global_transform * mi.mesh.get_aabb()
 		lo = Vector2(minf(lo.x, b.position.x), minf(lo.y, b.position.z))
 		hi = Vector2(maxf(hi.x, b.end.x), maxf(hi.y, b.end.z))
-	var want_lo := Vector2(rect.x0 - 0.8, rect.z0 - 0.8)
-	var want_hi := Vector2(rect.x1 + 0.8, rect.z1 + 0.8)
+	var want_lo := Vector2(rect.x0 - Build.FLOOR_OUTSET, rect.z0 - Build.FLOOR_OUTSET)
+	var want_hi := Vector2(rect.x1 + Build.FLOOR_OUTSET, rect.z1 + Build.FLOOR_OUTSET)
 	for d in _doors_of(_id):
 		want_lo = Vector2(minf(want_lo.x, d.rect.x0), minf(want_lo.y, d.rect.z0))
 		want_hi = Vector2(maxf(want_hi.x, d.rect.x1), maxf(want_hi.y, d.rect.z1))
@@ -1532,7 +1553,7 @@ func _test_bounds(a: Dictionary) -> void:
 		if _centre_area(p) == _id:
 			want_lo = Vector2(minf(want_lo.x, p.x0), minf(want_lo.y, p.z0))
 			want_hi = Vector2(maxf(want_hi.x, p.x1), maxf(want_hi.y, p.z1))
-	_check(lo.distance_to(want_lo) < 0.01 and hi.distance_to(want_hi) < 0.01, "floor bounds %s to %s are the rect plus 0.8 m, the door corridors and the paths" % [lo, hi])
+	_check(lo.distance_to(want_lo) < 0.01 and hi.distance_to(want_hi) < 0.01, "floor bounds %s to %s are the rect plus %s m, the door corridors and the paths" % [lo, hi, Build.FLOOR_OUTSET])
 	var inside := true
 	for k in _kids("Props"):
 		var p := (k as Node3D).position

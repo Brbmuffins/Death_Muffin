@@ -1,8 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
-import { GARDEN_ITEMS, PLOTS, SEEDS, seedDef } from '../../content/gardening';
+import { COMPOST_SPEED, GARDEN_ITEMS, PLOTS, SEEDS, seedDef } from '../../content/gardening';
 import { ITEMS } from '../../content/items';
-import { NODES } from '../gatheringRules';
+import { LEVEL_CAP, NODES } from '../gatheringRules';
 import { growMs, plantBlocker, plotDef, remainingText, rollHarvest, stateOf, type PlotRow } from '../gardeningRules';
 
 const row = (o: Partial<PlotRow> = {}): PlotRow => ({ plot: 'h0', seedId: 'seed_mourning_moss', plantedAt: 0, readyAt: 1000, composted: false, ...o });
@@ -21,10 +21,11 @@ describe('garden content', () => {
     for (const s of SEEDS) expect(dropped.has(s.id), `${s.id} has no source`).toBe(true);
   });
 
-  it('has two plot kinds and unique plot ids', () => {
+  it('has unique plot ids, and a plot for every kind of seed there is', () => {
     expect(new Set(PLOTS.map((p) => p.id)).size).toBe(PLOTS.length);
-    expect(PLOTS.filter((p) => p.kind === 'herb')).toHaveLength(4);
-    expect(PLOTS.filter((p) => p.kind === 'tree')).toHaveLength(2);
+    for (const kind of new Set(SEEDS.map((s) => s.kind))) expect(PLOTS.some((p) => p.kind === kind), `a ${kind} plot`).toBe(true);
+    for (const p of PLOTS) expect(plotDef(p.id)).toBe(p);
+    expect(plotDef('no_such_plot')).toBeUndefined();
   });
 });
 
@@ -36,33 +37,47 @@ describe('growth and planting', () => {
     expect(stateOf(row(), 1000)).toBe('ready');
   });
 
-  it('bone meal grows a plot a quarter faster', () => {
-    const s = seedDef('seed_mourning_moss')!;
-    expect(growMs(s, false)).toBe(20 * 60_000);
-    expect(growMs(s, true)).toBe(15 * 60_000);
+  it('bone meal grows a plot faster, by the compost speed', () => {
+    for (const s of SEEDS) {
+      expect(growMs(s, false), s.id).toBe(Math.round(s.growMin * 60_000));
+      expect(growMs(s, true), s.id).toBe(Math.round(s.growMin * 60_000 * COMPOST_SPEED));
+    }
+    expect(COMPOST_SPEED).toBeGreaterThan(0);
+    expect(COMPOST_SPEED).toBeLessThan(1);
   });
 
   it('blocks the wrong plot, too low a level, and an occupied plot', () => {
-    const herb = plotDef('h0');
-    const tree = plotDef('t0');
-    expect(plantBlocker(herb, 'seed_mourning_moss', 1, null, 0)).toBeNull();
-    expect(plantBlocker(tree, 'seed_mourning_moss', 1, null, 0)).toMatch(/Mourning Bed/);
-    expect(plantBlocker(herb, 'sapling_oak', 50, null, 0)).toMatch(/Coffin Patch/);
-    expect(plantBlocker(herb, 'seed_nightshade', 14, null, 0)).toMatch(/15/);
-    expect(plantBlocker(herb, 'seed_mourning_moss', 1, row(), 10)).toMatch(/already/);
-    expect(plantBlocker(herb, 'seed_mourning_moss', 1, row(), 5000)).toMatch(/already/); // ready but not harvested is still occupied
-    expect(plantBlocker(undefined, 'seed_mourning_moss', 1, null, 0)).toMatch(/no such plot/);
+    const herb = PLOTS.find((p) => p.kind === 'herb')!;
+    const tree = PLOTS.find((p) => p.kind === 'tree')!;
+    const herbSeed = SEEDS.find((s) => s.kind === 'herb')!;
+    const sapling = SEEDS.find((s) => s.kind === 'tree')!;
+    expect(plantBlocker(herb, herbSeed.id, LEVEL_CAP, null, 0)).toBeNull();
+    expect(plantBlocker(tree, herbSeed.id, LEVEL_CAP, null, 0)).toMatch(/Mourning Bed/);
+    expect(plantBlocker(herb, sapling.id, LEVEL_CAP, null, 0)).toMatch(/Coffin Patch/);
+    const demanding = SEEDS.filter((s) => s.kind === 'herb' && s.level > 1).sort((a, b) => a.level - b.level)[0];
+    expect(plantBlocker(herb, demanding.id, demanding.level - 1, null, 0)).toMatch(new RegExp(String(demanding.level)));
+    expect(plantBlocker(herb, demanding.id, demanding.level, null, 0)).toBeNull();
+    expect(plantBlocker(herb, herbSeed.id, LEVEL_CAP, row(), 10)).toMatch(/already/);
+    expect(plantBlocker(herb, herbSeed.id, LEVEL_CAP, row(), 5000)).toMatch(/already/); // ready but not harvested is still occupied
+    expect(plantBlocker(undefined, herbSeed.id, LEVEL_CAP, null, 0)).toMatch(/no such plot/);
+    expect(plantBlocker(herb, 'not_a_seed', LEVEL_CAP, null, 0)).toMatch(/cannot be planted/);
   });
 });
 
 describe('harvest', () => {
   it('rolls within the yield range, and returns a seed only on a lucky roll', () => {
-    const s = seedDef('seed_mourning_moss')!;
+    // a seed of its own: a 40% chance to give the seed back, 3 to 6 per harvest
+    const s = { ...SEEDS.find((x) => x.kind === 'herb')!, yields: [3, 6] as [number, number], seedBack: 0.4 };
     const low = rollHarvest(s, () => 0);
-    expect(low).toMatchObject({ itemId: 'herb_mourning_moss', qty: s.yields[0], seedBack: 'seed_mourning_moss', xp: s.harvestXp });
+    expect(low).toMatchObject({ itemId: s.harvest, qty: 3, seedBack: s.id, xp: s.harvestXp });
     const high = rollHarvest(s, () => 0.999);
-    expect(high.qty).toBe(s.yields[1]);
+    expect(high.qty).toBe(6);
     expect(high.seedBack).toBeNull();
+    for (const real of SEEDS) {
+      const [lo, hi] = real.yields;
+      expect(rollHarvest(real, () => 0).qty, real.id).toBe(lo);
+      expect(rollHarvest(real, () => 0.999).qty, real.id).toBe(hi);
+    }
   });
 
   it('formats countdowns', () => {

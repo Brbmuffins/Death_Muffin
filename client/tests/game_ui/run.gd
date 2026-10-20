@@ -131,10 +131,12 @@ func _run() -> void:
 	_check(ui.locks.is_locked(ring2["row"]), "lock toggles")
 	ui.inv.panel.lock_toggled.emit(ring2)
 	game.clear_calls()
-	ui.inv.panel.sell_requested.emit(_card(ui, "material_copper_shard"), 1)
+	var shard_card := _card(ui, "material_copper_shard")
+	var gold_before := int(game.character["gold"])
+	ui.inv.panel.sell_requested.emit(shard_card, 1)
 	await _frames(3)
 	_check(not game.calls_to("/api/inventory/sell").is_empty() and game.calls_to("/api/inventory/save").is_empty(), "sell is the server's sale, never a bag save")
-	_check(int(game.character["gold"]) == 1502, "sell credits gold")
+	_check(int(shard_card["row"]["sell_value"]) > 0 and int(game.character["gold"]) == gold_before + int(shard_card["row"]["sell_value"]), "sell credits gold (the piece's worth)")
 	# Selling gear in combat must not re-text every other card (each verdict is a gear-power simulation): the cards and the junk verdicts
 	# depend on what is worn, never on the other bag rows, and the server's copy of an unchanged row (new id, floats) is the same card.
 	var gear_cards: Array = []
@@ -189,10 +191,10 @@ func _more(game: DmMockGame, ui: DmGameUi) -> void:
 	ui.counsel.tips_disabled.emit()
 	_check(game.settings["no_tips"] == true, "counsel 'Don't show tips' stores no_tips")
 	ui.update_setting({"no_tips": false})
-	ui.update_setting({"hud_scale": 0.75})
-	_check(is_equal_approx(ui.hud.hud_scale, 0.75) and is_equal_approx(ui.game.applied_settings.back()["hud_scale"], 0.75), "HUD size setting reaches the HUD and the game")
-	ui.update_setting({"hud_scale": 9.0})
-	_check(is_equal_approx(ui.hud.hud_scale, 1.3), "HUD size is clamped")
+	ui.update_setting({"hud_scale": DmHud.HUD_SCALE_MIN})
+	_check(is_equal_approx(ui.hud.hud_scale, DmHud.HUD_SCALE_MIN) and is_equal_approx(ui.game.applied_settings.back()["hud_scale"], DmHud.HUD_SCALE_MIN), "HUD size setting reaches the HUD and the game")
+	ui.update_setting({"hud_scale": DmHud.HUD_SCALE_MAX * 7.0})
+	_check(is_equal_approx(ui.hud.hud_scale, DmHud.HUD_SCALE_MAX), "HUD size is clamped")
 	_check(sp.find_children("*", "OptionButton", true, false).size() >= 1 and sp.values.has("hud_scale"), "Settings panel carries HUD size")
 	ui.update_setting({"hud_scale": 1.0})
 	sp.action.emit("bug_report")
@@ -554,7 +556,7 @@ func _extras(game: DmMockGame, ui: DmGameUi) -> void:
 	q.push("a", "A")
 	q.push("b", "B")
 	_check(got == ["A"], "cue queue shows one at a time")
-	q.tick(7.0)
+	q.tick(q.hold_ms / 1000.0 + 0.5)
 	q.tick(1.0)
 	_check(got == ["A", "B"], "cue queue advances after the hold")
 	# rites sanitising
@@ -576,7 +578,7 @@ func _extras(game: DmMockGame, ui: DmGameUi) -> void:
 	var lines := DmLegionText.bonus_lines({"hp": 0.05, "damage": 0.096, "speed": 0.0, "ward": 0.0})
 	_check(lines == ["Thralls hit +9.6% harder", "Thralls have +5% health"], "legion bonus lines")
 	# necro weapon + brew text
-	_check(DmUiBrews.necro_weapon_tooltip("staff_bone").get("level") == 1 and DmUiBrews.summary("elixir_moonlight").begins_with("Elixir"), "weapon tooltip + brew summary")
+	_check(DmUiBrews.necro_weapon_tooltip("staff_bone").get("level") == int(DmCombatData.load_json("necro_weapons")["tier_info"]["bone"]["level"]) and DmUiBrews.summary("elixir_moonlight").begins_with("Elixir"), "weapon tooltip + brew summary")
 
 
 ## An item card's stat row with a long meaning beside it, in a card as narrow as the tooltip: the stat ("+30 INT") stays on one line and the meaning wraps

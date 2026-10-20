@@ -33,9 +33,9 @@ describe('drop quality by depth', () => {
       expect(chaseMult(id)).toBeGreaterThan(prev);
       prev = chaseMult(id);
     }
-    expect(huntRank('graves')).toBe(0);
-    expect(huntRank('fen')).toBe(HUNT_ORDER.length - 1);
-    expect(huntRank('chapterhouse')).toBe(-1);
+    // a ground's rank is its place in the hunting order: the shallowest is 0, the deepest is the last, halls and instances are -1
+    HUNT_ORDER.forEach((id, i) => expect(huntRank(id), id).toBe(i));
+    for (const id of AREA_ORDER.filter((a) => !HUNT_ORDER.includes(a))) expect(huntRank(id), id).toBe(-1);
   });
   it('materials, flasks and starter gear are never scaled', () => {
     for (const id of Object.keys(ITEMS)) if (ITEMS[id].type === 'material' || /^(flask|ore|log|ingot|gem|herb|seed)_/.test(id)) expect(isChaseItem(id), id).toBe(false);

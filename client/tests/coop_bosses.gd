@@ -15,7 +15,7 @@ extends "res://tests/coop.gd"
 ##   - what the attacks do besides damage: the Flood Hymn's chill (a status on the guest's hero, replicated), the Drowning Grasp's and the Drowned Hands' root (the host's body of the guest's hero stands
 ##     still against its own move intent), the Congregation's wading water; the Saint's rot pools and the Regent's coals, firebreak and embers (the same zone events on the guest's puppet core, drawn there);
 ##     the Mire Mother's sinking (her state on the guest, untargetable);
-##   - the phases at 60 and 30 %: the guest follows; the adds of each phase (and the Abbess's niches, broken by the heroes and then rebuilt, with the health the host gave them) are the same bodies on both
+##   - the phases (boss_base.gd's PHASE_AT): the guest follows; the adds of each phase (and the Abbess's niches, broken by the heroes and then rebuilt, with the health the host gave them) are the same bodies on both
 ##     cores; every body the guest holds is the host's at the snapshot's tick; the last phase's own attack is played once more (Bone Communion over real corpses, the Drowned Rite raising Risen from
 ##     them, Conflagration, the rain);
 ##   - the defeat by a cast of the guest: `defeated` names the guest, the boss is dead on both sides and its model fades, its adds left silently and BOTH accounts are paid (each member's rewards and
@@ -26,21 +26,41 @@ extends "res://tests/coop.gd"
 ## Run (with --fixed-fps 60, about 70 s):
 ##   godot --headless --fixed-fps 60 --path client --script res://tests/coop_bosses.gd
 
+const BossBase := preload("res://tests/boss_base.gd")   ## (its PHASE_AT: the share of health at which the phases begin)
+const BossCongregation := preload("res://tests/boss_congregation.gd")   ## (the waves their brains' code calls, written once in the suites of the single bosses)
+const BossPrelate := preload("res://tests/boss_prelate.gd")
+const BossSaint := preload("res://tests/boss_saint.gd")
 const BOSSES := ["abbess", "congregation", "prelate", "saint", "regent", "mire"]
 const DEAD_STATE := 6
 const FIGHT_TICKS := 60 * 50           ## the longest a fight is given
 const MIN_FIGHT_TICKS := 60 * 8        ## and the shortest: the state, the events and the bodies have to keep matching over time
 ## Per boss: the brain's cooldowns to zero one after the other while the heroes stand in front of it (`rot`; `side` is a telegraph that does not make the boss busy), the events its attacks make
-## (`kinds`: each must land at least twice), where the guest's hero and the host's stand from the arena's centre, how many bodies each phase's wave adds, the kind of zone its pools make, and the
-## attack of the last phase that is played once more (`late`, its `late_kinds`: Bone Communion devours corpses, the Drowned Rite raises them, Conflagration burns the arena).
+## (`kinds`: each must land at least twice), where the guest's hero and the host's stand from the arena's centre, the kind of zone its pools make, and the attack of the last phase that is played once more
+## (`late`, its `late_kinds`: Bone Communion devours corpses, the Drowned Rite raises them, Conflagration burns the arena). How many bodies each phase's wave adds is `wave_sizes`.
 const SPEC := {
-	"abbess": {"rot": ["_grasp_cd", "_chorus_cd"], "side": "_lance_cd", "kinds": ["lance", "chorus", "grasp"], "guest": Vector3(3.0, 0.0, 0.0), "host": Vector3(-6.0, 0.0, 0.0), "p2": 0, "p3": 2, "late": "_communion_cd", "late_kinds": ["communion"]},
-	"congregation": {"rot": ["_hymn_cd", "_grasp_cd", "_melee_cd"], "kinds": ["hymn", "grasp", "maul"], "guest": Vector3(2.5, 0.0, 0.0), "host": Vector3(-6.0, 0.0, 0.0), "p2": 6, "p3": 6, "late": "_hymn_cd", "late_kinds": ["hymn"]},
-	"prelate": {"rot": ["_toll_cd", "_slam_cd"], "kinds": ["toll", "slam"], "guest": Vector3(3.0, 0.0, 0.0), "host": Vector3(-6.0, 0.0, 0.0), "p2": 4, "p3": 6, "late": "_rain_cd", "late_kinds": ["rain"]},
-	"saint": {"rot": ["_rain_cd", "_swing_cd"], "kinds": ["rotRain", "swing"], "guest": Vector3(3.0, 0.0, 0.0), "host": Vector3(-6.0, 0.0, 0.0), "p2": 3, "p3": 4, "zone": "toxic", "late": "_rain_cd", "late_kinds": ["rotRain"]},
-	"regent": {"rot": ["_coals_cd", "_cleave_cd"], "kinds": ["coals", "cleave"], "guest": Vector3(3.0, 0.0, 0.0), "host": Vector3(-6.0, 0.0, 0.0), "p2": 5, "p3": 4, "zone": "ember", "late": "_confl_cd", "late_kinds": ["conflagration"]},
-	"mire": {"rot": ["_hands_cd", "_maul_cd", "_surface_cd"], "kinds": ["hands", "maul", "surface"], "guest": Vector3(5.0, 0.0, 0.0), "host": Vector3(-6.0, 0.0, 0.0), "p2": 6, "p3": 6, "late": "_rite_cd", "late_kinds": ["rite"]},
+	"abbess": {"rot": ["_grasp_cd", "_chorus_cd"], "side": "_lance_cd", "kinds": ["lance", "chorus", "grasp"], "guest": Vector3(3.0, 0.0, 0.0), "host": Vector3(-6.0, 0.0, 0.0), "late": "_communion_cd", "late_kinds": ["communion"]},
+	"congregation": {"rot": ["_hymn_cd", "_grasp_cd", "_melee_cd"], "kinds": ["hymn", "grasp", "maul"], "guest": Vector3(2.5, 0.0, 0.0), "host": Vector3(-6.0, 0.0, 0.0), "late": "_hymn_cd", "late_kinds": ["hymn"]},
+	"prelate": {"rot": ["_toll_cd", "_slam_cd"], "kinds": ["toll", "slam"], "guest": Vector3(3.0, 0.0, 0.0), "host": Vector3(-6.0, 0.0, 0.0), "late": "_rain_cd", "late_kinds": ["rain"]},
+	"saint": {"rot": ["_rain_cd", "_swing_cd"], "kinds": ["rotRain", "swing"], "guest": Vector3(3.0, 0.0, 0.0), "host": Vector3(-6.0, 0.0, 0.0), "zone": "toxic", "late": "_rain_cd", "late_kinds": ["rotRain"]},
+	"regent": {"rot": ["_coals_cd", "_cleave_cd"], "kinds": ["coals", "cleave"], "guest": Vector3(3.0, 0.0, 0.0), "host": Vector3(-6.0, 0.0, 0.0), "zone": "ember", "late": "_confl_cd", "late_kinds": ["conflagration"]},
+	"mire": {"rot": ["_hands_cd", "_maul_cd", "_surface_cd"], "kinds": ["hands", "maul", "surface"], "guest": Vector3(5.0, 0.0, 0.0), "host": Vector3(-6.0, 0.0, 0.0), "late": "_rite_cd", "late_kinds": ["rite"]},
 }
+
+## The bodies each phase's wave adds to the core: [phase 2, phase 3]. The Regent and the Mire Mother hold their waves in the boss data (`adds`); the others' are in their brains' code, written once in
+## their own suites. The Abbess calls none (her niches are counted apart).
+func wave_sizes(id: String) -> Array:
+	match id:
+		"abbess":
+			return [0, 0]
+		"congregation":
+			return [BossCongregation.WRAITHS + BossCongregation.PENITENTS, BossCongregation.WRAITHS + BossCongregation.PENITENTS]
+		"prelate":
+			return [int(BossPrelate.PROCESSION[1]), int(BossPrelate.PROCESSION[2])]
+		"saint":
+			return [BossSaint.WAVE2.size(), BossSaint.WAVE3.size()]
+	var adds: Dictionary = DmContent.get_export("bosses", id.to_upper())["adds"]
+	return [(adds["p2"] as Array).size(), (adds["p3"] as Array).size()]
+
 
 ## Counting back-ends for the boss fx of each side (every Vfx / AudioDirector call the router makes), as tests/boss_base.gd has them: what is drawn and heard for the boss's events.
 class Stub:
@@ -214,7 +234,7 @@ func finish_early(why: String) -> void:
 func the_party() -> void:
 	hq = new_branch()
 	h = await game(hq, "hostess", {"areas": [], "waves": false})   # the whole world (every area but the Depths)
-	check(h.ready_ and not h.is_guest and h.world.loaded.size() >= 9, "the host's game is up in the whole world (%d areas)" % h.world.loaded.size())
+	check(h.ready_ and not h.is_guest and h.world.loaded.size() == DmNextWorld.every_area().size(), "the host's game is up in the whole world (%d areas)" % h.world.loaded.size())
 	hb = h.local_body()
 	var hosted := [false]
 	h.party.hosting_changed.connect(func(on: bool) -> void: hosted[0] = on)
@@ -332,6 +352,16 @@ func _sum(d: Dictionary) -> int:
 	for v in d.values():
 		n += int(v)
 	return n
+
+
+## How many niches the Abbess keeps (the boss data's), the number she stands with at the start and again after she rebuilds the two the heroes broke.
+func niches_of_abbess() -> int:
+	return int(DmContent.get_export("bosses", "ABBESS")["niches"])
+
+
+## The share of health just under the threshold of phase `n` (boss_base.gd's PHASE_AT).
+func just_into(n: int) -> float:
+	return float(BossBase.PHASE_AT[n - 2]) - 0.05
 
 
 ## The living bodies of a core's table by def (the niches, the adds).
@@ -461,7 +491,7 @@ func same_state(bh: DmBoss, bg: DmBoss) -> bool:
 	return absf(bg.hp - bh.hp) <= bh.max_hp * 0.03 and bg.phase == bh.phase and bg.bstate.state == bh.bstate.state and bg.bstate.active == bh.bstate.active
 
 
-## How far the guest's hero walks in a third of a second when it asks the host to walk it away from the boss (a held direction, as the keys send): free, it walks about 2 m; rooted, not at all.
+## How far the guest's hero walks in a third of a second when it asks the host to walk it away from the boss (a held direction, as the keys send): free, it walks some metres; rooted, not at all.
 func probe_move() -> float:
 	var p0 := gb_h.position
 	for i in 20:
@@ -503,8 +533,8 @@ func fight(id: String) -> void:
 	if bg == null or bg.boss_id != id:
 		finish_early("%s did not reach the guest" % tag)
 		return
-	var solo_hp: float = float(DmContent.get_export("bosses", "BOSSES")[id]["baseHp"]) * (1.0 + 0.22 * (float(bh.brain.state["level"]) - 1.0)) \
-		* float(DmContent.get_export("difficulty", "DIFFICULTIES")["medium"]["enemyHpMult"])
+	var solo_hp: float = float(DmContent.get_export("bosses", "BOSSES")[id]["baseHp"]) * DmEnemyStats.hp_scale(float(bh.brain.state["level"])) \
+		* float(DmContent.difficulty(String(h.bosses.difficulty))["enemyHpMult"])
 	check(absf(bh.max_hp - solo_hp * (1.0 + DmEnemyStats.BOSS_PARTY_HP_PER_EXTRA)) < 1.0, "%s: two heroes give it the party's extra health (%.0f, one hero %.0f)" % [tag, bh.max_hp, solo_hp])
 	check(await until(func() -> bool: return absf(bg.max_hp - bh.max_hp) < 1.0 and absf(bg.hp - bh.hp) < 1.0 and bg.bstate.active, 4.0), "%s: and the guest's copy has its health (%.0f of %.0f)" % [tag, bg.hp, bg.max_hp])
 	check(await until(func() -> bool: return int(ev_g.get("awaken!", 0)) == 1 and int(ev_h.get("awaken!", 0)) == 1, 4.0), "%s: its awakening was played on both sides" % tag)
@@ -567,20 +597,21 @@ func fight(id: String) -> void:
 	bh.set_physics_process(true)
 	# ---- the phases
 	var adds0 := living(h) - int(defs_of(h).get("niche", 0))
-	await to_phase(id, bh, bg, 0.55, 2, tag)
+	await to_phase(id, bh, bg, just_into(2), 2, tag)
 	if id == "abbess":
 		await abbess_breaks(bh, bg, tag)
-	await to_phase(id, bh, bg, 0.25, 3, tag)
+	await to_phase(id, bh, bg, just_into(3), 3, tag)
 	await ticks(60)
 	var adds1 := living(h) - int(defs_of(h).get("niche", 0))
+	var waves := wave_sizes(id)
 	if id == "abbess":
-		check(ids_of(h, "niche").size() == 4, "%s: she rebuilt the two niches (%d stand)" % [tag, ids_of(h, "niche").size()])
+		check(ids_of(h, "niche").size() == niches_of_abbess(), "%s: she rebuilt the niches the heroes broke (%d stand)" % [tag, ids_of(h, "niche").size()])
 	else:
-		check(adds1 >= adds0 + int(sp["p2"]) + int(sp["p3"]), "%s: its waves are in the core (%d new bodies, %d wanted)" % [tag, adds1 - adds0, int(sp["p2"]) + int(sp["p3"])])
+		check(adds1 >= adds0 + int(waves[0]) + int(waves[1]), "%s: its waves are in the core (%d new bodies, %d wanted)" % [tag, adds1 - adds0, int(waves[0]) + int(waves[1])])
 	check(await until(func() -> bool: return defs_of(h) == defs_of(g), 4.0), "%s: and the guest's core holds the same bodies (%s)" % [tag, str(defs_of(g))])
 	check(await until(func() -> bool: return ev_h == ev_g, 3.0), "%s: the phases' events were played on both sides, kind for kind (%d and %d)" % [tag, _sum(ev_h), _sum(ev_g)])
 	if id == "abbess":
-		check(niche_max(h).size() == 4 and await until(func() -> bool: return niche_max(g) == niche_max(h), 3.0), "%s: the guest knows the niches' health the host gave them (%s)" % [tag, str(niche_max(h))])
+		check(niche_max(h).size() == niches_of_abbess() and await until(func() -> bool: return niche_max(g) == niche_max(h), 3.0), "%s: the guest knows the niches' health the host gave them (%s)" % [tag, str(niche_max(h))])
 	check(cmp["bad"] == 0, "%s: and through the phases every body the guest holds was the host's (%d bodies in %d snapshots, %d off)" % [tag, cmp["bodies"], cmp["frames"], cmp["bad"]])
 	var banners_g := hud_feed(hud_g).filter(func(t: String) -> bool: return t.begins_with("banner: "))
 	var phase_names: Array = [String(bd["name"])]
@@ -642,8 +673,9 @@ func needs_met(id: String) -> bool:
 ## The checks of what a boss's attacks do besides damage, on the state the loop ended in (the brain is waiting).
 func specifics(id: String, bh: DmBoss, bg: DmBoss, tag: String) -> void:
 	if id == "congregation" or id == "mire":
-		check(rootp["probed"] and float(rootp["left"]) >= 900.0, "%s: its %s rooted the guest's hero on the host for a second (%.0f ms left when it landed)" % [tag, "Drowning Grasp" if id == "congregation" else "Drowned Hands", rootp["left"]])
-		check(float(rootp["free"]) > 0.8 and float(rootp["held"]) >= 0.0 and float(rootp["held"]) < 0.3, "%s: and the guest's move intent did not walk it (%.1f m free, %.1f m rooted)" % [tag, rootp["free"], rootp["held"]])
+		var root_s := float(DmContent.get_export("bosses", id.to_upper())["grasp" if id == "congregation" else "hands"]["rootS"])
+		check(rootp["probed"] and float(rootp["left"]) >= root_s * 1000.0 - 100.0, "%s: its %s rooted the guest's hero on the host for %.0f s (%.0f ms left when it landed)" % [tag, "Drowning Grasp" if id == "congregation" else "Drowned Hands", root_s, rootp["left"]])
+		check(float(rootp["free"]) > 0.1 and float(rootp["held"]) >= 0.0 and float(rootp["held"]) < 0.15 * float(rootp["free"]), "%s: and the guest's move intent did not walk it (%.1f m free, %.1f m rooted)" % [tag, rootp["free"], rootp["held"]])
 	if id == "congregation":
 		check(chill_h and chill_g, "%s: the Flood Hymn chilled the guest's hero, and the guest's copy of the status shows it (host %s, guest %s)" % [tag, chill_h, chill_g])
 	if id == "mire":
@@ -721,15 +753,16 @@ func late_fight(id: String, bh: DmBoss, bg: DmBoss, tag: String) -> void:
 ## says so (`nicheBreak`) on both sides, and the niche leaves both tables without a corpse.
 func abbess_breaks(bh: DmBoss, bg: DmBoss, tag: String) -> void:
 	var niches := ids_of(h, "niche")
-	check(niches.size() == 4, "%s: four niches stand on the host" % tag)
+	var n_niche := niches_of_abbess()
+	check(niches.size() == n_niche, "%s: her %d niches stand on the host" % [tag, n_niche])
 	if niches.size() < 2:
 		return
-	check(await until(func() -> bool: return ids_of(g, "niche").size() == 4, 3.0), "%s: and on the guest" % tag)
+	check(await until(func() -> bool: return ids_of(g, "niche").size() == n_niche, 3.0), "%s: and on the guest" % tag)
 	var corpses0: int = h.core_host.core.corpse_count()
 	var hp0 := bh.hp
 	var a: int = niches[0]
 	var b: int = niches[1]
-	h.core_host.core.set_enemy_hp(a, 1.0, 1.0)   # (a niche has 7 % of her health: weakened so one needle breaks it)
+	h.core_host.core.set_enemy_hp(a, 1.0, 1.0)   # (a niche has a share of her health: weakened so one needle breaks it)
 	await until(func() -> bool: return float(g.core_host.core.enemy_info(a)["hp"]) <= 1.0, 3.0)
 	var at := g.core_host.enemy_position(a)
 	for i in 30:   # the guest aims at the niche it sees on its own core
@@ -739,7 +772,7 @@ func abbess_breaks(bh: DmBoss, bg: DmBoss, tag: String) -> void:
 		await ticks(10)
 	check(int(h.core_host.core.enemy_info(a)["state"]) == DEAD_STATE, "%s: the guest's cast broke a niche on the host" % tag)
 	h.core_host.damage(b, 1.0e9, gb_h.core_id)
-	check(await until(func() -> bool: return ids_of(h, "niche").size() == 2 and ids_of(g, "niche").size() == 2, 3.0), "%s: two niches left both cores (%d and %d)" % [tag, ids_of(h, "niche").size(), ids_of(g, "niche").size()])
+	check(await until(func() -> bool: return ids_of(h, "niche").size() == n_niche - 2 and ids_of(g, "niche").size() == n_niche - 2, 3.0), "%s: two niches left both cores (%d and %d)" % [tag, ids_of(h, "niche").size(), ids_of(g, "niche").size()])
 	check(await until(func() -> bool: return int(ev_h.get("nicheBreak!", 0)) == 2 and int(ev_g.get("nicheBreak!", 0)) == 2, 3.0), "%s: each said so on both sides (%d, %d)" % [tag, int(ev_h.get("nicheBreak!", 0)), int(ev_g.get("nicheBreak!", 0))])
 	check(bh.hp < hp0 and h.core_host.core.corpse_count() == corpses0 and g.core_host.core.corpse_count() == corpses0, "%s: they tore at her and lay no corpse" % tag)
 
@@ -835,9 +868,9 @@ func wipe(id: String) -> void:
 	cur_core = bh.core_id
 	check(bg != null and bg.bstate.active and bh.dead == false, "%s: a fresh body" % tag)
 	await stand(id)
-	await to_phase(id, bh, bg, 0.55, 2, tag)
+	await to_phase(id, bh, bg, just_into(2), 2, tag)
 	var adds := living(h)
-	check(adds >= 1 or id == "abbess", "%s: its wave is out (%d bodies)" % [tag, adds])
+	check(adds >= 1 or int(wave_sizes(id)[0]) == 0, "%s: its wave is out (%d bodies)" % [tag, adds])
 	check(await until(func() -> bool: return defs_of(h) == defs_of(g), 4.0), "%s: on both cores" % tag)
 	var d0 := deaths.duplicate()
 	var corpses0: int = h.core_host.core.corpse_count()

@@ -85,7 +85,10 @@ func _run() -> void:
 	# ---- NPCs: present with their models and plates, talkable with the existing dialogue
 	var ids: Array = DmContent.get_export("npcs", "NPC_IDS")
 	var spots: Dictionary = DmContent.get_export("npcs", "NPCS")
-	check(ids.size() == 3 and h.npcs.npcs.size() == 3, "all three NPCs are in the hub (%s)" % [ids])
+	check(not ids.is_empty() and h.npcs.npcs.size() == ids.size(), "every NPC of the data is in the hub (%s)" % [ids])
+	var prior_x := float(spots["prior"]["x"])   # where the Prior stands
+	var prior_z := float(spots["prior"]["z"])
+	var prior_name := String(spots["prior"]["name"])
 	for id in ids:
 		var n: Dictionary = h.npcs.npcs[id]
 		var def: Dictionary = spots[id]
@@ -115,15 +118,15 @@ func _run() -> void:
 	check(String(g.ui.dialogue.lines[0]) != "", "talk_to opens a conversation")
 	await ticks(20)
 	check(h.talking == "prior" and h.npcs.npcs["prior"]["talking"], "the Prior is told they are talking (turns, talk clip)")
-	at(-3.4, 15.8 + 30.0)    # walk away: the world closes the conversation past talk range + 3.5
+	at(prior_x, prior_z + 30.0)    # walk away: the world closes the conversation past talk range + 3.5
 	await until(func() -> bool: return not g.ui.dialogue.visible, 2.0)
 	check(not g.ui.dialogue.visible and h.talking == "", "walking away closes the dialogue")
 	# a click on an NPC walks over and talks
-	at(-3.4, 15.8 - 8.0)
+	at(prior_x, prior_z - 8.0)
 	g.ui.close_panels()
 	h.click_interactable(prior)
 	check(h.pending == prior, "clicking an NPC queues the interaction")
-	at(-3.4, 15.8 - 1.4)
+	at(prior_x, prior_z - 1.4)
 	await until(func() -> bool: return g.ui.dialogue.visible, 1.5)
 	check(g.ui.dialogue.visible and g.ui.dialogue.npc == "prior" and h.pending == null, "arriving within range talks")
 	g.ui.close_panels()
@@ -295,12 +298,13 @@ func _run() -> void:
 	check(not h.door_open("graves_warren"), "the Warren door starts sealed")
 	var prog := h._prog()
 	var need := prog.unlock_kills(float(DmContent.area("warren")["unlock"]["kills"]))
-	check(need == 150, "the Warren asks %d kills in the Graves" % need)
+	var seal_area := String(DmContent.area("warren")["unlock"]["area"])
+	check(need == int(DmContent.area("warren")["unlock"]["kills"]), "the Warren asks %d kills in %s" % [need, seal_area])
 	for i in need - 1:
-		prog.record_kill("graves")
+		prog.record_kill(seal_area)
 	events.clear()
 	check(h.check_seals().is_empty() and not h.door_open("graves_warren"), "%d kills: the seal holds" % (need - 1))
-	prog.record_kill("graves")
+	prog.record_kill(seal_area)
 	g.rewards.member_credited.emit(cid, {"kills": 1})     # an accepted report lands -> the hub checks the seals
 	check(h.door_open("graves_warren") and prog.really_unlocked("warren"), "%d kills: the Warren seal breaks and its door opens" % need)
 	var banner := ev("banner")
@@ -310,12 +314,12 @@ func _run() -> void:
 	check(g.world.nav_path(Vector3(-20, 0, -28), Vector3(-45, 0, -28)).size() > 1, "the navmesh runs through the opened Warren door")
 
 	# ---- prompts show / hide by distance, hover prompt
-	at(-3.4, 15.8 - 1.8)
+	at(prior_x, prior_z - 1.8)
 	settle()
-	check(String(h.prompt_text) == "<kbd>E</kbd> Talk to The Prior", "near the Prior: '%s'" % h.prompt_text)
+	check(String(h.prompt_text) == "<kbd>E</kbd> Talk to %s" % prior_name, "near the Prior: '%s'" % h.prompt_text)
 	await until(func() -> bool: return g.ui.hud.prompt.visible, 1.0)
-	check(g.ui.hud.prompt.visible and String(g.ui.hud.prompt_rt.get_parsed_text()).find("Talk to The Prior") >= 0, "the HUD prompt is visible")
-	at(-3.4, 15.8 - 12.0)
+	check(g.ui.hud.prompt.visible and String(g.ui.hud.prompt_rt.get_parsed_text()).find("Talk to %s" % prior_name) >= 0, "the HUD prompt is visible")
+	at(prior_x, prior_z - 12.0)
 	settle()
 	check(h.prompt_text == null, "far from everyone: no prompt")
 	await until(func() -> bool: return not g.ui.hud.prompt.visible, 1.0)
@@ -339,7 +343,7 @@ func _run() -> void:
 	settle()
 	check(h.prompt_text == null, "hover gone: prompt gone")
 	# the hovered NPC is highlighted
-	h.hover_at(cam.unproject_position(Vector3(-3.4, 1.2, 15.8)))
+	h.hover_at(cam.unproject_position(Vector3(prior_x, 1.2, prior_z)))
 	check(h.hover != null and h.hover["kind"] == "npc" and h.hover["npc"] == "prior", "hovering the Prior picks the NPC (highlight)")
 	h.hover = null
 
@@ -354,7 +358,7 @@ func _run() -> void:
 	await ticks(30)
 	settle()
 	check(h.npcs._near.is_empty() and h.npcs._mid.is_empty(), "far from every NPC nothing is animated per frame")
-	at(-3.4, 15.8 + 2.5)    # beside the Prior, in the Chapterhouse hall
+	at(prior_x, prior_z + 2.5)    # beside the Prior, in the Chapterhouse hall
 	await ticks(10)
 	settle()
 	var near_ids := h.npcs._near.size() + h.npcs._mid.size()
@@ -459,7 +463,7 @@ func _reforge() -> void:
 		return
 	# make room, then bag the rolled piece the way a pickup does
 	for s in uh.slots.duplicate():
-		if int(s["slot_index"]) >= 40 and int(s["slot_index"]) < 48:
+		if int(s["slot_index"]) >= DmLootData.bag_size() - 8 and int(s["slot_index"]) < DmLootData.bag_size():
 			uh.inventory.consume(String(s["item_id"]))
 	await uh.inventory.flush()
 	await uh.refresh_inventory()

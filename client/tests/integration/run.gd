@@ -146,19 +146,33 @@ func _gap1() -> void:
 	var da := loss(a) - ha
 	var db := loss(b) - hb
 	check(da > 1.0 and near(db / da, k, 0.02), "G1: rite damage on a sanctified body is x%.2f of a plain one (%.1f vs %.1f)" % [k, db, da])
-	# hero: sanctified on the hero scales what it takes (once, in take_damage)
-	DmStatusSet.ensure(hero).apply(&"sanctified")
+	# hero: sanctified on the hero scales what it takes (once, in take_damage). What a blow and a zone pulse take from this hero with no status on it comes first
+	# (the hero's own mitigation, whatever it is), and the sanctified ones are compared with that.
+	var blow := hero.max_hp * 0.25      # a blow and a zone that leave the hero standing, sanctified or not
+	var zone_dps := hero.max_hp * 0.2
 	hero.teleport(Vector3(0, 0, -18))
 	hero.heal(1e6)
 	var hh := hero.hp
-	hero.take_damage(100.0, null)
-	check(near(hh - hero.hp, 100.0 * k, 0.5), "G1: hero.take_damage applies it once (%.1f)" % [hh - hero.hp])
+	hero.take_damage(blow, null)
+	var plain_hit := hh - hero.hp
+	hero.heal(1e6)
+	hh = hero.hp
+	core.add_zone("dust", Vector2(hero.position.x, hero.position.z), 3.0, 1.5, zone_dps, 0)
+	await until(func() -> bool: return hero.hp < hh, 3.0)
+	var plain_zone := hh - hero.hp
+	await secs(2.0)   # the zone ends
+	check(plain_hit > 0.0 and plain_zone > 0.0, "G1: a plain blow (%.1f) and a plain zone pulse (%.1f) hurt the hero" % [plain_hit, plain_zone])
+	DmStatusSet.ensure(hero).apply(&"sanctified")
+	hero.heal(1e6)
+	hh = hero.hp
+	hero.take_damage(blow, null)
+	check(near(hh - hero.hp, plain_hit * k, 0.5), "G1: hero.take_damage applies it once (%.1f of %.1f x %.2f)" % [hh - hero.hp, plain_hit, k])
 	# a hostile zone's pulse on the hero (the core's zone, the game scene's hand-over of its hit) is scaled once
 	hero.heal(1e6)
 	hh = hero.hp
-	core.add_zone("dust", Vector2(hero.position.x, hero.position.z), 3.0, 1.5, 50.0, 0)
+	core.add_zone("dust", Vector2(hero.position.x, hero.position.z), 3.0, 1.5, zone_dps, 0)
 	await until(func() -> bool: return hero.hp < hh, 3.0)
-	check(near(hh - hero.hp, 50.0 * k, 0.5), "G1: a hostile-zone tick on the hero is scaled once (%.1f)" % [hh - hero.hp])
+	check(near(hh - hero.hp, plain_zone * k, 0.5), "G1: a hostile-zone tick on the hero is scaled once (%.1f of %.1f x %.2f)" % [hh - hero.hp, plain_zone, k])
 	await secs(2.0)   # the zone ends
 	DmStatusSet.of(hero).remove(&"sanctified")
 	clear_foes()
@@ -265,7 +279,8 @@ func _gap3() -> void:
 	await ticks(30)
 	var chilled_run := hero.position.x - x0
 	g.session.request_move_dir(Vector3.ZERO)
-	check(free_run > 1.0 and chilled_run < free_run * 0.8, "G3: a chilled hero covers less ground (%.2f vs %.2f m)" % [chilled_run, free_run])
+	var chill_mult := float(DmSimData.CHILL["moveMult"])
+	check(free_run > 1.0 and chilled_run < free_run * (1.0 + chill_mult) * 0.5, "G3: a chilled hero covers less ground (%.2f vs %.2f m, move x%.2f)" % [chilled_run, free_run, chill_mult])
 	hs.clear()
 	await ticks(2)
 	# Drowned Sexton hook: damage, a glide toward the sexton, then root
@@ -377,11 +392,15 @@ func _gap6() -> void:
 	check(gained > want * 0.7 and gained < want * 1.3, "G6: essence regenerates once (%.1f in %.1f s, expected ~%.1f)" % [gained, span, want])
 	# a brew drunk on the body acts on what the rites read; a death on the body is the caster's death
 	hero.apply_brew("flask_damage")
-	check(near(DmPlayerRules.brew_value(caster.p, "damage", caster.now_ms), 0.15, 0.001), "G6: a brew on the body is in force for the rites (one clock)")
+	var brew_damage := 0.0   # what the flask adds to damage, from its data
+	for e: Dictionary in DmContent.brews()["flask_damage"]["effects"]:
+		if String(e["kind"]) == "damage":
+			brew_damage += float(e["value"])
+	check(brew_damage > 0.0 and near(DmPlayerRules.brew_value(caster.p, "damage", caster.now_ms), brew_damage, 0.001), "G6: a brew on the body is in force for the rites (one clock)")
 	hero.take_damage(1e9, null)
 	check(not caster.p["alive"] and not hero.alive, "G6: the body's death is the caster's death")
 	Engine.time_scale = 4.0
-	await until(func() -> bool: return hero.alive, 8.0)
+	await until(func() -> bool: return hero.alive, DmHeroBody.RESPAWN_S + 4.0)
 	Engine.time_scale = 1.0
 	check(hero.alive and caster.p["alive"], "G6: respawn revives both")
 

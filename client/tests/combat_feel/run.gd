@@ -158,8 +158,9 @@ func _run() -> void:
 
 	# ---- A: click a far enemy = walk into range, stop, attack
 	reset_hero(Vector3(0, 0, -18))
-	var far := foe(Vector3(0, 0, -36))
 	var rng := DmWeaponLine.ability_range("bone_needle", float(DmAbilities.def("bone_needle")["range"]), caster.p["loadout"]) + 0.4
+	var far := foe(Vector3(0, 0, -18.0 - (rng + 7.0)))   # well out of range
+	var inside := minf(7.0, rng * 0.6)   # a distance well inside it
 	check(hero.position.distance_to(pos_of(far)) > rng + 5.0, "A: the enemy starts out of range (%.1f m, range %.1f)" % [hero.position.distance_to(pos_of(far)), rng])
 	g.input.attack(eid(far), false)
 	check(combat.stats["chase_moves"] == 1 and combat.target_id == eid(far), "A: the click took the first chase step immediately")
@@ -172,30 +173,32 @@ func _run() -> void:
 
 	# ---- B: hold = repeat at the rite's cooldown
 	seen.clear()
-	await ticks(150)
+	var hold_ticks := maxi(150, int(ceil(cool / 1000.0 * 60.0 * 5.5)))   # (about 2.5 s: six primaries or so, whatever the cooldown)
+	await ticks(hold_ticks)
 	var casts := seen.filter(func(s: Dictionary) -> bool: return s["rite"] == "bone_needle" and s["t"] == "cast")
 	var gaps: Array = []
 	for i in range(1, casts.size()):
 		gaps.append(float(casts[i]["ms"]) - float(casts[i - 1]["ms"]))
 	var gmin := float(gaps.min()) if not gaps.is_empty() else 0.0
 	var gmax := float(gaps.max()) if not gaps.is_empty() else 0.0
-	check(casts.size() >= 4 and gmin >= cool - 1.0 and gmax <= cool + 120.0, "B: %d primaries in 2.5 s, gaps %.0f..%.0f ms vs the rite's cooldown %.0f ms" % [casts.size(), gmin, gmax, cool])
+	check(casts.size() >= 4 and gmin >= cool - 1.0 and gmax <= cool + 120.0, "B: %d primaries in %.1f s, gaps %.0f..%.0f ms vs the rite's cooldown %.0f ms" % [casts.size(), float(hold_ticks) / 60.0, gmin, gmax, cool])
 	g.input.combat.clear()
 	g.session.request_move_dir(Vector3.ZERO)
 
 	# ---- C: a cast pressed during another cast's lock is queued and fires after it
 	reset_hero(Vector3(0, 0, -18))
-	var near := foe(Vector3(0, 0, -25))
+	var near := foe(Vector3(0, 0, -18.0 - inside))
 	g.input._hover_id = eid(near)
 	g.input._aim = pos_of(near)
-	g.input.cast_at(0, pos_of(near), eid(near), false)     # the lock (60 ms) starts
+	g.input.cast_at(0, pos_of(near), eid(near), false)     # the primary's lock starts
 	g.input.press_hotbar(1)                                  # marrow spear, pressed inside it
 	check(combat.stats["queued"] == 1 and not combat.queued.is_empty(), "C: the refused spear was queued")
 	check(not seen.any(func(s: Dictionary) -> bool: return s["rite"] == "marrow_spear"), "C: ...and has not fired yet")
-	check(await until(func() -> bool: return seen.any(func(s: Dictionary) -> bool: return s["rite"] == "marrow_spear" and s["t"] == "cast"), 1.0), "C: the queued spear fired once the lock ended")
+	check(await until(func() -> bool: return seen.any(func(s: Dictionary) -> bool: return s["rite"] == "marrow_spear" and s["t"] == "cast"), DmCombatInput.QUEUE_MS / 1000.0 + 1.0), "C: the queued spear fired once the lock ended")
 	await ticks(10)
 	check(seen.filter(func(s: Dictionary) -> bool: return s["rite"] == "marrow_spear" and s["t"] == "cast").size() == 1 and combat.queued.is_empty(), "C: exactly one spear, the queue is empty")
-	# a cooldown longer than the window is NOT queued
+	# a cooldown longer than the window is NOT queued (the spear is put on one that is: ten windows)
+	caster.p["cooldowns"]["marrow_spear"] = caster.now_ms + DmCombatInput.QUEUE_MS * 10.0
 	g.input.press_hotbar(1)
 	check(combat.queued.is_empty(), "C: a spear on a long cooldown is refused, not queued")
 
@@ -208,7 +211,7 @@ func _run() -> void:
 	check(combat.stats["chase_moves"] == 0 and hero.position.distance_to(p0) < 0.05, "D: shift-click on a far enemy does not walk")
 	check(not seen.any(func(s: Dictionary) -> bool: return s["rite"] == "bone_needle" and s["t"] == "cast"), "D: out of range it casts nothing (the host would refuse)")
 	g.input.combat.clear()
-	var close := foe(Vector3(0, 0, -26))
+	var close := foe(Vector3(0, 0, -18.0 - minf(8.0, rng * 0.7)))
 	g.input.attack(eid(close), true)
 	check(await until(func() -> bool: return seen.any(func(s: Dictionary) -> bool: return s["rite"] == "bone_needle" and s["t"] == "cast"), 2.0) and hero.position.distance_to(p0) < 0.05, "D: shift-click in range fires without moving")
 	g.input.combat.clear()
@@ -224,10 +227,10 @@ func _run() -> void:
 	# ---- E: a held number key repeats when the rite is ready
 	reset_hero(Vector3(0, 0, -18))
 	g.input._hover_id = eid(near)
-	g.input.press_hotbar(3)                                  # miasma (cooldown 7 s) pressed ...
+	g.input.press_hotbar(3)                                  # miasma pressed ...
 	combat.key_down(3, float(Time.get_ticks_msec()))
 	Input.action_press(&"dm_hotbar_3")
-	await ticks(60)
+	await ticks(int(minf(1.0, float(DmAbilities.def("miasma")["cooldownMs"]) / 2000.0) * 60.0))   # (a second, or half its cooldown when that is shorter)
 	var m1 := seen.filter(func(s: Dictionary) -> bool: return s["rite"] == "miasma" and s["t"] == "cast").size()
 	check(m1 == 1, "E: held key on a cooling rite does not spam (%d cast in 1 s)" % m1)
 	caster.p["cooldowns"].erase("miasma")                    # ... ready again
@@ -294,12 +297,13 @@ func _run() -> void:
 	check(g.rite_build(1)["runes"] == caster.p["runes"], "H: rite_build carries them (a rebuild keeps them)")
 	# Impaling: the spear takes only the FIRST enemy in its line and roots it
 	reset_hero(Vector3(0, 0, -18))
-	var e1 := foe(Vector3(5, 0, -18))
-	var e2 := foe(Vector3(9, 0, -18))
+	var line_far := minf(9.0, float(DmAbilities.def("marrow_spear")["range"]) * 0.75)   # two enemies in the spear's line, inside its range
+	var e1 := foe(Vector3(line_far * 0.55, 0, -18))
+	var e2 := foe(Vector3(line_far, 0, -18))
 	# cast until it lands (bounded): under load a single request could be dropped (cooldown, a cast still finishing), and the check flaked and
 	# blocked unrelated ships; what is checked is where the spear hit, not that the first request was taken
 	for _try in 6:
-		caster.request_cast("marrow_spear", Vector3(9, 0, -18), eid(e2))
+		caster.request_cast("marrow_spear", Vector3(line_far, 0, -18), eid(e2))
 		if await until(func() -> bool: return hp_of(e1) < max_hp_of(e1), 1.0):
 			break
 	await ticks(10)   # time for a pierce to reach the second enemy, if the rune failed to stop it
@@ -308,9 +312,9 @@ func _run() -> void:
 	reset_hero(Vector3(0, 0, -18))
 	host.remove_enemy(e1)   # fresh bodies in the same line (the core's statuses are not cleared from here)
 	host.remove_enemy(e2)
-	e1 = foe(Vector3(5, 0, -18))
-	e2 = foe(Vector3(9, 0, -18))
-	caster.request_cast("marrow_spear", Vector3(9, 0, -18), eid(e2))
+	e1 = foe(Vector3(line_far * 0.55, 0, -18))
+	e2 = foe(Vector3(line_far, 0, -18))
+	caster.request_cast("marrow_spear", Vector3(line_far, 0, -18), eid(e2))
 	await ticks(45)
 	check(stacks_of(e1, &"root") == 0 and hp_of(e2) < max_hp_of(e2), "H: without the rune the same spear pierces the line and roots nobody")
 	caster.set_runes(g.rune_sockets(1))

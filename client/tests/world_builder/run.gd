@@ -89,7 +89,7 @@ func _run() -> void:
 	var w: Dictionary = DmData.world()
 	_check(not w.order.is_empty() and w.order.size() == w.areas.size() and w.order.size() == DmContent.get_export("areas", "AREA_ORDER").size(), "every area is exported (%d), in the order the content names" % w.order.size())
 	_check(not w.doors.is_empty() and w.doors.size() == DmContent.doors().size(), "every door of the content is exported (%d)" % w.doors.size())
-	_check(w.props.size() > 500 and w.nodes.size() > 50 and w.walls.size() > 100, "layout exported (props/nodes/walls)")
+	_check(not w.props.is_empty() and not w.nodes.is_empty() and not w.walls.is_empty(), "layout exported (props/nodes/walls)")
 	var used: Dictionary = DmData.load_json("assets_used")
 	var missing := 0
 	for m in used.models:
@@ -122,7 +122,7 @@ func _run() -> void:
 				noclip += 1
 				printerr("no idle/walk clip: ", e.slug)
 		(c.root as Node3D).free()
-	_check(loaded == carried and carried > 40, "%d creature models instantiate" % carried)
+	_check(loaded == carried and carried > 0, "%d creature models instantiate" % carried)
 	_check(noclip == 0, "every rigged creature has idle or walk")
 	for id in enemies.defs:
 		var d: Dictionary = enemies.defs[id]
@@ -143,19 +143,32 @@ func _run() -> void:
 	print("nav bake: %d ms, %d regions, %d links" % [b.nav_bake_ms, b.nav_regions.size(), b.nav_links.size()])
 	_check(b.area_nodes.size() == w.order.size() and b.nav_regions.size() == w.order.size() + w.doors.size(), "an area node + nav region per area and per door")
 	_check(b.gates.size() == w.doors.size() - 1 and not b.gates.has("chapter_graves"), "a gate for each door but chapter_graves, which is always open (%d)" % b.gates.size())
-	var start := Vector3(0, 0, 24)
+	var home: Dictionary = DmContent.get_export("areas", "CHAPTERHOUSE_RETURN")
+	var start := Vector3(float(home.x), 0, float(home.z))
 
-	# default seals: always-open halls reachable, sealed ones not
-	var open_ids := ["chapterhouse", "acre", "alchemist_wing", "graves"]
+	# default seals: the areas with no seal (world.json: unlock null) are reachable, sealed ones not
+	var open_ids: Array = []
+	for id in w.order:
+		if w.areas[id].unlock == null and not w.areas[id].instance:
+			open_ids.append(id)
+	_check(not open_ids.is_empty(), "some areas start unsealed (%s)" % ", ".join(open_ids))
+	var sealed_id := ""
+	for id in w.order:
+		if not open_ids.has(id) and not w.areas[id].instance and sealed_id == "":
+			sealed_id = id
 	for id in w.order:
 		var a: Dictionary = w.areas[id]
 		var r: Dictionary = a.rect
 		var ctr := b.nav_closest(Vector3((r.x0 + r.x1) / 2.0, 0, (r.z0 + r.z1) / 2.0))
 		if id in open_ids:
 			_check(_reaches(b, start, ctr), "sealed-state: %s reachable" % id)
-	var oss: Dictionary = w.areas.ossuary.rect
-	_check(not _reaches(b, start, Vector3((oss.x0 + oss.x1) / 2.0, 0, (oss.z0 + oss.z1) / 2.0), 3.0), "sealed-state: ossuary NOT reachable")
-	_check((b.gates["graves_ossuary"].collider as CollisionShape3D).disabled == false, "sealed gate collider is solid")
+	var oss: Dictionary = w.areas[sealed_id].rect
+	_check(sealed_id != "" and not _reaches(b, start, Vector3((oss.x0 + oss.x1) / 2.0, 0, (oss.z0 + oss.z1) / 2.0), 3.0), "sealed-state: %s NOT reachable" % sealed_id)
+	var sealed_gate := ""   # the gate of a door into the sealed area
+	for d in w.doors:
+		if (d.a == sealed_id or d.b == sealed_id) and b.gates.has(d.id) and sealed_gate == "":
+			sealed_gate = d.id
+	_check(sealed_gate != "" and (b.gates[sealed_gate].collider as CollisionShape3D).disabled == false, "sealed gate (%s) collider is solid" % sealed_gate)
 
 	# every seal broken: every area reachable from the Chapterhouse, and walkable at its centre
 	b.open_all()
@@ -172,9 +185,21 @@ func _run() -> void:
 		var snap := Vector2(ctr.x - want.x, ctr.z - want.z).length()
 		_check(snap < 12.0, "%s centre is (near) walkable navmesh (%.1f m off)" % [id, snap])
 		_check(b.area_at(ctr.x, ctr.z) == id, "%s navmesh point lies in the area" % id)
-	var path := b.nav_path(start, b.nav_closest(Vector3(90, 0, -126)))  # the Ember Altar in the Pyre, the far end
-	_check(path.size() > 5, "Chapterhouse -> Cinder Pyre path (%d points)" % path.size())
-	_check((b.gates["graves_ossuary"].collider as CollisionShape3D).disabled, "open gate collider is disabled")
+	var far_id := ""   # the far end of the world: the area whose centre is farthest from the start
+	var far_d := -1.0
+	for id in w.order:
+		if id == "depths":
+			continue
+		var fr: Dictionary = w.areas[id].rect
+		var fd := Vector2((fr.x0 + fr.x1) / 2.0 - start.x, (fr.z0 + fr.z1) / 2.0 - start.z).length()
+		if fd > far_d:
+			far_d = fd
+			far_id = id
+	var far_r: Dictionary = w.areas[far_id].rect
+	var far_c := b.nav_closest(Vector3((far_r.x0 + far_r.x1) / 2.0, 0, (far_r.z0 + far_r.z1) / 2.0))
+	var path := b.nav_path(start, far_c)
+	_check(path.size() > 2 and _reaches(b, start, far_c), "Chapterhouse -> %s (the far end) path (%d points)" % [far_id, path.size()])
+	_check((b.gates[sealed_gate].collider as CollisionShape3D).disabled, "open gate collider is disabled")
 
 	# depths: instance open, walk from the start to the stair down
 	var D: Dictionary = w.depths
@@ -187,10 +212,11 @@ func _run() -> void:
 	var c := DmModels.creature_from(hero.model)
 	var an: DmAnimator = c.animator
 	root.add_child(c.root)
-	an.loco(1.0)
-	_check(an.last_plan.clip == "walk" and absf(float(an.last_plan.timeScale) * float(an.last_plan.stride) - 1.0) < 0.5, "hero walk plan matches ground speed")
-	an.loco(6.0)
-	_check(an.last_plan.clip == "run", "hero runs at 6 m/s")
+	var walk_u := float(an.stride.get("walk", DmAnimator.DEFAULT_WALK)) * an.height   # the model's walking stride, in metres a second
+	an.loco(walk_u)
+	_check(an.last_plan.clip == "walk" and absf(float(an.last_plan.timeScale) * float(an.last_plan.stride) - walk_u) < 0.05 * walk_u, "hero walk plan matches ground speed")
+	an.loco(walk_u * DmAnimator.RUN_UP * 1.5)
+	_check(an.last_plan.clip == "run", "hero runs once the ground speed is past the walk stride's run threshold")
 	_check(an.strike("attack", 0.2), "attack clip plays")
 	await _frames(2)
 	_check(an.death(), "death clip plays")

@@ -577,7 +577,7 @@ func play_rite(disc: String, rite: String) -> void:
 		for p in [at(2.0, 2.0), at(2.5, -2.0), at(1.5, 0.0)]:
 			raised += 1 if raise_at(p) else 0
 		check(raised == 3, "%s/%s: three thralls rise (%d)" % [disc, rite, raised])
-		await secs(1.6)   # (a rising thrall cannot act yet: Command: Rend and Rally the Dead need the legion on its feet)
+		await secs(rise_wait())   # (a rising thrall cannot act yet: Command: Rend and Rally the Dead need the legion on its feet)
 	await ticks(3)
 	var target := int(foes[0])
 	var aim: Vector3 = host.enemy_position(target)   # at an enemy, as the cursor on one is
@@ -640,11 +640,16 @@ func fight_for(secs_: float) -> void:
 		await secs(0.25)
 
 
+## How long a raised thrall needs to be on its feet: the rising time of the rules, and a moment more.
+func rise_wait() -> float:
+	return DmSimConsts.THRALL_RISE_TIME + 0.7
+
+
 ## Three thralls rise next to the hero.
 func raise_legion() -> void:
 	for p in [at(2.0, 2.0), at(2.5, -2.0), at(1.5, 0.0)]:
 		raise_at(p)
-	await secs(1.6)
+	await secs(rise_wait())
 
 
 ## A real fight: three thralls and six live enemies (the Graves' roster, one elite) that walk up and attack, the hero casting at the nearest one.
@@ -665,14 +670,14 @@ func play_fight(disc: String) -> void:
 	rec.scan_all()
 
 
-## The real wave director for thirty seconds: waves breach in, the hero and his legion fight them; then it is switched off again.
+## The real wave director for thirty seconds (longer when the area's waves come further apart): waves breach in, the hero and his legion fight them; then it is switched off again.
 func play_waves(disc: String) -> void:
 	rec.set_ctx(disc, "", "waves of enemies")
 	reset()
 	await ticks(2)
 	await raise_legion()
 	g.director.enabled = true
-	await fight_for(30.0)
+	await fight_for(maxf(30.0, g.director.first_wave_delay + g.director.wave_interval + 3.0))   # (thirty seconds, or until a wave has come at the area's own pace)
 	g.director.enabled = false
 	waves_seen += g.director.waves_spawned
 	check(g.director.waves_spawned > 0, "%s: the director sent waves (%d)" % [disc, g.director.waves_spawned])
@@ -694,7 +699,7 @@ func play_boss(disc: String) -> void:
 	await ticks(2)
 	for p in [Vector3(1.5, 0.0, 3.0), Vector3(-1.5, 0.0, 3.5), Vector3(0.0, 0.0, 4.0)]:
 		raise_at(g.bosses.site_pos("gravedigger") + p)
-	await secs(1.6)
+	await secs(rise_wait())
 	var why: String = g.bosses.try_summon(me, "gravedigger")
 	check(why == "", "%s: the King wakes (%s)" % [disc, why])
 	var boss: DmBoss = g.bosses.active_boss()

@@ -63,16 +63,33 @@ func _run() -> void:
 	check(is_equal_approx(float(caster.p["resource"]["value"]), full), "1: the essence stayed full (the primary is free), so no state push was forced")
 	check(caster.cooldown_left("bone_needle") == 0.0, "1: the cooldown ran out on the host (%.0f ms left)" % caster.cooldown_left("bone_needle"))
 
-	# 2: one click-attack kills a lone robber with the primary alone
+	# 2: one click-attack kills a lone robber with the primary alone. The robber's health is a share of the primary's own damage, so it takes the primary several casts
+	# whatever the primary hits for: first one click-attack on a body that cannot die measures what a cast takes off, then the robber is made with six casts' worth.
 	g.director.enabled = false
-	var e: int = g.director.spawn("robber", hero.position + Vector3(5, 0, 0), [hero])   # a body of the core: an id
+	var host := g.core_host
+	var casts0 := int(g.input.combat.stats["primary_casts"])
+	var soak: int = host.spawn_enemy("robber", hero.position + Vector3(5, 0, 0), 1, 1000.0, 0.0, false, "graves", false)   # a soak body: it does not hurt
 	await ticks(150)   # rising
+	var soak_max := float(host.core.enemy_info(soak)["max_hp"])
+	g.input.attack(soak, false)
+	var t_soak := Time.get_ticks_msec()
+	while int(g.input.combat.stats["primary_casts"]) < casts0 + 4 and Time.get_ticks_msec() - t_soak < 12000:
+		await physics_frame
+	await ticks(60)   # the last cast lands
+	var soak_casts := int(g.input.combat.stats["primary_casts"]) - casts0
+	var per_cast := (soak_max - float(host.core.enemy_info(soak)["hp"])) / maxf(1.0, float(soak_casts))
+	host.remove_enemy(soak)
+	check(soak_casts >= 3 and per_cast > 0.0, "2: the primary repeated on the soak body and took %.1f off a cast (%d casts)" % [per_cast, soak_casts])
+	var hp_mult := per_cast * 6.0 / (soak_max / 1000.0)   # six casts of health, in multiples of the robber's own
+	var e: int = host.spawn_enemy("robber", hero.position + Vector3(5, 0, 0), 1, hp_mult, 0.0, false, "graves", false)
+	await ticks(150)   # rising
+	var casts1 := int(g.input.combat.stats["primary_casts"])
 	g.input.attack(e, false)
 	var t0 := Time.get_ticks_msec()
 	while g.core_host.enemy_alive(e) and Time.get_ticks_msec() - t0 < 12000 and hero.alive:
 		await physics_frame
-	check(not g.core_host.enemy_alive(e), "2: a single click-attack kills the robber (%d primary casts, hero alive %s)" % [g.input.combat.stats["primary_casts"], str(hero.alive)])
-	check(int(g.input.combat.stats["primary_casts"]) >= 3, "2: the primary repeated (%d casts)" % g.input.combat.stats["primary_casts"])
+	check(not g.core_host.enemy_alive(e), "2: a single click-attack kills the robber (%d primary casts, hero alive %s)" % [int(g.input.combat.stats["primary_casts"]) - casts1, str(hero.alive)])
+	check(int(g.input.combat.stats["primary_casts"]) - casts1 >= 3, "2: the primary repeated (%d casts)" % [int(g.input.combat.stats["primary_casts"]) - casts1])
 
 	# 3: first tooltip
 	var errs: Array = []

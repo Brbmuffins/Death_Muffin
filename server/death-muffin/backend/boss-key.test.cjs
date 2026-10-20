@@ -4,9 +4,15 @@ const assert = require('node:assert');
 const mountBossKey = require('./boss-key.cjs');
 const { fakeDb, harness, qty } = require('./bag-fake-db.cjs');
 const sinks = require('./gathering/gold-sink-rules.cjs');
+const { bossInfo } = require('./gathering/loot-rules.cjs');
+
+const fmt = (n) => Number(n).toLocaleString('en-US');
+/** More gold than any Seal summon costs (the dearest boss times two). */
+const RICH = 2 * Math.max(...sinks.EMPOWERABLE.map((b) => sinks.empowerGold(b)));
+const COST = sinks.empowerGold('gravedigger');
 
 /** The boss-key SQL on top of fakeDb: gold, the empowered_summons table, the area record and item metadata. */
-function setup({ gold = 500000, bag, open = true, clock = { t: 1_000_000_000 }, mode = 'off' } = {}) {
+function setup({ gold = RICH, bag, open = true, clock = { t: 1_000_000_000 }, mode = 'off' } = {}) {
   const state = { gold, summons: [], nextId: 1, audit: [] };
   const extra = (sql, p) => {
     if (sql.startsWith('SELECT account_id, gold, level FROM characters')) return [[{ account_id: 7, gold: state.gold, level: 30 }]];
@@ -38,24 +44,23 @@ function setup({ gold = 500000, bag, open = true, clock = { t: 1_000_000_000 }, 
 }
 const post = (c, name, body) => c(`POST /api/boss-key/${name}`, { body: { characterId: 1, boss: 'gravedigger', ...body } });
 
-test('prices: 7,500 x shards squared, Prelate excluded', () => {
-  assert.equal(sinks.empowerGold('gravedigger'), 30000);
-  assert.equal(sinks.empowerGold('abbess'), 67500);
-  assert.equal(sinks.empowerGold('mire'), 367500);
+test('prices: gold per shard squared, Prelate excluded', () => {
+  for (const boss of sinks.EMPOWERABLE) {
+    assert.equal(sinks.empowerGold(boss), sinks.EMPOWER.goldPerShardSq * bossInfo(boss).shards ** 2, boss);
+    const chance = sinks.empoweredLegendaryChance(boss);
+    assert.ok(chance > 0 && chance <= sinks.EMPOWER.legendaryCap, `${boss}: a real chance, held under the cap`);
+  }
   assert.equal(sinks.canEmpower('prelate'), false);
   assert.equal(sinks.canEmpower('nope'), false);
-  assert.ok(Math.abs(sinks.empoweredLegendaryChance('gravedigger') - 0.15) < 1e-9);
-  assert.ok(Math.abs(sinks.empoweredLegendaryChance('abbess') - 0.5) < 1e-9);
-  assert.ok(Math.abs(sinks.empoweredLegendaryChance('mire') - 0.6) < 1e-9);
 });
 
 test('a summon takes one Seal and the boss price and binds a summon', async () => {
   const t = setup();
   const r = (await post(t.call(), 'summon')).json;
   assert.equal(r.success, true, r.error);
-  assert.equal(r.data.cost, 30000);
+  assert.equal(r.data.cost, COST);
   assert.equal(r.data.reused, false);
-  assert.equal(t.state.gold, 470000);
+  assert.equal(t.state.gold, RICH - COST);
   assert.equal(qty(t.db.inv, 'covenant_seal'), 1);
   assert.equal(t.state.summons.length, 1);
 });
@@ -69,17 +74,17 @@ test('the last Seal leaves the bag; a bound summon is reused free after a wipe',
   assert.equal(again.success, true, 'no seal needed the second time');
   assert.equal(again.data.reused, true);
   assert.equal(again.data.cost, 0);
-  assert.equal(t.state.gold, 470000, 'not charged twice');
+  assert.equal(t.state.gold, RICH - COST, 'not charged twice');
   assert.equal(t.state.summons.length, 1);
 });
 
 test('no Seal, not enough gold, a sealed ground, the Prelate and junk bosses are refused and change nothing', async () => {
   const noSeal = setup({ bag: [{ slot_index: 1, item_id: 'helm_iron', quantity: 1 }] });
   assert.match((await post(noSeal.call(), 'summon')).json.error, /Covenant Seal/);
-  const poor = setup({ gold: 29999 });
-  assert.match((await post(poor.call(), 'summon')).json.error, /30,000 gold \(you have 29,999\)/);
+  const poor = setup({ gold: COST - 1 });
+  assert.match((await post(poor.call(), 'summon')).json.error, new RegExp(`${fmt(COST)} gold \\(you have ${fmt(COST - 1)}\\)`));
   assert.equal(qty(poor.db.inv, 'covenant_seal'), 2);
-  assert.equal(poor.state.gold, 29999);
+  assert.equal(poor.state.gold, COST - 1);
   const shut = setup({ open: false });
   assert.match((await post(shut.call(), 'summon')).json.error, /sealed/);
   assert.equal(qty(shut.db.inv, 'covenant_seal'), 2);
@@ -87,7 +92,7 @@ test('no Seal, not enough gold, a sealed ground, the Prelate and junk bosses are
   assert.match((await post(t.call(), 'summon', { boss: 'prelate' })).json.error, /cannot be called/);
   assert.match((await post(t.call(), 'summon', { boss: '../x' })).json.error, /cannot be called/);
   assert.equal(t.state.summons.length, 0);
-  assert.equal(t.state.gold, 500000);
+  assert.equal(t.state.gold, RICH);
 });
 
 test('someone else\'s character is refused on every route', async () => {
@@ -95,19 +100,19 @@ test('someone else\'s character is refused on every route', async () => {
   for (const name of ['summon', 'refund', 'claim']) assert.equal((await post(t.call({ owned: false }), name)).status, 403);
 });
 
-test('a summon the host refused can be taken back within two minutes, not later', async () => {
+test('a summon the host refused can be taken back within the refund window, not later', async () => {
   const t = setup({ bag: [{ slot_index: 0, item_id: 'covenant_seal', quantity: 1 }] });
   const c = t.call();
   await post(c, 'summon');
-  t.clock.t += 60_000;
+  t.clock.t += Math.floor(sinks.EMPOWER.refundWindowMs / 2);
   const r = (await post(c, 'refund')).json;
   assert.equal(r.success, true, r.error);
-  assert.equal(t.state.gold, 500000);
+  assert.equal(t.state.gold, RICH);
   assert.equal(qty(t.db.inv, 'covenant_seal'), 1);
   assert.equal(t.state.summons[0].status, 'refunded');
   assert.match((await post(c, 'refund')).json.error, /no recent summon/);
   await post(c, 'summon');
-  t.clock.t += 3 * 60_000;
+  t.clock.t += sinks.EMPOWER.refundWindowMs + 60_000;
   assert.match((await post(c, 'refund')).json.error, /no recent summon/);
 });
 
@@ -115,12 +120,12 @@ test('claim pays one server-rolled epic-or-better piece, once, and never from a 
   const t = setup();
   const c = t.call({ random: () => 0.99 });
   await post(c, 'summon');
-  t.clock.t += 120_000;
+  t.clock.t += mountBossKey.MIN_FIGHT_MS * 12;
   const r = (await post(c, 'claim', { discipline: 'gravecaller', level: 5, item_id: 'helm_gold', affixes: [{ id: 'p_str', v: 99 }], rarity: 'legendary' })).json;
   assert.equal(r.success, true, r.error);
   assert.notEqual(r.data.item_id, 'helm_gold');
   assert.equal(r.data.legendary, false, 'rand 0.99 misses the legendary roll');
-  assert.ok(r.data.affixes.length >= 3, 'three affixes show as epic');
+  assert.ok(r.data.affixes.length >= sinks.EMPOWER.prizeAffixes, 'the prize shows as epic: its affixes');
   assert.ok(r.data.instance_id > 0);
   const row = t.db.loot.find((l) => l.id === r.data.instance_id);
   assert.ok(row && row.item_id === r.data.item_id && row.account_id === 7, 'a loot_instances row the account owns');
@@ -146,18 +151,18 @@ test('claim is refused: no summon, wrong boss, too soon, expired', async () => {
   await post(c, 'summon');
   assert.match((await post(c, 'claim', { boss: 'abbess' })).json.error, /No Empowered summon/);
   assert.match((await post(c, 'claim')).json.error, /barely woken/, 'a summon-and-claim loop in one breath');
-  t.clock.t += 4 * 60 * 60 * 1000;
-  assert.match((await post(c, 'claim')).json.error, /No Empowered summon/, 'unclaimed summons expire after three hours');
+  t.clock.t += sinks.EMPOWER.claimWindowMs + 60_000;
+  assert.match((await post(c, 'claim')).json.error, /No Empowered summon/, 'unclaimed summons expire after the claim window');
   assert.equal(t.db.loot.length, 0, 'nothing was minted');
 });
 
-test('the prize roll: epic pieces always have three affixes, and the empowered boss is stronger than the normal one', () => {
+test('the prize roll: epic pieces always have their set number of affixes, and the empowered boss is stronger than the normal one', () => {
   let n = 0;
   const rand = () => ((n = (n * 1103515245 + 12345) % 2147483648) / 2147483648);
   for (let i = 0; i < 200; i++) {
     const inst = sinks.rollEmpoweredInstance({ item_id: 'helm_iron', legendary: false }, 'common', 30, rand);
-    assert.equal(inst.affixes.length, 3);
-    assert.equal(new Set(inst.affixes.map((a) => a.id)).size, 3);
+    assert.equal(inst.affixes.length, sinks.EMPOWER.prizeAffixes);
+    assert.equal(new Set(inst.affixes.map((a) => a.id)).size, sinks.EMPOWER.prizeAffixes);
   }
   assert.ok(sinks.empoweredLevel(1) > 1 && sinks.empoweredLevel(255) > 255);
 });
@@ -171,7 +176,7 @@ test('summon answers its id, and status says which summons are still bound (surv
   assert.deepEqual(st.bound, ['gravedigger']);
   assert.deepEqual(st.summons, [{ id: 1, boss: 'gravedigger' }]);
   assert.equal((await post(c, 'summon')).json.data.summon_id, 1, 'the reused summon keeps its id');
-  t.clock.t += 4 * 60 * 60 * 1000;
+  t.clock.t += sinks.EMPOWER.claimWindowMs + 60_000;
   assert.deepEqual((await c('POST /api/boss-key/status', { body: { characterId: 1 } })).json.data.bound, [], 'expired summons are not offered');
 });
 
@@ -179,11 +184,11 @@ test('status refuses someone else\'s character', async () => {
   assert.equal((await setup().call({ owned: false })('POST /api/boss-key/status', { body: { characterId: 1 } })).status, 403);
 });
 
-test('AUTHORITY_KILLS off: the claim needs only the 10 s minimum, no reported kill', async () => {
+test('AUTHORITY_KILLS off: the claim needs only the minimum fight time, no reported kill', async () => {
   const t = setup({ mode: 'off' });
   const c = t.call({ random: () => 0.99 });
   await post(c, 'summon');
-  t.clock.t += 11_000;
+  t.clock.t += mountBossKey.MIN_FIGHT_MS + 1000;
   assert.equal((await post(c, 'claim')).json.success, true);
   assert.equal(t.state.audit.length, 0);
 });
@@ -192,7 +197,7 @@ test('AUTHORITY_KILLS audit: no reported kill is logged as a finding but still p
   const t = setup({ mode: 'audit' });
   const c = t.call({ random: () => 0.99 });
   await post(c, 'summon');
-  t.clock.t += 11_000;
+  t.clock.t += mountBossKey.MIN_FIGHT_MS + 1000;
   const r = (await post(c, 'claim')).json;
   assert.equal(r.success, true, r.error);
   assert.equal(t.state.audit.length, 1, 'one boss_key_no_kill finding');
@@ -203,7 +208,7 @@ test('AUTHORITY_KILLS audit: a reported kill pays with no finding', async () => 
   const t = setup({ mode: 'audit' });
   const c = t.call({ random: () => 0.99 });
   const { data } = (await post(c, 'summon')).json;
-  t.clock.t += 11_000;
+  t.clock.t += mountBossKey.MIN_FIGHT_MS + 1000;
   await mountBossKey.markSummonKills(t.db.conn, 1, [{ boss: 'gravedigger', summon: data.summon_id }], { error() {} });
   assert.equal((await post(c, 'claim')).json.success, true);
   assert.equal(t.state.audit.length, 0);
@@ -213,7 +218,7 @@ test('AUTHORITY_KILLS enforce: no reported kill is refused (summon stays claimab
   const t = setup({ mode: 'enforce' });
   const c = t.call({ random: () => 0.99 });
   const { data } = (await post(c, 'summon')).json;
-  t.clock.t += 11_000;
+  t.clock.t += mountBossKey.MIN_FIGHT_MS + 1000;
   const no = (await post(c, 'claim')).json;
   assert.equal(no.success, false);
   assert.match(no.error, /not seen that boss die/);
@@ -237,7 +242,7 @@ test('a kill report naming another character\'s, another boss\'s or an unknown s
 
 test('a stamped summon is claimed before an unstamped one', async () => {
   const t = setup({ mode: 'enforce', bag: [{ slot_index: 0, item_id: 'covenant_seal', quantity: 1 }] });
-  t.state.summons.push({ id: 5, character_id: 1, boss: 'gravedigger', gold: 30000, status: 'open', made: t.clock.t - 60_000 }, { id: 6, character_id: 1, boss: 'gravedigger', gold: 30000, status: 'open', made: t.clock.t - 50_000, killed_at: t.clock.t });
+  t.state.summons.push({ id: 5, character_id: 1, boss: 'gravedigger', gold: COST, status: 'open', made: t.clock.t - 60_000 }, { id: 6, character_id: 1, boss: 'gravedigger', gold: COST, status: 'open', made: t.clock.t - 50_000, killed_at: t.clock.t });
   const r = (await post(t.call({ random: () => 0.99 }), 'claim')).json;
   assert.equal(r.success, true, r.error);
   assert.equal(t.state.summons.find((x) => x.id === 6).status, 'claimed');

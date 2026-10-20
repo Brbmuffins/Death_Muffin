@@ -91,6 +91,12 @@ func _run() -> void:
 
 # ---- A: the panel on synthetic views ------------------------------------------------------------------------------------------------------
 
+## A discipline's display name from the data (the combat data's index table, then the content).
+func _disc_name(class_index: int) -> String:
+	var by: Dictionary = DmCombatData.disciplines()["by_index"]
+	return String(DmContent.discipline(String(by[str(class_index)]))["name"])
+
+
 func _texts(n: Node, out: Array = []) -> Array:
 	if n is Label:
 		out.append((n as Label).text)
@@ -151,7 +157,7 @@ func _part_a() -> void:
 	check(w.list_box.get_child_count() == 2 and w.list_head.text == "2 open" and not w.empty_label.visible, "A: two rows listed")
 	var tx := _texts(w.list_box)
 	check(tx.has("Open Crypt") and tx.has("1 / 4") and tx.has("4 / 4") and tx.has(DmUi.upper("Join")) and tx.has(DmUi.upper("Full")), "A: row shows name, players x/4 and Join / Full", str(tx))
-	check(tx.any(func(t: String) -> bool: return t.contains("Mira") and t.contains("Hollow Graves")), "A: row shows host and the area's name", str(tx))
+	check(tx.any(func(t: String) -> bool: return t.contains("Mira") and t.contains(String(DmContent.area("graves")["name"]))), "A: row shows host and the area's name", str(tx))
 	# The host's world (DECISIONS B26), always: a session without the fields reads Heat 0 · Medium.
 	var hard := String(DmContent.difficulty("hard")["name"])
 	var medium := String(DmContent.difficulty("medium")["name"])
@@ -159,7 +165,17 @@ func _part_a() -> void:
 	check(tx.any(func(t: String) -> bool: return t.contains("Orrin") and t.contains("Heat 0 · %s" % medium)), "A: Heat 0 · Medium is shown too", str(tx))
 	check(DmNextFriends.world_line({}) == "Heat 0 · %s" % medium and DmNextFriends.world_line({"heat": 12, "difficulty": "hard"}) == "Heat 12 · %s" % hard, "A: world_line")
 	check(DmNextFriends.where_line({"area": "graves", "session": {"isHost": true, "players": 2, "max": 4, "open": true, "heat": 3, "difficulty": "hard"}}).ends_with("Heat 3 · %s" % hard), "A: a friend in a party shows its world")
-	check(DmAscension.self_heat({"elder_dead": 4, "frail_vessel": 2, "dry_cellar": 1}) == 4 and DmAscension.self_heat({"elder_dead": 4}) == 0, "A: self heat counts only self vows")
+	var vow_defs: Dictionary = DmProgContent.vows()
+	var vows_in := {}
+	var self_want := 0
+	var world_only := {}
+	for vid in DmProgContent.vow_order():
+		vows_in[vid] = 1
+		if String(vow_defs[vid]["scope"]) == "world":
+			world_only[vid] = 1
+		else:
+			self_want += int(vow_defs[vid]["heat"])
+	check(DmAscension.self_heat(vows_in) == self_want and DmAscension.self_heat(world_only) == 0, "A: self heat counts only the vows that curse their own swearer (%d)" % self_want)
 	var joined := [""]
 	w.join_requested.connect(func(id: String) -> void: joined[0] = id)
 	(_buttons(w.list_box, "Join")[0] as Button).pressed.emit()
@@ -245,7 +261,7 @@ func _part_a_friends() -> void:
 	check(w.requests_rows.get_child_count() == 2 and _buttons(w.requests_rows, "Accept").size() == 1 and _buttons(w.requests_rows, "Decline").size() == 1 \
 		and _buttons(w.requests_rows, "Cancel").size() == 1, "A friends: theirs has Accept + Decline, mine has Cancel")
 	var t := _texts(w.friends_rows)
-	check(w.friends_rows.get_child_count() == 2 and t.has("Offline · last played Reaper · Lv 631") and t.has("Offline") and w.friends_head.text == "0 online of 2", "A friends: offline friends show what they last played", str(t))
+	check(w.friends_rows.get_child_count() == 2 and t.has("Offline · last played %s · Lv 631" % _disc_name(11)) and t.has("Offline") and w.friends_head.text == "0 online of 2", "A friends: offline friends show what they last played", str(t))
 	var acts: Array = []
 	w.accept_requested.connect(func(id: int) -> void: acts.append(["accept", id]))
 	w.remove_requested.connect(func(id: int) -> void: acts.append(["remove", id]))
@@ -495,7 +511,8 @@ func _part_c() -> void:
 	check(await until(func() -> bool: return gb.party.friends_online.has(id_a) and ga.party.friends_online.has(id_b), 6.0), "C: both see each other online")
 	await ticks(3)
 	var tb := _texts(win_b.friends.friends_rows)
-	check(tb.any(func(t: String) -> bool: return t.begins_with("Online · Gravecaller · Lv 1")), "C: B sees A online with A's class and level", str(tb))
+	var a_line := "Online · %s · Lv %d" % [_disc_name(int(ga.character["class_index"])), int(ga.character["level"])]
+	check(tb.any(func(t: String) -> bool: return t.begins_with(a_line)), "C: B sees A online with A's class and level (%s)" % a_line, str(tb))
 	check(win_b.friends.friends_head.text == "1 online of 1", "C: the header counts who is online", win_b.friends.friends_head.text)
 	check(_buttons(win_b.friends.friends_rows, "Invite").size() == 1 and _buttons(win_b.friends.friends_rows, "Ask to join").size() == 1, "C: both solo: Invite and Ask to join")
 	# A asks B to take them along; B accepts from the Friends tab while solo: B hosts an (Open, the default) party and A is let straight in

@@ -3,6 +3,8 @@ const test = require('node:test');
 const assert = require('node:assert');
 const mountVault = require('./vault.cjs');
 const { fakeDb, harness, qty } = require('./bag-fake-db.cjs');
+const { VAULT_SLOTS } = require('./gathering/vault-rules.cjs');
+const { BAG_SLOTS } = require('./gathering/gathering-rules.cjs');
 
 const call = (db, opts) => harness(mountVault, db, opts);
 const dep = (c, body) => c('POST /api/vault/deposit', { body: { characterId: 1, ...body } });
@@ -51,17 +53,17 @@ test('gear does not stack: each piece takes its own slot, and equipped gear is n
 });
 
 test('a withdraw that will not fit is refused and changes nothing', async () => {
-  const bag = Array.from({ length: 48 }, (_, i) => ({ slot_index: i, item_id: 'staff_oak', quantity: 1 }));
+  const bag = Array.from({ length: BAG_SLOTS }, (_, i) => ({ slot_index: i, item_id: 'staff_oak', quantity: 1 }));
   const db = fakeDb({ bag, vault: [{ slot_index: 0, item_id: 'ore_copper', quantity: 5 }] });
   const r = (await call(db)('POST /api/vault/withdraw', { body: { characterId: 1, vaultSlot: 0 } })).json;
   assert.equal(r.success, false);
   assert.match(r.error, /no room/);
   assert.equal(db.vault.length, 1);
-  assert.equal(db.inv.length, 48);
+  assert.equal(db.inv.length, BAG_SLOTS);
 });
 
 test('a deposit into a full vault is refused', async () => {
-  const vault = Array.from({ length: 120 }, (_, i) => ({ slot_index: i, item_id: 'staff_oak', quantity: 1 }));
+  const vault = Array.from({ length: VAULT_SLOTS }, (_, i) => ({ slot_index: i, item_id: 'staff_oak', quantity: 1 }));
   const db = fakeDb({ bag: [{ slot_index: 0, item_id: 'ore_copper', quantity: 5 }], vault });
   const r = (await dep(call(db), { bagSlot: 0 })).json;
   assert.equal(r.success, false);
@@ -87,13 +89,13 @@ test('deposit-all materials takes materials, leaves potions and gear and the exc
 
 test('deposit-all everything moves gear too, but all or nothing when it will not fit', async () => {
   const bag = [{ slot_index: 0, item_id: 'staff_oak', quantity: 1 }, { slot_index: 1, item_id: 'helm_copper', quantity: 1 }];
-  const full = Array.from({ length: 119 }, (_, i) => ({ slot_index: i, item_id: 'staff_moon', quantity: 1 }));
+  const full = Array.from({ length: VAULT_SLOTS - 1 }, (_, i) => ({ slot_index: i, item_id: 'staff_moon', quantity: 1 }));
   const db = fakeDb({ bag, vault: full });
   const r = (await call(db)('POST /api/vault/deposit-all', { body: { characterId: 1, kind: 'all', exceptSlots: [] } })).json;
   assert.equal(r.success, false);
   assert.match(r.error, /Nothing was moved/);
   assert.equal(db.inv.length, 2);
-  assert.equal(db.vault.length, 119);
+  assert.equal(db.vault.length, VAULT_SLOTS - 1);
   const ok = fakeDb({ bag, vault: [] });
   assert.equal((await call(ok)('POST /api/vault/deposit-all', { body: { characterId: 1, kind: 'all', exceptSlots: [] } })).json.success, true);
   assert.equal(ok.inv.length, 0);
@@ -131,8 +133,8 @@ test('a failing move rolls everything back, and someone else\'s character is ref
 
 test('bad slots are refused with readable errors', async () => {
   const c = call(fakeDb({ bag: [{ slot_index: 0, item_id: 'ore_copper', quantity: 5 }] }));
-  assert.match((await dep(c, { bagSlot: 48 })).json.error, /between 0 and 47/);
-  assert.match((await c('POST /api/vault/withdraw', { body: { characterId: 1, vaultSlot: 120 } })).json.error, /between 0 and 119/);
+  assert.match((await dep(c, { bagSlot: BAG_SLOTS })).json.error, new RegExp(`between 0 and ${BAG_SLOTS - 1}`));
+  assert.match((await c('POST /api/vault/withdraw', { body: { characterId: 1, vaultSlot: VAULT_SLOTS } })).json.error, new RegExp(`between 0 and ${VAULT_SLOTS - 1}`));
   assert.match((await dep(c, { bagSlot: 0, quantity: 0 })).json.error, /how many/);
 });
 
@@ -161,6 +163,6 @@ test('move: a stack to an exact slot, rearranging inside the bag and the vault, 
   assert.equal(db.vault.find((r) => r.slot_index === 40).item_id, 'staff_oak', 'swapped across');
   assert.equal(db.inv.find((r) => r.slot_index === 20).item_id, 'log_oak');
   assert.match((await mv({ from: 'bag', fromSlot: 0, to: 'sky', toSlot: 1 })).json.error, /bag or vault/);
-  assert.match((await mv({ from: 'bag', fromSlot: 0, to: 'bag', toSlot: 48 })).json.error, /does not exist/);
+  assert.match((await mv({ from: 'bag', fromSlot: 0, to: 'bag', toSlot: BAG_SLOTS })).json.error, /does not exist/);
 });
 

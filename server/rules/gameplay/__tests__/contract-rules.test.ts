@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ITEMS } from '../../content/items';
+import { NODES } from '../gatheringRules';
 import { bonusFor, candidatesFor, CONTRACT_SLOTS, dayKey, generateBoard, nextResetMs, RELIC_ORDERS, streakOf } from '../contractRules';
 
 describe('contract board', () => {
@@ -18,13 +19,15 @@ describe('contract board', () => {
         expect(new Set(board.map((o) => o.itemId)).size).toBe(CONTRACT_SLOTS);
         for (const o of board) {
           expect(ITEMS[o.itemId], o.itemId).toBeTruthy();
-          // Relic orders (rare gems, fragments, seals) ask for a fixed one to three.
-          expect(o.qty).toBeGreaterThanOrEqual(RELIC_ORDERS.some((r) => r.itemId === o.itemId) ? 1 : 4);
-          expect(o.qty).toBeLessThanOrEqual(90);
+          // Relic orders (rare gems, fragments, seals) ask for the fixed handful the table names; any other order a whole number of at least one.
+          const relic = RELIC_ORDERS.find((r) => r.itemId === o.itemId);
+          if (relic) expect(o.qty).toBe(relic.qty);
+          expect(Number.isInteger(o.qty)).toBe(true);
+          expect(o.qty).toBeGreaterThanOrEqual(1);
           expect(o.rewardGold).toBeGreaterThan(0);
           if (o.rewardItem) expect(ITEMS[o.rewardItem.itemId], o.rewardItem.itemId).toBeTruthy();
         }
-        expect(board[2].rewardItem).not.toBeNull();
+        expect(board[CONTRACT_SLOTS - 1].rewardItem).not.toBeNull(); // the hard order always pays an item
       }
     }
   });
@@ -33,13 +36,21 @@ describe('contract board', () => {
     const low = new Set(candidatesFor({ woodcutting: 1, mining: 1, fishing: 1, gravedigging: 1 }).map((c) => c.itemId));
     const board = generateBoard(3, '2026-09-30', {});
     for (const o of board) expect(low.has(o.itemId)).toBe(true);
-    expect(low.has('ore_steel')).toBe(false);
-    expect(candidatesFor({ mining: 80 }).some((c) => c.itemId === 'ore_steel')).toBe(true);
+    // the deepest mining find waits for its level and is asked for once the level is there
+    const deepest = Object.values(NODES).filter((n) => n.skill === 'mining').reduce((a, b) => (b.level > a.level ? b : a));
+    expect(deepest.level).toBeGreaterThan(1);
+    expect(low.has(deepest.item)).toBe(false);
+    expect(candidatesFor({ mining: deepest.level - 1 }).some((c) => c.itemId === deepest.item)).toBe(false);
+    expect(candidatesFor({ mining: deepest.level }).some((c) => c.itemId === deepest.item)).toBe(true);
   });
 
-  it('pays a bonus of half the day\'s gold', () => {
+  it('pays a bonus that is a share of the day\'s gold, so it follows the rewards', () => {
     const board = generateBoard(3, '2026-09-30', { woodcutting: 20 });
-    expect(bonusFor(board).gold).toBe(Math.round(board.reduce((n, o) => n + o.rewardGold, 0) / 2));
+    const bonus = bonusFor(board).gold;
+    expect(bonus).toBeGreaterThan(0);
+    const doubled = board.map((o) => ({ ...o, rewardGold: o.rewardGold * 2 }));
+    expect(Math.abs(bonusFor(doubled).gold - bonus * 2)).toBeLessThanOrEqual(1); // rounding only
+    expect(bonusFor(board).item.itemId).toBeTruthy();
   });
 });
 

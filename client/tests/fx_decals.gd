@@ -2,7 +2,7 @@ extends SceneTree
 ## The ground decals in C++ (DmDecals, client/fx/dm_fx_prims.gd's `decal`) against TODAY'S: the reference is the old game's fx/dm_fx_prims.gd itself (its DecalTr and the DECAL half of
 ## DmFxLayer.flush), kept as text (tests/fixtures/old_game/fx/dm_fx_prims.gd.txt, so Godot never parses it) and compiled at run time with its class_name line dropped. Both effect layers get the same decals (every texture,
 ## blend, role and order, delays, spin, pulse, growth, anchors, sheets, followers that vanish, persistent ones, settling ones that overlap and bring each other's outline forward,
-## kills, and more than the cap of 160) and the same frame times (60 Hz, 144 Hz, hitches); after every frame each layer's drawn count and every float of its drawn buffer must be EQUAL,
+## kills, and more than the cap of combat transients) and the same frame times (60 Hz, 144 Hz, hitches); after every frame each layer's drawn count and every float of its drawn buffer must be EQUAL,
 ## and so must the number of combat transients and whether each handle is alive.
 ## Run: godot --headless --path client --script res://tests/fx_decals.gd
 
@@ -191,8 +191,9 @@ func _compare(today: GDScript, which: int) -> void:
 	portg.free()
 
 
-## More decals than the cap of combat transients (160): the oldest leave, the persistent ones stay, and the count stays where today's does.
+## More decals than the cap of combat transients (fx_data.json `caps`): the oldest leave, the persistent ones stay, and the count stays where today's does.
 func _cap(today: GDScript) -> void:
+	var cap := int(DmFxData.caps()["combat_transients"])
 	var refg := Node3D.new()
 	var portg := Node3D.new()
 	root.add_child(refg)
@@ -203,7 +204,8 @@ func _cap(today: GDScript) -> void:
 	rng.seed = 77
 	var bad := ""
 	var handles: Array = []
-	for i in 420:
+	var decals := cap * 2 + 100   # (well past the cap)
+	for i in decals:
 		var o := _options(rng, i, true)
 		o.erase("delay")
 		var hr: Object = ref.call("decal", o)
@@ -225,8 +227,8 @@ func _cap(today: GDScript) -> void:
 		if i % 40 == 39:
 			ref.call("update", 1.0 / 60.0, 1.0 / 60.0)
 			port.update(1.0 / 60.0, 1.0 / 60.0)
-	check(bad == "", "the cap: 420 decals and 60 flashes leave the same ones alive as today's%s" % ("" if bad == "" else ": " + bad))
-	check(port.transient_load() <= 160 + 1 + 20, "the cap holds the combat transients near 160 (%d, persistent ones are outside it)" % port.transient_load())
+	check(bad == "", "the cap: %d decals and %d flashes leave the same ones alive as today's%s" % [decals, int(ceil(float(decals) / 7.0)), "" if bad == "" else ": " + bad])
+	check(port.transient_load() <= cap + 1 + 20, "the cap holds the combat transients near %d (%d, persistent ones are outside it)" % [cap, port.transient_load()])
 	port.clear()
 	port.dispose()
 	ref.call("clear")

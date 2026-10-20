@@ -223,21 +223,23 @@ func _first_hour() -> void:
 	check(not fired("signature") and not fired("grimoire"), "no signature or Grimoire tip at level 1")
 	# a place tip (the data says the Acre): held while he stands in the Chapterhouse, shown when he walks into the Acre
 	await ticks(60 * 8)
-	check(fired("welcome") and not counsel.seen.has("welcome") and String(counsel.shown.get("id", "")) != "welcome", "the welcome card waits: its place is the Acre, and he stands in the Chapterhouse")
-	hero.teleport(_area_mid("acre"))
-	check(await until(func() -> bool: return g.area_id == "acre", 120), "he walks into the Acre")
+	check(fired("welcome") and not counsel.seen.has("welcome") and String(counsel.shown.get("id", "")) != "welcome", "the welcome card waits: its place is not the Chapterhouse, where he stands")
+	var welcome_place := String(DmCounselData.here_of("welcome")[0])
+	hero.teleport(_area_mid(welcome_place))
+	check(await until(func() -> bool: return g.area_id == welcome_place, 120), "he walks into %s" % welcome_place)
 	# (the first card a new hero sees is the belt's, from the bag's flask: 33 s on the screen, then 20 s of quiet)
 	var shown_welcome := await until(func() -> bool: return counsel.seen.has("welcome") or String(counsel.shown.get("id", "")) == "welcome", 60 * 100)
 	if not shown_welcome:
 		print("INFO welcome held: busy ", ui.counsel_busy(), " queue ", counsel.queue.map(func(e: Dictionary) -> String: return e["id"]), " now ", counsel.now_ms, " last_closed ", counsel.last_closed_at, " enabled ", counsel.tips_enabled)
-	check(shown_welcome and counsel.seen.has("acre"), "the welcome card is shown in the Acre (and the Acre's own tip counts as seen with it)")
+	var seen_with: Array = DmCounselData.data()["also_seen"].get("welcome", [])
+	check(shown_welcome and not seen_with.is_empty() and seen_with.all(func(t: String) -> bool: return counsel.seen.has(t)), "the welcome card is shown in its place (and the tips that count as seen with it: %s)" % str(seen_with))
 	hero.teleport(Vector3(float(DmContent.get_export("areas", "CHAPTERHOUSE_RETURN")["x"]), 0.0, float(DmContent.get_export("areas", "CHAPTERHOUSE_RETURN")["z"])))
 	await until(func() -> bool: return g.area_id == "chapterhouse", 120)
 	# the Next-step box
 	await ticks(40)
 	var vm := ui.merged_vm()
 	check(ui.guidance_hud.current != null and vm["next"] != null and String(vm["next"]) != "", "the Next-step box has a suggestion for a new hero (%s)" % str(vm["next"]))
-	check(ui.last_guidance["level"] == 1 and ui.last_guidance["area"] == "chapterhouse" and ui.last_guidance["totalKills"] == 0 and ui.last_guidance["bagSize"] == 48, "...from the live state (%s)" % str(ui.last_guidance["area"]))
+	check(ui.last_guidance["level"] == 1 and ui.last_guidance["area"] == "chapterhouse" and ui.last_guidance["totalKills"] == 0 and ui.last_guidance["bagSize"] == DmLootData.bag_size(), "...from the live state (%s)" % str(ui.last_guidance["area"]))
 	# the Prior's words
 	h.npc_interact.emit("prior")
 	check(ui.dialogue.is_open() and ui.dialogue.npc == "prior" and not ui.dialogue.lines.is_empty(), "the Prior greets him (%d lines)" % ui.dialogue.lines.size())
@@ -750,6 +752,13 @@ func _gather_bests() -> void:
 
 ## GM mode: never for a normal account; for a dev account the Settings toggle opens and closes progression, gathering tiers, the host's caster and the sealed halls, and F9 breaks every seal.
 func _gm_mode() -> void:
+	var sealed := ""   # a hall the character has not earned: sealed by an unlock rule, and not an instance
+	for id in DmContent.area_order():
+		var area_def: Dictionary = DmContent.area(String(id))
+		if area_def.get("unlock") != null and not bool(area_def.get("instance", false)):
+			sealed = String(id)
+			break
+	check(sealed != "", "the world has a sealed hall to test GM mode with")
 	var f9 := InputEventKey.new()
 	f9.keycode = KEY_F9
 	f9.pressed = true
@@ -770,10 +779,10 @@ func _gm_mode() -> void:
 	check(h.dev_access and h.prog.dev_access and g.gather.skills.dev_access, "GM mode on: progression and gathering follow")
 	var caster := hero.get_node_or_null("Rites") as DmRiteCaster
 	check(caster != null and caster.dev, "the host's own caster is told (locked rites cast)")
-	check(g.chapterhouse != null and h.prog.is_unlocked("warren"), "sealed halls read as open")
+	check(g.chapterhouse != null and h.prog.is_unlocked(sealed), "sealed halls read as open (%s)" % sealed)
 	var m := events.size()
 	h.settings_store.update({"dev_access": false})
-	check(not h.dev_access and not h.prog.dev_access and not g.gather.skills.dev_access and not caster.dev and not h.prog.is_unlocked("warren"), "toggle off: everything closes again")
+	check(not h.dev_access and not h.prog.dev_access and not g.gather.skills.dev_access and not caster.dev and not h.prog.is_unlocked(sealed), "toggle off: everything closes again")
 	check(since(m, "toast").any(func(x: Dictionary) -> bool: return String(x["text"]).begins_with("GM mode off")), "toast says so")
 	check(h.dev_break_seals() == 0, "F9 does nothing with dev access off")
 	m = events.size()
@@ -788,5 +797,5 @@ func _gm_mode() -> void:
 	var before: int = open_count.call()
 	g.input._unhandled_input(f9)
 	check(int(open_count.call()) == DmContent.area_order().size() and before < int(open_count.call()), "F9 breaks every seal (%d -> %d)" % [before, open_count.call()])
-	check(h.prog.local["unlocked"].has("warren"), "and the break is real (saved state)")
+	check(h.prog.local["unlocked"].has(sealed), "and the break is real (saved state)")
 	h.settings_store.update({"dev_access": false})

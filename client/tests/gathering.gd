@@ -1,15 +1,15 @@
 extends SceneTree
 ## Gathering and the Acre on the core (client/README.md "Gathering and the Acre"): the whole world as a player gets it (every area but the
 ## Depths), offline on the local mock backend (never a real server), headless, with a game clock the mock follows. Checks:
-##   - the nodes: all 68 of world.json are in the area scenes under `GatherNodes`, each registered with the gathering views; the three spent models load; the game scene made the
+##   - the nodes: every node of world.json is in the area scenes under `GatherNodes`, each registered with the gathering views; the spent models load; the game scene made the
 ##     gather node (and the Acre's glue with the real HUD) and the panels this build warms include the Acre ledger's;
 ##   - hover and click, end to end in the Graves: the node under the cursor gets its ring and its card (needs, XP, what it gives, spent) and a click walks the hero there and works it
 ##     (a click on a station or an enemy still wins; a refused node says why in the rules' words: a level, a full bag);
-##   - gathering through the server: a cycle takes `ticks x 600 ms`, the successes are batched to the backend (the 8 s batch and the stop), whose answer decides the finds, the XP and
+##   - gathering through the server: a cycle takes `ticks x DmGathering.TICK_MS`, the successes are batched to the backend (the 8 s batch and the stop), whose answer decides the finds, the XP and
 ##     the level (the bag, the professions and the chronicle count follow it, not the client's rolls), a rich node's yield, the node going spent (its model swaps, the card says so),
 ##     the hero waiting and working again when it comes back (half the respawn time for a rich node);
 ##   - the stops (a walk, a panel, a cast, death), Auto off ("The X is spent."), the skills' level-up banner and counsel events;
-##   - the Acre: AFK from the Skills tab (only in the Acre, the report on stopping), the Grave Laborers (up to four pooled models, built on the first visit, none outside the Acre), their
+##   - the Acre: AFK from the Skills tab (only in the Acre, the report on stopping), the Grave Laborers (pooled models, one per post, built on the first visit, none outside the Acre), their
 ##     hover card and the click that opens the Laborers, a collection (gold, the chronicle, the report under the laborer), the garden (plant, harvest, the notices), a contract, and the
 ##     guidance feeds the Sexton and the Next box read;
 ##   - the rest of the loop and the Acre: every node has parts, a yield from its type's range and a free stand spot; each skill's find and XP; a success from out of reach is ignored; the
@@ -61,6 +61,9 @@ var username := ""
 var events: Array = []          ## [id, ctx] of the HUD's game events
 var jump_ms := 0                ## time the test lets pass at once (labor and the garden take hours)
 var server_rolls_default: Callable   ## the mock's seeded dice
+var seed_id := ""             ## the seed the oak's extras hold (the garden plants it)
+var laborer_slots := 0        ## the slots the laborer rules give the skills the test sets
+const POSTS := {0: "coffin_oak", 1: "seam_copper", 2: "grave_pauper"}   ## the posts the test gives its laborers (slot -> node type): the last is the gravedigger
 
 
 func check(ok: bool, what: String) -> void:
@@ -162,7 +165,7 @@ func _prof(skill: String) -> Dictionary:
 func _bag_qty(item_id: String) -> int:
 	var n := 0
 	for s: Dictionary in g.loot.slots():
-		if String(s.get("item_id", "")) == item_id and int(s["slot_index"]) < 48:
+		if String(s.get("item_id", "")) == item_id and int(s["slot_index"]) < DmLootData.bag_size():
 			n += int(s["quantity"])
 	return n
 
@@ -170,13 +173,24 @@ func _bag_qty(item_id: String) -> int:
 func _server_qty(item_id: String) -> int:
 	var n := 0
 	for s: Dictionary in _acc()["slots"]:
-		if String(s["item_id"]) == item_id and int(s["slot_index"]) < 48:
+		if String(s["item_id"]) == item_id and int(s["slot_index"]) < DmLootData.bag_size():
 			n += int(s["quantity"])
 	return n
 
 
 func _node(id: String) -> Dictionary:
 	return g.gather.nodes[id]
+
+
+## The rules of the node type the test works (the Graves' oak).
+func _oak_def() -> Dictionary:
+	return DmGathering.node_def(String(_node("graves_0")["type"]))
+
+
+## The yield a node of this type is rolled with: its range, times RICH_YIELD for a rich one.
+func _yield_range(def: Dictionary, rich: bool) -> Array:
+	var yl: Array = def["yields"]
+	return [roundf(float(yl[0]) * DmGathering.RICH_YIELD) if rich else float(yl[0]), roundf(float(yl[1]) * DmGathering.RICH_YIELD) if rich else float(yl[1])]
 
 
 func _node_pos(n: Dictionary) -> Vector3:
@@ -213,7 +227,7 @@ func _the_nodes() -> void:
 			misplaced.append(n["id"])
 	check(missing.is_empty() and misplaced.is_empty(), "every node is in its area scene where world.json puts it (missing %s, misplaced %s)" % [str(missing), str(misplaced)])
 	var b := g.world.builder
-	check(b.node_views.size() == data.size() and b.area_nodes.size() == DmData.world()["order"].size() and g.gather.views != null, "the views hold every node's prop (%d) and every area's root, the twelve scenes' and the Depths' node (%d)" % [b.node_views.size(), b.area_nodes.size()])
+	check(b.node_views.size() == data.size() and b.area_nodes.size() == DmData.world()["order"].size() and g.gather.views != null, "the views hold every node's prop (%d) and every area's root (%d)" % [b.node_views.size(), b.area_nodes.size()])
 	var spent: Dictionary = {}
 	for n: Dictionary in data:
 		if n["spentModel"] != null:
@@ -221,7 +235,7 @@ func _the_nodes() -> void:
 	var parts_ok := true
 	for m: String in spent:
 		parts_ok = parts_ok and not DmModels.prop_parts(m, float(spent[m])).is_empty()
-	check(spent.size() == 3 and parts_ok, "the %d spent models (stump, ore and dug grave) load" % spent.size())
+	check(not spent.is_empty() and parts_ok, "the %d spent models (stump, ore, dug grave...) load" % spent.size())
 	var rules_nodes: Dictionary = DmGatherData.nodes()
 	var bare: Array = []
 	var bad_yield: Array = []
@@ -229,10 +243,9 @@ func _the_nodes() -> void:
 		var prop: Node3D = b.node_views.get(String(n["id"]))
 		if prop == null or prop.get_child_count() == 0 or not rules_nodes.has(n["type"]):
 			bare.append(n["id"])
-		var yl: Array = DmGathering.node_def(String(n["type"]))["yields"]
-		var rich := DmCombatData.truthy(n.get("rich"))
-		var lo := roundf(float(yl[0]) * DmGathering.RICH_YIELD) if rich else float(yl[0])
-		var hi := roundf(float(yl[1]) * DmGathering.RICH_YIELD) if rich else float(yl[1])
+		var range_ := _yield_range(DmGathering.node_def(String(n["type"])), DmCombatData.truthy(n.get("rich")))
+		var lo: float = range_[0]
+		var hi: float = range_[1]
 		var left := float(g.gather._remaining[n["id"]])
 		if left < lo or left > hi:
 			bad_yield.append("%s %d not in %d..%d" % [n["id"], int(left), int(lo), int(hi)])
@@ -261,7 +274,9 @@ func _hover_and_click() -> void:
 	check(g.gather.hover != null and String(g.gather.hover["id"]) == "graves_0", "the node under the cursor is the hovered one (%s)" % str(g.gather.hover.get("id") if g.gather.hover != null else null))
 	check(g.gather.views._hover.visible and g.gather.views._hover.position.distance_to(Vector3(float(oak["x"]), 0.04, float(oak["z"]))) < 0.001, "its ring stands on it")
 	var card: String = g.gather.node_tip_text(oak)
-	check(card.contains("Coffin-Oak") and card.contains("rich") and card.contains("Woodcutting") and card.contains("6 XP per success"), "its card says what it is, that it is rich, what it needs and the XP (%s)" % card)
+	var oak_def := DmGathering.node_def(String(oak["type"]))
+	var skill_name := String(DmGatherData.get_data()["skills"][oak_def["skill"]]["name"])
+	check(card.contains(String(oak_def["name"])) and card.contains("rich") == DmCombatData.truthy(oak.get("rich")) and card.contains(skill_name) and card.contains("%d XP per success" % int(oak_def["xp"])), "its card says what it is, whether it is rich, what it needs and the XP (%s)" % card)
 	check(g.ui.hud.node_tip_box.visible, "the HUD shows the card")
 	g.gather.hover_at(Vector2(2.0, 2.0), false)
 	check(g.gather.hover == null and not g.gather.views._hover.visible and not g.ui.hud.node_tip_box.visible, "the cursor away: no ring, no card")
@@ -276,9 +291,10 @@ func _hover_and_click() -> void:
 
 # ------------------------------------------------------------------------------------------------------------------ every node
 
-## All 68 nodes of the 8 areas that have them, hovered and clicked: the ring and the card of the node under the cursor, and the click either starts the work or refuses in
+## Every node of the areas that have them, hovered and clicked: the ring and the card of the node under the cursor, and the click either starts the work or refuses in
 ## the rules' words (a level, a spot nobody can stand on). Every area's navmesh is on for it (the seals are put back).
 func _every_node() -> void:
+	var unlocked0: int = g.world.unlocked.size()
 	g.world.set_unlocked(DmNextWorld.every_area())
 	await ticks(3)
 	var loop: DmGatherLoop = g.gather.loop
@@ -335,7 +351,7 @@ func _every_node() -> void:
 	check(unreachable.is_empty(), "every node has a free stand spot on the navmesh of its area (without: %s)" % str(unreachable))
 	g.chapterhouse.apply_seals()
 	await ticks(3)
-	check(g.world.unlocked.size() == 4, "(the seals are back)")
+	check(g.world.unlocked.size() == unlocked0, "(the seals are back)")
 
 
 func _area_mid(id: String) -> Vector3:
@@ -350,12 +366,12 @@ func _refusals() -> void:
 	# a level: the rules' own words, nothing starts
 	var high: Dictionary = {}
 	for n: Dictionary in g.gather.nodes.values():
-		if int(DmGathering.node_def(String(n["type"]))["level"]) >= 25 and String(DmGathering.node_def(String(n["type"]))["skill"]) == "gravedigging":
+		if int(DmGathering.node_def(String(n["type"]))["level"]) > g.gather.skills.level("gravedigging") and String(DmGathering.node_def(String(n["type"]))["skill"]) == "gravedigging":
 			high = n
 			break
 	events.clear()
 	g.gather.click_node(high)
-	var words := DmGathering.gather_blocker(String(high["type"]), 1)
+	var words := DmGathering.gather_blocker(String(high["type"]), g.gather.skills.level("gravedigging"))
 	check(not g.gather.loop.active and events.any(func(e: Array) -> bool: return e[0] == "float" and String(e[1]["text"]) == words) and words.begins_with("Requires"),
 		"a node above the skill's level is refused in the rules' words and nothing starts (%s)" % words)
 	# a full bag
@@ -364,7 +380,7 @@ func _refusals() -> void:
 	var used := {}
 	for r: Dictionary in full:
 		used[int(r["slot_index"])] = true
-	for i in 48:
+	for i in DmLootData.bag_size():
 		if not used.has(i):
 			full.append({"slot_index": i, "item_id": "ring_copper", "quantity": 1, "equipped": 0})
 	g.loot.inventory.slots = full
@@ -389,7 +405,8 @@ func _refusals() -> void:
 func _gathering_through_the_server() -> void:
 	var oak := _node("graves_0")
 	var loop: DmGatherLoop = g.gather.loop
-	server_rolls_default = func() -> float: return 0.5   # the server's dice: every cycle it rolls lands (0.5 is under a first-tier node's chance) and no rare extra drops
+	var lands := minf(0.5, DmGathering.success_chance(_oak_def(), 1) * 0.9)   # under the first-tier node's chance and over its extras' (tiny) chances
+	server_rolls_default = func() -> float: return lands   # the server's dice: every cycle it rolls lands and no rare extra drops
 	mock.rng = server_rolls_default
 	# the client rolls each cycle for feel: the first fails, the rest succeed (so the node's yield is what ends the gathering)
 	var cycle_log: Array = []     # [physics frame, success]
@@ -409,7 +426,8 @@ func _gathering_through_the_server() -> void:
 	var xp0 := int(wood0["skill_xp"])
 	var level0 := int(wood0["skill_level"])
 	var initial := float(g.gather._remaining["graves_0"])
-	check([2.0, 3.0, 5.0, 6.0].has(initial), "a rich Coffin-Oak holds 1.5 x its 1 to 4 (%d)" % int(initial))
+	var oak_range := _yield_range(_oak_def(), DmCombatData.truthy(oak.get("rich")))
+	check(initial >= oak_range[0] and initial <= oak_range[1], "a rich %s holds its type's range times the rich factor (%d, %d to %d)" % [_oak_def()["name"], int(initial), int(oak_range[0]), int(oak_range[1])])
 	await _go(_node_pos(oak) + Vector3(7.0, 0.0, 0.0))
 	events.clear()
 	g.input._primary_click(_screen_of(oak))
@@ -421,16 +439,16 @@ func _gathering_through_the_server() -> void:
 	var reach: float = float(DmSimData.NODE_REACH["tree"])
 	check(arrived and DmSimMath.hypot(hero.position.x - float(oak["x"]), hero.position.z - float(oak["z"])) <= reach + 0.5, "the hero walks to the ring and starts working (%.2f m from the tree, reach %.1f)" % [DmSimMath.hypot(hero.position.x - float(oak["x"]), hero.position.z - float(oak["z"])), reach])
 	var started := Engine.get_physics_frames()
-	await until(func() -> bool: return cycle_log.size() >= 1, 60 * 6)
-	var cycle_s := float(DmGathering.node_def("coffin_oak")["ticks"]) * 0.6
+	var cycle_s := float(_oak_def()["ticks"]) * float(DmGathering.TICK_MS) / 1000.0
+	await until(func() -> bool: return cycle_log.size() >= 1, 60 * int(cycle_s + 6.0))
 	var frames: int = cycle_log[0][0] - started
-	check(absi(frames - int(round(cycle_s * 60.0))) <= 2, "a work cycle takes ticks x 600 ms: %d frames for %.1f s" % [frames, cycle_s])
+	check(absi(frames - int(round(cycle_s * 60.0))) <= 2, "a work cycle takes ticks x the tick: %d frames for %.1f s" % [frames, cycle_s])
 	check(not bool(cycle_log[0][1]), "(the first cycle failed for feel)")
-	await until(func() -> bool: return loop.working and loop.progress > 0.3, 60 * 3)
+	await until(func() -> bool: return loop.working and loop.progress > 0.3, 60 * int(cycle_s + 3.0))
 	await ticks(2)
 	check(g.gather.views._arc.visible and g.gather.views._arc.position.distance_to(Vector3(hero.position.x, 0.05, hero.position.z)) < 0.01, "the progress arc runs under the hero (%.0f %% of the cycle)" % (loop.progress * 100.0))
 	# on until the node is spent: every later cycle succeeds, one off the yield each
-	var spent := await until(func() -> bool: return g.gather.depleted.has("graves_0"), 60 * 40)
+	var spent := await until(func() -> bool: return g.gather.depleted.has("graves_0"), 60 * int(cycle_s * (initial + 2.0) + 10.0))
 	var successes := cycle_log.filter(func(c: Array) -> bool: return bool(c[1])).size()
 	check(spent and successes == int(initial), "the node is spent after exactly its yield in successes (%d of %d)" % [successes, int(initial)])
 	check(not g.gather.node_live("graves_0") and g.gather.node_tip_text(oak).contains("Spent. It will return soon."), "its card says it is spent")
@@ -443,16 +461,16 @@ func _gathering_through_the_server() -> void:
 	check(holder.get_parent().get_parent().name == "area_graves" and holder.scale.is_equal_approx(Vector3.ONE * 1.12), "(the prop is the area scene's own, a rich node a little bigger)")
 	await until(func() -> bool: return loop.phase == "wait", 30)
 	check(loop.active and loop.phase == "wait", "Auto waits beside it for the respawn (%s)" % loop.status)
-	var respawn_s := float(DmSimData.NODES["coffin_oak"]["respawnS"]) * DmSimData.RICH_RESPAWN
+	var respawn_s := float(DmSimData.NODES[String(oak["type"])]["respawnS"]) * DmSimData.RICH_RESPAWN
 	var gone_at := Engine.get_physics_frames()
-	var back := await until(func() -> bool: return g.gather.node_live("graves_0"), 60 * 20)
+	var back := await until(func() -> bool: return g.gather.node_live("graves_0"), 60 * int(respawn_s + 20.0))
 	var gone_frames := Engine.get_physics_frames() - gone_at
 	check(back and absi(gone_frames - int(round(respawn_s * 60.0))) <= 30, "a rich node comes back after half its respawn time (%d frames for %.0f s)" % [gone_frames, respawn_s])
 	var kids_back := true
 	for k in g.gather.views._live_kids["graves_0"]:
 		kids_back = kids_back and (k as Node3D).visible
 	check(kids_back and not spent_shown.visible, "its model is back and the stump gone")
-	check(float(g.gather._remaining["graves_0"]) >= 2.0, "it holds a new yield (%d)" % int(g.gather._remaining["graves_0"]))
+	check(float(g.gather._remaining["graves_0"]) >= oak_range[0] and float(g.gather._remaining["graves_0"]) <= oak_range[1], "it holds a new yield (%d)" % int(g.gather._remaining["graves_0"]))
 	await until(func() -> bool: return loop.working, 60 * 5)
 	check(loop.working, "the hero is working it again")
 	# stop: the last cycles go to the server, which answers
@@ -469,15 +487,15 @@ func _gathering_through_the_server() -> void:
 	for r: Dictionary in replies:
 		xp_total += int(r["xp"])
 		for it: Dictionary in r["items"]:
-			if String(it["itemId"]) == "log_oak":
+			if String(it["itemId"]) == String(_oak_def()["item"]):
 				found += int(it["qty"])
-	check(found == cycles and found == _server_qty("log_oak") and found == _bag_qty("log_oak"), "the logs are the server's finds, one for each cycle it rolled (%d), in the server's bag and in the client's" % found)
+	check(found == cycles and found == _server_qty(String(_oak_def()["item"])) and found == _bag_qty(String(_oak_def()["item"])), "the logs are the server's finds, one for each cycle it rolled (%d), in the server's bag and in the client's" % found)
 	var wood := _prof("woodcutting")
 	var gained := _xp_between(level0, xp0, int(wood["skill_level"]), int(wood["skill_xp"]))
-	check(gained == xp_total and xp_total == 6 * int(replies.map(func(r: Dictionary) -> int: return int(r["successes"])).reduce(func(a: int, b: int) -> int: return a + b, 0)), "the XP is the server's: 6 per success it rolled (%d)" % xp_total)
+	check(gained == xp_total and xp_total == int(_oak_def()["xp"]) * int(replies.map(func(r: Dictionary) -> int: return int(r["successes"])).reduce(func(a: int, b: int) -> int: return a + b, 0)), "the XP is the server's: %d per success it rolled (%d)" % [int(_oak_def()["xp"]), xp_total])
 	check(g.gather.skills.level("woodcutting") == int(wood["skill_level"]) and int(g.ui.skills["woodcutting"]) == int(wood["skill_level"]), "the client's skill follows the server's row (level %d)" % int(wood["skill_level"]))
 	check(int(g.ui_host.prog.chronicle.view()["life"].get("gathered.woodcutting", 0)) == found, "the Chronicle counted the finds (gathered.woodcutting %d)" % found)
-	check(events.any(func(e: Array) -> bool: return e[0] == "float" and String(e[1].get("kind", "")) == "skill" and String(e[1]["text"]).contains("Woodcutting XP")), "the XP floats over the hero")
+	check(events.any(func(e: Array) -> bool: return e[0] == "float" and String(e[1].get("kind", "")) == "skill" and String(e[1]["text"]).contains("%s XP" % DmGatherData.get_data()["skills"]["woodcutting"]["name"])), "the XP floats over the hero")
 
 
 ## The XP a profession gained between two (level, xp) states, under the level x 50 rule.
@@ -534,7 +552,7 @@ func _the_stops() -> void:
 	events.clear()
 	await _start_oak()
 	var spent := await until(func() -> bool: return not loop.active, 60 * 30)
-	check(spent and events.any(func(e: Array) -> bool: return e[0] == "float" and String(e[1]["text"]) == "The Coffin-Oak is spent."), "Auto off: the work ends with \"The Coffin-Oak is spent.\"")
+	check(spent and events.any(func(e: Array) -> bool: return e[0] == "float" and String(e[1]["text"]) == "The %s is spent." % _oak_def()["name"]), "Auto off: the work ends with \"The %s is spent.\"" % _oak_def()["name"])
 	s["auto_gather"] = true
 	g.ui_host.apply_settings(s)
 	await until(func() -> bool: return not loop._in_flight and loop._queue.is_empty(), 60 * 5)
@@ -552,20 +570,34 @@ func _the_server_decides() -> void:
 	var loop: DmGatherLoop = g.gather.loop
 	# the client never mints: cycles the client rolled as failures, none confirmed, still pay what the server rolls
 	jump_ms += 60_000
+	var extras: Array = _oak_def()["extras"]
+	var charms: Array = []   # the extras a pet is adopted with
+	for pet in DmContent.get_export("cosmetics", "PETS"):
+		charms.append(pet["charm"])
+	seed_id = ""
+	var charm_found := false
+	for ex: Dictionary in extras:
+		if seed_id == "" and String(ex["item"]).begins_with("seed_"):
+			seed_id = String(ex["item"])
+		charm_found = charm_found or charms.has(ex["item"])
+	check(seed_id != "" and charm_found, "the oak's extras hold a seed and a pet's charm (%s)" % seed_id)
+	var seed_name := String(DmContent.item(seed_id)["name"])
 	var logs0 := _server_qty("log_oak")
-	var moss0 := _server_qty("seed_mourning_moss")
+	var moss0 := _server_qty(seed_id)
 	events.clear()
 	mock.rng = func() -> float: return 0.0   # every server roll lands, every extra drops
-	await _send("coffin_oak", 3)
-	check(_server_qty("log_oak") == logs0 + 3 and _bag_qty("log_oak") == _server_qty("log_oak"), "three cycles, the server's dice: three logs in its bag and in ours (%d)" % _bag_qty("log_oak"))
-	check(_server_qty("seed_mourning_moss") == moss0 + 3, "and the extras it rolled (a seed each)")
+	var few := mini(3, DmGathering.GATHER_BURST)   # (cycles the server's burst takes whole)
+	await _send("coffin_oak", few)
+	check(_server_qty("log_oak") == logs0 + few and _bag_qty("log_oak") == _server_qty("log_oak"), "%d cycles, the server's dice: %d logs in its bag and in ours (%d)" % [few, few, _bag_qty("log_oak")])
+	check(_server_qty(seed_id) == moss0 + few, "and the extras it rolled (a seed each)")
 	var toasts := events.filter(func(e: Array) -> bool: return e[0] == "toast" and String(e[1]["text"]).begins_with("Found: "))
-	check(toasts.any(func(e: Array) -> bool: return String(e[1]["text"]) == "Found: Mourning Moss Seed ×3"), "the extras are announced (Found: ...)")
+	check(toasts.any(func(e: Array) -> bool: return String(e[1]["text"]) == "Found: %s%s" % [seed_name, (" ×%d" % few) if few > 1 else ""]), "the extras are announced (Found: ...)")
 	check(events.any(func(e: Array) -> bool: return e[0] == "banner" and String(e[1].get("title", "")) == "A rare find!"), "a charm raises the rare-find banner")
-	# a level: 47 of 50 XP, one more success
+	# a level: one XP short of the next, one more success
+	var wood_name := String(DmGatherData.get_data()["skills"]["woodcutting"]["name"])
 	var wood := _prof("woodcutting")
 	wood["skill_level"] = 1
-	wood["skill_xp"] = 47
+	wood["skill_xp"] = DmGathering.xp_to_next(1) - 1
 	g.gather.skills.adopt([wood.duplicate()])
 	events.clear()
 	jump_ms += 60_000
@@ -573,16 +605,16 @@ func _the_server_decides() -> void:
 	await _send("coffin_oak", 1)
 	var up := _event_ids()
 	check(int(_prof("woodcutting")["skill_level"]) == 2 and g.gather.skills.level("woodcutting") == 2 and int(g.ui.skills["woodcutting"]) == 2, "the server's level-up reaches the client (level 2)")
-	check(events.any(func(e: Array) -> bool: return e[0] == "banner" and String(e[1].get("title", "")) == "Woodcutting 2") and up.has("skill_up"), "the banner \"Woodcutting 2\" and the counsel's skill_up")
-	# the burst: forty cycles at once, three accepted (the server's time budget); a spent hour is refused in the server's words and nothing is paid
+	check(events.any(func(e: Array) -> bool: return e[0] == "banner" and String(e[1].get("title", "")) == "%s 2" % wood_name) and up.has("skill_up"), "the banner \"%s 2\" and the counsel's skill_up" % wood_name)
+	# the burst: a full batch of cycles at once, the burst accepted (the server's time budget); a spent hour is refused in the server's words and nothing is paid
 	var replies: Array = []
 	var on_reply := func(r: Dictionary) -> void: replies.append(r)
 	g.gather.gathered.connect(on_reply)
 	jump_ms += 1
 	var logs1 := _server_qty("log_oak")
-	await _send("coffin_oak", 40)
+	await _send("coffin_oak", DmGathering.GATHER_MAX_BATCH)
 	g.gather.gathered.disconnect(on_reply)
-	check(replies.size() == 1 and int(replies[0]["accepted"]) == DmGathering.GATHER_BURST and _server_qty("log_oak") == logs1 + DmGathering.GATHER_BURST, "forty cycles in one go: the server accepts the burst of %d and pays for those" % DmGathering.GATHER_BURST)
+	check(replies.size() == 1 and int(replies[0]["accepted"]) == DmGathering.GATHER_BURST and _server_qty("log_oak") == logs1 + DmGathering.GATHER_BURST, "%d cycles in one go: the server accepts the burst of %d and pays for those" % [DmGathering.GATHER_MAX_BATCH, DmGathering.GATHER_BURST])
 	var ledger: Dictionary = _acc()["gatherLedger"]
 	ledger["hourStart"] = game_ms()
 	ledger["hourActions"] = DmGathering.GATHER_MAX_ACTIONS_PER_HOUR
@@ -601,7 +633,7 @@ func _the_server_decides() -> void:
 	var gated_type := ""
 	for n: Dictionary in g.gather.nodes.values():
 		var nd := DmGathering.node_def(String(n["type"]))
-		if int(nd["level"]) >= 25 and String(nd["skill"]) == "gravedigging":
+		if int(nd["level"]) > int(_prof("gravedigging").get("skill_level", 1)) and String(nd["skill"]) == "gravedigging":
 			gated_type = String(n["type"])
 			break
 	var row_level := int(_prof("gravedigging").get("skill_level", 1))
@@ -614,32 +646,37 @@ func _the_server_decides() -> void:
 
 # ------------------------------------------------------------------------------------------------------------------ the laborers, outside the Acre
 
-## Three laborers on posts (the server's rows), the hero away from the Acre: no model exists, nothing is built, fetched or updated.
+## Laborers on posts (the server's rows), the hero away from the Acre: no model exists, nothing is built, fetched or updated. The skills are raised from 30 / 30 / 30 / 20 only as far as the
+## rules need for a slot to every post.
 func _laborers_outside_the_acre() -> void:
 	var cid := int(g.character["id"])
 	var rows: Array = _acc()["professions"]
-	for skill in ["woodcutting", "mining", "gravedigging", "fishing"]:
+	var levels := {"woodcutting": 30, "mining": 30, "gravedigging": 30, "fishing": 20}
+	while DmLabor.labor_slots(DmLabor.total_gather_level(levels)) < POSTS.size() and int(levels["woodcutting"]) < DmGathering.LEVEL_CAP - 1:
+		for skill: String in levels:
+			levels[skill] = int(levels[skill]) + 1
+	for skill: String in levels:
 		var row := _prof(skill)
 		if row.is_empty():
 			row = {"profession_id": skill, "skill_level": 1, "skill_xp": 0}
 			rows.append(row)
-		row["skill_level"] = 30 if skill != "fishing" else 20
+		row["skill_level"] = levels[skill]
 		row["skill_xp"] = 0
 	var got: DmResult = await api.get_professions(cid)
 	g.gather.skills.adopt(got.data)
-	check(DmLabor.labor_slots(DmLabor.total_gather_level({"woodcutting": 30, "mining": 30, "gravedigging": 30, "fishing": 20})) == 3, "(levels 30, 30, 30 and 20 command three laborers)")
-	var posts := {0: "coffin_oak", 1: "seam_copper", 2: "grave_pauper"}
-	for slot: int in posts:
-		g.ui.pb.labor.assign_requested.emit(slot, posts[slot])
-	await until(func() -> bool: return String(_acc().get("labor", {}).get("2", {}).get("nodeType", "")) == "grave_pauper", 60 * 3)
-	check(_acc()["labor"].size() == 3, "three laborers hold posts on the server (%s)" % str(posts.values()))
+	laborer_slots = DmLabor.labor_slots(DmLabor.total_gather_level(levels))
+	check(laborer_slots >= POSTS.size(), "(levels %s command %d laborers, a slot for each of the %d posts)" % [str(levels.values()), laborer_slots, POSTS.size()])
+	for slot: int in POSTS:
+		g.ui.pb.labor.assign_requested.emit(slot, POSTS[slot])
+	await until(func() -> bool: return String(_acc().get("labor", {}).get(str(POSTS.size() - 1), {}).get("nodeType", "")) == String(POSTS[POSTS.size() - 1]), 60 * 3)
+	check(_acc()["labor"].size() == POSTS.size(), "%d laborers hold posts on the server (%s)" % [POSTS.size(), str(POSTS.values())])
 	var views: DmLaborerViews = g.acre.views
 	await _go(_node_pos(_node("graves_0")))
 	g.acre.labor.check_labor(false)   # (the 5 min check, run now: it hands the view to the laborer views)
 	await ticks(10)
 	check(views.view != null and not views.active and not views.visible and views.byslot.is_empty() and views.get_child_count() == 0 and views.list.is_empty(),
 		"outside the Acre the laborers have a view of the server's rows and no model, node or update at all")
-	check(g.ui.labor_summary != null and int(g.ui.labor_summary["assigned"]) == 3 and int(g.ui.labor_summary["unlocked"]) == 3, "the guidance has the labor summary (%s)" % str(g.ui.labor_summary))
+	check(g.ui.labor_summary != null and int(g.ui.labor_summary["assigned"]) == POSTS.size() and int(g.ui.labor_summary["unlocked"]) == laborer_slots, "the guidance has the labor summary (%s)" % str(g.ui.labor_summary))
 
 
 # ------------------------------------------------------------------------------------------------------------------ AFK
@@ -716,9 +753,10 @@ func _afk_report(copper_before: int, reason: String) -> void:
 
 func _the_laborers() -> void:
 	var views: DmLaborerViews = g.acre.views
-	await until(func() -> bool: return views.byslot.size() == 3 and views.picks.size() == 3, 60 * 20)
-	check(views.byslot.size() == 3 and views.picks.size() == 3, "in the Acre the three laborers stand at their posts, models loaded (%d, %d pickable)" % [views.byslot.size(), views.picks.size()])
-	check(views.get_child_count() <= DmLabor.MAX_SLOTS and views.get_child_count() == 3, "the laborers are pooled models, one per post and four at most (%d)" % views.get_child_count())
+	var n_posts := POSTS.size()
+	await until(func() -> bool: return views.byslot.size() == n_posts and views.picks.size() == n_posts, 60 * 20)
+	check(views.byslot.size() == n_posts and views.picks.size() == n_posts, "in the Acre the laborers stand at their %d posts, models loaded (%d, %d pickable)" % [n_posts, views.byslot.size(), views.picks.size()])
+	check(views.get_child_count() <= DmLabor.MAX_SLOTS and views.get_child_count() == n_posts, "the laborers are pooled models, one per post and the rules' most at most (%d)" % views.get_child_count())
 	var acre_rect: Dictionary = DmContent.area("acre")["rect"]
 	var placed := true
 	for l: DmLaborerViews.Laborer in views.list:
@@ -750,16 +788,16 @@ func _the_laborers() -> void:
 	await _go(_node_pos(_node("graves_0")))
 	await ticks(5)
 	check(not views.active and not views.visible and views.hover_slot == -1, "leaving the Acre puts the laborers to sleep (hidden, no update)")
-	# three hours of work
-	jump_ms += 3 * 3600_000
+	# hours of work: well past the time a laborer counts as ready, short of the cap
+	jump_ms += mini(int(DmGuidance.LABOR_READY_MS * 6.0), DmLabor.CAP_MS / 2)
 	await _go(_area_mid("acre"))
 	await until(func() -> bool: return views.active and views.view != null and views.list.all(func(x: DmLaborerViews.Laborer) -> bool: return x.ready), 60 * 5)
-	check(views.list.all(func(x: DmLaborerViews.Laborer) -> bool: return x.ready) and views.list.all(func(x: DmLaborerViews.Laborer) -> bool: return x.marker.visible), "back in the Acre the view is read again: all three have work waiting, a badge over each")
+	check(views.list.all(func(x: DmLaborerViews.Laborer) -> bool: return x.ready) and views.list.all(func(x: DmLaborerViews.Laborer) -> bool: return x.marker.visible), "back in the Acre the view is read again: every laborer has work waiting, a badge over each")
 	events.clear()
 	g.acre.labor.check_labor(true)
 	await until(func() -> bool: return events.any(func(e: Array) -> bool: return e[0] == "toast" and String(e[1]["text"]).begins_with("Your laborers have gathered about")), 60 * 3)
 	check(events.any(func(e: Array) -> bool: return e[0] == "toast" and String(e[1]["text"]).begins_with("Your laborers have gathered about") and String(e[1]["text"]).ends_with("finds (H)")), "on arrival: \"Your laborers have gathered about N finds (H)\"")
-	check(int(g.ui.labor_summary["ready"]) == 3, "the guidance knows three are ready")
+	check(int(g.ui.labor_summary["ready"]) == n_posts, "the guidance knows all %d are ready" % n_posts)
 	# the Sexton says so
 	g.chapterhouse.talk_to("sexton")
 	var lines: Array = g.ui.dialogue.lines
@@ -773,17 +811,17 @@ func _the_laborers() -> void:
 	g.ui.toggle_panel("labor")
 	await ticks(5)
 	events.clear()
-	g.ui.pb.labor.collect_requested.emit(2)
+	g.ui.pb.labor.collect_requested.emit(n_posts - 1)
 	await until(func() -> bool: return not g.ui.pb.labor.loot.is_empty(), 60 * 5)
 	var rep: Dictionary = g.ui.pb.labor.loot[0]["report"] if not g.ui.pb.labor.loot.is_empty() else {}
 	var found := _server_qty("bones_old") - bones0
-	check(not rep.is_empty() and int(rep["slot"] if rep.has("slot") else 2) == 2 and found > 0 and int(rep["totalItems"]) >= found, "the finds are in the server's bag and in the report under the laborer (%d bones, %d finds)" % [found, int(rep.get("totalItems", -1))])
+	check(not rep.is_empty() and int(rep["slot"] if rep.has("slot") else n_posts - 1) == n_posts - 1 and found > 0 and int(rep["totalItems"]) >= found, "the finds are in the server's bag and in the report under the laborer (%d bones, %d finds)" % [found, int(rep.get("totalItems", -1))])
 	var gold_paid := int(_acc()["character"]["gold"]) - gold0
 	check(gold_paid > 0 and int(g.character["gold"]) == int(_acc()["character"]["gold"]) and float(rep["gold"]) == float(gold_paid), "the server paid the gold (%d) and the client's purse is the server's" % gold_paid)
 	check(int(g.ui_host.prog.chronicle.view()["life"].get("gathered.gravedigging", 0)) - life0 == int(rep["totalItems"]), "the Chronicle counted the finds (gathered.gravedigging +%d)" % int(rep["totalItems"]))
 	check(_xp_total("gravedigging") - xp0 == int(rep["skills"][0]["xp"]) and _bag_qty("bones_old") == _server_qty("bones_old"), "the XP is the server's (+%d), and the bag follows the server" % int(rep["skills"][0]["xp"]))
 	await ticks(60 * 1)
-	check(views.list.any(func(x: DmLaborerViews.Laborer) -> bool: return x.slot == 2 and not x.ready), "after the panel collected, the posts refresh: his badge is gone (the others still wait)")
+	check(views.list.any(func(x: DmLaborerViews.Laborer) -> bool: return x.slot == n_posts - 1 and not x.ready), "after the panel collected, the posts refresh: his badge is gone (the others still wait)")
 	g.ui.close_panels()
 
 
@@ -798,36 +836,48 @@ func _xp_total(skill: String) -> int:
 func _the_garden_and_contracts() -> void:
 	var cid := int(g.character["id"])
 	var garden: DmGardenPanel = g.ui.pb.garden
-	check(_server_qty("seed_mourning_moss") > 0, "(a seed in the bag)")
+	check(_server_qty(seed_id) > 0, "(a seed in the bag)")
+	var seed_row: Dictionary = {}   # the seed's growing rules, and the first plot of its kind
+	for sr: Dictionary in DmContent.get_export("gardening", "SEEDS"):
+		if sr["id"] == seed_id:
+			seed_row = sr
+	var plot_id := ""
+	for pl: Dictionary in DmContent.get_export("gardening", "PLOTS"):
+		if plot_id == "" and pl["kind"] == seed_row["kind"]:
+			plot_id = String(pl["id"])
 	g.ui.toggle_panel("garden")
 	await ticks(5)
 	events.clear()
 	var xp0 := _xp_total("gardening")
-	garden.plant_requested.emit("h0", "seed_mourning_moss", false)
-	await until(func() -> bool: return _acc().get("garden", {}).has("h0"), 60 * 3)
+	garden.plant_requested.emit(plot_id, seed_id, false)
+	await until(func() -> bool: return _acc().get("garden", {}).has(plot_id), 60 * 3)
 	await ticks(5)
-	var row: Dictionary = _acc()["garden"]["h0"]
-	check(String(row["seedId"]) == "seed_mourning_moss" and int(row["readyAt"]) - int(row["plantedAt"]) == 20 * 60000, "planting is the server's: the plot grows for 20 minutes")
-	check(_xp_total("gardening") - xp0 == 6 and g.gather.skills.level("gardening") == 1, "the server paid the planting XP (+6)")
+	var row: Dictionary = _acc()["garden"][plot_id]
+	var grow_ms := int(seed_row["growMin"]) * 60000
+	check(String(row["seedId"]) == seed_id and int(row["readyAt"]) - int(row["plantedAt"]) == grow_ms, "planting is the server's: the plot grows for %d minutes" % int(seed_row["growMin"]))
+	check(_xp_total("gardening") - xp0 == int(seed_row["plantXp"]) and g.gather.skills.level("gardening") == 1, "the server paid the planting XP (+%d)" % int(seed_row["plantXp"]))
 	events.clear()
 	g.acre.labor.check_garden(true)
 	await until(func() -> bool: return events.any(func(e: Array) -> bool: return e[0] == "toast"), 60 * 3)
 	check(events.any(func(e: Array) -> bool: return e[0] == "toast" and String(e[1]["text"]) == "1 plot is still growing in your garden (U)"), "on arrival: \"1 plot is still growing in your garden (U)\"")
-	# 25 minutes later: ready, the notice, the harvest
-	jump_ms += 25 * 60_000
+	# a little over the growing time later: ready, the notice, the harvest
+	jump_ms += grow_ms + 5 * 60_000
 	events.clear()
 	g.acre.labor.check_garden(false)
 	await until(func() -> bool: return events.any(func(e: Array) -> bool: return e[0] == "toast"), 60 * 3)
 	check(events.any(func(e: Array) -> bool: return e[0] == "toast" and String(e[1]["text"]) == "1 plot is ready in your garden (U)"), "as plots come ready: \"1 plot is ready in your garden (U)\"")
 	var gardening := _prof("gardening")
-	gardening["skill_xp"] = int(gardening["skill_xp"]) + 10   # (so the harvest's 40 XP is a level)
-	var moss0 := _server_qty("herb_mourning_moss")
+	gardening["skill_xp"] = DmGathering.xp_to_next(int(gardening["skill_level"])) - 1   # (so the harvest's XP is a level)
+	var harvest_id := String(seed_row["harvest"])
+	var harvest_name := String(DmGatherData.item_meta(harvest_id)["name"])
+	var garden_name := String(DmGatherData.get_data()["skills"]["gardening"]["name"])
+	var moss0 := _server_qty(harvest_id)
 	events.clear()
-	garden.harvest_requested.emit("h0")
-	await until(func() -> bool: return _server_qty("herb_mourning_moss") > moss0 and events.any(func(e: Array) -> bool: return e[0] == "banner"), 60 * 5)
-	var crop := _server_qty("herb_mourning_moss") - moss0
-	check(crop >= 3 and crop <= 6 and events.any(func(e: Array) -> bool: return e[0] == "toast" and String(e[1]["text"]).begins_with("Harvested %d× Mourning Moss" % crop)), "the harvest is the server's roll (%d x Mourning Moss) and is announced" % crop)
-	check(events.any(func(e: Array) -> bool: return e[0] == "banner" and String(e[1].get("title", "")) == "Grave Gardening 2"), "the level: \"Grave Gardening 2\"")
+	garden.harvest_requested.emit(plot_id)
+	await until(func() -> bool: return _server_qty(harvest_id) > moss0 and events.any(func(e: Array) -> bool: return e[0] == "banner"), 60 * 5)
+	var crop := _server_qty(harvest_id) - moss0
+	check(crop >= int(seed_row["yields"][0]) and crop <= int(seed_row["yields"][1]) and events.any(func(e: Array) -> bool: return e[0] == "toast" and String(e[1]["text"]).begins_with("Harvested %d× %s" % [crop, harvest_name])), "the harvest is the server's roll (%d x %s) and is announced" % [crop, harvest_name])
+	check(events.any(func(e: Array) -> bool: return e[0] == "banner" and String(e[1].get("title", "")) == "%s 2" % garden_name), "the level: \"%s 2\"" % garden_name)
 	check(g.gather.skills.level("gardening") == 2 and int(g.ui_host.prog.chronicle.view()["life"].get("gathered.gardening", 0)) == crop, "the client's gardening is the server's (level 2) and the Chronicle counted the crop")
 	g.ui.close_panels()
 	# a contract of the Sexton's board
@@ -899,9 +949,11 @@ func _host_rules() -> void:
 		await _send(ty, 1)
 		check(_server_qty(item) > q0 and _bag_qty(item) == _server_qty(item), "%s: its %s is in the server's bag and in ours" % [ty, item])
 		check(_xp_total(String(dd["skill"])) - x0 == int(dd["xp"]), "%s: %s XP +%d" % [ty, dd["skill"], int(dd["xp"])])
-	# gather -> craft: three logs of the server's, the Sawpit's panel, one plank
+	# gather -> craft: the logs of the server's one plank takes, the Sawpit's panel, one plank
+	var plank: Dictionary = DmContent.recipe("mill_oak_plank")
+	var plank_logs := int(plank["inputs"][0]["qty"])
 	jump_ms += 60_000
-	await _send("coffin_oak", 3)
+	await _send("coffin_oak", plank_logs)
 	g.ui.close_panels()
 	var sawpit: Dictionary = g.chapterhouse.interactables.filter(func(it: Dictionary) -> bool: return it["kind"] == "sawpit")[0]
 	await _go(Vector3(float(sawpit["x"]) + 1.2, 0.0, float(sawpit["z"])))   # a station window closes when the hero is a few steps away from it
@@ -913,7 +965,7 @@ func _host_rules() -> void:
 	var logs0: int = g.ui_host.inventory.count("log_oak")
 	forge.craft_requested.emit("mill_oak_plank", 1)
 	await until(func() -> bool: return g.ui_host.inventory.count("plank_oak") > planks0, 60 * 4)
-	check(g.ui_host.inventory.count("plank_oak") == planks0 + 1 and g.ui_host.inventory.count("log_oak") == logs0 - 3, "craft: 3 gathered logs -> 1 plank (the bag shows %d planks, %d logs)" % [g.ui_host.inventory.count("plank_oak"), g.ui_host.inventory.count("log_oak")])
+	check(g.ui_host.inventory.count("plank_oak") == planks0 + int(plank["qty"]) and g.ui_host.inventory.count("log_oak") == logs0 - plank_logs, "craft: %d gathered logs -> %d plank (the bag shows %d planks, %d logs)" % [plank_logs, int(plank["qty"]), g.ui_host.inventory.count("plank_oak"), g.ui_host.inventory.count("log_oak")])
 	g.ui.close_panels()
 	mock.rng = server_rolls_default
 
@@ -1017,7 +1069,7 @@ func _guidance() -> void:
 	var cid := int(g.character["id"])
 	await _go(_area_mid("acre"))
 	var st := ui.guidance_state()
-	check(int(st["level"]) == int(h.character["level"]) and st["area"] == "acre" and int(st["bagSize"]) == 48, "state: level / area / bag size %s" % str([st["level"], h.character["level"], st["area"], st["bagSize"]]))
+	check(int(st["level"]) == int(h.character["level"]) and st["area"] == "acre" and int(st["bagSize"]) == DmLootData.bag_size(), "state: level / area / bag size %s" % str([st["level"], h.character["level"], st["area"], st["bagSize"]]))
 	check(st["unlocked"] == h.progress["unlocked"] and int(st["totalKills"]) == int(h.progress["totalKills"]), "state: seals and kills come from the progression")
 	var ak0 := int(st["areaKills"].get("graves", 0))
 	var m: DmRewardsMember = g.rewards.members[cid]
@@ -1059,12 +1111,13 @@ func _guidance() -> void:
 	for iid in DmContent.items():
 		if String(DmContent.items()[iid].get("type", "")) in ["weapon", "chest_armor", "helm", "boots"] and String(DmContent.items()[iid].get("rarity", "")) == "common":
 			junk.append(String(iid))
-	var need := 48 - int(ui.guidance_state()["bagUsed"])
+	var bag_size := DmLootData.bag_size()
+	var need := bag_size - int(ui.guidance_state()["bagUsed"])
 	for i in need:
 		await DmTestBag.give(h.inventory, {"item_id": junk[i % junk.size()], "quantity": 1})
 	await h.inventory.flush()
 	await h.refresh_inventory()
-	check(int(ui.guidance_state()["bagUsed"]) >= 44, "the bag is nearly full (%d / 48)" % int(ui.guidance_state()["bagUsed"]))
+	check(int(ui.guidance_state()["bagUsed"]) >= bag_size - 4, "the bag is nearly full (%d / %d)" % [int(ui.guidance_state()["bagUsed"]), bag_size])
 	check(await until(func() -> bool: return ui.guidance_hud.current != null and String(ui.guidance_hud.current["id"]) == "bag-full", 60 * 3), "the Next box suggests the Bone Grinder with a full bag")
 	var shown_id := String(ui.guidance_hud.current["id"]) if ui.guidance_hud.current != null else ""
 	ui.guidance_hud.dismiss()
@@ -1079,13 +1132,13 @@ func _guidance() -> void:
 	# the junk is sold by the server (a client never takes items out of its bag on its own, DECISIONS B25)
 	var lines: Array = []
 	for s in h.slots:
-		if int(s["slot_index"]) < 48 and int(s.get("equipped", 0)) == 0 and String(DmContent.item(String(s["item_id"])).get("type", "")) in ["weapon", "chest_armor", "helm", "boots"]:
+		if int(s["slot_index"]) < bag_size and int(s.get("equipped", 0)) == 0 and String(DmContent.item(String(s["item_id"])).get("type", "")) in ["weapon", "chest_armor", "helm", "boots"]:
 			lines.append({"slot_index": int(s["slot_index"]), "quantity": int(s["quantity"])})
 	var sold: DmResult = await h.sell_items(lines)
 	check(sold.ok, "the junk is sold (%s)" % sold.error)
 	await h.refresh_inventory()
 	var left := 0
 	for s in h.slots:
-		if int(s["slot_index"]) < 48 and int(s.get("equipped", 0)) == 0 and String(DmContent.item(String(s["item_id"])).get("type", "")) in ["weapon", "chest_armor", "helm", "boots"]:
+		if int(s["slot_index"]) < bag_size and int(s.get("equipped", 0)) == 0 and String(DmContent.item(String(s["item_id"])).get("type", "")) in ["weapon", "chest_armor", "helm", "boots"]:
 			left += 1
-	check(left == 0 and int(ui.guidance_state()["bagUsed"]) <= 48 - lines.size(), "the bag was cleared of the junk (%d left, %d of 48 used)" % [left, int(ui.guidance_state()["bagUsed"])])
+	check(left == 0 and int(ui.guidance_state()["bagUsed"]) <= bag_size - lines.size(), "the bag was cleared of the junk (%d left, %d of %d used)" % [left, int(ui.guidance_state()["bagUsed"]), bag_size])

@@ -2,6 +2,7 @@ extends SceneTree
 ## The combat core's skeleton API (native/README.md "Design"): queries in spawn order, synchronous kills, the event buffer, seeded
 ## stats, the rise and the 4 s body linger. Run: godot --headless --path client --script res://tests/core_api.gd
 
+## The defs are the test's own fixture; the elite multipliers come from the data (ELITE in enemies.json).
 const DEFS := {
 	"robber": {"hp": 68, "damage": 11, "speed": 2.6, "radius": 0.45, "attackRange": 1.3, "windupMs": 420, "cooldownMs": 1300},
 	"golem": {"hp": 430, "damage": 26, "speed": 1.5, "radius": 1.1},
@@ -15,6 +16,7 @@ const EV_CORPSE_ADDED := 18
 
 var fails := 0
 var checks := 0
+var elite: Dictionary = {}   ## ELITE of enemies.json: hpMult, damageMult
 
 
 func check(ok: bool, what: String) -> void:
@@ -28,6 +30,7 @@ func make(seed_: int) -> RefCounted:
 	var c: RefCounted = ClassDB.instantiate("DmCore")
 	c.set_seed(seed_)
 	check(c.load_enemy_defs(DEFS) == 2, "two defs load")
+	c.load_tuning(DmCoreData.json("res://data/content/enemies.json"))
 	c.set_area_bounds(Vector2(-40, -40), Vector2(40, 40))
 	c.set_wander(false)
 	return c
@@ -51,6 +54,7 @@ func events(c: RefCounted) -> Array:
 
 
 func _init() -> void:
+	elite = DmCoreData.json("res://data/content/enemies.json")["ELITE"]
 	var c := make(7)
 	var a: int = c.spawn_enemy("robber", Vector2(0, 0), 3, 1.0, 1.0, false, "graves", false)
 	var b: int = c.spawn_enemy("robber", Vector2(2.4, 0), 3, 1.0, 1.0, false, "graves", false)
@@ -83,7 +87,8 @@ func _init() -> void:
 		fields_same = fields_same and c.enemy_state(id) == int(info["state"]) and c.enemy_pos(id) == info["pos"] and c.enemy_radius(id) == float(info["radius"])
 	check(fields_same and c.enemy_state(999999) == -1 and is_inf(c.enemy_pos(999999).x) and c.enemy_radius(999999) == 0.0, "enemy_state / enemy_pos / enemy_radius are the record's values; -1, INF and 0 when gone")
 	var gi: Dictionary = c.enemy_info(g)
-	check(is_equal_approx(gi["max_hp"], 430.0 * 3.6) and is_equal_approx(gi["damage"], 26.0 * 1.5) and is_equal_approx(gi["radius"], 1.375), "elite stats x3.6 hp, x1.5 damage, x1.25 radius")
+	# the radius multiplier (x1.25) is compiled into the core: enemies.json has none
+	check(is_equal_approx(gi["max_hp"], 430.0 * float(elite["hpMult"])) and is_equal_approx(gi["damage"], 26.0 * float(elite["damageMult"])) and is_equal_approx(gi["radius"], 1.375), "elite stats: hp and damage x the ELITE multipliers, radius x1.25")
 	var sp: float = c.enemy_info(a)["speed"]
 	check(sp >= 2.6 * 0.92 and sp <= 2.6 * 1.08, "speed jitter within +-8%")
 	events(c)  # spawn events checked below with a fresh core
@@ -108,12 +113,14 @@ func _init() -> void:
 		check(c.def_name(ev[5]["ints"][0]) == "robber" and c.area_name(ev[5]["ints"][3]) == "graves", "def and area names decode")
 
 	# The rise: RISING for 1.1 s, then IDLE; the body lingers 4 s after death, counted until removed.
-	for i in 66:
+	for i in 60:
+		c.step(1.0 / 60.0)
+	check(c.enemy_count() == 4, "the dead body still counts")
+	for i in 6:
 		c.step(1.0 / 60.0)
 	var risen := c.enemy_info(far)["state"] as int
 	c.step(1.0 / 60.0)
 	check(risen == 0 or c.enemy_info(far)["state"] == 1, "RISING -> IDLE at 1.1 s")
-	check(c.enemy_count() == 4, "the dead body still counts")
 	for i in 240:
 		c.step(1.0 / 60.0)
 	check(c.enemy_count() == 3 and c.enemy_info(a).is_empty(), "the dead body is removed after 4 s")

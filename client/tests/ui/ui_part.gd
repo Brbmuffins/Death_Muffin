@@ -118,8 +118,8 @@ func _run() -> void:
 	var r := DmReliquaryPanel.new()
 	root.add_child(r)
 	var bag: Array = []
-	bag.resize(48)
-	for i in 48:
+	bag.resize(DmLoot.bag_size())
+	for i in DmLoot.bag_size():
 		bag[i] = {}
 	bag[0] = {"id": 1, "name": "Blade", "rarity": "epic", "quantity": 1, "sell_value": 10, "type_label": "weapon"}
 	r.junk_count = 2
@@ -169,14 +169,15 @@ func _run() -> void:
 	sp.open()
 	await _frames(3)
 	var tabs := sp.find_children("*", "DmTabButton", true, false)
-	_check(tabs.size() == 6 and tabs[0].text == "CO-OP" and tabs[1].text == "AUDIO", "settings has tabs, Co-op then Audio first")
+	_check(tabs.size() == sp._order.size() and tabs.size() > 2 and tabs[0].text == "CO-OP" and tabs[1].text == "AUDIO", "settings has a tab for each page, Co-op then Audio first")
 	_check(sp.active == "coop" and (sp.find_children("*", "HSlider", true, false).filter(func(n: Node) -> bool: return n.is_visible_in_tree())).is_empty(), "Co-op tab is shown first, no sliders on it")
 	_check(tabs[0].global_position.y < sp.scroll.global_position.y, "the tab bar sits above the scrolling content")
 	var btn: Button = tabs[1]
 	_tab_click(sv, btn.get_global_rect().get_center())
 	await _frames(2)
 	var vis := sp.find_children("*", "HSlider", true, false).filter(func(n: Node) -> bool: return n.is_visible_in_tree())
-	_check(sp.active == "audio" and vis.size() == 5, "clicking Audio shows the five volume sliders")
+	var vol_keys := sp.values.keys().filter(func(k: Variant) -> bool: return String(k).begins_with("vol_"))   # the volume settings
+	_check(sp.active == "audio" and vis.size() == vol_keys.size() and vol_keys.size() > 0, "clicking Audio shows a slider for each volume setting (%d)" % vol_keys.size())
 	sp.build()
 	await _frames(2)
 	_check(sp.active == "audio", "the last opened tab is remembered across a rebuild")

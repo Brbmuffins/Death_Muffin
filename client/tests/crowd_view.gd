@@ -52,6 +52,7 @@ const ENEMY_TURN_RATE := 9.0
 const KNOCK_K := 140.0
 const KNOCK_MAX := 0.6
 const SETTLE_DEPTH := 0.06
+const CHAMPION_SCALE := 1.35   ## the champion thrall's scale this test gives the view (an option of `setup`)
 
 var fails := 0
 var checks := 0
@@ -1691,7 +1692,7 @@ func full_party() -> void:
 	var view := CrowdView.new()
 	view.auto_sync = false
 	root.add_child(view)
-	view.setup(core, enemies_json["ENEMIES"], Vector2(-60, -60), Vector2(60, 60), {"baked_dir": OUT, "assets_dir": live_assets, "champion_scale": 1.35})
+	view.setup(core, enemies_json["ENEMIES"], Vector2(-60, -60), Vector2(60, 60), {"baked_dir": OUT, "assets_dir": live_assets, "champion_scale": CHAMPION_SCALE})
 	var crowd: RefCounted = view.crowd
 	check(view.model_slots() == {"grave_robber": 0, "bone_hound": 1, "skeleton_thrall": 2}, "the view's model slots are the ones this test knows (%s)" % str(view.model_slots()))
 	var guest := new_crowd_from(view)   # the co-op guest: the same models, fed the rows instead of the core
@@ -1701,12 +1702,17 @@ func full_party() -> void:
 	for s in w:
 		unique[s] = true
 	check(unique.size() == w.size(), "each fallback is listed once (%d)" % w.size())
-	check(w.has("no baked model for barrow_ghoul: drawn as grave_robber"), "the ghoul falls back to the robber, as today's rig fallback does")
+	var looks_json: Dictionary = DmCoreData.json("res://crowd/crowd_looks.json")
+	var stand_in := func(def: String) -> String:   # (the looks' own rig fallback, when it is one of the baked models)
+		return "no baked model for %s: drawn as %s" % [looks_json["enemy_model"][def], looks_json["enemy_fallback"][def]]
+	check(w.has(stand_in.call("ghoul")), "the ghoul falls back to its rig fallback in the looks (%s)" % stand_in.call("ghoul"))
 	check(w.has("no baked model for censer_bearer: drawn as skeleton_thrall"), "a model with no baked stand-in of its rig is drawn as the skeleton")
-	check(w.has("no baked model for skull_rat: drawn as bone_hound"), "the rat (a quadruped) falls back to the hound")
+	check(w.has(stand_in.call("rat")), "the rat (a quadruped) falls back to its rig fallback in the looks (%s)" % stand_in.call("rat"))
 	check(not w.any(func(s: String) -> bool: return s.contains("grave_robber") and s.contains("no baked model for grave_robber")), "baked models are not listed")
 	print("INFO %d model fallbacks, e.g. %s" % [w.size(), w[0]])
-	# the party: 4 heroes, 8 thralls each, 72 enemies. Nobody can hurt anybody, so the crowd stays 104 strong while it moves, swings and flinches.
+	# the party: 4 heroes, 8 thralls each, the global enemy cap of enemies. Nobody can hurt anybody, so the crowd stays that strong while it moves, swings and flinches.
+	var n_enemies := int(DmCoreData.json(data_dir.path_join("data/content/areas.json"))["GLOBAL_ENEMY_CAP"])
+	var n_bodies := n_enemies + 4 * 8
 	var heroes := []
 	for h in 4:
 		var id: int = core.add_external(0, 0.4, 1.0)
@@ -1726,15 +1732,15 @@ func full_party() -> void:
 			check(tid != 0, "thrall raised")
 	var defs := ["robber", "robber", "hound", "ghoul", "wraith", "robber", "hound", "robber"]
 	var ids := []
-	for e in 72:
-		var a := float(e) / 72.0 * TAU
+	for e in n_enemies:
+		var a := float(e) / float(n_enemies) * TAU
 		var pos := Vector2(cos(a), sin(a)) * (12.0 + float(e % 5) * 1.5)
 		ids.append(core.spawn_enemy(defs[e % defs.size()], pos, 1, 1000.0, 0.0, e % 24 == 5, "graves", e % 9 == 0))
 	view.focus = Vector2(0, 0)
 	for f in 150:   # warm up: the rise is over, the fight is on
 		lockstep(core, view, guest, 0.5)
 	var st: Dictionary = crowd.stats()
-	check(st.bodies == 104 and st.live == 104, "all 104 bodies have a view (%d)" % st.bodies)
+	check(st.bodies == n_bodies and st.live == n_bodies, "all %d bodies have a view (%d)" % [n_bodies, st.bodies])
 	var drawn := 0
 	for m in 3:
 		for l in lods[m]:
@@ -1742,15 +1748,16 @@ func full_party() -> void:
 	var hidden := 0
 	for id in ids:
 		hidden += 1 if crowd.view_info(id).hidden else 0
-	check(drawn == 104 - hidden and st.drawn == drawn, "104 creatures, 104 instances (%d drawn, %d underground)" % [drawn, hidden])
+	check(drawn == n_bodies - hidden and st.drawn == drawn, "%d creatures, %d instances (%d drawn, %d underground)" % [n_bodies, n_bodies, drawn, hidden])
 	# looks: an elite is larger, a champion thrall bigger, a risen one dull
 	var elite_id: int = ids[5]
-	check(near(crowd.view_info(elite_id).scale, 1.0 * 1.35, 1e-6), "an elite is drawn 1.35x (%s)" % crowd.view_info(elite_id).scale)
+	var elite_scale := float(enemies_json["ELITE"]["scale"])
+	check(near(crowd.view_info(elite_id).scale, 1.0 * elite_scale, 1e-6), "an elite is drawn ELITE.scale x (%s)" % crowd.view_info(elite_id).scale)
 	var seen_champion := false
 	for tid in core.thrall_ids():
-		if near(crowd.view_info(tid).scale, 1.35, 1e-6):
+		if near(crowd.view_info(tid).scale, CHAMPION_SCALE, 1e-6):
 			seen_champion = true
-	check(seen_champion, "a champion thrall is drawn 1.35x")
+	check(seen_champion, "a champion thrall is drawn %sx (the option the view was given)" % CHAMPION_SCALE)
 	glows(view, crowd, core, ids, heroes)
 	# Full Party, the core stepping, one tick and one frame each
 	var regrows0: int = crowd.stats().regrows
@@ -1863,7 +1870,8 @@ func crowd_cost_in_the_party(crowd: RefCounted) -> void:
 		for l in lods[m]:
 			shadow_rows += crowd.instance_count(m, l, true)
 	check(cut.casting == shadow_rows and cut.casting_thralls <= 32 and cut.casting >= cut.casting_thralls, "the casting counter (%d, %d of them thralls) is the shadow groups' instances (%d)" % [cut.casting, cut.casting_thralls, shadow_rows])
-	check(all.casting == 40 and all.casting_thralls == 32, "uncut, 8 enemies and 32 thralls cast (%d, %d thralls)" % [all.casting, all.casting_thralls])
+	var crowded_casters := int(crowd.settings().shadow_casters_crowded)   # the party is a crowd (32 or more enemies): that many enemies cast
+	check(all.casting == crowded_casters + 32 and all.casting_thralls == 32, "uncut, %d enemies and 32 thralls cast (%d, %d thralls)" % [crowded_casters, all.casting, all.casting_thralls])
 	crowd.set_shadow_policy(12, 8, false)
 	crowd.draw(DT, 0.0, xf.origin)
 	var bare: Dictionary = crowd.stats()
@@ -2102,7 +2110,10 @@ func groups_follow_instances(view: CrowdView, crowd: RefCounted) -> void:
 		shown += 1 if g.node.visible else 0
 		empty_shown += 1 if n == 0 and g.node.visible else 0
 		holding_hidden += 1 if n > 0 and not g.node.visible else 0
-	check(groups.size() == 18 and holding > 0 and holding < groups.size(), "the party's models have %d groups (3 models: 2 + 1 + 3 levels, plain, with shadows and the fade group) and %d of them hold instances" % [groups.size(), holding])
+	var levels := 0
+	for m in 3:
+		levels += int(lods[m])
+	check(groups.size() == 3 * levels and holding > 0 and holding < groups.size(), "the party's models have %d groups (3 models, %d levels of detail, each in plain, with shadows and the fade group) and %d of them hold instances" % [groups.size(), levels, holding])
 	check(holding_hidden == 0 and empty_shown <= 2 and shown == holding + empty_shown, "a group is shown while it holds instances, and only the ones emptied within the last half second are shown empty (%d shown, %d hold, %d hold and hide, %d empty and shown)" % [shown, holding, holding_hidden, empty_shown])
 	# the fade groups: the alpha shader (the same material parameters as the solid one's), no shadow, and the closed bodies' cull-back variant
 	var fade_nodes := 0

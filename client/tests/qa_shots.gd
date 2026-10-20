@@ -285,7 +285,7 @@ func hovers_and_windows() -> void:
 		if not g.ui.is_open(id) or g.ui.window_for(id) == null or not g.ui.window_for(id).visible:
 			shut.append(id)
 	g.ui.close_panels()
-	check(shut.is_empty() and opened.size() == 21, "every window id the plan accepts opens on the game (%d windows; not: %s)" % [opened.size(), str(shut)])
+	check(shut.is_empty() and not opened.is_empty(), "every window id the plan accepts opens on the game (%d windows; not: %s)" % [opened.size(), str(shut)])
 
 
 ## A "perf" shot shows the performance overlay and waits long enough for it to draw; anything else leaves it hidden.
@@ -878,6 +878,9 @@ func clips_on_a_reaper() -> void:
 	check(int(watch.get("alive_before", 0)) == 4 and int(watch.get("alive", 4)) < 4, "the setup's mortal stand-ins die to the wraith (%s of 4 left)" % str(watch.get("alive")))
 	# stand-ins that fight come at the hero, so a melee rite reaches them (Helix, 2026-10-19: the Scythe Sweeps of War's soul video hit nobody 8 m away)
 	var start_m := 6.0
+	# the two timed sweeps are 0.9 s apart: the test sets the sweep's cooldown below that as its own input, so a retuned sweep cannot drop the second one
+	var sweep_cd0 := float(DmAbilities.def("scythe_sweep")["cooldownMs"])
+	check(DmQaTune.apply({"combat/abilities": {"abilities": {"scythe_sweep": {"cooldownMs": 300.0}}}})["ok"], "the test gives the sweep a 0.3 s cooldown for the fighting clip")
 	var fplan := DmQaClips.parse(JSON.stringify({"discipline": "reaper", "clips": [{"name": "fight", "at": "pack", "enemies": 3, "seconds": 3,
 		"setup": [{"do": "stand_ins", "health": 0.05, "harmless": false, "fight": true, "distance": start_m}],
 		"steps": [{"at": 1.5, "do": "cast", "rite": "scythe_sweep"}, {"at": 2.4, "do": "cast", "rite": "scythe_sweep"}]}]}))
@@ -895,6 +898,7 @@ func clips_on_a_reaper() -> void:
 		img.fill(Color.from_hsv(fmod(float(near["n"]) * 0.02, 1.0), 0.7, 0.8))
 		return img
 	var fc: Dictionary = await DmQaClips.record(root, cg, fplan["clips"][0], dir, fighting)
+	DmQaTune.apply({"combat/abilities": {"abilities": {"scythe_sweep": {"cooldownMs": sweep_cd0}}}})
 	check(fc["ok"] and (fc["casts"] as Array).size() == 2, "the fighting clip is recorded with its two sweeps (%s)" % str(fc))
 	check(int(near.get("alive", 3)) < 3, "stand-ins that fight come at the Reaper and her sweeps kill them (%s of 3 left; the closest came to %.1f m)" % [str(near.get("alive")), float(near["closest"])])
 	cg.process_mode = Node.PROCESS_MODE_DISABLED

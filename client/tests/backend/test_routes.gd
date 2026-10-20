@@ -73,7 +73,7 @@ func _sweep() -> void:
 	calls["get_character"] = await api.get_character()
 	calls["change_discipline"] = await api.change_discipline(cid, 8)
 	calls["get_inventory"] = await api.get_inventory(cid)
-	calls["save_inventory"] = await api.save_inventory(cid, [{"slot_index": 0, "item_id": "sword_copper", "quantity": 1, "equipped": 0}], 48)
+	calls["save_inventory"] = await api.save_inventory(cid, [{"slot_index": 0, "item_id": "sword_copper", "quantity": 1, "equipped": 0}], DmLoot.bag_size())
 	calls["equip_item"] = await api.equip_item(cid, 0, 1)
 	calls["roll_loot"] = await api.roll_loot(cid, [{"item_id": "helm_copper", "level": 3, "source": "kill"}])
 	calls["belt_tool"] = await api.belt_tool(cid, 0, 0)
@@ -201,7 +201,7 @@ func _persistence() -> void:
 	var cid: int = ch.data["id"]
 	await api.save_progress({"characterId": cid, "level": 12, "xp": 77, "gold": 654321, "stat_str": 6, "stat_agi": 5, "stat_int": 8, "stat_vit": 5})
 	await api.save_inventory(cid, [{"slot_index": 0, "item_id": "ingot_copper", "quantity": 50, "equipped": 0}, {"slot_index": 1, "item_id": "staff_oak", "quantity": 1, "equipped": 0},
-		{"slot_index": 2, "item_id": "seed_mourning_moss", "quantity": 4, "equipped": 0}, {"slot_index": 3, "item_id": "charm_tithe_bat", "quantity": 1, "equipped": 0}], 48)
+		{"slot_index": 2, "item_id": "seed_mourning_moss", "quantity": 4, "equipped": 0}, {"slot_index": 3, "item_id": "charm_tithe_bat", "quantity": 1, "equipped": 0}], DmLoot.bag_size())
 	await api.equip_item(cid, 1, 1)
 	var rolled := await api.roll_loot(cid, [{"item_id": "helm_copper", "level": 20, "source": "boss"}])
 	var inv: Array = (await api.get_inventory(cid)).data
@@ -209,7 +209,7 @@ func _persistence() -> void:
 	for r in inv:
 		rows.append({"slot_index": r["slot_index"], "item_id": r["item_id"], "quantity": r["quantity"], "equipped": r["equipped"]})
 	rows.append({"slot_index": 10, "item_id": "helm_copper", "quantity": 1, "equipped": 0, "instance_id": rolled.data[0]["instance_id"]})
-	_ok((await api.save_inventory(cid, rows.filter(func(r): return int(r["slot_index"]) < 100), 48)).ok, "persist: save with a roll")
+	_ok((await api.save_inventory(cid, rows.filter(func(r): return int(r["slot_index"]) < 100), DmLoot.bag_size())).ok, "persist: save with a roll")
 	await api.vault_deposit(cid, 0, 20)
 	await api.vault_deposit(cid, 10)
 	await api.add_chronicle(cid, {"kills": 9}, {"peak.depth": 3})
@@ -277,9 +277,9 @@ func _no_loss_on_refusal() -> void:
 		var ing: Dictionary = rec["ingredients"][i]
 		rows.append({"slot_index": i, "item_id": ing["item_id"], "quantity": int(ing["quantity"]) * 2, "equipped": 0})
 	# fill every other bag slot with gear so the result has nowhere to go
-	for i in range(rows.size(), 48):
+	for i in range(rows.size(), DmLoot.bag_size()):
 		rows.append({"slot_index": i, "item_id": "sword_copper", "quantity": 1, "equipped": 0})
-	_ok((await api.save_inventory(cid, rows, 48)).ok, "fullbag: bag filled")
+	_ok((await api.save_inventory(cid, rows, DmLoot.bag_size())).ok, "fullbag: bag filled")
 	var before: Array = (await api.get_inventory(cid)).data
 	var r := await api.craft(cid, rec["id"])
 	var after: Array = (await api.get_inventory(cid)).data
@@ -294,7 +294,7 @@ func _no_loss_on_refusal() -> void:
 ## inventory save, so the bag never reached the server and a Workbench reforge found "nothing in that slot": the chapterhouse suite flaked on the reward roll).
 func _repair_stacks() -> void:
 	var mock: DmMockBackend = _session()[0]
-	var acc := {"slots": [{"slot_index": 0, "item_id": "ring_copper", "quantity": 3, "equipped": 0}, {"slot_index": 1, "item_id": "log_oak", "quantity": 5, "equipped": 0}]}
+	var acc := {"slots": [{"slot_index": 0, "item_id": "ring_copper", "quantity": 3, "equipped": 0}, {"slot_index": 1, "item_id": "log_oak", "quantity": 1, "equipped": 0}]}
 	_ok(mock.repair_stacks(acc) == 1, "repair: one over-cap stack found")
 	var rings: Array = acc["slots"].filter(func(x): return x["item_id"] == "ring_copper")
 	_ok(rings.size() == 3 and rings.all(func(x): return int(x["quantity"]) == 1), "repair: a 3-ring stack becomes three rings", str(rings))
@@ -303,11 +303,12 @@ func _repair_stacks() -> void:
 
 func _grant_caps() -> void:
 	var mock: DmMockBackend = _session()[0]
-	var acc := {"slots": [{"slot_index": 0, "item_id": "ring_copper", "quantity": 1, "equipped": 0}, {"slot_index": 1, "item_id": "log_oak", "quantity": 95, "equipped": 0}]}
+	var cap := int(mock._stack_cap("log_oak"))
+	var start := maxi(1, cap - 5)   # five short of a full stack: ten more fill it and spill the rest into a new slot
+	var acc := {"slots": [{"slot_index": 0, "item_id": "ring_copper", "quantity": 1, "equipped": 0}, {"slot_index": 1, "item_id": "log_oak", "quantity": start, "equipped": 0}]}
 	_ok(mock._grant(acc, "ring_copper", 1), "grant: a second ring fits")
 	var rings: Array = acc["slots"].filter(func(x): return x["item_id"] == "ring_copper")
 	_ok(rings.size() == 2 and rings.all(func(x): return int(x["quantity"]) == 1), "grant: gear never stacks (each ring its own slot)", str(rings))
-	var cap := int(mock._stack_cap("log_oak"))
 	_ok(mock._grant(acc, "log_oak", 10), "grant: a stackable overflows into a new slot")
 	var logs: Array = acc["slots"].filter(func(x): return x["item_id"] == "log_oak")
 	var total := 0
@@ -315,4 +316,4 @@ func _grant_caps() -> void:
 	for x in logs:
 		total += int(x["quantity"])
 		over = over or int(x["quantity"]) > cap
-	_ok(total == 105 and not over and (cap >= 105 or logs.size() == 2), "grant: stacks top up to the cap (%d) and spill the rest" % cap, str(logs))
+	_ok(total == start + 10 and not over and logs.size() == ceili(float(start + 10) / float(cap)), "grant: stacks top up to the cap (%d) and spill the rest" % cap, str(logs))

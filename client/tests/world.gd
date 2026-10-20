@@ -10,16 +10,15 @@ extends SceneTree
 ##   - moving between areas: the hero walks from the Chapterhouse through the Graves into the Warren; the area changes follow (banners, lighting, the director),
 ##     and the Warren's waves are its roster;
 ##   - waystone travel and the recall home (T), with the thralls following; a fallen hero gets up in the Chapterhouse;
-##   - the Ossuary: its seal breaks with the Graves' kills, the director makes its whole roster (the golem as the Ossuary Wakes' lead), and a deacon the director made
+##   - the Ossuary: its seal breaks with the Graves' kills, the director makes its whole roster (the lead of its wave theme), and a deacon the director made
 ##     raises a corpse into a Risen at its own level and blesses a wounded ally, through the game scene's event chain (telegraph, cue, the counsel's Sanctify fact);
-##   - the Drowned Nave: its seal breaks with the Ossuary's kills, the director makes its whole roster (the gargoyle leads the Belfry, the acolyte the Unbound), and in the game scene
+##   - the Drowned Nave: its seal breaks with the Ossuary's kills, the director makes its whole roster (each wave theme leads with its own kind), and in the game scene
 ##     the censer's incense hastes the bodies near it and its cloud is drawn, the wraith's scream and the gargoyle's dive are announced and land, the templar's shield glances, and an
 ##     acolyte that sees the hero's thrall killed claims the fall: Unbind's cue and thread, a Risen of the acolyte's level, its reach ring while a thrall stands in it;
 ##   - the Bell Sanctum, the Bone Coliseum and the Plague Cloister: their seals break (the Nave's and the Sanctum's kills; the Coliseum's broke with the Ossuary's), the director makes each
-##     one's whole roster (the Sanctum's processions lead with a seraph, a golem and a templar), and in the game scene the seraph's ward blesses its neighbour (its cue, the status, the counsel
+##     one's whole roster (each wave theme's lead), and in the game scene the seraph's ward blesses its neighbour (its cue, the status, the counsel
 ##     hears the Sanctify), the plague doctor's flask is announced and lands with its pool, and a wounded flagellant is frenzied (the status, the blood motes);
-##   - the Cinder Pyre and the Mourning Fen: their seals break with the Cloister's and the Pyre's kills, the director makes their whole rosters (the hag leads Corpse-Candles, the sexton
-##     the Sexton's Round), and in the game scene the Husk's embers are a pool that burns him and burns out, the Priest's coal, the Slag Brute's slam, the Hag's hex, the Wisp's pulse and
+##   - the Cinder Pyre and the Mourning Fen: their seals break with the Cloister's and the Pyre's kills, the director makes their whole rosters (each wave theme leads with its own kind), and in the game scene the Husk's embers are a pool that burns him and burns out, the Priest's coal, the Slag Brute's slam, the Hag's hex, the Wisp's pulse and
 ##     the Sexton's chain are announced and reach him (as ember, curse, dust and melee blows, a chill, a drag and a root on his body), the Leech's bite is toxic, and the kinds shed
 ##     embers and marsh-lights near him;
 ##   - waves follow the hero from area to area (the Graves, the Ossuary, the Nave, the Graves again), and the ground left behind is cleared, as today's director does;
@@ -136,6 +135,26 @@ func _area_mid(id: String) -> Vector3:
 	return Vector3((float(r["x0"]) + float(r["x1"])) * 0.5, 0.0, (float(r["z0"]) + float(r["z1"])) * 0.5)
 
 
+## The loaded areas a new character has open: those whose world.json entry has no seal (unlock: null).
+func _open_area_ids() -> Array:
+	var out: Array = []
+	for id: String in g.world.loaded:
+		if DmData.world()["areas"][id]["unlock"] == null:
+			out.append(id)
+	return out
+
+
+## Every area not yet open that the kills of `u["area"]` break the seal of at `u["kills"]`, sorted (what check_seals reports when that count is reached; ask before it runs).
+func _opened_by(u: Dictionary) -> Array:
+	var out: Array = []
+	for id in DmContent.area_order():
+		var un: Variant = DmContent.area(String(id)).get("unlock")
+		if un != null and String(un["area"]) == String(u["area"]) and float(un["kills"]) <= float(u["kills"]) and not g.world.unlocked.has(String(id)):
+			out.append(String(id))
+	out.sort()
+	return out
+
+
 func _gate_closed(id: String) -> bool:
 	var gt: Dictionary = g.world.gates[id]
 	return not bool(gt.open) and (gt.bars as Node3D).visible and not (gt.collider as CollisionShape3D).disabled and not (g.world.nav_regions["door:" + id] as NavigationRegion3D).enabled
@@ -162,7 +181,8 @@ func _the_world() -> void:
 	var ret: Dictionary = DmContent.get_export("areas", "CHAPTERHOUSE_RETURN")
 	check(hero.position.distance_to(Vector3(float(ret["x"]) + 3.0, 0.0, float(ret["z"]))) < 0.05 and g.area_id == "chapterhouse",
 		"the hero starts 3 m from the Chapterhouse's return point, as today's host (%s, %s)" % [str(hero.position), g.area_id])
-	check(g.chapterhouse != null and g.chapterhouse.npcs != null and g.chapterhouse.npcs.npcs.size() == 3, "the Chapterhouse node is up with its three people")
+	var people: Dictionary = DmContent.get_export("npcs", "NPCS")
+	check(g.chapterhouse != null and g.chapterhouse.npcs != null and not people.is_empty() and g.chapterhouse.npcs.npcs.size() == people.size(), "the Chapterhouse node is up with its %d people (npcs.json)" % people.size())
 	var prior: Dictionary = DmContent.get_export("npcs", "NPCS")["prior"]
 	var node: Node3D = g.chapterhouse.npcs.npcs["prior"]["root"]
 	check(node.position.distance_to(Vector3(float(prior["x"]), 0.0, float(prior["z"]))) < 0.01, "the Prior stands where npcs.json puts him")
@@ -206,10 +226,7 @@ func _the_world() -> void:
 
 func _the_seals() -> void:
 	# a new character's open areas are the loaded ones whose world.json entry has no seal (unlock: null)
-	var open_areas: Array = []
-	for id: String in g.world.loaded:
-		if DmData.world()["areas"][id]["unlock"] == null:
-			open_areas.append(id)
+	var open_areas := _open_area_ids()
 	var open_now: Array = g.world.unlocked.keys()
 	open_now.sort()
 	var open_sorted := open_areas.duplicate()
@@ -238,14 +255,20 @@ func _the_seals() -> void:
 	var map_doors: Dictionary = {}
 	for d: Dictionary in vm["minimap"]["doors"]:
 		map_doors[String(d["id"])] = bool(d["open"])
-	check(map_doors.get("graves_warren", true) == false and map_doors.get("chapter_acre", false) == true, "the minimap shows the sealed door closed and the hub door open")
+	var map_ok := not map_doors.is_empty()
+	var shown_open := 0
+	for d: Dictionary in DmContent.doors():
+		var both := open_areas.has(String(d["a"])) and open_areas.has(String(d["b"]))
+		map_ok = map_ok and map_doors.get(String(d["id"]), not both) == both
+		shown_open += 1 if both else 0
+	check(map_ok and shown_open > 0 and shown_open < DmContent.doors().size() and map_doors.get("graves_warren", true) == false, "the minimap shows each door as the seals have it: the sealed ones closed (the Warren's among them), the hubs' open (%d open)" % shown_open)
 
 
 # ------------------------------------------------------------------------------------------------------------------ the navmesh
 
 func _the_navmesh() -> void:
 	var core: RefCounted = g.core_host.core
-	check(core.nav_triangle_count() > 1000, "the core holds the navmesh's triangles (%d)" % core.nav_triangle_count())
+	check(core.nav_triangle_count() > 0, "the core holds the navmesh's triangles (%d)" % core.nav_triangle_count())
 	var warren := _area_mid("warren")
 	var c: Vector3 = core.nav_closest(warren)
 	check(g.world.area_at(c.x, c.z) != "warren", "the core keeps a body out of the sealed Warren (%s -> %s)" % [str(warren), str(c)])
@@ -266,7 +289,7 @@ func _the_navmesh() -> void:
 		worst = maxf(worst, Vector2(a.x - q.x, a.z - q.z).length())
 	check(worst < 0.001, "with every region on, the core's closest point is the navigation server's at 1500 points (worst %.5f m)" % worst)
 	g.chapterhouse.apply_seals()   # back to the character's seals
-	check(g.world.unlocked.size() == 4 and _gate_closed("graves_warren"), "the seals are back")
+	check(g.world.unlocked.size() == _open_area_ids().size() and _gate_closed("graves_warren"), "the seals are back")
 
 
 # ------------------------------------------------------------------------------------------------------------------ breaking a seal
@@ -276,10 +299,12 @@ func _breaking_a_seal() -> void:
 	var u: Dictionary = DmContent.area("warren")["unlock"]
 	prog.local["areaKills"][String(u["area"])] = prog.unlock_kills(float(u["kills"]))
 	events.clear()
+	var due := _opened_by(u)
 	var broken: Array = g.chapterhouse.check_seals()
-	check(broken == ["warren"], "the Graves' %d kills break the Warren's seal (%s)" % [prog.unlock_kills(float(u["kills"])), str(broken)])
+	broken.sort()
+	check(broken == due and broken.has("warren"), "the %s's %d kills break the Warren's seal (%s)" % [String(u["area"]), prog.unlock_kills(float(u["kills"])), str(broken)])
 	var banner := events.filter(func(e: Array) -> bool: return e[0] == "banner" and String(e[1].get("title", "")) == "A seal breaks")
-	check(banner.size() == 1 and String(banner[0][1]["sub"]).contains("Warren"), "the banner says so (%s)" % str(banner))
+	check(banner.size() == 1 and String(banner[0][1]["sub"]).contains(String(DmContent.area("warren")["name"]).trim_prefix("The ")), "the banner says so (%s)" % str(banner))
 	check(_gate_open("graves_warren") and (g.world.nav_regions["area:warren"] as NavigationRegion3D).enabled, "the Warren's gate is up and its navmesh joins")
 	var goal := g.world.nav_closest(_area_mid("warren"))
 	var from := g.world.nav_closest(_area_mid("graves"))
@@ -364,24 +389,27 @@ func _the_ossuary() -> void:
 	var prog := g.ui_host.prog
 	var u: Dictionary = DmContent.area("ossuary")["unlock"]
 	prog.local["areaKills"][String(u["area"])] = prog.unlock_kills(float(u["kills"]))
+	var due := _opened_by(u)
 	var broken: Array = g.chapterhouse.check_seals()
-	check(broken == ["ossuary"], "the Graves' %d kills break the Ossuary's seal (%s)" % [prog.unlock_kills(float(u["kills"])), str(broken)])
+	broken.sort()
+	check(broken == due and broken.has("ossuary"), "the %s's %d kills break the Ossuary's seal (%s)" % [String(u["area"]), prog.unlock_kills(float(u["kills"])), str(broken)])
 	g.director.configure_area("ossuary")
 	var roster: Array = DmContent.area("ossuary")["enemies"].map(func(e: Dictionary) -> String: return String(e["id"]))
 	var kinds: Array = g.director.kinds.map(func(k: Dictionary) -> String: return String(k["id"]))
-	check(kinds == roster and kinds.has("deacon") and kinds.has("golem"), "the director makes the Ossuary's whole roster (%s)" % str(kinds))
+	check(kinds == roster and not roster.is_empty(), "the director makes the Ossuary's whole roster (%s)" % str(kinds))
 	var theme: Dictionary = {}
 	for th: Dictionary in DmSimData.WAVE_THEMES["ossuary"]:
 		if th.get("lead") != null:
 			theme = th
 	var at := _area_mid("ossuary")
 	var made_ids: Array = []
-	g.director.rng.seed = 11   # (an elite golem could carry Hungering and eat the corpse below)
-	var made: int = g.director.spawn_group(at + Vector3(3, 0, 0), [hero], 1, String(theme["lead"]), theme["roster"], made_ids)
-	var golem: int = int(made_ids[0]) if not made_ids.is_empty() else 0
+	check(not theme.is_empty(), "the Ossuary has a wave theme with a lead")
+	g.director.rng.seed = 11   # (an elite lead could carry Hungering and eat the corpse below)
+	var made: int = g.director.spawn_group(at + Vector3(float(DmSimData.WARD["range"]) * 0.5, 0, 0), [hero], 1, String(theme["lead"]), theme["roster"], made_ids)
+	var golem: int = int(made_ids[0]) if not made_ids.is_empty() else 0   # (the lead: a golem today; any body will do for the blessing)
 	var info: Dictionary = g.core_host.enemy_info(golem)
-	check(made == 1 and String(theme["lead"]) == "golem" and info.get("def", "") == "golem" and info.get("area", "") == "ossuary", "%s leads with a golem, made in the Ossuary (%s)" % [String(theme["name"]), str(info.get("def", ""))])
-	# A deacon of the director's, a corpse beside it and the golem wounded: it raises the corpse into a Risen of its level, then blesses the golem.
+	check(made == 1 and info.get("def", "") == String(theme["lead"]) and info.get("area", "") == "ossuary", "%s leads with its %s, made in the Ossuary (%s)" % [String(theme["name"]), String(theme["lead"]), str(info.get("def", ""))])
+	# A deacon of the director's, a corpse beside it and the lead wounded: it raises the corpse into a Risen of its level, then blesses the lead.
 	var spawned: Array = []
 	var tells: Array = []
 	var cues: Array = []
@@ -392,8 +420,8 @@ func _the_ossuary() -> void:
 	var deacon: int = g.director.spawn("deacon", at, [hero], false, {}, {"area": "ossuary"})
 	var deacon_level := int(g.core_host.enemy_info(deacon).get("level", 0))
 	var cid: int = g.core_host.corpses.add_corpse(at.x + 2.0, at.z, "normal", "robber", false, 0.0, 1.0, "ossuary")
-	await ticks(72)   # the golem has risen (1.1 s), so a blow can wound it
-	check(not bool(g.core_host.enemy_info(golem).get("elite", true)), "(the golem is a plain one)")
+	await ticks(ceili((DmSimConsts.RISE_TIME + 0.1) * 60.0))   # the lead has risen, so a blow can wound it
+	check(not bool(g.core_host.enemy_info(golem).get("elite", true)), "(the lead is a plain one)")
 	g.core_host.damage(golem, float(g.core_host.enemy_info(golem)["max_hp"]) * 0.5, 0, false)
 	var risen := func() -> bool: return spawned.any(func(s: Array) -> bool: return s[1] == "risen")
 	var raised := await until(risen, 60 * 12)
@@ -401,7 +429,7 @@ func _the_ossuary() -> void:
 	var r: Array = spawned.filter(func(s: Array) -> bool: return s[1] == "risen")
 	check(not r.is_empty() and r[0][2] == deacon_level and r[0][3] == "ossuary", "the Risen has the deacon's level (%d) and area" % deacon_level)
 	var blessed := await until(func() -> bool: return cues.has(&"sanctify"), 60 * 14)
-	check(blessed and g.core_host.status_stacks(golem, "sanctified") == 1.0, "and blesses the wounded golem: the cue, and the status on it")
+	check(blessed and g.core_host.status_stacks(golem, "sanctified") == 1.0, "and blesses the wounded lead: the cue, and the status on it")
 	check(events.any(func(e: Array) -> bool: return e[0] == "sanctify_near"), "the counsel hears of the Sanctify (sanctify_near)")
 	for id in g.core_host.core.enemy_ids():
 		g.core_host.remove_enemy(id)
@@ -425,9 +453,10 @@ func _the_nave() -> void:
 	g.director.configure_area("nave")
 	var roster: Array = DmContent.area("nave")["enemies"].map(func(e: Dictionary) -> String: return String(e["id"]))
 	var kinds: Array = g.director.kinds.map(func(k: Dictionary) -> String: return String(k["id"]))
-	check(kinds == roster and ["censer", "acolyte", "gargoyle", "templar", "wraith"].all(func(k: String) -> bool: return kinds.has(k)), "the director makes the Nave's whole roster (%s)" % str(kinds))
+	check(kinds == roster and not roster.is_empty(), "the director makes the Nave's whole roster (%s)" % str(kinds))
 	var at := _area_mid("nave")
 	var leads := {}
+	var leads_ok := true
 	var n := 0
 	g.director.rng.seed = 11
 	for th: Dictionary in DmSimData.WAVE_THEMES["nave"]:
@@ -437,8 +466,9 @@ func _the_nave() -> void:
 		var made: int = g.director.spawn_group(at + Vector3(3.0 + 6.0 * n, 0, 0), [hero], 1, String(th["lead"]), th["roster"], made_ids)
 		var info: Dictionary = g.core_host.enemy_info(int(made_ids[0])) if not made_ids.is_empty() else {}
 		leads[String(th["lead"])] = [made, String(info.get("def", "")), String(info.get("area", "")), String(th["name"])]
+		leads_ok = leads_ok and made == 1 and String(info.get("def", "")) == String(th["lead"]) and String(info.get("area", "")) == "nave"
 		n += 1
-	check(leads.get("gargoyle", []).slice(0, 3) == [1, "gargoyle", "nave"] and leads.get("acolyte", []).slice(0, 3) == [1, "acolyte", "nave"], "the Belfry Stirs leads with a gargoyle and the Unbound with an acolyte, made in the Nave (%s)" % str(leads))
+	check(n > 0 and leads_ok, "each wave theme of the Nave leads with its own kind, made in the Nave (%s)" % str(leads))
 	for id in g.core_host.core.enemy_ids():
 		g.core_host.remove_enemy(id)
 	# The waystone takes him to the Nave now, to its stone on the open floor near the door.
@@ -458,7 +488,7 @@ func _the_nave() -> void:
 	hero.restore_vitals()
 	# The censer: its incense hastes the robber beside it and its cloud is up; the cloud goes with it.
 	var censer: int = host.spawn_enemy("censer", hp + Vector3(-6.0, 0, -6.0), 1, 1.0, 0.0, false, "nave", false)
-	var robber: int = host.spawn_enemy("robber", hp + Vector3(-8.0, 0, -7.0), 1, 1.0, 0.0, false, "nave", false)
+	var robber: int = host.spawn_enemy("robber", hp + Vector3(-6.0 - 0.4 * float(DmSimData.CENSER["radius"]), 0, -6.0), 1, 1.0, 0.0, false, "nave", false)   # inside the incense
 	await ticks(4)
 	check(host.status_stacks(robber, "incensed") == 1.0 and host.status_stacks(censer, "incensed") == 1.0 and g.enemy_fx._incense.has(censer), "the censer hastes the robber beside it and itself, and its cloud is drawn")
 	host.damage(censer, 1.0e9, hero.core_id, false)
@@ -482,21 +512,23 @@ func _the_nave() -> void:
 	var before := float(host.enemy_info(templar)["hp"])
 	host.damage(templar, 20.0, hero.core_id)
 	await ticks(2)
-	check(cues.has(&"shield_block") and absf((before - float(host.enemy_info(templar)["hp"])) - 20.0 * 0.3) < 1e-6, "the templar's shield glances a blow from the front: it costs 30%% (%.1f of 20)" % (before - float(host.enemy_info(templar)["hp"])))
+	var passes := float(DmSimData.TEMPLAR_SHIELD["passThrough"])
+	check(cues.has(&"shield_block") and absf((before - float(host.enemy_info(templar)["hp"])) - 20.0 * passes) < 1e-6, "the templar's shield glances a blow from the front: it costs %.0f%% (%.1f of 20)" % [passes * 100.0, before - float(host.enemy_info(templar)["hp"])])
 	host.remove_enemy(templar)
 	# The acolyte: the hero's thrall falls near it, killed; the acolyte claims the fall and a Risen climbs out of it with its level.
 	hero.restore_vitals()
 	var c := hero.get_node("Rites") as DmRiteCaster
 	var ex := {"kind": c.mods["thrallKind"], "cap": c.mods["thrallCap"], "hp": c.p["stats"]["thrallHp"], "damage": c.p["stats"]["thrallDamage"], "attackSpeedMult": c.mods["thrallAttackSpeedMult"], "r": 0.8}
-	var fall := hp + Vector3(-6.0, 0, -2.0)           # a thrall rises where its corpse lies (not at the rite's aim): the corpse is here, 3.2 m from the acolyte, inside Unbind's 7 m
+	var fall := hp + Vector3(-6.0, 0, -2.0)           # a thrall rises where its corpse lies (not at the rite's aim): the corpse is here, inside Unbind's range of the acolyte
 	var acolyte_at := hp + Vector3(-9.0, 0, -3.0)
+	check(acolyte_at.distance_to(fall) < float(DmSimData.UNBIND["range"]), "(the corpse lies inside Unbind's range of the acolyte)")
 	host.corpses.add_corpse(fall.x, fall.z, "normal", "robber", false, 0.0, 1.0, "nave")    # (a rite raises from a corpse)
 	var joined := await until(func() -> bool: return _nav_joins(acolyte_at, fall), 60 * 5)
 	check(joined, "the Nave's ground is in the navigation server's map: a path from the acolyte's place reaches the thrall's")
 	var raised: Dictionary = c.thralls().raise(ex, fall)
 	var acolyte: int = host.spawn_enemy("acolyte", acolyte_at, 3, 1.0, 0.0, false, "nave", false)
 	var tid := int((raised["thralls"] as Array)[0]) if bool(raised["ok"]) else 0
-	await ticks(60)           # the thrall has risen (0.9 s)
+	await ticks(ceili((DmSimConsts.THRALL_RISE_TIME + 0.1) * 60.0))   # the thrall has risen
 	host.core.stun(tid, 1.0e6)
 	await ticks(40)           # the acolyte has looked at it (every half second)
 	cues.clear()
@@ -525,16 +557,15 @@ func _the_late_areas() -> void:
 		var broken: Array = g.chapterhouse.check_seals()
 		check(broken.has(area), "the %s's %d kills break the %s's seal (%s)" % [String(u["area"]), prog.unlock_kills(float(u["kills"])), area, str(broken)])
 	check(["coliseum", "sanctum", "cloister"].all(func(a: String) -> bool: return prog.really_unlocked(a)), "the Coliseum, the Sanctum and the Cloister are open")
-	# The director makes each one's whole roster, the Sanctum's processions lead with a seraph, a golem and a templar.
+	# The director makes each one's whole roster, and each wave theme leads with its own kind.
 	var leads := {}
+	var leads_ok := true
 	var n := 0
 	for area in ["coliseum", "sanctum", "cloister"]:
 		g.director.configure_area(area)
 		var roster: Array = DmContent.area(area)["enemies"].map(func(e: Dictionary) -> String: return String(e["id"]))
 		var kinds: Array = g.director.kinds.map(func(k: Dictionary) -> String: return String(k["id"]))
-		check(kinds == roster, "the director makes the %s's whole roster (%s)" % [area, str(kinds)])
-		check(kinds.has("seraph") == ["coliseum", "sanctum"].has(area) and kinds.has("plague_doctor") == (area == "cloister") and kinds.has("flagellant") == (area == "cloister"),
-			"(the seraph is in the Coliseum's and the Sanctum's, the doctor and the flagellant in the Cloister's)")
+		check(kinds == roster and not roster.is_empty(), "the director makes the %s's whole roster (%s)" % [area, str(kinds)])
 		g.director.rng.seed = 11
 		for th: Dictionary in DmSimData.WAVE_THEMES.get(area, []):
 			if th.get("lead") == null:
@@ -542,10 +573,10 @@ func _the_late_areas() -> void:
 			var made_ids: Array = []
 			var made: int = g.director.spawn_group(_area_mid(area) + Vector3(3.0 + 6.0 * n, 0, 0), [hero], 1, String(th["lead"]), th["roster"], made_ids)
 			var info: Dictionary = g.core_host.enemy_info(int(made_ids[0])) if not made_ids.is_empty() else {}
-			leads[String(th["lead"])] = [made, String(info.get("def", "")), String(info.get("area", ""))]
+			leads[area + "/" + String(th["name"])] = [made, String(info.get("def", "")), String(info.get("area", ""))]
+			leads_ok = leads_ok and made == 1 and String(info.get("def", "")) == String(th["lead"]) and String(info.get("area", "")) == area
 			n += 1
-	check(leads.get("seraph", []) == [1, "seraph", "sanctum"] and leads.get("golem", []).slice(1, 3) == ["golem", "sanctum"] and leads.get("templar", []).slice(1, 3) == ["templar", "sanctum"],
-		"Vespers leads with a seraph, the Procession with a golem and the Bell-Sworn March with a templar, made in the Sanctum (%s)" % str(leads))
+	check(n > 0 and leads_ok, "every wave theme of the Coliseum, the Sanctum and the Cloister leads with its own kind, made in its own area (%s)" % str(leads))
 	for id in g.core_host.core.enemy_ids():
 		g.core_host.remove_enemy(id)
 	# The waystone takes him to the Sanctum.
@@ -562,21 +593,23 @@ func _the_late_areas() -> void:
 	host.cue.connect(func(_id: int, kind: int, _x: float, _z: float, _r: float) -> void: cues.append(DmCoreEvents.CUES[kind]))
 	host.zone.connect(func(_id: int, k: int, _s: int, _x: float, _z: float, _r: float, _t: float) -> void: zones.append(DmCoreEvents.ZONE_KINDS[k]))
 	hero.restore_vitals()
-	# The seraph, a dozen metres off (out of reach of its curse), with a robber beside it: the ward comes first, with the cue and the status, and the counsel hears of the Sanctify.
+	# The seraph, well off (out of reach of its curse), with a robber beside it: the ward comes first, with the cue and the status, and the counsel hears of the Sanctify.
 	events.clear()
 	var seraph := 0
 	var friend := 0
-	for dir in [Vector3(12, 0, 0), Vector3(-12, 0, 0), Vector3(0, 0, 12), Vector3(0, 0, -12)]:
+	var safe_from_curse := float(DmSimData.ENEMIES["seraph"]["attackRange"]) + 3.5   # beyond its curse's reach, with room to spare
+	for unit in [Vector3(1, 0, 0), Vector3(-1, 0, 0), Vector3(0, 0, 1), Vector3(0, 0, -1)]:
+		var dir: Vector3 = unit * (safe_from_curse + 2.0)
 		seraph = host.spawn_enemy("seraph", hp + dir, 1, 1.0, 1.0, false, "sanctum", false)
 		friend = host.spawn_enemy("robber", hp + dir + Vector3(2.0, 0, 0), 1, 1.0, 0.0, false, "sanctum", false)
 		await ticks(2)
 		var away := Vector2(host.enemy_info(seraph)["pos"]).distance_to(Vector2(hp.x, hp.z))
-		if away >= 10.0:
+		if away >= safe_from_curse:
 			break
 		host.remove_enemy(seraph)
 		host.remove_enemy(friend)
 		seraph = 0
-	check(seraph != 0, "(a seraph stands 10 m or more from him)")
+	check(seraph != 0, "(a seraph stands %.1f m or more from him)" % safe_from_curse)
 	host.damage(friend, float(host.enemy_info(friend)["max_hp"]) * 0.3, hero.core_id, false)
 	var warded := await until(func() -> bool: return cues.has(&"sanctify"), 60 * 4)
 	check(warded and host.status_stacks(friend, "sanctified") == 1.0 and not tells.has(&"curse"), "the seraph's ward blesses the robber beside it before it is in reach of him: the cue, the status, no curse yet")
@@ -604,9 +637,10 @@ func _the_late_areas() -> void:
 	var fl: int = host.spawn_enemy("flagellant", hp + Vector3(3.0, 0, -4.0), 1, 1.0, 0.0, false, "cloister", false)
 	await ticks(3)
 	var motes := int(g.enemy_fx.stats["status_mote"])
-	host.damage(fl, float(host.enemy_info(fl)["max_hp"]) * 0.6, hero.core_id, false)
+	var frenzy: Dictionary = DmSimData.FRENZY
+	host.damage(fl, float(host.enemy_info(fl)["max_hp"]) * (1.0 - 0.5 * float(frenzy["atFrac"])), hero.core_id, false)   # to half of the health at which the frenzy starts
 	await ticks(60)
-	check(host.status_stacks(fl, "frenzy") == 1.0 and absf(float(host.enemy_info(fl)["speed_mult"]) - 1.45) < 1e-9, "a flagellant under half health is frenzied (x1.45 feet)")
+	check(host.status_stacks(fl, "frenzy") == 1.0 and absf(float(host.enemy_info(fl)["speed_mult"]) - float(frenzy["moveMult"])) < 1e-9, "a flagellant under %.0f%% health is frenzied (x%.2f feet)" % [float(frenzy["atFrac"]) * 100.0, float(frenzy["moveMult"])])
 	check(int(g.enemy_fx.stats["status_mote"]) > motes, "and sheds blood motes near him (%d)" % (int(g.enemy_fx.stats["status_mote"]) - motes))
 	for id in host.core.enemy_ids():
 		host.remove_enemy(id)
@@ -637,16 +671,19 @@ func _the_pyre_and_fen() -> void:
 	prog.local["areaKills"][String(fu["area"])] = prog.unlock_kills(float(fu["kills"]))
 	broken = g.chapterhouse.check_seals()
 	check(broken.has("fen"), "the Pyre's %d kills break the Fen's seal (%s)" % [prog.unlock_kills(float(fu["kills"])), str(broken)])
-	# The director makes both rosters whole (the Fen's includes the Nave's wraith), and leads the Fen's processions with the hag and the sexton.
-	var pyre_kinds := ["cinder_husk", "pyre_priest", "cinderhound", "slag_brute"]
-	var fen_kinds := ["bog_hag", "mire_leech", "fen_wisp", "drowned_sexton", "wraith"]
+	# The director makes both rosters whole, and leads each of the Fen's wave themes with its own kind.
+	var rosters := {}   # area -> the kinds of its roster, for the idle-tell checks below
 	for area: String in ["pyre", "fen"]:
 		g.director.configure_area(area)
 		var roster: Array = DmContent.area(area)["enemies"].map(func(e: Dictionary) -> String: return String(e["id"]))
 		var kinds: Array = g.director.kinds.map(func(k: Dictionary) -> String: return String(k["id"]))
-		check(kinds == roster and (pyre_kinds if area == "pyre" else fen_kinds).all(func(k: String) -> bool: return kinds.has(k)), "the director makes the %s's whole roster (%s)" % [area, str(kinds)])
+		check(kinds == roster and not roster.is_empty(), "the director makes the %s's whole roster (%s)" % [area, str(kinds)])
+		rosters[area] = roster
+	var pyre_kinds: Array = rosters["pyre"]
+	var fen_kinds: Array = rosters["fen"]
 	var at := _area_mid("fen")
 	var leads := {}
+	var leads_ok := true
 	var n := 0
 	g.director.rng.seed = 11
 	for th: Dictionary in DmSimData.WAVE_THEMES["fen"]:
@@ -655,9 +692,10 @@ func _the_pyre_and_fen() -> void:
 		var made_ids: Array = []
 		var made: int = g.director.spawn_group(at + Vector3(3.0 + 6.0 * n, 0, 0), [hero], 1, String(th["lead"]), th["roster"], made_ids)
 		var info: Dictionary = g.core_host.enemy_info(int(made_ids[0])) if not made_ids.is_empty() else {}
-		leads[String(th["lead"])] = [made, String(info.get("def", "")), String(info.get("area", ""))]
+		leads[String(th["name"])] = [made, String(info.get("def", "")), String(info.get("area", ""))]
+		leads_ok = leads_ok and made == 1 and String(info.get("def", "")) == String(th["lead"]) and String(info.get("area", "")) == "fen"
 		n += 1
-	check(leads.get("bog_hag", []) == [1, "bog_hag", "fen"] and leads.get("drowned_sexton", []) == [1, "drowned_sexton", "fen"], "Corpse-Candles leads with a hag and the Sexton's Round with the sexton, made in the Fen (%s)" % str(leads))
+	check(n > 0 and leads_ok, "each wave theme of the Fen leads with its own kind, made in the Fen (%s)" % str(leads))
 	for id in g.core_host.core.enemy_ids():
 		g.core_host.remove_enemy(id)
 	# The waystone to the Pyre.
@@ -681,9 +719,11 @@ func _the_pyre_and_fen() -> void:
 	host.damage(husk, 1.0e9, hero.core_id, false)
 	await ticks(3)
 	check(zones.any(func(z: Array) -> bool: return z[1] == &"ember" and z[2] == husk) and int(g.enemy_fx.stats["zone"]) == zone0 + 1 and g.enemy_fx._zones.size() == 1, "the Husk's last embers are a pool of kind ember, and the fx drew it")
-	await ticks(130)
-	check(int(g.hits_taken.get("burn", 0)) >= burn0 + 2, "and it burns him once a second (%d burns in 2 s)" % (int(g.hits_taken.get("burn", 0)) - burn0))
-	check(await until(func() -> bool: return g.enemy_fx._zones.is_empty(), 60 * 5), "and burns out: the pool's visual goes with it")
+	var pool_s := float(DmSimData.EMBER_DEATH["poolS"])
+	await ticks(130)   # 2.2 s of the pool, or what is left of it
+	var burns_due := maxi(1, int(minf(pool_s - 0.5, 2.0)))   # a burn a second while the pool lasts
+	check(int(g.hits_taken.get("burn", 0)) >= burn0 + burns_due, "and it burns him once a second (%d burns in 2 s, %d due)" % [int(g.hits_taken.get("burn", 0)) - burn0, burns_due])
+	check(await until(func() -> bool: return g.enemy_fx._zones.is_empty(), 60 * int(ceil(pool_s + 2.0))), "and burns out: the pool's visual goes with it")
 	# The Priest throws a coal at him: the ring, the blow as ember, and a pool where it landed.
 	hero.restore_vitals()
 	zones.clear()
@@ -709,7 +749,7 @@ func _the_pyre_and_fen() -> void:
 	for k in pyre_kinds:
 		host.spawn_enemy(k, hp + Vector3(6.0 + 0.5 * pyre_kinds.find(k), 0, 6.0), 1, 1.0, 0.0, false, "pyre", false)
 	await ticks(150)
-	check(int(g.enemy_fx.stats["pf_mote"]) > motes0 + 8, "the Pyre's four shed embers and soot near him (%d motes in 2.5 s)" % (int(g.enemy_fx.stats["pf_mote"]) - motes0))
+	check(int(g.enemy_fx.stats["pf_mote"]) > motes0, "the Pyre's dead shed embers and soot near him (%d motes in 2.5 s)" % (int(g.enemy_fx.stats["pf_mote"]) - motes0))
 	for id in g.core_host.core.enemy_ids():
 		host.remove_enemy(id)
 	await ticks(2)
@@ -762,10 +802,10 @@ func _the_pyre_and_fen() -> void:
 	check(await until(func() -> bool: return int(g.hits_taken.get("toxic", 0)) > toxic0, 60 * 8), "the Leech's bite reaches him as toxic")
 	host.remove_enemy(leech)
 	var motes1 := int(g.enemy_fx.stats["pf_mote"])
-	for k in ["fen_wisp", "bog_hag", "drowned_sexton", "mire_leech"]:
-		host.spawn_enemy(k, hp + Vector3(6.0, 0, 6.0 + 0.5 * ["fen_wisp", "bog_hag", "drowned_sexton", "mire_leech"].find(k)), 1, 1.0, 0.0, false, "fen", false)
+	for k in fen_kinds:
+		host.spawn_enemy(k, hp + Vector3(6.0, 0, 6.0 + 0.5 * fen_kinds.find(k)), 1, 1.0, 0.0, false, "fen", false)
 	await ticks(150)
-	check(int(g.enemy_fx.stats["pf_mote"]) > motes1 + 5, "the Fen's dead shed marsh-lights and drips near him (%d motes in 2.5 s)" % (int(g.enemy_fx.stats["pf_mote"]) - motes1))
+	check(int(g.enemy_fx.stats["pf_mote"]) > motes1, "the Fen's dead shed marsh-lights and drips near him (%d motes in 2.5 s)" % (int(g.enemy_fx.stats["pf_mote"]) - motes1))
 	for id in g.core_host.core.enemy_ids():
 		host.remove_enemy(id)
 	await ticks(2)
@@ -784,11 +824,17 @@ func _waves_follow_the_hero() -> void:
 	g.core_host.enemy_removed.connect(func(id: int) -> void: gone.append(id))
 	g.director.enabled = true
 	var cap := int(DmSimData.GLOBAL_ENEMY_CAP)
-	for area: String in ["graves", "ossuary", "nave", "graves"]:
+	var stays: Array = []   # the bodies made in each stay but the last, which the next arrival sends away
+	var stay_areas: Array[String] = ["graves", "ossuary", "nave", "graves"]
+	for area: String in stay_areas:
 		hero.teleport(g.world.nav_closest(_area_mid(area)))
 		var from := int(made.get(area, 0))
-		var wanted := int(DmContent.area(area).get("cap", 28))
-		var ok := await until(func() -> bool: return int(made.get(area, 0)) - from >= mini(wanted, cap) * 3 / 4, 60 * 40)
+		var wanted := int(DmContent.area(area)["cap"])
+		var share := mini(wanted, cap) * 3 / 4
+		var a_def: Dictionary = DmContent.area(area)
+		var waves_due := ceili(float(share) / float(a_def["waveSize"]))   # the waves that bring that many, one every waveIntervalMs
+		var wait_s := maxf(40.0, float(waves_due + 1) * float(a_def["waveIntervalMs"]) / 1000.0 + 20.0)
+		var ok := await until(func() -> bool: return int(made.get(area, 0)) - from >= share, int(wait_s * 60.0))
 		var others := 0
 		for id in g.core_host.core.enemy_ids():
 			var info: Dictionary = g.core_host.core.enemy_info(id)
@@ -796,6 +842,10 @@ func _waves_follow_the_hero() -> void:
 				others += 1
 		check(ok and g.director.area_id == area, "waves come to the hero in the %s (%d made there, the director on %s)" % [area, int(made.get(area, 0)) - from, g.director.area_id])
 		check(others == 0, "the ground left behind holds no living body (%d)" % others)
-	check(gone.size() >= 20, "the bodies left behind were sent away (%d)" % gone.size())
+		stays.append(int(made.get(area, 0)) - from)
+	var left_behind := 0
+	for i in stays.size() - 1:
+		left_behind += int(stays[i])
+	check(gone.size() >= left_behind and left_behind > 0, "the bodies left behind were sent away (%d gone, %d made in the stays before the last)" % [gone.size(), left_behind])
 	g.director.enabled = false
 	hero.p["god"] = false

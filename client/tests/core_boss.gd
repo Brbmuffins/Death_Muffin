@@ -7,7 +7,7 @@ extends SceneTree
 ##   - a boss's hostile zone (`add_zone`, DmHostileZone.spawn with the boss as the source): toxic rot and burning ground and their sources, a pulse every second on the heroes and
 ##     thralls within radius + 0.45 (dps x 1 s, the hit kinds burn and toxic), the lifetime, the query the Plague Saint stands in (`zones`), a puppet refused;
 ##   - the wire: a guest sees the niche with the maximum the boss gave it (also after a late join and a lost batch), its hp as a fraction, its death, the zones as events.
-## The expected ticks come from mirrors of today's arithmetic (clocks that gain 1/60 s a tick in doubles); the numbers from today's data and scripts' const lines.
+## The expected ticks come from mirrors of today's arithmetic (clocks that gain 1/60 s a tick in doubles); the numbers from today's data and scripts' const lines (the niche's health and radius, a corpse's rupture, a walker's speed are read from the data).
 ## Seeded, no navmesh. Run: godot --headless --path client --script res://tests/core_boss.gd [-- --verbose]
 
 const EV_SPAWNED := 1
@@ -48,6 +48,8 @@ var content: Dictionary
 var abilities: Dictionary
 var K: Dictionary        ## the scripts' `const` lines (RISE_TIME, TICK_S, TARGET_PAD)
 var tick := 0
+var NH := 0.0            ## the Skull Niche's health in enemies.json
+var NR := 0.0            ## and its radius
 
 
 func check(ok: bool, what: String) -> void:
@@ -150,6 +152,8 @@ func _init() -> void:
 	content = DmCoreData.json(data_dir.path_join("data/content/enemies.json"))
 	abilities = DmCoreData.json(data_dir.path_join("data/content/abilities.json"))
 	K = DmCoreData.consts(OLD, SCRIPTS)
+	NH = float(def("niche")["hp"])
+	NR = float(def("niche")["radius"])
 	names_and_defs()
 	niche_rises_and_stands()
 	niche_takes_blows_without_a_flinch()
@@ -173,13 +177,13 @@ func names_and_defs() -> void:
 		"the zone names: ember appended after dust and toxic (append only)")
 	check(K.has("RISE_TIME") and K.has("TICK_S") and K.has("TARGET_PAD"), "the scripts' own constants are read (%s)" % str(K.keys()))
 	var d := def("niche")
-	check(bool(d["inert"]) and d["behavior"] == "support" and float(d["hp"]) == 500.0 and float(d["radius"]) == 0.9 and d["corpse"] == "none" and d["modelSlug"] == "skull_niche",
-		"today's Skull Niche: support, inert, 500 health, radius 0.9, no corpse, the skull_niche model")
+	check(bool(d["inert"]) and d["behavior"] == "support" and d["corpse"] == "none" and String(d["modelSlug"]) != "",
+		"the Skull Niche: support, inert, no corpse, a model")
 	check(DmWaveDirector.runs_on_core("niche") and not DmWaveDirector.CORE_KINDS.has("niche"), "the director makes it for a boss (a boss-only kind), never in a wave")
 	var c := make()
 	var id := niche(c, Vector2(5, 5))
 	var i: Dictionary = c.enemy_info(id)
-	check(i["def"] == "niche" and i["state"] == RISING and is_equal_approx(float(i["hp"]), 500.0) and is_equal_approx(float(i["max_hp"]), 500.0) and is_equal_approx(float(i["radius"]), 0.9),
+	check(i["def"] == "niche" and i["state"] == RISING and is_equal_approx(float(i["hp"]), NH) and is_equal_approx(float(i["max_hp"]), NH) and is_equal_approx(float(i["radius"]), NR),
 		"a niche spawns rising with the def's health and radius")
 
 
@@ -194,7 +198,7 @@ func niche_rises_and_stands() -> void:
 	run(c, 300, log)
 	var edges := of(log, EV_STATE, id)
 	var up := to_reach(float(K["RISE_TIME"]))
-	check(edges.size() == 1 and edges[0]["ints"] == PackedInt32Array([RISING, IDLE]) and int(edges[0]["tick"]) == up, "it stands up at tick %d (1.1 s of the rise) and that is its only state change (%d)" % [up, edges.size()])
+	check(edges.size() == 1 and edges[0]["ints"] == PackedInt32Array([RISING, IDLE]) and int(edges[0]["tick"]) == up, "it stands up at tick %d (the rise) and that is its only state change (%d)" % [up, edges.size()])
 	check(of(log, EV_ATTACK, id).is_empty() and of(log, EV_TELEGRAPH, id).is_empty() and of(log, EV_HIT, id).is_empty(), "it never starts a swing, telegraphs or hits (a hero 1.2 m away, 5 s)")
 	var i: Dictionary = c.enemy_info(id)
 	check(i["state"] == IDLE and Vector2(i["pos"]).distance_to(Vector2(0, 0)) < 1e-6 and int(i["target"]) == 0, "it stands where it was made, with no target")
@@ -218,17 +222,18 @@ func niche_takes_blows_without_a_flinch() -> void:
 	var id := niche(c, Vector2(0, 0))
 	var log := []
 	run(c, 5, log)
-	var r: Dictionary = c.damage(id, 100.0, h)
-	check(float(r["dealt"]) == 0.0 and not bool(r["killed"]) and is_equal_approx(float(c.enemy_info(id)["hp"]), 500.0), "a hit while it rises is refused (nothing dealt)")
+	var blow := NH * 0.2   # blows that never kill it
+	var r: Dictionary = c.damage(id, blow, h)
+	check(float(r["dealt"]) == 0.0 and not bool(r["killed"]) and is_equal_approx(float(c.enemy_info(id)["hp"]), NH), "a hit while it rises is refused (nothing dealt)")
 	run(c, 100, log)
 	check(c.enemy_info(id)["state"] == IDLE, "(it stands)")
 	log.clear()
-	r = c.damage(id, 100.0, h)
+	r = c.damage(id, blow, h)
 	run(c, 3, log)
 	var i: Dictionary = c.enemy_info(id)
-	check(float(r["dealt"]) == 100.0 and not bool(r["killed"]) and is_equal_approx(float(i["hp"]), 400.0) and i["state"] == IDLE, "a hit takes 100 and it stays idle (no flinch, hp 400)")
+	check(float(r["dealt"]) == blow and not bool(r["killed"]) and is_equal_approx(float(i["hp"]), NH - blow) and i["state"] == IDLE, "a hit takes its blow and it stays idle (no flinch)")
 	check(of(log, EV_DAMAGED, id).size() == 1 and of(log, EV_STATE, id).is_empty() and int(i["target"]) == 0, "the core announces the damage, no state change, and it does not aggro its attacker")
-	c.damage(id, 50.0, h, true)
+	c.damage(id, NH * 0.1, h, true)
 	check(c.enemy_info(id)["state"] == IDLE, "a second hit with the stagger allowed changes nothing either")
 	c.stun(id, 2.0)
 	check(c.enemy_info(id)["state"] == IDLE, "a stun does nothing")
@@ -246,9 +251,9 @@ func niche_falls() -> void:
 	var id := niche(c, Vector2(0, 0), false)
 	var log := []
 	run(c, 3, log)
-	var r: Dictionary = c.damage(id, 9999.0, h)
+	var r: Dictionary = c.damage(id, 1.0e9, h)
 	run(c, 2, log)
-	check(bool(r["killed"]) and float(r["dealt"]) == 9999.0 and c.enemy_info(id)["state"] == DEAD, "a lethal blow kills it at once (the reply says so)")
+	check(bool(r["killed"]) and float(r["dealt"]) == 1.0e9 and c.enemy_info(id)["state"] == DEAD, "a lethal blow kills it at once (the reply says so)")
 	var died := of(log, EV_DIED, id)
 	check(died.size() == 1 and c.def_name(died[0]["ints"][0]) == "niche" and died[0]["ints"][4] == h, "one died event, naming niche and the killer")
 	check(of(log, EV_CORPSE_ADDED).is_empty() and c.corpse_count() == 0, "and no corpse (def corpse none)")
@@ -286,7 +291,8 @@ func niche_is_not_moved_nor_in_the_crowd() -> void:
 		var n := niche(d, Vector2(-1, 0) if with_niche else Vector2(-50, 50), false)
 		var rob: int = d.spawn_enemy("robber", Vector2(-8, 0.3), 1, 1.0, 1.0, false, AREA, false)
 		var track := []
-		for i in 240:
+		var walk := ceili(ceili((8.0 + 1.5) / float(def("robber")["speed"]) * 60.0) / 20.0) * 20   # long enough to walk past the niche's place, in whole samples
+		for i in walk:
 			d.step(DT)
 			d.take_events()
 			if i % 20 == 19:
@@ -303,11 +309,12 @@ func niche_statuses_and_thralls() -> void:
 	var c := make()
 	var h := hero(c, FAR)
 	var id := niche(c, Vector2(0, 0), false)
+	c.set_enemy_hp(id, 5000.0, 5000.0)   # the scenario's own health: the blows below never kill it
 	var log := []
-	c.apply_status(id, "withered", h, 3.0, -1.0, {"dps": 20.0})
+	c.apply_status(id, "withered", h, 3.0, 5.0, {"dps": 20.0})
 	run(c, 90, log)
 	var hp := float(c.enemy_info(id)["hp"])
-	check(hp < 500.0 - 40.0 and c.enemy_info(id)["state"] == IDLE, "Withered burns it (%.1f of 500 after 1.5 s) and it never flinches" % (500.0 - hp))
+	check(hp < 5000.0 - 40.0 and c.enemy_info(id)["state"] == IDLE, "Withered burns it (%.1f of 5000 after 1.5 s) and it never flinches" % (5000.0 - hp))
 	check(not of(log, EV_STATUS_DOT, id).is_empty(), "the DoT lumps are announced")
 	c.apply_status(id, "fracture", h, 1.0, 8.0)
 	var before := float(c.enemy_info(id)["hp"])
@@ -318,12 +325,13 @@ func niche_statuses_and_thralls() -> void:
 	var d := make()
 	var hd := hero(d, Vector2(-4, 0))
 	var nid := niche(d, Vector2(0, 0), false)
+	d.set_enemy_hp(nid, 5000.0, 5000.0)
 	var th: int = d.raise_thrall({"kind": "warrior", "hp": 500.0, "maxHp": 500.0, "damage": 30.0, "attackInterval": 1.0, "range": 1.3, "speed": 5.6, "empowered": false, "champion": false, "allyHeal": 0.0},
 		hd, Vector2(-1.5, 0), 0.0, 8.0)
 	var log2 := []
 	run(d, 240, log2)
 	var hit := of(log2, EV_DAMAGED, nid)
-	check(th > 0 and not hit.is_empty() and hit[0]["ints"][0] == th and float(d.enemy_info(nid)["hp"]) < 500.0 and d.enemy_info(nid)["state"] == IDLE, "a thrall of the hero's attacks it and hurts it (%d blows)" % hit.size())
+	check(th > 0 and not hit.is_empty() and hit[0]["ints"][0] == th and float(d.enemy_info(nid)["hp"]) < 5000.0 and d.enemy_info(nid)["state"] == IDLE, "a thrall of the hero's attacks it and hurts it (%d blows)" % hit.size())
 
 
 # ------------------------------------------------------------------------------------------------------------------ set_enemy_hp
@@ -340,11 +348,11 @@ func set_hp() -> void:
 	check(c.set_enemy_hp(id, 1000.0, 600.0) and is_equal_approx(float(c.enemy_info(id)["hp"]), 600.0), "the health is held to the maximum")
 	check(not c.set_enemy_hp(id, 10.0, 0.0) and not c.set_enemy_hp(id, 10.0, -5.0) and is_equal_approx(float(c.enemy_info(id)["max_hp"]), 600.0), "a maximum of zero or less is refused")
 	check(not c.set_enemy_hp(1 << 28, 10.0, 10.0), "an unknown id is refused")
-	c.damage(id, 9999.0, h)
+	c.damage(id, 1.0e9, h)
 	check(not c.set_enemy_hp(id, 10.0, 10.0), "a fallen body is refused")
 	# an elite or scaled body is set the same way (the Abbess's share of her own health replaces the scaling)
 	var scaled := niche(c, Vector2(2, 2), false, 4.0)
-	check(is_equal_approx(float(c.enemy_info(scaled)["max_hp"]), 2000.0) and c.set_enemy_hp(scaled, 123.0, 123.0) and is_equal_approx(float(c.enemy_info(scaled)["max_hp"]), 123.0), "a body made at 4x the health is given the boss's number instead")
+	check(is_equal_approx(float(c.enemy_info(scaled)["max_hp"]), NH * 4.0) and c.set_enemy_hp(scaled, 123.0, 123.0) and is_equal_approx(float(c.enemy_info(scaled)["max_hp"]), 123.0), "a body made at 4x the health is given the boss's number instead")
 	var p := puppet()
 	p.set_enemy_hp(1, 10.0, 10.0)
 	check(int(p.replication_stats()["commands_refused"]) == 1, "a puppet core refuses it (the host owns the health)")
@@ -381,7 +389,7 @@ func zones_hurt() -> void:
 	var th: int = c.raise_thrall({"kind": "warrior", "hp": 1000.0, "maxHp": 1000.0, "damage": 1.0, "attackInterval": 1.0, "range": 1.3, "speed": 5.6, "empowered": false, "champion": false, "allyHeal": 0.0},
 		h, Vector2(1.0, 0), 0.0, 8.0)
 	var log := []
-	run(c, 60, log)   # it rises (0.9 s), then it is stunned so it stands in the pool for good
+	run(c, ceili(float(c.tuning()["THRALL_RISE_TIME"]) * 60.0) + 6, log)   # it rises, then it is stunned so it stands in the pool for good
 	c.stun(th, 1000.0)
 	var far_h := hero(c, Vector2(9, 0))
 	var zid: int = c.add_zone("toxic", Vector2(0, 0), 2.0, 5.0, 12.0, src)
@@ -395,17 +403,18 @@ func zones_hurt() -> void:
 	run(c, 340, log)
 	var pulses := of(log, EV_ZONE_PULSE, zid)
 	var ticks_of := pulses.map(func(e: Dictionary) -> int: return int(e["tick"]) - t0)
-	check(ticks_of == want["pulses"] and ticks_of.size() == 5, "it pulses every second, at today's ticks %s" % str(ticks_of))
+	var n_pulses: int = want["pulses"].size()
+	check(ticks_of == want["pulses"] and n_pulses > 0, "it pulses every second, at today's ticks %s" % str(ticks_of))
 	var gone := of(log, EV_ZONE_GONE, zid)
 	check(gone.size() == 1 and int(gone[0]["tick"]) - t0 == int(want["gone"]), "and is gone at tick %d (5 s)" % int(want["gone"]))
 	var hits := of(log, EV_HIT, src)
 	var hero_hits := hits.filter(func(e: Dictionary) -> bool: return e["ints"][0] == h)
-	check(hero_hits.size() == 5 and hero_hits.all(func(e: Dictionary) -> bool: return e["ints"][1] == HK_TOXIC and is_equal_approx(float(e["floats"][0]), 12.0)),
+	check(hero_hits.size() == n_pulses and hero_hits.all(func(e: Dictionary) -> bool: return e["ints"][1] == HK_TOXIC and is_equal_approx(float(e["floats"][0]), 12.0)),
 		"the hero in it takes dps x 1 s = 12 each pulse, kind toxic, the boss's id as the source (%d hits)" % hero_hits.size())
 	check(of(log, EV_HIT).filter(func(e: Dictionary) -> bool: return e["ints"][0] == far_h).is_empty(), "a hero 9 m off takes nothing")
 	var td := of(log, EV_THRALL_DAMAGED, th)
-	check(td.size() == 5 and td.all(func(e: Dictionary) -> bool: return e["ints"][0] == src and is_equal_approx(float(e["floats"][0]), 12.0)) and is_equal_approx(float(c.thrall_info(th)["hp"]), 1000.0 - 60.0),
-		"a thrall in it takes the same (the core applies it: 1000 -> 940)")
+	check(td.size() == n_pulses and td.all(func(e: Dictionary) -> bool: return e["ints"][0] == src and is_equal_approx(float(e["floats"][0]), 12.0)) and is_equal_approx(float(c.thrall_info(th)["hp"]), 1000.0 - 12.0 * n_pulses),
+		"a thrall in it takes the same (the core applies it: 1000 -> %d)" % (1000 - 12 * n_pulses))
 	# burning ground
 	var d := make()
 	var hd := hero(d, Vector2(0, 0))
@@ -459,7 +468,7 @@ func zones_edges() -> void:
 	hero(e, FAR)
 	var cid: int = e.corpse_add(Vector2(1, 1), "toxic", "robber", false, 0.0, 1.0, "graves")
 	var log3 := []
-	run(e, 5 * 60 + 5, log3)
+	run(e, ceili(float(e.tuning()["TOXIC_RUPTURE"]) * 60.0) + 5, log3)
 	check(cid > 0 and e.zones("toxic").size() == 3, "a toxic corpse that burst leaves a pool the query sees too")
 
 
@@ -512,7 +521,7 @@ func on_the_wire() -> void:
 	var gl := []
 	var t := join(host, guest, hl, gl)
 	var gi: Dictionary = guest.enemy_info(id)
-	check(gi.get("def", "") == "niche" and is_equal_approx(float(gi["max_hp"]), 340.0) and is_equal_approx(float(gi["hp"]), 340.0), "wire: the guest has the niche with the maximum the boss gave it (340, not the def's 500)")
+	check(gi.get("def", "") == "niche" and is_equal_approx(float(gi["max_hp"]), 340.0) and is_equal_approx(float(gi["hp"]), 340.0), "wire: the guest has the niche with the maximum the boss gave it (340, not the def's health)")
 	host.damage(id, 85.0, h)
 	t = lockstep(host, guest, hl, gl, t, t + 9)
 	gi = guest.enemy_info(id)

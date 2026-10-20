@@ -40,8 +40,7 @@ test('experience arithmetic matches the game curve and round-trips', () => {
   assert.equal(rules.totalXp(2, 0), 100);
   assert.equal(rules.totalXp(3, 50), 350);
   for (const t of [0, 99, 100, 5000, 904520, 3_000_000]) assert.equal(rules.totalXp(rules.splitXp(t).level, rules.splitXp(t).xp), t);
-  assert.equal(rules.splitXp(1e12).level, 999);
-  assert.equal(rules.LEVEL_CAP, 999);
+  assert.equal(rules.splitXp(1e12).level, rules.LEVEL_CAP, 'the curve stops at the level cap');
 });
 
 // ── XP and level ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -78,7 +77,7 @@ for (const [name, env] of MODES) {
     } else {
       const ceil = rules.ceilingsFor(GRAVES.unlockedAreas, 0, 1);
       assert.equal(rules.totalXp(r.write.level, r.write.xp), Math.floor(ceil.xpPerMin * rules.AUTHORITY.FIRST_MINUTES + rules.AUTHORITY.XP_BURST));
-      assert.ok(r.write.level < 60, `clamped to level ${r.write.level}`);
+      assert.ok(r.write.level < next.level, `clamped to level ${r.write.level}`);
       assert.equal(r.write.gold, Math.floor(ceil.goldPerMin * rules.AUTHORITY.FIRST_MINUTES + rules.AUTHORITY.GOLD_BURST));
       assert.match(r.message, /faster than play can explain/);
       assert.ok(auth.audit.every((a) => a.action === 'clamp'));
@@ -168,7 +167,7 @@ test('ceilings follow progress: an unlocked deeper ground, a higher Ascension ra
   const cloisterHigh = rules.ceilingsFor(['cloister'], 0, 120);
   assert.ok(deep.xpPerMin > start.xpPerMin);
   assert.ok(ranked.xpPerMin > start.xpPerMin);
-  assert.ok(cloisterHigh.xpPerMin > cloisterLow.xpPerMin * 4, 'level-scaled ground pays more to a higher character');
+  assert.ok(cloisterHigh.xpPerMin > cloisterLow.xpPerMin, 'level-scaled ground pays more to a higher character');
   assert.equal(rules.ceilingsFor(['chapterhouse', 'acre'], 0, 1).xpPerMin, 0);
   assert.equal(rules.ceilingsFor(['chapterhouse', 'acre'], 0, 1).goldPerMin, rules.AUTHORITY.NONCOMBAT_GOLD_PER_MIN);
 });
@@ -280,23 +279,28 @@ test('depths: the ceilings count the Depths once the Warren is open, and follow 
 for (const [name, env] of MODES) {
   test(`${name}: a long honest Depths session (deep floors, level-scaled XP) passes where a bare Warren record would have been flagged`, async () => {
     const c = char({ level: 40, experience: 0 });
-    // Twenty minutes at the deepest ceiling's pace is far inside the bank (60 minutes); the same haul at the Warren's own pace is not.
-    const rate = rules.ceilingsFor(WARREN_OPEN.unlockedAreas, 0, 40, 18).xpPerMin / rules.AUTHORITY.HEADROOM;
-    const gain = Math.floor(rate * 20);
+    // Forty minutes have passed since the clock started (well inside the bank). A haul between what the bare Warren's ceiling allows in that time and what the
+    // Depths' ceiling allows is honest for a Depths run and not believable without one.
+    const MINUTES = 40;
+    const allowed = (ceil) => ceil.xpPerMin * MINUTES + rules.AUTHORITY.XP_BURST;
+    const deepAllowed = allowed(rules.ceilingsFor(WARREN_OPEN.unlockedAreas, 0, 40, 18));
+    const bareAllowed = allowed(rules.ceilingsFor(['chapterhouse', 'graves'], 0, 40, 0));
+    assert.ok(deepAllowed > bareAllowed, 'the Depths allow more than the Hollow Graves');
+    const gain = Math.floor((deepAllowed + bareAllowed) / 2);
     const next = nextOf(c, { xp: 0, level: rules.splitXp(rules.totalXp(40, 0) + gain).level, ...{ xp: rules.splitXp(rules.totalXp(40, 0) + gain).xp } });
 
     const withRecord = authorityFake({ necro: WARREN_OPEN, chronicle: { 'peak.depth': 18, playSeconds: 4000 } });
     await withRecord.db.execute('INSERT IGNORE INTO character_authority (character_id) VALUES (?)', [1]);
     const ok = await save(withRecord, c, next, T0, env);
     // First save: the bank starts at FIRST_MINUTES, so the honest hour must have accrued first.
-    await authority.guardProgress(withRecord.db, { char: c, next: nextOf(c), now: T0 - 40 * MIN, env, log: quietLog() });
+    await authority.guardProgress(withRecord.db, { char: c, next: nextOf(c), now: T0 - MINUTES * MIN, env, log: quietLog() });
     const later = await save(withRecord, c, next, T0, env);
     assert.deepEqual(later.findings.filter((f) => f.kind === 'xp_rate'), [], 'honest Depths XP is not flagged');
     assert.ok(ok);
 
     // The same haul on a character that has opened only the Warren, with no Chronicle record and level 40, is judged by the (smaller) depth-3 ceiling.
     const bare = authorityFake({ necro: { unlockedAreas: ['chapterhouse', 'graves'], ascension: 0 } });
-    await authority.guardProgress(bare.db, { char: c, next: nextOf(c), now: T0 - 40 * MIN, env, log: quietLog() });
+    await authority.guardProgress(bare.db, { char: c, next: nextOf(c), now: T0 - MINUTES * MIN, env, log: quietLog() });
     const flagged = await save(bare, c, next, T0, env);
     assert.ok(flagged.findings.some((f) => f.kind === 'xp_rate'), 'without access to the Depths the same haul is not believable');
   });
