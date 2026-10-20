@@ -1,0 +1,8 @@
+[
+  {
+    "id": "concept_icon_reaper_reap",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Subject: a huge fan-shaped cone of death spreading from a scythe blade at the bottom, made of layered pale-bone and green slash marks, with a grinning skull at the centre of the fan. Palette: bone ivory, charcoal, acid-green glow (#7dff6a) accents; NO purple, NO red. No text, no border, no letters.",
+    "out": "art-src/concepts/icon_reaper_reap.png",
+    "aspect": "1:1"
+  }
+]

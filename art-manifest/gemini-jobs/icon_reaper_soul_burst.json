@@ -1,0 +1,8 @@
+[
+  {
+    "id": "concept_icon_reaper_soul_burst",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Subject: a bright explosion of acid-green energy blasting outward from a central point, with many small screaming ghost faces and wisps flung out in all directions like a shockwave. Palette: acid-green glow (#7dff6a), pale bone white, charcoal; NO purple, NO red. No text, no border, no letters.",
+    "out": "art-src/concepts/icon_reaper_soul_burst.png",
+    "aspect": "1:1"
+  }
+]

@@ -1,0 +1,8 @@
+[
+  {
+    "id": "concept_icon_reaper_soul_harvest",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Subject: a skeletal bone hand holding up a glass hourglass-shaped lantern while streams of green soul wisps are pulled in from all sides into it, a wide soft green glow around it. Palette: acid-green glow (#7dff6a), pale bone white, charcoal; NO purple, NO red. No text, no border, no letters.",
+    "out": "art-src/concepts/icon_reaper_soul_harvest.png",
+    "aspect": "1:1"
+  }
+]

@@ -1,0 +1,8 @@
+[
+  {
+    "id": "concept_icon_reaper_scythe_sweep",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Subject: a pale bone-handled reaper's scythe mid-swing leaving a wide crescent arc of acid-green light across the icon. Palette: bone ivory, charcoal, acid-green glow (#7dff6a) accents; NO purple, NO red. No text, no border, no letters.",
+    "out": "art-src/concepts/icon_reaper_scythe_sweep.png",
+    "aspect": "1:1"
+  }
+]

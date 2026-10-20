@@ -1,0 +1,8 @@
+[
+  {
+    "id": "concept_icon_reaper_unleash_souls",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Subject: a ring of small glowing green soul wisps with tiny skull heads and long comet tails streaking outward from a cracked glass soul jar at the centre, each one curving toward a target. Palette: acid-green glow (#7dff6a), pale bone white, charcoal; NO purple, NO red. No text, no border, no letters.",
+    "out": "art-src/concepts/icon_reaper_unleash_souls.png",
+    "aspect": "1:1"
+  }
+]

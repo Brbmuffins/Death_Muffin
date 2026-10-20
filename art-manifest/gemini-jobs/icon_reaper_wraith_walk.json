@@ -1,0 +1,8 @@
+[
+  {
+    "id": "concept_icon_reaper_wraith_walk",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Subject: a tall half-transparent hooded green wraith rushing forward with a skull face and two glowing eyes, its ragged cloak streaming behind it in trails of green flame. Palette: ghostly pale green, charcoal, bright acid-green flame (#7dff6a); NO purple, NO red. No text, no border, no letters.",
+    "out": "art-src/concepts/icon_reaper_wraith_walk.png",
+    "aspect": "1:1"
+  }
+]

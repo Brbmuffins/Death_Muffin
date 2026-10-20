@@ -1,0 +1,8 @@
+[
+  {
+    "id": "concept_icon_reaper_harvest_spin",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Subject: viewed from above, a scythe blade whirling in a complete circle around a small hooded figure at the centre, leaving a closed ring of pale bone-white and green slash light with fine speed lines. Palette: bone ivory, charcoal, acid-green glow (#7dff6a) accents; NO purple, NO red. No text, no border, no letters.",
+    "out": "art-src/concepts/icon_reaper_harvest_spin.png",
+    "aspect": "1:1"
+  }
+]

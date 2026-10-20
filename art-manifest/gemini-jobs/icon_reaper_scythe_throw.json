@@ -1,0 +1,8 @@
+[
+  {
+    "id": "concept_icon_reaper_scythe_throw",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Subject: a whole reaper's scythe spinning like a boomerang, blurred in a full circle of motion, with a spiral trail of acid-green light and small bone shards flying off. Palette: bone ivory, charcoal, acid-green glow (#7dff6a) accents; NO purple, NO red. No text, no border, no letters.",
+    "out": "art-src/concepts/icon_reaper_scythe_throw.png",
+    "aspect": "1:1"
+  }
+]
