@@ -277,7 +277,7 @@ Worked through beside the phases, top first. Each change is shown to the team wi
     Chronicle, in the host's party report, once; the guest is paid after its answer).
   - Done 2026-10-20: only the host's area got waves → each area a member fights in gets its own, sharing the 72-enemy limit (a Grave
     Surge still opens in one area at a time).
-  - The Depths are solo only → decide whether a party can descend together, and build it if so.
+  - Decided 2026-10-20 (B67): the Depths stay solo; the stair turns a party away and says why.
   - Done 2026-10-20: a guest could not call an Empowered boss, and its Covenant Seal and the Nightfall dimming did not reach the party → a
     guest calls a boss Empowered with a Seal of its own bag (it pays on its own account, the host wakes the boss, the guest claims the
     prize) and its window dims for Nightfall with the host's Wave Speed tier. Its Colossus Mantle already worked (the host builds its hero

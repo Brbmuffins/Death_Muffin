@@ -35,7 +35,7 @@ The flow of a run (the stair's offer, the quota, what a floor pays, death, leavi
 `client/tests/depths.gd` plays the whole run on the local mock (client/README.md "The Depths"). The rules without a game (floors per seed, quota, pacing, rosters) are its first part.
 
 ## Known gaps
-- Party play: a run needs a solo session (`can_enter` refuses with 2+ players); party step-out / step-back is not built (DECISIONS.md D5).
+- Party play: a run needs a solo session (`can_enter` refuses with 2+ players); the Depths stay solo (DECISIONS.md B67).
 - No Depths-specific sight blockers for ranged kinds: walls block movement, not sight (the core has no collision world; only the Gargoyle's dive and the Sexton's chain look for a clear line, native/README.md "The kinds of the other areas").
 - The Warren must be open to reach the stair in play; the tests walk to it.
 - The first floor of a session is not in the warm-up, a floor is not lightmapped and the see-through cutout is not applied to it (client/README.md "The Depths", "Not yet").

@@ -89,7 +89,6 @@ polish list). Also:
 ## Party and online
 
 - **A dropped player's seat is not held:** the rejoin offer lasts 5 minutes, but a party that filled up in that time answers `full` (the lobby reserves nothing; a held seat would show a party as full while it lists a free one).
-- **One area per session, Depths solo:** `client/next/areas/README.md`, `client/next/depths/README.md`.
 - Chat is party chat in a party and local-only when solo.
 - **Friends show offline while the launcher is open:** the launcher has no login and no lobby link. They show online from the sign-in (character select, loading, the world).
 - A guest whose own account has a boss's area sealed wakes the host's boss for nothing: its shards are refused and given back, and the toast

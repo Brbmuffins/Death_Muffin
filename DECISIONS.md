@@ -340,6 +340,8 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   already exists and the difference is easy to miss, and `"presets"` with Low for lights, shadows and effects that Low thins out. Anyone in the
   thread can ask for them, also in words after `!shot`. The unchanged game is built only when BEFORE is asked for, so most picture jobs are
   quicker too.
+- **B67. The Depths stay solo** (Helix, 2026-10-20: "solo only"). A Depths run is for one player: the stair turns a party away and says why,
+  and a party descending together is not planned. Settles the co-op gaps' Depths question (ROADMAP polish list).
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking
