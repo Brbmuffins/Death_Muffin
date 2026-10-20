@@ -21,7 +21,7 @@ extends RefCounted
 ## "turntable" = the hero's close-up (the shot plan's "hero" view) while the hero turns once round slowly, standing idle in place at the area's waystone, over the clip (a model preview: "cast" is not needed, "area" is the Chapterhouse
 ## unless it says another, "seconds" 6 unless it says another, and no enemies unless asked for).
 ## Unless the setup says otherwise, the stand-ins are the Graves' robbers with a lot of health and no damage that stand where they are put (a tune that changes the rite's damage cannot kill them or
-## hurt the hero), and the HUD is hidden. Without cast steps the rite of `cast` is cast LEAD_FRAMES frames in (so the first frames show the scene before it) and again each time it is off cooldown;
+## hurt the hero), and the HUD is hidden. Without cast steps the rite of `cast` is cast LEAD_FRAMES frames in (so the first frames show the scene before it) and again each time it is off cooldown (a rite with no cooldown is cast once);
 ## the hero's souls and essence are topped up for each cast unless the setup turns that off.
 
 const FPS := 30                 ## frames per game second, unless the run asks for another (`options`)
@@ -411,7 +411,7 @@ static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: Stri
 			break
 		if turntable:
 			_spin(body, float(writer.frames) / float(total))
-		if rite != "" and not timed and ((casts.is_empty() and writer.frames >= lead) or (not casts.is_empty() and caster.cooldown_left(rite) <= 0.0)):
+		if rite != "" and not timed and ((casts.is_empty() and writer.frames >= lead) or (not casts.is_empty() and float(DmAbilities.def(rite)["cooldownMs"]) > 0.0 and caster.cooldown_left(rite) <= 0.0)):
 			if bool(opts["top_up"]):
 				_top_up(caster)
 			last[0] = ""

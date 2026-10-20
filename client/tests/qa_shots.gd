@@ -787,7 +787,7 @@ func clips_on_a_reaper() -> void:
 	check(starts == 60 and ends == 60 and bytes[0] == 0xFF and bytes[1] == 0xD8 and bytes[bytes.size() - 1] == 0xD9, "wraith.mjpeg is 60 JPEGs, FFD8 to FFD9 each")
 	var meta: Variant = JSON.parse_string(FileAccess.get_file_as_string(dir.path_join("wraith.json")))
 	check(meta is Dictionary and (meta as Dictionary).size() == 5 and meta["fps"] == 30.0 and meta["frames"] == 60.0 and meta["width"] == 400.0 and meta["height"] == 224.0 and meta["cast_at_frame"] == 6.0, "wraith.json is {fps, frames, width, height, cast_at_frame}: %s" % str(meta))
-	# the next clip starts as the first did, though the first's rite is on its 14 s cooldown: the caster was made fresh
+	# the next clip starts as the first did, though the first's rite was cast before: the caster was made fresh
 	seen["n"] = 0
 	var b: Dictionary = await DmQaClips.record(root, cg, plan["clips"][1], dir, fake)
 	check(b["ok"] and b["frames"] == 30 and b["casts"] == [DmQaClips.LEAD_FRAMES] and FileAccess.file_exists(dir.path_join("second.mjpeg")) and FileAccess.file_exists(dir.path_join("second.json")), "a second clip: 30 frames, cast at frame %d again (%s)" % [DmQaClips.LEAD_FRAMES, str(b)])
