@@ -72,6 +72,11 @@ jobs:
       - name: Shared rules tests
         run: npm run test:rules
 
+      - name: Generated files are current (server rule bundles, armor sets; server/death-muffin/discord-agent/regen-godot.sh remakes them)
+        run: |
+          node tools/build-server-rules.mjs --check
+          node tools/generate-armor-assets.mjs --check
+
       - name: Backend tests (auth, gathering, necro-progress)
         run: npm run test:server
 

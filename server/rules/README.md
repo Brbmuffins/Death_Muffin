@@ -31,6 +31,7 @@ The shared pieces are `gameplay/__tests__/parity.ts` (case recorder and fixture 
 each suite's `parity_part.gd` maps a case's `fn` to its port). Rules with no GDScript counterpart (`multCaps`, `ceilingsFor`, the kill ledger)
 are server-only. A case is never left out of a fixture: when the sides differ, fix the port (the TypeScript is the source of truth).
 
-- Change a rule or content table here, then `npm run build:server-rules` (and the matching SQL generator) and commit
-  both; `node tools/build-server-rules.mjs --check` / the `--check` generators fail when a committed copy is stale.
+- Change a rule or content table here, then run `server/death-muffin/discord-agent/regen-godot.sh` (`npm run build:server-rules`, the armor-set generator and
+  the loot rules' recorded answers) and commit what it changed; `node tools/build-server-rules.mjs --check` / the `--check` generators fail when a committed
+  copy is stale, and CI runs them.
 - Tests: `npm run test:rules` (unit) and `npm run test:server` (backend, includes the freshness checks).

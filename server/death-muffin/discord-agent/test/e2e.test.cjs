@@ -1177,7 +1177,7 @@ test('godot mode: sensitive net code is flagged and limited approvers cannot shi
   assert.equal(proposalOf(t3), undefined);
 });
 
-test('godot mode: !shot is available, the agent may run shot-godot.sh (not shot.sh or regen.sh), and the prompt teaches the plan', async () => {
+test('godot mode: !shot is available, the agent may run shot-godot.sh and regen-godot.sh (not shot.sh or regen.sh), and the prompt teaches the plan', async () => {
   const w = godotWorld(); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.HELIX, 'where is speed?');
   await until(() => texts(thread).some((t) => /answer is in/.test(t)), d.ad);
@@ -1190,12 +1190,12 @@ test('godot mode: !shot is available, the agent may run shot-godot.sh (not shot.
   const { claudeArgs, systemPrompt } = require('../runner/lib/agent.cjs');
   const a = claudeArgs(w.cfg, j); const rest = a.slice(a.indexOf('--allowedTools') + 1); const allowed = rest.slice(0, rest.findIndex((x) => x.startsWith('--')) >>> 0);
   const wt = `/${j.worktree}/**`;
-  assert.deepEqual(allowed, [`Read(${wt})`, `Edit(${wt})`, `Write(${wt})`, `Glob(${wt})`, `Grep(${wt})`, `Bash(${w.tools}/agit *)`, `Bash(${w.tools}/check-godot.sh --rerun *)`,
+  assert.deepEqual(allowed, [`Read(${wt})`, `Edit(${wt})`, `Write(${wt})`, `Glob(${wt})`, `Grep(${wt})`, `Bash(${w.tools}/agit *)`, `Bash(${w.tools}/check-godot.sh --rerun *)`, `Bash(${w.tools}/regen-godot.sh)`,
     `Bash(${w.tools}/shot-godot.sh)`, `Bash(${w.tools}/shot-godot.sh *)`, `Bash(${w.tools}/build-art.sh *)`, `Bash(${w.tools}/render-model.sh *)`, `Bash(${w.tools}/build-sound.sh *)`, 'WebSearch', ...w.cfg.webDocDomains.map((h) => `WebFetch(domain:${h})`)]);
   assert.ok(!allowed.includes('Read') && !allowed.includes('WebFetch'), 'no bare (any-path / any-host) grants');
   assert.ok(!allowed.includes(`Bash(${w.tools}/check-godot.sh)`), 'the whole check is the runner\'s: the agent names its suites');
   assert.ok(j.worktree && path.isAbsolute(j.worktree));
-  const sp = systemPrompt(w.cfg, j); assert.match(sp, /origin\/godot-port/); assert.ok(sp.includes(`${w.tools}/check-godot.sh --rerun <suite>`) && sp.includes(`${w.tools}/shot-godot.sh`) && !sp.includes('__TOOLS__') && !/shot\.sh/.test(sp));
+  const sp = systemPrompt(w.cfg, j); assert.match(sp, /origin\/godot-port/); assert.ok(sp.includes(`${w.tools}/check-godot.sh --rerun <suite>`) && sp.includes(`${w.tools}/shot-godot.sh`) && sp.includes(`${w.tools}/regen-godot.sh`) && !sp.includes('__TOOLS__') && !/shot\.sh/.test(sp));
   assert.match(sp, /at most 4|Never more than 4/); assert.match(sp, /BRANCH PREVIEW/); assert.match(sp, /Only when asked/); assert.match(sp, /Do NOT take screenshots by default/);
   // web mode is unchanged
   const wa = makeWorld(); const wj = { ...j, model: 'sonnet' }; const wargs = claudeArgs(wa.cfg, wj);

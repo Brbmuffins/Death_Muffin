@@ -84,7 +84,8 @@ Never deploy, publish a client, or flip `set-online.sh` without passing checks f
 - Online is the default start. For tests and screenshots use `-- --dev-offline` (`--class=N` enters directly).
 - Godot GDScript: `class_name Dm*`, one source of truth for content in `client/data` and `client/rules`; no speculative
   abstraction; remove temporary code. Commit the `.import` files and `.uid` files Godot generates for new assets/scripts.
-- Rule sources are `server/rules/*.ts`; after editing run `npm run build:server-rules` and commit the regenerated `.cjs`.
+- Rule sources are `server/rules/*.ts`; after editing run `server/death-muffin/discord-agent/regen-godot.sh` (the server rules build, the armor-set generator and
+  the loot rules' recorded answers, in one sandboxed run) and commit what it changed; CI fails when a generated file is stale.
 - Discipline indices 1 Ossuary, 2 Gravecaller, 3 Mourner, 4 Rotweaver are the playable set. `client/data/combat/disciplines.json`
   (`by_index`), `server/rules/content/disciplines.ts` and `MAX_DISCIPLINE_INDEX` in `backend/server.js` must agree.
 

@@ -18,7 +18,7 @@ node --test tools/check/test/*.test.mjs        # its tests, and ci.sh's (a throw
 | When | What runs | Where |
 |---|---|---|
 | Working on a change | the suites it touches (`tools/rebuild/run-client-tests.sh --only`, `node tools/rebuild/affected-suites.mjs` lists them) | the VPS |
-| Every push to any branch | the backend, lobby and rules tests, hygiene, the model check, these scripts' tests, the Discord agent's tests and every game suite over six machines (about 3 minutes; documents only: no game suites) | GitHub CI |
+| Every push to any branch | the backend, lobby and rules tests, hygiene, the model check, the generated files' freshness, these scripts' tests, the Discord agent's tests and every game suite over six machines (about 3 minutes; documents only: no game suites) | GitHub CI |
 | Before a merge, deploy or publish | `ci.sh wait <rev>`: the deploy and publish scripts refuse a revision CI has not passed | CI's verdict |
 | A Discord agent proposal | nothing while it is a draft; on 🧪 CI on its branch, on ✅ CI on the merged change; 1 to 3 suites that fail only in CI get one re-run here | CI, then the VPS |
 | Every client publish | a free team PC starts the release build and quits it while loading (`server/death-muffin/team-gate.sh`, B61) | a team PC |
@@ -63,7 +63,8 @@ The last line says what happened, for scripts and logs:
 
 ## CI is the gate
 
-GitHub CI (`.github/workflows/ci.yml`) runs on every push to every branch: the backend and lobby tests, hygiene, the model check, this
+GitHub CI (`.github/workflows/ci.yml`) runs on every push to every branch: the backend and lobby tests, hygiene, the model check, that the
+generated files are current (the server rule bundles and the armor sets: `node tools/build-server-rules.mjs --check`, `node tools/generate-armor-assets.mjs --check`), this
 script's tests, the Discord agent's own tests (`server/death-muffin/discord-agent/test/*.test.cjs`, about 220, with the AppArmor user-namespace block lifted on the runner so `unshare` works; not for a push of documents only), and every game suite split over six machines by their recorded times (a push that changes only documents, Markdown or
 `docs/`, skips the game's suites). A run on `main` is never cancelled; a newer push to a
 branch replaces that branch's older run. Nothing is merged, deployed or published until CI passed it (DECISIONS B59, CLAUDE.md):

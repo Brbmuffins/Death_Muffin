@@ -349,6 +349,14 @@ this change too" (audit `infra-failed`): nothing is proposed and no repair turn 
 automatic re-run of 1-3 failing suites (the runner's `failedSuites`, and `ship.sh`) reads every suite line, folder runners such as `relay/udp` too, and
 is skipped when those lines do not account for the summary's `N FAILED`, so a failure it cannot name never rides on another suite's passing re-run.
 
+**`regen-godot.sh`** (the agent's, DECISIONS B65): the files the game derives from its sources, made in the same sandbox as `check-godot.sh` (no network, only the
+worktree writable, a private HOME): `node tools/generate-armor-assets.mjs` (the sets' client data copies, the content manifest, item icons, the new migration),
+`npm run build:server-rules` (the backend's `*-rules.cjs` bundles) and `UPDATE_LOOT_PARITY=1 vitest run server/rules/gameplay/__tests__/` (the loot rules' tests, rewriting
+the recorded answers `client/tests/rules_loot/fixtures` holds), each up to 10 minutes and run even when one before it failed, then `git status`; exit 1 when a step
+failed. The agent runs it after any edit under `server/rules/` and for an armor set (PROMPT-godot.md); CI's "Generated files are current" step and the rules tests
+fail a change whose generated files are not exactly the generators' output, so a forgotten run never ships. `test/sandbox.test.cjs` runs it with stand-in generators
+that try to write outside the worktree.
+
 **`preview-godot.sh <jobid>`**: runner-only. The game's build products with the Windows core (`prep.sh --warm --windows`), then inside the same kind of sandbox the
 export of the `Windows Desktop` preset from `client/` (the installed export templates are linked read-only into the fresh `XDG_DATA_HOME`). The art: when nothing the
 art pack is made of (`tools/godot/assets-fp.sh --paths`, `main`'s copy) differs from the live build's revision (the client manifest's `rev`), the zip carries no pack
@@ -416,7 +424,7 @@ other down. A job's check gets the import from the shared cache (`prep.sh`), and
   `test/sandbox.test.cjs` runs each real script with stand-in tools that try to write `/var/www/death-muffin/client`, `/opt/*`, `/game`, `/home/ubuntu`,
   a sibling worktree and the host `/tmp`, after trying to remount `/` and its parents rw, umount `/tmp` and `/dev/shm`, and unshare again. `/proc`, `/sys`, `/dev` stay as they are (kernel views, root-owned); `/dev/shm` is private.
 - AI box: `claude -p --restricted --permission-mode dontAsk`, tools = Read/Edit/Write/Glob/Grep + `agit` (filtered git) +
-  `check-godot.sh --rerun <suites>` and `shot-godot.sh` (unshare -rnm: no network, home read-only except the worktree). No push, no deploy, no secrets in its env.
+  `check-godot.sh --rerun <suites>`, `regen-godot.sh` and `shot-godot.sh` (unshare -rnm: no network, home read-only except the worktree). No push, no deploy, no secrets in its env.
 - Discord's 2000-character limit: agent replies are split across messages (code blocks kept balanced) and anything over ~4 messages is a preview plus `reply.md` (`runner/lib/discordText.cjs`). A long paste arrives as Discord's `message.txt`; the adapter reads text attachments from Discord's CDN only (≤100 KB each, ≤60,000 characters in all) into the person's message.
 - Person text is wrapped as data (`<request from=… role=…>`, role from config); rules cannot be changed by messages.
 - Runner redacts every outgoing string and audit field; mentions are disabled (no post tags anyone).
@@ -441,4 +449,4 @@ request -> thread -> worktree -> gates -> pushed branch -> a draft proposal with
 (`check-godot.sh --rerun code_load`), 🧪 -> GitHub CI on the branch -> "Tests passed", then `!discard` removes the branch and the workspace. It
 never ships. One `CANARY <step> ok|FAILED` line per step, then `CANARY PASSED` (exit 0) or `CANARY FAILED: <step>` (exit 1). A trial before a
 merge: `DEST=<dir> NO_SYSTEMD=1 bash install-runner.sh <rev>`, then `node <dir>/runner/canary.cjs --rev <rev> --adapter <repo>/server/death-muffin/discord-agent/bot/dm-agent.cjs`.
-The installer also copies `check-godot.sh`, `tools/check/prep.sh` (as `prep.sh`), `preview-godot.sh`, `shot-godot.sh`, `label-shot.py`, `render-model.sh`, `render-model.py`, `art-run.sh`, `build-art.sh`, `build-sound.sh`, `sound-build.mjs` and `PROMPT-godot.md`, installs the trusted art tools to `art-tools/`, and creates an empty `tripo-budget.json` if there is none (never overwritten). The live `config.json` must say `"mode": "godot", "baseBranch": "main"`; edit it and restart the service to change.
+The installer also copies `check-godot.sh`, `regen-godot.sh`, `tools/check/prep.sh` (as `prep.sh`), `preview-godot.sh`, `shot-godot.sh`, `label-shot.py`, `render-model.sh`, `render-model.py`, `art-run.sh`, `build-art.sh`, `build-sound.sh`, `sound-build.mjs` and `PROMPT-godot.md`, installs the trusted art tools to `art-tools/`, and creates an empty `tripo-budget.json` if there is none (never overwritten). The live `config.json` must say `"mode": "godot", "baseBranch": "main"`; edit it and restart the service to change.

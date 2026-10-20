@@ -328,6 +328,13 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   test), reviewed like any change, and usable in that change's videos at once; the runner needs no change. Free-form scripts were turned down: a
   script can do anything a program can on the team PC that records it, a word only what the recorder allows. Also from Helix the same evening
   ("@ war its his thread"): a proposal tags the person who started the thread, not whoever asked last.
+- **B65. The Discord agent makes its own generated files; commands inside its sandbox are Claude's call** (Helix, 2026-10-19: "okay go with
+  that then", after Claude's recommendation). An armor set or any rule change needs three generators (the armor-set assets, the server rule
+  bundles, the loot rules' recorded answers), and the agent could run none of them, so a set from a thread stopped halfway until a session
+  ran them. The agent now runs `regen-godot.sh`, all three in the same sandbox as its tests (no network, no keys, only its own copy writable),
+  and CI fails any change whose generated files are not exactly the generators' output. The sandbox is the boundary, and the agent already runs
+  any code inside it through the tests it writes, so a new command inside it adds no reach: such commands are Claude's call from now on. Anything
+  that reaches past the sandbox (deploying, publishing, pushing, spending, keys, the network, who may approve) still needs Helix.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking
