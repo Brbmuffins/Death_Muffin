@@ -13,7 +13,8 @@ extends SceneTree
 ##     hover card and the click that opens the Laborers, a collection (gold, the chronicle, the report under the laborer), the garden (plant, harvest, the notices), a contract, and the
 ##     guidance feeds the Sexton and the Next box read;
 ##   - the rest of the loop and the Acre: every node has parts, a yield from its type's range and a free stand spot; each skill's find and XP; a success from out of reach is ignored; the
-##     Sawpit's plank from gathered logs; the notices of a full laborer and a ready plot; a relaunch keeps the results; the Next box's state and its full-bag suggestion;
+##     Sawpit's plank from gathered logs; the notices of a full laborer and a ready plot; leaving mid-gather (the cycles not yet sent go to the server, a batch still out is waited for and
+##     what queued behind it goes too, the Chronicle posts after them); a relaunch keeps the results; the Next box's state and its full-bag suggestion;
 ##   - ZERO script errors or engine errors in the log.
 ## Run: godot --headless --fixed-fps 60 --path client --script res://tests/gathering.gd
 
@@ -127,6 +128,7 @@ func _main() -> void:
 	await _the_garden_and_contracts()
 	await _host_rules()
 	await _the_notices()
+	await _leaving_mid_gather()
 	await _relaunch()
 	await _guidance()
 	for e in errlog.errors:
@@ -1027,27 +1029,77 @@ func _the_notices() -> void:
 	acre.api = real_api
 
 
+# ------------------------------------------------------------------------------------------------------------------ leaving mid-gather
+
+## Quitting, logging out and switching character all end in the game's flush (`DmNextGame.flush_all`, which `leave()` and the window's close call): the cycles the loop has not sent
+## yet (it sends every 8 s) reach the server before the game goes, a batch still travelling is waited for and what queued behind it goes too, and the finds they count into the
+## Chronicle are posted after them, not before.
+func _leaving_mid_gather() -> void:
+	var loop: DmGatherLoop = g.gather.loop
+	var type := String(_node("graves_0")["type"])
+	var item := String(_oak_def()["item"])
+	var key := "gathered.%s" % String(_oak_def()["skill"])
+	loop.stop("moved")
+	await until(func() -> bool: return not loop._in_flight and not loop._pending and loop._queue.is_empty(), 60 * 5)
+	mock.rng = server_rolls_default
+	var replies: Array = []
+	var on_reply: Callable = func(r: Dictionary) -> void: replies.append(r)
+	g.gather.gathered.connect(on_reply)
+	var post: Callable = loop.hooks["post"]
+	# the Chronicle: the answer to the last batch counts the finds in it, so the flush posts that batch first
+	loop._queue[type] = int(loop._queue.get(type, 0)) + 2
+	await g.flush_all()
+	var found := 0
+	for r: Dictionary in replies:
+		for it: Dictionary in r["items"]:
+			if String(it["itemId"]) == item:
+				found += int(it["qty"])
+	check(found > 0 and loop._queued_total() == 0, "leaving mid-gather: the cycles not yet sent were paid by the server (%d finds)" % found)
+	check(not g.chron.chronicle.has_pending() and _server_chronicle(key) == int(g.chron.life(key)), "...and the Chronicle's count of them is saved too, after them (%s: the server holds %d of the %d the game counts, pending %s)" % [key, _server_chronicle(key), int(g.chron.life(key)), str(g.chron.chronicle.sums)])
+	# a batch still travelling when the player leaves: the flush waits for it and sends what queued meanwhile
+	var posts: Array = []
+	loop.hooks["post"] = func(node_type: String, actions: int, keepalive: bool, afk_now: bool) -> DmResult:
+		posts.append(actions)
+		await ticks(20)   # the request takes a third of a second
+		return await post.call(node_type, actions, keepalive, afk_now)
+	loop._queue[type] = int(loop._queue.get(type, 0)) + 1
+	loop.flush()   # (the 8 s timer or a stop: not awaited)
+	await ticks(3)
+	check(loop._pending and posts == [1], "(a batch of one cycle is out: %s)" % str(posts))
+	loop._queue[type] = int(loop._queue.get(type, 0)) + 2   # the player kept working while it travelled
+	await g.flush_all()
+	check(loop._queued_total() == 0 and not loop._pending and posts == [1, 2], "leaving while a batch is out: the cycles queued behind it go too, not at the next 8 s (batches %s)" % str(posts))
+	loop.hooks["post"] = post
+	g.gather.gathered.disconnect(on_reply)
+
+
+## The Chronicle's saved count of `key` on the server (the mock's account).
+func _server_chronicle(key: String) -> int:
+	var ch: Dictionary = _acc().get("chronicle", {})
+	return int((ch.get("life", {}) as Dictionary).get(key, 0))
+
+
 # ------------------------------------------------------------------------------------------------------------------ a relaunch
 
 ## What was gathered and made is the server's: the next launch of the same character has the levels, the XP and the items again, and every node fresh.
 func _relaunch() -> void:
-	# leaving or closing mid-gather: a cycle the loop has not sent yet goes with the game's flush (no stop() first; the server may still refuse it on its budget)
-	var posts: Array = []
-	var post: Callable = g.gather.loop.hooks["post"]
-	g.gather.loop.hooks["post"] = func(type: String, actions: int, keepalive: bool, afk_now: bool) -> DmResult:
-		posts.append([type, actions])
-		return await post.call(type, actions, keepalive, afk_now)
-	g.gather.loop._queue["coffin_oak"] = int(g.gather.loop._queue.get("coffin_oak", 0)) + 1
-	await g.flush_all()
-	g.gather.loop.hooks["post"] = post
-	check(g.gather.loop._queued_total() == 0 and posts.has(["coffin_oak", 1]), "leaving mid-gather: the cycle not yet sent goes to the server with the game's flush (%s)" % str(posts))
-	g.gather.loop.stop("moved")
+	# logging out, switching character and a party hand-over end in leave(): a cycle the loop has not sent yet goes before the game is freed (the server may still refuse it on its budget)
+	var loop: DmGatherLoop = g.gather.loop
+	loop.stop("moved")
 	await g.flush_all()
 	await g.gather.load_professions()
-	var want_wood: Dictionary = g.gather.skills.get_skill("woodcutting")
-	var want_mining := int(g.gather.skills.get_skill("mining")["xp"])
 	var want_planks: int = g.ui_host.inventory.count("plank_oak")
+	var posts: Array = []
+	var post: Callable = loop.hooks["post"]
+	loop.hooks["post"] = func(type: String, actions: int, keepalive: bool, afk_now: bool) -> DmResult:
+		posts.append([type, actions])
+		return await post.call(type, actions, keepalive, afk_now)
+	var type := String(_node("graves_0")["type"])
+	loop._queue[type] = int(loop._queue.get(type, 0)) + 1
 	await g.leave()
+	check(loop._queued_total() == 0 and posts.has([type, 1]), "leaving mid-gather: the cycle not yet sent goes to the server with leave() (%s)" % str(posts))
+	var want_wood: Dictionary = g.gather.skills.get_skill("woodcutting")   # (the server's answer to that cycle is in it)
+	var want_mining := int(g.gather.skills.get_skill("mining")["xp"])
 	g.queue_free()
 	await process_frame
 	await _launch((await api.load_or_create_character(2)).data)

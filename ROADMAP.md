@@ -442,8 +442,13 @@ Worked through beside the phases, top first. Each change is shown to the team wi
   ripples, the Prelate's candles never gutter, and the Plague Doctor's flask leaves a pool that hurts but cannot be seen. After: each one is
   shown to the team with screenshots; what they keep is switched on (the invisible pool at least gets drawn, so players can dodge it) and
   the rest is deleted.
-- [ ] **Fix: two small bugs.** Gathering: now the last 8 seconds of gathering before quitting are lost; after, they are saved. Easy auto
-  combat: now it walks the hero into pockets between tombstones and parks there; after, it walks around them.
+- [x] **Fix: two small bugs.** Done 2026-10-20.
+  - Gathering. Now: the last 8 seconds of gathering before quitting are lost. After: they are saved. Quitting, logging out and switching
+    character send the unsent cycles through the normal gather route first (the server still decides what they are worth), a batch still
+    travelling is waited for and what queued behind it goes too, and the Chronicle's count of the finds is saved after them, not before.
+  - Easy auto combat. Now: it walks the hero into pockets between tombstones and parks there. After: closing on an enemy it looks along the
+    line 5 times a second and, with a grave or wall in the way, walks the navmesh's path round it (asked once in 0.8 s); a walk that gets
+    nowhere for a second takes that path anyway.
 - [ ] **Fix: seven tips never show.** Now: the counsel has tips for the Depths (going in alone, a new floor, a floor's affix), a loadout
   check, a weapon change, a set bonus gained and an Omen told, but nothing ever triggers them. After: each shows once at its moment, or is
   deleted if the team does not want it.

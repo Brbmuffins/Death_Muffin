@@ -845,10 +845,10 @@ func flush_all() -> void:
 		await joiner.flush_all()
 	if rewards != null and session.is_host() and session.is_active():
 		await rewards.end_session({})
+	if gather != null and gather.loop != null:
+		await gather.loop.flush()   # the cycles since its last batch (it sends every 8 s) go first: the answer counts finds in the Chronicle, which is flushed next
 	if chron != null:
 		await chron.flush()
-	if gather != null and gather.loop != null:
-		await gather.loop.flush()   # the cycles since its last batch (it sends every 8 s): leaving or closing mid-gather kept them before
 	if progress != null:
 		await progress.flush_all()
 	if loot != null and loot.inventory != null:

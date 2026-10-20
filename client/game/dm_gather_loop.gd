@@ -210,6 +210,9 @@ func flush(keepalive: bool = false) -> void:
 			await _flush_batch(true, true)
 		while _pending:
 			await flush_done
+		# A batch was out when this was asked: the cycles that queued while it travelled go now, once, not at the next 8 s (leaving or closing would lose them).
+		if not keepalive and not _queue.is_empty():
+			await flush()
 		return
 	_pending = true
 	await _flush_batch(keepalive)

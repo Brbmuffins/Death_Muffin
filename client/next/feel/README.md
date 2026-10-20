@@ -32,7 +32,7 @@ legion's size from the core, the caster (`cooldown_left`, essence), the hostile 
 | cadence | movement every 100 ms, one action every 180 ms, direction intent re-sent every 150 ms, one ZERO when it stops; one compare per physics frame otherwise. It runs on the physics clock (`clock_ms`), so a game run faster than real time keeps its cadence |
 | action | nearest-first targets, rite rotation (essence reserve, Exhume / Grave Offering / Rally / Carrion Seed / Mantle / Litany / Detonate / Cleave / Miasma / Prison / Hands / Storm / Siphon / Frost / Spear), corpse rites |
 | the Reaper | `DmAutoCombat._reaper_action` (ctx `family` = "reaper", `player.souls`): Scythe Sweep as the free filler; souls go to Soul Burst (five in the blast, or a boss / elite with 14+ souls), Reap (a knot of three in the cone, a boss / elite, or 22+ souls), Harvest Spin (three on her) and Scythe Throw (a knot or an elite at range); while under 60 % health she keeps the 4 souls an escape needs; under 35 % health with a foe within 4.5 m she Wraith Walks straight away from it, and with 24+ souls she Wraith Walks to a foe 6-14 m off. She walks in to the sweep's 3.4 m reach like any melee primary |
-| movement | leave telegraphs and hostile pools first, close to the primary's range, back off a pack, evade a wind-up, then hold |
+| movement | leave telegraphs and hostile pools first, close to the primary's range, back off a pack, evade a wind-up, then hold. Closing, it looks along the straight line 5 times a second (`DmAutoNav.clear_line`, the core's navmesh grid) and when a grave or wall is in the way walks the navmesh's path round it (`DmAutoNav.find_path`, asked once in 0.8 s, ctx `routeNav`); a walk that moves the hero less than 0.3 m in a second takes the path for 2 s anyway (`stuckUntil`). The dodge never asks the navmesh (its many candidate spots would each cost a query) |
 | extras | Healing flask under 42 % hp (belt, host), 2 %/s regen for 5 s after a hit |
 
 Standing mouse-aim: `DmCombatInput.stand_face` from the 10 Hz hover pick -> `session.request_face(yaw)` (host `DmSessionBody.set_facing`: ignored while walking); a cast turns a standing hero to its aim
@@ -45,11 +45,11 @@ Standing mouse-aim: `DmCombatInput.stand_face` from the 10 Hz hover pick -> `ses
 - **Damage-number cap**: `DmFloatBudget` (`client/next/hud/dm_float_budget.gd`, used by `DmNextUiHost.float_text`): hits + crits 14 (a crit gets +4), dot 5, thrall 6, hard total 22; hurt / gold / heal / info are never limited. The caps are judgement numbers: loosen if a crit-heavy build feels muted.
 
 ## Tests
-`client/tests/auto_combat.gd` (Easy auto combat: seeded Full Party fights for the necromancer's rites and the Reaper's, the movement), `client/tests/rites.gd` (the kit's hotbar, the click-to-attack chase, every rite's cast),
+`client/tests/auto_combat.gd` (Easy auto combat: seeded Full Party fights for the necromancer's rites and the Reaper's, the movement, the walk round what is in the way), `client/tests/auto_combat_play/run.gd` (the adapter on the game: the gate, targets, corpse rites, dodges, yields, the Reaper, and section J: three pockets of graves in the Graves, walked round, and the stuck watch), `client/tests/rites.gd` (the kit's hotbar, the click-to-attack chase, every rite's cast),
 `client/tests/hud.gd` (slot needs, floating number caps), `client/tests/combat_odds/run.gd` (every rite's sounds and its visible and audible cue at the press), `client/tests/combat_clarity/run.gd` (the number cap, slot needs, thrall pips).
 
 ## Known gaps
-- Auto-combat has no `DmNav` over the navmesh (the decision code's `clear_line` / path-around is skipped; the body's nav clamp slides it), so it parks the hero in pockets of tombstones (KNOWN-GAPS "Combat and statuses").
+- Auto-combat's dodge has no navigation of its own (the decision code's `nav` stays empty, since each candidate spot would cost a query), so a step out of a pool or telegraph can be into a pocket of graves; the walk toward an enemy has one (`DmAutoNav`).
 - The old game's larger pulsing red ground ring under a thrall below 35 % health is not drawn on the crowd's thralls; only the HUD's pips turn red.
 - Corpse marks inside the hero's reach are not brighter than others (needs a per-frame distance test).
 - The Damage / Wave Speed upgrade panel overlapped the essence orb at 1280 x 800 on the old game (shared HUD layout, `client/ui/hud/`; not re-checked on the client).
