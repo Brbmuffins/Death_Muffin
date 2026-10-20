@@ -33,7 +33,8 @@ extends Node
 ## `start_opts` (set before add_child; tests) are merged over DmNextGame.start's options.
 ##
 ## Co-op: the party's `join_ready` hands the solo game over to a guest game on the same lobby socket, and a guest whose session ended (or whose join failed) is
-## put back in its own world with the reason on screen (client/README.md "Co-op on the core").
+## put back in its own world with the reason on screen (client/README.md "Co-op on the core"). From every good sign-in until the world's own link takes over, a `DmPresenceLink` (child `Presence`) keeps a lobby socket so friends see the player online at
+## character select and while the world loads (next/party/README.md "Online before the world").
 ## The panels' hand-overs: Log out (final save, the token dropped, the login screen), Switch character (final save, the select screen with the same token) and a
 ## discipline change from the class panel (final save, the game restarts with the changed character).
 ## The automatic crash report (since launch day, 2026-10-18): a release build's lock (DmCrashWatch) still there at the next start sends the last run's crash
@@ -62,6 +63,7 @@ var _party_busy := false            ## a join / return is in progress (one at a 
 var _crash_checked := false         ## the pending crash report (DmCrashWatch) was tried this run
 var plays_report := false           ## this session is counted for a play report (decided in _ready by DmPlayReportQueue.records; a test sets it before add_child to try the wiring)
 var report: DmPlayReport            ## the session in progress (null until the first ready game scene)
+var presence: DmPresenceLink        ## the lobby link from the sign-in to the world (child `Presence`, made at the first sign-in): friends see the player online at character select and while the world loads; the game's own link replaces it
 
 
 func _ready() -> void:
@@ -406,6 +408,7 @@ func _start_flow(switching_character: bool = false) -> void:
 	flow.name = "Front"
 	flow.enter_world.connect(_enter_world)
 	flow.benchmark_requested.connect(_open_benchmark_setup)
+	flow.signed_in.connect(_presence_start)
 	add_child(flow)
 	_flush_play_reports()   # (not awaited) the character select, or the login screen with a kept login: reports of earlier sessions go out now
 	if switching_character:
@@ -493,9 +496,24 @@ func _run_benchmark(quit_on_close: bool, setup: Dictionary = DmBenchmark.STANDAR
 	add_child(top)
 
 
+## The lobby link for friends' presence (DmPresenceLink): from a good sign-in, and from a hand-over that freed the game, until the game's own link takes over. Not in a run that has no lobby to use.
+func _presence_start() -> void:
+	if presence == null:
+		presence = DmPresenceLink.new()
+		presence.name = "Presence"
+		add_child(presence)
+	presence.start(api, start_opts, mode == "online")
+
+
+func _presence_stop() -> void:
+	if presence != null:
+		presence.stop()
+
+
 ## Back to the login screen with the reason on it (the token is dropped, as the front flow does when a character cannot be resumed).
 func _back_to_login(reason: String) -> void:
 	_end_report("logout")   # (a session that was counting before a restart or a hand-over that could not go on)
+	_presence_stop()
 	api.set_token("")
 	_start_flow()
 	if flow.current is DmLoginScreen:
@@ -704,6 +722,7 @@ func _on_next_client_ended(_reason: String, text: String, character: Dictionary)
 	await _teardown_next()
 	if lobby != null:
 		lobby.close()
+	_presence_start()   # friends keep seeing us while our own world loads, and the lobby's offer to rejoin the party we dropped from reaches this link
 	await _enter_next(character, DmLoadingScreen.acquire(self, "Waking the dead..."), _build, {"notice": text} if text != "" else {})
 	_party_busy = false
 
@@ -731,6 +750,7 @@ func _on_next_left(logout: bool) -> void:
 	await _teardown_next("logout")
 	if logout:
 		await _send_play_reports_now(2000)   # while the login is still good: the token is dropped next
+		_presence_stop()
 		api.set_token("")
 	_start_flow()
 
@@ -752,6 +772,7 @@ func _on_next_switch() -> void:
 ## A discipline change (the class panel; the server changed the character already): final save, then the game again with the changed character, its bag and progression.
 func _on_next_restart(character: Dictionary) -> void:
 	await _teardown_next()
+	_presence_start()
 	await _enter_world(character, api)
 
 

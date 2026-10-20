@@ -91,12 +91,12 @@ polish list). Also:
 
 ## Party and online
 
-- **No automatic rejoin** (D13). A dropped client returns to its own solo game and has to join again by hand (an Open party: Join; a Closed one: a new invite or Ask to join); a dropped host ends the session (D6).
+- **A dropped player's seat is not held:** the rejoin offer lasts 5 minutes, but a party that filled up in that time answers `full` (the lobby reserves nothing; a held seat would show a party as full while it lists a free one).
 - **One area per session, Depths solo:** `client/next/areas/README.md`, `client/next/depths/README.md`.
 - **Part of a joiner's state does not reach the host's sim:** the host builds the joiner's hero from the server's record (level, gear,
   set bonuses, affixes, boons, vows, upgrade tiers, rune sockets), but Colossus Mantle hooks are host-hero only; no Covenant Seal or Nightfall dim; a client cannot call Empowered bosses.
 - Chat is party chat in a party and local-only when solo.
-- **Friends show online only in the world:** character select and the launcher count as offline (the lobby link starts after loading).
+- **Friends show offline while the launcher is open:** the launcher has no login and no lobby link. They show online from the sign-in (character select, loading, the world).
 - A guest's waystone map lists its own account's open areas, not the host's world's (a jump to a sealed one is refused with the reason).
 - A guest sees no number over an enemy for a blow of its thralls, except the killing one: a guest's core gets no source with a blow, so the
   host would have to send each one.

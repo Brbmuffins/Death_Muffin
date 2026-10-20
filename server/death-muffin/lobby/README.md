@@ -23,12 +23,19 @@ Failure closes with 4401; replaced = 4402; locked (staff-only mode) = 4403; rate
 
 ## Text frames (JSON control)
 Client -> server: `list`, `create {name(1-32), area, private?, code?}`, `join {id, code?}` or `join {code}` (private sessions are not listed: the code alone finds one; wrong codes are counted per connection, 10 per 10 min, then `rate_limit`), `leave`, host only: `set_open {open}`, `kick {id}`.
-Server -> client: `ready {accountId, username, maxPlayers}`, `sessions {sessions:[{id,name,host,area,players,max,private,open}]}` (public + open only),
+Server -> client: `ready {accountId, username, maxPlayers}`, `rejoin {session, from, fromId, ms}` (right after `ready`, see "Rejoin window"), `sessions {sessions:[{id,name,host,area,players,max,private,open}]}` (public + open only),
 `created {session, peerId:1, code?, relay?}` (private sessions get a 6-digit code unless one was supplied), `joined {session, peerId, relay?}` (`relay: {addr, port, ticket}` for the UDP relay when `DM_RELAY_UDP` is set, see `../relay/README.md`), `left`, `session_updated`,
 host gets `peer_joined {id,name,accountId}` / `peer_left {id, reason: left|disconnected|kicked}`, everyone else gets
 `session_closed {reason: host_left|idle|kicked|shutdown}` (the socket stays open, back in the lobby), `error {code,msg,req}`.
 Error codes: `bad_request in_session not_in_session not_found bad_code full closed not_host busy rate_limit auth` (+ Friends: `not_friend already_in`).
 Peer ids: host = 1, clients 2, 3, ... assigned in join order and never reused within a session. One session per connection.
+
+## Rejoin window (DECISIONS D13)
+A member (not the host) whose connection **drops** keeps its place for `rejoinMs` (5 min): the session stays as it is, the host gets `peer_left {reason: "disconnected"}` as before, and the account gets an invite into that session (so a Closed one lets it back in
+without a code, the same pass an `invite` gives). The account's next connection is told right after `ready`: `rejoin {session, from, fromId, ms}` (`session` is the usual session info, `from` / `fromId` the host, `ms` the window left). It is repeated on each
+connection of the window, and ends with the window, with the session, when the account joins any session or hosts one. Joining is the ordinary `join {id}`: capacity is checked as for anyone, so a party that filled up meanwhile answers `full`; nothing holds a seat.
+A drop is a socket that ended without a clean close: no close frame at all (1006: a lost network, a crash, a killed game), a close the lobby forced (1009, 1013, 4429), or an older login of the account replaced by a newer one. A `leave`, a `kick` and a socket the player closed
+on purpose (codes 1000, 1001, 1005; the game closes with 1000) are not drops and offer nothing. A host who drops still ends the session (`host_left`, D6), and with it every way back in. Old clients ignore `rejoin`.
 
 ## Friends (DECISIONS B18): presence, invites, asks to join
 Friend lists come from the auth backend: `GET /api/friends` with the player's OWN token (the one the socket authenticated with; `src/friends.js`),
@@ -47,6 +54,8 @@ no longer a friend), `friends_changed`, `invited {from, fromId, session, auto}` 
 username, via?}` (via = the friend in our party they asked), `ask_sent {accountId, username}`, `ask_declined {username}`.
 presence = `{accountId, username, class, level, area, session: {id, private, open, players, max, host, isHost, heat, difficulty} | null}`, pushed on every change
 (presence message, create / join / leave / kick / close, Open / Closed, disconnect). Error codes added: `not_friend already_in`.
+A newer connection of an account **takes the older one's place** for its friends: they are not told the account went offline and came back, and the presence the older connection had carries over until the new one sends its own. The game
+uses this twice: the character select's presence link (`client/net/relay/dm_presence_link.gd`, from the sign-in, so friends see the player online before the world) is replaced by the world's own link, and a relaunch after a crash replaces the dead socket.
 
 ## Binary frames (game packets), 11-byte header + payload
 ```

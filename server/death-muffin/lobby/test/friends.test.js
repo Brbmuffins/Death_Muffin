@@ -86,6 +86,26 @@ test('presence: mutual friends see each other come online, change, play together
   } finally { await s.close(); }
 });
 
+test('presence: a newer connection of an account takes the older one\'s place without its friends seeing it go offline', async () => {
+  const s = await boot(g([[1, 2]]));
+  try {
+    const a = await s.connect(1);
+    const b = await s.connect(2);                 // e.g. the character select's link
+    b.send({ t: 'presence', class: 11, level: 40, area: 'graves' });
+    await a.next('presence', (m) => m.accountId === 2 && m.p && m.p.level === 40);
+    a.texts.length = 0;
+    const b2 = await s.connect(2);                // the game's own link replaces it
+    await b.until(() => b.texts.some((m) => m.t === 'replaced'));
+    const swap = await a.next('presence', (m) => m.accountId === 2 && m.p);
+    assert.deepEqual([swap.p.class, swap.p.level, swap.p.area, swap.p.session], [11, 40, 'graves', null], 'what the old link said carries over');
+    assert.equal(b2.snapshot.list.length, 1);
+    await new Promise((r) => setTimeout(r, 150));
+    assert.ok(!a.texts.some((m) => m.t === 'presence' && m.accountId === 2 && m.p === null), 'no offline blink');
+    b2.ws.close();                                // a real close still shows the friend going offline
+    assert.ok(await a.next('presence', (m) => m.accountId === 2 && m.p === null));
+  } finally { await s.close(); }
+});
+
 test('presence: the snapshot on connect lists online mutual friends with their presence', async () => {
   const s = await boot(g([[1, 2], [1, 3]]));
   try {

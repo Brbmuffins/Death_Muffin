@@ -33,7 +33,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 - **D11. Lobby:** a public list of Open sessions plus Closed (invite-only) parties (`deathmuffin-lobby`, :5192). Friends join through
   invites and asks (B18); six-digit codes have no UI.
 - **D12. Party-session tables** (migration 041) are part of the backend schema.
-- **D13. Disconnects get a rejoin window** (not built yet: KNOWN-GAPS.md). D6 still holds for the host.
+- **D13. Disconnects get a rejoin window** (built 2026-10-20): a member whose connection drops (not one who left or was removed) is offered its party again for 5 minutes, also when it is Closed; the player decides, it never joins by itself, and no seat is held. D6 still holds for the host.
 
 ## Baseline
 

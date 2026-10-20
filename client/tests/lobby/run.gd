@@ -3,7 +3,8 @@ extends SceneTree
 ## DmNextGame instances in this process (SceneMultiplayer branches, one SHARED offline backend = one "server", two accounts).
 ##   godot --headless --path client --script res://tests/lobby/run.gd
 ## A solo untouched . hosting a running solo session . listing / join by id / join by code . every lobby error text . open / closed . kick .
-## a full session . the joiner's backend session, XP and loot on its own account . a dropped client / a dropped host leave both sides clean.
+## a full session . the joiner's backend session, XP and loot on its own account . a dropped client / a dropped host leave both sides clean .
+## a dropped client is offered the way back into the host's Closed party (Rejoin, Dismiss) and a removed one is not.
 ## (What hosting costs in packets and bytes is checked with separate processes in processes.gd.)
 
 const DT := 1.0 / 60.0
@@ -527,6 +528,17 @@ func _part_kick(jg: DmNextGame, jb: Node) -> void:
 	jg.queue_free()
 	jb.queue_free()
 	await ticks(2)
+	# a removed player is no dropped one: its next game is offered no way back
+	var nb := _branch()
+	var nsolo := await _game(nb, ch_j, api_j, _opts({"name": "joiner", "lobby_token": lobby.token(102, "joiner")}))
+	nsolo.party.go_online()
+	check(await until(func() -> bool: return nsolo.party.link == "ready", 8.0), "kick: the removed player's next game is on the lobby")
+	await ticks(40)
+	check(_rejoin_of(nsolo).is_empty(), "kick: and is offered no way back into the party it was removed from")
+	await nsolo.leave()
+	nsolo.queue_free()
+	nb.queue_free()
+	await ticks(2)
 
 
 func _part_private_and_full() -> void:
@@ -614,6 +626,7 @@ func _part_drops() -> void:
 	jg.queue_free()
 	_jb.queue_free()
 	await ticks(2)
+	await _part_rejoin()
 	# a joiner again, then the HOST's connection dies: the host falls back to solo, the joiner is sent home with a reason
 	var jb := _branch()
 	var jsolo := await _game(jb, ch_j, api_j, _opts({"name": "joiner", "lobby_token": lobby.token(102, "joiner")}))
@@ -635,6 +648,73 @@ func _part_drops() -> void:
 	await jg2.leave()
 	jg2.queue_free()
 	jb.queue_free()
+	await ticks(2)
+
+
+## The rejoin offer of a dropped player (client/next/party/README.md "Dropped players"): the host's party is Closed (private), the joiner's connection just died.
+func _rejoin_of(g: DmNextGame) -> Dictionary:
+	for v in g.party.invites:
+		if bool((v as Dictionary).get("rejoin", false)):
+			return v
+	return {}
+
+
+func _part_rejoin() -> void:
+	var p := hg.party
+	# the dropped player's next game (main.gd puts it back in its own world): its lobby link is offered the way back into the party, and nothing joins by itself
+	var rb := _branch()
+	var rsolo := await _game(rb, ch_j, api_j, _opts({"name": "joiner", "lobby_token": lobby.token(102, "joiner")}))
+	var told: Array = []
+	rsolo.party.social_notice.connect(func(t: String) -> void: told.append(t))
+	rsolo.party.go_online()
+	check(await until(func() -> bool: return not _rejoin_of(rsolo).is_empty(), 8.0), "rejoin: the dropped player's new game is offered the way back")
+	var o := _rejoin_of(rsolo)
+	check(not o.is_empty() and String(o["info"]["id"]) == String(p.info["id"]) and String(o["from"]) == "hostess" and int(o["until"]) > Time.get_ticks_msec(), "rejoin: into the same party, with the window it has left", str(o))
+	check(told.size() == 1 and String(told[0]).contains("dropped out of hostess"), "rejoin: with a toast that says so (%s)" % [told])
+	await ticks(30)
+	check(rsolo.party.mode == DmNextParty.SOLO and rsolo.party.busy == "" and hg.session.get_roster().size() == 1, "rejoin: and it never joins by itself")
+	# Rejoin: the Closed door opens without a code
+	var ready := [null]
+	rsolo.party.join_ready.connect(func(l: DmLobbyClient, i: Dictionary) -> void: ready[0] = [l, i])
+	rsolo.party.accept_invite(int(o["from_id"]))
+	check(await until(func() -> bool: return ready[0] != null, 8.0), "rejoin: Rejoin seats the player in the Closed party, no code needed")
+	var jg := await _join_as_client(rsolo, rb, ch_j, api_j, ready[0][0])
+	check(await until(func() -> bool: return jg.session.is_active() and hg.session.get_roster().size() == 2 and jg.session.get_bodies().size() == 2, 10.0), "rejoin: both sides see both players again")
+	# dropped once more: offered again (a joined party is a new party for the offer), and a dismissed offer stays dismissed on later connections
+	var ended := [null]
+	jg.party.client_ended.connect(func(c: String, t: String) -> void: ended[0] = [c, t])
+	jg.party.lobby._ws.close(1006, "gone")
+	check(await until(func() -> bool: return ended[0] != null and hg.session.get_roster().size() == 1, 8.0), "rejoin: dropped again")
+	await jg.leave()
+	jg.queue_free()
+	rb.queue_free()
+	await ticks(2)
+	var rb2 := _branch()
+	var rsolo2 := await _game(rb2, ch_j, api_j, _opts({"name": "joiner", "lobby_token": lobby.token(102, "joiner")}))
+	var told2: Array = []
+	rsolo2.party.social_notice.connect(func(t: String) -> void: told2.append(t))
+	rsolo2.party.go_online()
+	check(await until(func() -> bool: return not _rejoin_of(rsolo2).is_empty(), 8.0), "rejoin: offered again after the second drop")
+	# the link reconnects (a blip): the lobby tells again while the window lasts; the same offer is not announced twice
+	rsolo2.party.close_link()
+	rsolo2.party.refresh()
+	var repeated := [0]
+	rsolo2.party.lobby.rejoin_offered.connect(func(_f: String, _i: int, _s: Dictionary, _ms: int) -> void: repeated[0] += 1)
+	check(await until(func() -> bool: return repeated[0] == 1 and rsolo2.party.link == "ready", 8.0), "rejoin: the lobby repeats the offer on the next connection of the window")
+	await ticks(10)
+	check(rsolo2.party.invites.filter(func(v: Dictionary) -> bool: return bool(v.get("rejoin", false))).size() == 1 and told2.size() == 1, "rejoin: as the same row, announced once", str(told2))
+	rsolo2.party.decline_invite(int(_rejoin_of(rsolo2)["from_id"]))
+	check(_rejoin_of(rsolo2).is_empty() and rsolo2.party.mode == DmNextParty.SOLO, "rejoin: Dismiss removes it")
+	rsolo2.party.close_link()
+	rsolo2.party.refresh()
+	repeated[0] = 0
+	rsolo2.party.lobby.rejoin_offered.connect(func(_f: String, _i: int, _s: Dictionary, _ms: int) -> void: repeated[0] += 1)
+	check(await until(func() -> bool: return repeated[0] == 1 and rsolo2.party.link == "ready", 8.0), "rejoin: the lobby still repeats it after a Dismiss")
+	await ticks(10)
+	check(_rejoin_of(rsolo2).is_empty() and told2.size() == 1, "rejoin: but a dismissed offer is not shown again", str(told2))
+	await rsolo2.leave()
+	rsolo2.queue_free()
+	rb2.queue_free()
 	await ticks(2)
 
 

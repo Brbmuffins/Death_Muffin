@@ -14,7 +14,9 @@
       "The Mourning Bell now works: each hit of your wraiths heals you and the party members near them by 2% of their health.",
       "The last few seconds of gathering are no longer lost when you quit, log out or switch character: they are paid and counted before the game closes.",
       "Easy auto combat now walks round gravestones instead of getting stuck in the gaps between them.",
-      "Seven Covenant counsel tips that never appeared now show, each once at its moment: the Depths (going down alone, each floor, elites with extra affixes, the fifth floor's chest), the Week's Omen, a new weapon line, a set bonus switching on, and the loadouts tip when you learn your sixth rite."
+      "Seven Covenant counsel tips that never appeared now show, each once at its moment: the Depths (going down alone, each floor, elites with extra affixes, the fifth floor's chest), the Week's Omen, a new weapon line, a set bonus switching on, and the loadouts tip when you learn your sixth rite.",
+      "If your connection to a party drops, the game now offers to take you back: a notice and a Rejoin button in the Social window (O) for 5 minutes. It never joins by itself.",
+      "Friends now see you online from the moment you sign in, at character select and while the world loads, not only once you are in the world."
     ]
   },
   {

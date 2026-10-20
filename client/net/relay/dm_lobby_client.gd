@@ -35,6 +35,8 @@ signal invite_sent(account_id: int, user: String)
 signal join_requested(account_id: int, user: String, via: String)   ## a friend (via: a friend of theirs in our party) asks to join us
 signal ask_sent(account_id: int, user: String)
 signal ask_declined(user: String)
+## Our connection to a session dropped (not a leave or a removal): it keeps our place for a few minutes. `ms` is the window left; `from_name` / `from_id` the host; joining `info.id` needs no code (lobby README "Rejoin window").
+signal rejoin_offered(from_name: String, from_id: int, info: Dictionary, ms: int)
 
 enum State { IDLE, CONNECTING, AUTHENTICATING, LOBBY, IN_SESSION_HOST, IN_SESSION_CLIENT, CLOSED }
 
@@ -305,3 +307,5 @@ func _on_text(text: String) -> void:
 			ask_sent.emit(int(m.get("accountId", 0)), str(m.get("username", "")))
 		"ask_declined":
 			ask_declined.emit(str(m.get("username", "")))
+		"rejoin":
+			rejoin_offered.emit(str(m.get("from", "")), int(m.get("fromId", 0)), m.get("session", {}), int(m.get("ms", 0)))
