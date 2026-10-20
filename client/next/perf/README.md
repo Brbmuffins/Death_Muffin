@@ -2,7 +2,10 @@
 
 `DmNextPerf` (child `Perf` of `DmNextGame`, `game.perf`): the Settings panel's graphics, fps cap and auto-resolution settings.
 `apply(settings)` runs in `start()` (the player's settings file, read only; a bare scene gets High's defaults) and on every Settings change (`DmNextUiHost`).
-- `graphics` is the preset (`DmGraphicsPreset`: Low, Medium, High, Ultra; what each sets and how the lift of each area sits on top: client/README.md "Graphics presets"). Low: no moon shadows, no bloom, halved weather, `Vfx.quality = "low"`; High and Ultra
+- `graphics` is the preset (`DmGraphicsPreset`: Low, Medium, High, Ultra; what each sets and how the lift of each area sits on top: client/README.md "Graphics presets"). The RenderingServer
+  is told only what changed (`DmGraphicsPreset.apply_render`): setting the soft-shadow filter, even to the value it has, makes Godot 4.7.2 drop every compiled
+  pipeline, so a new game and every Settings apply used to throw away what the warm-up had compiled. A preset change still compiles again (it must).
+  `client/tools/compile_probe.gd` counts the pipelines each fresh game compiles on the VPS's software Vulkan (one short run; `--why` checks the re-apply steps). Low: no moon shadows, no bloom, halved weather, `Vfx.quality = "low"`; High and Ultra
   add the Binbun effects, ambient occlusion and the glow.
 - Moon shadow casters: the crowd's shadow policy (`DmCrowd.set_shadow_policy`, client/crowd/README.md "Crowd cost") keeps the nearest 12 enemies (8 with 32+ alive) casting on High (Medium 8/6, Ultra 20/14, Low none); the hero, thralls and bosses always cast
   (thralls unless the preset has no shadows).

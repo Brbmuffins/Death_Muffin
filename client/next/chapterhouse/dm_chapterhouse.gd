@@ -63,6 +63,8 @@ func setup(game_: DmNextGame) -> void:
 	_audio = get_node_or_null("/root/AudioDirector") if _visual else null
 	for id in DmContent.area_order():
 		for it in DmContent.area(String(id))["interactables"]:
+			if it["kind"] == "upgrades" and not DmAscension.OPEN:
+				continue  # the Altar of Ascension stands as scenery until Ascension's redesign (B36)
 			var d: Dictionary = (it as Dictionary).duplicate()
 			d["area"] = String(id)
 			interactables.append(d)

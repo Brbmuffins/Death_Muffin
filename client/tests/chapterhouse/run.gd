@@ -135,7 +135,6 @@ func _run() -> void:
 	var checks := [
 		["reliquary", "reliquary", func() -> bool: return g.ui.is_open("inventory")],
 		["workbench", "workbench", func() -> bool: return g.ui.pb.forges.has("") and g.ui.pb.forges[""].visible],
-		["altar", "altar", func() -> bool: return g.ui.is_open("ascension")],
 		["ossuary_vault", "vault", func() -> bool: return g.ui.pb.vault.window.visible],
 		["waystone_chapterhouse", "waystone", func() -> bool: return g.ui.is_open("map")],
 		["niches", "professions", func() -> bool: return g.ui.pa.acre_win.visible],
@@ -231,26 +230,32 @@ func _run() -> void:
 		check(false, "the Workbench has a reforge view")
 	g.ui.close_panels()
 
-	# ---- Altar: opens with the backend's state; an ascension attempt before the Prelate is refused by the same API
-	var altar := interactable("altar")
-	at(float(altar["x"]), float(altar["z"]) + 1.4)
-	h.interact(altar)
+	# ---- Altar: scenery while Ascension is out (B36): no hover, prompt or window, and the station event opens nothing
+	check(interactable("altar").is_empty() and h.interactables.all(func(i: Dictionary) -> bool: return i["kind"] != "upgrades"), "the Altar of Ascension is not interactable while Ascension is out")
+	g.ui.open_station("altar")
 	await ticks(3)
-	check(g.ui.is_open("ascension"), "Altar opens the Ascension panel")
-	at(float(altar["x"]) + 2.0, float(altar["z"]) + 1.4)
-	settle()
-	check(g.ui.is_open("ascension"), "a couple of steps from the Altar its window stays open")
-	at(float(altar["x"]) + 8.0, float(altar["z"]) + 1.4)
-	settle()
-	check(not g.ui.is_open("ascension"), "walking away from the Altar closes its window")
-	at(float(altar["x"]), float(altar["z"]) + 1.4)
-	h.interact(altar)
+	check(not g.ui.is_open("ascension"), "the altar station opens no Ascension window")
+	g.ui.close_panels()
+
+	# ---- a station's window: stays open a couple of steps away, closes when you walk off (the Ossuary Vault)
+	var vault := interactable("ossuary_vault")
+	at(float(vault["x"]), float(vault["z"]) + 1.4)
+	h.interact(vault)
 	await ticks(3)
+	check(g.ui.pb.vault.window.visible, "the Vault opens its window")
+	at(float(vault["x"]) + 2.0, float(vault["z"]) + 1.4)
+	settle()
+	check(g.ui.pb.vault.window.visible, "a couple of steps from the Vault its window stays open")
+	at(float(vault["x"]) + 8.0, float(vault["z"]) + 1.4)
+	settle()
+	check(not g.ui.pb.vault.window.visible, "walking away from the Vault closes its window")
+	g.ui.close_panels()
+
+	# ---- the backend's Ascension state is kept: an ascension attempt before the Prelate is refused by the same API
 	var ar := await api.necro_ascend(cid)
 	check(not ar.ok, "ascension is refused until it is earned (same DmApi): '%s'" % ar.error)
 	await g.ui_host.refresh_progress()
 	check(int(g.ui_host.progress["ascension"]) == 0, "refresh_progress adopts the backend's necro state")
-	g.ui.close_panels()
 
 	# ---- waystone travel / recall
 	var way_c := interactable("waystone_chapterhouse")

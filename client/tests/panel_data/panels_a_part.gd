@@ -546,10 +546,11 @@ func _test_codex() -> void:
 	w.set_met_npcs(["prior"])
 	var c: Dictionary = DmContent.file("codex")
 	# every tab builds and has content
-	for t in DmCodexPanel.TABS:
+	for t in DmCodexPanel.shown_tabs():
 		w.select_tab(String(t[0]))
 		_check(w.tab_view(String(t[0])).get_child_count() > 0 or String(t[0]) == "chronicle", "codex tab '%s' has content" % t[0])
-	_check(not DmCodexPanel.TABS.is_empty(), "codex: it has tabs")
+	_check(not DmCodexPanel.shown_tabs().is_empty(), "codex: it has tabs")
+	_check(DmAscension.OPEN or DmCodexPanel.shown_tabs().all(func(t: Array) -> bool: return t[0] != "altar"), "codex: no Altar page while Ascension is out (B36)")
 	# rites: one entry per RITE_ORDER
 	w.select_tab("rites")
 	_eq(_entries(w.tab_view("rites")).size(), c["RITE_ORDER"].size(), "rites tab lists every rite")
@@ -821,9 +822,11 @@ func _test_dialogue() -> void:
 	_eq(_choice_texts(d), [labels["about"], labels["bye"]], "advice offers about / goodbye")
 	d.choose(0)
 	_eq(d.node_kind, "about", "about node")
-	var topics: Array = DmContent.get_export("dialogue", "TOPICS")["prior"]
+	# the Prior's topics, less the Altar of Ascension while Ascension is out (B36)
+	var topics: Array = (DmContent.get_export("dialogue", "TOPICS")["prior"] as Array).filter(func(t: Dictionary) -> bool: return t["id"] != "ascension" or DmAscension.OPEN)
 	var texts := _choice_texts(d)
 	_eq(texts.size(), topics.size() + 1, "about lists the topics plus Back")
+	_check(DmAscension.OPEN or not texts.any(func(t: String) -> bool: return t.contains("Ascension")), "no Altar of Ascension topic while Ascension is out")
 	_eq(texts[texts.size() - 1], labels["back"], "Back last")
 	for b in DmPa.acts(d, "choice"):
 		if b.get_meta("arg") < topics.size():

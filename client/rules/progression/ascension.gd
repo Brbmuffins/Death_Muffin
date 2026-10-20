@@ -3,6 +3,11 @@ extends RefCounted
 ## Port of server/rules/content/ascension.ts logic: vows (heat, effects), boons, Ashes, unlock keys.
 ## Pure statics. Vow/boon rank maps are plain Dictionaries ({vow_id: steps}) exactly as stored in the save JSON.
 
+## Ascension is out until its Phase 3 redesign (DECISIONS B36): the Altar is scenery, the Prior does not offer or talk about it, the Codex has
+## no Altar page, and party, friends and invite rows show no Heat. Players' saved Ascension data stays on the server untouched. The redesign
+## sets this back to true (or removes it) when it brings Ascension back.
+const OPEN := false
+
 
 static func vow_steps(vows: Variant, id: String) -> int:
 	var def: Dictionary = DmProgContent.vows()[id]

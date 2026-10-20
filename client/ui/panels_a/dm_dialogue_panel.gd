@@ -135,6 +135,8 @@ func choices() -> Array:
 		"about":
 			var out: Array = []
 			for t in DmContent.get_export("dialogue", "TOPICS")[npc]:
+				if t["id"] == "ascension" and not DmAscension.OPEN:
+					continue  # the Prior does not talk about the Altar while Ascension is out (B36)
 				out.append({"label": String(t["label"]), "fresh": not source.heard_topic(npc, String(t["id"])), "go": "topic", "id": String(t["id"])})
 			out.append({"label": String(labels["back"]), "go": "menu"})
 			return out
