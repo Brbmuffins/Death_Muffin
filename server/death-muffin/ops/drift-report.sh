@@ -113,7 +113,7 @@ if [ ! -f "$MAN" ]; then drift "manifest.json missing ($MAN)"; else
   elif ! g cat-file -e "$CREV^{commit}" 2>/dev/null; then drift "published rev $CREV is not a known commit"
   else
     # Only files that go into the exported client count (export_presets.cfg excludes tests/, tools/, dev/, shots/, build/; docs don't ship), and the combat core.
-    N="$(g rev-list --count "$CREV..$REV" -- client/ native/src/ ':(exclude)client/tests/**' ':(exclude)client/tools/**' ':(exclude)client/dev/**' ':(exclude)client/**/*.md' ':(exclude)client/shots/**' ':(exclude)client/build/**')"
+    N="$(g rev-list --count "$CREV..$REV" -- client/ native/src/ ':(exclude)client/tests/**' ':(exclude)client/tools/**' ':(exclude)client/dev/**' ':(exclude)client/*.md' ':(exclude)client/**/*.md' ':(exclude)client/shots/**' ':(exclude)client/build/**')"
     info "published rev $CREV"
     [ "$N" -gt 0 ] && drift "$N commit(s) changing the shipped game (client/ or the combat core, not tests, tools or docs) merged after the published rev $CREV, not published"
   fi
