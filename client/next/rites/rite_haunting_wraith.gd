@@ -98,7 +98,7 @@ func play(c: DmRiteCaster, ev: Dictionary) -> void:
 	var z := float(ev["z"])
 	var r := float(ev["r"])
 	if String(ev["t"]) == "rise":
-		c.fx.decal("ring", DmReaperRites.GREEN, x, z, r * 1.6, 0.6, 0.9, {"growFrom": 0.3, "fadeOut": 0.4})
+		c.fx.emit(x, 0.2, z, 14, DmReaperRites.GREEN, r * 0.7, 1.2, 4.0, 1.1, 0.14, {"gravity": -1.0})   # soul wisps streaming up as it rises
 		c.fx.smoke(x, 1.0, z, 4, DmReaperRites.DEEP, r * 0.8, 1.4, 0.9, 1.0, 1.2, {"shrink": -0.4})
 		c.fx.lf(x, 1.5, z, DmReaperRites.GREEN, 16.0, 0.3)
 		if bool(ev.get("first", true)):   # a cone of three raises one wail
@@ -107,9 +107,9 @@ func play(c: DmRiteCaster, ev: Dictionary) -> void:
 			c.shake_requested.emit(0.04)
 		DmWraithGhost.spawn(c, x, z, float(ev["dx"]), float(ev["dz"]), float(ev["speed"]), float(ev["life"]), "WraithGhost%d" % c.get_child_count())
 		return
-	# The wraith itself is the ghost model (see `rise`); here a wisp of smoke trailing it, a glow and a ring on the ground under it.
+	# The wraith itself is the ghost model (see `rise`); here a wisp of smoke trailing it, a glow and soul wisps drifting up off its path.
 	c.fx.smoke(x, 1.6, z, 2, DmReaperRites.DEEP, r * 0.6, 1.6, 0.9, 1.0, 1.2, {"shrink": -0.4})
-	c.fx.decal("ring", DmReaperRites.GREEN, x, z, r, 0.3, 0.7, {"fadeOut": 0.2})
+	c.fx.emit(x, 0.2, z, 3, DmReaperRites.GREEN, r * 0.5, 0.6, 2.5, 0.9, 0.12, {"gravity": -1.0})
 	c.fx.lf(x, 2.0, z, DmReaperRites.GREEN, 18.0, 0.3)
 	for h: Vector3 in ev["hits"]:
 		c.fx.emit(h.x, 0.9, h.z, 4, DmReaperRites.GREEN, 0.25, 2.2, 1.0, 0.4, 0.1, {"gravity": 6.0})

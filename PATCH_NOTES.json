@@ -9,6 +9,7 @@
       "The F3 performance monitor now sits in the bottom-right corner, out of the way of the HUD and windows, and you can click through it.",
       "New test weapon for the Reaper, the Scythe of Undeath (Smithing, level 1: one copper ingot and old bones): Haunting Wraith raises three wraiths in a cone, every soul in her bag adds damage and cuts damage taken, and a soul gained with a full bag casts a free Haunting Wraith.",
       "Haunting Wraith has no cooldown now, so you can cast it again while you have 5 souls to spend. With the Scythe of Undeath, every soul that lands on a full bag casts its own free Wraith, with no one-a-second limit.",
+      "Haunting Wraith no longer leaves a glowing ring on the ground under it; soul wisps rise off its path instead.",
       "Toxic corpse pools now hurt at the level of the area they are in, not always like level 1: a deeper area's pools hit as hard as its monsters.",
       "A plague bearer thrall now leaves its rot pool where it falls: it slows and withers the monsters standing in it for 5 seconds.",
       "The Mourning Bell now works: each hit of your wraiths heals you and the party members near them by 2% of their health.",
