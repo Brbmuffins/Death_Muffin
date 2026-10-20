@@ -31,6 +31,8 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
 
 ## Content pipelines
 
+- **Brew bonuses are stored twice** (found 2026-10-20 by the test audit): the items' `BUFF_FLASKS` and the brews' `BREWS` each hold every
+  flask's bonus, and only `BREWS` drives the rites, so editing the item copy changes nothing in play.
 - **An armor set touches about five files** (`server/rules/content/legendarySets.ts` or armorSets.ts, setBonuses.json, necro_gear.json,
   view_models.json, assets_used.json; `tools/generate-armor-assets.mjs` writes the rest).
 - The gear props' attachment rules (axes, size, grip point, anchor bone) live in the `_doc` of `client/data/slice/necro_gear.json`, not on a
@@ -96,6 +98,9 @@ polish list). Also:
 
 ## Party and online
 
+- **A late co-op joiner can hit a script error before its hero arrives** (found 2026-10-20 by the test audit): `client/next/next_game.gd` reads
+  `local_body().family` for the "world entered" event without the null check the lines above it have; one `coop` run in four failed with
+  "Invalid access ... 'family' on Nil" in the late joiner's start.
 - **No automatic rejoin** (D13). A dropped client returns to its own solo game and has to join again by hand (an Open party: Join; a Closed one: a new invite or Ask to join); a dropped host ends the session (D6).
 - **One area per session, Depths solo:** `client/next/areas/README.md`, `client/next/depths/README.md`.
 - **Part of a joiner's state does not reach the host's sim:** the host builds the joiner's hero from the server's record (level, gear,
@@ -122,6 +127,20 @@ polish list). Also:
 
 ## Tools and tests
 
+- **Numbers the tests cannot read yet** (the test audit, 2026-10-20: every suite now reads the game's numbers from its data or sets them
+  itself, B59). Where the game keeps a number as an inline literal, the test carries a named copy, so a retune there still needs a test edit:
+  the combat core's compiled-in values that `DmCore.tuning()` does not expose (elite radius, windup and cooldown multipliers, the 1.1 s rise,
+  the 4 s body linger, aggro and leash ranges, the default slam radius, the thralls' brain constants; `client/sim/sim_consts.gd` `RISE_TIME`
+  and `AGGRO_RANGE` look unused by the core); every number of the Prelate (literals in `client/sim/bosses/prelate_brain.gd`, while the other six
+  bosses' live in the boss data) and every boss's 60 % / 30 % phase lines, rims and phase speed-ups; HUD and counsel thresholds (low health
+  0.3, toast and chat caps, the counsel's distances and kill counts), the mixer's levels, the surge offering's gold, the first-kill +2
+  shards, the gathering loop's 10 s retry; shared-rules values that are not exported (contract quantities and bonus, the boss shard formula,
+  `RUNE_DUST`, `MAX_FORTUNE`, `SOURCE_COUNT.min`) and the offline-sync check's typed level 100 and 12 professions; the mock backend's bag of 48
+  and starter kit (`client/net/dm_mock_backend.gd`). Moving each into data or a named constant lets its test read it.
+- **Goldens with no command to remake them**: `gear`, `sim`, `auto_combat_fixtures` and the audio suites' fixtures came from the retired web
+  game's generators, so a gear, stat or mixer retune breaks them with nothing to regenerate them; the brew-of-the-day cases in `panel_data`
+  need re-recording when a brew is added. (The loot rules' answers and the boss replays are remade or data-independent since 2026-10-20.)
+- `server/death-muffin/backend/bag-fake-db.cjs` lists the salvage materials by hand, so a salvage retune fails in the fake rather than the rules.
 - **Game code that nothing in the game calls** (found by the suite consolidation, 2026-10-19; their tests are gone): 17 of
   `DmAudioHooks`' static one-liners in `client/main/audio_hooks.gd` (`click`, `error`, `panel_open`, `panel_close`, `needle_cast`,
   `needle_hit`, `enemy_windup`, `enemy_strike`, `enemy_died`, `hero_hurt`, `thrall_raised`, `thrall_hit`, `thrall_died`, `loot_drop`,

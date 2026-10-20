@@ -281,7 +281,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   CI passed its exact files (`tools/check/ci.sh`); the VPS runs single suites while working, and the full set only when GitHub is down.
   Approvals that wait for a ship still go out together: they merge as one tree that CI tests once. Tests compare the game's data with
   itself, never typed totals or tuning values (a spell War added broke a count; a typed spell speed broke War's faster Haunting Wraith). Replaces the morning's rule (444da1ad: wait about 20 minutes for CI with a
-  local quick check beside it) and the agent's own preparation and cache.
+  local quick check beside it) and the agent's own preparation and cache. On 2026-10-20 (Helix: "scan ALL tests for issues like this and fix them", after the Haunting Wraith's one-cast clip broke when War removed its cooldown) every game suite and every server test was audited: typed totals and tuning values are read from the data, and a scenario that only holds for today's numbers derives its expectation from the data or sets the number itself (`DmQaTune.apply`); what the game still keeps as inline literals is listed in KNOWN-GAPS.
 - **B60. A Windows release build ends its own process after the game's shutdown** (Claude, 2026-10-19, with Helix's crash files). The
   release engine's last teardown crashes on Windows after every quit, the benchmark's and a player's alike (0xC0000374 heap corruption or
   0xC0000005 at the same engine code; the debug engine with the same pack, art and combat core closes cleanly; KNOWN-GAPS "Stability"). Once

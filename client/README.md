@@ -55,7 +55,11 @@ bash client/tools/coop_local.sh                        # a local lobby and relay
 ```
 
 **Numbers in tests.** A test reads the game's numbers from the data (`DmAbilities`, `DmCombatData`, the content tables) and never types a
-total or a tuning value, so adding content or retuning never breaks it (CLAUDE.md, DECISIONS B59).
+total or a tuning value, so adding content or retuning never breaks it (CLAUDE.md, DECISIONS B59). A scenario whose outcome depends on a
+number (how many casts fit in a clip, how many hits kill, how much gold a run pays) either computes its expectation from the data or makes
+the number its own input: `DmQaTune.apply({"combat/abilities": {"abilities": {"<rite>": {"cooldownMs": 300.0}}}})` before the scene is built,
+the old value put back (or `DmDb.reset()`) after. Server tests do the same with the rules' exported tables and constants. Fixed design rules
+(loot expires in 3 minutes, a party of 4), protocol constants, the parity fixtures and the CLAUDE.md budgets stay typed.
 
 **Suite names.** A suite is named after the system it protects, in snake_case, as a player or the code would call that system: `<system>` (`hud`, `gathering`, `spells`), `<system>_<part>` when one system has several suites (`boss_mire`, `benchmark_rooms`), `core_<part>` for the combat core's own suites and `rules_<area>` for the shared rules' fixtures. A suite with more than one runner is a folder, and each runner is named after what it runs (`lobby/ui`, `relay/udp`). Names carry no history (no `next_`, `game/` or `perf/`, which came from the first game's folders): a renamed or deleted suite's old name is retired in `tools/hygiene/retired.json`.
 

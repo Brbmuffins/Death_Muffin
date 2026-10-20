@@ -83,7 +83,9 @@ touches only documents goes live with no game update.
    `client/data/content/*.json` table needs no count raised anywhere, and retuning a number needs no test edit: tests compare the game's data
    with itself and never type a total (how many spells, areas, bosses) or a tuning value (a spell's speed, damage, cooldown or cost, an
    enemy's health): they read it from the data. A test you write or fix must not type one either; a value a test tunes on purpose is its own
-   input (DECISIONS B59).
+   input (DECISIONS B59). The same goes for hidden dependencies: a scenario that only works with today's numbers (one cast in a 2 s clip while
+   the cooldown is longer, dies in 3 hits) computes its expectation from the data or sets the number itself with `DmQaTune.apply` (client/README.md
+   "Numbers in tests").
    UI interactions (clicks, drags, Shift/Ctrl+click, typing into a field, Enter, hover) are tested the way a player does them: send real
    input events (`InputEventMouseButton` press AND release, `InputEventKey`, `text_changed` on the LineEdit for typed text) to the control's
    `_gui_input` or `Input.parse_input_event`, not by emitting the control's signal or setting its value from code. 2026-10-10: the Vault's
