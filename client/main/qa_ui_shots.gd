@@ -11,7 +11,7 @@ extends RefCounted
 ## Plan: {"bag": "demo"|"keep", "give": ["item id", ...] (extra items, one each), "equip": ["item id", ...] (max 12, worn like a player equipping from the bag),
 ##        "discipline": "ossuary"|"gravecaller"|"mourner"|"rotweaver"|"reaper" (or 1-4 / 11; read by the launching script, which passes --class=N: client/tools/qa_shots.sh),
 ##        "shots": [{"name", "open": "bag" | ["bag", ...], "hover": <bag slot 0-47> | "item:<item id>" | "worn:<equip slot>" | "belt:<tool>",
-##        "area": "<area id>", "wait_ms": 300, "clip": "window", "view": "hero" | "game", "turn": <degrees>, "anim": "idle" | "run" | "cast", "fight": true}]}.
+##        "area": "<area id>", "wait_ms": 300, "clip": "window", "view": "hero" | "game", "turn": <degrees>, "anim": "idle" | "run" | "cast", "fight": true, "perf": true}]}.
 ## At most MAX_SHOTS shots per plan: a plan with more is refused (`QA-SHOTS plan error:`, exit code 2), not trimmed (run several plans for more). "open" lists are applied in order (the game keeps one window
 ## open at a time, so the last one stays). "clip": "window" crops to the open window (plus the tooltip when one is shown); default is the whole screen.
 ## "equip": each id is added to the bag (gear gets a real backend roll) and equipped through the backend's equip call, then the bag reloads, so the avatar
@@ -21,12 +21,14 @@ extends RefCounted
 ## dev-offline start are only climbing out 18 m away or more after a few seconds: nothing is on screen, nothing is cast, nothing is hit.
 ## "view": "hero" closes every window, hides the HUD and frames the hero full body close-up from the front (`turn` degrees: 0 faces the camera, 180 shows the
 ## back; `anim` poses the hero and freezes it after a short settle); "game" is the normal game camera with the HUD hidden. The camera, HUD and pose are restored after the shot.
+## "perf": true shows the F3 performance overlay (hidden otherwise) and waits at least PERF_WAIT_MS so its numbers are drawn; a shot without it hides the overlay.
 ## Window ids (WINDOWS): bag/reliquary/inventory, character/gear/sheet, pets/cosmetics, legion, grimoire/spellbook, vault, forge, salvage, shelf,
 ## codex, atlas, ascension, map, class, settings, professions, garden, labor, contracts, social/friends, party.
 
 const MAX_SHOTS := 6
 const MAX_WAIT_MS := 5000
 const MAX_EQUIP := 12
+const PERF_WAIT_MS := 800    ## "perf": the overlay repaints every 0.25 s, so the wait is at least this
 const FIGHT_FOES := 8        ## "fight": enemies made round the hero
 const FIGHT_STEP_S := 0.4    ## "fight": the hero casts this often
 const DEFAULT_TURN := 25.0   ## a hero view without "turn" stands slightly turned (front three-quarter); "turn": 0 faces the camera
@@ -55,7 +57,7 @@ const DEMO_BAG := [
 
 
 ## Parses and validates plan text. Returns {ok, error, bag, give, equip, class_index (0 = not set), shots} with normalised shots
-## ({name, open: Array[String] of canonical window ids, hover: Variant (int|String|null), area, wait_ms, clip, view, turn (degrees), anim, fight}).
+## ({name, open: Array[String] of canonical window ids, hover: Variant (int|String|null), area, wait_ms, clip, view, turn (degrees), anim, fight, perf}).
 static func parse(text: String) -> Dictionary:
 	var out := {"ok": false, "error": "", "bag": "demo", "give": [], "equip": [], "class_index": 0, "shots": []}
 	var js := JSON.new()
@@ -118,12 +120,13 @@ static func parse(text: String) -> Dictionary:
 			out["error"] = "shot %d: anim must be idle, run or cast" % (i + 1)
 			return out
 		var fight: Variant = s.get("fight", false)
+		var perf: Variant = s.get("perf", false)
 		var nm := String(s.get("name", "shot-%d" % (i + 1))).to_lower()
 		var rx := RegEx.create_from_string("[^a-z0-9-]+")
 		nm = rx.sub(nm, "-", true).substr(0, 40)
 		(out["shots"] as Array).append({"name": nm if nm != "" else "shot-%d" % (i + 1), "open": wins, "hover": hover, "area": String(s.get("area", "")),
-			"wait_ms": clampi(int(s.get("wait_ms", 300)), 0, MAX_WAIT_MS), "clip": "window" if String(s.get("clip", "")) == "window" else "",
-			"view": view, "turn": fmod(float(s.get("turn", DEFAULT_TURN)), 360.0), "anim": anim, "fight": fight is bool and fight})
+			"wait_ms": clampi(maxi(int(s.get("wait_ms", 300)), PERF_WAIT_MS if perf is bool and perf else 0), 0, MAX_WAIT_MS), "clip": "window" if String(s.get("clip", "")) == "window" else "",
+			"view": view, "turn": fmod(float(s.get("turn", DEFAULT_TURN)), 360.0), "anim": anim, "fight": fight is bool and fight, "perf": perf is bool and perf})
 		i += 1
 	out["ok"] = true
 	return out
@@ -218,6 +221,8 @@ static func stage(root: Node, game: DmNextGame, s: Dictionary) -> Dictionary:
 		_fight_begin(game)
 	for w in s["open"]:
 		ui.toggle_panel(w)
+	for o in tree.root.find_children("*", "DmPerfOverlay", true, false):
+		o.set_shown(s["perf"])
 	var saved := {}
 	if s["view"] != "":
 		saved = _view_begin(game, s)

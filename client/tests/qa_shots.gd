@@ -80,6 +80,7 @@ func _main() -> void:
 	await scene_setup()
 	await scripted_fight()
 	await fight_shot()
+	perf_shot_plan()
 	settings_loan()
 	await preset_on_game()
 	await ui_scale_on_game()
@@ -285,6 +286,13 @@ func hovers_and_windows() -> void:
 			shut.append(id)
 	g.ui.close_panels()
 	check(shut.is_empty() and opened.size() == 21, "every window id the plan accepts opens on the game (%d windows; not: %s)" % [opened.size(), str(shut)])
+
+
+## A "perf" shot shows the performance overlay and waits long enough for it to draw; anything else leaves it hidden.
+func perf_shot_plan() -> void:
+	var pf: Array = DmQaUiShots.parse('{"shots":[{"perf":true,"wait_ms":0},{"perf":"yes"},{}]}')["shots"]
+	check(pf.map(func(sh: Dictionary) -> bool: return sh["perf"]) == [true, false, false], "\"perf\" is a true or false, false when it is not given")
+	check(int(pf[0]["wait_ms"]) == DmQaUiShots.PERF_WAIT_MS and int(pf[1]["wait_ms"]) == 300, "a perf shot waits at least PERF_WAIT_MS, others keep their wait")
 
 
 ## A "fight" shot: the pack is made round the hero, the hero casts at it and hits it, the pack is on screen at the end of the wait (what the release checks' hud-fight shot needs).
