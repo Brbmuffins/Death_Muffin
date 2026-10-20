@@ -1666,17 +1666,19 @@ func _reaper_swings() -> void:
 	check(souls() == 12 and evs("scythe_weave", "weave").size() == 2, "weave: free, one event a stroke")
 	r = cast("scythe_weave", hero.position)
 	check(not r["ok"] and r["reason"] == "no_target", "weave: refused with the cursor on her (%s)" % r["reason"])
-	# Haunting Wraith: 5 souls, 14 s; walks toward the cursor and hurts what it passes through every quarter second
+	# Haunting Wraith: 5 souls, no cooldown; walks toward the cursor and hurts what it passes through every quarter second
 	await reaper_reset()
 	var hw_in := foe("robber", at(6.0))
 	var hw_out := foe("robber", at(6.0, 9.0))
 	c.p["souls"] = 12
 	m = dmg_log.size()
 	if accepted(cast("haunting_wraith", at(14.0)), "haunting_wraith"):
-		check(souls() == 7 and near(c.cooldown_left("haunting_wraith"), 14000.0), "wraith: pays 5 souls, 14 s cooldown (%d left)" % souls())
+		check(souls() == 7 and c.cooldown_left("haunting_wraith") == 0.0, "wraith: pays 5 souls, no cooldown (%d left)" % souls())
 		await secs(2.5)
 		check(blows(hw_in, m) >= 2 and blows(hw_out, m) == 0, "wraith: hurts the enemy in its path more than once, not the one off to the side (%d, %d)" % [blows(hw_in, m), blows(hw_out, m)])
 		check(evs("haunting_wraith", "rise").size() == 1 and evs("haunting_wraith", "walk").size() >= 2, "wraith: one rise event, then one event each step")
+		var s_before := souls()
+		check(accepted(cast("haunting_wraith", at(14.0)), "haunting_wraith") and souls() == s_before - 5, "wraith: cast again at once while there are souls to spend (%d of %d left)" % [souls(), s_before])
 	r = cast("haunting_wraith", hero.position)
 	check(not r["ok"] and r["reason"] != "", "wraith: refused with the cursor on her (%s)" % r["reason"])
 	# life steal: each enemy a swing strikes heals leechPerHit of her health, at most leechSwingCap a swing; the thrown scythe heals nothing
@@ -1962,7 +1964,7 @@ func _reaper_undeath() -> void:
 			var d2 := Vector2(float(rises[2]["dx"]), float(rises[2]["dz"]))
 			check(d1.is_equal_approx(Vector2(dirv.x, dirv.z).normalized()) and near(rad_to_deg(d0.angle_to(d1)), DmUndeathScythe.SPREAD_DEG, 1e-3) and near(rad_to_deg(d1.angle_to(d2)), DmUndeathScythe.SPREAD_DEG, 1e-3)
 				and bool(rises[0]["first"]) and not bool(rises[1]["first"]) and not bool(rises[2]["first"]), "undeath: the middle wraith goes where she aims, the others %.0f degrees either side" % DmUndeathScythe.SPREAD_DEG)
-	# a soul earned with a full bag: nothing without the scythe, a free cone with it (no souls, no cooldown), at most one a second
+	# a soul earned with a full bag: nothing without the scythe, a free cone with it (no souls, no cooldown), one for every such soul
 	await reaper_reset(8.0)
 	foe("robber", at(14.0))
 	foe("robber", at(10.0), 0.01)
@@ -1979,7 +1981,7 @@ func _reaper_undeath() -> void:
 	foe("robber", at(10.0), 0.01)
 	cast("scythe_sweep", at(14.0))
 	await ticks(3)
-	check(evs("haunting_wraith", "rise").size() == DmUndeathScythe.WRAITHS, "undeath: a second kill within a second raises no more")
+	check(evs("haunting_wraith", "rise").size() == 2 * DmUndeathScythe.WRAITHS, "undeath: every soul at a full bag raises its own free Wraith (%d raised)" % evs("haunting_wraith", "rise").size())
 
 
 ## The easy auto-combat's pick for her (DmAutoCombat's Reaper branch, fed by the ported DmNextAutoCombat from the core's arrays).

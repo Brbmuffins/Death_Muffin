@@ -1,6 +1,6 @@
 extends DmRiteModule
 ## Haunting Wraith (the Reaper, Grimoire only): a huge wraith rises at her feet and walks `range` (14 m) toward the cursor at `speed` (6 m/s: 2.3 s), hurting every enemy it
-## touches (`radius` 2.2 m round it, plus the enemy's radius) every 0.25 s for `power` 0.5. 5 souls, 14 s. The numbers are the rite's row in data/combat/abilities.json. Host: `mem("haunting_wraith").walkers`
+## touches (`radius` 2.2 m round it, plus the enemy's radius) every 0.25 s for `power` 0.5. 5 souls, no cooldown. The numbers are the rite's row in data/combat/abilities.json. Host: `mem("haunting_wraith").walkers`
 ## (the damage is rolled once, at the cast); every peer draws the wraith from the cast event (its ghost model, `DmWraithGhost`) and from each tick's event.
 ## Scythe of Undeath (DmUndeathScythe): raises three in a cone, and a soul earned with a full bag casts one free (`free_cast`).
 ## On the combat core: the wraith's targets are DmFoe snapshots from `DmReaperRites.cone`, a blow is `c.deal` (through `DmReaperRites.strike`).
@@ -32,10 +32,9 @@ func _raise_all(c: DmRiteCaster, dir: Vector2) -> void:
 
 
 ## HOST, from the soul bank (DmNextMeta): a soul earned with the bag already full casts a free Wraith (no souls, no cooldown) with every effect above, at an
-## enemy within its walk picked at random, the near ones likelier (weight 1 / (1 + distance)). At most one a second. True when one was raised.
+## enemy within its walk picked at random, the near ones likelier (weight 1 / (1 + distance)). One for every soul that finds the bag full. True when one was raised.
 func free_cast(c: DmRiteCaster) -> bool:
-	var mem := c.mem(id)
-	if not bool(c.mods.get("soulWraith", false)) or not bool(c.p["alive"]) or c.now_ms < float(mem.get("freeAt", 0.0)):
+	if not bool(c.mods.get("soulWraith", false)) or not bool(c.p["alive"]):
 		return false
 	var from := c.pos()
 	var picks: Array[Vector2] = []
@@ -59,7 +58,6 @@ func free_cast(c: DmRiteCaster) -> bool:
 		if roll < 0.0:
 			chosen = picks[i]
 			break
-	mem["freeAt"] = c.now_ms + DmUndeathScythe.FREE_COOLDOWN_MS
 	_raise_all(c, chosen)
 	return true
 

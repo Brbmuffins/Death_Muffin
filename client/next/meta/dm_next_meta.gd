@@ -164,9 +164,7 @@ func _bank_reaper_soul(b: DmHeroBody, at: Vector3) -> void:
 	if b.p.is_empty() or not b.alive:
 		return
 	if int(b.p["souls"]) >= int(b.p["soulsMax"]):
-		var caster := b.get_node_or_null("Rites") as DmRiteCaster   # the Scythe of Undeath: a soul with nowhere to go casts a free Haunting Wraith
-		if caster != null and bool(caster.mods.get("soulWraith", false)):
-			(DmRiteRegistry.module("haunting_wraith") as DmRiteModule).call(&"free_cast", caster)
+		_overflow_soul(b)
 		return
 	var vfx := get_node_or_null("/root/Vfx")
 	if vfx == null or not shell._visual:
@@ -185,8 +183,16 @@ func _bank_reaper_soul(b: DmHeroBody, at: Vector3) -> void:
 			"on_arrive": func(pos: Vector3) -> void:
 				var hero: DmHeroBody = bw.get_ref() as DmHeroBody
 				if hero != null and hero.alive and not hero.p.is_empty():
-					DmPlayerRules.bag_add(hero.p, 1)
+					if DmPlayerRules.bag_add(hero.p, 1) == 0:   # the bag filled while the soul flew: it is an overflow soul after all
+						_overflow_soul(hero)
 				fx.emit(pos.x, pos.y, pos.z, 6, DmReaperRites.GREEN, 0.25, 1.4, 0.8, 0.4, 0.18)})
+
+
+## The Scythe of Undeath: a soul with nowhere to go (the bag is full, at the kill or when the soul lands) casts a free Haunting Wraith.
+func _overflow_soul(b: DmHeroBody) -> void:
+	var caster := b.get_node_or_null("Rites") as DmRiteCaster
+	if caster != null and bool(caster.mods.get("soulWraith", false)):
+		(DmRiteRegistry.module("haunting_wraith") as DmRiteModule).call(&"free_cast", caster)
 
 
 func _float(b: Node3D, y: float, text: String, kind: String) -> void:

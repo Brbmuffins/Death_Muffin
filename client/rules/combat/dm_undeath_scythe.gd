@@ -13,7 +13,6 @@ const WRAITHS := 3
 const SPREAD_DEG := 25.0
 const MIGHT_PER_SOUL := 0.02
 const WARD_PER_SOUL := 0.01
-const FREE_COOLDOWN_MS := 1000.0   ## at most one free wraith a second, so a pack dying at once does not raise one per corpse
 
 
 static func worn(slots: Array) -> bool:

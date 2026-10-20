@@ -415,7 +415,7 @@
   "haunting_wraith": {
    "fx": "reaper",
    "colour": "Soul green",
-   "tip": "5 souls, 14s cooldown: a huge wraith rises at your feet and walks 14m toward the cursor, hurting every enemy it touches every quarter second as it passes. Send it down a corridor of monsters; place it from the Grimoire."
+   "tip": "5 souls, no cooldown: a huge wraith rises at your feet and walks 14m toward the cursor, hurting every enemy it touches every quarter second as it passes. Send it down a corridor of monsters; place it from the Grimoire."
   },
   "unleash_souls": {
    "fx": "reaper",
