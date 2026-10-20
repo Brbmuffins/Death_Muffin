@@ -1,0 +1,2692 @@
+{
+ "about": "Baseline before any change to how rules are loaded (tools/context/README.md). static: measure.mjs on main 2ccce622. usage: usage.mjs --tokens-only over Claude Code transcripts on the VPS; 'since18' = every audience 2026-10-18..20 (the client/ era), 'agent' = the Discord agent 2026-10-11..20 (since its 40-step sessions).",
+ "static": {
+  "sizes": {
+   "charsPerToken": 2.7,
+   "audiences": {
+    "session": {
+     "what": "a Claude Code session started in a checkout of this repository (also its subagents)",
+     "always": [
+      {
+       "file": "CLAUDE.md",
+       "chars": 10292,
+       "tokens": 3812,
+       "sections": [
+        {
+         "title": "(preamble)",
+         "chars": 577,
+         "tokens": 214
+        },
+        {
+         "title": "Your role: the game's expert",
+         "chars": 896,
+         "tokens": 332
+        },
+        {
+         "title": "Branches and commits",
+         "chars": 723,
+         "tokens": 268
+        },
+        {
+         "title": "Checks before any deploy or publish",
+         "chars": 1429,
+         "tokens": 529
+        },
+        {
+         "title": "Owner principles (these decide ties)",
+         "chars": 3045,
+         "tokens": 1128
+        },
+        {
+         "title": "Working conventions",
+         "chars": 2129,
+         "tokens": 789
+        },
+        {
+         "title": "Keeping it clean (owner, 2026-10-09: \"I want to avoid having to do this again\")",
+         "chars": 1493,
+         "tokens": 553
+        }
+       ]
+      }
+     ],
+     "readFirst": [
+      {
+       "file": "README.md",
+       "chars": 10975,
+       "tokens": 4065
+      },
+      {
+       "file": "ROADMAP.md",
+       "chars": 35769,
+       "tokens": 13248
+      },
+      {
+       "file": "DECISIONS.md",
+       "chars": 49649,
+       "tokens": 18389
+      },
+      {
+       "file": "KNOWN-GAPS.md",
+       "chars": 19745,
+       "tokens": 7313
+      },
+      {
+       "file": "client/README.md",
+       "chars": 216009,
+       "tokens": 80003
+      }
+     ],
+     "alwaysTokens": 3812,
+     "readFirstTokens": 123018
+    },
+    "agent": {
+     "what": "the Discord dev agent (claude -p --restricted in a job worktree; CLAUDE.md is not loaded for it)",
+     "always": [
+      {
+       "file": "server/death-muffin/discord-agent/PROMPT-godot.md",
+       "chars": 50428,
+       "tokens": 18677,
+       "sections": [
+        {
+         "title": "(preamble)",
+         "chars": 476,
+         "tokens": 176
+        },
+        {
+         "title": "Who is talking, and what their words are",
+         "chars": 1027,
+         "tokens": 380
+        },
+        {
+         "title": "Where you are",
+         "chars": 3169,
+         "tokens": 1174
+        },
+        {
+         "title": "Questions and discussion",
+         "chars": 1710,
+         "tokens": 633
+        },
+        {
+         "title": "Making a change",
+         "chars": 6520,
+         "tokens": 2415
+        },
+        {
+         "title": "Screenshots",
+         "chars": 8264,
+         "tokens": 3061
+        },
+        {
+         "title": "Clips and choices (short videos, \"pick one\")",
+         "chars": 8319,
+         "tokens": 3081
+        },
+        {
+         "title": "Making pictures (icons, portraits, loading art, floor and wall textures)",
+         "chars": 3303,
+         "tokens": 1223
+        },
+        {
+         "title": "Making new models and armor sets (concepts -> 3D -> renders -> in game)",
+         "chars": 8311,
+         "tokens": 3078
+        },
+        {
+         "title": "Making a new sound effect or music track (ElevenLabs)",
+         "chars": 2109,
+         "tokens": 781
+        },
+        {
+         "title": "Preview and rounds",
+         "chars": 1806,
+         "tokens": 669
+        },
+        {
+         "title": "Keeping people posted while you work",
+         "chars": 2275,
+         "tokens": 843
+        },
+        {
+         "title": "Telling the system what happened (required at the end of every turn)",
+         "chars": 3139,
+         "tokens": 1163
+        }
+       ]
+      }
+     ],
+     "readFirst": [
+      {
+       "file": "CLAUDE.md",
+       "chars": 10292,
+       "tokens": 3812
+      },
+      {
+       "file": "README.md",
+       "chars": 10975,
+       "tokens": 4065
+      },
+      {
+       "file": "client/README.md",
+       "chars": 216009,
+       "tokens": 80003
+      }
+     ],
+     "alwaysTokens": 18677,
+     "readFirstTokens": 87880
+    }
+   }
+  },
+  "rules": {
+   "rules": 58,
+   "protectedRules": 21,
+   "gaps": [
+    {
+     "id": "shared-vps-one-render",
+     "audience": "agent",
+     "note": "not needed in text: the agent's check and shot scripts take the shared locks themselves"
+    },
+    {
+     "id": "spend-limits-from-owner",
+     "audience": "agent",
+     "note": "covered by agent-paid-generation: the runner holds the budgets"
+    },
+    {
+     "id": "never-weaken-tests",
+     "audience": "session",
+     "note": "not written in CLAUDE.md; sessions follow it only by habit"
+    },
+    {
+     "id": "never-patch-installed",
+     "audience": "agent",
+     "note": "not needed in text: the agent's file tools are confined to its worktree"
+    },
+    {
+     "id": "performance-budgets",
+     "audience": "agent",
+     "note": "missing from the agent's prompt (model caps are enforced by the model check)"
+    },
+    {
+     "id": "necromancer-focus",
+     "audience": "agent",
+     "note": "missing from the agent's prompt"
+    },
+    {
+     "id": "loot-never-vacuums",
+     "audience": "agent",
+     "note": "missing from the agent's prompt"
+    },
+    {
+     "id": "read-first",
+     "audience": "agent",
+     "note": "not followed: 0 of 82 agent sessions 2026-10-11..20 read CLAUDE.md or README.md, 1 read client/README.md (usage.mjs)"
+    },
+    {
+     "id": "ui-tests-real-input",
+     "audience": "session",
+     "note": "not written in CLAUDE.md"
+    }
+   ],
+   "problems": []
+  }
+ },
+ "usage": {
+  "since18": {
+   "groups": {
+    "session": {
+     "sessions": 11,
+     "jobs": 0,
+     "calls": 5816,
+     "usage": {
+      "input": 12020,
+      "write5m": 0,
+      "write1h": 15716132,
+      "read": 2796463209,
+      "output": 4848319
+     },
+     "contextTokens": 2812191361,
+     "cacheReadShare": 0.9944071544283505,
+     "firstContext": {
+      "median": 48542,
+      "min": 1782,
+      "max": 49392
+     },
+     "peakContext": {
+      "median": 441064,
+      "max": 967285
+     },
+     "callsPerSession": {
+      "median": 211,
+      "max": 1764
+     },
+     "fixedShare": 0.08061942161694878,
+     "appendedPromptChars": {
+      "median": 423
+     },
+     "handoffs": 0,
+     "topReads": [
+      {
+       "path": "(outside the repo)",
+       "reads": 67,
+       "chars": 526979,
+       "sessions": 7
+      },
+      {
+       "path": "server/death-muffin/discord-agent/runner/core.cjs",
+       "reads": 5,
+       "chars": 79837,
+       "sessions": 2
+      },
+      {
+       "path": "client/main/qa_clips.gd",
+       "reads": 1,
+       "chars": 23649,
+       "sessions": 1
+      },
+      {
+       "path": "ROADMAP.md",
+       "reads": 5,
+       "chars": 14383,
+       "sessions": 1
+      },
+      {
+       "path": "server/death-muffin/discord-agent/runner/lib/clips.cjs",
+       "reads": 1,
+       "chars": 12744,
+       "sessions": 1
+      },
+      {
+       "path": "server/death-muffin/discord-agent/test/e2e.test.cjs",
+       "reads": 1,
+       "chars": 4297,
+       "sessions": 1
+      },
+      {
+       "path": "KNOWN-GAPS.md",
+       "reads": 2,
+       "chars": 3109,
+       "sessions": 2
+      },
+      {
+       "path": "server/death-muffin/discord-agent/PROMPT-godot.md",
+       "reads": 2,
+       "chars": 2648,
+       "sessions": 1
+      },
+      {
+       "path": ".dm-shots/bag.png",
+       "reads": 1,
+       "chars": 0,
+       "sessions": 1
+      }
+     ],
+     "byTool": {
+      "Bash": {
+       "calls": 5201,
+       "chars": 7896431
+      },
+      "Bash: sed": {
+       "calls": 849,
+       "chars": 2731213
+      },
+      "Bash: grep": {
+       "calls": 797,
+       "chars": 1250738
+      },
+      "Bash: cat": {
+       "calls": 386,
+       "chars": 694924
+      },
+      "Read": {
+       "calls": 85,
+       "chars": 667646
+      },
+      "Bash: python3 <<'EOF'": {
+       "calls": 681,
+       "chars": 495647
+      },
+      "Bash: git show": {
+       "calls": 175,
+       "chars": 491660
+      },
+      "Bash: git fetch": {
+       "calls": 206,
+       "chars": 221177
+      },
+      "Bash: ls": {
+       "calls": 181,
+       "chars": 197020
+      },
+      "Bash: git grep": {
+       "calls": 118,
+       "chars": 174789
+      },
+      "Bash: git diff": {
+       "calls": 41,
+       "chars": 172518
+      },
+      "Bash: for": {
+       "calls": 105,
+       "chars": 154029
+      },
+      "Bash: git log": {
+       "calls": 62,
+       "chars": 80763
+      },
+      "Artifact": {
+       "calls": 8,
+       "chars": 78272
+      },
+      "Bash: wc": {
+       "calls": 27,
+       "chars": 76323
+      },
+      "Bash: echo": {
+       "calls": 41,
+       "chars": 61714
+      },
+      "Bash: git worktree": {
+       "calls": 66,
+       "chars": 59876
+      },
+      "Bash: secret);": {
+       "calls": 74,
+       "chars": 59830
+      },
+      "Bash: -n": {
+       "calls": 15,
+       "chars": 46265
+      },
+      "Bash: tail": {
+       "calls": 45,
+       "chars": 45710
+      },
+      "Agent": {
+       "calls": 44,
+       "chars": 45672
+      },
+      "Bash: git status": {
+       "calls": 38,
+       "chars": 42487
+      },
+      "Bash: awk": {
+       "calls": 19,
+       "chars": 41361
+      },
+      "Bash: rm": {
+       "calls": 33,
+       "chars": 32008
+      },
+      "SendMessage": {
+       "calls": 112,
+       "chars": 31754
+      },
+      "Bash: cd": {
+       "calls": 24,
+       "chars": 30116
+      },
+      "Bash: git add": {
+       "calls": 76,
+       "chars": 29861
+      },
+      "Bash: timeout nice": {
+       "calls": 26,
+       "chars": 29752
+      },
+      "Bash: python3 \"": {
+       "calls": 41,
+       "chars": 28260
+      },
+      "Bash: python3 <<'PYEOF'": {
+       "calls": 62,
+       "chars": 27242
+      },
+      "Bash: git ls-tree": {
+       "calls": 11,
+       "chars": 26020
+      },
+      "Bash: systemctl": {
+       "calls": 11,
+       "chars": 25012
+      },
+      "Bash: head": {
+       "calls": 18,
+       "chars": 24916
+      },
+      "Bash: node '": {
+       "calls": 24,
+       "chars": 23839
+      },
+      "Bash: nice node": {
+       "calls": 34,
+       "chars": 19963
+      },
+      "Bash: git ls-files": {
+       "calls": 6,
+       "chars": 18562
+      },
+      "TaskStop": {
+       "calls": 17,
+       "chars": 17444
+      },
+      "Bash: &&": {
+       "calls": 23,
+       "chars": 16393
+      },
+      "WebSearch": {
+       "calls": 6,
+       "chars": 16183
+      },
+      "Bash: set": {
+       "calls": 39,
+       "chars": 14496
+      },
+      "Bash: curl": {
+       "calls": 45,
+       "chars": 13081
+      },
+      "Bash: git merge": {
+       "calls": 8,
+       "chars": 12841
+      },
+      "Bash: timeout bash": {
+       "calls": 37,
+       "chars": 12431
+      },
+      "Write": {
+       "calls": 69,
+       "chars": 12385
+      },
+      "ScheduleWakeup": {
+       "calls": 52,
+       "chars": 12174
+      },
+      "Bash: bash ci.sh": {
+       "calls": 34,
+       "chars": 11544
+      },
+      "Bash: ps": {
+       "calls": 7,
+       "chars": 10995
+      },
+      "Bash: python3 <<EOF": {
+       "calls": 7,
+       "chars": 10967
+      },
+      "Bash: until": {
+       "calls": 46,
+       "chars": 10879
+      },
+      "Bash: nice bash": {
+       "calls": 25,
+       "chars": 10495
+      },
+      "Bash: sleep": {
+       "calls": 24,
+       "chars": 9977
+      },
+      "Bash: git checkout": {
+       "calls": 24,
+       "chars": 9726
+      },
+      "Bash: date": {
+       "calls": 20,
+       "chars": 9545
+      },
+      "Bash: python3 '": {
+       "calls": 10,
+       "chars": 9442
+      },
+      "Bash: bash run-client-tests.sh": {
+       "calls": 8,
+       "chars": 9374
+      },
+      "Bash: git rm": {
+       "calls": 10,
+       "chars": 8854
+      },
+      "Bash: journalctl": {
+       "calls": 6,
+       "chars": 8851
+      },
+      "Bash: git rebase": {
+       "calls": 10,
+       "chars": 8546
+      },
+      "Bash: sudo grep": {
+       "calls": 9,
+       "chars": 8217
+      },
+      "Bash: git push": {
+       "calls": 27,
+       "chars": 8129
+      },
+      "Bash: sudo mysql": {
+       "calls": 21,
+       "chars": 7561
+      },
+      "Bash: rev-parse": {
+       "calls": 18,
+       "chars": 7533
+      },
+      "Bash: $D": {
+       "calls": 1,
+       "chars": 7182
+      },
+      "Bash: mkdir": {
+       "calls": 14,
+       "chars": 7118
+      },
+      "WebFetch": {
+       "calls": 6,
+       "chars": 7059
+      },
+      "Bash: node 'const": {
+       "calls": 12,
+       "chars": 7020
+      },
+      "Bash: -d": {
+       "calls": 10,
+       "chars": 7015
+      },
+      "Bash: nice timeout": {
+       "calls": 3,
+       "chars": 6843
+      },
+      "Bash: node check.mjs": {
+       "calls": 9,
+       "chars": 6772
+      },
+      "Bash: du": {
+       "calls": 7,
+       "chars": 6488
+      },
+      "Bash: sudo systemctl": {
+       "calls": 7,
+       "chars": 6067
+      },
+      "Bash: nproc;": {
+       "calls": 3,
+       "chars": 5914
+      },
+      "Bash: npm run": {
+       "calls": 17,
+       "chars": 5562
+      },
+      "Bash: git switch": {
+       "calls": 7,
+       "chars": 5326
+      },
+      "Bash: git commit": {
+       "calls": 16,
+       "chars": 5311
+      },
+      "Bash: git branch": {
+       "calls": 5,
+       "chars": 5149
+      },
+      "Bash: node clips.test.cjs": {
+       "calls": 4,
+       "chars": 4726
+      },
+      "Bash: uptime;": {
+       "calls": 6,
+       "chars": 4692
+      },
+      "Bash: find": {
+       "calls": 6,
+       "chars": 4536
+      },
+      "Bash: bash ci_wait.sh": {
+       "calls": 17,
+       "chars": 4440
+      },
+      "Edit": {
+       "calls": 33,
+       "chars": 4353
+      },
+      "Bash: claude": {
+       "calls": 2,
+       "chars": 4294
+      },
+      "Bash: python3 \"import": {
+       "calls": 1,
+       "chars": 4094
+      },
+      "Bash: cmp": {
+       "calls": 3,
+       "chars": 4010
+      },
+      "Bash: time": {
+       "calls": 6,
+       "chars": 3997
+      },
+      "Bash: gh": {
+       "calls": 8,
+       "chars": 3982
+      },
+      "Bash: git cherry-pick": {
+       "calls": 7,
+       "chars": 3837
+      },
+      "Bash: python3 json.tool": {
+       "calls": 1,
+       "chars": 3785
+      },
+      "Bash: bash prep.sh": {
+       "calls": 10,
+       "chars": 3694
+      },
+      "Bash: chmod": {
+       "calls": 9,
+       "chars": 3469
+      },
+      "Bash: bash assets-fp.sh": {
+       "calls": 4,
+       "chars": 3426
+      },
+      "Bash: node check-models.mjs": {
+       "calls": 2,
+       "chars": 3310
+      },
+      "Bash: nproc": {
+       "calls": 1,
+       "chars": 3182
+      },
+      "Bash: python3 'import": {
+       "calls": 2,
+       "chars": 3177
+      },
+      "Bash: node build-server-rules.mjs": {
+       "calls": 2,
+       "chars": 3147
+      },
+      "Bash: bash install-runner.sh": {
+       "calls": 8,
+       "chars": 3081
+      },
+      "Monitor": {
+       "calls": 10,
+       "chars": 3018
+      },
+      "Bash: cp": {
+       "calls": 9,
+       "chars": 2993
+      },
+      "Bash: ls;": {
+       "calls": 4,
+       "chars": 2941
+      },
+      "Bash: git reset": {
+       "calls": 5,
+       "chars": 2826
+      },
+      "Bash: bash watch_job.sh": {
+       "calls": 10,
+       "chars": 2610
+      },
+      "Bash: cut": {
+       "calls": 2,
+       "chars": 2583
+      },
+      "Bash: node measure.mjs": {
+       "calls": 1,
+       "chars": 2513
+      },
+      "Bash: git rev-parse": {
+       "calls": 3,
+       "chars": 2496
+      },
+      "Bash: python3 dm_watch.py": {
+       "calls": 9,
+       "chars": 2349
+      },
+      "Bash: ln": {
+       "calls": 4,
+       "chars": 2270
+      },
+      "ListAgents": {
+       "calls": 8,
+       "chars": 2244
+      },
+      "Bash: node \"const": {
+       "calls": 1,
+       "chars": 2220
+      },
+      "Bash: sudo python3": {
+       "calls": 2,
+       "chars": 2131
+      },
+      "Bash: node affected-suites.test.mjs": {
+       "calls": 5,
+       "chars": 2127
+      },
+      "Bash: uptime": {
+       "calls": 4,
+       "chars": 2121
+      },
+      "TaskCreate": {
+       "calls": 20,
+       "chars": 2092
+      },
+      "Bash: -C": {
+       "calls": 6,
+       "chars": 2087
+      },
+      "Bash: godot": {
+       "calls": 2,
+       "chars": 2071
+      },
+      "Bash: node *.test.mjs": {
+       "calls": 2,
+       "chars": 2016
+      },
+      "Bash: pgrep": {
+       "calls": 8,
+       "chars": 1967
+      },
+      "Bash: timeout node": {
+       "calls": 4,
+       "chars": 1938
+      },
+      "Bash: which": {
+       "calls": 6,
+       "chars": 1912
+      },
+      "Bash: node package.json\").scripts[\"test:server\"].split(\"": {
+       "calls": 1,
+       "chars": 1821
+      },
+      "Bash: unzip": {
+       "calls": 2,
+       "chars": 1735
+      },
+      "Bash: bash run-local.sh": {
+       "calls": 4,
+       "chars": 1722
+      },
+      "Bash: (nice": {
+       "calls": 6,
+       "chars": 1713
+      },
+      "Bash: timeout python3": {
+       "calls": 1,
+       "chars": 1623
+      },
+      "Bash: bash install.sh": {
+       "calls": 2,
+       "chars": 1571
+      },
+      "Bash: busy()": {
+       "calls": 5,
+       "chars": 1555
+      },
+      "Bash: sudo tail": {
+       "calls": 1,
+       "chars": 1545
+      },
+      "ToolSearch": {
+       "calls": 26,
+       "chars": 1475
+      },
+      "Bash: node curl": {
+       "calls": 1,
+       "chars": 1380
+      },
+      "Bash: (cd": {
+       "calls": 2,
+       "chars": 1368
+      },
+      "Bash: [": {
+       "calls": 7,
+       "chars": 1329
+      },
+      "Bash: bash client-prep.sh": {
+       "calls": 1,
+       "chars": 1313
+      },
+      "Bash: ffmpeg": {
+       "calls": 2,
+       "chars": 1267
+      },
+      "Bash: node team-check.test.cjs": {
+       "calls": 2,
+       "chars": 1254
+      },
+      "Bash: node test": {
+       "calls": 2,
+       "chars": 1200
+      },
+      "Bash: -rln": {
+       "calls": 2,
+       "chars": 1146
+      },
+      "Bash: node affected-suites.mjs": {
+       "calls": 2,
+       "chars": 1141
+      },
+      "Bash: node \"": {
+       "calls": 2,
+       "chars": 1103
+      },
+      "TaskUpdate": {
+       "calls": 38,
+       "chars": 1049
+      },
+      "Bash: diff": {
+       "calls": 1,
+       "chars": 1005
+      },
+      "Bash: -u": {
+       "calls": 5,
+       "chars": 985
+      },
+      "Bash: -s": {
+       "calls": 4,
+       "chars": 967
+      },
+      "Bash: nice npm": {
+       "calls": 5,
+       "chars": 935
+      },
+      "Bash: read": {
+       "calls": 4,
+       "chars": 896
+      },
+      "Bash: sudo sed": {
+       "calls": 1,
+       "chars": 888
+      },
+      "Bash: git merge-base": {
+       "calls": 5,
+       "chars": 879
+      },
+      "Bash: bash publish-teamapp.sh": {
+       "calls": 1,
+       "chars": 850
+      },
+      "Bash: kill": {
+       "calls": 1,
+       "chars": 840
+      },
+      "Bash: sudo cat": {
+       "calls": 3,
+       "chars": 832
+      },
+      "Bash: -d);": {
+       "calls": 2,
+       "chars": 817
+      },
+      "Bash: bash deploy-release.sh": {
+       "calls": 1,
+       "chars": 764
+      },
+      "Bash: node sync-code.mjs": {
+       "calls": 1,
+       "chars": 752
+      },
+      "Bash: rand": {
+       "calls": 1,
+       "chars": 734
+      },
+      "Bash: clipwt.txt);": {
+       "calls": 1,
+       "chars": 728
+      },
+      "Bash: (bash": {
+       "calls": 2,
+       "chars": 689
+      },
+      "Bash: export": {
+       "calls": 1,
+       "chars": 627
+      },
+      "Bash: -c": {
+       "calls": 3,
+       "chars": 622
+      },
+      "Bash: {": {
+       "calls": 3,
+       "chars": 608
+      },
+      "Bash: fuser": {
+       "calls": 1,
+       "chars": 549
+      },
+      "Bash: timeout npx": {
+       "calls": 2,
+       "chars": 547
+      },
+      "Bash: env": {
+       "calls": 2,
+       "chars": 545
+      },
+      "Bash: pkill": {
+       "calls": 3,
+       "chars": 535
+      },
+      "Bash: sudo true": {
+       "calls": 1,
+       "chars": 527
+      },
+      "Bash: npx vitest": {
+       "calls": 1,
+       "chars": 503
+      },
+      "Bash: (": {
+       "calls": 2,
+       "chars": 497
+      },
+      "Bash: strings": {
+       "calls": 1,
+       "chars": 494
+      },
+      "Bash: game": {
+       "calls": 1,
+       "chars": 421
+      },
+      "Bash: bash team-check.sh": {
+       "calls": 1,
+       "chars": 421
+      },
+      "Bash: ci_sha_crash.txt);": {
+       "calls": 1,
+       "chars": 420
+      },
+      "Bash: idle()": {
+       "calls": 1,
+       "chars": 410
+      },
+      "Bash: git cat-file": {
+       "calls": 1,
+       "chars": 406
+      },
+      "Bash: node health-watch.mjs": {
+       "calls": 1,
+       "chars": 383
+      },
+      "Bash: git restore": {
+       "calls": 1,
+       "chars": 372
+      },
+      "Bash: bash deploy-lobby.sh": {
+       "calls": 1,
+       "chars": 366
+      },
+      "Bash: python3 dumpscan.py": {
+       "calls": 1,
+       "chars": 359
+      },
+      "Bash: locate": {
+       "calls": 1,
+       "chars": 299
+      },
+      "Bash: sudo journalctl": {
+       "calls": 2,
+       "chars": 296
+      },
+      "Bash: python3 asset-uids.py": {
+       "calls": 1,
+       "chars": 279
+      },
+      "Bash: pip3": {
+       "calls": 2,
+       "chars": 276
+      },
+      "Bash: bash setup.sh": {
+       "calls": 1,
+       "chars": 261
+      },
+      "Bash: bash publish-godot-client.sh": {
+       "calls": 1,
+       "chars": 261
+      },
+      "Bash: affected-suites.mjs": {
+       "calls": 1,
+       "chars": 261
+      },
+      "Bash: while": {
+       "calls": 1,
+       "chars": 261
+      },
+      "Bash: bash requeue_on_036.sh": {
+       "calls": 1,
+       "chars": 261
+      },
+      "Bash: bash watch_war_pc.sh": {
+       "calls": 1,
+       "chars": 261
+      },
+      "Bash: python3 dm_watch_from.py": {
+       "calls": 1,
+       "chars": 261
+      },
+      "Bash: python3 dm_fetch_dumps.py": {
+       "calls": 1,
+       "chars": 261
+      },
+      "Bash: -t": {
+       "calls": 1,
+       "chars": 212
+      },
+      "Bash: python3 <<'PY'": {
+       "calls": 1,
+       "chars": 187
+      },
+      "Bash: bash compile-check.sh": {
+       "calls": 1,
+       "chars": 160
+      },
+      "Bash: -dt": {
+       "calls": 1,
+       "chars": 142
+      },
+      "Bash: objdump": {
+       "calls": 1,
+       "chars": 120
+      },
+      "Bash: df": {
+       "calls": 1,
+       "chars": 116
+      },
+      "Skill": {
+       "calls": 3,
+       "chars": 101
+      },
+      "Bash: printf": {
+       "calls": 2,
+       "chars": 84
+      },
+      "Bash: git config": {
+       "calls": 2,
+       "chars": 84
+      },
+      "Bash: git count-objects": {
+       "calls": 1,
+       "chars": 79
+      },
+      "Bash: log": {
+       "calls": 1,
+       "chars": 75
+      },
+      "Bash: x86_64-w64-mingw32-objdump": {
+       "calls": 1,
+       "chars": 74
+      },
+      "Bash: python3 thread_post.py": {
+       "calls": 2,
+       "chars": 72
+      },
+      "Bash: timeout ci.sh": {
+       "calls": 1,
+       "chars": 69
+      },
+      "Bash: -d)": {
+       "calls": 1,
+       "chars": 61
+      },
+      "Bash: git stash": {
+       "calls": 1,
+       "chars": 59
+      },
+      "Bash: stat": {
+       "calls": 1,
+       "chars": 56
+      },
+      "Bash: -ln": {
+       "calls": 1,
+       "chars": 53
+      },
+      "Bash: nice prep.sh": {
+       "calls": 1,
+       "chars": 46
+      },
+      "Bash: mv": {
+       "calls": 1,
+       "chars": 45
+      },
+      "Bash: python3 py_compile": {
+       "calls": 1,
+       "chars": 42
+      },
+      "Bash: python3 chan_post.py": {
+       "calls": 1,
+       "chars": 34
+      },
+      "Bash: sudo sqlite3": {
+       "calls": 1,
+       "chars": 32
+      },
+      "Bash: show": {
+       "calls": 1,
+       "chars": 25
+      },
+      "Bash: node check-models.test.mjs": {
+       "calls": 1,
+       "chars": 17
+      },
+      "Bash: python3 \"$F\"": {
+       "calls": 1,
+       "chars": 1
+      }
+     },
+     "whatIf": [
+      {
+       "cap": 150000,
+       "compactions": 100,
+       "savedTokens": 2216168845
+      },
+      {
+       "cap": 250000,
+       "compactions": 41,
+       "savedTokens": 1932981751
+      },
+      {
+       "cap": 400000,
+       "compactions": 20,
+       "savedTokens": 1565136364
+      }
+     ],
+     "largest": [
+      {
+       "job": null,
+       "round": null,
+       "start": "2026-10-18T03:23:13.519Z",
+       "calls": 1764,
+       "peak": 967285
+      },
+      {
+       "job": null,
+       "round": null,
+       "start": "2026-10-19T07:01:04.316Z",
+       "calls": 1215,
+       "peak": 966895
+      },
+      {
+       "job": null,
+       "round": null,
+       "start": "2026-10-19T05:00:25.699Z",
+       "calls": 987,
+       "peak": 963752
+      },
+      {
+       "job": null,
+       "round": null,
+       "start": "2026-10-19T23:06:01.078Z",
+       "calls": 913,
+       "peak": 963769
+      },
+      {
+       "job": null,
+       "round": null,
+       "start": "2026-10-19T19:01:24.101Z",
+       "calls": 364,
+       "peak": 885748
+      }
+     ]
+    },
+    "subagent": {
+     "sessions": 39,
+     "jobs": 0,
+     "calls": 5950,
+     "usage": {
+      "input": 11916,
+      "write5m": 22886981,
+      "write1h": 0,
+      "read": 2061482786,
+      "output": 6750726
+     },
+     "contextTokens": 2084381683,
+     "cacheReadShare": 0.9890140576523191,
+     "firstContext": {
+      "median": 38937,
+      "min": 37754,
+      "max": 41436
+     },
+     "peakContext": {
+      "median": 372610,
+      "max": 966467
+     },
+     "callsPerSession": {
+      "median": 117,
+      "max": 752
+     },
+     "fixedShare": 0.11113178497452762,
+     "appendedPromptChars": {
+      "median": 49
+     },
+     "handoffs": 0,
+     "topReads": [
+      {
+       "path": "client/README.md",
+       "reads": 17,
+       "chars": 458073,
+       "sessions": 3
+      },
+      {
+       "path": "(outside the repo)",
+       "reads": 24,
+       "chars": 317185,
+       "sessions": 20
+      },
+      {
+       "path": "native/README.md",
+       "reads": 9,
+       "chars": 212732,
+       "sessions": 2
+      },
+      {
+       "path": "client/next/next_game.gd",
+       "reads": 3,
+       "chars": 75899,
+       "sessions": 2
+      },
+      {
+       "path": "server/death-muffin/backend/team-jobs.cjs",
+       "reads": 4,
+       "chars": 60551,
+       "sessions": 2
+      },
+      {
+       "path": "client/tests/benchmark.gd",
+       "reads": 2,
+       "chars": 53280,
+       "sessions": 1
+      },
+      {
+       "path": "teamapp/windows/TeamController.cs",
+       "reads": 2,
+       "chars": 47138,
+       "sessions": 2
+      },
+      {
+       "path": "CLAUDE.md",
+       "reads": 5,
+       "chars": 47049,
+       "sessions": 5
+      },
+      {
+       "path": "client/tests/lobby/run.gd",
+       "reads": 1,
+       "chars": 42693,
+       "sessions": 1
+      },
+      {
+       "path": "client/tests/warm_coverage.gd",
+       "reads": 1,
+       "chars": 41128,
+       "sessions": 1
+      },
+      {
+       "path": "client/tests/runes/run.gd",
+       "reads": 1,
+       "chars": 41079,
+       "sessions": 1
+      },
+      {
+       "path": "client/tests/audio/run.gd",
+       "reads": 2,
+       "chars": 35992,
+       "sessions": 1
+      },
+      {
+       "path": "teamapp/tests/Tests.cs",
+       "reads": 1,
+       "chars": 33827,
+       "sessions": 1
+      },
+      {
+       "path": "client/tests/surge.gd",
+       "reads": 3,
+       "chars": 33396,
+       "sessions": 1
+      },
+      {
+       "path": "client/tests/gear_look/run.gd",
+       "reads": 2,
+       "chars": 30370,
+       "sessions": 1
+      }
+     ],
+     "byTool": {
+      "Bash": {
+       "calls": 5874,
+       "chars": 19536792
+      },
+      "Bash: sed": {
+       "calls": 1263,
+       "chars": 7439496
+      },
+      "Bash: cat": {
+       "calls": 522,
+       "chars": 3306813
+      },
+      "Bash: grep": {
+       "calls": 1253,
+       "chars": 3032071
+      },
+      "Read": {
+       "calls": 98,
+       "chars": 1755132
+      },
+      "Bash: python3 <<'EOF'": {
+       "calls": 801,
+       "chars": 851785
+      },
+      "Bash: git diff": {
+       "calls": 80,
+       "chars": 556016
+      },
+      "Bash: git grep": {
+       "calls": 142,
+       "chars": 519762
+      },
+      "Bash: python3 <<'E'": {
+       "calls": 315,
+       "chars": 413047
+      },
+      "Bash: for": {
+       "calls": 136,
+       "chars": 405625
+      },
+      "Bash: ls": {
+       "calls": 177,
+       "chars": 399780
+      },
+      "Bash: &&": {
+       "calls": 114,
+       "chars": 376027
+      },
+      "Bash: git add": {
+       "calls": 79,
+       "chars": 357789
+      },
+      "Bash: wc": {
+       "calls": 34,
+       "chars": 192769
+      },
+      "Bash: git status": {
+       "calls": 72,
+       "chars": 180971
+      },
+      "Bash: cut": {
+       "calls": 12,
+       "chars": 112905
+      },
+      "Bash: git show": {
+       "calls": 24,
+       "chars": 107217
+      },
+      "Bash: python3 msgs.py": {
+       "calls": 14,
+       "chars": 97331
+      },
+      "Bash: python3 <<'PYEOF'": {
+       "calls": 55,
+       "chars": 89768
+      },
+      "Bash: diff": {
+       "calls": 17,
+       "chars": 87368
+      },
+      "Bash: nice bash": {
+       "calls": 61,
+       "chars": 65196
+      },
+      "Bash: git log": {
+       "calls": 25,
+       "chars": 65156
+      },
+      "Bash: git fetch": {
+       "calls": 14,
+       "chars": 57865
+      },
+      "Bash: python3 unused.py": {
+       "calls": 4,
+       "chars": 48358
+      },
+      "Bash: until": {
+       "calls": 41,
+       "chars": 45810
+      },
+      "Bash: python3 <<'PY'": {
+       "calls": 28,
+       "chars": 44073
+      },
+      "Bash: (nice": {
+       "calls": 31,
+       "chars": 40752
+      },
+      "Bash: tail": {
+       "calls": 32,
+       "chars": 32832
+      },
+      "Bash: ls;": {
+       "calls": 10,
+       "chars": 31375
+      },
+      "Bash: python3 autopass.py": {
+       "calls": 14,
+       "chars": 29590
+      },
+      "Bash: mkdir": {
+       "calls": 37,
+       "chars": 29217
+      },
+      "Bash: cp": {
+       "calls": 38,
+       "chars": 28888
+      },
+      "Bash: cd": {
+       "calls": 13,
+       "chars": 26206
+      },
+      "Bash: echo": {
+       "calls": 9,
+       "chars": 23353
+      },
+      "Monitor": {
+       "calls": 70,
+       "chars": 22512
+      },
+      "Bash: head": {
+       "calls": 11,
+       "chars": 22073
+      },
+      "Bash: -rl": {
+       "calls": 3,
+       "chars": 20740
+      },
+      "Bash: find": {
+       "calls": 7,
+       "chars": 15590
+      },
+      "Write": {
+       "calls": 86,
+       "chars": 15545
+      },
+      "Bash: npm run": {
+       "calls": 17,
+       "chars": 13956
+      },
+      "Bash: git rebase": {
+       "calls": 6,
+       "chars": 13902
+      },
+      "Bash: sleep": {
+       "calls": 33,
+       "chars": 12359
+      },
+      "Bash: ps": {
+       "calls": 9,
+       "chars": 11699
+      },
+      "Bash: -d": {
+       "calls": 6,
+       "chars": 11511
+      },
+      "Bash: uptime;": {
+       "calls": 2,
+       "chars": 11093
+      },
+      "Bash: ln": {
+       "calls": 4,
+       "chars": 10594
+      },
+      "Bash: pgrep": {
+       "calls": 7,
+       "chars": 10483
+      },
+      "Bash: du": {
+       "calls": 4,
+       "chars": 10247
+      },
+      "Bash: python3 \"": {
+       "calls": 7,
+       "chars": 10039
+      },
+      "Bash: nice node": {
+       "calls": 10,
+       "chars": 9917
+      },
+      "Bash: node affected-suites.mjs": {
+       "calls": 9,
+       "chars": 9384
+      },
+      "Bash: python3 <<EOF": {
+       "calls": 3,
+       "chars": 9158
+      },
+      "Bash: rm": {
+       "calls": 8,
+       "chars": 9135
+      },
+      "Bash: git stash": {
+       "calls": 10,
+       "chars": 9068
+      },
+      "Bash: (time": {
+       "calls": 25,
+       "chars": 8931
+      },
+      "Bash: git commit": {
+       "calls": 13,
+       "chars": 8779
+      },
+      "Bash: git worktree": {
+       "calls": 5,
+       "chars": 8236
+      },
+      "Bash: all.sh": {
+       "calls": 2,
+       "chars": 8105
+      },
+      "Bash: script_of(){": {
+       "calls": 3,
+       "chars": 8062
+      },
+      "Bash: git ls-files": {
+       "calls": 7,
+       "chars": 7201
+      },
+      "Bash: git checkout": {
+       "calls": 8,
+       "chars": 7165
+      },
+      "Bash: pwd": {
+       "calls": 3,
+       "chars": 6297
+      },
+      "Bash: awk": {
+       "calls": 1,
+       "chars": 6196
+      },
+      "Bash: oldrun.sh": {
+       "calls": 7,
+       "chars": 5943
+      },
+      "Bash: node \"console.log(require.resolve('express'))\";": {
+       "calls": 1,
+       "chars": 5560
+      },
+      "Bash: cmp": {
+       "calls": 1,
+       "chars": 5535
+      },
+      "Bash: rmdir": {
+       "calls": 1,
+       "chars": 5479
+      },
+      "Bash: timeout nice": {
+       "calls": 8,
+       "chars": 5408
+      },
+      "Bash: node affected-suites.test.mjs": {
+       "calls": 3,
+       "chars": 5161
+      },
+      "Bash: (bash": {
+       "calls": 6,
+       "chars": 4589
+      },
+      "Bash: bash run-client-tests.sh": {
+       "calls": 5,
+       "chars": 4248
+      },
+      "Edit": {
+       "calls": 28,
+       "chars": 4144
+      },
+      "Bash: -rln": {
+       "calls": 3,
+       "chars": 4031
+      },
+      "Bash: node sync-code.mjs": {
+       "calls": 6,
+       "chars": 4008
+      },
+      "Bash: time": {
+       "calls": 9,
+       "chars": 3905
+      },
+      "Bash: export": {
+       "calls": 1,
+       "chars": 3869
+      },
+      "Bash: python3 dropped.py": {
+       "calls": 3,
+       "chars": 3763
+      },
+      "Bash: nice godot": {
+       "calls": 7,
+       "chars": 3741
+      },
+      "Bash: g()": {
+       "calls": 2,
+       "chars": 3665
+      },
+      "Bash: kill": {
+       "calls": 3,
+       "chars": 3501
+      },
+      "Bash: nice npm": {
+       "calls": 7,
+       "chars": 3501
+      },
+      "Bash: git reset": {
+       "calls": 2,
+       "chars": 3204
+      },
+      "Bash: git config": {
+       "calls": 3,
+       "chars": 3178
+      },
+      "Bash: bash run-local.sh": {
+       "calls": 1,
+       "chars": 3132
+      },
+      "Bash: python3 fixpaths.py": {
+       "calls": 1,
+       "chars": 2745
+      },
+      "Bash: runone.sh": {
+       "calls": 5,
+       "chars": 2683
+      },
+      "Bash: run-all-tests.sh": {
+       "calls": 1,
+       "chars": 2609
+      },
+      "Bash: node \"": {
+       "calls": 3,
+       "chars": 2524
+      },
+      "Bash: #": {
+       "calls": 1,
+       "chars": 2516
+      },
+      "Bash: nogodot.sh": {
+       "calls": 3,
+       "chars": 2439
+      },
+      "Bash: nproc;": {
+       "calls": 2,
+       "chars": 2405
+      },
+      "Bash: python3 \"import": {
+       "calls": 1,
+       "chars": 2366
+      },
+      "Bash: git tag": {
+       "calls": 3,
+       "chars": 2313
+      },
+      "Bash: cmp.sh": {
+       "calls": 1,
+       "chars": 2311
+      },
+      "Bash: git remote": {
+       "calls": 1,
+       "chars": 2294
+      },
+      "Bash: git rev-parse": {
+       "calls": 1,
+       "chars": 1968
+      },
+      "Bash: nice npx": {
+       "calls": 2,
+       "chars": 1954
+      },
+      "Bash: timeout python3": {
+       "calls": 2,
+       "chars": 1784
+      },
+      "bash": {
+       "calls": 14,
+       "chars": 1666
+      },
+      "Bash: python3 takehead.py": {
+       "calls": 2,
+       "chars": 1664
+      },
+      "Bash: uptime": {
+       "calls": 3,
+       "chars": 1632
+      },
+      "Bash: python3 perturb.py": {
+       "calls": 5,
+       "chars": 1582
+      },
+      "TaskStop": {
+       "calls": 3,
+       "chars": 1571
+      },
+      "Bash: node a": {
+       "calls": 2,
+       "chars": 1545
+      },
+      "Bash: cnt(){": {
+       "calls": 1,
+       "chars": 1496
+      },
+      "Bash: (for": {
+       "calls": 2,
+       "chars": 1420
+      },
+      "Bash: godot": {
+       "calls": 1,
+       "chars": 1243
+      },
+      "Bash: (cd": {
+       "calls": 1,
+       "chars": 1229
+      },
+      "Bash: python3 checkidents.py": {
+       "calls": 1,
+       "chars": 1167
+      },
+      "Bash: timeout bash": {
+       "calls": 4,
+       "chars": 1109
+      },
+      "Bash: bash qa_shots.sh": {
+       "calls": 1,
+       "chars": 1093
+      },
+      "Bash: node check.mjs": {
+       "calls": 2,
+       "chars": 1037
+      },
+      "Bash: python3 apply.py": {
+       "calls": 3,
+       "chars": 974
+      },
+      "Bash: logsE5": {
+       "calls": 1,
+       "chars": 861
+      },
+      "Bash: -f": {
+       "calls": 3,
+       "chars": 842
+      },
+      "Bash: bash run_mutation.sh": {
+       "calls": 2,
+       "chars": 807
+      },
+      "Bash: timeout runone.sh": {
+       "calls": 2,
+       "chars": 780
+      },
+      "Bash: git rm": {
+       "calls": 2,
+       "chars": 763
+      },
+      "Bash: (npm": {
+       "calls": 1,
+       "chars": 741
+      },
+      "Bash: bash ci.sh": {
+       "calls": 2,
+       "chars": 718
+      },
+      "Bash: bash compile-check.sh": {
+       "calls": 1,
+       "chars": 708
+      },
+      "Bash: git update-index": {
+       "calls": 1,
+       "chars": 696
+      },
+      "Bash: logs": {
+       "calls": 1,
+       "chars": 683
+      },
+      "Bash: node server.js": {
+       "calls": 1,
+       "chars": 645
+      },
+      "Bash: -n": {
+       "calls": 1,
+       "chars": 637
+      },
+      "Bash: sort": {
+       "calls": 1,
+       "chars": 634
+      },
+      "Bash: git ls-tree": {
+       "calls": 1,
+       "chars": 626
+      },
+      "Bash: flock": {
+       "calls": 1,
+       "chars": 571
+      },
+      "Bash: merge-base": {
+       "calls": 1,
+       "chars": 512
+      },
+      "Bash: python3 <<'P'": {
+       "calls": 2,
+       "chars": 506
+      },
+      "Bash: node connection\"": {
+       "calls": 1,
+       "chars": 465
+      },
+      "Bash: {": {
+       "calls": 1,
+       "chars": 457
+      },
+      "Bash: python3 tsv.py": {
+       "calls": 1,
+       "chars": 418
+      },
+      "Bash: abilities": {
+       "calls": 2,
+       "chars": 415
+      },
+      "Bash: -f1": {
+       "calls": 1,
+       "chars": 411
+      },
+      "Bash: python3 verify_nocode.py": {
+       "calls": 1,
+       "chars": 341
+      },
+      "Bash: timeout npx": {
+       "calls": 1,
+       "chars": 338
+      },
+      "ToolSearch": {
+       "calls": 7,
+       "chars": 334
+      },
+      "bash_placeholder": {
+       "calls": 4,
+       "chars": 320
+      },
+      "Bash: python3 checkmembers2.py": {
+       "calls": 1,
+       "chars": 311
+      },
+      "Bash: xargs": {
+       "calls": 2,
+       "chars": 231
+      },
+      "Bash: which": {
+       "calls": 1,
+       "chars": 211
+      },
+      "Bash: chmod": {
+       "calls": 1,
+       "chars": 208
+      },
+      "Bash: unset": {
+       "calls": 1,
+       "chars": 121
+      },
+      "Bash: while": {
+       "calls": 1,
+       "chars": 108
+      },
+      "Bash: git check-ignore": {
+       "calls": 1,
+       "chars": 105
+      },
+      "Bash: set": {
+       "calls": 1,
+       "chars": 93
+      },
+      "SendMessage": {
+       "calls": 1,
+       "chars": 82
+      },
+      "Bash: date": {
+       "calls": 1,
+       "chars": 49
+      },
+      "Bash: gh": {
+       "calls": 1,
+       "chars": 40
+      },
+      "Bash: pkill": {
+       "calls": 3,
+       "chars": 39
+      },
+      "Bash: node loot-rules.cjs').MAX_WAVE_TIER)\";": {
+       "calls": 1,
+       "chars": 31
+      },
+      "Bash: mv": {
+       "calls": 1,
+       "chars": 7
+      },
+      "Bash: logsE2": {
+       "calls": 1,
+       "chars": 7
+      },
+      "Bash: logsE3": {
+       "calls": 1,
+       "chars": 2
+      }
+     },
+     "whatIf": [
+      {
+       "cap": 150000,
+       "compactions": 152,
+       "savedTokens": 1487036841
+      },
+      {
+       "cap": 250000,
+       "compactions": 63,
+       "savedTokens": 1230498868
+      },
+      {
+       "cap": 400000,
+       "compactions": 25,
+       "savedTokens": 877359656
+      }
+     ],
+     "largest": [
+      {
+       "job": null,
+       "round": null,
+       "start": "2026-10-18T20:51:11.401Z",
+       "calls": 752,
+       "peak": 966467
+      },
+      {
+       "job": null,
+       "round": null,
+       "start": "2026-10-18T20:46:51.821Z",
+       "calls": 446,
+       "peak": 964145
+      },
+      {
+       "job": null,
+       "round": null,
+       "start": "2026-10-18T21:40:46.160Z",
+       "calls": 284,
+       "peak": 924429
+      },
+      {
+       "job": null,
+       "round": null,
+       "start": "2026-10-18T19:42:23.361Z",
+       "calls": 242,
+       "peak": 702325
+      },
+      {
+       "job": null,
+       "round": null,
+       "start": "2026-10-20T11:29:01.502Z",
+       "calls": 261,
+       "peak": 749904
+      }
+     ]
+    },
+    "agent": {
+     "sessions": 14,
+     "jobs": 2,
+     "calls": 407,
+     "usage": {
+      "input": 814,
+      "write5m": 0,
+      "write1h": 1071549,
+      "read": 26665401,
+      "output": 196833
+     },
+     "contextTokens": 27737764,
+     "cacheReadShare": 0.9613392413317815,
+     "firstContext": {
+      "median": 25282,
+      "min": 19937,
+      "max": 26951
+     },
+     "peakContext": {
+      "median": 58473.5,
+      "max": 190386
+     },
+     "callsPerSession": {
+      "median": 22,
+      "max": 64
+     },
+     "fixedShare": 0.3506952471006675,
+     "appendedPromptChars": {
+      "median": 46360
+     },
+     "handoffs": 1,
+     "topReads": [
+      {
+       "path": "client/README.md",
+       "reads": 1,
+       "chars": 57464,
+       "sessions": 1
+      },
+      {
+       "path": "client/tests/rites.gd",
+       "reads": 8,
+       "chars": 26831,
+       "sessions": 3
+      },
+      {
+       "path": "client/main/qa_clips.gd",
+       "reads": 3,
+       "chars": 24212,
+       "sessions": 2
+      },
+      {
+       "path": "client/next/rites/rite_haunting_wraith.gd",
+       "reads": 5,
+       "chars": 17290,
+       "sessions": 4
+      },
+      {
+       "path": "client/next/meta/dm_next_meta.gd",
+       "reads": 6,
+       "chars": 15766,
+       "sessions": 3
+      },
+      {
+       "path": "tools/generate-armor-assets.mjs",
+       "reads": 2,
+       "chars": 13620,
+       "sessions": 2
+      },
+      {
+       "path": "client/main/qa_ui_shots.gd",
+       "reads": 2,
+       "chars": 12966,
+       "sessions": 1
+      },
+      {
+       "path": "server/rules/content/items.ts",
+       "reads": 1,
+       "chars": 12708,
+       "sessions": 1
+      },
+      {
+       "path": "client/tests/coop.gd",
+       "reads": 3,
+       "chars": 10106,
+       "sessions": 1
+      },
+      {
+       "path": "godot/next/rites/README.md",
+       "reads": 1,
+       "chars": 8579,
+       "sessions": 1
+      },
+      {
+       "path": "client/rules/combat/dm_weapon_line.gd",
+       "reads": 1,
+       "chars": 7049,
+       "sessions": 1
+      },
+      {
+       "path": "tools/generate-necro-weapons.mjs",
+       "reads": 1,
+       "chars": 6930,
+       "sessions": 1
+      },
+      {
+       "path": "client/tests/qa_shots.gd",
+       "reads": 2,
+       "chars": 6820,
+       "sessions": 2
+      },
+      {
+       "path": "client/main/perf_overlay.gd",
+       "reads": 1,
+       "chars": 6558,
+       "sessions": 1
+      },
+      {
+       "path": "PATCH_NOTES.json",
+       "reads": 5,
+       "chars": 6268,
+       "sessions": 5
+      }
+     ],
+     "byTool": {
+      "Bash": {
+       "calls": 230,
+       "chars": 348811
+      },
+      "Read": {
+       "calls": 79,
+       "chars": 318018
+      },
+      "Grep": {
+       "calls": 140,
+       "chars": 265666
+      },
+      "Bash: grep": {
+       "calls": 51,
+       "chars": 115938
+      },
+      "Bash: sed": {
+       "calls": 21,
+       "chars": 77951
+      },
+      "Bash: check-godot.sh": {
+       "calls": 30,
+       "chars": 48727
+      },
+      "Bash: agit": {
+       "calls": 58,
+       "chars": 46241
+      },
+      "Edit": {
+       "calls": 182,
+       "chars": 25688
+      },
+      "Bash: cat": {
+       "calls": 6,
+       "chars": 13139
+      },
+      "Bash: ls": {
+       "calls": 8,
+       "chars": 12532
+      },
+      "Bash: find": {
+       "calls": 1,
+       "chars": 11390
+      },
+      "Glob": {
+       "calls": 7,
+       "chars": 8902
+      },
+      "Write": {
+       "calls": 46,
+       "chars": 8288
+      },
+      "Bash: echo": {
+       "calls": 30,
+       "chars": 7969
+      },
+      "Bash: regen-godot.sh": {
+       "calls": 2,
+       "chars": 2555
+      },
+      "Bash: build-picture.sh": {
+       "calls": 8,
+       "chars": 2511
+      },
+      "Bash: python3 <<'E'": {
+       "calls": 3,
+       "chars": 2181
+      },
+      "Bash: rm": {
+       "calls": 2,
+       "chars": 1454
+      },
+      "Bash: head": {
+       "calls": 2,
+       "chars": 1400
+      },
+      "Bash: node '": {
+       "calls": 1,
+       "chars": 727
+      },
+      "Bash: gh": {
+       "calls": 1,
+       "chars": 727
+      },
+      "Bash: git ls-files": {
+       "calls": 1,
+       "chars": 727
+      },
+      "Bash: cp": {
+       "calls": 1,
+       "chars": 727
+      },
+      "Bash: for": {
+       "calls": 1,
+       "chars": 727
+      },
+      "Bash: diff": {
+       "calls": 1,
+       "chars": 643
+      },
+      "WebFetch": {
+       "calls": 1,
+       "chars": 465
+      },
+      "Bash: tail": {
+       "calls": 1,
+       "chars": 399
+      },
+      "Bash: wc": {
+       "calls": 1,
+       "chars": 146
+      }
+     },
+     "whatIf": [
+      {
+       "cap": 150000,
+       "compactions": 1,
+       "savedTokens": 2866050
+      },
+      {
+       "cap": 250000,
+       "compactions": 0,
+       "savedTokens": 0
+      },
+      {
+       "cap": 400000,
+       "compactions": 0,
+       "savedTokens": 0
+      }
+     ],
+     "largest": [
+      {
+       "job": "565c7c",
+       "round": 6,
+       "start": "2026-10-20T00:52:43.162Z",
+       "calls": 59,
+       "peak": 190386
+      },
+      {
+       "job": "565c7c",
+       "round": 2,
+       "start": "2026-10-18T19:43:33.625Z",
+       "calls": 40,
+       "peak": 106405
+      },
+      {
+       "job": "565c7c",
+       "round": 7,
+       "start": "2026-10-20T01:37:29.368Z",
+       "calls": 64,
+       "peak": 103638
+      },
+      {
+       "job": "565c7c",
+       "round": 5,
+       "start": "2026-10-19T19:06:42.671Z",
+       "calls": 58,
+       "peak": 90751
+      },
+      {
+       "job": "565c7c",
+       "round": 3,
+       "start": "2026-10-18T22:49:31.172Z",
+       "calls": 40,
+       "peak": 99420
+      }
+     ]
+    }
+   },
+   "window": {
+    "since": "2026-10-18",
+    "until": "2026-10-20"
+   }
+  },
+  "agent": {
+   "groups": {
+    "agent": {
+     "sessions": 82,
+     "jobs": 40,
+     "calls": 2221,
+     "usage": {
+      "input": 4442,
+      "write5m": 0,
+      "write1h": 5370703,
+      "read": 155679038,
+      "output": 1094221
+     },
+     "contextTokens": 161054183,
+     "cacheReadShare": 0.9666252381659656,
+     "firstContext": {
+      "median": 18981.5,
+      "min": 15275,
+      "max": 26951
+     },
+     "peakContext": {
+      "median": 55012,
+      "max": 443592
+     },
+     "callsPerSession": {
+      "median": 20.5,
+      "max": 176
+     },
+     "fixedShare": 0.25871375225317805,
+     "appendedPromptChars": {
+      "median": 30812
+     },
+     "handoffs": 2,
+     "topReads": [
+      {
+       "path": "godot/tests/rites/reaper_part.gd",
+       "reads": 14,
+       "chars": 75679,
+       "sessions": 12
+      },
+      {
+       "path": "godot/rules/combat/dm_abilities.gd",
+       "reads": 6,
+       "chars": 68523,
+       "sessions": 5
+      },
+      {
+       "path": "godot/ui/panels_b/dm_vault_panel.gd",
+       "reads": 5,
+       "chars": 61266,
+       "sessions": 4
+      },
+      {
+       "path": "client/README.md",
+       "reads": 1,
+       "chars": 57464,
+       "sessions": 1
+      },
+      {
+       "path": "godot/next/rites/dm_rite_caster.gd",
+       "reads": 6,
+       "chars": 52468,
+       "sessions": 6
+      },
+      {
+       "path": "godot/game/dm_gear_props.gd",
+       "reads": 5,
+       "chars": 49203,
+       "sessions": 3
+      },
+      {
+       "path": "godot/next/rites/rite_unleash_souls.gd",
+       "reads": 8,
+       "chars": 47299,
+       "sessions": 5
+      },
+      {
+       "path": "godot/ui/hud/dm_hud.gd",
+       "reads": 14,
+       "chars": 46788,
+       "sessions": 7
+      },
+      {
+       "path": "godot/next/rites/README.md",
+       "reads": 9,
+       "chars": 43572,
+       "sessions": 8
+      },
+      {
+       "path": "godot/next/hud/dm_next_ui_host.gd",
+       "reads": 20,
+       "chars": 39571,
+       "sessions": 15
+      },
+      {
+       "path": "godot/next/hero/dm_hero_body.gd",
+       "reads": 6,
+       "chars": 38800,
+       "sessions": 5
+      },
+      {
+       "path": "godot/next/rites/rite_wraith_walk.gd",
+       "reads": 9,
+       "chars": 33635,
+       "sessions": 7
+      },
+      {
+       "path": "godot/next/rites/dm_reaper_rites.gd",
+       "reads": 6,
+       "chars": 33510,
+       "sessions": 6
+      },
+      {
+       "path": "godot/game/dm_avatar.gd",
+       "reads": 8,
+       "chars": 30905,
+       "sessions": 4
+      },
+      {
+       "path": "godot/next/chapterhouse/dm_chapterhouse.gd",
+       "reads": 9,
+       "chars": 29081,
+       "sessions": 5
+      }
+     ],
+     "byTool": {
+      "Bash": {
+       "calls": 1343,
+       "chars": 2174386
+      },
+      "Read": {
+       "calls": 585,
+       "chars": 2019346
+      },
+      "Grep": {
+       "calls": 683,
+       "chars": 1235921
+      },
+      "Bash: grep": {
+       "calls": 380,
+       "chars": 740454
+      },
+      "Bash: check-godot.sh": {
+       "calls": 142,
+       "chars": 488491
+      },
+      "Bash: sed": {
+       "calls": 119,
+       "chars": 342701
+      },
+      "Bash: agit": {
+       "calls": 326,
+       "chars": 275063
+      },
+      "Edit": {
+       "calls": 1024,
+       "chars": 144030
+      },
+      "Bash: cat": {
+       "calls": 30,
+       "chars": 105378
+      },
+      "Bash: echo": {
+       "calls": 194,
+       "chars": 57942
+      },
+      "Bash: ls": {
+       "calls": 32,
+       "chars": 43339
+      },
+      "Bash: head": {
+       "calls": 29,
+       "chars": 37866
+      },
+      "Write": {
+       "calls": 171,
+       "chars": 30229
+      },
+      "Glob": {
+       "calls": 16,
+       "chars": 22438
+      },
+      "Bash: find": {
+       "calls": 5,
+       "chars": 19855
+      },
+      "Bash: python3 <<'E'": {
+       "calls": 23,
+       "chars": 16721
+      },
+      "Bash: tail": {
+       "calls": 2,
+       "chars": 5884
+      },
+      "WebSearch": {
+       "calls": 2,
+       "chars": 5700
+      },
+      "Bash: git log": {
+       "calls": 3,
+       "chars": 4805
+      },
+      "Bash: node sed": {
+       "calls": 1,
+       "chars": 4787
+      },
+      "Bash: git diff": {
+       "calls": 1,
+       "chars": 3359
+      },
+      "Bash: wc": {
+       "calls": 7,
+       "chars": 2979
+      },
+      "Bash: regen-godot.sh": {
+       "calls": 2,
+       "chars": 2555
+      },
+      "Bash: build-art.sh": {
+       "calls": 7,
+       "chars": 2513
+      },
+      "Bash: build-picture.sh": {
+       "calls": 8,
+       "chars": 2511
+      },
+      "Bash: cp": {
+       "calls": 3,
+       "chars": 2181
+      },
+      "Bash: rm": {
+       "calls": 3,
+       "chars": 2181
+      },
+      "Bash: for": {
+       "calls": 2,
+       "chars": 1454
+      },
+      "Bash: python3 \"": {
+       "calls": 2,
+       "chars": 1454
+      },
+      "Bash: npm run": {
+       "calls": 2,
+       "chars": 1454
+      },
+      "Bash: gh": {
+       "calls": 2,
+       "chars": 1454
+      },
+      "Bash: shot-godot.sh": {
+       "calls": 4,
+       "chars": 808
+      },
+      "Bash: git ls-files": {
+       "calls": 2,
+       "chars": 803
+      },
+      "Bash: python3 <<'EOF'": {
+       "calls": 1,
+       "chars": 727
+      },
+      "Bash: node <<'EOF'": {
+       "calls": 1,
+       "chars": 727
+      },
+      "Bash: node build-server-rules.mjs": {
+       "calls": 1,
+       "chars": 727
+      },
+      "Bash: printf": {
+       "calls": 1,
+       "chars": 727
+      },
+      "Bash: node '": {
+       "calls": 1,
+       "chars": 727
+      },
+      "Bash: render-model.sh": {
+       "calls": 2,
+       "chars": 703
+      },
+      "Bash: diff": {
+       "calls": 1,
+       "chars": 643
+      },
+      "WebFetch": {
+       "calls": 1,
+       "chars": 465
+      },
+      "Bash: build-sound.sh": {
+       "calls": 3,
+       "chars": 291
+      },
+      "Bash: timeout run-all-tests.sh": {
+       "calls": 1,
+       "chars": 122
+      },
+      "?": {
+       "calls": 1,
+       "chars": 21
+      }
+     },
+     "whatIf": [
+      {
+       "cap": 150000,
+       "compactions": 6,
+       "savedTokens": 38789324
+      },
+      {
+       "cap": 250000,
+       "compactions": 1,
+       "savedTokens": 21156088
+      },
+      {
+       "cap": 400000,
+       "compactions": 1,
+       "savedTokens": 9531184
+      }
+     ],
+     "largest": [
+      {
+       "job": "06591d",
+       "round": 1,
+       "start": "2026-10-11T01:01:04.271Z",
+       "calls": 176,
+       "peak": 443592
+      },
+      {
+       "job": "06591d",
+       "round": 4,
+       "start": "2026-10-11T03:06:18.985Z",
+       "calls": 72,
+       "peak": 200194
+      },
+      {
+       "job": "d40ac9",
+       "round": 3,
+       "start": "2026-10-13T00:54:33.288Z",
+       "calls": 96,
+       "peak": 183539
+      },
+      {
+       "job": "565c7c",
+       "round": 6,
+       "start": "2026-10-20T00:52:43.162Z",
+       "calls": 59,
+       "peak": 190386
+      },
+      {
+       "job": "06591d",
+       "round": 6,
+       "start": "2026-10-11T16:05:45.536Z",
+       "calls": 59,
+       "peak": 144919
+      }
+     ]
+    }
+   },
+   "window": {
+    "since": "2026-10-11",
+    "until": "2026-10-20"
+   }
+  }
+ }
+}

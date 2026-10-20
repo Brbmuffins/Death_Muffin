@@ -280,6 +280,7 @@
       "pattern": "(?<![\\w.:-])(?<!\\w/)godot/(?!app_userdata\\b)",
       "reason": "the first Godot game's folder, deleted 2026-10-19 (B57): the game is client/; name a file of it as archive/old-game:godot/<path>",
       "allow": [
+        "tools/context/baseline-*.json",
         "DECISIONS.md",
         "tools/hygiene/**",
         ".gitignore",
@@ -318,6 +319,7 @@
       "pattern": "client-prep(-in)?\\.sh|client-cache|DM_CLIENT_CACHE|DM_CLIENT_PREP",
       "reason": "the Discord agent's own prep and cache, replaced 2026-10-19 by tools/check/prep.sh (--warm / --read-only) and ~/death-muffin/build-cache",
       "allow": [
+        "tools/context/baseline-*.json",
         "DECISIONS.md",
         "tools/hygiene/**"
       ]
