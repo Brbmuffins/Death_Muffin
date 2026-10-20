@@ -78,9 +78,10 @@ var watching := false
 var levels: Dictionary = {}              ## every peer: peer id -> that hero's level (the host's table, sent on a join and a leave)
 var online := false                      ## go_online() was called: keep the link (and reconnect it)
 var friends_online: Dictionary = {}      ## account id -> presence {accountId, username, class, level, area, session: {id, private, open, players, max, host, isHost} | null}
-var invites: Array = []                  ## [{from_id, from, info, at}] parties we were invited to
+var invites: Array = []                  ## [{from_id, from, info, at}] parties we were invited to; a rejoin offer (our connection to a party dropped) is one with `rejoin: true` and `until` (ms ticks)
 var requests: Array = []                 ## [{account_id, user, via, at}] friends asking to join us
 var _nudges: Array = []                  ## friends_changed ids waiting for the link
+static var _rejoin_dismissed: Dictionary = {}   ## session ids whose rejoin offer the player dismissed this run: the lobby repeats an offer on each connection, this one is not shown again
 
 var _relay: DmRelayPeer
 var _pending: Callable = Callable()
@@ -137,34 +138,18 @@ func unavailable() -> String:
 ## environment (`DM_LOBBY_TOKEN`). DmConfig.allows_lobby_url accepts the test lobby and loopback addresses only, so an override can never reach the live lobby. An override also
 ## lets an offline character use it (a local lobby), so it is never the default path.
 func overridden() -> bool:
-	return String(shell.opts.get("lobby_url", "")) != "" or _arg_url() != ""
-
-
-static func _arg_url() -> String:
-	for a in OS.get_cmdline_user_args():
-		if a.begins_with("--lobby="):
-			return a.substr(8)
-	return ""
+	return DmPresenceLink.overridden(shell.opts)
 
 
 func lobby_url() -> String:
 	if _url != "":
 		return _url
-	_url = String(shell.opts.get("lobby_url", ""))
-	if _url == "":
-		_url = _arg_url()
-	if _url == "":
-		_url = DmConfig.LOBBY_URL
+	_url = DmPresenceLink.url_for(shell.opts)
 	return _url
 
 
 func _token() -> String:
-	var t := String(shell.opts.get("lobby_token", ""))
-	if t == "" and overridden():
-		t = OS.get_environment("DM_LOBBY_TOKEN")
-	if t == "" and shell.api != null:
-		t = String(shell.api.get_token())
-	return t if not t.begins_with("offline:") else ""
+	return DmPresenceLink.token_for(shell.opts, shell.api)
 
 
 ## The launch arguments of a trial without a panel (the Social window is the panels item): `--host-party[=name]` makes a Closed party as soon as the world is up, `--join-party=<code>`
@@ -512,6 +497,7 @@ func _on_created(i: Dictionary, c: String) -> void:
 	code = c
 	mode = HOST
 	last_error = {}
+	_forget_rejoin()
 	_poll_timer.stop()   # the relay peer polls the socket now
 	if shell.rewards != null:
 		shell.rewards.local_peer_id = 1
@@ -630,6 +616,7 @@ func _on_joined(i: Dictionary, _peer: int) -> void:
 		return
 	busy = ""
 	info = i
+	_rejoin_dismissed.erase(String(i.get("id", "")))   # (a later drop from this party is offered again)
 	mode = HANDOFF
 	lobby.relay = checked_relay(lobby.relay)
 	printerr("[coop] guest: seated in \"%s\" as peer %d, swapping in the guest game" % [String(i.get("name", "")), _peer])
@@ -1221,6 +1208,7 @@ func _wire_social(l: DmLobbyClient) -> void:
 	l.join_requested.connect(_on_join_requested)
 	l.ask_sent.connect(func(_id: int, user: String) -> void: notice.emit("Asked %s. You join as soon as they accept." % user, "good"))
 	l.ask_declined.connect(func(user: String) -> void: social_notice.emit("%s cannot take you along right now." % user))
+	l.rejoin_offered.connect(_on_rejoin_offered)
 
 
 ## We changed a friendship (DmNextFriends): the lobby reloads both sides' lists. Kept until the link is ready (a player can answer a request
@@ -1274,6 +1262,35 @@ func _on_invited(from_name: String, from_id: int, i: Dictionary, auto: bool) -> 
 	changed.emit()
 
 
+## The lobby kept our place in a party our connection dropped from (README "Dropped players"): a row in the Friends tab's Party invites with Rejoin, and a toast. Never a join by itself: the
+## player decides, the fight they may be in goes on. Ignored while we host or sit in a party already, and for an offer the player dismissed.
+func _on_rejoin_offered(from_name: String, from_id: int, i: Dictionary, ms: int) -> void:
+	var sid := String(i.get("id", ""))
+	if mode != SOLO or sid == "" or ms <= 0 or _rejoin_dismissed.has(sid):
+		return
+	var now := Time.get_ticks_msec()
+	for v in invites:
+		if int(v["from_id"]) == from_id:
+			if bool(v.get("rejoin", false)) and String((v["info"] as Dictionary).get("id", "")) == sid:
+				v["until"] = now + ms   # the same offer again (the link reconnected): the window it has left, said once
+				v["info"] = i
+				changed.emit()
+				return
+			invites.erase(v)
+			break
+	invites.append({"from_id": from_id, "from": from_name, "info": i, "at": now, "rejoin": true, "until": now + ms})
+	social_notice.emit("You dropped out of %s's party. Rejoin it from Social (O)." % from_name)
+	changed.emit()
+
+
+## Hosting or joining a party ends the offers to rejoin one.
+func _forget_rejoin() -> void:
+	var n := invites.size()
+	invites = invites.filter(func(v: Dictionary) -> bool: return not bool(v.get("rejoin", false)))
+	if invites.size() != n:
+		changed.emit()
+
+
 func _on_join_requested(id: int, user: String, via: String) -> void:
 	for r in requests:
 		if int(r["account_id"]) == id:
@@ -1285,9 +1302,10 @@ func _on_join_requested(id: int, user: String, via: String) -> void:
 
 
 func _expire_offers() -> void:
-	var cut := Time.get_ticks_msec() - int(OFFER_S * 1000.0)
+	var now := Time.get_ticks_msec()
+	var cut := now - int(OFFER_S * 1000.0)
 	var n := invites.size() + requests.size()
-	invites = invites.filter(func(v: Dictionary) -> bool: return int(v["at"]) > cut)
+	invites = invites.filter(func(v: Dictionary) -> bool: return int(v["until"]) > now if v.has("until") else int(v["at"]) > cut)   # a rejoin offer lasts as long as the lobby holds the place
 	requests = requests.filter(func(r: Dictionary) -> bool: return int(r["at"]) > cut)
 	if invites.size() + requests.size() != n:
 		changed.emit()
@@ -1325,7 +1343,8 @@ func join_friend(id: int) -> void:
 func accept_invite(from_id: int) -> void:
 	for v in invites:
 		if int(v["from_id"]) == from_id:
-			invites.erase(v)
+			if not bool(v.get("rejoin", false)):
+				invites.erase(v)   # (a rejoin offer stays until the join works: a full party or a hiccup can be tried again within the window)
 			join_session(String((v["info"] as Dictionary).get("id", "")))
 			return
 
@@ -1334,6 +1353,8 @@ func decline_invite(from_id: int) -> void:
 	for v in invites:
 		if int(v["from_id"]) == from_id:
 			invites.erase(v)
+			if bool(v.get("rejoin", false)):
+				_rejoin_dismissed[String((v["info"] as Dictionary).get("id", ""))] = true
 			changed.emit()
 			return
 

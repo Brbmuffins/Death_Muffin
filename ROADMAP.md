@@ -422,8 +422,9 @@ Worked through beside the phases, top first. Each change is shown to the team wi
 - [ ] **Fix: the Reaper is unfinished.** Now: she has her rites, a signature (R) rite and a legendary armor set with its own body, but she
   borrows the Mourner's body outside that set and other rites' icons, and has no runes. After: her own model and icons, and runes.
 - [ ] **Fix: co-op gaps.**
-  - Dropped players. Now: a dropped player lands in their own solo game and has to rejoin by hand. After: they are offered to rejoin the
-    same party within a short window (a host who drops still ends the session, D6).
+  - Dropped players. Done 2026-10-20: now a dropped player landed in their own solo game and had to rejoin by hand → after, they are offered
+    to rejoin the same party for 5 minutes, a notice and a Rejoin button in the Social window, also into a Closed party, and never automatically
+    (a host who drops still ends the session, D6; no seat is held, so a party that filled up answers full).
   - A guest's waystone map. Now: it lists the guest's own unlocked areas. After: it lists the host's world, where the party plays.
   - A guest's thrall hits. Now: a guest sees only the killing blow of its thralls. After: it sees every blow, as the host does.
   - A guest waking a boss. Now: if the guest's own account has not opened that boss's area, the boss wakes anyway, the server refuses the
@@ -436,8 +437,8 @@ Worked through beside the phases, top first. Each change is shown to the team wi
   - What a guest brings. Now: a guest cannot call an Empowered boss, and a guest's Colossus Mantle effects, Covenant Seal and Nightfall
     dimming do not reach the host's game. After: a guest's gear and choices work in the party as they do solo.
   - Late joiners. Now: someone who joins during a boss fight does not see the pools already burning. After: they see the fight as it is.
-  - Friends online. Now: friends show as online only once they are in the world, not at character select or in the launcher. After: they
-    show as online whenever the game is open.
+  - Friends online. Done 2026-10-20: now friends showed as online only once they were in the world → after, they show as online from the
+    sign-in, at character select and while the world loads. The launcher is not part of it: it has no login to show (KNOWN-GAPS "Party and online").
 - [ ] **Decide + Fix: things built but never shown.** Now: thralls never wear their Legion kit or their discipline's look, water never
   ripples, the Prelate's candles never gutter, and the Plague Doctor's flask leaves a pool that hurts but cannot be seen. After: each one is
   shown to the team with screenshots; what they keep is switched on (the invisible pool at least gets drawn, so players can dodge it) and

@@ -4,13 +4,14 @@ extends Control
 ##   start(): stored token -> resume(); otherwise the login screen.
 ##   resume(): GET /character -> 200 enter_world (or the discipline switch when its discipline is not playable yet), 404 discipline select,
 ##   anything else clears the token and shows login.
-## The integrator connects `enter_world(character, session)` to the game scene. `session` is the authenticated DmApi
+## The integrator connects `enter_world(character, session)` to the game scene, and `signed_in` to whatever needs a good login before the world (the lobby link for friends' presence). `session` is the authenticated DmApi
 ## (same object for the whole run: token, saves, lobby). Call `logout()` from the game's Log out button, `switch_character()` from Switch character (select screen, same token).
 ## Tokens live in user://dm_jwt.txt when `persist_token` (DmApi's own file); they are never printed or logged.
 
 signal enter_world(character: Dictionary, session)
 signal logged_out
 signal benchmark_requested   ## the select screen's Benchmark button
+signal signed_in             ## the server accepted this login (a sign-in, a kept login, Switch character): the lobby link for friends' presence starts here (DmMain), before the select screen or the world
 
 var api: DmApi
 ## Web VITE_OFFLINE_BUILD: local-player wording, no password / email.
@@ -116,11 +117,13 @@ func go_world(character: Dictionary) -> void:
 func resume() -> void:
 	var r := await api.get_character()
 	if r.ok and r.data is Dictionary:
+		signed_in.emit()
 		if DmCharacterBuild.is_playable(float(r.data.get("class_index", 0))):
 			go_world(r.data)
 		else:
 			go_select(r.data)
 	elif r.status == 404:
+		signed_in.emit()
 		go_select()
 	else:
 		api.set_token("")
@@ -146,6 +149,7 @@ func switch_character() -> void:
 		if current is DmLoginScreen:
 			current.show_notice("Your session ended: sign in again")
 		return
+	signed_in.emit()
 	go_select()
 
 

@@ -6,7 +6,9 @@ extends SceneTree
 ## the forms, host / join / leave / remove through the window, and a joiner's own HUD (party frames, casting reaches the host, the window from the
 ## joiner's side). Part C: two players become friends through their windows (request, the waiting-request pip, accept, class line, remove). Part D: the
 ## real boot scene (main/main.tscn, DmMain) as the joining player, so main.gd's own hand-over of the solo game to a guest game is what runs (the Party tab's
-## Host form makes an Open party, the guest joins from the list and leaves, a refused join and a closed party put the guest back in its own world with the reason).
+## Host form makes an Open party, the guest joins from the list and leaves, a refused join and a closed party put the guest back in its own world with the reason;
+## a guest whose connection drops is offered the way back in its Friends tab and Rejoin puts it in the party again, while a leave or a refusal offers nothing).
+## Part E: friends see a player online from the sign-in, at character select and while the world loads (DmPresenceLink), without a blink when the game's own link takes over.
 
 const DT := 1.0 / 60.0
 
@@ -82,6 +84,7 @@ func _run() -> void:
 	await _part_b()
 	await _part_c()
 	await _part_d()
+	await _part_e()
 	lobby.stop()
 	check(errlog.errors.is_empty(), "zero script errors or engine errors in the log (%d: %s)" % [errlog.errors.size(), "; ".join(errlog.errors.slice(0, 3))])
 	print("%d passed, %d failed" % [passed, failed])
@@ -284,6 +287,21 @@ func _part_a_friends() -> void:
 	v["busy"] = true
 	w.set_view(v)
 	check(w.error_label.visible and w.error_label.text.begins_with("Nobody") and w.add_btn.disabled, "A friends: a refusal is shown verbatim; busy disables Send")
+	# party invites: a friend's invite says Join / Decline, a rejoin offer (our connection to that party dropped) says Rejoin / Dismiss
+	var party_info := {"id": "ab12", "name": "Mira's crypt", "players": 2, "max": 4, "heat": 0, "difficulty": "medium"}
+	v = base.duplicate(true)
+	v["invites"] = [{"from_id": 7, "from": "Mira", "info": party_info}, {"from_id": 8, "from": "Orrin", "info": party_info, "rejoin": true, "until": 1}]
+	w.set_view(v)
+	var tx := _texts(w.offers_rows)
+	check((w.offers_box.get_parent() as Control).visible and w.offers_rows.get_child_count() == 2, "A friends: both offers are rows in Party invites")
+	check(tx.has("Mira invited you") and tx.has("You dropped out of Orrin's party"), "A friends: an invite and a rejoin offer read differently", str(tx))
+	check(_buttons(w.offers_rows, "Join").size() == 1 and _buttons(w.offers_rows, "Decline").size() == 1 and _buttons(w.offers_rows, "Rejoin").size() == 1 and _buttons(w.offers_rows, "Dismiss").size() == 1,
+		"A friends: Join and Decline for the invite, Rejoin and Dismiss for the offer", str(tx))
+	var answers: Array = []
+	w.invite_answered.connect(func(id: int, yes: bool) -> void: answers.append([id, yes]))
+	(_buttons(w.offers_rows, "Rejoin")[0] as Button).pressed.emit()
+	(_buttons(w.offers_rows, "Dismiss")[0] as Button).pressed.emit()
+	check(answers == [[8, true], [8, false]], "A friends: Rejoin answers yes and Dismiss no for that host", str(answers))
 	root_ui.queue_free()
 	await ticks(2)
 
@@ -578,6 +596,15 @@ func _guest_world(dm: DmMain, as_guest: bool) -> Callable:
 		(not as_guest or dm.slice.session.is_active())
 
 
+## The new solo game's lobby link is up and, a moment later, holds no offer to rejoin a party: the lobby offers a way back only after a dropped connection.
+func _no_rejoin_offer(dm: DmMain) -> bool:
+	if dm.slice == null or dm.slice.party == null:
+		return false
+	var linked := await until(func() -> bool: return dm.slice.party.link == "ready", 15.0)
+	await ticks(40)
+	return linked and not dm.slice.party.invites.any(func(v: Dictionary) -> bool: return bool(v.get("rejoin", false)))
+
+
 func _part_d() -> void:
 	var out := "user://ui_run_test"
 	DirAccess.make_dir_recursive_absolute(out)
@@ -631,6 +658,7 @@ func _part_d() -> void:
 		await ticks(2)
 		dm.slice.ui.social_ui.window.party.leave_requested.emit()
 		check(await until(_guest_world(dm, false), 60.0), "D: leaving from the Party tab puts the guest back in its own world")
+		check(await _no_rejoin_offer(dm), "D: and a guest who left on purpose is offered no way back")
 		await until(func() -> bool: return hg.body_of(2) == null, 5.0)
 		check(hg.body_of(2) == null and hg.party.mode == DmNextParty.HOST, "D: the host's party goes on without it")
 
@@ -642,11 +670,30 @@ func _part_d() -> void:
 		if dm.slice != null and dm.slice.ui != null:
 			check(_toasts_of(dm.slice).contains("newer version") or _toasts_of(dm.slice).contains("older version"), "D: with the refusal in the player's words: %s" % _toasts_of(dm.slice))
 		dm.start_opts.erase("wire")
+		check(await _no_rejoin_offer(dm), "D: and a refusal is no drop: no way back is offered either")
 
-		# the host closes its party while the guest is in: the guest is back in its own world with the reason
+		# the guest's connection drops (cable pulled, the host's end untouched): main.gd puts it back in its own world and the lobby offers the way back
 		await until(func() -> bool: return dm.slice.party.busy == "", 5.0)
 		dm.slice.party.join_session(sid)
 		check(await until(_guest_world(dm, true), 60.0), "D: the guest joins again")
+		if dm.slice.is_guest:
+			dm.slice.party.lobby._ws.close(1006, "gone")
+			check(await until(_guest_world(dm, false), 60.0), "D: a dropped connection puts the guest back in its own world")
+			var offered := func() -> bool: return dm.slice != null and dm.slice.party != null and dm.slice.party.invites.any(func(v: Dictionary) -> bool: return bool(v.get("rejoin", false)))
+			check(await until(offered, 20.0), "D: and the lobby offers it the way back into the party")
+			check(_toasts_of(dm.slice).contains("dropped out of") and _toasts_of(dm.slice).contains("Social"), "D: with a toast that says where to rejoin (%s)" % _toasts_of(dm.slice))
+			check(dm.slice.party.mode == DmNextParty.SOLO and not dm.slice.is_guest, "D: it never joins by itself: the player stays in their own world")
+			check(await until(func() -> bool: return hg.session.get_roster().size() == 1, 8.0), "D: the host's roster no longer has it meanwhile")
+			dm.slice.ui.toggle_panel("friends")
+			await ticks(3)
+			var offers: DmFriendsPane = dm.slice.ui.social_ui.window.friends
+			check((offers.offers_box.get_parent() as Control).visible and _buttons(offers.offers_rows, "Rejoin").size() == 1 and _buttons(offers.offers_rows, "Dismiss").size() == 1, "D: the Friends tab shows it with Rejoin and Dismiss",
+				str(_texts(offers.offers_rows)))
+			check(_texts(offers.offers_rows).any(func(t: String) -> bool: return t.contains("dropped out of")), "D: in words")
+			(_buttons(offers.offers_rows, "Rejoin")[0] as Button).pressed.emit()
+			check(await until(_guest_world(dm, true), 60.0), "D: Rejoin puts the guest back in the party")
+			check(dm.slice.is_guest and await until(func() -> bool: return hg.session.get_roster().size() == 2 and hg.body_of(dm.slice.session.get_my_id()) != null, 10.0), "D: and the host has its hero again")
+		await until(func() -> bool: return dm.slice.party.busy == "", 5.0)
 		if dm.slice.is_guest:
 			hs.party.leave_requested.emit()
 			var closed_back := func() -> bool: return dm.slice != null and dm.slice.ready_ and not dm.slice.is_guest and DmLoadingScreen.current == null
@@ -657,3 +704,79 @@ func _part_d() -> void:
 	if dm.slice != null:
 		dm.slice.process_mode = Node.PROCESS_MODE_DISABLED
 	hg.process_mode = Node.PROCESS_MODE_DISABLED
+
+
+# ---- E: friends see the player online from the sign-in (DmPresenceLink) ----------------------------------------------------------------------
+
+func _part_e() -> void:
+	_write_friends({"401": [402], "402": [401]})
+	mock = DmOffline.make_mock("")
+	var out := "user://ui_run_test"
+	# where no lobby may be used the link opens nothing: not online and no override, an offline login, an address this build may not use
+	var api_p := DmOffline.make_api(mock)
+	var reg := await api_p.register("presence%d" % (Time.get_ticks_usec() % 100000), "p@example.com", "pw1234")
+	api_p.set_token(reg.data["token"])
+	var idle := DmPresenceLink.new()
+	root.add_child(idle)
+	idle.start(api_p, {}, false)
+	check(idle.state == "off" and idle.lobby == null, "E: a run that is not online and has no lobby override opens no link")
+	idle.start(api_p, {}, true)
+	check(idle.state == "off" and idle.lobby == null and DmPresenceLink.token_for({}, api_p) == "", "E: an offline login opens no link either")
+	idle.start(api_p, {"lobby_url": "wss://elsewhere.example/lobby/", "lobby_token": "x"}, true)
+	check(idle.state == "off" and idle.lobby == null, "E: nor does an address this build may not use")
+	idle.queue_free()
+
+	# a friend watches (a bare lobby client); the player boots the real scene on a kept login that has no character yet
+	var friend := DmLobbyClient.new()
+	friend.connect_to_lobby(lobby.url, lobby.token(401, "watcher"))
+	var seen: Array = []   # for the player (account 402): true = online, false = went offline, in order
+	var last := [{}]
+	friend.friends_snapshot.connect(func(list: Array) -> void:
+		for p in list:
+			if int((p as Dictionary).get("accountId", 0)) == 402:
+				seen.append(true)
+				last[0] = p)
+	friend.friend_presence.connect(func(id: int, p: Dictionary) -> void:
+		if id == 402:
+			seen.append(not p.is_empty())
+			if not p.is_empty():
+				last[0] = p)
+	check(await until(func() -> bool:
+		friend.poll()
+		return friend.state == DmLobbyClient.State.LOBBY, 6.0), "E: the watching friend is on the lobby")
+	var pb := _branch()
+	var dm: DmMain = load("res://main/main.tscn").instantiate()
+	dm.mode = "test"
+	dm.api = api_p
+	dm.persist_token = false
+	dm.start_opts = {"audio": false, "seed": 20261020, "baked_dir": out, "waves": false, "lobby_url": lobby.url, "lobby_token": lobby.token(402, "presencer")}
+	pb.add_child(dm)
+	check(await until(func() -> bool: return dm.slice == null and dm.flow != null and dm.flow.current_name == "select", 30.0), "E: the boot lands on character select")
+	check(await until(func() -> bool:
+		friend.poll()
+		return not seen.is_empty() and seen[-1] == true, 8.0), "E: and the friend already sees the player online (%s)" % [seen])
+	check(await until(func() -> bool: return dm.presence != null and dm.presence.state == "ready" and dm.presence.lobby != null, 5.0), "E: through the boot's lobby link")
+	check(dm.presence.get_child_count() == 1 and dm.presence.get_child(0) is Timer and (dm.presence.get_child(0) as Timer).wait_time == DmPresenceLink.POLL_EVERY and not dm.presence.is_processing(),
+		"E: which a timer polls, never a frame")
+
+	# into the world: the game's own link takes the link over without the friend seeing the player go offline
+	var sel := dm.flow.current as DmCharSelectScreen
+	check(await sel.choose(2), "E: a pick at character select")
+	check(await until(func() -> bool: return dm.slice != null and dm.slice.ready_ and DmLoadingScreen.current == null, 90.0), "E: enters the world")
+	check(await until(func() -> bool:
+		friend.poll()
+		return dm.slice.party.link == "ready" and dm.presence.state == "replaced" and int(last[0].get("class", -1)) == 2, 15.0), "E: the game's link took over (the friend sees its class %s)" % [last[0]])
+	check(not seen.has(false), "E: and the friend never saw the player offline on the way (%s)" % [seen])
+
+	# Log out: the link is gone and stays gone
+	dm.slice.ui_host.leave_world()
+	check(await until(func() -> bool: return dm.slice == null and dm.flow != null and dm.flow.current_name == "login", 30.0), "E: Log out lands on the login screen")
+	check(await until(func() -> bool:
+		friend.poll()
+		return seen[-1] == false, 8.0), "E: and the friend sees the player go offline")
+	await ticks(30)
+	check(dm.presence.state == "off" and dm.presence.lobby == null, "E: no link is left, nor retried")
+	friend.close()
+	dm.queue_free()
+	pb.queue_free()
+	await ticks(2)

@@ -455,3 +455,123 @@ test('join by code alone: finds the private session, wrong codes are counted and
     assert.equal((await h4.next('error')).code, 'bad_request');
   } finally { await s.close(); }
 });
+
+// ---- rejoin after a drop (README "Rejoin window"; DECISIONS D13) ---------------------------------------------------------------------------------------
+
+const quiet = async (c, t, ms = 200) => { await new Promise((r) => setTimeout(r, ms)); return !c.texts.some((m) => m.t === t); };
+
+test('rejoin: a member whose connection dropped is offered its Closed session on its next connection and walks back in without a code', async () => {
+  const s = await boot();
+  try {
+    const h = await s.connect(1), a = await s.connect(2), stranger = await s.connect(3);
+    h.send({ t: 'create', name: 'Closed crypt', area: 'graves', private: true });
+    const created = await h.next('created');
+    a.send({ t: 'join', code: created.code });
+    await a.next('joined');
+    await h.next('peer_joined');
+    a.ws.terminate();                                       // the network dropped: no leave, no close frame
+    assert.deepEqual((await h.next('peer_left')).reason, 'disconnected');
+    const back = await s.connect(2);
+    const offer = await back.next('rejoin');
+    assert.equal(offer.session.id, created.session.id);
+    assert.deepEqual([offer.from, offer.fromId, offer.session.players, offer.session.private], ['u1', 1, 1, true]);
+    assert.ok(offer.ms > 0 && offer.ms <= s.lobby.options.rejoinMs, `the window left is told (${offer.ms})`);
+    stranger.send({ t: 'join', id: created.session.id });   // the pass is the dropped member's alone
+    assert.equal((await stranger.next('error')).code, 'bad_code');
+    back.send({ t: 'join', id: created.session.id });       // no code
+    const j = await back.next('joined');
+    assert.equal(j.session.id, created.session.id);
+    const pj = await h.next('peer_joined');
+    assert.deepEqual([pj.name, pj.accountId], ['u2', 2]);
+    assert.notEqual(pj.id, 2, 'a peer id is never reused within a session');
+    back.send({ t: 'leave' }); await back.next('left');
+    const again = await s.connect(2);
+    assert.ok(await quiet(again, 'rejoin'), 'having joined again, the offer is gone');
+  } finally { await s.close(); }
+});
+
+test('rejoin: a member who left, was removed, closed its socket on purpose, or whose host dropped is offered nothing', async () => {
+  const s = await boot();
+  try {
+    const h = await s.connect(1), a = await s.connect(2), b = await s.connect(3), c = await s.connect(4);
+    h.send({ t: 'create', name: 'Open crypt', area: 'graves' });
+    const id = (await h.next('created')).session.id;
+    for (const x of [a, b, c]) { x.send({ t: 'join', id }); await x.next('joined'); await h.next('peer_joined'); }
+    a.send({ t: 'leave' });                                 // left
+    await a.next('left');
+    h.send({ t: 'kick', id: 3 });                           // removed
+    await b.next('session_closed');
+    c.ws.close(1000, 'bye');                                // what the game does when it closes its lobby socket on purpose
+    assert.deepEqual([(await h.next('peer_left')).reason, (await h.next('peer_left')).reason, (await h.next('peer_left')).reason], ['left', 'kicked', 'disconnected']);
+    for (const acct of [2, 3, 4]) {
+      const back = await s.connect(acct);
+      assert.ok(await quiet(back, 'rejoin'), `account ${acct} is offered nothing`);
+    }
+    const d = await s.connect(5);
+    d.send({ t: 'join', id }); await d.next('joined'); await h.next('peer_joined');
+    h.ws.terminate();                                       // a host who drops ends the session (D6): its last member has nothing to come back to
+    await d.next('session_closed');
+    d.ws.terminate();
+    const dBack = await s.connect(5);
+    assert.ok(await quiet(dBack, 'rejoin'));
+  } finally { await s.close(); }
+});
+
+test('rejoin: the offer ends with its window, with the session, and when the account hosts a party of its own', async () => {
+  const s = await boot({ rejoinMs: 300 });
+  try {
+    const h = await s.connect(1), a = await s.connect(2), b = await s.connect(3), c = await s.connect(4);
+    h.send({ t: 'create', name: 'Closed', area: 'graves', private: true });
+    const created = await h.next('created');
+    for (const x of [a, b, c]) { x.send({ t: 'join', code: created.code }); await x.next('joined'); await h.next('peer_joined'); }
+    a.ws.terminate(); b.ws.terminate(); c.ws.terminate();
+    await h.next('peer_left'); await h.next('peer_left'); await h.next('peer_left');
+    const bBack = await s.connect(3);                      // b is offered it, then hosts its own party instead: the old offer is gone
+    await bBack.next('rejoin');
+    bBack.send({ t: 'create', name: 'Mine', area: 'graves' });
+    await bBack.next('created');
+    bBack.send({ t: 'leave' });
+    await new Promise((r) => setTimeout(r, 50));
+    const bAgain = await s.connect(3);
+    assert.ok(await quiet(bAgain, 'rejoin', 100), 'hosting its own party forgot the way back');
+    h.send({ t: 'leave' });                                 // the host ends the session: c has nothing to come back to
+    await new Promise((r) => setTimeout(r, 50));
+    const cBack = await s.connect(4);
+    assert.ok(await quiet(cBack, 'rejoin', 100), 'the session ended');
+    await new Promise((r) => setTimeout(r, 300));           // a's window runs out (there is no session left either way: test the window on a fresh one)
+    const h2 = await s.connect(6), e = await s.connect(7);
+    h2.send({ t: 'create', name: 'Closed 2', area: 'graves', private: true });
+    const c2 = await h2.next('created');
+    e.send({ t: 'join', code: c2.code }); await e.next('joined'); await h2.next('peer_joined');
+    e.ws.terminate(); await h2.next('peer_left');
+    await new Promise((r) => setTimeout(r, 450));
+    const eBack = await s.connect(7);
+    assert.ok(await quiet(eBack, 'rejoin', 100), 'the window ran out');
+    eBack.send({ t: 'join', id: c2.session.id });
+    assert.equal((await eBack.next('error')).code, 'bad_code', 'and so did the way through the Closed door');
+  } finally { await s.close(); }
+});
+
+test('rejoin: it is told again on each connection of the window, and a newer login of the account counts as the drop of the older one', async () => {
+  const s = await boot();
+  try {
+    const h = await s.connect(1), a = await s.connect(2);
+    h.send({ t: 'create', name: 'Closed', area: 'graves', private: true });
+    const created = await h.next('created');
+    a.send({ t: 'join', code: created.code }); await a.next('joined');
+    a.ws.terminate();
+    const first = await s.connect(2);
+    await first.next('rejoin');
+    first.ws.terminate();                                   // dropped again before it decided: the offer stands
+    const second = await s.connect(2);
+    assert.equal((await second.next('rejoin')).session.id, created.session.id);
+    // a newer login on another PC while a member is still in the session (a half-open socket the lobby has not noticed): the older one is replaced and the new one is offered the way back
+    const h2 = await s.connect(8), m = await s.connect(9);
+    h2.send({ t: 'create', name: 'Closed 2', area: 'graves', private: true });
+    const c2 = await h2.next('created');
+    m.send({ t: 'join', code: c2.code }); await m.next('joined'); await h2.next('peer_joined');
+    const m2 = await s.connect(9);
+    await m.next('replaced');
+    assert.equal((await m2.next('rejoin')).session.id, c2.session.id);
+  } finally { await s.close(); }
+});

@@ -1,8 +1,8 @@
 # client/next/party: friends, the lobby, hosting, joining, and the guest's own account
 
-Parties are Open (in the public list, anyone joins; the default since 2026-10-14) or Closed (invite only; friends can ask), DECISIONS D11 / B18. A player who left can come back while the session lives. Host's game is authoritative (D1); a host quitting ends the session (D6).
+Parties are Open (in the public list, anyone joins; the default since 2026-10-14) or Closed (invite only; friends can ask), DECISIONS D11 / B18. A player who left can come back while the session lives, and one whose connection dropped is offered the way back for 5 minutes (below). Host's game is authoritative (D1); a host quitting ends the session (D6).
 How the host and the guest share one fight (the puppet core, the snapshot and reliable messages, bosses in a party, the Social window, launch arguments, the local trial and the proofs) is client/README.md "Co-op on the core"; this guide is the lobby, friends and account side.
-Files: `dm_next_party.gd` (`DmNextParty`, child `Party` of `DmNextGame`, every peer), `dm_next_joiner.gd` (`DmNextJoiner`, child `Joiner`, guests only),
+Files: `client/net/relay/dm_presence_link.gd` (`DmPresenceLink`, child `Presence` of `DmMain`: the lobby link before the world), `dm_next_party.gd` (`DmNextParty`, child `Party` of `DmNextGame`, every peer), `dm_next_joiner.gd` (`DmNextJoiner`, child `Joiner`, guests only),
 `dm_next_friends.gd` (`DmNextFriends`, child `Friends`), `client/ui/panels/dm_social_window.gd` (the Social window, key O: tabs Friends and Party),
 `client/ui/panels/dm_friends_pane.gd` / `client/ui/panels/dm_party_pane.gd` (the tabs, pure UI), `client/game_ui/dm_ui_social.gd` (window <-> game wiring),
 `DmNextUiHost.party_*` / `friends_*` (the contract), `client/main/main.gd` (game swap).
@@ -22,6 +22,17 @@ dot, "Online · class · area · hosting 2/4" or "Offline · last played ...", a
 **Ask to join** (a Closed party, or they play solo: they answer from their Friends tab; accepting while solo hosts an Open party first, then the
 asker is let in and joins at once), **Invite** (into our party; playing solo it hosts an Open party first). Invites and asks wait in the tab's
 "Party invites" section for 5 min (toasts open the window). Only the host invites or answers; a guest's friend's ask goes to the host.
+
+**Online before the world (`DmPresenceLink`).** Friends see a player online whenever the game is open and signed in, not only in the world. `DmMain` starts the link at every good sign-in (`DmFrontFlow.signed_in`: a sign-in, a kept login, Switch character) and when a
+hand-over frees the game (a guest sent home, a discipline change), and the link connects and sits there (10 Hz timer, reconnect after 5/15/60/120 s, nothing sent or shown) through character select and the world's loading. The game's own link (`go_online()`, after loading)
+replaces it on the lobby, which hands the account's presence to the new connection without telling friends it went offline (lobby README "Friends"), and the presence link then stops by itself; Log out and a refused login stop it for good. It is used only where a lobby may be used
+(`DmPresenceLink.start`: an online run, or a test's `lobby_url`; never an offline login or an address `DmConfig.allows_lobby_url` refuses). The launcher does not count: it has no login to show (a launcher that kept a lobby link would be a new launcher release).
+
+**Dropped players (DECISIONS D13).** A guest whose connection to the lobby drops (a lost network, a crash) lands in its own world as before (`client_ended` -> `main.gd`), and the lobby keeps its place in the party for 5 minutes (lobby README "Rejoin window"). The new
+solo game's lobby link is told (`rejoin {session, from, fromId, ms}`; `DmLobbyClient.rejoin_offered`), and `DmNextParty._on_rejoin_offered` adds it to `invites` as an entry with `rejoin: true` and `until`: a toast ("You dropped out of X's party. Rejoin it from Social (O).",
+opening the Friends tab) and a row in the Friends tab's "Party invites" with **Rejoin** and **Dismiss** (`DmFriendsPane`). Rejoin is the ordinary join (`accept_invite` -> `join_session`: the Closed door opens without a code), never automatic, so a fight in the player's own world is
+not interrupted; no seat is held, so a join that fails (the party filled up meanwhile) keeps the row for another try. Dismiss is remembered for the run (the lobby repeats the offer on each connection of the window). The offer expires with the window and goes away when the player hosts a party. A leave, a removal, a
+refused join or a closed lobby socket (code 1000) is no drop and is offered nothing; a host who drops still ends the session, so nobody is offered a way back into it (D6).
 
 ## Flows
 | | what happens |
@@ -52,7 +63,7 @@ The Full Party's bandwidth for one guest was about 28 KB/s in 82 packets/s on th
 frame (and the UDP lane when it is up, DECISIONS B31); nothing else runs per frame.
 
 ## Tests
-`client/tests/coop.gd` (a real local lobby and relay, a host and a guest in one process: the party flow, the connection, the fight, kills and rewards on the guest's account, the seals, refused versions), `client/tests/lobby/ui.gd` (the Social window, a guest that is the real boot scene, friends) and
+`client/tests/coop.gd` (a real local lobby and relay, a host and a guest in one process: the party flow, the connection, the fight, kills and rewards on the guest's account, the seals, refused versions), `client/tests/lobby/run.gd` (the party flows, a dropped guest's rejoin offer, Rejoin and Dismiss), `client/tests/lobby/ui.gd` (the Social window, a guest that is the real boot scene and is offered Rejoin in its Friends tab, friends, and the presence link from the sign-in) and
 `client/tests/value.gd` (a guest's account). Each needs `node` and `cd server/death-muffin/lobby && npm ci`, else it prints a skip line.
 
 ## Known gaps

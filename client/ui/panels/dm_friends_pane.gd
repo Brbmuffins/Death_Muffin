@@ -6,7 +6,7 @@ extends VBoxContainer
 ##
 ## view: {unavailable: String ("" = usable), loaded: bool, busy: bool, error: String, message: String,
 ##        friends: [{accountId, username, disciplineIndex, level, online, presence}], incoming: [{accountId, username}], outgoing: [...],
-##        invites: [{from_id, from, info}], requests: [{account_id, user, via}], party: {mode, session_id, linked, full}}
+##        invites: [{from_id, from, info, rejoin?}] (rejoin: our connection to that party dropped: Rejoin / Dismiss), requests: [{account_id, user, via}], party: {mode, session_id, linked, full}}
 ## The name field keeps its text while the view changes (it clears after a request went through); rows are rebuilt only when they changed.
 
 signal refresh_requested
@@ -225,12 +225,13 @@ func _friend_row(f: Dictionary, busy: bool, mine: Dictionary) -> Control:
 func _invite_row(i: Dictionary) -> Control:
 	var from := int(i.get("from_id", 0))
 	var info: Dictionary = i.get("info", {})
-	var pc := _row("%s invited you" % String(i.get("from", "")), "%s · %s · %d/%d players" % [String(info.get("name", "Their party")), DmNextFriends.world_line(info),
-		int(info.get("players", 1)), int(info.get("max", 4))])
-	var j := _button("Join", true)
+	var rejoin := bool(i.get("rejoin", false))   # our connection to this party dropped: its place is kept for a few minutes
+	var pc := _row(("You dropped out of %s's party" if rejoin else "%s invited you") % String(i.get("from", "")), "%s · %s · %d/%d players" % [String(info.get("name", "Their party")),
+		DmNextFriends.world_line(info), int(info.get("players", 1)), int(info.get("max", 4))])
+	var j := _button("Rejoin" if rejoin else "Join", true)
 	j.pressed.connect(func() -> void: invite_answered.emit(from, true))
 	pc.get_child(0).add_child(j)
-	var d := _button("Decline", false)
+	var d := _button("Dismiss" if rejoin else "Decline", false)
 	d.pressed.connect(func() -> void: invite_answered.emit(from, false))
 	pc.get_child(0).add_child(d)
 	return pc

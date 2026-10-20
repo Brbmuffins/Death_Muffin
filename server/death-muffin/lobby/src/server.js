@@ -30,12 +30,16 @@ const DEFAULTS = {
   inviteMs: 5 * 60 * 1000,  // an invite (or an accepted ask) lets that account join for this long
   askMs: 5 * 60 * 1000,     // an unanswered ask to join expires
   askGapMs: 30 * 1000,      // one ask per friend per this long
+  rejoinMs: 5 * 60 * 1000,  // a member whose connection dropped (not one who left or was removed) may come back to its session for this long, also when it is Closed
   friendsFetchPerMin: 20,   // friend-list reloads one connection may cause per minute
   relayUdp: null,           // optional { addr, port }: the UDP relay (server/death-muffin/relay); members get a signed ticket for it (relayTicket)
   relayTicketMs: 10 * 60 * 1000, // a ticket must be used this soon (it only opens the UDP lane; the lobby stays the source of truth for membership)
 };
 
 const AREA_RE = /^[\w .'\-]{1,32}$/;
+/** Close codes of a socket its player closed on purpose (the game closes with 1000; 1001 and 1005 are the other graceful ones). Anything else that ends a
+ *  member's socket (1006 no close frame at all: a lost network, a crash, a killed game; our own 1009 / 1013 / 4429) is a drop: the member may rejoin. */
+const CLEAN_CLOSE = new Set([1000, 1001, 1005]);
 function cleanText(v, max) {
   if (typeof v !== 'string') return null;
   const s = v.replace(/[\u0000-\u001f\u007f]/g, '').trim();
@@ -68,6 +72,7 @@ function createLobby(userOpts = {}) {
 
   const sessions = new Map(); // id -> session
   const byAccount = new Map(); // accountId -> conn
+  const drops = new Map(); // accountId -> {sid, until}: a member whose connection dropped, who may come back to that session (offerRejoin)
   const conns = new Set();
   const stats = { connections: 0, packets: 0, bytes: 0, dropped: 0, rateKicks: 0 };
 
@@ -98,6 +103,7 @@ function createLobby(userOpts = {}) {
 
   function closeSession(s, reason) {
     if (!sessions.delete(s.id)) return;
+    for (const [id, d] of drops) if (d.sid === s.id) drops.delete(id);   // a host who ends the session ends every way back in (D6)
     const members = [...s.clients.values()];
     for (const c of members) { c.session = null; c.peerId = 0; sendJson(c, { t: 'session_closed', reason }); }
     s.clients.clear();
@@ -107,7 +113,9 @@ function createLobby(userOpts = {}) {
     for (const c of members) pushPresence(c);
   }
 
-  function leaveSession(conn, reason) {
+  /** `dropped`: the member's connection was lost (not a leave, a kick or a clean close). It keeps a way back for rejoinMs: an invite into this session (so a
+   *  Closed one lets it in) and a rejoin offer for its next connection (offerRejoin). A host who drops still ends the session (D6). */
+  function leaveSession(conn, reason, dropped = false) {
     const s = conn.session;
     if (!s) return;
     if (s.host === conn) { closeSession(s, 'host_left'); return; }
@@ -115,6 +123,11 @@ function createLobby(userOpts = {}) {
     const id = conn.peerId;
     conn.session = null; conn.peerId = 0;
     s.lastActivity = Date.now();
+    if (dropped && conn.authed && o.rejoinMs > 0) {
+      const until = Date.now() + o.rejoinMs;
+      drops.set(conn.accountId, { sid: s.id, until });
+      s.invites.set(conn.accountId, { until });
+    }
     sendJson(s.host, { t: 'peer_left', id, reason });
     pushPresence(conn);
     pushSession(s);
@@ -151,27 +164,48 @@ function createLobby(userOpts = {}) {
     }
     const stamp = typeof p.sid === 'string' ? sidStamp(p.sid) : 0;
     const other = byAccount.get(p.accountId);
+    let handover = null;
     if (other && other !== conn) {
       // one live connection per account; with auth-server session ids the newer login wins (same rule as server/realtime)
       if (stamp && other.sidStamp > stamp) return sendErr(conn, 'auth', 'this account was opened somewhere else', 'auth'), dropConn(conn, 4402, 'replaced');
       sendJson(other, { t: 'replaced' });
       dropConn(other, 4402, 'replaced');
-      cleanupConn(other);
+      // The new connection takes the old one's place for the account's friends: they are not told it went offline and came back (the game's own link
+      // replaces the character select's, README "Friends"), and the presence it had carries over until the new connection sends its own.
+      handover = { friends: other.authed ? friendConns(other) : [], presence: other.presence };
+      cleanupConn(other, { replaced: true });
     }
     conn.authed = true; conn.accountId = p.accountId; conn.sidStamp = stamp; conn.token = msg.token;
     conn.username = typeof p.username === 'string' && p.username ? p.username.slice(0, 24) : `player${p.accountId}`;
     byAccount.set(conn.accountId, conn);
     clearTimeout(conn.authTimer);
     sendJson(conn, { t: 'ready', accountId: conn.accountId, username: conn.username, maxPlayers: o.maxPlayers, presence: !!o.friendsOf });
+    if (handover) {
+      conn.presence = handover.presence;
+      const now = presenceOf(conn);
+      for (const f of handover.friends) if (!f.cleaned) sendJson(f, { t: 'presence', accountId: conn.accountId, p: now });
+    }
+    offerRejoin(conn);
     loadFriends(conn);
   }
 
-  function cleanupConn(conn) {
+  /** A member whose connection dropped (leaveSession `dropped`) is told, on its next connection and for rejoinMs, which session it may come back to;
+   *  joining it needs no code and passes a Closed door (the invite leaveSession left). The offer is repeated on each connection until the window ends,
+   *  the session ends, or the account joins or hosts a session. */
+  function offerRejoin(conn) {
+    const d = fresh(drops, conn.accountId);
+    const s = d && sessions.get(d.sid);
+    if (!s) { drops.delete(conn.accountId); return; }
+    sendJson(conn, { t: 'rejoin', session: sessionInfo(s), from: s.host.username, fromId: s.host.accountId, ms: Math.max(0, d.until - Date.now()) });
+  }
+
+  /** `opts.code`: the close code of its socket (clean ones are CLEAN_CLOSE); `opts.replaced`: a newer connection of the account took its place. */
+  function cleanupConn(conn, opts = {}) {
     if (conn.cleaned) return;
     conn.cleaned = true;
     clearTimeout(conn.authTimer);
-    leaveSession(conn, 'disconnected');
-    if (conn.authed) for (const f of friendConns(conn)) sendJson(f, { t: 'presence', accountId: conn.accountId, p: null });
+    leaveSession(conn, 'disconnected', opts.code === undefined || !CLEAN_CLOSE.has(opts.code));
+    if (conn.authed && !opts.replaced) for (const f of friendConns(conn)) sendJson(f, { t: 'presence', accountId: conn.accountId, p: null });
     if (byAccount.get(conn.accountId) === conn) byAccount.delete(conn.accountId);
     conns.delete(conn);
   }
@@ -354,6 +388,7 @@ function createLobby(userOpts = {}) {
         const sess = { id, name, area, host: conn, isPrivate, code, clients: new Map(), nextPeerId: HOST_PEER_ID + 1, open: true, lastActivity: Date.now(), invites: new Map(),
           world: worldOf(msg) };
         sessions.set(id, sess);
+        drops.delete(conn.accountId);   // hosting its own party: the way back into the old one is not wanted
         conn.session = sess; conn.peerId = HOST_PEER_ID;
         log('session created', id, name);
         sendJson(conn, { t: 'created', session: sessionInfo(sess), code: isPrivate ? code : undefined, peerId: HOST_PEER_ID, relay: relayFor(sess, HOST_PEER_ID) });
@@ -380,6 +415,7 @@ function createLobby(userOpts = {}) {
         const pid = sess.nextPeerId++;
         sess.clients.set(pid, conn);
         sess.invites.delete(conn.accountId);
+        drops.delete(conn.accountId);
         conn.session = sess; conn.peerId = pid;
         sess.lastActivity = Date.now();
         sendJson(conn, { t: 'joined', session: sessionInfo(sess), peerId: pid, relay: relayFor(sess, pid) });
@@ -459,16 +495,19 @@ function createLobby(userOpts = {}) {
       if (conn.session) conn.session.lastActivity = Date.now();
       handleControl(conn, msg);
     });
-    ws.on('close', () => cleanupConn(conn));
+    ws.on('close', (code) => cleanupConn(conn, { code }));
     ws.on('error', () => { /* close follows */ });
   });
 
   const timers = [];
+  /** Idle sessions end; rejoin windows that ran out are forgotten. */
+  function sweep() {
+    const now = Date.now();
+    for (const s of [...sessions.values()]) if (now - s.lastActivity > o.idleMs) closeSession(s, 'idle');
+    for (const [id, d] of drops) if (d.until <= now) drops.delete(id);
+  }
   function start() {
-    timers.push(setInterval(() => {
-      const now = Date.now();
-      for (const s of [...sessions.values()]) if (now - s.lastActivity > o.idleMs) closeSession(s, 'idle');
-    }, o.sweepMs));
+    timers.push(setInterval(sweep, o.sweepMs));
     timers.push(setInterval(() => {
       for (const c of conns) {
         if (!c.alive) { c.ws.terminate(); continue; }
@@ -489,7 +528,7 @@ function createLobby(userOpts = {}) {
     await new Promise((r) => wss.close(r));
     await new Promise((r) => httpServer.close(r));
   }
-  return { start, stop, sessions, stats, options: o, _sweepIdle: () => { const now = Date.now(); for (const s of [...sessions.values()]) if (now - s.lastActivity > o.idleMs) closeSession(s, 'idle'); } };
+  return { start, stop, sessions, stats, options: o, _sweepIdle: sweep };
 }
 
 module.exports = { createLobby, DEFAULTS, KIND_DATA, relayTicket };
