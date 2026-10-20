@@ -173,7 +173,7 @@ func _column(world: Node3D, at: Vector2, data_dir: String, enemies: Dictionary) 
 	for o: String in ["A", "B"]:
 		var id: int = core.add_external(0, 0.4, 1.0)
 		core.set_external(id, HERO[o], true)
-		view.set_owner_legion(id, "")   # no legion, as the game gives none (today's game never shows one: DmCoreHost.register_hero)
+		view.set_owner_legion(id, "")   # no legion (a Reaper's thralls wear none: DmCoreHost._mark_allies gives the others their discipline's)
 		view.set_owner_ally(id, o == "B")
 		owners[o] = id
 	var ids := []
@@ -231,7 +231,7 @@ func _today(c: Dictionary, bare: bool) -> DmCreature:
 	var look: Variant = LOOK.get(kind)
 	var legion: Variant = null
 	if look == null:
-		legion = LEGION.get("mourner" if wraith else "")   # today's _legion_of: no host has discipline_id_for
+		legion = LEGION.get("mourner" if wraith else "")   # the smoke's owners have no legion, as a Reaper's
 	var slug: String = String(legion.slug) if legion != null else String(SLUG.get(kind, "skeleton_thrall"))
 	var glow_base: float = 1.1 if wraith else (float(look.glow) if look != null else (float(legion.get("glow", 0.18)) if legion != null else 0.18)) + (0.22 if c.get("empowered", false) else 0.0)
 	var spirit := int(DmFxData.data()["spell_fx"]["exhume"]["spirit"])

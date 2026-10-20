@@ -71,6 +71,7 @@ static var _normals: ImageTexture
 
 var rects: Array = []
 var puddles: Array = []
+var _reach := Rect2()   # the box that holds every rect and puddle: `is_wet` for a point beyond it (a death far from any water) is one test
 var mesh_instance: MeshInstance3D
 var quality := "high"
 var time := 0.0
@@ -83,6 +84,7 @@ var tri_count := 0
 func setup(rect_list: Array, puddle_list: Array) -> void:
 	rects = rect_list
 	puddles = puddle_list
+	_reach = _bounds()
 	name = "Water"
 	_ripples.resize(RIPPLES)
 	for i in RIPPLES:
@@ -133,7 +135,25 @@ func tick(dt: float) -> void:
 	time += dt
 	_high.set_shader_parameter("t", time)
 
+## The box about every rect and every puddle (a puddle's longest reach is its radius x its stretch).
+func _bounds() -> Rect2:
+	var box := Rect2()
+	var first := true
+	for r in rects:
+		var b := Rect2(float(r.x0), float(r.z0), float(r.x1) - float(r.x0), float(r.z1) - float(r.z0))
+		box = b if first else box.merge(b)
+		first = false
+	for p in puddles:
+		var reach := float(p.r) * maxf(1.0, float(p.sx))
+		var b := Rect2(float(p.x) - reach, float(p.z) - reach, reach * 2.0, reach * 2.0)
+		box = b if first else box.merge(b)
+		first = false
+	return box.grow(0.01)
+
+
 func is_wet(x: float, z: float) -> bool:
+	if not _reach.has_point(Vector2(x, z)):
+		return false
 	for r in rects:
 		if x >= float(r.x0) and x <= float(r.x1) and z >= float(r.z0) and z <= float(r.z1):
 			return true

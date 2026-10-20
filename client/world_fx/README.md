@@ -23,5 +23,6 @@ Which piece each file draws; what each piece is, its count and what a frame pays
 ## Tests
 `client/tests/dressing.gd` (the pieces in the loaded areas, the stand-ins gone from the scenes, the area by event, the brazier fire's closed form against a frame-by-frame step, the mist's rate, the Binbun shaders' colour); the draw-call counts are `client/tests/draw_budget.gd`.
 
-## Known gaps
-- `add_ripple` / `is_wet` are only called from `client/game/dm_event_fx*.gd` through `DmEnemyFxHost.dressing`, which `DmNextGame` does not set, so enemy wading ripples and the Prelate's candle groups are not wired (KNOWN-GAPS "Built but never shown").
+## Callers outside the node
+`add_ripple` / `is_wet` are called from `client/game/dm_event_fx*.gd` through `DmEnemyFxHost.dressing`, which `DmNextGame` sets for the enemy fx and the boss fx (the hero's steps, deaths, the Wisp's pulse, the Mire Mother's rings; client/README.md "World dressing").
+`set_candle_group` goes through `DmEnemyFxHost.candles`, which `DmNextGame` sets for the boss fx (the Prelate's phases).

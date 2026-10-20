@@ -40,6 +40,10 @@ const TUNE_KEY_RE = /^[A-Za-z0-9_][A-Za-z0-9_./-]{0,79}$/;
 const BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 // Playable disciplines by name -> class index (client/data/combat/disciplines.json by_index; the shot plan and the clip plan name one the same way).
 const CLASSES = { ossuary: 1, gravecaller: 2, mourner: 3, rotweaver: 4, reaper: 11 };
+// The scene words' limits (main/qa_ui_shots.gd: MAX_LEGION, MAX_THRALLS, its stand-in spots; main/qa_clips.gd: a walk of at most 8 points); the game checks them again.
+const MAX_LEGION = 2, MAX_THRALLS = 40, MAX_OWNERS = 4, MAX_PATH = 8, MAX_COORD = 500;
+const KIND_RE = /^[a-z_]{1,24}$/, GROUP_RE = /^[a-z]{1,16}$/;
+const isPoint = (v) => Array.isArray(v) && v.length === 2 && v.every((n) => typeof n === 'number' && Number.isFinite(n) && Math.abs(n) <= MAX_COORD);
 // A plan's `discipline` ("reaper", "hero_reaper" or a class index) -> its class index; 0 = not a playable discipline.
 function classOf(d) {
   if (typeof d === 'string') return CLASSES[d.toLowerCase().replace(/^hero_/, '')] || 0;
@@ -96,6 +100,19 @@ function argRefusal(v, spec) {
       return '';
     case 'rite': return typeof v === 'string' && CAST_RE.test(v) ? '' : 'must be a rite id such as haunting_wraith';
     case 'enemy': return typeof v === 'string' && ENEMY_RE.test(v) ? '' : 'must be an enemy id such as robber';
+    case 'point': return isPoint(v) ? '' : 'must be a point [x, z] of the area';
+    case 'path': return isPoint(v) || (Array.isArray(v) && v.length >= 1 && v.length <= MAX_PATH && v.every(isPoint)) ? '' : `must be a point [x, z] or a list of 1 to ${MAX_PATH} of them`;
+    case 'owners': {
+      if (!isObj(v) || !Object.keys(v).length || Object.keys(v).length > MAX_OWNERS) return `must be {"mine": [kinds], "<discipline>": [kinds]} with 1 to ${MAX_OWNERS} owners`;
+      let n = 0;
+      for (const [who, kinds] of Object.entries(v)) {
+        if (who !== 'mine' && !CLASSES[who]) return `names an owner that is not "mine" or a discipline (${Object.keys(CLASSES).join(', ')})`;
+        if (!Array.isArray(kinds) || !kinds.length || kinds.some((k) => typeof k !== 'string' || !KIND_RE.test(k))) return 'must give each owner a list of thrall kinds such as warrior';
+        n += kinds.length;
+      }
+      return n <= MAX_THRALLS ? '' : `raises ${n} thralls (at most ${MAX_THRALLS})`;
+    }
+    case 'candle_group': return typeof v === 'string' && GROUP_RE.test(v) ? '' : 'must be a candle group such as west';
     default: return `has a type the runner cannot check (${spec && spec.type}): fix ${STEPS_FILE}`;
   }
 }
@@ -130,7 +147,10 @@ function checkWords(list, section, voc, seconds, w, errs) {
 
 function checkPlan(plan, errs, wt) {
   if (!isObj(plan)) { errs.push('"plan" must be an object {"discipline": "reaper", "clips": [...]}'); return null; }
-  onlyKeys(plan, ['discipline', 'equip', 'clips'], '"plan"', errs);
+  onlyKeys(plan, ['discipline', 'equip', 'legion', 'clips'], '"plan"', errs);
+  if (plan.legion !== undefined && (!Array.isArray(plan.legion) || plan.legion.length < 1 || plan.legion.length > MAX_LEGION || plan.legion.some((x) => typeof x !== 'string' || !ITEM_RE.test(x)))) {
+    errs.push(`"plan.legion" must be a list of 1 to ${MAX_LEGION} item ids: the hero's Legion kit, one armour piece and one weapon`);
+  }
   if (!classOf(plan.discipline)) errs.push(`"plan.discipline" must be one of ${Object.keys(CLASSES).join(', ')}`);
   if (plan.equip !== undefined) checkEquip(plan.equip, '"plan"', errs);
   if (!Array.isArray(plan.clips) || plan.clips.length < 1 || plan.clips.length > MAX_CLIPS) { errs.push(`"plan.clips" must be a list of 1 to ${MAX_CLIPS} clips`); return null; }
@@ -153,9 +173,10 @@ function checkPlan(plan, errs, wt) {
     if (typeof c.name !== 'string' || !CLIP_NAME_RE.test(c.name)) errs.push(`${w}: "name" must be lowercase letters, digits and dashes (1 to 30 characters, no underscore)`);
     else if (names.has(c.name)) errs.push(`${w}: the name "${c.name}" is used twice`); else names.add(c.name);
     if (c.area !== undefined && (typeof c.area !== 'string' || !AREA_RE.test(c.area))) errs.push(`${w}: "area" must be an area id such as graves (the Hollow Graves when left out)`);
-    // a turntable clip casts nothing, so it needs no rite
-    if (c.cast === undefined && (c.camera === 'turntable' || stepCasts)) { /* a model preview, or the steps cast */ }
-    else if (typeof c.cast !== 'string' || !CAST_RE.test(c.cast)) errs.push(`${w}: "cast" must be a rite id such as haunting_wraith (only a "turntable" clip, or one whose steps cast, may leave it out)`);
+    // a turntable clip casts nothing, so it needs no rite; nor does a scene (thralls raised, or steps other than casts: a walk, the candles)
+    const scene = (Array.isArray(c.setup) && c.setup.some((e) => isObj(e) && e.do === 'thralls')) || (Array.isArray(c.steps) && c.steps.some((e) => isObj(e) && e.do !== 'cast'));
+    if (c.cast === undefined && (c.camera === 'turntable' || stepCasts || scene)) { /* a model preview, the steps cast, or a scene */ }
+    else if (typeof c.cast !== 'string' || !CAST_RE.test(c.cast)) errs.push(`${w}: "cast" must be a rite id such as haunting_wraith (only a "turntable" clip, one whose steps cast, or a scene of thralls or walks may leave it out)`);
     if (c.at !== undefined && c.at !== 'pack' && c.at !== 'ahead') errs.push(`${w}: "at" must be "pack" or "ahead"`);
     if (c.camera !== undefined && !CAMERAS.includes(c.camera)) errs.push(`${w}: "camera" must be "follow", "wide" or "turntable"`);
     if (c.equip !== undefined) checkEquip(c.equip, w, errs);
@@ -194,7 +215,7 @@ function readClipRequest(wt) {
   onlyKeys(j, ['plan', 'variants'], CLIP_FILE, errs);
   const plan = checkPlan(j.plan, errs, wt), variants = checkVariants(j.variants, errs);
   if (errs.length || !plan || !variants) return { error: errs.slice(0, 8).join('; ') + (errs.length > 8 ? `; and ${errs.length - 8} more` : '') };
-  return { plan: { discipline: plan.discipline, ...(plan.equip ? { equip: plan.equip.slice() } : {}), clips: plan.clips.map((c) => ({ ...c })) }, variants };
+  return { plan: { discipline: plan.discipline, ...(plan.equip ? { equip: plan.equip.slice() } : {}), ...(plan.legion ? { legion: plan.legion.slice() } : {}), clips: plan.clips.map((c) => ({ ...c })) }, variants };
 }
 
 // About how long a clip job takes on a team PC, in minutes: each variant is one game run (start-up about a minute, then the clips at the game's pace).

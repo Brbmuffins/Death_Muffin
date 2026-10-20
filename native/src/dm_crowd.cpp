@@ -68,6 +68,9 @@ void DmCrowd::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_enemy_look", "def", "look"), &DmCrowd::set_enemy_look);
 	ClassDB::bind_method(D_METHOD("set_thrall_look", "kind", "legion", "look"), &DmCrowd::set_thrall_look);
 	ClassDB::bind_method(D_METHOD("set_owner_legion", "owner", "legion"), &DmCrowd::set_owner_legion);
+	ClassDB::bind_method(D_METHOD("set_owner_kit", "owner", "armor", "glow", "weapon"), &DmCrowd::set_owner_kit);
+	ClassDB::bind_method(D_METHOD("kit_of_slot"), &DmCrowd::kit_of_slot);
+	ClassDB::bind_method(D_METHOD("kit_palette"), &DmCrowd::kit_palette);
 	ClassDB::bind_method(D_METHOD("set_focus", "pos"), &DmCrowd::set_focus);
 	ClassDB::bind_method(D_METHOD("set_hitstop_scale", "scale"), &DmCrowd::set_hitstop_scale);
 	ClassDB::bind_method(D_METHOD("set_champion_scale", "scale"), &DmCrowd::set_champion_scale);
@@ -190,6 +193,7 @@ void DmCrowd::set_look(Look &r_look, const Dictionary &p_look) {
 	r_look.model = int32_t(num(p_look, "model", -1));
 	r_look.hover = float(num(p_look, "hover", 0.0));
 	r_look.scale = float(num(p_look, "scale", 1.0));
+	r_look.kit_body = flag(p_look, "kit");
 	r_look.flags = (flag(p_look, "caster") ? dm::BF_CASTER : 0) | (flag(p_look, "inert") ? dm::BF_INERT : 0) | (flag(p_look, "mist") ? dm::BF_MIST : 0) |
 			(flag(p_look, "flyer") ? dm::BF_FLYER : 0) | (flag(p_look, "wobble") ? dm::BF_WOBBLE : 0);
 	tint_of(p_look, "tint", r_look.tint);
@@ -209,24 +213,24 @@ void DmCrowd::set_look(Look &r_look, const Dictionary &p_look) {
 
 // The palette slot of a glow (linear rgb + strength) with a rim (the same layout; none when null): 0 for none, an existing slot for the same pair, else a new one (at most
 // GLOW_SLOTS; past that, none).
-int32_t DmCrowd::glow_slot(const float *p_rgbk, const float *p_rim) {
-	float e[8] = { p_rgbk[0], p_rgbk[1], p_rgbk[2], p_rgbk[3], 0, 0, 0, 0 };
+int32_t DmCrowd::glow_slot(const float *p_rgbk, const float *p_rim, int32_t p_kit) {
+	float e[PAL] = { p_rgbk[0], p_rgbk[1], p_rgbk[2], p_rgbk[3], 0, 0, 0, 0, float(p_kit) };
 	if (p_rim != nullptr) {
 		std::memcpy(e + 4, p_rim, 4 * sizeof(float));
 	}
-	if (e[3] <= 0.0f && e[7] <= 0.0f) {
+	if (e[3] <= 0.0f && e[7] <= 0.0f && p_kit == 0) {
 		return 0;
 	}
-	const int32_t n = int32_t(glow_pal.size() / 8);
+	const int32_t n = int32_t(glow_pal.size() / PAL);
 	for (int32_t i = 1; i < n; i++) {
-		if (std::memcmp(&glow_pal[size_t(i) * 8], e, sizeof(e)) == 0) {
+		if (std::memcmp(&glow_pal[size_t(i) * PAL], e, sizeof(e)) == 0) {
 			return i;
 		}
 	}
 	if (n >= GLOW_SLOTS) {
 		return 0;
 	}
-	glow_pal.insert(glow_pal.end(), e, e + 8);
+	glow_pal.insert(glow_pal.end(), e, e + PAL);
 	glow_ver++;
 	return n;
 }
@@ -239,7 +243,7 @@ void DmCrowd::set_glows(const Color &p_elite, double p_champion_add) {
 	elite_slot = -1;
 	champion_add = float(p_champion_add);
 	for (Look &l : thrall_looks) {
-		std::fill(std::begin(l.slot_var), std::end(l.slot_var), -1);
+		std::fill(l.slot_var.begin(), l.slot_var.end(), -1);
 	}
 }
 
@@ -254,7 +258,7 @@ void DmCrowd::set_thrall_rim(const Color &p_spirit, const Color &p_champion, dou
 	rim_ally = float(p_ally);
 	rim_champion_k = float(p_champion_k);
 	for (Look &l : thrall_looks) {
-		std::fill(std::begin(l.slot_var), std::end(l.slot_var), -1);
+		std::fill(l.slot_var.begin(), l.slot_var.end(), -1);
 	}
 }
 
@@ -280,8 +284,8 @@ int32_t DmCrowd::enemy_glow(const Look &p_look, bool p_elite, bool p_drowned) {
 	return slot;
 }
 
-int32_t DmCrowd::thrall_glow(const Look &p_look, bool p_empowered, bool p_champion, bool p_ally) {
-	const int32_t k = (p_empowered ? 1 : 0) + (p_champion ? 2 : 0) + (p_ally ? 4 : 0);
+int32_t DmCrowd::thrall_glow(const Look &p_look, bool p_empowered, bool p_champion, bool p_ally, int32_t p_kit) {
+	const int32_t k = (p_empowered ? 1 : 0) + (p_champion ? 2 : 0) + (p_ally ? 4 : 0) + 8 * p_kit;
 	int32_t &slot = p_look.slot_var[k];
 	if (slot < 0) {
 		float g[4] = { p_look.glow[0], p_look.glow[1], p_look.glow[2], p_look.glow[3] };
@@ -290,14 +294,14 @@ int32_t DmCrowd::thrall_glow(const Look &p_look, bool p_empowered, bool p_champi
 		}
 		const float *c = p_champion ? rim_champion : rim_spirit;
 		const float r[4] = { c[0], c[1], c[2], p_champion ? rim_champion_k : (p_ally ? rim_ally : rim_own) };
-		slot = glow_slot(g, r);
+		slot = glow_slot(g, r, p_kit);
 	}
 	return slot;
 }
 
 PackedColorArray DmCrowd::glow_palette() const {
 	PackedColorArray out;
-	for (size_t i = 0; i + 7 < glow_pal.size(); i += 8) {
+	for (size_t i = 0; i + PAL - 1 < glow_pal.size(); i += PAL) {
 		out.push_back(Color(glow_pal[i], glow_pal[i + 1], glow_pal[i + 2], glow_pal[i + 3]));
 	}
 	return out;
@@ -305,10 +309,57 @@ PackedColorArray DmCrowd::glow_palette() const {
 
 PackedColorArray DmCrowd::rim_palette() const {
 	PackedColorArray out;
-	for (size_t i = 0; i + 7 < glow_pal.size(); i += 8) {
+	for (size_t i = 0; i + PAL - 1 < glow_pal.size(); i += PAL) {
 		out.push_back(Color(glow_pal[i + 4], glow_pal[i + 5], glow_pal[i + 6], glow_pal[i + 7]));
 	}
 	return out;
+}
+
+PackedFloat32Array DmCrowd::kit_of_slot() const {
+	PackedFloat32Array out;
+	for (size_t i = 0; i + PAL - 1 < glow_pal.size(); i += PAL) {
+		out.push_back(glow_pal[i + 8]);
+	}
+	return out;
+}
+
+PackedColorArray DmCrowd::kit_palette() const {
+	PackedColorArray out;
+	for (int32_t k = 0; k < KIT_SLOTS; k++) {
+		if (k == 0 || size_t(k) > kits.size()) {
+			out.push_back(Color(0, 0, 0, 0));
+			out.push_back(Color(0, 0, 0, 0));
+			out.push_back(Color(0, 0, 0, 0));
+			continue;
+		}
+		const Kit &t = kits[size_t(k - 1)];
+		out.push_back(Color(t.armor[0], t.armor[1], t.armor[2], t.armor[3]));
+		out.push_back(Color(t.glow[0], t.glow[1], t.glow[2], t.glow[3]));
+		out.push_back(Color(t.weapon[0], t.weapon[1], t.weapon[2], t.weapon[3]));
+	}
+	return out;
+}
+
+void DmCrowd::set_owner_kit(int64_t p_owner, const Color &p_armor, const Color &p_glow, const Color &p_weapon) {
+	const int32_t owner = int32_t(p_owner);
+	if (p_armor.a <= 0.0f && p_weapon.a <= 0.0f) {
+		owner_kit.erase(owner);
+		return;
+	}
+	Kit t = { { p_armor.r, p_armor.g, p_armor.b, p_armor.a }, { p_glow.r, p_glow.g, p_glow.b, p_glow.a }, { p_weapon.r, p_weapon.g, p_weapon.b, p_weapon.a } };
+	for (size_t i = 0; i < kits.size(); i++) {
+		if (std::memcmp(&kits[i], &t, sizeof(Kit)) == 0) {
+			owner_kit[owner] = int32_t(i) + 1;
+			return;
+		}
+	}
+	if (int32_t(kits.size()) + 1 >= KIT_SLOTS) {  // more kits at once than the palette holds: the owner's thralls go bare
+		owner_kit.erase(owner);
+		return;
+	}
+	kits.push_back(t);
+	glow_ver++;   // the materials learn the new kit
+	owner_kit[owner] = int32_t(kits.size());
 }
 
 Vector3 DmCrowd::ground_at(int64_t p_id) const {
@@ -423,6 +474,7 @@ void DmCrowd::clear() {
 	view.clear_views();
 	owner_legion.clear();
 	owner_ally.clear();
+	owner_kit.clear();
 	ev_i = ev_f = 0;
 }
 
@@ -520,7 +572,12 @@ void DmCrowd::sync(const Ref<DmCore> &p_core) {
 		b.tint[0] = look->tint[0];
 		b.tint[1] = look->tint[1];
 		b.tint[2] = look->tint[2];
-		b.glow = thrall_glow(*look, t.empowered, t.champion, owner_ally.count(t.owner) != 0);
+		int32_t kit = 0;
+		if (look->kit_body) {
+			const auto ok = owner_kit.find(t.owner);
+			kit = ok != owner_kit.end() ? ok->second : 0;
+		}
+		b.glow = thrall_glow(*look, t.empowered, t.champion, owner_ally.count(t.owner) != 0, kit);
 		feed.bodies.push_back(b);
 	}
 	// Damage, from the events: the buffer is read from where the last sync stopped, and left for take_events.

@@ -63,18 +63,6 @@ player part of a gain until it is fixed; few real sessions ran on the gains save
 
 - The status set's `barrier` (`client/next/status/README.md`) has no decay, only its 6 s hold; nothing applies it today (the hero's own barrier decays), so no data says how it should wear off.
 
-## Built but never shown
-
-Looks and effects that exist in the code but no game scene wires up (the old game never showed them either); they stay out until each is decided
-(ROADMAP polish list).
-- A thrall never wears its Legion kit (the kit's armour tint on its chest and hands, the kit weapon's tier colour): the old per-creature view
-  asked its host for `legion_kit_for`, which no host had.
-- A thrall never wears its discipline's legion look either (the Ossuary's sentinel, the Gravecaller's legionnaire, the Rotweaver's plague
-  thrall, their tints and glows): no host gave `discipline_id_for`; the crowd keeps `CrowdView.set_owner_legion` and crowd_looks.json
-  `legion` for it.
-- The water's ripples (under the hero, the Mire Mother's rings, the Wisp's pulse) and the Prelate's candle groups: `DmEventFx.add_ripple` and
-  `set_candle_group` call a `game.dressing` that no game scene sets (client/README.md "World dressing").
-
 ## Look
 
 What still differs from the old game's look is in client/README.md "The look on Forward+" ("Still different": effects on Low and

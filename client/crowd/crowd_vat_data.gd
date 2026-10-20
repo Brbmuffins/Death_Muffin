@@ -9,8 +9,8 @@ const MAX_CLIPS := 16
 ## Floats per instance in `MultiMesh.buffer` with colors and custom data: 12 transform, 4 color, 4 custom.
 const BUFFER_STRIDE := 20
 ## What the baker writes and the shader reads (client/crowd/README.md "What is baked"): 2 = positions as three codes packed into one RGBA8 texel over the
-## model's bounds (`pos_lo`, `pos_step`, `pos_radix`), hand props as a transform track. A `model.tres` of another format is a stale bake.
-const FORMAT := 2
+## model's bounds (`pos_lo`, `pos_step`, `pos_radix`), hand props as a transform track; 3 = CUSTOM0 is four floats (animation id, part, and the chest and hands weights of the Legion kit). A `model.tres` of another format is a stale bake.
+const FORMAT := 3
 
 @export var slug := ""
 @export var format := 0
@@ -66,6 +66,8 @@ const FORMAT := 2
 @export var part_albedo := PackedColorArray()
 @export var part_pbr := PackedVector4Array()
 @export var part_emission := PackedColorArray()
+## Per part: how far the owner's Legion weapon colour washes over it (0 none, 1 replaces it; the sword's blade and the bow's and staff's wood).
+@export var part_kit := PackedFloat32Array()
 
 const MAX_PARTS := 8
 
@@ -163,6 +165,9 @@ func make_material(albedo: Texture2D, orm: Texture2D = null, spectral := false, 
 		var alb := PackedVector4Array()
 		var pbr := PackedVector4Array(part_pbr)
 		var emi := PackedVector4Array()
+		var kitk := PackedFloat32Array(part_kit)
+		kitk.resize(MAX_PARTS)
+		m.set_shader_parameter("part_kit", kitk)
 		for i in part_albedo.size():
 			alb.append(Vector4(part_albedo[i].r, part_albedo[i].g, part_albedo[i].b, 1.0))
 			emi.append(Vector4(part_emission[i].r, part_emission[i].g, part_emission[i].b, 0.0))

@@ -9,7 +9,7 @@ extends RefCounted
 ##   on_boss_busy(ev) (alias on_boss_bussy)  on_surge_cleared(ev)  on_boss_defeated(ev)  on_node_gone(id)  on_node_back(id)  on_legend(ev)
 ## Zone and corpse records are read by field name, so no sim record class is needed: a Dictionary (DmEnemyFx's reused scratch zone) or any object with the same fields works.
 ## Host (duck-typed; DmEnemyFxHost in next/enemy_fx) members used: sim, mirror (optional), p, self_id, now_ms, area_id, world_root, camera, builder, abilities,
-## views, depths, telegraphs, emit_game_event(), float_text(), tip(), hitstop(), remote_ids(), remote_position(id), remote_bodies(),
+## views, depths, telegraphs, dressing (ripples), candles (the Prelate's candle groups), emit_game_event(), float_text(), tip(), hitstop(), remote_ids(), remote_position(id), remote_bodies(),
 ## remote_gesture(ev), codex_discover(kind, id), boss_view_hide(id), empower_pending.
 
 const PARTNER_FX_SCALE := 0.5
@@ -239,7 +239,7 @@ func is_wet(x: float, z: float) -> bool:
 
 
 func set_candle_group(g: String, on: bool) -> void:
-	var b = game.get("dressing")
+	var b = game.get("candles")
 	if b != null and b.has_method("set_candle_group"):
 		b.set_candle_group(g, on)
 

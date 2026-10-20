@@ -781,6 +781,7 @@ func _process(dt: float) -> void:
 	host.now_ms = _clock
 	host.mirror.time = _clock / 1000.0
 	var pp: Vector3 = _hero()
+	host.p["moving"] = (pp.x - _px) * (pp.x - _px) + (pp.z - _pz) * (pp.z - _pz) > 1.0e-6   # the hero's steps ring the water he wades (DmEventFxZones.wade_ripples)
 	_px = pp.x
 	_pz = pp.z
 	host.p["x"] = _px
