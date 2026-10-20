@@ -449,11 +449,17 @@ func necro_save(character_id: int, input: Dictionary) -> DmResult:
 func necro_purchase(character_id: int, upgrade: String) -> DmResult:
 	return await _post("/api/necro-progress/purchase", {"characterId": character_id, "upgrade": upgrade})
 
-func necro_summon_prelate(character_id: int) -> DmResult:
-	return await _post("/api/necro-progress/summon-prelate", {"characterId": character_id})
+## `session_id`: a party guest's backend session, so the summon is judged in the host's world (DECISIONS B68); "" for the player's own world.
+func necro_summon_prelate(character_id: int, session_id: String = "") -> DmResult:
+	return await _post("/api/necro-progress/summon-prelate", _with_session({"characterId": character_id}, session_id))
 
-func necro_summon_boss(character_id: int, boss: String) -> DmResult:
-	return await _post("/api/necro-progress/summon-boss", {"characterId": character_id, "boss": boss})
+func necro_summon_boss(character_id: int, boss: String, session_id: String = "") -> DmResult:
+	return await _post("/api/necro-progress/summon-boss", _with_session({"characterId": character_id, "boss": boss}, session_id))
+
+static func _with_session(body: Dictionary, session_id: String) -> Dictionary:
+	if session_id != "":
+		body["sessionId"] = session_id
+	return body
 
 func necro_ascend(character_id: int) -> DmResult:
 	return await _post("/api/necro-progress/ascend", {"characterId": character_id})
@@ -575,8 +581,8 @@ func reforge_affix(character_id: int, slot_index: int, affix_index: int, expect_
 func boss_key_status(character_id: int) -> DmResult:
 	return await _post("/api/boss-key/status", {"characterId": character_id})
 
-func boss_key_summon(character_id: int, boss: String) -> DmResult:
-	return _decorate_keys(await _post("/api/boss-key/summon", {"characterId": character_id, "boss": boss}), ["bag"])
+func boss_key_summon(character_id: int, boss: String, session_id: String = "") -> DmResult:
+	return _decorate_keys(await _post("/api/boss-key/summon", _with_session({"characterId": character_id, "boss": boss}, session_id)), ["bag"])
 
 func boss_key_refund(character_id: int, boss: String) -> DmResult:
 	return _decorate_keys(await _post("/api/boss-key/refund", {"characterId": character_id, "boss": boss}), ["bag"])

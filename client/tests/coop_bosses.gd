@@ -313,8 +313,8 @@ func the_party() -> void:
 	tough(gb_h)
 
 
-## Every seal of the account open on the mock's server: a summon takes the shards from the account's own record, and the server refuses it for an area the account has not opened ("... is still
-## sealed."), which gives the shards back (the host does not ask the guest's account whether it may wake what its own world has open).
+## Every seal of the account open on the mock's server: a summon takes the shards from the account's own record (a guest's in its host's world:
+## an area only the host has opened is open to it there too, B68; `fight` plays that on the first boss).
 func open_seals(nm: String) -> void:
 	for k in mock.db["accounts"]:
 		var acc: Dictionary = mock.db["accounts"][k]
@@ -323,6 +323,21 @@ func open_seals(nm: String) -> void:
 			st["unlockedAreas"] = DmProgContent.area_order().duplicate()
 			st["migrated"] = true   # (a record that is not migrated is replaced by the client's own on its first sync)
 			acc["necro"] = st
+
+
+## Seal one area again on the account's own record on the mock's server (the party's world, its host's, keeps it open).
+func seal_area(nm: String, area: String) -> void:
+	var st := account_necro(nm)
+	st["unlockedAreas"] = (st["unlockedAreas"] as Array).filter(func(a: String) -> bool: return a != area)
+
+
+## The account's necromancer record on the mock's server (the live Dictionary).
+func account_necro(nm: String) -> Dictionary:
+	for k in mock.db["accounts"]:
+		var acc: Dictionary = mock.db["accounts"][k]
+		if String(acc.get("username", "")) == nm:
+			return acc["necro"]
+	return {}
 
 
 ## The banners and toasts a side's HUD was told, sorted (the guest's own refusal is for the guest alone).
@@ -517,13 +532,27 @@ func fight(id: String) -> void:
 	reset_watch()
 	earned_log.clear()
 	fell[0] = null
-	# ---- the summon: the guest asks, pays with its own shards, the host wakes it
+	# ---- the summon: the guest asks, pays with its own shards, the host wakes it. The first boss's area is sealed on the guest's own account
+	# (only the host's world has it open): the guest may wake it there all the same, and the server takes its shards (DECISIONS B68).
+	var sealed_own := id == BOSSES[0]
+	var area := String(bd["area"])
+	if sealed_own:
+		seal_area("joiner", area)
+	var refusals: Array = []
+	var on_refused := func(msg: String) -> void: refusals.append(msg)
+	g.joiner.psync.error.connect(on_refused)
 	var s0 := int(g.joiner.prog.local["shards"])
 	g.joiner.prog.add_shards(cost)
 	woke[0] = ""
 	g.bosses.request_summon(id)
 	check(await until(func() -> bool: return woke[0] != "", 4.0) and woke[0] == "%s/2" % id, "%s: the guest's request woke it on the host (%s)" % [tag, woke[0]])
 	check(await until(func() -> bool: return int(g.joiner.prog.local["shards"]) == s0, 2.0), "%s: the guest's own %d soul shards paid for it (%d before, %d now)" % [tag, cost, s0, int(g.joiner.prog.local["shards"])])
+	check(await until(func() -> bool: return g.joiner.psync._queue.is_empty() and g.joiner.psync._remote_in_flight == 0, 4.0) and refusals.is_empty() and int(g.joiner.prog.local["shards"]) == s0,
+		"%s: and the server took them%s (refused: %s)" % [tag, ", though the guest's own account has the area sealed" if sealed_own else "", str(refusals)])
+	g.joiner.psync.error.disconnect(on_refused)
+	if sealed_own:
+		check(not (account_necro("joiner")["unlockedAreas"] as Array).has(area), "%s: the guest's own seals stay as they were" % tag)
+		open_seals("joiner")
 	check(await until(func() -> bool: return h.bosses.active_boss() != null and h.bosses.active_boss().is_hittable(), 12.0), "%s: awake and can be hurt" % tag)
 	var bh := h.bosses.active_boss()
 	if bh == null or bh.boss_id != id:

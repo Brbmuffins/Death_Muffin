@@ -1378,6 +1378,7 @@ function unlockKills(s, id) {
   return u ? Math.max(1, Math.round(u.kills * boonEffects(s.boons).unlockKillsMult)) : null;
 }
 var isOpen = (s, id, opts) => !!opts?.staff || s.unlockedAreas.includes(id);
+var canSummonIn = (s, id, opts) => isOpen(s, id, opts) || !!opts?.partyOpen?.includes(id);
 function openSeals(s) {
   for (const id of AREA_ORDER) {
     const u = AREAS[id].unlock;
@@ -1427,7 +1428,7 @@ function summonPrelate(state, opts) {
   if (state.soulShards < BOSS_SUMMON_SHARDS) {
     return { ok: false, error: `The Sundered Bell demands ${BOSS_SUMMON_SHARDS} soul shards (you have ${state.soulShards}).` };
   }
-  if (!isOpen(state, "sanctum", opts)) return { ok: false, error: "The Bell Sanctum is still sealed." };
+  if (!canSummonIn(state, "sanctum", opts)) return { ok: false, error: "The Bell Sanctum is still sealed." };
   const s = copy(state);
   s.soulShards -= BOSS_SUMMON_SHARDS;
   s.summonsPending = Math.min(5, s.summonsPending + 1);
@@ -1439,7 +1440,7 @@ function summonAreaBoss(state, boss, opts) {
   if (state.soulShards < def.shards) {
     return { ok: false, error: `${def.summonLabel} demands ${def.shards} soul shards (you have ${state.soulShards}).` };
   }
-  if (!isOpen(state, def.area, opts)) return { ok: false, error: `${AREAS[def.area].name} is still sealed.` };
+  if (!canSummonIn(state, def.area, opts)) return { ok: false, error: `${AREAS[def.area].name} is still sealed.` };
   const s = copy(state);
   s.soulShards -= def.shards;
   return { ok: true, state: s };

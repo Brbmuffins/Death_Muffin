@@ -124,8 +124,13 @@ export interface RuleOpts {
   /** Area kills the kill ledger backs (audit and enforce): up to this many count in a ground the character has not opened yet
    *  (a party member carried through its host's world). */
   backed?: Partial<Record<AreaId, number>>;
+  /** The areas open in the world of the party the character plays in (its host's), when the server has checked it is an active member of a
+   *  live party: a guest may wake a boss there with its own shards (Helix, 2026-10-20, DECISIONS B68). Summons only. */
+  partyOpen?: readonly AreaId[];
 }
 const isOpen = (s: NecroState, id: AreaId, opts?: RuleOpts) => !!opts?.staff || s.unlockedAreas.includes(id);
+/** Whether the character may pay to wake a boss of this area: its own seals, or the party's world it plays in. */
+const canSummonIn = (s: NecroState, id: AreaId, opts?: RuleOpts) => isOpen(s, id, opts) || !!opts?.partyOpen?.includes(id);
 
 /** Re-derive opened seals from kill counts (never closes one already open this run). */
 function openSeals(s: NecroState) {
@@ -196,7 +201,7 @@ export function summonPrelate(state: NecroState, opts?: RuleOpts): RuleResult {
   if (state.soulShards < BOSS_SUMMON_SHARDS) {
     return { ok: false, error: `The Sundered Bell demands ${BOSS_SUMMON_SHARDS} soul shards (you have ${state.soulShards}).` };
   }
-  if (!isOpen(state, 'sanctum', opts)) return { ok: false, error: 'The Bell Sanctum is still sealed.' };
+  if (!canSummonIn(state, 'sanctum', opts)) return { ok: false, error: 'The Bell Sanctum is still sealed.' };
   const s = copy(state);
   s.soulShards -= BOSS_SUMMON_SHARDS;
   s.summonsPending = Math.min(5, s.summonsPending + 1);
@@ -204,7 +209,7 @@ export function summonPrelate(state: NecroState, opts?: RuleOpts): RuleResult {
 }
 
 /**
- * Area bosses (2026-09-29): spend that boss's shards; its area must be open. Unlike the Prelate this leaves
+ * Area bosses (2026-09-29): spend that boss's shards; its area must be open (on the character's own record, or in its party's world). Unlike the Prelate this leaves
  * `summonsPending` alone, which only pays out Prelate kills (the Ascension counter).
  */
 export function summonAreaBoss(state: NecroState, boss: unknown, opts?: RuleOpts): RuleResult {
@@ -213,7 +218,7 @@ export function summonAreaBoss(state: NecroState, boss: unknown, opts?: RuleOpts
   if (state.soulShards < def.shards) {
     return { ok: false, error: `${def.summonLabel} demands ${def.shards} soul shards (you have ${state.soulShards}).` };
   }
-  if (!isOpen(state, def.area, opts)) return { ok: false, error: `${AREAS[def.area].name} is still sealed.` };
+  if (!canSummonIn(state, def.area, opts)) return { ok: false, error: `${AREAS[def.area].name} is still sealed.` };
   const s = copy(state);
   s.soulShards -= def.shards;
   return { ok: true, state: s };

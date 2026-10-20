@@ -342,6 +342,10 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   quicker too.
 - **B67. The Depths stay solo** (Helix, 2026-10-20: "solo only"). A Depths run is for one player: the stair turns a party away and says why,
   and a party descending together is not planned. Settles the co-op gaps' Depths question (ROADMAP polish list).
+- **B68. A party guest may wake a boss the host has opened** (Helix, 2026-10-20: "option A"). In a party, a guest may wake the boss of any
+  area open in the host's world, even one its own account has not opened, and pays for it itself: its own soul shards, or its own Covenant
+  Seal and gold for an Empowered call. The server judges the summon in the host's world only for a live party the guest is an active member
+  of (`party-sessions.cjs partyHostOf`); the guest's own seals stay as they are, and outside a party nothing changes.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

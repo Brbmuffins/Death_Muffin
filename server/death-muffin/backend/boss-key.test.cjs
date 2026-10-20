@@ -12,7 +12,7 @@ const RICH = 2 * Math.max(...sinks.EMPOWERABLE.map((b) => sinks.empowerGold(b)))
 const COST = sinks.empowerGold('gravedigger');
 
 /** The boss-key SQL on top of fakeDb: gold, the empowered_summons table, the area record and item metadata. */
-function setup({ gold = RICH, bag, open = true, clock = { t: 1_000_000_000 }, mode = 'off' } = {}) {
+function setup({ gold = RICH, bag, open = true, partyHost, clock = { t: 1_000_000_000 }, mode = 'off' } = {}) {
   const state = { gold, summons: [], nextId: 1, audit: [] };
   const extra = (sql, p) => {
     if (sql.startsWith('SELECT account_id, gold, level FROM characters')) return [[{ account_id: 7, gold: state.gold, level: 30 }]];
@@ -39,7 +39,7 @@ function setup({ gold = RICH, bag, open = true, clock = { t: 1_000_000_000 }, mo
     if (sql.trim().startsWith('SELECT id, stackable') && p[0].includes('covenant_seal')) return [[{ id: 'covenant_seal', stackable: 1, max_stack_size: 99, item_type: 'material', rarity: 'epic' }]];
     return base(sql, p);
   };
-  const call = (opts = {}) => harness((app, pool, o) => mountBossKey(app, pool, { ...o, now: () => clock.t, areaOpen: async () => open, isStaff: async () => false, killsMode: () => mode, log: { error() {}, warn() {}, log() {} } }), db, opts);
+  const call = (opts = {}) => harness((app, pool, o) => mountBossKey(app, pool, { ...o, now: () => clock.t, areaOpen: async (_conn, id, boss) => (typeof open === 'function' ? open(id, boss) : open), partyHost, isStaff: async () => false, killsMode: () => mode, log: { error() {}, warn() {}, log() {} } }), db, opts);
   return { db, state, call, clock };
 }
 const post = (c, name, body) => c(`POST /api/boss-key/${name}`, { body: { characterId: 1, boss: 'gravedigger', ...body } });
@@ -93,6 +93,23 @@ test('no Seal, not enough gold, a sealed ground, the Prelate and junk bosses are
   assert.match((await post(t.call(), 'summon', { boss: '../x' })).json.error, /cannot be called/);
   assert.equal(t.state.summons.length, 0);
   assert.equal(t.state.gold, RICH);
+});
+
+test('a party guest calls an Empowered boss of its host\'s world: the gate is the host\'s record, for a party the server knows (B68)', async () => {
+  const SID = 'ab'.repeat(16);
+  const asked = [];
+  const t = setup({ open: (id) => id === 2, partyHost: async (_conn, sid, id) => { asked.push([sid, id]); return sid === SID ? 2 : 0; } });   // only the host (2) has the ground open
+  assert.match((await post(t.call(), 'summon')).json.error, /sealed/, 'its own world: sealed to it');
+  assert.deepEqual(asked, [], 'no party named: nothing looked up');
+  assert.match((await post(t.call(), 'summon', { sessionId: 'cd'.repeat(16) })).json.error, /sealed/, 'a party the server does not know it in');
+  assert.equal(qty(t.db.inv, 'covenant_seal'), 2);
+  const r = (await post(t.call(), 'summon', { sessionId: SID })).json;
+  assert.equal(r.success, true, r.error);
+  assert.deepEqual(asked.at(-1), [SID, 1], 'asked about this character in that party');
+  assert.equal(t.state.gold, RICH - COST, 'it pays on its own account');
+  assert.equal(qty(t.db.inv, 'covenant_seal'), 1);
+  const none = setup({ open: () => false, partyHost: async () => 2 });
+  assert.match((await post(none.call(), 'summon', { sessionId: SID })).json.error, /sealed/, 'a ground its host has not opened either stays sealed');
 });
 
 test('someone else\'s character is refused on every route', async () => {

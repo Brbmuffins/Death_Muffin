@@ -14,6 +14,7 @@ var reporter: DmKillReporter = DmKillReporter.new()
 var character_id: int = 0
 var state: String = "saved"
 var persist: bool = true
+var party_session: String = ""   ## a party guest's backend session (DmNextJoiner): its boss summons are judged in the host's world (DECISIONS B68)
 
 var _in_flight := false
 var _urgent_again := false
@@ -184,11 +185,11 @@ func _job_call(job: Dictionary) -> Callable:
 		"summon_prelate":
 			return func() -> DmResult:
 				await _send_necro()
-				return await api.necro_summon_prelate(character_id)
+				return await api.necro_summon_prelate(character_id, party_session)
 		"summon_boss":
 			return func() -> DmResult:
 				await _send_necro()
-				return await api.necro_summon_boss(character_id, job["boss"])
+				return await api.necro_summon_boss(character_id, job["boss"], party_session)
 	return func() -> DmResult: return null
 
 

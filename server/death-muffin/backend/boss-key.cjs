@@ -33,7 +33,7 @@ const GOLD_MAX = 2147483647;
 const MIN_FIGHT_MS = 10 * 1000;
 const MAX_UNCLAIMED = 300;
 
-module.exports = function mountBossKey(app, pool, { requireAuth, ownsCharacter, random = secureRandom, isStaff, now = () => Date.now(), areaOpen, killsMode, log = console }) {
+module.exports = function mountBossKey(app, pool, { requireAuth, ownsCharacter, random = secureRandom, isStaff, now = () => Date.now(), areaOpen, partyHost, killsMode, log = console }) {
   const lockedCharacter = async (conn, id) => {
     const [[char]] = await conn.execute('SELECT account_id, gold, level FROM characters WHERE id = ? FOR UPDATE', [id]);
     if (!char) throw playerError('Character not found.');
@@ -86,7 +86,11 @@ module.exports = function mountBossKey(app, pool, { requireAuth, ownsCharacter, 
     const boss = bossOf(body);
     const char = await lockedCharacter(conn, id);
     const staff = isStaff ? await isStaff(req).catch(() => false) : false;
-    if (!staff && areaOpen && !(await areaOpen(conn, id, boss))) throw playerError('That ground is still sealed to you.');
+    // a guest may call it in its party's world (`sessionId`, DECISIONS B68): the gate is then its host's record
+    if (!staff && areaOpen && !(await areaOpen(conn, id, boss))) {
+      const host = partyHost && body.sessionId ? await partyHost(conn, String(body.sessionId), id) : 0;
+      if (!host || !(await areaOpen(conn, host, boss))) throw playerError('That ground is still sealed to you.');
+    }
     const bound = await openRow(conn, id, boss, 'ASC');
     if (bound.length) {
       const [bag] = await conn.execute(store.INV_SELECT, [id]);

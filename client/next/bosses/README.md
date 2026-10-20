@@ -20,7 +20,10 @@ DmBossHost  (node "Bosses" under DmNextGame, every peer)   summon rules, spawner
   (`hero.take_damage(dmg, boss.core_id)`). Rooting events (`bury`, hands, the Congregation's grasp) call `DmHeroBody.root_for`; the Congregation's flood chills via `chillMs`.
 - **Summon**: `DmBossHost.try_summon(peer, id) -> why` (`busy far shards dead unknown`); key E near the area's `summonId` interactable or a click.
   `LIVE` lists all seven; `served_areas` = graves, ossuary, nave, sanctum, cloister, pyre, fen. Cost is the boss's soul shards (`bosses.json` `shards`: King 2, Abbess 3, Congregation 4, Saint 5, Regent 6, Mire Mother 7)
-  or the Prelate's bell (5 shards). The prompt belongs to `DmChapterhouse._update_prompt`. A guest pays with its own shards: `request_summon_plain`.
+  or the Prelate's bell (5 shards). The prompt belongs to `DmChapterhouse._update_prompt`. A guest pays with its own shards: `request_summon_plain`. The
+  guest's summons name its party session (`DmProgressSync.party_session`, set by `DmNextJoiner` once the backend has it), so the server
+  judges the area in the host's world: a guest may wake a boss of any area the host has opened, even one sealed on its own account
+  (DECISIONS B68; `necro-progress` summon routes and `boss-key/summon`, through `party-sessions.cjs partyHostOf`).
 - **World hooks** (`dm_boss_node_world.gd`, `extends DmBossWorld`): `corpses()` / `remove_corpse` -> the core's corpse field (`devoured` Abbess, `raised` Mire),
   `cover()` -> `DmDb.sim_world()["cover"]` (Congregation pews), `echoes()` -> none (no vows: B36), `hostile_toxic_zones()` / `add_hostile_pool` / `ember_pool` -> zones of the core with the boss as source.
   Abbess niches and every other add go through `DmWaveDirector.spawn(..., area)` as core bodies; a kind the core does not run is skipped.
@@ -42,7 +45,7 @@ One suite for the King (`client/tests/boss.gd`), one for each of the other six o
 The recorded scenarios the brains are replayed against are recordings of the web game's brains (44 of them).
 
 ## Known gaps
-- A guest's Empowered call pays on its own account and the host wakes the boss on its word (`DmBossHost.ask_empowered`): the server's area gate is the guest's own (a boss's area its account has sealed refuses the Seal with the server's reason before anything is spent); the prize claim window is the backend's (3 h).
+- A guest's Empowered call pays on its own account and the host wakes the boss on its word (`DmBossHost.ask_empowered`): the server's area gate is the host's world (B68: an area neither the guest's account nor its host has opened refuses the Seal with the server's reason before anything is spent); the prize claim window is the backend's (3 h).
 - Pools of a boss that resets linger their remaining seconds (core zones have a lifetime, no owner to remove them).
 - The Mire Mother's flood shrinks the Fen's hummocks for the brain (`FEN_FLOOD_SCALE`); the event plays the rings, and nothing eases the drawn hummocks.
 - `can_ascend` after a Prelate kill is only a game event (no Altar: B36). Prelate Echoes are not played for the same reason (client/README.md "The bosses").

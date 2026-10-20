@@ -54,7 +54,11 @@ function limiter(perMinute) {
   };
 }
 
-function createNecroProgressHandlers({ store, ownsCharacter, isStaff, logger = console, perMinute = 60 }) {
+/**
+ * `partyOpen(characterId, sessionId)` (optional): the areas open in the world of the live party the character plays in as a guest, [] when it
+ * is not one. A summon that names its party (`sessionId`) may wake a boss there with the character's own shards (DECISIONS B68).
+ */
+function createNecroProgressHandlers({ store, ownsCharacter, isStaff, partyOpen, logger = console, perMinute = 60 }) {
   if (!store || !ownsCharacter) throw new Error('necro-progress: store and ownsCharacter are required');
   const allow = limiter(perMinute);
 
@@ -70,16 +74,18 @@ function createNecroProgressHandlers({ store, ownsCharacter, isStaff, logger = c
     return characterId;
   }
 
-  /** Run a rule inside the character's locked transaction and answer. */
-  async function mutate(req, res, apply) {
+  /** Run a rule inside the character's locked transaction and answer. `summon`: the rule wakes a boss (a guest's party world counts). */
+  async function mutate(req, res, apply, summon = false) {
     const characterId = await guard(req, res, req.body && req.body.characterId);
     if (!characterId) return;
     try {
       // Staff (dev access) stand past every area seal; everyone else opens seals with kills.
       const staff = isStaff ? !!(await isStaff(req)) : false;
+      const sessionId = req.body && req.body.sessionId;
+      const party = summon && partyOpen && sessionId ? await partyOpen(characterId, String(sessionId)) : [];
       let outcome = null;
       const done = await store.withLock(characterId, (state, gold) => {
-        const r = apply(state, gold, req.body || {}, { staff, backed: req.killsBacked && typeof req.killsBacked === 'object' ? req.killsBacked : undefined });
+        const r = apply(state, gold, req.body || {}, { staff, backed: req.killsBacked && typeof req.killsBacked === 'object' ? req.killsBacked : undefined, ...(party.length ? { partyOpen: party } : {}) });
         outcome = r;
         if (!r.ok) return {}; // nothing written
         return { state: r.state, gold: r.gold };
@@ -121,8 +127,8 @@ function createNecroProgressHandlers({ store, ownsCharacter, isStaff, logger = c
         }, o),
       ),
     purchase: (req, res) => mutate(req, res, (s, g, b) => rules.purchase(s, g, b.upgrade)),
-    summonPrelate: (req, res) => mutate(req, res, (s, _g, _b, o) => rules.summonPrelate(s, o)),
-    summonBoss: (req, res) => mutate(req, res, (s, _g, b, o) => rules.summonAreaBoss(s, b.boss, o)),
+    summonPrelate: (req, res) => mutate(req, res, (s, _g, _b, o) => rules.summonPrelate(s, o), true),
+    summonBoss: (req, res) => mutate(req, res, (s, _g, b, o) => rules.summonAreaBoss(s, b.boss, o), true),
     ascend: (req, res) => mutate(req, res, (s) => rules.ascend(s)),
     vows: (req, res) => mutate(req, res, (s, _g, b) => rules.swearVows(s, b.vows)),
     unlock: (req, res) => mutate(req, res, (s, _g, b) => rules.unlockEntry(s, b.key)),

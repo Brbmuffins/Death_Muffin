@@ -16,10 +16,10 @@ const tiers = (cost, key) => { let n = 0; while (cost({ ...BLANK, [key]: n }) !=
 /** The soul shards a summon / unlock asks, read from the refusal a blank character gets (the rules price it, never the test). */
 const asked = (r) => Number(/(?:demands|asks) (\d+) soul shards/.exec(r.json.error)[1]);
 
-function harness({ gold = 10000, owner = true, staff = false } = {}) {
+function harness({ gold = 10000, owner = true, staff = false, partyOpen } = {}) {
   const store = createMemoryStore({ 7: gold, 8: 0 });
   let staffNow = staff;
-  const h = createNecroProgressHandlers({ store, ownsCharacter: async (_req, id) => owner && id === 7, isStaff: async () => staffNow, logger: { error() {} }, perMinute: 1000 });
+  const h = createNecroProgressHandlers({ store, ownsCharacter: async (_req, id) => owner && id === 7, isStaff: async () => staffNow, partyOpen, logger: { error() {} }, perMinute: 1000 });
   const call = async (name, body = {}, params = {}) => {
     let status = 0;
     let json = null;
@@ -167,6 +167,35 @@ test('staff (dev access) stand past every seal without their save changing; play
   assert.equal(r.status, 400, 'a player needs the Cloister open');
   r = await player.call('save', { areaKills: { cloister: 40 } });
   assert.equal(r.json.data.progress.areaKills.cloister, undefined);
+});
+
+test('a party guest wakes a boss of its host\'s world with its own shards; only for summons, only a party the server knows (B68)', async () => {
+  const SID = 'ab'.repeat(16);
+  const HOST_OPEN = ['chapterhouse', 'graves', 'cloister', 'sanctum'];
+  const asks = [];
+  const { call, seed } = harness({ partyOpen: async (cid, sid) => { asks.push([cid, sid]); return sid === SID ? HOST_OPEN : []; } });
+  const saint = asked(await call('summonBoss', { boss: 'saint' }));   // (a blank record: the price, before any seal is asked about)
+  const bell = asked(await call('summonPrelate'));
+  await seed({ areaKills: { graves: 10 }, shards: LIMITS.importMaxShards });
+  let r = await call('summonBoss', { boss: 'saint' });
+  assert.equal(r.status, 400, 'its own world: the Cloister is sealed to it');
+  assert.deepEqual(asks, [], 'a summon that names no party looks nothing up');
+  r = await call('summonBoss', { boss: 'saint', sessionId: 'cd'.repeat(16) });
+  assert.equal(r.status, 400, 'a party the server does not know it in changes nothing');
+  r = await call('summonBoss', { boss: 'saint', sessionId: SID });
+  assert.equal(r.status, 200, 'in its host\'s world it may');
+  assert.deepEqual(asks.at(-1), [7, SID], 'the server asked about this character in that party');
+  assert.equal(r.json.data.progress.soulShards, LIMITS.importMaxShards - saint, 'and it pays its own shards');
+  assert.ok(!r.json.data.progress.unlockedAreas.includes('cloister'), 'its own seals stay as they are');
+  r = await call('summonPrelate', { sessionId: SID });
+  assert.equal(r.status, 200, 'the Prelate\'s bell too');
+  assert.equal(r.json.data.progress.soulShards, LIMITS.importMaxShards - saint - bell);
+  r = await call('summonBoss', { boss: 'regent', sessionId: SID });
+  assert.equal(r.status, 400, 'an area its host has not opened either stays sealed');
+  const n = asks.length;
+  r = await call('save', { areaKills: { cloister: 40 }, sessionId: SID });
+  assert.equal(r.json.data.progress.areaKills.cloister, undefined, 'a save is not a summon: the party opens nothing for it');
+  assert.equal(asks.length, n, 'and looks nothing up');
 });
 
 test('Ascend and boons are server rules', async () => {

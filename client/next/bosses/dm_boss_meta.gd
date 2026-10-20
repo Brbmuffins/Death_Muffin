@@ -90,7 +90,7 @@ func call_empowered(id: String) -> String:
 	var ui: Node = game.get("ui_host")
 	var inv: Object = ui.inventory if ui != null else null
 	var work := func() -> DmResult:
-		var res: DmResult = await _psync().spend_on_server(func() -> DmResult: return await game.api.boss_key_summon(hero_id, id))
+		var res: DmResult = await _psync().spend_on_server(func() -> DmResult: return await game.api.boss_key_summon(hero_id, id, _psync().party_session))
 		if res.ok and res.data is Dictionary and res.data.has("bag") and inv != null:
 			inv.replace(res.data["bag"])
 		return res

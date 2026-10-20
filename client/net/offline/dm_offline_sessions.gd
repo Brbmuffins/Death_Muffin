@@ -275,6 +275,15 @@ func active_member(sid: String, cid: int, now: int) -> Dictionary:
 	return m if m != null and m["status"] == "active" else {}
 
 
+## The host character of the live session `sid` that `cid` is an active member of, not hosting; 0 otherwise (party-sessions.cjs partyHostOf: a guest's
+## boss summon is judged in that host's world, DECISIONS B68).
+func party_host_of(sid: String, cid: int, now: int) -> int:
+	if active_member(sid, cid, now).is_empty():
+		return 0
+	var host := int(_sessions[sid]["host_char"])
+	return host if host != cid else 0
+
+
 func is_live(sid: String, now: int) -> bool:
 	var s: Variant = _sessions.get(sid)
 	return s != null and _live(s, now)

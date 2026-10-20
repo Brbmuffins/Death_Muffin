@@ -266,13 +266,13 @@ Worked through beside the phases, top first. Each change is shown to the team wi
 - [ ] **Fix: the Reaper is unfinished.** Now: she has her rites (Haunting Wraith since 2026-10-18), a signature (R) rite and a legendary
   set with its own body, but borrows the Mourner's body outside that set and other rites' icons, and has no runes. After: her own model,
   icons and runes.
-- [ ] **Fix: co-op gaps** (now → after; KNOWN-GAPS "Party and online"):
+- [x] **Fix: co-op gaps** (now → after; KNOWN-GAPS "Party and online"):
   - Done 2026-10-20: a dropped player landed in their own solo game → for 5 minutes a notice and a Rejoin button in Social offer the same
     party back (a host who drops still ends the session, D6; no seat is held, so a party that filled up answers "full").
   - Done 2026-10-20: a guest's waystone map listed the guest's own unlocked areas → it lists the host's world, where the party plays.
   - Done 2026-10-20: a guest saw only the killing blow of its thralls → it sees every blow, as the host does (the host lists each blow in the vitals message: 0.2 KB/s and no extra packet in the Full Party fight).
-  - A guest whose account has not opened a boss's area wakes the boss anyway, has its payment refused and is told afterwards → the team
-    decides whether a guest may wake a boss only the host has opened, and the guest is told before anything happens.
+  - Done 2026-10-20 (B68): a guest whose account had not opened a boss's area woke the boss for nothing and was told afterwards → a guest
+    may wake a boss of any area open in the host's world, and pays its own shards (or its own Seal and gold) for it.
   - Done 2026-10-20: a guest never got a boss's first-kill bonus or trophy → guests get their own (the server decides from the guest's own
     Chronicle, in the host's party report, once; the guest is paid after its answer).
   - Done 2026-10-20: only the host's area got waves → each area a member fights in gets its own, sharing the 72-enemy limit (a Grave

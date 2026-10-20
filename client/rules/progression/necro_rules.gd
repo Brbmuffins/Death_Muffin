@@ -79,6 +79,12 @@ static func _is_open(s: Dictionary, id: String, opts: Variant) -> bool:
 	return staff or (s["unlockedAreas"] as Array).has(id)
 
 
+## Whether the character may pay to wake a boss of this area: its own seals, or the world of the party it plays in (`opts.partyOpen`, the areas
+## open in its host's world, which the server sets once it has checked the membership; DECISIONS B68).
+static func _can_summon_in(s: Dictionary, id: String, opts: Variant) -> bool:
+	return _is_open(s, id, opts) or (typeof(opts) == TYPE_DICTIONARY and ((opts as Dictionary).get("partyOpen", []) as Array).has(id))
+
+
 static func _open_seals(s: Dictionary) -> void:
 	for id in DmProgContent.area_order():
 		var u: Variant = DmProgContent.areas()[id]["unlock"]
@@ -148,7 +154,7 @@ static func summon_prelate(state: Dictionary, opts: Variant = null) -> Dictionar
 	var need: int = int(DmProgContent.get_data()["bossSummonShards"])
 	if state["soulShards"] < need:
 		return _err("The Sundered Bell demands %d soul shards (you have %s)." % [need, DmProgUtil.fmt(state["soulShards"])])
-	if not _is_open(state, "sanctum", opts):
+	if not _can_summon_in(state, "sanctum", opts):
 		return _err("The Bell Sanctum is still sealed.")
 	var s: Dictionary = copy_state(state)
 	s["soulShards"] -= need
@@ -164,7 +170,7 @@ static func summon_area_boss(state: Dictionary, boss: Variant, opts: Variant = n
 	var def: Dictionary = bosses[boss]
 	if state["soulShards"] < def["shards"]:
 		return _err("%s demands %d soul shards (you have %s)." % [def["summonLabel"], int(def["shards"]), DmProgUtil.fmt(state["soulShards"])])
-	if not _is_open(state, def["area"], opts):
+	if not _can_summon_in(state, def["area"], opts):
 		return _err("%s is still sealed." % DmProgContent.areas()[def["area"]]["name"])
 	var s: Dictionary = copy_state(state)
 	s["soulShards"] -= int(def["shards"])

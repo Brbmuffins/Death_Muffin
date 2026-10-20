@@ -242,6 +242,39 @@ async function memberBuild(pool, { sessionId, accountId, memberId, now = Date.no
   } catch (err) { return unavailable(err, log, 'build'); }
 }
 
+// ── A guest's summon in its host's world (Helix, 2026-10-20, DECISIONS B68) ──────────────────────────────────────────────────────
+
+/**
+ * The host character of the live party session `sessionId` that `characterId` is an active member of, not hosting; 0 otherwise (no such
+ * session, ended or idle, the character left, or it is the host). A guest's boss summon is judged in that host's world.
+ */
+async function partyHostOf(db, sessionId, characterId, now = Date.now()) {
+  if (!ID_RE.test(String(sessionId || ''))) return 0;
+  try {
+    const [[r]] = await db.execute(
+      `SELECT s.host_character_id, s.status, s.last_host_at FROM party_sessions s JOIN party_session_members m ON m.session_id = s.id
+        WHERE s.id = ? AND m.character_id = ? AND m.status = 'active'`, [String(sessionId), characterId]);
+    if (!r || String(r.status) !== 'open' || now - num(r.last_host_at) > LIMITS.SESSION_IDLE_MS) return 0;
+    const host = num(r.host_character_id);
+    return host !== num(characterId) ? host : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** The areas open in the world of the party `characterId` plays in as a guest (its host's necromancer record), [] when none or not a guest. */
+async function partyOpenAreas(db, sessionId, characterId, now = Date.now()) {
+  const host = await partyHostOf(db, sessionId, characterId, now);
+  if (!host) return [];
+  try {
+    const [[row]] = await db.execute('SELECT state FROM character_necro_progress WHERE character_id = ?', [host]);
+    const s = row && (typeof row.state === 'string' ? JSON.parse(row.state) : row.state);
+    return s && Array.isArray(s.unlockedAreas) ? s.unlockedAreas.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
 // ── The report ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Shape-check one member's part and build the report body the kill ledger takes. Pure. Returns { body } or { error }. */
@@ -440,5 +473,5 @@ function mountPartySessions(app, pool, { requireAuth, limiter, env = process.env
 
 module.exports = {
   mountPartySessions, openSession, joinSession, heartbeat, leaveSession, viewSession, memberBuild, reportBatch, endSession,
-  parseReport, memberBody, cleanSummary, createLimiter, isLive, LIMITS,
+  parseReport, memberBody, cleanSummary, createLimiter, isLive, partyHostOf, partyOpenAreas, LIMITS,
 };

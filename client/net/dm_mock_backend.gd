@@ -2196,12 +2196,18 @@ func _necro_post(acc: Dictionary, action: String, body: Dictionary) -> Dictionar
 		return _err("Offline backend: no route for POST /api/necro-progress/%s" % action, 404)
 	var c: Dictionary = acc["character"]
 	var state: Dictionary = DmNecroRules.normalise(acc.get("necro", DmNecroRules.blank_state()))
+	var opts := {}
+	if action.begins_with("summon-") and String(body.get("sessionId", "")) != "":   # a guest's summon names its party: the host's world counts (B68)
+		var host := _sessions.party_host_of(String(body["sessionId"]), int(c["id"]), _now())
+		var host_acc: Dictionary = db["accounts"].get(_character_owner(host), {}) if host > 0 else {}
+		if not host_acc.is_empty():
+			opts["partyOpen"] = DmNecroRules.normalise(host_acc.get("necro", DmNecroRules.blank_state()))["unlockedAreas"]
 	var r: Dictionary
 	match action:
 		"save": r = DmNecroRules.apply_save(state, body)
 		"purchase": r = DmNecroRules.purchase(state, _num_or(c.get("gold"), 0.0), body.get("upgrade"))
-		"summon-prelate": r = DmNecroRules.summon_prelate(state)
-		"summon-boss": r = DmNecroRules.summon_area_boss(state, body.get("boss"))
+		"summon-prelate": r = DmNecroRules.summon_prelate(state, opts)
+		"summon-boss": r = DmNecroRules.summon_area_boss(state, body.get("boss"), opts)
 		"vows": r = DmNecroRules.swear_vows(state, body.get("vows"))
 		"unlock": r = DmNecroRules.unlock_entry(state, body.get("key"))
 		"ascend": r = DmNecroRules.ascend(state)

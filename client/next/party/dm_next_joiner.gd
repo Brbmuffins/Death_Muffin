@@ -96,6 +96,8 @@ func begin_backend(sid: String) -> void:
 	if r.ok:
 		backend_ok = true
 		_hb_t = 0.0
+		if psync != null:
+			psync.party_session = sid   # this player's boss summons are judged in the host's world (DECISIONS B68)
 		_backend(true, "")
 	else:
 		_backend(false, r.error if r.error != "" else "The backend would not let you into this session.")

@@ -511,3 +511,38 @@ test('only the host of a live session reads an active member\'s build: character
   assert.equal((await memberBuild(pool, { sessionId: SID, accountId: 2, memberId: 20, now, log: { error() {} } })).status, 403, 'a member cannot read another member');
   assert.equal((await memberBuild(pool, { sessionId: SID, accountId: 1, memberId: 99, now, log: { error() {} } })).status, 404, 'only members');
 });
+
+// ── a guest's summon in its host's world (DECISIONS B68) ─────────────────────────────────────────────────────────────────────────────
+
+test('partyHostOf / partyOpenAreas: the host of a live party the character is an active guest in, and the areas open in that host\'s world', async () => {
+  const SID = 'ab'.repeat(16);
+  const now = T0;
+  let row = { host_character_id: 11, status: 'open', last_host_at: now - MIN };
+  let hostState = JSON.stringify({ unlockedAreas: ['chapterhouse', 'graves', 'cloister'] });
+  const seen = [];
+  const db = {
+    execute: async (sql, p) => {
+      seen.push(p);
+      if (sql.includes('FROM party_sessions s JOIN party_session_members m')) return [[row && p[0] === SID && p[1] === 12 ? row : undefined].filter(Boolean)];
+      if (sql.startsWith('SELECT state FROM character_necro_progress')) return [[p[0] === 11 && hostState != null ? { state: hostState } : undefined].filter(Boolean)];
+      throw new Error(`unexpected ${sql}`);
+    },
+  };
+  assert.equal(await ps.partyHostOf(db, SID, 12, now), 11, 'an active guest of a live party: its host');
+  assert.deepEqual(await ps.partyOpenAreas(db, SID, 12, now), ['chapterhouse', 'graves', 'cloister'], 'the host\'s open areas');
+  assert.equal(await ps.partyHostOf(db, SID, 13, now), 0, 'not a member (or left): none');
+  assert.equal(await ps.partyHostOf(db, 'not-a-session', 12, now), 0, 'a malformed id is not looked up');
+  assert.equal(seen.filter((p) => p[0] === 'not-a-session').length, 0);
+  row = { host_character_id: 12, status: 'open', last_host_at: now };
+  assert.equal(await ps.partyHostOf(db, SID, 12, now), 0, 'the host itself is no guest: its own world counts');
+  row = { host_character_id: 11, status: 'ended', last_host_at: now };
+  assert.equal(await ps.partyHostOf(db, SID, 12, now), 0, 'an ended session');
+  row = { host_character_id: 11, status: 'open', last_host_at: now - ps.LIMITS.SESSION_IDLE_MS - 1 };
+  assert.equal(await ps.partyHostOf(db, SID, 12, now), 0, 'a host silent too long');
+  assert.deepEqual(await ps.partyOpenAreas(db, SID, 12, now), [], 'and no areas');
+  row = { host_character_id: 11, status: 'open', last_host_at: now };
+  hostState = null;
+  assert.deepEqual(await ps.partyOpenAreas(db, SID, 12, now), [], 'a host without a record opens nothing extra');
+  const broken = { execute: async () => { throw new Error('db down'); } };
+  assert.equal(await ps.partyHostOf(broken, SID, 12, now), 0, 'fails closed');
+});

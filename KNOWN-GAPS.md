@@ -91,8 +91,6 @@ polish list). Also:
 - **A dropped player's seat is not held:** the rejoin offer lasts 5 minutes, but a party that filled up in that time answers `full` (the lobby reserves nothing; a held seat would show a party as full while it lists a free one).
 - Chat is party chat in a party and local-only when solo.
 - **Friends show offline while the launcher is open:** the launcher has no login and no lobby link. They show online from the sign-in (character select, loading, the world).
-- A guest whose own account has a boss's area sealed wakes the host's boss for nothing: its shards are refused and given back, and the toast
-  comes after the boss is awake (whether a guest may wake what only the host has opened is a co-op rule to decide).
 - A guest's Prelate kill counts for the host (the Prelate tally and `can_ascend`).
 - Suspected, read from the code, not seen: after a baseline a guest's thralls may fall back to the plain look and the strong rim until the
   heroes are adopted again (`DmCrowd.clear` forgets `owner_legion` and `owner_ally`).

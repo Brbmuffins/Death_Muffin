@@ -25,7 +25,8 @@
       "Co-op: a guest now sees a damage number for every blow of the thralls, as the host does, not just the one that kills.",
       "Co-op: a guest now gets its own first-kill bonus and trophy for a boss (the server checks your own record), not just the host.",
       "Co-op: a guest can now call a boss Empowered with a Covenant Seal from its own bag at the altar and claim the prize, and its screen dims for Nightfall along with the host's world.",
-      "Joining a friend's party after you have woken a boss in your own game no longer fails with a \"co-op data mismatch\"."
+      "Joining a friend's party after you have woken a boss in your own game no longer fails with a \"co-op data mismatch\".",
+      "In a party, you can now wake any boss your host has opened, even one in an area you have not opened yourself yet; you still pay with your own soul shards (or your own Covenant Seal for an Empowered boss)."
     ]
   },
   {

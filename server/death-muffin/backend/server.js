@@ -1730,6 +1730,7 @@ mountNecroProgress(app, {
   store: createMysqlStore(pool, { record: valueLedger.record }),
   requireAuth: requireJWT,
   isStaff: isStaffAccount,
+  partyOpen: (characterId, sessionId) => require('./party-sessions.cjs').partyOpenAreas(pool, sessionId, characterId),
   ownsCharacter: async (req, characterId) => {
     const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
     return rows.length === 1;
@@ -1863,6 +1864,7 @@ mountBossKey(app, pool, {
   requireAuth: requireJWT,
   isStaff: isStaffAccount,
   areaOpen: mountBossKey.areaOpenFromRecord,
+  partyHost: (conn, sessionId, characterId) => require('./party-sessions.cjs').partyHostOf(conn, sessionId, characterId),
   ownsCharacter: async (req, characterId) => {
     const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
     return rows.length === 1;
