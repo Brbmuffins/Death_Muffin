@@ -274,7 +274,8 @@ Worked through beside the phases, top first. Each change is shown to the team wi
   - A guest whose account has not opened a boss's area wakes the boss anyway, has its payment refused and is told afterwards → the team
     decides whether a guest may wake a boss only the host has opened, and the guest is told before anything happens.
   - A guest never gets a boss's first-kill bonus or trophy → guests get their own.
-  - Only the host's area gets waves → each area a member fights in gets its own.
+  - Done 2026-10-20: only the host's area got waves → each area a member fights in gets its own, sharing the 72-enemy limit (a Grave
+    Surge still opens in one area at a time).
   - The Depths are solo only → decide whether a party can descend together, and build it if so.
   - A guest cannot call an Empowered boss, and its Colossus Mantle effects, Covenant Seal and Nightfall dimming do not reach the host's
     game → a guest's gear and choices work in the party as they do solo.

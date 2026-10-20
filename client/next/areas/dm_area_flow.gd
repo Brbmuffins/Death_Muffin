@@ -47,7 +47,7 @@ func enter(id: String) -> void:
 
 func _on_procession(theme: Dictionary) -> void:
 	var area := game.director.area_id
-	if announced_processions.has(area):
+	if area != game.area_id or announced_processions.has(area):   # (a party member's ground elsewhere is its own window's business)
 		return
 	announced_processions[area] = true
 	_event("banner", {"title": theme["name"], "sub": theme["blurb"], "ms": 2600})

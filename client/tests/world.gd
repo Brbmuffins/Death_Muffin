@@ -22,6 +22,8 @@ extends SceneTree
 ##     the Sexton's chain are announced and reach him (as ember, curse, dust and melee blows, a chill, a drag and a root on his body), the Leech's bite is toxic, and the kinds shed
 ##     embers and marsh-lights near him;
 ##   - waves follow the hero from area to area (the Graves, the Ossuary, the Nave, the Graves again), and the ground left behind is cleared, as today's director does;
+##   - a party apart (the host in the Graves, a member in the Ossuary): each area gets its own waves around the one standing there, a party together keeps one clock and one cap, the biggest
+##     fight (the global cap) is shared between the areas and never doubled, an area its last member left is cleared after EMPTY_CLEAR_S, and the director moves to the member's area when the host leaves its own;
 ##   - ZERO script errors or engine errors in the log.
 ## The navigation server merges a region that was just enabled on a worker thread of its own, and a game under --fixed-fps outruns it on a loaded machine: a path asked before the
 ## merge ends in the nearest ground that is merged, and a body walks away from where it was sent. The suite makes the merges synchronous (DM_SYNC_NAV, as tools/godot/run-all-tests.sh does
@@ -46,6 +48,7 @@ var errlog := ErrorLog.new()
 var g: DmNextGame
 var hero: DmHeroBody
 var events: Array = []          ## [id, ctx] of the HUD's game events
+var _pins := {}                 ## peer id -> where `_put` holds that player's body
 
 
 func check(ok: bool, what: String) -> void:
@@ -105,6 +108,7 @@ func _main() -> void:
 	await _the_late_areas()
 	await _the_pyre_and_fen()
 	await _waves_follow_the_hero()
+	await _waves_in_two_areas()
 	for e in errlog.errors:
 		printerr("ERROR in log: " + e)
 	check(errlog.errors.is_empty(), "no script or engine errors in the log (%d)" % errlog.errors.size())
@@ -849,3 +853,178 @@ func _waves_follow_the_hero() -> void:
 	check(gone.size() >= left_behind and left_behind > 0, "the bodies left behind were sent away (%d gone, %d made in the stays before the last)" % [gone.size(), left_behind])
 	g.director.enabled = false
 	hero.p["god"] = false
+
+
+# ------------------------------------------------------------------------------------------------------------------ waves in two areas
+
+## A second player's body in the host's session: its roster entry and the spawner's body, as a joiner's (the director only reads where the party's bodies stand). Not an external of the core, so
+## no enemy fights it; `_remove_mate` takes it out again.
+func _add_mate(id: int) -> DmHeroBody:
+	g.session._accept(id, "mate", "gravecaller")
+	return g.body_of(id)
+
+
+func _remove_mate(id: int) -> void:
+	g.session._remove_player(id)
+	_pins.erase(id)
+
+
+## A body put at `at` and held there: an enemy's drag or a shove must not walk a player out of the area a scene is about to read (the director goes by where the players stand).
+func _put(id: int, at: Vector3) -> void:
+	g.body_of(id).teleport(at)
+	_pins[id] = at
+
+
+func _hold_pins(_dt: float) -> void:
+	for id: int in _pins:
+		var b := g.body_of(id)
+		if b != null and b.position.distance_to(_pins[id]) > 0.5:
+			b.teleport(_pins[id])
+
+
+## The living bodies of the core by the area they belong to (the area tag of the body, which is where the director sent them).
+func _alive_by_area() -> Dictionary:
+	var out := {}
+	for id in g.core_host.core.enemy_ids():
+		var info: Dictionary = g.core_host.core.enemy_info(id)
+		if int(info["state"]) != DmCoreEvents.State.DEAD:
+			out[String(info["area"])] = int(out.get(String(info["area"]), 0)) + 1
+	return out
+
+
+## Plays `seconds` of game time with the director on, sampling the core every tick: returns the most bodies the core held at once (the dying counted) and, per area, the most living ones.
+func _watch_waves(seconds: float, until_cond: Callable = Callable()) -> Dictionary:
+	var out := {"total": 0, "by_area": {}}
+	for _t in int(seconds * 60.0):
+		await physics_frame
+		out["total"] = maxi(int(out["total"]), g.core_host.enemy_total())
+		var by: Dictionary = _alive_by_area()
+		for a: String in by:
+			out["by_area"][a] = maxi(int(out["by_area"].get(a, 0)), int(by[a]))
+		if until_cond.is_valid() and bool(until_cond.call()):
+			break
+	return out
+
+
+func _clear_field() -> void:
+	for id in g.core_host.core.enemy_ids():
+		g.core_host.remove_enemy(id)
+	await ticks(3)
+
+
+## Each area a party member stands in gets its own waves (Helix's 2026-10-20 list: "only the host's area gets waves"). The host stands in the Graves and a member in the Ossuary, neither fights,
+## so nothing dies and the counts are the director's alone: the numbers are the areas' own (cap, wave size, interval) and the Wave Speed tier's, read from the game's data.
+func _waves_in_two_areas() -> void:
+	var d := g.director
+	var host := g.core_host
+	var global_cap := int(DmSimData.GLOBAL_ENEMY_CAP)
+	var home := "graves"
+	var away := "ossuary"
+	var surge: DmGraveSurge = d.surge
+	d.surge = null   # (a surge adds bodies of its own: client/tests/surge.gd plays them)
+	d.enabled = false
+	await _clear_field()
+	g.world.set_unlocked(DmNextWorld.every_area())
+	hero.p["god"] = true
+	_put(1, g.world.nav_closest(_area_mid(home)))
+	var mate := _add_mate(7)
+	host.ticked.connect(_hold_pins)
+	check(mate != null and g.session.get_bodies().size() == 2, "a second player stands in the host's session")
+	var spawns: Array = []   ## [area, x, z, level] of every body made
+	var on_spawn := func(_id: int, _d: String, level: int, _e: bool, a: String, _af: int, x: float, z: float, _h: float) -> void: spawns.append([a, x, z, level])
+	host.enemy_spawned.connect(on_spawn)
+	var of_away := func(sp: Array) -> bool: return sp[0] == away
+	# together: the Graves hold both heroes, one clock and one cap, and no other area is touched
+	var home_def: Dictionary = DmContent.area(home)
+	var home_cap := int(home_def["cap"])
+	var fill_s: float = (ceil(float(home_cap) / float(home_def["waveSize"])) + 2.0) * float(home_def["waveIntervalMs"]) / 1000.0 + 5.0   # the waves that bring a full cap, and one more
+	_put(7, g.world.nav_closest(_area_mid(home) + Vector3(3.0, 0.0, 0.0)))
+	d.configure_area(home)
+	d.enabled = true
+	var together := await _watch_waves(fill_s)
+	check(int(together["by_area"].get(home, 0)) == mini(home_cap, global_cap) and not spawns.any(of_away),
+		"two heroes in the Graves share one clock and one cap (%d living, the area's cap %d), nothing is made elsewhere" % [int(together["by_area"].get(home, 0)), home_cap])
+	check(int(together["total"]) <= global_cap, "and never more than the global cap (%d of %d)" % [int(together["total"]), global_cap])
+	# apart: the member walks into the Ossuary. The Wave Speed tier lifts both areas' caps over half the global cap, so the shared limit is what binds
+	d.enabled = false
+	await _clear_field()
+	spawns.clear()
+	var tier := 6.0
+	d.set_wave_tier(tier)
+	var cap_mult := float(DmWaveUpgrades.wave_modifiers(tier)["capMult"])
+	var share := global_cap / 2
+	var home_room := DmMath.js_round(float(home_cap) * cap_mult)
+	var away_room := DmMath.js_round(float(DmContent.area(away)["cap"]) * cap_mult)
+	check(home_room > share and away_room > share, "(at Wave Speed %d each area's own cap, %d and %d, is over half the global cap of %d)" % [int(tier), home_room, away_room, global_cap])
+	_put(1, g.world.nav_closest(_area_mid(home)))
+	_put(7, g.world.nav_closest(_area_mid(away)))
+	d.configure_area(home)
+	d.enabled = true
+	var seen := await _watch_waves(120.0, func() -> bool:
+		var by := _alive_by_area()
+		return int(by.get(home, 0)) >= share and int(by.get(away, 0)) >= share)
+	check(spawns.any(of_away), "the Ossuary gets waves while the host fights in the Graves (%d bodies made there)" % spawns.filter(of_away).size())
+	check(int(seen["by_area"].get(home, 0)) == share and int(seen["by_area"].get(away, 0)) == share,
+		"each area fills to its half of the global cap and no more (%s, half is %d)" % [str(seen["by_area"]), share])
+	check(int(seen["total"]) <= global_cap and host.enemy_total() <= global_cap, "the global cap is shared, not doubled: %d bodies at most (the cap is %d)" % [int(seen["total"]), global_cap])
+	var placed := true
+	var levels_ok := true
+	var want_level := int(DmEnemyStats.area_level(away, d.scaling_levels([mate]), float(d.vow_fx.get("levels", 0.0)), 1.0))
+	for sp: Array in spawns:
+		var rect: Dictionary = DmContent.area(String(sp[0]))["rect"]
+		var inside := float(sp[1]) >= float(rect["x0"]) - 2.5 and float(sp[1]) <= float(rect["x1"]) + 2.5 and float(sp[2]) >= float(rect["z0"]) - 2.5 and float(sp[2]) <= float(rect["z1"]) + 2.5
+		var around: Vector3 = mate.position if sp[0] == away else hero.position
+		var dist := Vector2(float(sp[1]) - around.x, float(sp[2]) - around.z).length()
+		placed = placed and inside and dist <= DmWaveDirector.SPAWN_MAX + 3.0
+		if sp[0] == away:
+			levels_ok = levels_ok and int(sp[3]) == want_level
+	check(placed, "every body climbs in inside its own area, around the player standing there (%d bodies)" % spawns.size())
+	check(levels_ok and want_level >= 1, "the Ossuary's bodies are the Ossuary's level for the party's leader (%d)" % want_level)
+	var idle_two := _idle_tick_us(d)
+	# the member leaves for the hub: the Ossuary has nobody, so its bodies go after EMPTY_CLEAR_S and the Graves' stay
+	spawns.clear()
+	_put(7, g.world.spawn_point())
+	await ticks(int((DmWaveDirector.EMPTY_CLEAR_S - 3.0) * 60.0))
+	var before := _alive_by_area()
+	check(int(before.get(away, 0)) == share and int(before.get(home, 0)) >= share, "the Ossuary is kept for a while after its member left (%s)" % str(before))
+	await ticks(5 * 60)
+	var after := _alive_by_area()
+	check(int(after.get(away, 0)) == 0 and int(after.get(home, 0)) >= share, "after %d s its bodies are sent away and the Graves' stay (%s)" % [int(DmWaveDirector.EMPTY_CLEAR_S), str(after)])
+	check(not spawns.any(of_away), "and nothing new climbs into the empty Ossuary")
+	print("INFO world: the director's idle tick, party sorted into its areas: %.1f us with two areas in play, %.1f us with one" % [idle_two, _idle_tick_us(d)])
+	# the member comes back and the host goes home: the director moves to the member's area, the Graves' bodies go at once and the member's clock goes on
+	_put(7, g.world.nav_closest(_area_mid(away)))
+	await ticks(4 * 60)
+	check(d.area_id == home and int(_alive_by_area().get(away, 0)) > 0, "the member is back in the Ossuary: it has waves again, and the director stays in the Graves")
+	var followed: Array[String] = []
+	d.area_followed.connect(func(a: String) -> void: followed.append(a))
+	var clock_there: float = d._extra[0].since_arrival
+	var clock_here: float = d._since_arrival
+	_put(1, g.world.spawn_point())
+	await ticks(5)
+	var now := _alive_by_area()
+	check(followed.size() == 1 and followed[0] == away and d.area_id == away and int(now.get(home, 0)) == 0 and int(now.get(away, 0)) > 0,
+		"the host goes home: the director moves to the Ossuary, the Graves' bodies are sent away at once and the Ossuary's stay (%s, on %s)" % [str(now), d.area_id])
+	check(d._since_arrival >= clock_there and clock_there > 0.0 and d._since_arrival < clock_here, "and the Ossuary's own wave clock goes on, neither starting over nor the Graves' (%.1f s in, %.1f s before; the Graves' was at %.1f s)" % [d._since_arrival, clock_there, clock_here])
+	# the party disbands
+	host.enemy_spawned.disconnect(on_spawn)
+	host.ticked.disconnect(_hold_pins)
+	_pins.clear()
+	d.enabled = false
+	d.set_wave_tier(0.0)
+	d.surge = surge
+	_remove_mate(7)
+	await _clear_field()
+	hero.p["god"] = false
+	hero.teleport(g.world.spawn_point())
+	await ticks(5)
+	check(g.session.get_bodies().size() == 1, "the second player is gone again")
+
+
+## Microseconds one idle tick of the director takes (the party sorted into its grounds, no wave due): printed, never judged (a clock is not a test).
+func _idle_tick_us(d: DmWaveDirector) -> float:
+	var n := 300
+	var t0 := Time.get_ticks_usec()
+	for _i in n:
+		d._physics_process(0.0)
+	return float(Time.get_ticks_usec() - t0) / float(n)

@@ -1,6 +1,7 @@
 extends SceneTree
 ## Wave spawn distance (owner 2026-10-07: waves climb in outside aggro range so the player sees them coming).
-## Every enemy of a fresh wave must stand beyond the core's aggro range of the hero it was spawned around, measured before it can move.
+## Every enemy of a fresh wave must stand beyond the core's aggro range of the hero it was spawned around, measured before it can move. In a party apart that is the member
+## standing in another area, not the host: the waves of an area a member fights in climb in around that member, in every combat area.
 ## godot --headless --fixed-fps 60 --path client --script res://tests/spawn_aggro/run.gd
 
 const WAVES_PER_AREA := 12
@@ -88,6 +89,49 @@ func _run() -> void:
 		check(count > 0, "%s: waves spawned (%d enemies)" % [area_id, count])
 		check(margin > 0.0, "%s: nearest fresh enemy %.1f m, %.1f m beyond its own notice distance" % [area_id, nearest, margin])
 		print("%s: %d enemies over %d waves, nearest %.1f m" % [area_id, count, WAVES_PER_AREA, nearest])
+	await party_apart(areas)
 	print("%d passed, %d failed" % [passed, failed])
 	print("%s spawn_aggro %d checks%s" % ["PASS" if failed == 0 else "FAIL", passed + failed, "" if failed == 0 else " (%d failed)" % failed])
 	quit(1 if failed > 0 else 0)
+
+
+## The host stays in the Graves and a second player stands in each other combat area in turn: the director's own waves for that area climb in around the player standing there.
+func party_apart(areas: Array[String]) -> void:
+	var home := "graves"
+	var core: DmCore = g.core_host.core
+	for id in core.enemy_ids():
+		g.core_host.remove_enemy(int(id))
+	d.configure_area(home)
+	g.local_body().teleport(g.world.nav_closest(center(home)))
+	g.session._accept(7, "mate", "gravecaller")   # a second player: its body in the host's session, as a joiner's (the director reads where the party stands)
+	var mate: DmHeroBody = g.body_of(7)
+	var seen := {"area": "", "margin": INF, "nearest": INF, "ids": []}
+	g.core_host.enemy_spawned.connect(func(id: int, _def: String, _level: int, _elite: bool, area: String, _af: int, x: float, z: float, _hp: float) -> void:
+		if area != String(seen["area"]):
+			return
+		(seen["ids"] as Array).append(id)
+		var far := Vector2(x - mate.position.x, z - mate.position.z).length()
+		seen["nearest"] = minf(float(seen["nearest"]), far)
+		seen["margin"] = minf(float(seen["margin"]), far - float(core.enemy_info(id)["aggro"])))
+	d.enabled = true
+	for area_id in areas:
+		if area_id == home:
+			continue
+		seen["area"] = area_id
+		seen["margin"] = INF
+		seen["nearest"] = INF
+		seen["ids"] = []
+		mate.teleport(g.world.nav_closest(center(area_id)))
+		var end := Engine.get_physics_frames() + 60 * 10
+		while (seen["ids"] as Array).size() < 4 and Engine.get_physics_frames() < end:
+			await physics_frame
+		check(not (seen["ids"] as Array).is_empty(), "%s: the director sends waves to a member standing there while the host is in the Graves (%d enemies)" % [area_id, (seen["ids"] as Array).size()])
+		check(float(seen["margin"]) > 0.0, "%s: the nearest fresh enemy is %.1f m from the member, %.1f m beyond its own notice distance" % [area_id, float(seen["nearest"]), float(seen["margin"])])
+		for id in seen["ids"]:
+			g.core_host.remove_enemy(int(id))
+		await ticks(1)
+	d.enabled = false
+	g.session._remove_player(7)
+	for id in core.enemy_ids():
+		g.core_host.remove_enemy(int(id))
+	await ticks(2)

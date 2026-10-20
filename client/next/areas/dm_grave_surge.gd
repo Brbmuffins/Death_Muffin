@@ -3,7 +3,8 @@ extends RefCounted
 ## Grave Surges for the host's wave director, on the combat core (the rules and numbers are DmSimData.SURGE).
 ## Every SURGE interval (the first after firstDelayS) a crypt in the hero's combat area cracks open; three waves (waveAtS) of waveSize x
 ## waveSizeMult climb out of it; clear 80 % of what came within durationS and the crypt pays its offering (DmSessionRewards.on_surge_cleared).
-## The director owns the clock: `update(dt, heroes)` while a hero is in the area, `reset()` when none is (a surge in an emptied area fails).
+## The director owns the clock: `update(dt, heroes)` while a hero is in the area, `reset()` when none is (a surge in an emptied area fails). In a party apart a surge is the director's own area's only (the ground in hand): the other
+## areas members stand in get their ordinary waves, never a surge, and `heroes` is always the ones in the surge's own area.
 ## A wave climbs out over a few ticks like an ordinary wave: its bodies go through the director's queue (SPAWNS_PER_TICK a tick) and the director hands each made body's core id back (`adopt`);
 ## what came is a set of those ids, and the director forwards every death (`on_enemy_died(id)`, from DmCoreHost.enemy_died): no node, scene or per-body work here.
 ## Events go out through `director.surge_event` ({t: surge | surgeCleared | surgeFailed, area, x, z, crypt, durationMs}); DmAreaFlow draws them on the host.

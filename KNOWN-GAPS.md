@@ -105,6 +105,7 @@ polish list). Also:
 - A guest's core lists no zones (`DmCore.zones`): its zones arrive as events for its effects. Nothing reads them on a guest today.
 - A guest sees a Grave Surge only as the bodies that climb out of the crypt (the core's snapshot) and, once the host quells it, its offering: the
   banner, the cracked crypt, the sounds and the tip are the host's window only (`DmAreaFlow` listens to the host's director).
+- A Grave Surge opens in one area at a time, the director's own: a party member fighting in another combat area gets that area's ordinary waves but no surge (client/README.md "Grave Surges").
 
 ## UI
 
@@ -143,6 +144,8 @@ polish list). Also:
   box describes every `release` job with the full checks' note (benchmark and soak), whatever steps it has.
 - **The lobby suite failed once in a full run on the VPS** (2026-10-19): it expected "the host ended the party" and got "Co-op data mismatch:
   the host's enemy and status tables differ"; it passes alone and in CI. Likely two suites reaching each other's local lobby at the same time.
+- **The coop suite's seals part failed in 3 of about 12 runs on a loaded VPS** (2026-10-20, load around 10, with and without the wave director's change): "it finds the Warren open and the gate up as the host
+  has them (closed)", and then the guest's waystone checks after it (`seals` and `guest_travel` in `client/tests/coop.gd`); the late joiner finds the Warren's gate still closed. It passes on a quiet machine.
 - **A team app test fails now and then** (2026-10-19, 1 run in 3 on the VPS): `teamapp/tests/LogCancelTests.cs` "and the exit report is not", which reads a real
   process's filtered output right after it exits; the next two runs passed.
 - **Typed lists in game code that a new boss or area must be added to by hand** (found by the content-count pass, 2026-10-19): `DmBossHost`'s

@@ -27,6 +27,8 @@ extends SceneTree
 ##   - gathering is the host's: the guest has the Gather node at the same path with the nodes and their views and no loop, and a node the host spends is spent on the guest too and comes back, and a late joiner is told the spent set;
 ##   - the party's seals follow the host (the Warren is in every game): a seal that breaks on the host opens its door on the guest (the gate, the navmesh, one `door_opened`
 ##     for the gate sound, the banner), the guest's own account never opens or closes a door in the host's world, and a player who joins afterwards finds the door open without a sound;
+##   - the waves for a member in another area: the host fights in the Graves and the guest stands in the Warren, and the host's director sends waves to both, around the one standing there
+##     (the guest's puppet shows the Warren's bodies near its hero), under the one global cap;
 ##   - a piece of gear the guest drops from its Reliquary (found while the host was there) lies on the host's ground,
 ##     the host picks it up into its own bag and the guest's copy goes;
 ##   - a version mismatch (the core's wire version, the release build) is refused in the words a player reads, the party is untouched;
@@ -423,6 +425,7 @@ func _run() -> void:
 	await chat_and_ground()
 	await seals()
 	await guest_travel()
+	await waves_apart()
 	await versions()
 	await full_party()
 	await leaving()
@@ -1235,6 +1238,72 @@ func guest_travel() -> void:
 		"the guest's recall takes its body home (%s, the return spot %s, %s)" % [str(hb.position), str(home), str(went)])
 	hb.teleport(start)
 	await until(func() -> bool: return gb.position.distance_to(start) < 0.5, 3.0)
+
+
+# ------------------------------------------------------------------------------------------------------------------ the waves for a member in another area
+
+## The host stands in the Graves and the guest in the Warren (open in the host's world since `seals`): the host's director sends waves to both areas, around the player standing in each,
+## the guest's puppet shows the Warren's bodies near its hero, and the one global cap holds. (The host's core is the only one that spawns: a guest's director is off.)
+func waves_apart() -> void:
+	var home := "graves"
+	var away := "warren"
+	var global_cap := int(DmSimData.GLOBAL_ENEMY_CAP)
+	h.director.enabled = false
+	for id in h.core_host.core.enemy_ids():
+		h.core_host.remove_enemy(id)
+	await ticks(10)
+	await until(func() -> bool: return hb.alive and gb_h.alive, DmHeroBody.RESPAWN_S + 4.0)   # (an earlier part may have left one lying dead; a hero lying dead is in no area)
+	var start_h := hb.position
+	var start_g := gb_h.position
+	hb.p["god"] = true   # (neither hero may fall in the crowd: a hero lying dead is in no area, and the director would move on without it)
+	gb_h.p["god"] = true
+	var at_h: Vector3 = h.world.nav_closest(_mid(home))
+	var at_g: Vector3 = h.world.nav_closest(_mid(away))
+	hb.teleport(at_h)
+	gb_h.teleport(at_g)
+	check(await until(func() -> bool: return gb_g.position.distance_to(gb_h.position) < 0.5, 3.0), "the guest stands in the %s (its own copy agrees)" % away)
+	h.director.configure_area(home)
+	h.director.enabled = true
+	var followed: Array[String] = []
+	var on_follow := func(a: String) -> void: followed.append(a)
+	h.director.area_followed.connect(on_follow)
+	var made := {"near_guest": 0, "most": 0}   # area -> bodies the host's director made there (and the counters the closures below keep)
+	var on_spawn := func(_id: int, _d: String, _l: int, _e: bool, a: String, _af: int, x: float, z: float, _hp: float) -> void:
+		made[a] = int(made.get(a, 0)) + 1
+		if a == away and Vector2(x - gb_h.position.x, z - gb_h.position.z).length() <= DmWaveDirector.SPAWN_MAX + 3.0:
+			made["near_guest"] += 1
+	h.core_host.enemy_spawned.connect(on_spawn)
+	var waves := int(ceil(float(DmContent.area(away)["cap"]) / float(DmContent.area(away)["waveSize"]))) + 2
+	var limit_s := float(waves) * float(DmContent.area(away)["waveIntervalMs"]) / 1000.0 + 10.0
+	await until(func() -> bool:
+		made["most"] = maxi(int(made["most"]), h.core_host.enemy_total())
+		if hb.position.distance_to(at_h) > 0.5:   # (an enemy's drag or a shove must not walk a player out of its area: the director goes by where they stand)
+			hb.teleport(at_h)
+		if gb_h.position.distance_to(at_g) > 0.5:
+			gb_h.teleport(at_g)
+		return int(made.get(away, 0)) >= int(DmContent.area(away)["cap"]) and int(made.get(home, 0)) >= int(DmContent.area(home)["cap"]), limit_s)
+	h.core_host.enemy_spawned.disconnect(on_spawn)
+	h.director.area_followed.disconnect(on_follow)
+	check(int(made.get(home, 0)) > 0 and int(made.get(away, 0)) > 0 and followed.is_empty() and h.director.area_id == home,
+		"the host's director sent waves to both areas and stayed in the Graves (%s, moved to %s)" % [str(made), str(followed)])
+	check(int(made["near_guest"]) == int(made.get(away, 0)), "every body of the %s climbed in around the guest (%d of %d)" % [away, int(made["near_guest"]), int(made.get(away, 0))])
+	var seen_by_guest := g.core_host.enemies_in_radius(gb_g.position, DmWaveDirector.SPAWN_MAX + 20.0).size()
+	check(seen_by_guest > 0, "and the guest's puppet shows %d of them around its hero" % seen_by_guest)
+	check(int(made["most"]) <= global_cap and int(made["most"]) > 0, "the global cap holds for both areas together (%d of %d)" % [int(made["most"]), global_cap])
+	h.director.enabled = false
+	for id in h.core_host.core.enemy_ids():
+		h.core_host.remove_enemy(id)
+	hb.p["god"] = false
+	gb_h.p["god"] = false
+	hb.teleport(start_h)
+	gb_h.teleport(start_g)
+	await until(func() -> bool: return gb_g.position.distance_to(start_g) < 0.5, 3.0)
+	await ticks(20)
+
+
+func _mid(id: String) -> Vector3:
+	var r: Dictionary = DmContent.area(id)["rect"]
+	return Vector3((float(r["x0"]) + float(r["x1"])) * 0.5, 0.0, (float(r["z0"]) + float(r["z1"])) * 0.5)
 
 
 # ------------------------------------------------------------------------------------------------------------------ chat and the ground

@@ -18,7 +18,8 @@
       "If your connection to a party drops, the game now offers to take you back: a notice and a Rejoin button in the Social window (O) for 5 minutes. It never joins by itself.",
       "Friends now see you online from the moment you sign in, at character select and while the world loads, not only once you are in the world.",
       "The Altar of Ascension is quiet until Ascension returns redesigned: it no longer opens its old window, the Prior no longer points you to it, and party and friends lists show the difficulty without Heat.",
-      "Fewer hitches the first time you cast a spell: starting a game or saving Settings no longer throws away the effects the loading screen prepared."
+      "Fewer hitches the first time you cast a spell: starting a game or saving Settings no longer throws away the effects the loading screen prepared.",
+      "In a party, every area a player is fighting in now gets its own waves; before, only the host's area did, so a friend fighting in another area met no new enemies."
     ]
   },
   {

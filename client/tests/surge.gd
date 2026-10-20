@@ -18,6 +18,8 @@ extends SceneTree
 ##     reports clear it, the offering is paid;
 ##   I the queue: a wave that is queued is the surge's however it is made (the tick drain or `flush_spawns`); a surge that ends with a wave still queued, and the surge after it, are not credited
 ##     with those bodies, nor is an ordinary wave queued beside an open surge; the Graves cleared under an open surge drop its queue and the surge fails on its time instead of hanging.
+##   J a party apart: a member fights in another combat area while the host's director stands in the Graves: the surge is the director's own (one at a time, in its area; the member's area gets
+##     its ordinary waves, which the surge does not count), it fails when the host leaves and the director moves to the member's area, and the next surge opens there.
 ## ZERO script errors or engine errors in the log. Run: godot --headless --fixed-fps 60 --path client --script res://tests/surge.gd
 
 class ErrorLog:
@@ -127,6 +129,7 @@ func _main() -> void:
 	await _g_restless()
 	await _h_through_the_director()
 	await _i_the_queue()
+	await _j_a_party_apart()
 	for e in errlog.errors:
 		printerr("ERROR in log: " + e)
 	check(errlog.errors.is_empty(), "no script or engine errors in the log (%d)" % errlog.errors.size())
@@ -691,3 +694,58 @@ func _i_the_queue() -> void:
 	await _clear()
 	sev.clear()
 
+
+# ------------------------------------------------------------------------------------------------------------------ J
+
+func _j_a_party_apart() -> void:
+	var s := d.surge
+	var home := "graves"
+	var away := "ossuary"
+	await _stand(door)
+	await _clear()
+	g.session._accept(7, "mate", "gravecaller")   # a second player: its body in the host's session, as a joiner's (the director reads where the party stands)
+	var mate: DmHeroBody = g.body_of(7)
+	var at_home := hero.position
+	var at_away: Vector3 = g.world.nav_closest(_area_mid(away))
+	var pins := {"host": at_home, "mate": at_away}   # where the two players are held: an enemy's drag must not walk one out of its area (the director goes by where they stand)
+	var hold := func(_dt: float) -> void:
+		if hero.position.distance_to(pins["host"]) > 0.5:
+			hero.teleport(pins["host"])
+		if mate.position.distance_to(pins["mate"]) > 0.5:
+			mate.teleport(pins["mate"])
+	host.ticked.connect(hold)
+	mate.teleport(at_away)
+	d.configure_area(home)
+	d.cap = 0   # no ordinary waves in the Graves: every body made there is the surge's
+	s.surge_in = 0.3
+	sev.clear()
+	var elsewhere: Array = []   # the Ossuary's bodies: its ordinary waves
+	var on_spawn := func(id: int, _def: String, _level: int, _elite: bool, area: String, _af: int, _x: float, _z: float, _hp: float) -> void:
+		if area == away:
+			elsewhere.append(id)
+	host.enemy_spawned.connect(on_spawn)
+	d.enabled = true
+	check(await until(func() -> bool: return s.active, 60 * 3) and sev.size() == 1 and String(sev[0]["area"]) == home, "the surge opens in the Graves, where the director stands, with a member fighting in the Ossuary")
+	check(await until(func() -> bool: return s.waves_spawned == wave_at.size(), 60 * (int(ceil(float(wave_at[-1]))) + 3)), "its %d waves come" % wave_at.size())
+	await until(func() -> bool: return d.pending_count() == 0, 60)
+	await ticks(ceili((DmSimConsts.RISE_TIME + 0.4) * 60.0))
+	check(not elsewhere.is_empty() and sev.size() == 1, "the Ossuary got its own waves meanwhile (%d bodies) and no second surge opened" % elsewhere.size())
+	check(s.spawned == wave_at.size() * want, "and the surge counts only its own bodies (%d of the %d it decided)" % [wave_at.size() * want, s.spawned])
+	var died := await _kill(elsewhere, 3)
+	check(died == 3 and s.killed == 0, "three of the Ossuary's die: the surge counts none (%d died, %d counted)" % [died, s.killed])
+	# the host goes home: nobody stands in the surge's area, so it fails, and the director follows the member to the Ossuary
+	pins["host"] = g.world.spawn_point()
+	hero.teleport(pins["host"])
+	check(await until(func() -> bool: return not s.active, 60 * 2) and String(sev[-1]["t"]) == "surgeFailed" and String(sev[-1]["area"]) == home, "the host leaves its area: the surge fails")
+	check(d.area_id == away, "and the director moves to the Ossuary, where the member is (%s)" % d.area_id)
+	s.surge_in = 0.3
+	check(await until(func() -> bool: return s.active, 60 * 3) and String(sev[-1]["t"]) == "surge" and String(sev[-1]["area"]) == away, "the next surge opens in the Ossuary")
+	host.enemy_spawned.disconnect(on_spawn)
+	host.ticked.disconnect(hold)
+	d.enabled = false
+	s.fail()
+	g.session._remove_player(7)
+	d.configure_area(home)
+	await _clear()
+	check(g.session.get_bodies().size() == 1, "the second player is gone again")
+	await _stand(door)
