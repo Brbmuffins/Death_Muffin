@@ -42,10 +42,9 @@ static func table() -> Dictionary:
 		_c("runeHunt", ws + "577", 2500, "asked", false, func(x: Dictionary) -> bool: return String(x.get("family", "")) == "necromancer" and not bool(x.get("owns_rune", false))),
 	]
 	t["rune_socketed"] = [_c("runeSocketed", ws + "1047", 1200)]
-	t["necro_weapon_changed"] = [_c("necroWeapon", ws + "1085", 0, "", false,  # ctx {main, was_main}: worn weapon line changed (not a staff)
+	t["necro_weapon_changed"] = [_c("necroWeapon", ws + "1085", 0, "", false,  # ctx {main, was_main}: worn weapon line changed (not a staff); raised by DmCounselGear
 		func(x: Dictionary) -> bool: return String(x.get("main", "")) != String(x.get("was_main", "")) and String(x.get("main", "")) != "" and String(x.get("main", "")) != "staff")]
-	t["set_bonus_gained"] = [_c("setBonus", ws + "1097")]
-	t["loadout_check"] = [_c("loadouts", ws + "1036", 0, "", false, loadout_ready)]   # ctx {family, learned_rites, rune_count}
+	t["set_bonus_gained"] = [_c("setBonus", ws + "1097")]                   # ctx {gained}: an armor set bonus switched on; raised by DmCounselGear
 	# --- world entry, levels ---
 	t["world_entered"] = [                                                  # ctx {family, level, grimoire_unlocked}
 		_c("welcome", ws + "881", 900),
@@ -109,7 +108,7 @@ static func table() -> Dictionary:
 		_c("coliseum", ws + "5562", 4500, "", false, func(x: Dictionary) -> bool: return x.get("area", "") == "coliseum"),
 		_c("acre", ws + "5580", 4500, "", false, func(x: Dictionary) -> bool: return x.get("area", "") == "acre"),
 	]
-	t["omen_told"] = [_c("omen", ws + "5578", 150000)]
+	t["omen_told"] = [_c("omen", ws + "5578", 150000)]                      # the hero is in a hunting ground (the Omen's chip is on screen); the tip drops out if he is in a safe place when it falls due
 	# --- fight ---
 	t["auto_combat_cast"] = [_c("auto_combat", ws + "2202")]
 	t["essence_short"] = [_c("essence", ws + "2216")]

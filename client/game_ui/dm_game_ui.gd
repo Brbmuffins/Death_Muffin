@@ -76,7 +76,9 @@ var _busy_t := 0.0
 var _tick_t := 0.0
 var _last_gold := 0
 var _family := "necromancer"
+var _discipline_id := ""
 var _kit: Dictionary
+var _gear := DmCounselGear.new()           ## the counsel's gear moments: a new weapon line, a set bonus switched on
 var _vm: Dictionary = {}
 const HUD_INTERVAL_MS := 50
 var _hud_at := 0
@@ -92,7 +94,9 @@ func setup(game_: Node) -> void:
 	layer = 10
 	var cid := int(game.character["id"])
 	store = DmCounselStore.new(DmUiConfig.store_path())
-	_family = String(DmCharacterBuild.discipline_for(float(game.character["class_index"]))["family"])
+	var discipline := DmCharacterBuild.discipline_for(float(game.character["class_index"]))
+	_family = String(discipline["family"])
+	_discipline_id = String(discipline["id"])
 	_kit = DmAbilities.kit_for(_family)
 	locks = DmItemLocks.new(cid, store)
 	rites = DmRites.new(cid, _kit, _rite_level(), store)
@@ -285,7 +289,7 @@ func _build_counsel() -> void:
 		var i := rites.keys.find(ability)
 		return str(i + 1) if i >= 0 else ""
 	counsel.stale = func(id: String) -> bool:
-		return id == "thrall" and _thralls_now() <= 0
+		return (id == "thrall" and _thralls_now() <= 0) or (id == "omen" and area_safe())   # (the omen chip is only on screen in the hunting grounds)
 	counsel.tips_disabled.connect(func() -> void: update_setting({"no_tips": true}))
 	counsel.card_shown.connect(func(_id: String, _k: String, _t: String, _b: String, _ms: int) -> void: sound.emit("counselCard"))
 	counsel_view = DmCounselView.new()
@@ -594,7 +598,8 @@ func _connect_game() -> void:
 	game.area_changed.connect(func(_id: String) -> void:
 		_guide_t = 0.0
 		if not area_safe():
-			reveal_hud("hud.omen", false))
+			reveal_hud("hud.omen", false)
+			notify("omen_told"))
 	game.hero_died.connect(func() -> void: close_panels())
 	game.game_event.connect(_on_game_event)
 	game.npc_interact.connect(talk_to)
@@ -615,16 +620,24 @@ func _on_inventory_changed() -> void:
 			used += 1
 	candidates = not DmLegionText.kit_candidates(game.slots).is_empty()
 	var owned := not DmRunes.owned_runes(game.slots).is_empty()
+	var facts := _loadout_facts()
+	notify("bag_changed", {"slots_used": used, "bag_size": 48, "family": _family, "kit_candidates": candidates and is_necromancer(), "owns_rune": owned and is_necromancer(),
+		"learned_rites": facts["learned_rites"], "rune_count": facts["rune_count"]})
+	for e: Array in _gear.observe(game.slots, _discipline_id):   # a new weapon line, a set bonus switched on
+		notify(String(e[0]), e[1])
+
+
+## What the loadouts tip counts (WorldScene.maybeLoadoutTip): the rites the hero has learned and the runes he owns or has socketed.
+func _loadout_facts() -> Dictionary:
 	var learned := 0
 	for id in DmRites.assignable(_kit):
 		if DmAbilities.unlock_level(id) <= _rite_level():
 			learned += 1
-	var runes := 0
-	for k in DmRunes.owned_runes(game.slots):
-		runes += int(DmRunes.owned_runes(game.slots)[k])
-	runes += DmRunes.sockets_of(game.slots).size()
-	notify("bag_changed", {"slots_used": used, "bag_size": 48, "family": _family, "kit_candidates": candidates and is_necromancer(), "owns_rune": owned and is_necromancer(),
-		"learned_rites": learned, "rune_count": runes})
+	var owned := DmRunes.owned_runes(game.slots)
+	var runes := DmRunes.sockets_of(game.slots).size()
+	for k in owned:
+		runes += int(owned[k])
+	return {"learned_rites": learned, "rune_count": runes}
 
 
 ## The ping for another player's chat line, on the Ui bus (the Interface volume slider sets it; 0 mutes it).
@@ -685,6 +698,8 @@ func _on_game_event(event_id: String, ctx: Dictionary) -> void:
 			toggle_panel(String(ctx.get("panel", "")))
 		"tip":
 			counsel.show(String(ctx.get("id", "")), float(ctx.get("delay_ms", 0.0)), ctx.get("opts", {}))
+		"level_up":   # the loadouts tip counts every rite learned and every rune, not the ones this level gave
+			counsel.notify(event_id, ctx.merged(_loadout_facts(), true))
 		_:
 			counsel.notify(event_id, ctx)
 	if event_id == "level_up":

@@ -8,6 +8,7 @@ The tip queue, cadence rules, card and glow that guide a new player. Tip text, k
 | `dm_counsel_cadence.gd` (`DmCounselCadence`) | `can_show`, `pick_next`, `prune`, `should_preempt`, `should_yield`, `show_ms` |
 | `dm_counsel.gd` (`DmCounsel`) | the queue: `show`, `notify`, `notify_tick`, `dismiss`, `skip`, `reset`, `clear`, `pause_card` / `resume_card` (hover pause) |
 | `dm_counsel_events.gd` (`DmCounselEvents`) | event id -> tips table; ctx keys are documented in the comments of that file |
+| `dm_counsel_gear.gd` (`DmCounselGear`) | the gear moments: `observe(slots, discipline_id)` -> `necro_weapon_changed` / `set_bonus_gained` events from the worn rows, against the last bag it saw |
 | `dm_counsel_store.gd` (`DmCounselStore`) | JSON file store (`dm_tips_v1_<char>`, `dm_counsel_position_v1`) |
 | `dm_counsel_view.gd` (`DmCounselView`) | the card and glow; uses `DmTipCard` and `DmHud.tip_anchor_rect` / `tip_default_position` |
 
@@ -31,9 +32,8 @@ The tip queue, cadence rules, card and glow that guide a new player. Tip text, k
 
 ## Tests
 `client/tests/counsel.gd` plays the counsel on the whole world as a new Gravecaller (the fight facts read two ways, every fact the creatures give the counsel once, each tip queued and shown once, the state-driven tips, the welcome and the Next-step box, the Prior,
-Show tips again, Don't show tips); `client/tests/hud.gd` the counsel's timers.
+Show tips again, Don't show tips, the Omen, the loadouts tip, a new weapon line and a set bonus); `client/tests/depths.gd` the Depths' tips; `client/tests/onboarding/run.gd` the table, the cadence and `DmCounselGear`; `client/tests/hud.gd` the counsel's timers.
 
 ## Known gaps
-- Events defined in `DmCounselEvents` but never raised: `depths_solo`, `depths_floor`, `depths_affix`, `depths_chest`, `loadout_check`, `necro_weapon_changed`, `set_bonus_gained`, `omen_told`. The Altar's tips
-  (vows, altar_unlocks, boons) are held back by `DmCounselEvents.tick_calls`' `altar` flag, which the client's poll sets to false (DECISIONS B36).
+- The Altar's tips (vows, altar_unlocks, boons) are held back by `DmCounselEvents.tick_calls`' `altar` flag, which the client's poll sets to false (DECISIONS B36).
 - The keyboard card-move (arrow keys on the header) is not ported; no entry animation beyond a 0.2 s fade.

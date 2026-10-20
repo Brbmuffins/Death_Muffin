@@ -25,6 +25,8 @@ The flow of a run (the stair's offer, the quota, what a floor pays, death, leavi
 - Death: on `hero_respawned` the Depths close and the summary toast is told ("The descent ends at depth N · K slain · F floors cleared. What you looted is yours."). Gold, bag, gear, XP are untouched.
 - Record: `DmChronicle` (`peak.depth`, `depths.runs/floors/chests`, `kills`, `kills.depths`) loaded from / flushed to the backend (`get_chronicle` / `add_chronicle`) on every end,
   every 30 s while a run is on, and in `DmNextGame.flush_all`.
+- Counsel: a run's start and a stair that refuses a party raise `depths_solo`, every floor raises `depths_floor` (and `depths_affix {extras}` from the first depth with extra affixes), the chest raises `depths_chest`;
+  the counsel shows each tip once, ever (client/README.md "Tips and onboarding").
 - HUD: `vm["depth"]` (depth, kills / need, stair, chest), the minimap's `depths` floor (rooms, doors, stairs, chest), the area line "Level N dead · elites bear K affixes".
 - Stairs look like stairs: the Warren's stair, a floor's way down and its way up are `DmStairMesh` (`client/world/dm_stair_mesh.gd`): a stone frame round a well with five steps (down: low and darker with depth; up: rising), built from primitives as one cached
   vertex-coloured mesh per direction plus a glowing quad that `DmWorldBuilder.set_depths_stair_open` drives. The chest is still a code-built box.
@@ -37,4 +39,4 @@ The flow of a run (the stair's offer, the quota, what a floor pays, death, leavi
 - No Depths-specific sight blockers for ranged kinds: walls block movement, not sight (the core has no collision world; only the Gargoyle's dive and the Sexton's chain look for a clear line, native/README.md "The kinds of the other areas").
 - The Warren must be open to reach the stair in play; the tests walk to it.
 - The first floor of a session is not in the warm-up, a floor is not lightmapped and the see-through cutout is not applied to it (client/README.md "The Depths", "Not yet").
-- The Depths' counsel tips (`depths_*`) are not raised (client/README.md "Tips and onboarding"). No new art or audio was made for the Depths (`gate`, `chestOpen`, `levelUp`, `click`, `error` are existing sounds).
+- No new art or audio was made for the Depths (`gate`, `chestOpen`, `levelUp`, `click`, `error` are existing sounds).
