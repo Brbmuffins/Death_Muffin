@@ -27,13 +27,15 @@ const BIPED_ANIMS = ['idle', 'walk', 'run', 'slash', 'dig', 'hurt', 'fall', 'cas
 const ANIMS = { biped: BIPED_ANIMS.map((a) => `preset:biped:${a}`), quadruped: ['preset:quadruped:walk'] };
 const ASPECTS = ['1:1', '3:4', '4:3', '2:3', '3:2', '9:16', '16:9'];
 const SPEC_KEYS = ['id', 'input', 'generation', 'rig', 'animations', 'animationMode'];
-const JOB_KEYS = ['id', 'prompt', 'out', 'refs', 'aspect', 'size', 'model', 'post'];
+const JOB_KEYS = ['id', 'prompt', 'out', 'refs', 'aspect', 'size', 'model', 'post', 'kind'];
+const KINDS_FILE = 'tools/pictures/kinds.json';   // the game's picture kinds (ASSET_PIPELINE.md "Pictures"); a concept that names one gets its look
 const REQUEST_FILE = '.dm-art-request.json';
 const CONCEPT_FILE = '.dm-concept-request.json';
 const MAX_SET = 6, MAX_SET_ESTIMATE = 1200;      // one request may build an armor set (helm, mantle, weapon, hero body ...) under one ✅
 const MAX_CONCEPTS = 8;                          // concept images per concept request (Gemini only, no Tripo credits)
 const MAX_FILE = 64 * 1024, MAX_REF = 8 * 1024 * 1024;
-const IMG_MAGIC = [[0x89, 0x50, 0x4e, 0x47], [0xff, 0xd8, 0xff]];   // png, jpeg
+const IMG_MAGIC = [[0x89, 0x50, 0x4e, 0x47], [0xff, 0xd8, 0xff]];   // png, jpeg (and RIFF....WEBP, checked in imageOk)
+const PICTURE_REF_RE = /^client\/assets\/[a-z0-9_/-]+\.(webp|png)$/;  // a committed game picture: a style reference, or the picture an edit starts from
 
 const isObj = (x) => x && typeof x === 'object' && !Array.isArray(x);
 const onlyKeys = (o, keys, what, errs) => { for (const k of Object.keys(o)) if (!keys.includes(k)) errs.push(`${what}: field "${k}" is not allowed`); };
@@ -61,12 +63,25 @@ function parseJson(r, rel) {
   if (r.error) return { error: r.error };
   try { return { value: JSON.parse(r.text) }; } catch { return { error: `${rel} is not valid JSON` }; }
 }
+// The picture kinds of the worktree (data only: nothing of the worktree is ever run here). Returns {kinds} or {error}.
+function readKinds(wt) {
+  const j = parseJson(readSmall(wt, KINDS_FILE), KINDS_FILE);
+  if (j.error) return { error: j.error };
+  return isObj(j.value) ? { kinds: j.value } : { error: `${KINDS_FILE} must be a JSON object` };
+}
+// The aspect a kind asks the image model for: its own, else the offered one nearest its size.
+function kindAspect(k) {
+  if (ASPECTS.includes(k.aspect)) return k.aspect;
+  const want = k.size[0] / k.size[1]; const off = (a) => { const [w, h] = a.split(':').map(Number); return Math.abs(w / h - want); };
+  return ASPECTS.reduce((best, a) => (off(a) < off(best) ? a : best), '1:1');
+}
 function imageOk(wt, rel) {
   const iss = pathIssue(wt, rel); if (iss) return iss;
   const f = path.join(wt, rel); let st; try { st = fs.lstatSync(f); } catch { return `${rel} does not exist`; }
   if (!st.isFile() || st.size > MAX_REF || st.size < 8) return `${rel} is not a usable image`;
-  const fd = fs.openSync(f, 'r'); const b = Buffer.alloc(4); try { fs.readSync(fd, b, 0, 4, 0); } finally { fs.closeSync(fd); }
-  return IMG_MAGIC.some((m) => m.every((x, i) => b[i] === x)) ? null : `${rel} is not a PNG or JPEG`;
+  const fd = fs.openSync(f, 'r'); const b = Buffer.alloc(12); try { fs.readSync(fd, b, 0, 12, 0); } finally { fs.closeSync(fd); }
+  const webp = b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP';
+  return webp || IMG_MAGIC.some((m) => m.every((x, i) => b[i] === x)) ? null : `${rel} is not a PNG, JPEG or WebP`;
 }
 
 // ---------- the request file ----------
@@ -143,11 +158,25 @@ function validateGemini(wt, id, gv, info, errors) {
   else if (!isObj(job)) errors.push(`${gRel} must hold one job object`);
   else {
     onlyKeys(job, JOB_KEYS, gRel, errors);
+    // A picture concept names its kind (tools/pictures/kinds.json): the kind gives the look (its recipe and style pictures) and the shape;
+    // the job's prompt then only says what to draw.
+    let kind = null;
+    if (job.kind !== undefined) {
+      const K = readKinds(wt);
+      if (K.error) errors.push(K.error);
+      else if (typeof job.kind !== 'string' || !isObj(K.kinds[job.kind])) errors.push(`kind must be one of ${Object.keys(K.kinds).join(', ')}`);
+      else {
+        kind = K.kinds[job.kind];
+        if (!(Array.isArray(kind.size) && kind.size.length === 2 && kind.size.every((n) => Number.isInteger(n) && n > 0)) || typeof kind.recipe !== 'string' || !Array.isArray(kind.style)) { errors.push(`${KINDS_FILE}: kind ${job.kind} is malformed`); kind = null; }
+      }
+      // (the runner writes the finished job back, aspect and size included, so a repeat request of the same job stays valid)
+      if (kind && ((job.aspect !== undefined && job.aspect !== kindAspect(kind)) || (job.size !== undefined && !(job.size === '2K' && kind.genSize === '2K')) || job.post !== undefined)) errors.push('a concept with a kind takes its shape from the kind: drop aspect, size and post');
+    }
     if (job.id !== `concept_${id}`) errors.push(`${gRel}: job id must be "concept_${id}"`);
     if (job.out !== `art-src/concepts/${id}.png`) errors.push(`${gRel}: out must be "art-src/concepts/${id}.png"`);
-    if (typeof job.prompt !== 'string' || job.prompt.length < 20 || job.prompt.length > 4000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(job.prompt)) errors.push('prompt must be 20 to 4000 characters of plain text');
+    if (typeof job.prompt !== 'string' || job.prompt.length < 20 || job.prompt.length > 3000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(job.prompt)) errors.push('prompt must be 20 to 3000 characters of plain text');
     if (job.aspect !== undefined && !ASPECTS.includes(job.aspect)) errors.push(`aspect must be one of ${ASPECTS.join(', ')}`);
-    if (job.size !== undefined && job.size !== '1K') errors.push('size must be "1K" when given');
+    if (job.size !== undefined && job.size !== '1K' && !(kind && kind.genSize === '2K' && job.size === '2K')) errors.push('size must be "1K" when given');
     if (job.model !== undefined && job.model !== 'gemini-3.1-flash-image') errors.push('model must be gemini-3.1-flash-image when given');
     let refs = [];
     if (job.refs !== undefined) {
@@ -155,9 +184,16 @@ function validateGemini(wt, id, gv, info, errors) {
       else for (const r of job.refs) {
         if (typeof r !== 'string') { errors.push('a ref is not a string'); continue; }
         if (info.rootPngs.has(r)) { refs.push(r); continue; }       // a reference sheet that is committed on the base branch
-        if (/^art-src\/concepts\/[a-z0-9_]+\.png$/.test(r)) { const bad = imageOk(wt, r); if (bad) errors.push(`ref ${bad}`); else refs.push(r); continue; }
-        errors.push(`ref "${String(r).slice(0, 80)}" is not allowed (art-src/concepts/<name>.png or a reference sheet committed at the repo root)`);
+        if (/^art-src\/concepts\/[a-z0-9_]+\.png$/.test(r) || (PICTURE_REF_RE.test(r) && !r.split('/').includes('..'))) { const bad = imageOk(wt, r); if (bad) errors.push(`ref ${bad}`); else refs.push(r); continue; }
+        errors.push(`ref "${String(r).slice(0, 80)}" is not allowed (art-src/concepts/<name>.png, a game picture under client/assets/ or a reference sheet committed at the repo root)`);
       }
+    }
+    // the kind's style pictures go first (an edit's own picture is usually among the job's refs), at most 3 images in all
+    let prompt = job.prompt;
+    if (kind) {
+      const style = kind.style.filter((r) => typeof r === 'string' && PICTURE_REF_RE.test(r) && !refs.includes(r) && !imageOk(wt, r));
+      refs = [...style, ...refs].slice(0, 3);
+      if (typeof prompt === 'string' && !prompt.startsWith(kind.recipe)) prompt = `${kind.recipe}${style.length ? ` Match the painting style, framing and finish of the ${refs.length > 1 ? 'first reference image' : 'reference image'}.` : ''}\n\n${prompt}`;
     }
     let post;
     if (job.post !== undefined) {
@@ -169,7 +205,9 @@ function validateGemini(wt, id, gv, info, errors) {
         post = { ...(job.post.resize ? { resize: job.post.resize } : {}), ...(job.post.format ? { format: 'png' } : {}) };
       }
     }
-    gem = { id: `concept_${id}`, prompt: job.prompt, out: `art-src/concepts/${id}.png`, aspect: job.aspect || '1:1', ...(refs.length ? { refs } : {}), ...(post && Object.keys(post).length ? { post } : {}) };
+    gem = kind
+      ? { id: `concept_${id}`, kind: job.kind, prompt, out: `art-src/concepts/${id}.png`, aspect: kindAspect(kind), ...(kind.genSize === '2K' ? { size: '2K' } : {}), ...(refs.length ? { refs } : {}) }
+      : { id: `concept_${id}`, prompt: job.prompt, out: `art-src/concepts/${id}.png`, aspect: job.aspect || '1:1', ...(refs.length ? { refs } : {}), ...(post && Object.keys(post).length ? { post } : {}) };
   }
   return gem;
 }
@@ -264,6 +302,7 @@ function validate({ wt, request, info }) {
   }
 
   const gem = validateGemini(wt, id, gj.value, info, errors);
+  if (gem && gem.kind) errors.push(`${gRel} is a picture concept (kind ${gem.kind}): pictures are built with build-picture.sh, not turned into models`);
 
   // -- places the tools will write must not be symlinks (a symlink would send a write outside the worktree)
   for (const rel of WRITE_PATHS(id)) {
@@ -388,4 +427,4 @@ function createArt(cfg, { audit, now = () => Date.now() } = {}) {
   return { store, paths: P, loadKeys, balance, run, runConcept, reconcile, parseBalance };
 }
 
-module.exports = { ID_RE, DEFAULT_COSTS, MAX_ESTIMATE, MAX_ANIMS, MAX_SET, MAX_SET_ESTIMATE, MAX_CONCEPTS, REQUEST_FILE, CONCEPT_FILE, WRITE_PATHS, ANIMS, RIGS, readRequest, baseInfo, loadCostHistory, validate, validateSet, validateConcepts, estimate, describe, parseKeyFile, paths, createStore, createArt, pathIssue };
+module.exports = { KINDS_FILE, readKinds, kindAspect, ID_RE, DEFAULT_COSTS, MAX_ESTIMATE, MAX_ANIMS, MAX_SET, MAX_SET_ESTIMATE, MAX_CONCEPTS, REQUEST_FILE, CONCEPT_FILE, WRITE_PATHS, ANIMS, RIGS, readRequest, baseInfo, loadCostHistory, validate, validateSet, validateConcepts, estimate, describe, parseKeyFile, paths, createStore, createArt, pathIssue };

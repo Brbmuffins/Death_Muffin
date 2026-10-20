@@ -131,8 +131,8 @@ func micro_teardown() -> void:
 func micro_batching() -> void:
 	var a := DmHudAtlas.texture
 	var w := DmHudAtlas.white()
-	var tex1: Texture2D = DmHudAtlas.icon("res://assets/game/art/status/chilled.webp", 64)
-	var tex2: Texture2D = DmHudAtlas.icon("res://assets/game/art/status/withered.webp", 64)
+	var tex1: Texture2D = DmHudAtlas.icon("res://assets/ui_art/art/status/chilled.webp", 64)
+	var tex2: Texture2D = DmHudAtlas.icon("res://assets/ui_art/art/status/withered.webp", 64)
 	var np := DmHudKit.plate(Color(0.1, 0.1, 0.2, 0.8), Color(0.5, 0.5, 0.5), Vector4(1, 1, 1, 1), Vector4(4, 4, 4, 4), 2)
 	var body: Font = DmUi.font("body")
 	await m("atlas: 9-patch, white rect, icon, alternating x10", func() -> void: micro_host.add_child(Painter.new(func(c: Control) -> void:
@@ -628,7 +628,7 @@ func fidelity() -> void:
 	await compare("bar: polygon with vertex colours against the atlas gradient", Vector2i(220, 24), func(cv: Control) -> void:
 		cv.draw_polygon(PackedVector2Array([Vector2(10, 6), Vector2(200, 6), Vector2(200, 16), Vector2(10, 16)]), PackedColorArray([Color("4a1f3a"), Color("8a3a6c"), Color("8a3a6c"), Color("4a1f3a")])),
 		func(cv: Control) -> void: DmHudKit.gradient_rect(cv, Rect2(10, 6, 190, 10), Color("4a1f3a"), Color("8a3a6c")))
-	var path := "res://assets/game/art/abilities/necro-marrow-spear.webp"
+	var path := "res://assets/ui_art/art/abilities/necro-marrow-spear.webp"
 	if ResourceLoader.exists(path):
 		var orig: Texture2D = load(path)
 		var packed: Texture2D = DmHudAtlas.icon(path, 160)

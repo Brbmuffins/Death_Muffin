@@ -3,7 +3,7 @@ extends RefCounted
 ## Helpers of the HUD view-model: the art path and the interaction prompts. The view-model itself is DmNextHudVm's, built from the core's bulk arrays
 ## (the old game's builder read the per-creature sim records, DmSimEnemy).
 
-const ART := "res://assets/game/art/"
+const ART := "res://assets/ui_art/art/"
 
 
 static func art(rel: String) -> String:

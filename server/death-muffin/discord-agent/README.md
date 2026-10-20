@@ -257,6 +257,27 @@ agent turn ── told the files are ready: build-art.sh <id> per model (sandbox
 - Config keys (all optional, defaults shown; `config.json` is not edited): `artKeysFile` (`<repo>/.ai-keys.local`), `artToolsDir` (`<toolsDir>/art-tools`), `artRunScript`, `artLockFile` (`<toolsDir>/state/tripo.lock`), `artLockWaitSec` (1800), `artBudgetFile`, `artLedgerFile`.
 - Tests: `test/art.test.cjs` (validation, pricing, budget/ledger math, every refusal path, approval gating, resume, flock, crash settlement, install) with fake Tripo/Gemini tools in `test/fake-art/`; no API is called and no credits are spent.
 
+## New pictures (icons, portraits, loading art, floor and wall textures), no ✅ before the proposal
+
+Every flat picture is a kind in `tools/pictures/kinds.json` (ASSET_PIPELINE.md "Pictures"). The concept stage is the models' one; what differs is the
+end: no Tripo, no credits, the picture goes into the game in the agent's own turn and the proposal is the review.
+
+```
+agent turn ── writes art-manifest/gemini-jobs/<id>.json {"kind": "<kind>", "prompt": what to draw, refs?} per picture + .dm-concept-request.json
+runner     ── validates (lib/art.cjs: the kind exists; the kind's recipe goes in front of the prompt, its style pictures first in refs, at most 3; aspect and
+              size from the kind; refs may be game pictures under client/assets/, for edits), same model-budget and 24-a-round gate as model concepts,
+              art-run.sh --concept, the images posted numbered ("Nothing is in the game yet")
+people     ── reply: change / keep / drop, "use 1 and 3"
+agent turn ── build-picture.sh <kind> <name> <concept id> [--replace] (sandboxed tools/pictures/build.mjs: frame cut, crop to size, tiling, WebP under the
+              kind's limit, .import, record in art-manifest/images.json), check-godot.sh --rerun code_load, points the data at it, shot plan -> proposal -> ✅ ship
+```
+
+- **Concepts outlive their round.** Each concept image is also kept in `state/concepts/<job id>/` (outside every worktree; `art-src/` is git-ignored
+  and a round's worktree goes when it ships) and copied into every new round's worktree when its hash is still the one shown (`job.concepts`, kept
+  across rounds; the round note lists them). A thread's copies are deleted once it has been quiet for `conceptKeepDays` (14) (sweep, audit `concepts-dropped`).
+- A model request refuses a concept that names a kind, and a picture is never turned into a model.
+- Tests: `test/pictures.test.cjs` (kind validation, refs, the composed job, concepts kept across rounds); the builder's own tests are `tools/pictures/pictures.test.mjs`.
+
 ## New sounds (ElevenLabs), no budget gate
 
 ```
@@ -456,4 +477,4 @@ request -> thread -> worktree -> gates -> pushed branch -> a draft proposal with
 (`check-godot.sh --rerun code_load`), 🧪 -> GitHub CI on the branch -> "Tests passed", then `!discard` removes the branch and the workspace. It
 never ships. One `CANARY <step> ok|FAILED` line per step, then `CANARY PASSED` (exit 0) or `CANARY FAILED: <step>` (exit 1). A trial before a
 merge: `DEST=<dir> NO_SYSTEMD=1 bash install-runner.sh <rev>`, then `node <dir>/runner/canary.cjs --rev <rev> --adapter <repo>/server/death-muffin/discord-agent/bot/dm-agent.cjs`.
-The installer also copies `check-godot.sh`, `regen-godot.sh`, `tools/check/prep.sh` (as `prep.sh`), `preview-godot.sh`, `shot-godot.sh`, `label-shot.py`, `render-model.sh`, `render-model.py`, `art-run.sh`, `build-art.sh`, `build-sound.sh`, `sound-build.mjs` and `PROMPT-godot.md`, installs the trusted art tools to `art-tools/`, and creates an empty `tripo-budget.json` if there is none (never overwritten). The live `config.json` must say `"mode": "godot", "baseBranch": "main"`; edit it and restart the service to change.
+The installer also copies `check-godot.sh`, `regen-godot.sh`, `tools/check/prep.sh` (as `prep.sh`), `preview-godot.sh`, `shot-godot.sh`, `label-shot.py`, `render-model.sh`, `render-model.py`, `art-run.sh`, `build-art.sh`, `build-sound.sh`, `sound-build.mjs`, `build-picture.sh` and `PROMPT-godot.md`, installs the trusted art tools to `art-tools/`, and creates an empty `tripo-budget.json` if there is none (never overwritten). The live `config.json` must say `"mode": "godot", "baseBranch": "main"`; edit it and restart the service to change.

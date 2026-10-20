@@ -63,6 +63,11 @@ Done, 2026-10-18 to 2026-10-20 (how each works is in the page named):
   the fix: 424 compilations (237 making a frame wait) → 10, all in the background; the worst cast 19.4 ms (Wraith Walk) → 6.5 ms, none over
   8 ms. The warm-up's blind spots (lighting variants, other presets, areas and bosses, panels, death, other players' effects) remain
   (`client/tests/warm_coverage.gd`); weaker cards are watched through the play reports.
+- [x] **Fix: the Discord agent could not put a picture in the game** (B70). Now → it made concept images for War's Reaper icons but
+  could not shrink or install them, and each concept was lost when its round shipped, so War approved three changes that changed nothing.
+  After → every flat picture is a kind (`tools/pictures/kinds.json`: icons, portraits, loading art, floor and wall textures), new ones
+  copy the old ones' style, the agent builds the chosen concepts into the game itself, concepts stay for the thread's later rounds, each
+  picture has one copy, and a check fails when an ability borrows another one's icon (ASSET_PIPELINE.md "Pictures").
 
 Open:
 - [ ] **Decide: a team PC runs the Discord agent's unreviewed branch** (found 2026-10-19). Pictures and videos are made from the change
@@ -340,6 +345,8 @@ the team says yes, because every unchecked item in a phase or the polish list is
 is planned, its ideas move into its checklist as Fix or New items (or straight away, when Helix says so). Bugs and gaps go to
 KNOWN-GAPS.md instead.
 - A hint for a party guest standing in a boss's rot (a guest's core lists no zones today). Section: polish list, co-op gaps. 2026-10-17.
+- Effect sprites (`client/assets/fx/art`, tintable glows) as a picture kind, so the Discord agent can make them like icons; their white-on-black
+  recipe and brightness-as-alpha step exist in `tools/ai/gemini.mjs`. Section: Phase 2 C, content pipelines. 2026-10-20.
 - A results card when a session ends: what you reached, kills, gold, time, and your personal best (Gravecrawl's lesson 3,
   `docs/GRAVECRAWL.md`). Section: polish list. 2026-10-18.
 - A one-click invite link: copy it, a friend clicks it, the game opens and joins the party (Gravecrawl's lesson 9). Section: polish list,

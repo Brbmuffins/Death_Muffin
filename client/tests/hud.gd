@@ -174,7 +174,7 @@ func atlas_and_helpers() -> void:
 	var gr := DmHudAtlas.gradient(Color.BLACK, Color.WHITE)
 	check(gr.size.x == 64 and DmHudAtlas._main.image.get_pixelv(Vector2i(gr.position)).r < 0.05 and DmHudAtlas._main.image.get_pixelv(Vector2i(gr.position) + Vector2i(63, 0)).r > 0.95, "a gradient strip runs from the first colour to the second")
 	check(DmHudAtlas.icon("res://nothing/here.webp") == null, "an icon that does not exist is null")
-	check(DmHudAtlas.icon("res://assets/game/art/abilities/necro-bone-fan.webp") != null or not FileAccess.file_exists("res://assets/game/art/abilities/necro-bone-fan.webp.import"), "an icon that exists loads (headless: the texture itself)")
+	check(DmHudAtlas.icon("res://assets/ui_art/art/abilities/necro-bone-fan.webp") != null or not FileAccess.file_exists("res://assets/ui_art/art/abilities/necro-bone-fan.webp.import"), "an icon that exists loads (headless: the texture itself)")
 	# a style is a 9-patch of the atlas with the margins the StyleBoxFlat had
 	var st := DmHudKit.plate(bg, bd, Vector4(1, 1, 1, 1), Vector4(8, 4, 12, 6), 2)
 	check(st.texture == DmHudAtlas.panel_texture and st.get_margin(SIDE_LEFT) == 8.0 and st.get_margin(SIDE_TOP) == 4.0 and st.get_margin(SIDE_RIGHT) == 12.0 and st.get_margin(SIDE_BOTTOM) == 6.0,

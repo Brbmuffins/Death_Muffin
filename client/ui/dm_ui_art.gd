@@ -1,10 +1,10 @@
 class_name DmUiArt
 extends RefCounted
 ## One place that turns the web's relative art paths ("art/items/staff_oak.webp", "art/abilities/necro-spear.webp", "art/portraits/gravecaller.webp") into
-## textures. Roots, first hit wins: res://assets/ui_art/ (items, abilities, omens, portraits, status, skills, ui), then the game
-## core's res://assets/game/ and the slice assets. Items follow the web: `ITEMS[id].icon ?? art/items/<id>.webp` (InventoryPanel.itemIcon).
+## textures. Roots, first hit wins: res://assets/ui_art/ (items, abilities, omens, portraits, status, skills, ui; the HUD reads the same
+## files, DmGameHud.ART), then the slice assets. Items follow the web: `ITEMS[id].icon ?? art/items/<id>.webp` (InventoryPanel.itemIcon).
 
-const ROOTS := ["res://assets/ui_art/", "res://assets/game/", "res://assets/", "res://assets/slice/"]
+const ROOTS := ["res://assets/ui_art/", "res://assets/", "res://assets/slice/"]
 
 static var _cache: Dictionary = {}
 

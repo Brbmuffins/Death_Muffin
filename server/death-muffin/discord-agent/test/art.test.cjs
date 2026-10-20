@@ -98,7 +98,7 @@ test('validate: symlinks in art-src / art-manifest, a symlinked spec, and a non-
     r = A.validate({ wt: s.wt, request: { id: 'warlock' }, info: INFO }); assert.equal(r.ok, false); assert.match(r.errors.join(), /symlink/);
     fs.unlinkSync(path.join(s.wt, 'art-manifest/tripo-specs/warlock.json')); s.w('art-manifest/tripo-specs/warlock.json', goodSpec('warlock'));
     fs.writeFileSync(path.join(s.wt, 'art-src/concepts/ref1.png'), 'not an image at all, just text'); s.w('art-manifest/gemini-jobs/warlock.json', goodJob('warlock', { refs: ['art-src/concepts/ref1.png'] }));
-    r = A.validate({ wt: s.wt, request: { id: 'warlock' }, info: INFO }); assert.equal(r.ok, false); assert.match(r.errors.join(), /not a PNG or JPEG/);
+    r = A.validate({ wt: s.wt, request: { id: 'warlock' }, info: INFO }); assert.equal(r.ok, false); assert.match(r.errors.join(), /not a PNG, JPEG or WebP/);
     assert.equal(fs.readFileSync(victim, 'utf8'), 'keep');
   } finally { fs.rmSync(s.wt, { recursive: true, force: true }); fs.rmSync(victim, { force: true }); }
 });

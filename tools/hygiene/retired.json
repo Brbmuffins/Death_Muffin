@@ -465,6 +465,18 @@
       "pattern": "DmGameRewards|dm_game_rewards",
       "reason": "the old game's kill and level-up path, never called by the live game; its kill range is DmSessionRewards.KILL_REWARD_RANGE (2026-10-20)",
       "allow": ["DECISIONS.md", "tools/hygiene/**"]
+    },
+    {
+      "id": "make-seamless",
+      "pattern": "make-seamless",
+      "reason": "tools/make-seamless.mjs is folded into tools/pictures/build.mjs: the floor_texture and wall_texture kinds tile (2026-10-20, B70)",
+      "allow": ["DECISIONS.md", "tools/hygiene/**"]
+    },
+    {
+      "id": "assets-game-art",
+      "pattern": "assets/game/",
+      "reason": "client/assets/game/ held a second copy of 92 HUD pictures; the HUD reads client/assets/ui_art/ (2026-10-20, B70)",
+      "allow": ["DECISIONS.md", "tools/hygiene/**"]
     }
   ],
   "allowPaths": {

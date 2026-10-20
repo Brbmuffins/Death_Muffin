@@ -69,6 +69,9 @@ jobs:
       - name: Model budgets (triangles, materials, skeletons, clips)
         run: npm run check:models
 
+      - name: Pictures (the kinds list, the picture builder, every ability has its own icon)
+        run: node --test tools/pictures/*.test.mjs
+
       - name: Shared rules tests
         run: npm run test:rules
 

@@ -55,7 +55,8 @@ player part of a gain until it is fixed; few real sessions ran on the gains save
   Reaper's nine; any other non-necro rite is refused `unavailable`. Character select greys out the other five
   (`DmCharacterBuild.is_playable`) and the backend only accepts classes 1-4 and 11 (`PLAYABLE_DISCIPLINE_INDICES`). Missing with them:
   kit rites, monk beat meter, Bulwark (`DmPlayerRules` already honours `bulwarkUntil`).
-- **The Reaper is a first pass.** It has its own portrait but borrows the Mourner's hero model and existing rite icons, has no armor set but the legendary Soul Harbinger's Raiment
+- **The Reaper is a first pass.** It has its own portrait but borrows the Mourner's hero model and the other classes' rite icons (all ten rites;
+  `STILL_BORROWING` in `tools/pictures/pictures.test.mjs`; War's thread has eight concepts picked, 2026-10-20), has no armor set but the legendary Soul Harbinger's Raiment
   and no runes. Its soul wisps are drawn on the host only; a party member's soul
   count reaches their HUD by the caster state. Numbers (REAPER in `data/combat/abilities.json`) are a first tuning (2026-10-11 headless probe with Auto combat, level 20, no thralls: Scythe Sweep 52 damage a second on one foe and 276 on a pack of six, against the Mourner's 88 and 379; she makes up for it with 30% more health, 15% less damage taken and her leech), not yet playtested by a person.
 
@@ -168,6 +169,9 @@ polish list). Also:
 ## Assets and effects
 
 Notes for the asset and effects work (ROADMAP):
+- The twelve floor and wall textures (`client/assets/slice/art/textures`) were made seamless with the old two-way blend, which leaves a faint
+  seam in the middle of each tile edge (measured 2026-10-20: about twice the usual pixel step on `fen_floor`, hard to see on the others). The
+  picture builder's blend has none; remaking a texture needs a new concept through the `floor_texture` or `wall_texture` kind.
 - The baked crowd is 234 MB (positions 140, normals 70, level-of-detail meshes 23); each level of detail's mesh repeats the vertex arrays,
   where one array with Godot's own mesh LODs would share them.
 - The Bone Colossus's rim reads fuller than the old game's (a pose that differs, or the baked normals at its hard edges).

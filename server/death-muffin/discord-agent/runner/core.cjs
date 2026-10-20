@@ -319,10 +319,12 @@ function createRunner(cfgIn, opts = {}) {
     job.sessionId = null;
     const earlier = (job.history || []).slice(-6).map((h) => `round ${h.round || 1} ${h.discarded ? 'discarded' : `shipped${h.shipSha ? ` (${String(h.shipSha).slice(0, 7)})` : ''}`}${h.title ? `: ${clip(h.title, 90)}` : ''}`).join('; ');
     if (prev.worktree) await G.removeJobArtifacts(cfg, { ...job, ...prev }).catch(() => {});
-    Object.assign(job, { round, branch: `discord/${job.id}-${round}`, worktree: w.worktree, base: w.base, proposal: null, artRequest: null, concepts: {}, conceptCount: 0, shotsSeen: {}, lastClip: null, clipAsk: null, turns: 0, status: 'idle', queuedNotice: false, cancelRequested: false, previewBusy: false,
+    Object.assign(job, { round, branch: `discord/${job.id}-${round}`, worktree: w.worktree, base: w.base, proposal: null, artRequest: null, concepts: job.concepts || {}, conceptCount: 0, shotsSeen: {}, lastClip: null, clipAsk: null, turns: 0, status: 'idle', queuedNotice: false, cancelRequested: false, previewBusy: false,
       roundNote: carry ? `New round in this thread on a fresh branch from the latest ${BB}; the earlier conversation is not carried over. Earlier rounds here: ${earlier || 'none'}. Work from the request and the code as it is now.`
         : `This thread's earlier work was on a different version of the game, so that conversation is not carried over. You are on a fresh branch from the latest ${BB}; work from the request and the code.`, lastActive: now() });
-    audit.log('round', { job: job.id, round, branch: job.branch, base: w.base });
+    const kept = restoreConcepts(job);
+    if (kept.length) job.roundNote += ` Concept images people saw in earlier rounds of this thread are back in art-src/concepts/: ${kept.map((id) => `${id}${job.concepts[id].kind ? ` (picture, kind ${job.concepts[id].kind})` : ''}`).join(', ')}.`;
+    audit.log('round', { job: job.id, round, branch: job.branch, base: w.base, ...(kept.length ? { concepts: kept.length } : {}) });
     save(); return true;
   }
 
@@ -1334,6 +1336,40 @@ function createRunner(cfgIn, opts = {}) {
   const labelOf = (q) => { const ids = itemsOf(q).map((i) => i.id); return ids.length === 1 ? `"${ids[0]}"` : `the set (${ids.join(', ')})`; };
   const fileSha = (f) => { try { return crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex'); } catch { return null; } };
   const conceptRel = (id) => `art-src/concepts/${id}.png`;
+  // Every concept a thread was shown is also kept here, outside the worktree (art-src/ is git-ignored and a round's worktree is deleted when it
+  // ships), and put back into each new round's worktree: people often pick from the images after the round that made them has ended.
+  // A thread's copies go once it has been quiet for cfg.conceptKeepDays (default 14).
+  const conceptStore = (job) => path.join(cfg.stateDir, 'concepts', String(job.id));
+  function keepConcept(job, id) {
+    try { const d = conceptStore(job); fs.mkdirSync(d, { recursive: true }); fs.copyFileSync(path.join(job.worktree, conceptRel(id)), path.join(d, `${id}.png`)); }
+    catch (e) { console.error('keep concept', job.id, id, e.message); }
+  }
+  // Copies the kept concepts into the job's (new) worktree; returns the ids now there. Only images whose hash is the one shown come back.
+  function restoreConcepts(job) {
+    const ids = [];
+    try {
+      const d = conceptStore(job); if (!fs.existsSync(d) || !job.worktree || A.pathIssue(job.worktree, 'art-src/concepts')) return ids;
+      for (const f of fs.readdirSync(d).sort()) {
+        const id = f.replace(/\.png$/, ''); const known = (job.concepts || {})[id];
+        if (!A.ID_RE.test(id) || !known || fileSha(path.join(d, f)) !== known.sha) continue;
+        fs.mkdirSync(path.join(job.worktree, 'art-src', 'concepts'), { recursive: true });
+        fs.copyFileSync(path.join(d, f), path.join(job.worktree, conceptRel(id))); ids.push(id);
+      }
+    } catch (e) { console.error('restore concepts', job.id, e.message); }
+    return ids;
+  }
+  function dropStaleConcepts() {
+    const root = path.join(cfg.stateDir, 'concepts'); const keepMs = (cfg.conceptKeepDays != null ? cfg.conceptKeepDays : 14) * 86400e3;
+    let names = []; try { names = fs.readdirSync(root); } catch { return 0; }
+    let n = 0;
+    for (const name of names) {
+      const j = Object.values(jobs).find((x) => String(x.id) === name);
+      if (j && (j.running || now() - Math.max(j.lastActive || 0, j.seenAt || 0) < keepMs)) continue;
+      try { fs.rmSync(path.join(root, name), { recursive: true, force: true }); n++; } catch { /* next sweep */ }
+    }
+    if (n) audit.log('concepts-dropped', { threads: n });
+    return n;
+  }
   // The concept image a request will be built from (shown with the offer), pinned by hash: a ✅ approves exactly what was shown.
   const conceptFile = (job, id) => (A.pathIssue(job.worktree, conceptRel(id)) || A.pathIssue(job.worktree, 'art-src/concepts') ? null : readImageFile(job, conceptRel(id), `concept-${id}.png`));
   const postImages = (job, text, files) => { for (let i = 0; i < Math.max(1, files.length); i += SHOTS_PER_POST) post({ threadId: job.threadId }, { content: i === 0 ? text : `(${i / SHOTS_PER_POST + 1})`, ...(files.length ? { files: files.slice(i, i + SHOTS_PER_POST) } : {}) }); };
@@ -1383,19 +1419,22 @@ function createRunner(cfgIn, opts = {}) {
         let r; try { r = await art.runConcept(job.worktree, it.id, { onSpawn: (p) => { job.proc = p; } }); } catch (e) { r = { ok: false, result: 'crashed', tail: redactText(e.message) }; }
         job.conceptCount = (job.conceptCount || 0) + 1;
         const img = r.ok ? conceptFile(job, it.id) : null;
-        if (img) { job.concepts = job.concepts || {}; job.concepts[it.id] = { sha: fileSha(path.join(job.worktree, conceptRel(it.id))), at: now() }; done.push({ id: it.id, img }); }
+        if (img) { job.concepts = job.concepts || {}; job.concepts[it.id] = { sha: fileSha(path.join(job.worktree, conceptRel(it.id))), at: now(), ...(it.gemini.kind ? { kind: it.gemini.kind } : {}) }; keepConcept(job, it.id); done.push({ id: it.id, img }); }
         else failed.push(`${it.id} (${r.result})`);
       }
       audit.log('concept-result', { job: job.id, userId: who.id, done: done.map((d) => d.id), failed });
       if (job.cancelRequested || job.discardRequested) { job.cancelRequested = false; say(job, `Stopped. ${done.length} concept image(s) were made.`); return; }
       if (!done.length) { say(job, `No concept image came back (${failed.join(', ')}). Ask again to retry, or change the description.`); return; }
       const list = done.map((d, i) => `**${i + 1}** \`${d.id}\``).join(' · ');
+      const pictures = items.filter((i) => done.some((d) => d.id === i.id) && i.gemini.kind).length, models = done.length - pictures;
       postImages(job, `🎨 Concept art${note ? ` for ${clip(note, 150)}` : ''}: ${list}${failed.length ? `\n(Could not make: ${failed.join(', ')}.)` : ''}\n` +
-        'Nothing has been built in 3D and no model credits were spent. Reply with what to change, keep or drop, or say which ones to build and I will post the cost for a ✅.', done.map((d) => ({ ...d.img, name: `${String(done.indexOf(d) + 1).padStart(2, '0')}-${d.id}.png` })));
+        (models ? 'Nothing has been built in 3D and no model credits were spent. ' : 'Nothing is in the game yet. ') +
+        `Reply with what to change, keep or drop, or say which ones to use${models ? ' (models: I will post the cost for a ✅)' : ': I put them in the game and post a proposal with a picture'}.`, done.map((d) => ({ ...d.img, name: `${String(done.indexOf(d) + 1).padStart(2, '0')}-${d.id}.png` })));
       // The agent waits for people now; it hears about the images with the next message.
       job.roundNote = (job.roundNote ? job.roundNote + '\n\n' : '') +
         `The runner generated concept images and posted them in the thread, numbered: ${done.map((d, i) => `${i + 1} = ${d.id} (${conceptRel(d.id)})`).join(', ')}${failed.length ? `; failed: ${failed.join(', ')}` : ''}. Read the ones that matter before you answer. ` +
-        `To change one, edit its gemini job and write ${A.CONCEPT_FILE} again for that id (it is regenerated). When people pick what to build, write the Tripo specs and ${A.REQUEST_FILE} with those ids: the shown images are reused, not regenerated (do not touch art-src/concepts/).`;
+        `To change one, edit its gemini job and write ${A.CONCEPT_FILE} again for that id (it is regenerated). When people pick: a picture concept (its job names a kind) goes into the game with ${cfg.toolsDir}/build-picture.sh <kind> <name> <id> (see "Making pictures"); ` +
+        `a model concept gets its Tripo spec and ${A.REQUEST_FILE} with those ids. The shown images are reused, not regenerated, and they stay available in later rounds of this thread (do not touch art-src/concepts/).`;
       job.lastActive = now(); save();
     } finally {
       if (ticker) clearInterval(ticker);
@@ -2042,7 +2081,7 @@ function createRunner(cfgIn, opts = {}) {
   }
   // sweep: abandoned idle threads release their worktree
   async function sweep(staleDays = 7) {
-    tidy();
+    tidy(); dropStaleConcepts();
     for (const j of Object.values(jobs)) {
       if (j.running || ['shipped', 'discarded', 'shipping', 'deleted'].includes(j.status) || j.deleteRequested) continue;
       if (j.bugReportId && !j.worktree) continue;   // a report thread the agent never worked in: no workspace to free, nothing to say

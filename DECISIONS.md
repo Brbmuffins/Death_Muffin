@@ -350,6 +350,15 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   Graves the Next-step line said "Ossuary seal: 0/300 kills", a steep first goal. Until the Gravedigger King has been beaten, the Next-step
   box and the Prior's advice lead to him first: gather his 2 soul shards, then summon him at the King's Grave; the Ossuary seal comes after
   he falls. Only the order changes (his shard hint is priority 65, above the seal's 60; a boss whose shards are in hand stays 86).
+- **B70. Every flat picture is a kind, and the Discord agent puts pictures in the game itself** (Helix, 2026-10-20: "maybe in the future
+  the agent will be asked to do a lot more than just an ability icon", then "build it"). War asked for unique Reaper icons; the agent made
+  concepts but could not shrink or install them (UI art was copied by hand) and the images were lost when the round shipped. Now
+  `tools/pictures/kinds.json` lists each kind of picture (folder, size, size limit, import, tiling, style pictures, prompt recipe) and
+  `tools/pictures/build.mjs` turns a concept into one; a new kind is one entry, not a new tool. The agent runs it through `build-picture.sh`
+  in its sandbox (no keys, no network, no spend: Claude's call under B65); picking a concept needs no ✅, the proposal is the review. A
+  concept naming a kind gets the kind's recipe and style pictures, so new art matches the old. The runner keeps every concept a thread was
+  shown and puts it back in each later round (14 days after the thread goes quiet they are deleted). The HUD's second copy of 92 pictures
+  (`client/assets/game/art`) is gone: one copy each, in `client/assets/ui_art`. Effect sprites are not a kind yet (ROADMAP Ideas).
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

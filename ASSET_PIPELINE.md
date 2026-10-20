@@ -26,7 +26,7 @@ prompts, task ids and credits. `client/assets/` is what the game loads.
 `node tools/ai/gemini.mjs art-manifest/gemini-jobs/<file>.json [jobId...] [--force]`. Job fields: `id, prompt, out, refs?, crop?,
 aspect?, size?, post?`. Existing outputs are skipped unless `--force`. For Tripo input use one character, strict T-pose, empty
 hands, plain light-grey background; props one object, three-quarter view. Tintable VFX sprites: glowing white on black with
-`post: { lumaAlpha: true }`. Tileable textures: run `node tools/make-seamless.mjs <file>` afterwards.
+`post: { lumaAlpha: true }`. Flat pictures (icons, portraits, textures) are concepts too and go into the game as "Pictures" below.
 
 ## Models, rigs, clips (Tripo)
 
@@ -58,10 +58,31 @@ The game's files are in `client/assets/` (committed; the masters of older art an
   `client/data/slice/assets_used.json` by hand (KNOWN-GAPS.md: the exporter that wrote it is gone).
 - Sounds: `server/death-muffin/discord-agent/build-sound.sh` (below). Older masters in `public/audio/` were converted once (Opus to WAV: Godot
   cannot import Opus); a replacement goes into `client/assets/audio/` the same way.
-- Item icons: `tools/generate-armor-assets.mjs` writes the armor sets' icons; other UI art is copied into `client/assets/ui_art/` by hand.
+- Item icons: `tools/generate-armor-assets.mjs` writes the armor sets' icons; every other flat picture comes in through `tools/pictures/build.mjs` ("Pictures").
 - Then `godot --headless --path client --import` and commit the generated `.import` files. Textures used in 3D (model textures, floors, FX sprites)
   must be VRAM Compressed: set `compress/mode=2` in their `.import` (normal maps `*NormalGL*` also `compress/normal_map=1`) and re-import; a fresh
   import is Lossless, and `npm run hygiene` fails until it is changed (`npm run hygiene -- --fix-textures` does it). UI art stays Lossless.
+
+## Pictures (icons, portraits, loading art, floor and wall textures)
+
+Every flat picture is one of the kinds in `tools/pictures/kinds.json`: ability, skill, omen, status, item and currency icons, portraits, loading art,
+floor and wall textures. A kind holds the folder, the size, a size limit (KB), how Godot imports it (`ui` Lossless, `3d` VRAM Compressed with mipmaps),
+whether it tiles, one or two style pictures and a prompt recipe. Each picture has one copy, in that folder; the windows and the HUD read the same file.
+
+```
+concept (Gemini)    art-src/concepts/<id>.png     <- art-manifest/gemini-jobs/<id>.json {"kind": ..., "prompt": what to draw}
+  -> build          node tools/pictures/build.mjs <kind> <name> <concept id or image path> [--replace]
+                    <kind's folder>/<name>.webp + .import + its record in art-manifest/images.json
+  -> import         godot --headless --path client --import (completes the .import), then point the game's data at the file
+```
+
+- A concept job that names a `kind` gets the kind's recipe and style pictures from the Discord agent's runner, so new pictures match the old ones;
+  its prompt says only what to draw. By hand, put the recipe and a style picture in the job yourself. To change a picture, give it as a ref.
+- The builder cuts off a light frame the image model drew, crops to the kind's size, makes tiling kinds seamless, lowers the WebP quality until the
+  picture fits its limit (it fails rather than ship an oversized file) and records the source, its hash and the concept's prompt.
+- A new kind is one entry in `kinds.json` sized like the pictures already in its folder; `node --test tools/pictures/*.test.mjs` (CI) checks the list,
+  the builder and that no ability borrows another one's icon. Effect sprites (`client/assets/fx/`) are not a kind yet.
+- The Discord agent runs the builder through `server/death-muffin/discord-agent/build-picture.sh` (sandboxed, concept ids only).
 
 ## Audio generation (ElevenLabs, backup only)
 

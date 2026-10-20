@@ -27,7 +27,16 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   const conflictList = /left conflicts in:\n([\s\S]*?)\nResolve/.exec(p);
   // concept + set requests: GD-CONCEPT ids=a,b writes Gemini jobs + .dm-concept-request.json; GD-SET ids=a,b writes props' Tripo specs (+ jobs if missing) + one .dm-art-request.json
   const cset = /GD-(CONCEPT|SET) ids=([a-z0-9_,]+)/.exec(p);
-  if (cset && !/The runner generated the approved model/.test(p) && !/rejected your (concept|model) request/.test(p)) {
+  // picture concepts: GD-PICTURE ids=a,b writes ability-icon concept jobs (a kind, the subject only) + .dm-concept-request.json
+  const pics = /GD-PICTURE ids=([a-z0-9_,]+)/.exec(p);
+  if (pics && !/rejected your concept request/.test(p)) {
+    const ids = pics[1].split(',');
+    for (const id of ids) wr(`art-manifest/gemini-jobs/${id}.json`, JSON.stringify([{ id: `concept_${id}`, kind: 'ability_icon', prompt: `A green ${id} scythe glowing on black, bone and acid green.`, out: `art-src/concepts/${id}.png` }]));
+    wr('.dm-concept-request.json', JSON.stringify({ ids, note: 'Reaper icons' }));
+    text = 'Asked for picture concepts.' + (/The runner generated concept images/.test(p) ? ' CONCEPT-NOTE-SEEN' : '') + (/are back in art-src\/concepts\//.test(p) ? ' CONCEPTS-BACK-SEEN' : '');
+  } else if (/CONCEPTS-BACK\?/.test(p)) {
+    text = /are back in art-src\/concepts\/: [^.]*icon_reaper_reap \(picture, kind ability_icon\)/.test(p) ? 'CONCEPTS-BACK-SEEN' : 'no concepts mentioned';
+  } else if (cset && !/The runner generated the approved model/.test(p) && !/rejected your (concept|model) request/.test(p)) {
     const ids = cset[2].split(',');
     for (const id of ids) if (cset[1] === 'CONCEPT' || !fs.existsSync(`art-manifest/gemini-jobs/${id}.json`)) wr(`art-manifest/gemini-jobs/${id}.json`, JSON.stringify([{ id: `concept_${id}`, prompt: `A ${id} for a necromancer armor set, three-quarter view, plain light grey background.`, out: `art-src/concepts/${id}.png`, aspect: '1:1' }]));
     if (cset[1] === 'CONCEPT') { wr('.dm-concept-request.json', JSON.stringify({ ids, note: 'a bone armor set' })); text = 'Asked for concepts.' + (/The runner generated concept images/.test(p) ? ' CONCEPT-NOTE-SEEN' : ''); }

@@ -63,13 +63,14 @@ npm test --prefix server/death-muffin/lobby       # lobby + relay (run `npm ci -
 npm run typecheck                                 # tsc --noEmit
 npm run hygiene                                   # stale docs and paths, retired terms, big files, texture imports
 npm run check:models                              # every model's budget, materials, skeleton and clips
+node --test tools/pictures/*.test.mjs             # the picture kinds, the picture builder, every ability has its own icon
 launcher/tests/run-local.sh                       # launcher logic tests
 teamapp/tests/run-local.sh                        # team app logic tests (a local file server and a stand-in game; no Windows)
 teamapp/tests/compile-check.sh                    # the whole team app, UI included, compiled against the .NET Framework 4.8 reference assemblies
 ```
 
 Run one suite: `godot --headless --path client --script res://tests/<name>.gd`. CI (`.github/workflows/ci.yml`) runs the backend, lobby,
-hygiene, model check and every game suite on every push to every branch, and is the gate (CLAUDE.md).
+hygiene, model and picture checks and every game suite on every push to every branch, and is the gate (CLAUDE.md).
 Tests never assert wall-clock time: timing figures print as `INFO perf:` lines. FPS is judged on real hardware (F3 overlay);
 suites only check deterministic counters.
 

@@ -23,6 +23,10 @@ function makeWorld(over = {}) {
   w('server/death-muffin/publish-godot-client.sh', '#!/usr/bin/env bash\n# stub of the real publisher: records what it was asked to publish, next to itself\necho "published $1 REPO=$REPO" >> "$(dirname "$0")/published.log"\n');
   w('client/project.godot', 'config_version=5'); w('client/README.md', 'client readme'); w('client/game/a.gd', 'speed=1'); w('client/ui/menu.gd', 'title=1'); w('client/net/dm_api.gd', 'url=1'); w('client/export_presets.cfg', '[preset.0]');
   w('.gitignore', 'art-src/\naudio-src/\n');   // like the real repo: raw art outputs are never committed
+  // one picture kind and its style picture (a WebP header is all the runner reads), like tools/pictures/kinds.json
+  w('tools/pictures/kinds.json', JSON.stringify({ ability_icon: { label: 'Ability icon', dir: 'client/assets/ui_art/art/abilities', size: [256, 256], maxKB: 48, use: 'ui',
+    style: ['client/assets/ui_art/art/abilities/necro-spear.webp'], recipe: 'Dark fantasy ARPG ability icon, square, painterly, near-black background.' } }));
+  w('client/assets/ui_art/art/abilities/necro-spear.webp', 'RIFF\u0000\u0000\u0000\u0000WEBPVP8 fake style picture');
   sh(repo, 'checkout', '-q', '-b', 'main'); sh(repo, 'add', '-A'); sh(repo, 'commit', '-q', '-m', 'init'); sh(repo, 'push', '-q', 'origin', 'main');
   const liveRev = sh(repo, 'rev-parse', 'HEAD');
   fs.mkdirSync(path.join(T, 'client')); fs.writeFileSync(path.join(T, 'client', 'manifest.json'), JSON.stringify({ version: 'v1', rev: liveRev.slice(0, 12) }));

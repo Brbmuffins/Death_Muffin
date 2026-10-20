@@ -1,0 +1,97 @@
+{
+  "ability_icon": {
+    "label": "Ability icon: hotbar, Spellbook, tooltips",
+    "dir": "client/assets/ui_art/art/abilities",
+    "size": [256, 256],
+    "maxKB": 48,
+    "use": "ui",
+    "style": ["client/assets/ui_art/art/abilities/necro-spear.webp"],
+    "recipe": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, one strong central silhouette, near-black background, the subject filling the frame. No text, no border, no frame, no letters."
+  },
+  "skill_icon": {
+    "label": "Profession skill icon: Skills window",
+    "dir": "client/assets/ui_art/art/skills",
+    "size": [256, 256],
+    "maxKB": 48,
+    "use": "ui",
+    "style": ["client/assets/ui_art/art/skills/mining.webp"],
+    "recipe": "Dark fantasy ARPG profession icon, square, painterly, a round aged-bronze medallion holding one tool or material, near-black background. No text, no letters."
+  },
+  "omen_icon": {
+    "label": "Omen icon: the omen banner and its panel",
+    "dir": "client/assets/ui_art/art/omens",
+    "size": [256, 256],
+    "maxKB": 48,
+    "use": "ui",
+    "style": ["client/assets/ui_art/art/omens/tolling.webp"],
+    "recipe": "Dark fantasy ARPG event icon, square, painterly, one ominous central object with swirling light, near-black background. No text, no border, no letters."
+  },
+  "status_icon": {
+    "label": "Status effect icon: buff and debuff rows",
+    "dir": "client/assets/ui_art/art/status",
+    "size": [128, 128],
+    "maxKB": 16,
+    "use": "ui",
+    "style": ["client/assets/ui_art/art/status/chilled.webp"],
+    "recipe": "Dark fantasy ARPG status effect icon, square, one simple bold symbol readable at 32 pixels, glowing on a near-black background. No text, no border, no letters."
+  },
+  "item_icon": {
+    "label": "Item icon: bag, Reliquary, loot labels",
+    "dir": "client/assets/ui_art/art/items",
+    "size": [192, 192],
+    "maxKB": 24,
+    "use": "ui",
+    "style": ["client/assets/ui_art/art/items/flask_hp_minor.webp"],
+    "recipe": "Dark fantasy ARPG inventory item icon, square, painterly, the single item centred and lit from above, dark vignette background. No text, no border, no letters, no hands."
+  },
+  "currency_icon": {
+    "label": "Currency and resource icon: gold, soul shards, prices",
+    "dir": "client/assets/ui_art/art/ui",
+    "size": [192, 192],
+    "maxKB": 24,
+    "use": "ui",
+    "style": ["client/assets/ui_art/art/ui/gold.webp"],
+    "recipe": "Dark fantasy ARPG currency icon, square, painterly, a small pile or single piece of the resource, near-black background. No text, no border, no letters."
+  },
+  "portrait": {
+    "label": "Portrait: party frames, class and boss cards",
+    "dir": "client/assets/ui_art/art/portraits",
+    "size": [480, 640],
+    "aspect": "3:4",
+    "maxKB": 96,
+    "use": "ui",
+    "style": ["client/assets/ui_art/art/portraits/reaper.webp"],
+    "recipe": "Dark fantasy ARPG character portrait, painterly, full figure or three-quarter, dramatic rim light, dark misty background. No text, no border, no letters."
+  },
+  "loading_art": {
+    "label": "Loading screen art",
+    "dir": "client/assets/ui_art/loading",
+    "size": [1600, 900],
+    "aspect": "16:9",
+    "genSize": "2K",
+    "maxKB": 260,
+    "use": "ui",
+    "style": ["client/assets/ui_art/loading/keyart.webp"],
+    "recipe": "Dark fantasy ARPG key art, wide cinematic painting, a necromancer scene with a clear focal point, room left and right for interface text. No text, no logo, no letters."
+  },
+  "floor_texture": {
+    "label": "Floor texture: tiles across an area's ground",
+    "dir": "client/assets/slice/art/textures",
+    "size": [1024, 1024],
+    "maxKB": 400,
+    "use": "3d",
+    "tile": true,
+    "style": ["client/assets/slice/art/textures/flagstone.webp"],
+    "recipe": "Seamless tileable ground texture seen straight from above, even soft lighting, no shadows, no perspective, no single object in the centre, dark gothic crypt palette. No text."
+  },
+  "wall_texture": {
+    "label": "Wall texture: tiles across an area's walls",
+    "dir": "client/assets/slice/art/textures",
+    "size": [1024, 1024],
+    "maxKB": 400,
+    "use": "3d",
+    "tile": true,
+    "style": ["client/assets/slice/art/textures/stone_wall.webp"],
+    "recipe": "Seamless tileable wall texture seen straight on, even soft lighting, no shadows, no perspective, dark gothic stone palette. No text."
+  }
+}

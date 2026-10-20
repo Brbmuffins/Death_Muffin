@@ -1,5 +1,5 @@
 # Shared sandbox setup, sourced INSIDE `unshare -rnm bash -c '...'` by check-godot.sh, regen-godot.sh, preview-godot.sh, shot-godot.sh, build-art.sh,
-# build-sound.sh and render-model.sh
+# build-sound.sh, build-picture.sh and render-model.sh
 # (and by nothing the AI can edit: this file lives in the tools dir outside every worktree). One implementation so they cannot drift.
 #
 # Model: the whole filesystem is read-only, then only what the script needs is re-opened. The previous model only remounted /home/ubuntu read-only,
