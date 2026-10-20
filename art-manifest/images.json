@@ -8312,9 +8312,9 @@
     "aspect": "1:1",
     "post": null,
     "out": "art-src/concepts/icon_reaper_scythe_sweep.png",
-    "rawHash": "sha256:a02ae4df48b2f60e8f017cf248e04f17fc9dd2859c5f30dbe5f325701a849f03",
-    "outHash": "sha256:85851c78b45490e4522b45ee2d053af260bee922a10a12576ef86c1c3d1e5d56",
-    "generatedAt": "2026-10-20T20:19:13.516Z"
+    "rawHash": "sha256:cb7a27d648ebee75222491da277253bcf00a268b46bea664976b0773ffc200a3",
+    "outHash": "sha256:a9e6be687a20b9182e2369d4f7ca855f0faa3d81b8817c35c770298030064950",
+    "generatedAt": "2026-10-20T21:02:09.248Z"
   },
   "concept_icon_reaper_scythe_throw": {
     "generator": "gemini",
@@ -8325,9 +8325,9 @@
     "aspect": "1:1",
     "post": null,
     "out": "art-src/concepts/icon_reaper_scythe_throw.png",
-    "rawHash": "sha256:ee91e4055449321d35b322a6946fb67ae2303dd8ccf8cd89f062886c372d8c5a",
-    "outHash": "sha256:b991086ed276d3792231511ff9498597986cbecc62a24664b8bccacb76b915b2",
-    "generatedAt": "2026-10-20T20:19:22.406Z"
+    "rawHash": "sha256:afbdd0f7ae85a0fefe51979cf4e0495cf2f07e6e9ac0c4c845f206dd83659ce9",
+    "outHash": "sha256:43ea19d204135f92a69dc462ca1497c31bd39318700801b4bd4ebcb3d73479ed",
+    "generatedAt": "2026-10-20T21:02:17.621Z"
   },
   "concept_icon_reaper_reap": {
     "generator": "gemini",
@@ -8338,9 +8338,9 @@
     "aspect": "1:1",
     "post": null,
     "out": "art-src/concepts/icon_reaper_reap.png",
-    "rawHash": "sha256:1dd1e60e1a7c77a465b2b1aa74000a0b6f1d14e9a48b546cd40380aa82ede151",
-    "outHash": "sha256:a0289472e2d4700ed57f371022d0aea93c397ab50dc41aea8b704ddf1d33b84a",
-    "generatedAt": "2026-10-20T20:19:31.508Z"
+    "rawHash": "sha256:191fbda8d25999f61818d281f66119a9a63328326e4c7bd6f3a334bcf2fa5929",
+    "outHash": "sha256:e534827c53cef4f6f06a9a77afcdab636bdf6d7ae90752f6f74796b7f823f75e",
+    "generatedAt": "2026-10-20T21:01:59.864Z"
   },
   "concept_icon_reaper_wraith_walk": {
     "generator": "gemini",
@@ -8351,9 +8351,9 @@
     "aspect": "1:1",
     "post": null,
     "out": "art-src/concepts/icon_reaper_wraith_walk.png",
-    "rawHash": "sha256:6419edba7083e1dbca01d788aa8e88eab0299a981d49b763bd26a7bfbbd737b8",
-    "outHash": "sha256:f6f9239bf1d4a808911b228437daee88dbb4712eed81242d1ab05697dbc0c44d",
-    "generatedAt": "2026-10-20T20:19:40.157Z"
+    "rawHash": "sha256:a89ecd91800ded2fff7cc66690e52ae8aa3828d661ce5a62ef5c294c4b51ec04",
+    "outHash": "sha256:a666d8245d211085b5a0777b02f4b325682c3e38b038b854ff28e4c25c7b52a3",
+    "generatedAt": "2026-10-20T21:03:01.803Z"
   },
   "concept_icon_reaper_soul_burst": {
     "generator": "gemini",
@@ -8364,9 +8364,9 @@
     "aspect": "1:1",
     "post": null,
     "out": "art-src/concepts/icon_reaper_soul_burst.png",
-    "rawHash": "sha256:5b7373ab4b77b3376c099446ff31ab2c079528c005d59a64acb0880cac02ea21",
-    "outHash": "sha256:e1de5f9a9c55cbd75e95ac7ee556e195394ac72d75d8a3350d0a63c6df40511b",
-    "generatedAt": "2026-10-20T20:19:50.311Z"
+    "rawHash": "sha256:43b8b3df34bed9d274bea96aceed9759870254ca5503c6b94a9364d2bf8ec00b",
+    "outHash": "sha256:2909895b3a7524ecac213407d61cc8e6e933bb320488932c087a566a3275cb1e",
+    "generatedAt": "2026-10-20T21:02:34.810Z"
   },
   "concept_icon_reaper_harvest_spin": {
     "generator": "gemini",
@@ -8377,9 +8377,9 @@
     "aspect": "1:1",
     "post": null,
     "out": "art-src/concepts/icon_reaper_harvest_spin.png",
-    "rawHash": "sha256:e09ff808089e8981e02c0f7c21765eb947d5d9b1f3b21fa619f923fb5d28971a",
-    "outHash": "sha256:d1ba2805760ef9891559e6312fd580d89e50a84cd3f50de771d9e0057620e157",
-    "generatedAt": "2026-10-20T20:19:58.733Z"
+    "rawHash": "sha256:5f92a32c290ecc04c7b1cb603579c4adb42abbc0cd3c030271b77e93e9cb5b8b",
+    "outHash": "sha256:dbd0093f3c5764f37d5cceedc6faf8c46c7d96f28fde8a43f1704ee832f60862",
+    "generatedAt": "2026-10-20T21:02:26.500Z"
   },
   "concept_icon_reaper_unleash_souls": {
     "generator": "gemini",
@@ -8390,9 +8390,9 @@
     "aspect": "1:1",
     "post": null,
     "out": "art-src/concepts/icon_reaper_unleash_souls.png",
-    "rawHash": "sha256:07f34fb03290880ff26cf94ded354187a490488ca23ffe25d147228dbc704505",
-    "outHash": "sha256:e49da38217afb2de3a7b865da066e252dbf2f3330d4f24094998926a9268c435",
-    "generatedAt": "2026-10-20T20:20:07.114Z"
+    "rawHash": "sha256:0e8c4dedb658f35d7181c7ea2e1f455b4831a1ab3fd8fc1f1c82b21e2dac5c6a",
+    "outHash": "sha256:d46c3fb0b385115282131215976a5f8f04dd050e21e38b3fdb92e72dfbee193c",
+    "generatedAt": "2026-10-20T21:02:52.602Z"
   },
   "concept_icon_reaper_soul_harvest": {
     "generator": "gemini",
@@ -8403,8 +8403,8 @@
     "aspect": "1:1",
     "post": null,
     "out": "art-src/concepts/icon_reaper_soul_harvest.png",
-    "rawHash": "sha256:e4925c6c63d705491c0385d8c96d395720ddce8cb83fd735d7ef1ab8c79147d2",
-    "outHash": "sha256:406ce3680e37472f5ce05339d33888a51ac74d98fcef3a41b2e9efccefa7f414",
-    "generatedAt": "2026-10-20T20:20:16.723Z"
+    "rawHash": "sha256:7bfd94adf22e45d30237105c8bd78c9bd7d2a9491c38044c698383c7a862cd39",
+    "outHash": "sha256:d3e51b3ec374e24239b2e9f44f07c469d000e55e0addaff643f7e8172d0f0270",
+    "generatedAt": "2026-10-20T21:02:43.611Z"
   }
 }
