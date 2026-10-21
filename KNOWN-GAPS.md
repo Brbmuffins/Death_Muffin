@@ -108,6 +108,9 @@ polish list). Also:
 - **One agent test can race under load** (2026-10-21, context Stage 4: failed once in a full parallel run, passed 3 of 3 alone). The bug-report
   test in `server/death-muffin/discord-agent/test/e2e.test.cjs` checks the report's posted mark as soon as both threads exist, but `postReports`
   (`runner/core.cjs`) marks it in a call it does not wait for. Fix: the test waits for the mark like it waits for the threads.
+- **`tools/check/ci.sh` and `prep.sh` are not executable in git** (mode 644; found 2026-10-21, context Stage 4), while `CLAUDE.md` and
+  tools/check/README.md show them run directly: in a checkout that path answers "Permission denied", so a session runs `bash tools/check/ci.sh`.
+  Fix: commit them as executable (mode 755).
 - **Numbers the tests cannot read yet** (the test audit, 2026-10-20: every suite now reads the game's numbers from its data or sets them
   itself, B59). Where the game keeps a number as an inline literal, the test carries a named copy, so a retune there still needs a test edit:
   the combat core's compiled-in values that `DmCore.tuning()` does not expose (elite radius, windup and cooldown multipliers, the 1.1 s rise,
