@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 // What Claude sessions on this game spend their context on, from Claude Code's own transcripts (tools/context/README.md).
 // Every API call's usage is in the transcript, so this needs no live instrumentation: it reads ~/.claude/projects/*/*.jsonl,
-// keeps the sessions that worked mostly in a Death Muffin checkout (and their subagents), and reports per session and in total what the fixed start costs
-// (the system prompt, tools and appended rules the first call already carries), how big the context grows, and which files
-// and tools filled it.
+// keeps the sessions that worked mostly in a Death Muffin checkout (and their subagents), and reports per audience what the calls in a
+// date window read: the context each call carried, the session-start context every call re-reads (system prompt, tools, appended rules
+// and the first message), how big the context grows, and which files and tools filled it.
 //
-//   node tools/context/usage.mjs [--since 2026-10-14] [--until 2026-10-20] [--who agent|session|subagent|all] [--json out.json] [--top 15] [--tokens-only]
+// The window is UTC dates, both ends included: --since D counts from D 00:00:00Z, --until D up to (not including) the next day 00:00:00Z.
+// Calls and tool results are counted by their own timestamps, so a session that started before the window counts only its calls inside it.
+// --cohort instead takes whole sessions whose first call falls in the window (for comparing sessions started after a change).
+//
+//   node tools/context/usage.mjs [--since 2026-10-14] [--until 2026-10-20] [--cohort] [--who agent|session|subagent|all] [--json out.json] [--top 15] [--tokens-only]
 //   node tools/context/usage.mjs --dir <projects dir>      (another transcript folder; tests use a throwaway one)
 
 import fs from 'node:fs';
@@ -90,13 +94,20 @@ export function parseTranscript(lines) {
       for (const b of o.message.content) {
         if (b.type !== 'tool_result') continue;
         const t = tools.get(b.tool_use_id) || { name: '?', target: '' };
-        out.toolResults.push({ name: t.name, target: t.target, chars: textLen(b.content) });
+        out.toolResults.push({ name: t.name, target: t.target, chars: textLen(b.content), ts: o.timestamp });
       }
     }
   }
   out.calls = [...calls.values()].filter((c) => c.model !== '<synthetic>').sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
   return out;
 }
+
+// The window as epoch milliseconds [from, to): --since D at D 00:00:00Z, --until D up to the next day's 00:00:00Z (the whole day included).
+export function windowOf({ since, until } = {}) {
+  const day = (d) => { const t = Date.parse(`${d}T00:00:00Z`); if (Number.isNaN(t)) throw new Error(`not a date (YYYY-MM-DD): ${d}`); return t; };
+  return { from: since ? day(since) : -Infinity, to: until ? day(until) + 86400000 : Infinity };
+}
+const within = (w, ts) => { const t = Date.parse(ts); return !Number.isNaN(t) && t >= w.from && t < w.to; };
 
 // Where a session worked: a Discord job by its start directory; anyone else by where most of its records ran (an interactive session
 // often starts in the home directory and moves into a checkout). Subagents are counted apart from the session that started them.
@@ -110,29 +121,39 @@ export function placeOf(s, { subagent = false } = {}) {
   return { who: subagent ? 'subagent' : 'session', root, job: null, round: null };
 }
 
-export function summarizeSession(s, opts) {
+// One session's calls in the window (opts.since/until; opts.cohort: the whole session when its first call is in the window), or null.
+export function summarizeSession(s, opts = {}) {
   const where = placeOf(s, opts);
   if (!where || !s.calls.length) return null;
+  const w = windowOf(opts);
+  const startedInWindow = within(w, s.calls[0].ts);
+  if (opts.cohort && !startedInWindow) return null;
+  const inWindow = s.calls.map((c) => opts.cohort || within(w, c.ts));
+  const calls = s.calls.filter((c, i) => inWindow[i]);
+  if (!calls.length) return null;
+  const toolResults = opts.cohort ? s.toolResults : s.toolResults.filter((r) => within(w, r.ts));
   const tot = emptyUsage();
   let peak = 0;
-  for (const c of s.calls) { for (const k of Object.keys(tot)) tot[k] += c.usage[k]; peak = Math.max(peak, ctxOf(c.usage)); }
-  const first = ctxOf(s.calls[0].usage);
+  for (const c of calls) { for (const k of Object.keys(tot)) tot[k] += c.usage[k]; peak = Math.max(peak, ctxOf(c.usage)); }
+  // The session's real start, wherever the window begins: its first call's context is what every later call re-reads as its prefix.
+  const startContext = ctxOf(s.calls[0].usage);
   // Repo-relative for any Death Muffin checkout; everything else (scratch files, saved tool output) is one bucket, so a report names no private path.
   const rel = (p) => { const m = /\/DeathMuffin\/(?:game|wt\/[^/]+)\/(.+)$/.exec(p); return m ? m[1] : p.startsWith('/') || p.startsWith('~') ? '(outside the repo)' : p; };
   const reads = {};
   const byTool = {};
-  for (const r of s.toolResults) {
+  for (const r of toolResults) {
     byTool[r.name] = byTool[r.name] || { calls: 0, chars: 0 };
     byTool[r.name].calls += 1; byTool[r.name].chars += r.chars;
     if (r.name === 'Bash') { const f = 'Bash: ' + commandFamily(r.target); byTool[f] = byTool[f] || { calls: 0, chars: 0 }; byTool[f].calls += 1; byTool[f].chars += r.chars; }
     if (r.name === 'Read') { const p = rel(r.target); reads[p] = reads[p] || { reads: 0, chars: 0 }; reads[p].reads += 1; reads[p].chars += r.chars; }
   }
   return {
-    ...where, sessionId: s.sessionId, start: s.start, end: s.end, model: s.model,
-    calls: s.calls.length, firstContext: first, peakContext: peak,
-    // What the fixed start costs over the session: every call re-reads it.
-    fixedShare: tot.input + tot.write5m + tot.write1h + tot.read ? (first * s.calls.length) / (tot.input + tot.write5m + tot.write1h + tot.read) : 0,
-    contexts: s.calls.map((c) => ctxOf(c.usage)),
+    ...where, sessionId: s.sessionId, start: s.calls[0].ts, startedInWindow, model: s.model,
+    calls: calls.length, startContext, peakContext: peak,
+    // How much of the window's context is the session-start context, re-read by every call in it.
+    fixedShare: ctxOf(tot) ? (startContext * calls.length) / ctxOf(tot) : 0,
+    // Every call of the session and which ones are in the window: whatIfCap replays the whole session and counts the window's calls.
+    contexts: s.calls.map((c) => ctxOf(c.usage)), inWindow,
     usage: tot, cost: costOf(s.model, tot), prompt: s.prompt, handoffNote: s.handoffNote, reads, byTool,
   };
 }
@@ -150,36 +171,38 @@ export function* transcriptFiles(dir) {
   }
 }
 
-export function collect({ dir, since, until, who }) {
+// Every transcript is read (file dates say nothing reliable about a copied transcript's calls); the window filters by each call's timestamp.
+export function collect({ dir, since, until, who, cohort = false }) {
   const sessions = [];
   for (const { file: f, subagent } of transcriptFiles(dir)) {
-    if (since) { try { if (fs.statSync(f).mtime.toISOString().slice(0, 10) < since) continue; } catch { continue; } }
-    const s = summarizeSession(parseTranscript(fs.readFileSync(f, 'utf8').split('\n')), { subagent });
+    const s = summarizeSession(parseTranscript(fs.readFileSync(f, 'utf8').split('\n')), { subagent, since, until, cohort });
     if (!s) continue;
     if (who && who !== 'all' && s.who !== who) continue;
-    if (since && String(s.start).slice(0, 10) < since) continue;
-    if (until && String(s.start).slice(0, 10) > until) continue;
     s.file = f;
     sessions.push(s);
   }
   return sessions.sort((a, b) => String(a.start).localeCompare(String(b.start)));
 }
 
-// What a session's context would have cost read back if it were compacted whenever it passed `cap` tokens: after a compaction the context
-// restarts at the session's first call plus a summary of `summary` tokens (written to the cache once) and grows as it did. A rough upper
-// bound on the saving: work redone after a compaction (files read again) is not counted.
+// A hypothetical: what the window's calls would have read if the session were compacted whenever its context passed `cap` tokens. After a
+// compaction the context restarts at the session-start context plus a summary of `summary` tokens (written to the cache once) and grows as
+// it did. It leaves out the cost of writing the summary and the work redone after a compaction (files read again, lost detail), so it is
+// an upper bound on a saving, not evidence of one. The whole session is replayed, so a compaction before the window carries into it.
 export function whatIfCap(s, cap, summary = 20000) {
   const p = priceOf(s.model);
-  const base = s.firstContext + summary;
-  let offset = 0, compactions = 0, read = 0, written = 0, prev = 0;
-  for (const c of s.contexts) {
+  const base = s.startContext + summary;
+  const counted = s.inWindow || s.contexts.map(() => true);
+  let offset = 0, compactions = 0, read = 0, actual = 0, written = 0, prev = 0;
+  s.contexts.forEach((c, i) => {
     if (c < prev) offset = 0; // the session compacted (or cleared) for real: from here it is as small as the real one
     prev = c;
     let now = Math.min(c, c - offset);
-    if (now > cap) { offset = c - base; now = base; compactions += 1; written += base; }
-    read += now;
-  }
-  const actual = s.contexts.reduce((a, c) => a + c, 0);
+    let compacted = false;
+    if (now > cap) { offset = c - base; now = base; compacted = true; }
+    if (!counted[i]) return;
+    if (compacted) { compactions += 1; written += base; }
+    read += now; actual += c;
+  });
   return { cap, compactions, savedTokens: actual - read, saved: ((actual - read) * p.read - written * p.in * 2) / 1e6 };
 }
 
@@ -193,18 +216,19 @@ export function report(sessions, { top = 15, tokensOnly = false } = {}) {
   for (const [who, list] of Object.entries(groups)) {
     const tot = emptyUsage(); const reads = {}; const byTool = {};
     let cost = 0, calls = 0, fixed = 0; const models = {};
+    const carriedIn = list.filter((s) => !s.startedInWindow).length;
     for (const s of list) {
       models[s.model] = (models[s.model] || 0) + s.cost;
       for (const k of Object.keys(tot)) tot[k] += s.usage[k];
-      cost += s.cost; calls += s.calls; fixed += s.firstContext * s.calls;
+      cost += s.cost; calls += s.calls; fixed += s.startContext * s.calls;
       for (const [p, r] of Object.entries(s.reads)) { reads[p] = reads[p] || { reads: 0, chars: 0, sessions: 0 }; reads[p].reads += r.reads; reads[p].chars += r.chars; reads[p].sessions += 1; }
       for (const [t, r] of Object.entries(s.byTool)) { byTool[t] = byTool[t] || { calls: 0, chars: 0 }; byTool[t].calls += r.calls; byTool[t].chars += r.chars; }
     }
     const ctx = ctxOf(tot);
     result.groups[who] = {
-      sessions: list.length, jobs: new Set(list.map((s) => s.job).filter(Boolean)).size, calls, cost: +cost.toFixed(2),
+      sessions: list.length, carriedIn, jobs: new Set(list.map((s) => s.job).filter(Boolean)).size, calls, cost: +cost.toFixed(2),
       models: Object.fromEntries(Object.entries(models).map(([m, c]) => [m, +c.toFixed(2)])), usage: tot, contextTokens: ctx, cacheReadShare: ctx ? tot.read / ctx : 0,
-      firstContext: { median: median(list.map((s) => s.firstContext)), min: Math.min(...list.map((s) => s.firstContext)), max: Math.max(...list.map((s) => s.firstContext)) },
+      startContext: { median: median(list.map((s) => s.startContext)), min: Math.min(...list.map((s) => s.startContext)), max: Math.max(...list.map((s) => s.startContext)) },
       peakContext: { median: median(list.map((s) => s.peakContext)), max: Math.max(...list.map((s) => s.peakContext)) },
       callsPerSession: { median: median(list.map((s) => s.calls)), max: Math.max(...list.map((s) => s.calls)) },
       fixedShare: ctx ? fixed / ctx : 0,
@@ -233,17 +257,17 @@ const pct = (x) => (x * 100).toFixed(0) + '%';
 export function formatReport(r) {
   const lines = [];
   for (const [who, g] of Object.entries(r.groups)) {
-    lines.push(`== ${who}: ${g.sessions} sessions${g.jobs ? ` (${g.jobs} jobs)` : ''}, ${g.calls} calls${g.cost != null ? `, about $${g.cost} at list price` : ''}`);
+    lines.push(`== ${who}: ${g.sessions} sessions${g.carriedIn ? ` (${g.carriedIn} started before the window)` : ''}${g.jobs ? `, ${g.jobs} jobs` : ''}, ${g.calls} calls${g.cost != null ? `, about $${g.cost} at list price` : ''}`);
     if (g.models) lines.push(`   by model: ${Object.entries(g.models).map(([m, c]) => `${m} $${c}`).join(', ')}`);
     lines.push(`   context read ${k(g.contextTokens)} tokens (cache reads ${pct(g.cacheReadShare)}), written ${k(g.usage.output)} output`);
-    lines.push(`   first call carries ${k(g.firstContext.median)} tokens (median; ${k(g.firstContext.min)}-${k(g.firstContext.max)}); the fixed start is ${pct(g.fixedShare)} of all context read`);
+    lines.push(`   session-start context ${k(g.startContext.median)} tokens (median; ${k(g.startContext.min)}-${k(g.startContext.max)}); re-read by every call, it is ${pct(g.fixedShare)} of all context read`);
     lines.push(`   context peaks at ${k(g.peakContext.median)} (median), ${k(g.peakContext.max)} (max); ${g.callsPerSession.median} calls a session (median), ${g.callsPerSession.max} max; ${g.handoffs} handoff notes`);
     if (g.appendedPromptChars.median) lines.push(`   appended rules: ${k(g.appendedPromptChars.median)} characters (median)`);
     lines.push('   files read, by characters returned (reads, sessions):');
     for (const t of g.topReads) lines.push(`     ${k(t.chars).padStart(7)}  ${t.path} (${t.reads}, ${t.sessions})`);
     lines.push('   tool results, by characters returned (calls):');
     for (const [t, v] of Object.entries(g.byTool).slice(0, 14)) lines.push(`     ${k(v.chars).padStart(7)}  ${t} (${v.calls})`);
-    lines.push(`   compacting at a lower point (estimate): ${g.whatIf.map((w) => `${k(w.cap)} saves ${k(w.savedTokens)} tokens read${w.saved != null ? ` ~$${w.saved}` : ''} (${w.compactions} compactions)`).join('; ')}`);
+    lines.push(`   hypothetical compaction at a lower point (upper bound, not a measured saving): ${g.whatIf.map((w) => `${k(w.cap)} saves ${k(w.savedTokens)} tokens read${w.saved != null ? ` ~$${w.saved}` : ''} (${w.compactions} compactions)`).join('; ')}`);
     lines.push(g.costliest ? '   costliest sessions:' : '   largest sessions:');
     for (const c of g.costliest || g.largest) lines.push(`     ${c.cost != null ? `$${c.cost}  ` : ''}${c.job ? `job ${c.job} round ${c.round}` : 'session'} ${String(c.start).slice(0, 16)} ${c.calls} calls, peak ${k(c.peak)}`);
   }
@@ -261,10 +285,11 @@ function main(argv) {
     else if (a === '--json') opt.json = argv[++i];
     else if (a === '--top') opt.top = Number(argv[++i]);
     else if (a === '--tokens-only') opt.tokensOnly = true;
+    else if (a === '--cohort') opt.cohort = true;
     else { console.error(`unknown argument ${a}`); process.exit(2); }
   }
   const r = report(collect(opt), opt);
-  r.window = { since: opt.since || null, until: opt.until || null };
+  r.window = { since: opt.since || null, until: opt.until || null, ends: 'UTC dates, both included', counted: opt.cohort ? 'whole sessions whose first call is in the window' : 'calls and tool results by their own timestamps' };
   if (opt.json) fs.writeFileSync(opt.json, JSON.stringify(r, null, 2) + '\n');
   console.log(Object.keys(r.groups).length ? formatReport(r) : 'no Death Muffin sessions in that window');
 }

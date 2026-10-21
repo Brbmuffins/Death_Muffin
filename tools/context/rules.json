@@ -560,7 +560,7 @@
       ],
       "enforced": [],
       "gaps": [
-        {"audience": "agent", "note": "not followed: 0 of 82 agent sessions 2026-10-11..20 read CLAUDE.md or README.md, 1 read client/README.md (usage.mjs)"}
+        {"audience": "agent", "note": "not followed: of the 85 agent sessions with calls 2026-10-11..20 (UTC, usage.mjs window), 0 read CLAUDE.md or README.md and 1 read client/README.md"}
       ]
     },
     {

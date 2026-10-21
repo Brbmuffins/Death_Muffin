@@ -1,5 +1,5 @@
 {
- "about": "Baseline before any change to how rules are loaded (tools/context/README.md). static: measure.mjs on main 2ccce622. usage: usage.mjs --tokens-only over Claude Code transcripts on the VPS; 'since18' = every audience 2026-10-18..20 (the client/ era), 'agent' = the Discord agent 2026-10-11..20 (since its 40-step sessions).",
+ "about": "Context baseline before any change to how rules are loaded (tools/context/README.md). static: measure.mjs at 2ccce622. usage: usage.mjs --tokens-only over the Claude Code transcripts on the VPS; \"everyone\" = every audience 2026-10-18..2026-10-20, \"agent\" = the Discord agent 2026-10-11..2026-10-20. Remade by: node tools/context/make-baseline.mjs tools/context/baseline-2026-10-20.json --label 2ccce622 --window 2026-10-18..2026-10-20 --agent-window 2026-10-11..2026-10-20",
  "static": {
   "sizes": {
    "charsPerToken": 2.7,
@@ -53,8 +53,8 @@
      "readFirst": [
       {
        "file": "README.md",
-       "chars": 10975,
-       "tokens": 4065
+       "chars": 11231,
+       "tokens": 4160
       },
       {
        "file": "ROADMAP.md",
@@ -78,7 +78,7 @@
       }
      ],
      "alwaysTokens": 3812,
-     "readFirstTokens": 123018
+     "readFirstTokens": 123113
     },
     "agent": {
      "what": "the Discord dev agent (claude -p --restricted in a job worktree; CLAUDE.md is not loaded for it)",
@@ -164,8 +164,8 @@
       },
       {
        "file": "README.md",
-       "chars": 10975,
-       "tokens": 4065
+       "chars": 11231,
+       "tokens": 4160
       },
       {
        "file": "client/README.md",
@@ -174,7 +174,7 @@
       }
      ],
      "alwaysTokens": 18677,
-     "readFirstTokens": 87880
+     "readFirstTokens": 87975
     }
    }
   },
@@ -184,46 +184,64 @@
    "gaps": [
     {
      "id": "shared-vps-one-render",
+     "protected": true,
+     "accepted": true,
      "audience": "agent",
      "note": "not needed in text: the agent's check and shot scripts take the shared locks themselves"
     },
     {
      "id": "spend-limits-from-owner",
+     "protected": true,
+     "accepted": true,
      "audience": "agent",
      "note": "covered by agent-paid-generation: the runner holds the budgets"
     },
     {
      "id": "never-weaken-tests",
+     "protected": true,
+     "accepted": true,
      "audience": "session",
      "note": "not written in CLAUDE.md; sessions follow it only by habit"
     },
     {
      "id": "never-patch-installed",
+     "protected": true,
+     "accepted": true,
      "audience": "agent",
      "note": "not needed in text: the agent's file tools are confined to its worktree"
     },
     {
      "id": "performance-budgets",
+     "protected": false,
+     "accepted": null,
      "audience": "agent",
      "note": "missing from the agent's prompt (model caps are enforced by the model check)"
     },
     {
      "id": "necromancer-focus",
+     "protected": false,
+     "accepted": null,
      "audience": "agent",
      "note": "missing from the agent's prompt"
     },
     {
      "id": "loot-never-vacuums",
+     "protected": false,
+     "accepted": null,
      "audience": "agent",
      "note": "missing from the agent's prompt"
     },
     {
      "id": "read-first",
+     "protected": false,
+     "accepted": null,
      "audience": "agent",
-     "note": "not followed: 0 of 82 agent sessions 2026-10-11..20 read CLAUDE.md or README.md, 1 read client/README.md (usage.mjs)"
+     "note": "not followed: of the 85 agent sessions with calls 2026-10-11..20 (UTC, usage.mjs window), 0 read CLAUDE.md or README.md and 1 read client/README.md"
     },
     {
      "id": "ui-tests-real-input",
+     "protected": false,
+     "accepted": null,
      "audience": "session",
      "note": "not written in CLAUDE.md"
     }
@@ -232,35 +250,36 @@
   }
  },
  "usage": {
-  "since18": {
+  "everyone": {
    "groups": {
     "session": {
-     "sessions": 11,
+     "sessions": 12,
+     "carriedIn": 1,
      "jobs": 0,
-     "calls": 5816,
+     "calls": 6205,
      "usage": {
-      "input": 12020,
+      "input": 12888,
       "write5m": 0,
-      "write1h": 15716132,
-      "read": 2796463209,
-      "output": 4848319
+      "write1h": 16167405,
+      "read": 3034729900,
+      "output": 5084004
      },
-     "contextTokens": 2812191361,
-     "cacheReadShare": 0.9944071544283505,
-     "firstContext": {
-      "median": 48542,
+     "contextTokens": 3050910193,
+     "cacheReadShare": 0.9946965685725119,
+     "startContext": {
+      "median": 48552,
       "min": 1782,
       "max": 49392
      },
      "peakContext": {
-      "median": 441064,
+      "median": 638859,
       "max": 967285
      },
      "callsPerSession": {
-      "median": 211,
+      "median": 287.5,
       "max": 1764
      },
-     "fixedShare": 0.08061942161694878,
+     "fixedShare": 0.08050820098328604,
      "appendedPromptChars": {
       "median": 423
      },
@@ -323,120 +342,120 @@
      ],
      "byTool": {
       "Bash": {
-       "calls": 5201,
-       "chars": 7896431
+       "calls": 5479,
+       "chars": 8175607
       },
       "Bash: sed": {
-       "calls": 849,
-       "chars": 2731213
+       "calls": 899,
+       "chars": 2853198
       },
       "Bash: grep": {
-       "calls": 797,
-       "chars": 1250738
+       "calls": 849,
+       "chars": 1314514
       },
       "Bash: cat": {
-       "calls": 386,
-       "chars": 694924
+       "calls": 399,
+       "chars": 702472
       },
       "Read": {
        "calls": 85,
        "chars": 667646
       },
       "Bash: python3 <<'EOF'": {
-       "calls": 681,
-       "chars": 495647
+       "calls": 726,
+       "chars": 513613
       },
       "Bash: git show": {
        "calls": 175,
        "chars": 491660
       },
       "Bash: git fetch": {
-       "calls": 206,
-       "chars": 221177
+       "calls": 212,
+       "chars": 223418
       },
       "Bash: ls": {
-       "calls": 181,
-       "chars": 197020
+       "calls": 191,
+       "chars": 208499
+      },
+      "Bash: git diff": {
+       "calls": 43,
+       "chars": 174847
       },
       "Bash: git grep": {
        "calls": 118,
        "chars": 174789
       },
-      "Bash: git diff": {
-       "calls": 41,
-       "chars": 172518
-      },
       "Bash: for": {
-       "calls": 105,
-       "chars": 154029
+       "calls": 108,
+       "chars": 156330
       },
       "Bash: git log": {
        "calls": 62,
        "chars": 80763
       },
+      "Bash: wc": {
+       "calls": 36,
+       "chars": 79000
+      },
       "Artifact": {
        "calls": 8,
        "chars": 78272
       },
-      "Bash: wc": {
-       "calls": 27,
-       "chars": 76323
-      },
       "Bash: echo": {
-       "calls": 41,
-       "chars": 61714
+       "calls": 43,
+       "chars": 62402
       },
       "Bash: git worktree": {
-       "calls": 66,
-       "chars": 59876
+       "calls": 67,
+       "chars": 60290
       },
       "Bash: secret);": {
        "calls": 74,
        "chars": 59830
       },
       "Bash: -n": {
-       "calls": 15,
-       "chars": 46265
+       "calls": 19,
+       "chars": 51208
       },
       "Bash: tail": {
-       "calls": 45,
-       "chars": 45710
+       "calls": 47,
+       "chars": 46261
       },
       "Agent": {
        "calls": 44,
        "chars": 45672
       },
       "Bash: git status": {
-       "calls": 38,
-       "chars": 42487
+       "calls": 39,
+       "chars": 42948
       },
       "Bash: awk": {
        "calls": 19,
        "chars": 41361
       },
       "Bash: rm": {
-       "calls": 33,
-       "chars": 32008
+       "calls": 36,
+       "chars": 32791
       },
       "SendMessage": {
        "calls": 112,
        "chars": 31754
       },
-      "Bash: cd": {
-       "calls": 24,
-       "chars": 30116
+      "Bash: timeout nice": {
+       "calls": 28,
+       "chars": 31411
       },
       "Bash: git add": {
-       "calls": 76,
-       "chars": 29861
-      },
-      "Bash: timeout nice": {
-       "calls": 26,
-       "chars": 29752
+       "calls": 78,
+       "chars": 31376
       },
       "Bash: python3 \"": {
-       "calls": 41,
-       "chars": 28260
+       "calls": 44,
+       "chars": 30835
+      },
+      "Bash: cd": {
+       "calls": 25,
+       "chars": 30530
       },
       "Bash: python3 <<'PYEOF'": {
        "calls": 62,
@@ -447,8 +466,8 @@
        "chars": 26020
       },
       "Bash: systemctl": {
-       "calls": 11,
-       "chars": 25012
+       "calls": 12,
+       "chars": 25096
       },
       "Bash: head": {
        "calls": 18,
@@ -463,12 +482,20 @@
        "chars": 19963
       },
       "Bash: git ls-files": {
-       "calls": 6,
-       "chars": 18562
+       "calls": 7,
+       "chars": 19518
       },
       "TaskStop": {
-       "calls": 17,
-       "chars": 17444
+       "calls": 20,
+       "chars": 19259
+      },
+      "Bash: curl": {
+       "calls": 56,
+       "chars": 18244
+      },
+      "ScheduleWakeup": {
+       "calls": 74,
+       "chars": 17322
       },
       "Bash: &&": {
        "calls": 23,
@@ -482,49 +509,45 @@
        "calls": 39,
        "chars": 14496
       },
-      "Bash: curl": {
-       "calls": 45,
-       "chars": 13081
+      "Write": {
+       "calls": 75,
+       "chars": 13398
+      },
+      "Bash: timeout bash": {
+       "calls": 41,
+       "chars": 13148
       },
       "Bash: git merge": {
        "calls": 8,
        "chars": 12841
       },
-      "Bash: timeout bash": {
-       "calls": 37,
-       "chars": 12431
-      },
-      "Write": {
-       "calls": 69,
-       "chars": 12385
-      },
-      "ScheduleWakeup": {
-       "calls": 52,
-       "chars": 12174
-      },
       "Bash: bash ci.sh": {
        "calls": 34,
        "chars": 11544
       },
+      "Monitor": {
+       "calls": 38,
+       "chars": 11474
+      },
+      "Bash: until": {
+       "calls": 48,
+       "chars": 11237
+      },
       "Bash: ps": {
-       "calls": 7,
-       "chars": 10995
+       "calls": 8,
+       "chars": 11072
       },
       "Bash: python3 <<EOF": {
        "calls": 7,
        "chars": 10967
-      },
-      "Bash: until": {
-       "calls": 46,
-       "chars": 10879
       },
       "Bash: nice bash": {
        "calls": 25,
        "chars": 10495
       },
       "Bash: sleep": {
-       "calls": 24,
-       "chars": 9977
+       "calls": 26,
+       "chars": 10384
       },
       "Bash: git checkout": {
        "calls": 24,
@@ -562,21 +585,25 @@
        "calls": 27,
        "chars": 8129
       },
+      "Bash: mkdir": {
+       "calls": 15,
+       "chars": 7721
+      },
       "Bash: sudo mysql": {
-       "calls": 21,
-       "chars": 7561
+       "calls": 22,
+       "chars": 7627
       },
       "Bash: rev-parse": {
        "calls": 18,
        "chars": 7533
       },
+      "Bash: -d": {
+       "calls": 13,
+       "chars": 7453
+      },
       "Bash: $D": {
        "calls": 1,
        "chars": 7182
-      },
-      "Bash: mkdir": {
-       "calls": 14,
-       "chars": 7118
       },
       "WebFetch": {
        "calls": 6,
@@ -585,10 +612,6 @@
       "Bash: node 'const": {
        "calls": 12,
        "chars": 7020
-      },
-      "Bash: -d": {
-       "calls": 10,
-       "chars": 7015
       },
       "Bash: nice timeout": {
        "calls": 3,
@@ -611,16 +634,20 @@
        "chars": 5914
       },
       "Bash: npm run": {
+       "calls": 18,
+       "chars": 5755
+      },
+      "Bash: git commit": {
        "calls": 17,
-       "chars": 5562
+       "chars": 5609
+      },
+      "Bash: sudo journalctl": {
+       "calls": 16,
+       "chars": 5604
       },
       "Bash: git switch": {
        "calls": 7,
        "chars": 5326
-      },
-      "Bash: git commit": {
-       "calls": 16,
-       "chars": 5311
       },
       "Bash: git branch": {
        "calls": 5,
@@ -630,17 +657,29 @@
        "calls": 4,
        "chars": 4726
       },
+      "Bash: sudo sh": {
+       "calls": 3,
+       "chars": 4707
+      },
+      "Bash: bash ci_wait.sh": {
+       "calls": 18,
+       "chars": 4701
+      },
       "Bash: uptime;": {
        "calls": 6,
        "chars": 4692
       },
+      "Bash: github-api-token": {
+       "calls": 3,
+       "chars": 4652
+      },
+      "Bash: bash install-runner.sh": {
+       "calls": 10,
+       "chars": 4572
+      },
       "Bash: find": {
        "calls": 6,
        "chars": 4536
-      },
-      "Bash: bash ci_wait.sh": {
-       "calls": 17,
-       "chars": 4440
       },
       "Edit": {
        "calls": 33,
@@ -651,8 +690,8 @@
        "chars": 4294
       },
       "Bash: python3 \"import": {
-       "calls": 1,
-       "chars": 4094
+       "calls": 2,
+       "chars": 4113
       },
       "Bash: cmp": {
        "calls": 3,
@@ -679,8 +718,12 @@
        "chars": 3694
       },
       "Bash: chmod": {
-       "calls": 9,
-       "chars": 3469
+       "calls": 11,
+       "chars": 3634
+      },
+      "Bash: diff": {
+       "calls": 2,
+       "chars": 3515
       },
       "Bash: bash assets-fp.sh": {
        "calls": 4,
@@ -701,14 +744,6 @@
       "Bash: node build-server-rules.mjs": {
        "calls": 2,
        "chars": 3147
-      },
-      "Bash: bash install-runner.sh": {
-       "calls": 8,
-       "chars": 3081
-      },
-      "Monitor": {
-       "calls": 10,
-       "chars": 3018
       },
       "Bash: cp": {
        "calls": 9,
@@ -731,8 +766,8 @@
        "chars": 2583
       },
       "Bash: node measure.mjs": {
-       "calls": 1,
-       "chars": 2513
+       "calls": 2,
+       "chars": 2559
       },
       "Bash: git rev-parse": {
        "calls": 3,
@@ -810,6 +845,10 @@
        "calls": 6,
        "chars": 1713
       },
+      "Bash: python3 launch_flip.py": {
+       "calls": 1,
+       "chars": 1703
+      },
       "Bash: timeout python3": {
        "calls": 1,
        "chars": 1623
@@ -817,6 +856,10 @@
       "Bash: bash install.sh": {
        "calls": 2,
        "chars": 1571
+      },
+      "ToolSearch": {
+       "calls": 28,
+       "chars": 1570
       },
       "Bash: busy()": {
        "calls": 5,
@@ -826,9 +869,9 @@
        "calls": 1,
        "chars": 1545
       },
-      "ToolSearch": {
-       "calls": 26,
-       "chars": 1475
+      "Bash: node \"": {
+       "calls": 4,
+       "chars": 1493
       },
       "Bash: node curl": {
        "calls": 1,
@@ -866,17 +909,9 @@
        "calls": 2,
        "chars": 1141
       },
-      "Bash: node \"": {
-       "calls": 2,
-       "chars": 1103
-      },
       "TaskUpdate": {
        "calls": 38,
        "chars": 1049
-      },
-      "Bash: diff": {
-       "calls": 1,
-       "chars": 1005
       },
       "Bash: -u": {
        "calls": 5,
@@ -901,6 +936,10 @@
       "Bash: git merge-base": {
        "calls": 5,
        "chars": 879
+      },
+      "Bash: ls-files": {
+       "calls": 1,
+       "chars": 864
       },
       "Bash: bash publish-teamapp.sh": {
        "calls": 1,
@@ -934,6 +973,10 @@
        "calls": 1,
        "chars": 728
       },
+      "Bash: bash bake_crowd.sh": {
+       "calls": 1,
+       "chars": 695
+      },
       "Bash: (bash": {
        "calls": 2,
        "chars": 689
@@ -949,6 +992,10 @@
       "Bash: {": {
        "calls": 3,
        "chars": 608
+      },
+      "AskUserQuestion": {
+       "calls": 2,
+       "chars": 607
       },
       "Bash: fuser": {
        "calls": 1,
@@ -969,6 +1016,10 @@
       "Bash: sudo true": {
        "calls": 1,
        "chars": 527
+      },
+      "Bash: umask": {
+       "calls": 2,
+       "chars": 513
       },
       "Bash: npx vitest": {
        "calls": 1,
@@ -1021,10 +1072,6 @@
       "Bash: locate": {
        "calls": 1,
        "chars": 299
-      },
-      "Bash: sudo journalctl": {
-       "calls": 2,
-       "chars": 296
       },
       "Bash: python3 asset-uids.py": {
        "calls": 1,
@@ -1093,6 +1140,14 @@
       "Skill": {
        "calls": 3,
        "chars": 101
+      },
+      "Bash: test-db-ts.txt);": {
+       "calls": 1,
+       "chars": 88
+      },
+      "Bash: bash copy-team.sh": {
+       "calls": 1,
+       "chars": 87
       },
       "Bash: printf": {
        "calls": 2,
@@ -1166,6 +1221,10 @@
        "calls": 1,
        "chars": 17
       },
+      "Bash: (timeout": {
+       "calls": 1,
+       "chars": 12
+      },
       "Bash: python3 \"$F\"": {
        "calls": 1,
        "chars": 1
@@ -1174,60 +1233,354 @@
      "whatIf": [
       {
        "cap": 150000,
-       "compactions": 100,
-       "savedTokens": 2216168845
+       "compactions": 105,
+       "savedTokens": 2413544600
       },
       {
        "cap": 250000,
-       "compactions": 41,
-       "savedTokens": 1932981751
+       "compactions": 44,
+       "savedTokens": 2111401254
       },
       {
        "cap": 400000,
-       "compactions": 20,
-       "savedTokens": 1565136364
+       "compactions": 21,
+       "savedTokens": 1724528798
       }
      ],
      "largest": [
       {
        "job": null,
        "round": null,
-       "start": "2026-10-18T03:23:13.519Z",
+       "start": "2026-10-18T03:31:28.159Z",
        "calls": 1764,
        "peak": 967285
       },
       {
        "job": null,
        "round": null,
-       "start": "2026-10-19T07:01:04.316Z",
+       "start": "2026-10-19T07:01:06.405Z",
        "calls": 1215,
        "peak": 966895
       },
       {
        "job": null,
        "round": null,
-       "start": "2026-10-19T05:00:25.699Z",
+       "start": "2026-10-19T05:00:32.537Z",
        "calls": 987,
        "peak": 963752
       },
       {
        "job": null,
        "round": null,
-       "start": "2026-10-19T23:06:01.078Z",
+       "start": "2026-10-19T23:10:24.729Z",
        "calls": 913,
        "peak": 963769
       },
       {
        "job": null,
        "round": null,
-       "start": "2026-10-19T19:01:24.101Z",
+       "start": "2026-10-19T19:01:26.797Z",
        "calls": 364,
        "peak": 885748
       }
      ]
     },
+    "agent": {
+     "sessions": 16,
+     "carriedIn": 1,
+     "jobs": 2,
+     "calls": 441,
+     "usage": {
+      "input": 882,
+      "write5m": 0,
+      "write1h": 1210365,
+      "read": 29257252,
+      "output": 219767
+     },
+     "contextTokens": 30468499,
+     "cacheReadShare": 0.9602459248156596,
+     "startContext": {
+      "median": 25282,
+      "min": 19295,
+      "max": 26961
+     },
+     "peakContext": {
+      "median": 58473.5,
+      "max": 190386
+     },
+     "callsPerSession": {
+      "median": 22,
+      "max": 64
+     },
+     "fixedShare": 0.34129886083328226,
+     "appendedPromptChars": {
+      "median": 46360
+     },
+     "handoffs": 1,
+     "topReads": [
+      {
+       "path": "client/README.md",
+       "reads": 1,
+       "chars": 57464,
+       "sessions": 1
+      },
+      {
+       "path": "client/tests/rites.gd",
+       "reads": 8,
+       "chars": 26831,
+       "sessions": 3
+      },
+      {
+       "path": "client/main/qa_clips.gd",
+       "reads": 3,
+       "chars": 24212,
+       "sessions": 2
+      },
+      {
+       "path": "godot/next/rites/README.md",
+       "reads": 3,
+       "chars": 17501,
+       "sessions": 2
+      },
+      {
+       "path": "client/next/rites/rite_haunting_wraith.gd",
+       "reads": 5,
+       "chars": 17290,
+       "sessions": 4
+      },
+      {
+       "path": "godot/tests/rites/reaper_part.gd",
+       "reads": 2,
+       "chars": 15829,
+       "sessions": 2
+      },
+      {
+       "path": "client/next/meta/dm_next_meta.gd",
+       "reads": 6,
+       "chars": 15766,
+       "sessions": 3
+      },
+      {
+       "path": "tools/generate-armor-assets.mjs",
+       "reads": 2,
+       "chars": 13620,
+       "sessions": 2
+      },
+      {
+       "path": "client/main/qa_ui_shots.gd",
+       "reads": 2,
+       "chars": 12966,
+       "sessions": 1
+      },
+      {
+       "path": "server/rules/content/items.ts",
+       "reads": 1,
+       "chars": 12708,
+       "sessions": 1
+      },
+      {
+       "path": "godot/next/rites/dm_reaper_rites.gd",
+       "reads": 2,
+       "chars": 11220,
+       "sessions": 2
+      },
+      {
+       "path": "godot/next/rites/rite_wraith_walk.gd",
+       "reads": 2,
+       "chars": 10604,
+       "sessions": 2
+      },
+      {
+       "path": "client/tests/coop.gd",
+       "reads": 3,
+       "chars": 10106,
+       "sessions": 1
+      },
+      {
+       "path": "godot/next/rites/rite_unleash_souls.gd",
+       "reads": 1,
+       "chars": 9996,
+       "sessions": 1
+      },
+      {
+       "path": "godot/next/rites/rite_scythe_throw.gd",
+       "reads": 2,
+       "chars": 8030,
+       "sessions": 2
+      }
+     ],
+     "byTool": {
+      "Bash": {
+       "calls": 259,
+       "chars": 402648
+      },
+      "Read": {
+       "calls": 89,
+       "chars": 371861
+      },
+      "Grep": {
+       "calls": 144,
+       "chars": 268101
+      },
+      "Bash: grep": {
+       "calls": 62,
+       "chars": 134422
+      },
+      "Bash: sed": {
+       "calls": 25,
+       "chars": 86538
+      },
+      "Bash: agit": {
+       "calls": 65,
+       "chars": 63923
+      },
+      "Bash: check-godot.sh": {
+       "calls": 31,
+       "chars": 54269
+      },
+      "Edit": {
+       "calls": 217,
+       "chars": 30164
+      },
+      "Bash: ls": {
+       "calls": 9,
+       "chars": 14309
+      },
+      "Bash: cat": {
+       "calls": 6,
+       "chars": 13139
+      },
+      "Bash: find": {
+       "calls": 1,
+       "chars": 11390
+      },
+      "Write": {
+       "calls": 51,
+       "chars": 9149
+      },
+      "Glob": {
+       "calls": 7,
+       "chars": 8902
+      },
+      "Bash: echo": {
+       "calls": 34,
+       "chars": 8093
+      },
+      "Bash: head": {
+       "calls": 3,
+       "chars": 3041
+      },
+      "Bash: regen-godot.sh": {
+       "calls": 2,
+       "chars": 2555
+      },
+      "Bash: build-picture.sh": {
+       "calls": 8,
+       "chars": 2511
+      },
+      "Bash: python3 <<'E'": {
+       "calls": 3,
+       "chars": 2181
+      },
+      "Bash: rm": {
+       "calls": 2,
+       "chars": 1454
+      },
+      "Bash: node '": {
+       "calls": 1,
+       "chars": 727
+      },
+      "Bash: gh": {
+       "calls": 1,
+       "chars": 727
+      },
+      "Bash: git ls-files": {
+       "calls": 1,
+       "chars": 727
+      },
+      "Bash: cp": {
+       "calls": 1,
+       "chars": 727
+      },
+      "Bash: for": {
+       "calls": 1,
+       "chars": 727
+      },
+      "Bash: diff": {
+       "calls": 1,
+       "chars": 643
+      },
+      "WebFetch": {
+       "calls": 1,
+       "chars": 465
+      },
+      "Bash: tail": {
+       "calls": 1,
+       "chars": 399
+      },
+      "Bash: wc": {
+       "calls": 1,
+       "chars": 146
+      }
+     },
+     "whatIf": [
+      {
+       "cap": 150000,
+       "compactions": 1,
+       "savedTokens": 2866050
+      },
+      {
+       "cap": 250000,
+       "compactions": 0,
+       "savedTokens": 0
+      },
+      {
+       "cap": 400000,
+       "compactions": 0,
+       "savedTokens": 0
+      }
+     ],
+     "largest": [
+      {
+       "job": "565c7c",
+       "round": 6,
+       "start": "2026-10-20T00:52:46.004Z",
+       "calls": 59,
+       "peak": 190386
+      },
+      {
+       "job": "565c7c",
+       "round": 2,
+       "start": "2026-10-18T19:43:37.152Z",
+       "calls": 40,
+       "peak": 106405
+      },
+      {
+       "job": "565c7c",
+       "round": 7,
+       "start": "2026-10-20T01:37:31.638Z",
+       "calls": 64,
+       "peak": 103638
+      },
+      {
+       "job": "565c7c",
+       "round": 5,
+       "start": "2026-10-19T19:06:44.098Z",
+       "calls": 58,
+       "peak": 90751
+      },
+      {
+       "job": "565c7c",
+       "round": 1,
+       "start": "2026-10-16T02:45:59.616Z",
+       "calls": 32,
+       "peak": 116179
+      }
+     ]
+    },
     "subagent": {
      "sessions": 39,
+     "carriedIn": 0,
      "jobs": 0,
      "calls": 5950,
      "usage": {
@@ -1239,7 +1592,7 @@
      },
      "contextTokens": 2084381683,
      "cacheReadShare": 0.9890140576523191,
-     "firstContext": {
+     "startContext": {
       "median": 38937,
       "min": 37754,
       "max": 41436
@@ -1992,372 +2345,89 @@
       {
        "job": null,
        "round": null,
-       "start": "2026-10-18T20:51:11.401Z",
+       "start": "2026-10-18T20:51:13.932Z",
        "calls": 752,
        "peak": 966467
       },
       {
        "job": null,
        "round": null,
-       "start": "2026-10-18T20:46:51.821Z",
+       "start": "2026-10-18T20:46:53.902Z",
        "calls": 446,
        "peak": 964145
       },
       {
        "job": null,
        "round": null,
-       "start": "2026-10-18T21:40:46.160Z",
+       "start": "2026-10-18T21:40:48.225Z",
        "calls": 284,
        "peak": 924429
       },
       {
        "job": null,
        "round": null,
-       "start": "2026-10-18T19:42:23.361Z",
+       "start": "2026-10-18T19:42:25.739Z",
        "calls": 242,
        "peak": 702325
       },
       {
        "job": null,
        "round": null,
-       "start": "2026-10-20T11:29:01.502Z",
+       "start": "2026-10-20T11:29:04.547Z",
        "calls": 261,
        "peak": 749904
-      }
-     ]
-    },
-    "agent": {
-     "sessions": 14,
-     "jobs": 2,
-     "calls": 407,
-     "usage": {
-      "input": 814,
-      "write5m": 0,
-      "write1h": 1071549,
-      "read": 26665401,
-      "output": 196833
-     },
-     "contextTokens": 27737764,
-     "cacheReadShare": 0.9613392413317815,
-     "firstContext": {
-      "median": 25282,
-      "min": 19937,
-      "max": 26951
-     },
-     "peakContext": {
-      "median": 58473.5,
-      "max": 190386
-     },
-     "callsPerSession": {
-      "median": 22,
-      "max": 64
-     },
-     "fixedShare": 0.3506952471006675,
-     "appendedPromptChars": {
-      "median": 46360
-     },
-     "handoffs": 1,
-     "topReads": [
-      {
-       "path": "client/README.md",
-       "reads": 1,
-       "chars": 57464,
-       "sessions": 1
-      },
-      {
-       "path": "client/tests/rites.gd",
-       "reads": 8,
-       "chars": 26831,
-       "sessions": 3
-      },
-      {
-       "path": "client/main/qa_clips.gd",
-       "reads": 3,
-       "chars": 24212,
-       "sessions": 2
-      },
-      {
-       "path": "client/next/rites/rite_haunting_wraith.gd",
-       "reads": 5,
-       "chars": 17290,
-       "sessions": 4
-      },
-      {
-       "path": "client/next/meta/dm_next_meta.gd",
-       "reads": 6,
-       "chars": 15766,
-       "sessions": 3
-      },
-      {
-       "path": "tools/generate-armor-assets.mjs",
-       "reads": 2,
-       "chars": 13620,
-       "sessions": 2
-      },
-      {
-       "path": "client/main/qa_ui_shots.gd",
-       "reads": 2,
-       "chars": 12966,
-       "sessions": 1
-      },
-      {
-       "path": "server/rules/content/items.ts",
-       "reads": 1,
-       "chars": 12708,
-       "sessions": 1
-      },
-      {
-       "path": "client/tests/coop.gd",
-       "reads": 3,
-       "chars": 10106,
-       "sessions": 1
-      },
-      {
-       "path": "godot/next/rites/README.md",
-       "reads": 1,
-       "chars": 8579,
-       "sessions": 1
-      },
-      {
-       "path": "client/rules/combat/dm_weapon_line.gd",
-       "reads": 1,
-       "chars": 7049,
-       "sessions": 1
-      },
-      {
-       "path": "tools/generate-necro-weapons.mjs",
-       "reads": 1,
-       "chars": 6930,
-       "sessions": 1
-      },
-      {
-       "path": "client/tests/qa_shots.gd",
-       "reads": 2,
-       "chars": 6820,
-       "sessions": 2
-      },
-      {
-       "path": "client/main/perf_overlay.gd",
-       "reads": 1,
-       "chars": 6558,
-       "sessions": 1
-      },
-      {
-       "path": "PATCH_NOTES.json",
-       "reads": 5,
-       "chars": 6268,
-       "sessions": 5
-      }
-     ],
-     "byTool": {
-      "Bash": {
-       "calls": 230,
-       "chars": 348811
-      },
-      "Read": {
-       "calls": 79,
-       "chars": 318018
-      },
-      "Grep": {
-       "calls": 140,
-       "chars": 265666
-      },
-      "Bash: grep": {
-       "calls": 51,
-       "chars": 115938
-      },
-      "Bash: sed": {
-       "calls": 21,
-       "chars": 77951
-      },
-      "Bash: check-godot.sh": {
-       "calls": 30,
-       "chars": 48727
-      },
-      "Bash: agit": {
-       "calls": 58,
-       "chars": 46241
-      },
-      "Edit": {
-       "calls": 182,
-       "chars": 25688
-      },
-      "Bash: cat": {
-       "calls": 6,
-       "chars": 13139
-      },
-      "Bash: ls": {
-       "calls": 8,
-       "chars": 12532
-      },
-      "Bash: find": {
-       "calls": 1,
-       "chars": 11390
-      },
-      "Glob": {
-       "calls": 7,
-       "chars": 8902
-      },
-      "Write": {
-       "calls": 46,
-       "chars": 8288
-      },
-      "Bash: echo": {
-       "calls": 30,
-       "chars": 7969
-      },
-      "Bash: regen-godot.sh": {
-       "calls": 2,
-       "chars": 2555
-      },
-      "Bash: build-picture.sh": {
-       "calls": 8,
-       "chars": 2511
-      },
-      "Bash: python3 <<'E'": {
-       "calls": 3,
-       "chars": 2181
-      },
-      "Bash: rm": {
-       "calls": 2,
-       "chars": 1454
-      },
-      "Bash: head": {
-       "calls": 2,
-       "chars": 1400
-      },
-      "Bash: node '": {
-       "calls": 1,
-       "chars": 727
-      },
-      "Bash: gh": {
-       "calls": 1,
-       "chars": 727
-      },
-      "Bash: git ls-files": {
-       "calls": 1,
-       "chars": 727
-      },
-      "Bash: cp": {
-       "calls": 1,
-       "chars": 727
-      },
-      "Bash: for": {
-       "calls": 1,
-       "chars": 727
-      },
-      "Bash: diff": {
-       "calls": 1,
-       "chars": 643
-      },
-      "WebFetch": {
-       "calls": 1,
-       "chars": 465
-      },
-      "Bash: tail": {
-       "calls": 1,
-       "chars": 399
-      },
-      "Bash: wc": {
-       "calls": 1,
-       "chars": 146
-      }
-     },
-     "whatIf": [
-      {
-       "cap": 150000,
-       "compactions": 1,
-       "savedTokens": 2866050
-      },
-      {
-       "cap": 250000,
-       "compactions": 0,
-       "savedTokens": 0
-      },
-      {
-       "cap": 400000,
-       "compactions": 0,
-       "savedTokens": 0
-      }
-     ],
-     "largest": [
-      {
-       "job": "565c7c",
-       "round": 6,
-       "start": "2026-10-20T00:52:43.162Z",
-       "calls": 59,
-       "peak": 190386
-      },
-      {
-       "job": "565c7c",
-       "round": 2,
-       "start": "2026-10-18T19:43:33.625Z",
-       "calls": 40,
-       "peak": 106405
-      },
-      {
-       "job": "565c7c",
-       "round": 7,
-       "start": "2026-10-20T01:37:29.368Z",
-       "calls": 64,
-       "peak": 103638
-      },
-      {
-       "job": "565c7c",
-       "round": 5,
-       "start": "2026-10-19T19:06:42.671Z",
-       "calls": 58,
-       "peak": 90751
-      },
-      {
-       "job": "565c7c",
-       "round": 3,
-       "start": "2026-10-18T22:49:31.172Z",
-       "calls": 40,
-       "peak": 99420
       }
      ]
     }
    },
    "window": {
     "since": "2026-10-18",
-    "until": "2026-10-20"
+    "until": "2026-10-20",
+    "ends": "UTC dates, both included",
+    "counted": "calls and tool results by their own timestamps"
    }
   },
   "agent": {
    "groups": {
     "agent": {
-     "sessions": 82,
-     "jobs": 40,
-     "calls": 2221,
+     "sessions": 85,
+     "carriedIn": 2,
+     "jobs": 42,
+     "calls": 2282,
      "usage": {
-      "input": 4442,
+      "input": 4564,
       "write5m": 0,
-      "write1h": 5370703,
-      "read": 155679038,
-      "output": 1094221
+      "write1h": 5461614,
+      "read": 159310294,
+      "output": 1122093
      },
-     "contextTokens": 161054183,
-     "cacheReadShare": 0.9666252381659656,
-     "firstContext": {
-      "median": 18981.5,
+     "contextTokens": 164776472,
+     "cacheReadShare": 0.9668267081237181,
+     "startContext": {
+      "median": 18978,
       "min": 15275,
-      "max": 26951
+      "max": 26961
      },
      "peakContext": {
-      "median": 55012,
+      "median": 54322,
       "max": 443592
      },
      "callsPerSession": {
-      "median": 20.5,
+      "median": 20,
       "max": 176
      },
-     "fixedShare": 0.25871375225317805,
+     "fixedShare": 0.2586961322973343,
      "appendedPromptChars": {
       "median": 30812
      },
      "handoffs": 2,
      "topReads": [
+      {
+       "path": "godot/ui/panels_b/dm_vault_panel.gd",
+       "reads": 8,
+       "chars": 79179,
+       "sessions": 5
+      },
       {
        "path": "godot/tests/rites/reaper_part.gd",
        "reads": 14,
@@ -2369,12 +2439,6 @@
        "reads": 6,
        "chars": 68523,
        "sessions": 5
-      },
-      {
-       "path": "godot/ui/panels_b/dm_vault_panel.gd",
-       "reads": 5,
-       "chars": 61266,
-       "sessions": 4
       },
       {
        "path": "client/README.md",
@@ -2451,44 +2515,44 @@
      ],
      "byTool": {
       "Bash": {
-       "calls": 1343,
-       "chars": 2174386
+       "calls": 1375,
+       "chars": 2186104
       },
       "Read": {
-       "calls": 585,
-       "chars": 2019346
+       "calls": 599,
+       "chars": 2051835
       },
       "Grep": {
-       "calls": 683,
-       "chars": 1235921
+       "calls": 700,
+       "chars": 1253973
       },
       "Bash: grep": {
-       "calls": 380,
-       "chars": 740454
+       "calls": 383,
+       "chars": 744006
       },
       "Bash: check-godot.sh": {
-       "calls": 142,
-       "chars": 488491
+       "calls": 146,
+       "chars": 494233
       },
       "Bash: sed": {
        "calls": 119,
        "chars": 342701
       },
       "Bash: agit": {
-       "calls": 326,
-       "chars": 275063
+       "calls": 340,
+       "chars": 276376
       },
       "Edit": {
-       "calls": 1024,
-       "chars": 144030
+       "calls": 1053,
+       "chars": 147808
       },
       "Bash: cat": {
        "calls": 30,
        "chars": 105378
       },
       "Bash: echo": {
-       "calls": 194,
-       "chars": 57942
+       "calls": 200,
+       "chars": 58128
       },
       "Bash: ls": {
        "calls": 32,
@@ -2499,8 +2563,8 @@
        "chars": 37866
       },
       "Write": {
-       "calls": 171,
-       "chars": 30229
+       "calls": 175,
+       "chars": 30898
       },
       "Glob": {
        "calls": 16,
@@ -2558,6 +2622,10 @@
        "calls": 3,
        "chars": 2181
       },
+      "Bash: shot-godot.sh": {
+       "calls": 9,
+       "chars": 1733
+      },
       "Bash: for": {
        "calls": 2,
        "chars": 1454
@@ -2573,10 +2641,6 @@
       "Bash: gh": {
        "calls": 2,
        "chars": 1454
-      },
-      "Bash: shot-godot.sh": {
-       "calls": 4,
-       "chars": 808
       },
       "Bash: git ls-files": {
        "calls": 2,
@@ -2648,35 +2712,35 @@
       {
        "job": "06591d",
        "round": 1,
-       "start": "2026-10-11T01:01:04.271Z",
+       "start": "2026-10-11T01:01:07.698Z",
        "calls": 176,
        "peak": 443592
       },
       {
        "job": "06591d",
        "round": 4,
-       "start": "2026-10-11T03:06:18.985Z",
+       "start": "2026-10-11T03:06:21.793Z",
        "calls": 72,
        "peak": 200194
       },
       {
        "job": "d40ac9",
        "round": 3,
-       "start": "2026-10-13T00:54:33.288Z",
+       "start": "2026-10-13T00:54:36.014Z",
        "calls": 96,
        "peak": 183539
       },
       {
        "job": "565c7c",
        "round": 6,
-       "start": "2026-10-20T00:52:43.162Z",
+       "start": "2026-10-20T00:52:46.004Z",
        "calls": 59,
        "peak": 190386
       },
       {
        "job": "06591d",
        "round": 6,
-       "start": "2026-10-11T16:05:45.536Z",
+       "start": "2026-10-11T16:05:48.825Z",
        "calls": 59,
        "peak": 144919
       }
@@ -2685,7 +2749,9 @@
    },
    "window": {
     "since": "2026-10-11",
-    "until": "2026-10-20"
+    "until": "2026-10-20",
+    "ends": "UTC dates, both included",
+    "counted": "calls and tool results by their own timestamps"
    }
   }
  }

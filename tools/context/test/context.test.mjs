@@ -161,7 +161,7 @@ test('a Discord job transcript is summarized per API call, not per record', () =
   const s = summarizeSession(parseTranscript(transcript(cwd)));
   assert.equal(s.who, 'agent'); assert.equal(s.job, 'abc123'); assert.equal(s.round, 3);
   assert.equal(s.calls, 3);
-  assert.equal(s.firstContext, 10002);
+  assert.equal(s.startContext, 10002);
   assert.equal(s.peakContext, 12102);
   assert.equal(s.usage.write1h, 12100); assert.equal(s.usage.read, 22000); assert.equal(s.usage.output, 150);
   assert.equal(s.prompt.appendedChars, 100);
@@ -202,7 +202,7 @@ test('command families name the program and its script or subcommand', () => {
 });
 
 test('compacting at a lower point resets the context to the start plus a summary', () => {
-  const s = { model: 'claude-sonnet-5-5', firstContext: 10000, contexts: [10000, 60000, 110000, 120000] };
+  const s = { model: 'claude-sonnet-5-5', startContext: 10000, contexts: [10000, 60000, 110000, 120000] };
   const w = whatIfCap(s, 100000, 20000);
   assert.equal(w.compactions, 1);
   // after the reset at 110000 the context restarts at 30000 and grows by 10000: reads 10000+60000+30000+40000
@@ -210,8 +210,77 @@ test('compacting at a lower point resets the context to the start plus a summary
   assert.ok(Math.abs(w.saved - saved) < 1e-9);
   assert.equal(whatIfCap(s, 500000).compactions, 0);
   // a real compaction in the session (the context drops): the estimate follows the real, smaller context and never goes negative
-  const real = { model: 'claude-sonnet-5-5', firstContext: 10000, contexts: [10000, 120000, 15000, 20000] };
+  const real = { model: 'claude-sonnet-5-5', startContext: 10000, contexts: [10000, 120000, 15000, 20000] };
   const r = whatIfCap(real, 100000, 20000);
   assert.equal(r.savedTokens, 120000 - 30000);
   assert.ok(r.savedTokens <= real.contexts.reduce((a, c) => a + c, 0));
+});
+
+// Calls at given times (one tool result after each), in a Discord job's worktree.
+function timedTranscript(job, stamps, ctx = 1000) {
+  const cwd = `/home/ubuntu/vps-handoffs/DeathMuffin/wt/discord-${job}`;
+  const out = [{ type: 'user', cwd, sessionId: job, timestamp: stamps[0], message: { content: 'go' } }];
+  stamps.forEach((ts, i) => {
+    out.push({ type: 'assistant', cwd, timestamp: ts, message: { id: `${job}-${i}`, model: 'claude-sonnet-5-5', usage: { input_tokens: ctx * (i + 1), output_tokens: 1 }, content: [{ type: 'tool_use', id: `${job}-t${i}`, name: 'Bash', input: { command: 'ls' } }] } });
+    out.push({ type: 'user', cwd, timestamp: ts, message: { content: [{ type: 'tool_result', tool_use_id: `${job}-t${i}`, content: 'x'.repeat(10) }] } });
+  });
+  return out.map((o) => JSON.stringify(o));
+}
+
+test('a window counts the calls inside it, from sessions that cross either boundary', () => {
+  // A: 10-17 and 10-19; B: 10-19 and 10-21. Window 10-18..10-20: the 10-19 call of each.
+  const A = parseTranscript(timedTranscript('aaaaaa', ['2026-10-17T12:00:00Z', '2026-10-19T12:00:00Z']));
+  const B = parseTranscript(timedTranscript('bbbbbb', ['2026-10-19T12:00:00Z', '2026-10-21T12:00:00Z']));
+  const win = { since: '2026-10-18', until: '2026-10-20' };
+  const a = summarizeSession(A, win), b = summarizeSession(B, win);
+  assert.equal(a.calls, 1); assert.equal(a.usage.input, 2000); assert.equal(a.startedInWindow, false);
+  assert.equal(a.startContext, 1000, 'the session-start context is the real first call, before the window');
+  assert.equal(b.calls, 1); assert.equal(b.usage.input, 1000); assert.equal(b.startedInWindow, true);
+  assert.equal(a.byTool.Bash.calls, 1); assert.equal(b.byTool.Bash.calls, 1);
+  // --cohort: whole sessions that started in the window, B with both calls, A not at all
+  assert.equal(summarizeSession(A, { ...win, cohort: true }), null);
+  assert.equal(summarizeSession(B, { ...win, cohort: true }).calls, 2);
+});
+
+test('the end date is included to its last second and the next day is not', () => {
+  const S = parseTranscript(timedTranscript('cccccc', ['2026-10-17T23:59:59.999Z', '2026-10-18T00:00:00Z', '2026-10-20T23:59:59.999Z', '2026-10-21T00:00:00Z']));
+  const s = summarizeSession(S, { since: '2026-10-18', until: '2026-10-20' });
+  assert.equal(s.calls, 2);
+  assert.equal(s.usage.input, 2000 + 3000);
+  assert.equal(summarizeSession(S, { since: '2026-10-22' }), null);
+  assert.throws(() => summarizeSession(S, { since: '10/18/2026' }), /not a date/);
+});
+
+test('the report reads every transcript whatever its file date, and counts only the window', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-usage-win-'));
+  const job = path.join(dir, '-home-ubuntu-vps-handoffs-DeathMuffin-wt-discord-aaaaaa');
+  fs.mkdirSync(job);
+  const f = path.join(job, 'a.jsonl');
+  fs.writeFileSync(f, timedTranscript('aaaaaa', ['2026-10-17T12:00:00Z', '2026-10-19T12:00:00Z']).join('\n'));
+  fs.utimesSync(f, new Date('2026-01-01T00:00:00Z'), new Date('2026-01-01T00:00:00Z')); // a copied transcript with an old file date
+  const g = report(collect({ dir, since: '2026-10-18', until: '2026-10-20' })).groups.agent;
+  assert.equal(g.sessions, 1); assert.equal(g.carriedIn, 1); assert.equal(g.calls, 1);
+});
+
+test('the compaction what-if replays the whole session but counts only the window', () => {
+  // contexts 10K, 120K (before the window), 125K, 130K (in it): the compaction at 120K happens before the window and carries in
+  const s = { model: 'claude-sonnet-5-5', startContext: 10000, contexts: [10000, 120000, 125000, 130000], inWindow: [false, false, true, true] };
+  const w = whatIfCap(s, 100000, 20000);
+  assert.equal(w.compactions, 0, 'the compaction before the window is not counted in it');
+  assert.equal(w.savedTokens, (125000 + 130000) - (35000 + 40000));
+});
+
+test('make-baseline writes tokens only, with the command that remakes it', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-baseline-'));
+  const job = path.join(dir, '-home-ubuntu-vps-handoffs-DeathMuffin-wt-discord-aaaaaa');
+  fs.mkdirSync(job);
+  fs.writeFileSync(path.join(job, 'a.jsonl'), timedTranscript('aaaaaa', ['2026-10-19T12:00:00Z']).join('\n'));
+  const out = path.join(dir, 'b.json');
+  execFileSync(process.execPath, [path.join(REPO, 'tools/context/make-baseline.mjs'), out, '--label', 'test', '--window', '2026-10-18..2026-10-20', '--agent-window', '2026-10-18..2026-10-20', '--dir', dir]);
+  const b = JSON.parse(fs.readFileSync(out, 'utf8'));
+  assert.equal(b.usage.agent.groups.agent.calls, 1);
+  assert.match(b.about, /make-baseline\.mjs .* --window 2026-10-18\.\.2026-10-20/);
+  assert.deepEqual(b.static.rules.problems, []);
+  assert.ok(!JSON.stringify(b).includes('"cost"'), 'no dollars in a baseline');
 });

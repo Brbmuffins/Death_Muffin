@@ -6,8 +6,9 @@ an inventory of the rules, so the rule text can be reorganised without losing a 
 
 ```
 node tools/context/measure.mjs                   # rule text per audience and section, and the inventory check (exit 1 on a problem)
-node tools/context/usage.mjs --since 2026-10-18  # per audience: calls, context read, the fixed start, peaks, files and commands that filled it
+node tools/context/usage.mjs --since 2026-10-18 --until 2026-10-20   # per audience: the window's calls, context read, session-start context, peaks, files and commands
 node tools/context/usage.mjs --who agent --tokens-only --json out.json
+node tools/context/make-baseline.mjs <out.json> --label <rev> --window <since>..<until> --agent-window <since>..<until>
 node --test tools/context/test/*.test.mjs        # also in npm run test:server, so in CI
 ```
 
@@ -54,16 +55,33 @@ whether anyone reviewed that diff, whether reworded text still means the same, o
 
 `usage.mjs` reads Claude Code's transcripts (`~/.claude/projects/*/*.jsonl`, and `<session>/subagents/*.jsonl`). A transcript records every
 API call's usage, so nothing extra is logged at run time. A Discord job is recognised by its start folder (`wt/discord-<job>[-<round>]`),
-any other session by where most of its records ran. Per audience it reports the context read (cache reads, cache writes, uncached input),
-the first call's context (the fixed start: system prompt, tools, rule text and the first message), how much of everything read the fixed
-start makes up (first call times calls), peaks, the files and shell commands whose output filled the context, and an estimate of what
-compacting at a lower point would have saved (`whatIfCap`: an upper bound, since work redone after a compaction is not counted). Dollars
-are list prices (`PRICES`); a subscription pays in plan usage, but the ratio holds. `--tokens-only` drops dollars, and paths outside a
+any other session by where most of its records ran.
+
+**The window** is UTC dates with both ends included: `--since D` counts from D 00:00:00Z and `--until D` up to, not including, the next
+day's 00:00:00Z. Every API call and tool result counts by its own timestamp, so a session that started before the window counts only its
+calls inside it (the report says how many sessions started before), and one still running after it stops counting at its end. Every
+transcript is read: file dates say nothing reliable about a copied transcript's calls. `--cohort` is the other view, named as such in the
+output: whole sessions whose first call falls in the window, for comparing sessions that started after a change.
+
+Per audience it reports:
+
+- the context read by the window's calls (cache reads, cache writes, uncached input) and the output written;
+- the session-start context: the first call of each session, wherever the window begins (system prompt, tools, rule text and the first
+  message). Every later call re-reads it as its prefix, so the report also gives how much of the window's context it makes up (session-start
+  context times the window's calls). The first call inside a window is not the same thing and is not reported as startup;
+- context peaks and calls per session, and the files and shell commands whose output filled the context;
+- `whatIfCap`, a hypothetical: what the window's calls would have read had the session compacted whenever it passed a lower point. It
+  replays the whole session, leaves out the cost of the summary and the work redone after a compaction (files read again, lost detail),
+  and is an upper bound on a saving, not evidence of one; choosing a compaction point needs a measured trial.
+
+Dollars are list prices (`PRICES`); a subscription pays in plan usage, but the ratio holds. `--tokens-only` drops dollars, and paths outside a
 checkout are reported as one bucket, so the output can be committed. Claude Code deletes old transcripts after a while, so a baseline
-worth keeping is committed as numbers.
+worth keeping is committed as numbers. The characters-to-tokens estimates in `measure.mjs` are text sizes; only `usage.mjs` reports what
+the API counted.
 
 ## Baseline 2026-10-20
 
 `baseline-2026-10-20.json` holds the numbers before any change to how rules are loaded (`measure.mjs` on main 2ccce622, `usage.mjs` over
-2026-10-18 to 2026-10-20 for everyone and 2026-10-11 to 2026-10-20 for the agent). It records what sessions read at the time, old paths included, so
+2026-10-18 to 2026-10-20 for everyone and 2026-10-11 to 2026-10-20 for the agent, calls counted by their own timestamps; the windows were
+closed when it was made, so `make-baseline.mjs` with the command in its `about` remakes it while the transcripts last). It records what sessions read at the time, old paths included, so
 the retired-term rules in `tools/hygiene/retired.json` allow `tools/context/baseline-*.json`.
