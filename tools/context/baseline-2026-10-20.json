@@ -291,6 +291,7 @@
       "median": 423
      },
      "handoffs": 0,
+     "claudeMdLoaded": 10,
      "topReads": [
       {
        "path": "(outside the repo)",
@@ -1331,6 +1332,7 @@
       "median": 46360
      },
      "handoffs": 1,
+     "claudeMdLoaded": 0,
      "topReads": [
       {
        "path": "client/README.md",
@@ -1631,6 +1633,7 @@
       "median": 49
      },
      "handoffs": 0,
+     "claudeMdLoaded": 15,
      "topReads": [
       {
        "path": "client/README.md",
@@ -2449,6 +2452,7 @@
       "median": 30812
      },
      "handoffs": 2,
+     "claudeMdLoaded": 0,
      "topReads": [
       {
        "path": "godot/ui/panels_b/dm_vault_panel.gd",

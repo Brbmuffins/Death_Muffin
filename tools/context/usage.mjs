@@ -69,7 +69,7 @@ const textLen = (c) => (typeof c === 'string' ? c.length : Array.isArray(c) ? c.
 export function parseTranscript(lines) {
   const calls = new Map(); // message id -> {model, usage}: a reply split into several blocks repeats the same usage
   const tools = new Map(); // tool_use id -> {name, target}
-  const out = { sessionId: null, cwd: null, cwds: {}, start: null, end: null, prompt: null, calls: [], toolResults: [], handoffNote: false };
+  const out = { sessionId: null, cwd: null, cwds: {}, start: null, end: null, prompt: null, instructions: [], calls: [], toolResults: [], handoffNote: false };
   for (const line of lines) {
     if (!line.trim()) continue;
     let o; try { o = JSON.parse(line); } catch { continue; }
@@ -80,6 +80,10 @@ export function parseTranscript(lines) {
       const parts = (o.attachment.systemPrompt || []).map((s) => String(s));
       out.prompt = { parts: parts.length, chars: parts.reduce((n, s) => n + s.length, 0), appendedChars: parts.length ? parts[parts.length - 1].length : 0 };
     }
+    // Instruction files Claude Code injected: the ones found at the start (`instructions`, listing their paths) and a CLAUDE.md it loads
+    // later, once the session works in that folder (`nested_memory`).
+    if (o.type === 'attachment' && o.attachment?.type === 'instructions') for (const f of o.attachment.files || []) if (f?.path) out.instructions.push(String(f.path));
+    if (o.type === 'attachment' && o.attachment?.type === 'nested_memory' && o.attachment.path) out.instructions.push(String(o.attachment.path));
     if (o.type === 'assistant' && o.message?.usage) {
       const m = o.message; const u = m.usage;
       const cc = u.cache_creation || {};
@@ -167,6 +171,8 @@ export function summarizeSession(s, opts = {}) {
     fixedShare: ctxOf(tot) ? (startContext * calls.length) / ctxOf(tot) : 0,
     // Every call of the session and which ones are in the window: whatIfCap replays the whole session and counts the window's calls.
     contexts: s.calls.map((c) => ctxOf(c.usage)), inWindow, callModels: s.calls.map((c) => c.model),
+    // Which of the repo's instruction files (CLAUDE.md) were injected into the session; files outside a checkout are not named.
+    instructionFiles: [...new Set(s.instructions.map(rel).filter((f) => f !== '(outside the repo)'))].sort(),
     usage: tot, cost, unpricedCalls, byModel, prompt: s.prompt, handoffNote: s.handoffNote, reads, byTool,
   };
 }
@@ -256,6 +262,7 @@ export function report(sessions, { top = 15, tokensOnly = false } = {}) {
       fixedShare: ctx ? fixed / ctx : 0,
       appendedPromptChars: { median: median(list.filter((s) => s.prompt).map((s) => s.prompt.appendedChars)) },
       handoffs: list.filter((s) => s.handoffNote).length,
+      claudeMdLoaded: list.filter((s) => s.instructionFiles.includes('CLAUDE.md')).length,
       topReads: Object.entries(reads).sort((a, b) => b[1].chars - a[1].chars).slice(0, top).map(([p, r]) => ({ path: p, ...r })),
       byTool: Object.fromEntries(Object.entries(byTool).sort((a, b) => b[1].chars - a[1].chars)),
       whatIf: [150000, 250000, 400000].map((cap) => { const w = list.map((s) => whatIfCap(s, cap)); return { cap, compactions: w.reduce((a, x) => a + x.compactions, 0), savedTokens: w.reduce((a, x) => a + x.savedTokens, 0), saved: +w.reduce((a, x) => a + x.saved, 0).toFixed(2), unpricedCalls: w.reduce((a, x) => a + x.unpricedCalls, 0) }; }),
@@ -286,6 +293,7 @@ export function formatReport(r) {
     lines.push(`   context read ${k(g.contextTokens)} tokens (cache reads ${pct(g.cacheReadShare)}), written ${k(g.usage.output)} output`);
     lines.push(`   session-start context ${k(g.startContext.median)} tokens (median; ${k(g.startContext.min)}-${k(g.startContext.max)}); re-read by every call, it is ${pct(g.fixedShare)} of all context read`);
     lines.push(`   context peaks at ${k(g.peakContext.median)} (median), ${k(g.peakContext.max)} (max); ${g.callsPerSession.median} calls a session (median), ${g.callsPerSession.max} max; ${g.handoffs} handoff notes`);
+    lines.push(`   the repo's CLAUDE.md was injected (at the start or once it worked in a checkout) in ${g.claudeMdLoaded} of ${g.sessions} sessions`);
     if (g.appendedPromptChars.median) lines.push(`   appended rules: ${k(g.appendedPromptChars.median)} characters (median)`);
     lines.push('   files read, by characters returned (reads, sessions):');
     for (const t of g.topReads) lines.push(`     ${k(t.chars).padStart(7)}  ${t.path} (${t.reads}, ${t.sessions})`);

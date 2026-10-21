@@ -18,8 +18,20 @@ node --test tools/context/test/*.test.mjs        # also in npm run test:server, 
 
 | Audience | Always loaded | How |
 |---|---|---|
-| session | `CLAUDE.md` | Claude Code loads it for any session started in the repository |
+| session | `CLAUDE.md` | Claude Code loads it for a session started in the repository, and for one started elsewhere once it works in a checkout |
 | agent | `server/death-muffin/discord-agent/PROMPT-godot.md` | the runner appends it to every call (`runner/lib/agent.cjs`); the agent runs `--restricted`, which does not load `CLAUDE.md` |
+
+How sure that is (`usage.mjs` reports it per audience as "the repo's CLAUDE.md was injected in N of M sessions", from the `instructions`
+and `nested_memory` records Claude Code writes when it injects an instruction file; a file merely read does not count):
+
+- **Agent: never.** 0 of 124 agent sessions with calls 2026-10-04 to 2026-10-20 had it injected, while every interactive session started
+  in the home folder in that time has an `instructions` record (for its memory file), so the record was being written. A direct probe on
+  2026-10-21 (Claude Code 2.1.284, a scratch folder whose `CLAUDE.md` held a code word, no tools): `claude -p --restricted` answered that it
+  had no project instructions; the same call without `--restricted` returned the code word.
+- **Session: usually, not always.** 2026-10-18 to 2026-10-20: 10 of 12 interactive sessions and 15 of 39 subagents. A session that starts
+  outside the repo gets it only when it works in a checkout's folder (a subagent that reads files through the shell may never), so for
+  subagents "always loaded" does not hold; their briefs carry the rules they need. `surfaces.json` still treats `CLAUDE.md` as the
+  session audience's always-loaded text, which is what the rule check checks.
 
 Token figures are estimates from characters: `charsPerToken` (2.7) is what the agent's own calls show, where the first call's context grew
 about one token for every 2.7 characters its prompt grew between 2026-10-11 and 2026-10-20.

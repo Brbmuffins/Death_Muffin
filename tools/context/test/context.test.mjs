@@ -323,3 +323,17 @@ test('the compaction what-if prices each call at its own model and counts unpric
   assert.equal(w.saved, 0, 'the only call that saves anything is unpriced');
   assert.equal(w.savedTokens, 120000 - 30000);
 });
+
+test('the repo CLAUDE.md counts as injected from a start-up or a later (nested) instructions record, never from a file read', () => {
+  const cwd = '/home/ubuntu/vps-handoffs/DeathMuffin/wt/feature';
+  const call = (i) => ({ type: 'assistant', cwd, timestamp: `2026-10-19T12:00:0${i}Z`, message: { id: `n${i}`, model: 'claude-sonnet-5-5', usage: { input_tokens: 10, output_tokens: 1 }, content: [] } });
+  const at = (attachment) => ({ type: 'attachment', cwd, timestamp: '2026-10-19T12:00:00Z', attachment });
+  const lines = (extra) => [call(0), ...extra, call(1)].map((o) => JSON.stringify(o));
+  const start = summarizeSession(parseTranscript(lines([at({ type: 'instructions', files: [{ path: `${cwd}/CLAUDE.md` }, { path: '/home/ubuntu/.claude/projects/x/memory/MEMORY.md' }] })])));
+  assert.deepEqual(start.instructionFiles, ['CLAUDE.md'], 'files outside a checkout are not named');
+  const nested = summarizeSession(parseTranscript(lines([at({ type: 'nested_memory', path: `${cwd}/CLAUDE.md` })])));
+  assert.deepEqual(nested.instructionFiles, ['CLAUDE.md']);
+  const readOnly = summarizeSession(parseTranscript(lines([at({ type: 'file', filename: `${cwd}/CLAUDE.md` })])));
+  assert.deepEqual(readOnly.instructionFiles, []);
+  assert.equal(report([start, nested, readOnly]).groups.session.claudeMdLoaded, 2);
+});
