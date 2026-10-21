@@ -210,8 +210,9 @@ one budget table for every kind of asset, and checks for everything but models.
   with CI as the gate a random failure blocks a ship. After: every suite passes every time, and red means broken.
 - [ ] **Fix: leftovers from the web game.** Now: parts of the code still copy the web game's exact math, and an asset list is kept by hand.
   After: plain Godot code and generated lists (KNOWN-GAPS "Leftovers from the web era").
-- [ ] **Fix: docs too long to read.** Now: `client/README.md` is 204 KB and `native/README.md` 56 KB, more than a fresh Claude session can
-  read before it starts working. After: short pages on how each system works now, the history kept in git and DECISIONS.
+- [ ] **Fix: docs too long to read.** Now: `native/README.md` is 56 KB, more than a fresh session can read before it starts working (the
+  client's manual is an index and guides beside each system since 2026-10-21). After: short pages on how each system works now, the
+  history kept in git and DECISIONS.
 - [ ] **New: one map of the docs:** which page holds which rule (the vision, How we work, the standards pages, the pipelines, the recipes,
   each system), so the Discord agent and every session find the rule before they build.
 - [ ] **Fix: the repository after the old game's folder went.** Now: leftovers of the two-game setup. After: each top-level folder has one

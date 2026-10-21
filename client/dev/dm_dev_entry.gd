@@ -8,7 +8,7 @@ extends Node
 ##   godot --path client res://dev/dm_dev_entry.tscn                       # the Gravecaller (class 2), level 10, the HUD, waves
 ##   godot --path client res://dev/dm_dev_entry.tscn -- --class=1 --seed=7  # after `--`: the options below
 ##
-## He fights with the Gravecaller's rites (client/README.md "The Gravecaller's rites"): LMB walks, or attacks the enemy under the cursor with the primary (Bone Needle; hold to
+## He fights with the Gravecaller's rites (client/next/rites/CORE-INTEGRATION.md): LMB walks, or attacks the enemy under the cursor with the primary (Bone Needle; hold to
 ## repeat, Shift+LMB casts in place), keys 1-4 are the kit's default loadout (Marrow Spear, Exhume, Miasma, Black Litany), RMB is Corpse Explosion and R the signature from level 10
 ## (Command: Rend). WASD walks. Click-to-move, camera zoom on the wheel.
 ##

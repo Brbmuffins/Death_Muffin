@@ -1,6 +1,6 @@
 class_name HudCost
 extends RefCounted
-## A model of how the canvas renderer turns a tree of controls into draw calls, to guard the HUD's budget in a headless test (client/README.md "The HUD's budget").
+## A model of how the canvas renderer turns a tree of controls into draw calls, to guard the HUD's budget in a headless test (client/ui/hud/PERFORMANCE.md).
 ## It is a MODEL, not a measurement: the counter is read from a rendered run (tools/hud_measure.gd). Its rules are the ones that run measured (Forward+ on lavapipe,
 ## Godot 4.7.2, 2026-10-16, the "micro" cases), and tests/hud.gd checks that the model reproduces those measured numbers for the same trees before it is asked about the HUD:
 ##   - items draw in order of z (their own plus their parents', unless z_as_relative is off), then tree order; a child with show_behind_parent draws before its parent;

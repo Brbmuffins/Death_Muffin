@@ -4,7 +4,7 @@
 sees him as a circle it pushes bodies out of, so he has no collider, and the blows enemies land on him arrive as the core's `EV_TARGET_HIT` events with the enemy's id as the source (`take_damage`); a chill, root or drag
 arrives as `EV_TARGET_EFFECT` (`dm_enemy_effect`). The thralls he owns are counted by the core. The avatar's lantern is the **local** hero's only (a remote puppet carries none: one light per peer).
 The host derives `family` (hotbar kit, HUD resource, auto combat) from the bound character; every other peer's puppets derive it from the
-replicated `discipline_id` (`DmHeroBody.family_of`), so a joining Reaper plays the Reaper kit on its own client. A puppet's health is the host's vitals at 20 Hz: a fall in them is its `hurt` (client/README.md "The HUD on the core").
+replicated `discipline_id` (`DmHeroBody.family_of`), so a joining Reaper plays the Reaper kit on its own client. A puppet's health is the host's vitals at 20 Hz: a fall in them is its `hurt` (client/next/hud/CORE-INTEGRATION.md).
 
 `dm_hero_look.gd` (`DmHeroLook`, child `Look` of DmNextGame, same path on every peer): worn gear, cape, pet and hero ring.
 - **Gear**: `DmAvatar.set_equipment` (weapon in hand, off-hand, helm / hide-helm, light body tints by rarity, set look) from the
@@ -17,7 +17,7 @@ replicated `discipline_id` (`DmHeroBody.family_of`), so a joining Reaper plays t
 - **Cape / pet**: `DmAvatar.set_cape`, `DmPetView` (trails the owner, idles, snaps when far; parented to the game). Source = the Capes & Pets panel:
   `_cosmetics_act` -> backend -> `DmNextUiHost.refresh_character` -> `load_cosmetics` -> `Look.set_cosmetics`.
 - **Hero ring** (local hero only): contact shadow + pale ring, discipline glow + bone ring, cursor reticle, soul halo, hover ring. The hover ring finds the hovered enemy in the core by id and follows the body the crowd draws; the ring
-  decals are drawn at `RING_K` of their opacity and the contact shadow at `SHADOW_A`, because Forward+ blends a decal in linear light and the old renderer in the encoded scene (client/README.md "The look on Forward+").
+  decals are drawn at `RING_K` of their opacity and the contact shadow at `SHADOW_A`, because Forward+ blends a decal in linear light and the old renderer in the encoded scene (client/next/look/README.md).
 - **Settings -> Hide helm** reaches the avatars (`DmAvatar.refresh_all` in `DmNextUiHost._apply_settings_side_effects`).
 
 ## Replication

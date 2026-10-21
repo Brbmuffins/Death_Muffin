@@ -13,7 +13,7 @@ const PET_FAR := 35.0           ## a remote pet this far from the local hero ani
 const FAR_HZ := 8.0
 const REPLAY_DELAY := 0.8       ## as DmNextGame.CASTER_DELAY: a joiner's spawner must have made the bodies before we talk about them
 const BODY_SLOTS := ["main_hand", "off_hand", "head", "chest", "legs", "hands", "feet"]
-## The hero's ring and contact shadow against the old game's (client/README.md "The look on Forward+"): the old game's renderer blends a decal in the exposed, sRGB-encoded scene and Forward+ in linear light, so the same
+## The hero's ring and contact shadow against the old game's (client/next/look/README.md): the old game's renderer blends a decal in the exposed, sRGB-encoded scene and Forward+ in linear light, so the same
 ## ring reads wider and whiter here. The ring decals are drawn at RING_K of their opacity and the contact shadow at SHADOW_A (the old game's is 0.5), which puts the ring's peak where the old game's was (the Graves 195 against 195 to 221 in
 ## three runs of the old game) and the pool inside it too. A calibration: measure again with the look probe's `ring=K/S` variants before changing either number.
 const RING_K := 0.4

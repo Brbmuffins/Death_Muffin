@@ -15,7 +15,9 @@ node --test tools/context/test/*.test.mjs        # also in npm run test:server, 
 
 ## The audiences
 
-`surfaces.json` names what each audience always carries, the guides it reads when a task needs one, and what it is told to read first:
+`surfaces.json` names what each audience always carries, the guides it reads when a task needs one, and the small entry points it starts a
+task from (`discovery`: README.md's "Documentation map" section and the client index, measured as that section or file, never as the
+whole root README). `references` lists the client guides a task may open; they are measured apart and never counted as startup:
 
 | Audience | Always loaded | How |
 |---|---|---|
@@ -75,7 +77,9 @@ the baseline inventory on 2026-10-20). `node tools/context/measure.mjs --print-l
   one appears, while `protected.json` still says otherwise;
 - an enforcing file named by a rule does not exist;
 - a `## ` section of an always-loaded file holds no inventoried rule (a new section: add its rules);
-- a guide in `surfaces.json` does not exist, is also listed as always loaded, or holds no inventoried rule.
+- a guide in `surfaces.json` does not exist, is also listed as always loaded, or holds no inventoried rule;
+- a discovery entry (a file, or a section by its heading), a reference guide or a step of a task route (`tasks.json`) does not exist, or a
+  task's route no longer holds the words that answer its question.
 
 The context test also keeps the owner principles (DECISIONS B71) and the spend-limit line in the agent's prompt: removing one, or giving it an
 agent gap again, fails CI.
@@ -84,6 +88,29 @@ What this proves and what it does not: the check is structural. It shows that th
 that any change to a protected rule or its exceptions comes with a change to `protected.json`, which shows in the diff. It cannot tell
 whether anyone reviewed that diff, whether reworded text still means the same, or whether a model follows the rule. The code named in
 `enforced` is what holds a boundary regardless of the text.
+
+## Finding task context
+
+Before 2026-10-21 every audience was told to read five documents first (README, ROADMAP, DECISIONS, KNOWN-GAPS and the 216 KB client
+manual, about 124,000 estimated tokens together; the agent three of them). Nobody did: 0 of 85 agent sessions with calls 2026-10-11 to
+2026-10-20 read `CLAUDE.md` or `README.md` and 1 read the client manual, and in `baseline-2026-10-20.json`'s window (2026-10-18 to
+2026-10-20) the files sessions read most include ROADMAP.md in 1 of 12 interactive sessions and the client manual in 3 of 39 subagents.
+Now `CLAUDE.md` (so `AGENTS.md`) says to start from README.md's "Documentation map": pick the task's row, read that one document, then the
+system's guide and the code (rule `task-discovery`). The client manual became `client/README.md`, an index (the feature table and "Guides
+by task"), and guides beside the code they describe; `doc-moves.json` records where each old section went. Nothing here shows that a model
+follows the new route: that shows only in the reads `usage.mjs` and `usage-codex.mjs` report for sessions after the change.
+
+**Task routes.** `tasks.json` holds six representative tasks (the minimap, a rite's clip with a tuned cooldown, a co-op guest's boss
+reward, the Depths' worker thread, a backend save, a roadmap question), each with the words that answer it and two routes: the bounded
+old sections that answered it at `a1f09add` (the right section only, as if the reader knew where it was) and the route now, from the map.
+`node tools/context/measure.mjs --tasks` measures both with the same estimator; CI checks that every route now still holds its answer (the
+`before` side needs that revision in the history, which a shallow CI clone does not have). The comparison is in `stage3-2026-10-21.json`.
+
+**Navigation check.** `navigation.mjs` (run by `npm run hygiene`, so in CI) proves the routes resolve: the map's links, every old section of
+the client manual still answered by its anchor in `client/README.md` on a row that links each new home, each new home and its heading,
+and every Markdown link (fragment included) or quoted section reference (`path.md "Label"`) into those files. A reference to an old section
+name of `client/README.md` fails, except in the files `doc-moves.json` keeps on purpose (the decision record, the baseline, and one comment
+whose file is an input of the art pack's fingerprint). It proves navigability, not that a guide is complete.
 
 ## Usage
 

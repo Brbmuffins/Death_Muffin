@@ -59,8 +59,8 @@ const _BILLBOARD := """
 
 ## The effects' colours are sRGB values (hex colours) that reach the shader as the instance's COLOR. Compatibility, which the old game ran on, reads every colour it
 ## multiplies into ALBEDO as sRGB and converts the product to linear at the end; Forward+ takes COLOR as linear, so an effect came out much brighter and whiter
-## (client/README.md "Graphics presets"). The shaders convert the colour themselves. An effect is not baked into the area's lightmap either, so the area's exposure lift (calibrated on the baked world,
-## `DmWorldBuilder.AREA_LIFT`) is divided out of it (`dm_lift_inv`, 1 / (the lift x the preset's): the effect is as bright as the old game's whatever the area, client/README.md "The look on Forward+").
+## (client/next/perf/README.md "Graphics presets"). The shaders convert the colour themselves. An effect is not baked into the area's lightmap either, so the area's exposure lift (calibrated on the baked world,
+## `DmWorldBuilder.AREA_LIFT`) is divided out of it (`dm_lift_inv`, 1 / (the lift x the preset's): the effect is as bright as the old game's whatever the area, client/next/look/README.md).
 const _SRGB := """
 global uniform float dm_lift_inv;
 vec3 dm_srgb(vec3 c) {

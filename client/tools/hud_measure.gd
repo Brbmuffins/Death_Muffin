@@ -1,5 +1,5 @@
 extends SceneTree
-## The HUD's draw-call and CPU measurement (client/README.md "The HUD's budget"). A RENDERED run: Forward+ on the software Vulkan driver (lavapipe); draw-call
+## The HUD's draw-call and CPU measurement (client/ui/hud/PERFORMANCE.md). A RENDERED run: Forward+ on the software Vulkan driver (lavapipe); draw-call
 ## counts do not depend on the GPU. It starts the game scene with the full HUD in a Full Party-like crowd (72 enemies, 32 thralls, floating numbers kept at their caps)
 ## and reads the engine's draw-call counter with the HUD hidden and shown, for the HUD as the game scene shows it ("game") and with every piece on and fed ("full").
 ##

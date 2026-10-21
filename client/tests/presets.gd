@@ -109,7 +109,7 @@ func table() -> void:
 			check(int(p["casters"]) == today[0] and int(p["casters_crowd"]) == today[1], "%s: today's crowd caster counts (%s)" % [id, today])
 
 
-## The calibrated exposure lift of each area (client/README.md "The look against today's game"): the value that puts the rebuilt frame's mean luminance in the world region within 5 % of
+## The calibrated exposure lift of each area (client/next/look/README.md): the value that puts the rebuilt frame's mean luminance in the world region within 5 % of
 ## today's on the same camera (the look probe, Ultra, 2026-10-17). A change of a number here is a new calibration: measure it again with the probe, then change this table with it.
 ## The hero's ring and contact shadow at the strength calibrated against today's ring (DmHeroLook.RING_K, SHADOW_A; the look probe's `ring=K/S` variants, 2026-10-17): a new calibration changes both.
 const RING_K := 0.4
@@ -199,7 +199,7 @@ func lift_blend(g: DmNextGame) -> void:
 	check(b.current_area == "graves" and is_equal_approx(b.area_lift, gr), "the world's `enter_area` sets the area's lift")
 
 
-## What the lift leaves alone (client/README.md "The look against today's game"): the project declares the global the shaders read, the creature material, the crowd's and the effects' shaders divide the lift
+## What the lift leaves alone (client/next/look/README.md): the project declares the global the shaders read, the creature material, the crowd's and the effects' shaders divide the lift
 ## out and convert their colours as Compatibility does, and the hero's ring and shadow are the calibrated strength. A shader's text is what is checked here (the renderer is the probe's).
 func hero_look(g: DmNextGame) -> void:
 	check(ProjectSettings.has_setting("shader_globals/dm_lift_inv") and String(ProjectSettings.get_setting("shader_globals/dm_lift_inv").get("type", "")) == "float" and DmWorldBuilder.LIFT_INV_PARAM == &"dm_lift_inv",

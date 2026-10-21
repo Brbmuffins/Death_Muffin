@@ -1,5 +1,5 @@
 extends SceneTree
-## The world dressing on the area scenes (client/README.md "World dressing", client/world_fx/), headless:
+## The world dressing on the area scenes (client/world_fx/README.md "World dressing", client/world_fx/), headless:
 ##   - the data: the stained-glass windows, the far silhouettes, the candle flames of the area data, the mist puffs, the weather profiles;
 ##   - attached to the world: a world built with lights has a dressing, one built without has none; its flames are one MultiMesh in each loaded area that has candles (the data's count),
 ##     its windows are under the area scene nearest to each, nothing of the stand-ins the converter used to leave (flame spheres, water planes, puddle quads) is in the tree, and

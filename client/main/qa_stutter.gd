@@ -1,6 +1,6 @@
 class_name DmQaStutter
 extends Node
-## The stutter scenario (`-- --dev-offline --stutter --stutter-out=<abs dir>`, QA runs only; it writes `<dir>/stutter.json`; client/README.md "Release checks"): for each playable discipline a fresh isolated offline game on High (DmBenchFight.boot: the HUD
+## The stutter scenario (`-- --dev-offline --stutter --stutter-out=<abs dir>`, QA runs only; it writes `<dir>/stutter.json`; client/main/RELEASE-CHECKS.md): for each playable discipline a fresh isolated offline game on High (DmBenchFight.boot: the HUD
 ## on, the warm-up that players get, a level 60 hero in the Graves), stand-in enemies in the combat core in front of the hero, then every rite of the discipline's primaries, hotbar and grimoire and its signature cast once, one after
 ## the other, with what the cast needs laid ready (cooldowns and resources filled, a few corpses, four thralls for a necromancer, raised again before each cast). For each cast: the worst frame in the second after it (ms, real time) and the pipelines the renderer compiled
 ## in that second, in all and per kind (the engine's counters, DmQaPerf.compilations_by_kind: Godot 4.7 has them; a run with no renderer counts none). A rite the host refuses (it needs a target the stand-ins cannot give) is listed apart, not measured.

@@ -5,7 +5,7 @@ Autoload `Vfx` (`client/project.godot`: `Vfx="*res://fx/dm_fx.gd"`, script class
   spawn colours, pooled per id. `dm_fx_binbun.gd`; `dm_fx_controller.gd` / `dm_fx_light.gd` / `dm_fx_rect.gd` replace the vendor scripts.
 - **Procedural primitives and motifs**: rings of motes, decals, flashes, orbits, beams, projectiles, spikes, hands (`dm_fx_prims.gd`,
   `dm_fx_ring.gd`, `dm_fx_layer.gd`) and the necromantic motifs (`dm_fx_motifs.gd`). What grows with the number of effects on screen, the motes and the
-  ground decals, is kept in the combat core's C++ (`DmMotes`, `DmDecals`): client/README.md "The effects".
+  ground decals, is kept in the combat core's C++ (`DmMotes`, `DmDecals`): "The effects" below.
 Tables (spell colours, presets, caps, catalog) are in `client/assets/fx/fx_data.json`, read through `DmFxData`.
 
 ## Wiring
@@ -15,10 +15,10 @@ Tables (spell colours, presets, caps, catalog) are in `client/assets/fx/fx_data.
 - Quality is set by `client/next/perf/dm_next_perf.gd` from the graphics preset (`DmGraphicsPreset`, columns `fx` and `binbun`): `Vfx.quality = "high"|"low"`
   (Low: bursts thinned to 75 %, motifs off) and `Vfx.binbun.enabled` (High and Ultra only: Low and Medium draw no Binbun scene). Also `Vfx.reduced_motion` and `Vfx.hitstop_scale`.
 - A Camera3D must exist: loopers are culled by distance (40 m + camera height) and frustum (tested every third frame, 4 m of margin).
-- Effects are emission-heavy; the graphics preset owns the bloom (`DmWfxBloom`, client/README.md "Graphics presets"). `Vfx.binbun.gain` scales every Binbun shader's
+- Effects are emission-heavy; the graphics preset owns the bloom (`DmWfxBloom`, client/next/perf/README.md "Graphics presets"). `Vfx.binbun.gain` scales every Binbun shader's
   brightness (`dm_gain`); it stays 1 in the game (the gallery's `--gain` sets it).
 - Forward+ reads colours differently from the renderer these effects were built on: the particles' materials, the Fx layer's shaders and each Binbun shader's own `COLOR`
-  are converted so the effects keep the look they were built with (client/README.md "The look on Forward+").
+  are converted so the effects keep the look they were built with (client/next/look/README.md).
 - Decal render order = `render_priority` (friendly 2, hero 3, danger 4, particles 5, sprites/Binbun/beams 6). Do not give world transparent materials above 1.
 - After adding a `class_name`, run `godot --headless --path client --import` once.
 - Regenerating Binbun scenes: `tools/godot/fx-binbun-rebuild.ts` rebuilds them from `public/fx/binbun/*.json` (the output of `tools/binbun-port.mjs`, which needs the private vendor packs, not in git) and writes `client/assets/fx/binbun/`;
@@ -60,7 +60,7 @@ Colours: `DmFxData.spell("miasma", "rot")` is `SPELL_FX.miasma.rot` (from `fx_da
 
 ## Flipbook sheets
 Animated sprite sheets from a licensed pack (ASSET_PIPELINE.md "Flipbook sheets"): greyscale intensity grids at
-`assets/fx/sheets/<id>.png`, **not in git**. `bash tools/godot/fx-sheets-sync.sh` copies them in from `~/death-muffin/private/fx-sheets/` (run it once in a new worktree; client/README.md "Assets"); the client publish's prepare step (`server/death-muffin/test-channel/prepare-rebuild.sh`) runs it
+`assets/fx/sheets/<id>.png`, **not in git**. `bash tools/godot/fx-sheets-sync.sh` copies them in from `~/death-muffin/private/fx-sheets/` (run it once in a new worktree; client/tools/ASSETS.md); the client publish's prepare step (`server/death-muffin/test-channel/prepare-rebuild.sh`) runs it
 and fails if one is missing. A build made without the private folder (CI) has no sheets and draws the plain look.
 - Grid, frames, fps, loop: `fx_data.json` `sheets`, read by `DmFxData.sheet(id)`. Use the id as a texture name: `Vfx.flash({"tex": "hit_flash", ...})`
   plays the frames once over the flash's life at full size (fades the last quarter); `Vfx.decal({"tex": "summon_circle", ...})` plays once or,
@@ -95,6 +95,17 @@ The effects were built and checked on the Compatibility renderer; the game runs 
 on Forward+ on a graphics card: the portals (`area_gate`, `waystone_portal`, `recall_portal`) were drawn as a clipped quad because that renderer has no stencil, though their shaders carry stencil writes;
 fourteen Binbun shaders fade near surfaces with the depth texture (`proximity_fade`), which that renderer could not give; ten dither their alpha, which read noisy at 1080p on hero effects;
 GPUParticles3D trails and sub-emitters were unsupported (fire sparks render as plain streaks); float uniforms must be written as floats (an int Variant reads as 0).
+
+## The effects
+
+The effects are `Vfx` (`fx/`, `DmFxRuntime`): ground decals, the two particle rings, the Binbun scenes, flashes, beams, projectiles. What grows with the number of them on screen is done in C++; the rest is GDScript.
+
+- **Particles** (`DmMotes`, native/README.md "Files"): a ring's motes, the random start of every mote of a burst and the per-frame loop. `DmFxRing.emit` hands the options over; the numbers come from the global generator in a fixed order, so a seeded run gives the same motes. `tests/fx_motes.gd` holds the ring's buffer float for float (bursts in every colour form).
+- **Ground decals** (`DmDecals`): a decal is a record in C++, not two GDScript objects. `DmFxPrims.decal` works out what it is made of (its layer, tint, whether it settles into an outline) and hands it over; C++ ages it, shapes it (growth, spin, pulse, fades, the outline that comes up after 0.6 s and the ring a settling disc brings with it, a flipbook's frame), places it (a decal that follows a body gives its id as `follow_body`, which C++ asks the crowd for; one with a `follow` callable calls it as before) and writes each layer's instance buffer and gives it to the RenderingServer. `DmFxLayer` keeps the MultiMesh and its node (`show_count`, `grow`). The cap of 160 combat transients counts decals and the other kinds together and the oldest leaves first. `tests/fx_decals.gd` holds every drawn float, the counts and the handles over two seeded runs and the cap; `tests/rites.gd` checks a decal that follows a thrall by id.
+- **Binbun scenes** (`fx/dm_fx_binbun.gd`): an effect's root is moved only when it moved (every move walks the effect's subtree), a looping effect is tested against the camera every third frame (the test keeps 4 m of margin past the frustum) and 8 idle instances per effect are kept (it was 4), so a salvo of bonfires more often finds instances waiting than builds them from the scene.
+- **The enemies' effects** (`DmEnemyFx`): the ambient tick (every 0.2 s) reads the bodies' places from one read of the core's bulk arrays (`enemy_ids`, `enemy_positions`) instead of a record each, and the Pyre's colours are read once. `DmCoreHost.foes_in_radius` (every rite's query) takes one call of the core (`DmCore.foes_in_radius`, ten numbers a body) where it took a record and a snapshot each (19 us a body).
+
+Costs on the VPS (headless, cold: one call in the middle of a Full Party frame): the decals' step with 140 alive 0.04 ms (the GDScript it replaced 0.55), the Pyre's whole effects layer 0.40 ms (1.27), the Graves' 0.16 (0.61), the Pyre's ambient tick 0.86 ms every 12th frame (2.7 ms before), a Plague Saint's look at her doctors 0.09 ms a tick (0.3), a rite's query over 40 foes 0.25 ms (0.45 to 0.9).
 
 ## Gallery and tests
 - `godot --path client res://fx/gallery.tscn` (Left/Right page, R replay). Args after `--`: `--page=N --per=16 --out=file.png --t=0.6[,1.2] --ids=a,b --kind=binbun|prims --gain=1.0`.

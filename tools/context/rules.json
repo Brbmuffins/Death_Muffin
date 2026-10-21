@@ -559,15 +559,15 @@
       "enforced": ["tools/context/sync-instructions.mjs", "tools/context/test/instructions.test.mjs"]
     },
     {
-      "id": "read-first",
+      "id": "task-discovery",
       "kind": "convention",
       "protected": false,
       "audience": ["session", "codex", "agent"],
-      "when": "before changing anything",
-      "summary": "Read the project docs and the system's README before changing it.",
+      "when": "starting a task or a review",
+      "summary": "Start from the documentation map, read the one document and guide the task needs and the code it touches; never read every document. Replaced read-first (read five documents before anything), which sessions and the agent did not follow (tools/context/README.md).",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Read [README.md](README.md)"]},
-        {"file": "AGENTS.md", "clauses": ["Read [README.md](README.md)"]},
+        {"file": "CLAUDE.md", "clauses": ["Start from the documentation map ([README.md](README.md) \"Documentation map\")", "never open every link", "first reads that checkout's `CLAUDE.md` (Codex: `AGENTS.md`)"]},
+        {"file": "AGENTS.md", "clauses": ["Start from the documentation map ([README.md](README.md) \"Documentation map\")", "never open every link", "first reads that checkout's `CLAUDE.md` (Codex: `AGENTS.md`)"]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Read `CLAUDE.md`, `README.md`, `client/README.md`"]}
       ],
       "enforced": [],

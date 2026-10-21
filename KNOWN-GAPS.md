@@ -73,7 +73,7 @@ player part of a gain until it is fixed; few real sessions ran on the gains save
 
 ## Look
 
-What still differs from the old game's look is in client/README.md "The look on Forward+" ("Still different": effects on Low and
+What still differs from the old game's look is in client/next/look/README.md ("Still different": effects on Low and
 Medium, the lifts, the Depths' walls, the hero's robe area by area, emission not converted, the Fen's bake); it is the look pass (ROADMAP
 polish list). Also:
 - Nightfall dims only the real-time ambient: lightmapped ground, walls and props keep their full ambient (a per-area dimming of the lightmaps
@@ -92,7 +92,7 @@ polish list). Also:
 - A guest's core lists no zones (`DmCore.zones`): its zones arrive as events for its effects. Nothing reads them on a guest today.
 - A guest sees a Grave Surge only as the bodies that climb out of the crypt (the core's snapshot) and, once the host quells it, its offering: the
   banner, the cracked crypt, the sounds and the tip are the host's window only (`DmAreaFlow` listens to the host's director).
-- A Grave Surge opens in one area at a time, the director's own: a party member fighting in another combat area gets that area's ordinary waves but no surge (client/README.md "Grave Surges").
+- A Grave Surge opens in one area at a time, the director's own: a party member fighting in another combat area gets that area's ordinary waves but no surge (client/next/areas/SURGES.md).
 
 ## UI
 
@@ -154,7 +154,7 @@ polish list). Also:
   engage (1 of 148 bodies culled); its report's budget section is labelled "Budgets (ROADMAP", but the budgets are in CLAUDE.md (B39).
 - The draw model counts the rendered Graves a few draws under the engine, but Helix's World row is about 40 over the same stage: the real
   fight draws what the model's stage does not (the hero's place, the effects, the boss).
-- `--tune=` (`client/README.md` "Clips and tune") changes only numbers the data files hold, and most rites keep some in their scripts (Miasma's flight speed, Unleash Souls' three speeds, the Haunting Wraith's damage tick, ...), so a team PC cannot show variants of those until each moves into its rite's row of
+- `--tune=` (`client/main/CLIPS.md`) changes only numbers the data files hold, and most rites keep some in their scripts (Miasma's flight speed, Unleash Souls' three speeds, the Haunting Wraith's damage tick, ...), so a team PC cannot show variants of those until each moves into its rite's row of
   `client/data/combat/abilities.json`, as the Haunting Wraith's `speed` did (found 2026-10-19).
 - `--boot-check --quit-while-loading` quits with the art pack's models loading on worker threads, not during the pack's own mount: that is synchronous in the first autoload (`client/main/dm_packs.gd`), before any script of the game can quit, so the step cannot reproduce a quit
   in the middle of it (found 2026-10-19).

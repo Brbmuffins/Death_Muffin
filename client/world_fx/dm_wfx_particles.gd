@@ -14,7 +14,7 @@ uniform sampler2D map : source_color, filter_linear_mipmap;
 uniform float t;
 varying vec3 vC;
 varying float vA;
-// The instance colour is an sRGB value (a hex colour): Compatibility converts what a shader writes to ALBEDO from sRGB, Forward+ does not (client/README.md "Graphics presets").
+// The instance colour is an sRGB value (a hex colour): Compatibility converts what a shader writes to ALBEDO from sRGB, Forward+ does not (client/next/perf/README.md "Graphics presets").
 vec3 dm_srgb(vec3 c) {
 	return mix(pow((c + 0.055) / 1.055, vec3(2.4)), c * 0.0773993808, lessThan(c, vec3(0.04045)));
 }

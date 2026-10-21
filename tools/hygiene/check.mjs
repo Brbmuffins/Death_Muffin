@@ -6,6 +6,7 @@ import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { checkNavigation } from '../context/navigation.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const config = JSON.parse(readFileSync(path.join(root, 'tools/hygiene/retired.json'), 'utf8'));
@@ -301,6 +302,10 @@ for (const f of files) {
     }
   }
 }
+
+// k. Navigation: the documentation map, the client index and the guides its old sections moved to: links (fragments included) and quoted
+// section references into them resolve (tools/context/navigation.mjs, scoped to those files).
+for (const p of checkNavigation(root, files)) report(p.file, p.line, p.msg);
 
 if (fixed.length) console.log(`hygiene: fixed ${fixed.length} texture import(s); now run: godot --headless --path client --import`);
 if (problems.length) {

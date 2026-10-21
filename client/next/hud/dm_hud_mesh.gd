@@ -1,7 +1,7 @@
 class_name DmHudMesh
 extends RefCounted
 ## A bag of coloured triangles that a HUD widget draws as ONE command (one draw call), where `draw_circle`, `draw_colored_polygon`, `draw_arc` and `draw_polyline`
-## are one draw call EACH (circles, polygons and arcs never batch; client/README.md "The HUD's budget"). Build it with the shape helpers, then either
+## are one draw call EACH (circles, polygons and arcs never batch; client/ui/hud/PERFORMANCE.md). Build it with the shape helpers, then either
 ## `submit(item)` (a mesh made now, inside `_draw`) or `to_mesh()` (an ArrayMesh made once for art that never changes; draw it with `draw_mesh`).
 ## Triangles are drawn in the order they were added, so translucent shapes blend as separate draws would have. The arrays are reused: `clear()` keeps their memory.
 

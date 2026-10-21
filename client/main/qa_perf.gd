@@ -1,6 +1,6 @@
 class_name DmQaPerf
 extends RefCounted
-## What the release checks' scenarios (main/qa_stutter.gd, main/qa_soak.gd; client/README.md "Release checks") measure and how they write it: frame-time statistics, the engine's pipeline compilation counters and
+## What the release checks' scenarios (main/qa_stutter.gd, main/qa_soak.gd; client/main/RELEASE-CHECKS.md) measure and how they write it: frame-time statistics, the engine's pipeline compilation counters and
 ## memory monitors, and the results file. QA runs only; nothing here runs in play.
 
 ## Godot 4.7 counts the pipelines the renderer compiled so far, by kind: a first-use effect or material that compiles during play is a hitch (ROADMAP "first-use stutters").

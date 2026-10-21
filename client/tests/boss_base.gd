@@ -2,7 +2,7 @@ extends SceneTree
 ## The base of the six other bosses' suites (boss_abbess.gd, boss_congregation.gd, boss_prelate.gd, boss_saint.gd, boss_regent.gd, boss_mire.gd; the Gravedigger King is boss.gd) and of
 ## the Covenant Seal suite (boss_meta.gd). A suite extends this file, names its boss in `_config()` and writes `run_suite()` from the generic parts below and its boss's own fight.
 ## Each boss is the real game scene (client/next/next_game.tscn) of a level-20 Gravecaller on the local mock, headless, with the boss's own area loaded and no waves: today's DmBossHost /
-## DmBoss / DmBossBrain, ported (client/README.md "The bosses"): the body is an external of the combat core (kind 1), the brain is GDScript and its world is the core.
+## DmBoss / DmBossBrain, ported (client/next/bosses/CORE-INTEGRATION.md): the body is an external of the combat core (kind 1), the brain is GDScript and its world is the core.
 ## The recorded scenarios of the bosses' brains (tests/bosses/fixtures, captured from the TS brain) are replayed once, for every boss, by tests/bosses/run.gd.
 ## The generic parts every boss gets (what archive/old-game:godot/tests/next_bosses/harness.gd checked of each boss, on the core):
 ##   - `t_summon`: the hub's prompt at the site, the refusals (far, unknown, dead, shards: none spent), key E, the boss's price, busy, the awaken numbers, its registration with the core;

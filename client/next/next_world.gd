@@ -5,10 +5,10 @@ extends Node3D
 ## `update`, `camera_config`, the seals and doors (`set_unlocked`, `set_door_open`, `gates`, `nav_regions`, `nav_links`), plus `nav_map()` for the
 ## combat core and `spawn_point()` for the hero.
 ##
-## What an area scene does not carry (client/README.md "Areas") is made here, for now, by a `DmWorldBuilder` used for its lights only: the
+## What an area scene does not carry (client/world/README.md) is made here, for now, by a `DmWorldBuilder` used for its lights only: the
 ## environment, fog, the moon and the rim light of the area (a later world scene owns them), and the dark earth beyond the walls (`build_outside`: one quad). The builder builds
 ## no floor, wall or prop (`builder` is only that light holder, and carries `area_nodes` and `node_views` for the gathering views). The world dressing (`dressing`: ground mist, each area's
-## weather, the stained-glass windows, the candle flames and brazier fire as sprites, the far silhouettes, the water; client/README.md "World dressing") is attached to the loaded areas
+## weather, the stained-glass windows, the candle flames and brazier fire as sprites, the far silhouettes, the water; client/world_fx/README.md "World dressing") is attached to the loaded areas
 ## with the lights. No streaming or occlusion yet.
 ##
 ## Every area but the Depths exists by default; `build` takes a shorter list (tests: the Graves alone). A door lies in the scenes of
@@ -107,7 +107,7 @@ func build(area_ids: Array = [], with_lights: bool = true) -> void:
 		builder.name = "Lights"
 		add_child(builder)
 		builder.world = data
-		builder.occlusion_enabled = false   # the see-through cutout comes with the look pass (client/README.md "Areas")
+		builder.occlusion_enabled = false   # the see-through cutout comes with the look pass (client/world/README.md)
 		builder._make_environment()
 		builder.build_outside()
 		builder.set_area(loaded[0])

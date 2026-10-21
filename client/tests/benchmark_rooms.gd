@@ -1,5 +1,5 @@
 extends "res://tests/benchmark_base.gd"
-## The in-game benchmark, every room (client/README.md "The benchmark"), headless: `godot --headless --path client --script res://tests/benchmark_rooms.gd`. One of five suites split from the old `benchmark` (see benchmark_base.gd).
+## The in-game benchmark, every room (client/next/perf/BENCHMARK.md), headless: `godot --headless --path client --script res://tests/benchmark_rooms.gd`. One of five suites split from the old `benchmark` (see benchmark_base.gd).
 ##   - every room: a short Full Party run boots only that room's area, the hero stands on its floor, the director holds the room's whole roster on the core, the enemies that spawn are the room's, the report names the room, and
 ##     the room's boss is held awake the whole fight exactly where today's benchmark holds one (the boss data), while the Warren and the Coliseum run without;
 ##   - ZERO script errors or engine errors in the log (an OS Logger counts them; warnings are not errors).

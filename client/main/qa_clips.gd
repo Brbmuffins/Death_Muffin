@@ -1,7 +1,7 @@
 class_name DmQaClips
 extends RefCounted
 ## Clip plan for the QA driver (`-- --dev-offline --class=11 --qa --clip-plan=/abs/plan.json --clips=/abs/dir [--clip-fps=N] [--clip-width=N]`, with the engine started `--fixed-fps <the same N>`): short videos of a rite in use. Loaded by main/qa_driver.gd
-## only when `--clip-plan=` is given, so normal play never touches it (and `DmMain.qa_wanted` lets it start on the dev-offline backend of a debug build only). client/README.md "Clips and tune".
+## only when `--clip-plan=` is given, so normal play never touches it (and `DmMain.qa_wanted` lets it start on the dev-offline backend of a debug build only). client/main/CLIPS.md.
 ## For each clip the run enters the area, makes the stand-in enemies, lets the scene settle, then records the viewport at FPS frames per game second into `<dir>/<name>.mjpeg` (main/qa_mjpeg.gd), at most
 ## DmQaMjpeg.WIDTH wide, and writes `<dir>/<name>.json` = {fps, frames, width, height, cast_at_frame}. `--clip-fps=N` (MIN_FPS to MAX_FPS) and `--clip-width=N` (MIN_WIDTH to MAX_WIDTH) change those two
 ## (`options`): the team app records 1080p at 60 frames per game second with `--clip-fps=60 --clip-width=1920` and a window of 1920x1080 (Helix 2026-10-19), and makes the mp4 on the PC. Variants of a clip are runs of their own with another `--tune=` (main/qa_tune.gd).

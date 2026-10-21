@@ -22,7 +22,7 @@ Cost: `tick` returns on its first line when there is no target / queue / held ke
 The shared decision code in `client/game/` (`DmAutoCombat.select_action / select_movement`, `DmAutoDodge`, `DmBossTelegraphs`), fed by an adapter over the combat core: the enemies by the bulk arrays
 (`enemy_ids / enemy_positions / enemy_states`, spawn order) and the facts the host's signals keep (radius, elite flag, health, wind-up, area), the corpses by `corpse_ids / corpse_positions` (within 40 m, at most 256), the
 legion's size from the core, the caster (`cooldown_left`, essence), the hostile dust clouds and toxic pools from the `zone` events and the boss's telegraphs (`DmBossFx.played`). Output = the keyboard's intents:
-`cast_at(slot, aim, enemy_id)` and `request_move_dir`. The decision code is built for speed (native sorts, each field read once); the adapter and its cost are client/README.md "The benchmark" ("Easy auto combat").
+`cast_at(slot, aim, enemy_id)` and `request_move_dir`. The decision code is built for speed (native sorts, each field read once); the adapter and its cost are client/next/perf/BENCHMARK-REPORT.md ("Easy auto combat").
 
 | rule | here |
 |---|---|

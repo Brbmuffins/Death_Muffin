@@ -1,5 +1,5 @@
 extends SceneTree
-## Every spell of every playable class, driven by the class data (client/README.md "Tests"): nobody writes a test for a new spell or a newly playable class, it is covered the moment it
+## Every spell of every playable class, driven by the class data (client/tools/TESTING.md): nobody writes a test for a new spell or a newly playable class, it is covered the moment it
 ## exists in `data/combat/abilities.json` (the kits) and `data/combat/disciplines.json`. The playable families come from `DmCharacterBuild.is_playable` over the disciplines, the spells of a
 ## family from its kit (hotbar, grimoire, primaries, RMB, signatures; de-duplicated). One fresh offline game (client/next/next_game.tscn, a level-20 hero, no waves, headless) per playable
 ## discipline, the way tests/rites.gd boots it; every spell of the family is cast in it (the discipline's own signature included), each in a reset arena (core enemies, corpses and a

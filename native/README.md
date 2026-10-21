@@ -72,7 +72,7 @@ Before launch the core was checked against the old per-creature game: its rules 
   guest's puppet core fills the same tables and damaged events, so `DmCrowd.sync(core)` draws it as it draws a host. The frame's cost is the view's to cut, in the one `draw` call: the camera's
   view-projection comes in with it (bodies outside it are not written), and a body far from the camera works its pose out less often, never the position (`client/crowd/README.md` "Crowd cost").
   A group (model, level of detail, kind) is drawn only while it holds instances: the renderer draws a MultiMesh with none all the same, so `draw` shows the group's `MultiMeshInstance3D` the frame it gets its first instance and
-  hides it after half a second without one (`set_group_nodes`; `dmcore 0.14`, no enum or wire change; `client/README.md` "The draw budget"). A body that is not solid (it sinks away, or the Shrouded ward has it: body flag
+  hides it after half a second without one (`set_group_nodes`; `dmcore 0.14`, no enum or wire change; `client/next/perf/DRAW-BUDGET.md`). A body that is not solid (it sinks away, or the Shrouded ward has it: body flag
   `BF_SHROUDED`, set from the affix and the `shrouded` status) is written to its model's fade group instead, drawn with the alpha shader, for as long as it is not (`add_model`'s and `set_group_nodes`' last argument, `buffer` and
   `instance_count`'s `fade`, `stats().faded`; `dmcore 0.15`, no enum or wire change; `client/crowd/README.md` "The alpha path").
 - **Co-op (host-authoritative, B28, B40):** the host core packs one compact snapshot at 20 Hz and the discrete events as reliable batches; a guest's core runs in
@@ -172,7 +172,7 @@ by the guest as it arrives; over the UDP lane a lost part loses only its bodies'
 - **Order of a guest's buffer:** forwarded events in the host's order, the derived ones where the packet that caused them was applied; a death's state edge comes just before its `died`, after the corpse events (the host's comes first).
 - **Reaching a guest:** the slam, erupt, dig-in, scream and hook cues are on the wire. A burning pool (the Husk's embers, the coal's, the slam's) reaches a guest as the host's zone event, when the host made it, and a late joiner finds pools already burning (the baseline lists the zones). A snap above 6 m is not counted as walking speed. A guest's hero is an external of the HOST's core (its id is told in a table), so enemies chase and hit it there and its thralls are the host's bodies; the guest's own core has no externals at all.
 - **Not carried by the core's messages:** the bosses' state, phases, telegraphs and statuses (the boss host's; their adds, niches and zones are the core's and ride the wire; a party fights all seven bosses, `client/tests/coop.gd` and `coop_bosses.gd`), the hero positions (the session's own 20 Hz snapshot) and vitals (`Net`, 20 Hz), the rites' events, states and gestures (`DmRiteCaster`), ground drops, party calls and chat. Guests send their intents (move, cast requests) to the host. The per-kind extras of an enemy snapshot are bit 5 of its record (the deacon's raise, the gargoyle's dive, the sexton's chain).
-- A guest's window shows its hero's hurt and a DoT's lumps: the HUD binds the hero's `hurt` from the host's vitals and the status events of the reliable batches (client/README.md "The HUD on the core").
+- A guest's window shows its hero's hurt and a DoT's lumps: the HUD binds the hero's `hurt` from the host's vitals and the status events of the reliable batches (client/next/hud/CORE-INTEGRATION.md).
 
 ## The kinds of the other areas
 
@@ -314,7 +314,7 @@ An elite carries some of four affixes, a bit mask on its body (the spawn event c
   writing the MultiMesh buffers; it does not touch the simulation), and the co-op pieces: `wire` (byte writer and bounds-checked reader), `replica`
   (the format's constants and a core's co-op counters), `snapshot` (the 20 Hz message, both ways), `reliable` (event batches and the baseline, both ways) and `puppet` (a guest's step, snapshot
   records and reliable records).
-- Tests: the `core_*` suites, `crowd_view.gd`, `game_scene.gd` and the co-op suites (client/README.md "Set up and test"). Run
+- Tests: the `core_*` suites, `crowd_view.gd`, `game_scene.gd` and the co-op suites (client/tools/TESTING.md). Run
   `bash tools/check/prep.sh` first in a fresh checkout: a script run in a
   project that was never imported hangs.
 - `SConstruct`: builds into `client/bin/libdmcore.<platform>.<target>.<arch>.<ext>`.

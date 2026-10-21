@@ -2,7 +2,7 @@
 
 `DmSessionRewards` (Node) runs on the session HOST only. Value goes through the backend (DECISIONS.md D1); `--dev-offline` is the same code with the
 mock backend's DmApi (D4). Per-member state lives in `DmRewardsMember` (RefCounted). `DmNextLoot` (`dm_next_loot.gd`, the client's own) is this player's drops and bag, on the host and on a guest. How the game scene earns value
-on the core (the credited kill, the meta nodes, a guest's own account, ground drops between members): client/README.md "Value on the server".
+on the core (the credited kill, the meta nodes, a guest's own account, ground drops between members): client/next/rewards/AUTHORITY.md.
 
 ## What the game shell (DmNextGame) provides
 

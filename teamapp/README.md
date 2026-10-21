@@ -144,7 +144,7 @@ log when the pictures are not the size asked for.
 ## The benchmark job (`bench`)
 
 A `bench` job is a benchmark of a **release** build ("Benchmark of the new release, about 6 minutes"; the server no longer queues one by itself: the benchmark is a step of the `release` job a shipper asks for, and a `bench` job made by hand still runs): the game's own benchmark
-([client/README.md "The benchmark"](../client/README.md)) on one to six setups, each a graphics preset, a room, a class, a fight size and a length. The runs land on the public benchmarks page
+([client/next/perf/BENCHMARK.md](../client/next/perf/BENCHMARK.md)) on one to six setups, each a graphics preset, a room, a class, a fight size and a length. The runs land on the public benchmarks page
 under the member's account, marked as team-PC runs. The numbers only mean something if the PC was left alone, so the app is strict:
 
 - **The payload.** The files are `DeathMuffin.exe` (the release build, never the debug one) with `DeathMuffin.pck` beside it, `DeathMuffin.assets.pck` and

@@ -1,5 +1,5 @@
 extends "res://tests/benchmark_base.gd"
-## The in-game benchmark, real launches (client/README.md "The benchmark"), headless: `godot --headless --path client --script res://tests/benchmark_launch.gd`. One of five suites split from the old `benchmark` (see benchmark_base.gd).
+## The in-game benchmark, real launches (client/next/perf/BENCHMARK.md), headless: `godot --headless --path client --script res://tests/benchmark_launch.gd`. One of five suites split from the old `benchmark` (see benchmark_base.gd).
 ##   - a real `--benchmark` launch (--bench-warm / --bench-measure) prints the report and quits by itself, keeps its report in the folder it was given, and another room and class queue their run there and send nothing;
 ##   - ZERO script errors or engine errors in the log (an OS Logger counts them; warnings are not errors).
 ## Bakes the robber and the hound into a scratch folder first, unless the checkout's setup baked them (the rest of the rosters borrow them: warnings, not errors).

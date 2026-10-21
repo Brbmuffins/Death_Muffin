@@ -399,7 +399,7 @@
     {
       "id": "suite-names-rules",
       "pattern": "(tests/|PASS |FAIL |`|'|\"|--only[^\\n]*\\b)rules-(core|combat|gathering|loot|progression)\\b|\\brules-(core|combat|gathering|loot|progression)/",
-      "reason": "fixture suites renamed 2026-10-19 from rules-<area> to rules_<area> (snake_case, client/README.md 'Suite names')",
+      "reason": "fixture suites renamed 2026-10-19 from rules-<area> to rules_<area> (snake_case, client/tools/TESTING.md 'Suite names')",
       "allow": [
         "DECISIONS.md",
         "tools/hygiene/**"

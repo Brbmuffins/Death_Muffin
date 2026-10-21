@@ -619,7 +619,7 @@ func _prop_light(parent: Node3D, p: Dictionary, L: Dictionary, label: String) ->
 	light.position = Vector3(p.x, float(L.y) * float(p.scale) + float(p.y), p.z)
 	light.set_meta("prop_kind", p.prop)
 	_add(parent, light, label)
-	# The flame itself is not here: the web draws point sprites and the world dressing draws them at the wicks (DmWfxFlames: client/README.md "World dressing").
+	# The flame itself is not here: the web draws point sprites and the world dressing draws them at the wicks (DmWfxFlames: client/world_fx/README.md "World dressing").
 
 
 ## Floor light pools under every flame (WorldView.buildPools): one vertex-coloured additive mesh per area.
@@ -649,7 +649,7 @@ func _light_pools(parent: Node3D, srcs: Array) -> void:
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	m.vertex_color_use_as_albedo = true
-	m.vertex_color_is_srgb = true   # the Compatibility renderer reads every vertex colour as sRGB, Forward+ as linear (the pools came out 9 times too bright): "Graphics presets" in client/README.md
+	m.vertex_color_is_srgb = true   # the Compatibility renderer reads every vertex colour as sRGB, Forward+ as linear (the pools came out 9 times too bright): "Graphics presets" in client/next/perf/README.md
 	m.albedo_texture = _glow_tex
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	var mi := MeshInstance3D.new()

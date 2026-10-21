@@ -11,7 +11,22 @@ Parties of up to 4 join through a lobby and relay. Players get the game through 
 https://muffindevelopment.com/death-muffin/. Offline play is not a player edition; `-- --dev-offline` exists for testing only (editor / debug builds; release exports ignore it).
 
 Branch: `main` is the game (the only branch). The retired three.js web game is kept as tag `archive/legacy-web`, the first Godot game (DECISIONS B57) as tag `archive/old-game`; older work branches are `archive/*` tags.
-Where to read next: [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNOWN-GAPS.md](KNOWN-GAPS.md), [CLAUDE.md](CLAUDE.md) (agent rules).
+Where to read next: [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNOWN-GAPS.md](KNOWN-GAPS.md), [CLAUDE.md](CLAUDE.md) (agent rules; `AGENTS.md` is its copy for Codex).
+
+## Documentation map
+
+Pick the row for the task, read that document (or the named section), then the guide and code it points to. One or two steps; never every link.
+
+| Task | Start with |
+|---|---|
+| Client behaviour, UI, combat integration, visuals | [client/README.md](client/README.md) (feature table and guides by task), then the system's guide |
+| The combat core's C++ | the matching section of [native/README.md](native/README.md), then the source |
+| Backend value, accounts, saves, shared rules | [server/death-muffin/README.md](server/death-muffin/README.md), [server/rules/README.md](server/rules/README.md); the route's source and its client side |
+| Co-op lobby and relay, launcher, team app | [lobby](server/death-muffin/lobby/README.md), [relay](server/death-muffin/relay/README.md), [launcher](launcher/windows/README.md), [team app](teamapp/README.md); the client's co-op guide when both sides change |
+| Build, test, CI, publish, operations | "Tests" and "Export, publish, deploy" below, [tools/check/README.md](tools/check/README.md), [server/death-muffin/ops/README.md](server/death-muffin/ops/README.md) |
+| Art, sound, models, generation | [ASSET_PIPELINE.md](ASSET_PIPELINE.md) and the system that shows it (the Discord agent has its media guides) |
+| Scope, design, a reported problem, choosing work | the matching part of [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md) or [KNOWN-GAPS.md](KNOWN-GAPS.md): search by feature or decision id |
+| The instructions themselves, context and rule checks | [tools/context/README.md](tools/context/README.md) |
 
 ## Layout
 
@@ -47,7 +62,7 @@ godot --path client -- --benchmark                # the in-game benchmark (also 
 
 `--world-demo` is an alias of `--dev-offline --class=2`. Controls: WASD or click to move, LMB attacks (Shift+LMB fires at the cursor), 1-4 and
 RMB cast rites, F3 performance overlay, T waystone travel in the Chapterhouse, G auto-combat. F9 breaks all seals, but only on a dev-access account.
-`client/tools/qa_shots.sh <plan.json> <out>` renders screenshots of a shot plan (client/README.md "Screenshots for proposals"). A VPS has no GPU:
+`client/tools/qa_shots.sh <plan.json> <out>` renders screenshots of a shot plan (client/main/SCREENSHOTS.md). A VPS has no GPU:
 rendered runs use the software Vulkan driver and `xvfb-run`, one at a time.
 
 ## Tests

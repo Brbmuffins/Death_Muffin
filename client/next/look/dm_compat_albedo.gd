@@ -4,7 +4,7 @@ extends RefCounted
 ## (scene.glsl: `albedo = srgb_to_linear(albedo)` after the material's albedo colour x texture x vertex colour); Forward+ converts each factor and multiplies in linear
 ## light. For a tinted dark texture (every floor, every wall: textures averaging 0.1 to 0.2 in sRGB, tints of 0.55 to 0.9) the first is 1.1 to 1.6 times brighter than the
 ## second, and the difference is where the eye reads the ground: a ground that is darker and has lost its red and green (the "darker, purple wash" of the first test builds).
-## The area converter lifts each such material's tint by the ratio measured on its texture, so the rebuilt ground has the albedo the old game's had (client/README.md "Areas").
+## The area converter lifts each such material's tint by the ratio measured on its texture, so the rebuilt ground has the albedo the old game's had (client/world/README.md).
 ## The ratios are per (texture, tint) and measured by `measure` on the texture's source image; `tests/areas.gd` measures them again and fails when a table entry is stale.
 
 const SAMPLES := 96   ## texels read along each side of the image (a stride): the same on every machine

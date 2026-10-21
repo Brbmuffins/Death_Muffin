@@ -1,5 +1,5 @@
 extends SceneTree
-## The HUD on the combat core (client/README.md "The HUD on the core"): the game scene with today's HUD (`hud: true`), headless. It proves the HUD
+## The HUD on the combat core (client/next/hud/CORE-INTEGRATION.md): the game scene with today's HUD (`hud: true`), headless. It proves the HUD
 ## reads the core correctly and keeps to its pools:
 ##   - the target frame: name, hp, elite, affix chips and statuses (`core.statuses(id)` bytes) of the enemy a cast was aimed at, held for 4 s, gone with the enemy;
 ##   - the minimap: its dot lists equal the core's tables (living enemies, elites flagged, thralls, corpses) and the MultiMesh draws them;

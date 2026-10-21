@@ -1,6 +1,6 @@
 class_name DmDrawScene
 extends RefCounted
-## The scene the draw budget is counted in (client/README.md "The draw budget"): one room's area scene as the game loads it, the game's camera over the middle of the room, the Ultra
+## The scene the draw budget is counted in (client/next/perf/DRAW-BUDGET.md): one room's area scene as the game loads it, the game's camera over the middle of the room, the Ultra
 ## preset's moon and environment, and a Full Party on the combat core around the camera's focus. No game scene, no hero, HUD or effects: the world and the crowd are what the budget is
 ## about, and both a headless test (tests/draw_budget.gd) and a rendered run (tools/draw_measure.gd) build it in seconds.
 

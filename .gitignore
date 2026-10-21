@@ -31,7 +31,7 @@ teamapp/tests/obj/
 client/.godot/
 # The art pack's uid list, written at export by tools/godot/asset-uids.py (main/dm_packs.gd)
 client/main/asset_uids.json
-# The QA driver's default folder for its pictures (`--shots=`, client/README.md "Screenshots for proposals")
+# The QA driver's default folder for its pictures (`--shots=`, client/main/SCREENSHOTS.md)
 /shots/
 client/bin/*.so
 client/bin/*.dll

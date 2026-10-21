@@ -1,5 +1,5 @@
 extends SceneTree
-## The screenshot tool of proposals on the game (client/README.md "Screenshots for proposals"), headless and without a renderer. The tool is the QA driver (main/qa_driver.gd), the shot plan
+## The screenshot tool of proposals on the game (client/main/SCREENSHOTS.md), headless and without a renderer. The tool is the QA driver (main/qa_driver.gd), the shot plan
 ## (main/qa_ui_shots.gd) and the script that renders a plan (tools/qa_shots.sh); the boot starts the driver (main/main.gd `start_qa`). It checks:
 ##   - the plan: today's format parses (names, windows and their aliases, hover, clip, wait cap, at most 6 shots and a longer plan refused, equip cap, discipline by name or number, view, turn and anim), what it refuses, every window id a real
 ##     panel of the HUD, the demo bag's items exist and fit, the discipline table agrees with the content's, with `--class=N` and with tools/qa_shots.sh, and the crop of "clip": "window" in numbers;

@@ -3,7 +3,7 @@ extends SceneTree
 ##   godot --headless --path client --script res://tests/crash_note.gd
 ## Checks: the note's format; a real crash inside the core (a child process: tests/crash_note_child.gd) writes the note with the core's module
 ## and offsets and still ends as a crash; the next start puts the note first in the report's log and in `coreCrash`; a note with no crash
-## (no lock left) is dropped as stale. The Windows half (an unhandled-exception filter) is checked on a Windows PC: client/README.md "Crash notes".
+## (no lock left) is dropped as stale. The Windows half (an unhandled-exception filter) is checked on a Windows PC: native/README.md "Crash notes".
 
 var fails := 0
 

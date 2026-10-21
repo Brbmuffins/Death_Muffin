@@ -1,6 +1,6 @@
 class_name DmNextNet
 extends Node
-## 2-player co-op on the combat core (client/README.md "Co-op on the core"): the three messages of the core and the few that stay GDScript, over
+## 2-player co-op on the combat core (client/next/party/CORE-NETWORK.md): the three messages of the core and the few that stay GDScript, over
 ## the session's relay peer (DmRelayPeer: the lobby WebSocket, or the UDP lane when the relay offers one). One node `Net` at the same path on every peer.
 ##
 ## HOST -> GUEST (a guest is a roster member; nothing is sent to a peer that has not said hello, whose game may still be loading)

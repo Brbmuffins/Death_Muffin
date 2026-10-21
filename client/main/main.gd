@@ -11,15 +11,15 @@ extends Node
 ## `--boot-check` (release-safe: it only quits; the team app's `install` step runs the release build with it): reach the first screen, print `BOOT OK <ms>` (ms since the engine started) and quit with exit code 0; no first
 ## screen within 60 s prints `BOOT FAIL ...` and quits with exit code 1 (`_boot_check`). With `--quit-while-loading` (also release-safe, and read only with `--boot-check`) it quits with the art pack's models still loading on the
 ## worker threads (the case that crashed the old game on 4-core PCs), after `QUIT-WHILE-LOADING <n> of <m> loads in flight`; the team app's `quit-loading` step checks the exit code 0 and that DmCrashWatch left no crash report.
-## `--qa` / `--shot-plan=<plan.json>` (with `--shots=<dir>`, `--seconds=N`; dev-offline runs only): the QA tools beside the game, the scripted fight or the shot plan of a proposal (`start_qa`, client/README.md "Screenshots for proposals").
+## `--qa` / `--shot-plan=<plan.json>` (with `--shots=<dir>`, `--seconds=N`; dev-offline runs only): the QA tools beside the game, the scripted fight or the shot plan of a proposal (`start_qa`, client/main/SCREENSHOTS.md).
 ## `--qa-window=WxH` (only where the QA tools start): the window takes that size even when the screen is smaller (`full_size_window`; the team app's screens step sends it).
-## `--clip-plan=<plan.json> --clips=<dir>` (the same QA runs, engine started `--fixed-fps 30`): short video clips of a rite in use, 30 frames per game second as `<name>.mjpeg` (DmQaClips, client/README.md "Clips and tune");
+## `--clip-plan=<plan.json> --clips=<dir>` (the same QA runs, engine started `--fixed-fps 30`): short video clips of a rite in use, 30 frames per game second as `<name>.mjpeg` (DmQaClips, client/main/CLIPS.md);
 ## `--clip-fps=N --clip-width=N` (with `--fixed-fps N`) records at another rate and size: the team app's 1080p 60 fps clips.
 ## `--tune=<data.json>` (only where the QA tools start, `qa_tune`): data overrides for this run, merged into the game's data before anything reads it (DmQaTune); an unknown file, key or type is refused with a printed line and exit code 2.
 ## `--preset=<low|medium|high|ultra>` (only where the QA tools start, `qa_preset`): that graphics preset is in force from the game's start, as if chosen in Settings, and is never saved to the player's settings
 ## (a team PC's screenshots of a proposal on Low and Ultra); an unknown value is ignored with a printed warning. `--ui-scale=<0.8 to 1.25>` (`qa_ui_scale`) is Settings' Interface size for the run the same way.
 ## `--stutter --stutter-out=<abs dir>` and `--soak[=<minutes>] --soak-out=<abs dir>` (QA runs only, `qa_scenario`; they write `<dir>/stutter.json` and `<dir>/soak.json`): the release checks' scenarios, each on isolated offline games of its own
-## with no front flow (DmQaStutter: every rite of each playable discipline cast once, the worst frame and the pipeline compilations of each; DmQaSoak: auto combat in the Graves with waves for that long, a row a minute and the growth), client/README.md "Release checks".
+## with no front flow (DmQaStutter: every rite of each playable discipline cast once, the worst frame and the pipeline compilations of each; DmQaSoak: auto combat in the Graves with waves for that long, a row a minute and the growth), client/main/RELEASE-CHECKS.md.
 ## A QA run also never takes the keyboard or the mouse from the person at the PC (`quiet_window`: no focus, mouse events pass through), so a team PC can run it while its owner works.
 ## `--benchmark`: runs the in-game benchmark straight away on an isolated offline game (DmBenchmark, no login; `--bench-room=`, `--bench-class=`, `--bench-size=`,
 ## `--bench-length=` pick the setup, default the Standard one, `--bench-warm=` / `--bench-measure=` shorten it, `--baked=<dir>` names the baked crowd models) and stays on the
@@ -33,7 +33,7 @@ extends Node
 ## `start_opts` (set before add_child; tests) are merged over DmNextGame.start's options.
 ##
 ## Co-op: the party's `join_ready` hands the solo game over to a guest game on the same lobby socket, and a guest whose session ended (or whose join failed) is
-## put back in its own world with the reason on screen (client/README.md "Co-op on the core"). From every good sign-in until the world's own link takes over, a `DmPresenceLink` (child `Presence`) keeps a lobby socket so friends see the player online at
+## put back in its own world with the reason on screen (client/next/party/CORE-NETWORK.md). From every good sign-in until the world's own link takes over, a `DmPresenceLink` (child `Presence`) keeps a lobby socket so friends see the player online at
 ## character select and while the world loads (next/party/README.md "Online before the world").
 ## The panels' hand-overs: Log out (final save, the token dropped, the login screen), Switch character (final save, the select screen with the same token) and a
 ## discipline change from the class panel (final save, the game restarts with the changed character).

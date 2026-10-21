@@ -1,13 +1,13 @@
 class_name DmDrawModel
 extends RefCounted
-## The 3D draw calls of a scene, counted from data (client/README.md "The draw budget"). `record` describes one geometry instance and `facts` the camera and the moon;
+## The 3D draw calls of a scene, counted from data (client/next/perf/DRAW-BUDGET.md). `record` describes one geometry instance and `facts` the camera and the moon;
 ## `count` works out from them what Forward+ issues for one frame, so a test can hold the number (a draw call is what the budget counts, and a headless run draws nothing).
 ##
 ## What the model knows about the renderer, each part measured in a rendered Forward+ run (`client/tools/draw_measure.gd`, 2026-10-17, and the benchmark runs on Helix's PC):
 ##  - an instance is an object in the main pass when its bounds meet the camera's frustum (and its visibility range), and in a shadow pass once for each moon cascade whose volume its bounds
 ##    meet, when it casts; a draw call is one surface of an object;
 ##  - the renderer draws the instances of one mesh, surface and material that it meets in a pass in ONE instanced draw call (a prop that stands a hundred times costs what it costs once);
-##    a mesh that stands once costs its surfaces (merging props into cell meshes made each unique and cost draw calls: client/README.md "Static batching is not in the areas");
+##    a mesh that stands once costs its surfaces (merging props into cell meshes made each unique and cost draw calls: client/next/perf/DRAW-BUDGET.md "Static batching is not in the areas");
 ##  - a MultiMesh is never merged and costs its surfaces in each pass **whether or not it holds an instance** (`visible_instance_count` 0 still draws): the crowd hides a group while it is empty;
 ##  - what it leaves out: occlusion culling (the Graves' occluders), the lights' and the sky's own passes, and anything outside the scene tree it is given. Its numbers run a few draws
 ##    under the engine's (110 against 106 for the Graves' world), so a budget is set a little above the model's number, not at it.

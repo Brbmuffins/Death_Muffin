@@ -119,7 +119,7 @@ static func _by_distance(arr: Array) -> Array:
 
 ## One Easy-auto combat decision. Returns null or {id, target}.
 ## Same decisions as the TS function, with its cost cut (Gravecaller, 62 enemies and 31 corpses in reach: 3.0 ms a decision on the VPS, 6.6 ms when it ends in Corpse Explosion,
-## which is a 14 ms physics tick; now see "The benchmark" in client/README.md): the sorts are native (`_by_distance`, the corpses' `keyed`), the field reads are made once per body, and the
+## which is a 14 ms physics tick; now see client/next/perf/BENCHMARK-REPORT.md): the sorts are native (`_by_distance`, the corpses' `keyed`), the field reads are made once per body, and the
 ## counting rites run on packed arrays (`_around`, `_knot`) instead of a lambda calling `_dist` for every pair.
 static func select_action(ctx: Dictionary) -> Variant:
 	var p: Variant = ctx["player"]

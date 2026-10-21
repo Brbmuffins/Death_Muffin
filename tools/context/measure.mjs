@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // How much rule text each audience carries, and whether the rule inventory still matches it (tools/context/README.md).
-// Sizes: the always-loaded text of each audience in surfaces.json (CLAUDE.md for sessions, the agent's prompt), split by `## ` section,
-// the guides it reads when a task needs one (the agent's media how-tos, runner/lib/guides.cjs), and the files each is told to read first. Tokens are estimated from characters (surfaces.json charsPerToken, measured on the agent's
+// Sizes: the always-loaded text of each audience in surfaces.json (CLAUDE.md for Claude sessions, AGENTS.md for Codex, the agent's prompt),
+// split by `## ` section, the guides it reads when a task needs one (the agent's media how-tos, runner/lib/guides.cjs), the small entry points
+// it starts a task from (`discovery`: a file, or one section of it), any files it is still told to read first, and the reference guides a
+// task may open (`references`, never added to startup). Task routes (tasks.json): what each representative task reads before and after the
+// documentation map. Tokens are estimated from characters (surfaces.json charsPerToken, measured on the agent's
 // own calls: its first-call context grew about one token per 2.7 characters of prompt); they are estimates of text size, not API usage
 // (usage.mjs reports that). The rule check (rules.json, protected.json): the inventory's shape, every clause still in its file, protected
 // clauses that are instructions rather than headings, an always-loaded home for each audience of a protected rule (or a gap with a note),
@@ -9,8 +12,10 @@
 // existing file that holds an inventoried rule (a guide is never an always-loaded home).
 //
 //   node tools/context/measure.mjs [--json out.json]      exit 1 when the rule check finds a problem
+//   node tools/context/measure.mjs --tasks [--json out]    the task routes, before (needs the `before` revision in the history) and after
 //   node tools/context/measure.mjs --print-lock           the protected.json entries the inventory has now (copy only what you mean to change)
 
+import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -32,6 +37,23 @@ export function sections(text) {
   return out.map((s) => ({ ...s, chars: s.end - s.start })).filter((s) => s.chars > 0);
 }
 
+// A heading's section: from the heading whose text is `name` (or starts with `name (`) to the next heading of its level or above; null if none.
+export function sectionText(text, name) {
+  const lines = text.split('\n');
+  let start = -1, level = 0, fence = false;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*(```|~~~)/.test(lines[i])) fence = !fence;
+    const m = !fence && /^(#{1,6}) +(.+?) *$/.exec(lines[i]);
+    if (!m) continue;
+    if (start >= 0 && m[1].length <= level) return lines.slice(start, i).join('\n');
+    if (start < 0 && (m[2] === name || m[2].startsWith(name + ' ('))) { start = i; level = m[1].length; }
+  }
+  return start >= 0 ? lines.slice(start).join('\n') : null;
+}
+// One discovery or route entry's text: a file, or one of its sections.
+const entryText = (text, e) => (text == null ? null : e.section ? sectionText(text, e.section) : text);
+const entryName = (e) => (e.section ? `${e.file} "${e.section}"` : e.file);
+
 export function sizes(root = REPO) {
   const surfaces = readJson(root, 'tools/context/surfaces.json');
   const cpt = surfaces.charsPerToken;
@@ -43,13 +65,40 @@ export function sizes(root = REPO) {
       return { file: f, chars: t.length, tokens: tok(t.length), sections: sections(t).map((s) => ({ title: s.title, chars: s.chars, tokens: tok(s.chars) })) };
     });
     const size = (f) => { const t = readText(root, f) ?? ''; return { file: f, chars: t.length, tokens: tok(t.length) }; };
-    const guides = (a.guides || []).map(size), readFirst = a.readFirst.map(size);
+    const guides = (a.guides || []).map(size), readFirst = (a.readFirst || []).map(size);
+    const discovery = (a.discovery || []).map((e) => { const t = entryText(readText(root, e.file), e) ?? ''; return { entry: entryName(e), chars: t.length, tokens: tok(t.length) }; });
+    const sum = (xs) => xs.reduce((n, f) => n + f.tokens, 0);
     result.audiences[name] = {
-      what: a.what, always, guides, readFirst,
-      alwaysTokens: always.reduce((n, f) => n + f.tokens, 0), guideTokens: guides.reduce((n, f) => n + f.tokens, 0), readFirstTokens: readFirst.reduce((n, f) => n + f.tokens, 0),
+      what: a.what, always, guides, discovery, readFirst,
+      alwaysTokens: sum(always), guideTokens: sum(guides), discoveryTokens: sum(discovery), readFirstTokens: sum(readFirst),
     };
   }
+  result.references = (surfaces.references || []).map((f) => { const t = readText(root, f) ?? ''; return { file: f, chars: t.length, tokens: tok(t.length) }; });
   return result;
+}
+
+// What each representative task reads (tasks.json): the before route at the `before` revision (null when that revision is not in this
+// checkout's history, as in a shallow CI clone) and the after route in this tree; whether each holds the task's answer.
+export function taskRoutes(root = REPO) {
+  const cpt = readJson(root, 'tools/context/surfaces.json').charsPerToken;
+  const spec = readJson(root, 'tools/context/tasks.json');
+  const atRev = (f) => { try { return execFileSync('git', ['-C', root, 'show', `${spec.before}:${f}`], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 1 << 26 }); } catch { return null; } };
+  const route = (entries, read) => {
+    const parts = entries.map((e) => { const t = entryText(read(e.file), e); return { entry: entryName(e), chars: t == null ? null : t.length, tokens: t == null ? null : Math.round(t.length / cpt), text: t }; });
+    if (parts.some((p) => p.text == null)) return { parts: parts.map(({ text, ...p }) => p), missing: parts.filter((p) => p.text == null).map((p) => p.entry) };
+    return { parts: parts.map(({ text, ...p }) => p), chars: parts.reduce((n, p) => n + p.chars, 0), tokens: Math.round(parts.reduce((n, p) => n + p.chars, 0) / cpt), hasFact: (fact) => parts.some((p) => norm(p.text).includes(norm(fact))) };
+  };
+  return spec.tasks.map((t) => {
+    const after = route(t.after, (f) => readText(root, f));
+    const before = route(t.before, atRev);
+    const guide = t.agentGuide ? readText(root, t.agentGuide) : null;
+    const out = { id: t.id, question: t.question, fact: t.fact, rev: spec.before };
+    for (const [k, r] of [['before', before], ['after', after]]) {
+      out[k] = r.missing ? { unavailable: r.missing } : { parts: r.parts, chars: r.chars, tokens: r.tokens, answers: r.hasFact(t.fact) };
+    }
+    if (t.agentGuide) out.agentGuide = { file: t.agentGuide, tokens: guide == null ? null : Math.round(guide.length / cpt) };
+    return out;
+  });
 }
 
 const KINDS = ['boundary', 'principle', 'convention', 'protocol', 'playbook'];
@@ -161,6 +210,23 @@ export function checkRules(root = REPO) {
       }
     }
   }
+  // Discovery entries, reference guides and the after side of the task routes exist (a section by its heading), and each route holds its
+  // task's answer: a move that drops a route's file, section or answer fails here.
+  for (const [name, a] of Object.entries(surfaces.audiences || {})) {
+    for (const e of a.discovery || []) {
+      if (typeof e?.file !== 'string') { problems.push(`surfaces.json: a discovery entry of ${name} has no file`); continue; }
+      if (entryText(text(e.file), e) == null) problems.push(`surfaces.json: discovery ${entryName(e)} (${name}) does not exist`);
+    }
+    for (const f of a.readFirst || []) if (text(f) == null) problems.push(`surfaces.json: read-first file ${f} (${name}) does not exist`);
+  }
+  for (const f of surfaces.references || []) if (text(f) == null) problems.push(`surfaces.json: reference ${f} does not exist`);
+  const tasks = readText(root, 'tools/context/tasks.json');
+  for (const t of tasks ? JSON.parse(tasks).tasks : []) {
+    const parts = t.after.map((e) => entryText(text(e.file), e));
+    t.after.forEach((e, i) => { if (parts[i] == null) problems.push(`tasks.json: ${t.id}: ${entryName(e)} does not exist`); });
+    if (parts.every((p) => p != null) && !parts.some((p) => norm(p).includes(norm(t.fact)))) problems.push(`tasks.json: ${t.id}: its route no longer holds the answer ${JSON.stringify(t.fact)}`);
+    if (t.agentGuide && text(t.agentGuide) == null) problems.push(`tasks.json: ${t.id}: agent guide ${t.agentGuide} does not exist`);
+  }
   // Guides are read when a task needs one: each exists, is not also always loaded, and holds at least one inventoried rule.
   for (const [name, a] of Object.entries(surfaces.audiences || {})) {
     for (const f of a.guides || []) {
@@ -178,6 +244,15 @@ export function checkRules(root = REPO) {
 
 function main(argv) {
   if (argv[0] === '--print-lock') { console.log(JSON.stringify(lockFor(readJson(REPO, 'tools/context/rules.json').rules), null, 2)); return; }
+  if (argv[0] === '--tasks') {
+    const r = taskRoutes();
+    for (const t of r) {
+      const side = (x) => (x.unavailable ? `unavailable (${x.unavailable.join(', ')} not at ${t.rev})` : `~${x.tokens} tokens, answer ${x.answers ? 'found' : 'MISSING'} (${x.parts.map((p) => `${p.entry} ~${p.tokens}`).join(' + ')})`);
+      console.log(`== ${t.id}: ${t.question}\n   before (${t.rev}): ${side(t.before)}\n   after: ${side(t.after)}${t.agentGuide ? `\n   the Discord agent also reads ${t.agentGuide.file} ~${t.agentGuide.tokens}` : ''}`);
+    }
+    if (argv[1] === '--json') fs.writeFileSync(argv[2], JSON.stringify(r, null, 2) + '\n');
+    return;
+  }
   const json = argv[0] === '--json' ? argv[1] : null;
   const s = sizes();
   const c = checkRules();
@@ -188,8 +263,10 @@ function main(argv) {
       for (const sec of f.sections) console.log(`     ${String(sec.tokens).padStart(6)}  ${sec.title}`);
     }
     if (a.guides.length) console.log(`   guides, read when a task needs one: ~${a.guideTokens} tokens (${a.guides.map((f) => `${path.basename(f.file, '.md')} ~${f.tokens}`).join(', ')})`);
-    console.log(`   told to read first: ~${a.readFirstTokens} tokens (${a.readFirst.map((f) => `${f.file} ~${f.tokens}`).join(', ')})`);
+    if (a.discovery.length) console.log(`   starts a task from: ~${a.discoveryTokens} tokens (${a.discovery.map((f) => `${f.entry} ~${f.tokens}`).join(', ')})`);
+    if (a.readFirst.length) console.log(`   told to read first: ~${a.readFirstTokens} tokens (${a.readFirst.map((f) => `${f.file} ~${f.tokens}`).join(', ')})`);
   }
+  if (s.references.length) console.log(`== reference guides, opened only by the task that needs one: ${s.references.length} files, ~${s.references.reduce((n, f) => n + f.tokens, 0)} tokens together, the largest ${[...s.references].sort((a, b) => b.tokens - a.tokens).slice(0, 3).map((f) => `${f.file} ~${f.tokens}`).join(', ')}`);
   console.log(`== rules: ${c.rules} inventoried (${c.protectedRules} protected), ${c.gaps.length} gap notes`);
   for (const g of c.gaps) console.log(`   gap ${g.id} (${g.audience}${g.protected ? (g.accepted ? ', protected, accepted in protected.json' : ', protected, NOT accepted') : ''}): ${g.note}`);
   for (const p of c.problems) console.log(`   PROBLEM ${p}`);

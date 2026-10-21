@@ -3,7 +3,7 @@ extends RefCounted
 ## UI shot plan for the QA driver (`-- --dev-offline --class=2 --qa --shot-plan=/abs/plan.json --shots=/abs/dir`; `--world-demo` = `--dev-offline --class=2`).
 ## Loaded by main/qa_driver.gd only when --shot-plan is given, so normal play never touches it. Opens real windows of the real DmGameUi of the game scene
 ## (DmNextGame) on the dev-offline `tester` hero (with a representative bag), optionally shows an item tooltip, and saves one PNG per shot. No network.
-## Rendered on the VPS by client/tools/qa_shots.sh (client/README.md "Screenshots for proposals"): the pictures of a Discord agent's proposal.
+## Rendered on the VPS by client/tools/qa_shots.sh (client/main/SCREENSHOTS.md): the pictures of a Discord agent's proposal.
 ## A run is cut up in separate calls: `prepare` (the bag, the gear worn,
 ## the hero healed), `stage` (the area, the windows, the view and pose, the tooltip) and `capture` (the picture and its crop), so tests/qa_shots.gd checks the
 ## set-up a plan asks for without a renderer, and `clip_rect` is a function of numbers.

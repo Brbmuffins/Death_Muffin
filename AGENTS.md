@@ -1,12 +1,19 @@
 # Death Muffin: agent rules
 
 Death Muffin is one game: the Godot 4 client in `client/` with its C++ combat core in `native/` (live since 2026-10-18, DECISIONS B49), played
-online against `server/death-muffin/`. Read [README.md](README.md) (layout, run, test, release), [ROADMAP.md](ROADMAP.md),
-[DECISIONS.md](DECISIONS.md), [KNOWN-GAPS.md](KNOWN-GAPS.md) and the README of any system before changing it (client/README.md lists them).
-Tags `archive/legacy-web` (the retired web game) and `archive/old-game` (the first Godot game, B57) are history only: do not port from them.
+online against `server/death-muffin/`. Tags `archive/legacy-web` (the retired web game) and `archive/old-game` (the first Godot game, B57) are history only: do not port from them.
 
 This file is the instructions for Claude Code and, as its exact copy `AGENTS.md`, for Codex. Edit `CLAUDE.md` only, then run
 `node tools/context/sync-instructions.mjs`; CI fails when the copy differs (tools/context/README.md).
+
+## Finding task context
+
+Start from the documentation map ([README.md](README.md) "Documentation map"): pick the row for the task, read that one document, then
+the system's guide and the code you will change or review (for the client, [client/README.md](client/README.md) names the guide for each
+feature and task). Read only the parts of [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md) and [KNOWN-GAPS.md](KNOWN-GAPS.md) the
+task touches, found by feature or decision id; never open every link. A session that started outside this checkout, or that works on
+another worktree, first reads that checkout's `CLAUDE.md` (Codex: `AGENTS.md`): they load reliably only for a session started in the checkout. A brief
+for a subagent carries the rules it needs.
 
 ## Your role: the game's expert
 

@@ -23,7 +23,7 @@ for exact signatures. The live host adds `enemies_of(def)` (the rows of one kind
 `resume()`; Abbess also `niche_ids()` / `standing_niches()`, Congregation `covered(x, z)`.
 
 ## Tests
-- The recorded scenarios (44, frozen: no generator) are replayed through these brains on a fake world and compared tick by tick: all of them by `client/tests/bosses/run.gd` alone (the boss suites, `client/tests/boss.gd` and the six on `boss_base.gd`, test the scenes; client/README.md "The bosses"). They are recordings of the web game's brains,
+- The recorded scenarios (44, frozen: no generator) are replayed through these brains on a fake world and compared tick by tick: all of them by `client/tests/bosses/run.gd` alone (the boss suites, `client/tests/boss.gd` and the six on `boss_base.gd`, test the scenes; client/next/bosses/CORE-INTEGRATION.md). They are recordings of the web game's brains,
   kept as test fixtures.
 - Scene-level behaviour on the core: the same suites, `client/tests/core_boss.gd` and `client/tests/coop_bosses.gd`.
 

@@ -1,5 +1,5 @@
 extends "res://tests/benchmark_base.gd"
-## The in-game benchmark, the launch line's flags (client/README.md "The benchmark"), headless: `godot --headless --path client --script res://tests/benchmark_flags.gd`. One of five suites split from the old `benchmark` (see benchmark_base.gd).
+## The in-game benchmark, the launch line's flags (client/next/perf/BENCHMARK.md), headless: `godot --headless --path client --script res://tests/benchmark_flags.gd`. One of five suites split from the old `benchmark` (see benchmark_base.gd).
 ##   - the crowd's cost settings from the launch line (`--bench-crowd=`) are recorded, and what is not a setting is said to be ignored; a room, class or graphics preset the benchmark does not list is refused with exit code 2;
 ##   - the team app's flags in a real launch: `--bench-preset=` puts a graphics preset on loan for the run (the report and the queued run say it, the player's settings file is not touched or changed), and `--bench-quit` ends a
 ##     run with exit code 0 once it is the last entry of the queue;

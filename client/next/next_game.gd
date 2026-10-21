@@ -18,15 +18,15 @@ extends Node3D
 ##
 ## A boss (the Gravedigger King at his grave, the Bone Abbess at her Reliquary ... the Mire Mother at her altar) wakes where its summon site is (key E within 4 m, `bosses.request_summon`): its body is an
 ## external entity of the core (kind 1, DmBoss), its brain is GDScript, the rites and the thralls hit it through the core's host (`enemies_in_radius`, `damage`) and the events, its adds and pools are
-## the core's and its defeat is `bosses.defeated` (a real kill, not a wipe; `rewards.on_boss_defeated` pays it) (client/README.md "The bosses").
+## the core's and its defeat is `bosses.defeated` (a real kill, not a wipe; `rewards.on_boss_defeated` pays it) (client/next/bosses/CORE-INTEGRATION.md).
 ##
-## 2-PLAYER CO-OP (client/README.md "Co-op on the core"): the same scene runs as the HOST (the default: a solo run, or hosted over the test lobby's relay once `party.host_session` swaps
+## 2-PLAYER CO-OP (client/next/party/CORE-NETWORK.md): the same scene runs as the HOST (the default: a solo run, or hosted over the test lobby's relay once `party.host_session` swaps
 ## the transport) or as a GUEST (`opts.lobby`: the lobby socket a join happened on, or `opts.peer` with `host` false). The host simulates and sends (`Net`, DmNextNet: the core's snapshot,
 ## its reliable batches and a baseline, hero vitals); the guest's core is a PUPPET (`core_host.puppet`): no director, no brains, the crowd, the effects and the HUD run from the
 ## puppet's events. Hero casts are intents the host resolves on its core (DmRiteCaster); a guest's hero is an external of the HOST's core (`core_id` is the host's id for it), and
 ## its thralls are the host's bodies. A guest's `enemy_died` events are presentation only: kill credit (`kill_credited`) is the HOST's, once.
 ##
-## VALUE ON THE SERVER (DECISIONS D1, B20, B32; client/README.md "Value on the server"): the host's `rewards` (DmSessionRewards) hears `kill_credited` and pays every
+## VALUE ON THE SERVER (DECISIONS D1, B20, B32; client/next/rewards/AUTHORITY.md): the host's `rewards` (DmSessionRewards) hears `kill_credited` and pays every
 ## member in range through the backend's party session (numbered kill reports, XP and kill counts applied from what the server accepted), with the loot rolls from the
 ## member's drop tape; beside it are `meta` (DmNextMeta: difficulty, world vows, the Omen, Soul Harvest, the Kill Chain, Bonded Dead), `milestones`, `chron` (the Chronicle, first-kill
 ## trophies) and `progress` (DmNextProgress: levels, upgrade tiers, the belt, the backend saves). `loot` (DmNextLoot) is this player's drops and bag: a click
@@ -35,10 +35,10 @@ extends Node3D
 ##
 ## THE WORLD: every area but the Depths (DmNextWorld, the area scenes; `opts.areas` takes a shorter list), the hero starting and getting up in the Chapterhouse. The
 ## Chapterhouse node (DmChapterhouse) breaks the seals as kills come in and opens the doors, runs waystone travel and the recall, the stations and the people.
-## The Depths (DmDepths, `depths`, host only; client/README.md "The Depths") are the one area made at run time: the Warren's stair starts a run, each floor is generated, drawn and baked
+## The Depths (DmDepths, `depths`, host only; client/next/depths/CORE-INTEGRATION.md) are the one area made at run time: the Warren's stair starts a run, each floor is generated, drawn and baked
 ## when it is entered, its dead are bodies of the core, the HUD reads its readout and map. The graphics preset, fps cap and auto-resolution are `perf` (DmNextPerf, the player's settings read from their file).
 ##
-## GATHERING (client/README.md "Gathering and the Acre"): `gather` (DmNextGather: the nodes of every area, hover and click, the loop that walks, works and batches to the backend, the skills) is a child of every
+## GATHERING (client/next/gathering/README.md "Gathering and the Acre"): `gather` (DmNextGather: the nodes of every area, hover and click, the loop that walks, works and batches to the backend, the skills) is a child of every
 ## peer at the same path (its depleted nodes reach a guest as RPCs); `acre` (DmNextAcre: the visible Grave Laborers and the labor, garden and contract notices) is the host's, with the real HUD.
 ##
 ## Not in it: the Covenant Seal's altar choice (Ascension, B36: a summon is the plain soul-shard one). `start` refuses any api whose base url DmConfig does not allow
@@ -83,7 +83,7 @@ var ui_host: DmNextUiHost                       ## child "UiHost" (opts hud = tr
 var ui: DmGameUi                                ## child "Ui" (opts hud = true): the HUD and panels
 var areas: DmAreaFlow                           ## child "Areas": the entry banners and the Codex facts, the processions (next/areas/)
 var chapterhouse: DmChapterhouse               ## child "Chapterhouse": NPCs, stations, waystones, seals, hover + prompts (next/chapterhouse/)
-var depths: DmDepths                           ## child "Depths" (host): the procedural descent (next/depths/; client/README.md "The Depths")
+var depths: DmDepths                           ## child "Depths" (host): the procedural descent (next/depths/; client/next/depths/CORE-INTEGRATION.md)
 var gather: DmNextGather                        ## child "Gather" (every peer): gathering nodes, the gather loop (host), skills, AFK (next/gathering/)
 var acre: DmNextAcre                            ## child "Acre" (host, with the HUD): visible Grave Laborers, labor / garden notices, the first-hour guidance feeds (next/gathering/)
 var bosses: DmBossHost                          ## child "Bosses": summon rules, the boss body, its events and music
@@ -147,7 +147,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	var guest := lobby != null or join is Dictionary or (opts.get("peer", null) != null and not bool(opts.get("host", true)))
 	is_guest = guest
 	DmSimData.ensure()
-	DmDbWarm.all()   # every dataset read now, in loading: the workers (the Depths' floor generator, the Gear Atlas' verdicts) then read a cache that never changes (client/README.md "Threads")
+	DmDbWarm.all()   # every dataset read now, in loading: the workers (the Depths' floor generator, the Gear Atlas' verdicts) then read a cache that never changes (client/core/THREADING.md)
 	input.game = self
 	net.game = self
 	director.game = self
@@ -179,7 +179,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	enemy_fx.player_pos = func() -> Vector3: return local_body().global_position if local_body() != null else camera.global_position
 	enemy_fx.host.camera = camera
 	enemy_fx.host.hitstop_cb = hitstop
-	enemy_fx.host.dressing = world.dressing   # the water's ripples: the hero's steps, the Wisp's pulse, the deaths (client/README.md "World dressing"); null in a world with no lights
+	enemy_fx.host.dressing = world.dressing   # the water's ripples: the hero's steps, the Wisp's pulse, the deaths (client/world_fx/README.md "World dressing"); null in a world with no lights
 	add_child(enemy_fx)
 	enemy_fx.bind(core_host)
 	bosses = DmBossHost.new()
@@ -191,7 +191,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	bosses.fx.host.camera = camera
 	bosses.fx.host.hitstop_cb = hitstop
 	bosses.fx.host.dressing = world.dressing   # the Mire Mother's rings
-	bosses.fx.host.candles = world.dressing    # the Prelate's candle groups: its phases put them out, its defeat lights them (client/README.md "World dressing")
+	bosses.fx.host.candles = world.dressing    # the Prelate's candle groups: its phases put them out, its defeat lights them (client/world_fx/README.md "World dressing")
 	bosses.fx.player_pos = enemy_fx.player_pos
 	bosses.fx.host.sink = game_event   # banners / toasts -> the HUD
 	session.session_ended.connect(_on_session_ended)

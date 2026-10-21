@@ -5,7 +5,7 @@ extends SceneTree
 ##   flock -w 900 /home/ubuntu/death-muffin/qa-browser.lock env VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json nice -n 10 \
 ##     xvfb-run -a -s "-screen 0 960x540x24" timeout 400 /home/ubuntu/tools/godot/godot --rendering-driver vulkan --resolution 640x360 \
 ##     --path client --script res://tools/compile_probe.gd -- --disc=1,2 --rites=6 [--warmup]   (or `-- --why`, below)
-## A team PC's stutter test stays the measure of what players feel (client/README.md "Release checks").
+## A team PC's stutter test stays the measure of what players feel (client/main/RELEASE-CHECKS.md).
 
 
 func _initialize() -> void:

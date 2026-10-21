@@ -18,7 +18,7 @@ Only two subsets are reachable, each created with a reduced host: `client/next/e
 
 ## Creature rendering
 `DmCreatureMat` is the one creature shader of the skeleton nodes (the hero, bosses, hub people, laborers); the crowd's enemies and thralls use `client/crowd/crowd_vat.gdshader`, which takes the same colour rules
-(client/crowd/README.md "Against the creature material"; client/README.md "The look on Forward+" for the colours and the exposure lift both divide out). Models in `CULL_BACK_SLUGS` (closed glTF bodies: under 2% open edges, winding agrees
+(client/crowd/README.md "Against the creature material"; client/next/look/README.md for the colours and the exposure lift both divide out). Models in `CULL_BACK_SLUGS` (closed glTF bodies: under 2% open edges, winding agrees
 with the normals) render back-face culled; every other model, and every winged or spectral body, stays `cull_disabled` (hair cards, cloaks, open robes, thin cloth). Add a slug only after checking its mesh is closed.
 Only the nearest enemies cast into the moon shadow: the crowd's shadow policy (`DmCrowd.set_shadow_policy`, counts per preset in `DmGraphicsPreset`, applied by `DmNextPerf`; client/crowd/README.md "Crowd cost"); the hero and bosses always cast, thralls cast unless the preset has no shadows.
 The boss light and the shared Binbun flash light are `visible = false` while their energy is zero.
@@ -56,9 +56,9 @@ and by `flinch`), strike lunge timed to the clip's impact (`play_strike`; the ho
   `set_look_changed(set_id, pieces)` is the hook the legendary body swap listens to (3+ pieces).
 
 ## Tests
-The client suites that exercise these classes through the game scene (client/README.md "Set up and test"): `client/tests/rites.gd` (the Reaper's set look: Soul Harbinger's hood, body and scythe), `auto_combat.gd`
+The client suites that exercise these classes through the game scene (client/tools/TESTING.md): `client/tests/rites.gd` (the Reaper's set look: Soul Harbinger's hood, body and scythe), `auto_combat.gd`
 (Easy auto combat), `gathering.gd` (the gather loop, skills, laborers), `presets.gd` (the graphics presets), `rewards.gd` and `value.gd` (rewards), `panels.gd` (the Reliquary and the bag) and `game_scene.gd`.
 
 ## Known gaps
 - See-through cutout: `DmNextWorld` switches the builder's `occlusion_enabled` off, so the wall and prop shaders (`client/world/dm_occ_*.gdshader`) cut nothing in any area or Depths floor
-  (client/README.md "Areas"); with it on, floors and gates are not cut.
+  (client/world/README.md); with it on, floors and gates are not cut.

@@ -17,8 +17,12 @@ function scratchRepo() {
   const { rules } = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/context/rules.json'), 'utf8'));
   const files = new Set(['CLAUDE.md', 'AGENTS.md', 'tools/context/rules.json', 'tools/context/surfaces.json', 'tools/context/protected.json']);
   for (const r of rules) for (const f of [...(r.enforced || []), ...r.homes.map((h) => h.file)]) files.add(f);
-  const surfaces = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/context/surfaces.json'), 'utf8'));
-  for (const a of Object.values(surfaces.audiences)) for (const f of [...a.always, ...(a.guides || [])]) files.add(f);
+  const surf = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/context/surfaces.json'), 'utf8'));
+  for (const a of Object.values(surf.audiences)) for (const f of [...a.always, ...(a.guides || []), ...(a.readFirst || []), ...(a.discovery || []).map((e) => e.file)]) files.add(f);
+  for (const f of surf.references || []) files.add(f);
+  const tasks = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/context/tasks.json'), 'utf8'));
+  files.add('tools/context/tasks.json');
+  for (const t of tasks.tasks) for (const f of [...t.after.map((e) => e.file), ...(t.agentGuide ? [t.agentGuide] : [])]) files.add(f);
   for (const f of files) { fs.mkdirSync(path.join(dir, path.dirname(f)), { recursive: true }); fs.copyFileSync(path.join(REPO, f), path.join(dir, f)); }
   return dir;
 }

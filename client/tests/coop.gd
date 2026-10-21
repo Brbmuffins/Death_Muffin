@@ -1,5 +1,5 @@
 extends SceneTree
-## 2-player co-op on the combat core (client/README.md "Co-op on the core"), headless, over a REAL local lobby and relay.
+## 2-player co-op on the combat core (client/next/party/CORE-NETWORK.md), headless, over a REAL local lobby and relay.
 ##
 ## Two game scenes live in this one process, each in its own SceneMultiplayer branch (the way a second machine would be): the HOST (`DmNextGame` hosting) and the GUEST
 ## (`DmNextGame` joined with `opts.lobby`, a puppet core). The lobby is the real service (server/death-muffin/lobby, node, a random local port, a test JWT secret; needs
@@ -18,7 +18,7 @@ extends SceneTree
 ##   - the Gravedigger King wakes for the guest's request and fights both heroes: both are hurt by him, the casts of both and a thrall hurt him, the guest's copy follows him and its core host knows him
 ##     (the other six bosses fight a party in tests/coop_bosses.gd);
 ##   - a guest-side death shows (vitals, the body, the HUD's veil) and the hero gets up; kills are credited by the HOST only, once each: the guest credits none;
-##   - the guest's window shows the fight as the host's does (client/README.md "The HUD on the core"): an enemy's hit flash on both crowds, a number for every hit of either hero's rites (the
+##   - the guest's window shows the fight as the host's does (client/next/hud/CORE-INTEGRATION.md): an enemy's hit flash on both crowds, a number for every hit of either hero's rites (the
 ##     guest's crits too, which travel as the rites' events), for a DoT's lumps and for every blow of the thralls (the host lists them); its own hero's hurt from the health the host's vitals take away (a number, the red flash, the hurt sound, the
 ##     low-health sound under 30 %, the counsel's hurt flag; a blow in the same 50 ms is one with the sum; a heal, a respawn and a new maximum are none; the killing blow counts) and a drag by an
 ##     enemy ("Dragged!"); the host's own HUD ignores the guest's hurt, the guest's ignores the host's, and the host's own hurt is as it was;
@@ -888,7 +888,7 @@ func flash_in(gms: Array, id: int, n: int) -> Array:
 	return best
 
 
-## The guest's HUD (client/README.md "The HUD on the core") shows what a player in the host's world sees: the enemies' flash and the numbers of both heroes' hits and of a DoT, from its own
+## The guest's HUD (client/next/hud/CORE-INTEGRATION.md) shows what a player in the host's world sees: the enemies' flash and the numbers of both heroes' hits and of a DoT, from its own
 ## puppet's events and the rites' events; and its own hero's hurt from the vitals the host sends, the way the host's HUD hears its own hero's `take_damage`.
 func guest_window() -> void:
 	h.director.enabled = false

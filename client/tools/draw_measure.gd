@@ -1,5 +1,5 @@
 extends SceneTree
-## The 3D draw-call measurement (client/README.md "The draw budget"). A RENDERED run: Forward+ on the software Vulkan driver (lavapipe); a draw-call count does not depend on the GPU,
+## The 3D draw-call measurement (client/next/perf/DRAW-BUDGET.md). A RENDERED run: Forward+ on the software Vulkan driver (lavapipe); a draw-call count does not depend on the GPU,
 ## only on the camera, the lights and the scene. It builds the budget's scene (`DmDrawScene`: a room's area scene, the game's camera, the Ultra preset's moon, then a Full Party on the
 ## combat core) and reads the engine's own counters (`Viewport` render info: the main pass and the moon's shadow passes, draw calls and objects) beside what the counted model
 ## (`DmDrawModel`) says for the same frame, in these phases, each written as JSON lines as it goes (a run cut off by the caller's timeout keeps what it got):

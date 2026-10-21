@@ -26,7 +26,7 @@ const POINT_K := 0.18
 ## 2.0 / 0.95 and 1.12 / 0.95 there. `set_area` applies them to the live lights, and the area converter (`client/tools/build_area.gd`) bakes the hemisphere's factor into the area's lightmap.
 const AREA_MOON_K := {"acre": 3.4 / 2.4, "alchemist_wing": 2.65 / 2.4}
 const AREA_HEMI_K := {"acre": 2.0 / 0.95, "alchemist_wing": 1.12 / 0.95}
-## The exposure lift of each area (Forward+'s own, on top of the world's exposure; client/README.md "The look on Forward+"): measured with `client/tools/look_probe.gd` against the old game on the same
+## The exposure lift of each area (Forward+'s own, on top of the world's exposure; client/next/look/README.md): measured with `client/tools/look_probe.gd` against the old game on the same
 ## camera (Ultra, the mean luminance of the world region), so that the rebuilt frame of every area is as bright as the old game's. One number for the whole game could not do it: the lightmap of each area carries
 ## its own share of the light, so the areas differ by 0.8 to 2.1. `set_area` blends to the new area's lift (LIFT_BLEND, with the area's own easing of the exposure `area_exposure`); the preset's own factor (`DmGraphicsPreset`, `set_preset_lift`) multiplies it.
 const AREA_LIFT := {
@@ -184,7 +184,7 @@ func apply_occlusion(root: Node) -> void:
 
 func build(w: Dictionary) -> void:
 	world = w
-	# A suite under --fixed-fps sets DM_SYNC_NAV=1 (client/README.md "Set up and test"): game time outruns the navigation server's worker thread,
+	# A suite under --fixed-fps sets DM_SYNC_NAV=1 (client/tools/TESTING.md): game time outruns the navigation server's worker thread,
 	# so freshly enabled regions were not merged yet when a path was asked for (the hero stopped short, enemies never chased). Synchronous
 	# iterations merge once per physics step instead. Never set in the game.
 	if OS.get_environment("DM_SYNC_NAV") == "1" and is_inside_tree():
@@ -675,7 +675,7 @@ func _light_pools(parent: Node3D, srcs: Array, area: String) -> void:
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	m.vertex_color_use_as_albedo = true
-	m.vertex_color_is_srgb = true   # Compatibility reads every vertex colour as sRGB, Forward+ as linear (the pools were 9 times too bright): client/README.md "Graphics presets"
+	m.vertex_color_is_srgb = true   # Compatibility reads every vertex colour as sRGB, Forward+ as linear (the pools were 9 times too bright): client/next/perf/README.md "Graphics presets"
 	m.albedo_texture = _glow_texture()
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	m.no_depth_test = false
