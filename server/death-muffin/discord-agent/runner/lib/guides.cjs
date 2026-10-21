@@ -6,12 +6,15 @@
 //      it is made on a round's first turn and made again, core and guides together, when the install changed (a reinstall), when it no
 //      longer matches its own hashes, or for a job from before the guides existed (no job.guidesKey); a conversation that carries on is told;
 //   2. the turn's system prompt is the snapshot's core, for every call of the turn (step-limit handoffs included);
-//   3. the guides are copied into the worktree's .dm-guides/ (git-excluded, in forbiddenPaths), and a missing or edited copy is put back.
+//   3. the guides are copied into the worktree's .dm-guides/ (git-excluded, in forbiddenPaths), and a missing or edited copy is put back;
+//      the exclude entry is added first when the worktree was made by a runner from before the guides.
 // gitops.removeJobArtifacts removes the snapshot with the worktree. Nothing is ever copied from a worktree back. An install whose core names a guide that is missing or empty runs no turn.
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 const { renderCore, renderText } = require('./agent.cjs');
+const { excludeJobFiles } = require('./gitops.cjs');
 
 const GUIDE_DIR = '.dm-guides';
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
@@ -108,6 +111,12 @@ function prepareTurn(cfg, job, { audit } = {}) {
     if (job.sessionId && why !== 'new round') { if (!job.guidesKey) notes.push(NOTE_NEW); else if (job.guidesKey !== snap.meta.key) notes.push(NOTE_UPDATED); }
   }
   job.guidesKey = snap.meta.key;   // kept in jobs.json: which rendered version this job's conversation last saw
+  // a worktree made before the guides existed has no exclude entry for them: the copies would show as untracked and fail the proposal's check
+  let common = null;
+  try { common = String(execFileSync('git', ['-C', job.worktree, 'rev-parse', '--path-format=absolute', '--git-common-dir'], { stdio: ['ignore', 'pipe', 'ignore'] })).trim(); } catch { /* not a repository */ }
+  if (!common) return { error: 'I could not read this thread\'s workspace (its git folder), so I did not start. Send your message again and I will try once more; nothing was changed.' };
+  const added = excludeJobFiles(common, [`${GUIDE_DIR}/`]);
+  if (added.length) log('guides-excluded', { files: added.join(', ') });
   // copies that differ from a snapshot made this turn are simply older ones; from the snapshot in use they were changed in the worktree
   const changed = syncWorktree(job.worktree, snap);
   if (changed.length && !fresh) { log('guides-restored', { files: changed.join(', ') }); notes.push(NOTE_RESTORED(changed)); }

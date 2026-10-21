@@ -28,6 +28,19 @@ async function git(cwd, args, opts = {}) {
 }
 const trim = async (p) => (await p).out.trim();
 
+// The runner's files in a job worktree, kept out of `git status` by the repository's shared info/exclude (every job worktree shares it).
+const JOB_FILES = ['.dm-result.json', '.dm-shots/', '.dm-shot.json', '.dm-clip.json', '.dm-preview/', '.dm-inbox/', '.dm-art-request.json', '.dm-sound-request.json', '.dm-status', '.dm-check-progress', '.dm-title', '.dm-handoff.md', '.dm-guides/'];
+// Adds what is missing; returns the entries it added. Also run before a turn (lib/guides.cjs), so a worktree made by an older runner gets new entries.
+function excludeJobFiles(commonDir, files = JOB_FILES) {
+  const ex = path.join(commonDir, 'info', 'exclude');
+  try {
+    fs.mkdirSync(path.dirname(ex), { recursive: true });
+    const cur = fs.existsSync(ex) ? fs.readFileSync(ex, 'utf8') : '';
+    const add = files.filter((p) => !cur.split('\n').includes(p));
+    if (add.length) fs.appendFileSync(ex, '\n' + add.join('\n') + '\n');
+    return add;
+  } catch { return []; /* best effort */ }
+}
 async function createWorktree(cfg, job) {
   await git(cfg.repo, ['fetch', '-q', 'origin']);
   const wt = path.join(cfg.worktreeRoot, `discord-${job.id}${job.round > 1 ? '-' + job.round : ''}`);
@@ -37,9 +50,7 @@ async function createWorktree(cfg, job) {
     if (fs.existsSync(src)) { try { fs.symlinkSync(src, path.join(wt, rel)); } catch { /* exists */ } }
   }
   // keep the agent's result file and the symlinks out of `git status`
-  const common = await trim(git(wt, ['rev-parse', '--path-format=absolute', '--git-common-dir']));
-  const ex = path.join(common, 'info', 'exclude');
-  try { fs.mkdirSync(path.dirname(ex), { recursive: true }); const cur = fs.existsSync(ex) ? fs.readFileSync(ex, 'utf8') : ''; const add = ['.dm-result.json', '.dm-shots/', '.dm-shot.json', '.dm-clip.json', '.dm-preview/', '.dm-inbox/', '.dm-art-request.json', '.dm-sound-request.json', '.dm-status', '.dm-check-progress', '.dm-title', '.dm-handoff.md', '.dm-guides/'].filter((p) => !cur.split('\n').includes(p)); if (add.length) fs.appendFileSync(ex, '\n' + add.join('\n') + '\n'); } catch { /* best effort */ }
+  excludeJobFiles(await trim(git(wt, ['rev-parse', '--path-format=absolute', '--git-common-dir'])));
   const base = await trim(git(wt, ['rev-parse', 'HEAD']));
   return { worktree: wt, base };
 }
@@ -129,4 +140,4 @@ function run(cmd, args, { cwd, env, input, timeoutMs, maxOut = 8 * 1024 * 1024, 
     p.stdin.end(input || '');
   });
 }
-module.exports = { LOCK_RE, removePreview, git, run, killTree, treePids, createWorktree, removeJobArtifacts, head, diffText, commitsSince, isDirty, mergeInProgress, scanDiffForSecrets, suspiciousFindings, migrationsFrom, pushBranch, compareUrl, trim };
+module.exports = { LOCK_RE, JOB_FILES, excludeJobFiles, removePreview, git, run, killTree, treePids, createWorktree, removeJobArtifacts, head, diffText, commitsSince, isDirty, mergeInProgress, scanDiffForSecrets, suspiciousFindings, migrationsFrom, pushBranch, compareUrl, trim };

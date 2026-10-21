@@ -70,7 +70,8 @@ test('guides: first turn makes the round\'s snapshot and the worktree copies; an
   }
   assert.ok(c['screenshots.md'].includes(`${s.tools}/shot-godot.sh`));
   assert.ok(fs.existsSync(path.join(s.state, 'guides', 'abc123', 'snapshot.json')));
-  assert.deepEqual(s.events.map((e) => [e.event, e.why]), [['guides-snapshot', 'none']]);
+  const snaps = () => s.events.filter((e) => e.event === 'guides-snapshot');
+  assert.deepEqual(snaps().map((e) => e.why), ['none']);
   // the next turn of the same round (a session now exists)
   s.job.sessionId = 'sess-1';
   const b = GU.prepareTurn(s.cfg, s.job, { audit: s.audit });
@@ -79,7 +80,7 @@ test('guides: first turn makes the round\'s snapshot and the worktree copies; an
   const back = JSON.parse(JSON.stringify(s.job));
   const r = GU.prepareTurn(s.cfg, back, { audit: s.audit });
   assert.equal(r.systemPrompt, a.systemPrompt); assert.equal(r.note, '');
-  assert.equal(s.events.length, 1, 'no new snapshot');
+  assert.equal(snaps().length, 1, 'no new snapshot');
 });
 
 test('guides: a fresh round gets its own snapshot (its branch) and no note', () => {
@@ -111,6 +112,21 @@ test('guides: a job from before the guides (a session, no snapshot) is told the 
   assert.equal(s.events.at(-1).why, 'install changed');
   // the same install again: nothing to say
   assert.equal(GU.prepareTurn(s.cfg, s.job, { audit: s.audit }).note, '');
+});
+
+// The exclude list a runner from before the guides wrote (gitops.createWorktree at bb9fbf62): everything but .dm-guides/.
+const OLD_EXCLUDES = ['.dm-result.json', '.dm-shots/', '.dm-shot.json', '.dm-clip.json', '.dm-preview/', '.dm-inbox/', '.dm-art-request.json', '.dm-sound-request.json', '.dm-status', '.dm-check-progress', '.dm-title', '.dm-handoff.md'];
+test('guides: a worktree from before the guides gets the .dm-guides/ exclude before the copies, so they never show as changes', () => {
+  const s = setup();
+  const ex = path.join(s.wt, '.git', 'info', 'exclude');
+  fs.writeFileSync(ex, '\n' + OLD_EXCLUDES.join('\n') + '\n');
+  Object.assign(s.job, { sessionId: 'sess-old' });   // a job from before the guides: a session, no snapshot, no guidesKey
+  const g = GU.prepareTurn(s.cfg, s.job, { audit: s.audit });
+  assert.match(g.note, /now guides in \.dm-guides\//);
+  assert.equal(execFileSync('git', ['-C', s.wt, 'status', '--porcelain'], { encoding: 'utf8' }), '', 'the copies are not untracked changes');
+  assert.ok(s.events.some((e) => e.event === 'guides-excluded'));
+  GU.prepareTurn(s.cfg, s.job, { audit: s.audit });
+  assert.equal(fs.readFileSync(ex, 'utf8').split('\n').filter((l) => l === '.dm-guides/').length, 1, 'added once');
 });
 
 test('guides: an edited, deleted, replaced or extra worktree copy is put back from the snapshot and the agent is told; nothing goes back the other way', () => {
@@ -209,6 +225,24 @@ test('guides e2e: every call of a round gets the same snapshot core with the gui
   const snap2 = GU.readSnapshot(w.cfg, j);
   assert.equal(snap2.meta.branch, j.branch); assert.ok(snap2.texts['core.md'].includes(j.branch));
   assert.ok(!calls(j)[0].head.startsWith('(The runner\'s instructions'), 'a fresh round has nothing to be told');
+});
+
+test('guides e2e: a job from before the upgrade (old exclude list, a session, no snapshot) still gets a proposal through the runner\'s check', async () => {
+  const w = godotWorld(); const d = makeDiscord(w.runner);
+  const thread = await request(d, IDS.OWNER, 'GD-GAMEPLAY faster');
+  await until(() => proposalOf(thread), d.ad);
+  const j = jobOf(w, thread);
+  // as an older runner left it: no .dm-guides/ in the shared exclude, no snapshot, no copies, no guidesKey (the session stays)
+  const ex = path.join(w.repo, '.git', 'info', 'exclude');
+  fs.writeFileSync(ex, fs.readFileSync(ex, 'utf8').split('\n').filter((l) => l !== '.dm-guides/').join('\n'));
+  fs.rmSync(path.join(w.cfg.stateDir, 'guides', j.id), { recursive: true }); fs.rmSync(path.join(j.worktree, '.dm-guides'), { recursive: true });
+  delete j.guidesKey; assert.ok(j.sessionId);
+  const n = thread.sent.length;
+  await d.say(thread, IDS.OWNER, 'GD-DOC also clarify the readme');
+  await until(() => !j.running && thread.sent.slice(n).some((s) => s.payload && s.payload.embeds), d.ad);
+  assert.ok(!texts(thread).some((t) => /could not get this into a shippable state/.test(t)), texts(thread).join(' | '));
+  assert.match(calls(j).at(-1).head, /now guides in \.dm-guides\//);
+  assert.equal(sh(j.worktree, 'status', '--porcelain'), '');
 });
 
 test('guides e2e: a commit of a guide copy is refused; an edited copy is put back before the next turn; a broken install answers with the reason', async () => {
