@@ -213,8 +213,9 @@ one budget table for every kind of asset, and checks for everything but models.
 - [ ] **Fix: docs too long to read.** Now: `native/README.md` is 56 KB, more than a fresh session can read before it starts working (the
   client's manual is an index and guides beside each system since 2026-10-21). After: short pages on how each system works now, the
   history kept in git and DECISIONS.
-- [ ] **New: one map of the docs:** which page holds which rule (the vision, How we work, the standards pages, the pipelines, the recipes,
-  each system), so the Discord agent and every session find the rule before they build.
+- [ ] **New: the map of the docs, completed.** Now: README.md "Documentation map" sends each kind of task to its document, and every
+  session and the Discord agent start from it (2026-10-21). After: the map also lists the vision, How we work, the standards pages, the
+  pipelines and the recipes as each is written, so the rule is found before anyone builds.
 - [ ] **Fix: the repository after the old game's folder went.** Now: leftovers of the two-game setup. After: each top-level folder has one
   stated purpose, nothing is left over, and README.md's layout is true.
 
