@@ -163,6 +163,9 @@ polish list). Also:
 - The Discord agent's e2e test "bug reports: each new report opens one #in-game-reports thread ..." failed once in a full
   `server/death-muffin/discord-agent/test/*.test.cjs` run ("player sees 'Looked at'": the posted marker its stand-in report command writes was not
   there yet) and passed alone three times and in the next full run (found 2026-10-21): load-sensitive.
+- `server/death-muffin/team-gate.test.cjs` "a stop from the publish's timeout cancels the job and removes the folder" failed once on GitHub CI
+  (run 39633431669: the gate's folder was still there when the test looked, after a 2 s `timeout`) and passes locally every time (found
+  2026-10-21): the folder removal races the check on a slow machine.
 
 ## Stability
 
