@@ -257,6 +257,13 @@
      "carriedIn": 1,
      "jobs": 0,
      "calls": 6205,
+     "models": {
+      "claude-opus-5-5": {
+       "calls": 6205,
+       "contextTokens": 3050910193,
+       "output": 5084004
+      }
+     },
      "usage": {
       "input": 12888,
       "write5m": 0,
@@ -1290,6 +1297,13 @@
      "carriedIn": 1,
      "jobs": 2,
      "calls": 441,
+     "models": {
+      "claude-sonnet-5-5": {
+       "calls": 441,
+       "contextTokens": 30468499,
+       "output": 219767
+      }
+     },
      "usage": {
       "input": 882,
       "write5m": 0,
@@ -1583,6 +1597,13 @@
      "carriedIn": 0,
      "jobs": 0,
      "calls": 5950,
+     "models": {
+      "claude-sonnet-5-5": {
+       "calls": 5950,
+       "contextTokens": 2084381683,
+       "output": 6750726
+      }
+     },
      "usage": {
       "input": 11916,
       "write5m": 22886981,
@@ -2394,6 +2415,13 @@
      "carriedIn": 2,
      "jobs": 42,
      "calls": 2282,
+     "models": {
+      "claude-sonnet-5-5": {
+       "calls": 2282,
+       "contextTokens": 164776472,
+       "output": 1122093
+      }
+     },
      "usage": {
       "input": 4564,
       "write5m": 0,

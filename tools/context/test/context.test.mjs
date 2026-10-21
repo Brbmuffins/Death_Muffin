@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { REPO, checkRules, sections, sizes } from '../measure.mjs';
-import { parseTranscript, summarizeSession, classify, commandFamily, whatIfCap, collect, report } from '../usage.mjs';
+import { parseTranscript, summarizeSession, classify, commandFamily, whatIfCap, collect, report, formatReport, costOf } from '../usage.mjs';
 
 const PROMPT = 'server/death-muffin/discord-agent/PROMPT-godot.md';
 
@@ -202,7 +202,7 @@ test('command families name the program and its script or subcommand', () => {
 });
 
 test('compacting at a lower point resets the context to the start plus a summary', () => {
-  const s = { model: 'claude-sonnet-5-5', startContext: 10000, contexts: [10000, 60000, 110000, 120000] };
+  const s = { startContext: 10000, contexts: [10000, 60000, 110000, 120000], callModels: Array(4).fill('claude-sonnet-5-5') };
   const w = whatIfCap(s, 100000, 20000);
   assert.equal(w.compactions, 1);
   // after the reset at 110000 the context restarts at 30000 and grows by 10000: reads 10000+60000+30000+40000
@@ -210,7 +210,7 @@ test('compacting at a lower point resets the context to the start plus a summary
   assert.ok(Math.abs(w.saved - saved) < 1e-9);
   assert.equal(whatIfCap(s, 500000).compactions, 0);
   // a real compaction in the session (the context drops): the estimate follows the real, smaller context and never goes negative
-  const real = { model: 'claude-sonnet-5-5', startContext: 10000, contexts: [10000, 120000, 15000, 20000] };
+  const real = { startContext: 10000, contexts: [10000, 120000, 15000, 20000], callModels: Array(4).fill('claude-sonnet-5-5') };
   const r = whatIfCap(real, 100000, 20000);
   assert.equal(r.savedTokens, 120000 - 30000);
   assert.ok(r.savedTokens <= real.contexts.reduce((a, c) => a + c, 0));
@@ -264,7 +264,7 @@ test('the report reads every transcript whatever its file date, and counts only 
 
 test('the compaction what-if replays the whole session but counts only the window', () => {
   // contexts 10K, 120K (before the window), 125K, 130K (in it): the compaction at 120K happens before the window and carries in
-  const s = { model: 'claude-sonnet-5-5', startContext: 10000, contexts: [10000, 120000, 125000, 130000], inWindow: [false, false, true, true] };
+  const s = { startContext: 10000, contexts: [10000, 120000, 125000, 130000], callModels: Array(4).fill('claude-sonnet-5-5'), inWindow: [false, false, true, true] };
   const w = whatIfCap(s, 100000, 20000);
   assert.equal(w.compactions, 0, 'the compaction before the window is not counted in it');
   assert.equal(w.savedTokens, (125000 + 130000) - (35000 + 40000));
@@ -283,4 +283,43 @@ test('make-baseline writes tokens only, with the command that remakes it', async
   assert.match(b.about, /make-baseline\.mjs .* --window 2026-10-18\.\.2026-10-20/);
   assert.deepEqual(b.static.rules.problems, []);
   assert.ok(!JSON.stringify(b).includes('"cost"'), 'no dollars in a baseline');
+});
+
+// Calls on given models, 1,000 uncached input tokens each.
+function modelTranscript(models) {
+  const cwd = '/home/ubuntu/vps-handoffs/DeathMuffin/wt/discord-dddddd';
+  return models.map((model, i) => JSON.stringify({ type: 'assistant', cwd, timestamp: `2026-10-19T12:00:0${i}Z`, message: { id: `m${i}`, model, usage: { input_tokens: 1000, output_tokens: 0 }, content: [] } }));
+}
+
+test('each call is priced by its own model, and a mixed session keeps per-model totals', () => {
+  const s = summarizeSession(parseTranscript(modelTranscript(['claude-opus-5-5', 'claude-sonnet-5-5'])));
+  assert.ok(Math.abs(s.cost - 0.006) < 1e-12, `Opus $4 + Sonnet $2 per million: ${s.cost}`);
+  assert.equal(s.unpricedCalls, 0);
+  assert.ok(Math.abs(s.byModel['claude-opus-5-5'].cost - 0.004) < 1e-12);
+  assert.ok(Math.abs(s.byModel['claude-sonnet-5-5'].cost - 0.002) < 1e-12);
+  const g = report([s]).groups.agent;
+  assert.equal(g.models['claude-opus-5-5'].calls, 1); assert.equal(g.models['claude-sonnet-5-5'].contextTokens, 1000);
+  assert.equal(g.costComplete, true);
+});
+
+test('a model with no price is reported as unpriced, never guessed, and marks the total incomplete', () => {
+  const s = summarizeSession(parseTranscript(modelTranscript(['claude-sonnet-5-5', 'claude-mystery-9'])));
+  assert.ok(Math.abs(s.cost - 0.002) < 1e-12, 'only the priced call is in the cost');
+  assert.equal(s.unpricedCalls, 1);
+  assert.equal(s.byModel['claude-mystery-9'].cost, null);
+  const g = report([s]).groups.agent;
+  assert.equal(g.costComplete, false); assert.equal(g.unpricedCalls, 1); assert.equal(g.models['claude-mystery-9'].cost, null);
+  assert.match(formatReport(report([s])), /INCOMPLETE: 1 calls on unpriced models left out/);
+  assert.equal(costOf('claude-mystery-9', { input: 1, write5m: 0, write1h: 0, read: 0, output: 0 }), null);
+  // tokens-only keeps the per-model token split and drops every dollar
+  const t = report([s], { tokensOnly: true }).groups.agent;
+  assert.equal(t.models['claude-mystery-9'].calls, 1); assert.ok(!('cost' in t.models['claude-sonnet-5-5'])); assert.ok(!('cost' in t));
+});
+
+test('the compaction what-if prices each call at its own model and counts unpriced calls', () => {
+  const s = { startContext: 10000, contexts: [10000, 60000, 120000], callModels: ['claude-opus-5-5', 'claude-opus-5-5', 'claude-mystery-9'] };
+  const w = whatIfCap(s, 100000, 20000);
+  assert.equal(w.compactions, 1); assert.equal(w.unpricedCalls, 1);
+  assert.equal(w.saved, 0, 'the only call that saves anything is unpriced');
+  assert.equal(w.savedTokens, 120000 - 30000);
 });

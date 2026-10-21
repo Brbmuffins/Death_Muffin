@@ -74,7 +74,11 @@ Per audience it reports:
   replays the whole session, leaves out the cost of the summary and the work redone after a compaction (files read again, lost detail),
   and is an upper bound on a saving, not evidence of one; choosing a compaction point needs a measured trial.
 
-Dollars are list prices (`PRICES`); a subscription pays in plan usage, but the ratio holds. `--tokens-only` drops dollars, and paths outside a
+Dollars are list-price equivalents: each call is priced by its own recorded model and cache-duration breakdown (`PRICES`, from the
+claude-api skill's model table cached 2026-09-25; `PRICE_SOURCE` says so in the output). A model with no listed price is reported as
+unpriced, and a total that leaves such calls out says it is incomplete. Sessions on a subscription pay in plan usage, which a transcript does
+not record per call; nothing here shows how list-price dollars map onto plan usage, so compare plan usage on its own meter. Tokens by model
+are reported either way. `--tokens-only` drops dollars, and paths outside a
 checkout are reported as one bucket, so the output can be committed. Claude Code deletes old transcripts after a while, so a baseline
 worth keeping is committed as numbers. The characters-to-tokens estimates in `measure.mjs` are text sizes; only `usage.mjs` reports what
 the API counted.

@@ -17,8 +17,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// List prices in dollars per million tokens (claude-api skill table, cached 2026-09-25). Cache writes are 1.25x input for the
-// 5-minute cache and 2x for the 1-hour one. Sessions on a subscription pay in plan usage, not dollars; the dollars are a common unit.
+// List prices in dollars per million tokens: input and output from the claude-api skill's model table (cached 2026-09-25); cache reads
+// as that table states them (Opus 5.5, Sonnet 5.5, Fable 5.1), otherwise a tenth of input; cache writes 1.25x input for the 5-minute
+// cache and 2x for the 1-hour one. A model not listed here is reported as unpriced, never guessed. These are list-price equivalents:
+// sessions on a subscription pay in plan usage, which a transcript does not record per call.
+export const PRICE_SOURCE = 'list prices from the claude-api skill model table (cached 2026-09-25); cache writes 1.25x (5 min) / 2x (1 h) input';
 export const PRICES = {
   'claude-sonnet-5-5': { in: 2, out: 10, read: 0.2 },
   'claude-sonnet-5': { in: 2, out: 10, read: 0.2 },
@@ -27,10 +30,12 @@ export const PRICES = {
   'claude-fable-5-1': { in: 10, out: 50, read: 0.25 },
   'claude-haiku-4-5': { in: 1, out: 5, read: 0.1 },
 };
-const priceOf = (model) => PRICES[String(model || '').replace(/-\d{8}$/, '')] || PRICES['claude-sonnet-5-5'];
+export const priceOf = (model) => PRICES[String(model || '').replace(/-\d{8}$/, '')] || null;
 
+// One call's list-price cost from its own model and cache-duration breakdown; null when the model has no price.
 export function costOf(model, u) {
   const p = priceOf(model);
+  if (!p) return null;
   return (u.input * p.in + u.write5m * p.in * 1.25 + u.write1h * p.in * 2 + u.read * p.read + u.output * p.out) / 1e6;
 }
 
@@ -64,7 +69,7 @@ const textLen = (c) => (typeof c === 'string' ? c.length : Array.isArray(c) ? c.
 export function parseTranscript(lines) {
   const calls = new Map(); // message id -> {model, usage}: a reply split into several blocks repeats the same usage
   const tools = new Map(); // tool_use id -> {name, target}
-  const out = { sessionId: null, cwd: null, cwds: {}, start: null, end: null, model: null, prompt: null, calls: [], toolResults: [], handoffNote: false };
+  const out = { sessionId: null, cwd: null, cwds: {}, start: null, end: null, prompt: null, calls: [], toolResults: [], handoffNote: false };
   for (const line of lines) {
     if (!line.trim()) continue;
     let o; try { o = JSON.parse(line); } catch { continue; }
@@ -81,7 +86,6 @@ export function parseTranscript(lines) {
       const w1h = cc.ephemeral_1h_input_tokens ?? 0;
       const w5m = cc.ephemeral_5m_input_tokens ?? Math.max(0, (u.cache_creation_input_tokens || 0) - w1h);
       calls.set(m.id || o.uuid, { model: m.model, ts: o.timestamp, usage: { input: u.input_tokens || 0, write5m: w5m, write1h: w1h, read: u.cache_read_input_tokens || 0, output: u.output_tokens || 0 } });
-      if (m.model && m.model !== '<synthetic>') out.model = m.model;
       for (const b of m.content || []) {
         if (b.type !== 'tool_use') continue;
         const i = b.input || {};
@@ -133,8 +137,17 @@ export function summarizeSession(s, opts = {}) {
   if (!calls.length) return null;
   const toolResults = opts.cohort ? s.toolResults : s.toolResults.filter((r) => within(w, r.ts));
   const tot = emptyUsage();
-  let peak = 0;
-  for (const c of calls) { for (const k of Object.keys(tot)) tot[k] += c.usage[k]; peak = Math.max(peak, ctxOf(c.usage)); }
+  let peak = 0, cost = 0, unpricedCalls = 0;
+  const byModel = {}; // model -> {calls, usage, cost (null when unpriced)}
+  for (const c of calls) {
+    for (const k of Object.keys(tot)) tot[k] += c.usage[k];
+    peak = Math.max(peak, ctxOf(c.usage));
+    const m = c.model || '(no model)';
+    const b = (byModel[m] = byModel[m] || { calls: 0, usage: emptyUsage(), cost: 0 });
+    b.calls += 1; for (const k of Object.keys(tot)) b.usage[k] += c.usage[k];
+    const callCost = costOf(c.model, c.usage);
+    if (callCost == null) { unpricedCalls += 1; b.cost = null; } else { cost += callCost; if (b.cost != null) b.cost += callCost; }
+  }
   // The session's real start, wherever the window begins: its first call's context is what every later call re-reads as its prefix.
   const startContext = ctxOf(s.calls[0].usage);
   // Repo-relative for any Death Muffin checkout; everything else (scratch files, saved tool output) is one bucket, so a report names no private path.
@@ -148,13 +161,13 @@ export function summarizeSession(s, opts = {}) {
     if (r.name === 'Read') { const p = rel(r.target); reads[p] = reads[p] || { reads: 0, chars: 0 }; reads[p].reads += 1; reads[p].chars += r.chars; }
   }
   return {
-    ...where, sessionId: s.sessionId, start: s.calls[0].ts, startedInWindow, model: s.model,
+    ...where, sessionId: s.sessionId, start: s.calls[0].ts, startedInWindow,
     calls: calls.length, startContext, peakContext: peak,
     // How much of the window's context is the session-start context, re-read by every call in it.
     fixedShare: ctxOf(tot) ? (startContext * calls.length) / ctxOf(tot) : 0,
     // Every call of the session and which ones are in the window: whatIfCap replays the whole session and counts the window's calls.
-    contexts: s.calls.map((c) => ctxOf(c.usage)), inWindow,
-    usage: tot, cost: costOf(s.model, tot), prompt: s.prompt, handoffNote: s.handoffNote, reads, byTool,
+    contexts: s.calls.map((c) => ctxOf(c.usage)), inWindow, callModels: s.calls.map((c) => c.model),
+    usage: tot, cost, unpricedCalls, byModel, prompt: s.prompt, handoffNote: s.handoffNote, reads, byTool,
   };
 }
 
@@ -189,10 +202,9 @@ export function collect({ dir, since, until, who, cohort = false }) {
 // it did. It leaves out the cost of writing the summary and the work redone after a compaction (files read again, lost detail), so it is
 // an upper bound on a saving, not evidence of one. The whole session is replayed, so a compaction before the window carries into it.
 export function whatIfCap(s, cap, summary = 20000) {
-  const p = priceOf(s.model);
   const base = s.startContext + summary;
   const counted = s.inWindow || s.contexts.map(() => true);
-  let offset = 0, compactions = 0, read = 0, actual = 0, written = 0, prev = 0;
+  let offset = 0, compactions = 0, read = 0, actual = 0, saved = 0, unpriced = 0, prev = 0;
   s.contexts.forEach((c, i) => {
     if (c < prev) offset = 0; // the session compacted (or cleared) for real: from here it is as small as the real one
     prev = c;
@@ -200,10 +212,14 @@ export function whatIfCap(s, cap, summary = 20000) {
     let compacted = false;
     if (now > cap) { offset = c - base; now = base; compacted = true; }
     if (!counted[i]) return;
-    if (compacted) { compactions += 1; written += base; }
+    if (compacted) compactions += 1;
     read += now; actual += c;
+    // priced at this call's own model: reading less, and writing the restarted context to the 1-hour cache at a compaction
+    const p = priceOf(s.callModels?.[i]);
+    if (!p) { unpriced += 1; return; }
+    saved += ((c - now) * p.read - (compacted ? base * p.in * 2 : 0)) / 1e6;
   });
-  return { cap, compactions, savedTokens: actual - read, saved: ((actual - read) * p.read - written * p.in * 2) / 1e6 };
+  return { cap, compactions, savedTokens: actual - read, saved, unpricedCalls: unpriced };
 }
 
 const median = (xs) => { if (!xs.length) return 0; const v = [...xs].sort((a, b) => a - b); const m = v.length >> 1; return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
@@ -215,19 +231,25 @@ export function report(sessions, { top = 15, tokensOnly = false } = {}) {
   const result = { generated: new Date().toISOString(), groups: {} };
   for (const [who, list] of Object.entries(groups)) {
     const tot = emptyUsage(); const reads = {}; const byTool = {};
-    let cost = 0, calls = 0, fixed = 0; const models = {};
+    let cost = 0, calls = 0, fixed = 0, unpricedCalls = 0; const models = {};
     const carriedIn = list.filter((s) => !s.startedInWindow).length;
     for (const s of list) {
-      models[s.model] = (models[s.model] || 0) + s.cost;
+      for (const [m, b] of Object.entries(s.byModel)) {
+        const t = (models[m] = models[m] || { calls: 0, contextTokens: 0, output: 0, cost: 0 });
+        t.calls += b.calls; t.contextTokens += ctxOf(b.usage); t.output += b.usage.output;
+        t.cost = t.cost == null || b.cost == null ? null : t.cost + b.cost;
+      }
       for (const k of Object.keys(tot)) tot[k] += s.usage[k];
-      cost += s.cost; calls += s.calls; fixed += s.startContext * s.calls;
+      cost += s.cost; unpricedCalls += s.unpricedCalls; calls += s.calls; fixed += s.startContext * s.calls;
       for (const [p, r] of Object.entries(s.reads)) { reads[p] = reads[p] || { reads: 0, chars: 0, sessions: 0 }; reads[p].reads += r.reads; reads[p].chars += r.chars; reads[p].sessions += 1; }
       for (const [t, r] of Object.entries(s.byTool)) { byTool[t] = byTool[t] || { calls: 0, chars: 0 }; byTool[t].calls += r.calls; byTool[t].chars += r.chars; }
     }
     const ctx = ctxOf(tot);
     result.groups[who] = {
-      sessions: list.length, carriedIn, jobs: new Set(list.map((s) => s.job).filter(Boolean)).size, calls, cost: +cost.toFixed(2),
-      models: Object.fromEntries(Object.entries(models).map(([m, c]) => [m, +c.toFixed(2)])), usage: tot, contextTokens: ctx, cacheReadShare: ctx ? tot.read / ctx : 0,
+      sessions: list.length, carriedIn, jobs: new Set(list.map((s) => s.job).filter(Boolean)).size, calls,
+      // cost covers priced calls only: complete is false when some calls ran on a model with no price (unpricedCalls)
+      cost: +cost.toFixed(2), costComplete: unpricedCalls === 0, unpricedCalls, priceSource: PRICE_SOURCE,
+      models: Object.fromEntries(Object.entries(models).map(([m, t]) => [m, { ...t, cost: t.cost == null ? null : +t.cost.toFixed(2) }])), usage: tot, contextTokens: ctx, cacheReadShare: ctx ? tot.read / ctx : 0,
       startContext: { median: median(list.map((s) => s.startContext)), min: Math.min(...list.map((s) => s.startContext)), max: Math.max(...list.map((s) => s.startContext)) },
       peakContext: { median: median(list.map((s) => s.peakContext)), max: Math.max(...list.map((s) => s.peakContext)) },
       callsPerSession: { median: median(list.map((s) => s.calls)), max: Math.max(...list.map((s) => s.calls)) },
@@ -236,14 +258,15 @@ export function report(sessions, { top = 15, tokensOnly = false } = {}) {
       handoffs: list.filter((s) => s.handoffNote).length,
       topReads: Object.entries(reads).sort((a, b) => b[1].chars - a[1].chars).slice(0, top).map(([p, r]) => ({ path: p, ...r })),
       byTool: Object.fromEntries(Object.entries(byTool).sort((a, b) => b[1].chars - a[1].chars)),
-      whatIf: [150000, 250000, 400000].map((cap) => { const w = list.map((s) => whatIfCap(s, cap)); return { cap, compactions: w.reduce((a, x) => a + x.compactions, 0), savedTokens: w.reduce((a, x) => a + x.savedTokens, 0), saved: +w.reduce((a, x) => a + x.saved, 0).toFixed(2) }; }),
+      whatIf: [150000, 250000, 400000].map((cap) => { const w = list.map((s) => whatIfCap(s, cap)); return { cap, compactions: w.reduce((a, x) => a + x.compactions, 0), savedTokens: w.reduce((a, x) => a + x.savedTokens, 0), saved: +w.reduce((a, x) => a + x.saved, 0).toFixed(2), unpricedCalls: w.reduce((a, x) => a + x.unpricedCalls, 0) }; }),
       costliest: [...list].sort((a, b) => b.cost - a.cost).slice(0, 5).map((s) => ({ job: s.job, round: s.round, start: s.start, calls: s.calls, peak: s.peakContext, cost: +s.cost.toFixed(2) })),
     };
   }
   if (tokensOnly) {
     for (const g of Object.values(result.groups)) {
-      delete g.cost; delete g.models;
-      for (const w of g.whatIf) delete w.saved;
+      delete g.cost; delete g.costComplete; delete g.unpricedCalls; delete g.priceSource;
+      for (const t of Object.values(g.models)) delete t.cost;
+      for (const w of g.whatIf) { delete w.saved; delete w.unpricedCalls; }
       for (const c of g.costliest) delete c.cost;
       g.largest = g.costliest; delete g.costliest;
     }
@@ -257,8 +280,9 @@ const pct = (x) => (x * 100).toFixed(0) + '%';
 export function formatReport(r) {
   const lines = [];
   for (const [who, g] of Object.entries(r.groups)) {
-    lines.push(`== ${who}: ${g.sessions} sessions${g.carriedIn ? ` (${g.carriedIn} started before the window)` : ''}${g.jobs ? `, ${g.jobs} jobs` : ''}, ${g.calls} calls${g.cost != null ? `, about $${g.cost} at list price` : ''}`);
-    if (g.models) lines.push(`   by model: ${Object.entries(g.models).map(([m, c]) => `${m} $${c}`).join(', ')}`);
+    const dollars = g.cost == null ? '' : `, about $${g.cost} at list price${g.costComplete ? '' : ` (INCOMPLETE: ${g.unpricedCalls} calls on unpriced models left out)`}`;
+    lines.push(`== ${who}: ${g.sessions} sessions${g.carriedIn ? ` (${g.carriedIn} started before the window)` : ''}${g.jobs ? `, ${g.jobs} jobs` : ''}, ${g.calls} calls${dollars}`);
+    lines.push(`   by model: ${Object.entries(g.models).map(([m, t]) => `${m} ${t.calls} calls, ${k(t.contextTokens)} read${t.cost === undefined ? '' : t.cost == null ? ', unpriced' : `, $${t.cost}`}`).join('; ')}`);
     lines.push(`   context read ${k(g.contextTokens)} tokens (cache reads ${pct(g.cacheReadShare)}), written ${k(g.usage.output)} output`);
     lines.push(`   session-start context ${k(g.startContext.median)} tokens (median; ${k(g.startContext.min)}-${k(g.startContext.max)}); re-read by every call, it is ${pct(g.fixedShare)} of all context read`);
     lines.push(`   context peaks at ${k(g.peakContext.median)} (median), ${k(g.peakContext.max)} (max); ${g.callsPerSession.median} calls a session (median), ${g.callsPerSession.max} max; ${g.handoffs} handoff notes`);
@@ -291,6 +315,7 @@ function main(argv) {
   const r = report(collect(opt), opt);
   r.window = { since: opt.since || null, until: opt.until || null, ends: 'UTC dates, both included', counted: opt.cohort ? 'whole sessions whose first call is in the window' : 'calls and tool results by their own timestamps' };
   if (opt.json) fs.writeFileSync(opt.json, JSON.stringify(r, null, 2) + '\n');
+  if (Object.keys(r.groups).length && !opt.tokensOnly) console.log(`(dollars: ${PRICE_SOURCE}; list-price equivalents, not plan usage)`);
   console.log(Object.keys(r.groups).length ? formatReport(r) : 'no Death Muffin sessions in that window');
 }
 
