@@ -212,12 +212,10 @@
       "when": "generating assets",
       "summary": "Generate assets only when nothing usable exists; spend limits come from the owner.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Generate only when nothing usable exists, and record it (see ASSET_PIPELINE.md); spend limits come from the owner."]}
+        {"file": "CLAUDE.md", "clauses": ["Generate only when nothing usable exists, and record it (see ASSET_PIPELINE.md); spend limits come from the owner."]},
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Generate only when nothing usable exists", "spend limits come from the owner, and the runner holds each person's budget."]}
       ],
-      "enforced": [],
-      "gaps": [
-        {"audience": "agent", "note": "covered by agent-paid-generation: the runner holds the budgets"}
-      ]
+      "enforced": []
     },
     {
       "id": "agent-web-hosts",
@@ -319,12 +317,10 @@
       "when": "changing gameplay code or models",
       "summary": "Frame floors for weaker PCs, combat-core and HUD budgets, triangle and texture caps; Godot stays 4.7.2.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Performance budgets**"]}
+        {"file": "CLAUDE.md", "clauses": ["**Performance budgets**"]},
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Performance budgets (DECISIONS B39): nothing ships slower than what it replaces.", "In the headless Full Party fight the combat core takes at most 4 ms a tick"]}
       ],
-      "enforced": ["tools/assets/check-models.mjs"],
-      "gaps": [
-        {"audience": "agent", "note": "missing from the agent's prompt (model caps are enforced by the model check)"}
-      ]
+      "enforced": ["tools/assets/check-models.mjs"]
     },
     {
       "id": "polish-over-new-content",
@@ -347,12 +343,10 @@
       "when": "designing features",
       "summary": "The four necromancer disciplines and the Reaper are the baseline; additions must be easy to find on screen; immersive, not overwhelming.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Necromancer focus.**"]}
+        {"file": "CLAUDE.md", "clauses": ["**Necromancer focus.**"]},
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Necromancer focus: the four necromancer disciplines and the Reaper are the game", "Anything you add must be easy to find and understand on screen"]}
       ],
-      "enforced": [],
-      "gaps": [
-        {"audience": "agent", "note": "missing from the agent's prompt"}
-      ]
+      "enforced": []
     },
     {
       "id": "loot-never-vacuums",
@@ -362,12 +356,10 @@
       "when": "changing loot",
       "summary": "Items never fly to the player; click to pick up or it expires; only gold, shards and missing runes go straight to the player.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Loot never vacuums.**"]}
+        {"file": "CLAUDE.md", "clauses": ["**Loot never vacuums.**"]},
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Loot never vacuums: items never fly to the player and walking over them takes nothing", "No magnets, no other auto-pickup."]}
       ],
-      "enforced": [],
-      "gaps": [
-        {"audience": "agent", "note": "missing from the agent's prompt"}
-      ]
+      "enforced": []
     },
     {
       "id": "assets-reuse-first",
@@ -378,7 +370,8 @@
       "summary": "Reuse existing audio, models, animations and effects; generate only when nothing usable exists, and record it.",
       "homes": [
         {"file": "CLAUDE.md", "clauses": ["**Assets: reuse first.**"]},
-        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["never for anything an existing model can do"]}
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Reuse existing audio, models, animations, VFX and pictures"]},
+        {"file": "server/death-muffin/discord-agent/guides/models.md", "clauses": ["never for anything an existing model can do"]}
       ],
       "enforced": []
     },
@@ -456,7 +449,7 @@
       "summary": "class_name Dm*, one source of truth in client/data and client/rules, no speculative abstraction, commit .import and .uid files.",
       "homes": [
         {"file": "CLAUDE.md", "clauses": ["Godot GDScript: `class_name Dm*`"]},
-        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["commit those too"]}
+        {"file": "server/death-muffin/discord-agent/guides/models.md", "clauses": ["commit those too"]}
       ],
       "enforced": []
     },
@@ -689,6 +682,18 @@
       "enforced": []
     },
     {
+      "id": "agent-guides",
+      "kind": "protocol",
+      "protected": false,
+      "audience": ["agent"],
+      "when": "using a media workflow",
+      "summary": "The how-to for screenshots, clips, pictures, models and sound is in .dm-guides/ (the runner's copies, every turn): read the guide before using it, never edit or commit it.",
+      "homes": [
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Before you use one of these workflows, Read its guide in full", "never edit, commit or `agit add` anything in `.dm-guides/`"]}
+      ],
+      "enforced": ["server/death-muffin/discord-agent/runner/lib/guides.cjs", "server/death-muffin/discord-agent/runner/lib/config.cjs"]
+    },
+    {
       "id": "playbook-screenshots",
       "kind": "playbook",
       "protected": false,
@@ -696,7 +701,8 @@
       "when": "a change players can see",
       "summary": "Shot plans (.dm-shot.json): a team PC renders after the proposal when online; otherwise the server renders only on request.",
       "homes": [
-        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["## Screenshots"]}
+        {"file": "server/death-muffin/discord-agent/guides/screenshots.md", "clauses": ["# Screenshots"]},
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["gets a shot plan, which a team PC renders after your proposal", "no screenshots by default, not even for visible changes"]}
       ],
       "enforced": ["server/death-muffin/discord-agent/shot-godot.sh"]
     },
@@ -708,7 +714,8 @@
       "when": "a question about motion, or a new model (team PC online)",
       "summary": "Clip plans (.dm-clip.json) with variants people pick from; model turntables; scripted setup and steps.",
       "homes": [
-        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["## Clips and choices"]}
+        {"file": "server/death-muffin/discord-agent/guides/clips.md", "clauses": ["# Clips and choices"]},
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["is answered with short videos people choose from (`clips.md`)", "No videos: for a motion question say which value you would pick and ask in words."]}
       ],
       "enforced": ["server/death-muffin/discord-agent/runner/lib/clips.cjs"]
     },
@@ -720,7 +727,8 @@
       "when": "a new icon, portrait, loading art or texture",
       "summary": "Concepts by kind, then build-picture.sh into the game, then a shot plan.",
       "homes": [
-        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["## Making pictures"]}
+        {"file": "server/death-muffin/discord-agent/guides/pictures.md", "clauses": ["# Making pictures"]},
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["`.dm-guides/pictures.md`: a new icon, portrait, loading art or floor/wall texture"]}
       ],
       "enforced": ["tools/pictures/kinds.json"]
     },
@@ -732,7 +740,8 @@
       "when": "a new model or armor set",
       "summary": "Concepts, Tripo after an approver's check, build and render sheets, in-game shots; a whole armor set end to end.",
       "homes": [
-        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["## Making new models and armor sets"]}
+        {"file": "server/death-muffin/discord-agent/guides/models.md", "clauses": ["# Making new models and armor sets"]},
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["`.dm-guides/models.md`: a new model or armor set", "New models and gear always get their render sheet and in-game pictures"]}
       ],
       "enforced": ["server/death-muffin/discord-agent/runner/lib/art.cjs", "tools/assets/check-models.mjs"]
     },
@@ -744,7 +753,8 @@
       "when": "a new sound or music track",
       "summary": "ElevenLabs request files; the runner generates for allowed people; build-sound.sh into the game.",
       "homes": [
-        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["## Making a new sound effect"]}
+        {"file": "server/death-muffin/discord-agent/guides/sound.md", "clauses": ["# Making a new sound effect"]},
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["`.dm-guides/sound.md`: a new sound effect or music track"]}
       ],
       "enforced": ["server/death-muffin/discord-agent/runner/lib/sound.cjs"]
     }

@@ -77,9 +77,8 @@ test('clips: a model preview is a turntable clip on a hero that wears items; are
   ok(mutate((j) => { j.plan.clips[0].camera = 'turntable'; delete j.plan.clips[0].cast; }));
 });
 
-test('clips: every example in the agent prompt is accepted by the runner (the choice, the model preview, the scripted clip)', () => {
-  const prompt = fs.readFileSync(path.join(__dirname, '..', 'PROMPT-godot.md'), 'utf8');
-  const section = prompt.slice(prompt.indexOf('## Clips and choices'), prompt.indexOf('## Making new models'));
+test('clips: every example in the clips guide is accepted by the runner (the choice, the model preview, the scripted clip)', () => {
+  const section = fs.readFileSync(path.join(__dirname, '..', 'guides', 'clips.md'), 'utf8');
   const blocks = [...section.matchAll(/```json\n([\s\S]*?)\n```/g)].map((m) => m[1]);
   const words = fs.readFileSync(path.resolve(__dirname, '../../../../client/main/qa_clip_steps.json'), 'utf8');
   const parsed = blocks.map((b) => {   // each in a worktree with the game's word list, as a job's branch has it

@@ -14,12 +14,16 @@ node --test tools/context/test/*.test.mjs        # also in npm run test:server, 
 
 ## The audiences
 
-`surfaces.json` names what each audience always carries and what it is told to read first:
+`surfaces.json` names what each audience always carries, the guides it reads when a task needs one, and what it is told to read first:
 
 | Audience | Always loaded | How |
 |---|---|---|
 | session | `CLAUDE.md` | Claude Code loads it for a session started in the repository, and for one started elsewhere once it works in a checkout |
-| agent | `server/death-muffin/discord-agent/PROMPT-godot.md` | the runner appends it to every call (`runner/lib/agent.cjs`); the agent runs `--restricted`, which does not load `CLAUDE.md` |
+| agent | `server/death-muffin/discord-agent/PROMPT-godot.md` | the runner appends its round's snapshot to every call (`runner/lib/agent.cjs`, `runner/lib/guides.cjs`); the agent runs `--restricted`, which does not load `CLAUDE.md` |
+
+The agent's guides (`server/death-muffin/discord-agent/guides/*.md`: screenshots, clips, pictures, models, sound) are not always loaded: the
+runner copies them into the job's worktree (`.dm-guides/`) and the core prompt tells the agent to Read the one a workflow needs
+(server/death-muffin/discord-agent/README.md "Prompt and guides"). A guide is therefore never the home that keeps a protected rule.
 
 How sure that is (`usage.mjs` reports it per audience as "the repo's CLAUDE.md was injected in N of M sessions", from the `instructions`
 and `nested_memory` records Claude Code writes when it injects an instruction file; a file merely read does not count):
@@ -56,7 +60,11 @@ the baseline inventory on 2026-10-20). `node tools/context/measure.mjs --print-l
 - a protected rule disappears, stops being protected, loses an audience or changes its clauses, or a new protected rule or a new gap on
   one appears, while `protected.json` still says otherwise;
 - an enforcing file named by a rule does not exist;
-- a `## ` section of an always-loaded file holds no inventoried rule (a new section: add its rules).
+- a `## ` section of an always-loaded file holds no inventoried rule (a new section: add its rules);
+- a guide in `surfaces.json` does not exist, is also listed as always loaded, or holds no inventoried rule.
+
+The context test also keeps the owner principles the agent's prompt gained in Stage 2 (performance budgets, necromancer focus, loot never
+vacuums) and its spend-limit line in that prompt: removing one, or giving it an agent gap again, fails CI.
 
 What this proves and what it does not: the check is structural. It shows that the listed words are still in the always-loaded text and
 that any change to a protected rule or its exceptions comes with a change to `protected.json`, which shows in the diff. It cannot tell
@@ -94,6 +102,15 @@ are reported either way. `--tokens-only` drops dollars, and paths outside a
 checkout are reported as one bucket, so the output can be committed. Claude Code deletes old transcripts after a while, so a baseline
 worth keeping is committed as numbers. The characters-to-tokens estimates in `measure.mjs` are text sizes; only `usage.mjs` reports what
 the API counted.
+
+## Stage 2 2026-10-21
+
+`stage2-2026-10-21.json`: the agent's always-loaded prompt went from about 18,700 to about 9,100 estimated tokens (51% less) when the media
+how-tos became guides (about 11,300 tokens together, read only by the turns that use one). The core is above the 7–8K aimed for because it
+gained the three owner principles and the paid-generation limits (about 1,000 tokens) and keeps when pictures and videos apply, since that
+decides what an ordinary visible change does. Agent gaps went from 7 to 3 (`never-patch-installed`, `shared-vps-one-render`: held by code;
+`read-first`: the agent still does not read those files). Text sizes, not API usage: what a session actually reads shows in `usage.mjs` over a
+window after the change.
 
 ## Baseline 2026-10-20
 

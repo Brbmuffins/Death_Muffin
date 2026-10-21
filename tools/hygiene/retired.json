@@ -508,7 +508,8 @@
   "staleGlobs": {
     ".claude/**": "on purpose: keeps a future .claude folder protected; the repo has none today",
     "client/backend/**": "on purpose: keeps a future client/backend folder sensitive (the offline backend lives in client/net today, also sensitive)",
-    "client/tests/realtime/**": "on purpose: keeps a future realtime test folder sensitive, like the relay and backend tests"
+    "client/tests/realtime/**": "on purpose: keeps a future realtime test folder sensitive, like the relay and backend tests",
+    ".dm-guides/**": "on purpose: the runner's untracked copy of the agent's guides in each job worktree (runner/lib/guides.cjs) may never be committed"
   },
   "freeRunners": [
     "ubuntu-latest",

@@ -8,8 +8,11 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   let text = 'The answer is in client/game/a.gd.';
   // step budget: LONG-TASK runs out of steps (error_max_turns) unless it is continuing from a handoff; LONG-FOREVER always does; the runner's
   // note request writes .dm-handoff.md (NO-NOTE in the worktree: writes none). Every call logs its --max-turns and whether it resumed.
-  try { const ex = require('path').join(String(execFileSync('git', ['rev-parse', '--git-common-dir'])).trim(), 'info', 'exclude'); if (!fs.readFileSync(ex, 'utf8').includes('.fake-calls')) fs.appendFileSync(ex, '\n.fake-calls\n'); } catch { /* not a repo */ }
+  try { const ex = require('path').join(String(execFileSync('git', ['rev-parse', '--git-common-dir'])).trim(), 'info', 'exclude'); if (!fs.readFileSync(ex, 'utf8').includes('.fake-calls')) fs.appendFileSync(ex, '\n.fake-calls\n.fake-sp\n'); } catch { /* not a repo */ }
   const mtI = process.argv.indexOf('--max-turns'); fs.appendFileSync('.fake-calls', `${mtI >= 0 ? process.argv[mtI + 1] : '-'} ${process.argv.includes('--resume') ? 'resume' : 'fresh'} ${/step limit\. The work continues/.test(p) ? 'note' : /<handoff>/.test(p) ? 'continue' : /automatic review failed/.test(p) ? (/check-godot\.sh --rerun <suite>/.test(p) ? 'fixup-rerun' : 'fixup') : 'turn'}\n`);
+  // what each call was given (guides.test.cjs): the system prompt's hash and size, the guides in the worktree then, and the prompt's start
+  { const i = process.argv.indexOf('--append-system-prompt'); const sp = i >= 0 ? process.argv[i + 1] : ''; let guides = []; try { guides = fs.readdirSync('.dm-guides').sort(); } catch { /* none */ }
+    fs.appendFileSync('.fake-sp', JSON.stringify({ sp: require('crypto').createHash('sha256').update(sp).digest('hex'), len: sp.length, guides, head: p.slice(0, 600) }) + '\n'); }
   const out = (o) => process.stdout.write(JSON.stringify({ type: 'result', session_id: 'sess-' + Math.random().toString(16).slice(2, 8), total_cost_usd: 0, ...o }));
   if (/step limit\. The work continues/.test(p)) { if (!fs.existsSync('NO-NOTE')) fs.writeFileSync('.dm-handoff.md', 'HANDOFF: speed half done; next set speed=9 in client/game/a.gd\n'); return out({ subtype: 'success', is_error: false, result: 'Note written.' }); }
   if (/LONG-FOREVER/.test(p) || (/LONG-TASK/.test(p) && !/<handoff>|left no note/.test(p))) return out({ subtype: 'error_max_turns', is_error: true, errors: ['Reached maximum number of turns (40)'] });
@@ -112,6 +115,9 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   else if (/GD-NET/.test(p)) { edit('client/net/dm_api.gd', 'url=1', 'url=2', 'Change the api url'); ready('Api url', ['url 2']); text = 'Done.'; }
   else if (/GD-UI/.test(p)) { edit('client/ui/menu.gd', 'title=1', 'title=2', 'Rename the menu title'); ready('Menu title', ['title 2']); text = 'Done.'; }
   else if (/GD-DOC/.test(p)) { edit('client/README.md', 'client readme', 'client readme v2', 'Clarify the game readme'); ready('Readme', ['readme']); text = 'Done.'; }
+  // GD-GUIDE-COMMIT commits the runner's guide copy (a forbidden path); GD-GUIDE-EDIT only edits it
+  else if (/GD-GUIDE-COMMIT/.test(p)) { fs.appendFileSync('.dm-guides/clips.md', 'mine now\n'); git('add', '-f', '--', '.dm-guides/clips.md'); git('commit', '-q', '-m', 'Keep the guide'); ready('Guide', ['guide']); text = 'Done.'; }
+  else if (/GD-GUIDE-EDIT/.test(p)) { fs.appendFileSync('.dm-guides/clips.md', 'mine now\n'); text = 'Edited the guide.'; }
   else if (/GD-PRESET/.test(p)) { edit('client/export_presets.cfg', '[preset.0]', '[preset.0]\nx=1', 'Tweak the export'); ready('Export', ['x']); text = 'Done.'; }
   else if (/secret scan flagged/.test(p)) { git('rm', '-q', '-f', 'client/game/key.gd'); git('commit', '-q', '-m', 'Remove the key file'); text = 'Removed.'; }
   else if (/MAKE-CSS2/.test(p)) { edit('PATCH_NOTES.json', 'color:blue', 'color:green', 'Make the HUD accent green again'); ready('Green accent', ['green']); text = 'Done.'; }

@@ -5,6 +5,8 @@
 // It drives the INSTALLED runner and the LIVE Discord adapter (/opt/muffin/discord/dm-agent.js) through a whole proposal on the real repo, with a
 // fake Discord (nothing is posted anywhere) and a stand-in for `claude` that makes one harmless commit (no AI, no cost):
 //   installed copies = main · request -> thread -> worktree off main -> the change -> gates -> branch pushed -> proposal (a draft: ✅ 🧪 ❌)
+//   · the call carried the round's snapshot of the core prompt and every guide was in its worktree (.dm-guides/; the stand-in cannot show
+//     that a real model opens the right guide)
 //   · the agent's own check in its sandbox (check-godot.sh --rerun code_load: the shared setup, prep.sh, the sandbox, hygiene, one suite)
 //   · 🧪 -> GitHub CI on the branch (every suite) -> "Tests passed" · !discard -> branch, worktree and preview gone. It never ships.
 // One line per step ("CANARY <step> ok <s>s" / "CANARY <step> FAILED ..."), then "CANARY PASSED" (exit 0) or "CANARY FAILED: <step>" (exit 1).
@@ -13,6 +15,8 @@
 const fs = require('fs'), os = require('os'), path = require('path'), { EventEmitter } = require('events'), { execFileSync, spawnSync } = require('child_process');
 const { createRunner } = require('./core.cjs');
 const { loadConfig } = require('./lib/config.cjs');
+const GU = require('./lib/guides.cjs');
+const sha = (s) => require('crypto').createHash('sha256').update(s).digest('hex');
 
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
@@ -32,7 +36,8 @@ function installedPairs(repo) {
   const SRC = 'server/death-muffin/discord-agent';
   const runner = git(repo, 'ls-tree', '-r', '--name-only', REV, '--', `${SRC}/runner`).split('\n').filter(Boolean).map((f) => [f.slice(SRC.length + 1), f]);
   const scripts = ['ship.sh', 'rollback.sh', 'sandbox-lib.sh', 'check-godot.sh', 'regen-godot.sh', 'shot-godot.sh', 'preview-godot.sh', 'PROMPT-godot.md', 'agit'].map((f) => [f, `${SRC}/${f}`]);
-  return [...runner, ...scripts, ['prep.sh', 'tools/check/prep.sh'], ['ci.sh', 'tools/check/ci.sh']];
+  const guides = git(repo, 'ls-tree', '-r', '--name-only', REV, '--', `${SRC}/guides`).split('\n').filter(Boolean).map((f) => [f.slice(SRC.length + 1), f]);
+  return [...runner, ...scripts, ...guides, ['prep.sh', 'tools/check/prep.sh'], ['ci.sh', 'tools/check/ci.sh']];
 }
 
 // ---- a fake Discord for the live adapter (the shape discord.js gives it) ----
@@ -66,7 +71,9 @@ async function main() {
     try { return !fs.readFileSync(path.join(TOOLS, inst)).equals(want); } catch { return true; }
   }).map(([inst]) => inst);
   if (stale.length) fail('installed', `differs from ${REV}: ${stale.slice(0, 8).join(', ')}${stale.length > 8 ? ` and ${stale.length - 8} more` : ''}. Reinstall: bash server/death-muffin/discord-agent/install-runner.sh ${REV}`);
-  ok('installed', `runner and scripts match ${REV} ${git(repo, 'rev-parse', '--short', REV)}`);
+  const extra = (() => { try { return fs.readdirSync(path.join(TOOLS, 'guides')).filter((f) => !installedPairs(repo).some(([inst]) => inst === `guides/${f}`)); } catch { return []; } })();
+  if (extra.length) fail('installed', `guides/ holds files ${REV} does not have: ${extra.join(', ')}. Reinstall: bash server/death-muffin/discord-agent/install-runner.sh ${REV}`);
+  ok('installed', `runner, scripts and guides match ${REV} ${git(repo, 'rev-parse', '--short', REV)}`);
   // 2. the live agent is idle (a practice run beside a real job would share the job slots' CPU, and never beside a ship)
   // (by its processes: jobs.json is only written when a job changes, so after a restart it can still say "running" for a job that is idle)
   if (!force) {
@@ -88,10 +95,14 @@ async function main() {
   fs.writeFileSync(fake, `#!/usr/bin/env node
 'use strict';
 // canary stand-in for claude -p: the practice request gets one harmless commit (a comment in a test file); anything else changes nothing
-const fs = require('fs'), { execFileSync } = require('child_process');
+const fs = require('fs'), path = require('path'), crypto = require('crypto'), { execFileSync } = require('child_process');
 let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   let text = 'Nothing to do.';
   if (/CANARY-PRACTICE/.test(p)) {
+    // what this call was given: its system prompt and the guides in its worktree (the canary's "guides" step compares them with the snapshot)
+    const h = (s) => crypto.createHash('sha256').update(s).digest('hex'); const i = process.argv.indexOf('--append-system-prompt'); const guides = {};
+    try { for (const f of fs.readdirSync('.dm-guides')) guides[f] = h(fs.readFileSync(path.join('.dm-guides', f), 'utf8')); } catch { /* none */ }
+    fs.writeFileSync(${JSON.stringify(path.join(T, 'canary-call.json'))}, JSON.stringify({ sp: i >= 0 ? h(process.argv[i + 1]) : null, len: i >= 0 ? process.argv[i + 1].length : 0, guides }));
     const f = 'client/tests/code_load.gd';
     fs.appendFileSync(f, '# practice run ${stamp} of the Discord agent (runner/canary.cjs); never shipped\\n');
     execFileSync('git', ['-c', 'core.hooksPath=/dev/null', 'add', '--', f]);
@@ -144,6 +155,16 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
     const pushed = git(repo, 'ls-remote', 'origin', `refs/heads/${job.branch}`).split(/\s/)[0];
     if (pushed !== job.proposal.head) fail('proposal', `the branch on GitHub is ${pushed || 'missing'}, not the proposal's ${job.proposal.head}`);
     ok('proposal', `${job.branch} · tier ${job.proposal.tier} · ${tests.split('\n')[0]}`);
+    // 3b. the guides: the call carried the round's snapshot of the core, and every guide was in the worktree, as the snapshot has it
+    let call; try { call = JSON.parse(fs.readFileSync(path.join(T, 'canary-call.json'), 'utf8')); } catch { fail('guides', 'the stand-in for claude recorded nothing'); }
+    const snap = GU.readSnapshot(cfg, job);
+    if (!snap || snap.broken) fail('guides', `no usable snapshot of the prompt and guides (${snap ? snap.broken : 'none'})`);
+    if (call.sp !== sha(snap.texts['core.md'])) fail('guides', 'the call did not carry the round\'s snapshot of the core prompt');
+    const guideFiles = snap.meta.guides.map((n) => `${n}.md`).sort();
+    if (JSON.stringify(Object.keys(call.guides).sort()) !== JSON.stringify(guideFiles)) fail('guides', `the worktree had ${Object.keys(call.guides).join(', ') || 'no guides'}, expected ${guideFiles.join(', ')}`);
+    const off = guideFiles.filter((f) => call.guides[f] !== sha(snap.texts[f]));
+    if (off.length) fail('guides', `worktree copies differ from the snapshot: ${off.join(', ')}`);
+    ok('guides', `${guideFiles.length} guides in the worktree · core ~${Math.round(call.len / 2.7)} tokens`);
     // 4. the agent's own check in its sandbox, as the agent runs it (the shared setup from the cache, hygiene, one suite)
     const r = spawnSync('bash', [path.join(TOOLS, 'check-godot.sh'), '--rerun', 'code_load'], { cwd: job.worktree, encoding: 'utf8', env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeout: 40 * 60000 });
     const sum = ((r.stdout || '').match(/^GODOT TESTS: .*$/gm) || []).pop() || '';

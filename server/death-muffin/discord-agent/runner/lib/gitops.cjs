@@ -39,7 +39,7 @@ async function createWorktree(cfg, job) {
   // keep the agent's result file and the symlinks out of `git status`
   const common = await trim(git(wt, ['rev-parse', '--path-format=absolute', '--git-common-dir']));
   const ex = path.join(common, 'info', 'exclude');
-  try { fs.mkdirSync(path.dirname(ex), { recursive: true }); const cur = fs.existsSync(ex) ? fs.readFileSync(ex, 'utf8') : ''; const add = ['.dm-result.json', '.dm-shots/', '.dm-shot.json', '.dm-clip.json', '.dm-preview/', '.dm-inbox/', '.dm-art-request.json', '.dm-sound-request.json', '.dm-status', '.dm-check-progress', '.dm-title', '.dm-handoff.md'].filter((p) => !cur.split('\n').includes(p)); if (add.length) fs.appendFileSync(ex, '\n' + add.join('\n') + '\n'); } catch { /* best effort */ }
+  try { fs.mkdirSync(path.dirname(ex), { recursive: true }); const cur = fs.existsSync(ex) ? fs.readFileSync(ex, 'utf8') : ''; const add = ['.dm-result.json', '.dm-shots/', '.dm-shot.json', '.dm-clip.json', '.dm-preview/', '.dm-inbox/', '.dm-art-request.json', '.dm-sound-request.json', '.dm-status', '.dm-check-progress', '.dm-title', '.dm-handoff.md', '.dm-guides/'].filter((p) => !cur.split('\n').includes(p)); if (add.length) fs.appendFileSync(ex, '\n' + add.join('\n') + '\n'); } catch { /* best effort */ }
   const base = await trim(git(wt, ['rev-parse', 'HEAD']));
   return { worktree: wt, base };
 }
@@ -49,6 +49,12 @@ async function removeJobArtifacts(cfg, job, { remote = true } = {}) {
   if (remote) await git(cfg.repo, ['push', '-q', 'origin', '--delete', job.branch], { allowFail: true });
   await git(cfg.repo, ['worktree', 'prune'], { allowFail: true });
   removePreview(cfg, job);
+  removeGuideSnapshot(cfg, job);
+}
+// The job's snapshot of the core prompt and guides (lib/guides.cjs, <stateDir>/guides/<job>) goes with its worktree; a new round makes its own.
+function removeGuideSnapshot(cfg, job) {
+  if (!cfg.stateDir || !/^[\w-]{1,64}$/.test(String(job.id))) return;
+  try { fs.rmSync(path.join(cfg.stateDir, 'guides', String(job.id)), { recursive: true, force: true }); } catch { /* best effort */ }
 }
 // The published playable preview of a job (<previewRoot>/<jobid>); only ever a 6-hex id directly under previewRoot.
 function removePreview(cfg, job) {

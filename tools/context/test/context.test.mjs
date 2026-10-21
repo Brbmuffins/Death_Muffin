@@ -94,8 +94,8 @@ test('an exception needs a note, an audience of the rule, and for a protected ru
   editRules(empty, (rules) => { rules.find((r) => r.id === 'shared-vps-one-render').gaps[0].note = '  '; });
   reported(problemsOf(empty), 'shared-vps-one-render: the gap for agent needs a note');
   const stranger = scratchRepo();
-  editRules(stranger, (rules) => { rules.find((r) => r.id === 'necromancer-focus').gaps.push({ audience: 'everyone', note: 'nobody by that name exists' }); });
-  reported(problemsOf(stranger), 'necromancer-focus: a gap names "everyone", which is not one of the rule\'s audiences');
+  editRules(stranger, (rules) => { rules.find((r) => r.id === 'read-first').gaps.push({ audience: 'everyone', note: 'nobody by that name exists' }); });
+  reported(problemsOf(stranger), 'read-first: a gap names "everyone", which is not one of the rule\'s audiences');
 });
 
 test('the inventory\'s shape is checked: kinds, audiences, fields, clauses', () => {
@@ -123,6 +123,44 @@ test('moving a protected rule out of the always-loaded text is reported even whe
   fs.writeFileSync(path.join(dir, 'guides/trust.md'), clauses[0] + '\n');
   editRules(dir, (rules) => { rules.find((x) => x.id === 'untrusted-requests').homes = [{ file: 'guides/trust.md', clauses }]; });
   reported(problemsOf(dir), 'untrusted-requests: protected rule has no always-loaded home for agent');
+});
+
+// Stage 2 (2026-10-21) gave the agent's always-loaded prompt the owner principles it lacked and its own spend-limit line; they may not drift
+// back into gaps. Each keeps a home in the prompt, no agent gap, and deleting its words from the prompt fails the check.
+const AGENT_CORE_RULES = {
+  'performance-budgets': 'Performance budgets (DECISIONS B39): nothing ships slower than what it replaces.',
+  'necromancer-focus': 'Necromancer focus: the four necromancer disciplines and the Reaper are the game',
+  'loot-never-vacuums': 'Loot never vacuums: items never fly to the player and walking over them takes nothing',
+  'spend-limits-from-owner': "spend limits come from the owner, and the runner holds each person's budget.",
+};
+test('the owner principles and spend limits stay in the agent\'s always-loaded prompt, with no agent gap', () => {
+  const { rules } = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/context/rules.json'), 'utf8'));
+  for (const [id, clause] of Object.entries(AGENT_CORE_RULES)) {
+    const r = rules.find((x) => x.id === id);
+    assert.ok(r.audience.includes('agent'), `${id} is for the agent`);
+    assert.ok(!(r.gaps || []).some((g) => g.audience === 'agent'), `${id} has no agent gap`);
+    assert.ok(r.homes.some((h) => h.file === PROMPT && h.clauses.includes(clause)), `${id} has its home in ${PROMPT}`);
+    const dir = scratchRepo();
+    const words = new RegExp(clause.split(' ').map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+'));   // the clause may wrap
+    editText(dir, PROMPT, (s) => { assert.match(s, words); return s.replace(words, 'something else entirely here'); });
+    reported(problemsOf(dir), `${id}: clause not found in ${PROMPT}`);
+  }
+});
+
+test('a guide must exist, must not also be always loaded, and must hold an inventoried rule; a guide is no home for a protected rule', () => {
+  const guide = 'server/death-muffin/discord-agent/guides/sound.md';
+  let dir = scratchRepo(); fs.rmSync(path.join(dir, guide));
+  reported(problemsOf(dir), `surfaces.json: guide ${guide} (agent) does not exist`);
+  dir = scratchRepo(); editRules(dir, (rules) => { rules.find((x) => x.id === 'playbook-sound').homes = rules.find((x) => x.id === 'playbook-sound').homes.filter((h) => h.file !== guide); });
+  reported(problemsOf(dir), `${guide}: guide holds no inventoried rule`);
+  dir = scratchRepo(); editText(dir, 'tools/context/surfaces.json', (s) => s.replace('"always": ["server/death-muffin/discord-agent/PROMPT-godot.md"]', `"always": ["server/death-muffin/discord-agent/PROMPT-godot.md", "${guide}"]`));
+  reported(problemsOf(dir), `surfaces.json: ${guide} is both always loaded and a guide for agent`);
+  // the paid-generation boundary lives in the core: pointing it at a guide instead is reported
+  dir = scratchRepo();
+  editRules(dir, (rules) => { const r = rules.find((x) => x.id === 'agent-paid-generation'); r.homes = [{ file: 'server/death-muffin/discord-agent/guides/models.md', clauses: ['You cannot call Gemini or Tripo yourself and you never see their keys; the runner generates.'] }]; });
+  reported(problemsOf(dir), 'agent-paid-generation: protected rule has no always-loaded home for agent');
+  const s = sizes(REPO).audiences.agent;
+  assert.equal(s.guides.length, 5); assert.ok(s.guideTokens > 0 && s.guides.every((g) => g.chars > 0));
 });
 
 test('a new section of always-loaded text with no inventoried rule is reported', () => {

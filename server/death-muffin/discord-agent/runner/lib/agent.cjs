@@ -3,12 +3,20 @@ const fs = require('fs');
 const path = require('path');
 const { run } = require('./gitops.cjs');
 
-function systemPrompt(cfg, job) {
-  let sp = fs.readFileSync(path.join(cfg.toolsDir, 'PROMPT-godot.md'), 'utf8').replaceAll('__BRANCH__', job.branch).replaceAll('__TOOLS__', cfg.toolsDir).replaceAll('__BASE__', cfg.baseBranch || 'main');
+// The placeholders of the core prompt and the guides (lib/guides.cjs renders both the same way).
+function renderText(cfg, job, text) {
+  return String(text).replaceAll('__BRANCH__', job.branch).replaceAll('__TOOLS__', cfg.toolsDir).replaceAll('__BASE__', cfg.baseBranch || 'main');
+}
+function renderCore(cfg, job, text) {
+  let sp = renderText(cfg, job, text);
   if (cfg.webAnyHost) {
     sp = sp.replace(/WebFetch on documentation sites only \([^)]*\)\. Use it when/, 'WebFetch on any public web page. Use it for research (how other games handle\na mechanic, bug reports, engine issues, references someone mentions), when someone asks how an engine or library feature works, or');
   }
   return sp;
+}
+// The installed core, rendered. A turn uses its round's snapshot instead (lib/guides.cjs prepareTurn), passed in as opts.systemPrompt.
+function systemPrompt(cfg, job) {
+  return renderCore(cfg, job, fs.readFileSync(path.join(cfg.toolsDir, 'PROMPT-godot.md'), 'utf8'));
 }
 // Quote person text so it cannot close its own wrapper; label the role from CONFIG (never from the message).
 function wrapRequest(m) {
@@ -28,7 +36,7 @@ function agentEnv() {
   return { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', TERM: 'dumb', NO_COLOR: '1',
     CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1', BASH_DEFAULT_TIMEOUT_MS: BASH_LIMIT_MS, BASH_MAX_TIMEOUT_MS: BASH_LIMIT_MS };
 }
-function claudeArgs(cfg, job, { maxTurns } = {}) {
+function claudeArgs(cfg, job, { maxTurns, systemPrompt: sp } = {}) {
   // The only programs the agent may run, all in the sandbox: agit, check-godot.sh only with --rerun and the suites it names (the whole check is
   // the runner's, through CI), regen-godot.sh for generated files (B65), the screenshot, model, sound and picture build scripts (pictures: B70).
   const bash = [`Bash(${cfg.toolsDir}/agit *)`, `Bash(${cfg.toolsDir}/check-godot.sh --rerun *)`, `Bash(${cfg.toolsDir}/regen-godot.sh)`, `Bash(${cfg.toolsDir}/shot-godot.sh)`, `Bash(${cfg.toolsDir}/shot-godot.sh *)`, `Bash(${cfg.toolsDir}/build-art.sh *)`, `Bash(${cfg.toolsDir}/render-model.sh *)`, `Bash(${cfg.toolsDir}/build-sound.sh *)`, `Bash(${cfg.toolsDir}/build-picture.sh *)`];
@@ -37,7 +45,7 @@ function claudeArgs(cfg, job, { maxTurns } = {}) {
   const wt = `/${job.worktree}/**`;
   const web = cfg.webAnyHost ? ['WebSearch', 'WebFetch'] : ['WebSearch', ...(cfg.webDocDomains || []).map((d) => `WebFetch(domain:${d})`)];
   const a = ['-p', '--restricted', '--strict-mcp-config', '--permission-mode', 'dontAsk', '--output-format', 'json',
-    '--model', job.model, '--append-system-prompt', systemPrompt(cfg, job),
+    '--model', job.model, '--append-system-prompt', sp || systemPrompt(cfg, job),
     '--tools', 'Read,Edit,Write,Glob,Grep,Bash,WebSearch,WebFetch',
     '--allowedTools', ...['Read', 'Edit', 'Write', 'Glob', 'Grep'].map((t) => `${t}(${wt})`), ...bash, ...web,
     // No waiting games: Claude Code auto-allows "read-only" commands, so a turn could build its own `until ! pgrep ...; do sleep 5; done`
@@ -57,14 +65,14 @@ function parseClaudeJson(out) {
   const i = t.lastIndexOf('\n{'); if (i >= 0) { try { return JSON.parse(t.slice(i + 1)); } catch { /* fallthrough */ } }
   return null;
 }
-// One turn. cfg.claudeCmd lets tests substitute a fake CLI. Returns { text, sessionId, costUsd, error, timedOut, cancelled, maxTurns }.
+// One turn. cfg.claudeCmd lets tests substitute a fake CLI. systemPrompt: the round's snapshot of the core (else the installed core). Returns { text, sessionId, costUsd, error, timedOut, cancelled, maxTurns }.
 // maxTurns: the session stopped at its step budget (not an error; the caller hands off to a fresh session).
-async function runTurn(cfg, job, prompt, { onSpawn, maxTurns } = {}) {
+async function runTurn(cfg, job, prompt, { onSpawn, maxTurns, systemPrompt: sp } = {}) {
   // Never run without the job's own worktree: with no cwd the session would start wherever the runner lives (its tools, config, secret).
   if (!job.worktree || !fs.existsSync(path.join(job.worktree, '.git'))) return { text: '', sessionId: job.sessionId, error: 'This thread has no workspace right now; send your message again and I will start a fresh one.', timedOut: false };
   const cmd = cfg.claudeCmd || 'claude';
   const env = agentEnv();
-  const r = await run(cmd, claudeArgs(cfg, job, { maxTurns }), { cwd: job.worktree, env, input: prompt, timeoutMs: cfg.turnTimeoutMin * 60000, onSpawn });
+  const r = await run(cmd, claudeArgs(cfg, job, { maxTurns, systemPrompt: sp }), { cwd: job.worktree, env, input: prompt, timeoutMs: cfg.turnTimeoutMin * 60000, onSpawn });
   const j = parseClaudeJson(r.out);
   if (!j) return { text: '', sessionId: job.sessionId, error: r.timedOut ? 'timeout' : (r.err || r.out || `exit ${r.code}`).slice(0, 300), timedOut: r.timedOut, signal: r.signal };
   const atLimit = j.subtype === 'error_max_turns';
@@ -79,4 +87,4 @@ function readResult(wt) {
   const f = path.join(wt, '.dm-result.json');
   try { const j = JSON.parse(fs.readFileSync(f, 'utf8')); fs.unlinkSync(f); return j && typeof j === 'object' ? j : null; } catch { return null; }
 }
-module.exports = { runTurn, claudeArgs, agentEnv, buildPrompt, wrapRequest, readResult, readHandoff, systemPrompt };
+module.exports = { runTurn, claudeArgs, agentEnv, buildPrompt, wrapRequest, readResult, readHandoff, systemPrompt, renderCore, renderText };

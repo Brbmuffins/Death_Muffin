@@ -1099,7 +1099,12 @@ test('godot mode: !shot is available, the agent may run shot-godot.sh and regen-
   assert.ok(!allowed.includes(`Bash(${w.tools}/check-godot.sh)`), 'the whole check is the runner\'s: the agent names its suites');
   assert.ok(j.worktree && path.isAbsolute(j.worktree));
   const sp = systemPrompt(w.cfg, j); assert.match(sp, /origin\/main/); assert.ok(sp.includes(`${w.tools}/check-godot.sh --rerun <suite>`) && sp.includes(`${w.tools}/shot-godot.sh`) && sp.includes(`${w.tools}/regen-godot.sh`) && !sp.includes('__TOOLS__') && !/shot\.sh/.test(sp));
-  assert.match(sp, /at most 4|Never more than 4/); assert.match(sp, /BRANCH PREVIEW/); assert.match(sp, /Only when asked/); assert.match(sp, /Do NOT take screenshots by default/);
+  assert.match(sp, /no screenshots by default, not even for visible changes/); assert.match(sp, /`\.dm-guides\/screenshots\.md`/);
+  // the how-to is the screenshots guide, in the worktree as the runner rendered it for this round
+  const guide = fs.readFileSync(path.join(j.worktree, '.dm-guides', 'screenshots.md'), 'utf8');
+  assert.match(guide, /at most 4|Never more than 4/); assert.match(guide, /BRANCH PREVIEW/); assert.match(guide, /Only when asked/); assert.match(guide, /Do NOT take screenshots by default/);
+  assert.ok(guide.includes(`${w.tools}/shot-godot.sh`) && !guide.includes('__TOOLS__'));
+  assert.ok(!/BRANCH PREVIEW/.test(sp), 'the screenshot how-to is not in the always-loaded prompt');
 });
 
 test('godot mode: no BEFORE pictures unless cfg.beforeShots is on (the proposal carries the AFTER picture only)', async () => {
@@ -1455,9 +1460,13 @@ test('godot mode: the agent prompt explains team pictures and clips, the help li
   const { systemPrompt, claudeArgs } = require('../runner/lib/agent.cjs');
   const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY faster'); await waitProposal(d, thread); B.close();
   const j = jobOf(w, thread), sp = systemPrompt(w.cfg, j);
-  for (const re of [/A team PC is online/, /Pictures from a team PC follow|BEFORE and AFTER pairs/, /do NOT run `[^`]*shot-godot\.sh`/, /## Clips and choices/, /\.dm-clip\.json/, /Which do you like best\? Reply with its number/, /`!clips`/, /Do NOT take screenshots by default/,
-    /"resolutions"[\s\S]*1920x1080[\s\S]*3440x1440/, /ONE\s+AFTER picture on Ultra/, /`"before": true`/, /`"presets": \["low", "ultra"\]`/, /"turntable"/, /Model previews/, /"equip"/, /Release checks \(you never run or start them\)[\s\S]*BEFORE it goes live[\s\S]*Nothing checks a release\s+after it is live/]) assert.match(sp, re);
-  assert.ok(!sp.includes('__TOOLS__'));
+  // the always-loaded core says when pictures and videos apply and where the how-to is; the guides (as the runner put them in the worktree) hold the how-to
+  for (const re of [/A team PC is online/, /gets a shot plan, which a team PC renders after your proposal/, /you do not render it yourself/, /short videos people choose from \(`clips\.md`\)/,
+    /no screenshots by default/, /`\.dm-guides\/screenshots\.md`/, /`\.dm-guides\/clips\.md`/, /Release checks \(you never run or start them\)[\s\S]*BEFORE it goes live[\s\S]*Nothing checks a release\s+after it is live/]) assert.match(sp, re);
+  const guides = ['screenshots', 'clips'].map((n) => fs.readFileSync(path.join(j.worktree, '.dm-guides', `${n}.md`), 'utf8')).join('\n');
+  for (const re of [/A team PC is online/, /Pictures from a team PC follow|BEFORE and AFTER pairs/, /do NOT run `[^`]*shot-godot\.sh`/, /# Clips and choices/, /\.dm-clip\.json/, /Which do you like best\? Reply with its number/, /`!clips`/, /Do NOT take screenshots by default/,
+    /"resolutions"[\s\S]*1920x1080[\s\S]*3440x1440/, /ONE\s+AFTER picture on Ultra/, /`"before": true`/, /`"presets": \["low", "ultra"\]`/, /"turntable"/, /Model previews/, /"equip"/]) assert.match(guides, re);
+  assert.ok(!sp.includes('__TOOLS__') && !guides.includes('__TOOLS__'));
   const help = await d.say(thread, IDS.HELIX, '!help'); assert.match(help.replies[0].content, /!clips \(record the last short videos again on a team PC\)/);
   const args = claudeArgs(w.cfg, j), allowed = args.slice(args.indexOf('--allowedTools') + 1); assert.ok(!allowed.some((x) => /preview-godot|clip|team/i.test(x)), 'the agent gets no team tool: the runner does all of it');
 });

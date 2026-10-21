@@ -73,6 +73,10 @@ SRC=server/death-muffin/discord-agent
 LIST="$(g ls-tree -r --name-only "$REV" -- "$SRC/runner" | sed "s#^$SRC/##")
 ship.sh rollback.sh sandbox-lib.sh check-godot.sh regen-godot.sh shot-godot.sh label-shot.py render-model.sh render-model.py art-run.sh build-art.sh sound-run.mjs build-sound.sh sound-build.mjs preview-godot.sh agit wait-for-ship.sh reports-cli.cjs PROMPT-godot.md config.example.json death-muffin-discord-agent.service"
 for f in $(echo $LIST); do compare_exact "$SRC/$f" "$DM/discord-agent/$f" "discord-agent/$f"; done
+# the agent's guides (install-runner.sh replaces the folder whole): each one in main, and nothing installed that main does not have
+GUIDES="$(g ls-tree -r --name-only "$REV" -- "$SRC/guides" | sed "s#^$SRC/##")"
+for f in $GUIDES; do compare_exact "$SRC/$f" "$DM/discord-agent/$f" "discord-agent/$f"; done
+for lf in "$DM"/discord-agent/guides/*; do [ -e "$lf" ] || continue; case " $(echo $GUIDES) " in *" guides/$(basename "$lf") "*) ;; *) drift "discord-agent/guides/$(basename "$lf"): installed but not in origin/main";; esac; done
 compare_exact tools/check/prep.sh "$DM/discord-agent/prep.sh" "discord-agent/prep.sh"
 compare_exact tools/check/ci.sh "$DM/discord-agent/ci.sh" "discord-agent/ci.sh"
 for f in common gemini tripo; do compare_exact "tools/ai/$f.mjs" "$DM/discord-agent/art-tools/tools/ai/$f.mjs" "discord-agent/art-tools/tools/ai/$f.mjs"; done
