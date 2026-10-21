@@ -131,6 +131,28 @@ test('sandbox: regen-godot.sh (the armor generator, the server rules build, the 
   } finally { W.cleanup(); }
 });
 
+test('sandbox: regen-godot.sh in a job checkout older than AGENTS.md skips the copy; a newer checkout missing its generator fails', () => {
+  const W = world(); try {
+    W.w('tools/generate-armor-assets.mjs', "console.log('Armor data already up to date.');\n");
+    W.w('package.json', JSON.stringify({ scripts: { 'build:server-rules': 'true' } }));
+    W.w('node_modules/.bin/vitest', '#!/usr/bin/env bash\necho " Tests  1 passed (1)"\n', 0o755);
+    // the job's branch was cut before 2026-10-21: no AGENTS.md, no generator (the installed script is the new one)
+    const old = run(W, 'regen-godot.sh', []); assert.equal(old.status, 0, old.stdout + old.stderr);
+    assert.match(old.stdout, /== instructions copy: skipped \(this checkout is older than AGENTS\.md\)/);
+    assert.ok(!fs.existsSync(path.join(W.top, 'AGENTS.md')), 'nothing is added to the old branch');
+    // a checkout that has the copy but lost its generator: the step runs and fails
+    W.w('AGENTS.md', '# rules\n');
+    const broken = run(W, 'regen-godot.sh', []); assert.equal(broken.status, 1, broken.stdout + broken.stderr);
+    assert.match(broken.stdout, /FAILED: instructions copy/);
+    // a normal new checkout: the real generator writes the copy
+    W.w('CLAUDE.md', '# new rules\n');
+    W.w('tools/context/sync-instructions.mjs', fs.readFileSync(path.join(__dirname, '../../../../tools/context/sync-instructions.mjs'), 'utf8'));
+    const ok = run(W, 'regen-godot.sh', []); assert.equal(ok.status, 0, ok.stdout + ok.stderr);
+    assert.match(ok.stdout, /wrote AGENTS\.md from CLAUDE\.md/);
+    assert.equal(fs.readFileSync(path.join(W.top, 'AGENTS.md'), 'utf8'), '# new rules\n');
+  } finally { W.cleanup(); }
+});
+
 test('sandbox: preview-godot.sh (preparation + export + art pack)', () => {
   const W = world(); try {
     const prev = path.join(W.root, 'preview'); fs.mkdirSync(prev); W.w('client/project.godot', 'x');
