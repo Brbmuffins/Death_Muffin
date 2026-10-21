@@ -1055,8 +1055,23 @@ test('step budget: a session that runs out of steps writes a handoff note and a 
   const audit = fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8');
   assert.match(audit, /"event":"handoff","job":"[0-9a-f]+","n":1,"note":true/);
   assert.match(texts(thread).join('\n'), /CONTINUED-FROM-NOTE/, 'the fresh session saw the note');
+  assert.match(texts(thread).join('\n'), /WITH-REQUEST/, 'and the original request after it');
   assert.doesNotMatch(texts(thread).join('\n'), /step limit|handoff|Note written/i, 'nothing about it in the thread');
   assert.match(field(p, 'Tests'), /passed/);
+  // the note and the continuation run with the same permissions and the same instruction snapshot as the turn that ran out
+  const sp = fs.readFileSync(path.join(job.worktree, '.fake-sp'), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).slice(0, 3);
+  assert.match(sp[1].head, /^Stop here: this session has reached its step limit/);
+  assert.match(sp[2].head, /^\(You are continuing a task/);
+  for (const k of sp.slice(1)) { assert.equal(k.perm, sp[0].perm, 'same permission flags'); assert.equal(k.sp, sp[0].sp, 'same snapshot core'); assert.deepEqual(k.guides, sp[0].guides); }
+});
+
+test('step budget: the handoff request asks for the six parts in about 60 lines and grants nothing', () => {
+  const { HANDOFF_ASK } = require('../runner/core.cjs');
+  assert.match(HANDOFF_ASK, /at most about 60 lines/);
+  for (const part of [/1\. the request .*who asked.*still waits for their approval/, /2\. the branch and current commit .*uncommitted changes/, /3\. what is done .*known limitations the next session must keep/,
+    /4\. the checks you actually ran, their results and the commit they ran on/, /5\. the few guides .*code files/, /6\. what is left, as a checklist, and the exact next step/]) assert.match(HANDOFF_ASK, part);
+  assert.match(HANDOFF_ASK, /it does not approve anything new/);
+  assert.match(HANDOFF_ASK, /Commit any finished work first/);
 });
 
 test('step budget: past maxHandoffs the turn stops with a plain message and keeps what is committed', async () => {

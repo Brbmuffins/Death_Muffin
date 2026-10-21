@@ -7,6 +7,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkNavigation } from '../context/navigation.mjs';
+import { ceilingCheck, formatSizeWarning } from '../context/measure.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const config = JSON.parse(readFileSync(path.join(root, 'tools/hygiene/retired.json'), 'utf8'));
@@ -307,10 +308,19 @@ for (const f of files) {
 // section references into them resolve (tools/context/navigation.mjs, scoped to those files).
 for (const p of checkNavigation(root, files)) report(p.file, p.line, p.msg);
 
+// l. Context size warnings (tools/context/README.md "Size warnings"): a rule file, guide or entry point above its ceiling in
+// tools/context/surfaces.json is printed (a warning annotation on GitHub) and never fails; a missing or invalid ceiling does.
+const sizeCheck = ceilingCheck(root);
+for (const p of sizeCheck.problems) report('tools/context/surfaces.json', 1, p);
+for (const w of sizeCheck.warnings) {
+  console.log(`hygiene: size warning: ${formatSizeWarning(w)}`);
+  if (process.env.GITHUB_ACTIONS === 'true') console.log(`::warning title=Context size::${formatSizeWarning(w)}`);
+}
+
 if (fixed.length) console.log(`hygiene: fixed ${fixed.length} texture import(s); now run: godot --headless --path client --import`);
 if (problems.length) {
   console.error(problems.join('\n'));
   console.error(`\nhygiene: ${problems.length} violation(s). See tools/hygiene/README.md.`);
   process.exit(1);
 }
-console.log(`hygiene: OK (${mdFiles.length} docs, ${scanFiles.length} files scanned, ${config.terms.length} retired terms)`);
+console.log(`hygiene: OK (${mdFiles.length} docs, ${scanFiles.length} files scanned, ${config.terms.length} retired terms${sizeCheck.warnings.length ? `, ${sizeCheck.warnings.length} size warning(s) above` : ''})`);

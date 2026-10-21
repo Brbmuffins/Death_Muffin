@@ -157,8 +157,14 @@ while IFS= read -r line; do
     fi; wt=""
   fi
 done < <(g worktree list --porcelain; echo)
-for d in "$(dirname "$REPO")"/wt/*/; do [ -d "$d" ] || continue
-  case "$(g worktree list --porcelain)" in *"worktree ${d%/}"*) ;; *) drift "directory in wt/ that is not a registered worktree: ${d%/}";; esac; done
+# check_wt_dirs: a folder in wt/ that git does not list as a worktree. Whole paths are compared, so a leftover wt/discord-abc is not hidden by a
+# registered wt/discord-abc-2 (test: drift-leftovers.test.cjs).
+check_wt_dirs() {
+  local registered d; registered="$(g worktree list --porcelain | sed -n 's/^worktree //p')"
+  for d in "$(dirname "$REPO")"/wt/*/; do [ -d "$d" ] || continue
+    printf '%s\n' "$registered" | grep -Fxq -- "${d%/}" || drift "directory in wt/ that is not a registered worktree: ${d%/}"; done
+}
+check_wt_dirs
 
 # 5. Uncommitted
 section "5. Main checkout"

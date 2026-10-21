@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { REPO, checkRules, sections, sizes, sectionText, taskRoutes } from '../measure.mjs';
+import { REPO, checkRules, ceilingCheck, formatSizeWarning, sections, sizes, sectionText, taskRoutes } from '../measure.mjs';
 import { parseTranscript, summarizeSession, classify, commandFamily, whatIfCap, collect, report, formatReport, costOf } from '../usage.mjs';
 
 const PROMPT = 'server/death-muffin/discord-agent/PROMPT-godot.md';
@@ -205,6 +205,67 @@ test('a section runs from its heading to the next heading of its level or above,
 
 test('every task route answers its question in this tree', () => {
   for (const t of taskRoutes(REPO)) assert.equal(t.after.answers, true, t.id);
+});
+
+// Size warnings: a file above its ceiling is a warning for review, never a problem; a ceiling missing or set wrong is a problem.
+const editSurfaces = (dir, fn) => { const f = path.join(dir, 'tools/context/surfaces.json'); const j = JSON.parse(fs.readFileSync(f, 'utf8')); fn(j); fs.writeFileSync(f, JSON.stringify(j)); };
+const grow = (dir, file, tokens) => fs.appendFileSync(path.join(dir, file), `\n${'Padding words for the size check. '.repeat(Math.ceil((tokens * 2.7) / 33))}\n`);
+
+test('every measured surface has a ceiling in this tree', () => {
+  assert.deepEqual(ceilingCheck(REPO).problems, []);
+  const s = sizes(REPO);
+  for (const a of Object.values(s.audiences)) for (const f of [...a.always, ...a.guides, ...a.discovery]) assert.ok(f.ceiling > 0, f.file || f.entry);
+  for (const f of s.references) assert.ok(f.ceiling > 0, f.file);
+});
+
+test('a file or section above its ceiling is a warning with its size and ceiling, and never a problem', () => {
+  const dir = scratchRepo();
+  const { ceilings } = JSON.parse(fs.readFileSync(path.join(dir, 'tools/context/surfaces.json'), 'utf8'));
+  const before = ceilingCheck(dir).warnings.map((w) => w.entry);
+  grow(dir, 'CLAUDE.md', ceilings.always.session);
+  grow(dir, 'server/death-muffin/discord-agent/guides/sound.md', ceilings.guides.agent);
+  grow(dir, 'client/core/THREADING.md', ceilings.references);
+  editText(dir, 'README.md', (t) => t.replace('## Documentation map\n', `## Documentation map\n\n${'Map padding words here. '.repeat(Math.ceil((ceilings.discovery['README.md "Documentation map"'] * 2.7) / 24))}\n`));
+  const { warnings, problems } = ceilingCheck(dir);
+  assert.deepEqual(problems, []);
+  const by = (entry) => warnings.find((w) => w.entry === entry);
+  const claude = by('CLAUDE.md');
+  assert.ok(claude && claude.kind === 'always' && claude.ceiling === ceilings.always.session && claude.tokens > claude.ceiling);
+  assert.deepEqual(claude.audiences, ['session']);
+  assert.equal(by('server/death-muffin/discord-agent/guides/sound.md').kind, 'guides');
+  assert.equal(by('client/core/THREADING.md').kind, 'references');
+  const map = by('README.md "Documentation map"');
+  assert.deepEqual(map.audiences, ['session', 'codex', 'agent'], 'a shared discovery entry is one warning naming every audience');
+  assert.equal(warnings.length, before.length + 4);
+  assert.match(formatSizeWarning(claude), /^CLAUDE\.md is ~\d+ estimated tokens, above its ceiling of 4500 \(always loaded, session\)/);
+  assert.deepEqual(problemsOf(dir), [], 'size alone never fails the rule check');
+});
+
+test('a size warning never replaces a rule failure', () => {
+  const dir = scratchRepo();
+  grow(dir, 'CLAUDE.md', 4500);
+  editText(dir, 'CLAUDE.md', (t) => t.replace(/Gold, items, loot rolls, progression and the kill ledger are server-side \(D1\); a client or host\s+never mints them\./, ''));
+  assert.ok(ceilingCheck(dir).warnings.some((w) => w.entry === 'CLAUDE.md'));
+  reported(problemsOf(dir), 'backend-owns-value: clause not found in CLAUDE.md');
+});
+
+test('a missing, invalid or stale ceiling is a problem', () => {
+  const cases = [
+    [(j) => { delete j.ceilings; }, 'surfaces.json: "ceilings" is missing'],
+    [(j) => { delete j.ceilings.always.codex; }, 'surfaces.json: ceilings .always.codex must be a positive whole number'],
+    [(j) => { j.ceilings.guides.agent = '5000'; }, 'surfaces.json: ceilings .guides.agent must be a positive whole number'],
+    [(j) => { delete j.ceilings.discovery['client/README.md']; }, 'surfaces.json: ceilings .discovery["client/README.md"] must be a positive whole number'],
+    [(j) => { j.ceilings.references = 0; }, 'surfaces.json: ceilings .references must be a positive whole number'],
+    [(j) => { j.ceilings.discovery['ROADMAP.md'] = 900; }, 'surfaces.json: ceilings.discovery names ROADMAP.md, which is no audience\'s discovery entry'],
+    [(j) => { j.ceilings.guides.session = 900; }, 'surfaces.json: ceilings.guides names "session", which has no guides'],
+    [(j) => { j.ceilings.total = 90000; }, 'surfaces.json: ceilings has an unknown field "total"'],
+  ];
+  for (const [edit, prefix] of cases) {
+    const dir = scratchRepo();
+    editSurfaces(dir, edit);
+    reported(ceilingCheck(dir).problems, prefix);
+    reported(problemsOf(dir), prefix);
+  }
 });
 
 test('sections split at level-two headings and keep every character', () => {

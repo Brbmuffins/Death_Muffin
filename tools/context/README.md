@@ -79,7 +79,8 @@ the baseline inventory on 2026-10-20). `node tools/context/measure.mjs --print-l
 - a `## ` section of an always-loaded file holds no inventoried rule (a new section: add its rules);
 - a guide in `surfaces.json` does not exist, is also listed as always loaded, or holds no inventoried rule;
 - a discovery entry (a file, or a section by its heading), a reference guide or a step of a task route (`tasks.json`) does not exist, or a
-  task's route no longer holds the words that answer its question.
+  task's route no longer holds the words that answer its question;
+- a measured surface has no valid size ceiling, or a ceiling names a surface that is not listed ("Size warnings" below).
 
 The context test also keeps the owner principles (DECISIONS B71) and the spend-limit line in the agent's prompt: removing one, or giving it an
 agent gap again, fails CI.
@@ -88,6 +89,21 @@ What this proves and what it does not: the check is structural. It shows that th
 that any change to a protected rule or its exceptions comes with a change to `protected.json`, which shows in the diff. It cannot tell
 whether anyone reviewed that diff, whether reworded text still means the same, or whether a model follows the rule. The code named in
 `enforced` is what holds a boundary regardless of the text.
+
+## Size warnings
+
+`ceilings` in `surfaces.json` gives each measured surface a warning ceiling in estimated tokens (the same estimator; no tokenizer):
+each always-loaded file per audience (`CLAUDE.md` and `AGENTS.md` 4,500, the agent's core prompt source 10,500), each agent guide
+(5,000), each discovery entry (the map section 800, the client index 4,000) and each reference guide (8,000). They were set on
+2026-10-21 with room above Stage 3's sizes. `measure.mjs` prints every size as `~size / ceiling`, lists the ones above it as WARNING lines
+(and `sizeWarnings` in `--json`, with the file or section, its size and its ceiling), and `npm run hygiene` prints the same warnings (a
+warning annotation in GitHub Actions).
+
+A size above its ceiling never fails: it asks the change's review to say why the file grew, or to move task-specific detail to the
+system's guide. A ceiling is not room to fill and not a model limit; do not cut a safety rule to get under one, and do not raise one to
+hide a warning. What fails is the configuration: a surface with no valid ceiling, or a ceiling for one that is not listed, so the warnings
+cannot quietly stop covering a file. The figures are static text: the rendered prompt's filled placeholders, the conversation, the
+round's snapshot and memory files are not in them (`usage.mjs` and `usage-codex.mjs` report what the API counted).
 
 ## Finding task context
 
