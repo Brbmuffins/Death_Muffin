@@ -286,3 +286,27 @@ test('an explicit selection holds only the named sessions, and an unselected ori
     assert.deepEqual(Object.keys(g), ['terminal/selected'], args[0]); assert.equal(g['terminal/selected'].sessions, 1, args[0]);
   }
 });
+
+test('a start counts as genuine only when the rollout shows it: a partial file, copied history and a whole start', () => {
+  // a header, then a response of 100 whose thread total is already 600: history is missing, the start is unknown
+  let b = rollout({ cwd: DM }).meta().turn('t1', 'm').raw(rec('r1', '2026-10-19T10:02:00.000Z', u(100, 0, 0), u(600, 0, 0)));
+  let s = summarizeRollout(parse(b), {});
+  assert.equal(s.startKind, 'unknown'); assert.equal(s.firstResponseInput, null);
+  assert.ok(s.warnings.some((w) => /uncovered/.test(w)), 'and the missing 500 is reported');
+  // copied history: the earliest response was recorded for another session
+  b = rollout({ id: 'fork', cwd: DM }).meta().turn('t1', 'm');
+  b.raw({ timestamp: '2026-10-19T10:01:00.000Z', type: 'token_usage_record', payload: { response_id: 'old', turn_id: 't1', session_id: 'parent', thread_id: 'parent', usage: u(100, 0, 0), thread_token_usage: u(100, 0, 0) } });
+  b.raw({ timestamp: '2026-10-19T10:05:00.000Z', type: 'token_usage_record', payload: { response_id: 'new', turn_id: 't2', session_id: 'fork', thread_id: 'fork', usage: u(300, 0, 0), thread_token_usage: u(400, 0, 0) } });
+  s = summarizeRollout(parse(b), {});
+  assert.equal(s.startKind, 'inherited'); assert.equal(s.firstResponseInput, null);
+  // a whole start: the first response is its thread's first
+  b = rollout({ cwd: DM }).meta().turn('t1', 'm').record('r1', 't1', u(1200)).record('r2', 't1', u(1500));
+  s = summarizeRollout(parse(b), {});
+  assert.equal(s.startKind, 'genuine'); assert.equal(s.firstResponseInput, 1200);
+  // a cumulative-only rollout whose first snapshot already carries history
+  b = rollout({ cwd: DM }).meta().turn('t1', 'm').raw(snap('2026-10-19T10:01:00.000Z', u(900, 0, 0), u(100, 0, 0)));
+  assert.equal(summarizeRollout(parse(b), {}).startKind, 'unknown');
+  // only genuine starts enter the median
+  const g = report({ sessions: [summarizeRollout(parse(rollout({ cwd: DM }).meta().turn('t1', 'm').raw(rec('r1', '2026-10-19T10:02:00.000Z', u(100, 0, 0), u(600, 0, 0)))), {})] }).groups['terminal/dm'];
+  assert.equal(g.firstResponseInput.sessions, 0); assert.deepEqual(g.starts, { unknown: 1 });
+});

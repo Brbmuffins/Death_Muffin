@@ -107,7 +107,7 @@ export function parseRollout(lines) {
       if (a && typeof a === 'object' && a.text) out.instructions.push({ how: 'world_state', dir: String(a.directory || ''), chars: String(a.text).length, ts });
     } else if (o.type === 'token_usage_record') {
       const turn = out.turns[p.turn_id];
-      out.records.push({ id: p.response_id || null, turn: p.turn_id || null, ts, model: turn?.model || lastModel, usage: usageOf(p.usage), thread: p.thread_token_usage ? usageOf(p.thread_token_usage) : null });
+      out.records.push({ id: p.response_id || null, turn: p.turn_id || null, owners: [p.session_id, p.thread_id].filter(Boolean), ts, model: turn?.model || lastModel, usage: usageOf(p.usage), thread: p.thread_token_usage ? usageOf(p.thread_token_usage) : null });
     } else if (o.type === 'event_msg' && p.type === 'token_count') {
       if (p.info?.total_token_usage) out.snapshots.push({ ts, total: usageOf(p.info.total_token_usage), last: p.info.last_token_usage ? usageOf(p.info.last_token_usage) : null, model: lastModel });
     } else if (o.type === 'event_msg' && p.type === 'thread_settings_applied') {
@@ -150,12 +150,15 @@ export function responsesOf(r, seen = new Set()) {
   const warnings = [];
   const out = [];
   const firstRecordTs = r.records.length ? r.records.map((x) => x.ts).sort()[0] : null;
-  let dupes = 0, earliest = null;   // earliest: [ts, copied] of the first response in the file, copied or not
-  const note = (ts, copied) => { if (ts && (!earliest || ts < earliest[0])) earliest = [ts, copied]; };
+  // earliest: the file's first response, copied or not, with whether it shows the thread's start (nothing counted before it)
+  let dupes = 0, earliest = null;
+  const note = (ts, copied, isStart) => { if (ts && (!earliest || ts < earliest.ts)) earliest = { ts, copied, isStart }; };
+  const own = r.meta?.id;
   const local = emptyUsage();   // everything this file holds as responses, copies included: what its cumulative totals should add up to
   for (const x of r.records) {
-    const copied = !!x.id && seen.has('r:' + x.id);
-    note(x.ts, copied);
+    // a copy: already counted from an older rollout, or recorded for another session or thread than this rollout's
+    const copied = (!!x.id && seen.has('r:' + x.id)) || (!!own && x.owners.length > 0 && !x.owners.includes(own));
+    note(x.ts, copied, !!x.thread && USAGE_KEYS.every((k) => x.thread[k] === x.usage[k]));
     addTo(local, x.usage);
     if (copied) { dupes += 1; continue; }
     if (x.id) seen.add('r:' + x.id);
@@ -171,8 +174,9 @@ export function responsesOf(r, seen = new Set()) {
     let delta;
     if (prev && s.total.input < prev.input) { resets += 1; delta = { ...s.total }; }
     else delta = Object.fromEntries(USAGE_KEYS.map((k) => [k, s.total[k] - (prev ? prev[k] : 0)]));
+    const firstOfThread = !prev && s.last && USAGE_KEYS.every((k) => s.last[k] === s.total[k]);
     prev = s.total;
-    note(s.ts, dup);
+    note(s.ts, dup, !!firstOfThread);
     if (USAGE_KEYS.some((k) => delta[k] < 0)) { warnings.push('a snapshot went down in one field and up in another: skipped'); continue; }
     addTo(local, delta);
     if (dup) { dupes += 1; continue; }
@@ -200,7 +204,7 @@ export function responsesOf(r, seen = new Set()) {
   if (uncovered.input || uncovered.output) warnings.push(`${uncovered.input} input / ${uncovered.output} output in the rollout's cumulative totals but in no response: reported as uncovered, not counted`);
   const format = r.records.length ? (snaps.length ? 'mixed' : 'records') : r.snapshots.length ? 'cumulative' : 'none';
   if (format === 'none') warnings.push('no usage recorded: unavailable, not zero');
-  return { responses: out.sort((a, b) => String(a.ts).localeCompare(String(b.ts))), format, warnings, firstCopied: !!earliest?.[1], uncovered };
+  return { responses: out.sort((a, b) => String(a.ts).localeCompare(String(b.ts))), format, warnings, start: !r.meta ? 'unknown' : !earliest ? 'unknown' : earliest.copied ? 'inherited' : earliest.isStart ? 'genuine' : 'unknown', uncovered };
 }
 
 // One session's responses in the window, or null when it is not selected or none of its responses fall inside.
@@ -213,7 +217,7 @@ export function summarizeRollout(r, opts = {}, seen = new Set()) {
   const where = picked ? { scope: 'selected', reason: 'named by --session/--sessions-file' } : scopeOf(r);
   if (!where) return null;
   if (opts.scope && opts.scope !== 'all' && !picked && where.scope !== opts.scope) return null;
-  const { responses, format, warnings, firstCopied, uncovered } = responsesOf(r, seen);
+  const { responses, format, warnings, start, uncovered } = responsesOf(r, seen);
   const w = windowOf(opts);
   const startedInWindow = responses.length ? within(w, responses[0].ts) : false;
   if (opts.cohort && !startedInWindow) return null;
@@ -229,9 +233,10 @@ export function summarizeRollout(r, opts = {}, seen = new Set()) {
     const b = (byModel[m] = byModel[m] || { responses: 0, ...emptyUsage() });
     b.responses += 1; addTo(b, x.usage);
   }
-  // The session's real start: its first response, when this rollout holds it (a session_meta, and the earliest response not copied from
-  // another rollout). Otherwise the start is inherited (forked or resumed from copied history) or unknown (no session_meta).
-  const startKind = !r.meta ? 'unknown' : firstCopied ? 'inherited' : 'genuine';
+  // The session's real start, only where the rollout shows it: a session_meta, and an earliest response that is not a copy and is its
+  // thread's first (its thread total is its own usage). A copied earliest response is an inherited start (a fork or resume); a first
+  // response with history before it (a partial rollout) or with no thread total is unknown. Only genuine starts give a first-response input.
+  const startKind = start;
   const first = responses[0];
   const firstResponseInput = startKind === 'genuine' && first?.certain ? first.usage.input : null;
   // Tool output: paired with its call; recognised single-file reads are named, the rest is per command family or unattributed.
@@ -321,6 +326,7 @@ export function report({ sessions, skipped = 0, files = 0 }, { top = 15 } = {}) 
       uncovered: { ...gap, sessions: list.filter((s) => s.uncovered.input || s.uncovered.output).length },
       firstResponseInput: { sessions: firsts.length, median: median(firsts), min: firsts.length ? Math.min(...firsts) : null, max: firsts.length ? Math.max(...firsts) : null },
       startNotGenuine: list.filter((s) => s.startKind !== 'genuine').length,
+      starts: list.reduce((o, s) => ({ ...o, [s.startKind]: (o[s.startKind] || 0) + 1 }), {}),
       firstInWindowInput: { median: median(list.map((s) => s.firstInWindowInput).filter((x) => x != null)) },
       peakInput: { median: median(list.map((s) => s.peakInput)), max: Math.max(0, ...list.map((s) => s.peakInput)) },
       formats, instructionEvidence: evidence, explicitInstructionReads: list.filter((s) => s.explicitInstructionRead).length, warnings,
@@ -343,7 +349,7 @@ export function formatReport(r) {
     lines.push(`   input ${k(x.usage.input)} (cached ${k(x.usage.cached)} = ${pct(x.cachedShare)}, not cached ${k(x.usage.noncached)}${x.usage.cacheWrite ? `, cache writes ${k(x.usage.cacheWrite)}` : ''}), output ${k(x.usage.output)} (reasoning ${k(x.usage.reasoning)} of it)`);
     if (x.uncovered.sessions) lines.push(`   UNCOVERED in ${x.uncovered.sessions} sessions: ${k(x.uncovered.input)} input / ${k(x.uncovered.output)} output their cumulative totals show but no response holds (not in the totals above)`);
     lines.push(`   by model: ${Object.entries(x.models).map(([m, t]) => `${m} ${t.responses} responses, ${k(t.input)} input`).join('; ')}`);
-    lines.push(`   first response input ${k(x.firstResponseInput.median)} (median of ${x.firstResponseInput.sessions} genuine starts; ${k(x.firstResponseInput.min)}-${k(x.firstResponseInput.max)})${x.startNotGenuine ? `; ${x.startNotGenuine} sessions with an inherited or unknown start` : ''}; first in window ${k(x.firstInWindowInput.median)} (median)`);
+    lines.push(`   first response input ${k(x.firstResponseInput.median)} (median of ${x.firstResponseInput.sessions} genuine starts; ${k(x.firstResponseInput.min)}-${k(x.firstResponseInput.max)})${x.startNotGenuine ? `; starts: ${Object.entries(x.starts).map(([kk, n]) => `${kk} ${n}`).join(', ')}` : ''}; first in window ${k(x.firstInWindowInput.median)} (median)`);
     lines.push(`   peak input ${k(x.peakInput.median)} (median), ${k(x.peakInput.max)} (max)`);
     lines.push(`   formats: ${Object.entries(x.formats).map(([f, n]) => `${f} ${n}`).join(', ')}; AGENTS.md: ${Object.entries(x.instructionEvidence).map(([f, n]) => `${f} ${n}`).join(', ')}; read AGENTS.md/CLAUDE.md by a command in ${x.explicitInstructionReads}`);
     for (const [w, n] of Object.entries(x.warnings)) lines.push(`   warning (${n} sessions): ${w}`);
