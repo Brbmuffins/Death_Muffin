@@ -336,7 +336,10 @@ when its conversation carries on); every call of the turn, handoffs included, ca
 worktree's `.dm-guides/` (git-excluded, in `forbiddenPaths`, readable under the worktree's file grant), and a missing or edited copy is put back
 and the agent told. Nothing goes from a worktree back to the snapshot or the install. An install whose core is empty, or names a missing or empty guide,
 runs no turn: the thread is told to reinstall. `install-runner.sh` refuses a revision like that and replaces `guides/` whole; the drift report and the
-practice run compare the installed guides with `main`. Rule text sizes and the rule inventory: `tools/context/README.md`.
+practice run compare the installed guides with `main`. Game documentation stays in the job's own checkout and is read on demand, never
+copied into `.dm-guides/` or the prompt: the core sends the agent to `README.md` "Documentation map" and `client/README.md` for the guide a task
+needs, and each media guide names the game's page for its workflow, with the old `client/README.md` section to read instead in a job whose
+worktree was made before 2026-10-21. Rule text sizes and the rule inventory: `tools/context/README.md`.
 
 **Progress notes** while a turn runs: `🔧 <pct>% · <sentence> · ⏱ <min> min`. The agent writes `.dm-status` as `<pct>% · <sentence>` (prompt
 `PROMPT-godot.md`); fewer thread posts (owner, 2026-10-10): the first status posts at once, later ones only when it changed and at most every

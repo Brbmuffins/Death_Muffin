@@ -568,12 +568,9 @@
       "homes": [
         {"file": "CLAUDE.md", "clauses": ["Start from the documentation map ([README.md](README.md) \"Documentation map\")", "never open every link", "first reads that checkout's `CLAUDE.md` (Codex: `AGENTS.md`)"]},
         {"file": "AGENTS.md", "clauses": ["Start from the documentation map ([README.md](README.md) \"Documentation map\")", "never open every link", "first reads that checkout's `CLAUDE.md` (Codex: `AGENTS.md`)"]},
-        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Read `CLAUDE.md`, `README.md`, `client/README.md`"]}
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["`README.md` \"Documentation map\" names where each kind of task starts", "never open every link", "then read only the section of `client/README.md` with the same subject"]}
       ],
-      "enforced": [],
-      "gaps": [
-        {"audience": "agent", "note": "not followed: of the 85 agent sessions with calls 2026-10-11..20 (UTC, usage.mjs window), 0 read CLAUDE.md or README.md and 1 read client/README.md"}
-      ]
+      "enforced": ["tools/context/navigation.mjs"]
     },
     {
       "id": "patch-notes",

@@ -2,8 +2,7 @@
 // How much rule text each audience carries, and whether the rule inventory still matches it (tools/context/README.md).
 // Sizes: the always-loaded text of each audience in surfaces.json (CLAUDE.md for Claude sessions, AGENTS.md for Codex, the agent's prompt),
 // split by `## ` section, the guides it reads when a task needs one (the agent's media how-tos, runner/lib/guides.cjs), the small entry points
-// it starts a task from (`discovery`: a file, or one section of it), any files it is still told to read first, and the reference guides a
-// task may open (`references`, never added to startup). Task routes (tasks.json): what each representative task reads before and after the
+// it starts a task from (`discovery`: a file, or one section of it), and the reference guides a task may open (`references`, never added to startup). Task routes (tasks.json): what each representative task reads before and after the
 // documentation map. Tokens are estimated from characters (surfaces.json charsPerToken, measured on the agent's
 // own calls: its first-call context grew about one token per 2.7 characters of prompt); they are estimates of text size, not API usage
 // (usage.mjs reports that). The rule check (rules.json, protected.json): the inventory's shape, every clause still in its file, protected
@@ -65,12 +64,12 @@ export function sizes(root = REPO) {
       return { file: f, chars: t.length, tokens: tok(t.length), sections: sections(t).map((s) => ({ title: s.title, chars: s.chars, tokens: tok(s.chars) })) };
     });
     const size = (f) => { const t = readText(root, f) ?? ''; return { file: f, chars: t.length, tokens: tok(t.length) }; };
-    const guides = (a.guides || []).map(size), readFirst = (a.readFirst || []).map(size);
+    const guides = (a.guides || []).map(size);
     const discovery = (a.discovery || []).map((e) => { const t = entryText(readText(root, e.file), e) ?? ''; return { entry: entryName(e), chars: t.length, tokens: tok(t.length) }; });
     const sum = (xs) => xs.reduce((n, f) => n + f.tokens, 0);
     result.audiences[name] = {
-      what: a.what, always, guides, discovery, readFirst,
-      alwaysTokens: sum(always), guideTokens: sum(guides), discoveryTokens: sum(discovery), readFirstTokens: sum(readFirst),
+      what: a.what, always, guides, discovery,
+      alwaysTokens: sum(always), guideTokens: sum(guides), discoveryTokens: sum(discovery),
     };
   }
   result.references = (surfaces.references || []).map((f) => { const t = readText(root, f) ?? ''; return { file: f, chars: t.length, tokens: tok(t.length) }; });
@@ -217,7 +216,6 @@ export function checkRules(root = REPO) {
       if (typeof e?.file !== 'string') { problems.push(`surfaces.json: a discovery entry of ${name} has no file`); continue; }
       if (entryText(text(e.file), e) == null) problems.push(`surfaces.json: discovery ${entryName(e)} (${name}) does not exist`);
     }
-    for (const f of a.readFirst || []) if (text(f) == null) problems.push(`surfaces.json: read-first file ${f} (${name}) does not exist`);
   }
   for (const f of surfaces.references || []) if (text(f) == null) problems.push(`surfaces.json: reference ${f} does not exist`);
   const tasks = readText(root, 'tools/context/tasks.json');
@@ -264,7 +262,6 @@ function main(argv) {
     }
     if (a.guides.length) console.log(`   guides, read when a task needs one: ~${a.guideTokens} tokens (${a.guides.map((f) => `${path.basename(f.file, '.md')} ~${f.tokens}`).join(', ')})`);
     if (a.discovery.length) console.log(`   starts a task from: ~${a.discoveryTokens} tokens (${a.discovery.map((f) => `${f.entry} ~${f.tokens}`).join(', ')})`);
-    if (a.readFirst.length) console.log(`   told to read first: ~${a.readFirstTokens} tokens (${a.readFirst.map((f) => `${f.file} ~${f.tokens}`).join(', ')})`);
   }
   if (s.references.length) console.log(`== reference guides, opened only by the task that needs one: ${s.references.length} files, ~${s.references.reduce((n, f) => n + f.tokens, 0)} tokens together, the largest ${[...s.references].sort((a, b) => b.tokens - a.tokens).slice(0, 3).map((f) => `${f.file} ~${f.tokens}`).join(', ')}`);
   console.log(`== rules: ${c.rules} inventoried (${c.protectedRules} protected), ${c.gaps.length} gap notes`);

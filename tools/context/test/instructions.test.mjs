@@ -18,7 +18,7 @@ function scratchRepo() {
   const files = new Set(['CLAUDE.md', 'AGENTS.md', 'tools/context/rules.json', 'tools/context/surfaces.json', 'tools/context/protected.json']);
   for (const r of rules) for (const f of [...(r.enforced || []), ...r.homes.map((h) => h.file)]) files.add(f);
   const surf = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/context/surfaces.json'), 'utf8'));
-  for (const a of Object.values(surf.audiences)) for (const f of [...a.always, ...(a.guides || []), ...(a.readFirst || []), ...(a.discovery || []).map((e) => e.file)]) files.add(f);
+  for (const a of Object.values(surf.audiences)) for (const f of [...a.always, ...(a.guides || []), ...(a.discovery || []).map((e) => e.file)]) files.add(f);
   for (const f of surf.references || []) files.add(f);
   const tasks = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/context/tasks.json'), 'utf8'));
   files.add('tools/context/tasks.json');

@@ -96,7 +96,9 @@ manual, about 124,000 estimated tokens together; the agent three of them). Nobod
 2026-10-20 read `CLAUDE.md` or `README.md` and 1 read the client manual, and in `baseline-2026-10-20.json`'s window (2026-10-18 to
 2026-10-20) the files sessions read most include ROADMAP.md in 1 of 12 interactive sessions and the client manual in 3 of 39 subagents.
 Now `CLAUDE.md` (so `AGENTS.md`) says to start from README.md's "Documentation map": pick the task's row, read that one document, then the
-system's guide and the code (rule `task-discovery`). The client manual became `client/README.md`, an index (the feature table and "Guides
+system's guide and the code (rule `task-discovery`). The Discord agent's core says the same, and in a job whose worktree was made before
+the split it reads only the old `client/README.md` section on the same subject; its media guides name the game's page for each workflow
+with the same fallback (server/death-muffin/discord-agent/README.md "Prompt and guides"). The client manual became `client/README.md`, an index (the feature table and "Guides
 by task"), and guides beside the code they describe; `doc-moves.json` records where each old section went. Nothing here shows that a model
 follows the new route: that shows only in the reads `usage.mjs` and `usage-codex.mjs` report for sessions after the change.
 

@@ -62,3 +62,5 @@ migration to the live database, deploys the backend and publishes the client. Th
 - *Decisions.* When the requester has not said where it drops or how strong it is, do not stop to ask: use the defaults above (legendary, boss drops,
   legendary stats) and state them in the proposal so they can change them in the next round. Ask only when the request contradicts itself.
 Never edit `tools/ai/`.
+
+**The game's side:** how the client takes in models is `client/tools/ASSETS.md`, and the look of creatures and worn gear is `client/game/README.md`. In a workspace made before 2026-10-21 `client/tools/ASSETS.md` is not there yet: read only the "Assets" section of `client/README.md` instead.

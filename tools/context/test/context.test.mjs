@@ -24,7 +24,7 @@ function scratchRepo() {
   const files = new Set(['CLAUDE.md', PROMPT, 'tools/context/rules.json', 'tools/context/surfaces.json', 'tools/context/protected.json']);
   for (const r of rules) for (const f of [...(r.enforced || []), ...r.homes.map((h) => h.file)]) files.add(f);
   const surf = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/context/surfaces.json'), 'utf8'));
-  for (const a of Object.values(surf.audiences)) for (const f of [...a.always, ...(a.guides || []), ...(a.readFirst || []), ...(a.discovery || []).map((e) => e.file)]) files.add(f);
+  for (const a of Object.values(surf.audiences)) for (const f of [...a.always, ...(a.guides || []), ...(a.discovery || []).map((e) => e.file)]) files.add(f);
   for (const f of surf.references || []) files.add(f);
   const tasks = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/context/tasks.json'), 'utf8'));
   files.add('tools/context/tasks.json');
@@ -199,7 +199,8 @@ test('a section runs from its heading to the next heading of its level or above,
   const s = sizes(REPO).audiences.session;
   const map = s.discovery.find((d) => d.entry === 'README.md "Documentation map"');
   assert.ok(map && map.chars < fs.readFileSync(path.join(REPO, 'README.md'), 'utf8').length / 3, 'the map, not the whole root README');
-  assert.equal(s.readFirst.length, 0, 'sessions are not told to read every document first');
+  const surf = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/context/surfaces.json'), 'utf8'));
+  for (const [name, a] of Object.entries(surf.audiences)) assert.ok(!('readFirst' in a), `${name} is not told to read every document first`);
 });
 
 test('every task route answers its question in this tree', () => {
