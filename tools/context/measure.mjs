@@ -8,9 +8,10 @@
 // (usage.mjs reports that). The rule check (rules.json, protected.json): the inventory's shape, every clause still in its file, protected
 // clauses that are instructions rather than headings, an always-loaded home for each audience of a protected rule (or a gap with a note),
 // the lock on protected rules, enforcing files that exist, no section of always-loaded text without an inventoried rule, and every guide an
-// existing file that holds an inventoried rule (a guide is never an always-loaded home).
+// existing file that holds an inventoried rule (a guide is never an always-loaded home). Size warnings (surfaces.json `ceilings`): a file or
+// section above its ceiling is printed for review and never fails; a missing, invalid or stale ceiling is a problem like the others.
 //
-//   node tools/context/measure.mjs [--json out.json]      exit 1 when the rule check finds a problem
+//   node tools/context/measure.mjs [--json out.json]      exit 1 when the rule check finds a problem (a size warning alone does not)
 //   node tools/context/measure.mjs --tasks [--json out]    the task routes, before (needs the `before` revision in the history) and after
 //   node tools/context/measure.mjs --print-lock           the protected.json entries the inventory has now (copy only what you mean to change)
 
@@ -53,28 +54,78 @@ export function sectionText(text, name) {
 const entryText = (text, e) => (text == null ? null : e.section ? sectionText(text, e.section) : text);
 const entryName = (e) => (e.section ? `${e.file} "${e.section}"` : e.file);
 
+// Each measured file or section carries its warning ceiling from surfaces.json `ceilings` (null when none is set: ceilingCheck reports that).
 export function sizes(root = REPO) {
   const surfaces = readJson(root, 'tools/context/surfaces.json');
   const cpt = surfaces.charsPerToken;
   const tok = (chars) => Math.round(chars / cpt);
+  const c = surfaces.ceilings && typeof surfaces.ceilings === 'object' ? surfaces.ceilings : {};
+  const ceiling = (table, key) => (table && typeof table === 'object' && Number.isInteger(table[key]) && table[key] > 0 ? table[key] : null);
   const result = { charsPerToken: cpt, audiences: {} };
   for (const [name, a] of Object.entries(surfaces.audiences)) {
     const always = a.always.map((f) => {
       const t = readText(root, f) ?? '';
-      return { file: f, chars: t.length, tokens: tok(t.length), sections: sections(t).map((s) => ({ title: s.title, chars: s.chars, tokens: tok(s.chars) })) };
+      return { file: f, chars: t.length, tokens: tok(t.length), ceiling: ceiling(c.always, name), sections: sections(t).map((s) => ({ title: s.title, chars: s.chars, tokens: tok(s.chars) })) };
     });
-    const size = (f) => { const t = readText(root, f) ?? ''; return { file: f, chars: t.length, tokens: tok(t.length) }; };
+    const size = (f) => { const t = readText(root, f) ?? ''; return { file: f, chars: t.length, tokens: tok(t.length), ceiling: ceiling(c.guides, name) }; };
     const guides = (a.guides || []).map(size);
-    const discovery = (a.discovery || []).map((e) => { const t = entryText(readText(root, e.file), e) ?? ''; return { entry: entryName(e), chars: t.length, tokens: tok(t.length) }; });
+    const discovery = (a.discovery || []).map((e) => { const t = entryText(readText(root, e.file), e) ?? ''; return { entry: entryName(e), chars: t.length, tokens: tok(t.length), ceiling: ceiling(c.discovery, entryName(e)) }; });
     const sum = (xs) => xs.reduce((n, f) => n + f.tokens, 0);
     result.audiences[name] = {
       what: a.what, always, guides, discovery,
       alwaysTokens: sum(always), guideTokens: sum(guides), discoveryTokens: sum(discovery),
     };
   }
-  result.references = (surfaces.references || []).map((f) => { const t = readText(root, f) ?? ''; return { file: f, chars: t.length, tokens: tok(t.length) }; });
+  const refCeiling = Number.isInteger(c.references) && c.references > 0 ? c.references : null;
+  result.references = (surfaces.references || []).map((f) => { const t = readText(root, f) ?? ''; return { file: f, chars: t.length, tokens: tok(t.length), ceiling: refCeiling }; });
   return result;
 }
+
+// Size warnings (tools/context/README.md "Size warnings"): every always-loaded file, guide, discovery entry and reference guide in
+// surfaces.json has a ceiling in estimated tokens, and one above it is a warning, a prompt to explain the growth or move task detail to
+// its guide in review, never a failure and never a reason to cut a safety rule. The configuration itself must be whole: a surface with no
+// valid ceiling, a ceiling for a surface that is not listed, or an unknown field is a problem, so the warnings cannot quietly stop covering
+// a file. Returns { warnings: [{ kind, entry, audiences, tokens, ceiling }], problems: [text] }.
+const CEILING_KEYS = ['about', 'always', 'guides', 'discovery', 'references'];
+export function ceilingCheck(root = REPO) {
+  const surfaces = readJson(root, 'tools/context/surfaces.json');
+  const c = surfaces.ceilings;
+  if (!c || typeof c !== 'object' || Array.isArray(c)) return { warnings: [], problems: ['surfaces.json: "ceilings" is missing: every measured surface needs a warning ceiling (tools/context/README.md "Size warnings")'] };
+  const s = sizes(root);
+  const problems = [];
+  const bad = (where) => problems.push(`surfaces.json: ceilings ${where} must be a positive whole number of estimated tokens`);
+  for (const k of Object.keys(c)) if (!CEILING_KEYS.includes(k)) problems.push(`surfaces.json: ceilings has an unknown field "${k}"`);
+  // One entry per surface: the discovery entries are shared by every audience, so each is measured and named once.
+  const seen = new Map();
+  const add = (kind, entry, who, x) => {
+    const key = `${kind}\0${entry}`;
+    if (seen.has(key)) { seen.get(key).audiences.push(who); return; }
+    seen.set(key, { kind, entry, audiences: who ? [who] : [], tokens: x.tokens, ceiling: x.ceiling });
+  };
+  for (const kind of ['always', 'guides']) {
+    const table = c[kind];
+    if (table !== undefined && (typeof table !== 'object' || table === null || Array.isArray(table))) { problems.push(`surfaces.json: ceilings.${kind} must map each audience to its ceiling`); continue; }
+    for (const k of Object.keys(table || {})) if (!(surfaces.audiences[k]?.[kind] || []).length) problems.push(`surfaces.json: ceilings.${kind} names "${k}", which has no ${kind === 'always' ? 'always-loaded files' : 'guides'}`);
+    for (const [name, a] of Object.entries(s.audiences)) {
+      if (!a[kind].length) continue;
+      if (a[kind][0].ceiling == null) { bad(`.${kind}.${name}`); continue; }
+      for (const f of a[kind]) add(kind, f.file, name, f);
+    }
+  }
+  const disc = c.discovery && typeof c.discovery === 'object' && !Array.isArray(c.discovery) ? c.discovery : {};
+  if (c.discovery !== undefined && disc !== c.discovery) problems.push('surfaces.json: ceilings.discovery must map each discovery entry to its ceiling');
+  const entries = new Set(Object.values(s.audiences).flatMap((a) => a.discovery.map((d) => d.entry)));
+  for (const k of Object.keys(disc)) if (!entries.has(k)) problems.push(`surfaces.json: ceilings.discovery names ${k}, which is no audience's discovery entry`);
+  const unset = new Set();
+  for (const [name, a] of Object.entries(s.audiences)) for (const d of a.discovery) (d.ceiling == null ? unset.add(d.entry) : add('discovery', d.entry, name, d));
+  for (const e of unset) bad(`.discovery[${JSON.stringify(e)}]`);
+  if (s.references.length && s.references[0].ceiling == null) bad('.references');
+  else for (const f of s.references) add('references', f.file, null, f);
+  const warnings = [...seen.values()].filter((w) => w.tokens > w.ceiling);
+  return { warnings, problems };
+}
+const KIND_LABEL = { always: 'always loaded', guides: 'guide', discovery: 'discovery entry', references: 'reference guide' };
+export const formatSizeWarning = (w) => `${w.entry} is ~${w.tokens} estimated tokens, above its ceiling of ${w.ceiling} (${KIND_LABEL[w.kind]}${w.audiences.length ? `, ${w.audiences.join(', ')}` : ''}): say why in review or move task detail to its guide; never cut a safety rule or raise the ceiling to hide this`;
 
 // What each representative task reads (tasks.json): the before route at the `before` revision (null when that revision is not in this
 // checkout's history, as in a shallow CI clone) and the after route in this tree; whether each holds the task's answer.
@@ -233,6 +284,8 @@ export function checkRules(root = REPO) {
       if (!rules.some((r) => Array.isArray(r?.homes) && r.homes.some((h) => h?.file === f && Array.isArray(h.clauses) && h.clauses.length && h.clauses.every((c) => has(f, c))))) problems.push(`${f}: guide holds no inventoried rule: add its rules to tools/context/rules.json`);
     }
   }
+  // The size ceilings' configuration (ceilingCheck): a size above its ceiling is only a warning, but a missing or invalid ceiling fails.
+  problems.push(...ceilingCheck(root).problems);
   return {
     rules: rules.length, protectedRules: rules.filter((r) => r?.protected === true).length,
     gaps: rules.flatMap((r) => (Array.isArray(r?.gaps) ? r.gaps : []).map((g) => ({ id: r.id, protected: r.protected === true, accepted: r.protected === true ? !!lock[r.id]?.acceptedGaps?.includes(g?.audience) : null, ...g }))),
@@ -254,20 +307,24 @@ function main(argv) {
   const json = argv[0] === '--json' ? argv[1] : null;
   const s = sizes();
   const c = checkRules();
+  const w = ceilingCheck().warnings;
+  const cap = (f) => (f.ceiling == null ? '' : ` / ${f.ceiling}`);
   for (const [name, a] of Object.entries(s.audiences)) {
     console.log(`== ${name}: ${a.what}`);
     for (const f of a.always) {
-      console.log(`   always loaded: ${f.file} ${f.chars} chars, ~${f.tokens} tokens`);
+      console.log(`   always loaded: ${f.file} ${f.chars} chars, ~${f.tokens}${cap(f)} tokens`);
       for (const sec of f.sections) console.log(`     ${String(sec.tokens).padStart(6)}  ${sec.title}`);
     }
-    if (a.guides.length) console.log(`   guides, read when a task needs one: ~${a.guideTokens} tokens (${a.guides.map((f) => `${path.basename(f.file, '.md')} ~${f.tokens}`).join(', ')})`);
-    if (a.discovery.length) console.log(`   starts a task from: ~${a.discoveryTokens} tokens (${a.discovery.map((f) => `${f.entry} ~${f.tokens}`).join(', ')})`);
+    if (a.guides.length) console.log(`   guides, read when a task needs one: ~${a.guideTokens} tokens (${a.guides.map((f) => `${path.basename(f.file, '.md')} ~${f.tokens}${cap(f)}`).join(', ')})`);
+    if (a.discovery.length) console.log(`   starts a task from: ~${a.discoveryTokens} tokens (${a.discovery.map((f) => `${f.entry} ~${f.tokens}${cap(f)}`).join(', ')})`);
   }
-  if (s.references.length) console.log(`== reference guides, opened only by the task that needs one: ${s.references.length} files, ~${s.references.reduce((n, f) => n + f.tokens, 0)} tokens together, the largest ${[...s.references].sort((a, b) => b.tokens - a.tokens).slice(0, 3).map((f) => `${f.file} ~${f.tokens}`).join(', ')}`);
+  if (s.references.length) console.log(`== reference guides, opened only by the task that needs one: ${s.references.length} files, ~${s.references.reduce((n, f) => n + f.tokens, 0)} tokens together, the largest ${[...s.references].sort((a, b) => b.tokens - a.tokens).slice(0, 3).map((f) => `${f.file} ~${f.tokens}${cap(f)}`).join(', ')}`);
+  console.log(`== sizes: ${w.length} above their warning ceiling (estimated tokens, size / ceiling above)`);
+  for (const x of w) console.log(`   WARNING ${formatSizeWarning(x)}`);
   console.log(`== rules: ${c.rules} inventoried (${c.protectedRules} protected), ${c.gaps.length} gap notes`);
   for (const g of c.gaps) console.log(`   gap ${g.id} (${g.audience}${g.protected ? (g.accepted ? ', protected, accepted in protected.json' : ', protected, NOT accepted') : ''}): ${g.note}`);
   for (const p of c.problems) console.log(`   PROBLEM ${p}`);
-  if (json) fs.writeFileSync(json, JSON.stringify({ sizes: s, rules: c }, null, 2) + '\n');
+  if (json) fs.writeFileSync(json, JSON.stringify({ sizes: s, sizeWarnings: w, rules: c }, null, 2) + '\n');
   process.exit(c.problems.length ? 1 : 0);
 }
 

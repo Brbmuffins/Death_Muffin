@@ -1,5 +1,12 @@
 {
   "charsPerToken": 2.7,
+  "ceilings": {
+    "about": "Warning ceilings in estimated tokens (tools/context/README.md \"Size warnings\"): always and guides per audience, each file; discovery per entry; references for each reference guide. Above one is a review prompt, never a failure; not room to fill, not a model limit; never raised to hide a warning.",
+    "always": {"session": 4500, "codex": 4500, "agent": 10500},
+    "guides": {"agent": 5000},
+    "discovery": {"README.md \"Documentation map\"": 800, "client/README.md": 4000},
+    "references": 8000
+  },
   "references": ["client/tools/TESTING.md", "client/tools/TEST-SUITES.md", "client/next/ARCHITECTURE.md", "client/main/SCREENSHOTS.md", "client/main/CLIPS.md", "client/main/RELEASE-CHECKS.md", "client/next/areas/SURGES.md", "client/next/rites/CORE-INTEGRATION.md", "client/next/bosses/CORE-INTEGRATION.md", "client/next/perf/BENCHMARK.md", "client/next/perf/BENCHMARK-REPORT.md", "client/next/perf/DRAW-BUDGET.md", "client/world_fx/README.md", "client/fx/README.md", "client/next/perf/README.md", "client/next/look/README.md", "client/next/hud/CORE-INTEGRATION.md", "client/ui/hud/PERFORMANCE.md", "client/ui/onboarding/README.md", "client/audio/README.md", "client/core/THREADING.md", "client/next/rewards/AUTHORITY.md", "client/next/gathering/README.md", "client/next/party/CORE-NETWORK.md", "client/next/party/README.md", "client/next/party/TESTING.md", "client/front/README.md", "client/net/README.md", "client/tools/ASSETS.md", "client/next/depths/CORE-INTEGRATION.md", "client/world/README.md"],
   "audiences": {
     "session": {
