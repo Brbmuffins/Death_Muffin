@@ -8,7 +8,7 @@ How it plays on the area scenes (a cycle, the server call and its refusals, the 
 ## Playing it
 - 68 nodes (Acre 45, Fen 9, Cloister 3, Pyre 3, Graves 2, Ossuary 2, Nave 2, Sanctum 2: `DmData.world()["nodes"]`), props of the area scenes (group `GatherNodes`). Hover = ring + the node card
   (needs / XP per success / spent); click = walk to the ring and work (stations and NPCs win a click over a node, enemies over both).
-- Rich nodes: 1.5 x yield, half respawn. Auto (setting, default on) walks to the next live node of the kind and waits for a respawn; Auto off stops with "The X is spent.". Refusals use the rules' words ("Requires ...", "Your bag is full.", "Nothing to gather here.", the backend's text).
+- Rich nodes: 1.5 x yield, half respawn. Auto (walk on to the next live node of the kind, or stop): the "a cycle" row in "Gathering and the Acre" below. Refusals use the rules' words ("Requires ...", "Your bag is full.", "Nothing to gather here.", the backend's text).
 - Professions: the Skills tab (P) reads the same backend rows; stations (kiln, sawpit, fire, cauldron, grinder, shelf) craft from gathered materials through the existing panels. The best AFK session of each skill is kept in the counsel store.
 
 ## Authority and replication (DECISIONS.md D1 / D4)
@@ -45,17 +45,15 @@ characters are the same kind of thing as the hub's three people, so they stay no
 *Cost.* An idle frame of the Gather node and the Acre's glue is about 4 us (measured once; the tests no longer print it): the Gather node accumulates a clock, ticks at 10 Hz (the views' pulse, the loop's update), and while a loop runs it ticks every frame for
 the progress arc; the respawn check runs at 4 Hz only while a node is spent; the Acre's glue is three timers and, in the Acre only, up to four laborers within 48 m. No node or script exists per creature, and nothing is scanned across all nodes.
 
-*Tests.* `tests/gathering.gd` plays it on the local mock with a game clock the mock follows (the whole world, the HUD and panels, no real server): the nodes in the scenes and their views, all 68 hovered and clicked (a level refused in the
-rules' words), a node worked from the click to the server's answer and to spent and back (the walk, the cycle's length, the batch, the bag, the XP, the Chronicle, the respawn), the stops, Auto off, the server's dice
-(a level-up, the extras, a charm, the burst, a spent hour), AFK and its report, the laborers (none built outside the Acre, three at their posts, the hover card, a click, three hours of work, a collection with its gold), the garden (plant,
-harvest, a level), a contract, the Sexton's greeting, the guidance feeds and the Next box's state, the notices of a full laborer and a ready plot, each skill's find and XP, the Sawpit's plank from gathered logs, every node's stand spot and yield, leaving mid-gather (the cycles not yet sent are paid by the server before the game goes, a batch still out is waited for and what queued behind it goes too, the Chronicle's count of them is saved after them) and a relaunch that keeps the results. `tests/chapterhouse/run.gd` also crafts at every forge station, reforges an affixed piece and sends a bug report. `tests/coop.gd` checks that a node the host spends is spent on the guest.
-
 *Gaps.* A node's live look is the area scene's prop, which the lighting bake lit; its spent model is built at run time, so it is lit by the area's real-time light and ambient, and the bake's light of the live model
 stays on the ground around it. Never looked at on a GPU. The laborers' models are first built on the first Acre visit (`DmNextWarmup` does not draw them yet, so the first look at their materials on a GPU is unmeasured). Gathering is the host's: a guest holds the nodes and their views but has no loop (its character has no backend api on the host), so it cannot gather, and it does not see the host's laborers or the tool in
 a gatherer's hand.
 
 ## Tests
-`client/tests/gathering.gd` (all 68 nodes hovered and clicked, a node worked through the server, the stops, AFK and its report, the laborers, the garden, a contract, the Sexton's guidance feeds, the idle cost of the Gather node and the glue, leaving mid-gather); `client/tests/coop.gd` checks that a node the host spends is spent on the guest.
+`tests/gathering.gd` plays it on the local mock with a game clock the mock follows (the whole world, the HUD and panels, no real server): the nodes in the scenes and their views, all 68 hovered and clicked (a level refused in the
+rules' words), a node worked from the click to the server's answer and to spent and back (the walk, the cycle's length, the batch, the bag, the XP, the Chronicle, the respawn), the stops, Auto off, the server's dice
+(a level-up, the extras, a charm, the burst, a spent hour), AFK and its report, the laborers (none built outside the Acre, three at their posts, the hover card, a click, three hours of work, a collection with its gold), the garden (plant,
+harvest, a level), a contract, the Sexton's greeting, the guidance feeds and the Next box's state, the notices of a full laborer and a ready plot, each skill's find and XP, the Sawpit's plank from gathered logs, every node's stand spot and yield, leaving mid-gather (the cycles not yet sent are paid by the server before the game goes, a batch still out is waited for and what queued behind it goes too, the Chronicle's count of them is saved after them) and a relaunch that keeps the results. `tests/chapterhouse/run.gd` also crafts at every forge station, reforges an affixed piece and sends a bug report. `tests/coop.gd` checks that a node the host spends is spent on the guest.
 
 ## Known gaps
 - Remote players do not see a gatherer's tool / gesture or the host's laborers; clients cannot start gathering (above).

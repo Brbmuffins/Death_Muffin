@@ -37,5 +37,4 @@ Timers are the caster's (`c.after(ms, fn)` on the body's clock, a physics tick).
   know their kills at once. Her life steal counts the enemies a swing struck.
 - Shots follow the simulation's position of their target. A blow of zero or less is refused (`damage`, a boss's too); no rite deals one.
 
-`client/tests/rites.gd` casts every rite (table-driven), the refusals, the synchronous-kill cases, the kit's hotbar and the click-to-attack chase, and plays a fight; then the other three necromancers and the Reaper, each a real
-character in a fresh game (her bag, souls paid and refused, every rite's damage with the souls' bonuses, the life steal, the wisps, Soul Harbinger's Raiment, a kill banking a soul, auto combat's pick).
+The suites that cover this (`client/tests/rites.gd` and the core's halves): [README.md](README.md) "Tests".

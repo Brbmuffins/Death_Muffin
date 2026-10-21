@@ -79,7 +79,7 @@ partner effects at 0.35 alpha / 0.75 scale.
 - `DmFxRing` owns two MultiMeshes per ring, both allocated once (full size and 256 motes, never resized). While <= 256 motes are live only the small one is drawn and uploaded
   (`MultiMesh.buffer` must be the whole buffer, so the 3500-mote ring cost 224 KB per frame even for a handful of motes); only visibility switches. The motes' random starts and their per-frame loop are
   `DmMotes` (C++).
-- Ground decals are records in `DmDecals` (C++): it ages, shapes and places them and writes each layer's instance buffer; `DmFxLayer` keeps the MultiMesh and its node (`show_count`, `grow`). `DmFxLayer.flush` still runs one loop per layer kind for the other kinds.
+- Ground decals are records in C++ (`DmDecals`; "The effects" below). `DmFxLayer.flush` still runs one loop per layer kind for the other kinds.
 - `Vfx.binbun` moves an effect's root only when it moved, tests a looping effect against the camera every third frame, and pushes fade and gain to its shaders only when they changed.
 - `_update_spikes` returns early (hiding once) when there are none.
 

@@ -56,7 +56,8 @@ slot 6 / R = the discipline's signature at level 10), `dm_rite_gestures.gd` (cas
 - Known deviation: a toxic Corpse Explosion's rot pool also bursts corpses for the Rotweaver (the original sim's did not).
 
 ## Tests
-`client/tests/rites.gd` casts every rite (table-driven), the refusals, the synchronous-kill cases, the kit's hotbar and the click-to-attack chase, plays a fight, then the other three necromancers and the Reaper (a weapon line case and the runes included);
+`client/tests/rites.gd` casts every rite (table-driven), the refusals, the synchronous-kill cases, the kit's hotbar and the click-to-attack chase, and plays a fight; then the other three necromancers and the Reaper, each a real
+character in a fresh game (her bag, souls paid and refused, every rite's damage with the souls' bonuses, the life steal, the wisps, Soul Harbinger's Raiment, a kill banking a soul, auto combat's pick; a weapon line case and the runes included);
 `client/tests/core_status.gd` and `core_corpses.gd` / `core_thralls.gd` the core's half.
 
 ## Known gaps

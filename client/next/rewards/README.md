@@ -88,5 +88,6 @@ so what the guest is paid is what the server counted. A report that fails, a ref
 - Ground: item names in rarity colour within 7 m (3 m ordinary; `DmLootView.near_labels = false` turns them off), icon is the inventory's own item art (`DmUiArt.item`; a rarity tile only for an item without art) and blinks in the last 8 s, drops from one kill land >= 0.65 m apart.
 
 ## Tests
-`client/tests/rewards.gd` plays the rewards node (sessions, batches, lost replies, refusals, the end, per-member loot, on the mock backend; a test double emits `kill_credited`); `client/tests/value.gd` plays the game scene (a drop claimed into the bag, the purse, brews and lifesteal);
+`client/tests/rewards.gd` plays the rewards node (sessions, batches, lost replies, refusals, the end, per-member loot, on the mock backend; a test double emits `kill_credited`); `client/tests/value.gd` plays the game scene on the mock (kills through the core, the accepted
+XP and counts against the server's counters, the purse, a drop claimed into the bag, brews and lifesteal, the meta, Q's flask, and the save on leave);
 `client/tests/panels.gd` the Reliquary on the server's bag.

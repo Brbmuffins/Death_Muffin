@@ -34,5 +34,4 @@ lets take it (`DmNextParty.share_ground`), the first pickup wins (`DmNextLoot`'s
 chat line the party reads (`DmNextParty.announce`).
 
 The Covenant Seal's altar choice and the boss key prompt (`DmBossMeta`) are in ([The bosses](../bosses/CORE-INTEGRATION.md)).
-`tests/rewards.gd` plays the rewards node on the mock backend (sessions, batches, lost replies, refusals, the end, per-member loot; a test double emits `kill_credited`); `tests/value.gd` plays the game scene on the mock: kills through the core, the accepted
-XP and counts against the server's counters, the purse, a drop claimed into the bag, brews and lifesteal, the meta, Q's flask, and the save on leave.
+The suites, `rewards.gd` and `value.gd`, and what each plays: [README.md](README.md) "Tests".

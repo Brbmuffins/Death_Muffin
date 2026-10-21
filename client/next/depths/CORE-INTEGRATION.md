@@ -3,13 +3,8 @@
 How a Depths run plays on the combat core: the floors, their dead, the quota and the chest. The node and its rules: [README.md](README.md).
 
 The Catacomb Depths (area `depths`, an instance below the Warren, solo: DECISIONS D5) are the one area with no scene: a run's floors are generated, drawn and baked when they are entered. The rules and numbers are
-the floor generator `sim/depths_floor.gd`, the quota, pacing, rosters and affixes `sim/sim_depths_rules.gd` and the rewards `rules/loot/depths_rewards.gd`; `next/depths` is the game's side:
-
-| file | job |
-|---|---|
-| `dm_depths_run.gd` (`DmDepthsRun`) | the run as pure rules: seed, depth, quota, kills, stair, peak, summary, `plan_wave` |
-| `dm_depths_ground.gd` (`DmDepthsGround`) | one floor as ground: the navmesh baked on a worker thread, the picture, the core's copy |
-| `dm_depths.gd` (`DmDepths`; child `Depths` of `DmNextGame`, host only) | the controller: enter / descend / leave, waves, quota and rewards, chest, death, the Chronicle, the HUD's readout and map, the interactables |
+the floor generator `sim/depths_floor.gd`, the quota, pacing, rosters and affixes `sim/sim_depths_rules.gd` and the rewards `rules/loot/depths_rewards.gd`; `next/depths` is the game's side,
+in three files (the run's rules, a floor as ground, the controller): [README.md](README.md).
 
 **Flow.** The Warren's stair (a `DmStairMesh` the controller puts in the Warren's scene) is an interactable of the hub: `stair_clicked()` offers "start at 1 or resume at the deepest" once a deeper floor is on the Chronicle (`depths_stair_offer`, the card calls
 `DmNextUiHost.enter_depths`), else starts a run on depth 1; the floor's stairs and chest join the hub's interactables while the run is on (the hub's hover, walk-and-use and prompts work as everywhere). Quota `9 + depth` (at most 30); the stair opens at the
