@@ -160,30 +160,46 @@ node tools/context/usage-codex.mjs --session <id> --session <id> --json out.json
 What a rollout records (Codex CLI 0.163, 2026-10-21), and how the reader uses it:
 
 - `session_meta` (id, launch folder, CLI version and source: `cli`/`vscode` is a terminal, `exec` is `codex exec`, a `subagent` source is a
-  child) and `turn_context` (each turn's folder and model). A response takes its turn's model; with none it is `unknown`.
-- `token_usage_record`: one per response, with that response's `usage` and the turn's and thread's running totals. The reader counts the
-  per-response usage once per `response_id`, across every file, oldest file first, so the copy a resumed or forked rollout carries is
-  not counted again (and that session's start is reported as inherited, not as a real first response). The running totals are never
-  summed; the last thread total is the check that a rollout was read whole.
+  child), `turn_context` (each turn's folder and model) and `thread_settings_applied`. A response takes its turn's model, else the model in
+  effect at that point of the file; a setting that comes later never applies backwards, and with none it is `unknown`.
+- `token_usage_record`: one per response, with that response's `usage`, the session and thread it belongs to, and the turn's and thread's
+  running totals. The reader counts the per-response usage once per `response_id` across the selected files, oldest file first, so the
+  copy a resumed or forked rollout carries is not counted again. The running totals are never summed into usage.
 - `event_msg` `token_count`: cumulative snapshots. Older rollouts have only these; a response is then derived as a rise of the total, a
   repeated snapshot adds nothing and a smaller total starts again from zero (a reset). One rise can hold several responses, so such
-  responses are reported as uncertain and never used as one response's context size. In a rollout that has both, snapshots count only
-  before the first record. Snapshots lag behind the records, so they are not the coverage check when records exist.
+  responses are reported as uncertain and never used as one response's context size. In a rollout that has both, responses come from
+  snapshots only before the first record.
+- **Coverage.** Each rollout's responses (copies included, so a copy is neither counted twice nor called missing) are checked against
+  everything its cumulative counters vouch for: each series (the records' thread totals, the snapshots) is cut at its resets and the
+  segments' last values added, and the larger series is the evidence. Snapshots usually lag the records, so they matter only where they
+  show more (a newer snapshot after the last record, a record whose thread total is ahead of what came before it). What the evidence shows
+  beyond the responses is reported as **uncovered** with a warning: kept apart from the usage totals, never dropped silently. Uncovered is
+  per rollout, not split by the window.
+- **Starts.** A session's start is `genuine` only when the rollout shows it: a `session_meta`, and an earliest response that is not a copy
+  (not already counted, and recorded for this rollout's own session or thread) and is its thread's first (its thread total is its own
+  usage, or a first snapshot equal to its last response). A copied earliest response is `inherited` (a fork or resume); anything else,
+  such as a partial rollout whose first response already has history behind it, is `unknown`. Only genuine starts give the first-response
+  figures.
 - `input_tokens` is the whole input; `cached_input_tokens` is the part of it served from the cache (reported as cached and not cached,
   never added on top); `reasoning_output_tokens` is part of `output_tokens`; `cache_write_input_tokens` is reported as recorded.
-- Tool calls (`custom_tool_call` `exec` in code mode, `function_call`) are paired with their output by `call_id`. A call that ran exactly
-  one shell command is counted by command, and a simple single-file read (`cat`, `sed -n`, `head`, ...) names its file. Several commands
+- Tool calls (`custom_tool_call` `exec` in code mode, `function_call`) are paired with their output by `call_id`; an output another selected
+  rollout already holds (the same call and text) is counted once, in the oldest. A call that ran exactly one shell command is counted by its
+  program (base name only, variable assignments dropped), and a simple single-file read (`cat`, `sed -n`, `head`, ...) names its file,
+  resolved without touching the disk against the command's own `workdir`, else the turn's or the session's folder. Only a file inside a
+  checkout is named, relative to it; anything else is `(outside the repo)`, or `(unknown folder)` when no folder is known. Several commands
   in one call, code with no recognisable command, and multi-file reads go into an unattributed bucket: characters returned are a proxy,
   not tokens a file cost. Truncated and image outputs are counted apart.
 - Instructions: `world_state` `agents_md` (or, from older CLIs, a user message that starts `# AGENTS.md instructions for <folder>`)
-  shows which AGENTS.md Codex injected and from which folder. A command that reads AGENTS.md or CLAUDE.md is an explicit read, not an
-  injection; a person naming the file is neither. A rollout with no `world_state` at all is "unknown", never "not loaded".
+  shows which AGENTS.md Codex injected and from which folder. A command that reads a checkout's own AGENTS.md or CLAUDE.md (resolved as
+  above) is an explicit read, not an injection; a person naming the file is neither. A rollout with no `world_state` at all is "unknown",
+  never "not loaded".
 
 Which sessions count: `dm` sessions ran mostly in a checkout; `mixed` sessions started elsewhere (every Codex review so far started in
-the home folder and read the game by absolute paths) and ran commands that name a Death Muffin path, so they are reported apart rather
-than credited to the game as a whole; `selected` sessions were named with `--session`/`--sessions-file`. What a command returned never
-decides it. The window works as in `usage.mjs` (UTC dates, both ends included, responses and tool output by their own timestamps;
-`--cohort` for whole sessions that started in it). Warnings say where evidence is missing (no usage recorded is unavailable, not zero).
+the home folder and read the game by absolute paths) and ran commands that name, or run in, a Death Muffin folder, so they are reported
+apart rather than credited to the game as a whole; with `--session`/`--sessions-file`, only the named sessions count (`selected`), chosen
+before any copied response is matched. What a command returned never decides it. The window works as in `usage.mjs` (UTC dates, both ends
+included, responses and tool output by their own timestamps; `--cohort` for whole sessions that started in it). Warnings say where
+evidence is missing (no usage recorded is unavailable, not zero).
 
 ## Stage 3 2026-10-21
 

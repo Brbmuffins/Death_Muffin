@@ -33,7 +33,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { classify, windowOf } from './usage.mjs';
 
-export const READER_VERSION = 1;
+export const READER_VERSION = 2;
 const DM_PATH = /\/vps-handoffs\/DeathMuffin\//;
 const USAGE_KEYS = ['input', 'cached', 'cacheWrite', 'output', 'reasoning'];
 const emptyUsage = () => ({ input: 0, cached: 0, cacheWrite: 0, output: 0, reasoning: 0 });
