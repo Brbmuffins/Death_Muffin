@@ -101,6 +101,10 @@ polish list). Also:
 
 ## Tools and tests
 
+- **The agent's sandbox test can leave a folder in `wt/`** (found 2026-10-21, context Stage 4). `world()` in
+  `server/death-muffin/discord-agent/test/sandbox.test.cjs` makes `wt/dm-sbx-test-*` and runs `git init` before the cleanup exists, so a run
+  whose next write fails (seen in reviews run under a restricted sandbox) leaves the folder behind: 16 were left on 2026-10-20 and 2026-10-21,
+  which the drift report lists. Fix: clean up when `world()` itself fails; the folders are for the owner to remove.
 - **Numbers the tests cannot read yet** (the test audit, 2026-10-20: every suite now reads the game's numbers from its data or sets them
   itself, B59). Where the game keeps a number as an inline literal, the test carries a named copy, so a retune there still needs a test edit:
   the combat core's compiled-in values that `DmCore.tuning()` does not expose (elite radius, windup and cooldown multipliers, the 1.1 s rise,
