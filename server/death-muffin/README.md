@@ -91,7 +91,9 @@ start, so changing one needs a restart of `death-muffin-auth`.
   and answers the character row; a `seq` at or below `character_authority.progress_seq` is a retry and answers `{duplicate: true,
   progressSeq}`. A body without `gains` (totals, clients before B23) is refused with 426 and writes nothing (DECISIONS B32). Gold other routes pay is written by them: gathering,
   labor, contracts (each answers `goldTotal`) and `POST /api/inventory/sell {characterId, items: [{slot_index, quantity}]}` (`sell.cjs`:
-  bag slots only, never worn gear, an affixed piece at its affixed price; answers `{sold, gold, goldTotal, bag}`).
+  bag slots only, never worn gear, an affixed piece at its affixed price; answers `{sold, gold, goldTotal, bag}`). The route is in
+  `backend/server.js`, its guards in `authority.cjs` and its payment out of the kill ledger in `kills.cjs`; the `save-progress:` tests in
+  `backend/server-routes.test.cjs` (and `session.test.cjs`) prove it (`npm run test:server`).
 - **The bag is the server's** (DECISIONS B25): `POST /api/inventory/sort {characterId, locked?}` -> `{bag, moves}` and
   `POST /api/inventory/use {characterId, uses: [{item_id, slot_index?, quantity}]}` -> `{bag, used}` (`bag-ops.cjs`, rules in
   `vaultRules.ts` sortBag / useItems; only consumables are used up). Every other bag change has its own route. `POST /api/inventory/save`
