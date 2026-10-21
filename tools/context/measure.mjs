@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 // How much rule text each audience carries, and whether the rule inventory still matches it (tools/context/README.md).
 // Sizes: the always-loaded text of each audience in surfaces.json (CLAUDE.md for sessions, the agent's prompt), split by `## ` section,
-// and the files each is told to read first. Tokens are estimated from characters (surfaces.json charsPerToken, measured on the agent's
+// the guides it reads when a task needs one (the agent's media how-tos, runner/lib/guides.cjs), and the files each is told to read first. Tokens are estimated from characters (surfaces.json charsPerToken, measured on the agent's
 // own calls: its first-call context grew about one token per 2.7 characters of prompt); they are estimates of text size, not API usage
 // (usage.mjs reports that). The rule check (rules.json, protected.json): the inventory's shape, every clause still in its file, protected
 // clauses that are instructions rather than headings, an always-loaded home for each audience of a protected rule (or a gap with a note),
-// the lock on protected rules, enforcing files that exist, and no section of always-loaded text without an inventoried rule.
+// the lock on protected rules, enforcing files that exist, no section of always-loaded text without an inventoried rule, and every guide an
+// existing file that holds an inventoried rule (a guide is never an always-loaded home).
 //
 //   node tools/context/measure.mjs [--json out.json]      exit 1 when the rule check finds a problem
 //   node tools/context/measure.mjs --print-lock           the protected.json entries the inventory has now (copy only what you mean to change)
@@ -41,10 +42,11 @@ export function sizes(root = REPO) {
       const t = readText(root, f) ?? '';
       return { file: f, chars: t.length, tokens: tok(t.length), sections: sections(t).map((s) => ({ title: s.title, chars: s.chars, tokens: tok(s.chars) })) };
     });
-    const readFirst = a.readFirst.map((f) => { const t = readText(root, f) ?? ''; return { file: f, chars: t.length, tokens: tok(t.length) }; });
+    const size = (f) => { const t = readText(root, f) ?? ''; return { file: f, chars: t.length, tokens: tok(t.length) }; };
+    const guides = (a.guides || []).map(size), readFirst = a.readFirst.map(size);
     result.audiences[name] = {
-      what: a.what, always, readFirst,
-      alwaysTokens: always.reduce((n, f) => n + f.tokens, 0), readFirstTokens: readFirst.reduce((n, f) => n + f.tokens, 0),
+      what: a.what, always, guides, readFirst,
+      alwaysTokens: always.reduce((n, f) => n + f.tokens, 0), guideTokens: guides.reduce((n, f) => n + f.tokens, 0), readFirstTokens: readFirst.reduce((n, f) => n + f.tokens, 0),
     };
   }
   return result;
@@ -159,6 +161,14 @@ export function checkRules(root = REPO) {
       }
     }
   }
+  // Guides are read when a task needs one: each exists, is not also always loaded, and holds at least one inventoried rule.
+  for (const [name, a] of Object.entries(surfaces.audiences || {})) {
+    for (const f of a.guides || []) {
+      if (text(f) == null) { problems.push(`surfaces.json: guide ${f} (${name}) does not exist`); continue; }
+      if ((a.always || []).includes(f)) problems.push(`surfaces.json: ${f} is both always loaded and a guide for ${name}`);
+      if (!rules.some((r) => Array.isArray(r?.homes) && r.homes.some((h) => h?.file === f && Array.isArray(h.clauses) && h.clauses.length && h.clauses.every((c) => has(f, c))))) problems.push(`${f}: guide holds no inventoried rule: add its rules to tools/context/rules.json`);
+    }
+  }
   return {
     rules: rules.length, protectedRules: rules.filter((r) => r?.protected === true).length,
     gaps: rules.flatMap((r) => (Array.isArray(r?.gaps) ? r.gaps : []).map((g) => ({ id: r.id, protected: r.protected === true, accepted: r.protected === true ? !!lock[r.id]?.acceptedGaps?.includes(g?.audience) : null, ...g }))),
@@ -177,6 +187,7 @@ function main(argv) {
       console.log(`   always loaded: ${f.file} ${f.chars} chars, ~${f.tokens} tokens`);
       for (const sec of f.sections) console.log(`     ${String(sec.tokens).padStart(6)}  ${sec.title}`);
     }
+    if (a.guides.length) console.log(`   guides, read when a task needs one: ~${a.guideTokens} tokens (${a.guides.map((f) => `${path.basename(f.file, '.md')} ~${f.tokens}`).join(', ')})`);
     console.log(`   told to read first: ~${a.readFirstTokens} tokens (${a.readFirst.map((f) => `${f.file} ~${f.tokens}`).join(', ')})`);
   }
   console.log(`== rules: ${c.rules} inventoried (${c.protectedRules} protected), ${c.gaps.length} gap notes`);

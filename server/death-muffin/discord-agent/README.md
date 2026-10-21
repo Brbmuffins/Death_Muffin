@@ -122,7 +122,7 @@ The adapter forwards discord.js `threadDelete` for threads under the configured 
 
 ### Screenshots
 **With a team PC online, pictures are automatic** (Helix, 2026-10-19: "no need to require !shot"; "Team PC pictures" below): the agent writes a shot plan for every visible change and the team PC renders it. **With none, only on request** (Helix, 2026-10-12): the agent renders on the server when the request asks for a picture or someone says `!shot`, never by default (PROMPT-godot.md); a proposal without pictures has a "Screenshots" field offering `!shot`.
-`shot-godot.sh [plan.json]` (default `.dm-shot.json`; format in `client/main/qa_ui_shots.gd` and `PROMPT-godot.md`: up to 4 shots of windows/tooltips or the hero wearing gear, `open` / `hover` / `area` / `clip` / `give` / `equip` / `discipline` / `view` / `turn` / `anim`) renders the branch's own client on the dev-offline demo hero with a fixed
+`shot-godot.sh [plan.json]` (default `.dm-shot.json`; format in `client/main/qa_ui_shots.gd` and `guides/screenshots.md`: up to 4 shots of windows/tooltips or the hero wearing gear, `open` / `hover` / `area` / `clip` / `give` / `equip` / `discipline` / `view` / `turn` / `anim`) renders the branch's own client on the dev-offline demo hero with a fixed
 representative bag. Same sandbox as `check-godot.sh` (no network, read-only filesystem, only the worktree writable, private `/tmp` and a fresh HOME), in two runs:
 the game's build products (`prep.sh`, above), then the branch's own `client/tools/qa_shots.sh <plan> <worktree>/.dm-shots/.raw <class>` (the plan's discipline,
 default 2): Forward+ on the software Vulkan driver under `xvfb-run`, falling back to OpenGL 3 with a line saying so. Only the rendering holds the shared
@@ -140,8 +140,8 @@ asks for more with `"before": true` (BEFORE and AFTER pairs) and `"presets"` (fr
 in the thread asks (words after `!shot` go to the agent too):
 
 1. **The turn starts.** For every message that reaches the agent the runner asks the backend who is online (`GET /internal/team/pcs`: PCs seen in the last 2 minutes, a paused one
-   left out because it declines every job). With one, the message gets a note ("A team PC is online right now ...") and the agent writes a shot plan (`.dm-shot.json`, PROMPT-godot.md
-   "Screenshots") for every change players can see and renders nothing itself; a plan left by an earlier turn is deleted first, since it described an earlier change. With none, a note says
+   left out because it declines every job). With one, the message gets a note ("A team PC is online right now ...") and the agent writes a shot plan (`.dm-shot.json`,
+   `guides/screenshots.md`) for every change players can see and renders nothing itself; a plan left by an earlier turn is deleted first, since it described an earlier change. With none, a note says
    so and everything is as before: pictures only on request (`!shot`), rendered on the server. `!shot` with a team PC online asks the agent for the plan only. The runner remembers the answer
    for the turn (`job.teamTurn`, `job.shotAsked`); a sync or fix-up turn asks nothing and sends no pictures.
 2. **The proposal** goes out without server pictures. When the worktree has a plan and a PC is still online, its "Screenshots" field says "Pictures from a team PC follow" ("More pictures"
@@ -178,7 +178,7 @@ that job's folder), `cfg.teamPollMs` how often a job is checked. Tests replace t
 ### Clips and choices (short videos, "pick one")
 
 `runner/lib/clips.cjs`, `clipStage` in `runner/core.cjs`. When a request is about how something moves or looks in motion (speed, size,
-timing, colour), or the agent wants the requester to choose between a few values, it writes `.dm-clip.json` instead of changing anything (PROMPT-godot.md "Clips and choices"; only when a
+timing, colour), or the agent wants the requester to choose between a few values, it writes `.dm-clip.json` instead of changing anything (`guides/clips.md`; only when a
 team PC is online):
 
 ```json
@@ -199,7 +199,7 @@ team PC is online):
   limit for the bot) and uploads it (teamapp/README.md "The clip job"). The turn ends at once (no proposal; the slot is free) and the waiting goes on in the background, for up to 45 minutes.
 - **The thread** gets each video as its own post (one at a time, each sent before the next is queued, so a few large videos never pile up in memory) numbered by option, "1 · slow (speed 4)" (and the clip's name when an option has several clips), then "Recorded on <who> with the offline demo
   character on this branch (not the live game). Which do you like best? Reply with its number." A video over 8 MB or missing is named in that last post instead.
-- **Model previews** (a new or changed armor set, weapon or helm; PROMPT-godot.md "Clips and choices"): ONE variant with an empty tune and a clip with `camera: "turntable"` and the gear in
+- **Model previews** (a new or changed armor set, weapon or helm; `guides/clips.md`): ONE variant with an empty tune and a clip with `camera: "turntable"` and the gear in
   `equip`, so the requester sees the piece turning on a hero in the game's own lighting. With a single option nothing is a choice: the video is posted under its title (no number, no
   question, no `job.clipAsk`) and the turn is **not** held back: its proposal goes out as usual (the team build is made before the check, a couple of minutes) and the video follows it.
 - **The reply is a normal message.** The agent's next turn starts with a note listing the options' values as people saw them (so a fresh session knows what "the second one" was), and it applies
@@ -323,8 +323,20 @@ the ship merge and push, messages and the compare link.
 
 Tests: GitHub CI through `ci.sh` (`tools/check/ci.sh`, installed here; `check-godot.sh` for a re-run of 1-3 suites, the agent's `--rerun <suites>`, and everything
 with `ciGate: false`) · generated files `regen-godot.sh` · preview `preview-godot.sh` (a Windows `.zip`) · screenshots `shot-godot.sh` / `!shot` (or a team PC, no `!shot`)
-· prompt `PROMPT-godot.md` · tier rules `tiers` · ship: merge, CI or check-godot, backup + `ROLLBACK.sh`, push, backend and lobby when changed,
+· prompt `PROMPT-godot.md` and `guides/` ("Prompt and guides" below) · tier rules `tiers` · ship: merge, CI or check-godot, backup + `ROLLBACK.sh`, push, backend and lobby when changed,
 `publish-godot-client.sh` · rollback folder `backup-pre-release-godot-<stamp>`.
+
+**Prompt and guides.** `PROMPT-godot.md` is the core the agent always carries (`--append-system-prompt`, about 9K tokens): who it serves and what it may
+never do, its sandbox, making a change, the owner principles, when pictures and videos apply, the paid-generation limits, and an index of the guides.
+The how-to for each media workflow is a guide in `guides/` (`screenshots`, `clips`, `pictures`, `models`, `sound`), which the agent Reads only when
+it uses that workflow; the core's index (`.dm-guides/<name>.md`) is the one list of guides. `runner/lib/guides.cjs` before every turn: a snapshot
+per round in `state/guides/<job>/` of the INSTALLED core and guides (placeholders filled, a hash per file), made on the round's first turn and
+again, core and guides together, after a reinstall, when it no longer matches its hashes, or for a job from before the guides (the agent is told
+when its conversation carries on); every call of the turn, handoffs included, carries the snapshot's core; the guides are copied into the
+worktree's `.dm-guides/` (git-excluded, in `forbiddenPaths`, readable under the worktree's file grant), and a missing or edited copy is put back
+and the agent told. Nothing goes from a worktree back to the snapshot or the install. An install whose core is empty, or names a missing or empty guide,
+runs no turn: the thread is told to reinstall. `install-runner.sh` refuses a revision like that and replaces `guides/` whole; the drift report and the
+practice run compare the installed guides with `main`. Rule text sizes and the rule inventory: `tools/context/README.md`.
 
 **Progress notes** while a turn runs: `🔧 <pct>% · <sentence> · ⏱ <min> min`. The agent writes `.dm-status` as `<pct>% · <sentence>` (prompt
 `PROMPT-godot.md`); fewer thread posts (owner, 2026-10-10): the first status posts at once, later ones only when it changed and at most every
@@ -474,7 +486,8 @@ and every test build that goes live, with the agent restarted and idle, run `nod
 requests (about 4 minutes). It drives the installed runner and the live Discord adapter with a fake Discord (nothing is posted) and a stand-in for
 `claude` (one harmless commit, no AI cost) through a whole proposal on the real repo: the installed copies equal `main`, the live agent is idle,
 request -> thread -> worktree -> gates -> pushed branch -> a draft proposal with ✅ 🧪 ❌, the agent's own check in its sandbox
-(`check-godot.sh --rerun code_load`), 🧪 -> GitHub CI on the branch -> "Tests passed", then `!discard` removes the branch and the workspace. It
+(`check-godot.sh --rerun code_load`), the guides (the call carried the round's snapshot of the core and every guide was in its worktree; the
+stand-in cannot show that a real model opens the right guide), 🧪 -> GitHub CI on the branch -> "Tests passed", then `!discard` removes the branch and the workspace. It
 never ships. One `CANARY <step> ok|FAILED` line per step, then `CANARY PASSED` (exit 0) or `CANARY FAILED: <step>` (exit 1). A trial before a
 merge: `DEST=<dir> NO_SYSTEMD=1 bash install-runner.sh <rev>`, then `node <dir>/runner/canary.cjs --rev <rev> --adapter <repo>/server/death-muffin/discord-agent/bot/dm-agent.cjs`.
-The installer also copies `check-godot.sh`, `regen-godot.sh`, `tools/check/prep.sh` (as `prep.sh`), `preview-godot.sh`, `shot-godot.sh`, `label-shot.py`, `render-model.sh`, `render-model.py`, `art-run.sh`, `build-art.sh`, `build-sound.sh`, `sound-build.mjs`, `build-picture.sh` and `PROMPT-godot.md`, installs the trusted art tools to `art-tools/`, and creates an empty `tripo-budget.json` if there is none (never overwritten). The live `config.json` must say `"mode": "godot", "baseBranch": "main"`; edit it and restart the service to change.
+The installer also copies `check-godot.sh`, `regen-godot.sh`, `tools/check/prep.sh` (as `prep.sh`), `preview-godot.sh`, `shot-godot.sh`, `label-shot.py`, `render-model.sh`, `render-model.py`, `art-run.sh`, `build-art.sh`, `build-sound.sh`, `sound-build.mjs`, `build-picture.sh`, `PROMPT-godot.md` and `guides/`, installs the trusted art tools to `art-tools/`, and creates an empty `tripo-budget.json` if there is none (never overwritten). The live `config.json` must say `"mode": "godot", "baseBranch": "main"`; edit it and restart the service to change.

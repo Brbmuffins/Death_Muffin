@@ -44,36 +44,30 @@ Never deploy, publish a client, or flip `set-online.sh` without passing checks f
 - Shared VPS: run at most one rendered (software-GL) Godot or one headless browser at a time, and not the full suite in
   parallel with another agent's run.
 
-## Owner principles (these decide ties)
+## Owner principles (guidance, not laws; DECISIONS B71)
 
-- **Performance first.** Measure before and after; no regression, no per-frame allocation in hot paths, no work added to
-  `_process` that an event or timer can do, warm first-use shaders/effects during loading. Tests never assert wall-clock time (they may print it as
-  INFO); performance is measured on real hardware (F3 overlay) and with deterministic counters in tests.
-- **Performance budgets** (B39; each has an automatic check or gets one in ROADMAP Phase 2). No frame rate to stop at, and nothing ships
-  slower than what it replaces. Floors for weaker PCs: a 2020-era laptop at Low never below 60 fps in normal play or 45 in the biggest fight;
-  a GTX 970-class PC at Medium never below 60 in the biggest fight. The biggest fight is the benchmark's Full Party fight (4 necromancers with
-  about 32 thralls, 72 enemies and a boss, all run by the host). In the headless Full Party fight on the VPS (the stand-in for a weaker
-  processor) the combat core takes at most 4 ms a tick and the rest of the main thread 4 ms a frame; the HUD at most 0.5 ms and 150 draw calls
-  on Helix's PC. Crowd models at most 5,000 triangles (the Bone Colossus 6,000) and 1024-pixel textures with levels of detail; the hero and
-  bosses at most 20,000 and 2048. Godot stays 4.7.2 until a deliberate, benchmarked upgrade.
-- **Polish over new content.** Finish and tune what exists (necromancer combat, loot and gear, the first hour) before adding.
-- **Necromancer focus.** The four necromancer disciplines are the baseline, joined by the Reaper (the first non-necromancer kit); the other five are greyed out and come later.
-  Anything you add must be easy to find and understand on screen. Immersive, not overwhelming; capped, not cluttered.
-- **Loot never vacuums.** Items never fly to the player and walking over them takes nothing: the player clicks a drop to pick it up, or it
-  expires (3 min). Gold, soul shards and runes the player lacks go straight to them (DECISIONS B15). No magnets, no other auto-pickup.
-- **Assets: reuse first.** Reuse existing audio, models, animations and VFX (`Vfx` autoload, Binbun effects, current spell
-  colours, which carry meaning). Generate only when nothing usable exists, and record it (see ASSET_PIPELINE.md); spend
-  limits come from the owner.
-- **Loot item ids** must be ids the live server knows (`server/rules/content/items.ts`; a unit test enforces it).
+- **Performance first.** Keep the game fast; spend performance only on purpose.
+- **Smooth on weaker PCs.** The game should play well on modest hardware, not just high-end machines (today's targets: DECISIONS B71).
+- **Easy to read.** New things should be easy to find and understand.
+- **Fit the game's look.** New art, effects and sound should feel like they belong in Death Muffin.
+
+## Safety rules (firm)
+
 - **The backend owns value.** Gold, items, loot rolls, progression and the kill ledger are server-side (D1); a client or host
-  never mints them. Server `error` strings are player-readable: show them verbatim.
+  never mints them.
 - **Old clients keep running.** Players keep their build until they restart it from the launcher: a backend change must keep accepting
   what the previous client sends (remove or tighten a route or field only a release later), and co-op only pairs identical release builds
   (DECISIONS B28).
 - **AI changes are propose-then-approve.** Do not widen an approval boundary (deploy, push, spend) on your own.
+- **Spending limits come from the owner.** Never spend beyond them or raise one yourself.
 
 ## Working conventions
 
+- When you choose the work yourself, polishing what exists usually beats adding something new; the team's requests come first.
+- Hot paths: no per-frame allocations, events or timers over per-frame work, first-use shaders and effects warmed during loading. Tests
+  never assert wall-clock time (they may print it as INFO); performance is measured with the in-game benchmark on real hardware and with
+  deterministic counters in tests.
+- Server `error` strings are player-readable: show them verbatim. A generated asset is recorded (ASSET_PIPELINE.md).
 - **Tests read the game's numbers from its data** (B59; Helix, 2026-10-19). A test compares the game's data with itself and never types a
   total (how many spells, areas, bosses) or a tuning value (a spell's speed, damage, cooldown or cost, an enemy's health), so adding
   content or retuning never breaks a test. A value a test tunes on purpose is its own input; what the game holds is read first. That covers

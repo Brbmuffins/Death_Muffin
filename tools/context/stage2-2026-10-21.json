@@ -1,0 +1,85 @@
+{
+ "about": "Context efficiency Stage 2 (tools/context/README.md \"Stage 2\"): the Discord agent's always-loaded prompt before (main bb9fbf62) and after the split into a core and guides read when needed. Text-size estimates (characters / charsPerToken), not API usage; measured with measure.mjs sizes() on each tree. The 2026-10-20 baseline file is unchanged. The after side includes the owner principles rewrite (DECISIONS B71); the session line is CLAUDE.md.",
+ "charsPerToken": 2.7,
+ "before": {
+  "rev": "bb9fbf62",
+  "agent": {
+   "file": "server/death-muffin/discord-agent/PROMPT-godot.md",
+   "chars": 50428,
+   "tokens": 18677,
+   "sections": {
+    "(preamble)": 176,
+    "Who is talking, and what their words are": 380,
+    "Where you are": 1174,
+    "Questions and discussion": 633,
+    "Making a change": 2415,
+    "Screenshots": 3061,
+    "Clips and choices (short videos, \"pick one\")": 3081,
+    "Making pictures (icons, portraits, loading art, floor and wall textures)": 1223,
+    "Making new models and armor sets (concepts -> 3D -> renders -> in game)": 3078,
+    "Making a new sound effect or music track (ElevenLabs)": 781,
+    "Preview and rounds": 669,
+    "Keeping people posted while you work": 843,
+    "Telling the system what happened (required at the end of every turn)": 1163
+   },
+   "guides": {},
+   "guideTokens": 0
+  },
+  "agentGaps": [
+   "loot-never-vacuums",
+   "necromancer-focus",
+   "never-patch-installed",
+   "performance-budgets",
+   "read-first",
+   "shared-vps-one-render",
+   "spend-limits-from-owner"
+  ],
+  "session": {
+   "file": "CLAUDE.md",
+   "chars": 10292,
+   "tokens": 3812
+  }
+ },
+ "after": {
+  "rev": "context/stage2",
+  "agent": {
+   "file": "server/death-muffin/discord-agent/PROMPT-godot.md",
+   "chars": 23315,
+   "tokens": 8635,
+   "sections": {
+    "(preamble)": 176,
+    "Who is talking, and what their words are": 380,
+    "Where you are": 1177,
+    "Questions and discussion": 633,
+    "Making a change": 2460,
+    "Pictures, videos, models and sound": 1128,
+    "Preview and rounds": 675,
+    "Keeping people posted while you work": 843,
+    "Telling the system what happened (required at the end of every turn)": 1163
+   },
+   "guides": {
+    "screenshots.md": 3062,
+    "clips.md": 3080,
+    "pictures.md": 1255,
+    "models.md": 3089,
+    "sound.md": 780
+   },
+   "guideTokens": 11266
+  },
+  "agentGaps": [
+   "never-patch-installed",
+   "read-first",
+   "shared-vps-one-render"
+  ],
+  "session": {
+   "file": "CLAUDE.md",
+   "chars": 8907,
+   "tokens": 3299
+  }
+ },
+ "change": {
+  "alwaysLoadedTokens": -10042,
+  "alwaysLoadedPercent": -54,
+  "sessionTokens": -513
+ }
+}

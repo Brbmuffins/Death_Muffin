@@ -27,6 +27,7 @@ const { redactText, redactDeep } = require('./lib/redact.cjs');
 const G = require('./lib/gitops.cjs');
 const TT = require('./lib/threadTitle.cjs');
 const { runTurn, buildPrompt, readResult, readHandoff } = require('./lib/agent.cjs');
+const GU = require('./lib/guides.cjs');
 const { parseDiff, classifyDiff, tierLabel, approversFor } = require('./lib/tiers.cjs');
 const { planReply } = require('./lib/discordText.cjs');
 const A = require('./lib/art.cjs');
@@ -581,9 +582,14 @@ function createRunner(cfgIn, opts = {}) {
     '(agit add <paths>, agit commit -m "<one plain sentence>"). Then reply with one line.';
   // One agent turn as the thread sees it. Each session has a step budget (cfg.handoffEveryTurns, see agent.cjs); when it runs out the same session
   // writes .dm-handoff.md and a fresh session continues from that note, invisibly to the thread, up to cfg.maxHandoffs times (default 5).
+  // Every call of one turn (handoffs included) uses one snapshot of the core and the guides (lib/guides.cjs); a broken install runs nothing.
   async function agentTurn(job, prompt) {
+    let g;
+    try { g = GU.prepareTurn(cfg, job, { audit }); } catch (e) { g = { error: `I could not set up my instructions for this turn (${e.message}); nothing was changed. Try again in a minute.` }; }
+    if (g.error) { save(); return { text: '', sessionId: job.sessionId, error: g.error, timedOut: false }; }
+    if (g.note) prompt = `${g.note}\n\n${prompt}`;
     job.turns++; job.totalTurns = (job.totalTurns || 0) + 1;
-    const spawn = { onSpawn: (p) => { job.proc = p; } };
+    const spawn = { onSpawn: (p) => { job.proc = p; }, systemPrompt: g.systemPrompt };
     const logRun = (r, extra = {}) => {
       fs.mkdirSync(path.join(cfg.stateDir, 'runs'), { recursive: true });
       fs.appendFileSync(path.join(cfg.stateDir, 'runs', `${job.id}.log`), JSON.stringify({ ts: new Date(now()).toISOString(), turn: job.turns, model: job.model, costUsd: r.costUsd, error: r.error, textLen: r.text.length, ...(r.maxTurns ? { maxTurns: true } : {}), ...extra }) + '\n');

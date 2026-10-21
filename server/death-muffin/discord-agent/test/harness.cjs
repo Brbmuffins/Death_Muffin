@@ -32,6 +32,7 @@ function makeWorld(over = {}) {
   fs.mkdirSync(path.join(T, 'client')); fs.writeFileSync(path.join(T, 'client', 'manifest.json'), JSON.stringify({ version: 'v1', rev: liveRev.slice(0, 12) }));
   fs.mkdirSync(path.join(tools, 'state'), { recursive: true });
   for (const f of ['ship.sh', 'rollback.sh', 'agit', 'PROMPT-godot.md', 'art-run.sh', 'build-art.sh']) fs.copyFileSync(path.join(SRC, f), path.join(tools, f));
+  fs.cpSync(path.join(SRC, 'guides'), path.join(tools, 'guides'), { recursive: true });   // as install-runner.sh installs them
   // model generation: fake Tripo/Gemini tools (no network, no credits), a fake account balance, fake keys, and the owner-edited budget file
   const artDir = path.join(T, 'art-tools'); fs.cpSync(path.join(__dirname, 'fake-art'), artDir, { recursive: true }); fs.writeFileSync(path.join(artDir, 'state.json'), JSON.stringify({ balance: 3910 }));
   fs.writeFileSync(path.join(T, 'keys.local'), 'TRIPO_API_KEY=tsk_FakeTripoKeyForTestsOnly000000000000\nGEMINI_API_KEY=AIzaFakeGeminiKeyForTestsOnly000000000000\n', { mode: 0o600 });

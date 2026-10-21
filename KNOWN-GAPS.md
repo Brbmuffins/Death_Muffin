@@ -41,6 +41,13 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
 - **Backups stay on this server.** `server/death-muffin/ops/backup-db.sh` writes the nightly dumps to `~/death-muffin/backups/db/` on the
   same VPS; the raw art sources (`art-src/`, gitignored), the private effect sheets and keys (`~/death-muffin/private/`), the licensed packs
   and the services' `.env` files exist only here. ROADMAP Later: a cloud storage bucket (B51).
+- **Two install checks list the agent's files by hand, and both miss some.** The drift report (`server/death-muffin/ops/drift-report.sh`, check 1)
+  does not compare the installed `build-picture.sh`; the practice run (`discord-agent/runner/canary.cjs`, step "installed") compares only the
+  runner, the core scripts, the prompt and its guides, not `label-shot.py`, `render-model.*`, `art-run.sh`, `build-art.sh`, `build-sound.sh`,
+  `sound-*.mjs`, `build-picture.sh`, `wait-for-ship.sh` or `reports-cli.cjs`. A file `install-runner.sh` copies can differ from `main` unnoticed
+  (found 2026-10-21).
+- **The agent can stage an ignored file.** `agit add -f <path>` is allowed, so the git-excluded job files (`.dm-inbox/` attachments, `.dm-shot.json`,
+  `.dm-shots/`) could be committed; only `.dm-guides/` is in the runner's forbidden paths (found 2026-10-21).
 
 ## Server authority
 

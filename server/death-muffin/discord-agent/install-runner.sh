@@ -2,17 +2,27 @@
 # Install (or update) the runner from a COMMITTED revision into ~/death-muffin/discord-agent (outside every checkout, so the agent
 # cannot edit its own rules). Does NOT start anything.   install-runner.sh [rev]
 # Env overrides (tests): DEST, REPO, OWNER_ID, NO_SYSTEMD=1
-# Also installs art-run.sh / build-art.sh, the trusted art tools (art-tools/) and an empty tripo-budget.json if there is none (the owner edits it).
+# Also installs art-run.sh / build-art.sh, the trusted art tools (art-tools/) and an empty tripo-budget.json if there is none (the owner edits it),
+# and the agent's guides (guides/, the how-tos PROMPT-godot.md names as .dm-guides/<name>.md; runner/lib/guides.cjs copies them into each job).
 set -euo pipefail
 REPO="${REPO:-/home/ubuntu/vps-handoffs/DeathMuffin/game}"
 DEST="${DEST:-/home/ubuntu/death-muffin/discord-agent}"
 REV="${1:-origin/main}"
 SRC=server/death-muffin/discord-agent
+# The core prompt and every guide it names must be in the revision and hold text, or nothing is installed (the runner would refuse every turn).
+[ -n "$(git -C "$REPO" show "$REV:$SRC/PROMPT-godot.md" 2>/dev/null | tr -d '[:space:]')" ] || { echo "$SRC/PROMPT-godot.md is missing or empty at $REV; refusing to install" >&2; exit 1; }
+for n in $(git -C "$REPO" show "$REV:$SRC/PROMPT-godot.md" | grep -o '\.dm-guides/[a-z0-9-]*\.md' | sort -u | sed 's#^\.dm-guides/##'); do
+  [ -n "$(git -C "$REPO" show "$REV:$SRC/guides/$n" 2>/dev/null | tr -d '[:space:]')" ] || { echo "PROMPT-godot.md at $REV names .dm-guides/$n but $SRC/guides/$n is missing or empty in that revision; refusing to install" >&2; exit 1; }
+done
 mkdir -p "$DEST/runner/lib" "$DEST/state"
 chmod 700 "$DEST/state"
 for f in $(git -C "$REPO" ls-tree -r --name-only "$REV" -- "$SRC/runner" | sed "s#^$SRC/##") ship.sh rollback.sh sandbox-lib.sh check-godot.sh regen-godot.sh shot-godot.sh label-shot.py render-model.sh render-model.py art-run.sh build-art.sh sound-run.mjs build-sound.sh sound-build.mjs build-picture.sh preview-godot.sh agit wait-for-ship.sh reports-cli.cjs PROMPT-godot.md config.example.json death-muffin-discord-agent.service; do
   mkdir -p "$DEST/$(dirname "$f")"; git -C "$REPO" show "$REV:$SRC/$f" > "$DEST/$f"
 done
+# The guides: the folder is replaced whole, so a guide removed from the repo is gone from the install too.
+rm -rf "$DEST/guides.new"; mkdir -p "$DEST/guides.new"
+for f in $(git -C "$REPO" ls-tree -r --name-only "$REV" -- "$SRC/guides"); do git -C "$REPO" show "$REV:$f" > "$DEST/guides.new/$(basename "$f")"; done
+rm -rf "$DEST/guides"; mv "$DEST/guides.new" "$DEST/guides"
 # The retired web game's tools (B57): removed from an install that still has them.
 rm -f "$DEST/check.sh" "$DEST/preview.sh" "$DEST/shot.sh" "$DEST/regen.sh" "$DEST/shoot.cjs" "$DEST/PROMPT.md" "$DEST/runner/lib/generated.cjs" "$DEST/runner/lib/numdelta.cjs"
 # The game's one setup (tools/check/README.md): the trusted copy the checks, pictures and previews run outside and inside the sandbox.

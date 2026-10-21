@@ -32,7 +32,7 @@ Nothing right now. Each Decide item says what it waits for.
   new feature goes to "Ideas" below and is planned into a phase.
 - **Something players notice, every week or two:** the next polish-list item (top first) or a fix players asked for, with its patch notes,
   so the game keeps moving while the foundation is built.
-- Every gameplay change is measured and ships no slower than what it replaces (CLAUDE.md "Performance budgets").
+- Every gameplay change is measured; it is slower only on purpose (DECISIONS B71).
 
 ## Phase 1: settle the launch
 
@@ -127,7 +127,7 @@ session to them. Five tracks run side by side; inside a track, top first.
 
 ### B. The core standards: the look, the tech art, design and writing
 
-What exists: budgets for the hero, bosses and crowd (CLAUDE.md "Performance budgets" and ASSET_PIPELINE.md, with different numbers), the
+What exists: budgets for the hero, bosses and crowd (DECISIONS B71 and ASSET_PIPELINE.md, with different numbers), the
 asset generation steps (ASSET_PIPELINE.md, `docs/BLENDER-PIPELINE.md`, `docs/TRIPO-ANIMATE-IN-PLACE.md`), the gear's attachment rules
 (inside `client/data/slice/necro_gear.json`), the quality bar (`docs/GRAVECRAWL.md`) and Phase 1's model check. Missing: an art direction,
 one budget table for every kind of asset, and checks for everything but models.
