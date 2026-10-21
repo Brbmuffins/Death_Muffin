@@ -1,17 +1,9 @@
 # The game client
 
-The Death Muffin client: its own Godot 4.7.2 project, the game since launch day (2026-10-18; DECISIONS B34-B50 record how it was built and launched). `publish-godot-client.sh` publishes it to everyone; the
-launcher's Test build channel keeps its last test build. The first Godot game, the old game, is kept as the tag `archive/old-game` (B57): nothing is copied from it, and this project owns all its files
-([next/ARCHITECTURE.md](next/ARCHITECTURE.md)).
+The Death Muffin client: its own Godot 4.7.2 project, the game since launch day (2026-10-18; DECISIONS B34-B50). `publish-godot-client.sh`
+publishes it; the launcher's Test build channel keeps its last test build. The old game is only the tag `archive/old-game` (B57).
 
-- Renderer: Forward+ (`project.godot`), Compatibility only as the automatic fallback, the Mobile renderer for phones (B35). Textures also
-  import in phone formats (B40).
-- Its `user://` folder is named after `config/name`, "Death Muffin (rebuild)" (KNOWN-GAPS "Leftovers from the web era").
-- It plays on the **live server** and never reaches the test server ([The API rule](net/README.md)).
-- The combat core is a C++ GDExtension built from [native/](../native/README.md) into `bin/` (built files are not committed;
-  `bin/dmcore.gdextension` is).
-- Crowds are drawn from baked vertex-animation textures, one MultiMesh per creature model and level of detail, driven by the combat core through `CrowdView`:
-  [crowd/README.md](crowd/README.md).
+It plays on the live server only. Its renderer, `user://` folder, combat core build and crowds: [next/ARCHITECTURE.md](next/ARCHITECTURE.md) "The project in brief".
 
 This file is the client's index. Find the feature or the task below, then read that one guide and the code it names; do not read every guide.
 In one line: `main/` boots, `front/` signs in, `next/` is the game scene and its systems, `core/` and `crowd/` host and draw the combat
@@ -50,34 +42,34 @@ One short README per system folder (`<folder>/README.md`): how the system works 
 
 ## Guides by task
 
-The detailed guides, beside the code they describe (a backticked path in a client guide is from `client/` unless it says otherwise). Each row also keeps the link of the section of this file it used to be.
+Guides beside the code (a backticked path in a client guide is from `client/`). Each row keeps the old link of the section it replaced.
 
 | Task | Read |
 |---|---|
-| <a id="set-up-and-test"></a>Set up a checkout, run or write a test | [TESTING.md](tools/TESTING.md); every suite: [TEST-SUITES.md](tools/TEST-SUITES.md) |
-| <a id="how-the-project-is-organised"></a><a id="the-game-scene-and-the-dev-entry"></a>Where things live; the game scene, launch and the dev entry | [ARCHITECTURE.md](next/ARCHITECTURE.md) |
-| <a id="screenshots-for-proposals"></a>Screenshots of a proposal, the QA run's flags | [SCREENSHOTS.md](main/SCREENSHOTS.md) |
-| <a id="clips-and-tune"></a>Clips of a rite, data overrides (`--tune=`) | [CLIPS.md](main/CLIPS.md) |
-| <a id="release-checks"></a>Release checks (boot, stutter, soak) | [RELEASE-CHECKS.md](main/RELEASE-CHECKS.md) |
+| <a id="set-up-and-test"></a>Run or write a test | [TESTING.md](tools/TESTING.md); every suite: [TEST-SUITES.md](tools/TEST-SUITES.md) |
+| <a id="how-the-project-is-organised"></a><a id="the-game-scene-and-the-dev-entry"></a>Folders, the game scene, launch, dev entry | [ARCHITECTURE.md](next/ARCHITECTURE.md) |
+| <a id="screenshots-for-proposals"></a>Proposal screenshots, QA flags | [SCREENSHOTS.md](main/SCREENSHOTS.md) |
+| <a id="clips-and-tune"></a>Clips, `--tune=` | [CLIPS.md](main/CLIPS.md) |
+| <a id="release-checks"></a>Release checks | [RELEASE-CHECKS.md](main/RELEASE-CHECKS.md) |
 | <a id="grave-surges"></a>Grave Surges | [SURGES.md](next/areas/SURGES.md) |
-| <a id="the-gravecallers-rites"></a>Rites on the combat core | [CORE-INTEGRATION.md](next/rites/CORE-INTEGRATION.md) |
-| <a id="the-bosses"></a>Bosses on the combat core | [CORE-INTEGRATION.md](next/bosses/CORE-INTEGRATION.md) |
+| <a id="the-gravecallers-rites"></a>Rites on the core | [CORE-INTEGRATION.md](next/rites/CORE-INTEGRATION.md) |
+| <a id="the-bosses"></a>Bosses on the core | [CORE-INTEGRATION.md](next/bosses/CORE-INTEGRATION.md) |
 | <a id="the-benchmark"></a>The benchmark | [BENCHMARK.md](next/perf/BENCHMARK.md); reading its report: [BENCHMARK-REPORT.md](next/perf/BENCHMARK-REPORT.md) |
 | <a id="the-draw-budget"></a>3D draw calls | [DRAW-BUDGET.md](next/perf/DRAW-BUDGET.md) |
 | <a id="graphics-presets"></a>Graphics presets | [next/perf/](next/perf/README.md#graphics-presets) |
-| <a id="the-look-on-forward"></a>Colours, the exposure lift, the old game's look | [next/look/](next/look/README.md) |
+| <a id="the-look-on-forward"></a>Colours, exposure lift | [next/look/](next/look/README.md) |
 | <a id="world-dressing"></a>World dressing | [world_fx/](world_fx/README.md#world-dressing) |
-| <a id="the-effects"></a>What the effects cost on the core | [fx/](fx/README.md#the-effects) |
-| <a id="the-hud-on-the-core"></a>What the HUD reads, a guest's HUD | [CORE-INTEGRATION.md](next/hud/CORE-INTEGRATION.md) |
-| <a id="the-huds-budget"></a>The HUD's draw calls and frame cost | [PERFORMANCE.md](ui/hud/PERFORMANCE.md) |
+| <a id="the-effects"></a>Effects' cost | [fx/](fx/README.md#the-effects) |
+| <a id="the-hud-on-the-core"></a>HUD data, a guest's HUD | [CORE-INTEGRATION.md](next/hud/CORE-INTEGRATION.md) |
+| <a id="the-huds-budget"></a>HUD cost | [PERFORMANCE.md](ui/hud/PERFORMANCE.md) |
 | <a id="tips-and-onboarding"></a>Tips and onboarding | [ui/onboarding/](ui/onboarding/README.md#tips-and-onboarding) |
-| <a id="sound"></a>Which sound plays for which event | [audio/](audio/README.md#sound) |
-| <a id="threads"></a>Work off the main thread | [THREADING.md](core/THREADING.md) |
-| <a id="value-on-the-server"></a>Value on the server (kills, drops, saves) | [AUTHORITY.md](next/rewards/AUTHORITY.md) |
+| <a id="sound"></a>Sound per event | [audio/](audio/README.md#sound) |
+| <a id="threads"></a>Threads | [THREADING.md](core/THREADING.md) |
+| <a id="value-on-the-server"></a>Value on the server | [AUTHORITY.md](next/rewards/AUTHORITY.md) |
 | <a id="gathering-and-the-acre"></a>Gathering and the Acre | [next/gathering/](next/gathering/README.md#gathering-and-the-acre) |
-| <a id="co-op-on-the-core"></a>Co-op: the puppet core, messages, bosses in a party | [CORE-NETWORK.md](next/party/CORE-NETWORK.md); joining and the Social window: [next/party/](next/party/README.md#joining-and-the-social-window); a local trial and its proof: [TESTING.md](next/party/TESTING.md) |
+| <a id="co-op-on-the-core"></a>Co-op protocol | [CORE-NETWORK.md](next/party/CORE-NETWORK.md); joining: [next/party/](next/party/README.md#joining-and-the-social-window); trial and proof: [TESTING.md](next/party/TESTING.md) |
 | <a id="the-server-login-and-character-select"></a>Login and character select | [front/](front/README.md) |
-| <a id="the-api-rule-decisions-b38-b49"></a>Which server the client talks to (the API rule) | [net/](net/README.md) |
-| <a id="assets"></a>Importing art, models and audio | [ASSETS.md](tools/ASSETS.md) |
-| <a id="the-depths"></a>A Depths run on the core | [CORE-INTEGRATION.md](next/depths/CORE-INTEGRATION.md) |
-| <a id="areas"></a>Area scenes, conversion, lighting | [world/](world/README.md) |
+| <a id="the-api-rule-decisions-b38-b49"></a>The API rule | [net/](net/README.md) |
+| <a id="assets"></a>Importing assets | [ASSETS.md](tools/ASSETS.md) |
+| <a id="the-depths"></a>Depths on the core | [CORE-INTEGRATION.md](next/depths/CORE-INTEGRATION.md) |
+| <a id="areas"></a>Area scenes, lighting | [world/](world/README.md) |

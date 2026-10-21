@@ -2,6 +2,17 @@
 
 How the client project is organised and how the game scene runs on the combat core. The scene's nodes and seams: [README.md](README.md); the client's index: [client/README.md](../README.md).
 
+## The project in brief
+
+- Renderer: Forward+ (`project.godot`), Compatibility only as the automatic fallback, the Mobile renderer for phones (B35). Textures also
+  import in phone formats (B40).
+- Its `user://` folder is named after `config/name`, "Death Muffin (rebuild)" (KNOWN-GAPS "Leftovers from the web era").
+- It plays on the **live server** and never reaches the test server ([The API rule](../net/README.md)).
+- The combat core is a C++ GDExtension built from [native/](../../native/README.md) into `bin/` (built files are not committed;
+  `bin/dmcore.gdextension` is).
+- Crowds are drawn from baked vertex-animation textures, one MultiMesh per creature model and level of detail, driven by the combat core through `CrowdView`:
+  [crowd/README.md](../crowd/README.md).
+
 ## How the project is organised
 
 The game owns all its files. `client/` is one Godot project: a script, scene, data file or asset is changed here and committed here, and nothing is copied or synced into it from another folder. The old game's source is only the tag
