@@ -17,7 +17,7 @@
     "agent-never-touch": {"audience": ["agent"], "clauses": "sha256:7289215661286b01252a39fd452115964ba389428bd0c4302f56892e94c93ecb", "acceptedGaps": []},
     "agent-review-tiers": {"audience": ["agent"], "clauses": "sha256:302016f698b078c29cc097aedebf9f7a903f2a5ea66d0821f716dc60e9a50813", "acceptedGaps": []},
     "agent-paid-generation": {"audience": ["agent"], "clauses": "sha256:af5c7f1eb2a4ec61fbe7a072372ae369443c28b1b97c8f78a01d041fe96041c8", "acceptedGaps": []},
-    "spend-limits-from-owner": {"audience": ["agent", "session"], "clauses": "sha256:871a4081ca8b62905de1e7ed1cc4bc8f96ad1e4264c751748e3cb935db6ddd04", "acceptedGaps": []},
+    "spend-limits-from-owner": {"audience": ["agent", "session"], "clauses": "sha256:111e98053df869ba511a64a135a5c0dccb0fab241453fc02bef3c3ab47c3294e", "acceptedGaps": []},
     "agent-web-hosts": {"audience": ["agent"], "clauses": "sha256:91a807c8adaa78b7221c397d4080472c0ebba79e00e9c7c8eb3bedccb1e120b7", "acceptedGaps": []},
     "agent-no-ship-or-discard": {"audience": ["agent"], "clauses": "sha256:c9c45ee80515b183aaeb971ef334b87a0f611e8a12f30eebde13ab1729fffe43", "acceptedGaps": []},
     "never-weaken-tests": {"audience": ["agent", "session"], "clauses": "sha256:1799a0c1d147224d2b1453e61e613fa3c26d6a44e1c327578ed283c5f00c2802", "acceptedGaps": ["session"]},

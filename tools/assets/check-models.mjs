@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const LIVE_DIR = 'client/assets/slice/models';
-// target = what Tripo is asked for (ASSET_PIPELINE.md), cap = the most allowed (CLAUDE.md "Performance budgets" for heroes and bosses)
+// target = what Tripo is asked for (ASSET_PIPELINE.md), cap = the most allowed (DECISIONS B71 for heroes and bosses)
 export const RULES = {
   hero: { target: 12000, cap: 20000, materials: 1, rig: 'biped', clips: true },
   gear: { target: 3500, cap: 4000, materials: 1, rig: 'none' },

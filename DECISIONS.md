@@ -7,11 +7,13 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 ## Owner rules
 
 - **Performance first** (2026-10-02/05): every change is measured before and after; event-driven over per-frame work; no per-frame
-  allocations in hot paths; first-use work (shaders, effects, fonts) is warmed during loading. How it is measured: B11, B14.
+  allocations in hot paths; first-use work (shaders, effects, fonts) is warmed during loading. How it is measured: B11, B14. Performance
+  may be spent on purpose (B71).
 - **Assets: reuse first** (2026-10-05): reuse the existing audio, models, animations and VFX (the Binbun effects, the `Vfx` autoload,
-  spell colours). Generate (Tripo, ElevenLabs, Gemini) only when nothing usable exists.
-- **Polish over new content; necromancer focus; immersive but capped, not overwhelming** (2026-10-02/03).
-- **Loot never vacuums** (2026-10-04): items never fly to the player; a click picks one up (B15).
+  spell colours). Generate (Tripo, ElevenLabs, Gemini) only when nothing usable exists. Since B71 the principle is "fit the game's look".
+- **Polish over new content; necromancer focus; immersive but capped, not overwhelming** (2026-10-02/03). Since B71: polish first is a
+  default, the necromancer set is the current phase, and "easy to read" is the principle.
+- **Loot never vacuums** (2026-10-04): items never fly to the player; a click picks one up (B15). A feature, not a principle (B71).
 - **No Godot-vs-web parity target** (2026-10-05): the game is Godot-idiomatic; the web game's exact math is not a goal.
 
 ## Foundations (the rebuild)
@@ -139,8 +141,8 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   installs the test build next to the normal game and keeps it updated; it plays on a test server with copies of the team's accounts, so it
   can never touch live characters. Team only at first. Kept after the rebuild for big changes (B53).
 - **B39. Performance without a goal to stop at** (Helix, 2026-10-16: "i want to get as MUCH performance as possible"). No frame-rate target;
-  floors only for weaker PCs; nothing ships slower than what it replaces; Gate B needs at least twice today's speed in the Full Party fight.
-  Each system has a time budget and each model a size budget, checked automatically (numbers in CLAUDE.md "Performance budgets"). Godot stays 4.7.2 until a
+  floors only for weaker PCs; performance is spent only on purpose (B71; it was "nothing ships slower than what it replaces"); Gate B needs at least twice today's speed in the Full Party fight.
+  Each system has a time budget and each model a size budget, checked automatically (today's numbers in B71). Godot stays 4.7.2 until a
   deliberate, benchmarked upgrade.
 - **B40. Ready for phones, and an undo for launch day** (Helix, 2026-10-16). From day one: textures also import in phone formats (a
   separate phone pack), every shader and effect runs on the Mobile renderer, the HUD is built from movable, scalable pieces, phones join co-op
@@ -359,6 +361,20 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   concept naming a kind gets the kind's recipe and style pictures, so new art matches the old. The runner keeps every concept a thread was
   shown and puts it back in each later round (14 days after the thread goes quiet they are deleted). The HUD's second copy of 92 pictures
   (`client/assets/game/art`) is gone: one copy each, in `client/assets/ui_art`. Effect sprites are not a kind yet (ROADMAP Ideas).
+- **B71. Owner principles are principles, not laws** (Helix, 2026-10-21: "its a principal.. not a hard law with explicit details"). CLAUDE.md
+  keeps four short principles (performance first, smooth on weaker PCs, easy to read, fit the game's look) and, apart, the firm safety rules
+  (the backend owns value, old clients keep running, propose-then-approve, spending limits from the owner). Performance can be spent on
+  purpose: a visual upgrade the team approves may make the game slower, with its cost measured and known; slowdowns nobody meant to cause are
+  fixed (this replaces B39's "nothing ships slower than what it replaces"). Polish before new content is a default when Claude picks the
+  work, not a rule against requests; the four necromancer disciplines and the Reaper are the current phase (ROADMAP), not a principle. Loot
+  never vacuums is the B15 feature and loot item ids are held by a unit test, so neither is a principle any more. Today's performance
+  targets (they can change as the game grows; each has an automatic check or gets one in ROADMAP Phase 2): a 2020-era laptop at Low never
+  below 60 fps in normal play or 45 in the biggest fight; a GTX 970-class PC at Medium never below 60 in the biggest fight. The biggest fight
+  is the benchmark's Full Party fight (4 necromancers with about 32 thralls, 72 enemies and a boss, all run by the host). In the headless
+  Full Party fight on the VPS (the stand-in for a weaker processor) the combat core takes at most 4 ms a tick and the rest of the main thread
+  4 ms a frame; the HUD at most 0.5 ms and 150 draw calls on Helix's PC. Crowd models at most 5,000 triangles (the Bone Colossus 6,000) and
+  1024-pixel textures with levels of detail; the hero and bosses at most 20,000 and 2048. Godot stays 4.7.2 until a deliberate, benchmarked
+  upgrade.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

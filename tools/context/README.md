@@ -63,8 +63,8 @@ the baseline inventory on 2026-10-20). `node tools/context/measure.mjs --print-l
 - a `## ` section of an always-loaded file holds no inventoried rule (a new section: add its rules);
 - a guide in `surfaces.json` does not exist, is also listed as always loaded, or holds no inventoried rule.
 
-The context test also keeps the owner principles the agent's prompt gained in Stage 2 (performance budgets, necromancer focus, loot never
-vacuums) and its spend-limit line in that prompt: removing one, or giving it an agent gap again, fails CI.
+The context test also keeps the owner principles (DECISIONS B71) and the spend-limit line in the agent's prompt: removing one, or giving it an
+agent gap again, fails CI.
 
 What this proves and what it does not: the check is structural. It shows that the listed words are still in the always-loaded text and
 that any change to a protected rule or its exceptions comes with a change to `protected.json`, which shows in the diff. It cannot tell
@@ -105,10 +105,11 @@ the API counted.
 
 ## Stage 2 2026-10-21
 
-`stage2-2026-10-21.json`: the agent's always-loaded prompt went from about 18,700 to about 9,100 estimated tokens (51% less) when the media
+`stage2-2026-10-21.json`: the agent's always-loaded prompt went from about 18,700 to about 8,600 estimated tokens (54% less) when the media
 how-tos became guides (about 11,300 tokens together, read only by the turns that use one). The core is above the 7–8K aimed for because it
-gained the three owner principles and the paid-generation limits (about 1,000 tokens) and keeps when pictures and videos apply, since that
-decides what an ordinary visible change does. Agent gaps went from 7 to 3 (`never-patch-installed`, `shared-vps-one-render`: held by code;
+gained the owner principles and the paid-generation limits and keeps when pictures and videos apply, since that decides what an ordinary
+visible change does. The same change rewrote the owner principles as short guidance with the firm safety rules apart (DECISIONS B71), which
+also made `CLAUDE.md` about 500 tokens smaller. Agent gaps went from 7 to 3 (`never-patch-installed`, `shared-vps-one-render`: held by code;
 `read-first`: the agent still does not read those files). Text sizes, not API usage: what a session actually reads shows in `usage.mjs` over a
 window after the change.
 

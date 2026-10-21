@@ -36,9 +36,9 @@ test('a scratch copy of the repo passes, so every failure below comes from its o
 
 test('deleting a protected instruction is reported even when its heading and the next sentence stay', () => {
   const dir = scratchRepo();
-  editText(dir, 'CLAUDE.md', (t) => t.replace(/Gold, items, loot rolls, progression and the kill ledger are server-side \(D1\); a client or host\s+never mints them\. /, ''));
+  editText(dir, 'CLAUDE.md', (t) => t.replace(/Gold, items, loot rolls, progression and the kill ledger are server-side \(D1\); a client or host\s+never mints them\./, ''));
   const t = fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8');
-  assert.ok(t.includes('**The backend owns value.**') && t.includes('Server `error` strings are player-readable'));
+  assert.ok(t.includes('**The backend owns value.**') && t.includes('**Old clients keep running.**') && !t.includes('never mints them'));
   const p = problemsOf(dir);
   reported(p, 'backend-owns-value: clause not found in CLAUDE.md');
   reported(p, 'backend-owns-value: protected rule has no always-loaded home for session');
@@ -125,12 +125,13 @@ test('moving a protected rule out of the always-loaded text is reported even whe
   reported(problemsOf(dir), 'untrusted-requests: protected rule has no always-loaded home for agent');
 });
 
-// Stage 2 (2026-10-21) gave the agent's always-loaded prompt the owner principles it lacked and its own spend-limit line; they may not drift
-// back into gaps. Each keeps a home in the prompt, no agent gap, and deleting its words from the prompt fails the check.
+// Stage 2 (2026-10-21) gave the agent's always-loaded prompt the owner principles (DECISIONS B71) and its own spend-limit line; they may not
+// drift back into gaps. Each keeps a home in the prompt, no agent gap, and deleting its words from the prompt fails the check.
 const AGENT_CORE_RULES = {
-  'performance-budgets': 'Performance budgets (DECISIONS B39): nothing ships slower than what it replaces.',
-  'necromancer-focus': 'Necromancer focus: the four necromancer disciplines and the Reaper are the game',
-  'loot-never-vacuums': 'Loot never vacuums: items never fly to the player and walking over them takes nothing',
+  'performance-first': 'keep the game fast and spend performance only on purpose',
+  'smooth-on-weaker-pcs': 'smooth on weaker PCs, not just high-end ones',
+  'easy-to-read': 'easy to read (new player-facing mechanics need their help/tip/Codex entry)',
+  'fit-the-look': "Fit the game's look and reuse what exists when it fits",
   'spend-limits-from-owner': "spend limits come from the owner, and the runner holds each person's budget.",
 };
 test('the owner principles and spend limits stay in the agent\'s always-loaded prompt, with no agent gap', () => {

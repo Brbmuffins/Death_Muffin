@@ -209,11 +209,11 @@
       "kind": "boundary",
       "protected": true,
       "audience": ["session", "agent"],
-      "when": "generating assets",
-      "summary": "Generate assets only when nothing usable exists; spend limits come from the owner.",
+      "when": "spending (generation, services)",
+      "summary": "Spending limits come from the owner; never spend beyond them or raise one.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Generate only when nothing usable exists, and record it (see ASSET_PIPELINE.md); spend limits come from the owner."]},
-        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Generate only when nothing usable exists", "spend limits come from the owner, and the runner holds each person's budget."]}
+        {"file": "CLAUDE.md", "clauses": ["**Spending limits come from the owner.** Never spend beyond them or raise one yourself."]},
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["spend limits come from the owner, and the runner holds each person's budget."]}
       ],
       "enforced": []
     },
@@ -302,91 +302,65 @@
       "protected": false,
       "audience": ["session", "agent"],
       "when": "changing gameplay code",
-      "summary": "Measure before and after; no regression, no per-frame allocation or heavy work in hot paths.",
+      "summary": "Keep the game fast and spend performance only on purpose (B71); no per-frame allocation or heavy work in hot paths.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Performance first.**"]},
-        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["performance is the top priority"]}
+        {"file": "CLAUDE.md", "clauses": ["**Performance first.**", "Hot paths: no per-frame allocations"]},
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["keep the game fast and spend performance only on purpose"]}
       ],
       "enforced": []
     },
     {
-      "id": "performance-budgets",
+      "id": "smooth-on-weaker-pcs",
       "kind": "principle",
       "protected": false,
       "audience": ["session", "agent"],
-      "when": "changing gameplay code or models",
-      "summary": "Frame floors for weaker PCs, combat-core and HUD budgets, triangle and texture caps; Godot stays 4.7.2.",
+      "when": "changing gameplay code, effects or models",
+      "summary": "The game plays well on modest hardware, not just high-end machines; today's targets (frame floors, combat-core, HUD and model budgets) are in DECISIONS B71.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Performance budgets**"]},
-        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Performance budgets (DECISIONS B39): nothing ships slower than what it replaces.", "In the headless Full Party fight the combat core takes at most 4 ms a tick"]}
+        {"file": "CLAUDE.md", "clauses": ["**Smooth on weaker PCs.**"]},
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["smooth on weaker PCs, not just high-end ones"]}
       ],
       "enforced": ["tools/assets/check-models.mjs"]
     },
     {
       "id": "polish-over-new-content",
-      "kind": "principle",
+      "kind": "convention",
       "protected": false,
       "audience": ["session", "agent"],
       "when": "choosing work",
-      "summary": "Finish and tune what exists before adding.",
+      "summary": "When Claude picks the work, polishing what exists usually beats adding something new; team requests come first (B71).",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Polish over new content.**"]},
+        {"file": "CLAUDE.md", "clauses": ["polishing what exists usually beats adding something new"]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["no new content batches"]}
       ],
       "enforced": []
     },
     {
-      "id": "necromancer-focus",
+      "id": "easy-to-read",
       "kind": "principle",
       "protected": false,
       "audience": ["session", "agent"],
-      "when": "designing features",
-      "summary": "The four necromancer disciplines and the Reaper are the baseline; additions must be easy to find on screen; immersive, not overwhelming.",
+      "when": "adding anything players see",
+      "summary": "New things are easy to find and understand on screen.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Necromancer focus.**"]},
-        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Necromancer focus: the four necromancer disciplines and the Reaper are the game", "Anything you add must be easy to find and understand on screen"]}
+        {"file": "CLAUDE.md", "clauses": ["**Easy to read.**"]},
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["easy to read (new player-facing mechanics need their help/tip/Codex entry)"]}
       ],
       "enforced": []
     },
     {
-      "id": "loot-never-vacuums",
+      "id": "fit-the-look",
       "kind": "principle",
       "protected": false,
       "audience": ["session", "agent"],
-      "when": "changing loot",
-      "summary": "Items never fly to the player; click to pick up or it expires; only gold, shards and missing runes go straight to the player.",
+      "when": "adding art, effects or sound",
+      "summary": "New art, effects and sound feel like they belong in Death Muffin; reuse what exists when it fits.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Loot never vacuums.**"]},
-        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Loot never vacuums: items never fly to the player and walking over them takes nothing", "No magnets, no other auto-pickup."]}
-      ],
-      "enforced": []
-    },
-    {
-      "id": "assets-reuse-first",
-      "kind": "principle",
-      "protected": false,
-      "audience": ["session", "agent"],
-      "when": "adding audio, models, effects",
-      "summary": "Reuse existing audio, models, animations and effects; generate only when nothing usable exists, and record it.",
-      "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Assets: reuse first.**"]},
-        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Reuse existing audio, models, animations, VFX and pictures"]},
+        {"file": "CLAUDE.md", "clauses": ["**Fit the game's look.**"]},
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Fit the game's look and reuse what exists when it fits"]},
         {"file": "server/death-muffin/discord-agent/guides/models.md", "clauses": ["never for anything an existing model can do"]}
       ],
       "enforced": []
-    },
-    {
-      "id": "loot-item-ids-known",
-      "kind": "convention",
-      "protected": false,
-      "audience": ["session", "agent"],
-      "when": "changing loot",
-      "summary": "Loot uses only item ids the live server knows.",
-      "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Loot item ids** must be ids the live server knows"]},
-        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["loot may only use item ids the live"]}
-      ],
-      "enforced": ["server/rules/content/items.ts"]
     },
     {
       "id": "server-errors-verbatim",

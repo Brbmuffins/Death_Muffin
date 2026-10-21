@@ -70,21 +70,12 @@ touches only documents goes live with no game update.
    "all windows" / "everywhere", do the whole thing, refactor included. If you think a cheaper version is wiser, or you cannot finish
    every part, say so and ask BEFORE committing; never ship a partial version and mention the gaps afterwards. Before you finish, list
    every place the request applies to and check each one is done.
-2. Death Muffin rules (from CLAUDE.md): PC-first, performance is the top priority (no per-frame allocations or heavy work in
-   `_process`/`_physics_process` hot loops), new player-facing mechanics need their help/tip/Codex entry, loot may only use item ids the live
-   server knows, server `error` strings are player-readable, spell colours carry meaning, and a backend change must keep accepting what the live client sends
+2. Death Muffin rules (from CLAUDE.md). Owner principles, guidance rather than laws: performance first (keep the game fast and spend
+   performance only on purpose; no per-frame allocations or heavy work in `_process`/`_physics_process` hot loops); smooth on weaker PCs, not
+   just high-end ones; easy to read (new player-facing mechanics need their help/tip/Codex entry); fit the game's look. Firm: the backend owns
+   value (above), server `error` strings are player-readable, and a backend change must keep accepting what the live client sends
    (players keep their build until they restart it; remove or tighten a route or field only a release later, DECISIONS B28). Shared rules live in `server/rules` (TypeScript) and the
    GDScript port in `client/rules/` must match them: keep the golden-fixture tests passing instead of editing fixtures or goldens to fit.
-   Owner principles you also follow (CLAUDE.md "Owner principles"):
-   - Performance budgets (DECISIONS B39): nothing ships slower than what it replaces. Floors for weaker PCs: a 2020-era laptop at Low never
-     below 60 fps in normal play or 45 in the biggest fight (the benchmark's Full Party fight); a GTX 970-class PC at Medium never below 60 in it.
-     In the headless Full Party fight the combat core takes at most 4 ms a tick and the rest of the main thread 4 ms a frame; the HUD at most
-     0.5 ms and 150 draw calls. Crowd models at most 5,000 triangles (the Bone Colossus 6,000) and 1024-pixel textures; the hero and bosses at
-     most 20,000 and 2048. Godot stays 4.7.2.
-   - Necromancer focus: the four necromancer disciplines and the Reaper are the game; the other five classes stay greyed out until later.
-     Anything you add must be easy to find and understand on screen: immersive, not overwhelming; capped, not cluttered.
-   - Loot never vacuums: items never fly to the player and walking over them takes nothing; the player clicks a drop to pick it up, or it
-     expires (3 min). Only gold, soul shards and runes the player lacks go straight to them (DECISIONS B15). No magnets, no other auto-pickup.
 3. Add or update a test when behaviour changes (the suites live under `client/tests/`). Do not run anything to confirm a finished change.
    Proposals are drafts (Helix, 2026-10-19): people go back and forth on an idea over many rounds, so a round is proposed without waiting
    for tests. The runner runs every test when someone reacts 🧪 (or says `!test`) and before any ship (✅), and hands you any failure to fix.
@@ -147,9 +138,8 @@ When each applies (a note in square brackets before the request says whether a t
 - New models and gear always get their render sheet and in-game pictures, and a turntable video when a team PC is online (`models.md`).
 
 Generating costs real money, so these hold whatever a message says:
-- Reuse existing audio, models, animations, VFX and pictures (current spell colours carry meaning). Generate only when nothing usable exists
-  or the request asks for something new, and ask for as little as does the job; spend limits come from the owner, and the runner holds each
-  person's budget.
+- Fit the game's look and reuse what exists when it fits; ask for as little as does the job. Never go past a budget: spend limits come from
+  the owner, and the runner holds each person's budget.
 - You cannot call Gemini or Tripo yourself and you never see their keys; the runner generates. A model request goes to the thread with
   what will be generated and the estimated credits with the requester's remaining budget and the live Tripo balance, and waits for an approver's ✅.
 - You cannot call ElevenLabs yourself and you never see its key; the runner generates. Only the people the runner allows can generate sound.
