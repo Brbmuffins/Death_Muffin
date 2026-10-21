@@ -8,6 +8,7 @@ an inventory of the rules, so the rule text can be reorganised without losing a 
 node tools/context/measure.mjs                   # rule text per audience and section, and the inventory check (exit 1 on a problem)
 node tools/context/usage.mjs --since 2026-10-18 --until 2026-10-20   # per audience: the window's calls, context read, session-start context, peaks, files and commands
 node tools/context/usage.mjs --who agent --tokens-only --json out.json
+node tools/context/usage-codex.mjs --since 2026-10-14 --until 2026-10-20   # the same for Codex terminal sessions, from Codex's saved rollouts (tokens only)
 node tools/context/make-baseline.mjs <out.json> --label <rev> --window <since>..<until> --agent-window <since>..<until>
 node --test tools/context/test/*.test.mjs        # also in npm run test:server, so in CI
 ```
@@ -102,6 +103,45 @@ are reported either way. `--tokens-only` drops dollars, and paths outside a
 checkout are reported as one bucket, so the output can be committed. Claude Code deletes old transcripts after a while, so a baseline
 worth keeping is committed as numbers. The characters-to-tokens estimates in `measure.mjs` are text sizes; only `usage.mjs` reports what
 the API counted.
+
+## Codex usage
+
+`usage-codex.mjs` does the same for Codex terminal sessions, from the rollouts Codex saves (`~/.codex/sessions/**/rollout-*.jsonl` and
+`archived_sessions`; `--dir` for another folder). It starts nothing and logs nothing new, and reports tokens only: no dollars, and no
+account, plan, rate-limit or session fields (`--list` prints session ids for choosing a selection; keep that output private).
+
+```
+node tools/context/usage-codex.mjs --since 2026-10-14 --until 2026-10-20          # per kind and place: responses, input (cached / not), output, starts, peaks, reads
+node tools/context/usage-codex.mjs --session <id> --session <id> --json out.json  # named sessions only (or --sessions-file <private list>)
+```
+
+What a rollout records (Codex CLI 0.163, 2026-10-21), and how the reader uses it:
+
+- `session_meta` (id, launch folder, CLI version and source: `cli`/`vscode` is a terminal, `exec` is `codex exec`, a `subagent` source is a
+  child) and `turn_context` (each turn's folder and model). A response takes its turn's model; with none it is `unknown`.
+- `token_usage_record`: one per response, with that response's `usage` and the turn's and thread's running totals. The reader counts the
+  per-response usage once per `response_id`, across every file, oldest file first, so the copy a resumed or forked rollout carries is
+  not counted again (and that session's start is reported as inherited, not as a real first response). The running totals are never
+  summed; the last thread total is the check that a rollout was read whole.
+- `event_msg` `token_count`: cumulative snapshots. Older rollouts have only these; a response is then derived as a rise of the total, a
+  repeated snapshot adds nothing and a smaller total starts again from zero (a reset). One rise can hold several responses, so such
+  responses are reported as uncertain and never used as one response's context size. In a rollout that has both, snapshots count only
+  before the first record. Snapshots lag behind the records, so they are not the coverage check when records exist.
+- `input_tokens` is the whole input; `cached_input_tokens` is the part of it served from the cache (reported as cached and not cached,
+  never added on top); `reasoning_output_tokens` is part of `output_tokens`; `cache_write_input_tokens` is reported as recorded.
+- Tool calls (`custom_tool_call` `exec` in code mode, `function_call`) are paired with their output by `call_id`. A call that ran exactly
+  one shell command is counted by command, and a simple single-file read (`cat`, `sed -n`, `head`, ...) names its file. Several commands
+  in one call, code with no recognisable command, and multi-file reads go into an unattributed bucket: characters returned are a proxy,
+  not tokens a file cost. Truncated and image outputs are counted apart.
+- Instructions: `world_state` `agents_md` (or, from older CLIs, a user message that starts `# AGENTS.md instructions for <folder>`)
+  shows which AGENTS.md Codex injected and from which folder. A command that reads AGENTS.md or CLAUDE.md is an explicit read, not an
+  injection; a person naming the file is neither. A rollout with no `world_state` at all is "unknown", never "not loaded".
+
+Which sessions count: `dm` sessions ran mostly in a checkout; `mixed` sessions started elsewhere (every Codex review so far started in
+the home folder and read the game by absolute paths) and ran commands that name a Death Muffin path, so they are reported apart rather
+than credited to the game as a whole; `selected` sessions were named with `--session`/`--sessions-file`. What a command returned never
+decides it. The window works as in `usage.mjs` (UTC dates, both ends included, responses and tool output by their own timestamps;
+`--cohort` for whole sessions that started in it). Warnings say where evidence is missing (no usage recorded is unavailable, not zero).
 
 ## Stage 2 2026-10-21
 
