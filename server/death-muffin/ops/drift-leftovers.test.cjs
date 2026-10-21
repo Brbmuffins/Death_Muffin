@@ -43,12 +43,12 @@ test('a registered worktree is not drift; a folder git does not list is', () => 
 
 test('a leftover folder whose name starts another worktree\'s name is still drift', () => {
   const W = world(); try {
-    W.git('worktree', 'add', '-q', '-b', 'discord/565c7c-13', path.join(W.dir, 'wt', 'discord-565c7c-13'));
-    fs.mkdirSync(path.join(W.dir, 'wt', 'discord-565c7c'));
-    fs.mkdirSync(path.join(W.dir, 'wt', 'discord-565c7c-1'));
+    W.git('worktree', 'add', '-q', '-b', 'discord/f00d42-13', path.join(W.dir, 'wt', 'discord-f00d42-13'));
+    fs.mkdirSync(path.join(W.dir, 'wt', 'discord-f00d42'));
+    fs.mkdirSync(path.join(W.dir, 'wt', 'discord-f00d42-1'));
     assert.deepEqual(W.run().sort(), [
-      'DRIFT directory in wt/ that is not a registered worktree: <dir>/wt/discord-565c7c',
-      'DRIFT directory in wt/ that is not a registered worktree: <dir>/wt/discord-565c7c-1',
+      'DRIFT directory in wt/ that is not a registered worktree: <dir>/wt/discord-f00d42',
+      'DRIFT directory in wt/ that is not a registered worktree: <dir>/wt/discord-f00d42-1',
     ]);
   } finally { W.cleanup(); }
 });
