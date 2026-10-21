@@ -357,3 +357,24 @@ test('paths: resolved against the command\'s own folder, named only inside a che
   assert.equal(rel(resolvePath('next/x.md', 'client', GAME)), 'client/next/x.md', 'a relative workdir sits in the turn\'s folder');
   assert.equal(familyOf('A=1 B=two /usr/bin/env node x'), 'env'); assert.equal(familyOf('"weird name" x'), '(other)');
 });
+
+test('copied tool output counts once across a resumed or forked copy; a real repeated read with a new call counts again', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-codex-out-'));
+  const a = rollout({ id: 'orig', cwd: DM, start: '2026-10-19T10:00:00.000Z' }).meta().turn('t1', 'm').record('r1', 't1', u(1000))
+    .exec('c1', cmd(`cat ${DM}/client/README.md`), 'x'.repeat(100), '2026-10-19T10:00:05.000Z');
+  // the copy carries r1 and c1 as history, then one new response and the same read again under a new call id
+  const b = rollout({ id: 'copy', cwd: DM, start: '2026-10-19T11:00:00.000Z' }).meta().turn('t1', 'm')
+    .record('r1', 't1', u(1000), '2026-10-19T10:00:02.000Z')
+    .exec('c1', cmd(`cat ${DM}/client/README.md`), 'x'.repeat(100), '2026-10-19T10:00:05.000Z')
+    .record('r2', 't2', u(2000))
+    .exec('c2', cmd(`cat ${DM}/client/README.md`), 'x'.repeat(100));
+  fs.writeFileSync(path.join(dir, 'b.jsonl'), b.text().join('\n')); fs.writeFileSync(path.join(dir, 'a.jsonl'), a.text().join('\n'));
+  const c = collect({ dirs: [dir], keepIds: true });
+  const g = report(c).groups['terminal/dm'];
+  assert.equal(g.responses, 2);
+  assert.deepEqual(g.topReads.find((x) => x.path === 'client/README.md'), { path: 'client/README.md', reads: 2, chars: 200, sessions: 2 }, 'c1 once, c2 once');
+  assert.equal(c.sessions.find((x) => x.id === 'copy').copiedOutputs, 1);
+  // the same output under the same window and selection rules as usage: selecting only the copy counts its history once
+  const only = collect({ dirs: [dir], sessions: new Set(['copy']), keepIds: true }).sessions[0];
+  assert.deepEqual(only.reads['client/README.md'], { reads: 2, chars: 200 }); assert.equal(only.copiedOutputs, 0);
+});

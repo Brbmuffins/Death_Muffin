@@ -26,6 +26,7 @@
 //                                      [--dir <sessions dir>]... [--json out.json] [--top 15] [--list]
 //   --list prints each matching session with its id and why it was included (private: do not commit that output).
 
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -160,7 +161,9 @@ export function parseRollout(lines) {
       if (p.call_id) out.calls.set(p.call_id, { name: p.name || '?', input: p.input ?? p.arguments ?? '', ts, cwd: turnCwd || lastCwd });
     } else if (o.type === 'response_item' && ['custom_tool_call_output', 'function_call_output'].includes(p.type)) {
       const text = outputText(p.output);
-      out.outputs.push({ call: p.call_id || null, ts, chars: text.length, truncated: /truncated output/i.test(text.slice(0, 400)), image: hasImage(p.output) });
+      // its identity across rollouts: the call and the text, so a resumed or forked copy matches it and a new chunk or call does not
+      const key = 'o:' + (p.call_id || '') + ':' + crypto.createHash('sha1').update(text).digest('hex');
+      out.outputs.push({ call: p.call_id || null, key, ts, chars: text.length, truncated: /truncated output/i.test(text.slice(0, 400)), image: hasImage(p.output) });
     } else if (o.type === 'response_item' && p.type === 'message' && p.role === 'user') {
       // Older CLIs inject AGENTS.md as a user message that starts with this header; a person quoting the file name elsewhere is not one.
       for (const c of p.content || []) {
@@ -284,8 +287,11 @@ export function summarizeRollout(r, opts = {}, seen = new Set()) {
   const first = responses[0];
   const firstResponseInput = startKind === 'genuine' && first?.certain ? first.usage.input : null;
   // Tool output: paired with its call; recognised single-file reads are named, the rest is per command family or unattributed.
-  const reads = {}; const byTool = {}; let unattributed = 0, truncated = 0, images = 0, unpaired = 0;
+  const reads = {}; const byTool = {}; let unattributed = 0, truncated = 0, images = 0, unpaired = 0, copiedOutputs = 0;
   for (const o of r.outputs) {
+    // an output an older selected rollout already holds (resumed or forked history) is counted there, wherever the window is
+    if (seen.has(o.key)) { copiedOutputs += 1; continue; }
+    seen.add(o.key);
     if (!(opts.cohort || within(w, o.ts))) continue;
     if (o.truncated) truncated += 1;
     if (o.image) images += 1;
@@ -309,7 +315,7 @@ export function summarizeRollout(r, opts = {}, seen = new Set()) {
     id, file: opts.keepIds ? r.file : undefined, kind: kindOf(r.meta), ...where, cli: r.meta?.cli || null, start: first?.ts || r.first, startedInWindow, format, warnings,
     responses: inWin.length, uncertainResponses: inWin.filter((x) => !x.certain).length, usage: tot, uncovered, byModel, peakInput: peak,
     startKind, firstResponseInput, firstInWindowInput: inWin[0]?.certain ? inWin[0].usage.input : null,
-    instructionEvidence, explicitInstructionRead: readsAgents, reads, byTool, unattributedChars: unattributed, truncatedOutputs: truncated, imageOutputs: images, unpairedOutputs: unpaired,
+    instructionEvidence, explicitInstructionRead: readsAgents, reads, byTool, unattributedChars: unattributed, truncatedOutputs: truncated, imageOutputs: images, unpairedOutputs: unpaired, copiedOutputs,
   };
 }
 
