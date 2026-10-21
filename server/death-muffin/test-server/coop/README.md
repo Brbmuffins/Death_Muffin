@@ -1,8 +1,8 @@
 # Test lobby and relay (2-player co-op of test builds)
 
-A test build's co-op (DECISIONS B38, B40, B53; [client/README.md](../../../../client/README.md) "Co-op on the core") needs a lobby and a UDP relay of its own, next to the live ones and
+A test build's co-op (DECISIONS B38, B40, B53; [client/next/party/CORE-NETWORK.md](../../../../client/next/party/CORE-NETWORK.md)) needs a lobby and a UDP relay of its own, next to the live ones and
 next to the test backend ([../README.md](../README.md)): a test build never talks to the live API, lobby or relay, and the live ones never see its sessions. The game since launch day uses the live ones and never reaches these
-(client/README.md "The API rule").
+(client/net/README.md).
 
 | What | Where |
 |---|---|
@@ -38,7 +38,7 @@ The game takes a relay the lobby offers only on port 5193 (or on the same machin
 4. nginx: add `nginx-test-lobby.conf` to the `muffindevelopment` server block (next to `/death-muffin/lobby/`), mirror it in `../../nginx-locations.conf`, then `sudo nginx -t && sudo systemctl reload nginx`.
 5. `sudo systemctl start death-muffin-relay-test death-muffin-lobby-test`, then:
    - `curl -s http://127.0.0.1:5195/health` answers `{"ok":true,...}` and `journalctl -u death-muffin-relay-test` shows `listening on udp *:5196`;
-   - a test build hosts and joins a party (client/README.md "Co-op on the core": the trial commands) with two of the team's accounts.
+   - a test build hosts and joins a party (client/next/party/CORE-NETWORK.md: the trial commands) with two of the team's accounts.
 6. Both units are in the service list of `server/death-muffin/ops/drift-report.sh`, so a down test lobby or relay is flagged (reinstall the ops jobs with `ops/install.sh` after changing it); an Uptime Kuma monitor is optional and, like every staging and test monitor, never linked to the live Discord notification.
 
 To undo it: `sudo systemctl disable --now death-muffin-lobby-test death-muffin-relay-test`, remove the two units, the drop-in, the nginx block and the firewall rule.

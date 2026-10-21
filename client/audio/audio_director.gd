@@ -142,7 +142,7 @@ func _make_bus(bus_name: String, send: String, reverb: bool) -> int:
 ## lock (Godot 4.7.2 servers/audio/audio_server.cpp), while the mixer thread reads all three in _mix_step: an edit that lands in the middle of a mix step can crash that
 ## thread (a headless run of this director did, 2026-10-07; the log shows it as the crash handler's "caller thread can't call propagate_notification() on /root"). Holding
 ## the lock makes an edit wait for the step to end and the next step wait for the edit (the lock is recursive: set_bus_name and add_bus_effect take it themselves).
-## client/README.md "Threads".
+## client/core/THREADING.md.
 func _add_bus(bus_name: String, send: String, effect: AudioEffect) -> int:
 	AudioServer.lock()
 	AudioServer.add_bus()

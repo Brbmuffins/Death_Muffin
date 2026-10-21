@@ -36,7 +36,7 @@ textures and shaders exist before the first fight.
 | `thrall_raised`, `thrall_died`, `thrall_removed` | `thrallRise`, `thrallDeath` (killed ones only), every thrall's ground ring (champion gold, an ally's dimmer; the plague bearer's and the colossus' larger) |
 | `corpse_added`, `corpse_gone`, `corpse_consumed` | a faint pale ring under every fresh corpse for its 26 s (at most 8 at once), a violet one under a resonant corpse, a green disc under a toxic one for 5 s; the puff for why a corpse went |
 
-Which sound each of these plays: client/README.md "Sound". The shrouded body's fade and an elite's body glow are the crowd's (client/crowd/README.md "The alpha path"), not this node's.
+Which sound each of these plays: client/audio/README.md "Sound". The shrouded body's fade and an elite's body glow are the crowd's (client/crowd/README.md "The alpha path"), not this node's.
 One ambient pass at 5 Hz (`AMBIENT_S`) over the bodies within 24 x 20 m of the hero, reading their places from one read of the core's bulk arrays: idle motes (rising dust, hover motes, tunnelling dirt, the Pyre's ember shedding, the Fen wisp's marsh light,
 the hag's drips, the sexton's water), the status tells (marrow drips while bleeding, frost motes while chilled, a priest-gold glint while sanctified, rot while withered, bone dust while fractured, bronze motes while incensed, blood motes while frenzied)
 and the affixes' motes (drool, embers, shroud smoke while the shroud is up).
@@ -47,7 +47,7 @@ A guest's telegraph is derived from the snapshot's ATTACK edge: its place and ai
 
 ## Cost / warm-up
 No new effects, textures or sounds: everything is existing Vfx decals/emitters/Binbun scenes and existing sound ids (`DmEnemyFx.EFFECT_IDS`, `SFX_IDS`), so `DmWarmup`'s all-effects pass covers it. Pools are Vfx's.
-Costs on the VPS in a Full Party frame are in client/README.md "The effects".
+Costs on the VPS in a Full Party frame are in client/fx/README.md "The effects".
 
 ## Tests
 `client/tests/enemy_fx/run.gd` (the flask pool drawn for its life, a boss's pools ended at once by `remove_zones_of`), `client/tests/game_scene.gd` (deaths, rises, swings' impacts, corpse marks and dust, nothing held after a death or removal), `client/tests/world.gd` (the later kinds' effects: the acolyte's reach ring, the flask's ring and landing, status motes) and

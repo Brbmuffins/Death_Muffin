@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { REPO, checkRules, sections, sizes } from '../measure.mjs';
+import { REPO, checkRules, sections, sizes, sectionText, taskRoutes } from '../measure.mjs';
 import { parseTranscript, summarizeSession, classify, commandFamily, whatIfCap, collect, report, formatReport, costOf } from '../usage.mjs';
 
 const PROMPT = 'server/death-muffin/discord-agent/PROMPT-godot.md';
@@ -16,12 +16,19 @@ test('the rule inventory matches the repo', () => {
   assert.ok(r.protectedRules > 0);
 });
 
-// A throwaway repo holding only what the check reads: the two always-loaded files, the inventory, its lock and the enforcing files it names.
+// A throwaway repo holding only what the check reads: the always-loaded files, the inventory, its lock, the enforcing files it names, and the
+// discovery, reference and task-route files surfaces.json and tasks.json name.
 function scratchRepo() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-context-'));
   const { rules } = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/context/rules.json'), 'utf8'));
   const files = new Set(['CLAUDE.md', PROMPT, 'tools/context/rules.json', 'tools/context/surfaces.json', 'tools/context/protected.json']);
   for (const r of rules) for (const f of [...(r.enforced || []), ...r.homes.map((h) => h.file)]) files.add(f);
+  const surf = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/context/surfaces.json'), 'utf8'));
+  for (const a of Object.values(surf.audiences)) for (const f of [...a.always, ...(a.guides || []), ...(a.discovery || []).map((e) => e.file)]) files.add(f);
+  for (const f of surf.references || []) files.add(f);
+  const tasks = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/context/tasks.json'), 'utf8'));
+  files.add('tools/context/tasks.json');
+  for (const t of tasks.tasks) for (const f of [...t.after.map((e) => e.file), ...(t.agentGuide ? [t.agentGuide] : [])]) files.add(f);
   for (const f of files) { fs.mkdirSync(path.join(dir, path.dirname(f)), { recursive: true }); fs.copyFileSync(path.join(REPO, f), path.join(dir, f)); }
   return dir;
 }
@@ -94,8 +101,8 @@ test('an exception needs a note, an audience of the rule, and for a protected ru
   editRules(empty, (rules) => { rules.find((r) => r.id === 'shared-vps-one-render').gaps[0].note = '  '; });
   reported(problemsOf(empty), 'shared-vps-one-render: the gap for agent needs a note');
   const stranger = scratchRepo();
-  editRules(stranger, (rules) => { rules.find((r) => r.id === 'read-first').gaps.push({ audience: 'everyone', note: 'nobody by that name exists' }); });
-  reported(problemsOf(stranger), 'read-first: a gap names "everyone", which is not one of the rule\'s audiences');
+  editRules(stranger, (rules) => { rules.find((r) => r.id === 'ui-tests-real-input').gaps.push({ audience: 'everyone', note: 'nobody by that name exists' }); });
+  reported(problemsOf(stranger), 'ui-tests-real-input: a gap names "everyone", which is not one of the rule\'s audiences');
 });
 
 test('the inventory\'s shape is checked: kinds, audiences, fields, clauses', () => {
@@ -168,6 +175,36 @@ test('a new section of always-loaded text with no inventoried rule is reported',
   const dir = scratchRepo();
   fs.appendFileSync(path.join(dir, PROMPT), '\n## Something new\n\nA rule nobody listed.\n');
   assert.ok(problemsOf(dir).some((x) => x.includes('section "Something new" holds no inventoried rule')));
+});
+
+test('discovery entries, reference guides and task routes must exist, and a route must keep its answer', () => {
+  let dir = scratchRepo();
+  editText(dir, 'README.md', (t) => t.replace('## Documentation map', '## Docs'));
+  let p = problemsOf(dir);
+  reported(p, 'surfaces.json: discovery README.md "Documentation map" (session) does not exist');
+  reported(p, 'tasks.json: hud-minimap: README.md "Documentation map" does not exist');
+  dir = scratchRepo(); fs.rmSync(path.join(dir, 'client/core/THREADING.md'));
+  p = problemsOf(dir);
+  reported(p, 'surfaces.json: reference client/core/THREADING.md does not exist');
+  reported(p, 'tasks.json: depths-worker-thread: client/core/THREADING.md does not exist');
+  dir = scratchRepo(); editText(dir, 'client/next/party/CORE-NETWORK.md', (t) => t.replace(/the host pays every member\s+in range/, 'everyone is paid'));
+  reported(problemsOf(dir), 'tasks.json: coop-guest-rewards: its route no longer holds the answer "the host pays every member in range"');
+});
+
+test('a section runs from its heading to the next heading of its level or above, and a discovery entry is measured as that section only', () => {
+  const t = '# T\n## A (more)\na\n### A1\nb\n```\n## not a heading\n```\n## B\nc\n';
+  assert.equal(sectionText(t, 'A'), '## A (more)\na\n### A1\nb\n```\n## not a heading\n```');
+  assert.equal(sectionText(t, 'B'), '## B\nc\n');
+  assert.equal(sectionText(t, 'C'), null);
+  const s = sizes(REPO).audiences.session;
+  const map = s.discovery.find((d) => d.entry === 'README.md "Documentation map"');
+  assert.ok(map && map.chars < fs.readFileSync(path.join(REPO, 'README.md'), 'utf8').length / 3, 'the map, not the whole root README');
+  const surf = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/context/surfaces.json'), 'utf8'));
+  for (const [name, a] of Object.entries(surf.audiences)) assert.ok(!('readFirst' in a), `${name} is not told to read every document first`);
+});
+
+test('every task route answers its question in this tree', () => {
+  for (const t of taskRoutes(REPO)) assert.equal(t.after.answers, true, t.id);
 });
 
 test('sections split at level-two headings and keep every character', () => {

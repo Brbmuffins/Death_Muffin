@@ -1,5 +1,5 @@
 extends "res://tests/benchmark_base.gd"
-## The in-game benchmark on the combat core (the rebuild's Gates B and C, DECISIONS B50; client/README.md "The benchmark"), headless: `godot --headless --path client --script res://tests/benchmark.gd`.
+## The in-game benchmark on the combat core (the rebuild's Gates B and C, DECISIONS B50; client/next/perf/BENCHMARK.md), headless: `godot --headless --path client --script res://tests/benchmark.gd`.
 ## The first of five suites that split the old one (benchmark_base.gd holds what they share; benchmark_rooms, benchmark_classes, benchmark_launch and benchmark_flags are the others). Deterministic checks only, timings are INFO:
 ##   - the setup: sizes, the combat areas as rooms and the playable classes, the Bell Sanctum as the Standard room, today's enemy health, the budgets are B39's, a room or class the benchmark does not list is refused with a plain message,
 ##     the team app's flags (`--bench-preset=`, `--bench-quit`) as the launch line reads them and the exit code they give;

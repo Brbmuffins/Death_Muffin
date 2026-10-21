@@ -10,7 +10,7 @@ extends Node
 ## count, the room's boss held awake in a Full Party fight (BOSS_SIZES), fixed seed and camera zoom. Warm-up (not measured; the first frames compile shaders), then
 ## the measured window, then the HUD's share, then the render breakdown.
 ## What the creatures cost is the combat core's: `DmCoreHost.measure` times its step, the crowd's sync and the event dispatch per tick during the measured window, and the report's
-## budget section sets them (and the rest of the main thread) against the budgets (BUDGET_*, CLAUDE.md "Performance budgets").
+## budget section sets them (and the rest of the main thread) against the budgets (BUDGET_*, DECISIONS B71).
 ## Per-frame cost: one float appended to a preallocated PackedFloat32Array plus a handful of engine counter reads, and DmFrameSplit's two signal callbacks and one `_process` (the physics
 ## and process parts of the frame); the fight upkeep (top-up, counts, progress text) runs at TICK_S. Wiring: `var b := DmBenchmark.new(); add_child(b); var r := await b.run()`; `progress(text)` fires ~1 Hz.
 ## Text report: `format_text(results)`; `save_text(text)` writes bench-<datetime>.txt into `dir` (user://benchmarks).
@@ -18,7 +18,7 @@ extends Node
 ## BREAK_MEASURE_S; the drop in draw calls / objects / render CPU / GPU / frame time against the everything-on sample is what that part costs
 ## on this PC. Hiding is visibility only (restored after each sample); nothing is freed or rebuilt.
 ## The fight plays at the player's graphics preset (DmNextPerf: uncapped, at full resolution), with rewards, loot drops and the kill ledger against the run's mock.
-## Not in the rebuilt client yet, so not in the fight (client/README.md "The benchmark"): the guests' hero bodies.
+## Not in the rebuilt client yet, so not in the fight (client/next/perf/BENCHMARK.md): the guests' hero bodies.
 
 signal progress(text: String)
 signal breakdown_step(step: int, total: int, what: String)   ## the render breakdown froze the fight: step 0 = everything on, total + 1 = the re-measure
@@ -62,7 +62,7 @@ const SPAWN_MIN_M := 6.0        ## the benchmark's wave spawn distance (m from t
 const SPAWN_MAX_M := 14.0
 
 const BREAK_MEASURE_S := 5.0
-## The budgets (B39, CLAUDE.md "Performance budgets"): in the headless Full Party fight on the VPS, the combat core's step + the crowd's sync + the event
+## The budgets (B39, DECISIONS B71): in the headless Full Party fight on the VPS, the combat core's step + the crowd's sync + the event
 ## dispatch per 60 Hz tick, and the rest of the main thread per frame; on Helix's PC the HUD's main-thread cost per frame and its draw calls.
 const BUDGET_CORE_MS := 4.0
 const BUDGET_REST_MS := 4.0

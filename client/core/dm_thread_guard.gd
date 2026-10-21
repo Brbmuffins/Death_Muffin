@@ -1,6 +1,6 @@
 class_name DmThreadGuard
 extends RefCounted
-## The rule for work off the main thread (client/README.md "Threads"): a worker computes DATA and hands it back; whatever touches the scene tree, a Node, a signal or a
+## The rule for work off the main thread (client/core/THREADING.md): a worker computes DATA and hands it back; whatever touches the scene tree, a Node, a signal or a
 ## Godot object that is not thread-safe happens on the main thread, after the worker has finished. The places that apply a worker's result call `assert_main` first, so a
 ## refactor that moves the apply onto a thread names itself in the log and in `violations` (the suites check it is 0) instead of crashing a player at random.
 ##

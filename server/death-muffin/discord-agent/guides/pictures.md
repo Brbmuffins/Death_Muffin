@@ -28,3 +28,5 @@ gemini jobs and the data edits in one commit.
 
 A new kind of picture (a folder the list lacks) is one entry in `tools/pictures/kinds.json`, sized like the pictures already in that folder, in the same
 change. Effect sprites (`client/assets/fx/`) are not a kind yet: say so rather than make one. Never edit `tools/ai/`.
+
+**The game's side:** how the client takes in pictures is `client/tools/ASSETS.md`, and the window or system that shows one has its own guide (`client/README.md` names it). In a workspace made before 2026-10-21 `client/tools/ASSETS.md` is not there yet: read only the "Assets" section of `client/README.md` instead.

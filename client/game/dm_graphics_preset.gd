@@ -11,7 +11,7 @@ extends RefCounted
 ##   - `ssao`: screen-space ambient occlusion, Forward+ only (0 off, 1 medium, 2 high): High and Ultra. Contact shadows where bodies stand and props meet the floor.
 ##   - the governor's lower resolutions are upscaled with FSR 1 (sharpened) instead of bilinear, which Compatibility could not do.
 ## The brightness lift is Forward+'s own and belongs to the area, not to the preset (`DmWorldBuilder.AREA_LIFT`: one exposure multiplier per area, measured against the old game on the same camera, Ultra,
-## software Vulkan against software OpenGL; client/README.md "The look on Forward+"). Every preset keeps every light (they are baked) and a preset changes nothing else the eye reads as light,
+## software Vulkan against software OpenGL; client/next/look/README.md). Every preset keeps every light (they are baked) and a preset changes nothing else the eye reads as light,
 ## so Medium, High and Ultra share it (`lift` 1), except Low, whose moon casts no shadow (a little brighter): its factor is 0.96 of the area's.
 ##   shadows/bloom  moon shadow + the bloom glow         msaa   0 / 2 / 4 / 8 samples on the 3D view     aniso  anisotropic filtering level
 ##   floor          lowest 3D scale Auto resolution may drop to   fx   DmFx quality ("low" thins bursts and drops the Binbun layer)   binbun  the Binbun VFX layer

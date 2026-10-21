@@ -3,6 +3,7 @@
 #   node tools/generate-armor-assets.mjs        the armor and legendary sets' client data copies, the content manifest, the item icons, the new migration
 #   npm run build:server-rules                  server/rules/*.ts -> the backend's *-rules.cjs bundles
 #   UPDATE_LOOT_PARITY=1 vitest run server/rules/gameplay/__tests__/    the loot rules' tests, rewriting the recorded answers the Godot suite rules_loot replays
+#   node tools/context/sync-instructions.mjs    AGENTS.md, CLAUDE.md's exact copy for Codex (skipped in a checkout older than AGENTS.md)
 # The Discord agent's one command for generated files (PROMPT-godot.md); also fine by hand. Run from the worktree root. The same sandbox as check-godot.sh
 # (sandbox-lib.sh): no network, the whole filesystem read-only but the worktree, a private /tmp and HOME, no keys. Every step runs even when one before it
 # failed; the end lists what changed (git status). Exit 1 when a step failed. CI checks that all of it is current, so a stale file never ships.
@@ -21,6 +22,10 @@ export DM_PAYLOAD='
   step "armor sets (node tools/generate-armor-assets.mjs)" node tools/generate-armor-assets.mjs
   step "server rules (npm run build:server-rules)" npm run -s build:server-rules
   step "loot rules tests, recorded answers rewritten (UPDATE_LOOT_PARITY=1 vitest run server/rules/gameplay/__tests__/)" env UPDATE_LOOT_PARITY=1 node_modules/.bin/vitest run --reporter=dot server/rules/gameplay/__tests__/
+  # A checkout from before AGENTS.md (2026-10-21) has neither the copy nor its generator: nothing to make there. One that has either needs both.
+  if [ -e AGENTS.md ] || [ -e tools/context/sync-instructions.mjs ]; then
+    step "instructions copy (node tools/context/sync-instructions.mjs)" node tools/context/sync-instructions.mjs
+  else echo "== instructions copy: skipped (this checkout is older than AGENTS.md)"; fi
   exit $rc
 '   # the sandboxed work; run by dm_sandbox_run inside the nested namespace (sandbox-lib.sh)
 rc=0

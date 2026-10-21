@@ -1,12 +1,12 @@
 extends SceneTree
-## The 3D draw-call budget (client/README.md "The draw budget"): the draw calls of the Graves' Full Party fight, counted from data (`DmDrawModel`) in a scene a
+## The 3D draw-call budget (client/next/perf/DRAW-BUDGET.md): the draw calls of the Graves' Full Party fight, counted from data (`DmDrawModel`) in a scene a
 ## headless run can build (`DmDrawScene`: the Graves' area scene, the game's camera, the Ultra preset's moon, 72 enemies and four necromancers' thralls on the combat core). A draw call
 ## is what the budget counts and a headless run draws nothing, so the test counts what Forward+ would issue: an object per instance the camera sees (or a moon cascade, for a caster), a
 ## draw per surface, identical meshes instanced into one draw, and a MultiMesh costing its draws whether or not it holds an instance. It proves:
 ##   - the crowd costs what is in view and not what is registered: a MultiMesh group is shown while it holds instances and hidden when it does not, so the Full Party's draws are the
 ##     used groups' (a few dozen) and not those of every baked model's groups (the 8913127 test build drew 396 for the crowd, 280 before the roster grew, 41 now);
 ##   - the model sees that regression: with every group shown the crowd counts several times its draws;
-##   - the world, the world dressing (mist, weather, water, silhouettes, flames and brazier fire: client/README.md "World dressing") and the whole stay inside their budgets (BUDGET_*),
+##   - the world, the world dressing (mist, weather, water, silhouettes, flames and brazier fire: client/world_fx/README.md "World dressing") and the whole stay inside their budgets (BUDGET_*),
 ##     so a change that adds draw calls (a prop merged so that it no longer instances, a group left shown, one more piece of dressing) fails here and not on Helix's PC.
 ## INFO lines print the rows by group. Gets the Graves' roster (and three models the party does not use) into a scratch folder first (the checkout's baked models when tools/check/prep.sh made them, else a bake: common/dm_test_bake.gd).
 ## Run: godot --headless --path client --script res://tests/draw_budget.gd   (--fixed-fps 60 before --path is faster)
@@ -15,7 +15,7 @@ const DmTestBake := preload("res://tests/common/dm_test_bake.gd")
 const OUT := "user://draw_budget_test"
 const BAKE := ["grave_robber", "bone_hound", "barrow_ghoul", "choir_wraith", "skeleton_thrall", "skeleton_thrall+warrior", "skeleton_thrall+shieldbearer", "skeleton_thrall+archer",
 	"skeleton_thrall+bonemage", "skull_rat", "tithe_bat", "shroud_moth"]   ## the party uses the first nine (the legions' own bodies fall back to the skeleton); the last three are the idle roster
-## The model's draw calls for the Graves' Full Party at the benchmark's camera, both passes, a little over what the model counts (client/README.md "The draw budget" has the figures).
+## The model's draw calls for the Graves' Full Party at the benchmark's camera, both passes, a little over what the model counts (client/next/perf/DRAW-BUDGET.md has the figures).
 const BUDGET_CROWD := 30
 const BUDGET_WORLD := 85
 const BUDGET_DRESSING := 8   ## the dressing's six objects (water, weather, brazier fire, silhouettes, mist, the area's flames), a window's pane and shaft more where one is in view

@@ -1,6 +1,6 @@
 class_name DmQaTune
 extends RefCounted
-## Data overrides for one QA run: `--tune=<abs json file>` (client/README.md "Clips and tune"). The boot (`DmMain._ready`) applies it where the QA tools start, before the game scene is built, so the
+## Data overrides for one QA run: `--tune=<abs json file>` (client/main/CLIPS.md). The boot (`DmMain._ready`) applies it where the QA tools start, before the game scene is built, so the
 ## combat rules, the combat core and every view read the tuned numbers: it is merged into the registry's own cache (`DmDb.raw`), and the core's tables (`DmCoreData`) come from that cache too.
 ## The file is {"<DmDb path, e.g. combat/abilities>": {<nested keys exactly as the data file has them>: <value>}}, e.g.
 ##   {"combat/abilities": {"abilities": {"haunting_wraith": {"speed": 5.5}}}}

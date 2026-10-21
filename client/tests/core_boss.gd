@@ -1,5 +1,5 @@
 extends SceneTree
-## What the bosses call on the combat core beyond damage and queries (native/src/core/niche.cpp, boss.cpp; client/README.md "The bosses"), against today's code:
+## What the bosses call on the combat core beyond damage and queries (native/src/core/niche.cpp, boss.cpp; client/next/bosses/CORE-INTEGRATION.md), against today's code:
 ##   - the Skull Niche (archive/old-game:godot/enemies/kinds/dm_enemy_niche.gd, the Bone Abbess's shrines): a body that only stands. Its def, the rise (dm_state_rising.gd), no target, no walk, no blow,
 ##     no stagger (a hit, a stun, a stun status), a hit while it rises refused, never moved (a hero's body, a raised wall), not in the crowd's spacing, thralls and statuses reach it,
 ##     it falls with no corpse and is removed 4 s later;

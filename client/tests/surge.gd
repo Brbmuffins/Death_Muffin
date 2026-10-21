@@ -1,5 +1,5 @@
 extends SceneTree
-## Grave Surges on the combat core (client/README.md "Grave Surges"), headless, against the local mock backend only (never a real server): the game scene as a player gets it (every area but
+## Grave Surges on the combat core (client/next/areas/SURGES.md), headless, against the local mock backend only (never a real server): the game scene as a player gets it (every area but
 ## the Depths) with a Gravecaller in god mode. Where a rule is checked the surge is driven by hand (`update(dt, heroes)`, what the director does every physics tick); where the wiring is, the
 ## director's own ticks drive it. Every kill goes through the core (`DmCoreHost.damage` with the hero's id), so it takes the real path: EV_ENEMY_DIED -> `enemy_died` -> the director's hook ->
 ## the surge. The old game's checks of Grave Surges and of Restless Crypts replayed on the core, and what the core changes:

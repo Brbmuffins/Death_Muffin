@@ -1,4 +1,4 @@
-// What the bosses' GDScript brains call on the core beyond damage and queries (client/README.md "The bosses"):
+// What the bosses' GDScript brains call on the core beyond damage and queries (client/next/bosses/CORE-INTEGRATION.md):
 //   - a hostile ground zone for a boss (the Plague Saint's rot pools, the Cinder Regent's coals, firebreak and embers): DmHostileZone.spawn with the boss as the source. It is the
 //     same record as a dust cloud or a corpse's toxic pool (step_zones pulses it), so guests, the effects and the Saint's "am I standing in rot" query all see it;
 //   - a body's health (the Abbess gives each niche a share of her own maximum when it spawns), with the wire record that tells a guest the new maximum.

@@ -457,14 +457,14 @@ func _own_material(inst: Inst, gi: GeometryInstance3D) -> void:
 		inst.base_depth.append(float(d) if d != null else -1.0)
 	elif m is StandardMaterial3D:
 		var std := m as StandardMaterial3D
-		std.vertex_color_is_srgb = true   # the particles' colours: Compatibility reads vertex colours as sRGB, Forward+ as linear (client/README.md "Graphics presets")
+		std.vertex_color_is_srgb = true   # the particles' colours: Compatibility reads vertex colours as sRGB, Forward+ as linear (client/next/perf/README.md "Graphics presets")
 		inst.std_mats.append([std, std.albedo_color])
 
 
 static var _srgb_shaders := {}   ## Shader -> the copy that converts the particle's colour (or the shader itself when it has nothing to convert)
 
 const SRGB_HELPER := """
-// The particle's colour is an sRGB value: Compatibility hands a shader its COLOR converted to linear, Forward+ as it is (client/README.md "Graphics presets").
+// The particle's colour is an sRGB value: Compatibility hands a shader its COLOR converted to linear, Forward+ as it is (client/next/perf/README.md "Graphics presets").
 vec3 dm_srgb(vec3 c) {
 	return mix(pow((c + 0.055) / 1.055, vec3(2.4)), c * 0.0773993808, lessThan(c, vec3(0.04045)));
 }

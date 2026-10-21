@@ -8,7 +8,7 @@ extends RefCounted
 ## A wave climbs out over a few ticks like an ordinary wave: its bodies go through the director's queue (SPAWNS_PER_TICK a tick) and the director hands each made body's core id back (`adopt`);
 ## what came is a set of those ids, and the director forwards every death (`on_enemy_died(id)`, from DmCoreHost.enemy_died): no node, scene or per-body work here.
 ## Events go out through `director.surge_event` ({t: surge | surgeCleared | surgeFailed, area, x, z, crypt, durationMs}); DmAreaFlow draws them on the host.
-## A party guest gets no event: it sees the bodies climb out of the crypt (the core's snapshot) and, when the surge is quelled, its offering, but no banner, crypt, sound or tip (client/README.md "Grave Surges").
+## A party guest gets no event: it sees the bodies climb out of the crypt (the core's snapshot) and, when the surge is quelled, its offering, but no banner, crypt, sound or tip (client/next/areas/SURGES.md).
 
 var director: DmWaveDirector
 var active: bool = false

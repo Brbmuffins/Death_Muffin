@@ -1,5 +1,5 @@
 extends SceneTree
-## Value on the server in the game scene on the core (client/README.md "Value on the server"), headless, against the
+## Value on the server in the game scene on the core (client/next/rewards/AUTHORITY.md), headless, against the
 ## local mock backend only (never a real server). The real scene with a Gravecaller; kills are made through the core (`DmCoreHost.damage` with the hero's id), so they
 ## take the real path: the core's EV_ENEMY_DIED -> the game's `kill_credited` (once) -> the ported DmSessionRewards. Checks:
 ##   A start: the backend's party session is open with this player's member, its drop tape filled; the progression, the Chronicle, the meta world and the bag are loaded;

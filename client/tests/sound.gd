@@ -1,5 +1,5 @@
 extends SceneTree
-## Sound on the combat core's events (client/README.md "Sound"): the game scene as a player gets it (every area but the Depths,
+## Sound on the combat core's events (client/audio/README.md "Sound"): the game scene as a player gets it (every area but the Depths,
 ## today's HUD, audio on), headless, with a RECORDING STAND-IN for the AudioDirector autoload: every call the game makes on it is logged, and it passes the calls on to the real
 ## director where a check needs the real thing (areas, music, footsteps). Checked:
 ##   - a scripted fight in the Hollow Graves plays the cues today's code would play, by name and count. The expectation is built from the core's own events with TODAY'S rules,

@@ -63,10 +63,11 @@ const DEFAULTS = {
   // sensitive > gameplay > casual. The game is client/ (DECISIONS B49, B57). It carries its own offline backend, saves, login and net code, so those
   // are sensitive; unmatched paths (root files, native/) are sensitive too. gameplay = everything else under client/. A changed project.godot can add
   // autoloads / main scene, so it is sensitive; so are the files the players' 500 MB asset pack is fingerprinted by (tools/godot/assets-fp.sh), whose
-  // change sends every player that download again.
+  // change sends every player that download again. AGENTS.md is CLAUDE.md's generated copy for Codex (tools/context/sync-instructions.mjs): the same
+  // instructions, so the same tier (the casual '*.md' rule below would otherwise take it).
   tiers: {
     sensitive: [
-      'server/**', 'launcher/**', 'tools/**', '.github/**', '**/*.sh', '**/deploy*', 'CLAUDE.md', '.claude/**', '**/.env*', '.gitignore',
+      'server/**', 'launcher/**', 'tools/**', '.github/**', '**/*.sh', '**/deploy*', 'CLAUDE.md', 'AGENTS.md', '.claude/**', '**/.env*', '.gitignore',
       'native/**', 'client/project.godot', 'client/export_presets.cfg', 'client/net/**', 'client/front/**', 'client/session/**', 'client/addons/**',
       'client/main/**', 'client/bin/**', 'client/core/**', 'client/backend/**',
       'client/**/*auth*', 'client/**/*session*', 'client/**/*online*', 'client/**/*save*', 'client/**/*mock_backend*',

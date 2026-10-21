@@ -1,5 +1,5 @@
 extends "res://tests/boss_base.gd"
-## The Gravedigger King on the combat core (client/README.md "The bosses"): the real offline game scene (client/next/next_game.tscn) with a level-20 Gravecaller, no waves, headless, on boss_base.gd
+## The Gravedigger King on the combat core (client/next/bosses/CORE-INTEGRATION.md): the real offline game scene (client/next/next_game.tscn) with a level-20 Gravecaller, no waves, headless, on boss_base.gd
 ## like the six other bosses' suites (boss_abbess.gd ... boss_mire.gd). The King is today's DmBossHost / DmBoss / DmBossBrain, ported: his body is an external of the core (kind 1), his brain stays GDScript.
 ## The generic parts every boss gets are boss_base.gd's (the summon and its refusals, thralls, rites, wipe, defeat and rewards, the real clock, the net state); his recorded scenarios are replayed by tests/bosses.
 ## What is the King's own is here:

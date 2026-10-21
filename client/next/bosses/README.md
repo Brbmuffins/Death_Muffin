@@ -3,7 +3,7 @@
 Gravedigger King, Bone Abbess, Drowned Congregation, Bell-Sworn Prelate, Plague Saint, Cinder Regent, Mire Mother. The brains are the pure
 GDScript brains in `client/sim/bosses/` (see its README; phases at 60 / 30 %, telegraph -> resolve loop, stagger, wipe reset, arena leash); every
 number is in `client/data/content/bosses.json`. This folder puts them in the world as nodes. A boss is an external entity of the combat core (kind 1) whose brain stays GDScript:
-how it sits on the core (what the rites, the thralls and the hover pick see, the adds, the pools, summoning, the Covenant Seal, defeat and the tests) is client/README.md "The bosses"; in a party: "Co-op on the core".
+how it sits on the core (what the rites, the thralls and the hover pick see, the adds, the pools, summoning, the Covenant Seal, defeat and the tests) is [CORE-INTEGRATION.md](CORE-INTEGRATION.md); in a party: client/next/party/CORE-NETWORK.md "Bosses in a party".
 
 ```
 DmBossHost  (node "Bosses" under DmNextGame, every peer)   summon rules, spawner, event routing, 20 Hz state, music, E key
@@ -41,11 +41,11 @@ DmBossHost  (node "Bosses" under DmNextGame, every peer)   summon rules, spawner
   and a player it cannot reach is skipped for 4 s. The boss has no collider, so a legion cannot body-block it.
 
 ## Tests
-One suite for the King (`client/tests/boss.gd`), one for each of the other six on `boss_base.gd`, `boss_meta.gd` (the Covenant Seal, first-kill trophies), `core_boss.gd` (the core's half) and the party fights `coop.gd` and `coop_bosses.gd`: client/README.md "The bosses", "Co-op on the core".
+One suite for the King (`client/tests/boss.gd`), one for each of the other six on `boss_base.gd`, `boss_meta.gd` (the Covenant Seal, first-kill trophies), `core_boss.gd` (the core's half) and the party fights `coop.gd` and `coop_bosses.gd`: [CORE-INTEGRATION.md](CORE-INTEGRATION.md), client/next/party/TESTING.md "The proof".
 The recorded scenarios the brains are replayed against are recordings of the web game's brains (44 of them).
 
 ## Known gaps
 - A guest's Empowered call pays on its own account and the host wakes the boss on its word (`DmBossHost.ask_empowered`): the server's area gate is the host's world (B68: an area neither the guest's account nor its host has opened refuses the Seal with the server's reason before anything is spent); the prize claim window is the backend's (3 h).
 - The Mire Mother's flood shrinks the Fen's hummocks for the brain (`FEN_FLOOD_SCALE`); the event plays the rings, and nothing eases the drawn hummocks.
-- `can_ascend` after a Prelate kill is only a game event (no Altar: B36). Prelate Echoes are not played for the same reason (client/README.md "The bosses").
+- `can_ascend` after a Prelate kill is only a game event (no Altar: B36). Prelate Echoes are not played for the same reason (client/next/bosses/CORE-INTEGRATION.md).
 - The Prelate tally is validated by the backend only for a bell it was told of (online `spend_shards` queues `summon_prelate`).

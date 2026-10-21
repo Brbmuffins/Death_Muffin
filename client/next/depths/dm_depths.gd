@@ -6,7 +6,7 @@ extends Node
 ## from the core's spawned / died / removed events, and takes every body of the Depths out of the core with `remove_enemy` when a floor goes), kills and loot go
 ## through DmSessionRewards (the loot ground follows the depth: `rewards.loot_area_of`), floor / chest rewards through the rewards + progress nodes, the record through DmChronicle.
 ## The hub's `interacted(it)` (stair, depths_down, depths_up, depths_chest) is the entry point; the floor's own interactables are added to the hub's list while a run is on.
-## See client/README.md "The Depths".
+## See client/next/depths/CORE-INTEGRATION.md.
 
 signal run_started(depth: int)
 signal floor_loaded(depth: int)
@@ -288,7 +288,7 @@ func leave() -> bool:
 
 
 ## The floor of `depth` for a run seed, generated on a worker thread (the generator is pure and only reads data already loaded): the old floor goes on meanwhile. The worker
-## computes a Dictionary and touches no node; the main thread takes it once the task has finished (client/README.md "Threads").
+## computes a Dictionary and touches no node; the main thread takes it once the task has finished (client/core/THREADING.md).
 func _generate(seed_: int, depth: int) -> Dictionary:
 	DmDbWarm.all()   # no dataset may be a first use (a write to DmDb's cache) while the worker reads
 	DmSimData.ensure()

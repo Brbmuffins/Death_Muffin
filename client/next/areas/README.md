@@ -1,6 +1,6 @@
 # client/next/areas: every area of the world
 
-All thirteen areas live in `DmNextGame`: twelve area scenes (`client/areas/<id>.tscn`, client/README.md "Areas") and the Depths, the one area with no scene (`client/next/depths/`; `DmWaveDirector` skips `instance` areas).
+All thirteen areas live in `DmNextGame`: twelve area scenes (`client/areas/<id>.tscn`, client/world/README.md) and the Depths, the one area with no scene (`client/next/depths/`; `DmWaveDirector` skips `instance` areas).
 Nothing here re-implements a rule; it wires the shared content (`areas.json`, `enemies.json`, `DmSimData`) onto DmNextGame's systems.
 
 | Piece | Where | Notes |
@@ -11,7 +11,7 @@ Nothing here re-implements a rule; it wires the shared content (`areas.json`, `e
 | Rosters, caps, pacing, level scaling | `client/next/spawn/dm_wave_director.gd` | one director serves every combat area a hero stands in: its own (`area_id`; when nobody is in it, it moves to the combat area a hero is in, `area_followed`, sending the old area's enemies away through the core: no death, corpse or credit) and, in a party, a ground of its own for each other area a member fights in (`Ground`, "Grounds" in its README). `configure_area(id)` = the area's roster (only the kinds the core runs) / cap / wave size / interval; level via `DmEnemyStats.area_level` (Cloister 20, Pyre 30, Fen 45 floors, hero-level scaled) |
 | First wave 1.3 x, GLOBAL_ENEMY_CAP, eliteBonus | director | the first wave of a visit is 1.3 x the wave size; `GLOBAL_ENEMY_CAP` 72 (the dead count for 4 s), shared between the areas of a party apart, never multiplied; the wave-tier elite bonus |
 | Processions (`WAVE_THEMES`, from wave 2, 30 %) | director `_roll_theme`, signal `procession`; banner once per area in `DmAreaFlow` | themed roster, lead kind, size |
-| Grave Surges | `dm_grave_surge.gd` (`DmGraveSurge`, `director.surge`); the banner, the cracked crypt and the sounds in `DmAreaFlow`, the offering in `DmSessionRewards.on_surge_cleared` | host only, one at a time, in the director's own area (a member in another area gets that area's waves, not a surge). How one runs (the clock, the crypt, the three waves, quelled or failed, a party) and its numbers: client/README.md "Grave Surges" |
+| Grave Surges | `dm_grave_surge.gd` (`DmGraveSurge`, `director.surge`); the banner, the cracked crypt and the sounds in `DmAreaFlow`, the offering in `DmSessionRewards.on_surge_cleared` | host only, one at a time, in the director's own area (a member in another area gets that area's waves, not a surge). How one runs (the clock, the crypt, the three waves, quelled or failed, a party) and its numbers: client/next/areas/SURGES.md |
 | Seals, doors, waystones, recall | `client/next/chapterhouse/dm_chapterhouse.gd` | the hub owns seals; `travel(area)` serves every waystone whose seal is broken (`"<Area> is still sealed."` otherwise) |
 
 ## Known gaps

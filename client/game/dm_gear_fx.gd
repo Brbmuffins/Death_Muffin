@@ -185,7 +185,7 @@ static func _material() -> StandardMaterial3D:
 		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 		m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
 		m.vertex_color_use_as_albedo = true
-		m.vertex_color_is_srgb = true   # Compatibility reads vertex colours as sRGB, Forward+ as linear: without this the motes come out white blobs ("Graphics presets" in client/README.md)
+		m.vertex_color_is_srgb = true   # Compatibility reads vertex colours as sRGB, Forward+ as linear: without this the motes come out white blobs ("Graphics presets" in client/next/perf/README.md)
 		m.albedo_texture = DmGearProps.glow_texture()
 		m.disable_receive_shadows = true
 		_mote_mat = m

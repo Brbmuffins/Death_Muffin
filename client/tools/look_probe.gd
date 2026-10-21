@@ -1,5 +1,5 @@
 extends SceneTree
-## The look probe: the old game and the rebuilt client on the same camera, as numbers and pictures (client/README.md "The look on Forward+"). NOT a pass/fail suite.
+## The look probe: the old game and the rebuilt client on the same camera, as numbers and pictures (client/next/look/README.md). NOT a pass/fail suite.
 ## One script for BOTH projects, run on the VPS under the renderer lock, one run at a time (software GL, about 5 minutes each):
 ##   rebuilt client (Forward+, Vulkan on lavapipe):
 ##     VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json flock -w 900 /home/ubuntu/death-muffin/qa-browser.lock nice -n 10 xvfb-run -a -s "-screen 0 1280x720x24" timeout 600 \

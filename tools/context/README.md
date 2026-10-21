@@ -1,29 +1,39 @@
 # Context: what the rules cost and where they live
 
-Claude does all the work on this game: sessions started in a checkout (and the subagents they start) and the Discord dev agent. Every
-one of them carries rule text on every call, and every call re-reads the whole conversation so far. This folder measures both and keeps
+Claude builds this game (terminal sessions, the subagents they start, and the Discord dev agent) and Codex terminal sessions review and
+plan it. Every one of them carries rule text on every call, and every call re-reads the whole conversation so far. This folder measures both and keeps
 an inventory of the rules, so the rule text can be reorganised without losing a boundary.
 
 ```
 node tools/context/measure.mjs                   # rule text per audience and section, and the inventory check (exit 1 on a problem)
 node tools/context/usage.mjs --since 2026-10-18 --until 2026-10-20   # per audience: the window's calls, context read, session-start context, peaks, files and commands
 node tools/context/usage.mjs --who agent --tokens-only --json out.json
+node tools/context/usage-codex.mjs --since 2026-10-14 --until 2026-10-20   # the same for Codex terminal sessions, from Codex's saved rollouts (tokens only)
 node tools/context/make-baseline.mjs <out.json> --label <rev> --window <since>..<until> --agent-window <since>..<until>
 node --test tools/context/test/*.test.mjs        # also in npm run test:server, so in CI
 ```
 
 ## The audiences
 
-`surfaces.json` names what each audience always carries, the guides it reads when a task needs one, and what it is told to read first:
+`surfaces.json` names what each audience always carries, the guides it reads when a task needs one, and the small entry points it starts a
+task from (`discovery`: README.md's "Documentation map" section and the client index, measured as that section or file, never as the
+whole root README). `references` lists the client guides a task may open; they are measured apart and never counted as startup:
 
 | Audience | Always loaded | How |
 |---|---|---|
 | session | `CLAUDE.md` | Claude Code loads it for a session started in the repository, and for one started elsewhere once it works in a checkout |
+| codex | `AGENTS.md` | Codex loads it when it starts in the repository: it reads `AGENTS.md` from the project root down to its launch folder, at launch only |
 | agent | `server/death-muffin/discord-agent/PROMPT-godot.md` | the runner appends its round's snapshot to every call (`runner/lib/agent.cjs`, `runner/lib/guides.cjs`); the agent runs `--restricted`, which does not load `CLAUDE.md` |
 
 The agent's guides (`server/death-muffin/discord-agent/guides/*.md`: screenshots, clips, pictures, models, sound) are not always loaded: the
 runner copies them into the job's worktree (`.dm-guides/`) and the core prompt tells the agent to Read the one a workflow needs
 (server/death-muffin/discord-agent/README.md "Prompt and guides"). A guide is therefore never the home that keeps a protected rule.
+
+`AGENTS.md` is `CLAUDE.md` byte for byte: `CLAUDE.md` is the one written source, and `node tools/context/sync-instructions.mjs` writes the
+copy (`--check` only checks; its test runs in CI and fails on a missing, empty or stale copy; `regen-godot.sh` runs the write too). One
+text, two delivery files, so neither tool needs to read the other's, and every rule written in `CLAUDE.md` has the same clauses in
+`AGENTS.md` for the `codex` audience (`rules.json`, locked like the others in `protected.json`). The Discord runner treats `AGENTS.md` as
+sensitive, like `CLAUDE.md` (`runner/lib/config.cjs` `tiers`).
 
 How sure that is (`usage.mjs` reports it per audience as "the repo's CLAUDE.md was injected in N of M sessions", from the `instructions`
 and `nested_memory` records Claude Code writes when it injects an instruction file; a file merely read does not count):
@@ -36,6 +46,12 @@ and `nested_memory` records Claude Code writes when it injects an instruction fi
   outside the repo gets it only when it works in a checkout's folder (a subagent that reads files through the shell may never), so for
   subagents "always loaded" does not hold; their briefs carry the rules they need. `surfaces.json` still treats `CLAUDE.md` as the
   session audience's always-loaded text, which is what the rule check checks.
+- **Codex: only when it starts in a checkout.** Before 2026-10-21 the repository had no `AGENTS.md`, `~/.codex/config.toml` names no
+  fallback instruction file, and Codex does not read `CLAUDE.md` on its own; it learned the rules only when told to read them. Every Codex
+  session on the game through 2026-10-21 started in the home folder, and Codex builds its instructions at launch, so a later `cd` or
+  `git -C` into a checkout loads nothing: a Codex session that starts outside a checkout (or works on another worktree) must read that
+  checkout's `AGENTS.md` first. `usage-codex.mjs` reports per session whether Codex recorded injecting an `AGENTS.md`, and from which
+  folder ("Codex usage" below).
 
 Token figures are estimates from characters: `charsPerToken` (2.7) is what the agent's own calls show, where the first call's context grew
 about one token for every 2.7 characters its prompt grew between 2026-10-11 and 2026-10-20.
@@ -61,7 +77,9 @@ the baseline inventory on 2026-10-20). `node tools/context/measure.mjs --print-l
   one appears, while `protected.json` still says otherwise;
 - an enforcing file named by a rule does not exist;
 - a `## ` section of an always-loaded file holds no inventoried rule (a new section: add its rules);
-- a guide in `surfaces.json` does not exist, is also listed as always loaded, or holds no inventoried rule.
+- a guide in `surfaces.json` does not exist, is also listed as always loaded, or holds no inventoried rule;
+- a discovery entry (a file, or a section by its heading), a reference guide or a step of a task route (`tasks.json`) does not exist, or a
+  task's route no longer holds the words that answer its question.
 
 The context test also keeps the owner principles (DECISIONS B71) and the spend-limit line in the agent's prompt: removing one, or giving it an
 agent gap again, fails CI.
@@ -70,6 +88,31 @@ What this proves and what it does not: the check is structural. It shows that th
 that any change to a protected rule or its exceptions comes with a change to `protected.json`, which shows in the diff. It cannot tell
 whether anyone reviewed that diff, whether reworded text still means the same, or whether a model follows the rule. The code named in
 `enforced` is what holds a boundary regardless of the text.
+
+## Finding task context
+
+Before 2026-10-21 every audience was told to read five documents first (README, ROADMAP, DECISIONS, KNOWN-GAPS and the 216 KB client
+manual, about 124,000 estimated tokens together; the agent three of them). Nobody did: 0 of 85 agent sessions with calls 2026-10-11 to
+2026-10-20 read `CLAUDE.md` or `README.md` and 1 read the client manual, and in `baseline-2026-10-20.json`'s window (2026-10-18 to
+2026-10-20) the files sessions read most include ROADMAP.md in 1 of 12 interactive sessions and the client manual in 3 of 39 subagents.
+Now `CLAUDE.md` (so `AGENTS.md`) says to start from README.md's "Documentation map": pick the task's row, read that one document, then the
+system's guide and the code (rule `task-discovery`). The Discord agent's core says the same, and in a job whose worktree was made before
+the split it reads only the old `client/README.md` section on the same subject; its media guides name the game's page for each workflow
+with the same fallback (server/death-muffin/discord-agent/README.md "Prompt and guides"). The client manual became `client/README.md`, an index (the feature table and "Guides
+by task"), and guides beside the code they describe; `doc-moves.json` records where each old section went. Nothing here shows that a model
+follows the new route: that shows only in the reads `usage.mjs` and `usage-codex.mjs` report for sessions after the change.
+
+**Task routes.** `tasks.json` holds six representative tasks (the minimap, a rite's clip with a tuned cooldown, a co-op guest's boss
+reward, the Depths' worker thread, a backend save, a roadmap question), each with the words that answer it and two routes: the bounded
+old sections that answered it at `a1f09add` (the right section only, as if the reader knew where it was) and the route now, from the map.
+`node tools/context/measure.mjs --tasks` measures both with the same estimator; CI checks that every route now still holds its answer (the
+`before` side needs that revision in the history, which a shallow CI clone does not have). The comparison is in `stage3-2026-10-21.json`.
+
+**Navigation check.** `navigation.mjs` (run by `npm run hygiene`, so in CI) proves the routes resolve: the map's links, every old section of
+the client manual still answered by its anchor in `client/README.md` on a row that links each new home, each new home and its heading,
+and every Markdown link (fragment included) or quoted section reference (`path.md "Label"`) into those files. A reference to an old section
+name of `client/README.md` fails, except in the files `doc-moves.json` keeps on purpose (the decision record, the baseline, and one comment
+whose file is an input of the art pack's fingerprint). It proves navigability, not that a guide is complete.
 
 ## Usage
 
@@ -102,6 +145,82 @@ are reported either way. `--tokens-only` drops dollars, and paths outside a
 checkout are reported as one bucket, so the output can be committed. Claude Code deletes old transcripts after a while, so a baseline
 worth keeping is committed as numbers. The characters-to-tokens estimates in `measure.mjs` are text sizes; only `usage.mjs` reports what
 the API counted.
+
+## Codex usage
+
+`usage-codex.mjs` does the same for Codex terminal sessions, from the rollouts Codex saves (`~/.codex/sessions/**/rollout-*.jsonl` and
+`archived_sessions`; `--dir` for another folder). It starts nothing and logs nothing new, and reports tokens only: no dollars, and no
+account, plan, rate-limit or session fields (`--list` prints session ids for choosing a selection; keep that output private).
+
+```
+node tools/context/usage-codex.mjs --since 2026-10-14 --until 2026-10-20          # per kind and place: responses, input (cached / not), output, starts, peaks, reads
+node tools/context/usage-codex.mjs --session <id> --session <id> --json out.json  # named sessions only (or --sessions-file <private list>)
+```
+
+What a rollout records (Codex CLI 0.163, 2026-10-21), and how the reader uses it:
+
+- `session_meta` (id, launch folder, CLI version and source: `cli`/`vscode` is a terminal, `exec` is `codex exec`, a `subagent` source is a
+  child), `turn_context` (each turn's folder and model) and `thread_settings_applied`. A response takes its turn's model, else the model in
+  effect at that point of the file; a setting that comes later never applies backwards, and with none it is `unknown`.
+- `token_usage_record`: one per response, with that response's `usage`, the session and thread it belongs to, and the turn's and thread's
+  running totals. The reader counts the per-response usage once per `response_id` across the selected files, oldest file first, so the
+  copy a resumed or forked rollout carries is not counted again. The running totals are never summed into usage.
+- `event_msg` `token_count`: cumulative snapshots. Older rollouts have only these; a response is then derived as a rise of the total, a
+  repeated snapshot adds nothing and a smaller total starts again from zero (a reset). One rise can hold several responses, so such
+  responses are reported as uncertain and never used as one response's context size. In a rollout that has both, responses come from
+  snapshots only before the first record.
+- **Coverage.** Each rollout's responses (copies included, so a copy is neither counted twice nor called missing) are checked against
+  everything its cumulative counters vouch for: each series (the records' thread totals, the snapshots) is cut at its resets and the
+  segments' last values added, and the larger series is the evidence. Snapshots usually lag the records, so they matter only where they
+  show more (a newer snapshot after the last record, a record whose thread total is ahead of what came before it). What the evidence shows
+  beyond the responses is reported as **uncovered** with a warning: kept apart from the usage totals, never dropped silently. Uncovered is
+  per rollout, not split by the window.
+- **Starts.** A session's start is `genuine` only when the rollout shows it: a `session_meta`, and an earliest response that is not a copy
+  (not already counted, and recorded for this rollout's own session or thread) and is its thread's first (its thread total is its own
+  usage, or a first snapshot equal to its last response). A copied earliest response is `inherited` (a fork or resume); anything else,
+  such as a partial rollout whose first response already has history behind it, is `unknown`. Only genuine starts give the first-response
+  figures.
+- `input_tokens` is the whole input; `cached_input_tokens` is the part of it served from the cache (reported as cached and not cached,
+  never added on top); `reasoning_output_tokens` is part of `output_tokens`; `cache_write_input_tokens` is reported as recorded.
+- Tool calls (`custom_tool_call` `exec` in code mode, `function_call`) are paired with their output by `call_id`; an output another selected
+  rollout already holds (the same call and text) is counted once, in the oldest. A call that ran exactly one shell command is counted by its
+  program (base name only, variable assignments dropped), and a simple single-file read (`cat`, `sed -n`, `head`, ...) names its file,
+  resolved without touching the disk against the command's own `workdir`, else the turn's or the session's folder. Only a file inside a
+  checkout is named, relative to it; anything else is `(outside the repo)`, or `(unknown folder)` when no folder is known. Several commands
+  in one call, code with no recognisable command, and multi-file reads go into an unattributed bucket: characters returned are a proxy,
+  not tokens a file cost. Truncated and image outputs are counted apart.
+- Instructions: `world_state` `agents_md` (or, from older CLIs, a user message that starts `# AGENTS.md instructions for <folder>`)
+  shows which AGENTS.md Codex injected and from which folder. A command that reads a checkout's own AGENTS.md or CLAUDE.md (resolved as
+  above) is an explicit read, not an injection; a person naming the file is neither. A rollout with no `world_state` at all is "unknown",
+  never "not loaded".
+
+Which sessions count: `dm` sessions ran mostly in a checkout; `mixed` sessions started elsewhere (every Codex review so far started in
+the home folder and read the game by absolute paths) and ran commands that name, or run in, a Death Muffin folder, so they are reported
+apart rather than credited to the game as a whole; with `--session`/`--sessions-file`, only the named sessions count (`selected`), chosen
+before any copied response is matched. What a command returned never decides it. The window works as in `usage.mjs` (UTC dates, both ends
+included, responses and tool output by their own timestamps; `--cohort` for whole sessions that started in it). Warnings say where
+evidence is missing (no usage recorded is unavailable, not zero).
+
+## Stage 3 2026-10-21
+
+`stage3-2026-10-21.json` (start `a1f09add`). Text sizes, estimated tokens:
+
+- **Always loaded:** Claude sessions `CLAUDE.md` ~3,300 -> ~3,700 (the "Finding task context" section, the never-weaken-a-test line and the
+  copy note); Codex ~0 -> ~3,700 (`AGENTS.md`: the project rules it never had automatically, a correction rather than a saving); the agent's
+  core ~8,600 -> ~8,800.
+- **Before a task:** told to read first ~124,000 (sessions) and ~87,500 (agent) -> nobody is; every audience starts from the map (~600) and,
+  for a client task, the client index (~3,100).
+- **The client manual** ~80,000 -> the index ~3,100 and guides beside the code, opened one or two at a time (the largest about 6,400 with
+  the system README they joined).
+- **Task routes** (`--tasks`): against the bounded old sections (a reader who already knew which section to open), the new route goes from
+  about 1,050 fewer (the minimap: the old section carried the HUD's budget too) to about 3,700 more (the map and the index on top of a small
+  section); every route is at least 88% smaller than the sessions' read-first list and at least 83% smaller than the agent's (the co-op task;
+  the clip task with its clips guide 87%). Each task's answer is found on both sides.
+
+What it does not show: whether a model follows the map. The before windows of `usage.mjs` (Claude, 2026-10-14 to 2026-10-20) and
+`usage-codex.mjs` (Codex, 2026-09-26 to 2026-10-20) are in the file; no session has worked on the new docs yet, so the runtime effect is
+not measured. Compare later windows per tool and task class with the same commands; Claude's and Codex's cache figures are not the same
+measure.
 
 ## Stage 2 2026-10-21
 

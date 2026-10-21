@@ -1,5 +1,5 @@
 extends "res://tests/benchmark_base.gd"
-## The in-game benchmark, every class and the screen (client/README.md "The benchmark"), headless: `godot --headless --path client --script res://tests/benchmark_classes.gd`. One of five suites split from the old `benchmark` (see benchmark_base.gd).
+## The in-game benchmark, every class and the screen (client/next/perf/BENCHMARK.md), headless: `godot --headless --path client --script res://tests/benchmark_classes.gd`. One of five suites split from the old `benchmark` (see benchmark_base.gd).
 ##   - every class: a short run per class, the kit's family, auto combat casts;
 ##   - the benchmark screen sends its run to a mock as the test API (the history queue, a debug build and a dev-offline run do not upload, no login and a down server keep the queue);
 ##   - Esc cancels a running benchmark;

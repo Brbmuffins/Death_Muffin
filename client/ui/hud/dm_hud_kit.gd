@@ -2,7 +2,7 @@ class_name DmHudKit
 extends RefCounted
 ## Small builders shared by the HUD widgets (labels with the web's text-shadow, panels, number formats). Pure helpers.
 ## The HUD draws from ONE texture and ONE z layer per kind of drawing, so it costs a handful of draw
-## calls (client/README.md "The HUD's budget"). Panels are 9-patches of the atlas (DmHudAtlas.nine), icons are regions of it, rectangles are its white block, and
+## calls (client/ui/hud/PERFORMANCE.md). Panels are 9-patches of the atlas (DmHudAtlas.nine), icons are regions of it, rectangles are its white block, and
 ## text sits on a z layer per (font, size) above the chrome and the vector art.
 
 const ART := "res://ui/hud/art/"

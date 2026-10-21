@@ -2,7 +2,7 @@
 
 The procedural descent, solo (DECISIONS.md D5). Enter from the Warren's stair, descend floor by floor, chests every fifth depth, death ends
 the run and takes nothing, back to the hub. Rules and numbers: `client/sim/depths_floor.gd`, `client/sim/sim_depths_rules.gd`, `client/rules/loot/depths_rewards.gd`.
-The flow of a run (the stair's offer, the quota, what a floor pays, death, leaving), how a floor is generated on a worker thread, baked, swapped in and handed to the combat core, how its dead are core bodies and what the world and the HUD do with it: client/README.md "The Depths".
+The flow of a run (the stair's offer, the quota, what a floor pays, death, leaving), how a floor is generated on a worker thread, baked, swapped in and handed to the combat core, how its dead are core bodies and what the world and the HUD do with it: client/next/depths/CORE-INTEGRATION.md.
 
 | file | job |
 |---|---|
@@ -26,17 +26,17 @@ The flow of a run (the stair's offer, the quota, what a floor pays, death, leavi
 - Record: `DmChronicle` (`peak.depth`, `depths.runs/floors/chests`, `kills`, `kills.depths`) loaded from / flushed to the backend (`get_chronicle` / `add_chronicle`) on every end,
   every 30 s while a run is on, and in `DmNextGame.flush_all`.
 - Counsel: a run's start and a stair that refuses a party raise `depths_solo`, every floor raises `depths_floor` (and `depths_affix {extras}` from the first depth with extra affixes), the chest raises `depths_chest`;
-  the counsel shows each tip once, ever (client/README.md "Tips and onboarding").
+  the counsel shows each tip once, ever (client/ui/onboarding/README.md "Tips and onboarding").
 - HUD: `vm["depth"]` (depth, kills / need, stair, chest), the minimap's `depths` floor (rooms, doors, stairs, chest), the area line "Level N dead · elites bear K affixes".
 - Stairs look like stairs: the Warren's stair, a floor's way down and its way up are `DmStairMesh` (`client/world/dm_stair_mesh.gd`): a stone frame round a well with five steps (down: low and darker with depth; up: rising), built from primitives as one cached
   vertex-coloured mesh per direction plus a glowing quad that `DmWorldBuilder.set_depths_stair_open` drives. The chest is still a code-built box.
 
 ## Tests
-`client/tests/depths.gd` plays the whole run on the local mock (client/README.md "The Depths"). The rules without a game (floors per seed, quota, pacing, rosters) are its first part.
+`client/tests/depths.gd` plays the whole run on the local mock (client/next/depths/CORE-INTEGRATION.md). The rules without a game (floors per seed, quota, pacing, rosters) are its first part.
 
 ## Known gaps
 - Party play: a run needs a solo session (`can_enter` refuses with 2+ players); the Depths stay solo (DECISIONS.md B67).
 - No Depths-specific sight blockers for ranged kinds: walls block movement, not sight (the core has no collision world; only the Gargoyle's dive and the Sexton's chain look for a clear line, native/README.md "The kinds of the other areas").
 - The Warren must be open to reach the stair in play; the tests walk to it.
-- The first floor of a session is not in the warm-up, a floor is not lightmapped and the see-through cutout is not applied to it (client/README.md "The Depths", "Not yet").
+- The first floor of a session is not in the warm-up, a floor is not lightmapped and the see-through cutout is not applied to it (client/next/depths/CORE-INTEGRATION.md "Not yet").
 - No new art or audio was made for the Depths (`gate`, `chestOpen`, `levelUp`, `click`, `error` are existing sounds).

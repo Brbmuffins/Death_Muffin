@@ -19,7 +19,7 @@ wailing_skull, ivory_cleave, bone_storm, soul_siphon, grave_step, veil_step, gra
 ossuary_wall, command_rend, dirge, plague_bloom. Numbers come from the shared rules (`DmAbilities`, `DmSimData`, `DmCombatData`, `abilities.json`), not from the modules.
 
 How the rites sit on the combat core (the rites are GDScript and call the core synchronously, so a kill resolves inside the cast; an enemy is an id or a `DmFoe` snapshot; what a module reaches creatures through; where a rite meets the core) is
-client/README.md "The Gravecaller's rites".
+client/next/rites/CORE-INTEGRATION.md.
 
 Other files: `dm_legion_events.gd` (`DmLegionEvents`, the host's, held by `DmNextGame.legion_events`: acts on two events of the core, a Mourning Bell wraith's blow, which heals every living hero within the bell's range for its share of THEIR maximum health, and a fallen plague bearer, which leaves its owner's friendly rot cloud through `rite_miasma.gd` `plague_pool` (Miasma's rules, kind `rot`, drawn on every peer by the caster's `pool` event)), `dm_rite_hotbar.gd` (`DmRiteHotbar.rite_for_slot` / `wire(game)`: LMB = kit `defaultPrimary`, 1-4 = `defaultLoadout`, RMB = kit `rmb`,
 slot 6 / R = the discipline's signature at level 10), `dm_rite_gestures.gd` (cast gestures; the Reaper's rites play the Mourner rig's own combat clips, `DmAvatar.REAPER_CLIPS`: sweep / spin = `sweep`, reap = `slam`, throw = `flick`, wraith walk = `channel`, soul burst = `summon`, each timed so its release frame lands on the cast and played faster the shorter the rite's cooldown got, e.g. under haste), `dm_rite_legends.gd` (legendary-set effects),
@@ -56,7 +56,8 @@ slot 6 / R = the discipline's signature at level 10), `dm_rite_gestures.gd` (cas
 - Known deviation: a toxic Corpse Explosion's rot pool also bursts corpses for the Rotweaver (the original sim's did not).
 
 ## Tests
-`client/tests/rites.gd` casts every rite (table-driven), the refusals, the synchronous-kill cases, the kit's hotbar and the click-to-attack chase, plays a fight, then the other three necromancers and the Reaper (a weapon line case and the runes included);
+`client/tests/rites.gd` casts every rite (table-driven), the refusals, the synchronous-kill cases, the kit's hotbar and the click-to-attack chase, and plays a fight; then the other three necromancers and the Reaper, each a real
+character in a fresh game (her bag, souls paid and refused, every rite's damage with the souls' bonuses, the life steal, the wisps, Soul Harbinger's Raiment, a kill banking a soul, auto combat's pick; a weapon line case and the runes included);
 `client/tests/core_status.gd` and `core_corpses.gd` / `core_thralls.gd` the core's half.
 
 ## Known gaps

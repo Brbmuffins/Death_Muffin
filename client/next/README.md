@@ -4,25 +4,25 @@
 owns little logic. Solo is a 1-player `DmSession` hosted on an `OfflineMultiplayerPeer`; a party is the same code with more peers
 (no `if solo` in gameplay). It runs on the combat core: enemies, thralls, corpses and their statuses are the core's (native/README.md), drawn by the crowd
 (client/crowd/README.md), and no node and no script exists per creature: an enemy is an id. How the scene is put together, with the dev entry and its controls:
-client/README.md "The game scene and the dev entry". One README per system folder below; `client/next/look/` (`DmCompatAlbedo`, the area converter's tint table) is
-explained in client/README.md "The look on Forward+".
+client/next/ARCHITECTURE.md "The game scene and the dev entry". One README per system folder below; `client/next/look/` (`DmCompatAlbedo`, the area converter's tint table) is
+explained in client/next/look/README.md.
 
 ## Launch
-- Players: the launcher starts the game; `DmMain` runs the front flow (`client/front/`) then `DmNextGame`. Launch arguments and the dev entry: client/README.md.
+- Players: the launcher starts the game; `DmMain` runs the front flow (`client/front/`) then `DmNextGame`. Launch arguments and the dev entry: [ARCHITECTURE.md](ARCHITECTURE.md).
 - Code: `var g: DmNextGame = load("res://next/next_game.tscn").instantiate(); add_child(g); await g.start(character, api, opts)`.
   opts: `hud` (true = the real HUD and panels, false = none, the default for a bare scene), `waves`, `areas` (the area ids to load, default every one), `audio`, `visual`, `warmup`, `persist`,
   `settings`, `name`, `slots` and `local` (the character's bag rows and progression from the server), `peer` / `host` / `lobby` / `join` (a party guest), `seed`, `data_dir` and the crowd's cost options
   (`baked_dir`, `assets_dir`, `lod_distances`, `reserve`, `cull`, `anim_lod`, `thrall_shadows`).
-- Test: `client/tests/game_scene.gd` (60 s of an offline run in the Graves: the director, the event signals, no node per creature); each system below has its own suite (client/README.md "Set up and test").
+- Test: `client/tests/game_scene.gd` (60 s of an offline run in the Graves: the director, the event signals, no node per creature); each system below has its own suite (client/tools/TESTING.md).
 
 ## Structure
 | node | script | job |
 |---|---|---|
 | Session | `DmSession` (`client/session/`) | host/join, bodies (MultiplayerSpawner), move intents. Hooks: `body_factory`, `spawn_origin` |
 | World | `next_world.gd` | loads the area scenes (`client/areas/<id>.tscn`), their navigation, the lights-only `DmWorldBuilder` and the world dressing; `area_at`, seals and gates, the core's copy of the navmesh |
-| Core | `client/core/dm_core_host.gd` (`DmCoreHost`) | the one owner of the combat core and the crowd: the 60 Hz tick, the core's events as typed signals, the queries (client/README.md "The game scene and the dev entry") |
+| Core | `client/core/dm_core_host.gd` (`DmCoreHost`) | the one owner of the combat core and the crowd: the 60 Hz tick, the core's events as typed signals, the queries (client/next/ARCHITECTURE.md "The game scene and the dev entry") |
 | Waves | `spawn/dm_wave_director.gd` | host waves spawned through the core (`spawn/README.md`) |
-| Net | `next_net.gd` | the core's snapshot, reliable batches and baseline, hero vitals, 20 Hz, only when peers exist (client/README.md "Co-op on the core") |
+| Net | `next_net.gd` | the core's snapshot, reliable batches and baseline, hero vitals, 20 Hz, only when peers exist (client/next/party/CORE-NETWORK.md) |
 | Input | `next_input.gd` | click-to-move, WASD, hotbar seam, hover pick through the core |
 | Camera | `DmCameraRig` | existing rig |
 | EnemyFx | `enemy_fx/dm_enemy_fx.gd` | the core's telegraphs, strikes, deaths, zones and affix moments as effects (`enemy_fx/README.md`) |

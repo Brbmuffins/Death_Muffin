@@ -1,0 +1,49 @@
+{
+  "about": "Representative tasks for comparing what a task needs to read (tools/context/README.md \"Task routes\"). before: the bounded old-doc sections at the revision `before` that answer the question (not the whole manual; what the old instructions told everyone to read first is reported apart); after: the route now, from the documentation map. A section is a heading's text (to the next heading of its level or above); no section = the whole file. fact: words that answer the question; they must be in the route's text, so a move that drops the answer fails (the after side in CI, the before side wherever the revision is in the history). agentGuide: the Discord agent's media guide the task also needs, if any. Claude and Codex follow the same route from their own entry file.",
+  "before": "a1f09add",
+  "tasks": [
+    {
+      "id": "hud-minimap",
+      "question": "Where do the minimap's enemy dots come from on the combat core?",
+      "fact": "`enemy_ids / enemy_positions / enemy_states`",
+      "before": [{"file": "client/README.md", "section": "The HUD on the core"}, {"file": "client/next/hud/README.md"}],
+      "after": [{"file": "README.md", "section": "Documentation map"}, {"file": "client/README.md"}, {"file": "client/next/hud/CORE-INTEGRATION.md"}, {"file": "client/next/hud/README.md"}]
+    },
+    {
+      "id": "rite-clip-tune",
+      "question": "How do I record a clip of a rite with its cooldown tuned for the clip?",
+      "fact": "`--tune=<abs json>`",
+      "before": [{"file": "client/README.md", "section": "Clips and tune"}],
+      "after": [{"file": "README.md", "section": "Documentation map"}, {"file": "client/README.md"}, {"file": "client/main/CLIPS.md"}],
+      "agentGuide": "server/death-muffin/discord-agent/guides/clips.md"
+    },
+    {
+      "id": "coop-guest-rewards",
+      "question": "When a party's guest kills a boss, who gets paid, and by whom?",
+      "fact": "the host pays every member in range",
+      "before": [{"file": "client/README.md", "section": "Co-op on the core"}, {"file": "client/next/party/README.md"}],
+      "after": [{"file": "README.md", "section": "Documentation map"}, {"file": "client/README.md"}, {"file": "client/next/party/CORE-NETWORK.md"}, {"file": "client/next/party/README.md"}]
+    },
+    {
+      "id": "depths-worker-thread",
+      "question": "What may the Depths' floor generator do on its worker thread?",
+      "fact": "A worker computes data and hands it back",
+      "before": [{"file": "client/README.md", "section": "Threads"}, {"file": "client/next/depths/README.md"}],
+      "after": [{"file": "README.md", "section": "Documentation map"}, {"file": "client/README.md"}, {"file": "client/core/THREADING.md"}, {"file": "client/next/depths/README.md"}]
+    },
+    {
+      "id": "backend-save-validation",
+      "question": "How does the backend check a character's progress save?",
+      "fact": "Progress saves are gains",
+      "before": [{"file": "server/death-muffin/README.md", "section": "Server authority"}],
+      "after": [{"file": "README.md", "section": "Documentation map"}, {"file": "server/death-muffin/README.md", "section": "Server authority"}]
+    },
+    {
+      "id": "roadmap-ascension",
+      "question": "Is Ascension planned, and in which phase?",
+      "fact": "Phase 3: Ascension, redesigned",
+      "before": [{"file": "ROADMAP.md", "section": "Phase 3: Ascension, redesigned (the first new feature, B36)"}],
+      "after": [{"file": "README.md", "section": "Documentation map"}, {"file": "ROADMAP.md", "section": "Phase 3: Ascension, redesigned (the first new feature, B36)"}]
+    }
+  ]
+}

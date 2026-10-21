@@ -1,0 +1,380 @@
+// Tests for tools/context/usage-codex.mjs on small synthetic rollouts shaped like the records Codex CLI 0.163 writes (no copies of real
+// conversations): per-response records, cumulative snapshots, copies from resumed or forked rollouts, windows, models, the session's place,
+// instruction evidence and tool output (node --test tools/context/test/*.test.mjs).
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { parseRollout, responsesOf, summarizeRollout, collect, report, formatReport, commandsOf, readsOf, resolvePath, rel, familyOf } from '../usage-codex.mjs';
+
+const DM = '/home/ubuntu/vps-handoffs/DeathMuffin/wt/feature';
+const u = (input, cached = 0, output = 10, reasoning = 0) => ({ input_tokens: input, cached_input_tokens: cached, cache_write_input_tokens: 0, output_tokens: output, reasoning_output_tokens: reasoning, total_tokens: input + output });
+const sum = (a, b) => Object.fromEntries(Object.keys(a).map((k) => [k, a[k] + b[k]]));
+
+// A rollout builder: meta, turns, per-response records (with their running thread total), snapshots, tool calls and their output.
+function rollout({ id = 'sess-1', cwd = '/home/ubuntu', source = 'cli', start = '2026-10-19T10:00:00.000Z' } = {}) {
+  const lines = [];
+  let thread = u(0, 0, 0);
+  let clock = Date.parse(start);
+  const at = () => new Date((clock += 1000)).toISOString();
+  const r = {
+    lines,
+    meta() { lines.push({ timestamp: at(), type: 'session_meta', payload: { id, cwd, cli_version: '0.163.0', source, originator: 'codex-tui', base_instructions: { text: 'base' }, creator_account_id: 'acct-secret' } }); return r; },
+    turn(turnId, model, dir = cwd) { lines.push({ timestamp: at(), type: 'turn_context', payload: { turn_id: turnId, cwd: dir, model } }); return r; },
+    record(respId, turnId, usage, ts) { thread = sum(thread, usage); lines.push({ timestamp: ts || at(), type: 'token_usage_record', payload: { response_id: respId, turn_id: turnId, session_id: id, usage, turn_token_usage: thread, thread_token_usage: thread } }); return r; },
+    snapshot(total, last, ts) { lines.push({ timestamp: ts || at(), type: 'event_msg', payload: { type: 'token_count', info: { total_token_usage: total, last_token_usage: last }, rate_limits: { plan_type: 'secret-plan', primary: { used_percent: 12 } } } }); return r; },
+    world(agents) { lines.push({ timestamp: at(), type: 'world_state', payload: { full: true, state: { agents_md: agents || {} } } }); return r; },
+    userText(text) { lines.push({ timestamp: at(), type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text }] } }); return r; },
+    exec(callId, code, output, ts) {
+      const t = ts || at();
+      lines.push({ timestamp: t, type: 'response_item', payload: { type: 'custom_tool_call', call_id: callId, name: 'exec', input: code } });
+      lines.push({ timestamp: t, type: 'response_item', payload: { type: 'custom_tool_call_output', call_id: callId, output: [{ type: 'input_text', text: output }] } });
+      return r;
+    },
+    raw(line) { lines.push(line); return r; },
+    text() { return lines.map((l) => (typeof l === 'string' ? l : JSON.stringify(l))); },
+  };
+  return r;
+}
+const cmd = (c) => `text(await tools.exec_command({cmd:${JSON.stringify(c)},max_output_tokens:12000}));`;
+const parse = (b) => parseRollout(b.text());
+
+test('per-response records count once each; input includes the cached part, output includes reasoning', () => {
+  const b = rollout().meta().turn('t1', 'gpt-6-sol').record('r1', 't1', u(10000, 8000, 50, 20)).record('r2', 't1', u(12000, 11000, 30, 0));
+  const s = summarizeRollout(parse(b), { sessions: new Set(['sess-1']) });
+  assert.equal(s.responses, 2); assert.equal(s.uncertainResponses, 0);
+  assert.deepEqual(s.usage, { input: 22000, cached: 19000, cacheWrite: 0, output: 80, reasoning: 20 });
+  assert.equal(s.firstResponseInput, 10000); assert.equal(s.peakInput, 12000);
+  assert.deepEqual(s.warnings, []);
+  const g = report({ sessions: [s] }).groups['terminal/selected'];
+  assert.equal(g.usage.noncached, 3000, 'not cached = input minus its cached part, never input plus cached');
+  assert.ok(Math.abs(g.cachedShare - 19000 / 22000) < 1e-12);
+});
+
+test('snapshots never add to per-response records; their cumulative counters are not summed', () => {
+  const b = rollout().meta().turn('t1', 'gpt-6-sol')
+    .record('r1', 't1', u(1000)).snapshot(u(1000), u(1000))
+    .record('r2', 't1', u(2000)).snapshot(u(3000, 0, 20), u(2000)).snapshot(u(3000, 0, 20), u(2000));
+  const s = summarizeRollout(parse(b), { sessions: new Set(['sess-1']) });
+  assert.equal(s.format, 'records'); assert.equal(s.responses, 2); assert.equal(s.usage.input, 3000);
+});
+
+test('a copied record (resumed or forked rollout) counts once, in the older file; distinct parallel ids both count', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-codex-'));
+  const a = rollout({ id: 'orig', start: '2026-10-19T10:00:00.000Z' }).meta().turn('t1', 'gpt-6-sol').record('r1', 't1', u(1000)).exec('c1', cmd(`cat ${DM}/README.md`), 'x');
+  const forked = rollout({ id: 'fork', start: '2026-10-19T11:00:00.000Z' }).meta().turn('t1', 'gpt-6-sol')
+    .record('r1', 't1', u(1000), '2026-10-19T10:00:02.000Z').record('r2', 't2', u(5000)).record('r3', 't2', u(6000)).exec('c2', cmd(`git -C ${DM} log`), 'y');
+  fs.writeFileSync(path.join(dir, 'b-fork.jsonl'), forked.text().join('\n'));
+  fs.writeFileSync(path.join(dir, 'a-orig.jsonl'), a.text().join('\n'));
+  const c = collect({ dirs: [dir], keepIds: true });
+  const byId = Object.fromEntries(c.sessions.map((s) => [s.id, s]));
+  assert.equal(byId.orig.responses, 1); assert.equal(byId.orig.startKind, 'genuine');
+  assert.equal(byId.fork.responses, 2, 'r2 and r3 are different responses; r1 is the copy');
+  assert.equal(byId.fork.startKind, 'inherited'); assert.equal(byId.fork.firstResponseInput, null, 'a forked session has no genuine first response');
+  assert.ok(byId.fork.warnings.some((w) => /already counted/.test(w)));
+  const g = report(c).groups['terminal/mixed'];
+  assert.equal(g.responses, 3); assert.equal(g.startNotGenuine, 1); assert.equal(g.firstResponseInput.sessions, 1);
+});
+
+test('cumulative-only rollouts: repeated snapshots add nothing, a reset restarts the count, uncertain changes are labelled', () => {
+  const b = rollout().meta().turn('t1', 'gpt-5.6-sol')
+    .snapshot(u(1000, 0, 10), u(1000, 0, 10))
+    .snapshot(u(1000, 0, 10), u(1000, 0, 10))            // repeated
+    .snapshot(u(4000, 0, 30), u(2000, 0, 10))            // +3000 / +20: more than its last response, so two responses or more
+    .snapshot(u(500, 0, 5), u(500, 0, 5));               // reset: a new segment from zero
+  const r = responsesOf(parse(b));
+  assert.equal(r.format, 'cumulative');
+  assert.deepEqual(r.responses.map((x) => [x.usage.input, x.certain]), [[1000, true], [3000, false], [500, true]]);
+  assert.ok(r.warnings.some((w) => /repeated cumulative/.test(w)));
+  assert.ok(r.warnings.some((w) => /reset/.test(w)));
+  const s = summarizeRollout(parse(b), { sessions: new Set(['sess-1']) });
+  assert.equal(s.uncertainResponses, 1); assert.equal(s.usage.input, 4500);
+  assert.equal(s.peakInput, 1000, 'an uncertain change is never taken as one response\'s context');
+});
+
+test('a mixed rollout uses snapshots only before its first per-response record', () => {
+  const b = rollout().meta().turn('t1', 'gpt-6-sol')
+    .snapshot(u(1000), u(1000)).snapshot(u(3000, 0, 20), u(2000))
+    .record('r1', 't2', u(4000)).snapshot(u(7000, 0, 30), u(4000));
+  const r = responsesOf(parse(b));
+  assert.equal(r.format, 'mixed');
+  assert.deepEqual(r.responses.map((x) => x.usage.input), [1000, 2000, 4000]);
+});
+
+test('a rollout whose counted usage falls short of its last cumulative total says part of it is not covered', () => {
+  const b = rollout().meta().turn('t1', 'gpt-6-sol').record('r1', 't1', u(1000));
+  b.lines.push({ timestamp: '2026-10-19T10:00:09.000Z', type: 'token_usage_record', payload: { response_id: 'r2', turn_id: 't1', usage: u(500), thread_token_usage: u(9000) } });
+  const r = responsesOf(parse(b));
+  assert.ok(r.warnings.some((w) => /in no response: reported as uncovered/.test(w)));
+  assert.equal(r.uncovered.input, 9000 - 1500);
+});
+
+// Thread totals set by hand, for the coverage cases.
+const rec = (id, ts, usage, thread) => ({ timestamp: ts, type: 'token_usage_record', payload: { response_id: id, turn_id: 't1', usage, thread_token_usage: thread } });
+const snap = (ts, total, last) => ({ timestamp: ts, type: 'event_msg', payload: { type: 'token_count', info: { total_token_usage: total, last_token_usage: last } } });
+
+test('coverage: usage the cumulative totals show but no response holds is reported, before, between and after the records', () => {
+  // Codex's case 1: a snapshot of 100, then a response of 200 whose thread total is already 350
+  let b = rollout({ cwd: DM }).meta().turn('t1', 'm');
+  b.raw(snap('2026-10-19T10:01:00.000Z', u(100, 0, 0), u(100, 0, 0))).raw(rec('r1', '2026-10-19T10:02:00.000Z', u(200, 0, 0), u(350, 0, 0)));
+  let s = summarizeRollout(parse(b), {});
+  assert.equal(s.usage.input, 300, 'the snapshot-derived 100 and the record\'s 200');
+  assert.equal(s.uncovered.input, 50); assert.ok(s.warnings.some((w) => /^50 input \/ 0 output .* uncovered/.test(w)));
+  // case 2: a response of 100, then a newer snapshot of 150
+  b = rollout({ cwd: DM }).meta().turn('t1', 'm');
+  b.raw(rec('r1', '2026-10-19T10:02:00.000Z', u(100, 0, 0), u(100, 0, 0))).raw(snap('2026-10-19T10:03:00.000Z', u(150, 0, 0), u(50, 0, 0)));
+  s = summarizeRollout(parse(b), {});
+  assert.equal(s.usage.input, 100); assert.equal(s.uncovered.input, 50);
+  // a complete rollout whose snapshots lag the records, as real ones do: nothing uncovered
+  b = rollout({ cwd: DM }).meta().turn('t1', 'm');
+  b.raw(rec('r1', '2026-10-19T10:02:00.000Z', u(100, 0, 0), u(100, 0, 0))).raw(snap('2026-10-19T10:02:01.000Z', u(100, 0, 0), u(100, 0, 0)))
+    .raw(rec('r2', '2026-10-19T10:03:00.000Z', u(250, 0, 0), u(350, 0, 0)));
+  s = summarizeRollout(parse(b), {});
+  assert.equal(s.usage.input, 350); assert.deepEqual(s.uncovered, { input: 0, cached: 0, cacheWrite: 0, output: 0, reasoning: 0 }); assert.deepEqual(s.warnings, []);
+  report({ sessions: [s] });
+});
+
+test('coverage with copies and resets: a copy is neither counted twice nor called missing, and each reset segment counts once', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-codex-cov-'));
+  const a = rollout({ id: 'orig', cwd: DM, start: '2026-10-19T09:00:00.000Z' }).meta().turn('t1', 'm');
+  a.raw(rec('r1', '2026-10-19T10:02:00.000Z', u(200, 0, 0), u(200, 0, 0)));
+  // the copy holds case 1 with r1 copied from the original: its own snapshot of 100 counts, r1 does not, 50 is still uncovered
+  const c = rollout({ id: 'copy', cwd: DM, start: '2026-10-19T10:00:00.000Z' }).meta().turn('t1', 'm');
+  c.raw(snap('2026-10-19T10:01:00.000Z', u(100, 0, 0), u(100, 0, 0))).raw(rec('r1', '2026-10-19T10:02:00.000Z', u(200, 0, 0), u(350, 0, 0)));
+  fs.writeFileSync(path.join(dir, 'a.jsonl'), a.text().join('\n')); fs.writeFileSync(path.join(dir, 'b.jsonl'), c.text().join('\n'));
+  const got = Object.fromEntries(collect({ dirs: [dir], keepIds: true }).sessions.map((x) => [x.id, x]));
+  assert.equal(got.orig.usage.input, 200); assert.equal(got.orig.uncovered.input, 0);
+  assert.equal(got.copy.usage.input, 100); assert.equal(got.copy.uncovered.input, 50);
+  // records whose thread counter resets: two segments, 100 + 50, all held by responses
+  let b = rollout({ cwd: DM }).meta().turn('t1', 'm');
+  b.raw(rec('r1', '2026-10-19T10:02:00.000Z', u(100, 0, 0), u(100, 0, 0))).raw(rec('r2', '2026-10-19T10:03:00.000Z', u(50, 0, 0), u(50, 0, 0)));
+  assert.equal(summarizeRollout(parse(b), {}).uncovered.input, 0);
+  // snapshots that reset after the records: 120 then 40 is 160 of evidence against 100 counted
+  b = rollout({ cwd: DM }).meta().turn('t1', 'm');
+  b.raw(rec('r1', '2026-10-19T10:02:00.000Z', u(100, 0, 0), u(100, 0, 0))).raw(snap('2026-10-19T10:03:00.000Z', u(120, 0, 0), u(20, 0, 0))).raw(snap('2026-10-19T10:04:00.000Z', u(40, 0, 0), u(40, 0, 0)));
+  assert.equal(summarizeRollout(parse(b), {}).uncovered.input, 60);
+});
+
+test('missing and truncated records: unavailable is not zero, and a bad line is reported', () => {
+  const none = rollout().meta().turn('t1', 'gpt-6-sol').exec('c1', cmd(`cat ${DM}/README.md`), 'x'.repeat(50));
+  const s = summarizeRollout(parse(none), {});
+  assert.equal(s.format, 'none'); assert.equal(s.responses, 0);
+  assert.ok(s.warnings.includes('no usage recorded: unavailable, not zero'));
+  const cut = rollout().meta().turn('t1', 'gpt-6-sol').record('r1', 't1', u(1000)).raw('{"timestamp":"2026-10-19T10:00:09Z","type":"token_usage_re');
+  const p = parse(cut);
+  assert.equal(p.badLines, 1);
+  assert.ok(responsesOf(p).warnings.some((w) => /unreadable line/.test(w)));
+  const noMeta = rollout({ cwd: DM }).turn('t1', 'gpt-6-sol').record('r1', 't1', u(1000));   // a partial rollout: no session_meta
+  const n = summarizeRollout(parse(noMeta), {});
+  assert.equal(n.startKind, 'unknown'); assert.equal(n.firstResponseInput, null);
+});
+
+test('the window counts responses by their own time, both end dates included; cohort takes whole sessions', () => {
+  const b = rollout({ start: '2026-10-17T23:59:00.000Z' }).meta().turn('t1', 'gpt-6-sol')
+    .record('a', 't1', u(100), '2026-10-17T23:59:59.999Z').record('b', 't1', u(200), '2026-10-18T00:00:00.000Z')
+    .record('c', 't1', u(300), '2026-10-20T23:59:59.999Z').record('d', 't1', u(400), '2026-10-21T00:00:00.000Z');
+  const sel = { sessions: new Set(['sess-1']) };
+  const s = summarizeRollout(parse(b), { ...sel, since: '2026-10-18', until: '2026-10-20' });
+  assert.equal(s.responses, 2); assert.equal(s.usage.input, 500); assert.equal(s.startedInWindow, false);
+  assert.equal(s.firstResponseInput, 100, 'the genuine first response, before the window'); assert.equal(s.firstInWindowInput, 200);
+  assert.equal(summarizeRollout(parse(b), { ...sel, since: '2026-10-18', until: '2026-10-20', cohort: true }), null);
+  assert.equal(summarizeRollout(parse(b), { ...sel, since: '2026-10-22' }), null);
+});
+
+test('each response is attributed to its turn\'s model; a switch splits the totals, and no model stays unknown', () => {
+  const b = rollout().meta().turn('t1', 'gpt-6-sol').record('r1', 't1', u(1000)).turn('t2', 'gpt-6-astra').record('r2', 't2', u(2000));
+  const s = summarizeRollout(parse(b), { sessions: new Set(['sess-1']) });
+  assert.equal(s.byModel['gpt-6-sol'].input, 1000); assert.equal(s.byModel['gpt-6-astra'].input, 2000);
+  const bare = rollout().meta().record('r1', 'tX', u(1000));
+  assert.equal(Object.keys(summarizeRollout(parse(bare), { sessions: new Set(['sess-1']) }).byModel)[0], 'unknown');
+});
+
+test('a session counts for the game by its folders or its commands, never by text a command returned', () => {
+  const inside = rollout({ cwd: `${DM}/client` }).meta().turn('t1', 'm').record('r1', 't1', u(1));
+  assert.equal(summarizeRollout(parse(inside), {}).scope, 'dm');
+  const home = rollout().meta().turn('t1', 'm').record('r1', 't1', u(1)).exec('c1', cmd('git -C /home/ubuntu/vps-handoffs/DeathMuffin/game status'), 'ok');
+  assert.equal(summarizeRollout(parse(home), {}).scope, 'mixed');
+  const other = rollout({ cwd: '/home/ubuntu/HammyVault' }).meta().turn('t1', 'm').record('r1', 't1', u(1)).exec('c1', cmd('cat notes.md'), `see ${DM}/README.md`);
+  assert.equal(summarizeRollout(parse(other), {}), null, 'a Death Muffin path in returned text does not count');
+  assert.equal(summarizeRollout(parse(other), { sessions: new Set(['sess-1']) }).scope, 'selected');
+  assert.equal(summarizeRollout(parse(home), { scope: 'dm' }), null);
+  const child = rollout({ cwd: DM, source: { subagent: { other: 'guardian' } } }).meta().turn('t1', 'm').record('r1', 't1', u(1));
+  assert.equal(summarizeRollout(parse(child), {}).kind, 'child');
+  const exec = rollout({ cwd: DM, source: 'exec' }).meta().turn('t1', 'm').record('r1', 't1', u(1));
+  assert.equal(summarizeRollout(parse(exec), {}).kind, 'exec');
+});
+
+test('instruction evidence: an injected AGENTS.md is told apart from a command reading it, and nothing recorded is unknown', () => {
+  const sel = { sessions: new Set(['sess-1']) };
+  const injected = rollout({ cwd: DM }).meta().world({ directory: DM, text: '# Death Muffin: agent rules\n...' }).turn('t1', 'm').record('r1', 't1', u(1));
+  assert.equal(summarizeRollout(parse(injected), sel).instructionEvidence, 'injected (Death Muffin AGENTS.md)');
+  const older = rollout({ cwd: DM }).meta().userText(`# AGENTS.md instructions for ${DM}\n\n<INSTRUCTIONS>\nrules\n</INSTRUCTIONS>`).turn('t1', 'm').record('r1', 't1', u(1));
+  assert.equal(summarizeRollout(parse(older), sel).instructionEvidence, 'injected (Death Muffin AGENTS.md)');
+  const elsewhere = rollout().meta().world({ directory: '/home/ubuntu/muffindevelopment', text: 'x' }).turn('t1', 'm').record('r1', 't1', u(1));
+  assert.equal(summarizeRollout(parse(elsewhere), sel).instructionEvidence, "injected (another folder's AGENTS.md)");
+  const quoted = rollout().meta().world({}).userText('Read AGENTS.md and CLAUDE.md first.').turn('t1', 'm').record('r1', 't1', u(1)).exec('c1', cmd(`cat ${DM}/AGENTS.md`), 'rules');
+  const q = summarizeRollout(parse(quoted), sel);
+  assert.equal(q.instructionEvidence, 'recorded as none', 'a person naming the file is not an injection');
+  assert.equal(q.explicitInstructionRead, true);
+  const silent = rollout().meta().turn('t1', 'm').record('r1', 't1', u(1));
+  assert.equal(summarizeRollout(parse(silent), sel).instructionEvidence, 'unknown (not recorded)');
+});
+
+test('tool output: one recognised read names its file; batched and code-mode output is unattributed; truncation and images are counted', () => {
+  const b = rollout({ cwd: DM }).meta().turn('t1', 'm').record('r1', 't1', u(1))
+    .exec('c1', cmd(`sed -n '1,80p' ${DM}/client/README.md`), 'a'.repeat(100))
+    .exec('c2', cmd(`cat ${DM}/client/README.md`), 'b'.repeat(50))
+    .exec('c3', cmd('git status') + cmd('git log'), 'c'.repeat(30))
+    .exec('c4', 'const x = await tools.web_search({q: "godot"}); text(x);', 'Warning: truncated output (original token count: 99)\n' + 'd'.repeat(20))
+    .exec('c5', cmd(`cat ${DM}/README.md ${DM}/CLAUDE.md`), 'e'.repeat(40))
+    .exec('c6', cmd(`cat ${DM}/client/README.md | head`), 'f'.repeat(10));
+  b.lines.push({ timestamp: '2026-10-19T10:01:00.000Z', type: 'response_item', payload: { type: 'function_call', call_id: 'c7', name: 'view_image', arguments: '{"path":"/x.png"}' } });
+  b.lines.push({ timestamp: '2026-10-19T10:01:00.000Z', type: 'response_item', payload: { type: 'function_call_output', call_id: 'c7', output: [{ type: 'input_image', image_url: 'data:' }] } });
+  const s = summarizeRollout(parse(b), {});
+  assert.deepEqual(s.reads['client/README.md'], { reads: 2, chars: 150 });
+  assert.deepEqual(s.reads['README.md'], { reads: 1, chars: 0 }, 'a two-file read is evidence of the read, its characters stay unattributed');
+  assert.equal(s.byTool['exec: batched commands'].chars, 30);
+  assert.equal(s.byTool['exec: code-mode, no command'].calls, 1);
+  assert.equal(s.unattributedChars, 30 + 'Warning: truncated output (original token count: 99)\n'.length + 20 + 40);
+  assert.equal(s.truncatedOutputs, 1); assert.equal(s.imageOutputs, 1);
+  assert.equal(s.byTool['shell: cat'].calls, 3, 'the piped read still counts by command family');
+  const g = report({ sessions: [s] }).groups['terminal/dm'];
+  assert.equal(g.repeatReads, 1);
+});
+
+test('commands are read from code-mode and function calls without running them; only simple reads name files', () => {
+  assert.deepEqual(commandsOf('exec', 'await tools.exec_command({cmd:"cat a \\"b\\""}); await tools.exec_command({ cmd: \'ls\', workdir: "/w" })'), [{ cmd: 'cat a "b"', workdir: null }, { cmd: 'ls', workdir: '/w' }]);
+  assert.deepEqual(commandsOf('exec', 'tools.exec_command({workdir:"/w",max_output_tokens:30,cmd:"pwd"})'), [{ cmd: 'pwd', workdir: '/w' }], 'fields in any order');
+  assert.deepEqual(commandsOf('exec_command', '{"cmd":"git status","workdir":"/g"}'), [{ cmd: 'git status', workdir: '/g' }]);
+  assert.deepEqual(commandsOf('shell', '{"command":["bash","-lc","ls"]}'), [{ cmd: 'bash -lc ls', workdir: null }]);
+  assert.deepEqual(commandsOf('exec', 'not code'), []);
+  assert.deepEqual(readsOf("sed -n '1,40p' a.md"), ['a.md']);
+  assert.deepEqual(readsOf('head -n 20 a.md b.md'), ['a.md', 'b.md']);
+  assert.deepEqual(readsOf('cat a.md && cat b.md'), []);
+  assert.deepEqual(readsOf('rg foo'), []);
+});
+
+test('the report holds aggregates only: no session ids, account, plan, rate limits or prompts', () => {
+  const b = rollout({ cwd: DM, id: 'secret-session-id' }).meta().turn('t1', 'gpt-6-sol').record('r1', 't1', u(1000)).snapshot(u(1000), u(1000)).userText('a private prompt');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-codex-'));
+  fs.writeFileSync(path.join(dir, 'a.jsonl'), b.text().join('\n'));
+  const r = report(collect({ dirs: [dir] }));
+  const j = JSON.stringify(r) + formatReport(r);
+  for (const bad of ['secret-session-id', 'acct-secret', 'secret-plan', 'used_percent', 'a private prompt', dir]) assert.ok(!j.includes(bad), `${bad} is not in the report`);
+  assert.equal(r.groups['terminal/dm'].sessions, 1);
+});
+
+test('an explicit selection holds only the named sessions, and an unselected original cannot take a selected copy\'s responses', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-codex-sel-'));
+  const orig = rollout({ id: 'unselected', cwd: DM, start: '2026-10-19T10:00:00.000Z' }).meta().turn('t1', 'm').record('r1', 't1', u(1000));
+  const copy = rollout({ id: 'wanted', cwd: DM, start: '2026-10-19T11:00:00.000Z' }).meta().turn('t1', 'm').record('r1', 't1', u(1000), '2026-10-19T10:00:02.000Z').record('r2', 't2', u(3000));
+  fs.writeFileSync(path.join(dir, 'a.jsonl'), orig.text().join('\n'));
+  fs.writeFileSync(path.join(dir, 'b.jsonl'), copy.text().join('\n'));
+  const c = collect({ dirs: [dir], sessions: new Set(['wanted']), keepIds: true });
+  assert.deepEqual(c.sessions.map((s) => s.id), ['wanted']);
+  assert.equal(c.sessions[0].scope, 'selected');
+  assert.equal(c.sessions[0].responses, 2, 'the copied r1 is counted for the selection, not taken by the unselected original');
+  assert.equal(c.sessions[0].usage.input, 4000);
+  // both command-line forms
+  const cli = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'usage-codex.mjs');
+  const list = path.join(dir, 'ids.txt'); fs.writeFileSync(list, '# private list\nwanted\n');
+  for (const args of [['--session', 'wanted'], ['--sessions-file', list]]) {
+    const out = path.join(dir, 'r.json');
+    execFileSync(process.execPath, [cli, '--dir', dir, ...args, '--json', out], { stdio: 'pipe' });
+    const g = JSON.parse(fs.readFileSync(out, 'utf8')).groups;
+    assert.deepEqual(Object.keys(g), ['terminal/selected'], args[0]); assert.equal(g['terminal/selected'].sessions, 1, args[0]);
+  }
+});
+
+test('a start counts as genuine only when the rollout shows it: a partial file, copied history and a whole start', () => {
+  // a header, then a response of 100 whose thread total is already 600: history is missing, the start is unknown
+  let b = rollout({ cwd: DM }).meta().turn('t1', 'm').raw(rec('r1', '2026-10-19T10:02:00.000Z', u(100, 0, 0), u(600, 0, 0)));
+  let s = summarizeRollout(parse(b), {});
+  assert.equal(s.startKind, 'unknown'); assert.equal(s.firstResponseInput, null);
+  assert.ok(s.warnings.some((w) => /uncovered/.test(w)), 'and the missing 500 is reported');
+  // copied history: the earliest response was recorded for another session
+  b = rollout({ id: 'fork', cwd: DM }).meta().turn('t1', 'm');
+  b.raw({ timestamp: '2026-10-19T10:01:00.000Z', type: 'token_usage_record', payload: { response_id: 'old', turn_id: 't1', session_id: 'parent', thread_id: 'parent', usage: u(100, 0, 0), thread_token_usage: u(100, 0, 0) } });
+  b.raw({ timestamp: '2026-10-19T10:05:00.000Z', type: 'token_usage_record', payload: { response_id: 'new', turn_id: 't2', session_id: 'fork', thread_id: 'fork', usage: u(300, 0, 0), thread_token_usage: u(400, 0, 0) } });
+  s = summarizeRollout(parse(b), {});
+  assert.equal(s.startKind, 'inherited'); assert.equal(s.firstResponseInput, null);
+  // a whole start: the first response is its thread's first
+  b = rollout({ cwd: DM }).meta().turn('t1', 'm').record('r1', 't1', u(1200)).record('r2', 't1', u(1500));
+  s = summarizeRollout(parse(b), {});
+  assert.equal(s.startKind, 'genuine'); assert.equal(s.firstResponseInput, 1200);
+  // a cumulative-only rollout whose first snapshot already carries history
+  b = rollout({ cwd: DM }).meta().turn('t1', 'm').raw(snap('2026-10-19T10:01:00.000Z', u(900, 0, 0), u(100, 0, 0)));
+  assert.equal(summarizeRollout(parse(b), {}).startKind, 'unknown');
+  // only genuine starts enter the median
+  const g = report({ sessions: [summarizeRollout(parse(rollout({ cwd: DM }).meta().turn('t1', 'm').raw(rec('r1', '2026-10-19T10:02:00.000Z', u(100, 0, 0), u(600, 0, 0)))), {})] }).groups['terminal/dm'];
+  assert.equal(g.firstResponseInput.sessions, 0); assert.deepEqual(g.starts, { unknown: 1 });
+});
+
+test('a model applies from where it is set: a later setting is never given to earlier responses, and before any it is unknown', () => {
+  const settings = (model, ts) => ({ timestamp: ts, type: 'event_msg', payload: { type: 'thread_settings_applied', thread_settings: { model } } });
+  const b = rollout({ cwd: DM }).meta();
+  b.raw(rec('r1', '2026-10-19T10:01:00.000Z', u(100, 0, 0), u(100, 0, 0)))                 // no model known yet
+    .raw(settings('later-model', '2026-10-19T10:02:00.000Z'))
+    .raw(rec('r2', '2026-10-19T10:03:00.000Z', u(200, 0, 0), u(300, 0, 0)))                 // the setting applies
+    .raw({ timestamp: '2026-10-19T10:04:00.000Z', type: 'turn_context', payload: { turn_id: 't9', cwd: DM, model: 'turn-model' } })
+    .raw({ timestamp: '2026-10-19T10:05:00.000Z', type: 'token_usage_record', payload: { response_id: 'r3', turn_id: 't9', usage: u(400, 0, 0), thread_token_usage: u(700, 0, 0) } })
+    .raw(settings('newest', '2026-10-19T10:06:00.000Z'))
+    .raw({ timestamp: '2026-10-19T10:07:00.000Z', type: 'token_usage_record', payload: { response_id: 'r4', turn_id: 't9', usage: u(50, 0, 0), thread_token_usage: u(750, 0, 0) } });
+  const m = summarizeRollout(parse(b), {}).byModel;
+  assert.equal(m.unknown.input, 100); assert.equal(m['later-model'].input, 200);
+  assert.equal(m['turn-model'].input, 450, 'a record of a known turn takes that turn\'s model, even after a newer setting');
+  assert.ok(!m.newest);
+});
+
+test('paths: resolved against the command\'s own folder, named only inside a checkout, never a private path; labels never leak', () => {
+  const GAME = '/home/ubuntu/vps-handoffs/DeathMuffin/game';
+  // a relative path that climbs out of the checkout, a traversal that stays in it, a workdir that overrides the turn's folder
+  const b = rollout({ cwd: GAME }).meta().turn('t1', 'm').record('r1', 't1', u(1))
+    .exec('c1', cmd('cat ../../private/review-notes.md'), 'p'.repeat(30))
+    .exec('c2', cmd('cat client/../README.md'), 'r'.repeat(20))
+    .exec('c3', 'text(await tools.exec_command({cmd:"cat AGENTS.md",workdir:"/home/ubuntu/notes"}));', 'a'.repeat(10))
+    .exec('c4', 'text(await tools.exec_command({cmd:"cat CLAUDE.md",workdir:"/home/ubuntu/vps-handoffs/DeathMuffin/wt/feature"}));', 'c'.repeat(5))
+    .exec('c5', cmd('/home/ubuntu/secret-tools/bin/runner --x'), 'x')
+    .exec('c6', cmd('TOKEN=abc123 node tools/x.mjs'), 'y');
+  const s = summarizeRollout(parse(b), {});
+  assert.deepEqual(Object.keys(s.reads).sort(), ['(outside the repo)', 'CLAUDE.md', 'README.md']);
+  assert.equal(s.reads['(outside the repo)'].reads, 2, 'the climbed-out path and AGENTS.md from another folder are both outside');
+  assert.equal(s.reads['README.md'].chars, 20);
+  assert.equal(s.explicitInstructionRead, true, 'CLAUDE.md read in a checkout through a workdir');
+  const out = JSON.stringify(report({ sessions: [s] }));
+  for (const bad of ['private', 'review-notes', 'secret-tools', 'abc123', 'TOKEN', '/home/ubuntu']) assert.ok(!out.includes(bad), bad);
+  assert.ok(s.byTool['shell: runner'] && s.byTool['shell: node']);
+  // the same AGENTS.md from another folder is not a project instruction read
+  const o = rollout({ cwd: '/home/ubuntu' }).meta().turn('t1', 'm').record('r1', 't1', u(1)).exec('c1', cmd(`git -C ${GAME} status`), 'ok').exec('c2', cmd('cat AGENTS.md'), 'z');
+  const so = summarizeRollout(parse(o), {});
+  assert.equal(so.scope, 'mixed'); assert.equal(so.explicitInstructionRead, false); assert.ok(so.reads['(outside the repo)']);
+  // no folder known at all: an unknown bucket, not a guess
+  assert.equal(rel(resolvePath('README.md', null, null)), '(unknown folder)');
+  assert.equal(rel(resolvePath('~/x.md', null, GAME)), '(unknown folder)');
+  assert.equal(rel(resolvePath('x/../../../etc/passwd', null, GAME)), '(outside the repo)');
+  assert.equal(rel(resolvePath('next/x.md', 'client', GAME)), 'client/next/x.md', 'a relative workdir sits in the turn\'s folder');
+  assert.equal(familyOf('A=1 B=two /usr/bin/env node x'), 'env'); assert.equal(familyOf('"weird name" x'), '(other)');
+});
+
+test('copied tool output counts once across a resumed or forked copy; a real repeated read with a new call counts again', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-codex-out-'));
+  const a = rollout({ id: 'orig', cwd: DM, start: '2026-10-19T10:00:00.000Z' }).meta().turn('t1', 'm').record('r1', 't1', u(1000))
+    .exec('c1', cmd(`cat ${DM}/client/README.md`), 'x'.repeat(100), '2026-10-19T10:00:05.000Z');
+  // the copy carries r1 and c1 as history, then one new response and the same read again under a new call id
+  const b = rollout({ id: 'copy', cwd: DM, start: '2026-10-19T11:00:00.000Z' }).meta().turn('t1', 'm')
+    .record('r1', 't1', u(1000), '2026-10-19T10:00:02.000Z')
+    .exec('c1', cmd(`cat ${DM}/client/README.md`), 'x'.repeat(100), '2026-10-19T10:00:05.000Z')
+    .record('r2', 't2', u(2000))
+    .exec('c2', cmd(`cat ${DM}/client/README.md`), 'x'.repeat(100));
+  fs.writeFileSync(path.join(dir, 'b.jsonl'), b.text().join('\n')); fs.writeFileSync(path.join(dir, 'a.jsonl'), a.text().join('\n'));
+  const c = collect({ dirs: [dir], keepIds: true });
+  const g = report(c).groups['terminal/dm'];
+  assert.equal(g.responses, 2);
+  assert.deepEqual(g.topReads.find((x) => x.path === 'client/README.md'), { path: 'client/README.md', reads: 2, chars: 200, sessions: 2 }, 'c1 once, c2 once');
+  assert.equal(c.sessions.find((x) => x.id === 'copy').copiedOutputs, 1);
+  // the same output under the same window and selection rules as usage: selecting only the copy counts its history once
+  const only = collect({ dirs: [dir], sessions: new Set(['copy']), keepIds: true }).sessions[0];
+  assert.deepEqual(only.reads['client/README.md'], { reads: 2, chars: 200 }); assert.equal(only.copiedOutputs, 0);
+});

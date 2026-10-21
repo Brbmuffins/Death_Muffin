@@ -77,3 +77,5 @@ What the runner checks (a mistake comes back to you to fix, twice): `plan.discip
 digits, dashes, at most 24), title (what people read under the video, at most 60 characters: say the value), tune}`; a tune is `{"<data path>": {<nested keys>: <value>}}` with
 numbers, text or true/false only (no lists), at most 64 values, key names of letters, digits and `_ . / -`; the whole file at most 32 KB. Videos show the offline demo
 character on this branch; an option that is today's value (an empty `{}` tune is fine too) helps people compare. People can say `!clips` to record the last request again.
+
+**The game's side** (the clip plan's words, the frame writer, `--tune=`): `client/main/CLIPS.md`. In a workspace made before 2026-10-21 that file is not there yet: read only the "Clips and tune" section of `client/README.md` instead.

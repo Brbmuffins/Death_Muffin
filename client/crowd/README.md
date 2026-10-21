@@ -67,7 +67,7 @@ Per instance (`MultiMesh.buffer`: 20 floats, 12 transform rows, 4 colour, 4 cust
 | `INSTANCE_CUSTOM.z`, `.w` | previous clip + blend weight below 1 (`pack_custom`), seconds into the previous clip; weight 0 = no blend |
 | `COLOR.rgb`, `COLOR.a` | linear tint; palette slot x 2 + hit flash 0..1 (the slot picks the body's glow from the material's `glow_palette` and its friend rim from `rim_palette`, 0 = the model's own glow and no rim; the flash is the game's emissive lerp, `0xfff0dc`, in eighths: exact in a half float up to slot 127, checked on Compatibility) |
 
-**Colours and the lift.** The material converts its colours as Compatibility does, so a body is as bright as a skinned creature (client/README.md "The look on Forward+"): the tint (`COLOR.rgb`, `lin()` of a hex) multiplies the texel in
+**Colours and the lift.** The material converts its colours as Compatibility does, so a body is as bright as a skinned creature (client/next/look/README.md): the tint (`COLOR.rgb`, `lin()` of a hex) multiplies the texel in
 sRGB numbers and the product is converted once (a body with no tint reads the texel as it is, nothing to convert), the glow, the rim and the hit flash are converted too (`dm_s2l`: a small glow is a twelfth of itself on Compatibility's side), and
 the glTF's colour (`albedo_col`) is read as it is. The area's exposure lift is calibrated on the baked world and a body is not in the lightmap: albedo, specular and emission are divided by it (the global `dm_lift_inv`, set with the exposure
 by `DmWorldBuilder`). A body with no glow, flash or rim skips the conversion of its emission.
@@ -77,7 +77,7 @@ crowd". Set a `custom_aabb` on the MultiMesh itself so the engine does not re-me
 
 ## Driving the crowd
 
-In the game scene `DmCoreHost` (`client/core/dm_core_host.gd`) owns the view: `auto_sync` off, `sync()` between the step and the events, one `take_events()` per tick (client/README.md "The game scene and the dev entry").
+In the game scene `DmCoreHost` (`client/core/dm_core_host.gd`) owns the view: `auto_sync` off, `sync()` between the step and the events, one `take_events()` per tick (client/next/ARCHITECTURE.md "The game scene and the dev entry").
 
 `CrowdView` (a `Node3D`) draws the combat core's enemies and thralls as MultiMesh crowds: no node and no script per creature, no per-creature call across
 the core boundary. The view logic is C++ (`native/src/core/crowd_view.*`, free of Godot types), reached through `DmCrowd` (`native/src/dm_crowd.*`), which reads the core and writes the MultiMeshes. It keeps its own state per creature, so nothing
@@ -106,7 +106,7 @@ view.focus = hero_xz                                                # every tick
   none all the same (one draw call, and one more for each moon cascade a caster meets: the roster's 202 groups cost 396 draw calls with 15 of them in use), so `CrowdView` hands the crowd each group's node
   (`DmCrowd.set_group_nodes`, dmcore 0.14), the nodes start hidden, and `draw` shows a group the frame it gets its first instance and hides it once it has held none for half a second (`HIDE_AFTER_S`, so a body
   crossing a level of detail back and forth does not rebuild the instance every few frames; it is a handful of node flips a second, no work for a group that stays as it is). `client/tests/crowd_view.gd`
-  holds it, `client/tests/draw_budget.gd` counts what it saves (client/README.md "The draw budget"). Every group is sized for 128 instances at loading
+  holds it, `client/tests/draw_budget.gd` counts what it saves (client/next/perf/DRAW-BUDGET.md). Every group is sized for 128 instances at loading
   (`reserve`) and doubles when a crowd outgrows it, so a wave of one model does not grow a MultiMesh; a steady crowd never does. `DmCrowd.buffer(model, lod, shadow, fade)` returns
   exactly what was uploaded (count x 20 floats), `stats()` the counters (bodies by kind, instances drawn, capacity, regrows, `faded` and `groups_faded`), `view_info(id)` one creature's view state, `take_landings()` where dying bodies came to rest since the last call (x, z, scale each: `DmEnemyFx` raises the dust there), `shatter(corpse)` a corpse Corpse Explosion blew apart: its body goes at the next frame instead of sinking, `ground_at(id)` where a living body is drawn (`Vector3.INF` otherwise): the cheap read every frame for the rings and marks that follow a body.
 
@@ -159,7 +159,7 @@ The numbers are `native/src/core/crowd_view.cpp`'s.
 ### Crowd cost
 
 What the crowd costs a frame, and the four settings that cut it. All four are `CrowdView.setup` options (the game scene and the benchmark pass them through `DmCoreHost.setup`), `DmCrowd.settings()` says what is
-in force, and the benchmark's report records them (client/README.md "The benchmark"). The defaults keep the look: nothing near the hero changes (`client/tests/crowd_view.gd` writes the same bytes with the bands on or off).
+in force, and the benchmark's report records them (client/next/perf/BENCHMARK-REPORT.md "The crowd's cost"). The defaults keep the look: nothing near the hero changes (`client/tests/crowd_view.gd` writes the same bytes with the bands on or off).
 
 - **What was measured (the VPS, headless, the debug build the tests load, 2026-10-17):** a Full Party frame costs the crowd 30 to 50 us of CPU in `DmCrowd.draw` (104 bodies: 22 to 30 us in the views, 16 us in the buffer
   copies and the RenderingServer calls), under 0.3% of a 16.7 ms frame. The per-body work is the view logic (turn, legs, clip time, flash, knock, hover) and the 3 x 3 matrices of the instance row, about 0.2 us a body;

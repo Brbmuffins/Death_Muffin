@@ -2,7 +2,7 @@
 
 `DmSessionRewards` (Node) runs on the session HOST only. Value goes through the backend (DECISIONS.md D1); `--dev-offline` is the same code with the
 mock backend's DmApi (D4). Per-member state lives in `DmRewardsMember` (RefCounted). `DmNextLoot` (`dm_next_loot.gd`, the client's own) is this player's drops and bag, on the host and on a guest. How the game scene earns value
-on the core (the credited kill, the meta nodes, a guest's own account, ground drops between members): client/README.md "Value on the server".
+on the core (the credited kill, the meta nodes, a guest's own account, ground drops between members): client/next/rewards/AUTHORITY.md.
 
 ## What the game shell (DmNextGame) provides
 
@@ -88,5 +88,6 @@ so what the guest is paid is what the server counted. A report that fails, a ref
 - Ground: item names in rarity colour within 7 m (3 m ordinary; `DmLootView.near_labels = false` turns them off), icon is the inventory's own item art (`DmUiArt.item`; a rarity tile only for an item without art) and blinks in the last 8 s, drops from one kill land >= 0.65 m apart.
 
 ## Tests
-`client/tests/rewards.gd` plays the rewards node (sessions, batches, lost replies, refusals, the end, per-member loot, on the mock backend; a test double emits `kill_credited`); `client/tests/value.gd` plays the game scene (a drop claimed into the bag, the purse, brews and lifesteal);
+`client/tests/rewards.gd` plays the rewards node (sessions, batches, lost replies, refusals, the end, per-member loot, on the mock backend; a test double emits `kill_credited`); `client/tests/value.gd` plays the game scene on the mock (kills through the core, the accepted
+XP and counts against the server's counters, the purse, a drop claimed into the bag, brews and lifesteal, the meta, Q's flask, and the save on leave);
 `client/tests/panels.gd` the Reliquary on the server's bag.

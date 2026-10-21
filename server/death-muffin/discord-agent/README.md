@@ -336,7 +336,10 @@ when its conversation carries on); every call of the turn, handoffs included, ca
 worktree's `.dm-guides/` (git-excluded, in `forbiddenPaths`, readable under the worktree's file grant), and a missing or edited copy is put back
 and the agent told. Nothing goes from a worktree back to the snapshot or the install. An install whose core is empty, or names a missing or empty guide,
 runs no turn: the thread is told to reinstall. `install-runner.sh` refuses a revision like that and replaces `guides/` whole; the drift report and the
-practice run compare the installed guides with `main`. Rule text sizes and the rule inventory: `tools/context/README.md`.
+practice run compare the installed guides with `main`. Game documentation stays in the job's own checkout and is read on demand, never
+copied into `.dm-guides/` or the prompt: the core sends the agent to `README.md` "Documentation map" and `client/README.md` for the guide a task
+needs, and each media guide names the game's page for its workflow, with the old `client/README.md` section to read instead in a job whose
+worktree was made before 2026-10-21. Rule text sizes and the rule inventory: `tools/context/README.md`.
 
 **Progress notes** while a turn runs: `🔧 <pct>% · <sentence> · ⏱ <min> min`. The agent writes `.dm-status` as `<pct>% · <sentence>` (prompt
 `PROMPT-godot.md`); fewer thread posts (owner, 2026-10-10): the first status posts at once, later ones only when it changed and at most every
@@ -392,7 +395,7 @@ is skipped when those lines do not account for the summary's `N FAILED`, so a fa
 **`regen-godot.sh`** (the agent's, DECISIONS B65): the files the game derives from its sources, made in the same sandbox as `check-godot.sh` (no network, only the
 worktree writable, a private HOME): `node tools/generate-armor-assets.mjs` (the sets' client data copies, the content manifest, item icons, the new migration),
 `npm run build:server-rules` (the backend's `*-rules.cjs` bundles) and `UPDATE_LOOT_PARITY=1 vitest run server/rules/gameplay/__tests__/` (the loot rules' tests, rewriting
-the recorded answers `client/tests/rules_loot/fixtures` holds), each up to 10 minutes and run even when one before it failed, then `git status`; exit 1 when a step
+the recorded answers `client/tests/rules_loot/fixtures` holds) and `node tools/context/sync-instructions.mjs` (`AGENTS.md`, `CLAUDE.md`'s exact copy for Codex), each up to 10 minutes and run even when one before it failed, then `git status`; exit 1 when a step
 failed. The agent runs it after any edit under `server/rules/` and for an armor set (PROMPT-godot.md); CI's "Generated files are current" step and the rules tests
 fail a change whose generated files are not exactly the generators' output, so a forgotten run never ships. `test/sandbox.test.cjs` runs it with stand-in generators
 that try to write outside the worktree.

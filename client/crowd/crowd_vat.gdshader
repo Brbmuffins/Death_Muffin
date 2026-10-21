@@ -82,7 +82,7 @@ uniform vec4 vat_clips[16];
 uniform sampler2D vat_track : filter_nearest, repeat_disable;
 uniform vec4 trk_clips[16];
 
-// Compatibility's colours (DmCreatureMat's header, client/README.md "The look on Forward+"): it reads a texture, a colour and every number written to ALBEDO or EMISSION
+// Compatibility's colours (DmCreatureMat's header, client/next/look/README.md): it reads a texture, a colour and every number written to ALBEDO or EMISSION
 // as sRGB and converts the product to linear once, at the end; Forward+ takes them as linear. The tint (`COLOR.rgb`, a `lin()` of a hex), the glows and the flash are numbers made for
 // that: a tinted body multiplies in sRGB numbers and converts (`dm_s2l`), the emission is converted too (a small glow is a twelfth of itself there). The area's exposure lift is calibrated
 // on the baked world: the bodies divide their albedo, specular and emission by it (`dm_lift_inv`, 1 / (the area's lift x the preset's), set by DmWorldBuilder._apply_exposure).

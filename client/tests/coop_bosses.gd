@@ -1,5 +1,5 @@
 extends "res://tests/coop.gd"
-## The six other bosses fight a PARTY (client/README.md "Co-op on the core" and "The bosses"), headless, over the same REAL local lobby and relay as tests/coop.gd (whose helpers it uses: the lobby
+## The six other bosses fight a PARTY (client/next/party/CORE-NETWORK.md and "The bosses"), headless, over the same REAL local lobby and relay as tests/coop.gd (whose helpers it uses: the lobby
 ## service, the test tokens, the accounts on the in-memory mock, a SceneMultiplayer branch per player, the position comparison). One party serves all six: the host's game and the guest's are the whole
 ## world (the guest's seals are the host's) and the Bone Abbess, the Drowned Congregation, the Bell-Sworn Prelate, the Plague Saint, the Cinder Regent and the Mire Mother are summoned in turn, each twice.
 ## The brain, the state and the events are `DmBossHost`'s (GDScript, 20 Hz and reliable: the host runs the brain, the guest holds a puppet body); the adds, the niches and the pools are bodies and

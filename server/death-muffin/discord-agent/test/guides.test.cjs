@@ -339,3 +339,49 @@ test('install: the guides are installed from the revision, the folder is replace
     assert.equal(fs.readFileSync(path.join(DEST, 'PROMPT-godot.md'), 'utf8'), before); assert.ok(fs.readFileSync(path.join(DEST, 'guides', 'sound.md'), 'utf8').trim());
   } finally { fs.rmSync(DEST, { recursive: true, force: true }); fs.rmSync(tmp, { recursive: true, force: true }); }
 });
+
+// Stage 3 (2026-10-21): the core and the guides route through README.md's documentation map and the client's guides, with a bounded
+// fallback for a job whose worktree was made before the split (its checkout still has the old single client/README.md).
+const MOVES = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/context/doc-moves.json'), 'utf8'));
+const docPaths = (t) => [...new Set([...t.matchAll(/`((?:client|tools|server)\/[\w./-]+\.md)`/g)].map((m) => m[1]))];
+const fallbacks = (t) => [...t.matchAll(/read only the "([^"]+)" section of `client\/README\.md`/g)].map((m) => m[1]);
+
+test('guides: every game doc the core and the guides name exists now, and each fallback names an old section that moved to it', () => {
+  const titles = new Map(MOVES.moves.map((m) => [m.title, m.to.map((x) => x.split('#')[0])]));
+  for (const [name, t] of [['PROMPT-godot.md', CORE], ...GUIDE_FILES.map((f) => [f, fs.readFileSync(path.join(SRC, 'guides', f), 'utf8')])]) {
+    for (const p of docPaths(t)) assert.ok(fs.existsSync(path.join(REPO, p)), `${name} names ${p}, which exists`);
+    for (const sec of fallbacks(t)) {
+      assert.ok(titles.has(sec), `${name}: "${sec}" is a section the old client/README.md had (doc-moves.json)`);
+      assert.ok(docPaths(t).some((p) => titles.get(sec).includes(p)), `${name}: the fallback "${sec}" is for a file of this guide that it moved to`);
+    }
+  }
+  assert.match(CORE, /`README\.md` "Documentation map" names where each kind of task starts/);
+  assert.match(CORE, /In a workspace made before 2026-10-21 the map and those guides may not exist\s+yet: then read only the section of `client\/README\.md` with the same subject/);
+  assert.ok(!/Read `CLAUDE\.md`, `README\.md`, `client\/README\.md`/.test(CORE), 'no read-everything list');
+  for (const f of ['clips.md', 'screenshots.md', 'pictures.md', 'models.md', 'sound.md']) assert.ok(fallbacks(fs.readFileSync(path.join(SRC, 'guides', f), 'utf8')).length === 1, `${f} has its one fallback`);
+});
+
+test('guides: a job made before the split and a fresh one both get the new bundle, and each can follow its route', () => {
+  const oldTitles = MOVES.moves.map((m) => m.title);
+  // a job made before 2026-10-21: one big client/README.md with the old sections, no map, none of the new guides
+  const old = setup();
+  fs.mkdirSync(path.join(old.wt, 'client'), { recursive: true });
+  fs.writeFileSync(path.join(old.wt, 'README.md'), '# Death Muffin\n\n## Layout\n');
+  fs.writeFileSync(path.join(old.wt, 'client/README.md'), '# The game client\n\n' + oldTitles.map((t) => `## ${t}\n\nold text\n`).join('\n'));
+  sh(old.wt, 'add', '-A'); sh(old.wt, '-c', 'user.email=a@b', '-c', 'user.name=t', 'commit', '-qm', 'old tree');
+  const g = GU.prepareTurn(old.cfg, old.job, { audit: old.audit });
+  assert.ok(!g.error, g.error);
+  assert.deepEqual(Object.keys(copies(old.wt)), GUIDE_FILES, 'the old job reads the new guides');
+  const oldIndex = fs.readFileSync(path.join(old.wt, 'client/README.md'), 'utf8');
+  for (const f of GUIDE_FILES) {
+    const t = copies(old.wt)[f];
+    for (const p of docPaths(t)) if (p.startsWith('client/') && p !== 'client/README.md' && p !== 'client/game/README.md' && p !== 'client/audio/README.md') assert.ok(!fs.existsSync(path.join(old.wt, p)), `${p} is not in the old tree`);
+    for (const sec of fallbacks(t)) assert.ok(oldIndex.includes(`## ${sec}\n`), `${f}: the old tree has the "${sec}" section its fallback reads`);
+  }
+  assert.ok(!/## Documentation map/.test(fs.readFileSync(path.join(old.wt, 'README.md'), 'utf8')), 'the old tree has no map: the core\'s fallback applies');
+  assert.equal(sh(old.wt, 'status', '--porcelain').trim(), '', 'the guide copies leave the old tree clean');
+  // a fresh job after the split: the real tree's map and guides are there
+  const readme = fs.readFileSync(path.join(REPO, 'README.md'), 'utf8');
+  assert.match(readme, /^## Documentation map$/m);
+  for (const f of GUIDE_FILES) for (const p of docPaths(fs.readFileSync(path.join(SRC, 'guides', f), 'utf8'))) assert.ok(fs.existsSync(path.join(REPO, p)), p);
+});

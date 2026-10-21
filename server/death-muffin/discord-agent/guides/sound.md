@@ -14,3 +14,5 @@ The runner posts the takes in the thread and then tells you the files are ready:
 `client/assets/audio/eleven/<id>.wav`, or `.mp3` for music, and the sound's row in `docs/AUDIO-SOURCES.md`, the licence record), wire it in where the request asked
 (`client/audio/README.md`), commit the spec, the asset and `docs/AUDIO-SOURCES.md`, run `__TOOLS__/check-godot.sh --rerun code_load` (commit the `.import` file it writes),
 then the usual proposal. `audio-src/` is git-ignored raw output: never commit it. One sound per request.
+
+**The game's side:** which sound plays for which event, and each cue's code path, is the "Sound" section of `client/audio/README.md`. In a workspace made before 2026-10-21 that section is not there yet: read only the "Sound" section of `client/README.md` instead.

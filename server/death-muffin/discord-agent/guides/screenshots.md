@@ -82,3 +82,5 @@ A set worn, seen from the front and the back:
  "equip": ["set_gravecaller_chest", "set_gravecaller_legs", "set_gravecaller_hands", "helm_gold", "staff_moon"],
  "shots": [{"name": "set-front", "view": "hero", "turn": 0}, {"name": "set-back", "view": "hero", "turn": 180}]}
 ```
+
+**The game's side** (the QA run's flags, how a plan's set-ups are made on the game scene): `client/main/SCREENSHOTS.md`. In a workspace made before 2026-10-21 that file is not there yet: read only the "Screenshots for proposals" section of `client/README.md` instead.

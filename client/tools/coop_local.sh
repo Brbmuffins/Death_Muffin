@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# A local trial of 2-player co-op (client/README.md "Co-op on the core"): starts the repository's lobby service (node) and UDP relay (headless Godot) on THIS machine, on loopback
+# A local trial of 2-player co-op (client/next/party/CORE-NETWORK.md): starts the repository's lobby service (node) and UDP relay (headless Godot) on THIS machine, on loopback
 # ports and with a throwaway signing key, then prints the two commands that start a host and a guest. It reaches nothing else: the game accepts only a lobby on this machine or the
 # test lobby (DmConfig), and the accounts are the local dev backend's. Stop it with Ctrl-C (it kills only the two processes it started).
 #   bash client/tools/coop_local.sh                       # then run the printed commands in two terminals

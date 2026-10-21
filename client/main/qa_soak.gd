@@ -1,6 +1,6 @@
 class_name DmQaSoak
 extends Node
-## The soak scenario (`-- --dev-offline --soak[=<minutes>] --soak-out=<abs dir>`, QA runs only; it writes `<dir>/soak.json`; client/README.md "Release checks"): one fresh isolated offline game on High (DmBenchFight.boot: the HUD on, the warm-up, a level 60
+## The soak scenario (`-- --dev-offline --soak[=<minutes>] --soak-out=<abs dir>`, QA runs only; it writes `<dir>/soak.json`; client/main/RELEASE-CHECKS.md): one fresh isolated offline game on High (DmBenchFight.boot: the HUD on, the warm-up, a level 60
 ## hero in the Graves, Easy auto combat) left to fight with the Graves' waves on for that many minutes (30 when none is given; `--class=N` picks the discipline, default the Gravecaller). The hero holds the middle of the area and casts
 ## on its own (auto combat never walks), the waves and Grave Surges are play's. Once a minute (real time) a row: the frame times of that minute (p50, p99, worst), the engine's static memory, object and node counts and video memory.
 ## The results file is written after every row (a PC that stops halfway still leaves what it measured; `complete` says whether the run finished). Loaded by DmMain (`_run_qa_scenario`) by path: no other start compiles it.

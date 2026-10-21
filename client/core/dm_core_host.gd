@@ -15,7 +15,7 @@ extends Node
 ## An area's level: the core scales a toxic corpse's pool by the level of the area it was laid in (`DmCore.set_area_level`), and this host keeps it current from the
 ## enemies it sees made there (their level, the one the director, the Depths and the bosses' adds gave them), once per change.
 ##
-## A GUEST's host (`setup({puppet: true})`, 2-player co-op, client/README.md "Co-op on the core") owns a PUPPET core: it simulates nothing. Its bodies come from the host's reliable
+## A GUEST's host (`setup({puppet: true})`, 2-player co-op, client/next/party/CORE-NETWORK.md) owns a PUPPET core: it simulates nothing. Its bodies come from the host's reliable
 ## batches and snapshots (`apply_reliable`, `apply_snapshot`, called by DmNextNet), its tick is the same step / sync / events, so the crowd, the effects and the HUD run from the
 ## puppet's events as they do from a host's. The ids are the host's: a hero body is `adopt_hero`ed with the id the host gave it (heroes and bosses are the host's externals, so
 ## `register_hero` and `register_boss` are never called on a puppet), and every command that changes the simulation (`damage`, `spawn_enemy`, `apply_status` ...) must not be called

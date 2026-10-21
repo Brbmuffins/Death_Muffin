@@ -1,0 +1,42 @@
+{
+  "about": "Where each section of the client manual went when client/README.md became an index (context Stage 3, 2026-10-21; the manual as it was: git show a1f09add:client/README.md). fragment: the old link (client/README.md#<fragment>), which client/README.md keeps as an explicit anchor on the row that links the new homes; to: the new homes (file or file#heading); labels: bold paragraph labels people quote, and the file that holds each now. tools/context/navigation.mjs checks every entry (tools/context/README.md \"Navigation check\").",
+  "from": "client/README.md",
+  "rev": "a1f09add",
+  "moves": [
+    {"fragment": "set-up-and-test", "title": "Set up and test", "to": ["client/tools/TESTING.md", "client/tools/TEST-SUITES.md"]},
+    {"fragment": "how-the-project-is-organised", "title": "How the project is organised", "to": ["client/next/ARCHITECTURE.md#how-the-project-is-organised"]},
+    {"fragment": "the-game-scene-and-the-dev-entry", "title": "The game scene and the dev entry", "to": ["client/next/ARCHITECTURE.md#the-game-scene-and-the-dev-entry"]},
+    {"fragment": "screenshots-for-proposals", "title": "Screenshots for proposals", "to": ["client/main/SCREENSHOTS.md"]},
+    {"fragment": "clips-and-tune", "title": "Clips and tune", "to": ["client/main/CLIPS.md"]},
+    {"fragment": "release-checks", "title": "Release checks", "to": ["client/main/RELEASE-CHECKS.md"]},
+    {"fragment": "grave-surges", "title": "Grave Surges", "to": ["client/next/areas/SURGES.md"]},
+    {"fragment": "the-gravecallers-rites", "title": "The Gravecaller's rites", "to": ["client/next/rites/CORE-INTEGRATION.md"]},
+    {"fragment": "the-bosses", "title": "The bosses", "to": ["client/next/bosses/CORE-INTEGRATION.md"]},
+    {"fragment": "the-benchmark", "title": "The benchmark", "to": ["client/next/perf/BENCHMARK.md", "client/next/perf/BENCHMARK-REPORT.md"]},
+    {"fragment": "the-draw-budget", "title": "The draw budget", "to": ["client/next/perf/DRAW-BUDGET.md"]},
+    {"fragment": "world-dressing", "title": "World dressing", "to": ["client/world_fx/README.md#world-dressing"]},
+    {"fragment": "the-effects", "title": "The effects", "to": ["client/fx/README.md#the-effects"]},
+    {"fragment": "graphics-presets", "title": "Graphics presets", "to": ["client/next/perf/README.md#graphics-presets"]},
+    {"fragment": "the-look-on-forward", "title": "The look on Forward+", "to": ["client/next/look/README.md"]},
+    {"fragment": "the-hud-on-the-core", "title": "The HUD on the core", "to": ["client/next/hud/CORE-INTEGRATION.md"]},
+    {"fragment": "the-huds-budget", "title": "The HUD's budget", "to": ["client/ui/hud/PERFORMANCE.md"]},
+    {"fragment": "tips-and-onboarding", "title": "Tips and onboarding", "to": ["client/ui/onboarding/README.md#tips-and-onboarding"]},
+    {"fragment": "sound", "title": "Sound", "to": ["client/audio/README.md#sound"]},
+    {"fragment": "threads", "title": "Threads", "to": ["client/core/THREADING.md"]},
+    {"fragment": "value-on-the-server", "title": "Value on the server", "to": ["client/next/rewards/AUTHORITY.md"]},
+    {"fragment": "gathering-and-the-acre", "title": "Gathering and the Acre", "to": ["client/next/gathering/README.md#gathering-and-the-acre"]},
+    {"fragment": "co-op-on-the-core", "title": "Co-op on the core", "to": ["client/next/party/CORE-NETWORK.md", "client/next/party/README.md#joining-and-the-social-window", "client/next/party/TESTING.md"]},
+    {"fragment": "the-server-login-and-character-select", "title": "The server: login and character select", "to": ["client/front/README.md"]},
+    {"fragment": "the-api-rule-decisions-b38-b49", "title": "The API rule (DECISIONS B38, B49)", "to": ["client/net/README.md"]},
+    {"fragment": "assets", "title": "Assets", "to": ["client/tools/ASSETS.md"]},
+    {"fragment": "the-depths", "title": "The Depths", "to": ["client/next/depths/CORE-INTEGRATION.md"]},
+    {"fragment": "areas", "title": "Areas", "to": ["client/world/README.md"]}
+  ],
+  "kept": [
+    {"file": "DECISIONS.md", "why": "the decision record says what was true when each decision was made; the old link still lands on the index"},
+    {"file": "tools/context/baseline-2026-10-20.json", "why": "measurements of what sessions read before Stage 2, old paths included"},
+    {"file": "tools/context/stage3-2026-10-21.json", "why": "the task routes' before side names the old sections it measured"},
+    {"file": "client/game/dm_creature_mat.gd", "why": "an input of the art pack's fingerprint (tools/godot/assets-fp.sh --paths): a comment edit would send every player the art again; the old name still lands on the index row for the look"}
+  ],
+  "labels": {"Numbers in tests": "client/tools/TESTING.md", "Suite names": "client/tools/TESTING.md", "Static batching is not in the areas": "client/next/perf/DRAW-BUDGET.md", "Bosses in a party": "client/next/party/CORE-NETWORK.md", "The proof": "client/next/party/TESTING.md", "Not yet": "client/next/depths/CORE-INTEGRATION.md"}
+}

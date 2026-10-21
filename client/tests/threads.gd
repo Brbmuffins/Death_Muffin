@@ -1,5 +1,5 @@
 extends SceneTree
-## Work off the main thread (client/README.md "Threads"). Godot's message "caller thread can't call propagate_notification() on /root" is the crash handler's own: when a
+## Work off the main thread (client/core/THREADING.md). Godot's message "caller thread can't call propagate_notification() on /root" is the crash handler's own: when a
 ## thread other than the main one crashes, handle_crash tells the main loop (SceneTree -> /root.propagate_notification), and that call is refused off the main thread. So the
 ## message names a crash on some thread, not code touching the tree; the one such crash with frames in a log (a headless run, 2026-10-07) is the mixer's, which AudioServer.add_bus
 ## and set_bus_send do not lock against. Checks:
@@ -19,7 +19,7 @@ class ErrorLog:
 			errors.append("%s:%d %s %s %s" % [file, line, function, code, rationale])
 
 
-## What starts work off the main thread in the client's own code (not tests, tools or addons), by file. Each line is read in client/README.md "Threads".
+## What starts work off the main thread in the client's own code (not tests, tools or addons), by file. Each line is read in client/core/THREADING.md.
 const STARTERS := ["Thread.new", "WorkerThreadPool.add_task", "WorkerThreadPool.add_group_task", "load_threaded_request", "bake_from_source_geometry_data_async", "call_thread_safe",
 	"call_deferred_thread_group", "set_thread_safety_checks_enabled", "Semaphore.new"]
 const LISTED := {
@@ -116,13 +116,13 @@ func _a_inventory() -> void:
 		for tag in found[path]:
 			if not (LISTED.has(path) and (LISTED[path] as Array).has(tag)):
 				unlisted.append("%s (%s)" % [path, tag])
-	check(unlisted.is_empty(), "these start work off the main thread and are not on the list: list them here and in client/README.md \"Threads\" once their thread has been read: %s" % ", ".join(unlisted))
+	check(unlisted.is_empty(), "these start work off the main thread and are not on the list: list them here and in client/core/THREADING.md once their thread has been read: %s" % ", ".join(unlisted))
 	var gone := PackedStringArray()
 	for path in LISTED:
 		for tag in LISTED[path]:
 			if not (found.has(path) and (found[path] as Array).has(tag)):
 				gone.append("%s (%s)" % [path, tag])
-	check(gone.is_empty(), "these no longer start anything: take them off the list (and out of client/README.md \"Threads\"): %s" % ", ".join(gone))
+	check(gone.is_empty(), "these no longer start anything: take them off the list (and out of client/core/THREADING.md): %s" % ", ".join(gone))
 	check(found.size() == LISTED.size(), "the client has %d files that start off-thread work" % found.size())
 	# What the workers run is pure: the rules and the sim (the Atlas' verdicts are rules/gear, the Depths' floor is sim/depths_floor.gd) and the run's generator call no node, tree or server.
 	var tree_calls := PackedStringArray()

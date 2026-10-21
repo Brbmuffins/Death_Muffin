@@ -2,7 +2,7 @@
 # Imports the game's project and rebuilds area scenes (client/areas/<id>.tscn) from client/data/slice/world.json.
 #   tools/rebuild/build-areas.sh [area id ...]        default: graves
 # Run tools/check/prep.sh once in the checkout first. Godot runs headless at low priority (the VPS also runs live games). Exit 1 when a listed
-# asset is missing or the converter fails; see client/README.md "Assets" and "Areas".
+# asset is missing or the converter fails; see client/tools/ASSETS.md and "Areas".
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 GODOT="${GODOT:-/home/ubuntu/tools/godot/godot}"

@@ -2,7 +2,7 @@
 
 The in-game HUD controls. Built on the ui-kit (`DmUi` tokens, `dm_theme.tres`, `DmToast`, `DmBanner`, `DmFloatingNumber`, `DmCorners`, `DmUi.new_pip`).
 It knows nothing about the world: `DmGameUi` feeds it a view-model, built in the game by `DmNextHudVm` (`client/next/hud/`) from the combat core. How the HUD is drawn in a handful of draw calls (one atlas, z layers, triangle meshes, a pool of floating numbers), what it costs and
-where each readout reads from: client/README.md "The HUD on the core" and "The HUD's budget".
+where each readout reads from: client/next/hud/CORE-INTEGRATION.md and "The HUD's budget".
 
 ```gdscript
 var hud := DmHud.new()          # full-rect, mouse-transparent Control; add it to the HUD CanvasLayer
@@ -94,7 +94,7 @@ and this is the structure it will need (DECISIONS B40).
   (a rite on cooldown changes its seconds and sweep only). Slots run `_process` only while empowered or flashing, orbs only while visible, the minimap only while a guidance ping pulses. A new readout should read its inputs through a section so it is covered; the Kill Chain meter has a
   section of its own because it moves with every refresh while a chain runs.
 - Draw cost: panels are 9-patches of one atlas (`DmHudAtlas.nine`), icons regions of it, rectangles its white block, text one z layer per (font, size), the orbs, cooldown sweeps, thrall pips, minimap frame and death veil triangle meshes (`DmHudMesh`), the floating numbers a pool of 48 (`DmHudFloats`).
-  A new control must be put on its layer when it is made (`DmHudKit.layer_tree`), or it breaks a batch; `client/tests/hud.gd` counts the draw calls against the 150 budget (client/README.md "The HUD's budget").
+  A new control must be put on its layer when it is made (`DmHudKit.layer_tree`), or it breaks a batch; `client/tests/hud.gd` counts the draw calls against the 150 budget (client/ui/hud/PERFORMANCE.md).
 - Orbs: the dish (rings, bowl), the liquid body and the gloss are triangle bags; the dish and gloss are built once, the body only while the shown fill eases or the palette really changes (`use_*_palette` / `set_resource_color` ignore an unchanged colour); the surface ripple is redrawn 15 times a second while it moves.
 - The adapter caches what never changes per refresh: `DmNextHudVm._rite(id)` (icon path, unlock level, costs, base cooldown), the current area definition, `DmAbilities.unlock_level` (memo), and `DmNextBelt` tip sentences (rebuilt only when the flask, count or vow changes).
 - Hover: ability slots show no tooltip or spell card (owner request: spell info lives in the Grimoire; the card code behind `hud.spell_card` is kept but not wired to hover). Belt chips, the omen chip, Bone Ward, souls etc. keep native tooltips. The belt picker lives in `client/game_ui/dm_belt_picker.gd` (belt chips emit `belt_clicked`). `hud.node_tip(html, x, y)` draws the node tip (the game feeds it from the node under the cursor).

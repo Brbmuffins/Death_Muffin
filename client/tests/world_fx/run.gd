@@ -4,7 +4,7 @@ extends SceneTree
 ## counts, attach/detach on a real DmWorldBuilder, culling (flames follow their area)
 ## coverage over the real models, wing params, enemy hover, bloom mapping.
 ## Not here: the old game's brazier fire step (`tick(dt, focus)`) and its dressing attached to a runtime DmWorldBuilder with stock stand-ins to hide; the client's dressing sits on
-## the area scenes and is held by tests/dressing.gd (client/README.md "World dressing").
+## the area scenes and is held by tests/dressing.gd (client/world_fx/README.md "World dressing").
 
 var _fail := 0
 var _pass := 0

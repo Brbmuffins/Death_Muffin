@@ -1,5 +1,5 @@
 extends SceneTree
-## The game scene on the core (client/README.md "The game scene and the dev entry"): an offline solo run in the Hollow Graves, headless. It starts the real
+## The game scene on the core (client/next/ARCHITECTURE.md "The game scene and the dev entry"): an offline solo run in the Hollow Graves, headless. It starts the real
 ## scene (client/next/next_game.tscn) with a dev character on the local mock backend, plays 3600 physics ticks (60 s of game time, or as long as three waves of the area take
 ## to arrive when that is more; with the engine argument `--fixed-fps 60` they run as fast as the CPU allows, without it they take a minute) and checks:
 ##   - the wave director spawned waves through the core, up to the area's cap; every spawn event is a core body (ids, not nodes);
@@ -559,7 +559,7 @@ func shroud_ward(id: int) -> void:
 
 
 
-## The world dressing is the effects' surface for the water (client/README.md "World dressing"): the enemy fx and the boss fx hold it, a ripple rings only on wet ground (the data's puddles), the hero's steps
+## The world dressing is the effects' surface for the water (client/world_fx/README.md "World dressing"): the enemy fx and the boss fx hold it, a ripple rings only on wet ground (the data's puddles), the hero's steps
 ## ring the water he walks, and a death, the Wisp's pulse and the Mire Mother's rings on a puddle do.
 func water_ripples() -> void:
 	var dr: DmWorldDressing = g.world.dressing
@@ -607,7 +607,7 @@ func water_ripples() -> void:
 
 
 
-## The Prelate's candle groups (client/README.md "World dressing"): the boss fx holds the dressing's candles, the Prelate's second phase puts the west group out, its third the east one, and its awakening and defeat light them all.
+## The Prelate's candle groups (client/world_fx/README.md "World dressing"): the boss fx holds the dressing's candles, the Prelate's second phase puts the west group out, its third the east one, and its awakening and defeat light them all.
 ## (What a group does to the flames of a loaded Sanctum is tests/dressing.gd's.)
 func candle_groups() -> void:
 	var dr: DmWorldDressing = g.world.dressing
