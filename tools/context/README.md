@@ -26,16 +26,29 @@ about one token for every 2.7 characters its prompt grew between 2026-10-11 and 
 ## The rule inventory
 
 `rules.json` lists every rule in those files: who it is for, when it matters, its kind (boundary, principle, convention, protocol,
-playbook), each place it is written with a verbatim anchor, and the code that enforces it, if any. `protected: true` marks permission,
-spending, deployment and server-authority boundaries. `measure.mjs` (and its test, in CI) fails when:
+playbook), each place it is written with the verbatim clauses that must stay there, and the code that enforces it, if any. Clauses
+match with whitespace ignored, so rewrapping a line changes nothing; deleting or rewording words does. `protected: true` marks
+permission, spending, deployment and server-authority boundaries. A protected rule lists every instruction it depends on as its own
+clause (a rule that joins several boundaries lists each); a heading, a bold label or a fragment under six words is refused.
+`protected.json` locks each protected rule: its audiences, a digest of its clauses and the gaps already accepted (the ones recorded with
+the baseline inventory on 2026-10-20). `node tools/context/measure.mjs --print-lock` prints the entries the inventory has now.
 
-- an anchor is no longer in its file (the rule was reworded, moved or deleted: update `rules.json` in the same change);
-- a protected rule has no home in the always-loaded text of an audience it names, and no `gaps` note saying why;
+`measure.mjs` (and its test, in CI) fails when:
+
+- `rules.json` is malformed: an unknown field or kind, an audience `surfaces.json` does not name, a rule with no home, a home with no
+  clauses, a gap with no note or for an audience the rule does not have;
+- a clause is no longer in its file (the rule was reworded, moved or deleted: update `rules.json` in the same change);
+- a protected clause is a heading, a bold label or too short to be an instruction;
+- a protected rule has no home in the always-loaded text of an audience it names, and no gap for it;
+- a protected rule disappears, stops being protected, loses an audience or changes its clauses, or a new protected rule or a new gap on
+  one appears, while `protected.json` still says otherwise;
 - an enforcing file named by a rule does not exist;
 - a `## ` section of an always-loaded file holds no inventoried rule (a new section: add its rules).
 
-So moving rule text to a file that is read on demand is a visible decision: a protected rule cannot leave the always-loaded text without
-a reviewed `gaps` note. `gaps` also records rules one audience has and the other lacks.
+What this proves and what it does not: the check is structural. It shows that the listed words are still in the always-loaded text and
+that any change to a protected rule or its exceptions comes with a change to `protected.json`, which shows in the diff. It cannot tell
+whether anyone reviewed that diff, whether reworded text still means the same, or whether a model follows the rule. The code named in
+`enforced` is what holds a boundary regardless of the text.
 
 ## Usage
 
