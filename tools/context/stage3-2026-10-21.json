@@ -1,0 +1,592 @@
+{
+ "about": "Context Stage 3 (2026-10-21): the documentation map, the client manual split into guides beside the code, AGENTS.md for Codex and the Codex usage reader. Tokens only (estimates from characters at surfaces.json charsPerToken for text; recorded tokens for usage), no dollars. Remake: static before = tools/context/measure.mjs run in an export of the start revision; static after = measure.mjs in this tree; tasks = measure.mjs --tasks (the before side needs the start revision in the history); usage before = usage.mjs --since 2026-10-14 --until 2026-10-20 --tokens-only and usage-codex.mjs --since 2026-09-26 --until 2026-10-20, both closed windows before any Stage 3 change (the transcripts and rollouts are deleted after a while; these numbers are what they said on 2026-10-21).",
+ "revisions": {
+  "start": {
+   "commit": "a1f09addc37160f7ac0e9c5daa1b8ad1a3f70a88",
+   "tree": "21c36ee54dde3f365c06315c95ef9a0d1ac7c589"
+  },
+  "measured": {
+   "commit": "3cd85835",
+   "tree": "983931aeb01669dd8afcc4cc05ac8ddc6b116651",
+   "note": "the tree whose docs, prompts and rules were measured; the commit that adds this file changes only this file, tools/context/README.md and the kept list of tools/context/doc-moves.json"
+  }
+ },
+ "static": {
+  "before": {
+   "session": {
+    "always": {
+     "CLAUDE.md": 3299
+    },
+    "alwaysTokens": 3299,
+    "toldToReadFirst": {
+     "README.md": 4160,
+     "ROADMAP.md": 13230,
+     "DECISIONS.md": 19168,
+     "KNOWN-GAPS.md": 7631,
+     "client/README.md": 79997
+    },
+    "readFirstTokens": 124186
+   },
+   "codex": {
+    "always": {},
+    "alwaysTokens": 0,
+    "note": "no AGENTS.md in the repository, its parents or ~/.codex, and no fallback file configured: Codex received none of the project rules unless told to read them"
+   },
+   "agent": {
+    "always": {
+     "server/death-muffin/discord-agent/PROMPT-godot.md": 8635
+    },
+    "alwaysTokens": 8635,
+    "toldToReadFirst": {
+     "CLAUDE.md": 3299,
+     "README.md": 4160,
+     "client/README.md": 79997
+    },
+    "readFirstTokens": 87456,
+    "guideTokens": 11266
+   }
+  },
+  "after": {
+   "session": {
+    "always": {
+     "CLAUDE.md": 3682
+    },
+    "alwaysTokens": 3682,
+    "startsTaskFrom": {
+     "README.md \"Documentation map\"": 586,
+     "client/README.md": 3526
+    },
+    "discoveryTokens": 4112
+   },
+   "codex": {
+    "always": {
+     "AGENTS.md": 3682
+    },
+    "alwaysTokens": 3682,
+    "startsTaskFrom": {
+     "README.md \"Documentation map\"": 586,
+     "client/README.md": 3526
+    },
+    "discoveryTokens": 4112
+   },
+   "agent": {
+    "always": {
+     "server/death-muffin/discord-agent/PROMPT-godot.md": 8761
+    },
+    "alwaysTokens": 8761,
+    "startsTaskFrom": {
+     "README.md \"Documentation map\"": 586,
+     "client/README.md": 3526
+    },
+    "discoveryTokens": 4112,
+    "guideTokens": 11776
+   }
+  },
+  "clientManual": {
+   "before": {
+    "file": "client/README.md",
+    "tokens": 79997
+   },
+   "after": {
+    "index": {
+     "file": "client/README.md",
+     "tokens": 3526
+    },
+    "guides": {
+     "client/tools/TESTING.md": 1631,
+     "client/tools/TEST-SUITES.md": 4419,
+     "client/next/ARCHITECTURE.md": 4380,
+     "client/main/SCREENSHOTS.md": 2602,
+     "client/main/CLIPS.md": 4049,
+     "client/main/RELEASE-CHECKS.md": 2705,
+     "client/next/areas/SURGES.md": 2095,
+     "client/next/rites/CORE-INTEGRATION.md": 2380,
+     "client/next/bosses/CORE-INTEGRATION.md": 4326,
+     "client/next/perf/BENCHMARK.md": 4905,
+     "client/next/perf/BENCHMARK-REPORT.md": 3429,
+     "client/next/perf/DRAW-BUDGET.md": 2362,
+     "client/world_fx/README.md": 3208,
+     "client/fx/README.md": 5150,
+     "client/next/perf/README.md": 4852,
+     "client/next/look/README.md": 5406,
+     "client/next/hud/CORE-INTEGRATION.md": 2254,
+     "client/ui/hud/PERFORMANCE.md": 4904,
+     "client/ui/onboarding/README.md": 3546,
+     "client/audio/README.md": 3423,
+     "client/core/THREADING.md": 1753,
+     "client/next/rewards/AUTHORITY.md": 1803,
+     "client/next/gathering/README.md": 4485,
+     "client/next/party/CORE-NETWORK.md": 4041,
+     "client/next/party/README.md": 6356,
+     "client/next/party/TESTING.md": 2691,
+     "client/front/README.md": 1078,
+     "client/net/README.md": 790,
+     "client/tools/ASSETS.md": 1134,
+     "client/next/depths/CORE-INTEGRATION.md": 3058,
+     "client/world/README.md": 3509
+    },
+    "guidesTokens": 102724,
+    "note": "guides are whole files: the new guides plus the system READMEs that received a section (their own text included), so their total is more than the moved text; a task opens one or two of them"
+   }
+  },
+  "rules": {
+   "before": {
+    "rules": 57,
+    "protected": 21,
+    "gaps": 5
+   },
+   "after": {
+    "rules": 58,
+    "protected": 21,
+    "gaps": 4
+   }
+  }
+ },
+ "tasks": [
+  {
+   "id": "hud-minimap",
+   "question": "Where do the minimap's enemy dots come from on the combat core?",
+   "fact": "`enemy_ids / enemy_positions / enemy_states`",
+   "rev": "a1f09add",
+   "before": {
+    "parts": [
+     {
+      "entry": "client/README.md \"The HUD on the core\"",
+      "chars": 18784,
+      "tokens": 6957
+     },
+     {
+      "entry": "client/next/hud/README.md",
+      "chars": 6902,
+      "tokens": 2556
+     }
+    ],
+    "chars": 25686,
+    "tokens": 9513,
+    "answers": true
+   },
+   "after": {
+    "parts": [
+     {
+      "entry": "README.md \"Documentation map\"",
+      "chars": 1583,
+      "tokens": 586
+     },
+     {
+      "entry": "client/README.md",
+      "chars": 9521,
+      "tokens": 3526
+     },
+     {
+      "entry": "client/next/hud/CORE-INTEGRATION.md",
+      "chars": 6085,
+      "tokens": 2254
+     },
+     {
+      "entry": "client/next/hud/README.md",
+      "chars": 6907,
+      "tokens": 2558
+     }
+    ],
+    "chars": 24096,
+    "tokens": 8924,
+    "answers": true
+   }
+  },
+  {
+   "id": "rite-clip-tune",
+   "question": "How do I record a clip of a rite with its cooldown tuned for the clip?",
+   "fact": "`--tune=<abs json>`",
+   "rev": "a1f09add",
+   "before": {
+    "parts": [
+     {
+      "entry": "client/README.md \"Clips and tune\"",
+      "chars": 10797,
+      "tokens": 3999
+     }
+    ],
+    "chars": 10797,
+    "tokens": 3999,
+    "answers": true
+   },
+   "after": {
+    "parts": [
+     {
+      "entry": "README.md \"Documentation map\"",
+      "chars": 1583,
+      "tokens": 586
+     },
+     {
+      "entry": "client/README.md",
+      "chars": 9521,
+      "tokens": 3526
+     },
+     {
+      "entry": "client/main/CLIPS.md",
+      "chars": 10932,
+      "tokens": 4049
+     }
+    ],
+    "chars": 22036,
+    "tokens": 8161,
+    "answers": true
+   },
+   "agentGuide": {
+    "file": "server/death-muffin/discord-agent/guides/clips.md",
+    "tokens": 3167
+   }
+  },
+  {
+   "id": "coop-guest-rewards",
+   "question": "When a party's guest kills a boss, who gets paid, and by whom?",
+   "fact": "the host pays every member in range",
+   "rev": "a1f09add",
+   "before": {
+    "parts": [
+     {
+      "entry": "client/README.md \"Co-op on the core\"",
+      "chars": 20161,
+      "tokens": 7467
+     },
+     {
+      "entry": "client/next/party/README.md",
+      "chars": 14669,
+      "tokens": 5433
+     }
+    ],
+    "chars": 34830,
+    "tokens": 12900,
+    "answers": true
+   },
+   "after": {
+    "parts": [
+     {
+      "entry": "README.md \"Documentation map\"",
+      "chars": 1583,
+      "tokens": 586
+     },
+     {
+      "entry": "client/README.md",
+      "chars": 9521,
+      "tokens": 3526
+     },
+     {
+      "entry": "client/next/party/CORE-NETWORK.md",
+      "chars": 10910,
+      "tokens": 4041
+     },
+     {
+      "entry": "client/next/party/README.md",
+      "chars": 17162,
+      "tokens": 6356
+     }
+    ],
+    "chars": 39176,
+    "tokens": 14510,
+    "answers": true
+   }
+  },
+  {
+   "id": "depths-worker-thread",
+   "question": "What may the Depths' floor generator do on its worker thread?",
+   "fact": "A worker computes data and hands it back",
+   "rev": "a1f09add",
+   "before": {
+    "parts": [
+     {
+      "entry": "client/README.md \"Threads\"",
+      "chars": 4572,
+      "tokens": 1693
+     },
+     {
+      "entry": "client/next/depths/README.md",
+      "chars": 5305,
+      "tokens": 1965
+     }
+    ],
+    "chars": 9877,
+    "tokens": 3658,
+    "answers": true
+   },
+   "after": {
+    "parts": [
+     {
+      "entry": "README.md \"Documentation map\"",
+      "chars": 1583,
+      "tokens": 586
+     },
+     {
+      "entry": "client/README.md",
+      "chars": 9521,
+      "tokens": 3526
+     },
+     {
+      "entry": "client/core/THREADING.md",
+      "chars": 4732,
+      "tokens": 1753
+     },
+     {
+      "entry": "client/next/depths/README.md",
+      "chars": 5345,
+      "tokens": 1980
+     }
+    ],
+    "chars": 21181,
+    "tokens": 7845,
+    "answers": true
+   }
+  },
+  {
+   "id": "backend-save-validation",
+   "question": "How does the backend check a character's progress save?",
+   "fact": "Progress saves are gains",
+   "rev": "a1f09add",
+   "before": {
+    "parts": [
+     {
+      "entry": "server/death-muffin/README.md \"Server authority\"",
+      "chars": 6852,
+      "tokens": 2538
+     }
+    ],
+    "chars": 6852,
+    "tokens": 2538,
+    "answers": true
+   },
+   "after": {
+    "parts": [
+     {
+      "entry": "README.md \"Documentation map\"",
+      "chars": 1583,
+      "tokens": 586
+     },
+     {
+      "entry": "server/death-muffin/README.md \"Server authority\"",
+      "chars": 6852,
+      "tokens": 2538
+     }
+    ],
+    "chars": 8435,
+    "tokens": 3124,
+    "answers": true
+   }
+  },
+  {
+   "id": "roadmap-ascension",
+   "question": "Is Ascension planned, and in which phase?",
+   "fact": "Phase 3: Ascension, redesigned",
+   "rev": "a1f09add",
+   "before": {
+    "parts": [
+     {
+      "entry": "ROADMAP.md \"Phase 3: Ascension, redesigned (the first new feature, B36)\"",
+      "chars": 708,
+      "tokens": 262
+     }
+    ],
+    "chars": 708,
+    "tokens": 262,
+    "answers": true
+   },
+   "after": {
+    "parts": [
+     {
+      "entry": "README.md \"Documentation map\"",
+      "chars": 1583,
+      "tokens": 586
+     },
+     {
+      "entry": "ROADMAP.md \"Phase 3: Ascension, redesigned (the first new feature, B36)\"",
+      "chars": 708,
+      "tokens": 262
+     }
+    ],
+    "chars": 2291,
+    "tokens": 849,
+    "answers": true
+   }
+  }
+ ],
+ "usageBefore": {
+  "claude": {
+   "window": "2026-10-14..2026-10-20 (UTC, calls by their own timestamps)",
+   "groups": {
+    "session": {
+     "sessions": 17,
+     "carriedIn": 1,
+     "calls": 10608,
+     "contextTokens": 5166871919,
+     "output": 8365472,
+     "cacheReadShare": 0.996,
+     "startContextMedian": 48196,
+     "peakContextMedian": 328879,
+     "claudeMdInjected": 13,
+     "docReads": [
+      {
+       "path": "ROADMAP.md",
+       "reads": 5,
+       "chars": 14383,
+       "sessions": 1
+      },
+      {
+       "path": "KNOWN-GAPS.md",
+       "reads": 2,
+       "chars": 3109,
+       "sessions": 2
+      }
+     ]
+    },
+    "agent": {
+     "sessions": 38,
+     "carriedIn": 0,
+     "calls": 867,
+     "contextTokens": 49192553,
+     "output": 401120,
+     "cacheReadShare": 0.953,
+     "startContextMedian": 19465,
+     "peakContextMedian": 53044.5,
+     "claudeMdInjected": 0,
+     "docReads": [
+      {
+       "path": "client/README.md",
+       "reads": 1,
+       "chars": 57464,
+       "sessions": 1
+      },
+      {
+       "path": "ROADMAP.md",
+       "reads": 1,
+       "chars": 25050,
+       "sessions": 1
+      }
+     ]
+    },
+    "subagent": {
+     "sessions": 66,
+     "carriedIn": 0,
+     "calls": 9763,
+     "contextTokens": 3538356838,
+     "output": 11737045,
+     "cacheReadShare": 0.986,
+     "startContextMedian": 39240,
+     "peakContextMedian": 476124,
+     "claudeMdInjected": 30,
+     "docReads": [
+      {
+       "path": "client/README.md",
+       "reads": 17,
+       "chars": 458073,
+       "sessions": 3
+      },
+      {
+       "path": "CLAUDE.md",
+       "reads": 11,
+       "chars": 94833,
+       "sessions": 11
+      }
+     ]
+    }
+   }
+  },
+  "codex": {
+   "window": "2026-09-26..2026-10-20 (UTC, responses by their own timestamps)",
+   "reader": "usage-codex.mjs v1",
+   "rolloutsRead": 87,
+   "groups": {
+    "terminal/mixed": {
+     "sessions": 16,
+     "carriedIn": 0,
+     "responses": 2982,
+     "uncertainResponses": 0,
+     "usage": {
+      "input": 370997162,
+      "cached": 363123712,
+      "cacheWrite": 0,
+      "output": 1207757,
+      "reasoning": 447874,
+      "noncached": 7873450
+     },
+     "cachedShare": 0.979,
+     "firstResponseInput": {
+      "sessions": 16,
+      "median": 16210.5,
+      "min": 15930,
+      "max": 16681
+     },
+     "startNotGenuine": 0,
+     "peakInput": {
+      "median": 218312,
+      "max": 233221
+     },
+     "formats": {
+      "records": 16
+     },
+     "instructionEvidence": {
+      "recorded as none": 16
+     },
+     "explicitInstructionReads": 2,
+     "warnings": {},
+     "repeatReads": 26,
+     "unattributedChars": 7761600,
+     "truncatedOutputs": 188,
+     "imageOutputs": 65,
+     "docReads": [
+      {
+       "path": "CLAUDE.md",
+       "reads": 2,
+       "chars": 15945,
+       "sessions": 2
+      },
+      {
+       "path": "README.md",
+       "reads": 2,
+       "chars": 13706,
+       "sessions": 1
+      }
+     ]
+    },
+    "child/mixed": {
+     "sessions": 1,
+     "carriedIn": 0,
+     "responses": 43,
+     "uncertainResponses": 0,
+     "usage": {
+      "input": 2952228,
+      "cached": 2853376,
+      "cacheWrite": 0,
+      "output": 14772,
+      "reasoning": 5739,
+      "noncached": 98852
+     },
+     "cachedShare": 0.967,
+     "firstResponseInput": {
+      "sessions": 1,
+      "median": 16285,
+      "min": 16285,
+      "max": 16285
+     },
+     "startNotGenuine": 0,
+     "peakInput": {
+      "median": 100144,
+      "max": 100144
+     },
+     "formats": {
+      "records": 1
+     },
+     "instructionEvidence": {
+      "recorded as none": 1
+     },
+     "explicitInstructionReads": 0,
+     "warnings": {},
+     "repeatReads": 0,
+     "unattributedChars": 121644,
+     "truncatedOutputs": 1,
+     "imageOutputs": 0,
+     "docReads": []
+    }
+   }
+  }
+ },
+ "usageAfter": "runtime effect not measured: no Claude, Codex or Discord session has worked on the new docs yet (Stage 3 is not merged or installed); compare later windows with the same commands, per tool and task class"
+}

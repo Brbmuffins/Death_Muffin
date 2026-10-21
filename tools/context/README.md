@@ -185,6 +185,26 @@ than credited to the game as a whole; `selected` sessions were named with `--ses
 decides it. The window works as in `usage.mjs` (UTC dates, both ends included, responses and tool output by their own timestamps;
 `--cohort` for whole sessions that started in it). Warnings say where evidence is missing (no usage recorded is unavailable, not zero).
 
+## Stage 3 2026-10-21
+
+`stage3-2026-10-21.json` (start `a1f09add`). Text sizes, estimated tokens:
+
+- **Always loaded:** Claude sessions `CLAUDE.md` ~3,300 -> ~3,700 (the "Finding task context" section, the never-weaken-a-test line and the
+  copy note); Codex ~0 -> ~3,700 (`AGENTS.md`: the project rules it never had automatically, a correction rather than a saving); the agent's
+  core ~8,600 -> ~8,800.
+- **Before a task:** told to read first ~124,000 (sessions) and ~87,500 (agent) -> nobody is; every audience starts from the map (~600) and,
+  for a client task, the client index (~3,500).
+- **The client manual** ~80,000 -> the index ~3,500 and guides beside the code, opened one or two at a time (the largest about 6,400 with
+  the system README they joined).
+- **Task routes** (`--tasks`): against the bounded old sections (a reader who already knew which section to open), the new route goes from
+  about 600 fewer (the minimap: the old section carried the HUD's budget too) to about 4,200 more (the map and the index on top of a small
+  section); against the sessions' read-first list every route is at least 88% smaller. Each task's answer is found on both sides.
+
+What it does not show: whether a model follows the map. The before windows of `usage.mjs` (Claude, 2026-10-14 to 2026-10-20) and
+`usage-codex.mjs` (Codex, 2026-09-26 to 2026-10-20) are in the file; no session has worked on the new docs yet, so the runtime effect is
+not measured. Compare later windows per tool and task class with the same commands; Claude's and Codex's cache figures are not the same
+measure.
+
 ## Stage 2 2026-10-21
 
 `stage2-2026-10-21.json`: the agent's always-loaded prompt went from about 18,700 to about 8,600 estimated tokens (54% less) when the media

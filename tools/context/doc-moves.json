@@ -35,6 +35,7 @@
   "kept": [
     {"file": "DECISIONS.md", "why": "the decision record says what was true when each decision was made; the old link still lands on the index"},
     {"file": "tools/context/baseline-2026-10-20.json", "why": "measurements of what sessions read before Stage 2, old paths included"},
+    {"file": "tools/context/stage3-2026-10-21.json", "why": "the task routes' before side names the old sections it measured"},
     {"file": "client/game/dm_creature_mat.gd", "why": "an input of the art pack's fingerprint (tools/godot/assets-fp.sh --paths): a comment edit would send every player the art again; the old name still lands on the index row for the look"}
   ],
   "labels": {"Numbers in tests": "client/tools/TESTING.md", "Suite names": "client/tools/TESTING.md", "Static batching is not in the areas": "client/next/perf/DRAW-BUDGET.md", "Bosses in a party": "client/next/party/CORE-NETWORK.md", "The proof": "client/next/party/TESTING.md", "Not yet": "client/next/depths/CORE-INTEGRATION.md"}
