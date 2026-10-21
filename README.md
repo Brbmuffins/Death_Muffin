@@ -27,7 +27,7 @@ Where to read next: [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNO
 | `server/death-muffin/` (scripts) | `publish-godot-client.sh`, `set-online.sh`, `deploy-release.sh`, `announce-release.sh`, nginx and systemd files |
 | `launcher/windows/` | The Windows launcher (.NET Framework 4.8, version in `DeathMuffinLauncher.csproj`). See its README |
 | `teamapp/` | The team app (DECISIONS B54, B55): a Windows tray app for the three team PCs that runs jobs needing a real graphics card (screenshots of a proposal first), with its own updates; `teamapp/windows/` the app, `teamapp/tests/` its tests ([teamapp/README.md](teamapp/README.md)) |
-| `tools/` | `tools/rebuild/` the game's test runner, suite selector and area builder; `tools/godot/` the release's art pack tools; `tools/assets/` the model check; `tools/ai/` Gemini and Tripo generation; `tools/blender*`, `tools/audio/`, SQL generators |
+| `tools/` | `tools/rebuild/` the game's test runner, suite selector and area builder; `tools/godot/` the release's art pack tools; `tools/assets/` the model check; `tools/context/` the rule inventory and what rule text and context cost ([tools/context/README.md](tools/context/README.md)); `tools/ai/` Gemini and Tripo generation; `tools/blender*`, `tools/audio/`, SQL generators |
 | `public/`, `art-manifest/` | Source art, models and audio (the masters of what is in `client/assets/`); generation records |
 | `PATCH_NOTES.json` | Player-facing patch notes, newest first; published to the launcher and site by `announce-release.sh` |
 | `docs/` | Design notes and audits that are still referenced |
@@ -64,6 +64,7 @@ npm run typecheck                                 # tsc --noEmit
 npm run hygiene                                   # stale docs and paths, retired terms, big files, texture imports
 npm run check:models                              # every model's budget, materials, skeleton and clips
 node --test tools/pictures/*.test.mjs             # the picture kinds, the picture builder, every ability has its own icon
+node tools/context/measure.mjs                    # rule text per audience and the rule inventory check (tools/context/README.md)
 launcher/tests/run-local.sh                       # launcher logic tests
 teamapp/tests/run-local.sh                        # team app logic tests (a local file server and a stand-in game; no Windows)
 teamapp/tests/compile-check.sh                    # the whole team app, UI included, compiled against the .NET Framework 4.8 reference assemblies

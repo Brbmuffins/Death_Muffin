@@ -1,0 +1,15 @@
+{
+  "charsPerToken": 2.7,
+  "audiences": {
+    "session": {
+      "what": "a Claude Code session started in a checkout of this repository (also its subagents)",
+      "always": ["CLAUDE.md"],
+      "readFirst": ["README.md", "ROADMAP.md", "DECISIONS.md", "KNOWN-GAPS.md", "client/README.md"]
+    },
+    "agent": {
+      "what": "the Discord dev agent (claude -p --restricted in a job worktree; CLAUDE.md is not loaded for it)",
+      "always": ["server/death-muffin/discord-agent/PROMPT-godot.md"],
+      "readFirst": ["CLAUDE.md", "README.md", "client/README.md"]
+    }
+  }
+}
