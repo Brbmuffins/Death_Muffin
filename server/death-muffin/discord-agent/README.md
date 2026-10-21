@@ -392,7 +392,7 @@ is skipped when those lines do not account for the summary's `N FAILED`, so a fa
 **`regen-godot.sh`** (the agent's, DECISIONS B65): the files the game derives from its sources, made in the same sandbox as `check-godot.sh` (no network, only the
 worktree writable, a private HOME): `node tools/generate-armor-assets.mjs` (the sets' client data copies, the content manifest, item icons, the new migration),
 `npm run build:server-rules` (the backend's `*-rules.cjs` bundles) and `UPDATE_LOOT_PARITY=1 vitest run server/rules/gameplay/__tests__/` (the loot rules' tests, rewriting
-the recorded answers `client/tests/rules_loot/fixtures` holds), each up to 10 minutes and run even when one before it failed, then `git status`; exit 1 when a step
+the recorded answers `client/tests/rules_loot/fixtures` holds) and `node tools/context/sync-instructions.mjs` (`AGENTS.md`, `CLAUDE.md`'s exact copy for Codex), each up to 10 minutes and run even when one before it failed, then `git status`; exit 1 when a step
 failed. The agent runs it after any edit under `server/rules/` and for an armor set (PROMPT-godot.md); CI's "Generated files are current" step and the rules tests
 fail a change whose generated files are not exactly the generators' output, so a forgotten run never ships. `test/sandbox.test.cjs` runs it with stand-in generators
 that try to write outside the worktree.

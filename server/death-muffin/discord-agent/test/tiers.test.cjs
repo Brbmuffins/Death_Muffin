@@ -60,7 +60,7 @@ test('tiers: the offline backend, saves, login and net code of the game are all 
   for (const f of real) assert.equal(gtier(f), 'sensitive', f);
 });
 test('tiers: server, launcher, tools, CI, scripts, deploy and config files are sensitive; so is anything unmatched (root files, old paths)', () => {
-  for (const f of ['server/death-muffin/backend/server.js', 'launcher/src/main.ts', 'tools/godot/run-all-tests.sh', 'tools/godot/fixtures-loot.ts', '.github/workflows/ci.yml', 'client/shoot.sh', 'client/tests/x/run.sh', 'scripts/deploy-x', 'CLAUDE.md', '.claude/settings.json', '.env', 'client/.env.local', '.gitignore',
+  for (const f of ['server/death-muffin/backend/server.js', 'launcher/src/main.ts', 'tools/godot/run-all-tests.sh', 'tools/godot/fixtures-loot.ts', '.github/workflows/ci.yml', 'client/shoot.sh', 'client/tests/x/run.sh', 'scripts/deploy-x', 'CLAUDE.md', 'AGENTS.md', '.claude/settings.json', '.env', 'client/.env.local', '.gitignore',
     'src/gameplay/a.ts', 'package.json', 'ROADMAP.md.txt', 'vite.config.ts', 'Inspiration ART/x.png'])
     assert.equal(gtier(f), 'sensitive', f);
 });
@@ -70,6 +70,13 @@ test('tiers: the combat core and the files the art pack is fingerprinted by are 
     'client/main/qa_driver.gd', 'client/session/s.gd'])
     assert.equal(gtier(f), 'sensitive', f);
   assert.equal(gtier('native/README.md'), 'sensitive', 'a document inside a sensitive area is sensitive too');
+});
+test('tiers: AGENTS.md (CLAUDE.md\'s generated copy for Codex) is sensitive just like CLAUDE.md, added or changed, though *.md is casual', () => {
+  for (const status of ['modify', 'add']) {
+    assert.equal(gtier('AGENTS.md', status), 'sensitive', status);
+    assert.equal(gtier('CLAUDE.md', status), 'sensitive', status);
+  }
+  assert.equal(gtier('client/next/hud/AGENTS.md'), 'casual', 'only the root file is the instruction file');
 });
 test('tiers: docs, markdown and patch notes are casual (any content), but never inside a sensitive area', () => {
   for (const f of ['docs/GRIND-LOOP.md', 'docs/anything.txt', 'README.md', 'ROADMAP.md', 'client/README.md', 'client/ui/onboarding/README.md', 'PATCH_NOTES.json'])

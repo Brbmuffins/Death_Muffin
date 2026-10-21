@@ -2,8 +2,13 @@
   "charsPerToken": 2.7,
   "audiences": {
     "session": {
-      "what": "a Claude Code session started in a checkout of this repository (also its subagents)",
+      "what": "a Claude Code terminal session started in a checkout of this repository (also its subagents)",
       "always": ["CLAUDE.md"],
+      "readFirst": ["README.md", "ROADMAP.md", "DECISIONS.md", "KNOWN-GAPS.md", "client/README.md"]
+    },
+    "codex": {
+      "what": "a Codex terminal session started in a checkout of this repository (Codex loads AGENTS.md, CLAUDE.md's generated copy, from the project root down to its launch folder)",
+      "always": ["AGENTS.md"],
       "readFirst": ["README.md", "ROADMAP.md", "DECISIONS.md", "KNOWN-GAPS.md", "client/README.md"]
     },
     "agent": {

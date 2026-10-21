@@ -115,18 +115,19 @@ ${probeCmd('hide')}`);
   } finally { W.cleanup(); }
 });
 
-test('sandbox: regen-godot.sh (the armor generator, the server rules build and the loot rules tests all run read-only except the worktree)', () => {
+test('sandbox: regen-godot.sh (the armor generator, the server rules build, the loot rules tests and the instructions copy all run read-only except the worktree)', () => {
   const W = world(); try {
     W.w('tools/generate-armor-assets.mjs', `import { execSync } from 'node:child_process'; execSync('bash .probe.sh regen-armor', { stdio: 'inherit' }); console.log('Armor data already up to date.');\n`);
     W.w('package.json', JSON.stringify({ scripts: { 'build:server-rules': probeCmd('regen-rules') } }));
     W.w('node_modules/.bin/vitest', `#!/usr/bin/env bash\n[ "\${UPDATE_LOOT_PARITY:-}" = 1 ] || exit 3\n${probeCmd('regen-vitest')}\necho " Tests  1 passed (1)"\n`, 0o755);
+    W.w('tools/context/sync-instructions.mjs', `import { execSync } from 'node:child_process'; execSync('bash .probe.sh regen-sync', { stdio: 'inherit' }); console.log('AGENTS.md already the same as CLAUDE.md');\n`);
     const r = run(W, 'regen-godot.sh', []); assert.equal(r.status, 0, r.stdout + r.stderr);
-    for (const n of ['regen-armor', 'regen-rules', 'regen-vitest']) verdict(W, n);
-    assert.match(r.stdout, /== armor sets[\s\S]*== server rules[\s\S]*== loot rules tests[\s\S]*== changed files/);
+    for (const n of ['regen-armor', 'regen-rules', 'regen-vitest', 'regen-sync']) verdict(W, n);
+    assert.match(r.stdout, /== armor sets[\s\S]*== server rules[\s\S]*== loot rules tests[\s\S]*== instructions copy[\s\S]*== changed files/);
     // a failing step fails the script, and the steps after it still run
     W.w('tools/generate-armor-assets.mjs', "console.error('armor boom'); process.exit(1);\n");
     const f = run(W, 'regen-godot.sh', []); assert.equal(f.status, 1, f.stdout + f.stderr);
-    assert.match(f.stdout, /armor boom[\s\S]*FAILED: armor sets[\s\S]*== server rules[\s\S]*== loot rules tests/);
+    assert.match(f.stdout, /armor boom[\s\S]*FAILED: armor sets[\s\S]*== server rules[\s\S]*== loot rules tests[\s\S]*== instructions copy/);
   } finally { W.cleanup(); }
 });
 

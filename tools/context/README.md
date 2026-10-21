@@ -1,7 +1,7 @@
 # Context: what the rules cost and where they live
 
-Claude does all the work on this game: sessions started in a checkout (and the subagents they start) and the Discord dev agent. Every
-one of them carries rule text on every call, and every call re-reads the whole conversation so far. This folder measures both and keeps
+Claude builds this game (terminal sessions, the subagents they start, and the Discord dev agent) and Codex terminal sessions review and
+plan it. Every one of them carries rule text on every call, and every call re-reads the whole conversation so far. This folder measures both and keeps
 an inventory of the rules, so the rule text can be reorganised without losing a boundary.
 
 ```
@@ -20,11 +20,18 @@ node --test tools/context/test/*.test.mjs        # also in npm run test:server, 
 | Audience | Always loaded | How |
 |---|---|---|
 | session | `CLAUDE.md` | Claude Code loads it for a session started in the repository, and for one started elsewhere once it works in a checkout |
+| codex | `AGENTS.md` | Codex loads it when it starts in the repository: it reads `AGENTS.md` from the project root down to its launch folder, at launch only |
 | agent | `server/death-muffin/discord-agent/PROMPT-godot.md` | the runner appends its round's snapshot to every call (`runner/lib/agent.cjs`, `runner/lib/guides.cjs`); the agent runs `--restricted`, which does not load `CLAUDE.md` |
 
 The agent's guides (`server/death-muffin/discord-agent/guides/*.md`: screenshots, clips, pictures, models, sound) are not always loaded: the
 runner copies them into the job's worktree (`.dm-guides/`) and the core prompt tells the agent to Read the one a workflow needs
 (server/death-muffin/discord-agent/README.md "Prompt and guides"). A guide is therefore never the home that keeps a protected rule.
+
+`AGENTS.md` is `CLAUDE.md` byte for byte: `CLAUDE.md` is the one written source, and `node tools/context/sync-instructions.mjs` writes the
+copy (`--check` only checks; its test runs in CI and fails on a missing, empty or stale copy; `regen-godot.sh` runs the write too). One
+text, two delivery files, so neither tool needs to read the other's, and every rule written in `CLAUDE.md` has the same clauses in
+`AGENTS.md` for the `codex` audience (`rules.json`, locked like the others in `protected.json`). The Discord runner treats `AGENTS.md` as
+sensitive, like `CLAUDE.md` (`runner/lib/config.cjs` `tiers`).
 
 How sure that is (`usage.mjs` reports it per audience as "the repo's CLAUDE.md was injected in N of M sessions", from the `instructions`
 and `nested_memory` records Claude Code writes when it injects an instruction file; a file merely read does not count):
@@ -37,6 +44,12 @@ and `nested_memory` records Claude Code writes when it injects an instruction fi
   outside the repo gets it only when it works in a checkout's folder (a subagent that reads files through the shell may never), so for
   subagents "always loaded" does not hold; their briefs carry the rules they need. `surfaces.json` still treats `CLAUDE.md` as the
   session audience's always-loaded text, which is what the rule check checks.
+- **Codex: only when it starts in a checkout.** Before 2026-10-21 the repository had no `AGENTS.md`, `~/.codex/config.toml` names no
+  fallback instruction file, and Codex does not read `CLAUDE.md` on its own; it learned the rules only when told to read them. Every Codex
+  session on the game through 2026-10-21 started in the home folder, and Codex builds its instructions at launch, so a later `cd` or
+  `git -C` into a checkout loads nothing: a Codex session that starts outside a checkout (or works on another worktree) must read that
+  checkout's `AGENTS.md` first. `usage-codex.mjs` reports per session whether Codex recorded injecting an `AGENTS.md`, and from which
+  folder ("Codex usage" below).
 
 Token figures are estimates from characters: `charsPerToken` (2.7) is what the agent's own calls show, where the first call's context grew
 about one token for every 2.7 characters its prompt grew between 2026-10-11 and 2026-10-20.
