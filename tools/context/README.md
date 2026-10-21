@@ -209,12 +209,13 @@ evidence is missing (no usage recorded is unavailable, not zero).
   copy note); Codex ~0 -> ~3,700 (`AGENTS.md`: the project rules it never had automatically, a correction rather than a saving); the agent's
   core ~8,600 -> ~8,800.
 - **Before a task:** told to read first ~124,000 (sessions) and ~87,500 (agent) -> nobody is; every audience starts from the map (~600) and,
-  for a client task, the client index (~3,500).
-- **The client manual** ~80,000 -> the index ~3,500 and guides beside the code, opened one or two at a time (the largest about 6,400 with
+  for a client task, the client index (~3,100).
+- **The client manual** ~80,000 -> the index ~3,100 and guides beside the code, opened one or two at a time (the largest about 6,400 with
   the system README they joined).
 - **Task routes** (`--tasks`): against the bounded old sections (a reader who already knew which section to open), the new route goes from
-  about 600 fewer (the minimap: the old section carried the HUD's budget too) to about 4,200 more (the map and the index on top of a small
-  section); against the sessions' read-first list every route is at least 88% smaller. Each task's answer is found on both sides.
+  about 1,050 fewer (the minimap: the old section carried the HUD's budget too) to about 3,700 more (the map and the index on top of a small
+  section); every route is at least 88% smaller than the sessions' read-first list and at least 83% smaller than the agent's (the co-op task;
+  the clip task with its clips guide 87%). Each task's answer is found on both sides.
 
 What it does not show: whether a model follows the map. The before windows of `usage.mjs` (Claude, 2026-10-14 to 2026-10-20) and
 `usage-codex.mjs` (Codex, 2026-09-26 to 2026-10-20) are in the file; no session has worked on the new docs yet, so the runtime effect is

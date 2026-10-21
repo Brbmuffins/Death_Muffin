@@ -6,9 +6,8 @@
    "tree": "21c36ee54dde3f365c06315c95ef9a0d1ac7c589"
   },
   "measured": {
-   "commit": "3cd85835",
-   "tree": "983931aeb01669dd8afcc4cc05ac8ddc6b116651",
-   "note": "the tree whose docs, prompts and rules were measured; the commit that adds this file changes only this file, tools/context/README.md and the kept list of tools/context/doc-moves.json"
+   "commit": "8287d792",
+   "note": "re-measured after the review fixes and Helix's answers (the shorter index, six descriptions merged); the commit that adds this measurement changes only this file and tools/context/README.md"
   }
  },
  "static": {
@@ -54,9 +53,9 @@
     "alwaysTokens": 3682,
     "startsTaskFrom": {
      "README.md \"Documentation map\"": 586,
-     "client/README.md": 3526
+     "client/README.md": 3071
     },
-    "discoveryTokens": 4112
+    "discoveryTokens": 3657
    },
    "codex": {
     "always": {
@@ -65,9 +64,9 @@
     "alwaysTokens": 3682,
     "startsTaskFrom": {
      "README.md \"Documentation map\"": 586,
-     "client/README.md": 3526
+     "client/README.md": 3071
     },
-    "discoveryTokens": 4112
+    "discoveryTokens": 3657
    },
    "agent": {
     "always": {
@@ -76,9 +75,9 @@
     "alwaysTokens": 8761,
     "startsTaskFrom": {
      "README.md \"Documentation map\"": 586,
-     "client/README.md": 3526
+     "client/README.md": 3071
     },
-    "discoveryTokens": 4112,
+    "discoveryTokens": 3657,
     "guideTokens": 11776
    }
   },
@@ -90,42 +89,42 @@
    "after": {
     "index": {
      "file": "client/README.md",
-     "tokens": 3526
+     "tokens": 3071
     },
     "guides": {
      "client/tools/TESTING.md": 1631,
      "client/tools/TEST-SUITES.md": 4419,
-     "client/next/ARCHITECTURE.md": 4380,
+     "client/next/ARCHITECTURE.md": 4669,
      "client/main/SCREENSHOTS.md": 2602,
      "client/main/CLIPS.md": 4049,
      "client/main/RELEASE-CHECKS.md": 2705,
      "client/next/areas/SURGES.md": 2095,
-     "client/next/rites/CORE-INTEGRATION.md": 2380,
+     "client/next/rites/CORE-INTEGRATION.md": 2260,
      "client/next/bosses/CORE-INTEGRATION.md": 4326,
      "client/next/perf/BENCHMARK.md": 4905,
      "client/next/perf/BENCHMARK-REPORT.md": 3429,
      "client/next/perf/DRAW-BUDGET.md": 2362,
      "client/world_fx/README.md": 3208,
-     "client/fx/README.md": 5150,
+     "client/fx/README.md": 5106,
      "client/next/perf/README.md": 4852,
      "client/next/look/README.md": 5406,
-     "client/next/hud/CORE-INTEGRATION.md": 2254,
+     "client/next/hud/CORE-INTEGRATION.md": 2243,
      "client/ui/hud/PERFORMANCE.md": 4904,
      "client/ui/onboarding/README.md": 3546,
      "client/audio/README.md": 3423,
      "client/core/THREADING.md": 1753,
-     "client/next/rewards/AUTHORITY.md": 1803,
-     "client/next/gathering/README.md": 4485,
+     "client/next/rewards/AUTHORITY.md": 1686,
+     "client/next/gathering/README.md": 4347,
      "client/next/party/CORE-NETWORK.md": 4041,
      "client/next/party/README.md": 6356,
      "client/next/party/TESTING.md": 2691,
      "client/front/README.md": 1078,
      "client/net/README.md": 790,
      "client/tools/ASSETS.md": 1134,
-     "client/next/depths/CORE-INTEGRATION.md": 3058,
+     "client/next/depths/CORE-INTEGRATION.md": 2906,
      "client/world/README.md": 3509
     },
-    "guidesTokens": 102724,
+    "guidesTokens": 102431,
     "note": "guides are whole files: the new guides plus the system READMEs that received a section (their own text included), so their total is more than the moved text; a task opens one or two of them"
    }
   },
@@ -174,13 +173,13 @@
      },
      {
       "entry": "client/README.md",
-      "chars": 9521,
-      "tokens": 3526
+      "chars": 8293,
+      "tokens": 3071
      },
      {
       "entry": "client/next/hud/CORE-INTEGRATION.md",
-      "chars": 6085,
-      "tokens": 2254
+      "chars": 6057,
+      "tokens": 2243
      },
      {
       "entry": "client/next/hud/README.md",
@@ -188,8 +187,8 @@
       "tokens": 2558
      }
     ],
-    "chars": 24096,
-    "tokens": 8924,
+    "chars": 22840,
+    "tokens": 8459,
     "answers": true
    }
   },
@@ -219,8 +218,8 @@
      },
      {
       "entry": "client/README.md",
-      "chars": 9521,
-      "tokens": 3526
+      "chars": 8293,
+      "tokens": 3071
      },
      {
       "entry": "client/main/CLIPS.md",
@@ -228,8 +227,8 @@
       "tokens": 4049
      }
     ],
-    "chars": 22036,
-    "tokens": 8161,
+    "chars": 20808,
+    "tokens": 7707,
     "answers": true
    },
    "agentGuide": {
@@ -268,8 +267,8 @@
      },
      {
       "entry": "client/README.md",
-      "chars": 9521,
-      "tokens": 3526
+      "chars": 8293,
+      "tokens": 3071
      },
      {
       "entry": "client/next/party/CORE-NETWORK.md",
@@ -282,8 +281,8 @@
       "tokens": 6356
      }
     ],
-    "chars": 39176,
-    "tokens": 14510,
+    "chars": 37948,
+    "tokens": 14055,
     "answers": true
    }
   },
@@ -318,8 +317,8 @@
      },
      {
       "entry": "client/README.md",
-      "chars": 9521,
-      "tokens": 3526
+      "chars": 8293,
+      "tokens": 3071
      },
      {
       "entry": "client/core/THREADING.md",
@@ -332,8 +331,8 @@
       "tokens": 1980
      }
     ],
-    "chars": 21181,
-    "tokens": 7845,
+    "chars": 19953,
+    "tokens": 7390,
     "answers": true
    }
   },
