@@ -199,7 +199,10 @@ export function responsesOf(r, seen = new Set()) {
 // One session's responses in the window, or null when it is not selected or none of its responses fall inside.
 export function summarizeRollout(r, opts = {}, seen = new Set()) {
   const id = r.meta?.id || null;
-  const picked = opts.sessions?.size ? opts.sessions.has(id) : false;
+  // An explicit selection is the whole selection: any other rollout is left out here, before its responses can enter `seen` (so an
+  // unselected original never takes the response ids of a selected copy).
+  if (opts.sessions?.size && !opts.sessions.has(id)) return null;
+  const picked = !!opts.sessions?.size;
   const where = picked ? { scope: 'selected', reason: 'named by --session/--sessions-file' } : scopeOf(r);
   if (!where) return null;
   if (opts.scope && opts.scope !== 'all' && !picked && where.scope !== opts.scope) return null;

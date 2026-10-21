@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { parseRollout, responsesOf, summarizeRollout, collect, report, formatReport, commandsOf, readsOf } from '../usage-codex.mjs';
 
 const DM = '/home/ubuntu/vps-handoffs/DeathMuffin/wt/feature';
@@ -214,4 +215,26 @@ test('the report holds aggregates only: no session ids, account, plan, rate limi
   const j = JSON.stringify(r) + formatReport(r);
   for (const bad of ['secret-session-id', 'acct-secret', 'secret-plan', 'used_percent', 'a private prompt', dir]) assert.ok(!j.includes(bad), `${bad} is not in the report`);
   assert.equal(r.groups['terminal/dm'].sessions, 1);
+});
+
+test('an explicit selection holds only the named sessions, and an unselected original cannot take a selected copy\'s responses', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-codex-sel-'));
+  const orig = rollout({ id: 'unselected', cwd: DM, start: '2026-10-19T10:00:00.000Z' }).meta().turn('t1', 'm').record('r1', 't1', u(1000));
+  const copy = rollout({ id: 'wanted', cwd: DM, start: '2026-10-19T11:00:00.000Z' }).meta().turn('t1', 'm').record('r1', 't1', u(1000), '2026-10-19T10:00:02.000Z').record('r2', 't2', u(3000));
+  fs.writeFileSync(path.join(dir, 'a.jsonl'), orig.text().join('\n'));
+  fs.writeFileSync(path.join(dir, 'b.jsonl'), copy.text().join('\n'));
+  const c = collect({ dirs: [dir], sessions: new Set(['wanted']), keepIds: true });
+  assert.deepEqual(c.sessions.map((s) => s.id), ['wanted']);
+  assert.equal(c.sessions[0].scope, 'selected');
+  assert.equal(c.sessions[0].responses, 2, 'the copied r1 is counted for the selection, not taken by the unselected original');
+  assert.equal(c.sessions[0].usage.input, 4000);
+  // both command-line forms
+  const cli = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'usage-codex.mjs');
+  const list = path.join(dir, 'ids.txt'); fs.writeFileSync(list, '# private list\nwanted\n');
+  for (const args of [['--session', 'wanted'], ['--sessions-file', list]]) {
+    const out = path.join(dir, 'r.json');
+    execFileSync(process.execPath, [cli, '--dir', dir, ...args, '--json', out], { stdio: 'pipe' });
+    const g = JSON.parse(fs.readFileSync(out, 'utf8')).groups;
+    assert.deepEqual(Object.keys(g), ['terminal/selected'], args[0]); assert.equal(g['terminal/selected'].sessions, 1, args[0]);
+  }
 });
