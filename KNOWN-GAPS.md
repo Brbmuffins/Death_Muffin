@@ -160,6 +160,9 @@ polish list). Also:
   in the middle of it (found 2026-10-19).
 - The old HUD suite (its checks are in `hud` since 2026-10-19) failed one check when it ran beside other suites at load 9 (twice on 2026-10-19) and passed alone; the test runner
   re-runs a failed suite alone, so nothing fails, but the check (the 20 Hz refresh count in `hud`, or the key cast beside it) may still be load-sensitive.
+- The Discord agent's e2e test "bug reports: each new report opens one #in-game-reports thread ..." failed once in a full
+  `server/death-muffin/discord-agent/test/*.test.cjs` run ("player sees 'Looked at'": the posted marker its stand-in report command writes was not
+  there yet) and passed alone three times and in the next full run (found 2026-10-21): load-sensitive.
 
 ## Stability
 
