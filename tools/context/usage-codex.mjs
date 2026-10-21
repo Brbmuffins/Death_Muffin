@@ -107,7 +107,7 @@ export function parseRollout(lines) {
       if (a && typeof a === 'object' && a.text) out.instructions.push({ how: 'world_state', dir: String(a.directory || ''), chars: String(a.text).length, ts });
     } else if (o.type === 'token_usage_record') {
       const turn = out.turns[p.turn_id];
-      out.records.push({ id: p.response_id || null, turn: p.turn_id || null, ts, model: turn?.model || lastModel, usage: usageOf(p.usage), thread: usageOf(p.thread_token_usage) });
+      out.records.push({ id: p.response_id || null, turn: p.turn_id || null, ts, model: turn?.model || lastModel, usage: usageOf(p.usage), thread: p.thread_token_usage ? usageOf(p.thread_token_usage) : null });
     } else if (o.type === 'event_msg' && p.type === 'token_count') {
       if (p.info?.total_token_usage) out.snapshots.push({ ts, total: usageOf(p.info.total_token_usage), last: p.info.last_token_usage ? usageOf(p.info.last_token_usage) : null, model: lastModel });
     } else if (o.type === 'event_msg' && p.type === 'thread_settings_applied') {
@@ -152,9 +152,11 @@ export function responsesOf(r, seen = new Set()) {
   const firstRecordTs = r.records.length ? r.records.map((x) => x.ts).sort()[0] : null;
   let dupes = 0, earliest = null;   // earliest: [ts, copied] of the first response in the file, copied or not
   const note = (ts, copied) => { if (ts && (!earliest || ts < earliest[0])) earliest = [ts, copied]; };
+  const local = emptyUsage();   // everything this file holds as responses, copies included: what its cumulative totals should add up to
   for (const x of r.records) {
     const copied = !!x.id && seen.has('r:' + x.id);
     note(x.ts, copied);
+    addTo(local, x.usage);
     if (copied) { dupes += 1; continue; }
     if (x.id) seen.add('r:' + x.id);
     out.push({ ts: x.ts, model: x.model || r.settingsModel || null, usage: x.usage, certain: true });
@@ -171,8 +173,9 @@ export function responsesOf(r, seen = new Set()) {
     else delta = Object.fromEntries(USAGE_KEYS.map((k) => [k, s.total[k] - (prev ? prev[k] : 0)]));
     prev = s.total;
     note(s.ts, dup);
-    if (dup) { dupes += 1; continue; }
     if (USAGE_KEYS.some((k) => delta[k] < 0)) { warnings.push('a snapshot went down in one field and up in another: skipped'); continue; }
+    addTo(local, delta);
+    if (dup) { dupes += 1; continue; }
     // A change equal to the snapshot's own last-response usage is one response; anything else may hold several.
     const one = s.last && USAGE_KEYS.every((k) => s.last[k] === delta[k]);
     out.push({ ts: s.ts, model: s.model || r.settingsModel || null, usage: delta, certain: !!one, contextKnown: !!one });
@@ -181,19 +184,23 @@ export function responsesOf(r, seen = new Set()) {
   if (resets) warnings.push(`${resets} cumulative reset(s): counting restarted from zero`);
   if (dupes) warnings.push(`${dupes} response(s) already counted from another rollout (resumed or forked)`);
   if (r.badLines) warnings.push(`${r.badLines} unreadable line(s) (truncated rollout?)`);
-  // Coverage: what was counted from this file should equal its last cumulative total (when nothing was a duplicate or reset). With
-  // per-response records that total is the last record's own thread counter: token_count snapshots lag behind the records (a response
-  // with no snapshot after it), so they are not the reference then.
-  const lastTotal = r.records.length ? [...r.records].sort((a, b) => String(a.ts).localeCompare(String(b.ts))).pop().thread
-    : r.snapshots.length ? r.snapshots[r.snapshots.length - 1].total : null;
-  const pure = !(snaps.length && r.records.length);   // a mixed rollout's two sources are not compared
-  if (lastTotal && pure && !dupes && !resets) {
-    const counted = out.reduce((t, x) => addTo(t, x.usage), emptyUsage());
-    if (counted.input !== lastTotal.input || counted.output !== lastTotal.output) warnings.push(`counted ${counted.input} input / ${counted.output} output, the last cumulative total says ${lastTotal.input} / ${lastTotal.output}: part of the rollout is not covered`);
-  }
+  // Coverage: the usage the file's cumulative counters vouch for, against the responses it holds (copies included, so a copy is neither
+  // counted twice nor reported missing). Each series (the records' thread totals, the token_count snapshots) is cut where it falls (a
+  // reset) and its segments' last values are added; the larger series is the evidence. Snapshots usually lag the records, so they only
+  // matter where they show more, as a newer snapshot after the last record does. What the evidence shows beyond the responses is
+  // reported as uncovered: never added to the counted usage, never silently dropped.
+  const evidence = (series) => {
+    const tot = emptyUsage(); let prevS = null;
+    for (const v of series) { if (prevS && v.input < prevS.input) addTo(tot, prevS); prevS = v; }
+    if (prevS) addTo(tot, prevS);
+    return tot;
+  };
+  const evR = evidence(r.records.map((x) => x.thread).filter(Boolean)), evS = evidence(r.snapshots.map((x) => x.total));
+  const uncovered = Object.fromEntries(USAGE_KEYS.map((k) => [k, Math.max(0, Math.max(evR[k], evS[k]) - local[k])]));
+  if (uncovered.input || uncovered.output) warnings.push(`${uncovered.input} input / ${uncovered.output} output in the rollout's cumulative totals but in no response: reported as uncovered, not counted`);
   const format = r.records.length ? (snaps.length ? 'mixed' : 'records') : r.snapshots.length ? 'cumulative' : 'none';
   if (format === 'none') warnings.push('no usage recorded: unavailable, not zero');
-  return { responses: out.sort((a, b) => String(a.ts).localeCompare(String(b.ts))), format, warnings, firstCopied: !!earliest?.[1] };
+  return { responses: out.sort((a, b) => String(a.ts).localeCompare(String(b.ts))), format, warnings, firstCopied: !!earliest?.[1], uncovered };
 }
 
 // One session's responses in the window, or null when it is not selected or none of its responses fall inside.
@@ -206,7 +213,7 @@ export function summarizeRollout(r, opts = {}, seen = new Set()) {
   const where = picked ? { scope: 'selected', reason: 'named by --session/--sessions-file' } : scopeOf(r);
   if (!where) return null;
   if (opts.scope && opts.scope !== 'all' && !picked && where.scope !== opts.scope) return null;
-  const { responses, format, warnings, firstCopied } = responsesOf(r, seen);
+  const { responses, format, warnings, firstCopied, uncovered } = responsesOf(r, seen);
   const w = windowOf(opts);
   const startedInWindow = responses.length ? within(w, responses[0].ts) : false;
   if (opts.cohort && !startedInWindow) return null;
@@ -251,7 +258,7 @@ export function summarizeRollout(r, opts = {}, seen = new Set()) {
     : r.worldStates ? 'recorded as none' : 'unknown (not recorded)';
   return {
     id, file: opts.keepIds ? r.file : undefined, kind: kindOf(r.meta), ...where, cli: r.meta?.cli || null, start: first?.ts || r.first, startedInWindow, format, warnings,
-    responses: inWin.length, uncertainResponses: inWin.filter((x) => !x.certain).length, usage: tot, byModel, peakInput: peak,
+    responses: inWin.length, uncertainResponses: inWin.filter((x) => !x.certain).length, usage: tot, uncovered, byModel, peakInput: peak,
     startKind, firstResponseInput, firstInWindowInput: inWin[0]?.certain ? inWin[0].usage.input : null,
     instructionEvidence, explicitInstructionRead: readsAgents, reads, byTool, unattributedChars: unattributed, truncatedOutputs: truncated, imageOutputs: images, unpairedOutputs: unpaired,
   };
@@ -293,10 +300,10 @@ export function report({ sessions, skipped = 0, files = 0 }, { top = 15 } = {}) 
   for (const s of sessions) (groups[`${s.kind}/${s.scope}`] = groups[`${s.kind}/${s.scope}`] || []).push(s);
   const result = { reader: `usage-codex.mjs v${READER_VERSION}`, files, sessionsOutside: skipped, groups: {} };
   for (const [g, list] of Object.entries(groups)) {
-    const tot = emptyUsage(); const models = {}; const reads = {}; const byTool = {}; const formats = {}; const evidence = {}; const warnings = {};
+    const tot = emptyUsage(); const gap = emptyUsage(); const models = {}; const reads = {}; const byTool = {}; const formats = {}; const evidence = {}; const warnings = {};
     let unattributed = 0, truncated = 0, images = 0;
     for (const s of list) {
-      addTo(tot, s.usage);
+      addTo(tot, s.usage); addTo(gap, s.uncovered);
       for (const [m, b] of Object.entries(s.byModel)) { const t = (models[m] = models[m] || { responses: 0, ...emptyUsage() }); t.responses += b.responses; addTo(t, b); }
       for (const [p, r] of Object.entries(s.reads)) { reads[p] = reads[p] || { reads: 0, chars: 0, sessions: 0 }; reads[p].reads += r.reads; reads[p].chars += r.chars; reads[p].sessions += 1; }
       for (const [t, r] of Object.entries(s.byTool)) { byTool[t] = byTool[t] || { calls: 0, chars: 0 }; byTool[t].calls += r.calls; byTool[t].chars += r.chars; }
@@ -310,6 +317,8 @@ export function report({ sessions, skipped = 0, files = 0 }, { top = 15 } = {}) 
       sessions: list.length, carriedIn: list.filter((s) => !s.startedInWindow).length,
       responses: list.reduce((n, s) => n + s.responses, 0), uncertainResponses: list.reduce((n, s) => n + s.uncertainResponses, 0),
       usage: { ...tot, noncached: tot.input - tot.cached }, cachedShare: tot.input ? tot.cached / tot.input : 0, models,
+      // in the sessions' cumulative totals but in no response (whole rollouts, not split by the window): not part of usage
+      uncovered: { ...gap, sessions: list.filter((s) => s.uncovered.input || s.uncovered.output).length },
       firstResponseInput: { sessions: firsts.length, median: median(firsts), min: firsts.length ? Math.min(...firsts) : null, max: firsts.length ? Math.max(...firsts) : null },
       startNotGenuine: list.filter((s) => s.startKind !== 'genuine').length,
       firstInWindowInput: { median: median(list.map((s) => s.firstInWindowInput).filter((x) => x != null)) },
@@ -332,6 +341,7 @@ export function formatReport(r) {
   for (const [g, x] of Object.entries(r.groups)) {
     lines.push(`== codex ${g}: ${x.sessions} sessions${x.carriedIn ? ` (${x.carriedIn} started before the window)` : ''}, ${x.responses} responses${x.uncertainResponses ? ` (${x.uncertainResponses} derived from cumulative totals, may each hold several)` : ''}`);
     lines.push(`   input ${k(x.usage.input)} (cached ${k(x.usage.cached)} = ${pct(x.cachedShare)}, not cached ${k(x.usage.noncached)}${x.usage.cacheWrite ? `, cache writes ${k(x.usage.cacheWrite)}` : ''}), output ${k(x.usage.output)} (reasoning ${k(x.usage.reasoning)} of it)`);
+    if (x.uncovered.sessions) lines.push(`   UNCOVERED in ${x.uncovered.sessions} sessions: ${k(x.uncovered.input)} input / ${k(x.uncovered.output)} output their cumulative totals show but no response holds (not in the totals above)`);
     lines.push(`   by model: ${Object.entries(x.models).map(([m, t]) => `${m} ${t.responses} responses, ${k(t.input)} input`).join('; ')}`);
     lines.push(`   first response input ${k(x.firstResponseInput.median)} (median of ${x.firstResponseInput.sessions} genuine starts; ${k(x.firstResponseInput.min)}-${k(x.firstResponseInput.max)})${x.startNotGenuine ? `; ${x.startNotGenuine} sessions with an inherited or unknown start` : ''}; first in window ${k(x.firstInWindowInput.median)} (median)`);
     lines.push(`   peak input ${k(x.peakInput.median)} (median), ${k(x.peakInput.max)} (max)`);

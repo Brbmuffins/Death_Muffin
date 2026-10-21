@@ -106,7 +106,55 @@ test('a mixed rollout uses snapshots only before its first per-response record',
 test('a rollout whose counted usage falls short of its last cumulative total says part of it is not covered', () => {
   const b = rollout().meta().turn('t1', 'gpt-6-sol').record('r1', 't1', u(1000));
   b.lines.push({ timestamp: '2026-10-19T10:00:09.000Z', type: 'token_usage_record', payload: { response_id: 'r2', turn_id: 't1', usage: u(500), thread_token_usage: u(9000) } });
-  assert.ok(responsesOf(parse(b)).warnings.some((w) => /not covered/.test(w)));
+  const r = responsesOf(parse(b));
+  assert.ok(r.warnings.some((w) => /in no response: reported as uncovered/.test(w)));
+  assert.equal(r.uncovered.input, 9000 - 1500);
+});
+
+// Thread totals set by hand, for the coverage cases.
+const rec = (id, ts, usage, thread) => ({ timestamp: ts, type: 'token_usage_record', payload: { response_id: id, turn_id: 't1', usage, thread_token_usage: thread } });
+const snap = (ts, total, last) => ({ timestamp: ts, type: 'event_msg', payload: { type: 'token_count', info: { total_token_usage: total, last_token_usage: last } } });
+
+test('coverage: usage the cumulative totals show but no response holds is reported, before, between and after the records', () => {
+  // Codex's case 1: a snapshot of 100, then a response of 200 whose thread total is already 350
+  let b = rollout({ cwd: DM }).meta().turn('t1', 'm');
+  b.raw(snap('2026-10-19T10:01:00.000Z', u(100, 0, 0), u(100, 0, 0))).raw(rec('r1', '2026-10-19T10:02:00.000Z', u(200, 0, 0), u(350, 0, 0)));
+  let s = summarizeRollout(parse(b), {});
+  assert.equal(s.usage.input, 300, 'the snapshot-derived 100 and the record\'s 200');
+  assert.equal(s.uncovered.input, 50); assert.ok(s.warnings.some((w) => /^50 input \/ 0 output .* uncovered/.test(w)));
+  // case 2: a response of 100, then a newer snapshot of 150
+  b = rollout({ cwd: DM }).meta().turn('t1', 'm');
+  b.raw(rec('r1', '2026-10-19T10:02:00.000Z', u(100, 0, 0), u(100, 0, 0))).raw(snap('2026-10-19T10:03:00.000Z', u(150, 0, 0), u(50, 0, 0)));
+  s = summarizeRollout(parse(b), {});
+  assert.equal(s.usage.input, 100); assert.equal(s.uncovered.input, 50);
+  // a complete rollout whose snapshots lag the records, as real ones do: nothing uncovered
+  b = rollout({ cwd: DM }).meta().turn('t1', 'm');
+  b.raw(rec('r1', '2026-10-19T10:02:00.000Z', u(100, 0, 0), u(100, 0, 0))).raw(snap('2026-10-19T10:02:01.000Z', u(100, 0, 0), u(100, 0, 0)))
+    .raw(rec('r2', '2026-10-19T10:03:00.000Z', u(250, 0, 0), u(350, 0, 0)));
+  s = summarizeRollout(parse(b), {});
+  assert.equal(s.usage.input, 350); assert.deepEqual(s.uncovered, { input: 0, cached: 0, cacheWrite: 0, output: 0, reasoning: 0 }); assert.deepEqual(s.warnings, []);
+  report({ sessions: [s] });
+});
+
+test('coverage with copies and resets: a copy is neither counted twice nor called missing, and each reset segment counts once', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-codex-cov-'));
+  const a = rollout({ id: 'orig', cwd: DM, start: '2026-10-19T09:00:00.000Z' }).meta().turn('t1', 'm');
+  a.raw(rec('r1', '2026-10-19T10:02:00.000Z', u(200, 0, 0), u(200, 0, 0)));
+  // the copy holds case 1 with r1 copied from the original: its own snapshot of 100 counts, r1 does not, 50 is still uncovered
+  const c = rollout({ id: 'copy', cwd: DM, start: '2026-10-19T10:00:00.000Z' }).meta().turn('t1', 'm');
+  c.raw(snap('2026-10-19T10:01:00.000Z', u(100, 0, 0), u(100, 0, 0))).raw(rec('r1', '2026-10-19T10:02:00.000Z', u(200, 0, 0), u(350, 0, 0)));
+  fs.writeFileSync(path.join(dir, 'a.jsonl'), a.text().join('\n')); fs.writeFileSync(path.join(dir, 'b.jsonl'), c.text().join('\n'));
+  const got = Object.fromEntries(collect({ dirs: [dir], keepIds: true }).sessions.map((x) => [x.id, x]));
+  assert.equal(got.orig.usage.input, 200); assert.equal(got.orig.uncovered.input, 0);
+  assert.equal(got.copy.usage.input, 100); assert.equal(got.copy.uncovered.input, 50);
+  // records whose thread counter resets: two segments, 100 + 50, all held by responses
+  let b = rollout({ cwd: DM }).meta().turn('t1', 'm');
+  b.raw(rec('r1', '2026-10-19T10:02:00.000Z', u(100, 0, 0), u(100, 0, 0))).raw(rec('r2', '2026-10-19T10:03:00.000Z', u(50, 0, 0), u(50, 0, 0)));
+  assert.equal(summarizeRollout(parse(b), {}).uncovered.input, 0);
+  // snapshots that reset after the records: 120 then 40 is 160 of evidence against 100 counted
+  b = rollout({ cwd: DM }).meta().turn('t1', 'm');
+  b.raw(rec('r1', '2026-10-19T10:02:00.000Z', u(100, 0, 0), u(100, 0, 0))).raw(snap('2026-10-19T10:03:00.000Z', u(120, 0, 0), u(20, 0, 0))).raw(snap('2026-10-19T10:04:00.000Z', u(40, 0, 0), u(40, 0, 0)));
+  assert.equal(summarizeRollout(parse(b), {}).uncovered.input, 60);
 });
 
 test('missing and truncated records: unavailable is not zero, and a bad line is reported', () => {
