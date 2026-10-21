@@ -8,7 +8,8 @@
 //   2. the turn's system prompt is the snapshot's core, for every call of the turn (step-limit handoffs included);
 //   3. the guides are copied into the worktree's .dm-guides/ (git-excluded, in forbiddenPaths), and a missing or edited copy is put back;
 //      the exclude entry is added first when the worktree was made by a runner from before the guides.
-// gitops.removeJobArtifacts removes the snapshot with the worktree. Nothing is ever copied from a worktree back. An install whose core names a guide that is missing or empty runs no turn.
+// gitops.removeJobArtifacts removes the snapshot with the worktree. Nothing is ever copied from a worktree back. An install whose core is empty, or names a guide that is missing or empty, runs no turn
+// (and the valid snapshot in use is kept).
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
@@ -27,6 +28,7 @@ function indexedGuides(core) { return [...new Set([...String(core).matchAll(/\.d
 function readInstalled(cfg) {
   let core;
   try { core = fs.readFileSync(path.join(cfg.toolsDir, 'PROMPT-godot.md'), 'utf8'); } catch { return { error: 'PROMPT-godot.md is missing' }; }
+  if (!core.trim()) return { error: 'PROMPT-godot.md is empty' };   // a turn without the core would carry none of the agent's rules
   const names = indexedGuides(core), guides = {}, missing = [];
   for (const n of names) {
     let t = ''; try { t = fs.readFileSync(path.join(cfg.toolsDir, 'guides', `${n}.md`), 'utf8'); } catch { /* missing */ }

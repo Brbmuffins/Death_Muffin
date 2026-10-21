@@ -334,8 +334,8 @@ per round in `state/guides/<job>/` of the INSTALLED core and guides (placeholder
 again, core and guides together, after a reinstall, when it no longer matches its hashes, or for a job from before the guides (the agent is told
 when its conversation carries on); every call of the turn, handoffs included, carries the snapshot's core; the guides are copied into the
 worktree's `.dm-guides/` (git-excluded, in `forbiddenPaths`, readable under the worktree's file grant), and a missing or edited copy is put back
-and the agent told. Nothing goes from a worktree back to the snapshot or the install. An install whose core names a missing or empty guide runs no
-turn: the thread is told to reinstall. `install-runner.sh` refuses a revision like that and replaces `guides/` whole; the drift report and the
+and the agent told. Nothing goes from a worktree back to the snapshot or the install. An install whose core is empty, or names a missing or empty guide,
+runs no turn: the thread is told to reinstall. `install-runner.sh` refuses a revision like that and replaces `guides/` whole; the drift report and the
 practice run compare the installed guides with `main`. Rule text sizes and the rule inventory: `tools/context/README.md`.
 
 **Progress notes** while a turn runs: `🔧 <pct>% · <sentence> · ⏱ <min> min`. The agent writes `.dm-status` as `<pct>% · <sentence>` (prompt

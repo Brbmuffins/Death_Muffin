@@ -191,7 +191,7 @@ test('guides: a snapshot.json of the wrong shape, or whose guide list no longer 
   assert.match(s.events.filter((e) => e.event === 'guides-snapshot').at(-1).why, /guide list differs from the install/);
 });
 
-test('guides: an install missing a guide the core names runs no turn and says why', () => {
+test('guides: an install missing a guide the core names, or with an empty core, runs no turn and says why', () => {
   const s = setup(); GU.prepareTurn(s.cfg, s.job, { audit: s.audit });
   fs.rmSync(path.join(s.tools, 'guides', 'models.md'));
   const g = GU.prepareTurn(s.cfg, s.job, { audit: s.audit });
@@ -199,6 +199,17 @@ test('guides: an install missing a guide the core names runs no turn and says wh
   assert.equal(g.systemPrompt, undefined); assert.equal(s.events.at(-1).event, 'guides-install-broken');
   fs.writeFileSync(path.join(s.tools, 'guides', 'models.md'), '  \n');
   assert.match(GU.prepareTurn(s.cfg, s.job, { audit: s.audit }).error, /guides\/models\.md/);
+  // an empty or blank core: no turn, and the round's valid snapshot and worktree copies stay as they were
+  fs.writeFileSync(path.join(s.tools, 'guides', 'models.md'), fs.readFileSync(path.join(SRC, 'guides', 'models.md')));
+  const ok = GU.prepareTurn(s.cfg, s.job, { audit: s.audit }); assert.equal(ok.error, undefined);
+  const before = copies(s.wt);
+  for (const blank of ['', ' \n\t\n']) {
+    fs.writeFileSync(path.join(s.tools, 'PROMPT-godot.md'), blank);
+    const e = GU.prepareTurn(s.cfg, s.job, { audit: s.audit });
+    assert.match(e.error, /incomplete \(PROMPT-godot\.md is empty\).*reinstall/); assert.equal(e.systemPrompt, undefined);
+    assert.equal(GU.readSnapshot(s.cfg, s.job).texts['core.md'], ok.systemPrompt, 'the valid snapshot is kept');
+    assert.deepEqual(copies(s.wt), before, 'the worktree copies are kept');
+  }
   // no worktree: nothing to prepare (runTurn reports the missing workspace itself)
   assert.deepEqual(GU.prepareTurn(s.cfg, { ...s.job, worktree: null }), {});
 });
@@ -295,7 +306,7 @@ test('guides e2e: a commit of a guide copy is refused; an edited copy is put bac
   assert.equal(calls(j2).length, before, 'claude was not started');
 });
 
-test('install: the guides are installed from the revision, the folder is replaced whole, and a revision missing a guide its core names installs nothing', () => {
+test('install: the guides are installed from the revision, the folder is replaced whole, and a revision with an empty core or a missing or empty guide installs nothing', () => {
   const { spawnSync } = require('child_process');
   const DEST = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-install-')), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-install-repo-'));
   const install = () => spawnSync('bash', [path.join(tmp, 'server/death-muffin/discord-agent/install-runner.sh'), 'HEAD'], { env: { ...process.env, REPO: tmp, DEST, NO_SYSTEMD: '1', OWNER_ID: IDS.OWNER }, encoding: 'utf8' });
@@ -318,7 +329,13 @@ test('install: the guides are installed from the revision, the folder is replace
     const before = fs.readFileSync(path.join(DEST, 'PROMPT-godot.md'), 'utf8');
     sh(tmp, 'rm', '-q', 'server/death-muffin/discord-agent/guides/sound.md');
     fs.appendFileSync(path.join(tmp, 'server/death-muffin/discord-agent/PROMPT-godot.md'), '\nchanged\n'); sh(tmp, 'commit', '-qam', 'y');
-    r = install(); assert.equal(r.status, 1); assert.match(r.stderr, /names \.dm-guides\/sound\.md but .*guides\/sound\.md is not in that revision; refusing/);
+    r = install(); assert.equal(r.status, 1); assert.match(r.stderr, /names \.dm-guides\/sound\.md but .*guides\/sound\.md is missing or empty in that revision; refusing/);
     assert.equal(fs.readFileSync(path.join(DEST, 'PROMPT-godot.md'), 'utf8'), before); assert.ok(fs.existsSync(path.join(DEST, 'guides', 'sound.md')));
+    // a guide that is there but blank, and a blank core: refused the same way, nothing copied
+    fs.writeFileSync(path.join(tmp, 'server/death-muffin/discord-agent/guides/sound.md'), ' \n\n'); sh(tmp, 'add', '-f', 'server/death-muffin/discord-agent/guides/sound.md'); sh(tmp, 'commit', '-qm', 'z');
+    r = install(); assert.equal(r.status, 1); assert.match(r.stderr, /guides\/sound\.md is missing or empty in that revision; refusing/);
+    fs.writeFileSync(path.join(tmp, 'server/death-muffin/discord-agent/PROMPT-godot.md'), '\n  \n'); sh(tmp, 'commit', '-qam', 'w');
+    r = install(); assert.equal(r.status, 1); assert.match(r.stderr, /PROMPT-godot\.md is missing or empty at HEAD; refusing to install/);
+    assert.equal(fs.readFileSync(path.join(DEST, 'PROMPT-godot.md'), 'utf8'), before); assert.ok(fs.readFileSync(path.join(DEST, 'guides', 'sound.md'), 'utf8').trim());
   } finally { fs.rmSync(DEST, { recursive: true, force: true }); fs.rmSync(tmp, { recursive: true, force: true }); }
 });

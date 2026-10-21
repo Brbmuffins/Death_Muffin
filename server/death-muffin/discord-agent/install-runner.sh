@@ -9,9 +9,10 @@ REPO="${REPO:-/home/ubuntu/vps-handoffs/DeathMuffin/game}"
 DEST="${DEST:-/home/ubuntu/death-muffin/discord-agent}"
 REV="${1:-origin/main}"
 SRC=server/death-muffin/discord-agent
-# Every guide the core prompt names must be in the revision, or nothing is installed (the runner would refuse every turn).
+# The core prompt and every guide it names must be in the revision and hold text, or nothing is installed (the runner would refuse every turn).
+[ -n "$(git -C "$REPO" show "$REV:$SRC/PROMPT-godot.md" 2>/dev/null | tr -d '[:space:]')" ] || { echo "$SRC/PROMPT-godot.md is missing or empty at $REV; refusing to install" >&2; exit 1; }
 for n in $(git -C "$REPO" show "$REV:$SRC/PROMPT-godot.md" | grep -o '\.dm-guides/[a-z0-9-]*\.md' | sort -u | sed 's#^\.dm-guides/##'); do
-  git -C "$REPO" cat-file -e "$REV:$SRC/guides/$n" 2>/dev/null || { echo "PROMPT-godot.md at $REV names .dm-guides/$n but $SRC/guides/$n is not in that revision; refusing to install" >&2; exit 1; }
+  [ -n "$(git -C "$REPO" show "$REV:$SRC/guides/$n" 2>/dev/null | tr -d '[:space:]')" ] || { echo "PROMPT-godot.md at $REV names .dm-guides/$n but $SRC/guides/$n is missing or empty in that revision; refusing to install" >&2; exit 1; }
 done
 mkdir -p "$DEST/runner/lib" "$DEST/state"
 chmod 700 "$DEST/state"
