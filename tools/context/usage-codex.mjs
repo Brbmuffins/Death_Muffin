@@ -40,27 +40,69 @@ const usageOf = (u) => ({ input: u?.input_tokens || 0, cached: u?.cached_input_t
 const addTo = (t, u) => { for (const k of USAGE_KEYS) t[k] += u[k]; return t; };
 const within = (w, ts) => { const t = Date.parse(ts); return !Number.isNaN(t) && t >= w.from && t < w.to; };
 
-// Repo-relative for any Death Muffin checkout; everything else, the review folder included, is one bucket so the output names no private path.
-const rel = (p) => { const m = /\/DeathMuffin\/(?:game|wt\/[^/]+)\/(.+)$/.exec(p); return m ? m[1] : p.startsWith('/') || p.startsWith('~') ? '(outside the repo)' : p; };
+// A path a command named, resolved without touching the disk: absolute as it is, relative against the command's working directory (its
+// own `workdir`, else the folder the turn or session ran in), `..` folded. null when the folder is unknown or the path is a ~ path.
+export function resolvePath(p, workdir, cwd) {
+  if (!p || p.startsWith('~')) return null;
+  if (p.startsWith('/')) return path.posix.normalize(p);
+  const base = workdir ? (workdir.startsWith('/') ? workdir : cwd ? path.posix.join(cwd, workdir) : null) : cwd;
+  return base && base.startsWith('/') ? path.posix.normalize(path.posix.join(base, p)) : null;
+}
+// What the report may name: a path inside a Death Muffin checkout, relative to it; anything else is a bucket, so no private path leaves.
+export function rel(abs) {
+  if (abs == null) return '(unknown folder)';
+  const m = /\/vps-handoffs\/DeathMuffin\/(?:game|wt\/[^/]+)\/(.+)$/.exec(abs);
+  return m ? m[1] : '(outside the repo)';
+}
+// A command's program for the report: leading variable assignments dropped (their values never shown), the program's base name, and
+// "(other)" for anything that does not look like a plain program name.
+export function familyOf(cmd) {
+  const w = String(cmd || '').trim().replace(/^(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)+/, '').split(/\s+/)[0] || '';
+  const b = path.posix.basename(w);
+  return /^[A-Za-z0-9][\w.+-]{0,39}$/.test(b) ? b : '(other)';
+}
 
-// The shell commands one tool call ran, without running anything: a function call carries {cmd|command}; Codex's code-mode `exec` tool
-// carries JavaScript whose tools.exec_command({cmd: "..."}) calls name them. Unrecognised input gives no commands.
+// A string literal of the JavaScript a code-mode call carries, and the end of it.
+function literalAt(src, i) {
+  const q = src[i]; if (!'"\'`'.includes(q)) return null;
+  for (let j = i + 1; j < src.length; j++) {
+    if (src[j] === '\\') { j++; continue; }
+    if (src[j] === q) {
+      const raw = src.slice(i, j + 1);
+      let v; try { v = q === '"' ? JSON.parse(raw) : raw.slice(1, -1).replace(/\\(.)/g, '$1'); } catch { v = raw.slice(1, -1); }
+      return { v, end: j + 1 };
+    }
+  }
+  return null;
+}
+// The shell commands one tool call ran, without running anything, each with its own working directory if it gave one: a function call
+// carries {cmd|command, workdir}; Codex's code-mode `exec` tool carries JavaScript whose tools.exec_command({cmd: "...", workdir: "..."})
+// objects name them. Unrecognised input gives no commands.
 export function commandsOf(name, input) {
   if (typeof input !== 'string') return [];
   if (name === 'exec') {
     const out = [];
-    const re = /exec_command\(\s*\{\s*cmd\s*:\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)/g;
+    const re = /exec_command\(\s*\{/g;
     let m;
     while ((m = re.exec(input))) {
-      const lit = m[1];
-      try { out.push(lit[0] === '"' ? JSON.parse(lit) : lit.slice(1, -1).replace(/\\(.)/g, '$1')); } catch { out.push(lit.slice(1, -1)); }
+      const fields = {}; let i = re.lastIndex;
+      // the object literal's string fields, up to its closing brace
+      while (i < input.length && input[i] !== '}') {
+        const k = /^\s*,?\s*([A-Za-z_]+)\s*:\s*/.exec(input.slice(i, i + 200));
+        if (!k) { i++; continue; }
+        i += k[0].length;
+        const lit = literalAt(input, i);
+        if (lit) { fields[k[1]] = lit.v; i = lit.end; } else { while (i < input.length && !',}'.includes(input[i])) i++; }
+      }
+      if (typeof fields.cmd === 'string') out.push({ cmd: fields.cmd, workdir: typeof fields.workdir === 'string' ? fields.workdir : null });
     }
     return out;
   }
   try {
     const a = JSON.parse(input);
     const c = a.cmd ?? a.command;
-    return typeof c === 'string' ? [c] : Array.isArray(c) ? [c.join(' ')] : [];
+    const cmd = typeof c === 'string' ? c : Array.isArray(c) ? c.join(' ') : null;
+    return cmd == null ? [] : [{ cmd, workdir: typeof a.workdir === 'string' ? a.workdir : null }];
   } catch { return []; }
 }
 
@@ -87,6 +129,7 @@ const hasImage = (o) => Array.isArray(o) && o.some((b) => b?.type === 'input_ima
 export function parseRollout(lines) {
   const out = { meta: null, metas: 0, turns: {}, records: [], snapshots: [], calls: new Map(), outputs: [], instructions: [], worldStates: 0, cwds: {}, badLines: 0, first: null, last: null };
   let lastModel = null;   // the model in effect at this point of the file (turn contexts and thread settings, in order); none yet = unknown
+  let lastCwd = null;     // the folder in effect (session_meta, then each turn_context)
   for (const line of lines) {
     if (!line.trim()) continue;
     let o; try { o = JSON.parse(line); } catch { out.badLines += 1; continue; }
@@ -96,11 +139,11 @@ export function parseRollout(lines) {
     if (o.type === 'session_meta') {
       out.metas += 1;
       if (!out.meta) out.meta = { id: p.id || p.session_id || null, cwd: p.cwd || null, cli: p.cli_version || null, source: p.source ?? null, originator: p.originator || null, baseChars: String(p.base_instructions?.text || '').length };
-      if (p.cwd) out.cwds[p.cwd] = (out.cwds[p.cwd] || 0) + 1;
+      if (p.cwd) { out.cwds[p.cwd] = (out.cwds[p.cwd] || 0) + 1; lastCwd = lastCwd || p.cwd; }
     } else if (o.type === 'turn_context') {
       if (p.turn_id) out.turns[p.turn_id] = { model: p.model || null, cwd: p.cwd || null };
       if (p.model) lastModel = p.model;
-      if (p.cwd) out.cwds[p.cwd] = (out.cwds[p.cwd] || 0) + 1;
+      if (p.cwd) { out.cwds[p.cwd] = (out.cwds[p.cwd] || 0) + 1; lastCwd = p.cwd; }
     } else if (o.type === 'world_state') {
       out.worldStates += 1;
       const a = p.state?.agents_md;
@@ -113,7 +156,8 @@ export function parseRollout(lines) {
     } else if (o.type === 'event_msg' && p.type === 'thread_settings_applied') {
       if (p.thread_settings?.model) lastModel = p.thread_settings.model;
     } else if (o.type === 'response_item' && ['custom_tool_call', 'function_call'].includes(p.type)) {
-      if (p.call_id) out.calls.set(p.call_id, { name: p.name || '?', input: p.input ?? p.arguments ?? '', ts });
+      const turnCwd = out.turns[p.internal_chat_message_metadata_passthrough?.turn_id]?.cwd;
+      if (p.call_id) out.calls.set(p.call_id, { name: p.name || '?', input: p.input ?? p.arguments ?? '', ts, cwd: turnCwd || lastCwd });
     } else if (o.type === 'response_item' && ['custom_tool_call_output', 'function_call_output'].includes(p.type)) {
       const text = outputText(p.output);
       out.outputs.push({ call: p.call_id || null, ts, chars: text.length, truncated: /truncated output/i.test(text.slice(0, 400)), image: hasImage(p.output) });
@@ -141,7 +185,7 @@ export function scopeOf(r) {
   let inDm = 0, all = 0;
   for (const [cwd, n] of Object.entries(r.cwds)) { all += n; if (classify(cwd)) inDm += n; }
   if (all && inDm * 2 >= all) return { scope: 'dm', reason: 'worked in a Death Muffin checkout' };
-  for (const c of r.calls.values()) for (const cmd of commandsOf(c.name, c.input)) if (DM_PATH.test(cmd)) return { scope: 'mixed', reason: 'started outside a checkout; its commands name Death Muffin paths' };
+  for (const c of r.calls.values()) for (const x of commandsOf(c.name, c.input)) if (DM_PATH.test(x.cmd) || (x.workdir && DM_PATH.test(x.workdir + '/'))) return { scope: 'mixed', reason: 'started outside a checkout; its commands name or run in Death Muffin paths' };
   return null;
 }
 
@@ -249,15 +293,15 @@ export function summarizeRollout(r, opts = {}, seen = new Set()) {
     if (!c) { unpaired += 1; unattributed += o.chars; continue; }
     const cmds = commandsOf(c.name, c.input);
     if (cmds.length !== 1) { unattributed += o.chars; const k = c.name === 'exec' ? (cmds.length ? 'exec: batched commands' : 'exec: code-mode, no command') : c.name; byTool[k] = byTool[k] || { calls: 0, chars: 0 }; byTool[k].calls += 1; byTool[k].chars += o.chars; continue; }
-    const fam = 'shell: ' + (cmds[0].trim().split(/\s+/)[0] || '?');
+    const fam = 'shell: ' + familyOf(cmds[0].cmd);
     byTool[fam] = byTool[fam] || { calls: 0, chars: 0 }; byTool[fam].calls += 1; byTool[fam].chars += o.chars;
-    const files = readsOf(cmds[0]);
-    if (files.length === 1) { const p = rel(files[0]); reads[p] = reads[p] || { reads: 0, chars: 0 }; reads[p].reads += 1; reads[p].chars += o.chars; }
-    else if (files.length > 1) { for (const f of files) { const p = rel(f); reads[p] = reads[p] || { reads: 0, chars: 0 }; reads[p].reads += 1; } unattributed += o.chars; }
+    const files = readsOf(cmds[0].cmd).map((f) => rel(resolvePath(f, cmds[0].workdir, c.cwd)));
+    if (files.length === 1) { const p = files[0]; reads[p] = reads[p] || { reads: 0, chars: 0 }; reads[p].reads += 1; reads[p].chars += o.chars; }
+    else if (files.length > 1) { for (const p of files) { reads[p] = reads[p] || { reads: 0, chars: 0 }; reads[p].reads += 1; } unattributed += o.chars; }
   }
   // Instructions: what Codex recorded injecting (an AGENTS.md block), apart from files a command read; nothing recorded is unknown.
   const injected = r.instructions.map((i) => ({ how: i.how, checkout: classify(i.dir) ? 'death-muffin' : 'other', chars: i.chars }));
-  const readsAgents = Object.keys(reads).some((p) => /(^|\/)(AGENTS|CLAUDE)\.md$/.test(p) && !p.startsWith('('));
+  const readsAgents = 'AGENTS.md' in reads || 'CLAUDE.md' in reads;   // a checkout's own instruction file, resolved, not any file of that name
   const instructionEvidence = injected.some((i) => i.checkout === 'death-muffin') ? 'injected (Death Muffin AGENTS.md)'
     : injected.length ? 'injected (another folder\'s AGENTS.md)'
     : r.worldStates ? 'recorded as none' : 'unknown (not recorded)';

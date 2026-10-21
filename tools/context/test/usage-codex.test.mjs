@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { parseRollout, responsesOf, summarizeRollout, collect, report, formatReport, commandsOf, readsOf } from '../usage-codex.mjs';
+import { parseRollout, responsesOf, summarizeRollout, collect, report, formatReport, commandsOf, readsOf, resolvePath, rel, familyOf } from '../usage-codex.mjs';
 
 const DM = '/home/ubuntu/vps-handoffs/DeathMuffin/wt/feature';
 const u = (input, cached = 0, output = 10, reasoning = 0) => ({ input_tokens: input, cached_input_tokens: cached, cache_write_input_tokens: 0, output_tokens: output, reasoning_output_tokens: reasoning, total_tokens: input + output });
@@ -245,9 +245,10 @@ test('tool output: one recognised read names its file; batched and code-mode out
 });
 
 test('commands are read from code-mode and function calls without running them; only simple reads name files', () => {
-  assert.deepEqual(commandsOf('exec', 'await tools.exec_command({cmd:"cat a \\"b\\""}); await tools.exec_command({ cmd: \'ls\' })'), ['cat a "b"', 'ls']);
-  assert.deepEqual(commandsOf('exec_command', '{"cmd":"git status"}'), ['git status']);
-  assert.deepEqual(commandsOf('shell', '{"command":["bash","-lc","ls"]}'), ['bash -lc ls']);
+  assert.deepEqual(commandsOf('exec', 'await tools.exec_command({cmd:"cat a \\"b\\""}); await tools.exec_command({ cmd: \'ls\', workdir: "/w" })'), [{ cmd: 'cat a "b"', workdir: null }, { cmd: 'ls', workdir: '/w' }]);
+  assert.deepEqual(commandsOf('exec', 'tools.exec_command({workdir:"/w",max_output_tokens:30,cmd:"pwd"})'), [{ cmd: 'pwd', workdir: '/w' }], 'fields in any order');
+  assert.deepEqual(commandsOf('exec_command', '{"cmd":"git status","workdir":"/g"}'), [{ cmd: 'git status', workdir: '/g' }]);
+  assert.deepEqual(commandsOf('shell', '{"command":["bash","-lc","ls"]}'), [{ cmd: 'bash -lc ls', workdir: null }]);
   assert.deepEqual(commandsOf('exec', 'not code'), []);
   assert.deepEqual(readsOf("sed -n '1,40p' a.md"), ['a.md']);
   assert.deepEqual(readsOf('head -n 20 a.md b.md'), ['a.md', 'b.md']);
@@ -325,4 +326,34 @@ test('a model applies from where it is set: a later setting is never given to ea
   assert.equal(m.unknown.input, 100); assert.equal(m['later-model'].input, 200);
   assert.equal(m['turn-model'].input, 450, 'a record of a known turn takes that turn\'s model, even after a newer setting');
   assert.ok(!m.newest);
+});
+
+test('paths: resolved against the command\'s own folder, named only inside a checkout, never a private path; labels never leak', () => {
+  const GAME = '/home/ubuntu/vps-handoffs/DeathMuffin/game';
+  // a relative path that climbs out of the checkout, a traversal that stays in it, a workdir that overrides the turn's folder
+  const b = rollout({ cwd: GAME }).meta().turn('t1', 'm').record('r1', 't1', u(1))
+    .exec('c1', cmd('cat ../../private/review-notes.md'), 'p'.repeat(30))
+    .exec('c2', cmd('cat client/../README.md'), 'r'.repeat(20))
+    .exec('c3', 'text(await tools.exec_command({cmd:"cat AGENTS.md",workdir:"/home/ubuntu/notes"}));', 'a'.repeat(10))
+    .exec('c4', 'text(await tools.exec_command({cmd:"cat CLAUDE.md",workdir:"/home/ubuntu/vps-handoffs/DeathMuffin/wt/feature"}));', 'c'.repeat(5))
+    .exec('c5', cmd('/home/ubuntu/secret-tools/bin/runner --x'), 'x')
+    .exec('c6', cmd('TOKEN=abc123 node tools/x.mjs'), 'y');
+  const s = summarizeRollout(parse(b), {});
+  assert.deepEqual(Object.keys(s.reads).sort(), ['(outside the repo)', 'CLAUDE.md', 'README.md']);
+  assert.equal(s.reads['(outside the repo)'].reads, 2, 'the climbed-out path and AGENTS.md from another folder are both outside');
+  assert.equal(s.reads['README.md'].chars, 20);
+  assert.equal(s.explicitInstructionRead, true, 'CLAUDE.md read in a checkout through a workdir');
+  const out = JSON.stringify(report({ sessions: [s] }));
+  for (const bad of ['private', 'review-notes', 'secret-tools', 'abc123', 'TOKEN', '/home/ubuntu']) assert.ok(!out.includes(bad), bad);
+  assert.ok(s.byTool['shell: runner'] && s.byTool['shell: node']);
+  // the same AGENTS.md from another folder is not a project instruction read
+  const o = rollout({ cwd: '/home/ubuntu' }).meta().turn('t1', 'm').record('r1', 't1', u(1)).exec('c1', cmd(`git -C ${GAME} status`), 'ok').exec('c2', cmd('cat AGENTS.md'), 'z');
+  const so = summarizeRollout(parse(o), {});
+  assert.equal(so.scope, 'mixed'); assert.equal(so.explicitInstructionRead, false); assert.ok(so.reads['(outside the repo)']);
+  // no folder known at all: an unknown bucket, not a guess
+  assert.equal(rel(resolvePath('README.md', null, null)), '(unknown folder)');
+  assert.equal(rel(resolvePath('~/x.md', null, GAME)), '(unknown folder)');
+  assert.equal(rel(resolvePath('x/../../../etc/passwd', null, GAME)), '(outside the repo)');
+  assert.equal(rel(resolvePath('next/x.md', 'client', GAME)), 'client/next/x.md', 'a relative workdir sits in the turn\'s folder');
+  assert.equal(familyOf('A=1 B=two /usr/bin/env node x'), 'env'); assert.equal(familyOf('"weird name" x'), '(other)');
 });
