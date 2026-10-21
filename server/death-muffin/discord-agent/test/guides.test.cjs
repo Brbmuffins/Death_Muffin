@@ -164,6 +164,33 @@ test('guides: a changed or incomplete snapshot is made again from the installed 
   assert.equal(GU.readSnapshot(s.cfg, s.job).texts['core.md'], a.systemPrompt);
 });
 
+test('guides: a snapshot.json of the wrong shape, or whose guide list no longer matches the core, is made again on the next turn', () => {
+  const s = setup(); const a = GU.prepareTurn(s.cfg, s.job, { audit: s.audit }); s.job.sessionId = 'sess-1';
+  const file = path.join(s.state, 'guides', 'abc123', 'snapshot.json');
+  const good = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const cases = {
+    'files null': (m) => { m.files = null; },
+    'files a list': (m) => { m.files = ['core.md']; },
+    'guides not a list': (m) => { m.guides = 'sound'; },
+    'a guide name with a path': (m) => { m.guides[0] = '../core'; },
+    'a hash that is not one': (m) => { m.files['core.md'] = 'x'; },
+    'no key': (m) => { delete m.key; },
+    'an extra file': (m) => { m.files['extra.md'] = m.files['core.md']; },
+    // consistent with itself (the guide and its hash both gone), but no longer the installed core's set: the core still names sound.md
+    'a guide left out': (m) => { m.guides = m.guides.filter((n) => n !== 'sound'); delete m.files['sound.md']; },
+  };
+  for (const [name, edit] of Object.entries(cases)) {
+    const m = JSON.parse(JSON.stringify(good)); edit(m); fs.writeFileSync(file, JSON.stringify(m));
+    const n = s.events.length;
+    let g; assert.doesNotThrow(() => { g = GU.prepareTurn(s.cfg, s.job, { audit: s.audit }); }, name);
+    assert.equal(g.error, undefined, name); assert.equal(g.systemPrompt, a.systemPrompt, name);
+    assert.ok(s.events.slice(n).some((e) => e.event === 'guides-snapshot' && /^broken: /.test(e.why)), `${name}: rebuilt`);
+    assert.deepEqual(Object.keys(copies(s.wt)), GUIDE_FILES, `${name}: every guide back in the worktree`);
+    assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')).files, good.files, `${name}: the snapshot is whole again`);
+  }
+  assert.match(s.events.filter((e) => e.event === 'guides-snapshot').at(-1).why, /guide list differs from the install/);
+});
+
 test('guides: an install missing a guide the core names runs no turn and says why', () => {
   const s = setup(); GU.prepareTurn(s.cfg, s.job, { audit: s.audit });
   fs.rmSync(path.join(s.tools, 'guides', 'models.md'));

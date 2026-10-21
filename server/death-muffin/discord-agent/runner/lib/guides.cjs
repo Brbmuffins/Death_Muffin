@@ -50,15 +50,28 @@ function writeSnapshot(cfg, job, inst) {
   fs.writeFileSync(path.join(dir, 'snapshot.json'), JSON.stringify(meta, null, 1), { mode: 0o600 });
   return { meta, texts };
 }
+// What is wrong with a snapshot.json, or null: every field of the shape writeSnapshot writes, and a hash for exactly the core and its guides.
+const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+function metaProblem(meta) {
+  if (!isObject(meta)) return 'is not an object';
+  for (const k of ['version', 'key', 'branch']) if (typeof meta[k] !== 'string' || !meta[k]) return `has no ${k}`;
+  if (!Array.isArray(meta.guides) || meta.guides.some((n) => typeof n !== 'string' || !/^[a-z0-9-]+$/.test(n)) || new Set(meta.guides).size !== meta.guides.length) return 'has a bad guide list';
+  if (!isObject(meta.files)) return 'has no file hashes';
+  const want = ['core.md', ...meta.guides.map((n) => `${n}.md`)].sort();
+  const have = Object.keys(meta.files).sort();
+  if (want.join('\n') !== have.join('\n')) return 'lists other files than its guides';
+  if (have.some((f) => typeof meta.files[f] !== 'string' || !/^[0-9a-f]{64}$/.test(meta.files[f]))) return 'has a bad file hash';
+  return null;
+}
 // The round's snapshot: { meta, texts }, { broken: why } (unreadable, incomplete or changed since it was written), or null (none yet).
 function readSnapshot(cfg, job) {
   const dir = snapDir(cfg, job);
   if (!fs.existsSync(dir)) return null;
   let meta;
   try { meta = JSON.parse(fs.readFileSync(path.join(dir, 'snapshot.json'), 'utf8')); } catch { return { broken: 'snapshot.json unreadable' }; }
-  if (!meta || typeof meta.files !== 'object' || !Array.isArray(meta.guides) || !meta.files['core.md']) return { broken: 'snapshot.json incomplete' };
+  const why = metaProblem(meta);
+  if (why) return { broken: `snapshot.json ${why}` };
   const want = ['core.md', ...meta.guides.map((n) => `${n}.md`)];
-  if (want.length !== Object.keys(meta.files).length || want.some((f) => !meta.files[f])) return { broken: 'snapshot.json incomplete' };
   const texts = {};
   for (const f of want) {
     let t; try { t = fs.readFileSync(path.join(dir, f), 'utf8'); } catch { return { broken: `${f} missing` }; }
@@ -103,6 +116,8 @@ function prepareTurn(cfg, job, { audit } = {}) {
   }
   const notes = [];
   let snap = readSnapshot(cfg, job), fresh = false;
+  // a snapshot is only for the install it was made from: its guides must be the ones the installed core names, in the same order
+  if (snap && !snap.broken && snap.meta.key === keyFor(cfg, job, inst.version) && snap.meta.guides.join(',') !== inst.names.join(',')) snap = { broken: 'guide list differs from the install' };
   if (!snap || snap.broken || snap.meta.key !== keyFor(cfg, job, inst.version)) {
     const why = !snap ? 'none' : snap.broken ? `broken: ${snap.broken}` : snap.meta.branch !== job.branch ? 'new round' : 'install changed';
     snap = writeSnapshot(cfg, job, inst); fresh = true;
