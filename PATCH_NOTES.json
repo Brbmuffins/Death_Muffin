@@ -3,6 +3,7 @@
     "date": "2026-10-19",
     "title": "Small Fixes",
     "items": [
+      "The Reaper's rites now have their own icons instead of borrowing other classes' pictures.",
       "Joining a friend's party late no longer leaves your game half-started: you show as online to friends and get update notices again.",
       "Item tooltips no longer squeeze a stat's name down to one letter per line when its explanation is long.",
       "The Reaper's soul bag now fills when a soul actually reaches her, not the moment an enemy dies.",
