@@ -74,6 +74,18 @@ function failedSuites(out) {
 function suitesFailing(out) { return [...new Set([...String(out).matchAll(/^([A-Za-z0-9_/-]+)\s+\S+\s+exit=([1-9]\d*)/gm)].map((m) => m[1]))]; }
 const fmtList = (a, n) => (a.length > n ? a.slice(0, n).join('\n') + `\n… +${a.length - n} more` : a.join('\n'));
 
+// What the session that ran out of steps is asked for (agentTurn): the same six parts a terminal session's handoff carries (the private review
+// workflow), within the ~60-line note. A note records what was approved; it never approves anything.
+const HANDOFF_ASK = 'Stop here: this session has reached its step limit. The work continues right away in a FRESH session that sees only the ' +
+  'note you write now (plus the code and git history). Do not continue the task in this reply. Commit any finished work first ' +
+  '(agit add <paths>, agit commit -m "<one plain sentence>"). Then use the Write tool to write .dm-handoff.md in the worktree root, at most ' +
+  'about 60 lines, in six short parts: 1. the request in one or two lines, who asked, what they agreed to, and what still waits for their ' +
+  'approval; 2. the branch and current commit (agit log -1) and any uncommitted changes; 3. what is done (commit subjects) and the decisions, ' +
+  'constraints and known limitations the next session must keep; 4. the checks you actually ran, their results and the commit they ran on ' +
+  '(name the log, do not paste it); 5. the few guides (.dm-guides/) and code files, with line numbers, the next step needs; 6. what is left, as a ' +
+  'checklist, and the exact next step (waiting for the team when that is it). The note records what was approved; it does not approve anything ' +
+  'new. Then reply with one line.';
+
 function createRunner(cfgIn, opts = {}) {
   const cfg = typeof cfgIn === 'string' ? loadConfig(cfgIn) : cfgIn;
   const now = opts.now || (() => Date.now());
@@ -575,11 +587,6 @@ function createRunner(cfgIn, opts = {}) {
     for (const j of Object.values(jobs)) if (!j.running && j.queue.length && ['idle', 'proposed'].includes(j.status) && !j.queuedNotice) { j.queuedNotice = true; if (j.turns === 0) say(j, 'Queued; I am busy with another request and will start as soon as I can.'); }
   }
 
-  const HANDOFF_ASK = 'Stop here: this session has reached its step limit. The work continues right away in a FRESH session that sees only the ' +
-    'note you write now (plus the code and git history). Do not continue the task in this reply. Use the Write tool to write .dm-handoff.md in the ' +
-    'worktree root, at most about 60 lines: the request in one or two lines (and who asked); what is done (commit subjects); what is left, as a ' +
-    'checklist; the key files with line numbers; decisions, constraints and gotchas you found; the exact next step. Commit any finished work first ' +
-    '(agit add <paths>, agit commit -m "<one plain sentence>"). Then reply with one line.';
   // One agent turn as the thread sees it. Each session has a step budget (cfg.handoffEveryTurns, see agent.cjs); when it runs out the same session
   // writes .dm-handoff.md and a fresh session continues from that note, invisibly to the thread, up to cfg.maxHandoffs times (default 5).
   // Every call of one turn (handoffs included) uses one snapshot of the core and the guides (lib/guides.cjs); a broken install runs nothing.
@@ -2104,4 +2111,4 @@ function createRunner(cfgIn, opts = {}) {
   setTimeout(() => drainShipQueue(), 0);   // ships queued before a runner restart
   return { cfg, auth, audit, jobs: () => jobs, handleEvent, bind, poll, ack, pump, sweep, tidy, archiveQuiet, postReports, reportThreads: () => reportThreads, outboxSize: () => outbox.length, readShips, newestBackup, _post: post };
 }
-module.exports = { createRunner, progressNote, cancelTypo, isDiscardPhrase, failedSuites };
+module.exports = { createRunner, progressNote, cancelTypo, isDiscardPhrase, failedSuites, HANDOFF_ASK };

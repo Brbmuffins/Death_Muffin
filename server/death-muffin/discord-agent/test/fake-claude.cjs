@@ -12,7 +12,10 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   const mtI = process.argv.indexOf('--max-turns'); fs.appendFileSync('.fake-calls', `${mtI >= 0 ? process.argv[mtI + 1] : '-'} ${process.argv.includes('--resume') ? 'resume' : 'fresh'} ${/step limit\. The work continues/.test(p) ? 'note' : /<handoff>/.test(p) ? 'continue' : /automatic review failed/.test(p) ? (/check-godot\.sh --rerun <suite>/.test(p) ? 'fixup-rerun' : 'fixup') : 'turn'}\n`);
   // what each call was given (guides.test.cjs): the system prompt's hash and size, the guides in the worktree then, and the prompt's start
   { const i = process.argv.indexOf('--append-system-prompt'); const sp = i >= 0 ? process.argv[i + 1] : ''; let guides = []; try { guides = fs.readdirSync('.dm-guides').sort(); } catch { /* none */ }
-    fs.appendFileSync('.fake-sp', JSON.stringify({ sp: require('crypto').createHash('sha256').update(sp).digest('hex'), len: sp.length, guides, head: p.slice(0, 600) }) + '\n'); }
+    // perm: the call's permission flags (restricted, tools, allowed and refused tools), hashed, so a test can see every call kept the same ones
+    const vals = (f) => { const k = process.argv.indexOf(f); const v = []; for (let x = k + 1; k >= 0 && x < process.argv.length && !process.argv[x].startsWith('--'); x++) v.push(process.argv[x]); return v; };
+    const perm = require('crypto').createHash('sha256').update(JSON.stringify([process.argv.includes('--restricted'), process.argv.includes('--strict-mcp-config'), vals('--permission-mode'), vals('--tools'), vals('--allowedTools'), vals('--disallowedTools')])).digest('hex');
+    fs.appendFileSync('.fake-sp', JSON.stringify({ sp: require('crypto').createHash('sha256').update(sp).digest('hex'), len: sp.length, guides, perm, head: p.slice(0, 600) }) + '\n'); }
   const out = (o) => process.stdout.write(JSON.stringify({ type: 'result', session_id: 'sess-' + Math.random().toString(16).slice(2, 8), total_cost_usd: 0, ...o }));
   if (/step limit\. The work continues/.test(p)) { if (!fs.existsSync('NO-NOTE')) fs.writeFileSync('.dm-handoff.md', 'HANDOFF: speed half done; next set speed=9 in client/game/a.gd\n'); return out({ subtype: 'success', is_error: false, result: 'Note written.' }); }
   if (/LONG-FOREVER/.test(p) || (/LONG-TASK/.test(p) && !/<handoff>|left no note/.test(p))) return out({ subtype: 'error_max_turns', is_error: true, errors: ['Reached maximum number of turns (40)'] });
@@ -163,5 +166,6 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   if (/different version of the game/.test(p)) text += ' MODE-NOTE-SEEN';
   if (process.argv.includes('--resume')) text += ' RESUMED';
   if (/<handoff>[\s\S]*HANDOFF: speed half done/.test(p)) text += ' CONTINUED-FROM-NOTE';
+  if (/<\/handoff>[\s\S]*The request that turn was working on:[\s\S]*LONG-TASK/.test(p)) text += ' WITH-REQUEST';
   process.stdout.write(JSON.stringify({ type: 'result', result: text, session_id: 'sess-1', is_error: false, total_cost_usd: 0 }));
 });
