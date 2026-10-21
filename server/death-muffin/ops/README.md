@@ -60,7 +60,7 @@ Env: `REPO` (default `/home/ubuntu/vps-handoffs/DeathMuffin/game`), `DM_HOME` (`
 | 1 | Installed discord-agent files (its guides too: an installed guide `main` lacks is drift), art tools and systemd units vs the repo |
 | 2 | Live backend, gathering, necro-progress and lobby code vs the repo. Comments and blank lines are ignored; comment-only differences are a soft note, not drift |
 | 3 | Published client `rev` vs commits that change shipped game files (`client/` and `native/src/`, not tests, tools or docs) merged after it |
-| 4 | Extra remote/local branches and worktrees. `discord/*` jobs are listed as info and flagged after 7 days |
+| 4 | Extra remote/local branches and worktrees, and folders in `wt/` that git does not list as a worktree (whole paths compared; test: `server/death-muffin/ops/drift-leftovers.test.cjs`). `discord/*` jobs are listed as info and flagged after 7 days |
 | 5 | The shared checkout: uncommitted changes, not on `main`, or behind `origin/main` (the nightly checkout sync could not fast-forward it) |
 | 6 | Unexpected files in the public docroot (allowed: the `server/death-muffin/site/` files plus `bake-kit`, `client`, `client-test`, `launcher`, `play`, `preview`, `team-files`, `teamapp`; `play/` only `index.html`, `patch-notes.json`, `release-notes.json`), secret-ish names (the team app's, the bake kit's and the preview builds' zips excepted), and more than two team app versions |
 | 7 | Services active, auth `/health` |
