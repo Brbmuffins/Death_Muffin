@@ -85,8 +85,8 @@ const hasImage = (o) => Array.isArray(o) && o.some((b) => b?.type === 'input_ima
 
 // One rollout file -> its records, in order. Never throws on a bad line (a truncated last line is common in a live rollout).
 export function parseRollout(lines) {
-  const out = { meta: null, metas: 0, turns: {}, settingsModel: null, records: [], snapshots: [], calls: new Map(), outputs: [], instructions: [], worldStates: 0, cwds: {}, badLines: 0, first: null, last: null };
-  let lastModel = null;
+  const out = { meta: null, metas: 0, turns: {}, records: [], snapshots: [], calls: new Map(), outputs: [], instructions: [], worldStates: 0, cwds: {}, badLines: 0, first: null, last: null };
+  let lastModel = null;   // the model in effect at this point of the file (turn contexts and thread settings, in order); none yet = unknown
   for (const line of lines) {
     if (!line.trim()) continue;
     let o; try { o = JSON.parse(line); } catch { out.badLines += 1; continue; }
@@ -111,7 +111,7 @@ export function parseRollout(lines) {
     } else if (o.type === 'event_msg' && p.type === 'token_count') {
       if (p.info?.total_token_usage) out.snapshots.push({ ts, total: usageOf(p.info.total_token_usage), last: p.info.last_token_usage ? usageOf(p.info.last_token_usage) : null, model: lastModel });
     } else if (o.type === 'event_msg' && p.type === 'thread_settings_applied') {
-      if (p.thread_settings?.model) out.settingsModel = p.thread_settings.model;
+      if (p.thread_settings?.model) lastModel = p.thread_settings.model;
     } else if (o.type === 'response_item' && ['custom_tool_call', 'function_call'].includes(p.type)) {
       if (p.call_id) out.calls.set(p.call_id, { name: p.name || '?', input: p.input ?? p.arguments ?? '', ts });
     } else if (o.type === 'response_item' && ['custom_tool_call_output', 'function_call_output'].includes(p.type)) {
@@ -162,7 +162,7 @@ export function responsesOf(r, seen = new Set()) {
     addTo(local, x.usage);
     if (copied) { dupes += 1; continue; }
     if (x.id) seen.add('r:' + x.id);
-    out.push({ ts: x.ts, model: x.model || r.settingsModel || null, usage: x.usage, certain: true });
+    out.push({ ts: x.ts, model: x.model || null, usage: x.usage, certain: true });
   }
   // Snapshots: only those before the first per-response record (all of them when there is none).
   const snaps = r.snapshots.filter((s) => !firstRecordTs || (s.ts && s.ts < firstRecordTs));
@@ -182,7 +182,7 @@ export function responsesOf(r, seen = new Set()) {
     if (dup) { dupes += 1; continue; }
     // A change equal to the snapshot's own last-response usage is one response; anything else may hold several.
     const one = s.last && USAGE_KEYS.every((k) => s.last[k] === delta[k]);
-    out.push({ ts: s.ts, model: s.model || r.settingsModel || null, usage: delta, certain: !!one, contextKnown: !!one });
+    out.push({ ts: s.ts, model: s.model || null, usage: delta, certain: !!one, contextKnown: !!one });
   }
   if (repeats) warnings.push(`${repeats} repeated cumulative snapshot(s) ignored`);
   if (resets) warnings.push(`${resets} cumulative reset(s): counting restarted from zero`);

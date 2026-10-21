@@ -310,3 +310,19 @@ test('a start counts as genuine only when the rollout shows it: a partial file, 
   const g = report({ sessions: [summarizeRollout(parse(rollout({ cwd: DM }).meta().turn('t1', 'm').raw(rec('r1', '2026-10-19T10:02:00.000Z', u(100, 0, 0), u(600, 0, 0)))), {})] }).groups['terminal/dm'];
   assert.equal(g.firstResponseInput.sessions, 0); assert.deepEqual(g.starts, { unknown: 1 });
 });
+
+test('a model applies from where it is set: a later setting is never given to earlier responses, and before any it is unknown', () => {
+  const settings = (model, ts) => ({ timestamp: ts, type: 'event_msg', payload: { type: 'thread_settings_applied', thread_settings: { model } } });
+  const b = rollout({ cwd: DM }).meta();
+  b.raw(rec('r1', '2026-10-19T10:01:00.000Z', u(100, 0, 0), u(100, 0, 0)))                 // no model known yet
+    .raw(settings('later-model', '2026-10-19T10:02:00.000Z'))
+    .raw(rec('r2', '2026-10-19T10:03:00.000Z', u(200, 0, 0), u(300, 0, 0)))                 // the setting applies
+    .raw({ timestamp: '2026-10-19T10:04:00.000Z', type: 'turn_context', payload: { turn_id: 't9', cwd: DM, model: 'turn-model' } })
+    .raw({ timestamp: '2026-10-19T10:05:00.000Z', type: 'token_usage_record', payload: { response_id: 'r3', turn_id: 't9', usage: u(400, 0, 0), thread_token_usage: u(700, 0, 0) } })
+    .raw(settings('newest', '2026-10-19T10:06:00.000Z'))
+    .raw({ timestamp: '2026-10-19T10:07:00.000Z', type: 'token_usage_record', payload: { response_id: 'r4', turn_id: 't9', usage: u(50, 0, 0), thread_token_usage: u(750, 0, 0) } });
+  const m = summarizeRollout(parse(b), {}).byModel;
+  assert.equal(m.unknown.input, 100); assert.equal(m['later-model'].input, 200);
+  assert.equal(m['turn-model'].input, 450, 'a record of a known turn takes that turn\'s model, even after a newer setting');
+  assert.ok(!m.newest);
+});
