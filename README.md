@@ -11,7 +11,7 @@ Parties of up to 4 join through a lobby and relay. Players get the game through 
 https://muffindevelopment.com/death-muffin/. Offline play is not a player edition; `-- --dev-offline` exists for testing only (editor / debug builds; release exports ignore it).
 
 Branch: `main` is the game (the only branch). The retired three.js web game is kept as tag `archive/legacy-web`, the first Godot game (DECISIONS B57) as tag `archive/old-game`; older work branches are `archive/*` tags.
-Where to read next: [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNOWN-GAPS.md](KNOWN-GAPS.md), [CLAUDE.md](CLAUDE.md) (agent rules; `AGENTS.md` is its copy for Codex).
+Where to read next: [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNOWN-GAPS.md](KNOWN-GAPS.md), [AGENTS.md](AGENTS.md) (agent rules: Codex reads it, and `CLAUDE.md` imports it for Claude Code).
 
 ## Documentation map
 
@@ -125,4 +125,4 @@ checks passing. The full procedure (scripts, release notes, rollback, services) 
 
 ## Assets
 
-Generated art, audio and models: [ASSET_PIPELINE.md](ASSET_PIPELINE.md). Reuse what exists first (see [CLAUDE.md](CLAUDE.md)).
+Generated art, audio and models: [ASSET_PIPELINE.md](ASSET_PIPELINE.md). Reuse what exists first (see [AGENTS.md](AGENTS.md)).
