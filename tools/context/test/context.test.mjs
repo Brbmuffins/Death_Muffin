@@ -475,3 +475,39 @@ test('the repo CLAUDE.md counts as injected from a start-up or a later (nested) 
   assert.deepEqual(readOnly.instructionFiles, []);
   assert.equal(report([start, nested, readOnly]).groups.session.claudeMdLoaded, 2);
 });
+
+// Record shapes from the 2026-10-21 probes (Claude Code 2.1.284), paths moved into a checkout: a start-up `instructions` record lists
+// CLAUDE.md and the AGENTS.md it imports as two files; a nested load writes one `nested_memory` record each, the imported one naming its parent.
+test('an injected CLAUDE.md is not proof the rules arrived: the source, or a CLAUDE.md that held the rules, is', () => {
+  const cwd = '/home/ubuntu/vps-handoffs/DeathMuffin/game';
+  const call = (i) => ({ type: 'assistant', cwd, timestamp: `2026-10-22T12:00:0${i}Z`, message: { id: `e${i}`, model: 'claude-sonnet-5-5', usage: { input_tokens: 10, output_tokens: 1 }, content: [] } });
+  const at = (attachment) => ({ type: 'attachment', cwd, timestamp: '2026-10-22T12:00:00Z', attachment });
+  const one = (...extra) => summarizeSession(parseTranscript([call(0), ...extra, call(1)].map((o) => JSON.stringify(o))));
+  const STUB_DELIVERED = '@AGENTS.md';
+  const RULES = '# Death Muffin: agent rules\n\nNever push or deploy unless the task says so.';
+  // source only (an imported AGENTS.md record)
+  const sourceOnly = one(at({ type: 'nested_memory', path: `${cwd}/AGENTS.md`, content: { path: `${cwd}/AGENTS.md`, type: 'Project', content: RULES, parent: `${cwd}/CLAUDE.md` } }));
+  assert.deepEqual(sourceOnly.instructionEvidence, { entryObserved: false, sourceObserved: true, rulesLoaded: 'confirmed' });
+  // the parent and its import at start-up: one session, counted once
+  const both = one(at({ type: 'instructions', files: [{ path: `${cwd}/CLAUDE.md`, type: 'Project', content: STUB_DELIVERED }, { path: `${cwd}/AGENTS.md`, type: 'Project', content: RULES }] }));
+  assert.deepEqual(both.instructionEvidence, { entryObserved: true, sourceObserved: true, rulesLoaded: 'confirmed' });
+  // the stub alone: the target is not confirmed
+  const stubOnly = one(at({ type: 'nested_memory', path: `${cwd}/CLAUDE.md`, content: { path: `${cwd}/CLAUDE.md`, type: 'Project', content: STUB_DELIVERED } }));
+  assert.deepEqual(stubOnly.instructionEvidence, { entryObserved: true, sourceObserved: false, rulesLoaded: 'unknown' });
+  // a CLAUDE.md record with no text: unknown, whatever its date
+  const pathOnly = one(at({ type: 'nested_memory', path: `${cwd}/CLAUDE.md` }));
+  assert.equal(pathOnly.instructionEvidence.rulesLoaded, 'unknown');
+  // a CLAUDE.md from before the switch, judged by its own text: it held the rules
+  const historical = one(at({ type: 'nested_memory', path: `${cwd}/CLAUDE.md`, content: { path: `${cwd}/CLAUDE.md`, type: 'Project', content: RULES } }));
+  assert.deepEqual(historical.instructionEvidence, { entryObserved: true, sourceObserved: false, rulesLoaded: 'confirmed' });
+  // reading the files with a tool is not an injection
+  const read = one(at({ type: 'file', filename: `${cwd}/AGENTS.md` }), { type: 'user', cwd, timestamp: '2026-10-22T12:00:00Z', message: { content: [{ type: 'tool_result', tool_use_id: 'x', content: RULES }] } });
+  assert.deepEqual(read.instructionEvidence, { entryObserved: false, sourceObserved: false, rulesLoaded: 'none' });
+  // an AGENTS.md outside Death Muffin (another project) does not count
+  const other = one(at({ type: 'instructions', files: [{ path: '/home/ubuntu/other-project/AGENTS.md', type: 'Project', content: RULES }] }));
+  assert.deepEqual(other.instructionEvidence, { entryObserved: false, sourceObserved: false, rulesLoaded: 'none' });
+  const g = report([sourceOnly, both, stubOnly, pathOnly, historical, read, other]).groups.session;
+  assert.deepEqual(g.instructions, { entryObserved: 4, sourceObserved: 2, rulesConfirmed: 3, rulesUnknown: 2 });
+  assert.equal(g.claudeMdLoaded, 4, 'the compatibility field keeps its meaning: a record named CLAUDE.md');
+  assert.match(formatReport(report([sourceOnly, stubOnly])), /rules confirmed in 1, unknown in 1 of 2 sessions \(CLAUDE\.md seen 1, AGENTS\.md seen 1\)/);
+});
