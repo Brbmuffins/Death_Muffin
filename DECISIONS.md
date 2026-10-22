@@ -13,8 +13,6 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   spell colours). Generate (Tripo, ElevenLabs, Gemini) only when nothing usable exists. Since B71 the principle is "fit the game's look".
 - **Polish over new content; necromancer focus; immersive but capped, not overwhelming** (2026-10-02/03). Since B71: polish first is a
   default, the necromancer set is the current phase, and "easy to read" is the principle.
-- **Loot never vacuums** (2026-10-04): items never fly to the player; a click picks one up (B15). A feature, not a principle (B71).
-- **No Godot-vs-web parity target** (2026-10-05): the game is Godot-idiomatic; the web game's exact math is not a goal.
 
 ## Foundations (the rebuild)
 
@@ -28,13 +26,10 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 - **D5. Solo first.** Solo play is polished before more party features; the session structure keeps online working.
 - **D6. Host quits = session ends** for everyone; members keep what the backend credited. No host migration; VPS-hosted sessions are not planned.
 - **D7. One branch.** Everything ships from `main`; old work is in `archive/*` tags (the web game: `archive/legacy-web`).
-- **D8. Characters.** Online characters carried into the Godot game unchanged (same backend).
-- **D9. The web game is retired** (history and `archive/legacy-web` only; B2).
-- **D10. Online gate.** Online is open to everyone (B5); the gate (`front/dm_online_gate.gd`, the manifest's `online` block,
+- **D10. Online gate.** Online is open to everyone (`set-online.sh on`); the gate (`front/dm_online_gate.gd`, the manifest's `online` block,
   `set-online.sh`) stays as the emergency off switch.
 - **D11. Lobby:** a public list of Open sessions plus Closed (invite-only) parties (`deathmuffin-lobby`, :5192). Friends join through
   invites and asks (B18); six-digit codes have no UI.
-- **D12. Party-session tables** (migration 041) are part of the backend schema.
 - **D13. Disconnects get a rejoin window** (built 2026-10-20): a member whose connection drops (not one who left or was removed) is offered its party again for 5 minutes, also when it is Closed; the player decides, it never joins by itself, and no seat is held. D6 still holds for the host.
 
 ## Baseline
@@ -45,11 +40,8 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 - **B3. Playable classes:** the four necromancer disciplines (1-4) and the Reaper (11, family `reaper`, warbogar 2026-10-11); the other five
   are greyed out as "Coming later". The backend accepts classes 1-4 and 11 only; `DmCharacterBuild.is_playable` allows those families.
 - **B4. One launcher button** (Play/Update); the site's play page is the launcher download page.
-- **B5. Online is open to everyone** (`set-online.sh on`).
-- **B6. The repository** `Brbmuffins/Death_Muffin` is cleaned in place (installed launchers self-update from its releases).
 - **B7. Rule sources live in `server/rules/`;** `tools/build-server-rules.mjs` compiles them to the `.cjs` files the backend loads.
-- **B8. Test fixtures are committed** (`godot/tests/*/fixtures/`), so the suites run on their own.
-- **B9. Two release tools:** `deploy-release.sh` (backend and release notes), `publish-godot-client.sh` (the client).
+- **B8. Test fixtures are committed** (`client/tests/*/fixtures/`), so the suites run on their own.
 - **B10. Docs are a small truthful set:** README, ROADMAP, DECISIONS, KNOWN-GAPS, CLAUDE and short per-system READMEs; old docs are deleted,
   not bannered.
 - **B11. Tests never assert wall-clock time** (2026-10-10): timings print as `INFO perf:` lines; deterministic counters (cold loads, nodes,
@@ -58,12 +50,12 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 ## Performance and agents
 
 - **B12. Performance Phase B is pulled** (2026-10-10): in combat it crashed real players' GPUs. The work is kept in tag `archive/perf-phase-b`
-  and comes back one part at a time in owner-approved test builds; creature instance uniforms are the first suspect.
+  (creature instance uniforms and GPU-simulated particles were the suspects on the Compatibility renderer); the game is Forward+ since B49.
 - **B13. One approval carries through a ship conflict** (Helix, 2026-10-10): the Discord agent resolves a merge conflict itself and ships on
   the original ✅ only if it touches the approved files at the same or a lower tier with no new thread messages (at most twice); anything
   else asks again. Details: `server/death-muffin/discord-agent/README.md`.
-- **B14. Performance is measured on real PCs** (Helix, 2026-10-12) with the in-game benchmark (B21); changes ship to `main` as usual, no
-  side test builds. Known limits: Godot's separate render thread crashes this game (do not use it); ground loot must not add lights or
+- **B14. Performance is measured on real PCs** (Helix, 2026-10-12) with the in-game benchmark (B21); changes ship to `main` as usual (big
+  changes go through the test lane, B53). Known limits: Godot's separate render thread crashes this game (do not use it); ground loot must not add lights or
   per-item materials; physics catch-up is capped at 3 steps a frame.
 - **B27. Player bug reports go to the devs, not to an agent** (owner, 2026-10-14: "so the devs can actually see what's being reported and
   worked on"). Each new report opens a #in-game-reports thread with its game log attached; the Discord agent works on one only when a dev
@@ -123,7 +115,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 - **B34. The rebuild** (Helix, 2026-10-16; "i want the game built correctly, have a strong, scalable, simple foundation"). The client is
   rebuilt underneath as the same game: same rules, numbers and timing, differences written down, improvements proposed, never slipped in.
   Godot stays; the test build is the engine checkpoint (Gate B, B50), the point where Unity would be reconsidered. Everything that runs
-  for every creature every tick is a C++ GDExtension core (`native/`); the rest is GDScript (`client/`, B41). Nobody on the team writes code,
+  for every creature every tick is a C++ GDExtension core (`native/`); the rest is GDScript (`client/`). Nobody on the team writes code,
   so languages are chosen on merit, not on who can edit them. Replaces the step list of the old ROADMAP "Performance" section.
 - **B35. Forward+ on every PC preset** (Helix, 2026-10-16). One renderer on PC: presets turn extras on and off, never need a restart, and
   there is one look to tune. Compatibility is only the automatic fallback (`fallback_to_opengl3`, the 4.7.2 default); the Mobile renderer
@@ -134,38 +126,24 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   day, decides what it becomes. Heat leaves the party list, friends list and invites; the leaderboard ranks by boss kills, then total kills,
   then level. B26's heat rules end with it. Done 2026-10-20 (Helix: "hide both"): the Altar no longer opens the Ascension panel and no row
   shows Heat, behind one switch (`DmAscension.OPEN`) the redesign turns back on.
-- **B37. The live game during the rebuild** (Helix, 2026-10-16). Bug fixes, warbogar's armor sets (also checked in the rebuild) and server
-  safety work only. Feature requests went to the ROADMAP for after launch day. Ended on launch day (B49); the order since is B50.
 - **B38. A separate test build for the rebuild** (Helix, 2026-10-16: "its a huge overhaul"; the one exception to builds going straight to
-  main, B14). The rebuild's code lives on main in its own project (B41). The launcher gets a Test build switch that
+  main, B14). The launcher gets a Test build switch that
   installs the test build next to the normal game and keeps it updated; it plays on a test server with copies of the team's accounts, so it
   can never touch live characters. Team only at first. Kept after the rebuild for big changes (B53).
 - **B39. Performance without a goal to stop at** (Helix, 2026-10-16: "i want to get as MUCH performance as possible"). No frame-rate target;
   floors only for weaker PCs; performance is spent only on purpose (B71; it was "nothing ships slower than what it replaces"); Gate B needs at least twice today's speed in the Full Party fight.
   Each system has a time budget and each model a size budget, checked automatically (today's numbers in B71). Godot stays 4.7.2 until a
   deliberate, benchmarked upgrade.
-- **B40. Ready for phones, and an undo for launch day** (Helix, 2026-10-16). From day one: textures also import in phone formats (a
+- **B40. Ready for phones** (Helix, 2026-10-16). From day one: textures also import in phone formats (a
   separate phone pack), every shader and effect runs on the Mobile renderer, the HUD is built from movable, scalable pieces, phones join co-op
   but never host, co-op messages carry a version (PC co-op still pairs identical builds until phones exist, B28), presets assume a phone runs
-  Low. For 2 weeks after launch day the last old build stays downloadable and the server keeps accepting it, so one command undoes the launch
-  (ended early by B57: the old game's code goes as soon as nothing depends on it).
-- **B41. The rebuild is its own Godot project** (2026-10-16, Claude's call under B34). `client/` is a separate Godot project next to the
-  live `godot/`, not folders inside it: Godot loads every GDExtension in a project, so a shared project would make the live game and its
-  tests load the new C++ core, and shared assets would flip import settings (phone formats, lightmap UVs) between the two. The rebuild gets
-  its own copies of the assets it uses (git stores identical files once). On launch day `client/` becomes the game.
+  Low.
 - **B42. The combat core's contract** (2026-10-16, Claude's call under B34, from a map of today's runtime). The core owns enemies,
   thralls, corpses, statuses, affixes and the spatial grid; heroes and bosses are external entities GDScript updates each tick. Rites
   stay GDScript and call the core synchronously, so a kill still resolves inside the cast as today. Per-creature work never crosses into
   GDScript during a tick (one ordered event buffer instead); timers accumulate in doubles like today's; randomness is seeded per entity.
   Godot's RVO avoidance is replaced by the core's own steering and separation: the one planned difference in feel, judged by Helix in
   the test build. Details: native/README.md "Design".
-- **B43. The client layer is today's GDScript** (2026-10-16, Claude's call under B34). `client/` carries today's scripts, scenes and data at
-  the same paths, so `res://` paths and class names keep working. Files that never touch a creature are copies kept identical to `godot/` by
-  `tools/rebuild/sync-code.mjs` (`client/code.list`), so a live bug fix reaches the rebuild with one command. Only the files at the seams (rites,
-  the director, bosses, views, the HUD's enemy reads: 55 today) are ported to the core, and the 32 files that cannot load without them wait for their seam; `client/code.lock.json` records every copy and the version
-  of each port's original, and the sync tool reports a port whose original changed since, so the fix can be carried over. The per-creature systems (`enemies/`, the per-creature parts
-  of `sim/`, `next/thralls`, `next/corpses`, `next/affixes`, the entity views) are not copied: the core and the crowd view replace
-  them. (`next/status` is copied for the status sets of heroes and bosses, which are external entities, B42; a ported file never calls it on an enemy or a thrall.) Same game by construction: the menus, rules, network code and rites are today's code.
 - **B44. Co-op on the core** (2026-10-16, Claude's call under B34 and B40). The host plays the real game on its core; a guest holds a PUPPET core that shows what the host sends (snapshots, batches,
   a baseline: native/README.md "Co-op"), and its hero is an external of the HOST's core, so enemies chase and hit it there, its casts are intents the host resolves (as today's rites already were) and
   its thralls are the host's bodies. The session, the relay peer, the rites' RPCs and the King's replication stay today's code; only the per-creature traffic is the core's. The snapshot (up to 1.7 KB) is cut
@@ -179,7 +157,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   High and Ultra (Forward+ only), the crowd's shadow policy instead of a per-node caster budget, and FSR 1 instead of bilinear when Auto resolution lowers the 3D
   scale (sharper at no real cost). The brightness lift is Forward+'s own, one number per area calibrated against today's game (B48). The benchmark plays at the player's preset, as
   today's does, so Gate B compares like with like (`client/game/dm_graphics_preset.gd`, `client/next/perf/dm_next_perf.gd`, `client/tests/presets.gd`).
-- **B46. The panels are today's, on a ported adapter** (2026-10-16, Claude's call under B43). The rebuilt client's full UI is today's `DmGameUi` and every panel as
+- **B46. The panels are today's, on a ported adapter** (2026-10-16, Claude's call under B34). The rebuilt client's full UI is today's `DmGameUi` and every panel as
   copies, on `DmNextUiHost` ported to the core (the host contract: character, bag, progression, settings, casts, the HUD's view-model), exactly as today's game
   composes them. The adapter takes over what the rebuild's own HUD host (`DmNextHud`) did from the core (the view-model from the core's arrays, the numbers from its
   events, the floats' caps) and the bag stays the loot node's (`DmNextLoot`), so value does not depend on the panels; `DmNextHud` retires. Chosen over keeping
@@ -199,15 +177,13 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 - **B49. Launch day** (Helix, 2026-10-18: "launch", twice, the second time after hearing that the look pass, Gate D, was not done). `client/` is the
   game: its endpoints are the live server's (`net/dm_config.gd`; B38 turned round, the build never reaches the test server), `publish-godot-client.sh`
   exports it by default, and the test channel keeps its last test build. The look pass's two open items (effects on Low and Medium, Helix's sign-off
-  of every area) moved to the ROADMAP's polish list (B50). Until the old game's code goes (B40, B57) `server/death-muffin/launch-undo.sh` puts the last old build back and the
-  backend keeps accepting it. The Discord agent ships `client/`: its change in `godot/` is synced into `client/` before the push (65754b47). After the window
-  `godot/` and the paths only it used go.
+  of every area) moved to the ROADMAP's polish list (B50). The Discord agent ships `client/`. The old game's code went on the same day (B57).
 - **B50. The roadmap after launch** (Helix, 2026-10-18: "building systems, frameworks, pipelines, code upgrades, rules/guidelines/standards/requirements,
   organization, updated documentation now and then working on lore, classes, quests, maps later ... you structure this project"; the structure is
   Claude's call). ROADMAP.md runs one phase at a time (settle the launch, foundation, Ascension redesigned, new content) beside always-on work:
   bugs and crashes first, the team's requests through the Discord agent as before, and a polish list. A bigger new feature goes to ROADMAP
   "Ideas" until its phase is planned; a bug or gap goes to KNOWN-GAPS.md. Each kind of new content gets its toolkit (reusable parts and a recipe)
-  together with its first content, not before (no speculative abstraction). The performance budgets moved to CLAUDE.md. Replaces B37.
+  together with its first content, not before (no speculative abstraction). The performance budgets are in B71.
   The same day Helix asked for content standards and a clearer list ("hard to determine what is being listed as something that needs to be
   fixed or something that needs to be added"): every ROADMAP item says whether it is a Fix (what happens now, what it will be after), New
   (what it gives) or Decide (the question and Claude's recommendation), and Phase 2 starts with the content standards (the art direction,
@@ -266,7 +242,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   during Phase 2 so it is built right after. Something players notice ships every week or two, and the play reports also say how often and
   how long people play and where they stop.
 - **B57. The old game goes as soon as possible** (Helix, 2026-10-18: "nov 1 is irrelevent. we can do these things asap. no need ot wait.
-  the currentl ive build is solid"). B40's two-week undo window ends early: Phase 1 runs as soon as possible, and the old game's code, its
+  the currentl ive build is solid"). The two-week launch undo window planned with B40 ends early: Phase 1 runs as soon as possible, and the old game's code, its
   last build, `launch-undo.sh` and the server paths only it used go as soon as the Discord agent and the tools work on `client/` (the system
   guides move first). An archive tag keeps the old game's source; from then on a rollback goes to an earlier build of the new game. Done on
   2026-10-18: tag `archive/old-game`.

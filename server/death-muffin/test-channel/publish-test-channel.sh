@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Publish a build to the launcher's Test build channel (DECISIONS B38) from a COMMITTED revision:
 #   publish-test-channel.sh <git-rev>
-# Runs publish-godot-client.sh for the rebuilt client (PROJECT=client: its own project, DECISIONS B41) with the test channel's folder, URL
+# Runs publish-godot-client.sh for the rebuilt client (PROJECT=client) with the test channel's folder, URL
 # and its own work folder (so the live asset-pack cache is never touched), no announcement, and prepare-rebuild.sh (the combat core,
 # the sheets, the crowd's baked models). The rebuild talks to the test backend by its own config (client/net/dm_config.gd).
 # Served at https://muffindevelopment.com/death-muffin/client-test/; the launcher's Test build switch installs from its manifest.json.

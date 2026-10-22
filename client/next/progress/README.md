@@ -8,14 +8,14 @@
 start(): _start_rewards -> _start_progress: member.prog = DmProgression(character, local save) ; DmProgressSync.connect_server() ; apply_progress()
 ```
 
-## What persists and how (DECISIONS.md D1 / D4 / D8)
+## What persists and how (DECISIONS.md D1 / D4)
 | Value | Where it lives | Path |
 |---|---|---|
 | level, xp, gold, stats | backend character | `api.save_progress` with **gains** (DmProgressSync `save_gains`, DECISIONS B23): what was earned since the last acknowledged save (`prog.xp_unsent` / `gold_unsent`) under a `seq`; the backend adds it to its record and answers its totals, which the client adopts (`adopt_server_totals`) plus what is still unsent. Gold a route pays itself (gathering, labor, contracts, selling, purchases) comes back as a total too (`credit_server_gold` / `adopt_server_gold`) |
 | shards, kill counts (total + per area), unlocked areas, damage / wave tiers | backend necro-progress | `api.necro_save` (pending deltas) / `necro_purchase` (tiers, priced by the backend). The vows, boons and ashes the record also holds are not read or written (DECISIONS B36) |
 | bag + equipment | backend inventory | server operations only (DECISIONS B25); `DmInventory` shows the server's answers, sips -> `api.use_items` (debounced) |
 | milestone claims, best chain | local store (claims live on this machine) | `DmCounselStore` key `dm_milestones_<id>` |
-`api` is the live `DmApi` and `DmOffline.make_api` under `--dev-offline`: the same calls (DECISIONS.md D4, D8).
+`api` is the live `DmApi` and `DmOffline.make_api` under `--dev-offline`: the same calls (DECISIONS.md D4).
 XP and kill counts arrive only from the rewards node's **accepted** session reports (`member_credited`); gold / shards / items from ground pickups. A relaunch reloads the
 character from the backend (`load_or_create_character`) and `connect_server` adopts the necro state.
 
