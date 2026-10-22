@@ -8,13 +8,14 @@ by side), and a "Done when" check ends it. The technical detail of each gap is i
 Every item says what kind it is: **Fix** (what happens **now** and what it will be **after**), **New** (what it gives) or **Decide** (a
 question only the team can answer, with Claude's recommendation).
 
-## Where we are (2026-10-20)
+## Where we are (2026-10-22)
 
 - **The rebuilt game is live** since launch day, 2026-10-18 (B49): the same game on a C++ combat core and Forward+ graphics, its biggest
   fight 3 to 4 times faster (the Bell Sanctum's Full Party on Ultra, Helix's PC: 61 to 224 fps). The old game is retired (B57, tag
   `archive/old-game`): a rollback publishes an earlier build of the game.
 - **Now: Phase 1, settle the launch.** Everything in it is built; left are two decisions and a week of play reports (2026-10-26 at the
-  earliest).
+  earliest). Beside it, Phase 2's first pieces landed on 2026-10-21: one rules file for every session and Codex (B72), the docs map, and
+  the client manual split into guides.
 - **Next:** Phase 2, the foundation's core (the vision, how we work, the standards, content in one place with checks, recipes, the server
   owning every value); Phase 3, Ascension redesigned (it left on launch day; players' saved Ascension data is kept, B36); Phase 4, new
   content (the look of the world, places, enemies and bosses, the other five classes, quests, endgame). **Later:** off-site backups, phones,
@@ -40,34 +41,28 @@ Goal: the new game has everything the old one had, it is the only game, we hear 
 players' PCs (Helix, 2026-10-18: "we can do these things asap").
 
 Done, 2026-10-18 to 2026-10-20 (how each works is in the page named):
-- [x] **Fix: nobody was told when the game's servers stopped.** Every service is checked each minute; an outage posts to #build-alerts
+- [x] **Fix: nobody was told when the game's servers stopped.** Each service is checked every minute; an outage posts to #build-alerts
   (`server/death-muffin/ops/health-watch.mjs`).
 - [x] **Fix: Grave Surges are missing.** Back (`client/next/areas/dm_grave_surge.gd`).
 - [x] **Fix: crash reports could not point inside the combat core.** Crash notes and every build's symbols name the function and line
   (native/README.md "Crash notes"; the Windows half has not met a real crash yet).
-- [x] **Fix: the Discord agent tested the old game, slowly.** It works on the game, checks against the latest main, its proposals are
-  drafts (🧪 tests, ✅ tests and ships, B63), and a document-only change ships no update (server/death-muffin/discord-agent/README.md).
+- [x] **Fix: the Discord agent tested the old game, slowly.** It works on the game against the latest main, its proposals are drafts (🧪
+  tests, ✅ tests and ships, B63), and a document-only change ships no update (server/death-muffin/discord-agent/README.md).
 - [x] **Fix: testing was slow and done two ways** (B59). One setup (`tools/check/prep.sh`), CI the one gate for everyone (about 4
-  minutes), and tests that read every number from the game's data, so new content never breaks one (tools/check/README.md). CI also stops
-  the next big change from breaking testing unnoticed (B63).
+  minutes), and tests that read every number from the game's data (tools/check/README.md).
 - [x] **Fix: the old game's folder was still in the repository** (B57). Deleted 2026-10-19; its useful suites moved to `client/tests`.
 - [x] **Fix: War's content pipelines ran on trust.** Models over their caps or off the shared skeleton are refused
-  (`tools/assets/check-models.mjs`), and new sounds are levelled to -20 LUFS and recorded (docs/AUDIO-SOURCES.md).
+  (`tools/assets/check-models.mjs`); new sounds are levelled to -20 LUFS and recorded (docs/AUDIO-SOURCES.md).
 - [x] **New: play reports.** Frame times, hitches, graphics card and time per area from every session, per release on the site
   (client/next/perf/README.md "Play reports").
-- [x] **New: the team app** (B54, B55, B58, B60-B62, B64, B66). A tray app on the three team PCs that makes proposal pictures and videos,
-  runs benchmarks and release checks, and starts every release before players get it; proven on Helix's PC, app 0.4.7 (teamapp/README.md).
-- [x] **Fix: first-use stutters.** Done 2026-10-20: every new game, and every Settings save, threw away the shader pipelines the loading
-  screen had compiled (setting the soft-shadow filter, even to its own value, makes Godot 4.7.2 drop them all), so each game compiled about
-  420 again while casting → the preset tells the renderer only what changed. The stutter test on Brbmuffins' RX 6600, the live build against
-  the fix: 424 compilations (237 making a frame wait) → 10, all in the background; the worst cast 19.4 ms (Wraith Walk) → 6.5 ms, none over
-  8 ms. The warm-up's blind spots (lighting variants, other presets, areas and bosses, panels, death, other players' effects) remain
-  (`client/tests/warm_coverage.gd`); weaker cards are watched through the play reports.
-- [x] **Fix: the Discord agent could not put a picture in the game** (B70). Now → it made concept images for War's Reaper icons but
-  could not shrink or install them, and each concept was lost when its round shipped, so War approved three changes that changed nothing.
-  After → every flat picture is a kind (`tools/pictures/kinds.json`: icons, portraits, loading art, floor and wall textures), new ones
-  copy the old ones' style, the agent builds the chosen concepts into the game itself, concepts stay for the thread's later rounds, each
-  picture has one copy, and a check fails when an ability borrows another one's icon (ASSET_PIPELINE.md "Pictures").
+- [x] **New: the team app** (B54, B55, B58, B60-B62, B64, B66): a tray app on the three team PCs for proposal pictures and videos,
+  benchmarks and release checks; app 0.4.7 (teamapp/README.md).
+- [x] **Fix: first-use stutters.** A new game or a Settings save threw away the shader pipelines the loading screen had compiled → the
+  preset tells the renderer only what changed. On Brbmuffins' RX 6600: 424 compilations → 10, the worst cast 19.4 → 6.5 ms. The warm-up's
+  blind spots remain (`client/tests/warm_coverage.gd`); weaker cards are watched through the play reports.
+- [x] **Fix: the Discord agent could not put a picture in the game** (B70). Every flat picture is a kind (`tools/pictures/kinds.json`),
+  the agent builds the chosen concepts into the game, and a check fails when an ability borrows another one's icon (ASSET_PIPELINE.md
+  "Pictures").
 
 Open:
 - [ ] **Decide: a team PC runs the Discord agent's unreviewed branch** (found 2026-10-19). Pictures and videos are made from the change
@@ -86,14 +81,14 @@ week of play reports is in.
 Goal: every Claude session and the Discord agent know what the game should be and build what we make today the same way, so the team's
 ideas come out right the first time and little is redone. Nobody on the team writes code, so the written direction, a few strong
 standards, the pipelines and the automatic checks are the framework. It holds only what every piece of content needs; every other
-standard is written with its first content (CLAUDE.md: no speculative abstraction):
+standard is written with its first content (AGENTS.md: no speculative abstraction):
 - the effects standard and the rite recipe: from Haunting Wraith (track C);
 - the UI standard: before Ascension's windows (Phase 3);
 - the rigging and animation standard, enemy roles, the boss template and area rules: with the first new creature, boss and place (Phase 4);
 - the props and world-kit pipeline and where big art files live: at the start of the art rebuild (Phase 4);
 - the audio rules: started with Phase 1's loudness check (-20 LUFS), they grow with the next sounds.
 
-All standards live in three pages (the look, the tech art, design and writing) plus one "How we work" page; CLAUDE.md points every
+All standards live in three pages (the look, the tech art, design and writing) plus one "How we work" page; AGENTS.md points every
 session to them. Five tracks run side by side; inside a track, top first.
 
 ### A. Direction and how we work
@@ -138,7 +133,7 @@ one budget table for every kind of asset, and checks for everything but models.
   materials may be (Tripo's models come out metallic and white out under glow), how heroes, thralls and enemies are told apart, and the
   style of icons, portraits and UI frames. It gives: one page every new asset is checked against, and the art rebuild's target.
 - [ ] **Fix: budgets in two places, for three kinds of asset (the tech art page).** Now: ASSET_PIPELINE.md asks Tripo for a 12,000-triangle
-  hero and a 14,000 boss while CLAUDE.md caps both at 20,000, the model check holds its own caps, and nothing covers the world. After: one
+  hero and a 14,000 boss while DECISIONS B71 caps both at 20,000, the model check holds its own caps, and nothing covers the world. After: one
   table (hero, bosses, crowd creatures, thrall variants, weapons and gear, props, wall and floor pieces, effect meshes, UI art) with
   triangles (a target and a hard cap), texture size, materials, bones and levels of detail, plus a budget per area (triangles in view, draw
   calls, lights); the gear's attachment rules move here. Starting numbers come from today's assets, confirmed with the benchmark.
@@ -171,9 +166,10 @@ one budget table for every kind of asset, and checks for everything but models.
   combat clips checked (Phase 1); still to add: texture sizes, bones, levels of detail, scale and pivot, a source and licence record; for
   data: required fields, ids that exist, numbers inside the balance sheet. They run before every push, in the Discord agent's check and in
   CI. It gives: an over-budget model, a missing clip or a broken item cannot ship.
-- [ ] **New: the rules reach every Claude by themselves.** CLAUDE.md points to the docs map; each recipe is also a Claude Code skill that
-  loads by itself when a session (on the server or the Discord agent) is asked for that job; the agent's proposals show the checklist's
-  results. It gives: no session has to know where a rule lives to follow it.
+- [ ] **New: the rules reach every Claude by themselves.** Now (2026-10-21): one rules file, AGENTS.md, reaches every terminal session
+  and Codex (B72) and points to the docs map, and the Discord agent loads its guides when a job needs one. Still to do: each recipe also a
+  Claude Code skill that loads by itself for its job, and the agent's proposals show the checklist's results. It gives: no session has to
+  know where a rule lives to follow it.
 - [ ] **Fix: the character pipeline guide is spread over three pages.** Now: ASSET_PIPELINE.md, `docs/BLENDER-PIPELINE.md` and
   `docs/TRIPO-ANIMATE-IN-PLACE.md` each hold part of the steps, and none covers the crowd bake or the look check. After: one guide from
   concept (the team approves the picture first) through the Tripo model, cleanup to budget in Blender, rig, clips, build, levels of detail,
@@ -211,11 +207,11 @@ one budget table for every kind of asset, and checks for everything but models.
 - [ ] **Fix: leftovers from the web game.** Now: parts of the code still copy the web game's exact math, and an asset list is kept by hand.
   After: plain Godot code and generated lists (KNOWN-GAPS "Leftovers from the web era").
 - [ ] **Fix: docs too long to read.** Now: `native/README.md` is 56 KB, more than a fresh session can read before it starts working (the
-  client's manual is an index and guides beside each system since 2026-10-21). After: short pages on how each system works now, the
-  history kept in git and DECISIONS.
+  client's manual became an index plus guides beside each system, and every rule file and guide got a size ceiling that warns in review,
+  2026-10-21). After: short pages on how each system works now, the history kept in git and DECISIONS.
 - [ ] **New: the map of the docs, completed.** Now: README.md "Documentation map" sends each kind of task to its document, and every
-  session and the Discord agent start from it (2026-10-21). After: the map also lists the vision, How we work, the standards pages, the
-  pipelines and the recipes as each is written, so the rule is found before anyone builds.
+  session and the Discord agent start from it (2026-10-21). After: it also lists the vision, How we work, the standards pages, the
+  pipelines and the recipes as each is written.
 - [ ] **Fix: the repository after the old game's folder went.** Now: leftovers of the two-game setup. After: each top-level folder has one
   stated purpose, nothing is left over, and README.md's layout is true.
 
@@ -264,49 +260,28 @@ set with Helix then.
 ## Polish list
 
 Worked through beside the phases, top first. Each change is shown to the team with screenshots before it ships.
-- [x] **Fix: three combat rules the rebuild found broken** (Helix, 2026-10-16). Done 2026-10-20: toxic corpse pools hurt at the level the
-  area's enemies are made at (were level 1); a fallen plague bearer leaves its rot pool (5 s, slows and withers); each Mourning Bell wraith
-  blow heals the heroes within 14 m, owner and party, by 2% of their health, as the item says (thralls are not healed, the old game's design).
 - [ ] **Fix: the look pass** (B49). Now: blended effects (decals, telegraphs, particles) look wider and brighter than in the old game, most
   on Low and Medium; the Depths' walls are darker; the hero reads darker in bright areas (the Coliseum, the Cloister, the Pyre, the Wing) and
   brighter in dark ones. After: every preset looks like the old game or better, and Helix has signed off each area on their PC.
-- [ ] **Fix: the Reaper is unfinished.** Now: she has her rites (Haunting Wraith since 2026-10-18), a signature (R) rite and a legendary
-  set with its own body, but borrows the Mourner's body outside that set and other rites' icons, and has no runes. After: her own model,
-  icons and runes.
-- [x] **Fix: co-op gaps** (now → after; KNOWN-GAPS "Party and online"):
-  - Done 2026-10-20: a dropped player landed in their own solo game → for 5 minutes a notice and a Rejoin button in Social offer the same
-    party back (a host who drops still ends the session, D6; no seat is held, so a party that filled up answers "full").
-  - Done 2026-10-20: a guest's waystone map listed the guest's own unlocked areas → it lists the host's world, where the party plays.
-  - Done 2026-10-20: a guest saw only the killing blow of its thralls → it sees every blow, as the host does (the host lists each blow in the vitals message: 0.2 KB/s and no extra packet in the Full Party fight).
-  - Done 2026-10-20 (B68): a guest whose account had not opened a boss's area woke the boss for nothing and was told afterwards → a guest
-    may wake a boss of any area open in the host's world, and pays its own shards (or its own Seal and gold) for it.
-  - Done 2026-10-20: a guest never got a boss's first-kill bonus or trophy → guests get their own (the server decides from the guest's own
-    Chronicle, in the host's party report, once; the guest is paid after its answer).
-  - Done 2026-10-20: only the host's area got waves → each area a member fights in gets its own, sharing the 72-enemy limit (a Grave
-    Surge still opens in one area at a time).
-  - Decided 2026-10-20 (B67): the Depths stay solo; the stair turns a party away and says why.
-  - Done 2026-10-20: a guest could not call an Empowered boss, and its Covenant Seal and the Nightfall dimming did not reach the party → a
-    guest calls a boss Empowered with a Seal of its own bag (it pays on its own account, the host wakes the boss, the guest claims the
-    prize) and its window dims for Nightfall with the host's Wave Speed tier. Its Colossus Mantle already worked (the host builds its hero
-    from the server's record; a test now proves the guard cuts the blows on it).
-  - Done 2026-10-20: someone who joins during a boss fight → the join baseline already listed the live pools and a late joiner draws them (a
-    test now plays it on the Saint's rot and a burning pool); what did stop a join was a game that had already woken a boss: its combat core
-    held the boss's entry of the shared enemy table and the host refused it as "other game data" → a core is built from the data files alone.
-  - Done 2026-10-20: friends showed as online only once in the world → from sign-in, at character select and while the world loads (the
-    launcher has no login, so not there).
-- [x] **Decide + Fix: things built but never shown.** Done 2026-10-20 (Helix kept all four after pictures and videos from a team PC: "all 4
-  are good"): thralls wear their owner's Legion kit and their discipline's legion look, water ripples under steps, deaths, the Fen Wisp and
-  the Mire Mother, and the Prelate's candles gutter in its second and third phases; the Plague Doctor's flask pool is drawn (2026-10-20).
-- [x] **Fix: Easy auto combat parks the hero between tombstones.** Done 2026-10-20: it walked straight at the nearest enemy and stopped in
-  pockets between the graves → when a grave or wall is in the way it follows the navmesh's path round it.
-- [x] **Fix: seven tips never show.** Done 2026-10-20: the Depths (going in alone, a new floor, a floor's affix, and its chest), the
-  loadouts, a weapon change, a set bonus gained and the Omen had tips nothing triggered → each shows once at its moment.
-- [x] **Decide: the first goal after the Hollow Graves.** Done 2026-10-20 (B69): right after entering the Graves the Next-step line said "Ossuary
-  seal: 0/300 kills", a steep first goal → until the Gravedigger King has been beaten the box leads to him (his 2 soul shards, then the King's
-  Grave), and the Ossuary seal comes after he falls.
+- [ ] **Fix: the Reaper is unfinished.** Now: she has her rites (Haunting Wraith since 2026-10-18), her own rite icons (2026-10-20), a
+  signature (R) rite and a legendary set with its own body, but borrows the Mourner's body outside that set and has no runes. After: her
+  own model and runes.
 - [ ] **New: necromancer polish from playtests:** combat feel and loot, readability of rites and statuses, gear and affix legibility, the
   rest of the first hour (the Next-step box, counsel tips, guide NPCs).
 - [ ] **New: small additions:** colours in the chat window; an in-game leaderboard panel (today only the website shows it).
+
+Done 2026-10-20:
+- [x] **Fix: three combat rules the rebuild broke** (Helix, 2026-10-16): toxic corpse pools hurt at the area's level, a fallen plague
+  bearer leaves its rot pool, and Mourning Bell wraiths heal the heroes nearby by 2% of their health.
+- [x] **Fix: co-op gaps** (KNOWN-GAPS "Party and online"): a dropped player is offered Rejoin for 5 minutes; a guest's waystone map shows the
+  host's world; guests see every thrall blow, get their own boss first-kill bonus and trophy, and wake any boss open in the host's world
+  with their own shards, Seal and gold (B68); each area a member fights in gets its own waves within the 72-enemy limit; a late joiner
+  draws live pools and can join after a boss woke; friends show online from sign-in. The Depths stay solo (B67).
+- [x] **Decide + Fix: things built but never shown** (Helix: "all 4 are good"): thralls wear their owner's Legion kit, water ripples, the
+  Prelate's candles gutter, the Plague Doctor's flask pool is drawn.
+- [x] **Fix: Easy auto combat parked the hero between tombstones** → it follows the navmesh round them.
+- [x] **Fix: seven tips never showed** (the Depths, loadouts, a weapon change, a set bonus, the Omen) → each shows once at its moment.
+- [x] **Decide: the first goal after the Hollow Graves** (B69): the Next-step box leads to the Gravedigger King before the Ossuary seal.
 
 ## Later
 
@@ -363,6 +338,8 @@ KNOWN-GAPS.md instead.
 
 ## Done
 
+- 2026-10-21: **context for every session**: one rules file for Claude and Codex (B72), the docs map, the client manual as guides, the
+  Discord agent's guides loaded on demand, and size ceilings on rule files and guides.
 - 2026-10-16 to 2026-10-18: **the rebuild**, a C++ combat core and Forward+ graphics under the same game (B34-B50).
 - 2026-10-13 to 2026-10-15: **server authority**: the server rolls every drop, owns the bag and pays only what the kill ledger backs
   (B19-B26, B32).
