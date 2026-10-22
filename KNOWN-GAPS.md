@@ -105,9 +105,6 @@ polish list). Also:
   `server/death-muffin/discord-agent/test/sandbox.test.cjs` makes `wt/dm-sbx-test-*` and runs `git init` before the cleanup exists, so a run
   whose next write fails (seen in reviews run under a restricted sandbox) leaves the folder behind: 16 were left on 2026-10-20 and 2026-10-21,
   which the drift report lists. Fix: clean up when `world()` itself fails; the folders are for the owner to remove.
-- **`tools/check/ci.sh` and `prep.sh` are not executable in git** (mode 644; found 2026-10-21, context Stage 4), while `CLAUDE.md` and
-  tools/check/README.md show them run directly: in a checkout that path answers "Permission denied", so a session runs `bash tools/check/ci.sh`.
-  Fix: commit them as executable (mode 755).
 - **Numbers the tests cannot read yet** (the test audit, 2026-10-20: every suite now reads the game's numbers from its data or sets them
   itself, B59). Where the game keeps a number as an inline literal, the test carries a named copy, so a retune there still needs a test edit:
   the combat core's compiled-in values that `DmCore.tuning()` does not expose (elite radius, windup and cooldown multipliers, the 1.1 s rise,
@@ -167,11 +164,6 @@ polish list). Also:
   in the middle of it (found 2026-10-19).
 - The old HUD suite (its checks are in `hud` since 2026-10-19) failed one check when it ran beside other suites at load 9 (twice on 2026-10-19) and passed alone; the test runner
   re-runs a failed suite alone, so nothing fails, but the check (the 20 Hz refresh count in `hud`, or the key cast beside it) may still be load-sensitive.
-- The Discord agent's e2e test "bug reports: each new report opens one #in-game-reports thread ..." failed once in a full
-  `server/death-muffin/discord-agent/test/*.test.cjs` run ("player sees 'Looked at'": the posted marker its stand-in report command writes was not
-  there yet) and passed alone three times and in the next full run (found 2026-10-21; again once in a later full run that day, then 3 of 3 alone):
-  `postReports` (`runner/core.cjs`) writes that mark in a call it does not wait for, and the test checks it as soon as both threads exist. Fix:
-  the test waits for the mark as it waits for the threads.
 - `server/death-muffin/team-gate.test.cjs` "a stop from the publish's timeout cancels the job and removes the folder" failed once on GitHub CI
   (run 39633431669: the gate's folder was still there when the test looked, after a 2 s `timeout`) and passes locally every time (found
   2026-10-21): the folder removal races the check on a slow machine.

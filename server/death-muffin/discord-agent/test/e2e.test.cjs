@@ -360,7 +360,9 @@ test('bug reports: each new report opens one #in-game-reports thread with its lo
   assert.deepEqual(post.payload.allowedMentions, { parse: [], repliedUser: false }, 'player text pings nobody');
   assert.equal(post.payload.files[0].name, 'bug-report-9101.txt'); assert.match(post.payload.files[0].attachment.toString('utf8'), /LOG-MARKER-77/);
   assert.match(thread.name, /^🐞 #9101 I walked through a sealed door/); assert.doesNotMatch(thread.name, /@|<|everyone/, 'thread name scrubbed');
-  assert.ok(fs.existsSync(path.join(state, 'posted-9101')), 'player sees "Looked at"');
+  // the runner marks a report posted in a call it does not wait for (postReports), so wait for the marks (player sees "Looked at"); both,
+  // because the next postReports() reads them to know nothing is left to post
+  await until(() => fs.existsSync(path.join(state, 'posted-9101')) && fs.existsSync(path.join(state, 'posted-9102')), d.ad);
   assert.equal(await w.runner.postReports(), 0, 'nothing posted twice, the third waits for next hour');
   const job = w.runner.jobs()[thread.id]; assert.equal(job.bugReportId, 9101); assert.equal(job.worktree, null, 'no workspace until someone asks');
   // devs talk without the bot: nothing starts
