@@ -1,7 +1,7 @@
 'use strict';
 // Death Muffin dev-agent adapter for the Muffin Core Discord bot. A dumb transport: it forwards @mentions / thread messages / ✅🧪❌ reactions
-// in the configured channels (#death-muffin, and #in-game-reports for in-game bug reports) to the loopback runner and posts whatever the runner asks
-// it to post, including opening a thread for each new bug report. All decisions (allow-list, approver
+// in the configured channels (#death-muffin, #in-game-reports for in-game bug reports, and the #jobs forum) to the loopback runner and posts whatever
+// the runner asks it to post, including opening a thread for each new bug report and setting a #jobs post's tags. All decisions (allow-list, approver
 // gate, tiers, rate limits) live in the runner; the bot holds no authority and no secret except the shared runner secret.
 // Installed to /opt/muffin/discord/dm-agent.js. Env (from /opt/muffin/dm-agent.env): DM_AGENT_SECRET, DM_AGENT_URL, DM_AGENT_CHANNEL_ID (optional override).
 
@@ -17,7 +17,7 @@ const IMAGES_PER_MESSAGE = 4;
 const CDN = /^https:\/\/(cdn\.discordapp\.com|media\.discordapp\.net)\//;
 
 function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile = fetch, channelIdOverride = '', log = console.log, pollWaitSec = 25, retryDelays = [1000, 2000, 4000, 8000, 15000] }) {
-  let cachedChannel = channelIdOverride || ''; let cachedBugChannel = ''; let cachedAt = 0; let stopped = false;
+  let cachedChannel = channelIdOverride || ''; let cachedBugChannel = ''; let cachedJobs = ''; let cachedAt = 0; let stopped = false;
   const headers = { 'content-type': 'application/json', 'x-dm-secret': secret };
   // Messages, reactions and thread events are retried for ~30 s when the runner is unreachable (it restarts in a couple of seconds after an
   // update), so nothing someone types during a restart is lost. Only connection failures retry; an HTTP error answer is final.
@@ -33,11 +33,11 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
   }
   async function refresh() {
     if (Date.now() - cachedAt <= 60000) return;
-    try { const c = await call('/config'); cachedChannel = channelIdOverride || c.channelId || cachedChannel; cachedBugChannel = c.bugChannelId || ''; cachedAt = Date.now(); } catch { /* keep cached */ }
+    try { const c = await call('/config'); cachedChannel = channelIdOverride || c.channelId || cachedChannel; cachedBugChannel = c.bugChannelId || ''; cachedJobs = c.jobsChannelId || ''; cachedAt = Date.now(); } catch { /* keep cached */ }
   }
   async function channelId() { await refresh(); return channelIdOverride || cachedChannel; }
-  // The channels the runner serves: the main one and (optional) the bug-report one.
-  async function ours(id) { await refresh(); return !!id && [channelIdOverride || cachedChannel, cachedBugChannel].some((c) => c && String(c) === String(id)); }
+  // The channels the runner serves: the main one and (optional) the bug-report one and the #jobs forum.
+  async function ours(id) { await refresh(); return !!id && [channelIdOverride || cachedChannel, cachedBugChannel, cachedJobs].some((c) => c && String(c) === String(id)); }
   const botId = () => client.user && client.user.id;
   const stripMention = (t) => String(t || '').replace(new RegExp(`<@!?${botId()}>`, 'g'), '').trim();
   // Returns the text to append; image attachments (Discord CDN only, <= 8 MB, <= 4 per message) are pushed onto `images` as { name, b64 }.
@@ -80,8 +80,18 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
       if (!isThread && !mentioned) return;
       const images = [];
       const text = stripMention(msg.content) + await attachmentText(msg, images);
+      // A #jobs post: an @-mention carries the post's title and, when it is a reply, the post's opening message (the runner uses them only
+      // when the mention brings the bot into the post).
+      let post;
+      if (mentioned && isThread && cachedJobs && String(parentId) === String(cachedJobs)) {
+        post = { title: String(ch.name || '') };
+        if (msg.id !== ch.id) {
+          const first = typeof ch.fetchStarterMessage === 'function' ? await ch.fetchStarterMessage().catch(() => null) : null;
+          if (first && first.content) post.text = stripMention(first.content).slice(0, 4000);
+        }
+      }
       const r = await call('/event', { type: 'message', messageId: msg.id, channelId: isThread ? parentId : ch.id, threadId: isThread ? ch.id : null, parentId,
-        userId: msg.author.id, username: msg.member && msg.member.displayName || msg.author.username, text, mentioned, ...(images.length ? { images } : {}) });
+        userId: msg.author.id, username: msg.member && msg.member.displayName || msg.author.username, text, mentioned, ...(images.length ? { images } : {}), ...(post ? { post } : {}) });
       if (r.action === 'reply') return void safeReply(msg, r.text);
       // The runner shows "typing…" while it works; a reaction only marks a message that has to wait its turn.
       if (r.action === 'accepted') return void (r.queued && msg.react && msg.react('⏳').catch(() => {}));
@@ -152,6 +162,22 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
       await ch.setArchived(true, 'Death Muffin dev agent: finished, archived to keep the channel tidy');
     } catch (e) { log('[dm-agent] archive failed', e.message); }
   }
+  // A #jobs post's tags (the runner names them): `remove` comes off, `add` goes on, every other tag (War, Helix, ...) stays; names match the
+  // forum's tags ignoring case, and a name the forum lacks is skipped. Discord allows 5 tags a post, so the added ones are kept first. Editing
+  // another person's post needs Manage Threads; an archived post is skipped. Failures are logged and swallowed.
+  async function setTags({ threadId, add = [], remove = [] }) {
+    try {
+      const ch = await client.channels.fetch(String(threadId));
+      if (!ch || typeof ch.isThread !== 'function' || !ch.isThread() || ch.archived) return;
+      const forum = ch.parent || await client.channels.fetch(String(ch.parentId));
+      const byName = new Map(((forum && forum.availableTags) || []).map((t) => [String(t.name).toLowerCase(), String(t.id)]));
+      const ids = (names) => names.map((n) => byName.get(String(n).toLowerCase())).filter(Boolean);
+      const drop = new Set([...ids(remove), ...ids(add)]);
+      const next = [...new Set([...ids(add), ...(ch.appliedTags || []).map(String).filter((id) => !drop.has(id))])].slice(0, 5);
+      const cur = (ch.appliedTags || []).map(String);
+      if (next.length !== cur.length || next.some((id) => !cur.includes(id))) await ch.setAppliedTags(next, 'Death Muffin dev agent: job status');
+    } catch (e) { log('[dm-agent] tags failed', e.message); }
+  }
   async function pollOnce() {
     const { ops } = await call(`/poll?wait=${pollWaitSec}`);
     for (const op of ops || []) {
@@ -165,6 +191,7 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
         const r = op.rename; renameThread(r.threadId, r.name); continue;
       }
       if (op.archive) { await archiveThread(op.archive.threadId); await call('/ack', { id: op.id, result: {}, ok: true }); continue; }
+      if (op.tags) { await setTags(op.tags); await call('/ack', { id: op.id, result: {}, ok: true }); continue; }
       let result; let failed = false; let sent;
       try { sent = await exec(op); result = { messageId: sent.id }; } catch (e) { failed = true; result = { error: e.message }; log('[dm-agent] send failed', e.message); }
       if (!failed && op.newThread) {   // a new bug report: the post opens its own thread (the runner records it from the ack)

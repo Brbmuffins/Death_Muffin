@@ -1,6 +1,6 @@
 # Death Muffin Discord dev agent
 
-@mention the Muffin Core bot in `#death-muffin`, describe feedback or an idea, and it works it out in a thread: answers
+@mention the Muffin Core bot in `#death-muffin` (or in a `#jobs` post), describe feedback or an idea, and it works it out in a thread: answers
 questions from the code, or makes a change on its own branch and posts a short proposal (a draft: rounds of back and forth wait for no
 tests). 🧪 runs every test on it; an approver's ✅ tests it and ships it. Nothing the AI says can ship, push or deploy.
 
@@ -313,6 +313,20 @@ when someone @-mentions Muffin Core there. Its fresh session then gets the repor
 any thread: proposal, ✅ ships. A fix commit is titled `Bug report #<id>: …`, so `announce-release.sh` marks the report released ("Fixed — live
 now"). Once a change is open in the thread, replies go to it without a mention. A report thread nobody picked up is archived after 48 h quiet
 (`archiveReportAfterMin`); the 7-day sweep skips report threads that never had a workspace. `!report` / `!report <id>` still work in any thread.
+
+## The #jobs forum
+
+`#jobs` (`jobsChannelId`) is the team's job board: a forum where each post is one job, tagged with who owns it (War, brb, Helix, Muffin Core)
+and where it stands (To do, Doing, Done). The bot stays out of a post until someone on the team @-mentions Muffin Core in it, in the opening
+message or a reply; that post then becomes the job's thread (no new thread opens). Every fresh session gets the post's title and opening message
+as the team's text, and the job runs like any thread: proposal, ✅ ships, rounds. Once a change is open, replies go to it without a mention; with
+nothing open the team talks there without the bot again, and the next mention starts a fresh round.
+
+The runner never renames a post (its author chose the title); the post's tags show the job instead (`jobsTags`). Muffin Core and Doing go on
+when the agent starts or a proposal waits for ✅, Done when it shipped, To do when it was discarded; an answered question changes nothing.
+Only those four tags are touched, the owner tags stay, and at most 5 apply (Discord's limit). The adapter applies acked `{ tags: { threadId,
+add, remove } }` ops by tag name with `setAppliedTags`, which needs **Manage Threads** in `#jobs` for posts someone else opened; an archived post
+is skipped. The runner archives a post only an hour after its job shipped, never while the job is open.
 
 ## Under the hood: checks, previews and the ship
 

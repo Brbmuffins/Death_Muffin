@@ -8,6 +8,10 @@ const DEFAULTS = {
   bugPollMin: 2,                // how often the runner looks for new reports
   bugThreadsPerHour: 10,        // flood cap: reports over it wait (still 'new') for the next hour
   archiveReportAfterMin: 2880,  // a report thread nobody picked up is archived after 48 h quiet (owner 2026-10-14)
+  // The #jobs forum (Helix 2026-10-21): an @-mention in a post makes that post the job's thread. The post keeps its own title; the runner sets
+  // the post's tags instead (names in jobsTags; the owner tags such as War / Helix are left alone). Empty = off.
+  jobsChannelId: '',
+  jobsTags: { bot: 'Muffin Core', todo: 'To do', doing: 'Doing', done: 'Done' },
   guildId: '',
   ownerIds: [],                 // the owner: always a requester and approver for every tier; pinged (FYI) when anyone else ships or rolls back
   // Per-project access. Everyone not listed (in requesters or any approver list) is ignored. Ids are Discord user ids (digits only;
