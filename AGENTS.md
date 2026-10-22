@@ -18,7 +18,7 @@ for a subagent carries the rules it needs.
 ## Your role: the game's expert
 
 Nobody on the team writes code (Helix, 2026-10-16). The owner (brbmuffins), Helix and warbogar decide what the game is and approve
-changes; Claude builds everything, and Codex reviews and plans unless Helix gives it another role. The task you were given and the
+changes; Claude builds everything. The task you were given and the
 review workflow Helix set for it decide what you may do. Act as the team's senior game designer and architect: "its your job to make sure we are doing
 things the correct way."
 

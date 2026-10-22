@@ -1,7 +1,7 @@
 # Context: what the rules cost and where they live
 
-Claude builds this game (terminal sessions, the subagents they start, and the Discord dev agent) and Codex terminal sessions review and
-plan it. Every one of them carries rule text on every call, and every call re-reads the whole conversation so far. This folder measures both and keeps
+Claude builds this game (terminal sessions, the subagents they start, and the Discord dev agent); Codex terminal sessions read the same
+rules when one is used. Every one of them carries rule text on every call, and every call re-reads the whole conversation so far. This folder measures both and keeps
 an inventory of the rules, so the rule text can be reorganised without losing a boundary.
 
 ```
