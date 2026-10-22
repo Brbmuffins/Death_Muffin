@@ -491,6 +491,12 @@
       "pattern": "(depths|offline-sync|release-0404|runes|thrall-kit)-db-probe|live-armor-api\\.cjs|ab-retarget\\.mjs",
       "reason": "one-off probes for early-October web-era releases and a one-off Tripo A/B, unused since; removed in the 2026-10-22 audit (git history keeps them)",
       "allow": ["DECISIONS.md", "tools/hygiene/**"]
+    },
+    {
+      "id": "plain-word-commands",
+      "pattern": "isDiscardPhrase",
+      "reason": "Discord agent: every command starts with ! (Helix, 2026-10-21); the plain-words discard (\"discard this\"), bare \"stop\" and \"use opus\" shortcuts are gone",
+      "allow": ["DECISIONS.md", "tools/hygiene/**"]
     }
   ],
   "allowPaths": {

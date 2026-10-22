@@ -20,6 +20,8 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   if (/step limit\. The work continues/.test(p)) { if (!fs.existsSync('NO-NOTE')) fs.writeFileSync('.dm-handoff.md', 'HANDOFF: speed half done; next set speed=9 in client/game/a.gd\n'); return out({ subtype: 'success', is_error: false, result: 'Note written.' }); }
   if (/LONG-FOREVER/.test(p) || (/LONG-TASK/.test(p) && !/<handoff>|left no note/.test(p))) return out({ subtype: 'error_max_turns', is_error: true, errors: ['Reached maximum number of turns (40)'] });
   if (/LOG-MARKER-77/.test(p)) text = 'Saw LOG-MARKER-77 in the report.';
+  if (/Write this discussion up as a job for the #jobs forum/.test(p)) text = `JOB TITLE: Bone shield for the Ossuary\nGive the Ossuary a bone shield.${/LOG-MARKER-77/.test(p) ? ' LOG-MARKER-77 was decided.' : ''}`;
+  if (/You were paused while the team talked/.test(p)) text = /LOG-MARKER-77/.test(p) ? 'Caught up on LOG-MARKER-77.' : 'Caught up.';
   if (/STATUS-TURN/.test(p)) { fs.writeFileSync('.dm-status', '20% · Hunting the tooltip crash, then fixing it; ~1 min.\n'); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2500); }
   const ttl = /TITLE-TURN="([^"]+)"/.exec(p); if (ttl) { fs.writeFileSync('.dm-title', ttl[1] + '\n'); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 800); }
   if (/SLOW-TURN/.test(p)) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000); // a turn still running when someone reacts ❌

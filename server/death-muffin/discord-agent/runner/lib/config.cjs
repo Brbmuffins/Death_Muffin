@@ -12,6 +12,12 @@ const DEFAULTS = {
   // the post's tags instead (names in jobsTags; the owner tags such as War / Helix are left alone). Empty = off.
   jobsChannelId: '',
   jobsTags: { bot: 'Muffin Core', todo: 'To do', doing: 'Doing', done: 'Done' },
+  jobsOwners: {},               // `!job for <who>`: tag name -> the words and user ids that mean it ({ "War": ["war", "warbogar", "2910..."] })
+  // Discussion forums (#classes, #features, #lore; Helix 2026-10-21): the first @-mention (or !job) brings the bot into a post to talk. It
+  // answers every message there until !pause, can read the game but never change it (read-only tools, no proposals), and !job writes the
+  // discussion up as a new #jobs post. Empty = off.
+  talkChannelIds: [],
+  talkIdleHours: 24,            // a discussion post's workspace is removed after this long without messages (the conversation is kept)
   guildId: '',
   ownerIds: [],                 // the owner: always a requester and approver for every tier; pinged (FYI) when anyone else ships or rolls back
   // Per-project access. Everyone not listed (in requesters or any approver list) is ignored. Ids are Discord user ids (digits only;

@@ -4,7 +4,7 @@ const { createRunner } = require('../runner/core.cjs');
 const { loadConfig } = require('../runner/lib/config.cjs');
 const { createAdapter } = require('../bot/dm-agent.cjs');
 const SRC = path.resolve(__dirname, '..');
-const IDS = { OWNER: '100000000000000001', HELIX: '142812688358178816', LIMITED: '300000000000000003', STRANGER: '400000000000000004', BOT: '900000000000000009', CHAN: '700000000000000007', BUGS: '700000000000000008', JOBS: '700000000000000009' };
+const IDS = { OWNER: '100000000000000001', HELIX: '142812688358178816', LIMITED: '300000000000000003', STRANGER: '400000000000000004', BOT: '900000000000000009', CHAN: '700000000000000007', BUGS: '700000000000000008', JOBS: '700000000000000009', TALK: '700000000000000010' };
 
 function sh(cwd, ...a) { return execFileSync('git', ['-c', 'user.name=T', '-c', 'user.email=t@t', ...a], { cwd, stdio: 'pipe' }).toString().trim(); }
 // The test world: one `main` branch shaped like the real repo (a small client/ tree is the game, the server files the ship and gate know, the publish
@@ -75,7 +75,16 @@ function makeWorld(over = {}) {
 
 // ---- fake Discord layer ----
 class Chan extends EventEmitter {
-  constructor(world, id, opts = {}) { super(); this.world = world; this.id = id; this.sent = []; this.thread = !!opts.thread; this.parentId = opts.parentId || null; world.chans.set(id, this); }
+  constructor(world, id, opts = {}) {
+    super(); this.world = world; this.id = id; this.sent = []; this.log = []; this.thread = !!opts.thread; this.parentId = opts.parentId || null; world.chans.set(id, this);
+    // what Discord would return: the channel's messages before one id, newest first (a Map, like discord.js's Collection)
+    this.messages = { fetch: async ({ limit = 50, before } = {}) => new Map(this.log.filter((m) => !before || BigInt(m.id) < BigInt(before)).slice(-limit).reverse().map((m) => [m.id, m])) };
+    // a forum's new post (!job): a thread whose opening message is the bot's
+    this.threads = { create: async ({ name, message, appliedTags }) => {
+      const t = new Chan(world, String(world.nextId++), { thread: true, parentId: this.id }); t.name = name; t.appliedTags = appliedTags || [];
+      const m = new Msg(world, t, IDS.BOT, message.content, true); m.id = t.id; m.payload = message; t.starter = m; t.log.push(m); (world.posts = world.posts || []).push(t); return t;
+    } };
+  }
   isThread() { return this.thread; }
   async setName(n) { this.name = n; this.renames = (this.renames || []).concat(n); return this; }
   async setArchived(a) { this.archived = a; return this; }
@@ -83,7 +92,7 @@ class Chan extends EventEmitter {
   async setAppliedTags(ids) { this.appliedTags = ids; this.tagEdits = (this.tagEdits || 0) + 1; return this; }
   async fetchStarterMessage() { return this.starter || null; }
   async sendTyping() { this.typing = (this.typing || 0) + 1; }
-  async send(p) { const m = new Msg(this.world, this, IDS.BOT, p.content || '', true); m.payload = p; this.sent.push(m); return m; }
+  async send(p) { const m = new Msg(this.world, this, IDS.BOT, p.content || '', true); m.payload = p; this.sent.push(m); this.log.push(m); return m; }
 }
 class Msg {
   constructor(world, channel, authorId, content, bot = false) {
@@ -103,9 +112,10 @@ function makeDiscord(runner, over = {}) {
   const bugs = new Chan(world, IDS.BUGS);   // #in-game-reports (used when the config sets bugChannelId)
   const jobs = new Chan(world, IDS.JOBS);   // the #jobs forum (used when the config sets jobsChannelId)
   jobs.availableTags = ['War', 'Helix', 'Muffin Core', 'To do', 'Doing', 'Done'].map((name, i) => ({ id: `tag${i}`, name }));
+  const talk = new Chan(world, IDS.TALK);   // a discussion forum (used when the config lists it in talkChannelIds)
   const fetchImpl = async (url, init = {}) => {
     const u = new URL(url); const body = init.body ? JSON.parse(init.body) : undefined; let out;
-    if (u.pathname === '/config') out = { channelId: runner.cfg.channelId, bugChannelId: runner.cfg.bugChannelId || '', jobsChannelId: runner.cfg.jobsChannelId || '' };
+    if (u.pathname === '/config') out = { channelId: runner.cfg.channelId, bugChannelId: runner.cfg.bugChannelId || '', jobsChannelId: runner.cfg.jobsChannelId || '', talkChannelIds: runner.cfg.talkChannelIds || [] };
     else if (u.pathname === '/poll') out = { ops: await runner.poll(0) };
     else if (u.pathname === '/event') out = await runner.handleEvent(body);
     else if (u.pathname === '/bind') out = await runner.bind(body);
@@ -113,16 +123,17 @@ function makeDiscord(runner, over = {}) {
     return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(out)) };
   };
   const ad = createAdapter({ client, runnerUrl: 'http://x', secret: 's', fetchImpl, pollWaitSec: 0, log: () => {}, ...over });
-  const say = (chan, userId, content, attachments = []) => { const m = new Msg(world, chan, userId, content); attachments.forEach((a, i) => m.attachments.set(String(i), a)); return ad.onMessage(m).then(() => m); };
+  const say = (chan, userId, content, attachments = []) => { const m = new Msg(world, chan, userId, content); attachments.forEach((a, i) => m.attachments.set(String(i), a)); chan.log.push(m); return ad.onMessage(m).then(() => m); };
   const react = async (msg, userId, emoji) => { const removed = []; const reaction = { emoji: { name: emoji }, message: msg, partial: false, users: { remove: async (id) => { removed.push(id); } } }; await ad.onReaction(reaction, { id: userId, bot: false }); return removed; };
-  // A #jobs forum post: a thread whose id is its opening message's id, with tags (ids from jobs.availableTags) and the opening message said.
-  const forumPost = async (userId, title, content, tagNames = []) => {
-    const id = String(world.nextId++); const t = new Chan(world, id, { thread: true, parentId: IDS.JOBS }); t.name = title;
+  // A forum post (#jobs unless `forum` says otherwise): a thread whose id is its opening message's id, with tags (ids from jobs.availableTags)
+  // and the opening message said.
+  const forumPost = async (userId, title, content, tagNames = [], forum = jobs) => {
+    const id = String(world.nextId++); const t = new Chan(world, id, { thread: true, parentId: forum.id }); t.name = title;
     t.appliedTags = tagNames.map((n) => jobs.availableTags.find((x) => x.name === n).id);
-    const m = new Msg(world, t, userId, content); m.id = id; t.starter = m; await ad.onMessage(m);
+    const m = new Msg(world, t, userId, content); m.id = id; t.starter = m; t.log.push(m); await ad.onMessage(m);
     return { thread: t, m };
   };
-  return { world, client, main, bugs, jobs, ad, say, react, forumPost };
+  return { world, client, main, bugs, jobs, talk, ad, say, react, forumPost };
 }
 async function until(fn, ad, ms = 30000) {
   const t0 = Date.now();

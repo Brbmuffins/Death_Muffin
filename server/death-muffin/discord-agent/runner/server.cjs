@@ -17,7 +17,7 @@ function startServer(cfg, runner, secret) {
       if (!eq(req.headers['x-dm-secret'], secret)) return send(401, { error: 'unauthorized' });
       const url = new URL(req.url, 'http://x');
       if (req.method === 'GET' && url.pathname === '/health') return send(200, { ok: true });
-      if (req.method === 'GET' && url.pathname === '/config') return send(200, { channelId: cfg.channelId, bugChannelId: cfg.bugChannelId || '', jobsChannelId: cfg.jobsChannelId || '', guildId: cfg.guildId });
+      if (req.method === 'GET' && url.pathname === '/config') return send(200, { channelId: cfg.channelId, bugChannelId: cfg.bugChannelId || '', jobsChannelId: cfg.jobsChannelId || '', talkChannelIds: cfg.talkChannelIds || [], guildId: cfg.guildId });
       if (req.method === 'GET' && url.pathname === '/poll') return send(200, { ops: await runner.poll(Math.min(30000, Number(url.searchParams.get('wait')) * 1000 || 0)) });
       if (req.method !== 'POST') return send(404, { error: 'not found' });
       // 1 MB everywhere, except /event which may carry up to 4 images of 8 MB as base64 (4 x 8 MB x 4/3 ~ 43 MB, so 48 MB).

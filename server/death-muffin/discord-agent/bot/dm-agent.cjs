@@ -1,7 +1,8 @@
 'use strict';
 // Death Muffin dev-agent adapter for the Muffin Core Discord bot. A dumb transport: it forwards @mentions / thread messages / ✅🧪❌ reactions
-// in the configured channels (#death-muffin, #in-game-reports for in-game bug reports, and the #jobs forum) to the loopback runner and posts whatever
-// the runner asks it to post, including opening a thread for each new bug report and setting a #jobs post's tags. All decisions (allow-list, approver
+// in the configured channels (#death-muffin, #in-game-reports for in-game bug reports, the #jobs forum and the discussion forums) to the loopback
+// runner and posts whatever the runner asks it to post, including opening a thread for each new bug report, setting a #jobs post's tags and
+// opening a #jobs post from a discussion (!job). All decisions (allow-list, approver
 // gate, tiers, rate limits) live in the runner; the bot holds no authority and no secret except the shared runner secret.
 // Installed to /opt/muffin/discord/dm-agent.js. Env (from /opt/muffin/dm-agent.env): DM_AGENT_SECRET, DM_AGENT_URL, DM_AGENT_CHANNEL_ID (optional override).
 
@@ -17,7 +18,7 @@ const IMAGES_PER_MESSAGE = 4;
 const CDN = /^https:\/\/(cdn\.discordapp\.com|media\.discordapp\.net)\//;
 
 function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile = fetch, channelIdOverride = '', log = console.log, pollWaitSec = 25, retryDelays = [1000, 2000, 4000, 8000, 15000] }) {
-  let cachedChannel = channelIdOverride || ''; let cachedBugChannel = ''; let cachedJobs = ''; let cachedAt = 0; let stopped = false;
+  let cachedChannel = channelIdOverride || ''; let cachedBugChannel = ''; let cachedJobs = ''; let cachedTalk = []; let cachedAt = 0; let stopped = false;
   const headers = { 'content-type': 'application/json', 'x-dm-secret': secret };
   // Messages, reactions and thread events are retried for ~30 s when the runner is unreachable (it restarts in a couple of seconds after an
   // update), so nothing someone types during a restart is lost. Only connection failures retry; an HTTP error answer is final.
@@ -33,11 +34,11 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
   }
   async function refresh() {
     if (Date.now() - cachedAt <= 60000) return;
-    try { const c = await call('/config'); cachedChannel = channelIdOverride || c.channelId || cachedChannel; cachedBugChannel = c.bugChannelId || ''; cachedJobs = c.jobsChannelId || ''; cachedAt = Date.now(); } catch { /* keep cached */ }
+    try { const c = await call('/config'); cachedChannel = channelIdOverride || c.channelId || cachedChannel; cachedBugChannel = c.bugChannelId || ''; cachedJobs = c.jobsChannelId || ''; cachedTalk = (c.talkChannelIds || []).map(String); cachedAt = Date.now(); } catch { /* keep cached */ }
   }
   async function channelId() { await refresh(); return channelIdOverride || cachedChannel; }
-  // The channels the runner serves: the main one and (optional) the bug-report one and the #jobs forum.
-  async function ours(id) { await refresh(); return !!id && [channelIdOverride || cachedChannel, cachedBugChannel, cachedJobs].some((c) => c && String(c) === String(id)); }
+  // The channels the runner serves: the main one and (optional) the bug-report one, the #jobs forum and the discussion forums.
+  async function ours(id) { await refresh(); return !!id && [channelIdOverride || cachedChannel, cachedBugChannel, cachedJobs, ...cachedTalk].some((c) => c && String(c) === String(id)); }
   const botId = () => client.user && client.user.id;
   const stripMention = (t) => String(t || '').replace(new RegExp(`<@!?${botId()}>`, 'g'), '').trim();
   // Returns the text to append; image attachments (Discord CDN only, <= 8 MB, <= 4 per message) are pushed onto `images` as { name, b64 }.
@@ -80,15 +81,19 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
       if (!isThread && !mentioned) return;
       const images = [];
       const text = stripMention(msg.content) + await attachmentText(msg, images);
-      // A #jobs post: an @-mention carries the post's title and, when it is a reply, the post's opening message (the runner uses them only
-      // when the mention brings the bot into the post).
+      // A forum post (#jobs or a discussion forum): an @-mention (or !job) carries the post's title, its opening message and its last 50 messages
+      // before this one (the runner uses them only when this brings the bot into the post).
       let post;
-      if (mentioned && isThread && cachedJobs && String(parentId) === String(cachedJobs)) {
+      const forum = isThread && [cachedJobs, ...cachedTalk].some((c) => c && String(c) === String(parentId));
+      if (forum && (mentioned || /^!job\b/i.test(stripMention(msg.content)))) {
         post = { title: String(ch.name || '') };
         if (msg.id !== ch.id) {
           const first = typeof ch.fetchStarterMessage === 'function' ? await ch.fetchStarterMessage().catch(() => null) : null;
           if (first && first.content) post.text = stripMention(first.content).slice(0, 4000);
         }
+        const recent = ch.messages && typeof ch.messages.fetch === 'function' ? await ch.messages.fetch({ limit: 50, before: msg.id }).catch(() => null) : null;
+        if (recent) post.history = [...recent.values()].reverse().filter((m) => m.content).map((m) => ({ name: (m.member && m.member.displayName) || (m.author && m.author.username) || 'someone',
+          text: stripMention(m.content).slice(0, 1500), bot: !!(m.author && m.author.id === botId()) }));
       }
       const r = await call('/event', { type: 'message', messageId: msg.id, channelId: isThread ? parentId : ch.id, threadId: isThread ? ch.id : null, parentId,
         userId: msg.author.id, username: msg.member && msg.member.displayName || msg.author.username, text, mentioned, ...(images.length ? { images } : {}), ...(post ? { post } : {}) });
@@ -178,6 +183,15 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
       if (next.length !== cur.length || next.some((id) => !cur.includes(id))) await ch.setAppliedTags(next, 'Death Muffin dev agent: job status');
     } catch (e) { log('[dm-agent] tags failed', e.message); }
   }
+  // A new #jobs post from a discussion (!job): opened with the runner's text and tags (by name; one the forum lacks is skipped), pinging nobody.
+  async function openPost({ channelId, name, content, tags = [] }) {
+    const forum = await client.channels.fetch(String(channelId));
+    const byName = new Map(((forum && forum.availableTags) || []).map((t) => [String(t.name).toLowerCase(), t]));
+    const applied = tags.map((n) => byName.get(String(n).toLowerCase())).filter(Boolean).slice(0, 5);
+    const t = await forum.threads.create({ name: String(name || 'Job').slice(0, 100), message: { content: String(content || '').slice(0, 1990), allowedMentions: NO_PINGS },
+      appliedTags: applied.map((x) => String(x.id)), reason: 'Death Muffin dev agent: !job from a discussion' });
+    return { threadId: t.id, tags: applied.map((x) => String(x.name)) };
+  }
   async function pollOnce() {
     const { ops } = await call(`/poll?wait=${pollWaitSec}`);
     for (const op of ops || []) {
@@ -192,6 +206,11 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
       }
       if (op.archive) { await archiveThread(op.archive.threadId); await call('/ack', { id: op.id, result: {}, ok: true }); continue; }
       if (op.tags) { await setTags(op.tags); await call('/ack', { id: op.id, result: {}, ok: true }); continue; }
+      if (op.forumPost) {
+        let result; let ok = true;
+        try { result = await openPost(op.forumPost); } catch (e) { ok = false; result = { error: e.message }; log('[dm-agent] job post failed', e.message); }
+        await call('/ack', { id: op.id, result, ok }); continue;
+      }
       let result; let failed = false; let sent;
       try { sent = await exec(op); result = { messageId: sent.id }; } catch (e) { failed = true; result = { error: e.message }; log('[dm-agent] send failed', e.message); }
       if (!failed && op.newThread) {   // a new bug report: the post opens its own thread (the runner records it from the ack)

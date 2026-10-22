@@ -2,6 +2,8 @@
   "channelId": "1553896227186282546",
   "bugChannelId": "1558665971596795934",
   "jobsChannelId": "1562666352257536100",
+  "jobsOwners": { "War": ["war", "warbogar", "291020261074010113"], "Helix": ["helix", "142812688358178816"], "brb": ["brb", "brbmuffins", "1057775535658369105"] },
+  "talkChannelIds": ["1562666357764657236", "1562666364588662814", "1562666369462439937"],
   "guildId": "1470926087616991428",
   "ownerIds": ["__OWNER_DISCORD_ID__"],
   "projects": {

@@ -1,6 +1,6 @@
 # Death Muffin Discord dev agent
 
-@mention the Muffin Core bot in `#death-muffin` (or in a `#jobs` post), describe feedback or an idea, and it works it out in a thread: answers
+@mention the Muffin Core bot in `#death-muffin` (or in a `#jobs` post; in #classes, #features and #lore it only talks), describe feedback or an idea, and it works it out in a thread: answers
 questions from the code, or makes a change on its own branch and posts a short proposal (a draft: rounds of back and forth wait for no
 tests). 🧪 runs every test on it; an approver's ✅ tests it and ships it. Nothing the AI says can ship, push or deploy.
 
@@ -31,7 +31,7 @@ fresh ✅. ✅ on a draft ships it: the ship's CI wait is the test (the proposal
 check never skips an untested proposal (`PROPOSAL_UNTESTED`). A ship whose tests fail (`ship-tests-failed`) says so, and the same test run follows
 (`repost`): the agent fixes it and a tested proposal comes back for one more ✅; suites that fail on the base too stop it with "⚠ Not this change".
 ❌ on a proposal asks first ("Discard this change?", audit `discard-asked`), and ❌ on that question discards (`discard-confirmed`); a typed
-`!discard` or "discard this" does not ask.
+`!discard` does not ask.
 
 **The CI gate (DECISIONS B59; `ciGate`, default on).** `verify` pushes the job's branch and waits for GitHub CI's verdict on its exact
 files (`ci.sh wait <head>`, audit `ci-check`): every suite, the backend and lobby tests, hygiene and the model check; the proposal's "Tests" reads
@@ -87,11 +87,18 @@ the runner re-checks it: a proposal that moved on (new round or head), an approv
 drops it from the queue with a note in the thread.
 
 ## Chat commands (in the thread, handled by the runner, not the AI)
-`!status` · `!credits` (your model-generation budget) · `!shot` (screenshot of the change) · `!clips` (record the last short videos again on a team PC) · `!cancel` · `!test` (or 🧪: every test on the open change, nothing ships) · `!discard` (or ❌ and ❌ again on the question it asks, or plain words like "discard this" / "you can discard this as a test") · `!sync` (merge the latest base branch, agent resolves conflicts) · `!model opus|sonnet|haiku`
-(full approvers; "use opus" in a message works too) · `rollback` (mention in channel or thread): runs the newest deploy
+Every command starts with `!` (Helix, 2026-10-21: no accidental commands); "stop", "discard this" or "use opus" in plain words is an ordinary
+message to the agent.
+`!status` · `!credits` (your model-generation budget) · `!shot` (screenshot of the change) · `!clips` (record the last short videos again on a team PC) · `!cancel` or `!stop` · `!test` (or 🧪: every test on the open change, nothing ships) · `!discard` (or ❌ and ❌ again on the question it asks) · `!pause` / `!resume` (below) · `!job [for <who>]` (discussion posts, see "Discussion forums") · `!sync` (merge the latest base branch, agent resolves conflicts) · `!model opus|sonnet|haiku`
+(full approvers) · `!rollback` (mention in channel, or in a thread): runs the newest deploy
 backup's ROLLBACK.sh under the lock. Owner/full approvers any time, limited approvers only if their ship is the latest.
 
-`!cancel` (or a bare `stop` / `cancel` while something runs; requester or owner; a near-miss such as `cencel` or `stpo` gets "Did you mean !cancel?" and is not passed to the agent) stops the current step, agent turn or the runner's own check run,
+`!pause` (any thread) lets the team talk among themselves: the agent finishes the step it is on, then every message is kept (`job.pausedMsgs`)
+and none goes to it; a mention does not bring it back, only `!resume` does. `!resume` hands it what was said, oldest first, in one turn (catch up;
+do what was settled, else reply briefly); with nothing said it just says "Back", and in a job thread with nothing open it does not start a round.
+Paused messages do not count toward the hourly message limit (neither do messages the bot ignores).
+
+`!cancel` / `!stop` (requester or owner; a near-miss such as `!cencel` or `!stpo` gets "Did you mean !cancel?" and is not passed to the agent) stops the current step, agent turn or the runner's own check run,
 killing the whole process tree (Claude's Bash tool and `timeout` start their own process groups, so a group kill alone orphaned test runs).
 Messages queued before it are dropped, and no review or repair turn follows; the branch and worktree stay, and the next message continues.
 A ship cannot be cancelled. An idle job is closed by the sweep after 7 days without activity. Housekeeping (`tidy()`, at start and with every sweep)
@@ -318,8 +325,8 @@ now"). Once a change is open in the thread, replies go to it without a mention. 
 
 `#jobs` (`jobsChannelId`) is the team's job board: a forum where each post is one job, tagged with who owns it (War, brb, Helix, Muffin Core)
 and where it stands (To do, Doing, Done). The bot stays out of a post until someone on the team @-mentions Muffin Core in it, in the opening
-message or a reply; that post then becomes the job's thread (no new thread opens). Every fresh session gets the post's title and opening message
-as the team's text, and the job runs like any thread: proposal, ✅ ships, rounds. Once a change is open, replies go to it without a mention; with
+message or a reply; that post then becomes the job's thread (no new thread opens). The adapter sends the post's title, opening message and its
+last 50 messages with that mention; every fresh session gets them as the team's text, and the job runs like any thread: proposal, ✅ ships, rounds. Once a change is open, replies go to it without a mention; with
 nothing open the team talks there without the bot again, and the next mention starts a fresh round.
 
 The runner never renames a post (its author chose the title); the post's tags show the job instead (`jobsTags`). Muffin Core and Doing go on
@@ -327,6 +334,22 @@ when the agent starts or a proposal waits for ✅, Done when it shipped, To do w
 Only those four tags are touched, the owner tags stay, and at most 5 apply (Discord's limit). The adapter applies acked `{ tags: { threadId,
 add, remove } }` ops by tag name with `setAppliedTags`, which needs **Manage Threads** in `#jobs` for posts someone else opened; an archived post
 is skipped. The runner archives a post only an hour after its job shipped, never while the job is open.
+
+## Discussion forums (#classes, #features, #lore)
+
+The forums in `talkChannelIds` are for the team to talk ideas over. The first @-mention in a post (or `!job`) brings Muffin Core in, with the
+post's title and last 50 messages; from then on it answers every message there (no mention needed) until `!pause`. It talks like the team's
+senior designer: answers from the game as it is, brainstorms, writes lore, sketches class kits. It cannot change anything there: the agent runs
+with read-only tools (Read, Glob, Grep and the web; no Edit, Write or Bash, `runner/lib/agent.cjs` TALK_PROMPT), and the runner says its reply
+and ends the turn (`talkAfterTurn`), so nothing is verified, proposed, rendered or bought. `!discard` has nothing to discard; the post is never
+renamed, tagged or archived. The conversation (`job.talkLog`, the last 60 messages / 20k characters, both sides) goes to every fresh session: a
+new round when the turn budget (`maxTurnsPerJob`) is used up, or after `talkIdleHours` (24) without messages, when the sweep quietly removes the
+post's workspace.
+
+`!job` (or `!job for War`) writes the discussion up: the agent answers with `JOB TITLE: ...` and the job text, and the runner opens a new #jobs
+post with it (a `{ forumPost }` op; the adapter creates it with `threads.create`, nobody pinged), tagged To do and the owner, and links it in the
+discussion. `jobsOwners` maps a tag to the words and user ids that mean it (`war`, `warbogar`, an @-mention); an unknown name is refused. The
+new post is an ordinary #jobs post: nothing is built until someone mentions Muffin Core there.
 
 ## Under the hood: checks, previews and the ship
 

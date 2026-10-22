@@ -193,7 +193,7 @@ pipeline", ticket numbers) without saying what it is in the same sentence, e.g. 
 ## Telling the system what happened (required at the end of every turn)
 
 You cannot discard, cancel, test or ship a job yourself: the runner does that. If someone asks you to discard or drop the change, do not say you
-did; tell them to say `discard this` (or `!discard`), or react ❌ on the proposal and confirm with ❌ on the question that follows, and stop there.
+did; tell them to type `!discard` (every command starts with !), or react ❌ on the proposal and confirm with ❌ on the question that follows, and stop there.
 A proposal's reactions: ✅ tests and ships it, 🧪 tests it without shipping, ❌ discards it (after asking once).
 
 Your final reply is posted to the thread as-is: keep it short, plain, friendly, no code blocks unless needed, no file dumps.

@@ -36,6 +36,17 @@ function agentEnv() {
   return { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', TERM: 'dumb', NO_COLOR: '1',
     CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1', BASH_DEFAULT_TIMEOUT_MS: BASH_LIMIT_MS, BASH_MAX_TIMEOUT_MS: BASH_LIMIT_MS };
 }
+// A discussion post (core.cjs job.talk): the team talks ideas, lore and class kits with the agent, which reads the game but changes nothing.
+const TALK_PROMPT = `
+
+## This thread is a discussion post, not a job
+
+You are in one of the team's discussion forums (#classes, #features or #lore), talking with the team. Here you can read the game (Read, Glob,
+Grep) and the web, but you cannot change anything: no edits, commits, proposals, screenshots, models, pictures or sounds, and the instructions
+above about making and proposing changes do not apply. Help the way the team's senior game designer would: answer from the game as it is now
+(read the code and data, never guess), brainstorm and flesh out ideas, write lore, sketch class kits, and say plainly when an idea would hurt
+the game. Talk like a teammate: short replies unless someone asks for depth, no headings for a one-line answer. When the team wants something
+built, tell them to type \`!job\` here (it opens a #jobs post from this discussion) and to mention you in that post.`;
 function claudeArgs(cfg, job, { maxTurns, systemPrompt: sp } = {}) {
   // The only programs the agent may run, all in the sandbox: agit, check-godot.sh only with --rerun and the suites it names (the whole check is
   // the runner's, through CI), regen-godot.sh for generated files (B65), the screenshot, model, sound and picture build scripts (pictures: B70).
@@ -44,10 +55,12 @@ function claudeArgs(cfg, job, { maxTurns, systemPrompt: sp } = {}) {
   // which matters more now that a WebFetch could carry what it read out. WebFetch is limited to documentation hosts (cfg.webDocDomains) unless the owner set cfg.webAnyHost.
   const wt = `/${job.worktree}/**`;
   const web = cfg.webAnyHost ? ['WebSearch', 'WebFetch'] : ['WebSearch', ...(cfg.webDocDomains || []).map((d) => `WebFetch(domain:${d})`)];
+  // A discussion post gets read-only tools: no Edit, Write or Bash at all, so nothing can be changed, committed, rendered or bought from there.
+  const files = job.talk ? ['Read', 'Glob', 'Grep'] : ['Read', 'Edit', 'Write', 'Glob', 'Grep'];
   const a = ['-p', '--restricted', '--strict-mcp-config', '--permission-mode', 'dontAsk', '--output-format', 'json',
-    '--model', job.model, '--append-system-prompt', sp || systemPrompt(cfg, job),
-    '--tools', 'Read,Edit,Write,Glob,Grep,Bash,WebSearch,WebFetch',
-    '--allowedTools', ...['Read', 'Edit', 'Write', 'Glob', 'Grep'].map((t) => `${t}(${wt})`), ...bash, ...web,
+    '--model', job.model, '--append-system-prompt', (sp || systemPrompt(cfg, job)) + (job.talk ? TALK_PROMPT : ''),
+    '--tools', [...files, ...(job.talk ? [] : ['Bash']), 'WebSearch', 'WebFetch'].join(','),
+    '--allowedTools', ...files.map((t) => `${t}(${wt})`), ...(job.talk ? [] : bash), ...web,
     // No waiting games: Claude Code auto-allows "read-only" commands, so a turn could build its own `until ! pgrep ...; do sleep 5; done`
     // poll loop (2026-10-08: pgrep -f matched the loop itself and job e4388b hung 35 min, blocking every other thread).
     '--disallowedTools', ...NO_WAIT];

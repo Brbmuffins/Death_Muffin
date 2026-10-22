@@ -267,11 +267,11 @@ test('rollback: owner and Helix anytime; limited approver only their own last sh
   const t1 = (await request(d, IDS.LIMITED, 'MAKE-CSS blue')).thread; const p1 = await waitProposal(d, t1);
   await d.react(p1, IDS.LIMITED, '✅'); await until(() => texts(t1).some((t) => /Live\. Release/.test(t)), d.ad);
   assert.ok(shipsLog(w)[0].rollback, 'rollback path recorded from deploy output');
-  const m0 = await d.say(d.main, IDS.STRANGER, `${BOT} rollback`); assert.equal(d.main.sent.length, 0); assert.equal(m0.replies.length, 0);
-  await d.say(d.main, IDS.OWNER, `${BOT} rollback`);
+  const m0 = await d.say(d.main, IDS.STRANGER, `${BOT} !rollback`); assert.equal(d.main.sent.length, 0); assert.equal(m0.replies.length, 0);
+  await d.say(d.main, IDS.OWNER, `${BOT} !rollback`);
   await until(() => d.main.sent.some((s) => /Rolled back/.test(s.payload.content || '')), d.ad);
   assert.ok(shipsLog(w).some((s) => s.type === 'rollback' && s.ok));
-  await d.say(d.main, IDS.LIMITED, `${BOT} rollback`);
+  await d.say(d.main, IDS.LIMITED, `${BOT} !rollback`);
   await until(() => d.main.sent.some((s) => /already rolled back/.test(s.payload.content || '')), d.ad);
   // a second ship by LIMITED: now they may roll back their own last ship, and the owner is pinged about it
   const t2 = (await request(d, IDS.LIMITED, 'MAKE-CSS2 green')).thread; const p2 = await waitProposal(d, t2);
@@ -279,21 +279,24 @@ test('rollback: owner and Helix anytime; limited approver only their own last sh
   // someone else ships after them -> their own rollback is refused (newer deploy exists)
   const t3 = (await request(d, IDS.HELIX, 'MAKE-GAMEPLAY faster')).thread; const p3 = await waitProposal(d, t3);
   await d.react(p3, IDS.HELIX, '✅'); await until(() => texts(t3).some((t) => /Live\. Release/.test(t)), d.ad);
-  await d.say(d.main, IDS.LIMITED, `${BOT} rollback`);
+  await d.say(d.main, IDS.LIMITED, `${BOT} !rollback`);
   await until(() => d.main.sent.some((s) => /last ship was not yours/.test(s.payload.content || '')), d.ad);
-  await d.say(d.main, IDS.HELIX, `${BOT} rollback`);   // full approver may roll back anything
+  await d.say(d.main, IDS.HELIX, `${BOT} !rollback`);   // full approver may roll back anything
   await until(() => d.main.sent.filter((s) => /Rolled back/.test(s.payload.content || '')).length === 2, d.ad);
   const note = await until(() => d.main.sent.find((s) => /ran a rollback/.test(s.payload.content || '')), d.ad);
   assert.ok(!/<@/.test(note.payload.content) && !(note.payload.mentionUsers || []).length, 'the rollback note tags nobody');
 });
 
-test('model switch: full approvers only', async () => {
+test('model switch: !model, full approvers only; "use opus" in plain words is just a message', async () => {
   const w = makeWorld(); const d = makeDiscord(w.runner);
-  const { thread } = await request(d, IDS.LIMITED, 'use opus please. where is speed?');
+  const { thread } = await request(d, IDS.LIMITED, 'where is speed?');
   await until(() => texts(thread).some((t) => /answer is in/.test(t)), d.ad);
-  assert.equal(Object.values(w.runner.jobs())[0].model, 'sonnet');
+  const job = Object.values(w.runner.jobs())[0];
+  const limited = await d.say(thread, IDS.LIMITED, '!model opus');
+  assert.match(limited.replies[0].content, /Only full approvers/); assert.equal(job.model, 'sonnet');
   await d.say(thread, IDS.HELIX, 'use opus, where is speed?');
-  await until(() => Object.values(w.runner.jobs())[0].model === 'opus', d.ad);
+  await until(() => !job.running && !job.queue.length, d.ad); assert.equal(job.model, 'sonnet', 'every command starts with !');
+  await d.say(thread, IDS.HELIX, '!model opus'); assert.equal(job.model, 'opus');
 });
 
 test('rate limit: polite one-liner after the hourly cap; full approvers get the roomier cap', async () => {
@@ -378,21 +381,23 @@ test('bug reports: each new report opens one #in-game-reports thread with its lo
   job.lastActive = job.seenAt = Date.now() - 49 * 3600e3; assert.equal(w.runner.archiveQuiet(), 1);
 });
 
-test('"discard this" in plain words discards like !discard: in a worked thread, and in a report thread nobody brought the agent into', async () => {
+test('"discard this" in plain words is just a message; !discard discards: in a worked thread, and in a report thread nobody brought the agent into', async () => {
   const fake = `case "$1" in list) echo '[{"id":9201,"category":"bug","status":"new","reporter":"Dravos","createdAt":"2026-10-14T09:00:00Z","message":"a test","context":{}}]';; posted) echo '{}';; *) echo null;; esac`;
   const w = makeWorld({ godot: true, reportsCmd: fake, bugChannelId: IDS.BUGS }); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.HELIX, 'what does the ascension altar do?');
   const job = Object.values(w.runner.jobs())[0]; await until(() => !job.running && texts(thread).length >= 1, d.ad);
   await d.say(thread, IDS.HELIX, 'should we discard this?'); await until(() => !job.running && !job.queue.length, d.ad);
   assert.equal(job.status, 'idle', 'a question goes to the agent');
-  await d.say(thread, IDS.HELIX, 'No you can discard this as a test');
+  await d.say(thread, IDS.HELIX, 'No you can discard this as a test'); await until(() => !job.running && !job.queue.length, d.ad);
+  assert.equal(job.status, 'idle', 'every command starts with ! (Helix 2026-10-21)');
+  await d.say(thread, IDS.HELIX, '!discard');
   await until(() => texts(thread).some((t) => /^Discarded\./.test(t)), d.ad);
   assert.equal(job.status, 'discarded'); assert.equal(job.worktree, null);
-  const again = await d.say(thread, IDS.HELIX, 'discard it');
+  const again = await d.say(thread, IDS.HELIX, '!discard');
   assert.ok(again.replies.some((r) => /Nothing is open here to discard/.test(r.content)), 'nothing left to discard');
   await w.runner.postReports(); const rt = await until(() => d.world.threads.find((t) => /#9201/.test(t.name || '')), d.ad);
   const rjob = w.runner.jobs()[rt.id];
-  await d.say(rt, IDS.HELIX, 'discard this');
+  await d.say(rt, IDS.HELIX, '!discard');
   await until(() => texts(rt).some((t) => /^Discarded\./.test(t)), d.ad);
   assert.equal(rjob.status, 'discarded'); assert.equal(rjob.round, 0, 'no round was started to discard it');
 });
@@ -862,7 +867,7 @@ test('godot mode: question, gameplay proposal (main compare link, zip preview on
   assert.equal(fs.readFileSync(path.join(w.deploy, bks[0], 'publish-godot-client.sh'), 'utf8'), sh(w.repo, 'show', 'origin/main:server/death-muffin/publish-godot-client.sh') + '\n');
   assert.equal(fs.statSync(ship.rollback).mode & 0o777, 0o755);
   // rollback: the owner's command runs that ROLLBACK.sh (under the lock), which republishes the previous revision with the saved publisher
-  await d.say(d.main, IDS.OWNER, `${BOT} rollback`);
+  await d.say(d.main, IDS.OWNER, `${BOT} !rollback`);
   await until(() => d.main.sent.some((s) => /Rolled back/.test(s.payload.content || '')), d.ad);
   assert.equal(fs.readFileSync(path.join(w.deploy, bks[0], 'published.log'), 'utf8'), `published ${w.liveRev.slice(0, 12)} REPO=${w.repo}\n`);
   await until(() => !fs.existsSync(path.join(w.cfg.worktreeRoot, `discord-${id}`)) && !fs.existsSync(path.join(w.cfg.worktreeRoot, `ship-${id}`)), d.ad);
@@ -903,7 +908,7 @@ test('godot mode: the ship deploys the backend (deploy-release.sh --if-changed) 
   assert.deepEqual(fs.readFileSync(order, 'utf8').trim().split('\n'), [`backend --if-changed ${remoteHead(w, 'main')}`, 'client'], 'backend first, then the client');
   const rb = fs.readFileSync(ship.rollback, 'utf8');
   assert.match(rb, new RegExp(`\\nbash ${brb}/ROLLBACK\\.sh\\nexec bash \\S*/publish-godot-client\\.sh ${w.liveRev.slice(0, 12)}\\n$`));
-  await d.say(d.main, IDS.OWNER, `${BOT} rollback`);
+  await d.say(d.main, IDS.OWNER, `${BOT} !rollback`);
   await until(() => d.main.sent.some((s) => /Rolled back/.test(s.payload.content || '')), d.ad);
   assert.match(fs.readFileSync(order, 'utf8'), /backend-rolled-back\n$/);
 });
@@ -936,7 +941,7 @@ test('godot mode: the ship deploys the lobby (deploy-lobby.sh --if-changed) afte
   assert.deepEqual(fs.readFileSync(order, 'utf8').trim().split('\n'), ['backend', `lobby --if-changed ${remoteHead(w, 'main')}`, 'client'], 'backend, lobby, then the client');
   const rb = fs.readFileSync(ship.rollback, 'utf8');
   assert.match(rb, new RegExp(`\\nbash ${brb}/ROLLBACK\\.sh\\nbash ${lrb}/ROLLBACK\\.sh --force\\nexec bash \\S*/publish-godot-client\\.sh ${w.liveRev.slice(0, 12)}\\n$`));
-  await d.say(d.main, IDS.OWNER, `${BOT} rollback`);
+  await d.say(d.main, IDS.OWNER, `${BOT} !rollback`);
   await until(() => d.main.sent.some((s) => /Rolled back/.test(s.payload.content || '')), d.ad);
   assert.match(fs.readFileSync(order, 'utf8'), /backend-rolled-back\nlobby-rolled-back --force\n$/);
 });
@@ -1897,7 +1902,7 @@ test('thread title: a discarded job gets the cross marker, and a title with a me
   await until(() => thread.name === '❌ Faster walk', d.ad);
 });
 
-test('a bare "stop" while a turn runs is !cancel; messages queued before it are dropped, so nothing restarts the work (2026-10-10 incident)', async () => {
+test('!stop while a turn runs is !cancel; messages queued before it are dropped, so nothing restarts the work (2026-10-10 incident)', async () => {
   const w = makeWorld(); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.HELIX, 'SLOW-TURN MAKE-CSS blue');
   const job = Object.values(w.runner.jobs())[0];
@@ -1905,7 +1910,7 @@ test('a bare "stop" while a turn runs is !cancel; messages queued before it are 
   await d.say(thread, IDS.HELIX, 'MAKE-CSS also make it red');
   assert.equal(job.queue.length, 1);
   const turns = job.turns;
-  const r = await d.say(thread, IDS.HELIX, 'stop');
+  const r = await d.say(thread, IDS.HELIX, '!stop');
   assert.match(r.replies[0].content, /^Cancelling the current step\. Dropped 1 waiting message\./);
   await until(() => !job.running && job.status === 'idle', d.ad);
   await new Promise((res) => setTimeout(res, 400)); await d.ad.pollOnce();
@@ -1916,15 +1921,15 @@ test('a bare "stop" while a turn runs is !cancel; messages queued before it are 
   const idle = await d.say(thread, IDS.HELIX, '!cancel'); assert.equal(idle.replies[0].content, 'Nothing is running.');
 });
 
-test('a near-miss like "cencel" asks "did you mean !cancel?" and neither cancels nor queues a turn (2026-10-10 incident)', async () => {
+test('a near-miss like "!cencel" asks "did you mean !cancel?" and neither cancels nor queues a turn (2026-10-10 incident)', async () => {
   const w = makeWorld(); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.HELIX, 'SLOW-TURN MAKE-CSS blue');
   const job = Object.values(w.runner.jobs())[0];
   await until(() => job.running && job.proc, d.ad);
-  const r = await d.say(thread, IDS.HELIX, 'cencel');
+  const r = await d.say(thread, IDS.HELIX, '!cencel');
   assert.match(r.replies[0].content, /Did you mean \*\*!cancel\*\*\?/);
   assert.equal(job.queue.length, 0, 'the typo is not queued for the agent'); assert.ok(job.running, 'nothing was cancelled');
-  const r2 = await d.say(thread, IDS.HELIX, 'stop');
+  const r2 = await d.say(thread, IDS.HELIX, '!stop');
   assert.match(r2.replies[0].content, /^Cancelling the current step/);
   await until(() => !job.running, d.ad);
 });
