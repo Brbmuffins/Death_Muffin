@@ -215,8 +215,11 @@ TFKB=$(du -sk "$WWW/team-files" 2>/dev/null | cut -f1); TRKB=$(du -sk "$DM/team-
 info "team-files/ size: $(du -sh "$WWW/team-files" 2>/dev/null | cut -f1), team-results/ size: $(du -sh "$DM/team-results" 2>/dev/null | cut -f1)"
 [ "${TFKB:-0}" -gt $((10 * 1024 * 1024)) ] && drift "team-files/ holds $(du -sh "$WWW/team-files" | cut -f1) (over 10 GB): is the death-muffin-team-prune timer running?"
 [ "${TRKB:-0}" -gt $((5 * 1024 * 1024)) ] && drift "team-results/ holds $(du -sh "$DM/team-results" | cut -f1) (over 5 GB): the backend removes a job's results 14 days after it finished, when a new job is made"
-OLD=$(find "$DM/deploy" -maxdepth 1 -name 'backup-pre-release-*' -mtime +30 2>/dev/null | wc -l)
-[ "$OLD" -gt 0 ] && note "$OLD backup-pre-release-* folder(s) in deploy/ older than 30 days; consider pruning (this script never prunes)"
+# deploy-release.sh and deploy-lobby.sh keep their newest 5 backups each after a good deploy: more means that pruning stopped
+for P in backup-pre-release backup-lobby; do
+  NB=$(find "$DM/deploy" -maxdepth 1 -mindepth 1 -type d -name "$P-*" 2>/dev/null | wc -l)
+  [ "$NB" -gt 5 ] && note "$NB $P-* folders in deploy/ (the deploys keep 5): is their pruning running?"
+done
 
 # 9. DB backups
 section "9. DB backups"

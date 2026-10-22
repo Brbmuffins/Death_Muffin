@@ -11,7 +11,8 @@
 #
 # 1. Exports <rev> with `git archive` into deploy/candidate-<sha>/src.
 # 2. Runs the shared-rules and server tests on that export.
-# 3. Backs up the DB and runtime server files, and writes ROLLBACK.sh.
+# 3. Backs up the DB and runtime server files, and writes ROLLBACK.sh. After a good deploy only the newest KEEP_BACKUPS (default 5)
+#    backup-pre-release-* folders stay (by their UTC stamp; the one just made is always kept).
 # 4. Applies the pending migrations (migrate.sh; each must be additive), installs server code, restarts auth.
 #    If anything fails after the code is installed (restart, health), ROLLBACK.sh runs on its own and the deploy exits 1.
 # 5. announce-release.sh: release notes for the launcher and site, the #build-alerts notice, fixed bug reports released.
@@ -26,6 +27,13 @@ if [ -z "${DEPLOY_LOCK_HELD:-}" ]; then
   flock -w 1800 9 || { echo "another deploy holds $RUNTIME/deploy/.deploy.lock" >&2; exit 1; }
 fi
 PUBLIC=/var/www/death-muffin
+KEEP_BACKUPS="${KEEP_BACKUPS:-5}"
+# Keep the newest $KEEP_BACKUPS deploy/<prefix>-<sha>-<UTC stamp> folders, newest by the stamp (the name's last field), never fewer than 1.
+prune_backups() {
+  local keep=$(( KEEP_BACKUPS < 1 ? 1 : KEEP_BACKUPS ))
+  find "$RUNTIME/deploy" -maxdepth 1 -mindepth 1 -type d -name "$1-*" | awk -F- '{print $NF" "$0}' | sort -r | tail -n +"$((keep + 1))" |
+    cut -d' ' -f2- | while read -r d; do rm -rf -- "$d"; done
+}
 IF_CHANGED=""; [ "${1:-}" = --if-changed ] && { IF_CHANGED=1; shift; }
 REV="${1:-HEAD}"
 shift || true
@@ -147,6 +155,7 @@ trap - ERR
 echo "== Verify"
 curl -sSf https://muffindevelopment.com/death-muffin/api/health; echo
 echo "Release $SHA published. Rollback: $BK/ROLLBACK.sh"
+prune_backups "backup-pre-release" || echo "!! could not prune old backups in $RUNTIME/deploy (the release is fine)" >&2
 
 # Launcher news + patch notes, the #build-alerts notice and fixed bug reports (shared with publish-godot-client.sh; never fails the deploy).
 # NO_ANNOUNCE=1 (a Godot ship: the client publish right after announces the release once).

@@ -48,9 +48,6 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
   (found 2026-10-21).
 - **The agent can stage an ignored file.** `agit add -f <path>` is allowed, so the git-excluded job files (`.dm-inbox/` attachments, `.dm-shot.json`,
   `.dm-shots/`) could be committed; only `.dm-guides/` is in the runner's forbidden paths (found 2026-10-21).
-- **Release backups are never pruned.** `deploy-release.sh` and `deploy-lobby.sh` leave a `backup-pre-release-*` or `backup-lobby-*` folder
-  in `~/death-muffin/deploy/` for every deploy (about 130 since 2026-10-07, small because the database has its own nightly dumps), and nothing
-  removes old ones. Fix: keep the newest few beside each deploy, as the client publish keeps its builds (found 2026-10-22).
 
 ## Server authority
 

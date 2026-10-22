@@ -17,10 +17,11 @@
 # 3. Waits until /health shows 0 sessions (or --force).
 # 4. Backs up the installed lobby, writes ROLLBACK.sh, installs the lobby code, package files and README, `npm ci` only if the lockfile changed,
 #    restarts deathmuffin-lobby and checks /health. A failure after the install began runs ROLLBACK.sh --force on its own (exit 1).
+#    After a good deploy only the newest KEEP_BACKUPS (default 5) backup-lobby-* folders stay (by their UTC stamp; this one is always kept).
 # The UDP relay's files (relay/project.godot, relay/relay_main.gd, client/net/relay/dm_udp_relay.gd) go to $RUNTIME/relay and restart
 # `deathmuffin-relay` when they changed and the unit is installed (installed by hand, see relay/README.md). Players on the UDP lane fall
 # back to the WebSocket when it restarts; the lobby restart already waits for no running parties.
-# Test overrides (all optional): REPO RUNTIME LOBBY_DIR LOBBY_URL LOBBY_UNIT POLL_S SYSTEMCTL RELAY_DIR RELAY_UNIT
+# Test overrides (all optional): REPO RUNTIME KEEP_BACKUPS LOBBY_DIR LOBBY_URL LOBBY_UNIT POLL_S SYSTEMCTL RELAY_DIR RELAY_UNIT
 set -euo pipefail
 
 REPO="${REPO:-/home/ubuntu/vps-handoffs/DeathMuffin/game}"
@@ -32,6 +33,7 @@ POLL_S="${POLL_S:-15}"
 SYSTEMCTL="${SYSTEMCTL:-sudo systemctl}"
 RELAY_DIR="${RELAY_DIR:-$RUNTIME/relay}"
 RELAY_UNIT="${RELAY_UNIT:-deathmuffin-relay.service}"
+KEEP_BACKUPS="${KEEP_BACKUPS:-5}"
 IF_CHANGED=""; WAIT_MIN=30; FORCE=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -171,3 +173,7 @@ if [ -n "$RELAY_NEW" ] && $SYSTEMCTL cat "$RELAY_UNIT" >/dev/null 2>&1; then
 elif [ -n "$RELAY_NEW" ]; then echo "== UDP relay files installed in $RELAY_DIR; $RELAY_UNIT is not installed (relay/README.md)"; fi
 trap - ERR
 echo "Lobby $SHA installed. Rollback: $BK/ROLLBACK.sh"
+# Keep the newest $KEEP_BACKUPS lobby backups, newest by the UTC stamp (the name's last field), never fewer than 1.
+KEEP=$(( KEEP_BACKUPS < 1 ? 1 : KEEP_BACKUPS ))
+find "$RUNTIME/deploy" -maxdepth 1 -mindepth 1 -type d -name 'backup-lobby-*' | awk -F- '{print $NF" "$0}' | sort -r | tail -n +"$((KEEP + 1))" |
+  cut -d' ' -f2- | while read -r d; do rm -rf -- "$d"; done || echo "!! could not prune old lobby backups in $RUNTIME/deploy (the lobby is fine)" >&2

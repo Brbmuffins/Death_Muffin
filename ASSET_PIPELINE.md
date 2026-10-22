@@ -96,7 +96,7 @@ owner's sound users with no budget gate and records the cost (`server/death-muff
 
 ## Flipbook sheets (licensed, outside git)
 
-A few VFX sprite sheets come from the owner's licensed pack (`~/vps-handoffs/DeathMuffin/godot_vfx.zip`; godboyhappy ARCLIGHT /
+A few VFX sprite sheets come from the owner's licensed pack (`~/vps-handoffs/DeathMuffin/reference/godot_vfx.zip`; godboyhappy ARCLIGHT /
 CLEAVE: commercial use, no credit, **not redistributable in a public repository**). Converted greyscale grids live in
 `~/death-muffin/private/fx-sheets/` (`<id>.png` + `.png.import`: lossless, mipmaps) and are listed in `fx_data.json` `sheets`;
 `tools/godot/fx-sheets-sync.sh` copies them into a checkout (the sheets folder of the game's assets is gitignored). How they are drawn and installed: `client/fx/README.md` "Flipbook sheets". Do not use the pack's
