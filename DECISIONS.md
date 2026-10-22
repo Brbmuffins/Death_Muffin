@@ -42,7 +42,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 - **B4. One launcher button** (Play/Update); the site's play page is the launcher download page.
 - **B7. Rule sources live in `server/rules/`;** `tools/build-server-rules.mjs` compiles them to the `.cjs` files the backend loads.
 - **B8. Test fixtures are committed** (`client/tests/*/fixtures/`), so the suites run on their own.
-- **B10. Docs are a small truthful set:** README, ROADMAP, DECISIONS, KNOWN-GAPS, CLAUDE and short per-system READMEs; old docs are deleted,
+- **B10. Docs are a small truthful set:** README, ROADMAP, DECISIONS, KNOWN-GAPS, AGENTS (B72) and short per-system READMEs; old docs are deleted,
   not bannered.
 - **B11. Tests never assert wall-clock time** (2026-10-10): timings print as `INFO perf:` lines; deterministic counters (cold loads, nodes,
   draw calls, queries) stay real checks.
@@ -208,7 +208,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   later"). Until it exists the nightly database dumps stay on the VPS with the art sources and private files (KNOWN-GAPS "Operations"); the
   item is under ROADMAP "Later".
 - **B52. Public code until 1.0** (Helix, 2026-10-18: "Public code for now. private and encryption for our first public release 1.0 build").
-  The GitHub repository stays public (secrets never go in it, CLAUDE.md); for 1.0, the first public release, it goes private and the build
+  The GitHub repository stays public (secrets never go in it, AGENTS.md); for 1.0, the first public release, it goes private and the build
   encrypts the game's files (the encryption left open since authority Phase 0, B19). Until then encryption is not worked on: with the code
   public it would hide nothing.
 - **B53. A test lane for big changes** (Helix, 2026-10-18: "Lets do a test lane as well"). B38's test build becomes the rule for big
@@ -337,8 +337,8 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   concept naming a kind gets the kind's recipe and style pictures, so new art matches the old. The runner keeps every concept a thread was
   shown and puts it back in each later round (14 days after the thread goes quiet they are deleted). The HUD's second copy of 92 pictures
   (`client/assets/game/art`) is gone: one copy each, in `client/assets/ui_art`. Effect sprites are not a kind yet (ROADMAP Ideas).
-- **B71. Owner principles are principles, not laws** (Helix, 2026-10-21: "its a principal.. not a hard law with explicit details"). CLAUDE.md
-  keeps four short principles (performance first, smooth on weaker PCs, easy to read, fit the game's look) and, apart, the firm safety rules
+- **B71. Owner principles are principles, not laws** (Helix, 2026-10-21: "its a principal.. not a hard law with explicit details"). The rules
+  file (AGENTS.md since B72) keeps four short principles (performance first, smooth on weaker PCs, easy to read, fit the game's look) and, apart, the firm safety rules
   (the backend owns value, old clients keep running, propose-then-approve, spending limits from the owner). Performance can be spent on
   purpose: a visual upgrade the team approves may make the game slower, with its cost measured and known; slowdowns nobody meant to cause are
   fixed (this replaces B39's "nothing ships slower than what it replaces"). Polish before new content is a default when Claude picks the

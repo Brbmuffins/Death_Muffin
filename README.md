@@ -86,7 +86,7 @@ teamapp/tests/compile-check.sh                    # the whole team app, UI inclu
 ```
 
 Run one suite: `godot --headless --path client --script res://tests/<name>.gd`. CI (`.github/workflows/ci.yml`) runs the backend, lobby,
-hygiene, model and picture checks and every game suite on every push to every branch, and is the gate (CLAUDE.md).
+hygiene, model and picture checks and every game suite on every push to every branch, and is the gate (AGENTS.md).
 Tests never assert wall-clock time: timing figures print as `INFO perf:` lines. FPS is judged on real hardware (F3 overlay);
 suites only check deterministic counters.
 

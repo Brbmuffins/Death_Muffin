@@ -1,7 +1,7 @@
 # docs/
 
 What is left here is the shared asset pipeline and the licence and source records. Game documentation is in the repository root
-(`README.md`, `ROADMAP.md`, `DECISIONS.md`, `KNOWN-GAPS.md`, `CLAUDE.md`), `client/`, `native/` and `server/`.
+(`README.md`, `ROADMAP.md`, `DECISIONS.md`, `KNOWN-GAPS.md`, `AGENTS.md`), `client/`, `native/` and `server/`.
 
 | File | What it is |
 |---|---|

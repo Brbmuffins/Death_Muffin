@@ -1,6 +1,6 @@
 # Asset pipeline
 
-How art, models and audio get into the Godot game. Reuse what exists first (CLAUDE.md); generate only when nothing usable
+How art, models and audio get into the Godot game. Reuse what exists first (AGENTS.md); generate only when nothing usable
 exists. Every generation step is scripted and resumable, and spend is reported per batch.
 
 ```

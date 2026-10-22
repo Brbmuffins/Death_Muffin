@@ -12,7 +12,7 @@ bash client/tools/coop_local.sh                        # a local lobby and relay
 ```
 
 **Numbers in tests.** A test reads the game's numbers from the data (`DmAbilities`, `DmCombatData`, the content tables) and never types a
-total or a tuning value, so adding content or retuning never breaks it (CLAUDE.md, DECISIONS B59). A scenario whose outcome depends on a
+total or a tuning value, so adding content or retuning never breaks it (AGENTS.md, DECISIONS B59). A scenario whose outcome depends on a
 number (how many casts fit in a clip, how many hits kill, how much gold a run pays) either computes its expectation from the data or makes
 the number its own input: `DmQaTune.apply({"combat/abilities": {"abilities": {"<rite>": {"cooldownMs": 300.0}}}})` before the scene is built,
 the old value put back (or `DmDb.reset()`) after. Server tests do the same with the rules' exported tables and constants. Fixed design rules
