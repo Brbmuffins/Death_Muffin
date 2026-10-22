@@ -83,7 +83,11 @@ export function checkEntry(root = REPO) {
   if (!ok) {
     if (!v.imports.some((im) => im.path === SOURCE && im.alone)) p.push(`${ENTRY} does not import ${SOURCE}: it must hold one line "@${SOURCE}" outside code and comments`);
     if (v.imports.length > 1 || v.imports.some((im) => im.path !== SOURCE)) p.push(`${ENTRY} imports something else as well (${v.imports.map((im) => '@' + im.path).join(', ')}): only "@${SOURCE}"`);
-    if (delivered.some((l) => l.trim() !== '@' + SOURCE)) p.push(`${ENTRY} holds text besides the import, which only Claude would see: move it into ${SOURCE}`);
+    // Count delivered lines, not distinct texts: an indented copy of the import is code (delivered, not imported) and trims to the same text.
+    const active = v.imports.filter((im) => im.path === SOURCE && im.alone).length;
+    if (delivered.length > Math.min(active, 1)) p.push(`${ENTRY} holds text besides the import, which only Claude would see: move it into ${SOURCE}`);
+    // Every shape that is not the stub gets a reason, even one no rule above names.
+    if (!p.length) p.push(`${ENTRY} is not the import stub: it must hold only one line "@${SOURCE}" (and comments)`);
   }
   if (readBuf(root, SOURCE) == null) p.push(`${ENTRY} imports ${SOURCE}, which is missing`);
   return p;

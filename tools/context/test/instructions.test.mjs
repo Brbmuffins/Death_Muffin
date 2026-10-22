@@ -58,6 +58,8 @@ test('--check is read-only and fails for every broken shape', () => {
     ['the import in a code span', (d) => fs.writeFileSync(path.join(d, 'CLAUDE.md'), '`@AGENTS.md`\n'), 'CLAUDE.md does not import AGENTS.md'],
     ['the import in a fence', (d) => fs.writeFileSync(path.join(d, 'CLAUDE.md'), '```\n@AGENTS.md\n```\n'), 'CLAUDE.md does not import AGENTS.md'],
     ['the import as indented code', (d) => fs.writeFileSync(path.join(d, 'CLAUDE.md'), 'Rules:\n\n    @AGENTS.md\n'), 'CLAUDE.md does not import AGENTS.md'],
+    // Codex P3 (2026-10-21): one active import plus a second, indented copy (code, so not an import) is two delivered lines, not the stub
+    ['an active import plus an indented-code copy', (d) => fs.writeFileSync(path.join(d, 'CLAUDE.md'), '@AGENTS.md\n\n    @AGENTS.md\n'), 'CLAUDE.md holds text besides the import'],
     ['the import in an HTML comment', (d) => fs.writeFileSync(path.join(d, 'CLAUDE.md'), '<!-- @AGENTS.md -->\n'), 'CLAUDE.md does not import AGENTS.md'],
     ['two imports', (d) => fs.writeFileSync(path.join(d, 'CLAUDE.md'), '@AGENTS.md\n@README.md\n'), 'CLAUDE.md imports something else as well'],
     ['an import of another file', (d) => fs.writeFileSync(path.join(d, 'CLAUDE.md'), '@README.md\n'), 'CLAUDE.md does not import AGENTS.md'],
@@ -93,6 +95,9 @@ test('the no-argument mode (regen\'s call) validates the source, then writes the
   // text in CLAUDE.md that AGENTS.md lacks is refused, not overwritten
   dir = scratchRepo(); editText(dir, 'CLAUDE.md', (t) => t + '\nA rule only Claude would see.\n'); before = bytesOf(dir);
   r = runSync(dir); assert.equal(r.status, 1); assert.match(r.out, /nothing was written/); unchanged(dir, before);
+  // an active import plus an indented-code copy is not the stub: refused with a diagnostic, nothing written (Codex P3)
+  dir = scratchRepo(); fs.writeFileSync(path.join(dir, 'CLAUDE.md'), '@AGENTS.md\n\n    @AGENTS.md\n'); before = bytesOf(dir);
+  r = runSync(dir); assert.equal(r.status, 1, r.out); assert.match(r.out, /PROBLEM CLAUDE\.md holds text besides the import/); assert.match(r.out, /nothing was written/); unchanged(dir, before);
   // an old copy that differs from the source (edited on one side only) is refused too
   dir = scratchRepo(); fs.copyFileSync(path.join(dir, 'AGENTS.md'), path.join(dir, 'CLAUDE.md')); editText(dir, 'CLAUDE.md', (t) => t + '\nEdited in the copy.\n'); before = bytesOf(dir);
   r = runSync(dir); assert.equal(r.status, 1); unchanged(dir, before);
