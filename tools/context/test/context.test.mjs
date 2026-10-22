@@ -43,17 +43,18 @@ test('a scratch copy of the repo passes, so every failure below comes from its o
 
 test('deleting a protected instruction is reported even when its heading and the next sentence stay', () => {
   const dir = scratchRepo();
-  editText(dir, 'CLAUDE.md', (t) => t.replace(/Gold, items, loot rolls, progression and the kill ledger are server-side \(D1\); a client or host\s+never mints them\./, ''));
-  const t = fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8');
+  editText(dir, 'AGENTS.md', (t) => t.replace(/Gold, items, loot rolls, progression and the kill ledger are server-side \(D1\); a client or host\s+never mints them\./, ''));
+  const t = fs.readFileSync(path.join(dir, 'AGENTS.md'), 'utf8');
   assert.ok(t.includes('**The backend owns value.**') && t.includes('**Old clients keep running.**') && !t.includes('never mints them'));
   const p = problemsOf(dir);
-  reported(p, 'backend-owns-value: clause not found in CLAUDE.md');
+  reported(p, 'backend-owns-value: clause not found in AGENTS.md');
   reported(p, 'backend-owns-value: protected rule has no always-loaded home for session');
+  reported(p, 'backend-owns-value: protected rule has no always-loaded home for codex');
 });
 
 test('rewrapping a protected instruction over other lines changes nothing', () => {
   const dir = scratchRepo();
-  editText(dir, 'CLAUDE.md', (t) => t.replace('a client or host\n  never mints them.', 'a client\n  or host never mints them.'));
+  editText(dir, 'AGENTS.md', (t) => t.replace('a client or host\n  never mints them.', 'a client\n  or host never mints them.'));
   assert.deepEqual(problemsOf(dir), []);
 });
 
@@ -74,7 +75,7 @@ test('removing a protected rule, its protection or one of its audiences is repor
   editRules(downgraded, (rules) => { rules.find((r) => r.id === 'ci-gate').protected = false; });
   reported(problemsOf(downgraded), 'ci-gate: no longer protected');
   const narrowed = scratchRepo();
-  editRules(narrowed, (rules) => { const r = rules.find((x) => x.id === 'no-secrets'); r.audience = ['session']; r.homes = r.homes.filter((h) => h.file === 'CLAUDE.md'); });
+  editRules(narrowed, (rules) => { const r = rules.find((x) => x.id === 'no-secrets'); r.audience = ['session']; r.homes = r.homes.filter((h) => h.file === 'AGENTS.md'); });
   reported(problemsOf(narrowed), 'no-secrets: protected rule lost audience agent');
   const missingField = scratchRepo();
   editRules(missingField, (rules) => { delete rules.find((r) => r.id === 'migrations-additive').protected; });
@@ -222,31 +223,31 @@ test('a file or section above its ceiling is a warning with its size and ceiling
   const dir = scratchRepo();
   const { ceilings } = JSON.parse(fs.readFileSync(path.join(dir, 'tools/context/surfaces.json'), 'utf8'));
   const before = ceilingCheck(dir).warnings.map((w) => w.entry);
-  grow(dir, 'CLAUDE.md', ceilings.always.session);
+  grow(dir, 'AGENTS.md', ceilings.always.session);
   grow(dir, 'server/death-muffin/discord-agent/guides/sound.md', ceilings.guides.agent);
   grow(dir, 'client/core/THREADING.md', ceilings.references);
   editText(dir, 'README.md', (t) => t.replace('## Documentation map\n', `## Documentation map\n\n${'Map padding words here. '.repeat(Math.ceil((ceilings.discovery['README.md "Documentation map"'] * 2.7) / 24))}\n`));
   const { warnings, problems } = ceilingCheck(dir);
   assert.deepEqual(problems, []);
   const by = (entry) => warnings.find((w) => w.entry === entry);
-  const claude = by('CLAUDE.md');
+  const claude = by('AGENTS.md');
   assert.ok(claude && claude.kind === 'always' && claude.ceiling === ceilings.always.session && claude.tokens > claude.ceiling);
-  assert.deepEqual(claude.audiences, ['session']);
+  assert.deepEqual(claude.audiences, ['session', 'codex'], 'the source grows both terminal sizes: Claude through the import, Codex directly');
   assert.equal(by('server/death-muffin/discord-agent/guides/sound.md').kind, 'guides');
   assert.equal(by('client/core/THREADING.md').kind, 'references');
   const map = by('README.md "Documentation map"');
   assert.deepEqual(map.audiences, ['session', 'codex', 'agent'], 'a shared discovery entry is one warning naming every audience');
   assert.equal(warnings.length, before.length + 4);
-  assert.match(formatSizeWarning(claude), /^CLAUDE\.md is ~\d+ estimated tokens, above its ceiling of 4500 \(always loaded, session\)/);
+  assert.match(formatSizeWarning(claude), /^AGENTS\.md is ~\d+ estimated tokens, above its ceiling of 4500 \(always loaded, session, codex\)/);
   assert.deepEqual(problemsOf(dir), [], 'size alone never fails the rule check');
 });
 
 test('a size warning never replaces a rule failure', () => {
   const dir = scratchRepo();
-  grow(dir, 'CLAUDE.md', 4500);
-  editText(dir, 'CLAUDE.md', (t) => t.replace(/Gold, items, loot rolls, progression and the kill ledger are server-side \(D1\); a client or host\s+never mints them\./, ''));
-  assert.ok(ceilingCheck(dir).warnings.some((w) => w.entry === 'CLAUDE.md'));
-  reported(problemsOf(dir), 'backend-owns-value: clause not found in CLAUDE.md');
+  grow(dir, 'AGENTS.md', 4500);
+  editText(dir, 'AGENTS.md', (t) => t.replace(/Gold, items, loot rolls, progression and the kill ledger are server-side \(D1\); a client or host\s+never mints them\./, ''));
+  assert.ok(ceilingCheck(dir).warnings.some((w) => w.entry === 'AGENTS.md'));
+  reported(problemsOf(dir), 'backend-owns-value: clause not found in AGENTS.md');
 });
 
 test('a missing, invalid or stale ceiling is a problem', () => {
@@ -473,4 +474,40 @@ test('the repo CLAUDE.md counts as injected from a start-up or a later (nested) 
   const readOnly = summarizeSession(parseTranscript(lines([at({ type: 'file', filename: `${cwd}/CLAUDE.md` })])));
   assert.deepEqual(readOnly.instructionFiles, []);
   assert.equal(report([start, nested, readOnly]).groups.session.claudeMdLoaded, 2);
+});
+
+// Record shapes from the 2026-10-21 probes (Claude Code 2.1.284), paths moved into a checkout: a start-up `instructions` record lists
+// CLAUDE.md and the AGENTS.md it imports as two files; a nested load writes one `nested_memory` record each, the imported one naming its parent.
+test('an injected CLAUDE.md is not proof the rules arrived: the source, or a CLAUDE.md that held the rules, is', () => {
+  const cwd = '/home/ubuntu/vps-handoffs/DeathMuffin/game';
+  const call = (i) => ({ type: 'assistant', cwd, timestamp: `2026-10-22T12:00:0${i}Z`, message: { id: `e${i}`, model: 'claude-sonnet-5-5', usage: { input_tokens: 10, output_tokens: 1 }, content: [] } });
+  const at = (attachment) => ({ type: 'attachment', cwd, timestamp: '2026-10-22T12:00:00Z', attachment });
+  const one = (...extra) => summarizeSession(parseTranscript([call(0), ...extra, call(1)].map((o) => JSON.stringify(o))));
+  const STUB_DELIVERED = '@AGENTS.md';
+  const RULES = '# Death Muffin: agent rules\n\nNever push or deploy unless the task says so.';
+  // source only (an imported AGENTS.md record)
+  const sourceOnly = one(at({ type: 'nested_memory', path: `${cwd}/AGENTS.md`, content: { path: `${cwd}/AGENTS.md`, type: 'Project', content: RULES, parent: `${cwd}/CLAUDE.md` } }));
+  assert.deepEqual(sourceOnly.instructionEvidence, { entryObserved: false, sourceObserved: true, rulesLoaded: 'confirmed' });
+  // the parent and its import at start-up: one session, counted once
+  const both = one(at({ type: 'instructions', files: [{ path: `${cwd}/CLAUDE.md`, type: 'Project', content: STUB_DELIVERED }, { path: `${cwd}/AGENTS.md`, type: 'Project', content: RULES }] }));
+  assert.deepEqual(both.instructionEvidence, { entryObserved: true, sourceObserved: true, rulesLoaded: 'confirmed' });
+  // the stub alone: the target is not confirmed
+  const stubOnly = one(at({ type: 'nested_memory', path: `${cwd}/CLAUDE.md`, content: { path: `${cwd}/CLAUDE.md`, type: 'Project', content: STUB_DELIVERED } }));
+  assert.deepEqual(stubOnly.instructionEvidence, { entryObserved: true, sourceObserved: false, rulesLoaded: 'unknown' });
+  // a CLAUDE.md record with no text: unknown, whatever its date
+  const pathOnly = one(at({ type: 'nested_memory', path: `${cwd}/CLAUDE.md` }));
+  assert.equal(pathOnly.instructionEvidence.rulesLoaded, 'unknown');
+  // a CLAUDE.md from before the switch, judged by its own text: it held the rules
+  const historical = one(at({ type: 'nested_memory', path: `${cwd}/CLAUDE.md`, content: { path: `${cwd}/CLAUDE.md`, type: 'Project', content: RULES } }));
+  assert.deepEqual(historical.instructionEvidence, { entryObserved: true, sourceObserved: false, rulesLoaded: 'confirmed' });
+  // reading the files with a tool is not an injection
+  const read = one(at({ type: 'file', filename: `${cwd}/AGENTS.md` }), { type: 'user', cwd, timestamp: '2026-10-22T12:00:00Z', message: { content: [{ type: 'tool_result', tool_use_id: 'x', content: RULES }] } });
+  assert.deepEqual(read.instructionEvidence, { entryObserved: false, sourceObserved: false, rulesLoaded: 'none' });
+  // an AGENTS.md outside Death Muffin (another project) does not count
+  const other = one(at({ type: 'instructions', files: [{ path: '/home/ubuntu/other-project/AGENTS.md', type: 'Project', content: RULES }] }));
+  assert.deepEqual(other.instructionEvidence, { entryObserved: false, sourceObserved: false, rulesLoaded: 'none' });
+  const g = report([sourceOnly, both, stubOnly, pathOnly, historical, read, other]).groups.session;
+  assert.deepEqual(g.instructions, { entryObserved: 4, sourceObserved: 2, rulesConfirmed: 3, rulesUnknown: 2 });
+  assert.equal(g.claudeMdLoaded, 4, 'the compatibility field keeps its meaning: a record named CLAUDE.md');
+  assert.match(formatReport(report([sourceOnly, stubOnly])), /rules confirmed in 1, unknown in 1 of 2 sessions \(CLAUDE\.md seen 1, AGENTS\.md seen 1\)/);
 });

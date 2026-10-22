@@ -20,6 +20,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { claudeView } from './sync-instructions.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO = path.resolve(HERE, '..', '..');
@@ -55,6 +56,44 @@ const entryText = (text, e) => (text == null ? null : e.section ? sectionText(te
 const entryName = (e) => (e.section ? `${e.file} "${e.section}"` : e.file);
 
 // Each measured file or section carries its warning ceiling from surfaces.json `ceilings` (null when none is set: ceilingCheck reports that).
+// What an audience actually receives of its always-loaded files (surfaces.json `delivery`, tools/context/README.md "The audiences"):
+// - "claude-code": the file as Claude Code delivers it (HTML comments outside code removed), and the one supported import: a line that is
+//   exactly `@<relative path>`, outside code and comments, naming a file inside the checkout that imports nothing itself (depth 1; Claude
+//   Code allows more, this repo needs one). The imported file is delivered the same way, as its own segment;
+// - "raw": the file's text as is (Codex reads AGENTS.md as bytes; the runner hands the agent its prompt as text): an import there is never
+//   followed, so it is a problem.
+// Returns { segments: [{ file, via, text }], problems: [text] }; coverage and sizes both use it, so they fail alike.
+export function delivered(root, audience, a) {
+  const segments = [], problems = [];
+  const mode = a.delivery || 'raw';
+  for (const f of a.always) {
+    const raw = readText(root, f);
+    if (raw == null) { problems.push(`surfaces.json: ${f} does not exist`); continue; }
+    const v = claudeView(raw);
+    if (mode !== 'claude-code') {
+      segments.push({ file: f, via: null, text: raw });
+      for (const im of v.imports) problems.push(`${f}:${im.line}: "@${im.path}" is an import, but ${audience} reads ${f} as it is: the import is never followed`);
+      continue;
+    }
+    segments.push({ file: f, via: null, text: v.text });
+    const seen = new Set();
+    for (const im of v.imports) {
+      const target = path.normalize(path.join(path.dirname(f), im.path));
+      if (!im.alone) { problems.push(`${f}:${im.line}: "@${im.path}" is not on a line of its own: the only supported import is a line "@<path>"`); continue; }
+      if (path.isAbsolute(im.path) || target.startsWith('..')) { problems.push(`${f}:${im.line}: "@${im.path}" points outside the checkout`); continue; }
+      if (seen.has(target)) { problems.push(`${f}:${im.line}: "@${im.path}" is imported twice`); continue; }
+      seen.add(target);
+      if (target === f) { problems.push(`${f}:${im.line}: "@${im.path}" imports itself`); continue; }
+      const t = readText(root, target);
+      if (t == null) { problems.push(`${f}:${im.line}: "@${im.path}" names a file that does not exist`); continue; }
+      const tv = claudeView(t);
+      for (const n of tv.imports) problems.push(`${target}:${n.line}: "@${n.path}": an imported file imports nothing itself (one level only)`);
+      segments.push({ file: target, via: f, text: tv.text });
+    }
+  }
+  return { segments, problems };
+}
+
 export function sizes(root = REPO) {
   const surfaces = readJson(root, 'tools/context/surfaces.json');
   const cpt = surfaces.charsPerToken;
@@ -63,10 +102,8 @@ export function sizes(root = REPO) {
   const ceiling = (table, key) => (table && typeof table === 'object' && Number.isInteger(table[key]) && table[key] > 0 ? table[key] : null);
   const result = { charsPerToken: cpt, audiences: {} };
   for (const [name, a] of Object.entries(surfaces.audiences)) {
-    const always = a.always.map((f) => {
-      const t = readText(root, f) ?? '';
-      return { file: f, chars: t.length, tokens: tok(t.length), ceiling: ceiling(c.always, name), sections: sections(t).map((s) => ({ title: s.title, chars: s.chars, tokens: tok(s.chars) })) };
-    });
+    // Each delivered segment: the file as the audience receives it (for Claude, CLAUDE.md and the AGENTS.md it imports, comments removed).
+    const always = delivered(root, name, a).segments.map(({ file, via, text: t }) => ({ file, ...(via ? { via } : {}), chars: t.length, bytes: Buffer.byteLength(t), tokens: tok(t.length), ceiling: ceiling(c.always, name), sections: sections(t).map((s) => ({ title: s.title, chars: s.chars, tokens: tok(s.chars) })) }));
     const size = (f) => { const t = readText(root, f) ?? ''; return { file: f, chars: t.length, tokens: tok(t.length), ceiling: ceiling(c.guides, name) }; };
     const guides = (a.guides || []).map(size);
     const discovery = (a.discovery || []).map((e) => { const t = entryText(readText(root, e.file), e) ?? ''; return { entry: entryName(e), chars: t.length, tokens: tok(t.length), ceiling: ceiling(c.discovery, entryName(e)) }; });
@@ -99,7 +136,7 @@ export function ceilingCheck(root = REPO) {
   const seen = new Map();
   const add = (kind, entry, who, x) => {
     const key = `${kind}\0${entry}`;
-    if (seen.has(key)) { seen.get(key).audiences.push(who); return; }
+    if (seen.has(key)) { const w = seen.get(key); w.audiences.push(who); w.tokens = Math.max(w.tokens, x.tokens); return; }
     seen.set(key, { kind, entry, audiences: who ? [who] : [], tokens: x.tokens, ceiling: x.ceiling });
   };
   for (const kind of ['always', 'guides']) {
@@ -186,6 +223,19 @@ export function checkRules(root = REPO) {
   const texts = {};
   const text = (f) => (f in texts ? texts[f] : (texts[f] = readText(root, f)));
   const has = (f, clause) => { const t = text(f); return t != null && norm(t).includes(norm(clause)); };
+  const dcache = {};
+  const deliveredOf = (who) => (dcache[who] ??= (surfaces.audiences[who] ? delivered(root, who, surfaces.audiences[who]) : { segments: [], problems: [] })).segments;
+  for (const who of audiences) {
+    const a = surfaces.audiences[who];
+    if (a.delivery !== undefined && !['claude-code', 'raw'].includes(a.delivery)) problems.push(`surfaces.json: ${who}: delivery must be "claude-code" or "raw"`);
+    deliveredOf(who);
+    problems.push(...dcache[who].problems);
+    // A byte budget the audience's reader applies (Codex: 32 KiB by default): text past it is cut off, so going over it fails.
+    if (a.maxBytes !== undefined) {
+      if (!Number.isInteger(a.maxBytes) || a.maxBytes <= 0) problems.push(`surfaces.json: ${who}: maxBytes must be a positive whole number`);
+      else for (const f of a.always) { const t = readText(root, f); if (t != null && Buffer.byteLength(t) > a.maxBytes) problems.push(`${f}: ${Buffer.byteLength(t)} bytes, over the ${a.maxBytes} that ${who} reads (surfaces.json maxBytes): move task detail to a guide`); }
+    }
+  }
   const ids = new Set();
   for (const [i, r] of rules.entries()) {
     const id = typeof r?.id === 'string' && /^[a-z0-9-]+$/.test(r.id) ? r.id : `rules[${i}]`;
@@ -224,7 +274,10 @@ export function checkRules(root = REPO) {
     if (r.protected === true) {
       for (const who of aud) {
         const always = surfaces.audiences[who]?.always || [];
-        const home = homes.some((h) => always.includes(h.file) && Array.isArray(h.clauses) && h.clauses.length && h.clauses.every((c) => has(h.file, c)));
+        // A home counts for an audience only if the audience receives that file (directly or through the import) and every clause is in the
+        // text it receives: a clause moved into an HTML comment of AGENTS.md is gone for Claude while Codex still reads it.
+        const segs = deliveredOf(who);
+        const home = homes.some((h) => Array.isArray(h.clauses) && h.clauses.length && h.clauses.every((c) => has(h.file, c)) && segs.some((sg) => sg.file === h.file && h.clauses.every((c) => norm(sg.text).includes(norm(c)))));
         const gap = (r.gaps || []).some((g) => g?.audience === who);
         if (!home && !gap) problems.push(`${id}: protected rule has no always-loaded home for ${who} (${always.join(', ')}) and no gap`);
       }
@@ -246,17 +299,20 @@ export function checkRules(root = REPO) {
     for (const a of want.acceptedGaps) if (!have.acceptedGaps.includes(a)) problems.push(`${id}: protected.json accepts a gap for ${a} that rules.json no longer has; remove it from protected.json`);
   }
   for (const id of Object.keys(now)) if (!lock[id]) problems.push(`${id}: new protected rule: add it to protected.json (node tools/context/measure.mjs --print-lock prints the entries)`);
-  // Every section of always-loaded text holds at least one inventoried rule, so a new section cannot slip in unlisted.
-  for (const a of Object.values(surfaces.audiences || {})) {
-    for (const f of a.always) {
-      const t = text(f);
-      if (t == null) { problems.push(`surfaces.json: ${f} does not exist`); continue; }
-      const clauses = rules.flatMap((r) => (Array.isArray(r?.homes) ? r.homes : []).filter((h) => h?.file === f).flatMap((h) => (Array.isArray(h.clauses) ? h.clauses : [])));
-      for (const s of sections(t)) {
+  // Every section of the text an audience receives holds at least one inventoried rule of that section's source file, so a new section
+  // cannot slip in unlisted (reported once per source file and section).
+  const reportedSections = new Set();
+  for (const who of audiences) {
+    for (const sg of deliveredOf(who)) {
+      const clauses = rules.flatMap((r) => (Array.isArray(r?.homes) ? r.homes : []).filter((h) => h?.file === sg.file).flatMap((h) => (Array.isArray(h.clauses) ? h.clauses : [])));
+      for (const s of sections(sg.text)) {
         if (s.title === '(preamble)') continue;
-        const body = norm(t.slice(s.start, s.end));
+        const body = norm(sg.text.slice(s.start, s.end));
         if (clauses.some((c) => typeof c === 'string' && norm(c) && body.includes(norm(c)))) continue;
-        problems.push(`${f}: section "${s.title}" holds no inventoried rule: add its rules to tools/context/rules.json`);
+        const key = `${sg.file}\0${s.title}`;
+        if (reportedSections.has(key)) continue;
+        reportedSections.add(key);
+        problems.push(`${sg.file}: section "${s.title}" holds no inventoried rule: add its rules to tools/context/rules.json`);
       }
     }
   }
@@ -312,7 +368,7 @@ function main(argv) {
   for (const [name, a] of Object.entries(s.audiences)) {
     console.log(`== ${name}: ${a.what}`);
     for (const f of a.always) {
-      console.log(`   always loaded: ${f.file} ${f.chars} chars, ~${f.tokens}${cap(f)} tokens`);
+      console.log(`   always loaded: ${f.file}${f.via ? ` (imported by ${f.via})` : ''} ${f.chars} chars, ~${f.tokens}${cap(f)} tokens`);
       for (const sec of f.sections) console.log(`     ${String(sec.tokens).padStart(6)}  ${sec.title}`);
     }
     if (a.guides.length) console.log(`   guides, read when a task needs one: ~${a.guideTokens} tokens (${a.guides.map((f) => `${path.basename(f.file, '.md')} ~${f.tokens}${cap(f)}`).join(', ')})`);

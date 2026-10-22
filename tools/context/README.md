@@ -21,36 +21,47 @@ whole root README). `references` lists the client guides a task may open; they a
 
 | Audience | Always loaded | How |
 |---|---|---|
-| session | `CLAUDE.md` | Claude Code loads it for a session started in the repository, and for one started elsewhere once it works in a checkout |
-| codex | `AGENTS.md` | Codex loads it when it starts in the repository: it reads `AGENTS.md` from the project root down to its launch folder, at launch only |
+| session | `CLAUDE.md`, which imports `AGENTS.md` (`delivery: claude-code`) | Claude Code loads it for a session started in the repository, and for one started elsewhere when it reads, writes or edits a file in a checkout; the `@AGENTS.md` line brings the rules in |
+| codex | `AGENTS.md` (`delivery: raw`, `maxBytes` 32768) | Codex reads `AGENTS.md` as bytes from the project root down to its working folder when a session starts (and on its own lifecycle reloads: trust or permission changes, fork, resume; never on a shell `cd`), with no import expansion and a 32 KiB default budget |
 | agent | `server/death-muffin/discord-agent/PROMPT-godot.md` | the runner appends its round's snapshot to every call (`runner/lib/agent.cjs`, `runner/lib/guides.cjs`); the agent runs `--restricted`, which does not load `CLAUDE.md` |
 
 The agent's guides (`server/death-muffin/discord-agent/guides/*.md`: screenshots, clips, pictures, models, sound) are not always loaded: the
 runner copies them into the job's worktree (`.dm-guides/`) and the core prompt tells the agent to Read the one a workflow needs
 (server/death-muffin/discord-agent/README.md "Prompt and guides"). A guide is therefore never the home that keeps a protected rule.
 
-`AGENTS.md` is `CLAUDE.md` byte for byte: `CLAUDE.md` is the one written source, and `node tools/context/sync-instructions.mjs` writes the
-copy (`--check` only checks; its test runs in CI and fails on a missing, empty or stale copy; `regen-godot.sh` runs the write too). One
-text, two delivery files, so neither tool needs to read the other's, and every rule written in `CLAUDE.md` has the same clauses in
-`AGENTS.md` for the `codex` audience (`rules.json`, locked like the others in `protected.json`). The Discord runner treats `AGENTS.md` as
-sensitive, like `CLAUDE.md` (`runner/lib/config.cjs` `tiers`).
+**One source.** `AGENTS.md` is the one written source of the rules; `CLAUDE.md` is a maintainer comment and one `@AGENTS.md` line, which
+Claude Code expands when it loads `CLAUDE.md` (code.claude.com/docs/en/memory; probed 2026-10-21: a start-up `instructions` record lists both
+files, a nested load writes one `nested_memory` record each, the imported one naming its `parent`, and HTML comments are removed from both
+before Claude sees them). `node tools/context/sync-instructions.mjs --check` (CI) fails when `CLAUDE.md` holds anything but that import
+(text there would reach Claude only), when the import sits in code or a comment, or when `AGENTS.md` is missing, empty, over 32 KiB or
+carries an import (Codex never follows one). Run bare (as `regen-godot.sh` does) it validates `AGENTS.md` first, then writes the import over
+a missing `CLAUDE.md` or the old full copy, refuses any other text, and never writes `AGENTS.md`. Each rule therefore has one home for both
+terminal tools (`rules.json`, locked in `protected.json`). The Discord runner treats both root files as sensitive (`runner/lib/config.cjs`
+`tiers`). The agent loads neither (`--restricted`; probed again with the import).
 
-How sure that is (`usage.mjs` reports it per audience as "the repo's CLAUDE.md was injected in N of M sessions", from the `instructions`
-and `nested_memory` records Claude Code writes when it injects an instruction file; a file merely read does not count):
+**What each audience receives** (`measure.mjs` `delivered`): for `claude-code` delivery, the file with HTML comments outside code removed
+plus the one supported import (a line that is exactly `@<relative path>`, outside code and comments, naming a file in the checkout that
+imports nothing itself); for `raw`, the file as is. Protected-rule coverage, section coverage and sizes all use that text, so a clause
+moved into a comment of `AGENTS.md` fails for Claude while Codex still has it, and an import anywhere it would not be followed is a problem.
+
+How sure that is (`usage.mjs` reports it per audience as "rules confirmed in N, unknown in K of M sessions", from the `instructions` and
+`nested_memory` records Claude Code writes when it injects an instruction file; a file merely read does not count; "Usage" below):
 
 - **Agent: never.** 0 of 124 agent sessions with calls 2026-10-04 to 2026-10-20 had it injected, while every interactive session started
   in the home folder in that time has an `instructions` record (for its memory file), so the record was being written. A direct probe on
   2026-10-21 (Claude Code 2.1.284, a scratch folder whose `CLAUDE.md` held a code word, no tools): `claude -p --restricted` answered that it
   had no project instructions; the same call without `--restricted` returned the code word.
 - **Session: usually, not always.** 2026-10-18 to 2026-10-20: 10 of 12 interactive sessions and 15 of 39 subagents. A session that starts
-  outside the repo gets it only when it works in a checkout's folder (a subagent that reads files through the shell may never), so for
-  subagents "always loaded" does not hold; their briefs carry the rules they need. `surfaces.json` still treats `CLAUDE.md` as the
-  session audience's always-loaded text, which is what the rule check checks.
+  outside the repo gets it only when it works in a checkout's folder, so for subagents "always loaded" does not hold; their briefs carry the
+  rules they need. Which actions load a nested `CLAUDE.md` is Claude Code's: on 2026-10-21 (2.1.284) the Read tool did, a single-file shell
+  `cat` did not (in `-p` and in an interactive session alike, for a plain `CLAUDE.md` and for the import alike), while earlier sessions'
+  records show loads right after shell commands run inside a checkout. The import changes none of that; whenever `CLAUDE.md` loads, the
+  rules come with it. `surfaces.json` still treats `CLAUDE.md` (with its import) as the session audience's always-loaded text.
 - **Codex: only when it starts in a checkout.** Before 2026-10-21 the repository had no `AGENTS.md`, `~/.codex/config.toml` names no
   fallback instruction file, and Codex does not read `CLAUDE.md` on its own; it learned the rules only when told to read them. Every Codex
-  session on the game through 2026-10-21 started in the home folder, and Codex builds its instructions at launch, so a later `cd` or
-  `git -C` into a checkout loads nothing: a Codex session that starts outside a checkout (or works on another worktree) must read that
-  checkout's `AGENTS.md` first. `usage-codex.mjs` reports per session whether Codex recorded injecting an `AGENTS.md`, and from which
+  session on the game through 2026-10-21 started in the home folder, and Codex keeps a project-instruction snapshot (reloaded on trust,
+  permission, fork or resume events, not on a `cd` or `git -C`): a Codex session that starts outside a checkout (or works on another
+  worktree) must read that checkout's `AGENTS.md` first. `usage-codex.mjs` reports per session whether Codex recorded injecting an `AGENTS.md`, and from which
   folder ("Codex usage" below).
 
 Token figures are estimates from characters: `charsPerToken` (2.7) is what the agent's own calls show, where the first call's context grew
@@ -80,7 +91,9 @@ the baseline inventory on 2026-10-20). `node tools/context/measure.mjs --print-l
 - a guide in `surfaces.json` does not exist, is also listed as always loaded, or holds no inventoried rule;
 - a discovery entry (a file, or a section by its heading), a reference guide or a step of a task route (`tasks.json`) does not exist, or a
   task's route no longer holds the words that answer its question;
-- a measured surface has no valid size ceiling, or a ceiling names a surface that is not listed ("Size warnings" below).
+- a measured surface has no valid size ceiling, or a ceiling names a surface that is not listed ("Size warnings" below);
+- an import is not one the audience follows (not on its own line, outside the checkout, missing, twice, itself, an imported file importing
+  again, or any import in a `raw` file), or a file is over its audience's `maxBytes`.
 
 The context test also keeps the owner principles (DECISIONS B71) and the spend-limit line in the agent's prompt: removing one, or giving it an
 agent gap again, fails CI.
@@ -93,7 +106,7 @@ whether anyone reviewed that diff, whether reworded text still means the same, o
 ## Size warnings
 
 `ceilings` in `surfaces.json` gives each measured surface a warning ceiling in estimated tokens (the same estimator; no tokenizer):
-each always-loaded file per audience (`CLAUDE.md` and `AGENTS.md` 4,500, the agent's core prompt source 10,500), each agent guide
+each always-loaded file per audience, measured as the audience receives it (`CLAUDE.md`, and `AGENTS.md` imported or read directly, 4,500, the agent's core prompt source 10,500), each agent guide
 (5,000), each discovery entry (the map section 800, the client index 4,000) and each reference guide (8,000). They were set on
 2026-10-21 with room above Stage 3's sizes. `measure.mjs` prints every size as `~size / ceiling`, lists the ones above it as WARNING lines
 (and `sizeWarnings` in `--json`, with the file or section, its size and its ceiling), and `npm run hygiene` prints the same warnings (a
@@ -149,6 +162,11 @@ Per audience it reports:
   message). Every later call re-reads it as its prefix, so the report also gives how much of the window's context it makes up (session-start
   context times the window's calls). The first call inside a window is not the same thing and is not reported as startup;
 - context peaks and calls per session, and the files and shell commands whose output filled the context;
+- whether the repo's rules arrived (`instructions` in the JSON): `entryObserved` (a record named the root `CLAUDE.md`), `sourceObserved` (a
+  record named the root `AGENTS.md`, the import), and per session `rulesLoaded`: `confirmed` when `AGENTS.md` was injected or an injected
+  `CLAUDE.md` record's own text held rules (any `CLAUDE.md` from before the switch, judged by its content, never by its date), `unknown`
+  when only the import stub or a record without its text was seen. `claudeMdLoaded` stays for comparisons with earlier reports and means
+  only "a record named the root `CLAUDE.md`";
 - `whatIfCap`, a hypothetical: what the window's calls would have read had the session compacted whenever it passed a lower point. It
   replays the whole session, leaves out the cost of the summary and the work redone after a compaction (files read again, lost detail),
   and is an upper bound on a saving, not evidence of one; choosing a compaction point needs a measured trial.

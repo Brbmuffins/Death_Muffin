@@ -71,11 +71,13 @@ test('tiers: the combat core and the files the art pack is fingerprinted by are 
     assert.equal(gtier(f), 'sensitive', f);
   assert.equal(gtier('native/README.md'), 'sensitive', 'a document inside a sensitive area is sensitive too');
 });
-test('tiers: AGENTS.md (CLAUDE.md\'s generated copy for Codex) is sensitive just like CLAUDE.md, added or changed, though *.md is casual', () => {
+test('tiers: AGENTS.md (the instructions\' source) and CLAUDE.md (its import) are sensitive, added, changed or deleted, though *.md is casual', () => {
   for (const status of ['modify', 'add']) {
     assert.equal(gtier('AGENTS.md', status), 'sensitive', status);
     assert.equal(gtier('CLAUDE.md', status), 'sensitive', status);
   }
+  const del = (file) => classifyDiff(`diff --git a/${file} b/${file}\ndeleted file mode 100644\n--- a/${file}\n+++ /dev/null\n@@ -1,1 +0,0 @@\n-x\n`, cfg).perFile[0].tier;
+  assert.equal(del('AGENTS.md'), 'sensitive', 'delete'); assert.equal(del('CLAUDE.md'), 'sensitive', 'delete');
   assert.equal(gtier('client/next/hud/AGENTS.md'), 'casual', 'only the root file is the instruction file');
 });
 test('tiers: docs, markdown and patch notes are casual (any content), but never inside a sensitive area', () => {

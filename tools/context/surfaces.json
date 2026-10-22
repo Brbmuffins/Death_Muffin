@@ -10,18 +10,22 @@
   "references": ["client/tools/TESTING.md", "client/tools/TEST-SUITES.md", "client/next/ARCHITECTURE.md", "client/main/SCREENSHOTS.md", "client/main/CLIPS.md", "client/main/RELEASE-CHECKS.md", "client/next/areas/SURGES.md", "client/next/rites/CORE-INTEGRATION.md", "client/next/bosses/CORE-INTEGRATION.md", "client/next/perf/BENCHMARK.md", "client/next/perf/BENCHMARK-REPORT.md", "client/next/perf/DRAW-BUDGET.md", "client/world_fx/README.md", "client/fx/README.md", "client/next/perf/README.md", "client/next/look/README.md", "client/next/hud/CORE-INTEGRATION.md", "client/ui/hud/PERFORMANCE.md", "client/ui/onboarding/README.md", "client/audio/README.md", "client/core/THREADING.md", "client/next/rewards/AUTHORITY.md", "client/next/gathering/README.md", "client/next/party/CORE-NETWORK.md", "client/next/party/README.md", "client/next/party/TESTING.md", "client/front/README.md", "client/net/README.md", "client/tools/ASSETS.md", "client/next/depths/CORE-INTEGRATION.md", "client/world/README.md"],
   "audiences": {
     "session": {
-      "what": "a Claude Code terminal session started in a checkout of this repository (also its subagents)",
+      "what": "a Claude Code terminal session started in a checkout of this repository (also its subagents): CLAUDE.md, which imports AGENTS.md",
       "always": ["CLAUDE.md"],
+      "delivery": "claude-code",
       "discovery": [{"file": "README.md", "section": "Documentation map"}, {"file": "client/README.md"}]
     },
     "codex": {
-      "what": "a Codex terminal session started in a checkout of this repository (Codex loads AGENTS.md, CLAUDE.md's generated copy, from the project root down to its launch folder)",
+      "what": "a Codex terminal session started in a checkout of this repository (Codex reads AGENTS.md, the one written source, as bytes from the project root down to its launch folder: no imports, a 32 KiB default budget)",
       "always": ["AGENTS.md"],
+      "delivery": "raw",
+      "maxBytes": 32768,
       "discovery": [{"file": "README.md", "section": "Documentation map"}, {"file": "client/README.md"}]
     },
     "agent": {
       "what": "the Discord dev agent (claude -p --restricted in a job worktree; CLAUDE.md is not loaded for it)",
       "always": ["server/death-muffin/discord-agent/PROMPT-godot.md"],
+      "delivery": "raw",
       "guides": ["server/death-muffin/discord-agent/guides/screenshots.md", "server/death-muffin/discord-agent/guides/clips.md", "server/death-muffin/discord-agent/guides/pictures.md", "server/death-muffin/discord-agent/guides/models.md", "server/death-muffin/discord-agent/guides/sound.md"],
       "discovery": [{"file": "README.md", "section": "Documentation map"}, {"file": "client/README.md"}]
     }

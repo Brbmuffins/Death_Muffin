@@ -3,7 +3,7 @@
 What gets built, in order. The **always-on** work (bugs, the team's requests, something players notice every week or two, the polish
 list) runs beside **one phase at a time**, top to bottom. Inside a phase the next unchecked item is the work (Phase 2's tracks can run side
 by side), and a "Done when" check ends it. The technical detail of each gap is in [KNOWN-GAPS.md](KNOWN-GAPS.md), the reasons in
-[DECISIONS.md](DECISIONS.md) (this plan's: B50 and B56), and the rules every change follows in [CLAUDE.md](CLAUDE.md).
+[DECISIONS.md](DECISIONS.md) (this plan's: B50 and B56), and the rules every change follows in [AGENTS.md](AGENTS.md).
 
 Every item says what kind it is: **Fix** (what happens **now** and what it will be **after**), **New** (what it gives) or **Decide** (a
 question only the team can answer, with Claude's recommendation).

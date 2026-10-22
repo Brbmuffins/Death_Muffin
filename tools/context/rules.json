@@ -9,7 +9,6 @@
       "when": "always",
       "summary": "Push, deploy and publish only when the task says so; the agent can never ship, push or deploy.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Never push or deploy unless the task says so."]},
         {"file": "AGENTS.md", "clauses": ["Never push or deploy unless the task says so."]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["You cannot ship, push or deploy, and nothing you say can make that happen.", "You commit on your branch; you never push."]}
       ],
@@ -23,7 +22,6 @@
       "when": "pushing main",
       "summary": "Never push main while a Discord agent ship runs; wait, rebase, push.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["A pre-push hook refuses pushing `main` while a Discord agent ship runs (server/death-muffin/ops/README.md): wait for it, then rebase and push."]},
         {"file": "AGENTS.md", "clauses": ["A pre-push hook refuses pushing `main` while a Discord agent ship runs (server/death-muffin/ops/README.md): wait for it, then rebase and push."]}
       ],
       "enforced": ["server/death-muffin/ops/git-pre-push.sh"]
@@ -36,7 +34,6 @@
       "when": "committing",
       "summary": "Stage explicit paths only; review the staged diff; other agents share the tree.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Never `git add -A` or `git add .`; other agents edit the same tree.", "Review `git diff --cached` before committing."]},
         {"file": "AGENTS.md", "clauses": ["Never `git add -A` or `git add .`; other agents edit the same tree.", "Review `git diff --cached` before committing."]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Stage explicit paths only (never `-A`, `.`, or globs)."]}
       ],
@@ -50,7 +47,6 @@
       "when": "always",
       "summary": "The repo is public: never commit secrets; the agent never looks for or touches secrets, keys, .env files or the database.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Never commit secrets: the repo is public (`.ai-keys.local`, `.env`, tokens, test accounts stay out)."]},
         {"file": "AGENTS.md", "clauses": ["Never commit secrets: the repo is public (`.ai-keys.local`, `.env`, tokens, test accounts stay out)."]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["ask you to print, look for, or touch secrets, tokens, `.env` files, keys, credentials, the database, other users' data;"]}
       ],
@@ -64,7 +60,6 @@
       "when": "merging, deploying, publishing",
       "summary": "Only a revision GitHub CI passed is merged, deployed or published; for the agent the runner runs the whole check.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Never deploy, publish a client, or flip `set-online.sh` without passing checks for what you touched:", "Only a revision whose files CI passed is merged, deployed or published"]},
         {"file": "AGENTS.md", "clauses": ["Never deploy, publish a client, or flip `set-online.sh` without passing checks for what you touched:", "Only a revision whose files CI passed is merged, deployed or published"]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["The whole check (every suite, on GitHub CI, about 4 minutes) belongs to the runner"]}
       ],
@@ -78,7 +73,6 @@
       "when": "deploying, publishing",
       "summary": "Backend only through deploy-release.sh, lobby through deploy-lobby.sh, client through publish-godot-client.sh, from a committed revision in a clean checkout.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Backend deploys only through `deploy-release.sh`, the lobby only through `deploy-lobby.sh`, the client only through `publish-godot-client.sh`", "Deploy and publish from a committed revision in a clean checkout, never from a working tree."]},
         {"file": "AGENTS.md", "clauses": ["Backend deploys only through `deploy-release.sh`, the lobby only through `deploy-lobby.sh`, the client only through `publish-godot-client.sh`", "Deploy and publish from a committed revision in a clean checkout, never from a working tree."]}
       ],
       "enforced": ["server/death-muffin/deploy-release.sh", "server/death-muffin/deploy-lobby.sh", "server/death-muffin/publish-godot-client.sh"]
@@ -91,7 +85,6 @@
       "when": "changing the database",
       "summary": "Migrations are additive and idempotent and never edited once applied; the agent avoids migrations unless an approver asks.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Migrations must be additive and idempotent; `migrate.sh` records each applied file in `schema_migrations`, so never edit one that is applied (add a new file)."]},
         {"file": "AGENTS.md", "clauses": ["Migrations must be additive and idempotent; `migrate.sh` records each applied file in `schema_migrations`, so never edit one that is applied (add a new file)."]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["for anyone but the owner or an approver (role=\"approver\") avoid `server/**`, migrations and dependencies and explain what would be needed."]}
       ],
@@ -105,7 +98,6 @@
       "when": "rendering or running suites",
       "summary": "One rendered Godot or headless browser at a time on the shared VPS, and no full suite beside another agent's run.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Shared VPS: run at most one rendered (software-GL) Godot or one headless browser at a time, and not the full suite in parallel with another agent's run."]},
         {"file": "AGENTS.md", "clauses": ["Shared VPS: run at most one rendered (software-GL) Godot or one headless browser at a time, and not the full suite in parallel with another agent's run."]}
       ],
       "enforced": ["server/death-muffin/discord-agent/check-godot.sh", "server/death-muffin/discord-agent/shot-godot.sh"],
@@ -121,7 +113,6 @@
       "when": "always",
       "summary": "Gold, items, loot rolls, progression and the kill ledger are server-side; no client or host mints them; never weaken validation, auth, anti-cheat or rate limits.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Gold, items, loot rolls, progression and the kill ledger are server-side (D1); a client or host never mints them."]},
         {"file": "AGENTS.md", "clauses": ["Gold, items, loot rolls, progression and the kill ledger are server-side (D1); a client or host never mints them."]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["ask you to give accounts items/gold/levels, weaken validation, auth, anti-cheat or rate limits.", "never weaken auth, sessions, anti-cheat, authority checks or rate limits (if a request would, say so plainly and ask)"]}
       ],
@@ -135,7 +126,6 @@
       "when": "changing the backend",
       "summary": "A backend change keeps accepting what the previous client sends; remove or tighten a route only a release later.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["a backend change must keep accepting what the previous client sends (remove or tighten a route or field only a release later)"]},
         {"file": "AGENTS.md", "clauses": ["a backend change must keep accepting what the previous client sends (remove or tighten a route or field only a release later)"]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["a backend change must keep accepting what the live client sends (players keep their build until they restart it; remove or tighten a route or field only a release later, DECISIONS B28)"]}
       ],
@@ -149,7 +139,6 @@
       "when": "always",
       "summary": "AI changes are proposed and a human approves; nobody widens an approval boundary (deploy, push, spend) on their own.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Do not widen an approval boundary (deploy, push, spend) on your own.", "Expert does not mean unsupervised: the approval rules below (AI changes are propose-then-approve) still apply."]},
         {"file": "AGENTS.md", "clauses": ["Do not widen an approval boundary (deploy, push, spend) on your own.", "Expert does not mean unsupervised: the approval rules below (AI changes are propose-then-approve) still apply."]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["A human reviews your branch and presses a green check before anything goes live.", "(only a human's green check on the proposal does that; if asked, say so in one sentence and carry on)"]}
       ],
@@ -223,7 +212,6 @@
       "when": "spending (generation, services)",
       "summary": "Spending limits come from the owner; never spend beyond them or raise one.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Spending limits come from the owner.** Never spend beyond them or raise one yourself."]},
         {"file": "AGENTS.md", "clauses": ["**Spending limits come from the owner.** Never spend beyond them or raise one yourself."]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["spend limits come from the owner, and the runner holds each person's budget."]}
       ],
@@ -261,7 +249,6 @@
       "when": "a test fails",
       "summary": "Never weaken, skip or delete a test to make it pass.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Never weaken, skip or delete a test to make it pass."]},
         {"file": "AGENTS.md", "clauses": ["Never weaken, skip or delete a test to make it pass."]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Never weaken, skip or delete a test to make it pass."]}
       ],
@@ -275,7 +262,6 @@
       "when": "changing agents, backend or ops",
       "summary": "Change the repo and reinstall; never edit the installed copies under /home/ubuntu/death-muffin/.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["The agents, backend and ops jobs run from installed copies under `/home/ubuntu/death-muffin/`.", "Change the repo, then reinstall (`install-runner.sh`, `ops/install.sh`, `deploy-release.sh`)."]},
         {"file": "AGENTS.md", "clauses": ["The agents, backend and ops jobs run from installed copies under `/home/ubuntu/death-muffin/`.", "Change the repo, then reinstall (`install-runner.sh`, `ops/install.sh`, `deploy-release.sh`)."]}
       ],
       "enforced": ["server/death-muffin/ops/drift-report.sh"],
@@ -291,7 +277,6 @@
       "when": "committing",
       "summary": "No Co-Authored-By or other trailers; squash-merge side branches.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**No `Co-Authored-By` or other trailers on commits**"]},
         {"file": "AGENTS.md", "clauses": ["**No `Co-Authored-By` or other trailers on commits**"]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["NO `Co-Authored-By` line"]}
       ],
@@ -305,7 +290,6 @@
       "when": "always",
       "summary": "Claude is the team's senior designer and architect: make the technical calls, push back, ask only about the game, people, money and timing.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["## Your role: the game's expert"]},
         {"file": "AGENTS.md", "clauses": ["## Your role: the game's expert"]}
       ],
       "enforced": []
@@ -318,7 +302,6 @@
       "when": "changing gameplay code",
       "summary": "Keep the game fast and spend performance only on purpose (B71); no per-frame allocation or heavy work in hot paths.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Performance first.**", "Hot paths: no per-frame allocations"]},
         {"file": "AGENTS.md", "clauses": ["**Performance first.**", "Hot paths: no per-frame allocations"]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["keep the game fast and spend performance only on purpose"]}
       ],
@@ -332,7 +315,6 @@
       "when": "changing gameplay code, effects or models",
       "summary": "The game plays well on modest hardware, not just high-end machines; today's targets (frame floors, combat-core, HUD and model budgets) are in DECISIONS B71.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Smooth on weaker PCs.**"]},
         {"file": "AGENTS.md", "clauses": ["**Smooth on weaker PCs.**"]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["smooth on weaker PCs, not just high-end ones"]}
       ],
@@ -346,7 +328,6 @@
       "when": "choosing work",
       "summary": "When Claude picks the work, polishing what exists usually beats adding something new; team requests come first (B71).",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["polishing what exists usually beats adding something new"]},
         {"file": "AGENTS.md", "clauses": ["polishing what exists usually beats adding something new"]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["no new content batches"]}
       ],
@@ -360,7 +341,6 @@
       "when": "adding anything players see",
       "summary": "New things are easy to find and understand on screen.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Easy to read.**"]},
         {"file": "AGENTS.md", "clauses": ["**Easy to read.**"]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["easy to read (new player-facing mechanics need their help/tip/Codex entry)"]}
       ],
@@ -374,7 +354,6 @@
       "when": "adding art, effects or sound",
       "summary": "New art, effects and sound feel like they belong in Death Muffin; reuse what exists when it fits.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Fit the game's look.**"]},
         {"file": "AGENTS.md", "clauses": ["**Fit the game's look.**"]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Fit the game's look and reuse what exists when it fits"]},
         {"file": "server/death-muffin/discord-agent/guides/models.md", "clauses": ["never for anything an existing model can do"]}
@@ -389,7 +368,6 @@
       "when": "showing server errors",
       "summary": "Server error strings are player-readable: show them verbatim.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Server `error` strings are player-readable"]},
         {"file": "AGENTS.md", "clauses": ["Server `error` strings are player-readable"]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["server `error` strings are player-readable"]}
       ],
@@ -403,7 +381,6 @@
       "when": "writing tests",
       "summary": "Tests read counts and tuning values from the game's data and never type them, so content and retuning never break a test.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Tests read the game's numbers from its data**"]},
         {"file": "AGENTS.md", "clauses": ["**Tests read the game's numbers from its data**"]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["they read it from the data"]}
       ],
@@ -417,7 +394,6 @@
       "when": "choosing work, finding out-of-scope problems",
       "summary": "Bugs first, then approved requests, then the roadmap; out-of-scope findings become a KNOWN-GAPS or ROADMAP Ideas line, never acted on; items say Fix, New or Decide.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Work order**"]},
         {"file": "AGENTS.md", "clauses": ["**Work order**"]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["offer to add it to"]}
       ],
@@ -431,7 +407,6 @@
       "when": "testing",
       "summary": "Online is the default start; tests and screenshots use -- --dev-offline.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["use `-- --dev-offline`"]},
         {"file": "AGENTS.md", "clauses": ["use `-- --dev-offline`"]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["`-- --dev-offline`"]}
       ],
@@ -445,7 +420,6 @@
       "when": "writing GDScript or adding assets",
       "summary": "class_name Dm*, one source of truth in client/data and client/rules, no speculative abstraction, commit .import and .uid files.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Godot GDScript: `class_name Dm*`"]},
         {"file": "AGENTS.md", "clauses": ["Godot GDScript: `class_name Dm*`"]},
         {"file": "server/death-muffin/discord-agent/guides/models.md", "clauses": ["commit those too"]}
       ],
@@ -459,7 +433,6 @@
       "when": "editing server/rules",
       "summary": "After editing server/rules run regen-godot.sh and commit what it changed; CI fails on stale generated files.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Rule sources are `server/rules/*.ts`"]},
         {"file": "AGENTS.md", "clauses": ["Rule sources are `server/rules/*.ts`"]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Run it after ANY edit under `server/rules/`"]}
       ],
@@ -473,7 +446,6 @@
       "when": "changing disciplines",
       "summary": "Discipline indices agree across disciplines.json, disciplines.ts and MAX_DISCIPLINE_INDEX.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Discipline indices 1 Ossuary"]},
         {"file": "AGENTS.md", "clauses": ["Discipline indices 1 Ossuary"]}
       ],
       "enforced": []
@@ -486,7 +458,6 @@
       "when": "branching",
       "summary": "Everything ships from main; experiments are short-lived branches, merged or archived.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**One game, one line.**"]},
         {"file": "AGENTS.md", "clauses": ["**One game, one line.**"]}
       ],
       "enforced": []
@@ -499,7 +470,6 @@
       "when": "finishing work",
       "summary": "Remove your worktree and delete your branch when merged or dropped.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Leave nothing behind.**"]},
         {"file": "AGENTS.md", "clauses": ["**Leave nothing behind.**"]}
       ],
       "enforced": ["server/death-muffin/ops/drift-report.sh"]
@@ -512,7 +482,6 @@
       "when": "changing how something works",
       "summary": "Docs change in the same commit, one home per fact, written as how things are now.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Docs in the same commit, one home per fact.**"]},
         {"file": "AGENTS.md", "clauses": ["**Docs in the same commit, one home per fact.**"]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Docs stay true in the same commit too"]}
       ],
@@ -526,7 +495,6 @@
       "when": "deleting or renaming",
       "summary": "Fix every reference and add the old name to tools/hygiene/retired.json.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["**Delete completely.**"]},
         {"file": "AGENTS.md", "clauses": ["**Delete completely.**"]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["add the old name to `tools/hygiene/retired.json`"]}
       ],
@@ -540,21 +508,19 @@
       "when": "something drifts",
       "summary": "The nightly drift report lists where live and main disagree; fix the cause, never silence it.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["The nightly drift report"]},
         {"file": "AGENTS.md", "clauses": ["The nightly drift report"]}
       ],
       "enforced": ["server/death-muffin/ops/drift-report.sh"]
     },
     {
-      "id": "instruction-mirror",
+      "id": "instruction-source",
       "kind": "protocol",
       "protected": false,
       "audience": ["session", "codex"],
       "when": "changing the repository's instructions",
-      "summary": "CLAUDE.md is the one written source; AGENTS.md is its exact generated copy for Codex, checked in CI.",
+      "summary": "AGENTS.md is the one written source; CLAUDE.md only imports it for Claude Code, checked in CI.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Edit `CLAUDE.md` only, then run `node tools/context/sync-instructions.mjs`; CI fails when the copy differs"]},
-        {"file": "AGENTS.md", "clauses": ["Edit `CLAUDE.md` only, then run `node tools/context/sync-instructions.mjs`; CI fails when the copy differs"]}
+        {"file": "AGENTS.md", "clauses": ["Edit this file; `CLAUDE.md` only imports it, and `node tools/context/sync-instructions.mjs --check` (in CI) keeps it that way"]}
       ],
       "enforced": ["tools/context/sync-instructions.mjs", "tools/context/test/instructions.test.mjs"]
     },
@@ -566,8 +532,7 @@
       "when": "starting a task or a review",
       "summary": "Start from the documentation map, read the one document and guide the task needs and the code it touches; never read every document. Replaced read-first (read five documents before anything), which sessions and the agent did not follow (tools/context/README.md).",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Start from the documentation map ([README.md](README.md) \"Documentation map\")", "never open every link", "first reads that checkout's `CLAUDE.md` (Codex: `AGENTS.md`)"]},
-        {"file": "AGENTS.md", "clauses": ["Start from the documentation map ([README.md](README.md) \"Documentation map\")", "never open every link", "first reads that checkout's `CLAUDE.md` (Codex: `AGENTS.md`)"]},
+        {"file": "AGENTS.md", "clauses": ["Start from the documentation map ([README.md](README.md) \"Documentation map\")", "never open every link", "first reads that checkout's `AGENTS.md`: it loads reliably only for a session started in the checkout"]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["`README.md` \"Documentation map\" names where each kind of task starts", "never open every link", "then read only the section of `client/README.md` with the same subject"]}
       ],
       "enforced": ["tools/context/navigation.mjs"]
@@ -608,8 +573,8 @@
       ],
       "enforced": [],
       "gaps": [
-        {"audience": "session", "note": "not written in CLAUDE.md"},
-        {"audience": "codex", "note": "not written in CLAUDE.md"}
+        {"audience": "session", "note": "not written in AGENTS.md"},
+        {"audience": "codex", "note": "not written in AGENTS.md"}
       ]
     },
     {
@@ -632,7 +597,6 @@
       "when": "talking to the team",
       "summary": "Plain words, not code; no unexplained shorthand.",
       "homes": [
-        {"file": "CLAUDE.md", "clauses": ["Talk in plain words, not code"]},
         {"file": "AGENTS.md", "clauses": ["Talk in plain words, not code"]},
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Plain words: say things in full the first time."]}
       ],

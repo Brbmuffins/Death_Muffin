@@ -375,6 +375,14 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   4 ms a frame; the HUD at most 0.5 ms and 150 draw calls on Helix's PC. Crowd models at most 5,000 triangles (the Bone Colossus 6,000) and
   1024-pixel textures with levels of detail; the hero and bosses at most 20,000 and 2048. Godot stays 4.7.2 until a deliberate, benchmarked
   upgrade.
+- **B72. AGENTS.md is the rules' one source; CLAUDE.md imports it** (Helix, 2026-10-21, after Codex's plan reviews). Codex reads `AGENTS.md`
+  directly, as bytes and with no imports, and Claude Code reads `CLAUDE.md`, which is now one `@AGENTS.md` line (plus a comment Claude never
+  sees). Before, `CLAUDE.md` was the source and `AGENTS.md` a generated copy (Stage 3). Kept as a one-line import rather than deleting
+  `CLAUDE.md` (Claude reads `AGENTS.md` natively only when no `CLAUDE.md` exists, depending on version and settings) or a symlink (Windows
+  checkouts; edits refuse to go through it). Probed before building: the import loads at start and on a nested load, comments are removed from
+  the imported file too, and `--restricted` (the agent) loads neither file. `sync-instructions.mjs --check` keeps the shape; the rule check
+  measures each audience on the text it receives; `usage.mjs` counts the rules as arrived only from the source or from a `CLAUDE.md` whose own
+  text held them. The global `~/.codex/AGENTS.md` pointer was left out (a Codex setting, its own decision).
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

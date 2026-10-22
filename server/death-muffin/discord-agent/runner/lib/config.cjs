@@ -63,8 +63,8 @@ const DEFAULTS = {
   // sensitive > gameplay > casual. The game is client/ (DECISIONS B49, B57). It carries its own offline backend, saves, login and net code, so those
   // are sensitive; unmatched paths (root files, native/) are sensitive too. gameplay = everything else under client/. A changed project.godot can add
   // autoloads / main scene, so it is sensitive; so are the files the players' 500 MB asset pack is fingerprinted by (tools/godot/assets-fp.sh), whose
-  // change sends every player that download again. AGENTS.md is CLAUDE.md's generated copy for Codex (tools/context/sync-instructions.mjs): the same
-  // instructions, so the same tier (the casual '*.md' rule below would otherwise take it).
+  // change sends every player that download again. AGENTS.md is the instructions' one source (Codex reads it; CLAUDE.md only imports it for Claude Code,
+  // tools/context/sync-instructions.mjs): both root files are the instructions, so both sensitive (the casual '*.md' rule below would otherwise take them).
   tiers: {
     sensitive: [
       'server/**', 'launcher/**', 'tools/**', '.github/**', '**/*.sh', '**/deploy*', 'CLAUDE.md', 'AGENTS.md', '.claude/**', '**/.env*', '.gitignore',

@@ -479,6 +479,12 @@
       "pattern": "assets/game/",
       "reason": "client/assets/game/ held a second copy of 92 HUD pictures; the HUD reads client/assets/ui_art/ (2026-10-20, B70)",
       "allow": ["DECISIONS.md", "tools/hygiene/**"]
+    },
+    {
+      "id": "instructions-copy",
+      "pattern": "CLAUDE\\.md's (exact |generated )?copy|AGENTS\\.md is (CLAUDE\\.md's|its) (exact |generated )?copy|CLAUDE\\.md is the one written source",
+      "reason": "AGENTS.md is the rules' one source and CLAUDE.md only imports it (2026-10-21, B72); AGENTS.md is no longer a copy",
+      "allow": ["DECISIONS.md", "tools/hygiene/**", "tools/context/baseline-*.json", "tools/context/stage*.json", "tools/context/test/fixtures/sync-instructions-copy.mjs"]
     }
   ],
   "allowPaths": {
