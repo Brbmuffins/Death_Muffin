@@ -3,8 +3,8 @@
 Death Muffin is one game: the Godot 4 client in `client/` with its C++ combat core in `native/` (live since 2026-10-18, DECISIONS B49), played
 online against `server/death-muffin/`. Tags `archive/legacy-web` (the retired web game) and `archive/old-game` (the first Godot game, B57) are history only: do not port from them.
 
-This file is the instructions for Claude Code and, as its exact copy `AGENTS.md`, for Codex. Edit `CLAUDE.md` only, then run
-`node tools/context/sync-instructions.mjs`; CI fails when the copy differs (tools/context/README.md).
+This file is the instructions for Codex and, through `CLAUDE.md`'s `@AGENTS.md` import, for Claude Code. Edit this file; `CLAUDE.md` only
+imports it, and `node tools/context/sync-instructions.mjs --check` (in CI) keeps it that way (tools/context/README.md).
 
 ## Finding task context
 
@@ -12,7 +12,7 @@ Start from the documentation map ([README.md](README.md) "Documentation map"): p
 the system's guide and the code you will change or review (for the client, [client/README.md](client/README.md) names the guide for each
 feature and task). Read only the parts of [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md) and [KNOWN-GAPS.md](KNOWN-GAPS.md) the
 task touches, found by feature or decision id; never open every link. A session that started outside this checkout, or that works on
-another worktree, first reads that checkout's `CLAUDE.md` (Codex: `AGENTS.md`): they load reliably only for a session started in the checkout. A brief
+another worktree, first reads that checkout's `AGENTS.md`: it loads reliably only for a session started in the checkout. A brief
 for a subagent carries the rules it needs.
 
 ## Your role: the game's expert
@@ -104,7 +104,7 @@ Never deploy, publish a client, or flip `set-online.sh` without passing checks f
 - **Leave nothing behind.** Remove your worktree and delete your branch when the work is merged or dropped.
 - **Docs in the same commit, one home per fact.** Changing a system updates its README; closing a gap removes it from
   KNOWN-GAPS.md. Write how things are now, not how they got here (git history and DECISIONS.md keep that). No new top-level
-  docs (`AGENTS.md` is this file's generated copy, not another doc), no status banners ("obsolete", "TODO later"): fix or delete the text. Dates are absolute.
+  docs (`CLAUDE.md` only imports this file, it is not another doc), no status banners ("obsolete", "TODO later"): fix or delete the text. Dates are absolute.
 - **Delete completely.** When you remove a file, script, class or doc, `git grep` its name and fix every reference in the same
   change, then add the name to `tools/hygiene/retired.json` so it cannot come back. `npm run hygiene` (also in CI) must pass.
 - **Never patch installed copies.** The agents, backend and ops jobs run from installed copies under `/home/ubuntu/death-muffin/`.
