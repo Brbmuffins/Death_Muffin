@@ -62,8 +62,8 @@ player part of a gain until it is fixed; few real sessions ran on the gains save
   Reaper's nine; any other non-necro rite is refused `unavailable`. Character select greys out the other five
   (`DmCharacterBuild.is_playable`) and the backend only accepts classes 1-4 and 11 (`PLAYABLE_DISCIPLINE_INDICES`). Missing with them:
   kit rites, monk beat meter, Bulwark (`DmPlayerRules` already honours `bulwarkUntil`).
-- **The Reaper is a first pass.** It has its own portrait but borrows the Mourner's hero model and the other classes' rite icons (all ten rites;
-  `STILL_BORROWING` in `tools/pictures/pictures.test.mjs`; War's thread has eight concepts picked, 2026-10-20), has no armor set but the legendary Soul Harbinger's Raiment
+- **The Reaper is a first pass.** It has its own portrait but borrows the Mourner's hero model and two other classes' rite icons (Haunting Wraith and Scythe Weave:
+  `STILL_BORROWING` in `tools/pictures/pictures.test.mjs`), has no armor set but the legendary Soul Harbinger's Raiment
   and no runes. Its soul wisps are drawn on the host only; a party member's soul
   count reaches their HUD by the caster state. Numbers (REAPER in `data/combat/abilities.json`) are a first tuning (2026-10-11 headless probe with Auto combat, level 20, no thralls: Scythe Sweep 52 damage a second on one foe and 276 on a pack of six, against the Mourner's 88 and 379; she makes up for it with 30% more health, 15% less damage taken and her leech), not yet playtested by a person.
 
@@ -86,9 +86,6 @@ polish list). Also:
 - **A dropped player's seat is not held:** the rejoin offer lasts 5 minutes, but a party that filled up in that time answers `full` (the lobby reserves nothing; a held seat would show a party as full while it lists a free one).
 - Chat is party chat in a party and local-only when solo.
 - **Friends show offline while the launcher is open:** the launcher has no login and no lobby link. They show online from the sign-in (character select, loading, the world).
-- A guest's Prelate kill counts for the host (the Prelate tally and `can_ascend`).
-- Suspected, read from the code, not seen: after a baseline a guest's thralls may fall back to the plain look and the strong rim until the
-  heroes are adopted again (`DmCrowd.clear` forgets `owner_legion` and `owner_ally`).
 - A guest's core lists no zones (`DmCore.zones`): its zones arrive as events for its effects. Nothing reads them on a guest today.
 - A guest sees a Grave Surge only as the bodies that climb out of the crypt (the core's snapshot) and, once the host quells it, its offering: the
   banner, the cracked crypt, the sounds and the tip are the host's window only (`DmAreaFlow` listens to the host's director).
@@ -97,7 +94,7 @@ polish list). Also:
 ## UI
 
 - **No in-game leaderboard panel.** `DmApi.get_leaderboard` exists; only the website shows it.
-- Unraised counsel events: `client/ui/onboarding/README.md`. Hero gaps: `client/next/hero/README.md`.
+- Counsel and hero gaps: the "Known gaps" sections of `client/ui/onboarding/README.md` and `client/next/hero/README.md`.
 
 ## Tools and tests
 
@@ -148,7 +145,7 @@ polish list). Also:
   answers true for them. Nothing shows it today (character select and the benchmark list from `PLAYABLE_DISCIPLINES`).
 - `launcher/tests/LauncherTests.csproj` does not load in `dotnet build`: its XML comment contains `--project` ("XML comment cannot contain '--'"); CI does not
   build it, so `launcher/tests/run-local.sh` is the only way its tests run (found 2026-10-19).
-- `discord-agent/preview-godot.sh --team` still carries its own copy of the newest-6 clean-up of the preview folders in `team-files`; `server/death-muffin/team-files-prune.sh` is the shared rule it
+- `server/death-muffin/discord-agent/preview-godot.sh --team` still carries its own copy of the newest-6 clean-up of the preview folders in `team-files`; `server/death-muffin/team-files-prune.sh` is the shared rule it
   should call (found 2026-10-19).
 - `npm run typecheck` fails on six errors in the rules' parity tests (`server/rules/gameplay/__tests__/legionRules.parity.test.ts`, `necroRules.parity.test.ts`, `vaultRules.parity.test.ts`: fixture rows typed looser than the rule functions take); CI does not run it, so it went unnoticed (found 2026-10-19).
 - The Windows launcher workflow (`.github/workflows/launcher-windows.yml`) rebuilds and re-uploads the launcher zip of the current release for any
@@ -158,7 +155,7 @@ polish list). Also:
 - The warm-up's residency (what `DmWarmup.hold` keeps, the hero kits it lets go) and its cold-load checks cannot run headless: `client/next/perf/dm_next_warmup.gd` skips its threaded loads there, so the ported `perf_controls` leaves them out; judge them on a real window.
 - The benchmark: a level-up during the fight refreshes the god-mode hero from the throwaway character's real level, so the held fight changes
   as that character levels; the held Full Party keeps the pack in view and within 32 m, so the crowd's culling and animation bands barely
-  engage (1 of 148 bodies culled); its report's budget section is labelled "Budgets (ROADMAP", but the budgets are in CLAUDE.md (B39).
+  engage (1 of 148 bodies culled); its report's budget section is labelled "Budgets (ROADMAP", but the budgets are in DECISIONS B71.
 - The draw model counts the rendered Graves a few draws under the engine, but Helix's World row is about 40 over the same stage: the real
   fight draws what the model's stage does not (the hero's place, the effects, the boss).
 - `--tune=` (`client/main/CLIPS.md`) changes only numbers the data files hold, and most rites keep some in their scripts (Miasma's flight speed, Unleash Souls' three speeds, the Haunting Wraith's damage tick, ...), so a team PC cannot show variants of those until each moves into its rite's row of
