@@ -115,41 +115,64 @@ ${probeCmd('hide')}`);
   } finally { W.cleanup(); }
 });
 
-test('sandbox: regen-godot.sh (the armor generator, the server rules build, the loot rules tests and the instructions copy all run read-only except the worktree)', () => {
+test('sandbox: regen-godot.sh (the armor generator, the server rules build, the loot rules tests and the instructions step all run read-only except the worktree)', () => {
   const W = world(); try {
     W.w('tools/generate-armor-assets.mjs', `import { execSync } from 'node:child_process'; execSync('bash .probe.sh regen-armor', { stdio: 'inherit' }); console.log('Armor data already up to date.');\n`);
     W.w('package.json', JSON.stringify({ scripts: { 'build:server-rules': probeCmd('regen-rules') } }));
     W.w('node_modules/.bin/vitest', `#!/usr/bin/env bash\n[ "\${UPDATE_LOOT_PARITY:-}" = 1 ] || exit 3\n${probeCmd('regen-vitest')}\necho " Tests  1 passed (1)"\n`, 0o755);
-    W.w('tools/context/sync-instructions.mjs', `import { execSync } from 'node:child_process'; execSync('bash .probe.sh regen-sync', { stdio: 'inherit' }); console.log('AGENTS.md already the same as CLAUDE.md');\n`);
+    W.w('tools/context/sync-instructions.mjs', `import { execSync } from 'node:child_process'; execSync('bash .probe.sh regen-sync', { stdio: 'inherit' }); console.log('CLAUDE.md already imports AGENTS.md');\n`);
     const r = run(W, 'regen-godot.sh', []); assert.equal(r.status, 0, r.stdout + r.stderr);
     for (const n of ['regen-armor', 'regen-rules', 'regen-vitest', 'regen-sync']) verdict(W, n);
-    assert.match(r.stdout, /== armor sets[\s\S]*== server rules[\s\S]*== loot rules tests[\s\S]*== instructions copy[\s\S]*== changed files/);
+    assert.match(r.stdout, /== armor sets[\s\S]*== server rules[\s\S]*== loot rules tests[\s\S]*== instructions \(validate AGENTS\.md[\s\S]*== changed files/);
     // a failing step fails the script, and the steps after it still run
     W.w('tools/generate-armor-assets.mjs', "console.error('armor boom'); process.exit(1);\n");
     const f = run(W, 'regen-godot.sh', []); assert.equal(f.status, 1, f.stdout + f.stderr);
-    assert.match(f.stdout, /armor boom[\s\S]*FAILED: armor sets[\s\S]*== server rules[\s\S]*== loot rules tests[\s\S]*== instructions copy/);
+    assert.match(f.stdout, /armor boom[\s\S]*FAILED: armor sets[\s\S]*== server rules[\s\S]*== loot rules tests[\s\S]*== instructions \(validate AGENTS\.md/);
   } finally { W.cleanup(); }
 });
 
-test('sandbox: regen-godot.sh in a job checkout older than AGENTS.md skips the copy; a newer checkout missing its generator fails', () => {
+test('sandbox: regen-godot.sh runs each job checkout\'s own instructions script: old checkouts keep their behaviour, new ones validate and repair', () => {
+  const ROOT = path.join(__dirname, '../../../..');
+  const NEW = fs.readFileSync(path.join(ROOT, 'tools/context/sync-instructions.mjs'), 'utf8');
+  const OLD = fs.readFileSync(path.join(ROOT, 'tools/context/test/fixtures/sync-instructions-copy.mjs'), 'utf8');   // the frozen pre-switch copy script
+  const STUB = '<!-- Claude Code reads this file; the project rules live in AGENTS.md, which Codex reads directly. Edit AGENTS.md only. -->\n@AGENTS.md\n';
   const W = world(); try {
     W.w('tools/generate-armor-assets.mjs', "console.log('Armor data already up to date.');\n");
     W.w('package.json', JSON.stringify({ scripts: { 'build:server-rules': 'true' } }));
     W.w('node_modules/.bin/vitest', '#!/usr/bin/env bash\necho " Tests  1 passed (1)"\n', 0o755);
-    // the job's branch was cut before 2026-10-21: no AGENTS.md, no generator (the installed script is the new one)
+    const file = (f) => (fs.existsSync(path.join(W.top, f)) ? fs.readFileSync(path.join(W.top, f), 'utf8') : null);
+    const rm = (f) => fs.rmSync(path.join(W.top, f), { force: true });
+    // 1. a job cut before AGENTS.md existed: no source, no script -> skipped, nothing added
     const old = run(W, 'regen-godot.sh', []); assert.equal(old.status, 0, old.stdout + old.stderr);
-    assert.match(old.stdout, /== instructions copy: skipped \(this checkout is older than AGENTS\.md\)/);
-    assert.ok(!fs.existsSync(path.join(W.top, 'AGENTS.md')), 'nothing is added to the old branch');
-    // a checkout that has the copy but lost its generator: the step runs and fails
+    assert.match(old.stdout, /== instructions: skipped \(this checkout is older than AGENTS\.md\)/);
+    assert.equal(file('AGENTS.md'), null);
+    // 2. the source present but its script missing -> the step fails, every other step still runs
     W.w('AGENTS.md', '# rules\n');
     const broken = run(W, 'regen-godot.sh', []); assert.equal(broken.status, 1, broken.stdout + broken.stderr);
-    assert.match(broken.stdout, /FAILED: instructions copy/);
-    // a normal new checkout: the real generator writes the copy
-    W.w('CLAUDE.md', '# new rules\n');
-    W.w('tools/context/sync-instructions.mjs', fs.readFileSync(path.join(__dirname, '../../../../tools/context/sync-instructions.mjs'), 'utf8'));
-    const ok = run(W, 'regen-godot.sh', []); assert.equal(ok.status, 0, ok.stdout + ok.stderr);
-    assert.match(ok.stdout, /wrote AGENTS\.md from CLAUDE\.md/);
-    assert.equal(fs.readFileSync(path.join(W.top, 'AGENTS.md'), 'utf8'), '# new rules\n');
+    assert.match(broken.stdout, /FAILED: instructions/);
+    // 3. a job cut between Stage 3 and the switch: its own copy script, CLAUDE.md the source, a stale copy -> the old direction still works
+    W.w('tools/context/sync-instructions.mjs', OLD); W.w('CLAUDE.md', '# rules\nA newer rule.\n'); W.w('AGENTS.md', '# rules\n');
+    const pre = run(W, 'regen-godot.sh', []); assert.equal(pre.status, 0, pre.stdout + pre.stderr);
+    assert.equal(file('AGENTS.md'), '# rules\nA newer rule.\n');
+    // 4. a new checkout, valid source and stub -> no change
+    W.w('tools/context/sync-instructions.mjs', NEW); W.w('AGENTS.md', '# rules\nA rule.\n'); W.w('CLAUDE.md', STUB);
+    const same = run(W, 'regen-godot.sh', []); assert.equal(same.status, 0, same.stdout + same.stderr);
+    assert.match(same.stdout, /CLAUDE\.md already imports AGENTS\.md/); assert.equal(file('CLAUDE.md'), STUB);
+    // 5. an invalid source (an import Codex would not follow) -> fails, nothing written, even with CLAUDE.md missing
+    W.w('AGENTS.md', '# rules\n@README.md\n'); rm('CLAUDE.md');
+    const bad = run(W, 'regen-godot.sh', []); assert.equal(bad.status, 1, bad.stdout + bad.stderr);
+    assert.match(bad.stdout, /FAILED: instructions/); assert.equal(file('CLAUDE.md'), null); assert.equal(file('AGENTS.md'), '# rules\n@README.md\n');
+    // 6. a valid source with CLAUDE.md missing, or still the old full copy -> the stub is written and reported (and shows in the changed files)
+    W.w('AGENTS.md', '# rules\nA rule.\n');
+    const fixed = run(W, 'regen-godot.sh', []); assert.equal(fixed.status, 0, fixed.stdout + fixed.stderr);
+    assert.match(fixed.stdout, /repaired CLAUDE\.md: now the @AGENTS\.md import/); assert.equal(file('CLAUDE.md'), STUB);
+    W.w('CLAUDE.md', '# rules\nA rule.\n');
+    const copy = run(W, 'regen-godot.sh', []); assert.equal(copy.status, 0, copy.stdout + copy.stderr);
+    assert.match(copy.stdout, /repaired CLAUDE\.md/); assert.equal(file('CLAUDE.md'), STUB);
+    // and text in CLAUDE.md that AGENTS.md lacks is refused, not overwritten
+    W.w('CLAUDE.md', '# rules\nOnly here.\n');
+    const refused = run(W, 'regen-godot.sh', []); assert.equal(refused.status, 1, refused.stdout + refused.stderr);
+    assert.equal(file('CLAUDE.md'), '# rules\nOnly here.\n');
   } finally { W.cleanup(); }
 });
 
