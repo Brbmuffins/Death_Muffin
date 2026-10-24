@@ -27,6 +27,10 @@ const DEFAULTS = {
   projects: { deathmuffin: { requesters: [], approvers: { casual: [], gameplay: [], sensitive: [] } } },
   names: {},                    // id -> display name used in proposals ("Helix")
   threadReplyRequiresMention: false,
+  // Team talk (lib/addressee.cjs, Helix 2026-10-23): with no clear signal, while two or more people talk in a thread, this model guesses whether a
+  // message is for the bot or the team (addresseeGuess: false = such messages go to the bot). addresseeCmd (tests) replaces the claude CLI.
+  addresseeModel: 'haiku',
+  addresseeGuess: true,
   defaultModel: 'sonnet',
   allowedModels: ['sonnet', 'opus', 'haiku'],
   maxConcurrentJobs: 1,

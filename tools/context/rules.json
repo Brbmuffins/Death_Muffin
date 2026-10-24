@@ -681,10 +681,10 @@
       "protected": false,
       "audience": ["agent"],
       "when": "a change players can see",
-      "summary": "Shot plans (.dm-shot.json): a team PC renders after the proposal when online; otherwise the server renders only on request.",
+      "summary": "Shot plans (.dm-shot.json): a team PC renders any planned turn when online (live game only in discussions); otherwise the server renders only on request.",
       "homes": [
         {"file": "server/death-muffin/discord-agent/guides/screenshots.md", "clauses": ["# Screenshots"]},
-        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["gets a shot plan, which a team PC renders after your proposal", "no screenshots by default, not even for visible changes"]}
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["a team PC renders the plan after your turn", "no screenshots by default, not even for visible changes"]}
       ],
       "enforced": ["server/death-muffin/discord-agent/shot-godot.sh"]
     },

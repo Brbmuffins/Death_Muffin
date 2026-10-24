@@ -98,6 +98,17 @@ and none goes to it; a mention does not bring it back, only `!resume` does. `!re
 do what was settled, else reply briefly); with nothing said it just says "Back", and in a job thread with nothing open it does not start a round.
 Paused messages do not count toward the hourly message limit (neither do messages the bot ignores).
 
+**Team talk** (Helix 2026-10-23; every thread the bot is in, `runner/lib/addressee.cjs`): without `!pause`, a message the team says to each other starts
+no turn. Clear signals decide first, at no cost: an @-mention of Muffin Core, a Discord reply to its message, or a message opening with "muffin" /
+"muffin core" goes to it; a message that @-mentions someone else (and not the bot), a Discord reply to a teammate's message, or one opening with a
+teammate's name ("war, look", "@war ...", "Helix:"; the words are `jobsOwners`' tags and words and the `names`) is team talk. With none of these,
+a message goes to the bot when nobody else has spoken in the thread for 15 minutes; while two or more people are talking, a small model
+(`addresseeModel`, Haiku, `claude -p` with no tools, about $0.002 and 4 s a guess) reads the last 10 messages (`job.heard`, both sides) and answers
+bot or team; a failed guess goes to the bot (`addresseeGuess: false` turns guessing off). Nothing shows in Discord; @-mentioning the bot always reaches
+it. Team talk is kept (`job.asides`, last 40; a discussion post's `talkLog` too) and comes with the agent's next turn as context marked as not said to
+it; it counts toward no limit. Audit: `team-talk` (with how it was decided), `addressee` (each guess). The adapter sends who a message names
+(`mentions`, from the text's `<@id>`s) and whose message it replies to (`replyTo`).
+
 `!cancel` / `!stop` (requester or owner; a near-miss such as `!cencel` or `!stpo` gets "Did you mean !cancel?" and is not passed to the agent) stops the current step, agent turn or the runner's own check run,
 killing the whole process tree (Claude's Bash tool and `timeout` start their own process groups, so a group kill alone orphaned test runs).
 Messages queued before it are dropped, and no review or repair turn follows; the branch and worktree stay, and the next message continues.
@@ -152,8 +163,9 @@ in the thread asks (words after `!shot` go to the agent too):
    so and everything is as before: pictures only on request (`!shot`), rendered on the server. `!shot` with a team PC online asks the agent for the plan only. The runner remembers the answer
    for the turn (`job.teamTurn`, `job.shotAsked`); a sync or fix-up turn asks nothing and sends no pictures.
 2. **The proposal** goes out without server pictures. When the worktree has a plan and a PC is still online, its "Screenshots" field says "Pictures from a team PC follow" ("More pictures"
-   when the agent rendered some on the server anyway; a plan with no PC left only offers `!shot`). A `!shot` on an open proposal (nothing changed) or on no proposal at all sends the plan
-   for the current head the same way and says so in the thread.
+   when the agent rendered some on the server anyway; a plan with no PC left only offers `!shot`). A turn that changes nothing but leaves a plan (someone asked to see something,
+   a better angle; Helix 2026-10-23) and a `!shot` on an open proposal or on no proposal at all send the plan for the current head the same way (`plannedShots`), and the
+   runner says so in one line ("📸 2 pictures coming from Helix's PC in a few minutes", or why none come); the agent is told never to promise pictures itself.
 3. **The job** (`teamShots` in `runner/core.cjs`, in the background; `cfg.teamShots: false` turns all of it off). `readShotPlan` (`runner/lib/clips.cjs`) reads the plan and takes
    `before` and `presets` out of it (they are the runner's; an unusable value falls back to the default and the first post says so). The runner builds the branch for the team PC
    (`preview-godot.sh <jobid> --team`: a debug export, the live art pack hard-linked when the art is unchanged, files under `/var/www/death-muffin/team-files/<random>/`) and queues ONE
@@ -341,7 +353,11 @@ The forums in `talkChannelIds` are for the team to talk ideas over. The first @-
 post's title and last 50 messages; from then on it answers every message there (no mention needed) until `!pause`. It talks like the team's
 senior designer: answers from the game as it is, brainstorms, writes lore, sketches class kits. It cannot change anything there: the agent runs
 with read-only tools (Read, Glob, Grep and the web; no Edit, Write or Bash, `runner/lib/agent.cjs` TALK_PROMPT), and the runner says its reply
-and ends the turn (`talkAfterTurn`), so nothing is verified, proposed, rendered or bought. `!discard` has nothing to discard; the post is never
+and ends the turn (`talkAfterTurn`), so nothing is verified, proposed or bought. The one picture it can ask for is a screenshot of the live game
+(Helix 2026-10-23: "only of the live game"): with a team PC online (the turn's note says so), it ends its reply with a ```` ```dm-shot ```` block
+holding a shot plan; the runner takes the block out of the reply (`takeShotBlock`), builds the live revision (`rev` of `clientManifest`) in a scratch
+worktree `teamlive-<job>` for a team PC and posts the pictures labelled "LIVE GAME · <rev>" (`liveShots`, `label-shot.py --live`). Concept
+pictures still need a #jobs post. `!discard` has nothing to discard; the post is never
 renamed, tagged or archived. The conversation (`job.talkLog`, the last 60 messages / 20k characters, both sides) goes to every fresh session: a
 new round when the turn budget (`maxTurnsPerJob`) is used up, or after `talkIdleHours` (24) without messages, when the sweep quietly removes the
 post's workspace.

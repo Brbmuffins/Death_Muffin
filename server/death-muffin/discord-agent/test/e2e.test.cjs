@@ -1199,7 +1199,7 @@ const PC_WAR = { pcId: 'pc-war-0001', username: 'bogar1', name: 'WAR-PC', gpu: '
 function teamWorld(B, over = {}) {
   const marker = path.join(B.results, 'built'), nobase = path.join(B.results, 'NOBASEBUILD');
   const w = godotWorld({ teamApi: B.url, teamResultsDir: B.results, secretFile: B.secretFile, teamPollMs: 40,
-    teamLabelCmd: 'cd "$1/.dm-shots" && for f in .raw/*.png; do { printf "LABELLED[%s]:" "$2"; cat "$f"; } > "$(basename "$f")"; done',
+    teamLabelCmd: 'cd "$1/.dm-shots" && for f in .raw/*.png; do { printf "LABELLED[%s]:" "$2${3:+ $3}"; cat "$f"; } > "$(basename "$f")"; done',
     teamBuildCmd: `echo "$PWD" >> ${marker}; if [ -e ${nobase} ]; then case "$PWD" in */teambase-*) echo "the base would not build"; exit 1;; esac; fi; echo 'TEAMFILES: [{"name":"DeathMuffin.pck","url":"https://example.test/death-muffin/team-files/x/DeathMuffin.pck","sha256":"${'a'.repeat(64)}","bytes":1}]'`,
     ...over });
   w.marker = marker; w.nobase = nobase; w.builtIn = () => (fs.existsSync(marker) ? fs.readFileSync(marker, 'utf8').trim().split('\n') : []);
@@ -1323,11 +1323,70 @@ test('godot mode: !shot with a team PC online asks the agent for a plan only and
     const pair = await until(() => withFiles(thread, /^before-low-a/)[0], d.ad);
     assert.deepEqual(pair.payload.files.map((f) => f.name), ['before-low-a.png', 'after-low-a.png']);
     assert.ok(texts(thread).some((t) => /^Nothing changed, so the proposal above still stands/.test(t)));
-    assert.ok(texts(thread).some((t) => /^Pictures from a team PC follow in a few minutes \(before and after\)/.test(t)));
+    assert.ok(texts(thread).some((t) => t === "📸 2 pictures coming from bogar1's PC in a few minutes, each with a BEFORE."), texts(thread).join(' | '));
     assert.equal(B.jobs.length, 1); assert.equal(B.jobs[0].body.payload.rev, jobOf(w, thread).proposal.head.slice(0, 12));
     // a thank-you afterwards sends nothing new (the plan was cleared as the turn started, and nothing changed)
     await idle(w, d, thread);
     await d.say(thread, IDS.HELIX, 'thanks, looks good'); await idle(w, d, thread);
+    assert.equal(B.jobs.length, 1);
+  } finally { B.close(); }
+});
+
+test('godot mode: a plan the agent writes is rendered even when nothing changed: a "show me" with no change, and a better angle on an open proposal', async () => {
+  const B = await teamBackend({ pcs: [PC_WAR] });
+  try {
+    const w = teamWorld(B); const d = makeDiscord(w.runner);
+    // a question with nothing to change: the game as it is on the branch, and the runner says the pictures are coming
+    const { thread } = await request(d, IDS.HELIX, 'TEAM-SHOT show me the title as it is');
+    const pic = await until(() => withFiles(thread, /^ultra-a/)[0], d.ad); await idle(w, d, thread);
+    const j = jobOf(w, thread);
+    assert.equal(proposalOf(thread), undefined, 'nothing to propose');
+    assert.ok(texts(thread).includes("📸 1 picture coming from bogar1's PC in a few minutes."), texts(thread).join(' | '));
+    assert.equal(B.jobs.length, 1); assert.equal(B.jobs[0].body.payload.rev, sh(j.worktree, 'rev-parse', 'HEAD').slice(0, 12));
+    assert.match(pic.payload.content, /branch preview, not live$/);
+    // the gate case (2026-10-24, job 5d20bb): a proposal is open, then "a better angle" changes nothing but writes a new plan
+    await d.say(thread, IDS.HELIX, 'GD-UI make the title bigger');
+    const p = await waitProposal(d, thread); await idle(w, d, thread);
+    assert.match(field(p, 'Screenshots'), /None taken/); const before = B.jobs.length;
+    await d.say(thread, IDS.HELIX, 'TEAM-SHOT the title is not in view, a better angle please');
+    await until(() => B.jobs.length === before + 1 && withFiles(thread, /^ultra-a/).length === 2, d.ad); await idle(w, d, thread);
+    assert.ok(texts(thread).some((t) => /^Nothing changed, so the proposal above still stands/.test(t)));
+    assert.equal(B.jobs[before].body.payload.rev, j.proposal.head.slice(0, 12), 'pictures of the open proposal');
+    // a plain reply afterwards writes no plan and sends nothing
+    await d.say(thread, IDS.HELIX, 'thanks'); await idle(w, d, thread);
+    assert.equal(B.jobs.length, before + 1);
+  } finally { B.close(); }
+});
+
+test('godot mode: a discussion post shows the live game only: a dm-shot block in the reply becomes pictures of the live revision, labelled LIVE GAME', async () => {
+  const B = await teamBackend({ pcs: [PC_WAR] });
+  try {
+    const w = teamWorld(B, { jobsChannelId: IDS.JOBS, talkChannelIds: [IDS.TALK] }); const d = makeDiscord(w.runner);
+    // main has moved past the live release: the pictures are still of what players have
+    fs.writeFileSync(path.join(w.repo, 'client/game/a.gd'), 'speed=2'); sh(w.repo, 'commit', '-qam', 'unreleased'); sh(w.repo, 'push', '-q', 'origin', 'main');
+    const { thread } = await d.forumPost(IDS.HELIX, 'The gate', 'How does the Warren gate look?', [], d.talk);
+    await d.say(thread, IDS.HELIX, `${BOT} LIVE-SHOT show us the gate`);
+    const job = await until(() => w.runner.jobs()[thread.id], d.ad);
+    const pic = await until(() => withFiles(thread, /^ultra-gate/)[0], d.ad);
+    assert.ok(texts(thread).includes('Here it is.'), 'the reply is said without the block');
+    assert.ok(!texts(thread).some((t) => /```|dm-shot/.test(t)));
+    assert.ok(texts(thread).includes("📸 1 picture of the live game coming from bogar1's PC in a few minutes."));
+    assert.equal(pic.payload.files[0].attachment.toString(), `LABELLED[${w.liveRev.slice(0, 12)} --live]:PNG-ultra_gate.png`);
+    assert.match(pic.payload.content, new RegExp(`Ultra · the live game \\(${w.liveRev.slice(0, 7)}\\), offline demo character$`));
+    const tj = B.jobs[0].body;
+    assert.equal(tj.title, 'Screenshots of the live game, about 2 minutes'); assert.equal(tj.payload.rev, w.liveRev.slice(0, 12)); assert.equal(tj.payload.builds, undefined);
+    assert.deepEqual(tj.payload.plan.shots, [{ name: 'gate', view: 'game' }]);
+    const built = w.builtIn(); assert.equal(built.length, 1); assert.match(built[0], new RegExp(`/teamlive-${job.id}$`), 'built in a scratch worktree, not the post\'s workspace');
+    await until(() => !fs.existsSync(path.join(w.cfg.worktreeRoot, `teamlive-${job.id}`)), d.ad);
+    assert.ok(!sh(w.repo, 'worktree', 'list').includes('teamlive-'));
+    assert.ok(job.talkLog.some((m) => m.name === 'Muffin Core' && m.text === 'Here it is.'));
+    // a plan that is not valid is said, and with no team PC on the turn is told so
+    await until(() => !job.running, d.ad);
+    await d.say(thread, IDS.HELIX, 'LIVE-SHOT-BAD again');
+    await until(() => texts(thread).includes('⚠ No pictures this time: the shot plan was not valid.'), d.ad);
+    B.pcs = []; await until(() => !job.running, d.ad);
+    await d.say(thread, IDS.HELIX, 'LIVE-SHOT once more');
+    await until(() => texts(thread).some((t) => t.startsWith('No team PC is on, so no pictures.')), d.ad);
     assert.equal(B.jobs.length, 1);
   } finally { B.close(); }
 });
@@ -1483,7 +1542,7 @@ test('godot mode: the agent prompt explains team pictures and clips, the help li
   const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY faster'); await waitProposal(d, thread); B.close();
   const j = jobOf(w, thread), sp = systemPrompt(w.cfg, j);
   // the always-loaded core says when pictures and videos apply and where the how-to is; the guides (as the runner put them in the worktree) hold the how-to
-  for (const re of [/A team PC is online/, /gets a shot plan, which a team PC renders after your proposal/, /you do not render it yourself/, /short videos people choose from \(`clips\.md`\)/,
+  for (const re of [/A team PC is online/, /gets a shot plan, and so does a request to see something even\s+when nothing changes/, /a team PC renders the plan after your turn, with your proposal or on its own/, /you do not render it yourself/, /never say it yourself/, /short videos people choose from \(`clips\.md`\)/,
     /no screenshots by default/, /`\.dm-guides\/screenshots\.md`/, /`\.dm-guides\/clips\.md`/, /Release checks \(you never run or start them\)[\s\S]*BEFORE it goes live[\s\S]*Nothing checks a release\s+after it is live/]) assert.match(sp, re);
   const guides = ['screenshots', 'clips'].map((n) => fs.readFileSync(path.join(j.worktree, '.dm-guides', `${n}.md`), 'utf8')).join('\n');
   for (const re of [/A team PC is online/, /Pictures from a team PC follow|BEFORE and AFTER pairs/, /do NOT run `[^`]*shot-godot\.sh`/, /# Clips and choices/, /\.dm-clip\.json/, /Which do you like best\? Reply with its number/, /`!clips`/, /Do NOT take screenshots by default/,

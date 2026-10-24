@@ -160,6 +160,11 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
     fs.writeFileSync('.dm-shots/a.png', Buffer.from(/SHOT-PNG2/.test(p) ? 'PNG-two-bytes' : 'PNG-one'));
     if (/SHOT-PNG/.test(p) && /BIG/.test(p)) fs.writeFileSync('.dm-shots/big.png', Buffer.alloc(9 * 1024 * 1024, 1));
   }
+  // a discussion post's live pictures: LIVE-SHOT ends the reply with a ```dm-shot block when the turn's note says a team PC is on (LIVE-SHOT-BAD: not JSON)
+  if (/LIVE-SHOT/.test(p) && /Live pictures: a team PC is on now/.test(p)) text = 'Here it is.\n\n```dm-shot\n' + (/LIVE-SHOT-BAD/.test(p) ? '{nope' : '{"shots":[{"name":"gate","view":"game"}]}') + '\n```';
+  if (/LIVE-SHOT/.test(p) && /Live pictures: no team PC is on now/.test(p)) text = 'No team PC is on, so no pictures.';
+  // team talk handed over with the turn (marked as not said to the agent): ASIDE-MARK in it is echoed back
+  if (/None of it was said to you; it is context/.test(p)) text += /ASIDE-MARK[\s\S]*\n<\/conversation>/.test(p) ? ' ASIDES-SEEN' : ' ASIDES-EMPTY';
   if (/A team PC is online right now/.test(p) && /TEAM-NOTE-ECHO/.test(p)) text += ' TEAM-ON-SEEN';
   if (/No team PC is online right now/.test(p) && /TEAM-NOTE-ECHO/.test(p)) text += ' TEAM-OFF-SEEN';
   if (/Short videos of these options were posted/.test(p) && !/GD-CLIP/.test(p)) text += ' CLIP-CHOICE-SEEN';

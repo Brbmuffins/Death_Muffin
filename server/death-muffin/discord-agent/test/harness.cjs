@@ -123,7 +123,12 @@ function makeDiscord(runner, over = {}) {
     return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(out)) };
   };
   const ad = createAdapter({ client, runnerUrl: 'http://x', secret: 's', fetchImpl, pollWaitSec: 0, log: () => {}, ...over });
-  const say = (chan, userId, content, attachments = []) => { const m = new Msg(world, chan, userId, content); attachments.forEach((a, i) => m.attachments.set(String(i), a)); chan.log.push(m); return ad.onMessage(m).then(() => m); };
+  // opts.replyTo: the message this one answers with Discord's Reply (its author is what the adapter reads)
+  const say = (chan, userId, content, attachments = [], opts = {}) => {
+    const m = new Msg(world, chan, userId, content); attachments.forEach((a, i) => m.attachments.set(String(i), a));
+    if (opts.replyTo) { m.reference = { messageId: opts.replyTo.id }; m.fetchReference = async () => opts.replyTo; }
+    chan.log.push(m); return ad.onMessage(m).then(() => m);
+  };
   const react = async (msg, userId, emoji) => { const removed = []; const reaction = { emoji: { name: emoji }, message: msg, partial: false, users: { remove: async (id) => { removed.push(id); } } }; await ad.onReaction(reaction, { id: userId, bot: false }); return removed; };
   // A forum post (#jobs unless `forum` says otherwise): a thread whose id is its opening message's id, with tags (ids from jobs.availableTags)
   // and the opening message said.

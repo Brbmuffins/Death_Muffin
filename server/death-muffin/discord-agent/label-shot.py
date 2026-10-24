@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Burn "BRANCH PREVIEW . not live . <branch>" into the raw PNGs a sandboxed Godot run wrote to <worktree>/.dm-shots/.raw/ and publish them as
+"""Burn "BRANCH PREVIEW . not live . <branch>" (or, with --live, "LIVE GAME . <revision>") into the raw PNGs a sandboxed Godot run wrote to <worktree>/.dm-shots/.raw/ and publish them as
 <worktree>/.dm-shots/<name>.png. Runs OUTSIDE the sandbox on files the branch's code may have written, so it trusts nothing: every path is
 reached through directory file descriptors with O_NOFOLLOW, only regular PNG files with sane dimensions are read, names are re-validated,
-and the output is written to a temp name and renamed. Usage: label-shot.py <worktree> [branch]. Exit 0 = every raw image was labelled."""
+and the output is written to a temp name and renamed. Usage: label-shot.py <worktree> [branch] [--live]. Exit 0 = every raw image was labelled."""
 import io, os, re, stat, sys
 from PIL import Image, ImageDraw, ImageFont
 
@@ -17,9 +17,9 @@ def opendir(parent_fd, name):
     return os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent_fd)
 
 
-def label(img, branch):
+def label(img, branch, live=False):
     img = img.convert("RGB")
-    text = "BRANCH PREVIEW · not live" + (" · " + branch if branch else "")
+    text = ("LIVE GAME" if live else "BRANCH PREVIEW · not live") + (" · " + branch if branch else "")
     size = max(12, round(img.width / 80))
     font = None
     for f in FONTS:
@@ -34,14 +34,16 @@ def label(img, branch):
     l, t, r, b = d.textbbox((0, 0), text, font=font)
     pad = size // 2
     x, y = 8, 8
-    d.rounded_rectangle((x, y, x + (r - l) + 2 * pad, y + (b - t) + pad * 2), radius=(b - t) // 2 + pad, fill=(0x4C, 0x1D, 0x95))
+    d.rounded_rectangle((x, y, x + (r - l) + 2 * pad, y + (b - t) + pad * 2), radius=(b - t) // 2 + pad, fill=(0x14, 0x6C, 0x3A) if live else (0x4C, 0x1D, 0x95))
     d.text((x + pad - l, y + pad - t), text, font=font, fill=(255, 255, 255))
     return img
 
 
 def main():
-    top = sys.argv[1]
-    branch = re.sub(r"[^A-Za-z0-9._/-]", "", sys.argv[2])[:60] if len(sys.argv) > 2 else ""
+    args = [a for a in sys.argv[1:] if a != "--live"]
+    live = "--live" in sys.argv[2:]
+    top = args[0]
+    branch = re.sub(r"[^A-Za-z0-9._/-]", "", args[1])[:60] if len(args) > 1 else ""
     try:
         wt = os.open(top, os.O_RDONLY | os.O_DIRECTORY)
         shots = opendir(wt, ".dm-shots")
@@ -64,7 +66,7 @@ def main():
             if img.format != "PNG":
                 raise ValueError("not a PNG")
             out = io.BytesIO()
-            label(img, branch).save(out, "PNG", optimize=True)
+            label(img, branch, live).save(out, "PNG", optimize=True)
             tmp = "." + name + ".tmp"
             ofd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644, dir_fd=shots)
             with os.fdopen(ofd, "wb") as oh:

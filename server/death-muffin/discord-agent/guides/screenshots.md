@@ -7,7 +7,9 @@ has a real graphics card, so pictures need no `!shot`:
 - For every change players can SEE (windows, tooltips, the HUD, the hero's look and gear, how a spell or effect looks, a number shown on screen) write the plan
   to `.dm-shot.json` as described below and do NOT run `__TOOLS__/shot-godot.sh` or render anything yourself. Skip the plan for
   changes nobody can see (logic, data behind the scenes, server work, docs) and for pure Q&A. If someone says to skip pictures, write no plan.
-- After your proposal the runner builds your branch and a team PC renders the plan; the proposal says "Pictures from a team PC follow". You will not see
+- After your turn the runner builds your branch and a team PC renders the plan: with your proposal (it says "Pictures from a team PC follow"), and also
+  when the turn changed nothing ("show me the gate", "a better angle": the open proposal, or the game as it is on your branch). The runner tells the thread
+  that pictures are coming or why none came, so never say it yourself and never re-propose to get pictures. You will not see
   them, so make the plan show exactly the change: the window or hero view that proves it, with `give` / `equip` / `area` set up so it appears. Keep it to
   what the plan format below offers.
 - Ask for as few pictures as show the change (Helix, 2026-10-20: "sometimes only 1 high quality screenshot is required"). By default each shot is ONE

@@ -30,6 +30,7 @@ const { planReply } = require('./lib/discordText.cjs');
 const A = require('./lib/art.cjs');
 const S = require('./lib/sound.cjs');
 const CL = require('./lib/clips.cjs');
+const AD = require('./lib/addressee.cjs');
 
 const TIER_COLOR = { casual: 0x16a34a, gameplay: 0xb45309, sensitive: 0xdc2626 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -250,6 +251,23 @@ function createRunner(cfgIn, opts = {}) {
   const isJobsPost = (ev) => !!(ev.threadId && cfg.jobsChannelId && String(ev.parentId) === String(cfg.jobsChannelId));
   const isTalkPost = (ev) => !!(ev.threadId && (cfg.talkChannelIds || []).some((c) => String(c) === String(ev.parentId)));
 
+  // The thread's recent messages as the addressee check sees them (job.heard, oldest first): people's with who they were for, and the bot's replies.
+  const HEARD_MAX = 12;
+  function hear(job, entry) { (job.heard = job.heard || []).push({ ...entry, text: clip(String(entry.text || '').trim(), 400), ts: now() }); if (job.heard.length > HEARD_MAX) job.heard.splice(0, job.heard.length - HEARD_MAX); }
+  const hearBot = (job, text) => { if (text) hear(job, { bot: true, name: 'Muffin Core', text }); };
+  // One decision at a time per thread, in the order the messages came, each seeing the ones before it.
+  const lanes = new Map();
+  function addressee(job, ev, msg, text) {
+    const mine = (lanes.get(job.threadId) || Promise.resolve()).then(async () => {
+      const d = await AD.decide(cfg, { ev, text, heard: job.heard, msg: { name: msg.name, text }, now: now() }).catch(() => ({ to: 'bot', how: 'unsure' }));
+      hear(job, { userId: msg.userId, name: msg.name, text, to: d.to });
+      return d;
+    });
+    lanes.set(job.threadId, mine);
+    mine.finally(() => { if (lanes.get(job.threadId) === mine) lanes.delete(job.threadId); }).catch(() => {});
+    return mine;
+  }
+
   async function handleEvent(ev) {
     if (!cfg.channelId || !inScope(ev)) return { action: 'ignore' };
     if (ev.type === 'thread-deleted') return handleThreadDeleted(ev);
@@ -322,6 +340,20 @@ function createRunner(cfgIn, opts = {}) {
     // A bug-report thread (and a #jobs post) is for the devs to talk the report over: the agent starts on it only when someone @-mentions it.
     // Once a change is open there, replies go to it like in any thread (owner 2026-10-14). A discussion post has no gate: the bot was brought in.
     if ((job.bugReportId || (job.forumPost && !job.talk)) && !ev.mentioned && !text.startsWith('!') && !job.running && job.status !== 'shipping' && !(job.worktree && fs.existsSync(job.worktree))) return { action: 'ignore' };
+    // Team talk (Helix 2026-10-23): a message the team says to each other (lib/addressee.cjs: a teammate @-mentioned or named first, a reply to a
+    // teammate, or the small model's guess while several people talk) starts no turn and does not count toward any limit. It is kept, and the
+    // agent reads it with its next turn (processJob). Nothing is shown in Discord; @-mentioning the bot always reaches it.
+    if (!text.startsWith('!')) {
+      const d = await addressee(job, ev, msg, text);
+      if (d.how === 'guess' || d.how === 'unsure') audit.log('addressee', { job: job.id, userId: msg.userId, to: d.to, how: d.how, ...(d.cost != null ? { costUsd: d.cost } : {}) });
+      if (d.to === 'team') {
+        const said = clip(text, 1500) + saveInboxImages(job, msg, ev.images);
+        (job.asides = job.asides || []).push({ name: msg.name, text: said }); if (job.asides.length > 40) job.asides.shift();
+        if (job.talk) logTalk(job, msg.name, said);
+        audit.log('team-talk', { job: job.id, userId: msg.userId, how: d.how });
+        save(); return { action: 'ignore' };
+      }
+    }
     const limited = overRate(); if (limited) return limited;
     if (job.bugReportId && !job.creatorId) { job.creatorId = msg.userId; save(); }   // the dev who brought the agent in owns the job
     if (starting.has(job.threadId)) await starting.get(job.threadId).catch(() => {});
@@ -759,6 +791,12 @@ function createRunner(cfgIn, opts = {}) {
       extra = (extra ? extra + '\n\n' : '') + `This thread is the post "${fp.title || 'untitled'}" in #jobs, the team's job board; someone there asked you to take it on.`
         + ((fp.history || []).length ? ` The post so far (the team's text, oldest first):\n${transcript(fp.history)}` : (fp.text ? ` The post's opening message (the team's text):\n${fp.text}` : ''));
     }
+    // What the team said among themselves since the last turn (team talk, handleEvent) comes with the next turn, marked as not said to the agent.
+    // A fresh session in a discussion post has it in the conversation log already.
+    if (real.length && (job.asides || []).length) {
+      const said = job.asides.splice(0); save();
+      if (!(job.talk && !job.sessionId)) extra = (extra ? extra + '\n\n' : '') + `(Since your last turn the team also talked among themselves in this thread. None of it was said to you; it is context, oldest first:)\n${transcript(said)}`;
+    }
     const artNotes = msgs.filter((m) => m.art).map((m) => m.text);
     if (artNotes.length) extra = (extra ? extra + '\n\n' : '') + artNotes.join('\n\n');
     // Team pictures (team helper wave 2): is a team PC online as this turn starts? Then the agent writes a shot plan for every visible change and does not
@@ -772,6 +810,7 @@ function createRunner(cfgIn, opts = {}) {
       if (job.clipAsk) extra = (extra ? extra + '\n\n' : '') + clipChoiceNote(job.clipAsk);
       extra = (extra ? extra + '\n\n' : '') + (job.teamTurn ? TEAM_ON_NOTE : TEAM_OFF_NOTE);
     }
+    if (real.length && teamEnabled() && job.talk) extra = (extra ? extra + '\n\n' : '') + ((await teamPcs()).length ? TALK_SHOTS_ON : TALK_SHOTS_OFF);
     if (real.length) job.carryApproval = null;   // someone is changing the request: the next proposal needs a fresh ✅
     if (real.length) job.lastAsker = { id: String(real[real.length - 1].userId), name: real[real.length - 1].name };
     if (sync) {
@@ -887,7 +926,7 @@ function createRunner(cfgIn, opts = {}) {
       job.status = 'idle'; return;
     }
     if (job.talk) return talkAfterTurn(job, real, r);
-    if (r && r.text.trim()) sayLong(job, r.text.trim());
+    if (r && r.text.trim()) { sayLong(job, r.text.trim()); hearBot(job, r.text); }
     postNewShots(job);
     if (art && await conceptStage(job)) return;   // concept images are being made (or were refused): people look at them before anything is built
     if (art && await artStage(job)) return;       // a model request is waiting for an approver (or was refused): nothing to verify or propose yet
@@ -898,13 +937,24 @@ function createRunner(cfgIn, opts = {}) {
 
   // A discussion post's turn ends here: the reply is said (or, for !job, becomes the #jobs post) and kept in the conversation. Nothing is
   // verified or proposed: the agent had read-only tools, and anything it left in the workspace is ignored.
+  // A ```dm-shot block in the reply asks for screenshots of the live game (Helix 2026-10-23: "only of the live game"): it is taken out of what is
+  // said, and a team PC renders it on the live revision (liveShots).
   function talkAfterTurn(job, real, r) {
     for (const m of real) if (!m.synthetic) logTalk(job, m.name, m.text);
     const ask = (real.find((m) => m.jobAsk) || {}).jobAsk;
     job.status = 'idle';
     if (ask) openJobPost(job, r, ask);
-    else if (r && r.text.trim()) { sayLong(job, r.text.trim()); logTalk(job, 'Muffin Core', r.text.trim()); }
+    else if (r && r.text.trim()) {
+      const { text, plan } = takeShotBlock(r.text);
+      if (text) { sayLong(job, text); logTalk(job, 'Muffin Core', text); hearBot(job, text); }
+      if (plan !== null) liveShots(job, plan).catch((e) => say(job, `⚠ No pictures this time (${clip(e.message, 200)}).`));
+    }
     save();
+  }
+  const SHOT_BLOCK = /```dm-shot[ \t]*\n([\s\S]*?)```/g;
+  function takeShotBlock(t) {
+    const blocks = [...String(t).matchAll(SHOT_BLOCK)].map((m) => m[1].trim());
+    return { text: String(t).replace(SHOT_BLOCK, '').replace(/\n{3,}/g, '\n\n').trim(), plan: blocks.length ? blocks[0] : null };
   }
 
   async function unchangedProposal(job) {
@@ -1028,6 +1078,9 @@ function createRunner(cfgIn, opts = {}) {
 
   // o.test: a test run (🧪 / !test, or CI failed what a ship would have shipped; o.repost then): the tests run on the change as it is, and a pass
   // of the proposed commit marks that proposal tested where it stands instead of posting it again.
+  // The agent wrote a shot plan this turn with a team PC online (processJob removes the last turn's plan): its pictures are taken whether or not the
+  // turn proposes anything (Helix 2026-10-23: "show me" or a better angle with nothing changed used to get no pictures, only a proposal did).
+  const plannedShots = (job) => !!(job.teamTurn && job.worktree && fs.existsSync(path.join(job.worktree, '.dm-shot.json')));
   async function afterTurn(job, result, o = {}) {
     const testRun = !!o.test;
     // A message that arrived during the turn changes the request: no proposal for the outdated state (owner, 2026-10-10: a stale proposal
@@ -1043,7 +1096,7 @@ function createRunner(cfgIn, opts = {}) {
       audit.log('proposal-kept', { job: job.id, head: job.proposal.head });
       say(job, job.proposal.testsOk ? 'Nothing changed, so the proposal above still stands (already checked). React ✅ on it to ship.'
         : 'Nothing changed, so the proposal above still stands. React 🧪 to test it, or ✅ to test and ship it.');
-      if (job.shotAsked) { job.shotAsked = false; teamShots(job, job.proposal.head, { forced: true }); }   // `!shot` with a team PC online: pictures of the proposal
+      if (job.shotAsked || plannedShots(job)) { job.shotAsked = false; teamShots(job, job.proposal.head, { forced: true }); }   // `!shot`, or a plan written this turn: pictures of the proposal
       return;
     }
     const tests = testRun || !cfg.drafts;
@@ -1053,7 +1106,7 @@ function createRunner(cfgIn, opts = {}) {
       if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return; }
       if (v.ok && v.empty) {
         job.status = 'idle'; job.proposal = null;
-        if (job.shotAsked) { job.shotAsked = false; teamShots(job, await G.head(job.worktree), { proposal: false, forced: true }); }   // `!shot` with nothing changed: the game as it is
+        if (job.shotAsked || plannedShots(job)) { job.shotAsked = false; teamShots(job, await G.head(job.worktree), { proposal: false, forced: true }); }   // nothing changed: the game as it is
         return;
       }
       if (v.ok) {
@@ -1141,6 +1194,7 @@ function createRunner(cfgIn, opts = {}) {
     for (const f of embed.fields) f.value = clip(f.value, 1024);   // Discord: field value <= 1024 chars (whole embed <= 6000; the caps above keep it well under)
     job.proposal = { messageId: null, head, base: job.base, tier, title, summary: Array.isArray(result && result.summary) ? result.summary : null, risk: (result && result.risk) || null, files: v.files.map((f) => f.path), migrations: v.migrations, testsOk: !v.untested, draft: !!v.untested, tested: v.untested ? null : v.tests.summary, createdAt: new Date(now()).toISOString() };
     job.status = 'proposed'; job.autoReships = 0; job.discardAsk = null; save(); syncName(job);
+    hearBot(job, `(posted a proposal for review: ${title})`);
     audit.log('proposal', { job: job.id, tier, head, files: v.files.length, migrations: v.migrations.join(','), ...(v.untested ? { draft: true } : {}) });
     const committedAt = Number((await G.git(job.worktree, ['log', '-1', '--format=%ct'], { allowFail: true })).out.trim()) * 1000 || 0;
     const shots = proposalShots(job, committedAt);
@@ -1201,7 +1255,10 @@ function createRunner(cfgIn, opts = {}) {
   // records the agent's .dm-clip.json (variants of a tune over the game's data), and the thread is asked which one people like best. Everything is best effort,
   // in the background, and never changes what is shipped: the team PC only renders, a human decides.
   const teamEnabled = () => cfg.teamShots !== false && !!cfg.teamApi;
-  const TEAM_ON_NOTE = '[A team PC is online right now. Pictures need no `!shot`: for every change players can see, write the shot plan `.dm-shot.json` (see "Screenshots", when a team PC is online) and do NOT render anything yourself; the team PC renders it after the proposal on a real graphics card, one AFTER picture a shot on Ultra unless the plan asks for more. Short videos and "pick one" options work too (see "Clips and choices").]';
+  const TEAM_ON_NOTE = '[A team PC is online right now. Pictures need no `!shot`: for every change players can see, and whenever someone asks to see something (even with nothing changed), write the shot plan `.dm-shot.json` (see "Screenshots", when a team PC is online) and do NOT render anything yourself; the team PC renders it after your turn on a real graphics card, one AFTER picture a shot on Ultra unless the plan asks for more. The runner says in the thread that pictures are coming: never say so yourself. Short videos and "pick one" options work too (see "Clips and choices").]';
+  // A discussion post (Helix 2026-10-23): screenshots of the live game only, asked for in a ```dm-shot block of the reply (agent.cjs TALK_PROMPT).
+  const TALK_SHOTS_ON = '[Live pictures: a team PC is on now, so you may ask for screenshots of the live game when a picture would help (see "Pictures of the live game").]';
+  const TALK_SHOTS_OFF = '[Live pictures: no team PC is on now, so no screenshots this turn; if someone asks for one, say a team PC has to be on.]';
   const TEAM_OFF_NOTE = '[No team PC is online right now. Pictures only on request (`!shot`), rendered on the server as described under "Screenshots"; short videos ("Clips and choices") are not possible this turn.]';
   const TEAM_SHOT_ASK = 'Show me what your current change looks like: a team PC is online, so write the shot plan to .dm-shot.json for it (do not render anything yourself; the team PC renders it, on a real graphics card) and keep your reply to one or two lines. If you have not changed anything yet, write the plan for the game as it is now, for the thing we have been talking about.';
   const CLIP_OFFLINE = 'Short videos need a team PC online, and none is right now, so I could not record them. Say `!clips` once a team PC is on, or tell me which option to apply.';
@@ -1239,12 +1296,14 @@ function createRunner(cfgIn, opts = {}) {
     return { files };
   }
   // The unchanged game for the BEFORE pictures: a scratch worktree at job.base (like baseShots), built the same way, removed afterwards.
-  async function teamBuildBase(job) {
-    const dir = path.join(cfg.worktreeRoot, `teambase-${job.id}`);
+  const teamBuildBase = (job) => teamBuildAt(job, job.base, 'teambase');
+  // A revision built for a team PC in a scratch worktree (<prefix>-<job id>): the unchanged base, or the live game for a discussion post.
+  async function teamBuildAt(job, rev, prefix) {
+    const dir = path.join(cfg.worktreeRoot, `${prefix}-${job.id}`);
     try {
       try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* none */ }   // a leftover of a run that was cut short
       await G.git(cfg.repo, ['worktree', 'prune'], { allowFail: true });
-      await G.git(cfg.repo, ['worktree', 'add', '-q', '--detach', '-f', dir, job.base]);
+      await G.git(cfg.repo, ['worktree', 'add', '-q', '--detach', '-f', dir, rev]);
       return await teamBuild(dir, job, { timeoutMs: 25 * 60000 });
     } catch (e) { return { error: clip(e.message, 200) }; }
     finally { await G.git(cfg.repo, ['worktree', 'remove', '--force', dir], { allowFail: true }); try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ } }
@@ -1271,32 +1330,38 @@ function createRunner(cfgIn, opts = {}) {
   const whoOf = (pcs, t) => { const pc = pcs.find((x) => x.pcId === t.claimedPc) || {}; return clip([pc.username ? `${pc.username}'s PC` : 'a team PC', pc.gpu].filter(Boolean).join(', '), 120); };
   // The same label as the server's pictures ("BRANCH PREVIEW · not live · <branch>"), burned in by the trusted label-shot.py: it reads <dir>/.dm-shots/.raw and
   // writes <dir>/.dm-shots/<name>.png, and nothing it did not label is posted.
-  async function labelInto(lab, branch) {
-    await G.run(cfg.teamLabelCmd ? 'bash' : 'python3', cfg.teamLabelCmd ? ['-c', cfg.teamLabelCmd, 'label', lab, branch] : [path.join(cfg.toolsDir, 'label-shot.py'), lab, branch],
+  async function labelInto(lab, branch, live = false) {   // live: "LIVE GAME · <rev>" instead (a discussion post's pictures of the live game)
+    const extra = live ? ['--live'] : [];
+    await G.run(cfg.teamLabelCmd ? 'bash' : 'python3', cfg.teamLabelCmd ? ['-c', cfg.teamLabelCmd, 'label', lab, branch, ...extra] : [path.join(cfg.toolsDir, 'label-shot.py'), lab, branch, ...extra],
       { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: 2 * 60000 });
   }
 
   // Pictures for the proposal (o.proposal, the default) or for the game as it is (!shot with nothing to propose). o.pcs: the PCs the caller already found online;
   // o.say: say in the thread when nothing came (the proposal said pictures follow); o.forced: the person asked (`!shot`), so answer even when nothing can be done.
+  // o.live (a discussion post, liveShots): head is the live revision, o.planDir holds the plan; it is built in a scratch worktree and labelled as the live game.
   async function teamShots(job, head, o = {}) {
-    if (!teamEnabled() || !job.worktree) return;
+    if (!teamEnabled() || (!o.live && !job.worktree)) return;
     if (teamBusy.has(job.id)) { if (o.forced) say(job, 'A team PC is already making pictures for this thread; they will follow here.'); return; }
     teamBusy.add(job.id);
-    const proposal = o.proposal !== false;
+    const proposal = o.proposal !== false && !o.live;
     const stale = () => ['discarded', 'deleted'].includes(job.status) || !!job.deleteRequested || (proposal && (!job.proposal || job.proposal.head !== head));
-    const fail = (why, extra = {}) => { audit.log('team-shots', { job: job.id, ok: false, why: clip(why, 300), ...extra }); if (o.say || o.forced) say(job, `⚠ No pictures from a team PC this time (${clip(why, 300)}). Say \`!shot\` to ask again.`); };
+    const fail = (why, extra = {}) => { audit.log('team-shots', { job: job.id, ok: false, why: clip(why, 300), ...extra }); if (o.say || o.forced) say(job, `⚠ No pictures from a team PC this time (${clip(why, 300)}). ${o.live ? 'Ask again to retry.' : 'Say `!shot` to ask again.'}`); };
     try {
-      const sp = CL.readShotPlan(job.worktree);
-      if (!sp) return;
+      const sp = CL.readShotPlan(o.planDir || job.worktree);
+      if (!sp) { if (o.forced) say(job, fs.existsSync(path.join(o.planDir || job.worktree, '.dm-shot.json')) ? '⚠ No pictures this time: the shot plan was not usable (it needs a "shots" list).' : '⚠ No pictures this time: no shot plan was made for them.'); return; }
       const plan = sp.plan, notes = sp.notes.slice();
       const pcs = o.pcs && o.pcs.length ? o.pcs : await teamPcs();
-      if (!pcs.length) { if (o.forced) say(job, 'No team PC is online right now, so there are no pictures from one. Say `!shot` again once one is on.'); return; }
-      if (o.forced) say(job, `Pictures from a team PC follow in a few minutes${sp.before ? ' (before and after)' : ''}.`);
-      const after = await teamBuild(job.worktree, job);
+      if (!pcs.length) { if (o.forced) say(job, o.live ? 'No team PC is online right now, so I cannot take pictures. Ask again once one is on.' : 'No team PC is online right now, so there are no pictures from one. Say `!shot` again once one is on.'); return; }
+      const paired0 = !o.live && sp.before && job.base && head !== job.base;
+      if (o.forced) {
+        const n = plan.shots.length * (plan.resolutions && plan.resolutions.length ? plan.resolutions.length : 1) * sp.presets.length;
+        say(job, `📸 ${n} picture${n === 1 ? '' : 's'}${o.live ? ' of the live game' : ''} coming from ${pcs.length === 1 && pcs[0].username ? `${clip(String(pcs[0].username), 40)}'s PC` : 'a team PC'} in a few minutes${paired0 ? ', each with a BEFORE' : ''}.`);
+      }
+      const after = o.live ? await teamBuildAt(job, head, 'teamlive') : await teamBuild(job.worktree, job);
       if (after.error) return fail(`the game could not be built for the team PC: ${after.error}`);
       if (stale()) return;
       let before = null;   // the unchanged game, when the plan asks for it (`"before": true`) and there is a change to compare with; no base build = AFTER pictures only
-      if (sp.before && job.base && head !== job.base) {
+      if (paired0) {
         const b = await teamBuildBase(job);
         if (b.error) audit.log('team-shots', { job: job.id, before: false, why: clip(b.error, 200) }); else before = b;
         if (stale()) return;
@@ -1313,7 +1378,7 @@ function createRunner(cfgIn, opts = {}) {
       const attempt = async (paired) => {
         const body = paired
           ? { kind: 'shots', title: 'Pictures of a change (before and after), about 3 minutes', weightS: 180, ttlS: 45 * 60, ...teamWho(job), payload: { ...common, builds: [{ label: 'before', files: before.files }, { label: 'after', files: after.files }] } }
-          : { kind: 'shots', title: 'Screenshots of a change, about 2 minutes', weightS: 120, ttlS: 30 * 60, ...teamWho(job), payload: { ...common, files: after.files } };
+          : { kind: 'shots', title: o.live ? 'Screenshots of the live game, about 2 minutes' : 'Screenshots of a change, about 2 minutes', weightS: 120, ttlS: 30 * 60, ...teamWho(job), payload: { ...common, files: after.files } };
         const made = await teamCall('POST', '/jobs', body);
         if (!made || !TEAM_ID_RE.test(String(made.id))) return { error: 'the backend did not take the job' };
         audit.log('team-shots', { job: job.id, teamJob: made.id, queued: true, pcs: pcs.length, paired });
@@ -1326,14 +1391,36 @@ function createRunner(cfgIn, opts = {}) {
       if (paired && !r.stale && r.error && r.status === 'failed') { audit.log('team-shots', { job: job.id, teamJob: r.id, paired: false, retry: true, why: clip(r.error, 200) }); paired = false; r = await attempt(false); }
       if (r.stale || stale()) return;
       if (r.error) return fail(r.error, { teamJob: r.id });
-      const pics = await teamPictures(job, r.t, r.id, { paired, plan, who: whoOf(pcs, r.t), noBefore: sp.before && !paired, notes });
+      const pics = await teamPictures(job, r.t, r.id, { paired, plan, who: whoOf(pcs, r.t), noBefore: paired0 && !paired, notes, live: o.live ? head : null });
       if (!pics) return fail('the team PC finished without pictures that could be labelled', { teamJob: r.id });
-      audit.log('team-shots', { job: job.id, teamJob: r.id, ok: true, pictures: pics, paired });
+      audit.log('team-shots', { job: job.id, teamJob: r.id, ok: true, pictures: pics, paired, ...(o.live ? { live: head.slice(0, 12) } : {}) });
     } catch (e) { fail(e && e.message ? e.message : String(e)); } finally { teamBusy.delete(job.id); }
+  }
+  // A discussion post's pictures (talkAfterTurn): only ever the live game, never a change (Helix 2026-10-23). The plan comes from the reply, the
+  // live revision from the live client's manifest; it is built in a scratch worktree like the BEFORE pictures.
+  async function liveShots(job, raw) {
+    if (!teamEnabled()) return say(job, 'Pictures need the team app, which this agent is not connected to.');
+    let plan = null; try { plan = JSON.parse(raw); } catch { /* below */ }
+    if (!plan || typeof plan !== 'object' || Array.isArray(plan)) { audit.log('live-shots', { job: job.id, ok: false, why: 'not a JSON object' }); return say(job, '⚠ No pictures this time: the shot plan was not valid.'); }
+    delete plan.before;   // there is no change to compare with
+    const rev = await liveRevision();
+    if (!rev) { audit.log('live-shots', { job: job.id, ok: false, why: 'live revision unknown' }); return say(job, '⚠ No pictures this time: I could not tell which version of the game is live.'); }
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-live-plan-'));
+    try {
+      fs.writeFileSync(path.join(dir, '.dm-shot.json'), JSON.stringify(plan));
+      audit.log('live-shots', { job: job.id, rev: rev.slice(0, 12) });
+      await teamShots(job, rev, { live: true, planDir: dir, forced: true });
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  }
+  async function liveRevision() {
+    let rev = ''; try { rev = String(JSON.parse(fs.readFileSync(cfg.clientManifest, 'utf8')).rev || ''); } catch { return null; }
+    if (!/^[0-9a-f]{7,40}$/.test(rev)) return null;
+    const full = String((await G.git(cfg.repo, ['rev-parse', '--verify', '-q', `${rev}^{commit}`], { allowFail: true })).out || '').trim();
+    return /^[0-9a-f]{40}$/.test(full) ? full : null;
   }
   // Reads a finished shots job's pictures from the backend's results folder, labels them and posts them. Returns how many were posted (0 = none usable).
   // Names the app uploads: `<preset>_<shot>.png`, or `<before|after>_<preset>_<shot>.png` for a two-build job; Discord gets `low-a.png` / `before-low-a.png`.
-  async function teamPictures(job, t, id, { paired, plan, who, noBefore, notes = [] }) {
+  async function teamPictures(job, t, id, { paired, plan, who, noBefore, notes = [], live = null }) {
     const dir = path.join(path.resolve(cfg.teamResultsDir), id);
     const rank = (n) => (CL.SHOT_PRESETS.includes(n) ? CL.SHOT_PRESETS.indexOf(n) : CL.SHOT_PRESETS.length);
     const items = [];   // { build, preset, shot, raw, src, buf }; `raw` is the neutral name label-shot.py gets (its names are short and fixed; the posted names carry the preset and shot)
@@ -1350,7 +1437,7 @@ function createRunner(cfgIn, opts = {}) {
         const lab = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-team-shots-')); labs.push(lab);
         fs.mkdirSync(path.join(lab, '.dm-shots', '.raw'), { recursive: true });
         for (const x of mine) { try { fs.copyFileSync(x.src, path.join(lab, '.dm-shots', '.raw', x.raw)); } catch { /* listed but gone */ } }
-        await labelInto(lab, build === 'before' ? BB : job.branch);   // the BEFORE pictures are the base branch's game, the AFTER ones this branch's
+        await labelInto(lab, live ? live.slice(0, 12) : build === 'before' ? BB : job.branch, !!live);   // BEFORE: the base branch's game; AFTER: this branch's (or the live game's)
         for (const x of mine) { try { const f = path.join(lab, '.dm-shots', x.raw); const st = fs.lstatSync(f); if (st.isFile() && st.size <= SHOT_MAX_BYTES) x.buf = fs.readFileSync(f); } catch { /* not labelled: not posted */ } }
       }
     } finally { for (const l of labs) fs.rmSync(l, { recursive: true, force: true }); }
@@ -1358,7 +1445,7 @@ function createRunner(cfgIn, opts = {}) {
     if (!got.some((x) => x.build === 'after')) return 0;
     const file = (x) => ({ name: safeName(`${paired ? `${x.build}-` : ''}${x.preset}-${x.shot}.png`), b64: x.buf.toString('base64') });
     const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-    const tail = ` · branch preview, not live${notes.length ? `\n${notes.join(' ')}` : ''}`;
+    const tail = `${live ? ` · the live game (${live.slice(0, 7)}), offline demo character` : ' · branch preview, not live'}${notes.length ? `\n${notes.join(' ')}` : ''}`;
     const presets = [...new Set(got.map((x) => x.preset))].sort((a, b) => rank(a) - rank(b) || (a < b ? -1 : 1));
     // posts of at most SHOTS_PER_POST files and POST_MAX_BYTES; a group (a BEFORE/AFTER pair) is never split
     const chunked = (groups) => { const out = []; let cur = [], bytes = 0; for (const g of groups) { const gb = g.reduce((n, x) => n + x.buf.length, 0); if (cur.length && (cur.length + g.length > SHOTS_PER_POST || bytes + gb > POST_MAX_BYTES)) { out.push(cur); cur = []; bytes = 0; } cur.push(...g); bytes += gb; } if (cur.length) out.push(cur); return out; };

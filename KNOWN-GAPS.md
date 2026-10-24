@@ -161,9 +161,9 @@ polish list). Also:
   in the middle of it (found 2026-10-19).
 - The old HUD suite (its checks are in `hud` since 2026-10-19) failed one check when it ran beside other suites at load 9 (twice on 2026-10-19) and passed alone; the test runner
   re-runs a failed suite alone, so nothing fails, but the check (the 20 Hz refresh count in `hud`, or the key cast beside it) may still be load-sensitive.
-- `server/death-muffin/team-gate.test.cjs` "a stop from the publish's timeout cancels the job and removes the folder" failed once on GitHub CI
-  (run 39633431669: the gate's folder was still there when the test looked, after a 2 s `timeout`) and passes locally every time (found
-  2026-10-21): the folder removal races the check on a slow machine.
+- `server/death-muffin/team-gate.test.cjs` "a stop from the publish's timeout cancels the job and removes the folder" failed twice on GitHub CI
+  (runs 39633431669 and 40058679851: the gate's folder was still there when the test looked, after a 2 s `timeout`) and passes locally every time
+  (found 2026-10-21, again 2026-10-24): the folder removal races the check on a slow machine.
 
 ## Stability
 

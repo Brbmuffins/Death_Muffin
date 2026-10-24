@@ -359,6 +359,16 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   the imported file too, and `--restricted` (the agent) loads neither file. `sync-instructions.mjs --check` keeps the shape; the rule check
   measures each audience on the text it receives; `usage.mjs` counts the rules as arrived only from the source or from a `CLAUDE.md` whose own
   text held them. The global `~/.codex/AGENTS.md` pointer was left out (a Codex setting, its own decision).
+- **B73. The Discord agent tells team talk from talk to it, and shows pictures without a proposal** (Helix, 2026-10-23: "understand when
+  devs are talking to each other vs talking to the bot", "q1 yes but only of the live game", no 💬 reaction). In every agent thread a
+  message for the other people starts no turn and costs nothing against the limits; it is kept and handed to the agent with its next turn,
+  marked as not said to it. Clear signs decide first (an @-mention or reply to Muffin Core or a message opening with its name goes to it; an
+  @-mention or reply to a teammate or a message opening with a teammate's name is team talk); a person alone in the thread always reaches
+  the agent; only an unclear message while others are talking is guessed by Haiku (about $0.002), and a failed guess goes to the agent. A
+  wrong guess is fixed by @-ing the bot; nothing in the thread shows the sorting (`runner/lib/addressee.cjs`). Pictures: any agent turn that
+  writes a shot plan is rendered on a team PC, even with nothing changed, and the runner, never the agent, says in one line whether pictures
+  are coming or why not. Discussion forums may show screenshots of the live game only (the released revision, labeled LIVE GAME), never of
+  unreleased work; concepts there still need `!job`.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

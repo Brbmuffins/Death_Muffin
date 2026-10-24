@@ -81,6 +81,14 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
       if (!isThread && !mentioned) return;
       const images = [];
       const text = stripMention(msg.content) + await attachmentText(msg, images);
+      // Who it is said to (the runner decides): the other people named in it, and whose message it replies to. A reply's own ping is not in
+      // the text, so only real <@id> mentions count as naming someone.
+      const mentions = [...new Set([...String(msg.content || '').matchAll(/<@!?(\d+)>/g)].map((m) => m[1]).filter((id) => id !== botId()))].slice(0, 10);
+      let replyTo;
+      if (msg.reference && msg.reference.messageId && typeof msg.fetchReference === 'function') {
+        const ref = await msg.fetchReference().catch(() => null);
+        if (ref && ref.author) replyTo = { bot: ref.author.id === botId(), userId: String(ref.author.id) };
+      }
       // A forum post (#jobs or a discussion forum): an @-mention (or !job) carries the post's title, its opening message and its last 50 messages
       // before this one (the runner uses them only when this brings the bot into the post).
       let post;
@@ -96,7 +104,7 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
           text: stripMention(m.content).slice(0, 1500), bot: !!(m.author && m.author.id === botId()) }));
       }
       const r = await call('/event', { type: 'message', messageId: msg.id, channelId: isThread ? parentId : ch.id, threadId: isThread ? ch.id : null, parentId,
-        userId: msg.author.id, username: msg.member && msg.member.displayName || msg.author.username, text, mentioned, ...(images.length ? { images } : {}), ...(post ? { post } : {}) });
+        userId: msg.author.id, username: msg.member && msg.member.displayName || msg.author.username, text, mentioned, mentions, ...(replyTo ? { replyTo } : {}), ...(images.length ? { images } : {}), ...(post ? { post } : {}) });
       if (r.action === 'reply') return void safeReply(msg, r.text);
       // The runner shows "typing…" while it works; a reaction only marks a message that has to wait its turn.
       if (r.action === 'accepted') return void (r.queued && msg.react && msg.react('⏳').catch(() => {}));
