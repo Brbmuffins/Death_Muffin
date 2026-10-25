@@ -56,6 +56,14 @@ func _grip_distances(av: DmAvatar, prop: Node3D) -> Dictionary:
 
 
 func _run() -> void:
+	# ---- the staff clips loop where their plain clips do (read first: the grip checks below play every clip once, and a one-shot is marked not looping)
+	var staff_v := DmAvatar.STAFF_VARIANT
+	for slug in HEROES:
+		var av := await _avatar(slug)
+		for clip in ["idle", "walk", "run"]:
+			check(av.c.ap.get_animation(clip + staff_v).loop_mode == Animation.LOOP_LINEAR, "%s: the staff %s loops" % [slug, clip])
+		av.dispose()
+
 	# ---- the grip: measured palm, rigid follow, no per-frame prop work
 	for slug in HEROES:
 		var av := await _avatar(slug)
@@ -126,7 +134,6 @@ func _run() -> void:
 
 	# ---- the staff clips: a staff in the right hand plays the body's `<clip>_staff` (the arm re-baked around it) with the fist grip they were
 	# made for; another weapon, or a body without them, plays the plain clips with its own grip
-	var staff_v := DmAvatar.STAFF_VARIANT
 	var fist := deg_to_rad(float(DmGearProps.HOLDS.staff_fist.lean))
 	for slug in HEROES:
 		var av := await _avatar(slug)
@@ -146,7 +153,6 @@ func _run() -> void:
 		var hp := av.c._track_of(plain, "Hip", Animation.TYPE_POSITION_3D)
 		var hb := av.c._track_of(baked, "Hip", Animation.TYPE_POSITION_3D)
 		check(hp >= 0 and hb >= 0 and (plain.track_get_key_value(hp, 0) as Vector3).is_equal_approx(baked.track_get_key_value(hb, 0) as Vector3), "%s: the staff flick's hip is prepared as the flick's (a combat clip)" % slug)
-		check(av.c.ap.get_animation("idle" + staff_v).loop_mode == Animation.LOOP_LINEAR, "%s: the staff idle loops" % slug)
 		av.dispose()
 	var caller := await _avatar("hero_gravecaller")
 	var choir := {"legs": {"item_id": "leg_plague_choir_legs", "rarity": "legendary"}, "chest": {"item_id": "leg_plague_choir_chest", "rarity": "legendary"}, "head": {"item_id": "leg_plague_choir_head", "rarity": "legendary"}}
