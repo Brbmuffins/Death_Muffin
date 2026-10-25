@@ -37,6 +37,10 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
   missing weapon row late (the agent's job lost a check run and a session handoff to it).
 - **A creature's new move cannot be filmed in the game.** Shot and clip plans place stand-in enemies, not a chosen creature, so a Blender job's
   walk or attack is checked only on its Blender preview sheet, not in the game's lighting and speed (found 2026-10-25, B74).
+- **Blender jobs and rebuilds do not reach the discipline heroes' staff clips** (found 2026-10-25): with a staff in hand the four heroes play
+  `<clip>_staff` for the clips in `tools/blender/recipes/staff.json`, so a job that changes one of those clips does not show in the game, and
+  `build-art.sh` drops the staff clips (`npm run check:models` then fails) without putting them back. Only a session can redo them
+  (`node tools/blender.mjs staff <slug> --ship`); a `staff` job kind, recorded and replayed like the others, would let the agent do it.
 
 ## Operations
 

@@ -17,6 +17,9 @@ moves or a change to a model that exists; Tripo is only for a brand-new model (a
   add a `rigfix` section ("`rigfix`" there) and run `rigfix` before `motion`.
 - A clip that exists but slides, drifts or hitches: `cleanup` (`loop`, `drift`, `footLock`). A walk that drifts wants `drift` and `loop` together.
 - Wrong or extra clip names: `clips` (rename, drop). The game plays clips by name (`client/game/README.md`).
+- The four discipline heroes (`hero_ossuary`, `hero_gravecaller`, `hero_mourner`, `hero_rotweaver`) play `<clip>_staff` instead of the clips in
+  `tools/blender/recipes/staff.json` while they hold a staff (the default staff too), so a job on one of those clips would not show in the game,
+  and a job cannot redo the staff versions yet: say so and ask the team instead of proposing it. Never drop or rename a `_staff` clip.
 
 **A job.** Read `tools/blender/kinds.json` (every kind, what it does, its parameters and limits) before writing one. Write `.dm-blender.json` in the
 worktree root (git ignores it; never commit it):

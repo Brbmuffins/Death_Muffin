@@ -182,7 +182,9 @@ with the game's grip above, the re-bake below, the staff model in hand). `--ship
 its `public/models/` master (and `clips.json`), replacing older ones, each aligned to the start of the clip it re-bakes and
 resampled as `build-characters` does; mesh, skin and textures stay byte for byte (`pack.mjs` `addClip`). Nothing is rebuilt
 from `art-src`, whose combat-trim sources (`COMBAT_TRIMS`) a workstation may lack. A later rebuild of one of the recipe's
-`heroes` drops the clips: `npm run check:models` fails until `staff <slug> --ship` puts them back. `--install` copies the
+`heroes` drops the clips and `build-art.sh` does not redo them (it replays "Jobs", and this is not one): `npm run check:models`
+fails until `staff <slug> --ship` puts them back. The same after a job changes one of the recipe's clips on these heroes: the
+game plays the `_staff` twin, which keeps the old motion until it is re-baked. `--install` copies the
 clips into `art-src/tripo/<slug>/` instead, for `build-characters` to take them.
 Run so far on Blender 5.2 (Windows, 2026-10-25, about 20 s a hero with sheets); on 4.5 the script falls back to the legacy
 `action.fcurves`, not yet run there.
