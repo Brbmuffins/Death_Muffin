@@ -35,6 +35,8 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
 - **A new weapon's Atlas row is written by hand** (War's Scythe of Undeath, 2026-10-20): `tools/generate-armor-assets.mjs` copies items.json
   and computed.json for every item but adds `client/data/panels_a/atlas.json` rows for armor pieces only, so the `data` suite catches a
   missing weapon row late (the agent's job lost a check run and a session handoff to it).
+- **A creature's new move cannot be filmed in the game.** Shot and clip plans place stand-in enemies, not a chosen creature, so a Blender job's
+  walk or attack is checked only on its Blender preview sheet, not in the game's lighting and speed (found 2026-10-25, B74).
 
 ## Operations
 
@@ -42,9 +44,9 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
   same VPS; the raw art sources (`art-src/`, gitignored), the private effect sheets and keys (`~/death-muffin/private/`), the licensed packs
   and the services' `.env` files exist only here. ROADMAP Later: a cloud storage bucket (B51).
 - **Two install checks list the agent's files by hand, and both miss some.** The drift report (`server/death-muffin/ops/drift-report.sh`, check 1)
-  does not compare the installed `build-picture.sh`; the practice run (`discord-agent/runner/canary.cjs`, step "installed") compares only the
+  does not compare the installed `build-picture.sh` or `blender-job.sh`; the practice run (`discord-agent/runner/canary.cjs`, step "installed") compares only the
   runner, the core scripts, the prompt and its guides, not `label-shot.py`, `render-model.*`, `art-run.sh`, `build-art.sh`, `build-sound.sh`,
-  `sound-*.mjs`, `build-picture.sh`, `wait-for-ship.sh` or `reports-cli.cjs`. A file `install-runner.sh` copies can differ from `main` unnoticed
+  `sound-*.mjs`, `build-picture.sh`, `blender-job.sh`, `wait-for-ship.sh` or `reports-cli.cjs`. A file `install-runner.sh` copies can differ from `main` unnoticed
   (found 2026-10-21).
 - **The agent can stage an ignored file.** `agit add -f <path>` is allowed, so the git-excluded job files (`.dm-inbox/` attachments, `.dm-shot.json`,
   `.dm-shots/`) could be committed; only `.dm-guides/` is in the runner's forbidden paths (found 2026-10-21).

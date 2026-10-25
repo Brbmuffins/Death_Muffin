@@ -1,0 +1,80 @@
+{
+  "_note": "Blender job kinds (DECISIONS B74, docs/BLENDER-PIPELINE.md 'Jobs'). A job is {model, steps: [{kind, ...params}]} run by tools/blender/jobs.mjs on the shipped model in client/assets/slice/models/. Each kind lists its params: type int|number|bool|string|strings|map|color, with min/max (numbers, list lengths, string lengths) and req. targets: which models it applies to (character = a rigged model folder, prop = props/<name>.glb). A new kind is an entry here plus its handler in jobs.mjs (KIND_RUN).",
+  "kinds": {
+    "inspect": {
+      "what": "Print the model: triangles, materials, textures, size, clips (length), bones (parent, rest position in Blender's Z-up armature space, how many vertices each bone moves, the lowest of them). Changes nothing; read it before writing a recipe.",
+      "targets": ["character", "prop"],
+      "params": {}
+    },
+    "library": {
+      "what": "List the free animation library's clips (Quaternius Universal Animation Library, CC0) with their lengths. Changes nothing.",
+      "targets": ["character", "prop"],
+      "params": {}
+    },
+    "motion": {
+      "what": "Make walk, run and idle cycles (and overlays on existing clips) from the model's recipe tools/blender/recipes/<model>.json: feet planted by construction, for four-legged, many-legged and winged bodies. Without clips, every clip and overlay in the recipe.",
+      "targets": ["character"],
+      "params": { "clips": { "type": "strings", "min": 1, "max": 8 } }
+    },
+    "rigfix": {
+      "what": "Add bones from the recipe's rigfix section and move the mesh's weights onto them (legs the rig lacks, a tail, wings). Every clip the model has keeps playing; the new bones rest until a motion step moves them.",
+      "targets": ["character"],
+      "params": {}
+    },
+    "retarget": {
+      "what": "Put library clips on a two-legged model that has the shared Tripo biped skeleton: clips maps a library clip to {name, loop, sequence (library clips joined in order), inPlace, trim ([from s, to s]), speed (0.25 to 4)}. Record the clip's row in docs/ANIMATION-SOURCES.md when it ships.",
+      "targets": ["character"],
+      "params": { "clips": { "type": "map", "req": true, "min": 1, "max": 6 } }
+    },
+    "cleanup": {
+      "what": "Fix one clip in place: loop closes the seam, drift removes the body sliding away over the clip, footLock pins feet while they touch the ground (one contact per foot per cycle).",
+      "targets": ["character"],
+      "params": {
+        "clip": { "type": "string", "req": true, "max": 40 },
+        "loop": { "type": "bool" },
+        "drift": { "type": "bool" },
+        "footLock": { "type": "bool" }
+      }
+    },
+    "clips": {
+      "what": "Rename clips (rename: {old: new}) or drop clips (drop: [names]). The model's rows follow.",
+      "targets": ["character"],
+      "params": {
+        "rename": { "type": "map", "max": 12 },
+        "drop": { "type": "strings", "max": 12 }
+      }
+    },
+    "recolor": {
+      "what": "Shift the colour texture: hue (degrees), saturation and brightness (multipliers). only: {color: '#rrggbb', within: 0.05-1} limits it to texels near that colour (soft edge).",
+      "targets": ["character", "prop"],
+      "params": {
+        "hue": { "type": "number", "min": -180, "max": 180 },
+        "saturation": { "type": "number", "min": 0, "max": 3 },
+        "brightness": { "type": "number", "min": 0.3, "max": 2.5 },
+        "only": { "type": "map" }
+      }
+    },
+    "decimate": {
+      "what": "Reduce the mesh to about this many triangles (Blender's collapse decimation; skin weights and UVs are kept).",
+      "targets": ["character", "prop"],
+      "params": { "triangles": { "type": "int", "req": true, "min": 300, "max": 20000 } }
+    },
+    "reshape": {
+      "what": "Grow or shrink the part of the mesh a bone moves (and, with children, the bones below it), around the bone's head: a bigger head, longer horns, smaller claws. Best on ends of the body; scale 0.5 to 2.",
+      "targets": ["character"],
+      "params": {
+        "bone": { "type": "string", "req": true, "max": 64 },
+        "scale": { "type": "number", "req": true, "min": 0.5, "max": 2 },
+        "children": { "type": "bool" }
+      }
+    },
+    "remove": {
+      "what": "Delete the faces these bones (and, with children, the bones below them) move most: a tail, a horn, a cape. The bones stay.",
+      "targets": ["character"],
+      "params": {
+        "bones": { "type": "strings", "req": true, "min": 1, "max": 12 },
+        "children": { "type": "bool" }
+      }
+    }
+  }
+}

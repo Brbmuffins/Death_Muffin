@@ -1,7 +1,8 @@
 # Making new models and armor sets (concepts -> 3D -> renders -> in game)
 
 You cannot call Gemini or Tripo yourself and you never see their keys; the runner generates. Use this only when someone wants a NEW model (a character,
-creature, boss, prop, weapon, helm, mantle, or a whole armor set); never for anything an existing model can do. Read `ASSET_PIPELINE.md` first (concept
+creature, boss, prop, weapon, helm, mantle, or a whole armor set); never for anything an existing model can do. A new move or an edit to a model that
+exists (colour, size of a part, a part removed, fewer triangles) is a Blender job (`.dm-guides/blender.md`), free and done here. Read `ASSET_PIPELINE.md` first (concept
 rules: one subject, strict T-pose and empty hands for characters, three-quarter view for props, plain light grey background, flat lighting; face
 budgets: hero 12k, boss 14k, horde enemy 4 to 5k, props 0.9 to 3.5k). `check-godot.sh` refuses a model over its cap (gear 4k, props 6k, heroes and
 characters 20k), with more than one material, or a hero body without the shared biped skeleton and its combat clips (`tools/assets/check-models.mjs`).
@@ -20,7 +21,9 @@ when the look is open. To change one, edit its job and request that id again. Al
 `preset:quadruped:walk`. Props (weapons, helms, mantles) have no `rig` and no `animations`, and their id starts with `prop_`. `<id>` is lower-case letters, digits
 and underscores (3 to 40) and must not be an existing model. `face_limit` 300 to 14000, `texture_quality` `standard` or `detailed`, at most 10 animations, biped
 presets only from the pipeline doc (idle, walk, run, slash, cast_a_spell, hurt, fall, dig, dive, hit_to_body_01, hit_to_head, defeat_03, front_kick_01, ...).
-No other fields are accepted. Then write `.dm-art-request.json` (never commit it): `{"ids": ["<id>", ...], "note": "one plain sentence"}` (1 to 6 ids; a
+No other fields are accepted. Ask Tripo for the fewest animations the model needs that Blender cannot give it
+(`.dm-guides/blender.md`): idle and walk for a two-legged model (library moves cover attacks, casts, hits, deaths and runs), only the walk preset for a
+four-legged one (its gaits come from a recipe), and the presets for moves neither can make (a dig, a dive, a creature's own attack). Then write `.dm-art-request.json` (never commit it): `{"ids": ["<id>", ...], "note": "one plain sentence"}` (1 to 6 ids; a
 whole set goes in one request). The concept images people saw are reused as they are: never touch `art-src/concepts/` yourself.
 Ask for as little as does the job: a prop costs about 60 credits, a rigged and animated character 150 to 285 (60 for the model, 25 for the rig, 10 per
 animation). The runner posts the concepts, what will be generated and the estimated credits with the requester's remaining budget and the live Tripo
@@ -30,7 +33,8 @@ balance, and waits for an approver's ✅. End your reply with one line saying wh
 then commit the two spec files, `art-manifest/tripo/<id>.json`, `art-manifest/images.json` and the GLB it installs under `client/assets/slice/models/`; run
 `__TOOLS__/check-godot.sh --rerun code_load` (Godot's import adds `.import` files and textures next to the model: commit those too). Then `__TOOLS__/render-model.sh <id> [<id> ...]`
 (1 to 6 ids, existing models too; about 20 s per model): it writes one sheet `.dm-shots/models-<first id>.png` with front, side and back of each model, which the
-runner posts after your turn. Read it; if a piece came out wrong, say so plainly. Wire the models into the game only where the request asked.
+runner posts after your turn. Read it; if a piece came out wrong, say so plainly. Then finish each rigged model with a Blender job (`.dm-guides/blender.md`):
+the library moves or recipe gaits it was not given, a `cleanup` of loops that hitch or slide, clip names the game plays. Wire the models into the game only where the request asked.
 
 **4. In game.** For gear, take screenshots of a hero wearing it (`.dm-guides/screenshots.md`: `"equip"`, `"view": "hero"`, front and `"turn": 180` for the back; `"discipline"`
 for another necromancer) even though screenshots are otherwise only on request, check them, and fix fit or scale before you propose. With a team PC online

@@ -5,6 +5,7 @@
 # result is DEQUANTIZED (Godot's glTF importer rejects KHR_mesh_quantization) and copied into the Godot client:
 #   characters/creatures  public/models/<id>/character.glb      -> client/assets/slice/models/<id>/character.glb
 #   props (id prop_<name>) public/models/props/<name>.glb        -> client/assets/slice/models/props/<name>.glb
+# A model with Blender jobs on record (art-manifest/blender/<id>.json, blender-job.sh) gets them done again on the rebuilt file (tools/blender/jobs.mjs replay).
 # Godot extracts textures and writes .import files the next time it imports the project (check-godot.sh does); commit those next to the model.
 set -uo pipefail
 ID=${1:-}
@@ -37,6 +38,9 @@ export DM_PAYLOAD='
     for (const ext of doc.getRoot().listExtensionsUsed()) if (ext.extensionName === \"KHR_mesh_quantization\") ext.dispose();
     await io.write(process.env.DST, doc);
   " || { echo "dequantize failed"; exit 1; }
+  if [ -f "art-manifest/blender/$ID.json" ]; then
+    HOME=$(mktemp -d /tmp/dmblender-home.XXXXXX) nice -n 10 node tools/blender/jobs.mjs replay "$ID" || { echo "replaying the Blender jobs of $ID failed"; exit 1; }
+  fi
   ls -l "$SRC" "$DST" | awk "{print \$5, \$9}"
   echo "BUILT: $DST"
 '

@@ -169,7 +169,8 @@ test('a guide must exist, must not also be always loaded, and must hold an inven
   editRules(dir, (rules) => { const r = rules.find((x) => x.id === 'agent-paid-generation'); r.homes = [{ file: 'server/death-muffin/discord-agent/guides/models.md', clauses: ['You cannot call Gemini or Tripo yourself and you never see their keys; the runner generates.'] }]; });
   reported(problemsOf(dir), 'agent-paid-generation: protected rule has no always-loaded home for agent');
   const s = sizes(REPO).audiences.agent;
-  assert.equal(s.guides.length, 5); assert.ok(s.guideTokens > 0 && s.guides.every((g) => g.chars > 0));
+  const listed = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/context/surfaces.json'), 'utf8')).audiences.agent.guides;
+  assert.equal(s.guides.length, listed.length); assert.ok(s.guideTokens > 0 && s.guides.every((g) => g.chars > 0));
 });
 
 test('a new section of always-loaded text with no inventoried rule is reported', () => {

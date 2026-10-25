@@ -297,6 +297,23 @@ agent turn ── build-picture.sh <kind> <name> <concept id> [--replace] (sandb
 - A model request refuses a concept that names a kind, and a picture is never turned into a model.
 - Tests: `test/pictures.test.cjs` (kind validation, refs, the composed job, concepts kept across rounds); the builder's own tests are `tools/pictures/pictures.test.mjs`.
 
+## Blender jobs (movement and edits on models), free, no ✅ before the proposal
+
+The default for how a model moves and for changes to a model the game has (DECISIONS B74); Tripo only makes new models, with as few animations as
+Blender cannot give them. No key, no credits, no runner step: the agent runs it in its own turn and the proposal is the review.
+
+```
+agent turn ── writes .dm-blender.json {model, steps: [{kind, ...}] (1-8), note?} (kinds: tools/blender/kinds.json; a job of only inspect/library reads the model)
+agent turn ── blender-job.sh (sandboxed tools/blender/jobs.mjs: Blender headless, the edit merged into the shipped GLB by merge.mjs, the model check, the model's
+              rows updated, the steps recorded in art-manifest/blender/<id>.json, a preview sheet -> label-shot.py -> .dm-shots/blender-<id>.png, posted
+              after the turn), commits what CHANGED names -> proposal -> ✅ ship
+```
+
+- Same lock as the screenshots and model renders (`qa-browser.lock`), 10 minute limit, `nice`. The library (CC0) is read from the shared checkout's `art-src/`.
+- `build-art.sh` redoes a model's recorded steps when it rebuilds it from its Tripo files.
+- The how-to is `guides/blender.md`; the tool is docs/BLENDER-PIPELINE.md "Jobs". Tests: `tools/blender/jobs.test.mjs` (job validation, rows, the merge, on
+  made-up models; no Blender) and the allowlist in `test/e2e.test.cjs`.
+
 ## New sounds (ElevenLabs), no budget gate
 
 ```
@@ -546,4 +563,4 @@ request -> thread -> worktree -> gates -> pushed branch -> a draft proposal with
 stand-in cannot show that a real model opens the right guide), 🧪 -> GitHub CI on the branch -> "Tests passed", then `!discard` removes the branch and the workspace. It
 never ships. One `CANARY <step> ok|FAILED` line per step, then `CANARY PASSED` (exit 0) or `CANARY FAILED: <step>` (exit 1). A trial before a
 merge: `DEST=<dir> NO_SYSTEMD=1 bash install-runner.sh <rev>`, then `node <dir>/runner/canary.cjs --rev <rev> --adapter <repo>/server/death-muffin/discord-agent/bot/dm-agent.cjs`.
-The installer also copies `check-godot.sh`, `regen-godot.sh`, `tools/check/prep.sh` (as `prep.sh`), `preview-godot.sh`, `shot-godot.sh`, `label-shot.py`, `render-model.sh`, `render-model.py`, `art-run.sh`, `build-art.sh`, `build-sound.sh`, `sound-build.mjs`, `build-picture.sh`, `PROMPT-godot.md` and `guides/`, installs the trusted art tools to `art-tools/`, and creates an empty `tripo-budget.json` if there is none (never overwritten). The live `config.json` must say `"mode": "godot", "baseBranch": "main"`; edit it and restart the service to change.
+The installer also copies `check-godot.sh`, `regen-godot.sh`, `tools/check/prep.sh` (as `prep.sh`), `preview-godot.sh`, `shot-godot.sh`, `label-shot.py`, `render-model.sh`, `render-model.py`, `art-run.sh`, `build-art.sh`, `build-sound.sh`, `sound-build.mjs`, `build-picture.sh`, `blender-job.sh`, `PROMPT-godot.md` and `guides/`, installs the trusted art tools to `art-tools/`, and creates an empty `tripo-budget.json` if there is none (never overwritten). The live `config.json` must say `"mode": "godot", "baseBranch": "main"`; edit it and restart the service to change.

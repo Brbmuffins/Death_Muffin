@@ -26,6 +26,39 @@ node tools/build-characters.mjs skull_rat       # public/models/skull_rat/charac
 node tools/measure-clips.mjs --stride public/models/skull_rat/character.glb walk,run --legs tools/blender/recipes/skull_rat.json
 ```
 
+## Jobs (on the shipped models)
+
+The same tools, run on the models the game ships rather than on `art-src/` (DECISIONS B74): the Discord agent's way to change how a model
+moves or looks (`server/death-muffin/discord-agent/blender-job.sh`, guide `guides/blender.md`), and the quickest way for a session too.
+
+```
+node tools/blender/jobs.mjs run <job.json> [--shots <dir>]    {"model": "<id>", "steps": [{"kind": ..., params}], "note"?}; 1-8 steps in order
+node tools/blender/jobs.mjs replay <id>                       redo the recorded steps on a model rebuilt from its Tripo files
+node tools/blender/jobs.mjs kinds                             the kinds and their parameters (tools/blender/kinds.json)
+```
+
+- **Clips** (`motion`, `retarget`, `cleanup`, `clips`): Blender gets a copy of the model (for `cleanup`, holding only that clip; for `motion`, the
+  rig and every clip an overlay may build on) and its output clip is copied onto the shipped skeleton by joint name (`merge.mjs`
+  `transplantClip`), replacing a clip of that name. Nothing else in the file changes.
+- **Geometry** (`rigfix`, `decimate`, `reshape`, `remove`; `edit.py`, `rigfix.py`): Blender writes a static export and only the skinned mesh's
+  vertex data, indices and, for new bones, the skin are moved into the shipped file (`transplantGeometry`). Tripo's binds carry a scale that
+  Blender's export normalises, so the two binds may differ by one transform for the whole mesh; vertices are moved by it, and a bone whose
+  bind does not follow it moved in Blender, which refuses the job (the clips would no longer fit). Attributes Blender drops (tangents; Godot
+  makes its own) are dropped; morph targets are refused.
+- **Colour** (`recolor`): the base colour texture is shifted with sharp (hue, saturation, brightness, optionally only near one colour) and its
+  image renamed, so Godot extracts a new texture file; the job deletes the old extracted `.webp` and its `.import`.
+- **After the steps**, before anything is written: the model rules (`tools/assets/check-models.mjs`), stride (body heights per second, as
+  `measure-clips.mjs --stride`) for touched `walk`/`run`, timings `[length, blow lands]` for touched `attack*`/`cast*`, and with `--shots` a
+  preview sheet (`preview.py`: six moments of each touched clip, or the model before and after from three sides; Cycles on 4 CPU threads).
+  Then the GLB is written, the model's rows (`client/game/view_models.json`, `client/data/slice/{enemies,npcs,hero}.json`) get the clip list,
+  strides and timings, and the steps are appended to `art-manifest/blender/<id>.json`. A failing step or check writes nothing.
+- The library is the shared checkout's `art-src/vendor/quaternius-ual/UAL1_Standard.glb` (`DM_BLENDER_LIBRARY` overrides); scratch files go
+  to `DM_BLENDER_SCRATCH` or the system temp dir.
+- `tools/build-characters.mjs` rebuilds a model from `art-src/tripo/<id>/`, which loses its jobs: `build-art.sh` replays them; by hand, run
+  `replay` after it. Tests: `node --test tools/blender/jobs.test.mjs` (no Blender).
+- Limits: one skinned mesh per model. `reshape` scales the vertices a bone moves around its head, best at the ends of the body (a head,
+  horns, claws); in the middle of the body it bends the seams. `remove` deletes the faces whose vertices those bones move most; the bones stay.
+
 ## How it works
 
 `tools/blender/kin.py` re-implements Blender's pose maths (`P[b] = P[parent] @ (Rest[parent]^-1 @ Rest[b]) @ Basis[b]`;
@@ -143,6 +176,6 @@ no CC0 quadruped library in the repo and the Tripo quadruped rigs differ per mod
 4. `node tools/build-characters.mjs <slug>` and check `node tools/measure-clips.mjs public/models/<slug>/character.glb`.
 5. Check the clip in the Godot client.
 
-Files: `tools/blender.mjs`, `tools/blender/{common,kin,procedural,rigfix,cleanup,retarget,selftest,skinview}.py`, `tools/blender/pack.mjs`,
-`tools/blender/recipes/*.json`, `tools/blender/maps/*.json`, measurement additions in
+Files: `tools/blender.mjs`, `tools/blender/{common,kin,procedural,rigfix,cleanup,retarget,selftest,skinview,edit,preview}.py`, `tools/blender/pack.mjs`,
+`tools/blender/{jobs,merge}.mjs`, `tools/blender/kinds.json`, `tools/blender/recipes/*.json`, `tools/blender/maps/*.json`, measurement additions in
 `tools/measure-clips.mjs`.

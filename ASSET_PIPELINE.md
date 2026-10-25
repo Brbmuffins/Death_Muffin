@@ -48,7 +48,9 @@ ignored:
 `node tools/build-characters.mjs [id ...]` merges the clip files onto the idle mesh by joint name into one `character.glb`
 (dedup, resample, WebP textures 1024/512 px, quantize, prune) plus `clips.json`. Colour variants without new spend:
 `node tools/tint-variants.mjs [base]`. Free animation: `node tools/blender.mjs` writes `anim_<name>.glb` from code (gaits,
-rig fixes, CC0 retargets); see `docs/BLENDER-PIPELINE.md`.
+rig fixes, CC0 retargets); see `docs/BLENDER-PIPELINE.md`. Moves and edits on a model the game already ships (the default over a new Tripo run,
+DECISIONS B74) are Blender jobs, `node tools/blender/jobs.mjs run <job.json>` (docs/BLENDER-PIPELINE.md "Jobs"); a rebuild from the Tripo files
+loses them until `node tools/blender/jobs.mjs replay <id>` (`build-art.sh` does it).
 
 ## Into the game
 

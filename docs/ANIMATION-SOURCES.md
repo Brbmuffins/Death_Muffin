@@ -47,3 +47,9 @@ writes `art-src/blender/retarget/hero_gravecaller/anim_ual_*.glb`. These are **n
 (`art-src/blender/retarget/<npc>/anim_ual_talk.glb`, `anim_ual_interact.glb`) were judged not better than Tripo's `agree`; not shipped.
 
 If any of these is ever shipped, add a row to the first table's "Used for" column and keep this file in step.
+
+## Library clips on shipped models (Blender jobs)
+
+A Blender job's `retarget` step (docs/BLENDER-PIPELINE.md "Jobs") puts library clips straight onto a shipped model; the model's record
+`art-manifest/blender/<id>.json` names each source clip and the game clip it became. A model that gets one is added to the first table's
+"Used for" column.

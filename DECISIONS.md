@@ -369,6 +369,16 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   writes a shot plan is rendered on a team PC, even with nothing changed, and the runner, never the agent, says in one line whether pictures
   are coming or why not. Discussion forums may show screenshots of the live game only (the released revision, labeled LIVE GAME), never of
   unreleased work; concepts there still need `!job`.
+- **B74. Blender is the default for how models move and for edits to them; the Discord agent runs it itself** (Helix, 2026-10-25: "a way to
+  bridge Blender ... so we can make animations and blender edits via discord agent like we do with pictures and videos", "blender should be
+  the default for most"). Not the stock Blender MCP (a live GUI session driven by free-form Python): a job is data, `{model, steps}`, whose
+  kinds are listed in `tools/blender/kinds.json` (movement from recipes, library moves, loop and slide fixes, clip names, recolours, a part
+  grown, shrunk or taken off, fewer triangles; a new kind is one entry and its handler) and run by `tools/blender/jobs.mjs` on the shipped
+  model in the agent's sandbox (`blender-job.sh`: no keys, no network, no spend, so Claude's call under B65; the proposal is the review). What
+  Blender makes is merged back by bone name and only where it changed (`merge.mjs`), so materials, textures and the other clips stay as they
+  were and a bone that moved is refused; the model check, the model's rows and a preview sheet follow, and every step is recorded
+  (`art-manifest/blender/<id>.json`) and redone when the model is rebuilt. Tripo makes only new models, asked for the fewest animations
+  Blender cannot give them; Blender finishes them after the build.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

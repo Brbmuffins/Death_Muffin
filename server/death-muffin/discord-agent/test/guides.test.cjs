@@ -32,7 +32,7 @@ const copies = (wt) => Object.fromEntries(fs.readdirSync(path.join(wt, GU.GUIDE_
 
 test('guides: the core indexes exactly the guide files in the repo, surfaces.json lists the same ones, and every guide is a rule home', () => {
   assert.deepEqual(GU.indexedGuides(CORE).map((n) => `${n}.md`).sort(), GUIDE_FILES);
-  assert.deepEqual(GUIDE_FILES, ['clips.md', 'models.md', 'pictures.md', 'screenshots.md', 'sound.md']);
+  assert.deepEqual(GUIDE_FILES, ['blender.md', 'clips.md', 'models.md', 'pictures.md', 'screenshots.md', 'sound.md']);
   const surfaces = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/context/surfaces.json'), 'utf8'));
   assert.deepEqual([...surfaces.audiences.agent.guides].sort(), GUIDE_FILES.map((f) => `server/death-muffin/discord-agent/guides/${f}`));
   // guides that point at each other name a guide that exists

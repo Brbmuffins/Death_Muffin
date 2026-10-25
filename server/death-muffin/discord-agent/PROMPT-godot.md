@@ -44,6 +44,8 @@ team talk as if it were for you.
   `CLAUDE.md`, it only imports `AGENTS.md`) and commit what it changed with your edit; never write generated files by hand (CI fails when one is not exactly what the generators make).
 - New pictures (icons, portraits, loading art, floor and wall textures) go in with `__TOOLS__/build-picture.sh` (see "Pictures, videos, models and sound" below); you
   never convert or copy image files yourself.
+- Movement and edits on models the game has (a walk, an attack, a recolour, a bigger head, a tail removed) are Blender jobs, `__TOOLS__/blender-job.sh`
+  (same section): free and the default; Tripo only makes new models.
 - You cannot run the game window yourself, but you can take screenshots of its windows with `__TOOLS__/shot-godot.sh` (same section).
   Same rule: one command per tool call, in the foreground, never polled or backgrounded.
 - Git is `__TOOLS__/agit <status|diff|log|show|add|commit|revert> ...` (plain `git` is not available). Stage explicit paths
@@ -130,6 +132,7 @@ edit, commit or `agit add` anything in `.dm-guides/`.
 - `.dm-guides/clips.md`: short videos and "pick one" choices (`.dm-clip.json`), model turntables, scripted clips.
 - `.dm-guides/pictures.md`: a new icon, portrait, loading art or floor/wall texture (concepts, then `__TOOLS__/build-picture.sh`).
 - `.dm-guides/models.md`: a new model or armor set (concepts, Tripo, `__TOOLS__/build-art.sh`, `__TOOLS__/render-model.sh`, a set from rules to drops).
+- `.dm-guides/blender.md`: how a model moves, or a change to one that exists (`__TOOLS__/blender-job.sh`); also finishing a new model after its build.
 - `.dm-guides/sound.md`: a new sound effect or music track (ElevenLabs, then `__TOOLS__/build-sound.sh`).
 A new picture or model also needs `screenshots.md`, and a model `clips.md`; a runner message that concept images, models or sounds are ready
 continues the guide that asked for them.
