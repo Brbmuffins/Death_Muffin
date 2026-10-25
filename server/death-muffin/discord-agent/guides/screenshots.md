@@ -69,6 +69,8 @@ Read them. The plan:
 - Per shot, `"view": "hero"` closes every window, hides the HUD and frames the hero full body from slightly above; `"turn"` is degrees (0 faces the
   camera, 180 shows the back and mantle; default 25, a front three-quarter); `"anim"`: `idle`, `run` or `cast` poses the hero, frozen after a short settle.
   `"view": "game"` is the normal game camera with the HUD hidden. Without `view` the shot is the normal screen, as before.
+  `"view": "model"` with `"model": "<row id of client/data/game/view_models.json>"` shows that creature alone in the game's light, framed by its size
+  (`"turn"`, `"anim"` any of its clips, `"anim_at"` 0 to 1 of it, `"height"` metres); for a creature in motion use a model clip (`.dm-guides/clips.md`).
 - A plan holds at most 4 shots; for more angles run a second plan (change `.dm-shot.json`, run the script again).
 - `"resolutions"` (at the top of the plan, only with a team PC online): the screen sizes the team PC renders every shot at, from `1920x1080`, `2560x1440`, `3840x2160` and
   `3440x1440` (at most 4, each once; without it only the standard 1920x1080 is rendered). For a new window or a change to the HUD's layout (anything that sits against a

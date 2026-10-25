@@ -207,7 +207,7 @@ team PC is online):
 
 - **The runner validates it before anything is sent** (`readClipRequest`): at most 32 KB, a regular file; the plan is the game's clip plan (`--clip-plan`: discipline, an optional `equip`
   (1 to 12 item ids the hero wears for every clip), 1 to 4 clips of at most 8 seconds, each `name`, `cast` (the rite; a turntable clip needs none), `area` (default graves), `at` pack or
-  ahead, `enemies` 0 to 12, `seconds` (default 5), `camera` follow, wide or turntable, an optional `equip` that replaces the plan's list for that clip, optional `setup` and `steps` checked against the game's word list in the job's own branch
+  ahead, `enemies` 0 to 12, `seconds` (default 5), `camera` follow, wide or turntable, an optional `equip` that replaces the plan's list for that clip, an optional `model` (a model row: then `anim`, `turn`, `height`, `move`, `speed`, no `cast` needed, not `wide`; a `model_file` is for sessions only), optional `setup` and `steps` checked against the game's word list in the job's own branch
   (`client/main/qa_clip_steps.json`: known words and arguments, their types and ranges, a step's `at` within the clip; a clip whose steps cast needs no `cast`; a branch without the file is told to merge main), and no other field); 1 to 4 variants with a unique `label` (lowercase letters, digits,
   dashes, at most 24), a `title` of at most 60 characters and a `tune` (the game's data overrides, `{"<DmDb path>": {<nested keys>: <value>}}`: values only text, numbers and true/false, at most 64,
   at most 6 levels deep; the game itself refuses a key that does not exist, so a typo fails loudly). A bad file goes back to the agent to fix, twice; then the thread gets one readable line
@@ -221,6 +221,7 @@ team PC is online):
 - **Model previews** (a new or changed armor set, weapon or helm; `guides/clips.md`): ONE variant with an empty tune and a clip with `camera: "turntable"` and the gear in
   `equip`, so the requester sees the piece turning on a hero in the game's own lighting. With a single option nothing is a choice: the video is posted under its title (no number, no
   question, no `job.clipAsk`) and the turn is **not** held back: its proposal goes out as usual (the team build is made before the check, a couple of minutes) and the video follows it.
+  A creature's model (a Blender job's new move) gets the same with a model clip (`"model": "<row>"`, walked across the floor with `move` or turned round; DECISIONS B75): the branch's build carries the changed model.
 - **The reply is a normal message.** The agent's next turn starts with a note listing the options' values as people saw them (so a fresh session knows what "the second one" was), and it applies
   the chosen values as a normal change: data or code the change really reads (a tune only existed for the recording), tests, commit, proposal (with a shot plan when visible). The proposal clears
   the question (`job.clipAsk`).

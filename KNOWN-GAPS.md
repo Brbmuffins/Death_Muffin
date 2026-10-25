@@ -35,8 +35,6 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
 - **A new weapon's Atlas row is written by hand** (War's Scythe of Undeath, 2026-10-20): `tools/generate-armor-assets.mjs` copies items.json
   and computed.json for every item but adds `client/data/panels_a/atlas.json` rows for armor pieces only, so the `data` suite catches a
   missing weapon row late (the agent's job lost a check run and a session handoff to it).
-- **A creature's new move cannot be filmed in the game.** Shot and clip plans place stand-in enemies, not a chosen creature, so a Blender job's
-  walk or attack is checked only on its Blender preview sheet, not in the game's lighting and speed (found 2026-10-25, B74).
 
 ## Operations
 

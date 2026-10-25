@@ -9,6 +9,9 @@
 // (`--tune`), so the clips show the options side by side. The game refuses a tune key that does not exist, so a typo never silently does nothing.
 // A model preview is a clip too: camera "turntable" (the hero stands in the game's light and turns; no rite is cast, so `cast` may be left out) on a hero that
 // wears the items of `equip` (the plan's list is for every clip, a clip's own list replaces it for that clip), written with one variant and an empty tune.
+// A model clip films one creature's model alone instead of the hero (the recorder's model view, client/main/CLIPS.md "Model clips"): "model" is its row id of
+// client/game/view_models.json, as the job's branch has it (a Blender job's changed model is seen as it ships), with "anim" (a clip of the model), "turn",
+// "height", and "move" (it walks along the ground at its stride's speed, or "speed" m/s, so sliding feet show). It casts nothing, so `cast` may be left out.
 //
 // A clip may carry `setup` (how the scene is set before recording) and `steps` (what happens when): lists of {"do": "<word>", ...its arguments}, a step
 // also with "at" (seconds into the clip). The words and their arguments are the game's (client/main/qa_clip_steps.json), read from the job's own branch: a new
@@ -32,6 +35,7 @@ const CAMERAS = ['follow', 'wide', 'turntable'];
 const STEPS_FILE = 'client/main/qa_clip_steps.json';
 const MAX_SETUP = 12, MAX_STEPS = 24;
 const WORD_RE = /^[a-z][a-z0-9_]{0,23}$/, ENEMY_RE = /^[a-z0-9_]{1,40}$/;
+const MODEL_RE = /^[a-z0-9_]{1,60}$/, ANIM_RE = /^[A-Za-z0-9_.|-]{1,48}$/;
 // The screen sizes a shot plan may ask for (a team PC renders each shot at every size listed; with none the team app's standard 1920x1080 is used).
 const RESOLUTIONS = ['1920x1080', '2560x1440', '3840x2160', '3440x1440'];
 // The graphics presets a shot plan may ask for, lowest first (the team app knows these four); with none, Ultra alone.
@@ -159,13 +163,16 @@ function checkPlan(plan, errs, wt) {
   plan.clips.forEach((c, i) => {
     const w = `clip ${i + 1}`;
     if (!isObj(c)) { errs.push(`${w} must be an object`); return; }
-    onlyKeys(c, ['name', 'area', 'cast', 'at', 'enemies', 'seconds', 'camera', 'equip', 'setup', 'steps'], w, errs);
+    onlyKeys(c, ['name', 'area', 'cast', 'at', 'enemies', 'seconds', 'camera', 'equip', 'setup', 'steps', 'model', 'anim', 'turn', 'height', 'move', 'speed'], w, errs);
+    const model = c.model !== undefined;
+    if (model) checkModel(c, w, errs);
+    else if (['anim', 'turn', 'height', 'move', 'speed'].some((k) => c[k] !== undefined)) errs.push(`${w}: "anim", "turn", "height", "move" and "speed" are for a model clip (one with "model")`);
     let stepCasts = false;
     if (c.setup !== undefined || c.steps !== undefined) {
       if (voc === undefined) voc = readVocabulary(wt);
       if (!voc) errs.push(`${w}: this branch's game has no list of setup and step words (${STEPS_FILE}): merge the latest main first`);
       else {
-        const secs = typeof c.seconds === 'number' && c.seconds > 0 && c.seconds <= MAX_SECONDS ? c.seconds : (c.camera === 'turntable' ? 6 : 5);
+        const secs = typeof c.seconds === 'number' && c.seconds > 0 && c.seconds <= MAX_SECONDS ? c.seconds : (c.camera === 'turntable' || model ? 6 : 5);
         if (c.setup !== undefined) checkWords(c.setup, 'setup', voc, secs, w, errs);
         if (c.steps !== undefined) stepCasts = checkWords(c.steps, 'steps', voc, secs, w, errs);
       }
@@ -175,8 +182,8 @@ function checkPlan(plan, errs, wt) {
     if (c.area !== undefined && (typeof c.area !== 'string' || !AREA_RE.test(c.area))) errs.push(`${w}: "area" must be an area id such as graves (the Hollow Graves when left out)`);
     // a turntable clip casts nothing, so it needs no rite; nor does a scene (thralls raised, or steps other than casts: a walk, the candles)
     const scene = (Array.isArray(c.setup) && c.setup.some((e) => isObj(e) && e.do === 'thralls')) || (Array.isArray(c.steps) && c.steps.some((e) => isObj(e) && e.do !== 'cast'));
-    if (c.cast === undefined && (c.camera === 'turntable' || stepCasts || scene)) { /* a model preview, the steps cast, or a scene */ }
-    else if (typeof c.cast !== 'string' || !CAST_RE.test(c.cast)) errs.push(`${w}: "cast" must be a rite id such as haunting_wraith (only a "turntable" clip, one whose steps cast, or a scene of thralls or walks may leave it out)`);
+    if (c.cast === undefined && (c.camera === 'turntable' || model || stepCasts || scene)) { /* a model preview, the steps cast, or a scene */ }
+    else if (typeof c.cast !== 'string' || !CAST_RE.test(c.cast)) errs.push(`${w}: "cast" must be a rite id such as haunting_wraith (only a "turntable" or model clip, one whose steps cast, or a scene of thralls or walks may leave it out)`);
     if (c.at !== undefined && c.at !== 'pack' && c.at !== 'ahead') errs.push(`${w}: "at" must be "pack" or "ahead"`);
     if (c.camera !== undefined && !CAMERAS.includes(c.camera)) errs.push(`${w}: "camera" must be "follow", "wide" or "turntable"`);
     if (c.equip !== undefined) checkEquip(c.equip, w, errs);
@@ -184,6 +191,17 @@ function checkPlan(plan, errs, wt) {
     if (c.seconds !== undefined && !(typeof c.seconds === 'number' && c.seconds > 0 && c.seconds <= MAX_SECONDS)) errs.push(`${w}: "seconds" must be a number above 0 and at most ${MAX_SECONDS} (5 when left out)`);
   });
   return plan;
+}
+
+// A model clip's own fields (the recorder checks them again, with the model's row: an unknown id, or a "move" with no stride and no "speed", fails the clip there).
+function checkModel(c, w, errs) {
+  if (typeof c.model !== 'string' || !MODEL_RE.test(c.model)) errs.push(`${w}: "model" must be a model row id of client/game/view_models.json, such as skull_rat`);
+  if (c.anim !== undefined && (typeof c.anim !== 'string' || !ANIM_RE.test(c.anim))) errs.push(`${w}: "anim" must be a clip name of the model, such as walk`);
+  if (c.camera === 'wide') errs.push(`${w}: a model clip's "camera" is "follow" (one side) or "turntable"`);
+  for (const [k, lo, hi] of [['turn', -360, 360], ['height', 0.1, 30], ['speed', 0, 15]]) {
+    if (c[k] !== undefined && !(typeof c[k] === 'number' && Number.isFinite(c[k]) && c[k] >= lo && c[k] <= hi)) errs.push(`${w}: "${k}" must be a number from ${lo} to ${hi}`);
+  }
+  if (c.move !== undefined && typeof c.move !== 'boolean') errs.push(`${w}: "move" must be true or false`);
 }
 
 function checkVariants(variants, errs) {

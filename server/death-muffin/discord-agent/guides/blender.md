@@ -44,7 +44,9 @@ changes nothing: run one first to read the bones, then write the real job.
 **Check it.** The job writes a preview, `.dm-shots/blender-<model>.png`: the clips it touched in motion (six moments each) or, for an edit, the model
 before and after from three sides. Read it; the runner posts it in the thread after your turn. Look for feet through the floor, limbs bending the wrong
 way, a body that slides, torn or stretched mesh. If it came out wrong, say so plainly and try again (smaller numbers, another library clip) rather than
-propose it. Shot and clip plans place stand-in enemies, not a chosen creature, so they cannot show it moving in the game: the preview is the check.
+propose it. With a team PC online, also write a model clip (`.dm-guides/clips.md` "Model clips") so the move is seen in the game's lighting and speed:
+the runner builds your branch, so the clip shows the model as you changed it, e.g. a walk across the floor and a turn round:
+`{"plan": {"discipline": "gravecaller", "clips": [{"name": "walk", "model": "<id>", "anim": "walk", "move": true}, {"name": "turn", "model": "<id>", "camera": "turntable"}]}, "variants": [{"label": "now", "title": "the new walk", "tune": {}}]}`.
 
 **Commit.** Every file `CHANGED` names (the model's `.glb`, its rows, the record). A recolour renames the texture: the job deletes the old extracted
 `.webp` and its `.import`; run `__TOOLS__/check-godot.sh --rerun code_load` so Godot extracts the new one, and commit the new pair and the deletions

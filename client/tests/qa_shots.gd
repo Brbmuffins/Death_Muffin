@@ -81,6 +81,8 @@ func _main() -> void:
 	await scene_setup()
 	await legion_shots()
 	await scene_clip()
+	model_plan_format()
+	await model_view()
 	await scripted_fight()
 	await fight_shot()
 	perf_shot_plan()
@@ -458,6 +460,126 @@ func scene_clip() -> void:
 	g.director.enabled = false
 
 
+# ------------------------------------------------------------------------------------------------------------------ the model view
+
+## A model row to look at, read from the data: the first (by id) with a file, a walk clip and a walk stride.
+func _walker() -> String:
+	var rows := DmCreature.rows()
+	var ids := rows.keys()
+	ids.sort()
+	for id in ids:
+		var row: Dictionary = rows[id]
+		if row.get("stride") is Dictionary and float(row["stride"].get("walk", 0.0)) > 0.0 and (row.get("clips", []) as Array).has("walk") and FileAccess.file_exists(DmModels.BASE + String(row.get("url", ""))):
+			return String(id)
+	return ""
+
+
+func model_plan_format() -> void:
+	var id := _walker()
+	check(id != "", "a model row with a walk to look at")
+	var row := DmCreature.model_entry(id)
+	var ok := DmQaUiShots.parse(JSON.stringify({"shots": [{"name": "m", "view": "model", "model": id, "anim": "walk", "anim_at": 0.5, "turn": 90}, {"name": "f", "view": "model", "model_file": "new_rat.glb", "height": 0.7}]}))
+	check(ok["ok"], "a model view shot plan parses (%s)" % ok["error"])
+	if ok["ok"]:
+		var m: Dictionary = ok["shots"][0]["model"]
+		check(m["model"] == id and m["anim"] == "walk" and is_equal_approx(float(m["anim_at"]), 0.5) and float(ok["shots"][0]["turn"]) == 90.0, "the shot keeps its model, clip, moment and turn")
+		check(ok["shots"][1]["model"]["file"] == "new_rat.glb" and is_equal_approx(float(ok["shots"][1]["model"]["height"]), 0.7), "a file shot keeps its file and height")
+		check(ok["shots"][0]["area"] == DmQaModel.AREA and ok["shots"][0]["at"] == DmQaModel.SPOT, "a model view that names no place stands at its own spot (%s %s)" % [ok["shots"][0]["area"], ok["shots"][0]["at"]])
+	for bad in [[{"view": "model"}, "needs \"model\""], [{"view": "model", "model": "no_such_model"}, "no model row"], [{"view": "model", "model_file": "../x.glb"}, "file name"],
+			[{"view": "model", "model_file": "x.fbx"}, "file name"], [{"view": "model", "model": id, "height": 99}, "\"height\" is metres"], [{"view": "model", "model": id, "anim": "a b"}, "clip name"],
+			[{"view": "hero", "anim": "walk"}, "anim must be idle, run or cast"]]:
+		var r := DmQaUiShots.parse(JSON.stringify({"shots": [bad[0]]}))
+		check(not r["ok"] and String(r["error"]).contains(bad[1]), "a model view refusal names the problem: %s (%s)" % [bad[1], r["error"]])
+	var clips := DmQaClips.parse(JSON.stringify({"clips": [{"name": "walk", "model": id, "move": true}, {"name": "turn", "model": id, "camera": "turntable"}, {"name": "fast", "model_file": "x.glb", "move": true, "speed": 3}]}))
+	check(clips["ok"], "a model clip plan parses (%s)" % clips["error"])
+	if clips["ok"]:
+		var walk: Dictionary = clips["clips"][0]
+		check(walk["setup"]["stand_at"] == DmQaModel.SPOT, "a model clip that names no place stands at the model view's spot")
+		check(walk["cast"] == "" and walk["area"] == DmQaModel.AREA and walk["enemies"] == 0 and is_equal_approx(float(walk["seconds"]), 6.0), "a model clip casts nothing, in the Chapterhouse, 6 s, no enemies")
+		check(walk["model"]["anim"] == "walk" and float(walk["model"]["turn"]) == 90.0, "a moving model walks side on")
+		check(is_equal_approx(float(walk["model"]["speed"]), float(row["stride"]["walk"]) * float(row["height"])), "it moves at its stride times its height (%s m/s)" % str(walk["model"]["speed"]))
+		check(not clips["clips"][1]["model"]["move"] and float(clips["clips"][1]["model"]["turn"]) == DmQaUiShots.DEFAULT_TURN, "a turntable model stays in place, starting three-quarter on")
+		check(float(clips["clips"][2]["model"]["speed"]) == 3.0, "a file's move takes the plan's speed")
+	for bad in [[{"model_file": "x.glb", "move": true}, "needs \"speed\""], [{"model": id, "camera": "wide"}, "follow (one side) or turntable"], [{"cast": "reap", "move": true}, "is for a model clip"],
+			[{"model": id, "move": "yes"}, "true or false"]]:
+		var r := DmQaClips.parse(JSON.stringify({"clips": [bad[0]]}))
+		check(not r["ok"] and String(r["error"]).contains(bad[1]), "a model clip refusal names the problem: %s (%s)" % [bad[1], r["error"]])
+
+
+## The model view on the game: a row's model and the same model sent as a file, staged as shots (no picture headless), then a moving and a turning clip recorded from a stand-in picture.
+func model_view() -> void:
+	var id := _walker()
+	var row := DmCreature.model_entry(id)
+	var hero := g.local_body()
+	var dir := ProjectSettings.globalize_path(OUT.path_join("model"))
+	DirAccess.make_dir_recursive_absolute(dir)
+	DirAccess.copy_absolute(ProjectSettings.globalize_path(DmModels.BASE + String(row["url"])), dir.path_join("sent.glb"))
+	var plan := DmQaUiShots.parse(JSON.stringify({"shots": [{"name": "row", "view": "model", "model": id, "anim": "walk", "anim_at": 0.5, "turn": 90},
+		{"name": "file", "view": "model", "model": id, "model_file": "sent.glb"}, {"name": "raw", "view": "model", "model_file": "sent.glb", "height": 3}, {"name": "gone", "view": "model", "model_file": "missing.glb"}]}))
+	var cfg_before: Dictionary = g.camera.cfg
+	var rings: int = g.look._ring.size()
+	var sizes := {}
+	for s: Dictionary in plan["shots"]:
+		s["dirs"] = ["", dir]
+		var st := await DmQaUiShots.stage(root, g, s)
+		var saved: Dictionary = st["saved"]
+		if s["name"] == "gone":
+			check(String(saved.get("error", "")).contains("missing.glb") and not saved.has("model"), "a file that was not sent is said so, and nothing is shown (%s)" % saved.get("error", ""))
+			check(not DmQaUiShots.capture(root, g, s, st, OUT.path_join("gone.png")) and g.ui.visible, "and its shot is not taken, the view as it was")
+			continue
+		var holder: Node3D = saved.get("model")
+		check(holder != null and holder.is_inside_tree() and not hero.avatar.c.root.visible and not g.ui.visible and not g.director.enabled and g.look._ring.is_empty(), "%s: the model stands alone, the hero, his rings, the HUD and waves away" % s["name"])
+		if holder == null:
+			continue
+		sizes[s["name"]] = saved["size"]
+		check(Vector2(holder.position.x, holder.position.z).distance_to(Vector2(hero.position.x, hero.position.z)) < 0.01, "%s: where the hero stands" % s["name"])
+		check(is_equal_approx(holder.rotation.y, deg_to_rad(float(s["turn"]))), "%s: turned as asked" % s["name"])
+		var ap: AnimationPlayer = saved["ap"]
+		check(ap != null and ap.speed_scale == 0.0 and ap.current_animation == ("walk" if s["name"] == "row" else "idle" if (row.get("clips", []) as Array).has("idle") else ap.current_animation), "%s: posed and frozen (%s)" % [s["name"], ap.current_animation if ap != null else "no player"])
+		check(float(g.camera.cfg["dist"]) > 0.0 and is_equal_approx(float(g.camera.cfg["lookAtY"]), (saved["size"] as Vector3).y * float(DmQaUiShots.HERO_CAM["lookAtY"]) / float(DmCreature.model_entry(DmQaModel.HERO_ROW)["height"])), "%s: the camera looks at the model's middle" % s["name"])
+		var gap := Vector2(float(g.camera.cfg["dist"]) * float(g.camera.cfg["backFactor"]), float(g.camera.cfg["dist"]) * float(g.camera.cfg["heightFactor"]) - float(g.camera.cfg["lookAtY"])).length()
+		var reach := 0.5 * Vector2((saved["size"] as Vector3).x, (saved["size"] as Vector3).z).length()
+		check(g.camera.near < gap - reach and g.camera.near > gap - 2.0 * reach - 0.5, "%s: the near plane cuts away what stands before the model, not the model (%.2f of %.2f)" % [s["name"], g.camera.near, gap])
+		DmQaUiShots.capture(root, g, s, st, OUT.path_join("%s.png" % s["name"]))
+		await ticks(2)
+		check(not is_instance_valid(holder) and hero.avatar.c.root.visible and g.ui.visible and g.camera.cfg == cfg_before and g.look._ring.size() == rings, "%s: after the shot the model is gone, the hero, HUD and camera back" % s["name"])
+	check(sizes.has("row") and sizes.has("file") and absf((sizes["row"] as Vector3).y - float(row["height"])) < 0.01 and absf((sizes["file"] as Vector3).y - float(row["height"])) < 0.01, "a row's model and the same file with its row stand the row's height (%s, %s)" % [sizes.get("row"), sizes.get("file")])
+	check(sizes.has("raw") and absf((sizes["raw"] as Vector3).y - 3.0) < 0.01, "a file alone stands the height asked (%s)" % sizes.get("raw"))
+	var clips := DmQaClips.parse(JSON.stringify({"clips": [{"name": "walk", "model": id, "move": true, "seconds": 2}, {"name": "spin", "model_file": "sent.glb", "camera": "turntable", "seconds": 2}]}))
+	var start := hero.position
+	var seen := {"n": 0, "from": Vector3.ZERO, "to": Vector3.ZERO, "yaws": [], "follow": true}
+	var fake := func() -> Image:
+		seen["n"] += 1
+		var holders := g.get_children().filter(func(n: Node) -> bool: return String(n.name).begins_with("QaModel") and not n.is_queued_for_deletion())
+		if not holders.is_empty():
+			var h: Node3D = holders[holders.size() - 1]
+			if seen["n"] == 1:
+				seen["from"] = h.position
+			seen["to"] = h.position
+			(seen["yaws"] as Array).append(h.rotation.y)
+			seen["follow"] = seen["follow"] and Vector2(h.position.x, h.position.z).distance_to(Vector2(hero.position.x, hero.position.z)) < 0.01
+		var img := Image.create_empty(320, 180, false, Image.FORMAT_RGBA8)
+		img.fill(Color.from_hsv(fmod(float(seen["n"]) * 0.02, 1.0), 0.7, 0.8))
+		return img
+	var out := ProjectSettings.globalize_path(OUT.path_join("model-clips"))
+	DirAccess.make_dir_recursive_absolute(out)
+	clips["clips"][0]["dirs"] = ["", dir]
+	clips["clips"][1]["dirs"] = ["", dir]
+	var r: Dictionary = await DmQaClips.record(root, g, clips["clips"][0], out, fake)
+	var walked: float = (seen["to"] as Vector3).distance_to(seen["from"])
+	var want := float(clips["clips"][0]["model"]["speed"]) * 2.0 * float(r["frames"] - 1) / float(r["frames"])
+	check(r["ok"] and r["casts"] == [], "a moving model clip is recorded with no cast (%s)" % str(r))
+	check(absf(walked - want) < 0.15 * want + 0.05 and seen["follow"], "the model walks its stride's speed and the camera's hero goes with it (%.2f m of %.2f)" % [walked, want])
+	seen.merge({"n": 0, "yaws": []}, true)   # the same dictionary: the stand-in picture holds it
+	r = await DmQaClips.record(root, g, clips["clips"][1], out, fake)
+	var yaws: Array = seen["yaws"]
+	check(r["ok"] and yaws.size() > 10 and float(yaws[yaws.size() - 1]) - float(yaws[0]) > PI, "a turntable model clip turns the model round (%s, %d frames seen)" % [str(r), yaws.size()])
+	check(hero.avatar.c.root.visible and g.get_children().filter(func(n: Node) -> bool: return String(n.name).begins_with("QaModel") and not n.is_queued_for_deletion()).is_empty(), "after the clips the models are gone and the hero is back")
+	hero.teleport(start)
+	g.ui.visible = true
+	g.director.enabled = false
+
+
 func until(cond: Callable, limit_s: float) -> bool:
 	var end := Time.get_ticks_msec() + int(limit_s * 1000.0)
 	while not bool(cond.call()) and Time.get_ticks_msec() < end:
@@ -663,8 +785,8 @@ func clip_plan_format() -> void:
 	check(p["ok"] and p["class_index"] == 11 and p["discipline"] == "reaper", "a clip plan parses, its discipline (by name, any case) is the Reaper's class")
 	var clips: Array = p["clips"]
 	check(clips.size() == DmQaClips.MAX_CLIPS and DmQaClips.MAX_CLIPS == 4, "at most 4 clips")
-	check(clips[0] == {"name": "wraith-walk", "area": "graves", "cast": "haunting_wraith", "at": "ahead", "enemies": 12, "seconds": 8.0, "camera": "wide", "equip": [], "dress": false, "setup": DmQaClips._setup_of([]), "steps": []}, "a clip: the name slugged, enemies and seconds at their limits (%s)" % str(clips[0]))
-	check(clips[1] == {"name": "clip-2", "area": "graves", "cast": "scythe_sweep", "at": "pack", "enemies": 6, "seconds": 5.0, "camera": "follow", "equip": [], "dress": false, "setup": DmQaClips._setup_of([]), "steps": []}, "the defaults: the second clip's own name, the Graves, a pack of 6, 5 s, the following camera (%s)" % str(clips[1]))
+	check(clips[0] == {"name": "wraith-walk", "area": "graves", "cast": "haunting_wraith", "at": "ahead", "enemies": 12, "seconds": 8.0, "camera": "wide", "equip": [], "dress": false, "setup": DmQaClips._setup_of([]), "steps": [], "model": {}, "dirs": []}, "a clip: the name slugged, enemies and seconds at their limits (%s)" % str(clips[0]))
+	check(clips[1] == {"name": "clip-2", "area": "graves", "cast": "scythe_sweep", "at": "pack", "enemies": 6, "seconds": 5.0, "camera": "follow", "equip": [], "dress": false, "setup": DmQaClips._setup_of([]), "steps": [], "model": {}, "dirs": []}, "the defaults: the second clip's own name, the Graves, a pack of 6, 5 s, the following camera (%s)" % str(clips[1]))
 	check(clips[2]["name"] == "wraith-walk-2" and clips[3]["name"] == "wraith-walk-3" and clips[2]["seconds"] == DmQaClips.MIN_SECONDS and clips[3]["enemies"] == 0, "a name already taken gets a number, a short clip is made 1 s, no enemies is allowed")
 	var notes := String(" | ").join(PackedStringArray(p["notes"]))
 	check(notes.contains("99 enemies is outside 0-12") and notes.contains("30 seconds is outside 1-8") and notes.contains("0.2 seconds is outside") and notes.contains("the plan has 5 clips, only the first 4 are made"), "what was cut or clamped is said (%s)" % notes)
@@ -1069,7 +1191,7 @@ func clips_on_a_reaper() -> void:
 func clip_plan_preview() -> void:
 	var p := DmQaClips.parse('{"discipline": "reaper", "equip": ["staff_moon", "helm_gold"], "clips": [{"name": "preview", "camera": "turntable"}, {"name": "spin", "camera": "Turntable", "cast": "reap", "enemies": 3, "seconds": 3}]}')
 	check(p["ok"] and p["equip"] == ["staff_moon", "helm_gold"], "a clip plan's equip list is parsed (%s)" % str(p.get("error")))
-	check(p["clips"][0] == {"name": "preview", "area": "chapterhouse", "cast": "", "at": "pack", "enemies": 0, "seconds": 6.0, "camera": "turntable", "equip": ["staff_moon", "helm_gold"], "dress": true, "setup": DmQaClips._setup_of([]), "steps": []},
+	check(p["clips"][0] == {"name": "preview", "area": "chapterhouse", "cast": "", "at": "pack", "enemies": 0, "seconds": 6.0, "camera": "turntable", "equip": ["staff_moon", "helm_gold"], "dress": true, "setup": DmQaClips._setup_of([]), "steps": [], "model": {}, "dirs": []},
 		"a turntable clip needs no cast, area or length: the Chapterhouse, no enemies, 6 s, wearing the plan's items (%s)" % str(p["clips"][0]))
 	var own := DmQaClips.parse('{"clips": [{"name": "a", "camera": "turntable", "equip": ["staff_moon"]}, {"name": "b", "cast": "reap"}, {"name": "c", "camera": "turntable", "equip": [], "area": "graves"}]}')
 	check(own["ok"] and own["equip"] == [] and own["clips"][0]["equip"] == ["staff_moon"] and own["clips"][1]["equip"] == [] and own["clips"][2]["equip"] == [] and own["clips"][2]["area"] == "graves" and own["clips"][0]["dress"] and own["clips"][1]["dress"],

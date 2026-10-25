@@ -38,7 +38,7 @@ then reports it behind.
 ## Nightly team-files clean-up
 
 `team-files-prune.sh` (timer `death-muffin-team-prune`, 04:45 UTC; the script lives beside `team-check.sh`, which also runs it after a check) applies the team-files folder's rules to
-`/var/www/death-muffin/team-files/` every night, so the team PCs' builds never pile up on a day without a release check: the newest 6 preview builds stay, and a `check-`, `gate-`, `release-`
+`/var/www/death-muffin/team-files/` every night, so the team PCs' builds never pile up on a day without a release check: the newest 6 preview builds stay, and a `check-`, `gate-`, `view-`, `release-`
 or `bench-` folder older than 4 days goes (the rules are in the script's header and `server/death-muffin/README.md`). The team PCs' results (`~/death-muffin/team-results/`) are the backend's:
 it removes a job's folder 14 days after the job finished. The drift report's check 8 says when either grows past its limit.
 

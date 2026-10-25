@@ -379,6 +379,14 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   were and a bone that moved is refused; the model check, the model's rows and a preview sheet follow, and every step is recorded
   (`art-manifest/blender/<id>.json`) and redone when the model is rebuilt. Tripo makes only new models, asked for the fewest animations
   Blender cannot give them; Blender finishes them after the build.
+- **B75. Models are seen in the game on a team PC, not only in Blender** (Helix, 2026-10-25: "use the Deathmuffin Team app to give you eyes for
+  blender"). A shot's `"view": "model"` and a clip's `"model"` show one model alone where the hero stands, in the area's own light, framed by
+  its size, with its clips posed, walked across the floor at its stride or turned round (`client/main/qa_model.gd`). The model is a row of
+  `view_models.json` or a GLB sent with the job and loaded at run time, so a team PC needs no new build and no Blender; the viewer is the cached
+  debug export of `main`, so a look sends only the model file and takes about two minutes. The Discord agent asks for a model clip after a
+  Blender job (its branch's build carries the model); a session sends one with `server/death-muffin/model-view.sh`. The Blender sheet on the
+  VPS stays the quick check; the team PC's GPU is the judge of how it looks in play. No team app change: the jobs are the existing shots and
+  clip jobs.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

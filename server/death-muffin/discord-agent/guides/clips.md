@@ -45,6 +45,19 @@ With one option nothing is asked: your proposal goes out as usual and the video 
 may sit at the top of the plan, for every clip, or on a clip, where it replaces the plan's list for that clip (one clip for the armor, another for the weapon). Gear that is
 not in the game's data yet cannot be worn: a model preview is for pieces already wired in.
 
+**Model clips (no choice).** For a creature's model (a new move from a Blender job, a new or changed creature) give a clip `"model": "<row id of
+client/data/game/view_models.json>"`: the model stands alone in the Chapterhouse in the game's own light, framed by its size, the hero and HUD away. `"anim"`
+plays one of its clips (idle when left out), `"move": true` walks it across the floor at its own stride (its feet should stay planted; `"speed"` in m/s
+overrides it), `"camera": "turntable"` turns it round, `"turn"` (degrees, 0 faces the camera) and `"height"` (metres) are optional. It needs no `cast`,
+`at` or `enemies`; `camera: "wide"` is refused. One variant, an empty `tune`:
+
+```json
+{"plan": {"discipline": "gravecaller",
+          "clips": [{"name": "ghoul-walk", "model": "ghoul", "anim": "walk", "move": true},
+                    {"name": "ghoul-attack", "model": "ghoul", "anim": "attack", "turn": 60}]},
+ "variants": [{"label": "now", "title": "the ghoul's new moves", "tune": {}}]}
+```
+
 **Scripted clips (setup and steps).** The stand-ins normally have 400 times their health and do no damage, the HUD is hidden, the hero's souls or essence are
 filled before each cast and the rite is cast again whenever it is off cooldown. When a video must show something else (enemies dying and dropping souls, the HUD,
 a resource filling, several rites in order), give the clip a `setup` and `steps`: lists of `{"do": "<word>", ...}` (a step also has `"at"`, seconds into the
@@ -71,8 +84,8 @@ The runner reads `.dm-clip.json` after your turn. Do not say the video is queued
 reason comes back to you to fix.
 
 What the runner checks (a mistake comes back to you to fix, twice): `plan.discipline` is ossuary, gravecaller, mourner, rotweaver or reaper; 1 to 4 clips, each
-`{name (lowercase letters, digits, dashes), area (an area id such as graves; the Hollow Graves when left out), cast (the rite's id; a "turntable" clip may leave it out), at ("pack": the cast goes at the dummy enemies,
-"ahead": at the ground in front of the hero), enemies (0 to 12), seconds (above 0, at most 8; 5 when left out), camera ("follow" the hero, "wide", or "turntable"), equip (item ids), setup, steps (the words of `client/main/qa_clip_steps.json` in your branch)}` and no other field
+`{name (lowercase letters, digits, dashes), area (an area id such as graves; the Hollow Graves when left out), cast (the rite's id; a "turntable" or model clip may leave it out), at ("pack": the cast goes at the dummy enemies,
+"ahead": at the ground in front of the hero), enemies (0 to 12), seconds (above 0, at most 8; 5 when left out), camera ("follow" the hero, "wide", or "turntable"), equip (item ids), setup, steps (the words of `client/main/qa_clip_steps.json` in your branch), model (a row id; then also anim, turn (-360 to 360), height (0.1 to 30), move (true/false), speed (0 to 15))}` and no other field
 (the plan may also carry `equip`); 1 to 4 variants, each `{label (lowercase letters,
 digits, dashes, at most 24), title (what people read under the video, at most 60 characters: say the value), tune}`; a tune is `{"<data path>": {<nested keys>: <value>}}` with
 numbers, text or true/false only (no lists), at most 64 values, key names of letters, digits and `_ . / -`; the whole file at most 32 KB. Videos show the offline demo

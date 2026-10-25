@@ -22,6 +22,8 @@ extends RefCounted
 ## hero faces, from LINE_FIRST m away, LINE_STEP m apart (the rite is aimed down the line: a thing that travels). "camera": "follow" = the game's own camera; "wide" = its widest zoom;
 ## "turntable" = the hero's close-up (the shot plan's "hero" view) while the hero turns once round slowly, standing idle in place at the area's waystone, over the clip (a model preview: "cast" is not needed, "area" is the Chapterhouse
 ## unless it says another, "seconds" 6 unless it says another, and no enemies unless asked for).
+## A clip with "model" or "model_file" (main/qa_model.gd, DmQaModel: with "height", "anim", "turn") records that model instead of the hero, framed by its size; "move": true walks it across the frame at "speed"
+## (else its row's stride times its height) with the camera following, "camera": "turntable" turns it round. Such a clip needs no "cast" and stands at DmQaModel.SPOT of the Chapterhouse unless it says where.
 ## Unless the setup says otherwise, the stand-ins are the Graves' robbers with a lot of health and no damage that stand where they are put (a tune that changes the rite's damage cannot kill them or
 ## hurt the hero), and the HUD is hidden. Without cast steps the rite of `cast` is cast LEAD_FRAMES frames in (so the first frames show the scene before it) and again each time it is off cooldown (a rite with no cooldown is cast once);
 ## the hero's souls and essence are topped up for each cast unless the setup turns that off.
@@ -127,7 +129,12 @@ static func parse(text: String) -> Dictionary:
 			return out
 		var cast := String(c.get("cast", ""))
 		var camera := String(c.get("camera", "follow")).to_lower()
-		var length: Variant = c.get("seconds", 6.0 if camera == "turntable" else 5.0)
+		var model := _model_of(c, camera, n)
+		if model.has("error"):
+			out["error"] = model["error"]
+			return out
+		var still: bool = camera == "turntable" or not model.is_empty()   # a model preview: no rite, the Chapterhouse, 6 s and no enemies unless it says so
+		var length: Variant = c.get("seconds", 6.0 if still else 5.0)
 		var seconds := clampf(float(length), MIN_SECONDS, MAX_SECONDS) if (length is float or length is int) else 5.0
 		var setup := _words(c.get("setup", []), "setup", n, seconds)
 		var steps := _words(c.get("steps", []), "steps", n, seconds)
@@ -137,13 +144,13 @@ static func parse(text: String) -> Dictionary:
 				return out
 		var cast_steps: bool = (steps["items"] as Array).any(func(st: Dictionary) -> bool: return st["do"] == "cast")
 		var scene: bool = (setup["items"] as Array).any(func(w: Dictionary) -> bool: return w["do"] == "thralls") or (steps["items"] as Array).any(func(w: Dictionary) -> bool: return w["do"] != "cast")
-		if cast == "" and camera != "turntable" and not cast_steps and not scene:
+		if cast == "" and not still and not cast_steps and not scene:
 			out["error"] = "clip %d: \"cast\" is the id of the rite to cast (e.g. haunting_wraith), unless its steps cast or the clip is a scene (thralls, a walk, candles)" % n
 			return out
 		if cast != "" and not DmRiteRegistry.has(cast):
 			out["error"] = "clip %d: unknown rite \"%s\" (a rite id of next/rites/dm_rite_registry.gd)" % [n, cast]
 			return out
-		var area := String(c.get("area", "chapterhouse" if camera == "turntable" else "graves"))
+		var area := String(c.get("area", DmQaModel.AREA if not model.is_empty() else ("chapterhouse" if camera == "turntable" else "graves")))
 		if DmContent.area(area).is_empty():
 			out["error"] = "clip %d: unknown area \"%s\"" % [n, area]
 			return out
@@ -158,7 +165,7 @@ static func parse(text: String) -> Dictionary:
 			if c.has(key) and not (c[key] is float or c[key] is int):
 				out["error"] = "clip %d: \"%s\" must be a number" % [n, key]
 				return out
-		var enemies := clampi(int(c.get("enemies", 0 if camera == "turntable" else 6)), 0, MAX_ENEMIES)
+		var enemies := clampi(int(c.get("enemies", 0 if still else 6)), 0, MAX_ENEMIES)
 		if c.has("enemies") and enemies != int(c["enemies"]):
 			(out["notes"] as Array).append("clip %d: %d enemies is outside 0-%d, made %d" % [n, int(c["enemies"]), MAX_ENEMIES, enemies])
 		if c.has("seconds") and not is_equal_approx(seconds, float(c["seconds"])):
@@ -171,6 +178,9 @@ static func parse(text: String) -> Dictionary:
 				return out
 			clip_worn = own["ids"]
 			any_equip = true
+		var opts := _setup_of(setup["items"])
+		if not model.is_empty() and not c.has("area") and opts["stand_at"] == null:   # no place named: the model view's own spot
+			opts["stand_at"] = DmQaModel.SPOT
 		var nm := slug(String(c.get("name", "")), n)
 		var base := nm
 		var dup := 2
@@ -179,13 +189,45 @@ static func parse(text: String) -> Dictionary:
 			dup += 1
 		seen[nm] = true
 		(out["clips"] as Array).append({"name": nm, "area": area, "cast": cast, "at": at, "enemies": enemies, "seconds": seconds, "camera": camera, "equip": clip_worn, "dress": false,
-			"setup": _setup_of(setup["items"]), "steps": steps["items"]})
+			"setup": opts, "steps": steps["items"], "model": model, "dirs": []})
 		i += 1
 	for clip: Dictionary in out["clips"]:
 		clip["dress"] = any_equip
 		clip["setup"]["legion"] = out["legion"]
 	out["ok"] = true
 	return out
+
+
+## A clip's model view (DmQaModel: "model" / "model_file", "height", "anim", "turn" degrees, "move", "speed"), checked: {} for a clip without one, {error} when it is wrong, else DmQaModel.spec_of's
+## fields with turn (default: side on for a "move", else DmQaUiShots.DEFAULT_TURN), move and speed (m/s: the plan's, else the row's stride for the clip; a "move" without either is refused).
+static func _model_of(c: Dictionary, camera: String, n: int) -> Dictionary:
+	if not (c.has("model") or c.has("model_file")):
+		for key in ["move", "speed", "height"]:
+			if c.has(key):
+				return {"error": "clip %d: \"%s\" is for a model clip (\"model\" or \"model_file\")" % [n, key]}
+		return {}
+	var spec := DmQaModel.spec_of(c)
+	if spec["error"] != "":
+		return {"error": "clip %d: %s" % [n, spec["error"]]}
+	spec.erase("error")
+	if camera == "wide":
+		return {"error": "clip %d: a model clip's \"camera\" is follow (one side) or turntable" % n}
+	for key in ["turn", "speed"]:
+		if c.has(key) and not (c[key] is float or c[key] is int):
+			return {"error": "clip %d: \"%s\" must be a number" % [n, key]}
+	var move: Variant = c.get("move", false)
+	if not move is bool:
+		return {"error": "clip %d: \"move\" is true or false" % n}
+	spec["move"] = move
+	spec["turn"] = fmod(float(c.get("turn", 90.0 if move else DmQaUiShots.DEFAULT_TURN)), 360.0)
+	spec["speed"] = 0.0
+	if move:
+		if spec["anim"] == "":
+			spec["anim"] = "walk"
+		spec["speed"] = DmQaModel.move_speed(spec, spec["anim"], c.get("speed"))
+		if spec["speed"] <= 0.0:
+			return {"error": "clip %d: \"move\" needs \"speed\" (m/s), or a model row with a stride for \"%s\"" % [n, spec["anim"]]}
+	return spec
 
 
 ## An `equip` list: {ids (at most DmQaUiShots.MAX_EQUIP item ids a hero can wear), error}. `what` says whose list it is in the refusals and the note.
@@ -391,6 +433,8 @@ static func run(root: Node, game: DmNextGame, plan_path: String, out_dir: String
 		tree.quit(2)
 		return
 	DirAccess.make_dir_recursive_absolute(out_dir)
+	for clip in plan["clips"]:   # where a model clip's "model_file" may be: beside the game (a team job's files) or the plan
+		clip["dirs"] = [OS.get_executable_path().get_base_dir(), plan_path.get_base_dir()]
 	if not source.is_valid() and DisplayServer.get_name() == "headless":
 		for clip in plan["clips"]:
 			print("QA-CLIPS clip FAILED %s/%s.mjpeg: no picture, this run draws nothing (headless: start it with a renderer)" % [out_dir, clip["name"]])
@@ -428,11 +472,26 @@ static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: Stri
 	var opts: Dictionary = clip.get("setup", _setup_of([]))
 	await legion(game, opts["legion"])
 	var staged: Dictionary = await stage(root, game, clip)
+	if String(staged["saved"].get("error", "")) != "":
+		_clean_up(game, caster, [], staged)
+		res["why"] = "the model could not be made (%s)" % staged["saved"]["error"]
+		return res
 	var steps: Array = clip.get("steps", [])
 	var timed: bool = steps.any(func(st: Dictionary) -> bool: return st["do"] == "cast")   # cast steps say when; nothing is cast by itself then
 	if float(opts["souls"]) >= 0.0 and caster.p.has("soulsMax"):
 		caster.p["souls"] = clampf(float(opts["souls"]), 0.0, float(caster.p["soulsMax"]))
 	var turntable: bool = clip["camera"] == "turntable"
+	var model: Dictionary = clip.get("model", {})
+	var holder: Node3D = staged["saved"].get("model")
+	var ap: AnimationPlayer = staged["saved"].get("ap")
+	var anim := DmQaModel.clip_of(staged["saved"], String(model["anim"]), "QA-CLIPS") if holder != null else ""
+	var path_from := Vector3.ZERO
+	var heading := Vector3.ZERO
+	if holder != null:
+		if anim != "":
+			ap.play(anim, 0.0)
+		heading = Vector3(sin(deg_to_rad(float(model["turn"]))), 0.0, cos(deg_to_rad(float(model["turn"]))))
+		path_from = holder.position - heading * float(model["speed"]) * float(clip["seconds"]) * 0.5   # a "move" crosses where it stood half-way through
 	var base := "%s/%s" % [out_dir, clip["name"]]
 	_remove(base + ".json")   # a clip's json is there only with the clip it describes
 	var writer := DmQaMjpeg.new()
@@ -458,7 +517,9 @@ static func record(root: Node, game: DmNextGame, clip: Dictionary, out_dir: Stri
 		if guard < 0:
 			failed = "the game's time did not advance"
 			break
-		if turntable:
+		if holder != null:
+			_model_step(game, holder, ap, anim, model, path_from + heading * float(model["speed"]) * elapsed, float(writer.frames) / float(total) if turntable else -1.0)
+		elif turntable:
 			_spin(body, float(writer.frames) / float(total))
 		if rite != "" and not timed and ((casts.is_empty() and writer.frames >= lead) or (not casts.is_empty() and float(DmAbilities.def(rite)["cooldownMs"]) > 0.0 and caster.cooldown_left(rite) <= 0.0)):
 			if bool(opts["top_up"]):
@@ -575,7 +636,9 @@ static func stage(root: Node, game: DmNextGame, clip: Dictionary) -> Dictionary:
 	if not thralls.is_empty():   # the setup's `thralls`: raised for the hero and the stand-in owners, after the stand-ins so they are not cleared, to fight them
 		undo.append_array(DmQaUiShots._thralls_begin(game, thralls, THRALL_DAMAGE, false))
 	var saved := {}
-	if clip["camera"] == "turntable":   # the hero's close-up from the front, the HUD away (the shot plan's "hero" view); the record loop turns the hero
+	if not (clip.get("model", {}) as Dictionary).is_empty():   # the model alone where the hero stands, the hero hidden (DmQaModel); the record loop turns, moves and plays it
+		saved = DmQaModel.begin(game, clip["model"], float(clip["model"]["turn"]), clip.get("dirs", []), "QA-CLIPS")
+	elif clip["camera"] == "turntable":   # the hero's close-up from the front, the HUD away (the shot plan's "hero" view); the record loop turns the hero
 		saved = DmQaUiShots._view_begin(game, {"view": "hero", "turn": 0.0})
 	var settled := 0.0
 	var waited := 0.0
@@ -638,6 +701,18 @@ static func stand_ins(game: DmNextGame, spots: Array[Vector3], opts := {}) -> Ar
 	return ids
 
 
+## One frame of a model clip: the clip played on (a clip that does not loop starts again), the model at `at` with the hidden hero under it so the camera follows a "move", and turned `spin`
+## of the way round from its "turn" on a turntable (-1 = not turning).
+static func _model_step(game: DmNextGame, holder: Node3D, ap: AnimationPlayer, anim: String, model: Dictionary, at: Vector3, spin: float) -> void:
+	if ap != null and anim != "" and not ap.is_playing():
+		ap.play(anim, 0.0)
+	if spin >= 0.0:
+		holder.rotation.y = deg_to_rad(float(model["turn"])) + TAU * spin
+	if bool(model["move"]):
+		holder.position = Vector3(at.x, 0.0, at.z)
+		game.local_body().teleport(holder.position)
+
+
 ## The turntable: the hero turned `t` of the way round (0 = facing the camera), the avatar with it.
 static func _spin(body: DmHeroBody, t: float) -> void:
 	body.yaw = TAU * t
@@ -690,5 +765,7 @@ static func _clean_up(game: DmNextGame, caster: DmRiteCaster, rites: Array[Strin
 			dressing.set_candle_group(String(group), true)
 	for r in rites:
 		caster.mem(r).clear()
-	if not (staged["saved"] as Dictionary).is_empty():
+	if (staged["saved"] as Dictionary).has("model"):
+		DmQaModel.end(game, staged["saved"])
+	elif not (staged["saved"] as Dictionary).is_empty() and not (staged["saved"] as Dictionary).has("error"):
 		DmQaUiShots._view_end(game, staged["saved"])

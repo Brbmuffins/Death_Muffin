@@ -55,7 +55,7 @@ test('clips: every refusal is a readable line naming the problem', () => {
   bad((j) => { j.plan.clips[0].equip = ['Iron Staff']; }, /"equip" must be a list of 1 to 12 item ids/);
   bad((j) => { j.plan.equip = Array.from({ length: 13 }, (_, i) => `item_${i}`); }, /"plan": "equip" must be a list of 1 to 12 item ids/);
   bad((j) => { j.plan.equip = ['staff_moon', 'staff_moon']; }, /"equip" names an item twice/);
-  bad((j) => { j.plan.clips[0].cast = undefined; }, /"cast" must be a rite id.*only a "turntable" clip, one whose steps cast, or a scene of thralls or walks may leave it out/);
+  bad((j) => { j.plan.clips[0].cast = undefined; }, /"cast" must be a rite id.*only a "turntable" or model clip, one whose steps cast, or a scene of thralls or walks may leave it out/);
   bad((j) => { j.plan.clips[0].camera = 'orbit'; }, /"camera" must be "follow", "wide" or "turntable"/);
   bad((j) => { j.plan.clips[0].cast = 'Haunting Wraith'; }, /"cast" must be a rite id/);
   bad((j) => { j.plan.clips[0].exec = 'rm -rf'; }, /clip 1 has an unknown field "exec"/);
@@ -77,7 +77,20 @@ test('clips: a model preview is a turntable clip on a hero that wears items; are
   ok(mutate((j) => { j.plan.clips[0].camera = 'turntable'; delete j.plan.clips[0].cast; }));
 });
 
-test('clips: every example in the clips guide is accepted by the runner (the choice, the model preview, the scripted clip)', () => {
+test('clips: a model clip films one model alone: no cast, its own fields checked, and only on a model clip', () => {
+  const r = read({ plan: { discipline: 'gravecaller', clips: [{ name: 'rat-walk', model: 'skull_rat', anim: 'walk', move: true }, { name: 'rat-turn', model: 'skull_rat', camera: 'turntable', turn: 0, height: 0.6 }] }, variants: [{ label: 'rat', title: 'the skull rat', tune: {} }] });
+  assert.equal(r.error, undefined, r.error); assert.equal(r.plan.clips[0].cast, undefined); assert.equal(r.plan.clips[0].model, 'skull_rat');
+  const bad = (f, re) => { const x = read(mutate(f)); assert.ok(x && x.error, 'refused'); assert.match(x.error, re); };
+  bad((j) => { j.plan.clips[0].model = 'Skull Rat'; }, /"model" must be a model row id/);
+  bad((j) => { j.plan.clips[0].model = 'skull_rat'; j.plan.clips[0].camera = 'wide'; }, /a model clip's "camera" is "follow"/);
+  bad((j) => { j.plan.clips[0].model = 'skull_rat'; j.plan.clips[0].speed = 99; }, /"speed" must be a number from 0 to 15/);
+  bad((j) => { j.plan.clips[0].model = 'skull_rat'; j.plan.clips[0].move = 'yes'; }, /"move" must be true or false/);
+  bad((j) => { j.plan.clips[0].model = 'skull_rat'; j.plan.clips[0].anim = 'walk cycle'; }, /"anim" must be a clip name/);
+  bad((j) => { j.plan.clips[0].anim = 'walk'; }, /are for a model clip/);
+  bad((j) => { j.plan.clips[0].model_file = 'x.glb'; }, /unknown field "model_file"/);
+});
+
+test('clips: every example in the clips guide is accepted by the runner (the choice, the model preview, the scripted clip, the model clip)', () => {
   const section = fs.readFileSync(path.join(__dirname, '..', 'guides', 'clips.md'), 'utf8');
   const blocks = [...section.matchAll(/```json\n([\s\S]*?)\n```/g)].map((m) => m[1]);
   const words = fs.readFileSync(path.resolve(__dirname, '../../../../client/main/qa_clip_steps.json'), 'utf8');
@@ -88,6 +101,7 @@ test('clips: every example in the clips guide is accepted by the runner (the cho
   assert.ok(parsed.some((r) => r.variants.map((v) => v.label).join() === 'slow,now,fast'), 'the choice example: three options');
   assert.ok(parsed.some((r) => r.variants.length === 1 && r.plan.clips[0].camera === 'turntable'), 'the model preview example: one turntable clip');
   assert.ok(parsed.some((r) => Array.isArray(r.plan.clips[0].steps) && Array.isArray(r.plan.clips[0].setup)), 'the scripted example: setup and steps');
+  assert.ok(parsed.some((r) => r.plan.clips.some((c) => c.model !== undefined)), 'the model clip example');
 });
 
 test('clips: shot plan screen sizes: from the four on the list, at most 4, each once; anything else is dropped with a note', () => {

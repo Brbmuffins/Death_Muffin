@@ -284,6 +284,17 @@ func _process(dt: float) -> void:
 
 # ---- the hero ring -------------------------------------------------------------------------------------------
 
+## The local hero's ring decals away (`on` false: a QA model view, where the hero is hidden) or made again.
+func show_ring(b: DmHeroBody, on: bool) -> void:
+	for h in _ring:
+		if h != null:
+			h.kill()
+	_ring.clear()
+	_ring_done = false
+	if on:
+		_dress_ring(b)
+
+
 ## The hero stays findable: contact shadow + pale ring, the discipline glow + bone ring, the cursor reticle, the soul halo, the hover ring.
 func _dress_ring(b: DmHeroBody) -> void:
 	var vfx := get_node_or_null("/root/Vfx")

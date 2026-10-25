@@ -30,6 +30,18 @@ static func analyze(url: String, height: float) -> Dictionary:
 		cold_loads += 1
 	var ps: PackedScene = load(BASE + url)
 	var root: Node3D = ps.instantiate()
+	var m := measure(root)
+	root.free()
+	var bb: AABB = m.bounds
+	var parts: Array = m.parts
+	var s := height / maxf(bb.size.y, 0.0001)
+	var c := bb.get_center()
+	var info := {"scene": ps, "scale": s, "cx": c.x, "cz": c.z, "miny": bb.position.y, "size": bb.size, "parts": parts, "skinned": m.skinned, "prepped": false}
+	_info[key] = info
+	return info
+
+## A model's rest-pose bounds and mesh parts, in the space of its `root` (not yet in a tree): {bounds: AABB, parts: [{mesh, xf}], skinned}.
+static func measure(root: Node3D) -> Dictionary:
 	var skel: Skeleton3D = null
 	for sk in root.find_children("*", "Skeleton3D", true, false):
 		skel = sk
@@ -52,12 +64,7 @@ static func analyze(url: String, height: float) -> Dictionary:
 		bb = box if first else bb.merge(box)
 		first = false
 		parts.append({"mesh": m.mesh, "xf": xf})
-	root.free()
-	var s := height / maxf(bb.size.y, 0.0001)
-	var c := bb.get_center()
-	var info := {"scene": ps, "scale": s, "cx": c.x, "cz": c.z, "miny": bb.position.y, "parts": parts, "skinned": skel != null, "prepped": false}
-	_info[key] = info
-	return info
+	return {"bounds": bb, "parts": parts, "skinned": skel != null}
 
 ## Parts of a static prop ready for MultiMesh: {mesh, local: Transform3D} where local already includes normalisation.
 static func prop_parts(url: String, height: float) -> Array:
@@ -79,21 +86,24 @@ static func creature_from(entry: Dictionary, scale: float = 1.0) -> Dictionary:
 ## A walking/animated model: returns {root: Node3D (feet at y=0, +Z forward), anim: AnimationPlayer or null}.
 static func creature(url: String, height: float, yaw: float) -> Dictionary:
 	var inf := analyze(url, height)
-	var s: float = inf.scale
+	var c := hold((inf.scene as PackedScene).instantiate(), inf.scale, Vector3(inf.cx, inf.miny, inf.cz), yaw)
+	if c.anim != null and not inf.prepped:
+		_prep_anims(c.anim)
+		inf.prepped = true
+	return c
+
+## `model` scaled by `s` with the point `base` (its feet's middle, in its own space) put at the origin, turned by `yaw` inside a holder: {root: the holder, anim: its AnimationPlayer or null}.
+static func hold(model: Node3D, s: float, base: Vector3, yaw: float) -> Dictionary:
 	var holder := Node3D.new()
 	var yawer := Node3D.new()
 	yawer.rotation.y = yaw
 	holder.add_child(yawer)
-	var model: Node3D = (inf.scene as PackedScene).instantiate()
 	model.scale = Vector3.ONE * s
-	model.position = Vector3(-inf.cx * s, -inf.miny * s, -inf.cz * s)
+	model.position = -base * s
 	yawer.add_child(model)
 	var ap: AnimationPlayer = null
 	for a in model.find_children("*", "AnimationPlayer", true, false):
 		ap = a
-	if ap != null and not inf.prepped:
-		_prep_anims(ap)
-		inf.prepped = true
 	return {"root": holder, "anim": ap}
 
 ## The clip a variant re-bakes (`run_staff` -> `run`); any other name as it is.

@@ -13,7 +13,8 @@ extends RefCounted
 ##        "discipline": "ossuary"|"gravecaller"|"mourner"|"rotweaver"|"reaper" (or 1-4 / 11; read by the launching script, which passes --class=N: client/tools/qa_shots.sh),
 ##        "shots": [{"name", "open": "bag" | ["bag", ...], "hover": <bag slot 0-47> | "item:<item id>" | "worn:<equip slot>" | "belt:<tool>",
 ##        "area": "<area id>", "at": [x, z], "thralls": {"mine": [kind, ...], "ossuary": [kind, ...]}, "walk": true, "candles_out": ["west", ...],
-##        "wait_ms": 300, "clip": "window", "view": "hero" | "game", "turn": <degrees>, "anim": "idle" | "run" | "cast", "fight": true, "perf": true}]}.
+##        "wait_ms": 300, "clip": "window", "view": "hero" | "game" | "model", "turn": <degrees>, "anim": "idle" | "run" | "cast", "fight": true, "perf": true,
+##        "model": "<view_models row>", "model_file": "<name>.glb", "height": <m>, "anim_at": <0-1> (the model view only)}]}.
 ## At most MAX_SHOTS shots per plan: a plan with more is refused (`QA-SHOTS plan error:`, exit code 2), not trimmed (run several plans for more). "open" lists are applied in order (the game keeps one window
 ## open at a time, so the last one stays). "clip": "window" crops to the open window (plus the tooltip when one is shown); default is the whole screen.
 ## "equip": each id is added to the bag (gear gets a real backend roll) and equipped through the backend's equip call, then the bag reloads, so the avatar
@@ -23,6 +24,8 @@ extends RefCounted
 ## dev-offline start are only climbing out 18 m away or more after a few seconds: nothing is on screen, nothing is cast, nothing is hit.
 ## "view": "hero" closes every window, hides the HUD and frames the hero full body close-up from the front (`turn` degrees: 0 faces the camera, 180 shows the
 ## back; `anim` poses the hero and freezes it after a short settle); "game" is the normal game camera with the HUD hidden. The camera, HUD and pose are restored after the shot.
+## "model" shows one model alone where the hero stands, framed by its size (main/qa_model.gd, DmQaModel: a row of game/view_models.json, or a GLB sent beside the exe or the plan; any of its clips as `anim`);
+## with no "area" and no "at" it stands at DmQaModel.SPOT of the Chapterhouse.
 ## "perf": true shows the F3 performance overlay (hidden otherwise) and waits at least PERF_WAIT_MS so its numbers are drawn; a shot without it hides the overlay.
 ## "at": [x, z] stands the hero at that ground point of the area (after "area"). "thralls": raises thralls for the shot (give it a wait of 2500 ms or more so they have risen): the keys are owners and the values the kinds
 ## of thrall (DmThralls.KINDS, at most MAX_THRALLS in all); "mine" is the hero, who wears the plan's "legion" kit, and a discipline name is a stand-in owner of that discipline (standing STANDIN_SPOTS away, in the order given,
@@ -45,7 +48,7 @@ const PERF_WAIT_MS := 800    ## "perf": the overlay repaints every 0.25 s, so th
 const FIGHT_FOES := 8        ## "fight": enemies made round the hero
 const FIGHT_STEP_S := 0.4    ## "fight": the hero casts this often
 const DEFAULT_TURN := 25.0   ## a hero view without "turn" stands slightly turned (front three-quarter); "turn": 0 faces the camera
-const VIEWS := ["", "hero", "game"]
+const VIEWS := ["", "hero", "game", "model"]
 const ANIMS := ["", "idle", "run", "cast"]
 ## Playable disciplines by name -> class index (data/combat/disciplines.json by_index; client/tools/qa_shots.sh maps the same names to --class=N).
 const DISCIPLINES := {"ossuary": 1, "gravecaller": 2, "mourner": 3, "rotweaver": 4, "reaper": 11}
@@ -129,10 +132,21 @@ static func parse(text: String) -> Dictionary:
 			return out
 		var view := String(s.get("view", "")).to_lower()
 		if not VIEWS.has(view):
-			out["error"] = "shot %d: view must be \"hero\" or \"game\"" % (i + 1)
+			out["error"] = "shot %d: view must be \"hero\", \"game\" or \"model\"" % (i + 1)
 			return out
+		var model := {}
 		var anim := String(s.get("anim", "")).to_lower()
-		if not ANIMS.has(anim):
+		if view == "model":   # any clip of the model; the model's fields checked by DmQaModel
+			model = DmQaModel.spec_of(s)
+			if model["error"] != "":
+				out["error"] = "shot %d: %s" % [i + 1, model["error"]]
+				return out
+			anim = model["anim"]
+			if String(s.get("area", "")) == "" and s.get("at") == null:   # no place named: the model view's own spot
+				s = s.duplicate()
+				s["area"] = DmQaModel.AREA
+				s["at"] = [DmQaModel.SPOT.x, DmQaModel.SPOT.y]
+		elif not ANIMS.has(anim):
 			out["error"] = "shot %d: anim must be idle, run or cast" % (i + 1)
 			return out
 		var at: Variant = s.get("at")
@@ -161,7 +175,7 @@ static func parse(text: String) -> Dictionary:
 		(out["shots"] as Array).append({"name": nm if nm != "" else "shot-%d" % (i + 1), "open": wins, "hover": hover, "area": String(s.get("area", "")),
 			"wait_ms": clampi(maxi(int(s.get("wait_ms", 300)), PERF_WAIT_MS if perf is bool and perf else 0), 0, MAX_WAIT_MS), "clip": "window" if String(s.get("clip", "")) == "window" else "",
 			"view": view, "turn": fmod(float(s.get("turn", DEFAULT_TURN)), 360.0), "anim": anim, "fight": fight is bool and fight, "perf": perf is bool and perf,
-			"at": at, "thralls": thralls, "walk": walk is bool and walk, "candles_out": candles})
+			"at": at, "thralls": thralls, "walk": walk is bool and walk, "candles_out": candles, "model": model, "dirs": []})
 		i += 1
 	out["ok"] = true
 	return out
@@ -183,6 +197,8 @@ static func run(root: Node, game: DmNextGame, plan_path: String, out_dir: String
 		tree.quit(2)
 		return
 	DirAccess.make_dir_recursive_absolute(out_dir)
+	for s in plan["shots"]:   # where a model view's "model_file" may be: beside the game (a team job's files) or the plan
+		s["dirs"] = [OS.get_executable_path().get_base_dir(), plan_path.get_base_dir()]
 	await tree.create_timer(1.0).timeout   # the loading screen's fade-out
 	await prepare(game, plan)
 	var bad := 0
@@ -305,7 +321,9 @@ static func stage(root: Node, game: DmNextGame, s: Dictionary) -> Dictionary:
 	for o in tree.root.find_children("*", "DmPerfOverlay", true, false):
 		o.set_shown(s["perf"])
 	var saved := {}
-	if s["view"] != "":
+	if s["view"] == "model":
+		saved = DmQaModel.begin(game, s["model"], float(s["turn"]), s["dirs"], "QA-SHOTS")
+	elif s["view"] != "":
 		saved = _view_begin(game, s)
 	await _wait(root, game, s)
 	if not s["open"].is_empty() and not ui.is_open(s["open"][s["open"].size() - 1]):   # the last window of the list is the one that stays
@@ -313,6 +331,8 @@ static func stage(root: Node, game: DmNextGame, s: Dictionary) -> Dictionary:
 		print("QA-SHOTS window did not open: %s%s" % [last, " (the Vault opens only in the Chapterhouse: \"area\": \"chapterhouse\")" if last == "vault" else ""])
 	if s["view"] == "hero":
 		await _pose(game, s)
+	elif saved.get("ap") != null:
+		DmQaModel.pose(saved["ap"], DmQaModel.clip_of(saved, s["model"]["anim"], "QA-SHOTS"), float(s["model"]["anim_at"]))
 	var tip_rect := Rect2()
 	if s["hover"] != null:
 		tip_rect = await _hover(root, ui, s["hover"])
@@ -381,9 +401,11 @@ static func _fight_step(game: DmNextGame, n: int) -> void:
 ## False when there is no picture to take (a run with no renderer, headless) or the file could not be written.
 static func capture(root: Node, game: DmNextGame, s: Dictionary, staged: Dictionary, file: String) -> bool:
 	var ui: DmGameUi = game.ui
-	var img := grab(root)
+	var unmade: bool = (staged["saved"] as Dictionary).has("error") and staged["saved"]["error"] != ""   # a model view whose model could not be made (printed by DmQaModel.begin)
+	var img := grab(root) if not unmade else null
 	if img == null:
-		print("QA-SHOTS no picture: this run draws nothing (headless: start it with a renderer, client/tools/qa_shots.sh)")
+		if not unmade:
+			print("QA-SHOTS no picture: this run draws nothing (headless: start it with a renderer, client/tools/qa_shots.sh)")
 	else:
 		var rect := Rect2(Vector2.ZERO, Vector2(img.get_size()))
 		if s["clip"] == "window" and not s["open"].is_empty():
@@ -392,7 +414,9 @@ static func capture(root: Node, game: DmNextGame, s: Dictionary, staged: Diction
 				rect = clip_rect(rect, root.get_viewport().get_visible_rect().size, win.get_global_rect(), staged["tip"])
 		if rect.size != Vector2(img.get_size()):
 			img = img.get_region(Rect2i(rect))
-	if not (staged["saved"] as Dictionary).is_empty():
+	if (staged["saved"] as Dictionary).has("model"):
+		DmQaModel.end(game, staged["saved"])
+	elif not (staged["saved"] as Dictionary).is_empty() and not unmade:
 		_view_end(game, staged["saved"])
 	for undo: Callable in staged.get("undo", []):
 		undo.call()
