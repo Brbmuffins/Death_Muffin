@@ -6,6 +6,8 @@
  *   node tools/blender.mjs rigfix     <slug> [--recipe r.json]
  *   node tools/blender.mjs cleanup    <in.glb> <clip> [--out out.glb] [--loop] [--drift] [--foot-lock] [--window 0.25] [--name n]
  *   node tools/blender.mjs retarget   <source.glb|fbx> <target-rig.glb> <clip-map.json> [--out dir] [--only clip,clip] [--install <slug>]
+ *   node tools/blender.mjs staff      <slug> [clip ...] [--recipe r.json] [--model character.glb] [--out dir] [--sheets] [--install]
+ *                                     re-solve the right arm so the held staff stays upright / leads the cast (anim_<clip>_staff.glb)
  *   node tools/blender.mjs install    <slug> [--from dir]      copy generated anim_*.glb into art-src/tripo/<slug>/ (originals kept in orig/)
  *   node tools/blender.mjs build      <slug ...>               build-characters
  *   node tools/blender.mjs selftest                            check the kinematics against Blender itself
@@ -31,7 +33,7 @@ export function findBlender() {
 }
 
 /** Split argv into positionals and --flags (a flag takes a value unless it is in BOOLS). */
-export function parseArgs(argv, bools = ['install', 'loop', 'drift', 'foot-lock', 'help']) {
+export function parseArgs(argv, bools = ['install', 'loop', 'drift', 'foot-lock', 'sheets', 'help']) {
   const pos = [], flags = {};
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -52,7 +54,7 @@ export function runBlender(script, args) {
     console.error(out.split('\n').filter((l) => !/^(Blender|Read|Info|\d\d:\d\d:\d\d \|)/.test(l)).slice(-40).join('\n'));
     throw new Error(`${script} failed`);
   }
-  for (const l of out.split('\n')) if (/^(PROCEDURAL|CLEANUP|RETARGET|RIGFIX|SELFTEST)/.test(l)) console.log(l);
+  for (const l of out.split('\n')) if (/^(PROCEDURAL|CLEANUP|RETARGET|RIGFIX|SELFTEST|STAFF)/.test(l)) console.log(l);
   const line = out.split('\n').reverse().find((l) => l.startsWith('RESULT '));
   return line ? JSON.parse(line.slice(7)) : null;
 }
@@ -114,6 +116,27 @@ const commands = {
     if (flags.only) args.push('--only', flags.only);
     const res = runBlender('retarget.py', args);
     await packAll(out, res.map((r) => basename(r.file)));
+    return res;
+  },
+
+  /** Staff versions of a hero's clips (tools/blender/staff.py), read from the model the client loads so the body is what the game plays. */
+  async staff({ pos, flags }) {
+    const [slug, ...clips] = pos;
+    const recipe = flags.recipe ? resolve(flags.recipe) : join(SCRIPTS, 'recipes', 'staff.json');
+    const shipped = (f) => [join(ROOT, 'client', 'assets', 'slice', 'models', f), join(ROOT, 'public', 'models', f)].find((p) => existsSync(p));
+    const model = flags.model ? resolve(flags.model) : shipped(join(slug, 'character.glb'));
+    if (!model) throw new Error(`${slug}: no character.glb under client/assets/slice/models or public/models`);
+    const slice = (f) => JSON.parse(readFileSync(join(ROOT, 'client', 'data', 'slice', f), 'utf8'));
+    const height = slice('npcs.json').heroModels?.[slug]?.height;
+    if (!height) throw new Error(`${slug}: no heroModels height in client/data/slice/npcs.json`);
+    const staff = slice('necro_gear.json').weapon_kind_prop.staff;
+    const out = flags.out ? resolve(flags.out) : join(WORK, slug, 'staff');
+    mkdirSync(out, { recursive: true });
+    const args = [model, recipe, out, String(height), String(staff.length_m), String(staff.grip_t), ...clips];
+    if (flags.sheets) args.push('--sheets', shipped(join('props', `${staff.prop}.glb`)));
+    const res = runBlender('staff.py', args);
+    await packAll(out, res.clips.map((r) => basename(r.file)));
+    if (flags.install) commands.install({ pos: [slug], flags: { from: out } });
     return res;
   },
 

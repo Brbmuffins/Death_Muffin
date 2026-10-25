@@ -11,6 +11,7 @@ node tools/blender.mjs procedural <slug> [clip ...] [--install]     author clips
 node tools/blender.mjs rigfix     <slug>                            add bones + move vertex weights (hound legs/tail, gargoyle wings)
 node tools/blender.mjs cleanup    <in.glb> <clip> [--loop] [--drift] [--foot-lock] [--recipe r.json]
 node tools/blender.mjs retarget   <source.glb> <target-rig.glb> <clip-map.json> [--only a,b]
+node tools/blender.mjs staff      <slug> [clip ...] [--sheets]      staff versions of a hero's clips: the arm re-solved around the held staff
 node tools/blender.mjs install    <slug>                            copy art-src/blender/<slug>/anim_*.glb into art-src/tripo/<slug>/
 node tools/blender.mjs build      <slug ...>                        build-characters only
 node tools/blender.mjs selftest                                     kinematics checked against Blender itself
@@ -159,6 +160,51 @@ the bone to the source bone's absolute direction afterwards. `sequence` joins se
 game owns the position; keep `inPlace: false` for something like a roll. Quadruped retargeting is not provided: there is
 no CC0 quadruped library in the repo and the Tripo quadruped rigs differ per model.
 
+## `staff`: the arm re-solved around a held staff
+
+The hero clips were made for an empty hand, and `DmCreature.attach_held` bolts the staff rigidly to `R_Hand`, so the staff
+goes wherever the wrist goes: it swings from upright to flat twice a stride in `run`, and points its head behind the hero
+or at the floor through `flick`, `slam`, `channel`, `summon` and `cast` (the basic attack). Measured on the Gravecaller,
+staff angle from upright, original -> re-bake: run 9-121 -> 6-23 deg, flick 15-159 -> 3-73, slam 10-163 -> 0-10 (the foot
+lands on the floor), channel 105-123 -> 16-20, summon 59-174 -> 6-10, cast 10-115 -> 5-62.
+
+```
+BLENDER=<blender> node tools/blender.mjs staff hero_gravecaller --sheets
+```
+
+reads `client/assets/slice/models/<slug>/character.glb` (the model the client loads; `public/models/` as a fallback), sizes the hero to its `heroModels` height
+(`client/data/slice/npcs.json`) and the staff to `necro_gear.json` (`length_m`, `grip_t`), prepares the clips as
+`DmCreature._prep_clips` does (Root dropped, combat clips' Hip pinned to idle's first key, other clips' Hip track dropped),
+then for every clip in `tools/blender/recipes/staff.json` keys `R_Upperarm`, `R_Forearm` and `R_Hand` so the staff sits
+where the recipe says. Every other channel is the clip's own: the export swaps the shipped body channels back in.
+Output: `art-src/blender/<slug>/staff/anim_<clip>_staff.glb` (and `sheets/sheet_<clip>.png` with `--sheets`: the original
+with the game's grip above, the re-bake below, the staff model in hand). `--install` copies them into `art-src/tripo/<slug>/`.
+Run so far on Blender 5.2 (Windows, 2026-10-25, about 20 s with sheets); on 4.5 the script falls back to the legacy
+`action.fcurves`, not yet run there.
+
+The grip is reproduced from the game, not guessed: the prop origin on the palm centre (`DmCreature.palm_of`: the mean of the
+vertices skinned > 0.5 to the hand, in its bind space; the skin weights are normalised bytes), its +Y the knuckle line
+leaned `lean` toward the fingers, in the hand's glTF node frame (not Blender's bone frame). The recipe:
+
+| key | meaning |
+|---|---|
+| `gameLean` | `HOLDS.staff` lean today (-65): the grip the original clips are read with |
+| `lean` | the grip the re-baked clips are made for (-25, a relaxed fist). At -65 the staff lies back along the forearm: fine for a hanging arm, but a raised staff then needs a wrist folded 150+ degrees, so the game must hold the staff at this lean when it plays them |
+| `wrist` | the range of effective lean (ulnar -, radial +) the solver may bend the wrist to when the relaxed grip cannot reach |
+| `rest` | where the hand carries the staff: metres from the right shoulder, `[forward, right, up]` |
+| `clips.<c>.type` | `carry` (idle/walk/run: `swing` keeps that share of the original hand's fore-aft swing, `tilt` + `tiltSwing` lean the staff forward with it, `out` tips it outward) or `gesture` |
+| `clips.<c>.keys` | gesture keys `[u, pos, [tilt, azimuth]]`: `u` 0..1 through the clip, `pos` `[forward, right, up]` from the shoulder, `"rest"`, or `{"plant": [forward, right]}` (the staff's foot on the floor there, fixed in the world); azimuth 0 forward, 90 out, 180 back |
+| `sheets.<c>` | sample times for the sheet |
+
+The solver: with a straight wrist the hand's +Y is the forearm, so a staff direction fixes the forearm on a cone around it
+(90 - lean degrees); of the cone directions the upper arm can reach, it keeps the one nearest the previous frame's, bends the
+wrist within `wrist` only when that buys reach, and gives 70 % of the hand's twist about the forearm to the forearm.
+A target the arm cannot reach lands as near as it can: each clip reports its `miss` (Gravecaller: 1 cm or less for
+idle/walk/run, 2-7 cm for the casts) and `before`/`after` checks (staff tilt range, wrist bend and twist, the staff foot's
+lowest point). The slam's crouch bottoms out after the clip's release frame, so its staff lands 40 ms after the release.
+
+Not yet played by the game (KNOWN-GAPS.md "Look"): the clips are built for the Gravecaller only and nothing selects them.
+
 ## Known limits
 
 - The bone map is hand-written, not inferred. `.fbx` sources go through Blender's FBX importer (untested here; the pack's GLB was used).
@@ -176,6 +222,6 @@ no CC0 quadruped library in the repo and the Tripo quadruped rigs differ per mod
 4. `node tools/build-characters.mjs <slug>` and check `node tools/measure-clips.mjs public/models/<slug>/character.glb`.
 5. Check the clip in the Godot client.
 
-Files: `tools/blender.mjs`, `tools/blender/{common,kin,procedural,rigfix,cleanup,retarget,selftest,skinview,edit,preview}.py`, `tools/blender/pack.mjs`,
+Files: `tools/blender.mjs`, `tools/blender/{common,kin,procedural,rigfix,cleanup,retarget,selftest,skinview,staff,edit,preview}.py`, `tools/blender/pack.mjs`,
 `tools/blender/{jobs,merge}.mjs`, `tools/blender/kinds.json`, `tools/blender/recipes/*.json`, `tools/blender/maps/*.json`, measurement additions in
 `tools/measure-clips.mjs`.

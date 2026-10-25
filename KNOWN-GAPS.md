@@ -80,6 +80,18 @@ Medium, the lifts, the Depths' walls, the hero's robe area by area, emission not
 polish list). Also:
 - Nightfall dims only the real-time ambient: lightmapped ground, walls and props keep their full ambient (a per-area dimming of the lightmaps
   would be a decision).
+- **The hero's staff follows the wrist rigidly** (`DmCreature.attach_held`), and the clips were made for an empty hand: in `run` it swings
+  from upright to flat twice a stride, and through `flick`, `slam`, `channel`, `summon` and `cast` its head points behind the hero or at the
+  floor (the spell leaves from behind). Staff versions of those clips exist for the Gravecaller as a proof (docs/BLENDER-PIPELINE.md
+  "staff", 2026-10-25); to play them the game needs the clips built in, `<clip>_staff` chosen while a staff is held (with `_prep_clips`'
+  combat rule and `CLIP_RELEASE` applying to the `_staff` name), the fist grip (`HOLDS` lean -25) for rigs that have them, and the other
+  three discipline heroes baked.
+- **A hero slides about 25 cm to its left when a spell clip starts**: `DmCreature._prep_clips` pins a combat clip's Hip to idle's first Hip
+  key, but idle (like every other hero clip) has its Hip track removed and stands at the Hip's rest position, 0.13 rig units (about 25 cm on
+  the Gravecaller) away. Anchoring to the Hip's rest position would remove the slide.
+- Hero `walk` and `run` lose their vertical bob (about 7 cm in `run`): `_prep_clips` removes the whole Hip position track from non-combat
+  hero clips, while its comment says the vertical bob is kept.
+- The Gravecaller's cloak stretches into a flat sheet behind the legs in the `flick` crouch (skin weights on the cloak).
 - The crowd's shader changes are checked in text, not in a rendered frame: run `client/tests/crowd_look_smoke.gd` (Forward+, about two
   minutes) in the look pass; the aim ring showed about 3 m above the hero in the look probe's frames (no mouse there).
 
@@ -100,6 +112,11 @@ polish list). Also:
 
 ## Tools and tests
 
+- `npm run hygiene` fails in a Windows checkout with `core.autocrlf=true`: `tools/context/navigation.mjs` looks for `## Documentation map\n`
+  and README.md has CRLF there (found 2026-10-25; CI's Linux checkout is unaffected).
+- The Blender pipeline's `procedural`, `rigfix`, `cleanup`, `retarget` and `selftest` fail on Blender 5.x: `tools/blender/common.py` uses
+  `action.fcurves`, which 5.0 removed (slotted actions: `staff.py`'s `fcurves()` reads both). They run on the VPS's 4.5; the owner's
+  workstation has 5.2 (found 2026-10-25).
 - **The agent's sandbox test can leave a folder in `wt/`** (found 2026-10-21, context Stage 4). `world()` in
   `server/death-muffin/discord-agent/test/sandbox.test.cjs` makes `wt/dm-sbx-test-*` and runs `git init` before the cleanup exists, so a run
   whose next write fails (seen in reviews run under a restricted sandbox) leaves the folder behind: 16 were left on 2026-10-20 and 2026-10-21,

@@ -322,6 +322,9 @@ the team says yes, because every unchecked item in a phase or the polish list is
 is planned, its ideas move into its checklist as Fix or New items (or straight away, when Helix says so). Bugs and gaps go to
 KNOWN-GAPS.md instead.
 - A hint for a party guest standing in a boss's rot (a guest's core lists no zones today). Section: polish list, co-op gaps. 2026-10-17.
+- The staff held near its top so its foot rests on the floor at idle: with `grip_t` 0.42 of a 1.7 m staff the hand would have to be 0.72 m
+  off the floor, below the hero's reach, so the foot hangs 0.3-0.45 m up; `grip_t` about 0.65 (and the staff recipe re-run) would plant it.
+  Section: polish list (the look). 2026-10-25.
 - Effect sprites (`client/assets/fx/art`, tintable glows) as a picture kind, so the Discord agent can make them like icons; their white-on-black
   recipe and brightness-as-alpha step exist in `tools/ai/gemini.mjs`. Section: Phase 2 C, content pipelines. 2026-10-20.
 - A results card when a session ends: what you reached, kills, gold, time, and your personal best (Gravecrawl's lesson 3,
