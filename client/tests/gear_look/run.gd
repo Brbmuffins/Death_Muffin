@@ -148,14 +148,14 @@ func _run() -> void:
 		check(hp >= 0 and hb >= 0 and (plain.track_get_key_value(hp, 0) as Vector3).is_equal_approx(baked.track_get_key_value(hb, 0) as Vector3), "%s: the staff flick's hip is prepared as the flick's (a combat clip)" % slug)
 		check(av.c.ap.get_animation("idle" + staff_v).loop_mode == Animation.LOOP_LINEAR, "%s: the staff idle loops" % slug)
 		av.dispose()
-	var gc := await _avatar("hero_gravecaller")
+	var caller := await _avatar("hero_gravecaller")
 	var choir := {"legs": {"item_id": "leg_plague_choir_legs", "rarity": "legendary"}, "chest": {"item_id": "leg_plague_choir_chest", "rarity": "legendary"}, "head": {"item_id": "leg_plague_choir_head", "rarity": "legendary"}}
-	gc.set_equipment(choir)
-	check(gc.body_slug == "hero_leg_plague_choir" and not gc.c.has("idle" + staff_v), "a legendary body (no staff clips yet) takes over at three pieces")
-	check(gc.c._current == "idle" and is_equal_approx(float(gc._mounts[gc._staff].arg.lean), deg_to_rad(float(DmGearProps.HOLDS.default_staff.lean))), "...and holds the default staff the old way with its own clips")
-	gc.set_equipment({})
-	check(gc.body_slug == "hero_gravecaller" and gc.c._current == "idle" + staff_v and is_equal_approx(float(gc._mounts[gc._staff].arg.lean), fist), "back on the hero's own body: staff clips and fist grip again")
-	gc.dispose()
+	caller.set_equipment(choir)
+	check(caller.body_slug == "hero_leg_plague_choir" and not caller.c.has("idle" + staff_v), "a legendary body (no staff clips yet) takes over at three pieces")
+	check(caller.c._current == "idle" and is_equal_approx(float(caller._mounts[caller._staff].arg.lean), deg_to_rad(float(DmGearProps.HOLDS.default_staff.lean))), "...and holds the default staff the old way with its own clips")
+	caller.set_equipment({})
+	check(caller.body_slug == "hero_gravecaller" and caller.c._current == "idle" + staff_v and is_equal_approx(float(caller._mounts[caller._staff].arg.lean), fist), "back on the hero's own body: staff clips and fist grip again")
+	caller.dispose()
 
 	# ---- tint: light, the base texture keeps its detail, trim carries the tier signal
 	var av3 := await _avatar("hero_gravecaller")
