@@ -2,11 +2,11 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { HERO_CLIPS, check, kindOf, readGlb } from './check-models.mjs';
+import { HERO_CLIPS, check, kindOf, readGlb, staffClips } from './check-models.mjs';
 
 const SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), 'check-models.mjs');
 const BIPED = ['Hips', 'Spine', 'Head', 'L_Arm', 'R_Arm'];
@@ -69,6 +69,25 @@ test('a hero body needs the shared skeleton and its combat clips', () => {
   assert.deepStrictEqual(noExtras.errors, []);
   assert.match(noExtras.warnings[0], /missing the extra clips death2, dig, hurt2/);
   assert.match(hero({ tris: 21000 }).errors[0], /over the hero cap of 20000/);
+});
+
+test('a hero the staff recipe names keeps its re-baked clips', () => {
+  const recipe = { heroes: ['hero_mourner'], clips: { run: {}, flick: {} } };
+  assert.deepStrictEqual(staffClips('hero_mourner', recipe), ['run_staff', 'flick_staff']);
+  assert.deepStrictEqual(staffClips('hero_leg_plague_choir', recipe), [], 'a body the recipe does not name needs none');
+  const clips = [...HERO_CLIPS, 'death2', 'dig', 'hurt2'];
+  const hero = (extra) => check('x.glb', readGlb(glb({ tris: 11000, joints: BIPED, clips: [...clips, ...extra] })), 'hero', BIPED, staffClips('hero_mourner', recipe));
+  assert.deepStrictEqual(hero(['run_staff', 'flick_staff']).errors, []);
+  assert.match(hero(['run_staff']).errors[0], /missing the staff clips flick_staff/);
+});
+
+test('the game holds a staff the way its staff clips were baked for', () => {
+  const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+  const recipe = JSON.parse(readFileSync(path.join(root, 'tools/blender/recipes/staff.json'), 'utf8'));
+  const props = readFileSync(path.join(root, 'client/game/dm_gear_props.gd'), 'utf8');
+  const lean = (kind) => Number((props.match(new RegExp(`"${kind}": \\{"lean": (-?[\\d.]+)`)) || [])[1]);
+  assert.strictEqual(lean('staff_fist'), recipe.lean, 'HOLDS.staff_fist is the recipe lean (the grip the clips are re-baked for)');
+  assert.strictEqual(lean('staff'), recipe.gameLean, 'HOLDS.staff is the recipe gameLean (the grip the original clips are read with)');
 });
 
 test('the command fails on a broken model and passes a good one', () => {

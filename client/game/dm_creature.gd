@@ -84,6 +84,7 @@ var _head_glow := Vector3.ZERO
 # animation state
 var _loop := "idle"
 var _loop_speed := 1.0
+var _variant := ""             ## a DmModels.CLIP_VARIANTS suffix the clips play with when the rig has them ("" = none)
 var _current := ""
 var _one_shot := ""
 var _one_shot_end := -1.0
@@ -371,12 +372,13 @@ func _prep_clips() -> void:
 		var a := ap.get_animation(nm)
 		if a.has_meta("dm_prep") and a.get_meta("dm_prep") == (2 if hero else 1):
 			continue
-		var base := String(nm).rstrip("0123456789")
+		var clip := DmModels.base_clip(String(nm))   # a `_staff` clip is prepared as the clip it re-bakes
+		var base := clip.rstrip("0123456789")
 		if hero:
 			if base == "death":
 				a.set_meta("dm_prep", 2)
 				continue
-			if COMBAT.has(String(nm)) and anchor != null:
+			if COMBAT.has(clip) and anchor != null:
 				var t := _track_of(a, "Hip", Animation.TYPE_POSITION_3D)
 				if t >= 0:
 					for k in a.track_get_key_count(t):
@@ -388,8 +390,8 @@ func _prep_clips() -> void:
 				var ht := _track_of(a, "Hip", Animation.TYPE_POSITION_3D)
 				if ht >= 0:
 					a.remove_track(ht)
-				if nm == "cast" or nm == "dig":
-					var secs := minf(a.length, 1.3 if nm == "dig" else 1.1)
+				if clip == "cast" or clip == "dig":
+					var secs := minf(a.length, 1.3 if clip == "dig" else 1.1)
 					_trim(a, ceilf(secs * 30.0) / 30.0)
 		else:
 			if not (base in ["death", "dive", "dig"]):
@@ -419,8 +421,21 @@ func _trim(a: Animation, to: float) -> void:
 func has(anim: String) -> bool:
 	return ap != null and ap.has_animation(anim)
 
+## Seconds of the clip that plays for `anim` (its variant when one is set and the rig has it).
 func clip_duration(anim: String) -> float:
-	return ap.get_animation(anim).length if has(anim) else 0.0
+	return ap.get_animation(_with_variant(anim)).length if has(anim) else 0.0
+
+## Play every clip as `<clip><suffix>` where the rig has that clip (DmModels.CLIP_VARIANTS; "" = the plain clips). A held staff's re-baked
+## clips (DmAvatar). The base loop switches over at once; a one-shot already playing finishes as it is.
+func set_clip_variant(suffix: String) -> void:
+	if suffix == _variant:
+		return
+	_variant = suffix
+	if ap != null and _one_shot == "" and _current != "":
+		_start_loop(true)
+
+func _with_variant(nm: String) -> String:
+	return nm + _variant if _variant != "" and ap.has_animation(nm + _variant) else nm
 
 func _resolve(anim: String) -> String:
 	if ap == null or not FALLBACK.has(anim):
@@ -433,27 +448,27 @@ func _resolve(anim: String) -> String:
 			for i in range(2, 4):
 				if ap.has_animation("%s%d" % [nm, i]):
 					pool.append("%s%d" % [nm, i])
-			return pool[randi() % pool.size()]
-		return nm
+			return _with_variant(pool[randi() % pool.size()])
+		return _with_variant(nm)
 	return ""
 
 func _stand_in(clip: String) -> bool:
-	return _loop == "idle" and clip != "" and clip != "idle"
+	return _loop == "idle" and clip != "" and not DmModels.is_clip(clip, "idle")
 
 ## Playback speed of a base loop: the walk-only rigs shuffle at a crawl for idle, everyone else idles at a per-body rate (+-8%).
 func _loop_sp(clip: String, speed: float) -> float:
 	if _stand_in(clip):
 		return IDLE_STAND_IN
-	return speed * _idle_k if clip == "idle" else speed
+	return speed * _idle_k if DmModels.is_clip(clip, "idle") else speed
 
 ## First start only: each body begins its idle at its own point of the loop.
 func _desync_idle() -> void:
-	if ap == null or _idle_k == 1.0 or _current != "idle" or not ap.has_animation("idle"):
+	if ap == null or _idle_k == 1.0 or not DmModels.is_clip(_current, "idle") or not ap.has_animation(_current):
 		return
-	ap.seek(randf() * ap.get_animation("idle").length, true)
+	ap.seek(randf() * ap.get_animation(_current).length, true)
 
 func _is_stride(n: String) -> bool:
-	return n == "walk" or n == "run"
+	return DmModels.is_clip(n, "walk") or DmModels.is_clip(n, "run")
 
 func _start_loop(fade: bool, fade_s: float = -1.0) -> void:
 	if ap == null:
@@ -535,7 +550,7 @@ func play_strike(anim: String, impact_in: float, follow_through: float = 0.3) ->
 		return true
 	var dur := ap.get_animation(nm).length
 	var timings: Dictionary = entry.get("timings", {})
-	var timing: Variant = timings.get(nm)
+	var timing: Variant = timings.get(DmModels.base_clip(nm))
 	var impact := float(timing[1]) if timing is Array and timing.size() > 1 else -1.0
 	var t := DmAnimator.strike_timing(dur, impact, impact_in, follow_through)
 	ap.speed_scale = t.speed
@@ -622,7 +637,7 @@ func flinch(strength: float = 0.85) -> bool:
 
 ## Let locomotion blend out a hero gesture as soon as walking resumes.
 func release_gesture() -> void:
-	if not bool(opts.get("in_place", false)) or _one_shot == "" or _one_shot.rstrip("0123456789") in ["death", "hurt"]:
+	if not bool(opts.get("in_place", false)) or _one_shot == "" or DmModels.base_clip(_one_shot).rstrip("0123456789") in ["death", "hurt"]:
 		return
 	_one_shot = ""
 	_one_shot_end = -1.0
@@ -817,7 +832,7 @@ func update(dt_real: float) -> void:
 			_start_loop(false)
 	if not _pending.is_empty() and root.is_inside_tree():
 		_flush_pending()
-	var settled := _one_shot == "" and (_current == "idle" or not has("idle"))
+	var settled := _one_shot == "" and (DmModels.is_clip(_current, "idle") or not has("idle"))
 	_settled_t = _settled_t + dt if settled else 0.0
 	if not _attached.is_empty():
 		_tick_props(dt)

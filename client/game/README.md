@@ -36,6 +36,12 @@ and by `flinch`), strike lunge timed to the clip's impact (`play_strike`; the ho
   left hand) leaned `lean` degrees toward the fingers and rolled `roll` about itself. It is a rigid child of the bone attachment, so it follows the hand exactly with no script per frame (the older `attach(bone, obj, dir, follow)` with its
   world-up lock and calibration is for tools and glows; thralls' hand props are baked into the crowd: client/crowd/README.md "Hand props"). `DmGearProps.HOLDS` is the per-kind table (staff, scythe, wand, sickle, skull_focus, mourning_bell, grimoire/tome, sword, dagger, mace,
   bow, shield, default_staff); a model made later needs a row there (or gets `HOLD_DEFAULT`) and a grip at its origin with its long axis +Y. Tuning a kind: render it (idle, run, cast) and adjust lean / roll / hold.
+- **Staff clips**: the four discipline heroes carry `<clip>_staff` versions of idle, walk, run, cast, flick, slam, channel and summon, the same clips with the right
+  arm re-baked so the staff stays upright on the move and leads each cast (docs/BLENDER-PIPELINE.md "staff"). While the right hand shows a staff (a worn
+  one, or the default staff under no weapon) and the body has them, `DmAvatar` sets `DmCreature.set_clip_variant("_staff")` and holds the staff with
+  `HOLDS.staff_fist` (lean -25, the grip they were made for); any other weapon, and a body without them (a legendary set's), plays the plain clips with
+  its own grip, re-picked on a body swap. A variant clip is prepared, looped and timed as the clip it re-bakes (`DmModels.CLIP_VARIANTS`, `base_clip`,
+  `is_clip`). hurt and death have no staff version: the staff is hidden while they play (`DmAvatar._downed`).
 - **Real gear models** (`DmGearModels`, table `client/data/slice/necro_gear.json`; props are `models/props/necro_*.glb`, one mesh, one material, one draw call each):
   - *Weapons*: the seven necromancer kinds (and the default staff, in the bone tier with the discipline's soul-light) are the real models, scaled to the table's `length_m` and seated so the shaft at `grip_t` (measured from the model's vertices at that height, `shaft_at`: a scythe's
     shaft is not the middle of its bounds) is at the origin; a `tip` meta node marks the top end (the spell origin). The metal tiers (bone, iron, gold, hell, moon) are one model each in a subtle tint (within 0.85-1.1 per channel, the model's texture stays) and a low emission accent (`TIER_DRESS`, k <= 0.4, following the

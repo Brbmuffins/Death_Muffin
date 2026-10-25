@@ -4,6 +4,10 @@ extends RefCounted
 ## GLBs are dequantized when they come into the game (server/death-muffin/discord-agent/build-art.sh: Godot's importer rejects KHR_mesh_quantization).
 
 const BASE := "res://assets/slice/"
+## Clip variants a model may carry next to a clip as `<clip><suffix>`: `_staff`, a hero clip with the right arm re-baked around a held staff
+## (tools/blender.mjs staff; DmCreature.set_clip_variant plays them). Whatever is keyed by a clip's name (loops, drift, prep, timings) reads
+## the base name.
+const CLIP_VARIANTS := ["_staff"]
 static var _info: Dictionary = {}
 ## Models read from disk because nothing had loaded them yet (tests: a warmed game's tour must leave this at 0).
 static var cold_loads := 0
@@ -92,10 +96,27 @@ static func creature(url: String, height: float, yaw: float) -> Dictionary:
 		inf.prepped = true
 	return {"root": holder, "anim": ap}
 
+## The clip a variant re-bakes (`run_staff` -> `run`); any other name as it is.
+static func base_clip(nm: String) -> String:
+	for v: String in CLIP_VARIANTS:
+		if nm.ends_with(v):
+			return nm.left(nm.length() - v.length())
+	return nm
+
+## True when `nm` is clip `base` or one of its variants. Allocates nothing: the per-frame checks use it.
+static func is_clip(nm: String, base: String) -> bool:
+	if nm == base:
+		return true
+	for v: String in CLIP_VARIANTS:
+		if nm.length() == base.length() + v.length() and nm.begins_with(base) and nm.ends_with(v):
+			return true
+	return false
+
 ## Loop idle/walk/run and strip root travel (the web's stripRootTravel / inPlace clips): remove the linear drift of the root/hip position track.
 static func _prep_anims(ap: AnimationPlayer) -> void:
-	for nm in ap.get_animation_list():
-		var a := ap.get_animation(nm)
+	for anim_name in ap.get_animation_list():
+		var a := ap.get_animation(anim_name)
+		var nm := base_clip(String(anim_name))
 		if nm in ["idle", "walk", "run", "channel"]:
 			a.loop_mode = Animation.LOOP_LINEAR
 		else:

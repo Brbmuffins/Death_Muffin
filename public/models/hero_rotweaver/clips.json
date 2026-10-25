@@ -14,7 +14,15 @@
     "sweep",
     "flick",
     "channel",
-    "summon"
+    "summon",
+    "cast_staff",
+    "channel_staff",
+    "flick_staff",
+    "idle_staff",
+    "run_staff",
+    "slam_staff",
+    "summon_staff",
+    "walk_staff"
   ],
   "tris": 11683,
   "release": {

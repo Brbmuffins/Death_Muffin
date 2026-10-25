@@ -11,6 +11,7 @@ replicated `discipline_id` (`DmHeroBody.family_of`), so a joining Reaper plays t
   equipped bag rows. `set_equipment` diffs per slot (a weapon also by rarity); `DmHeroLook` also skips an unchanged gear set, so an unrelated bag change rebuilds nothing.
   Weapons and the default staff are held in the palm and follow the hand (`DmCreature.attach_held`, grips per kind in `DmGearProps.HOLDS`), so a cast clip that
   throws the weapon hand throws the staff; bolts with a staff play the flick, big rites the slam, summons the summon, channels the channel (`castClips.json`).
+  With a staff, the discipline heroes play those clips (and idle, walk, run and cast) in their staff versions, the arm re-baked around it (client/game/README.md "Held props and gear look").
   Rarity and element glow on the weapon tip, the set aura (2 / 4 pieces) and the set's colour scheme (3+): `client/game/dm_gear_fx.gd`, see client/game/README.md "Held props and gear look".
 - **Models**: weapons, the tier helm, the class / ascended set mantle and, at 3+ pieces of a legendary set, the set's hero body are real models (`client/game/dm_gear_models.gd`, `client/data/slice/necro_gear.json`, client/game/README.md "Held props and gear look"). All of it derives from the gear in the look descriptor, so a remote peer builds the same look; the legendary body swap is part of `DmAvatar.set_equipment`.
 - The Reaper's weapon slot always shows her green-etched scythe (`DmAvatar._reaper`, `DmGearProps.scythe_model`), whatever weapon her bag row names, and she gestures with it as a scythe.

@@ -32,6 +32,15 @@ func _avatar(slug: String) -> DmAvatar:   # (a coroutine: call with await, the a
 	return av
 
 
+## The first necromancer weapon of `kind` in the data.
+func _necro_id(kind: String) -> String:
+	var by: Dictionary = DmContent.get_export("necroWeapons", "NECRO_WEAPON_BY_ID")
+	for id in by:
+		if String(by[id].kind) == kind:
+			return String(id)
+	return ""
+
+
 func _hand_world(av: DmAvatar, bone: String) -> Vector3:
 	var sk := av.c.skeleton
 	return sk.global_transform * sk.get_bone_global_pose(sk.find_bone(bone)).origin
@@ -114,6 +123,39 @@ func _run() -> void:
 	var weak: Array = rpath.keys().filter(func(c: String) -> bool: return float(rpath[c]) <= 1.0)
 	check(weak.is_empty(), "the staff's bolt / big / summon clips move the weapon hand a lot (%s)" % [rpath])
 	av2.dispose()
+
+	# ---- the staff clips: a staff in the right hand plays the body's `<clip>_staff` (the arm re-baked around it) with the fist grip they were
+	# made for; another weapon, or a body without them, plays the plain clips with its own grip
+	var staff_v := DmAvatar.STAFF_VARIANT
+	var fist := deg_to_rad(float(DmGearProps.HOLDS.staff_fist.lean))
+	for slug in HEROES:
+		var av := await _avatar(slug)
+		check(av.c.has("idle" + staff_v) and av.c._current == "idle" + staff_v, "%s: the default staff plays the staff idle (%s)" % [slug, av.c._current])
+		check(is_equal_approx(float(av._mounts[av._staff].arg.lean), fist), "%s: the default staff is held in the fist grip" % slug)
+		var wand_id := _necro_id("wand")
+		av.set_equipment({"main_hand": {"item_id": wand_id, "rarity": "common"}})
+		check(av.c._current == "idle", "%s: a wand plays the plain idle (%s)" % [slug, av.c._current])
+		check(is_equal_approx(float(av._mounts[av._worn.main_hand.obj].arg.lean), deg_to_rad(float(DmGearProps.HOLDS.wand.lean))), "%s: the wand keeps its own grip" % slug)
+		av.set_equipment({"main_hand": {"item_id": _necro_id("staff"), "rarity": "common"}})
+		check(av.c._current == "idle" + staff_v and is_equal_approx(float(av._mounts[av._worn.main_hand.obj].arg.lean), fist), "%s: a worn staff plays the staff clips in the fist grip" % slug)
+		av.c.play_once("flick")
+		check(av.c.one_shot_name() == "flick" + staff_v, "%s: a bolt plays the staff flick (%s)" % [slug, av.c.one_shot_name()])
+		check(is_equal_approx(av.c.clip_duration("flick"), av.c.ap.get_animation("flick" + staff_v).length), "%s: a gesture is timed on the clip that plays" % slug)
+		var plain := av.c.ap.get_animation("flick")
+		var baked := av.c.ap.get_animation("flick" + staff_v)
+		var hp := av.c._track_of(plain, "Hip", Animation.TYPE_POSITION_3D)
+		var hb := av.c._track_of(baked, "Hip", Animation.TYPE_POSITION_3D)
+		check(hp >= 0 and hb >= 0 and (plain.track_get_key_value(hp, 0) as Vector3).is_equal_approx(baked.track_get_key_value(hb, 0) as Vector3), "%s: the staff flick's hip is prepared as the flick's (a combat clip)" % slug)
+		check(av.c.ap.get_animation("idle" + staff_v).loop_mode == Animation.LOOP_LINEAR, "%s: the staff idle loops" % slug)
+		av.dispose()
+	var gc := await _avatar("hero_gravecaller")
+	var choir := {"legs": {"item_id": "leg_plague_choir_legs", "rarity": "legendary"}, "chest": {"item_id": "leg_plague_choir_chest", "rarity": "legendary"}, "head": {"item_id": "leg_plague_choir_head", "rarity": "legendary"}}
+	gc.set_equipment(choir)
+	check(gc.body_slug == "hero_leg_plague_choir" and not gc.c.has("idle" + staff_v), "a legendary body (no staff clips yet) takes over at three pieces")
+	check(gc.c._current == "idle" and is_equal_approx(float(gc._mounts[gc._staff].arg.lean), deg_to_rad(float(DmGearProps.HOLDS.default_staff.lean))), "...and holds the default staff the old way with its own clips")
+	gc.set_equipment({})
+	check(gc.body_slug == "hero_gravecaller" and gc.c._current == "idle" + staff_v and is_equal_approx(float(gc._mounts[gc._staff].arg.lean), fist), "back on the hero's own body: staff clips and fist grip again")
+	gc.dispose()
 
 	# ---- tint: light, the base texture keeps its detail, trim carries the tier signal
 	var av3 := await _avatar("hero_gravecaller")

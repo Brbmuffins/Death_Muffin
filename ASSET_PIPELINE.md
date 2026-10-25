@@ -57,7 +57,9 @@ loses them until `node tools/blender/jobs.mjs replay <id>` (`build-art.sh` does 
 The game's files are in `client/assets/` (committed; the masters of older art and sound stay in `public/`).
 - Models: `server/death-muffin/discord-agent/build-art.sh <id>` (the Discord agent's step, also usable by hand) runs `tools/build-characters.mjs`
   and writes the GLB into `client/assets/slice/models/` dequantized (Godot rejects `KHR_mesh_quantization`). Add a new model's row to
-  `client/data/slice/assets_used.json` by hand (KNOWN-GAPS.md: the exporter that wrote it is gone).
+  `client/data/slice/assets_used.json` by hand (KNOWN-GAPS.md: the exporter that wrote it is gone). Rebuilding one of the staff
+  recipe's heroes (the four discipline heroes) drops their `_staff` clips: put them back with `node tools/blender.mjs staff <slug> --ship`
+  (docs/BLENDER-PIPELINE.md "staff"; `npm run check:models` fails until then).
 - Sounds: `server/death-muffin/discord-agent/build-sound.sh` (below). Older masters in `public/audio/` were converted once (Opus to WAV: Godot
   cannot import Opus); a replacement goes into `client/assets/audio/` the same way.
 - Item icons: `tools/generate-armor-assets.mjs` writes the armor sets' icons; every other flat picture comes in through `tools/pictures/build.mjs` ("Pictures").

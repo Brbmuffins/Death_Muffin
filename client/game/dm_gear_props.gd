@@ -546,6 +546,9 @@ const HOLD_DEFAULT := {"lean": 12.0, "roll": 0.0, "hold": 0.0}
 const HOLDS := {
 	"default_staff": {"lean": -65.0, "roll": 0.0, "hold": 0.0},
 	"staff": {"lean": -65.0, "roll": 0.0, "hold": 0.0},
+	## A staff on a body that carries the staff clips (`<clip>_staff`): the relaxed fist grip they were re-baked for (the `lean` of
+	## tools/blender/recipes/staff.json; at -65 a raised staff would need a folded wrist). DmAvatar picks it.
+	"staff_fist": {"lean": -25.0, "roll": 0.0, "hold": 0.0},
 	"scythe": {"lean": -65.0, "roll": -90.0, "hold": 0.0},
 	"wand": {"lean": -30.0, "roll": 0.0, "hold": 0.04},
 	"sickle": {"lean": -30.0, "roll": 0.0, "hold": 0.0},

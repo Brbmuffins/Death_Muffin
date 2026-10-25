@@ -11,7 +11,7 @@ node tools/blender.mjs procedural <slug> [clip ...] [--install]     author clips
 node tools/blender.mjs rigfix     <slug>                            add bones + move vertex weights (hound legs/tail, gargoyle wings)
 node tools/blender.mjs cleanup    <in.glb> <clip> [--loop] [--drift] [--foot-lock] [--recipe r.json]
 node tools/blender.mjs retarget   <source.glb> <target-rig.glb> <clip-map.json> [--only a,b]
-node tools/blender.mjs staff      <slug> [clip ...] [--sheets]      staff versions of a hero's clips: the arm re-solved around the held staff
+node tools/blender.mjs staff      <slug> [clip ...] [--sheets] [--ship]   staff versions of a hero's clips: the arm re-solved around the held staff
 node tools/blender.mjs install    <slug>                            copy art-src/blender/<slug>/anim_*.glb into art-src/tripo/<slug>/
 node tools/blender.mjs build      <slug ...>                        build-characters only
 node tools/blender.mjs selftest                                     kinematics checked against Blender itself
@@ -169,7 +169,7 @@ staff angle from upright, original -> re-bake: run 9-121 -> 6-23 deg, flick 15-1
 lands on the floor), channel 105-123 -> 16-20, summon 59-174 -> 6-10, cast 10-115 -> 5-62.
 
 ```
-BLENDER=<blender> node tools/blender.mjs staff hero_gravecaller --sheets
+BLENDER=<blender> node tools/blender.mjs staff hero_gravecaller --sheets --ship
 ```
 
 reads `client/assets/slice/models/<slug>/character.glb` (the model the client loads; `public/models/` as a fallback), sizes the hero to its `heroModels` height
@@ -178,8 +178,13 @@ reads `client/assets/slice/models/<slug>/character.glb` (the model the client lo
 then for every clip in `tools/blender/recipes/staff.json` keys `R_Upperarm`, `R_Forearm` and `R_Hand` so the staff sits
 where the recipe says. Every other channel is the clip's own: the export swaps the shipped body channels back in.
 Output: `art-src/blender/<slug>/staff/anim_<clip>_staff.glb` (and `sheets/sheet_<clip>.png` with `--sheets`: the original
-with the game's grip above, the re-bake below, the staff model in hand). `--install` copies them into `art-src/tripo/<slug>/`.
-Run so far on Blender 5.2 (Windows, 2026-10-25, about 20 s with sheets); on 4.5 the script falls back to the legacy
+with the game's grip above, the re-bake below, the staff model in hand). `--ship` adds them to the model the game loads and
+its `public/models/` master (and `clips.json`), replacing older ones, each aligned to the start of the clip it re-bakes and
+resampled as `build-characters` does; mesh, skin and textures stay byte for byte (`pack.mjs` `addClip`). Nothing is rebuilt
+from `art-src`, whose combat-trim sources (`COMBAT_TRIMS`) a workstation may lack. A later rebuild of one of the recipe's
+`heroes` drops the clips: `npm run check:models` fails until `staff <slug> --ship` puts them back. `--install` copies the
+clips into `art-src/tripo/<slug>/` instead, for `build-characters` to take them.
+Run so far on Blender 5.2 (Windows, 2026-10-25, about 20 s a hero with sheets); on 4.5 the script falls back to the legacy
 `action.fcurves`, not yet run there.
 
 The grip is reproduced from the game, not guessed: the prop origin on the palm centre (`DmCreature.palm_of`: the mean of the
@@ -188,8 +193,9 @@ leaned `lean` toward the fingers, in the hand's glTF node frame (not Blender's b
 
 | key | meaning |
 |---|---|
-| `gameLean` | `HOLDS.staff` lean today (-65): the grip the original clips are read with |
-| `lean` | the grip the re-baked clips are made for (-25, a relaxed fist). At -65 the staff lies back along the forearm: fine for a hanging arm, but a raised staff then needs a wrist folded 150+ degrees, so the game must hold the staff at this lean when it plays them |
+| `heroes` | the bodies that carry the staff clips (`check-models` requires every recipe clip as `<clip>_staff` on them) |
+| `gameLean` | `HOLDS.staff` lean (-65): the grip the original clips are read with |
+| `lean` | the grip the re-baked clips are made for (-25, a relaxed fist): `HOLDS.staff_fist`, which the game uses while it plays them (client/game/README.md "Held props and gear look"). At -65 the staff lies back along the forearm: fine for a hanging arm, but a raised staff then needs a wrist folded 150+ degrees |
 | `wrist` | the range of effective lean (ulnar -, radial +) the solver may bend the wrist to when the relaxed grip cannot reach |
 | `rest` | where the hand carries the staff: metres from the right shoulder, `[forward, right, up]` |
 | `clips.<c>.type` | `carry` (idle/walk/run: `swing` keeps that share of the original hand's fore-aft swing, `tilt` + `tiltSwing` lean the staff forward with it, `out` tips it outward) or `gesture` |
@@ -199,11 +205,11 @@ leaned `lean` toward the fingers, in the hand's glTF node frame (not Blender's b
 The solver: with a straight wrist the hand's +Y is the forearm, so a staff direction fixes the forearm on a cone around it
 (90 - lean degrees); of the cone directions the upper arm can reach, it keeps the one nearest the previous frame's, bends the
 wrist within `wrist` only when that buys reach, and gives 70 % of the hand's twist about the forearm to the forearm.
-A target the arm cannot reach lands as near as it can: each clip reports its `miss` (Gravecaller: 1 cm or less for
-idle/walk/run, 2-7 cm for the casts) and `before`/`after` checks (staff tilt range, wrist bend and twist, the staff foot's
-lowest point). The slam's crouch bottoms out after the clip's release frame, so its staff lands 40 ms after the release.
-
-Not yet played by the game (KNOWN-GAPS.md "Look"): the clips are built for the Gravecaller only and nothing selects them.
+A target the arm cannot reach lands as near as it can: each clip reports its `miss` (the four discipline heroes: 3 cm or less
+for idle/walk/run/channel/summon, up to 7 cm for cast and flick, up to 15 cm for the Ossuary's and Rotweaver's slam, whose foot
+then lands 2-3 cm above the floor) and `before`/`after` checks (staff tilt range, wrist bend and twist, the staff foot's lowest
+point). The slam's crouch bottoms out after the clip's release frame, so its staff lands 40 ms after the release. hurt and death
+have no staff version: the game hides the staff while they play.
 
 ## Known limits
 

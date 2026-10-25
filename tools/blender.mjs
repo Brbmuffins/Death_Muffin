@@ -6,8 +6,9 @@
  *   node tools/blender.mjs rigfix     <slug> [--recipe r.json]
  *   node tools/blender.mjs cleanup    <in.glb> <clip> [--out out.glb] [--loop] [--drift] [--foot-lock] [--window 0.25] [--name n]
  *   node tools/blender.mjs retarget   <source.glb|fbx> <target-rig.glb> <clip-map.json> [--out dir] [--only clip,clip] [--install <slug>]
- *   node tools/blender.mjs staff      <slug> [clip ...] [--recipe r.json] [--model character.glb] [--out dir] [--sheets] [--install]
- *                                     re-solve the right arm so the held staff stays upright / leads the cast (anim_<clip>_staff.glb)
+ *   node tools/blender.mjs staff      <slug> [clip ...] [--recipe r.json] [--model character.glb] [--out dir] [--sheets] [--install] [--ship]
+ *                                     re-solve the right arm so the held staff stays upright / leads the cast (anim_<clip>_staff.glb);
+ *                                     --ship adds them to the hero the game loads (client/assets/slice/models) and its public/models master
  *   node tools/blender.mjs install    <slug> [--from dir]      copy generated anim_*.glb into art-src/tripo/<slug>/ (originals kept in orig/)
  *   node tools/blender.mjs build      <slug ...>               build-characters
  *   node tools/blender.mjs selftest                            check the kinematics against Blender itself
@@ -17,10 +18,13 @@
  * anim_<clip>.glb, the form tools/build-characters.mjs already understands.
  */
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
-import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { packFile } from './blender/pack.mjs';
+import { NodeIO } from '@gltf-transform/core';
+import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
+import { resample } from '@gltf-transform/functions';
+import { addClip, packFile } from './blender/pack.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SCRIPTS = join(ROOT, 'tools', 'blender');
@@ -33,7 +37,7 @@ export function findBlender() {
 }
 
 /** Split argv into positionals and --flags (a flag takes a value unless it is in BOOLS). */
-export function parseArgs(argv, bools = ['install', 'loop', 'drift', 'foot-lock', 'sheets', 'help']) {
+export function parseArgs(argv, bools = ['install', 'loop', 'drift', 'foot-lock', 'sheets', 'ship', 'help']) {
   const pos = [], flags = {};
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -72,6 +76,34 @@ async function packAll(dir, files) {
     const name = basename(f).replace(/^anim_/, '').replace(/\.glb$/, '');
     const r = await packFile(join(dir, f), name);
     console.log(`  packed ${f}: ${r.channels} channels (${r.dropped} rest-pose channels dropped)`);
+  }
+}
+
+/**
+ * Put a hero's `_staff` clips from `dir` into the models the game loads: client/assets/slice/models/<slug>/character.glb and its
+ * public/models master (with clips.json), replacing older ones and keeping each clip's timing aligned with the clip it re-bakes. Mesh,
+ * skin and textures stay byte for byte, so nothing has to be rebuilt from art-src (where the combat clips' Tripo sources may be missing).
+ */
+async function shipClips(slug, dir) {
+  const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
+  const files = readdirSync(dir).filter((f) => /^anim_.+_staff\.glb$/.test(f));
+  for (const model of [join(ROOT, 'client', 'assets', 'slice', 'models', slug, 'character.glb'), join(ROOT, 'public', 'models', slug, 'character.glb')]) {
+    if (!existsSync(model)) continue;
+    const doc = await io.read(model);
+    for (const f of files) {
+      const name = f.slice('anim_'.length, -'.glb'.length);
+      const src = await io.read(join(dir, f));
+      await src.transform(resample({ tolerance: 1e-4 }));   // as build-characters does for every clip
+      const n = addClip(doc, src, name, name.replace(/_staff$/, ''));
+      console.log(`  shipped ${name} into ${relative(ROOT, model)} (${n} channels)`);
+    }
+    await io.write(model, doc);
+    const list = join(dirname(model), 'clips.json');
+    if (existsSync(list)) {
+      const clips = JSON.parse(readFileSync(list, 'utf8'));
+      clips.clips = doc.getRoot().listAnimations().map((a) => a.getName());
+      writeFileSync(list, JSON.stringify(clips, null, 2) + '\n');
+    }
   }
 }
 
@@ -137,6 +169,7 @@ const commands = {
     const res = runBlender('staff.py', args);
     await packAll(out, res.clips.map((r) => basename(r.file)));
     if (flags.install) commands.install({ pos: [slug], flags: { from: out } });
+    if (flags.ship) await shipClips(slug, out);
     return res;
   },
 

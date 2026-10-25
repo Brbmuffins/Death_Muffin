@@ -63,6 +63,44 @@ export function zeroStart(doc) {
   }
 }
 
+/**
+ * Add the first animation of `src` to `dst` as `name`, by joint name (as tools/build-characters.mjs copies clips), replacing a clip of
+ * that name; mesh, skin and textures are untouched. With `align`, the keys are shifted to start where `dst`'s clip `align` starts: a
+ * re-bake of a shipped clip keeps its timing (Tripo clips start a frame in; zeroStart moved the re-bake to 0). Returns the channels copied.
+ */
+export function addClip(dst, src, name, align = null) {
+  const root = dst.getRoot();
+  for (const old of root.listAnimations().filter((a) => a.getName() === name)) {
+    for (const s of old.listSamplers()) {
+      const used = [s.getInput(), s.getOutput()];
+      s.dispose();
+      for (const acc of used) if (acc && !acc.listParents().some((p) => p !== root)) acc.dispose();
+    }
+    old.dispose();
+  }
+  const from = src.getRoot().listAnimations()[0];
+  if (!from) return 0;
+  const start = (anim) => Math.min(...anim.listSamplers().map((s) => s.getInput().getArray()[0]));
+  const base = align ? root.listAnimations().find((a) => a.getName() === align) : null;
+  const shift = base ? start(base) - start(from) : 0;
+  const byName = new Map(root.listNodes().map((n) => [n.getName(), n]));
+  const buffer = root.listBuffers()[0];
+  const anim = dst.createAnimation(name);
+  let channels = 0;
+  for (const ch of from.listChannels()) {
+    const target = byName.get(ch.getTargetNode()?.getName());
+    if (!target) continue;
+    const s = ch.getSampler();
+    const input = dst.createAccessor().setType('SCALAR').setArray(s.getInput().getArray().map((t) => t + shift)).setBuffer(buffer);
+    const output = dst.createAccessor().setType(s.getOutput().getType()).setArray(s.getOutput().getArray().slice()).setBuffer(buffer);
+    const sampler = dst.createAnimationSampler().setInput(input).setOutput(output).setInterpolation(s.getInterpolation());
+    anim.addSampler(sampler);
+    anim.addChannel(dst.createAnimationChannel().setTargetNode(target).setTargetPath(ch.getTargetPath()).setSampler(sampler));
+    channels++;
+  }
+  return channels;
+}
+
 export async function packDoc(doc, name) {
   zeroStart(doc);
   const dropped = dropRestChannels(doc);

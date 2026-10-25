@@ -45,6 +45,10 @@ const REAPER_CLIPS := {"scythe_sweep": "sweep", "harvest_spin": "sweep", "reap":
 ## Worn set pieces that step the set's aura up (DmGearFx.AURA_MOTES): 2 = level 1, 4 = level 2. From 3 pieces on `set_look` also switches the set's colour scheme on.
 const SET_AURA_STEPS := [2, 4]
 const SET_SCHEME_PIECES := 3
+## A staff in the right hand plays the body's staff clips (`<clip>_staff`: the arm re-baked around it, tools/blender.mjs staff) with the grip
+## they were made for (`DmGearProps.HOLDS.staff_fist`); a body without them (a legendary set's, the fallback) keeps its clips and the old grip.
+const STAFF_KINDS := ["staff", "default_staff"]
+const STAFF_VARIANT := "_staff"
 const MAX_SPEED := 3.2
 const MIN_SPEED := 0.7
 
@@ -89,7 +93,7 @@ var _element := ""                   ## the weapon's element override (socketed 
 var _main_rarity := ""
 var set_id := ""                     ## the set whose look is on (see set_look)
 var set_pieces := 0
-var _mounts: Dictionary = {}         # prop Node3D -> {bone, mode: "held" | "fitted" | "plain" | "dir", arg}: what `_swap_body` re-seats on the new body
+var _mounts: Dictionary = {}         # prop Node3D -> {bone, mode: "held" | "fitted" | "plain" | "dir", arg, kind}: what `_swap_body` re-seats on the new body
 var _opts: Dictionary = {}
 var _helm_item: Dictionary = {}     # the worn head item (re-fitted on a new body)
 var _mantle: Variant = null          # {obj, set}
@@ -127,9 +131,11 @@ func setup(parent: Node, accent: Variant = 0xa26bff, with_light: bool = false, m
 		_staff = (DmGearProps.scythe_model(_scythe_prop) if _reaper else null)   # the Reaper carries her scythe, not the skull staff
 		if _staff == null:
 			_staff = _default_staff(accent_hex)
-		_mount(_staff, "R_Hand", "held", DmGearProps.hold_spec("scythe" if _reaper else "default_staff"))
+		var kind := "scythe" if _reaper else "default_staff"
+		_mount(_staff, "R_Hand", "held", _held_spec(c, kind), kind)
 		_default_hand[_staff] = "main_hand"
 		_refresh_weapon_fx()
+		_refresh_clip_variant()
 		set_look_changed.connect(_on_set_look)
 	_live.append(self)
 	if with_light:
@@ -162,10 +168,23 @@ func _default_staff(accent: int) -> Node3D:
 	g.set_meta("tip", glow2)
 	return g
 
-## Seat a prop on the body and remember how, so a body swap can move it. mode: "held" (hand grip spec), "fitted" (rest-pose spec), "plain", "dir" (aimed, arg = direction).
-func _mount(obj: Node3D, bone: String, mode: String, arg: Variant = null) -> void:
-	_mounts[obj] = {"bone": bone, "mode": mode, "arg": arg}
+## Seat a prop on the body and remember how, so a body swap can move it. mode: "held" (hand grip spec; `kind` the grip's kind, so another body
+## can grip it its own way), "fitted" (rest-pose spec), "plain", "dir" (aimed, arg = direction).
+func _mount(obj: Node3D, bone: String, mode: String, arg: Variant = null, kind := "") -> void:
+	_mounts[obj] = {"bone": bone, "mode": mode, "arg": arg, "kind": kind}
 	_seat(c, obj, _mounts[obj])
+
+## The grip of a held kind on `body`: a staff on a body that has the staff clips is held as they were made for.
+func _held_spec(body: DmCreature, kind: String, left := false) -> Dictionary:
+	if not left and kind in STAFF_KINDS and body.has("idle" + STAFF_VARIANT):
+		return DmGearProps.hold_spec("staff_fist")
+	return DmGearProps.hold_spec(kind, left)
+
+## The staff clips play while the right hand shows a staff (a worn one, or the default staff when no weapon is worn) and the body has them.
+func _refresh_clip_variant() -> void:
+	var mh: Variant = _worn.get("main_hand")
+	var kind := String(mh.get("kind", "")) if mh != null else ("scythe" if _reaper else "default_staff")
+	c.set_clip_variant(STAFF_VARIANT if kind in STAFF_KINDS and c.has("idle" + STAFF_VARIANT) else "")
 
 func _seat(body: DmCreature, obj: Node3D, m: Dictionary) -> void:
 	match m.mode:
@@ -309,6 +328,7 @@ func set_equipment(items: Dictionary) -> void:
 		if item == null:
 			if slot == "main_hand":
 				_refresh_weapon_fx()
+				_refresh_clip_variant()
 			continue
 		if slot == "head":
 			_helm_want = String(item.item_id)
@@ -324,11 +344,12 @@ func set_equipment(items: Dictionary) -> void:
 				DmGearProps.dispose_prop(obj)
 				obj = scythe
 				kind = "scythe"
-		_mount(obj, bone, "held", DmGearProps.hold_spec(kind, slot == "off_hand"))
-		_worn[slot] = {"obj": obj, "key": item.item_id, "rarity": rarity}
+		_mount(obj, bone, "held", _held_spec(c, kind, slot == "off_hand"), kind)
+		_worn[slot] = {"obj": obj, "key": item.item_id, "rarity": rarity, "kind": kind}
 		if slot == "main_hand":
 			_main_rarity = rarity
 			_refresh_weapon_fx()
+			_refresh_clip_variant()
 	# Body slots have no prop: they tint their region of the body lightly by material tier (the texture keeps its detail; trim and rim carry the glow).
 	var best := _best_set(items)
 	set_look(best[0], best[1])
@@ -442,7 +463,7 @@ func _reseat_scythe(file: String) -> void:
 		_unmount(old)
 		_default_hand.erase(old)
 		DmGearProps.dispose_prop(old)
-		_mount(obj, "R_Hand", "held", DmGearProps.hold_spec("scythe"))
+		_mount(obj, "R_Hand", "held", DmGearProps.hold_spec("scythe"), "scythe")
 		if old == _staff:
 			_staff = obj
 			_default_hand[obj] = hand if hand != null else "main_hand"
@@ -477,13 +498,17 @@ func _swap_body(new_slug: String) -> void:
 		if refit.has(obj):
 			continue
 		obj.scale = Vector3.ONE   # (the seat scales a prop by the bone chain's scale: from a clean 1)
-		_seat(nc, obj, _mounts[obj])
+		var m: Dictionary = _mounts[obj]
+		if m.mode == "held" and String(m.get("kind", "")) != "":
+			m.arg = _held_spec(nc, String(m.kind), m.bone == "L_Hand")   # the new body may or may not have the staff clips
+		_seat(nc, obj, m)
 	for n: Node in [lantern, _aura]:
 		if n != null:
 			old.root.remove_child(n)
 			nc.root.add_child(n)
 	c = nc
 	body_slug = new_slug
+	_refresh_clip_variant()
 	for obj: Node3D in refit:
 		_mounts.erase(obj)
 		DmGearProps.dispose_prop(obj)
@@ -635,7 +660,7 @@ func update(dt: float, x: float, z: float, facing: float, moving: bool, speed: f
 	cast_lock = maxf(0.0, cast_lock - dt)
 	c.update(dt)
 	var clip := c.one_shot_name()
-	var down := clip != "" and clip.rstrip("0123456789") in ["death", "hurt"]
+	var down := clip != "" and DmModels.base_clip(clip).rstrip("0123456789") in ["death", "hurt"]
 	if down != _downed:
 		_downed = down
 		apply_gear_visibility()
