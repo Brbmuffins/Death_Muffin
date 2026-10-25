@@ -2,7 +2,7 @@
 staff.py - staff-aware re-bake of a hero's right arm (docs/BLENDER-PIPELINE.md "staff").
 
   blender -b --python staff.py -- <character.glb> <recipe.json> <out_dir> <height_m> <length_m> <grip_t> [clip ...]
-                                  [--sheets <staff_prop.glb>]
+                                  [--sheets <staff_prop.glb>] [--sheet-clips clip,clip]
 
 Reads the hero the client loads (client/assets/slice/models/<slug>/character.glb), prepares the clips as
 DmCreature._prep_clips does for a hero, and for every recipe clip re-solves R_Upperarm / R_Forearm / R_Hand so the staff
@@ -21,7 +21,8 @@ twist about the forearm goes to the forearm (pronation lives there). A target ou
 the miss is reported per clip.
 
 --sheets renders the original clip (game grip) above the re-bake at the recipe's sample times, with the staff model in
-hand, into <out_dir>/sheets/sheet_<clip>.png.
+hand, into <out_dir>/sheets/sheet_<clip>.png (every re-baked clip, or those --sheet-clips names), with the job previews'
+render (preview.scene); a sheet that fails is reported as sheetError and the clips are still written.
 """
 import json
 import math
@@ -35,6 +36,7 @@ from mathutils import Matrix, Quaternion, Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common  # noqa: E402
+import preview  # noqa: E402
 
 G2B = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))  # glTF Y-up -> Blender Z-up
 UP, FWD, RIGHT = Vector((0, 0, 1)), Vector((1, 0, 0)), Vector((0, -1, 0))  # the hero faces +X, right hand on -Y
@@ -189,6 +191,8 @@ class Hero:
         # skinned meshes only: the importer also brings an Icosphere it uses as the bones' display shape
         self.meshes = [o for o in meshes if any(m.type == 'ARMATURE' for m in o.modifiers)]
         common.use_quaternions(self.arm)
+        for a in [a for a in bpy.data.actions if a.name.endswith('_staff')]:  # an earlier re-bake: made again from its clip
+            bpy.data.actions.remove(a)
         for a in bpy.data.actions:  # keep the clips as shipped: the re-bakes copy every channel but the arm from these
             raw = a.copy(); raw.name = a.name + '__raw'; raw.use_fake_user = True
         self.prep_err = prep_clips(self.arm, self.js, self.bin)
@@ -466,7 +470,7 @@ TILE_W, TILE_H = 360, 450
 
 
 def sheet_setup(prop_glb, length, grip_t):
-    sc = bpy.context.scene
+    sc, _ = preview.scene((TILE_W, TILE_H))   # the job previews' render: Cycles on a few CPU threads, what the VPS can spare
     before = set(bpy.data.objects)
     bpy.ops.import_scene.gltf(filepath=prop_glb)
     new = [o for o in bpy.data.objects if o not in before]
@@ -491,16 +495,6 @@ def sheet_setup(prop_glb, length, grip_t):
 
 def sheet_render(hero, prop, to_grip, cam, clip, us, out_dir):
     sc = bpy.context.scene
-    try:
-        sc.render.engine = 'BLENDER_WORKBENCH'
-    except TypeError:
-        pass
-    sh = sc.display.shading
-    sh.light = 'STUDIO'; sh.color_type = 'TEXTURE'; sh.show_cavity = True; sh.show_shadows = True
-    sc.render.resolution_x, sc.render.resolution_y, sc.render.resolution_percentage = TILE_W, TILE_H, 100
-    if sc.world is None:
-        sc.world = bpy.data.worlds.new('SheetWorld')
-    sc.world.color = (0.05, 0.05, 0.06)
     sc.camera = cam
     rows = []
     for suffix, lean, tag in (('', hero.recipe['gameLean'], 'original'), ('_staff', hero.recipe['lean'], 'staff re-bake')):
@@ -556,9 +550,11 @@ def compose(rows, out):
 
 def main():
     a = common.script_args()
-    sheets_prop = None
+    sheets_prop, sheet_clips = None, None
     if '--sheets' in a:
         i = a.index('--sheets'); sheets_prop = a[i + 1]; del a[i:i + 2]
+    if '--sheet-clips' in a:
+        i = a.index('--sheet-clips'); sheet_clips = a[i + 1].split(','); del a[i:i + 2]
     glb, recipe_path, out_dir = a[0], a[1], a[2]
     height, length, grip_t = float(a[3]), float(a[4]), float(a[5])
     only = a[6:]
@@ -604,16 +600,20 @@ def main():
         print('STAFF', json.dumps(res))
         results.append(res)
         baked.append(clip)
-    sheets = []
+    sheets, sheet_error = [], None
     if sheets_prop:
-        sdir = os.path.join(out_dir, 'sheets')
-        os.makedirs(sdir, exist_ok=True)
-        prop, to_grip, cam = sheet_setup(sheets_prop, length, grip_t)
-        for clip in baked:
-            us = recipe.get('sheets', {}).get(clip, [0, 0.2, 0.4, 0.6, 0.8, 1])
-            sheets.append(sheet_render(hero, prop, to_grip, cam, clip, us, sdir))
-            print('STAFF sheet', sheets[-1])
-    print('RESULT ' + json.dumps({'clips': results, 'sheets': sheets}))
+        try:  # a picture that cannot be made costs only the picture: the clips above are written
+            sdir = os.path.join(out_dir, 'sheets')
+            os.makedirs(sdir, exist_ok=True)
+            prop, to_grip, cam = sheet_setup(sheets_prop, length, grip_t)
+            for clip in [c for c in (sheet_clips or baked) if c in baked]:
+                us = recipe.get('sheets', {}).get(clip, [0, 0.2, 0.4, 0.6, 0.8, 1])
+                sheets.append(sheet_render(hero, prop, to_grip, cam, clip, us, sdir))
+                print('STAFF sheet', sheets[-1])
+        except Exception as e:  # noqa: BLE001
+            sheet_error = f'{type(e).__name__}: {e}'
+            print('STAFF sheet failed:', sheet_error)
+    print('RESULT ' + json.dumps({'clips': results, 'sheets': sheets, 'sheetError': sheet_error}))
 
 
 main()

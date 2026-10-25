@@ -11,7 +11,7 @@ node tools/blender.mjs procedural <slug> [clip ...] [--install]     author clips
 node tools/blender.mjs rigfix     <slug>                            add bones + move vertex weights (hound legs/tail, gargoyle wings)
 node tools/blender.mjs cleanup    <in.glb> <clip> [--loop] [--drift] [--foot-lock] [--recipe r.json]
 node tools/blender.mjs retarget   <source.glb> <target-rig.glb> <clip-map.json> [--only a,b]
-node tools/blender.mjs staff      <slug> [clip ...] [--sheets] [--ship]   staff versions of a hero's clips: the arm re-solved around the held staff
+node tools/blender.mjs staff      <slug> [clip ...] [--sheets]      staff versions of a hero's clips: the arm re-solved around the held staff
 node tools/blender.mjs install    <slug>                            copy art-src/blender/<slug>/anim_*.glb into art-src/tripo/<slug>/
 node tools/blender.mjs build      <slug ...>                        build-characters only
 node tools/blender.mjs selftest                                     kinematics checked against Blender itself
@@ -40,7 +40,9 @@ node tools/blender/jobs.mjs kinds                             the kinds and thei
 
 - **Clips** (`motion`, `retarget`, `cleanup`, `clips`): Blender gets a copy of the model (for `cleanup`, holding only that clip; for `motion`, the
   rig and every clip an overlay may build on) and its output clip is copied onto the shipped skeleton by joint name (`merge.mjs`
-  `transplantClip`), replacing a clip of that name. Nothing else in the file changes.
+  `transplantClip`), replacing a clip of that name. Nothing else in the file changes. `staff` re-bakes a discipline hero's `<clip>_staff`
+  clips from its clips as they are ("`staff`" below), each starting where the clip it re-bakes starts (`pack.mjs` `addClip`); a job that
+  changes one of those clips on such a hero ends with a `staff` step for it, or the game keeps playing the old motion with a staff in hand.
 - **Geometry** (`rigfix`, `decimate`, `reshape`, `remove`; `edit.py`, `rigfix.py`): Blender writes a static export and only the skinned mesh's
   vertex data, indices and, for new bones, the skin are moved into the shipped file (`transplantGeometry`). Tripo's binds carry a scale that
   Blender's export normalises, so the two binds may differ by one transform for the whole mesh; vertices are moved by it, and a bone whose
@@ -50,7 +52,8 @@ node tools/blender/jobs.mjs kinds                             the kinds and thei
   image renamed, so Godot extracts a new texture file; the job deletes the old extracted `.webp` and its `.import`.
 - **After the steps**, before anything is written: the model rules (`tools/assets/check-models.mjs`), stride (body heights per second, as
   `measure-clips.mjs --stride`) for touched `walk`/`run`, timings `[length, blow lands]` for touched `attack*`/`cast*`, and with `--shots` a
-  preview sheet (`preview.py`: six moments of each touched clip, or the model before and after from three sides; Cycles on 4 CPU threads).
+  preview sheet (`preview.py`: six moments of each touched clip, or the model before and after from three sides; Cycles on 4 CPU threads;
+  for `staff`, up to four of its own sheets).
   Then the GLB is written, the model's rows (`client/game/view_models.json`, `client/data/slice/{enemies,npcs,hero}.json`) get the clip list,
   strides and timings, and the steps are appended to `art-manifest/blender/<id>.json`. A failing step or check writes nothing.
 - The library is the shared checkout's `art-src/vendor/quaternius-ual/UAL1_Standard.glb` (`DM_BLENDER_LIBRARY` overrides); scratch files go
@@ -169,25 +172,24 @@ staff angle from upright, original -> re-bake: run 9-121 -> 6-23 deg, flick 15-1
 lands on the floor), channel 105-123 -> 16-20, summon 59-174 -> 6-10, cast 10-115 -> 5-62.
 
 ```
-BLENDER=<blender> node tools/blender.mjs staff hero_gravecaller --sheets --ship
+{"model": "hero_gravecaller", "steps": [{"kind": "staff"}]}             a Blender job ("Jobs"): what the game's model gets
+BLENDER=<blender> node tools/blender.mjs staff hero_gravecaller --sheets  the same re-bake into art-src/, for tuning the recipe
 ```
 
-reads `client/assets/slice/models/<slug>/character.glb` (the model the client loads; `public/models/` as a fallback), sizes the hero to its `heroModels` height
+`staff.py` reads `client/assets/slice/models/<slug>/character.glb` (the model the client loads; the `staff` command falls back to `public/models/`), sizes the hero to its `heroModels` height
 (`client/data/slice/npcs.json`) and the staff to `necro_gear.json` (`length_m`, `grip_t`), prepares the clips as
 `DmCreature._prep_clips` does (Root dropped, combat clips' Hip pinned to idle's first key, other clips' Hip track dropped),
-then for every clip in `tools/blender/recipes/staff.json` keys `R_Upperarm`, `R_Forearm` and `R_Hand` so the staff sits
-where the recipe says. Every other channel is the clip's own: the export swaps the shipped body channels back in.
-Output: `art-src/blender/<slug>/staff/anim_<clip>_staff.glb` (and `sheets/sheet_<clip>.png` with `--sheets`: the original
-with the game's grip above, the re-bake below, the staff model in hand). `--ship` adds them to the model the game loads and
-its `public/models/` master (and `clips.json`), replacing older ones, each aligned to the start of the clip it re-bakes and
-resampled as `build-characters` does; mesh, skin and textures stay byte for byte (`pack.mjs` `addClip`). Nothing is rebuilt
-from `art-src`, whose combat-trim sources (`COMBAT_TRIMS`) a workstation may lack. A later rebuild of one of the recipe's
-`heroes` drops the clips and `build-art.sh` does not redo them (it replays "Jobs", and this is not one): `npm run check:models`
-fails until `staff <slug> --ship` puts them back. The same after a job changes one of the recipe's clips on these heroes: the
-game plays the `_staff` twin, which keeps the old motion until it is re-baked. `--install` copies the
-clips into `art-src/tripo/<slug>/` instead, for `build-characters` to take them.
-Run so far on Blender 5.2 (Windows, 2026-10-25, about 20 s a hero with sheets); on 4.5 the script falls back to the legacy
-`action.fcurves`, not yet run there.
+then for every clip in `tools/blender/recipes/staff.json` (or those named) keys `R_Upperarm`, `R_Forearm` and `R_Hand` so the staff sits
+where the recipe says. Every other channel is the clip's own: the export swaps the shipped body channels back in. Staff clips the
+model already has are dropped on import and made again from their clips. The job puts each new clip on the model in place of the old
+one, resampled as `build-characters` does and starting where the clip it re-bakes starts; mesh, skin, textures and the other clips stay
+as they are, the step is recorded in `art-manifest/blender/<slug>.json`, and `build-art.sh` replays it after a rebuild. With `--shots`
+its preview is up to four sheets (the recipe's `preview`, or the clips named): the clip with the game's grip above, the re-bake
+below, the staff model in hand. The `staff` command writes `art-src/blender/<slug>/staff/anim_<clip>_staff.glb` (and every clip's
+`sheets/sheet_<clip>.png` with `--sheets`); `--install` copies them into `art-src/tripo/<slug>/` for `build-characters`. Sheets render
+with the job previews' Cycles setup (`preview.scene`); one that fails is reported and the clips are still made.
+Run so far on Blender 5.2 (Windows, 2026-10-25: a job 13-26 s a hero, 94 s with four sheets; the four heroes' records were made
+that way and reproduce their shipped clips exactly); on 4.5 (the VPS) the script falls back to the legacy `action.fcurves`, not yet run there.
 
 The grip is reproduced from the game, not guessed: the prop origin on the palm centre (`DmCreature.palm_of`: the mean of the
 vertices skinned > 0.5 to the hand, in its bind space; the skin weights are normalised bytes), its +Y the knuckle line
@@ -202,6 +204,7 @@ leaned `lean` toward the fingers, in the hand's glTF node frame (not Blender's b
 | `rest` | where the hand carries the staff: metres from the right shoulder, `[forward, right, up]` |
 | `clips.<c>.type` | `carry` (idle/walk/run: `swing` keeps that share of the original hand's fore-aft swing, `tilt` + `tiltSwing` lean the staff forward with it, `out` tips it outward) or `gesture` |
 | `clips.<c>.keys` | gesture keys `[u, pos, [tilt, azimuth]]`: `u` 0..1 through the clip, `pos` `[forward, right, up]` from the shoulder, `"rest"`, or `{"plant": [forward, right]}` (the staff's foot on the floor there, fixed in the world); azimuth 0 forward, 90 out, 180 back |
+| `preview` | the clips (at most 4) whose sheets a job's preview shows when it re-bakes every clip |
 | `sheets.<c>` | sample times for the sheet |
 
 The solver: with a straight wrist the hand's +Y is the forearm, so a staff direction fixes the forearm on a cone around it

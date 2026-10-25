@@ -44,6 +44,11 @@
         "drop": { "type": "strings", "max": 12 }
       }
     },
+    "staff": {
+      "what": "Re-bake a discipline hero's staff clips (<clip>_staff, which the game plays while the hero holds a staff: the right arm re-solved so the staff stays upright and leads the casts; tools/blender/recipes/staff.json) from its clips as they are now. Run it after a step that changed one of the recipe's clips, in the same job. Only the recipe's heroes; clips names the plain clips (default: every clip of the recipe).",
+      "targets": ["character"],
+      "params": { "clips": { "type": "strings", "min": 1, "max": 8 } }
+    },
     "recolor": {
       "what": "Shift the colour texture: hue (degrees), saturation and brightness (multipliers). only: {color: '#rrggbb', within: 0.05-1} limits it to texels near that colour (soft edge).",
       "targets": ["character", "prop"],

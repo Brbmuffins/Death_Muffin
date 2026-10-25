@@ -1,0 +1,10 @@
+{
+  "model": "hero_gravecaller",
+  "file": "client/assets/slice/models/hero_gravecaller/character.glb",
+  "steps": [
+    {
+      "kind": "staff",
+      "date": "2026-10-25"
+    }
+  ]
+}

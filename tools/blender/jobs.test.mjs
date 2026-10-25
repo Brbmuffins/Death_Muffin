@@ -3,9 +3,13 @@
 //   node --test tools/blender/jobs.test.mjs      (CI: "Blender jobs")
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { Document } from '@gltf-transform/core';
-import { KINDS, KIND_RUN, maskBlend, rowsOf, updateRow, validateJob } from './jobs.mjs';
+import { KINDS, KIND_RUN, maskBlend, rowsOf, staffPlan, updateRow, validateJob } from './jobs.mjs';
 import { invAffine, mul, transplantClip, transplantGeometry } from './merge.mjs';
+import { addClip } from './pack.mjs';
+
+const STAFF = JSON.parse(readFileSync(new URL('./recipes/staff.json', import.meta.url), 'utf8'));
 
 const T = (x, y, z) => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1];
 const S = (s) => [s, 0, 0, 0, 0, s, 0, 0, 0, 0, s, 0, 0, 0, 0, 1];
@@ -72,6 +76,46 @@ test('a job is checked against the kinds before anything runs', () => {
   assert.match(validateJob({ ...ok, steps: [{ kind: 'decimate', triangles: 1.5 }] }).join(), /triangles must be int/);
   assert.match(validateJob({ model: 'prop_lantern', steps: [{ kind: 'reshape', bone: 'Head', scale: 1.2 }] }).join(), /reshape does not apply to a prop/);
   assert.deepEqual(validateJob({ model: 'prop_lantern', steps: [{ kind: 'recolor', hue: 30 }] }), []);
+});
+
+test('a staff step re-bakes the recipe\'s clips on the recipe\'s heroes only, and its preview shows at most four', () => {
+  const hero = STAFF.heroes[0];
+  const all = Object.keys(STAFF.clips);
+  const have = [...all, 'death', 'hurt'];
+  assert.deepEqual(validateJob({ model: hero, steps: [{ kind: 'staff' }, { kind: 'staff', clips: [all[0]] }] }), []);
+  assert.match(validateJob({ model: hero, steps: [{ kind: 'staff', clips: [] }] }).join(), /clips must be strings from 1/);
+  assert.match(validateJob({ model: 'prop_lantern', steps: [{ kind: 'staff' }] }).join(), /staff does not apply to a prop/);
+
+  const every = staffPlan(hero, {}, have, STAFF);
+  assert.deepEqual(every.clips, all, 'no clips: every clip of the recipe');
+  assert.deepEqual(every.show, STAFF.preview.filter((c) => all.includes(c)).slice(0, 4), 'the recipe\'s preview clips');
+  const named = staffPlan(hero, { clips: [all[1], all[0]] }, have, STAFF);
+  assert.deepEqual(named, { clips: [all[1], all[0]], show: [all[1], all[0]] }, 'named clips are re-baked and shown');
+  assert.ok(staffPlan(hero, { clips: all }, have, STAFF).show.length <= 4);
+
+  assert.throws(() => staffPlan('hero_leg_plague_choir', {}, have, STAFF), /staff recipe's heroes/);
+  assert.throws(() => staffPlan(hero, { clips: [`${all[0]}_staff`] }, have, STAFF), /no clip .*_staff .*not its _staff copy/);
+  assert.throws(() => staffPlan(hero, {}, have.filter((c) => c !== all[0]), STAFF), new RegExp(`model has no clip ${all[0]}`));
+});
+
+test('a re-baked clip replaces its old copy and starts where the clip it re-bakes starts', () => {
+  const { doc: dst, nodes } = model(BONES, SHIPPED_IBM);
+  const clip = (doc, node, name, times) => {
+    const s = doc.createAnimationSampler().setInput(doc.createAccessor().setType('SCALAR').setArray(new Float32Array(times)))
+      .setOutput(doc.createAccessor().setType('VEC4').setArray(new Float32Array(times.flatMap(() => [0, 0, 0, 1]))));
+    doc.createAnimation(name).addSampler(s).addChannel(doc.createAnimationChannel().setTargetNode(node).setTargetPath('rotation').setSampler(s));
+  };
+  clip(dst, nodes.Spine, 'run', [0.5, 1, 1.5]);
+  clip(dst, nodes.Spine, 'run_staff', [0.5, 1.5]);
+  const accessors = dst.getRoot().listAccessors().length;
+  const { doc: src, nodes: sn } = model(BONES, BLENDER_IBM);
+  clip(src, sn.Head, 'Action', [0, 0.5, 1]);
+  assert.equal(addClip(dst, src, 'run_staff', 'run'), 1);
+  const staff = dst.getRoot().listAnimations().filter((a) => a.getName() === 'run_staff');
+  assert.equal(staff.length, 1, 'the old copy is replaced, not doubled');
+  assert.equal(staff[0].listChannels()[0].getTargetNode(), nodes.Head);
+  assert.deepEqual([...staff[0].listSamplers()[0].getInput().getArray()], [0.5, 1, 1.5], 'aligned to run\'s start');
+  assert.equal(dst.getRoot().listAccessors().length, accessors, 'the old copy\'s data is gone');
 });
 
 test('a model row follows the job: clip order kept, renames carry their stride and timings, dropped clips leave', () => {

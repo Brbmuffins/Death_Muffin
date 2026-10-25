@@ -37,10 +37,6 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
   missing weapon row late (the agent's job lost a check run and a session handoff to it).
 - **A creature's new move cannot be filmed in the game.** Shot and clip plans place stand-in enemies, not a chosen creature, so a Blender job's
   walk or attack is checked only on its Blender preview sheet, not in the game's lighting and speed (found 2026-10-25, B74).
-- **Blender jobs and rebuilds do not reach the discipline heroes' staff clips** (found 2026-10-25): with a staff in hand the four heroes play
-  `<clip>_staff` for the clips in `tools/blender/recipes/staff.json`, so a job that changes one of those clips does not show in the game, and
-  `build-art.sh` drops the staff clips (`npm run check:models` then fails) without putting them back. Only a session can redo them
-  (`node tools/blender.mjs staff <slug> --ship`); a `staff` job kind, recorded and replayed like the others, would let the agent do it.
 
 ## Operations
 
@@ -86,8 +82,8 @@ polish list). Also:
   would be a decision).
 - **The legendary set bodies still swing the staff** (`hero_leg_*`, worn from 3 pieces): they have no staff clips, so they play the plain
   clips, made for an empty hand, with the old grip (in `run` the staff swings flat twice a stride; in the casts its head points behind the
-  hero or at the floor). The four discipline heroes have them (client/game/README.md "Held props and gear look"); a body gets them with
-  `node tools/blender.mjs staff <slug> --ship` and its slug in the recipe's `heroes`. The scythe, wand and sickle were not looked at.
+  hero or at the floor). The four discipline heroes have them (client/game/README.md "Held props and gear look"); a body gets them from its
+  slug in the recipe's `heroes` and a Blender job step `{"kind": "staff"}`. The scythe, wand and sickle were not looked at.
 - **A hero slides about 25 cm to its left when a spell clip starts**: `DmCreature._prep_clips` pins a combat clip's Hip to idle's first Hip
   key, but idle (like every other hero clip) has its Hip track removed and stands at the Hip's rest position, 0.13 rig units (about 25 cm on
   the Gravecaller) away. Anchoring to the Hip's rest position would remove the slide.

@@ -81,7 +81,7 @@ export function check(rel, model, kind, refJoints, staff = []) {
     if (extras.length) warnings.push(`missing the extra clips ${extras.join(', ')}`);
   }
   const lost = staff.filter((c) => !model.clips.includes(c));
-  if (lost.length) errors.push(`missing the staff clips ${lost.join(', ')} (after a rebuild: node tools/blender.mjs staff <slug> --ship)`);
+  if (lost.length) errors.push(`missing the staff clips ${lost.join(', ')} (a Blender job step {"kind": "staff"} makes them: tools/blender/jobs.mjs; after a rebuild, jobs.mjs replay <slug>)`);
   return { errors, warnings };
 }
 

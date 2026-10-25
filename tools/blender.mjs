@@ -6,9 +6,9 @@
  *   node tools/blender.mjs rigfix     <slug> [--recipe r.json]
  *   node tools/blender.mjs cleanup    <in.glb> <clip> [--out out.glb] [--loop] [--drift] [--foot-lock] [--window 0.25] [--name n]
  *   node tools/blender.mjs retarget   <source.glb|fbx> <target-rig.glb> <clip-map.json> [--out dir] [--only clip,clip] [--install <slug>]
- *   node tools/blender.mjs staff      <slug> [clip ...] [--recipe r.json] [--model character.glb] [--out dir] [--sheets] [--install] [--ship]
+ *   node tools/blender.mjs staff      <slug> [clip ...] [--recipe r.json] [--model character.glb] [--out dir] [--sheets] [--install]
  *                                     re-solve the right arm so the held staff stays upright / leads the cast (anim_<clip>_staff.glb);
- *                                     --ship adds them to the hero the game loads (client/assets/slice/models) and its public/models master
+ *                                     the game's model gets them from the Blender job kind staff (tools/blender/jobs.mjs, recorded)
  *   node tools/blender.mjs install    <slug> [--from dir]      copy generated anim_*.glb into art-src/tripo/<slug>/ (originals kept in orig/)
  *   node tools/blender.mjs build      <slug ...>               build-characters
  *   node tools/blender.mjs selftest                            check the kinematics against Blender itself
@@ -18,13 +18,10 @@
  * anim_<clip>.glb, the form tools/build-characters.mjs already understands.
  */
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
+import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { NodeIO } from '@gltf-transform/core';
-import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { resample } from '@gltf-transform/functions';
-import { addClip, packFile } from './blender/pack.mjs';
+import { packFile } from './blender/pack.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SCRIPTS = join(ROOT, 'tools', 'blender');
@@ -37,7 +34,7 @@ export function findBlender() {
 }
 
 /** Split argv into positionals and --flags (a flag takes a value unless it is in BOOLS). */
-export function parseArgs(argv, bools = ['install', 'loop', 'drift', 'foot-lock', 'sheets', 'ship', 'help']) {
+export function parseArgs(argv, bools = ['install', 'loop', 'drift', 'foot-lock', 'sheets', 'help']) {
   const pos = [], flags = {};
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -80,31 +77,17 @@ async function packAll(dir, files) {
 }
 
 /**
- * Put a hero's `_staff` clips from `dir` into the models the game loads: client/assets/slice/models/<slug>/character.glb and its
- * public/models master (with clips.json), replacing older ones and keeping each clip's timing aligned with the clip it re-bakes. Mesh,
- * skin and textures stay byte for byte, so nothing has to be rebuilt from art-src (where the combat clips' Tripo sources may be missing).
+ * What a hero's staff re-bake (tools/blender/staff.py) needs besides the model: the recipe, the hero's game height (heroModels in
+ * client/data/slice/npcs.json) and the staff's size, grip point and model (necro_gear.json). Shared by the `staff` command and the
+ * Blender job kind of that name (tools/blender/jobs.mjs).
  */
-async function shipClips(slug, dir) {
-  const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
-  const files = readdirSync(dir).filter((f) => /^anim_.+_staff\.glb$/.test(f));
-  for (const model of [join(ROOT, 'client', 'assets', 'slice', 'models', slug, 'character.glb'), join(ROOT, 'public', 'models', slug, 'character.glb')]) {
-    if (!existsSync(model)) continue;
-    const doc = await io.read(model);
-    for (const f of files) {
-      const name = f.slice('anim_'.length, -'.glb'.length);
-      const src = await io.read(join(dir, f));
-      await src.transform(resample({ tolerance: 1e-4 }));   // as build-characters does for every clip
-      const n = addClip(doc, src, name, name.replace(/_staff$/, ''));
-      console.log(`  shipped ${name} into ${relative(ROOT, model)} (${n} channels)`);
-    }
-    await io.write(model, doc);
-    const list = join(dirname(model), 'clips.json');
-    if (existsSync(list)) {
-      const clips = JSON.parse(readFileSync(list, 'utf8'));
-      clips.clips = doc.getRoot().listAnimations().map((a) => a.getName());
-      writeFileSync(list, JSON.stringify(clips, null, 2) + '\n');
-    }
-  }
+export function staffInputs(slug, recipe = join(SCRIPTS, 'recipes', 'staff.json')) {
+  const slice = (f) => JSON.parse(readFileSync(join(ROOT, 'client', 'data', 'slice', f), 'utf8'));
+  const height = slice('npcs.json').heroModels?.[slug]?.height;
+  if (!height) throw new Error(`${slug}: no heroModels height in client/data/slice/npcs.json`);
+  const staff = slice('necro_gear.json').weapon_kind_prop.staff;
+  const prop = join(ROOT, 'client', 'assets', 'slice', 'models', 'props', `${staff.prop}.glb`);
+  return { recipe, args: [String(height), String(staff.length_m), String(staff.grip_t)], prop: existsSync(prop) ? prop : null };
 }
 
 const commands = {
@@ -154,22 +137,17 @@ const commands = {
   /** Staff versions of a hero's clips (tools/blender/staff.py), read from the model the client loads so the body is what the game plays. */
   async staff({ pos, flags }) {
     const [slug, ...clips] = pos;
-    const recipe = flags.recipe ? resolve(flags.recipe) : join(SCRIPTS, 'recipes', 'staff.json');
+    const inputs = staffInputs(slug, flags.recipe ? resolve(flags.recipe) : undefined);
     const shipped = (f) => [join(ROOT, 'client', 'assets', 'slice', 'models', f), join(ROOT, 'public', 'models', f)].find((p) => existsSync(p));
     const model = flags.model ? resolve(flags.model) : shipped(join(slug, 'character.glb'));
     if (!model) throw new Error(`${slug}: no character.glb under client/assets/slice/models or public/models`);
-    const slice = (f) => JSON.parse(readFileSync(join(ROOT, 'client', 'data', 'slice', f), 'utf8'));
-    const height = slice('npcs.json').heroModels?.[slug]?.height;
-    if (!height) throw new Error(`${slug}: no heroModels height in client/data/slice/npcs.json`);
-    const staff = slice('necro_gear.json').weapon_kind_prop.staff;
     const out = flags.out ? resolve(flags.out) : join(WORK, slug, 'staff');
     mkdirSync(out, { recursive: true });
-    const args = [model, recipe, out, String(height), String(staff.length_m), String(staff.grip_t), ...clips];
-    if (flags.sheets) args.push('--sheets', shipped(join('props', `${staff.prop}.glb`)));
+    const args = [model, inputs.recipe, out, ...inputs.args, ...clips];
+    if (flags.sheets && inputs.prop) args.push('--sheets', inputs.prop);
     const res = runBlender('staff.py', args);
     await packAll(out, res.clips.map((r) => basename(r.file)));
     if (flags.install) commands.install({ pos: [slug], flags: { from: out } });
-    if (flags.ship) await shipClips(slug, out);
     return res;
   },
 

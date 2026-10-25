@@ -497,6 +497,12 @@
       "pattern": "isDiscardPhrase",
       "reason": "Discord agent: every command starts with ! (Helix, 2026-10-21); the plain-words discard (\"discard this\"), bare \"stop\" and \"use opus\" shortcuts are gone",
       "allow": ["DECISIONS.md", "tools/hygiene/**"]
+    },
+    {
+      "id": "staff-ship-flag",
+      "pattern": "blender\\.mjs staff[^\\n]*--ship|shipClips",
+      "reason": "a hero's staff clips go on the game's model through the Blender job kind staff, recorded and replayed after a rebuild (2026-10-25); the unrecorded `staff --ship` is gone",
+      "allow": ["tools/hygiene/**"]
     }
   ],
   "allowPaths": {

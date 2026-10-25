@@ -1,0 +1,10 @@
+{
+  "model": "hero_mourner",
+  "file": "client/assets/slice/models/hero_mourner/character.glb",
+  "steps": [
+    {
+      "kind": "staff",
+      "date": "2026-10-25"
+    }
+  ]
+}

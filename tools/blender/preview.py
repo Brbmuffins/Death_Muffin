@@ -170,4 +170,5 @@ def main():
         raise SystemExit(f'unknown preview {a[0]}')
 
 
-main()
+if __name__ == '__main__':   # staff.py imports scene() for its sheets
+    main()

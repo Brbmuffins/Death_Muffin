@@ -1,5 +1,5 @@
 {
-  "_doc": "Staff re-bake (tools/blender/staff.py, docs/BLENDER-PIPELINE.md \"staff\"). Shared by every Tripo biped hero: positions are metres from the right shoulder in the hero's frame as [forward, right, up], staff directions are [tilt from vertical, azimuth] in degrees (azimuth 0 = leaning forward, 90 = out to the right, 180 = back). Times are 0..1 through the clip. gameLean is DmGearProps.HOLDS.staff today (the grip the original clips are read with); lean is the fist grip the re-baked clips are made for (the game must hold the staff with it when it plays them); wrist is the allowed range of effective lean (ulnar - / radial +) the solver may bend the wrist to.",
+  "_doc": "Staff re-bake (tools/blender/staff.py, docs/BLENDER-PIPELINE.md \"staff\"). Shared by every Tripo biped hero: positions are metres from the right shoulder in the hero's frame as [forward, right, up], staff directions are [tilt from vertical, azimuth] in degrees (azimuth 0 = leaning forward, 90 = out to the right, 180 = back). Times are 0..1 through the clip. gameLean is DmGearProps.HOLDS.staff today (the grip the original clips are read with); lean is the fist grip the re-baked clips are made for (the game must hold the staff with it when it plays them); wrist is the allowed range of effective lean (ulnar - / radial +) the solver may bend the wrist to. preview: the clips whose sheets a Blender job's picture shows when it re-bakes every clip (at most 4).",
   "heroes": ["hero_gravecaller", "hero_ossuary", "hero_mourner", "hero_rotweaver"],
   "hand": "R_Hand",
   "gameLean": -65,
@@ -70,6 +70,7 @@
       ]
     }
   },
+  "preview": ["run", "cast", "flick", "slam"],
   "sheets": {
     "idle": [0, 0.16, 0.33, 0.49, 0.65, 0.82],
     "walk": [0, 0.16, 0.32, 0.5, 0.66, 0.82],

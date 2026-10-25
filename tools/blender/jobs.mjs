@@ -14,8 +14,9 @@
  * (client/game/view_models.json and the copies in client/data/slice/*.json) get the new clip list, the walk/run strides and the strike
  * timings. Then the model check runs; a failure leaves every file as it was.
  */
-import { NodeIO } from '@gltf-transform/core';
+import { Logger, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
+import { resample } from '@gltf-transform/functions';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -23,10 +24,10 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
-import { runBlender } from '../blender.mjs';
+import { runBlender, staffInputs } from '../blender.mjs';
 import { bindHeight, measureFile, strideOfClip } from '../measure-clips.mjs';
 import { clipLength, dropClip, onlyClip, pruneAccessors, transplantClip, transplantGeometry, jointNames } from './merge.mjs';
-import { packFile } from './pack.mjs';
+import { addClip, packFile } from './pack.mjs';
 import { check, kindOf, readGlb } from '../assets/check-models.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -36,6 +37,8 @@ const MODELS = 'client/assets/slice/models';
 const RECORDS = 'art-manifest/blender';
 const ROW_FILES = ['client/game/view_models.json', 'client/data/slice/enemies.json', 'client/data/slice/npcs.json', 'client/data/slice/hero.json'];
 const BIPED_MAP = join(HERE, 'maps', 'ual-to-tripo-biped.json');
+const STAFF_RECIPE = join(HERE, 'recipes', 'staff.json');
+const STAFF_SHEETS = 4;   // staff sheets in one preview
 const LOOPS = new Set(['idle', 'walk', 'run']);
 const STRIKE = /^(attack|cast)\d*$/;   // clips whose row carries [length, second the blow lands]
 const ID = /^[a-z0-9_]{3,40}$/;
@@ -168,6 +171,22 @@ async function measureRows(file, id, touched) {
     } catch { notes.push(`strike timing not measured (${strikes.join(', ')}): this skeleton has no hands the measure knows`); }
   }
   return { stride, timings, notes };
+}
+
+/**
+ * The clips a staff step re-bakes (its `clips`, else every clip of the staff recipe) and the ones its preview shows (those named, else the
+ * recipe's `preview`), checked before Blender starts: only the recipe's heroes, only clips the recipe and the model both have.
+ */
+export function staffPlan(id, step, have, recipe) {
+  if (!recipe.heroes.includes(id)) throw new Error(`staff is for the staff recipe's heroes (${recipe.heroes.join(', ')}), not ${id}`);
+  const all = Object.keys(recipe.clips);
+  const clips = step.clips ?? all;
+  const unknown = clips.filter((c) => !all.includes(c));
+  if (unknown.length) throw new Error(`the staff recipe has no clip ${unknown.join(', ')} (it has ${all.join(', ')}: name the clip, not its _staff copy)`);
+  const missing = clips.filter((c) => !have.includes(c));
+  if (missing.length) throw new Error(`the model has no clip ${missing.join(', ')} to re-bake`);
+  const show = (step.clips ? clips : (recipe.preview ?? all)).filter((c) => clips.includes(c)).slice(0, STAFF_SHEETS);
+  return { clips, show };
 }
 
 async function readClips(file) {
@@ -320,6 +339,31 @@ export const KIND_RUN = {
     return { touched: Object.values(step.rename ?? {}), report: done.join(', ') };
   },
 
+  async staff(ctx, step) {
+    const recipe = JSON.parse(readFileSync(STAFF_RECIPE, 'utf8'));
+    const doc = await io.read(ctx.cur);
+    const plan = staffPlan(ctx.id, step, doc.getRoot().listAnimations().map((a) => a.getName()), recipe);
+    const inputs = staffInputs(ctx.id, STAFF_RECIPE);
+    const out = join(ctx.scratch, 'staff');
+    mkdirSync(out, { recursive: true });
+    const args = [ctx.cur, inputs.recipe, out, ...inputs.args, ...plan.clips];
+    if (ctx.shots && inputs.prop) args.push('--sheets', inputs.prop, '--sheet-clips', plan.show.join(','));
+    const res = runBlender('staff.py', args);
+    if (res.clips.length !== plan.clips.length) throw new Error(`staff.py re-baked ${res.clips.map((r) => r.clip).join(', ') || 'nothing'}, not ${plan.clips.join(', ')}`);
+    for (const r of res.clips) {
+      await packFile(r.file, r.clip);
+      const src = await io.read(r.file);
+      src.setLogger(new Logger(Logger.Verbosity.WARN));
+      await src.transform(resample({ tolerance: 1e-4 }));   // as build-characters does for every clip
+      addClip(doc, src, r.clip, r.clip.replace(/_staff$/, ''));   // replaces the old one, starting where the clip it re-bakes starts
+    }
+    ctx.sheets.push(...res.sheets);
+    await pruneAccessors(doc);
+    await io.write(ctx.cur, doc);
+    const said = res.clips.map((r) => `${r.clip} (staff ${r.after.tilt[0]}-${r.after.tilt[1]} deg from upright, ${Math.round(r.miss * 100)} cm from its mark)`);
+    return { touched: res.clips.map((r) => r.clip), report: `re-baked ${said.join(', ')}${res.sheetError ? `; no staff sheets (${res.sheetError})` : ''}` };
+  },
+
   async recolor(ctx, step) {
     if (step.hue === undefined && step.saturation === undefined && step.brightness === undefined) throw new Error('recolor needs hue, saturation or brightness');
     const doc = await io.read(ctx.cur);
@@ -418,7 +462,16 @@ async function preview(ctx, before, touched, changedLook, shots) {
   const name = `blender-${ctx.id.replace(/_/g, '-')}`.slice(0, 39);
   const out = join(shots, `${name}.png`);
   mkdirSync(shots, { recursive: true });
-  if (touched.length && !ctx.prop) {
+  if (ctx.sheets.length) {   // a staff re-bake's own sheets: the staff in hand, the plain clip above the re-bake
+    mkdirSync(dir, { recursive: true });
+    const rows = [];
+    for (const [i, f] of ctx.sheets.slice(0, STAFF_SHEETS).entries()) {
+      const small = join(dir, `staff_${i}.png`);
+      await sharp(f).resize({ width: 1400 }).toFile(small);
+      rows.push({ label: `${basename(f, '.png').replace(/^sheet_/, '')}: the plain clip above, the staff re-bake below`, files: [small] });
+    }
+    await sheet(rows, ctx.id, out);
+  } else if (touched.length && !ctx.prop) {
     const clips = [...new Set(touched)].slice(0, 4);
     const frames = 6;
     runBlender('preview.py', ['clips', dir, ctx.cur, String(frames), ...clips]);
@@ -438,7 +491,7 @@ export async function runJob(job, { shots = null, record = true, quiet = false }
   const file = join(ROOT, rel);
   if (!existsSync(file) || lstatSync(file).isSymbolicLink()) throw new Error(`no model ${job.model} at ${rel}`);
   const scratch = mkdtempSync(join(process.env.DM_BLENDER_SCRATCH || tmpdir(), 'dmblender-'));
-  const ctx = { id: job.model, prop: job.model.startsWith('prop_'), cur: join(scratch, 'model.glb'), scratch, renamed: {}, retiredTextures: [] };
+  const ctx = { id: job.model, prop: job.model.startsWith('prop_'), cur: join(scratch, 'model.glb'), scratch, renamed: {}, retiredTextures: [], shots: !!shots, sheets: [] };
   const before = join(scratch, 'before.glb');
   copyFileSync(file, ctx.cur);
   copyFileSync(file, before);

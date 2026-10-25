@@ -1,0 +1,10 @@
+{
+  "model": "hero_rotweaver",
+  "file": "client/assets/slice/models/hero_rotweaver/character.glb",
+  "steps": [
+    {
+      "kind": "staff",
+      "date": "2026-10-25"
+    }
+  ]
+}
