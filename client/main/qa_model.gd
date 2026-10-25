@@ -10,6 +10,7 @@ const ANIM_RE := "^[A-Za-z0-9_.|-]{1,48}$"
 const MIN_HEIGHT := 0.1
 const MAX_HEIGHT := 30.0
 const MAX_SPEED := 15.0       ## m/s of a "move" clip's "speed"
+const SETTLE_MS := 1500      ## a model still waits at least this: the hero's arrival in the area leaves a puff of wisps that fades in about a second (the clips' own settle, DmQaClips.SETTLE_S)
 const DEFAULT_AT := 0.35      ## a still's moment of its clip ("anim_at"): a little in, past a walk's first contact
 const WIDE := 2.4             ## the hero close-up fits a body this many times its height across: a longer model is framed by its length over this
 const HERO_ROW := "hero_gravecaller"   ## the body DmQaUiShots.HERO_CAM frames

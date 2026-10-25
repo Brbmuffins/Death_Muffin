@@ -33,6 +33,7 @@ const CLIP_NAME_RE = /^[a-z0-9][a-z0-9-]{0,29}$/;       // no underscore: `<labe
 const AREA_RE = /^[a-z0-9_-]{1,40}$/, CAST_RE = /^[a-z0-9_]{1,60}$/, ITEM_RE = /^[a-z0-9_]{1,60}$/;
 const CAMERAS = ['follow', 'wide', 'turntable'];
 const STEPS_FILE = 'client/main/qa_clip_steps.json';
+const MODELS_FILE = 'client/game/view_models.json';   // the model rows a model clip names, read from the job's branch
 const MAX_SETUP = 12, MAX_STEPS = 24;
 const WORD_RE = /^[a-z][a-z0-9_]{0,23}$/, ENEMY_RE = /^[a-z0-9_]{1,40}$/;
 const MODEL_RE = /^[a-z0-9_]{1,60}$/, ANIM_RE = /^[A-Za-z0-9_.|-]{1,48}$/;
@@ -91,6 +92,16 @@ function readVocabulary(wt) {
     if (!st.isFile() || st.size > MAX_BYTES) return null;
     const j = JSON.parse(fs.readFileSync(f, 'utf8'));
     return isObj(j) && isObj(j.setup) && isObj(j.steps) ? j : null;
+  } catch { return null; }
+}
+
+// The model rows in the job's branch (MODELS_FILE): {<id>: {clips: [...], ...}}, or null when the file cannot be read (the recorder checks the id then).
+function readModelRows(wt) {
+  try {
+    const f = path.join(wt, MODELS_FILE), st = fs.lstatSync(f);
+    if (!st.isFile() || st.size > 4 * 1024 * 1024) return null;
+    const j = JSON.parse(fs.readFileSync(f, 'utf8'));
+    return isObj(j) ? j : null;
   } catch { return null; }
 }
 
@@ -160,12 +171,16 @@ function checkPlan(plan, errs, wt) {
   if (!Array.isArray(plan.clips) || plan.clips.length < 1 || plan.clips.length > MAX_CLIPS) { errs.push(`"plan.clips" must be a list of 1 to ${MAX_CLIPS} clips`); return null; }
   const names = new Set();
   let voc;   // read from the branch only when a clip has setup or steps
+  let rows;  // and the model rows only when a clip names a model
   plan.clips.forEach((c, i) => {
     const w = `clip ${i + 1}`;
     if (!isObj(c)) { errs.push(`${w} must be an object`); return; }
     onlyKeys(c, ['name', 'area', 'cast', 'at', 'enemies', 'seconds', 'camera', 'equip', 'setup', 'steps', 'model', 'anim', 'turn', 'height', 'move', 'speed'], w, errs);
     const model = c.model !== undefined;
-    if (model) checkModel(c, w, errs);
+    if (model) {
+      if (rows === undefined) rows = readModelRows(wt);
+      checkModel(c, w, errs, rows);
+    }
     else if (['anim', 'turn', 'height', 'move', 'speed'].some((k) => c[k] !== undefined)) errs.push(`${w}: "anim", "turn", "height", "move" and "speed" are for a model clip (one with "model")`);
     let stepCasts = false;
     if (c.setup !== undefined || c.steps !== undefined) {
@@ -194,9 +209,16 @@ function checkPlan(plan, errs, wt) {
 }
 
 // A model clip's own fields (the recorder checks them again, with the model's row: an unknown id, or a "move" with no stride and no "speed", fails the clip there).
-function checkModel(c, w, errs) {
-  if (typeof c.model !== 'string' || !MODEL_RE.test(c.model)) errs.push(`${w}: "model" must be a model row id of client/game/view_models.json, such as skull_rat`);
+// `rows`: the branch's model rows (null = unread: only the id's form is checked here). An id it lacks, or an "anim" its row's clips lack, is refused with the ids or clips there are.
+function checkModel(c, w, errs, rows) {
+  if (typeof c.model !== 'string' || !MODEL_RE.test(c.model)) { errs.push(`${w}: "model" must be a model row id of ${MODELS_FILE}, such as skull_rat`); return; }
+  const row = rows ? rows[c.model] : undefined;
+  if (rows && !isObj(row)) {
+    const near = Object.keys(rows).filter((k) => k.includes(c.model) || c.model.includes(k)).slice(0, 6);
+    errs.push(`${w}: no model row "${c.model}" in ${MODELS_FILE}${near.length ? ` (did you mean ${near.join(', ')}?)` : ''}`);
+  }
   if (c.anim !== undefined && (typeof c.anim !== 'string' || !ANIM_RE.test(c.anim))) errs.push(`${w}: "anim" must be a clip name of the model, such as walk`);
+  else if (c.anim !== undefined && isObj(row) && Array.isArray(row.clips) && !row.clips.includes(c.anim)) errs.push(`${w}: the model ${c.model} has no clip "${c.anim}" (it has: ${row.clips.join(', ')})`);
   if (c.camera === 'wide') errs.push(`${w}: a model clip's "camera" is "follow" (one side) or "turntable"`);
   for (const [k, lo, hi] of [['turn', -360, 360], ['height', 0.1, 30], ['speed', 0, 15]]) {
     if (c[k] !== undefined && !(typeof c[k] === 'number' && Number.isFinite(c[k]) && c[k] >= lo && c[k] <= hi)) errs.push(`${w}: "${k}" must be a number from ${lo} to ${hi}`);
@@ -278,4 +300,4 @@ function readShotPlan(wt) {
   } catch { return null; }
 }
 
-module.exports = { CLIP_FILE, STEPS_FILE, MAX_BYTES, MAX_VARIANTS, MAX_CLIPS, MAX_SECONDS, LABEL_RE, CLIP_NAME_RE, CLASSES, RESOLUTIONS, SHOT_PRESETS, classOf, readClipRequest, clipMinutes, readShotPlan, checkResolutions, checkPresets, checkTune };
+module.exports = { CLIP_FILE, STEPS_FILE, MODELS_FILE, MAX_BYTES, MAX_VARIANTS, MAX_CLIPS, MAX_SECONDS, LABEL_RE, CLIP_NAME_RE, CLASSES, RESOLUTIONS, SHOT_PRESETS, classOf, readClipRequest, clipMinutes, readShotPlan, checkResolutions, checkPresets, checkTune };

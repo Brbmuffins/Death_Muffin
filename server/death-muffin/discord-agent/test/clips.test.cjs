@@ -90,12 +90,26 @@ test('clips: a model clip films one model alone: no cast, its own fields checked
   bad((j) => { j.plan.clips[0].model_file = 'x.glb'; }, /unknown field "model_file"/);
 });
 
+test('clips: a model clip names a row of the branch\'s models and one of its clips', () => {
+  const d = wt(); fs.mkdirSync(path.join(d, path.dirname(C.MODELS_FILE)), { recursive: true });
+  fs.writeFileSync(path.join(d, C.MODELS_FILE), JSON.stringify({ test_beast: { clips: ['idle', 'walk'] }, other_beast: {} }));
+  const ask = (c) => { fs.writeFileSync(path.join(d, C.CLIP_FILE), JSON.stringify({ plan: { discipline: 'gravecaller', clips: [{ name: 'a', ...c }] }, variants: [{ label: 'now', title: 'now', tune: {} }] })); return C.readClipRequest(d); };
+  assert.equal(ask({ model: 'test_beast', anim: 'walk', move: true }).error, undefined);
+  assert.equal(ask({ model: 'other_beast', anim: 'dig' }).error, undefined, 'a row without a clip list leaves the clip to the recorder');
+  assert.match(ask({ model: 'beast' }).error, /no model row "beast".*did you mean test_beast, other_beast/);
+  assert.match(ask({ model: 'test_beast', anim: 'attack' }).error, /has no clip "attack" \(it has: idle, walk\)/);
+  fs.rmSync(path.join(d, C.MODELS_FILE));
+  assert.equal(ask({ model: 'beast' }).error, undefined, 'a branch without the file: the recorder checks the id');
+});
+
 test('clips: every example in the clips guide is accepted by the runner (the choice, the model preview, the scripted clip, the model clip)', () => {
   const section = fs.readFileSync(path.join(__dirname, '..', 'guides', 'clips.md'), 'utf8');
   const blocks = [...section.matchAll(/```json\n([\s\S]*?)\n```/g)].map((m) => m[1]);
   const words = fs.readFileSync(path.resolve(__dirname, '../../../../client/main/qa_clip_steps.json'), 'utf8');
-  const parsed = blocks.map((b) => {   // each in a worktree with the game's word list, as a job's branch has it
-    const d = wt(); fs.mkdirSync(path.join(d, 'client/main'), { recursive: true }); fs.writeFileSync(path.join(d, C.STEPS_FILE), words); fs.writeFileSync(path.join(d, C.CLIP_FILE), b);
+  const models = fs.readFileSync(path.resolve(__dirname, '../../../../', C.MODELS_FILE), 'utf8');
+  const parsed = blocks.map((b) => {   // each in a worktree with the game's word list and model rows, as a job's branch has them
+    const d = wt(); fs.mkdirSync(path.join(d, 'client/main'), { recursive: true }); fs.mkdirSync(path.join(d, path.dirname(C.MODELS_FILE)), { recursive: true });
+    fs.writeFileSync(path.join(d, C.STEPS_FILE), words); fs.writeFileSync(path.join(d, C.MODELS_FILE), models); fs.writeFileSync(path.join(d, C.CLIP_FILE), b);
     const r = C.readClipRequest(d); assert.equal(r.error, undefined, `${r.error} in ${b.slice(0, 80)}`); return r;
   });
   assert.ok(parsed.some((r) => r.variants.map((v) => v.label).join() === 'slow,now,fast'), 'the choice example: three options');

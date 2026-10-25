@@ -323,6 +323,8 @@ func perf_shot_plan() -> void:
 	var pf: Array = DmQaUiShots.parse('{"shots":[{"perf":true,"wait_ms":0},{"perf":"yes"},{}]}')["shots"]
 	check(pf.map(func(sh: Dictionary) -> bool: return sh["perf"]) == [true, false, false], "\"perf\" is a true or false, false when it is not given")
 	check(int(pf[0]["wait_ms"]) == DmQaUiShots.PERF_WAIT_MS and int(pf[1]["wait_ms"]) == 300, "a perf shot waits at least PERF_WAIT_MS, others keep their wait")
+	var mw: Array = DmQaUiShots.parse('{"shots":[{"view":"model","model":"%s","wait_ms":0},{"view":"model","model":"%s","wait_ms":%d}]}' % [_walker(), _walker(), DmQaModel.SETTLE_MS + 500])["shots"]
+	check(int(mw[0]["wait_ms"]) == DmQaModel.SETTLE_MS and int(mw[1]["wait_ms"]) == DmQaModel.SETTLE_MS + 500, "a model still waits at least SETTLE_MS (the arrival's wisps gone), a longer wait is kept")
 
 
 ## A "fight" shot: the pack is made round the hero, the hero casts at it and hits it, the pack is on screen at the end of the wait (what the release checks' hud-fight shot needs).

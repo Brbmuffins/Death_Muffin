@@ -173,7 +173,7 @@ static func parse(text: String) -> Dictionary:
 		var rx := RegEx.create_from_string("[^a-z0-9-]+")
 		nm = rx.sub(nm, "-", true).substr(0, 40)
 		(out["shots"] as Array).append({"name": nm if nm != "" else "shot-%d" % (i + 1), "open": wins, "hover": hover, "area": String(s.get("area", "")),
-			"wait_ms": clampi(maxi(int(s.get("wait_ms", 300)), PERF_WAIT_MS if perf is bool and perf else 0), 0, MAX_WAIT_MS), "clip": "window" if String(s.get("clip", "")) == "window" else "",
+			"wait_ms": clampi(maxi(int(s.get("wait_ms", 300)), maxi(PERF_WAIT_MS if perf is bool and perf else 0, DmQaModel.SETTLE_MS if view == "model" else 0)), 0, MAX_WAIT_MS), "clip": "window" if String(s.get("clip", "")) == "window" else "",
 			"view": view, "turn": fmod(float(s.get("turn", DEFAULT_TURN)), 360.0), "anim": anim, "fight": fight is bool and fight, "perf": perf is bool and perf,
 			"at": at, "thralls": thralls, "walk": walk is bool and walk, "candles_out": candles, "model": model, "dirs": []})
 		i += 1
