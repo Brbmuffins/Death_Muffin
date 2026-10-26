@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -77,11 +78,29 @@ namespace DeathMuffinTeam.Tests
             r.Start();
             T.Ok(!r.Api.LastState.Models && r.Api.LastState.VramMb == 4096, "a 4 GB card runs no model jobs, and its memory is sent");
             T.Ok(r.Log.Any(l => l.Contains("graphics card: NVIDIA GeForce GTX 970, 4.0 GB (model jobs need 12 GB or more)")), "the app's log says why");
+            T.Eq(r.Api.LastState.ModelsWhy, "the graphics card has 4.0 GB; model jobs need 12 GB or more", "and so does the heartbeat (team app 0.5.1)");
+            T.Eq((string)r.Api.LastState.ToJson()["modelsWhy"], r.Api.LastState.ModelsWhy, "as modelsWhy");
 
             r = new CtlRig();
             r.Plat.Vram = 12282;
             r.Start();
             T.Ok(!r.Api.LastState.Models, "a 12 GB card without ComfyUI Desktop runs none");
+
+            string notFound = "ComfyUI Desktop's program files (resources\\ComfyUI\\main.py) are not in C:\\Users\\x\\AppData\\Local\\Programs and Windows names no other folder for it";
+            r = new CtlRig();
+            r.Plat.Vram = 12282;
+            r.C.ComfyInstalled = () => false;
+            r.C.ComfyNotFoundWhy = () => notFound;
+            r.Start();
+            r.Beat(); r.Beat();
+            T.Ok(!r.Api.LastState.Models && r.Api.LastState.ModelsWhy == notFound, "ComfyUI Desktop not found: the heartbeat says why (" + r.Api.LastState.ModelsWhy + ")");
+            T.Eq(r.Log.Count(l => l.EndsWith("model jobs: none, " + notFound)), 1, "the app's log says it once, not at every heartbeat");
+            r.C.ComfyNotFoundWhy = () => { throw new IOException("disk gone"); };
+            r.Beat();
+            T.Eq(r.Api.LastState.ModelsWhy, "ComfyUI Desktop could not be looked for: disk gone", "a look that fails says so");
+            r.C.ComfyNotFoundWhy = null;
+            r.Beat();
+            T.Eq(r.Api.LastState.ModelsWhy, "ComfyUI Desktop is not installed", "with no reason known, the plain one");
 
             bool installed = true;
             r = new CtlRig();
@@ -95,7 +114,8 @@ namespace DeathMuffinTeam.Tests
             r.Plat.Vram = 12282;
             r.C.ComfyInstalled = () => installed;
             r.Start();
-            T.Ok(r.Api.LastState.Models && r.Api.LastState.VramMb == 12282, "a 12 GB card with ComfyUI Desktop runs model jobs, and says so");
+            T.Ok(r.Api.LastState.Models && r.Api.LastState.VramMb == 12282 && r.Api.LastState.ModelsWhy == "", "a 12 GB card with ComfyUI Desktop runs model jobs, and says so");
+            T.Ok(r.Log.Any(l => l.EndsWith("model jobs: this PC runs them")), "the app's log says so too");
             ListReply(r, Listed("job000000001", "model", "", 600), Listed("job000000002", "shots", "Screenshots", 60));
             r.Beat();
             T.Eq(r.C.JobsAvailable, 2, "it lists them");

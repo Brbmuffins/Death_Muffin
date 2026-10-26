@@ -334,6 +334,8 @@ namespace DeathMuffinTeam
         public bool Benchmarks = true;
         /// <summary>This PC runs `model` jobs: a graphics card with 12 GB or more (ComfyRules.CardFits) and ComfyUI Desktop installed. The server offers model jobs only to a PC that says so.</summary>
         public bool Models;
+        /// <summary>Why this PC runs no `model` jobs, in plain words ("" when it runs them): the server keeps it for the runner's list of PCs.</summary>
+        public string ModelsWhy = "";
         /// <summary>The graphics card's memory in MiB (0 when not known), for the runner's list of PCs.</summary>
         public long VramMb;
 
@@ -342,7 +344,7 @@ namespace DeathMuffinTeam
             return new Dictionary<string, object>
             {
                 { "gameRunning", GameRunning }, { "fullscreen", Fullscreen }, { "onBattery", OnBattery }, { "busy", Busy }, { "paused", Paused }, { "benchmarks", Benchmarks },
-                { "models", Models }, { "vramMb", VramMb },
+                { "models", Models }, { "modelsWhy", ModelsWhy ?? "" }, { "vramMb", VramMb },
             };
         }
     }

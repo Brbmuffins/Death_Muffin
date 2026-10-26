@@ -425,7 +425,11 @@ namespace DeathMuffinTeam
         /// <summary>Desktop's app folders under %LOCALAPPDATA%\Programs, the usual first (the folder's name has changed between Desktop versions); any other folder that bundles ComfyUI comes after them.</summary>
         static readonly string[] AppFolders = { "ComfyUI", "@comfyorgcomfyui-electron" };
 
-        public static ComfyInstall Find(string appData, string localAppData, out string why)
+        public static ComfyInstall Find(string appData, string localAppData, out string why) { return Find(appData, localAppData, null, out why); }
+
+        /// <param name="desktopApps">The folders Windows says Desktop's program is in (its uninstall entry, a running ComfyUI.exe: WindowsPlatform.ComfyDesktopFolders), looked in first: Desktop's
+        /// installer lets the member choose the folder, so it need not be under %LOCALAPPDATA%\Programs.</param>
+        public static ComfyInstall Find(string appData, string localAppData, IEnumerable<string> desktopApps, out string why)
         {
             why = null;
             try
@@ -438,6 +442,8 @@ namespace DeathMuffinTeam
                 if (!File.Exists(python)) { why = "ComfyUI Desktop's Python is not in " + Path.Combine(basePath, ".venv"); return null; }
                 string programs = Path.Combine(localAppData ?? "", "Programs");
                 var apps = new List<string>();
+                if (desktopApps != null) foreach (string a in desktopApps) if (!string.IsNullOrEmpty(a) && !apps.Contains(a)) apps.Add(a);
+                int listed = apps.Count;
                 foreach (string a in AppFolders) apps.Add(Path.Combine(programs, a));
                 if (Directory.Exists(programs))
                     foreach (string d in Directory.GetDirectories(programs)) if (!apps.Contains(d)) apps.Add(d);
@@ -450,10 +456,26 @@ namespace DeathMuffinTeam
                     string extra = Path.Combine(appData, "ComfyUI", "extra_models_config.yaml");
                     return new ComfyInstall { Python = python, MainPy = main, BasePath = basePath, FrontEnd = Directory.Exists(web) ? web : "", ExtraModels = File.Exists(extra) ? extra : "" };
                 }
-                why = "ComfyUI Desktop's program files are not in " + programs;
+                why = "ComfyUI Desktop's program files (resources\\ComfyUI\\main.py) are not in " + programs + (listed > 0 ? " or " + string.Join(", ", apps.GetRange(0, listed)) : " and Windows names no other folder for it");
                 return null;
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { why = "ComfyUI Desktop's files could not be read: " + ex.Message; return null; }
+        }
+
+        /// <summary>The folder of the program an uninstall entry's DisplayIcon or UninstallString names: <c>C:\x\ComfyUI.exe,0</c> and <c>"C:\x\Uninstall ComfyUI.exe" /currentuser</c> give
+        /// <c>C:\x</c>; "" when it names none.</summary>
+        public static string ExeFolder(string command)
+        {
+            string s = (command ?? "").Trim();
+            if (s.StartsWith("\"")) { int end = s.IndexOf('"', 1); s = end > 0 ? s.Substring(1, end - 1) : s.Substring(1); }
+            else
+            {
+                int exe = s.IndexOf(".exe", StringComparison.OrdinalIgnoreCase);
+                if (exe >= 0) s = s.Substring(0, exe + 4);
+            }
+            if (!s.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) return "";
+            try { return Path.GetDirectoryName(s) ?? ""; }
+            catch (ArgumentException) { return ""; }
         }
     }
 
@@ -593,6 +615,9 @@ namespace DeathMuffinTeam
 
         /// <summary>ComfyUI Desktop is installed here (what the heartbeat's `models` needs besides a 12 GB card). Looked up at most every <see cref="InstallCheckEvery"/>.</summary>
         public bool Installed { get { return Install(false) != null; } }
+
+        /// <summary>Why ComfyUI Desktop was not found at the last look ("" when it was), for the heartbeat's `modelsWhy`.</summary>
+        public string NotFoundWhy { get { string why; return Install(false, out why) == null ? why ?? "" : ""; } }
 
         ComfyInstall Install(bool fresh)
         {

@@ -65,11 +65,11 @@ namespace DeathMuffinTeam
             DisplayWatch.Start();   // is the screen on? (a benchmark run with it off is noted)
             var probe = new WindowsPcProbe(platform);   // one reader for both: the controller reads while a benchmark waits, the runner while a job runs
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            comfy = new ComfyHost(new HttpComfyHttp(), new ProcessComfyLauncher(Native.ContainProcess), (out string why) => ComfyInstall.Find(appData, localAppData, out why), Path.Combine(TeamSettings.Root, "comfy"));
+            comfy = new ComfyHost(new HttpComfyHttp(), new ProcessComfyLauncher(Native.ContainProcess), (out string why) => ComfyInstall.Find(appData, localAppData, WindowsPlatform.ComfyDesktopFolders(), out why), Path.Combine(TeamSettings.Root, "comfy"));
             var runner = new JobRunner(api, folders, new FileFetcher(FileFetcher.CreateClient(Program.Version)), new ProcessGameHost(Native.TendGameWindow, platform.Launched), platform, Native.TryHardLink, probe)
                 { ShotsPosition = Native.OffscreenPosition, WindowPosition = Native.OffscreenPositionFor, CrashRecord = Native.CrashRecord, BenchmarksAllowed = () => settings.RunBenchmarks, Comfy = comfy };
             controller = new TeamController(api, settings, () => settings.Save(protector), platform, runner, this, () => DateTime.UtcNow,
-                Program.Version, Environment.MachineName, new Uri(TeamUrls.SiteBase), log.Line, probe) { ComfyInstalled = () => comfy.Installed, PlayerPlaying = comfy.PlayerPlaying };
+                Program.Version, Environment.MachineName, new Uri(TeamUrls.SiteBase), log.Line, probe) { ComfyInstalled = () => comfy.Installed, ComfyNotFoundWhy = () => comfy.NotFoundWhy, PlayerPlaying = comfy.PlayerPlaying };
 
             BuildMenu();
             try { tray.Icon = Icon.ExtractAssociatedIcon(ExePath); } catch (Exception) { tray.Icon = SystemIcons.Application; }

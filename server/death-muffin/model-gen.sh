@@ -133,7 +133,8 @@ except Exception as e:
 able = [p for p in pcs if isinstance(p.get("state"), dict) and p["state"].get("models") is True]
 def who(p):
     st = p.get("state") if isinstance(p.get("state"), dict) else {}
-    return "%s (%s, %s, %.1f GB, app %s)" % (p.get("name"), p.get("username"), p.get("gpu") or "?", (st.get("vramMb") or 0) / 1024, p.get("version"))
+    why = st.get("modelsWhy") if st.get("models") is not True and isinstance(st.get("modelsWhy"), str) and st.get("modelsWhy") else ""
+    return "%s (%s, %s, %.1f GB, app %s%s)" % (p.get("name"), p.get("username"), p.get("gpu") or "?", (st.get("vramMb") or 0) / 1024, p.get("version"), ": " + why if why else "")
 target = None
 if a.pc:
     hit = [p for p in pcs if a.pc.lower() in (str(p.get("name", "")).lower(), str(p.get("username", "")).lower())]

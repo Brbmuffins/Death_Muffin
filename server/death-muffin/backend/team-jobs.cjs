@@ -22,7 +22,7 @@
  *   POST /api/team/logout                      revokes the token it came with -> { success }
  *   GET  /api/team/me                          -> { success, data: { accountId, username } }
  *   POST /api/team/heartbeat                   the PC's state (+ optional `wait`, 0..25 seconds, default 0; state.benchmarks false = the member switched benchmarks off on that PC; state.models true = it runs
- *                                              model jobs, state.vramMb its graphics card's memory in MiB, kept for the runner's PC list) -> { success, data: { serverTime, offer, cancel, queue } }   offer: null or the oldest queued job
+ *                                              model jobs, state.modelsWhy why it runs none (team app 0.5.1), state.vramMb its graphics card's memory in MiB, kept for the runner's PC list) -> { success, data: { serverTime, offer, cancel, queue } }   offer: null or the oldest queued job
  *                                              of the first kind in KIND_ORDER that has one (shots, clip, model, release, bench, then any other kind) that this PC has not declined and may run (a model job only for state.models); cancel: the ids of jobs this PC claimed that were cancelled in the last 10 minutes (the
  *                                              app stops the one it runs and ignores the rest); queue: the jobs this PC may take, oldest first (Helix 2026-10-19: the app's job list shows the first 10 oldest to newest), at most 20, each
  *                                              { id, kind, title, weightS, expiresAt, requestedBy?, thread?, steps? } (requestedBy and thread: who started the Discord thread the job came from and its name; steps: a release job's steps). With `wait` > 0 the request is held (long poll) while there is nothing to say:
@@ -90,6 +90,7 @@ const RELEASE_FILES_PER_JOB = 120;        // a release job's screens alone are u
 const JSON_MAX_BYTES = 1024 * 1024;       // one step's result file
 const GLB_MAX_BYTES = 48 * 1024 * 1024;   // one model (nginx takes 50 MB a request): a 4096 colour texture with its 2048 normal and 1024 shading maps stays well under it
 const VRAM_MB_MAX = 1 << 20;              // a heartbeat's state.vramMb is kept as a whole number 0 to this
+const MODELS_WHY_MAX = 300;               // characters of a heartbeat's state.modelsWhy (why the PC runs no model jobs) kept
 const LIST_LIMIT_DEFAULT = 50;
 const LIST_LIMIT_MAX = 100;
 const RUNS_PER_JOB = 6;                   // benchmark runs a `bench` job hands over
@@ -212,7 +213,7 @@ function parseHeartbeat(body) {
       mode: MODES.includes(b.mode) ? b.mode : 'ask',
       state: {
         gameRunning: s.gameRunning === true, fullscreen: s.fullscreen === true, onBattery: s.onBattery === true, busy: s.busy === true, paused: s.paused === true, benchmarks: s.benchmarks !== false,
-        models: s.models === true, vramMb: clampInt(s.vramMb, 0, VRAM_MB_MAX) ?? 0,
+        models: s.models === true, modelsWhy: text(s.modelsWhy, MODELS_WHY_MAX), vramMb: clampInt(s.vramMb, 0, VRAM_MB_MAX) ?? 0,
       },
     },
   };

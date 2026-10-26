@@ -398,7 +398,7 @@ async function withHarness(opts, fn) {
 
 test('parseHeartbeat accepts the contract body, trims and caps strings, defaults the mode and drops unknown keys', () => {
   const { pc } = parseHeartbeat(beat());
-  assert.deepStrictEqual(pc, { pcId: PC_A, name: 'Muffins PC', version: '0.1.0', gpu: 'NVIDIA GeForce RTX 4070', mode: 'ask', state: { gameRunning: false, fullscreen: false, onBattery: false, busy: false, paused: false, benchmarks: true, models: false, vramMb: 0 } });
+  assert.deepStrictEqual(pc, { pcId: PC_A, name: 'Muffins PC', version: '0.1.0', gpu: 'NVIDIA GeForce RTX 4070', mode: 'ask', state: { gameRunning: false, fullscreen: false, onBattery: false, busy: false, paused: false, benchmarks: true, models: false, modelsWhy: '', vramMb: 0 } });
   assert.strictEqual(parseHeartbeat(beat({ state: { benchmarks: false } })).pc.state.benchmarks, false, 'benchmarks switched off on the PC (team app 0.4.4); anything else, or an older app that sends nothing, is on');
   assert.strictEqual(parseHeartbeat(beat({ state: { benchmarks: 'no' } })).pc.state.benchmarks, true);
   const messy = parseHeartbeat(beat({
@@ -411,9 +411,9 @@ test('parseHeartbeat accepts the contract body, trims and caps strings, defaults
   assert.strictEqual(messy.gpu, '');
   assert.strictEqual(messy.version.length, 32);
   assert.strictEqual(messy.mode, 'ask', 'an unknown mode becomes ask');
-  assert.deepStrictEqual(messy.state, { gameRunning: true, fullscreen: false, onBattery: false, busy: false, paused: true, benchmarks: true, models: false, vramMb: 0 }, 'only true counts (benchmarks: only false switches them off), unknown keys are dropped');
+  assert.deepStrictEqual(messy.state, { gameRunning: true, fullscreen: false, onBattery: false, busy: false, paused: true, benchmarks: true, models: false, modelsWhy: '', vramMb: 0 }, 'only true counts (benchmarks: only false switches them off), unknown keys are dropped');
   for (const mode of ['auto', 'yes']) assert.strictEqual(parseHeartbeat(beat({ mode })).pc.mode, mode);
-  assert.deepStrictEqual(Object.keys(parseHeartbeat({ pcId: PC_A }).pc.state).sort(), ['benchmarks', 'busy', 'fullscreen', 'gameRunning', 'models', 'onBattery', 'paused', 'vramMb']);
+  assert.deepStrictEqual(Object.keys(parseHeartbeat({ pcId: PC_A }).pc.state).sort(), ['benchmarks', 'busy', 'fullscreen', 'gameRunning', 'models', 'modelsWhy', 'onBattery', 'paused', 'vramMb']);
   // model jobs (team app 0.5.0): only true runs them; the card's memory is a whole number of MiB, anything else 0
   const big = parseHeartbeat(beat({ state: { models: true, vramMb: 12281.6 } })).pc.state;
   assert.deepStrictEqual([big.models, big.vramMb], [true, 12282]);
@@ -421,6 +421,10 @@ test('parseHeartbeat accepts the contract body, trims and caps strings, defaults
     const st = parseHeartbeat(beat({ state: { models, vramMb } })).pc.state;
     assert.deepStrictEqual([st.models, st.vramMb], want, JSON.stringify([models, vramMb]));
   }
+  // why a PC runs no model jobs (team app 0.5.1): one line of text, capped; anything but text is none
+  const why = parseHeartbeat(beat({ state: { modelsWhy: `  ComfyUI Desktop's program files are not in C:\\x\n${'y'.repeat(400)}\u0000 ` } })).pc.state.modelsWhy;
+  assert.ok(why.startsWith("ComfyUI Desktop's program files are not in C:\\x y") && why.length === 300 && !/[\u0000-\u001f]/.test(why), why);
+  assert.strictEqual(parseHeartbeat(beat({ state: { modelsWhy: 42 } })).pc.state.modelsWhy, '');
 });
 
 test('parseHeartbeat refuses a malformed pc id with a readable reason and takes none (the token names the PC)', () => {
@@ -721,7 +725,7 @@ test('a heartbeat upserts the PC and a repeat updates the same row', async () =>
     await h.call('POST /team/heartbeat', { body: beat({ mode: 'auto', gpu: 'Intel UHD', version: '0.1.1', state: { busy: true } }) });
     assert.strictEqual(h.pcs.size, 1, 'the same account and pc id is one row');
     assert.deepStrictEqual([row.mode, row.gpu, row.version, row.last_seen], ['auto', 'Intel UHD', '0.1.1', h.now()]);
-    assert.deepStrictEqual(JSON.parse(row.state), { gameRunning: false, fullscreen: false, onBattery: false, busy: true, paused: false, benchmarks: true, models: false, vramMb: 0 });
+    assert.deepStrictEqual(JSON.parse(row.state), { gameRunning: false, fullscreen: false, onBattery: false, busy: true, paused: false, benchmarks: true, models: false, modelsWhy: '', vramMb: 0 });
     await h.call('POST /api/team/heartbeat', { body: beat({ pcId: PC_B }), accountId: HELIX });
     await h.call('POST /api/team/heartbeat', { body: beat({ pcId: PC_A }), accountId: HELIX, pcId: PC_A });   // the same pc id under another account is another PC
     assert.strictEqual(h.pcs.size, 3);
@@ -1371,7 +1375,7 @@ test('the runner sees the PCs seen in the last 2 minutes, with mode and state', 
     let r = await h.internal('GET /internal/team/pcs');
     assert.strictEqual(r.statusCode, 200);
     assert.deepStrictEqual(r.body.data.pcs.map((p) => [p.username, p.pcId, p.mode]), [['Helix', PC_B, 'yes'], ['Brbmuffins', PC_A, 'auto']], 'newest first');
-    assert.deepStrictEqual(r.body.data.pcs[1].state, { gameRunning: false, fullscreen: true, onBattery: false, busy: false, paused: false, benchmarks: true, models: false, vramMb: 0 });
+    assert.deepStrictEqual(r.body.data.pcs[1].state, { gameRunning: false, fullscreen: true, onBattery: false, busy: false, paused: false, benchmarks: true, models: false, modelsWhy: '', vramMb: 0 });
     assert.deepStrictEqual(Object.keys(r.body.data.pcs[0]).sort(), ['accountId', 'gpu', 'lastSeen', 'mode', 'name', 'pcId', 'state', 'username', 'version']);
     h.advance(40_000);   // the first PC was last seen 130 s ago
     r = await h.internal('GET /internal/team/pcs');

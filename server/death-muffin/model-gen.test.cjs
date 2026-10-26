@@ -221,6 +221,12 @@ test('no PC that runs model jobs, or a named PC that does not: exit 1 with the P
     const r = await gen(w, backend, [w.out, w.hound]);
     assert.strictEqual(r.code, 1, 'an older app that sends no models flag runs none');
   });
+  // team app 0.5.1 says why it runs none: the message carries it
+  await withWorld({ pcs: [pcRow(PC_H, { models: false, modelsWhy: 'ComfyUI Desktop is not set up on this PC', vramMb: 12282 }, { version: '0.5.1' })] }, async (w, backend) => {
+    const r = await gen(w, backend, ['--pc', 'helix', w.out, w.hound]);
+    assert.strictEqual(r.code, 1, r.all);
+    assert.match(r.err, /HELIX-PC \(Helix, GPU of pc-[^,]+, 12\.0 GB, app 0\.5\.1: ComfyUI Desktop is not set up on this PC\)/);
+  });
 });
 
 test('usage and picture problems exit 2 before the backend is asked', async () => {

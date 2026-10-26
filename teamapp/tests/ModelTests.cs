@@ -528,8 +528,29 @@ namespace DeathMuffinTeam.Tests
             {
                 string why;
                 Directory.Delete(Path.Combine(d.Local, "Programs"), true);
-                T.Ok(d.Find(out why) == null && why.Contains("program files"), "no program files: not found, with the reason");
+                T.Ok(d.Find(out why) == null && why.Contains("program files") && why.Contains("Windows names no other folder"), "no program files: not found, with the reason (" + why + ")");
+                // Desktop's installer lets the member choose the folder (team app 0.5.1): the folders Windows names for it are looked in first
+                string chosen = Path.Combine(d.Top, "D", "Apps", "ComfyUI");
+                string missing = Path.Combine(d.Top, "gone");
+                T.Ok(ComfyInstall.Find(d.AppData, d.Local, new[] { missing }, out why) == null && why.Contains(missing), "a folder Windows names that has no ComfyUI is in the reason (" + why + ")");
+                Directory.CreateDirectory(Path.Combine(chosen, "resources", "ComfyUI"));
+                File.WriteAllText(Path.Combine(chosen, "resources", "ComfyUI", "main.py"), "");
+                ComfyInstall i = ComfyInstall.Find(d.AppData, d.Local, new[] { missing, chosen }, out why);
+                T.Ok(i != null && i.MainPy == Path.Combine(chosen, "resources", "ComfyUI", "main.py") && i.Python == Path.Combine(d.Base, ".venv", "Scripts", "python.exe"), "Desktop installed in a folder of the member's choosing is found (" + why + ")");
             }
+            using (var d = new FakeDesktop())
+            {
+                string why, other = Path.Combine(d.Top, "Other");
+                Directory.CreateDirectory(Path.Combine(other, "resources", "ComfyUI"));
+                File.WriteAllText(Path.Combine(other, "resources", "ComfyUI", "main.py"), "");
+                ComfyInstall i = ComfyInstall.Find(d.AppData, d.Local, new[] { other }, out why);
+                T.Ok(i != null && i.MainPy.StartsWith(other), "the folder Windows names comes before an old copy under Programs");
+            }
+            string dir = Path.Combine(Path.GetTempPath(), "Apps", "ComfyUI");
+            T.Eq(ComfyInstall.ExeFolder(Path.Combine(dir, "ComfyUI.exe") + ",0"), dir, "an icon with its index names its program's folder");
+            T.Eq(ComfyInstall.ExeFolder("\"" + Path.Combine(dir, "Uninstall ComfyUI.exe") + "\" /currentuser"), dir, "a quoted uninstall command with its switches too");
+            T.Eq(ComfyInstall.ExeFolder(Path.Combine(dir, "ComfyUI.EXE")), dir, "and a bare path");
+            T.Ok(ComfyInstall.ExeFolder("") == "" && ComfyInstall.ExeFolder(null) == "" && ComfyInstall.ExeFolder("\"" + dir) == "" && ComfyInstall.ExeFolder("MsiExec.exe /X{1}") == "", "anything that names no program's folder gives none");
         }
 
         static void DesktopServerRuns()

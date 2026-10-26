@@ -263,6 +263,52 @@ namespace DeathMuffinTeam
                 }
             }
         }
+
+        /// <summary>
+        /// The folders Windows says ComfyUI Desktop's program is in (Comfy.cs ComfyInstall.Find looks there first; its installer lets the member choose the folder): each uninstall entry named
+        /// ComfyUI (the member's and the machine's, both registry views) with its InstallLocation and the folders of its DisplayIcon and UninstallString, then a running ComfyUI.exe's folder.
+        /// Only folders that exist; empty when Windows names none.
+        /// </summary>
+        public static List<string> ComfyDesktopFolders()
+        {
+            var found = new List<string>();
+            Action<string> add = d => { try { if (!string.IsNullOrEmpty(d) && !found.Contains(d) && Directory.Exists(d)) found.Add(d); } catch (Exception) { } };
+            foreach (RegistryHive hive in new[] { RegistryHive.CurrentUser, RegistryHive.LocalMachine })
+                foreach (RegistryView view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
+                {
+                    try
+                    {
+                        using (RegistryKey root = RegistryKey.OpenBaseKey(hive, view))
+                        using (RegistryKey uninstall = root.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall"))
+                        {
+                            if (uninstall == null) continue;
+                            foreach (string sub in uninstall.GetSubKeyNames())
+                            {
+                                try
+                                {
+                                    using (RegistryKey k = uninstall.OpenSubKey(sub))
+                                    {
+                                        string name = k == null ? null : k.GetValue("DisplayName") as string;
+                                        if (name == null || !name.StartsWith("ComfyUI", StringComparison.OrdinalIgnoreCase)) continue;
+                                        add(k.GetValue("InstallLocation") as string);
+                                        add(ComfyInstall.ExeFolder(k.GetValue("DisplayIcon") as string));
+                                        add(ComfyInstall.ExeFolder(k.GetValue("UninstallString") as string));
+                                    }
+                                }
+                                catch (Exception) { }
+                            }
+                        }
+                    }
+                    catch (Exception) { }
+                }
+            try
+            {
+                foreach (Process p in Process.GetProcessesByName("ComfyUI"))
+                    using (p) { try { add(Path.GetDirectoryName(p.MainModule.FileName)); } catch (Exception) { } }
+            }
+            catch (Exception) { }
+            return found;
+        }
     }
 
     /// <summary>

@@ -102,6 +102,9 @@ namespace DeathMuffinTeam
         /// <summary>ComfyUI Desktop is installed on this PC (ComfyHost.Installed): with a 12 GB card, the PC runs `model` jobs. Null: it runs none.</summary>
         public Func<bool> ComfyInstalled;
 
+        /// <summary>Why ComfyUI Desktop was not found (ComfyHost.NotFoundWhy), for the heartbeat's `modelsWhy` and the app's log. Null: the reason is not known.</summary>
+        public Func<string> ComfyNotFoundWhy;
+
         /// <summary>Called on each heartbeat that finds the player's Death Muffin running (ComfyHost.PlayerPlaying: an idle ComfyUI the app started goes).</summary>
         public Action PlayerPlaying;
 
@@ -124,6 +127,7 @@ namespace DeathMuffinTeam
         List<Offer> listed = new List<Offer>();      // what the box lists: the available jobs minus those put off with Not now
         OfferAnswer answer = OfferAnswer.None;
         DateTime? shownAt;
+        string lastModelsWhy;   // why this PC runs no model jobs ("" it runs them), logged when it changes
         string lastDecision = "";   // the offer's last decision, logged when it changes (app.log: why a box did or did not show, why a job ran)
         readonly Dictionary<string, DateTime> snoozed = new Dictionary<string, DateTime>();
         readonly HashSet<string> sentDeclines = new HashSet<string>();
@@ -264,6 +268,12 @@ namespace DeathMuffinTeam
             {
                 try { PlayerPlaying(); } catch (Exception ex) { log("could not stop the app's ComfyUI for the game: " + ex.Message); }
             }
+            string modelsWhy = ModelsWhy();
+            if (modelsWhy != lastModelsWhy)
+            {
+                lastModelsWhy = modelsWhy;
+                log(modelsWhy.Length == 0 ? "model jobs: this PC runs them" : "model jobs: none, " + modelsWhy);
+            }
             return new PcState
             {
                 GameRunning = game,
@@ -272,18 +282,30 @@ namespace DeathMuffinTeam
                 Busy = running,
                 Paused = settings.IsPaused(utcNow()),
                 Benchmarks = settings.RunBenchmarks,
-                Models = RunsModels(),
+                Models = modelsWhy.Length == 0,
+                ModelsWhy = modelsWhy,
                 VramMb = vramMb,
             };
         }
 
-        /// <summary>This PC runs `model` jobs: a graphics card with 12 GB or more and ComfyUI Desktop installed (the runner checks the card again on ComfyUI's own numbers).</summary>
-        bool RunsModels()
+        /// <summary>
+        /// "" when this PC runs `model` jobs (a graphics card with 12 GB or more and ComfyUI Desktop installed; the runner checks the card again on ComfyUI's own numbers), else why not in plain
+        /// words (the heartbeat's `modelsWhy`, so a session sees it in the PC list).
+        /// </summary>
+        string ModelsWhy()
         {
-            if (!ComfyRules.CardFits(vramMb) || ComfyInstalled == null) return false;
-            try { return ComfyInstalled(); }
-            catch (Exception) { return false; }
+            if (!ComfyRules.CardFits(vramMb)) return vramMb > 0 ? "the graphics card has " + ComfyRules.Gb(vramMb) + "; model jobs need 12 GB or more" : "the graphics card's memory is not known";
+            if (ComfyInstalled == null) return "this app does not look for ComfyUI";
+            try
+            {
+                if (ComfyInstalled()) return "";
+                string why = ComfyNotFoundWhy == null ? null : ComfyNotFoundWhy();
+                return string.IsNullOrEmpty(why) ? "ComfyUI Desktop is not installed" : why;
+            }
+            catch (Exception ex) { return "ComfyUI Desktop could not be looked for: " + ex.Message; }
         }
+
+        bool RunsModels() { return ModelsWhy().Length == 0; }
 
         /// <summary>
         /// The heartbeat as a long poll, until <paramref name="ct"/> ends: each one asks the server to hold it up to 25 seconds while it has nothing to say, so an offer or a cancel reaches the PC in about
