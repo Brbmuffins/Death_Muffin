@@ -203,7 +203,8 @@ static func fx_pose(i: Dictionary) -> Vector4:
 # ---------------------------------------------------------------------------------------------------------------------- fixtures
 
 ## A DmCrowd with the three baked models (robber 2 levels of detail, hound 1, skeleton 3), levels starting at 30 m and 60 m, each with its fade groups. `o`: "no_fade" (models with no
-## alpha groups, as a caller of the older add_model had), "spectral" (slugs drawn as ghosts: their plain group is the see-through one).
+## alpha groups, as a caller of the older add_model had), "spectral" (slugs drawn as ghosts: their plain group is the see-through one), "bare" (slugs given
+## only their idle, walk and run roles: a model with no strike, flinch or death clip, as the unrigged ones are).
 func new_crowd(o := {}) -> RefCounted:
 	var c: RefCounted = ClassDB.instantiate("DmCrowd")
 	clock_ms = 0.0
@@ -226,6 +227,12 @@ func new_crowd(o := {}) -> RefCounted:
 			fade.append(f.get_rid())
 		var cd: Dictionary = data[slug].crowd_data()
 		cd["spectral"] = (o.get("spectral", []) as Array).has(slug)
+		if (o.get("bare", []) as Array).has(slug):
+			var loops := {}
+			for role in ["idle", "walk", "run"]:
+				if cd.roles.has(role):
+					loops[role] = cd.roles[role]
+			cd["roles"] = loops
 		c.add_model(slug, cd, plain, shadow, PackedFloat32Array([30.0, 60.0]), [] if bool(o.get("no_fade", false)) else fade)
 	return c
 
@@ -333,7 +340,7 @@ func _initialize() -> void:
 	the_dive()
 	death_and_corpses()
 	fades()
-	the_hound()
+	body_only()
 	shadows_and_lod()
 	interpolation()
 	culling_and_packing()
@@ -1187,15 +1194,15 @@ func fades() -> void:
 	check(many.stats().fading == 0 and many.stats().groups_faded == 0, "and the fade groups empty once the bodies are gone")
 
 
-func the_hound() -> void:
-	# the hound has no attack, hurt or death clip: the body does it alone
-	var c := new_crowd()
+func body_only() -> void:
+	# a model with no attack, hurt or death clip (the hound's bake with its loops alone): the body does it alone
+	var c := new_crowd({"bare": [SLUGS[HOUND]]})
 	feed(c, [body(1, ENEMY, HOUND, CHASE, 3, 0, {"def": 2, "speed": 4.4})])
 	draw(c, 20)
-	check(info(c, 1).clip in ["walk", "run"], "the hound walks and runs")
+	check(info(c, 1).clip in ["walk", "run"], "it walks and runs")
 	feed(c, [body(1, ENEMY, HOUND, ATTACK, 3, 0, {"def": 2, "action_s": 0.25})])
 	var i := info(c, 1)
-	check(i.one_shot == "" and near(i.lunge_len, 1.05 * 0.22, 1e-6) and near(i.lunge_pitch, 0.2, 1e-9) and near(i.lunge_in, 0.25, 1e-6), "no attack clip: the hound lunges and bites with the body (%.3f m, %.2f rad)" % [i.lunge_len, i.lunge_pitch])
+	check(i.one_shot == "" and near(i.lunge_len, 1.05 * 0.22, 1e-6) and near(i.lunge_pitch, 0.2, 1e-9) and near(i.lunge_in, 0.25, 1e-6), "no attack clip: it lunges and bites with the body (%.3f m, %.2f rad)" % [i.lunge_len, i.lunge_pitch])
 	draw(c, 30)
 	feed(c, [body(1, ENEMY, HOUND, HURT, 3, 0, {"def": 2})])
 	i = info(c, 1)
@@ -1223,7 +1230,7 @@ func the_hound() -> void:
 	var r := row_at(c, 3, 0)
 	var want := Basis(Vector3.UP, i.yaw) * Basis(Vector3.BACK, PI / 2.0)
 	check(not r.is_empty() and r.xf.basis.is_equal_approx(want), "the instance is turned a quarter about Z: lying on its side")
-	# a hound laid down by a corpse alone is already down
+	# one laid down by a corpse alone is already down
 	feed(c, [], [], [{"id": 6, "model": HOUND, "def": 2, "x": 12.0, "z": 0.0, "facing": 0.0, "scale": 1.0, "tint": Color.WHITE}])
 	check(c.view_info(6, true).toppled == 1.0, "a laid corpse of a model without a death clip lies flat")
 

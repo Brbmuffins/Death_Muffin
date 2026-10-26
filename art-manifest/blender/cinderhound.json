@@ -1,0 +1,15 @@
+{
+  "model": "cinderhound",
+  "file": "client/assets/slice/models/cinderhound/character.glb",
+  "steps": [
+    {
+      "kind": "motion",
+      "clips": [
+        "attack",
+        "hurt",
+        "death"
+      ],
+      "date": "2026-10-26"
+    }
+  ]
+}

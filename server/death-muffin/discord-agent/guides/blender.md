@@ -2,17 +2,18 @@
 
 Blender runs here, in your sandbox, for free (no credits, no keys, no approval to spend), in seconds. It is the DEFAULT for anything about how a model
 moves or a change to a model that exists; Tripo is only for a brand-new model (a new shape), never for a move or an edit Blender can make (DECISIONS B74).
-- **A move** a creature lacks or does badly (walk, run, idle, an attack for a two-legged one, feet that slide, a hitch where a loop restarts): Blender.
+- **A move** a creature lacks or does badly (walk, run, idle, an attack, a flinch or a death, feet that slide, a hitch where a loop restarts): Blender.
 - **An edit** to a model: another colour, a bigger or smaller part (head, horns, claws), a part taken off (tail, horn, cape), fewer triangles: Blender.
 - **A new model** (`.dm-guides/models.md`): ask Tripo for the model, its rig and only the animations Blender cannot give it (step 2 there), then finish
   it here after `build-art.sh` (loops, names, library moves, four-legged gaits).
 - What Blender cannot do, say plainly and offer the next best thing: a new silhouette or new armour on the body, a new texture design (a recolour is
-  not one), attack, death or hurt moves for four-legged creatures, facial expressions. Those are a new Tripo model or a human animator.
+  not one), facial expressions. Those are a new Tripo model or a human animator.
 
 **Which tool for a move.** Run `inspect` first (below): it lists the model's bones and clips.
 - Two-legged on the shared Tripo biped skeleton (bones `Hip`, `Waist`, `Spine01`, `L_Upperarm`, ...; heroes, the thrall, ghouls, NPCs): `retarget` moves from
   the free library (`library` lists its 43: sword and punch attacks, spell casts, hits, deaths, rolls, walks, runs, idles). Record it (end of this guide).
-- Four-legged, many-legged or winged: `motion`, from the model's recipe `tools/blender/recipes/<model>.json`. Without one, write it: `docs/BLENDER-PIPELINE.md`
+- Four-legged, many-legged or winged: `motion`, from the model's recipe `tools/blender/recipes/<model>.json`: walk, run and idle cycles, and one-shots (a bite, a
+  flinch, a death: type `once`; the bone hound's, cinderhound's and skull rat's recipes have all three). Without a recipe, write it: `docs/BLENDER-PIPELINE.md`
   "`procedural` and recipes" and the closest existing recipe; bone names and positions from `inspect`. When the rig lacks the bones a leg or tail needs,
   add a `rigfix` section ("`rigfix`" there) and run `rigfix` before `motion`.
 - A clip that exists but slides, drifts or hitches: `cleanup` (`loop`, `drift`, `footLock`). A walk that drifts wants `drift` and `loop` together.

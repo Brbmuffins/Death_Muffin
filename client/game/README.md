@@ -27,7 +27,7 @@ The boss light and the shared Binbun flash light are `visible = false` while the
 For the skeleton nodes; the crowd plays baked clips and redoes the procedural layer below for the core's creatures (client/crowd/README.md "What each creature does"). The AnimationPlayer is advanced by hand (`update(dt)`: animation LOD, hitstop). Blends: swing in over 0.3 x its wind-up (0.06-0.14 s), flinch 0.09, death 0.12, back to the loop 0.2, idle/walk/run 0.28.
 Walk and run are stride-matched (`set_ground_speed`, allocation-free plan). Idle starts at a random phase and +-8% rate per non-hero body so a crowd does not breathe in step.
 A procedural layer rides the single model node (no skeleton work, `_fx_step` runs only while one is active, `busy()` keeps it at full rate): hit recoil (`react`, fired by a fresh `set_flash(1)`
-and by `flinch`), strike lunge timed to the clip's impact (`play_strike`; the hounds, which have no attack clip, lunge and bite with the body alone), `topple` for rigs with no death clip
+and by `flinch`), strike lunge timed to the clip's impact (`play_strike`; a rig with no attack clip lunges and bites with the body alone), `topple` for rigs with no death clip
 (eased 0.45 s, then the pose freezes), `set_rise` (spawn climb). Boss swings use `play_strike` so a 6.6 s clip never plays out its tail.
 
 ## Held props and gear look (`dm_creature.gd`, `dm_gear_props.gd`, `dm_gear_models.gd`, `dm_gear_fx.gd`, `dm_avatar.gd`)

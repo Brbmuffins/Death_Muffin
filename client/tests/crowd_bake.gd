@@ -102,15 +102,16 @@ func _test_model(slug: String) -> void:
 		check(plan.error <= Baker.ERROR_TARGET or int(plan.frames) == Baker.MAX_FRAMES, "%s: clip %s interpolates within %.0f mm (got %.0f mm at %d frames)" % [slug, plan.name, Baker.ERROR_TARGET * 1000.0, plan.error * 1000.0, plan.frames])
 		check(plan.error <= INTERPOLATION_TOLERANCE, "%s: clip %s interpolation error %.0f mm" % [slug, plan.name, plan.error * 1000.0])
 	check(data.clip_index("idle") >= 0 and data.clip_table[data.clip_index("idle")].w == 1.0 and data.clip_table[data.clip_index("walk")].w == 1.0, "%s: idle and walk loop" % slug)
-	for role in ["idle", "walk", "run"] if slug == "bone_hound" else ["idle", "walk", "run", "attack", "hurt", "death"]:
-		check(data.roles.has(role), "%s: role %s is played by a clip" % [slug, role])
+	# a role is baked exactly when the model row lists a clip that can play it; the others are left to the body (lunge, recoil, tip-over)
+	var have: Array = (JSON.parse_string(FileAccess.get_file_as_string(_rows)) as Dictionary)[slug].clips
+	for role in Baker.FALLBACK:
+		var plays: bool = (Baker.FALLBACK[role] as Array).any(func(nm: String) -> bool: return have.has(nm))
+		check(data.roles.has(role) == plays, "%s: role %s is %s" % [slug, role, "played by a clip" if plays else "left to the body"])
 	for role in data.roles:
 		for nm in data.roles[role]:
 			check(data.clip_index(nm) >= 0, "%s: role %s names baked clip %s" % [slug, role, nm])
 	if slug == "grave_robber":
 		check(data.roles.attack == ["attack", "attack2"] and data.roles.death == ["death", "death2"] and data.roles.hurt == ["hurt", "hurt2", "hurt3"], "%s: clip variants join their role" % slug)
-	if slug == "bone_hound":
-		check(not data.roles.has("hurt") and not data.roles.has("death"), "%s: no hurt or death clip to bake" % slug)
 
 	# The mesh: one vertex array for every level, an animation id per vertex, bounds that hold every pose.
 	var m: Dictionary = Baker.load_model(root, slug, _assets, _rows)

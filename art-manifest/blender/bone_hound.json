@@ -1,0 +1,15 @@
+{
+  "model": "bone_hound",
+  "file": "client/assets/slice/models/bone_hound/character.glb",
+  "steps": [
+    {
+      "kind": "motion",
+      "clips": [
+        "attack",
+        "hurt",
+        "death"
+      ],
+      "date": "2026-10-26"
+    }
+  ]
+}

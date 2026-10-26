@@ -14,6 +14,16 @@ func check(ok: bool, msg: String) -> void:
 func _initialize() -> void:
 	_run.call_deferred()
 
+## Leave a creature only its idle, walk and run clips (its own copy of the library), playing its idle: a rig with no one-shots.
+func loops_only(c: DmCreature) -> void:
+	var lib: AnimationLibrary = c.ap.get_animation_library("").duplicate()
+	for nm in lib.get_animation_list():
+		if not (String(nm) in ["idle", "walk", "run"]):
+			lib.remove_animation(nm)
+	c.ap.remove_animation_library("")
+	c.ap.add_animation_library("", lib)
+	c.ap.play("idle")
+
 func _run() -> void:
 	var dt := 1.0 / 60.0
 	var c := DmCreature.new("grave_robber", {})
@@ -59,11 +69,12 @@ func _run() -> void:
 	var p1 := c.last_plan
 	c.set_ground_speed(2.6)
 	check(is_same(p1, c.last_plan), "plan dictionary is reused")
-	# rigs with no death clip tip over smoothly, then freeze
+	# rigs with no death clip tip over smoothly, then freeze (the hound with only its loops: a rig with no attack, hurt or death clip)
 	var hound := DmCreature.new("bone_hound", {})
 	root.add_child(hound.root)
+	loops_only(hound)
 	hound.update(dt)
-	check(not hound.play_death(), "hound has no death clip")
+	check(not hound.play_death(), "a rig with no death clip does not play one")
 	hound.topple()
 	var mid := 0.0
 	for i in 12:

@@ -7,7 +7,7 @@ and quantisation are untouched. Hand-keyed signature animation stays a human ani
 how their files drop into the same flow. Sources and licences: [ANIMATION-SOURCES.md](ANIMATION-SOURCES.md).
 
 ```
-node tools/blender.mjs procedural <slug> [clip ...] [--install]     author clips from a recipe (quadruped gaits, idles, overlays on Tripo clips)
+node tools/blender.mjs procedural <slug> [clip ...] [--install]     author clips from a recipe (quadruped gaits, idles, one-shots, overlays on Tripo clips)
 node tools/blender.mjs rigfix     <slug>                            add bones + move vertex weights (hound legs/tail, gargoyle wings)
 node tools/blender.mjs cleanup    <in.glb> <clip> [--loop] [--drift] [--foot-lock] [--recipe r.json]
 node tools/blender.mjs retarget   <source.glb> <target-rig.glb> <clip-map.json> [--only a,b]
@@ -86,11 +86,16 @@ joint name.
 | `source` | rig GLB under `art-src/tripo/<slug>/` (default `rig.glb`; the cinderhound uses `rigfixed.glb`) |
 | `forward`, `headBone`, `root` | body forward in Blender armature space (Z up), or derived root-to-head |
 | `legs` | `{ FL: { chain: [bones hip..knee], paw: ankle bone, rigidFrom: 1 } ... }`. The paw's *head* is the ankle target. `rigidFrom: 1` treats `chain[1:]` as one stiff lower leg: the solver then has two segments and a unique answer. |
-| `clips.<name>.type` | `gait` (feet on a stance line + swing arc), `idle` (feet planted, body breathes) |
+| `clips.<name>.type` | `gait` (feet on a stance line + swing arc), `idle` (feet planted, body breathes), `once` (a one-shot: attack, hurt, death; frame 0 is the start, the last frame the end, no loop) |
 | `gait` | `duty` (share of the cycle on the ground), `stride`, `lift`, `phase` per leg, `arc` (swing shape), `legScale`, `center` |
 | `paw` | `stance` / `swing` pitch in degrees (positive = toes down) |
 | `mods` | body modulators: `{ bones, kind: lift\|sway\|surge\|pitch\|yaw\|roll, amp (m or deg), cycles, phase, lag, offset }`; `lag` shifts the phase down the bone list, which makes tails and necks wave |
-| `crouch` | `auto` (default): the smallest root drop that keeps every foot inside 98.5% of its leg's reach, or a number |
+| `mods[].keys` | `once` clips: `[[u, w], ...]` over the clip (u 0..1, w -1..1, smooth between keys) replaces the sine; `lag` delays the curve down the bone list |
+| `mods[].body` | `true`: the axis turns with what the bone inherited (a tail or leg of a body that has rolled onto its side bends about the body's own axis, not the world's) |
+| `plant` | `once` clips: `false` lets the leg bones take `mods` like any bone (a fall); default `true` keeps the feet on their IK targets |
+| `feet` | `once` clips: `{ FL: [{ fwd, up, side (m), keys }] ... }` moves a planted paw (a pounce lifts and reaches with the front paws) |
+| `floor` | `once` clips: `{ land: u }` lifts the root whenever the skinned body would sink below its rest floor, and from `land` on also lowers it, so a falling body lies on the ground (`floorLift` in the output: the range of that correction) |
+| `crouch` | `auto` (default): the smallest root drop that keeps every foot inside 98.5% of its leg's reach, or a number; a `once` clip's default is `idle` (the idle clip's drop) |
 | `legs.X.hock` | `true`: a digitigrade hind leg of **three chain bones** (thigh, shin, metatarsus) plus the paw. The first two are solved to the hock, the metatarsus then points at the ankle in a direction that flexes with the stride; the clip's `hock: {stance, swing}` gives degrees (positive folds the foot back; the swing is a sine over the swing phase, `stance` a ramp over the stance). Replaces `rigidFrom` (a stiff lower leg) where the rig has the bones. |
 | `legs.X.minReach` | fraction of the leg's reach below which a swinging foot is pushed away from the hip (weight 0 at lift-off and touch-down, 1 in mid-swing). A tightly folded thin forearm becomes a fin that rises past the spine. |
 | `clips.<name>.hock` | see `legs.X.hock` |
@@ -221,7 +226,7 @@ have no staff version: the game hides the staff while they play.
 - The bone map is hand-written, not inferred. `.fbx` sources go through Blender's FBX importer (untested here; the pack's GLB was used).
 - `retarget` copies motion, not intent: proportions differ (UAL legs are longer relative to the hips than Tripo's), so feet float or sink until `cleanup --foot-lock` runs. Fingers and twist bones are not animated.
 - Retargeted combat clips lose Tripo's per-clip `release` metadata (impact timing).
-- `procedural` gaits: only `gait` and `idle` types (plus overlays), one gait per clip. Hock legs need three chain bones; the cinderhound and bone hound have them, the skull rat's hind legs stay `rigidFrom`. A tail cannot be raised by rotating its bones on the skull rat (its hind legs hang off `Tail_0`, and cumulative pitch curls the tail under the body): a `lift` of `Tail_1` is used instead. No 'trot vs gallop' blend, no turning clips, no attack/death/hurt clips for quadrupeds.
+- `procedural`: `gait`, `idle` and `once` types (plus overlays), one gait per clip; a `once` clip starts from the idle's crouch, so it blends from the idle. Hock legs need three chain bones; the cinderhound and bone hound have them, the skull rat's hind legs stay `rigidFrom`. A tail cannot be raised by rotating its bones on the skull rat (its hind legs hang off `Tail_0`, and cumulative pitch curls the tail under the body): a `lift` of `Tail_1` is used instead, and its death first rolls `Tail_1` about the body so the tail's sideways curl lies flat when the body tips over. No 'trot vs gallop' blend, no turning clips.
 - `rigfix` weights are geometric (capsules, boxes); cloth or hair hanging through a limb column can be shared between the limb and the body and stretch. Check with a posed `skinview.py` and look for vertices under the floor.
 - Installing a procedural clip overwrites `art-src/tripo/<slug>/anim_<clip>.glb` in the shared raw-asset folder (originals are in `orig/`).
 

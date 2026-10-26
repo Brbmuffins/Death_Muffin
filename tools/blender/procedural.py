@@ -5,6 +5,9 @@ Clip types in a recipe (see tools/blender/recipes/*.json and docs/BLENDER-PIPELI
   gait   a quadruped (or any multi-legged) gait: each foot follows a stance line (constant speed, so it cannot slide)
          and a swing arc, solved with IK from the hip; the body bobs, pitches and sways around it.
   idle   feet planted, body breathes, head and tail drift.
+  once   a one-shot (attack, hurt, death): mods follow `keys` curves over the clip instead of sines, the feet stay planted
+         (or move by `feet` offsets) unless `plant` is false (then the leg bones take mods like any bone), and `floor` keeps
+         the skinned body on the ground.
 
 Everything is expressed in armature space of the imported rig (Blender Z up). `forward` is the horizontal direction
 the body faces (default: from the root toward the head bone). Angles are degrees in the recipe.
@@ -14,6 +17,7 @@ import os
 import sys
 
 import bpy
+import numpy as np
 from mathutils import Matrix, Quaternion, Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -104,10 +108,13 @@ class Gait:
             if bone not in bones:
                 continue
             i = bones.index(bone)
-            ph = m.get('phase', 0.0) + i * m.get('lag', 0.0)
-            w = math.sin(2 * math.pi * (m.get('cycles', 1) * t + ph))
-            if m.get('abs'):
-                w = abs(w) * 2 - 1
+            if 'keys' in m:
+                w = interp(m['keys'], t - i * m.get('lag', 0.0))                   # one-shot curve: lag delays it down the bone list
+            else:
+                ph = m.get('phase', 0.0) + i * m.get('lag', 0.0)
+                w = math.sin(2 * math.pi * (m.get('cycles', 1) * t + ph))
+                if m.get('abs'):
+                    w = abs(w) * 2 - 1
             amp = m['amp'] * m.get('falloff', 1.0) ** i
             k = m['kind']
             if k == 'lift':
@@ -119,7 +126,7 @@ class Gait:
             else:
                 ang = math.radians(amp) * w + math.radians(m.get('offset', 0.0))
                 axis = {'pitch': self.lat, 'yaw': UP, 'roll': self.fwd}[k]
-                rots.append((axis, ang))
+                rots.append((axis, ang, bool(m.get('body'))))
         return tr, rots
 
     # --- one frame ---------------------------------------------------------------------------------
@@ -127,13 +134,14 @@ class Gait:
         rig = self.rig
         mods = clip.get('mods', [])
         g = clip.get('gait')
+        plant = clip.get('plant', True)                                             # false: legs are posed by mods (a fall), not IK
         P, basis = {}, {}
         info = {'stretch': 0.0, 'contact': {}}
         for n in rig.order:
-            if n in self.leg_bones and n not in self.first_of:
+            if plant and n in self.leg_bones and n not in self.first_of:
                 continue
             par = rig.parent[n]
-            if n in self.first_of:
+            if plant and n in self.first_of:
                 key = self.first_of[n]
                 lg = self.legs[key]
                 ph = t
@@ -141,6 +149,10 @@ class Gait:
                     ankle, contact = self.foot(key, ph, g)
                 else:
                     ankle, contact = self.A0[key].copy(), 1.0
+                    fo = clip.get('feet', {}).get(key, [])
+                    for o in (fo if isinstance(fo, list) else [fo]):              # a one-shot moves a planted paw (a pounce lifts the front paws)
+                        w = interp(o['keys'], t)
+                        ankle += (UP * o.get('up', 0.0) + self.fwd * o.get('fwd', 0.0) + self.lat * o.get('side', 0.0) * self.side[key]) * w
                 # pitch the paw a little with the stride (heel-off late in stance, toe-down in swing)
                 pawrot = None
                 pr = clip.get('paw')
@@ -185,7 +197,9 @@ class Gait:
             if n == self.root:
                 tr = tr + Vector((0, 0, -drop))
             Pd = inh
-            for axis, ang in rots:
+            for axis, ang, body in rots:
+                if body:                                                            # the body's own axis: carried by what the bone inherited
+                    axis = (inh.to_3x3() @ rig.rest[n].to_3x3().inverted()) @ axis
                 Pd = pivot_rotate(Pd, axis, ang)
             if tr.length > 0:
                 Pd = T(tr) @ Pd
@@ -196,6 +210,65 @@ class Gait:
             else:
                 P[n] = inh
         return basis, P, info
+
+    def skin_sample(self, meshes, most=4000):
+        """every k-th skinned vertex in armature space with its bone weights, for the floor test of one-shot clips"""
+        rig = self.rig
+        bi = {b: i for i, b in enumerate(rig.order)}
+        arm_inv = rig.obj.matrix_world.inverted()
+        co, W = [], []
+        total = sum(len(m.data.vertices) for m in meshes if m.vertex_groups)
+        step = max(1, total // most)
+        for m in meshes:
+            if not m.vertex_groups:
+                continue
+            gname = {g.index: g.name for g in m.vertex_groups}
+            for k in range(0, len(m.data.vertices), step):
+                v = m.data.vertices[k]
+                w = np.zeros(len(bi))
+                for g in v.groups:
+                    if gname[g.group] in bi:
+                        w[bi[gname[g.group]]] += g.weight
+                if w.sum() > 0:
+                    co.append(tuple(arm_inv @ (m.matrix_world @ v.co)) + (1.0,))
+                    W.append(w / w.sum())
+        self.skin_co, self.skin_w = np.array(co), np.array(W)
+        self.rest_inv = np.array([np.array(rig.rest[b].inverted()) for b in rig.order])
+        self.floor0 = float(self.skin_co[:, 2].min()) if len(co) else 0.0
+
+    def lowest(self, P):
+        """lowest point of the skinned sample under pose P (linear blend skinning)"""
+        S = np.array([np.array(P[b]) for b in self.rig.order]) @ self.rest_inv     # (B, 4, 4) skin matrices
+        z = np.einsum('bj,vj->vb', S[:, 2, :], self.skin_co)                       # each vertex's height under each bone
+        return float((z * self.skin_w).sum(1).min())
+
+    def build_once(self, name, clip, idle_crouch):
+        """a one-shot clip: frame 0 is u=0 and the last frame u=1 (no loop). `crouch` 'idle' (default) starts from the idle clip's
+        drop so the clip blends from it. `floor: {land: u}` lifts the root whenever the skinned body would sink below the rest floor,
+        and from `land` on (ramped over 0.1) also lowers it, so a falling body lies on the ground."""
+        dur = clip['duration']
+        n = max(1, int(round(dur * common.FPS)))
+        crouch = clip.get('crouch', 'idle')
+        crouch = idle_crouch if crouch == 'idle' else float(crouch)
+        fl = clip.get('floor')
+        frames, stretch, lift = [], 0.0, []
+        for i in range(n + 1):
+            u = i / n
+            b, P, info = self.pose(u, clip, crouch)
+            if fl:
+                gap = self.floor0 - self.lowest(P)                                  # > 0: below the floor
+                land = fl.get('land', 1.0)
+                w = smoothstep((u - (land - 0.1)) / 0.1) if u < land else 1.0
+                up = max(gap, 0.0) if w <= 0 else (1 - w) * max(gap, 0.0) + w * gap
+                if abs(up) > 1e-5:
+                    b, P, info = self.pose(u, clip, crouch - up)
+                lift.append(round(up, 4))
+            frames.append(b)
+            stretch = max(stretch, info['stretch'])
+        res = {'clip': name, 'once': True, 'duration': dur, 'frames': n + 1, 'crouch': round(crouch, 4), 'maxStretch': round(stretch, 3)}
+        if fl:
+            res['floorLift'] = [min(lift), max(lift)]
+        return frames, res
 
     def build(self, name, clip):
         dur = clip['duration']
@@ -310,10 +383,19 @@ def main():
         gait.level_feet(meshes)
         print('PROCEDURAL foot offsets (m)', gait.foot_offsets)
     results = []
+    idle_crouch = None
     for name, clip in recipe['clips'].items():
         if only and name not in only:
             continue
-        frames, res = gait.build(name, clip)
+        if clip.get('type') == 'once':
+            if idle_crouch is None:
+                idle = recipe['clips'].get('idle')
+                idle_crouch = gait.build('idle', idle)[1]['crouch'] if idle else 0.0
+                if any(c.get('floor') for c in recipe['clips'].values()):
+                    gait.skin_sample(meshes)
+            frames, res = gait.build_once(name, clip, idle_crouch)
+        else:
+            frames, res = gait.build(name, clip)
         act = common.key_clip(arm, name, frames)
         out = os.path.join(out_dir, f'anim_{name}.glb')
         common.export_glb(out, arm, act)

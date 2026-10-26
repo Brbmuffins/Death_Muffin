@@ -1,0 +1,15 @@
+{
+  "model": "skull_rat",
+  "file": "client/assets/slice/models/skull_rat/character.glb",
+  "steps": [
+    {
+      "kind": "motion",
+      "clips": [
+        "attack",
+        "hurt",
+        "death"
+      ],
+      "date": "2026-10-26"
+    }
+  ]
+}

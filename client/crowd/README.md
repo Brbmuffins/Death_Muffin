@@ -135,7 +135,7 @@ The numbers are `native/src/core/crowd_view.cpp`'s.
   at least 0.4, at most `walk_cap` or 2.4; a walk and a run swap in the same phase of the step cycle). ATTACK and EMERGE play a strike (`attack`, or `cast` for casters) whose
   impact lands when the wind-up ends (`strike_timing`), HURT a flinch (the first 0.5 s of a hurt clip at 1.35x), DIG the dig clip over the dig time, DEAD the death clip held
   on its last frame. A Gargoyle's dive (flag `diving`, set while the swing winds up) plays the `dive` clip over the wind-up and a fifth more, with no lunge. A role the model lacks resolves like `DmCreature.FALLBACK` (the baked `roles`); variants (`attack2`, `hurt3`, `death2`) are picked from the body's own dice.
-  The hound has no attack, hurt or death clip: it lunges and bites with the body, recoils, and tips over.
+  A model with no clip for the role (no attack, hurt or death clip) lunges and bites with the body, recoils, and tips over.
 - **Blends:** a change of clip blends the old pose out over fixed fade times (loop changes 0.28 s, back from a one-shot 0.2 s, a strike 0.3 x the wind-up between 0.06 and 0.14 s,
   a flinch 0.09 s, a death 0.12 s, other one-shots 0.1 s). At most two clips blend; a third started mid-blend drops the oldest.
 - **Body layer** (`DmCreature._fx_step`, in the instance transform): a hit recoil (kick back, squash, roll, 0.3 s; smaller for taller bodies, once per flash), a strike's lunge
@@ -236,8 +236,8 @@ A model with no colour texture is drawn white, and one baked by another version 
 
 `godot --headless --path client --script res://tests/crowd_view.gd` (20 s, bakes the robber, the hound and the skeleton into a scratch folder): the pure helpers against reference
 implementations on random inputs; the yaw, the speed, the clip of every state, the walk and run switch with its hysteresis and phase, the blends, the packing against
-`CrowdVatData`'s packers, the flash, the recoil and lunge poses, the knock spring, the rise, the hover, the death into a corpse (landing, settle, mixer stop, sinking), the hound's
-body-only moves, the shadow group and the level-of-detail split, interpolation; then a Full Party (72 enemies, 32 thralls) in a real `DmCore` through `CrowdView`: the events are
+`CrowdVatData`'s packers, the flash, the recoil and lunge poses, the knock spring, the rise, the hover, the death into a corpse (landing, settle, mixer stop, sinking), the
+body-only moves of a model with no strike, flinch or death clip (the hound's bake given its loops alone), the shadow group and the level-of-detail split, interpolation; then a Full Party (72 enemies, 32 thralls) in a real `DmCore` through `CrowdView`: the events are
 left for `take_events`, a crowd fed only the rows draws the same buffers, the buffers do not grow in a steady crowd, and `draw()` and `sync()` times are printed. The crowd's cost: against the engine's own frustum planes
 on 240 random bodies (a body in view is always drawn, one beyond its sphere never, the drawn range packed, the counters adding up), a caster kept while its shadow falls in and culled when it does not, the thrall shadow
 counters, the bands' update rates on 120 frames (120, 48 and 21 pose updates; 30 bodies spread, at most 13 in a frame), the written time never ahead of the full-rate body's, a swing or a hit shown on the frame its

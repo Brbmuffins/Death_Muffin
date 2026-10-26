@@ -12,7 +12,7 @@
       "params": {}
     },
     "motion": {
-      "what": "Make walk, run and idle cycles (and overlays on existing clips) from the model's recipe tools/blender/recipes/<model>.json: feet planted by construction, for four-legged, many-legged and winged bodies. Without clips, every clip and overlay in the recipe.",
+      "what": "Make walk, run and idle cycles, one-shots (attack, hurt, death: recipe type once) and overlays on existing clips from the model's recipe tools/blender/recipes/<model>.json: feet planted by construction, for four-legged, many-legged and winged bodies. Without clips, every clip and overlay in the recipe.",
       "targets": ["character"],
       "params": { "clips": { "type": "strings", "min": 1, "max": 8 } }
     },

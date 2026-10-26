@@ -118,6 +118,10 @@ polish list). Also:
 - The Blender pipeline's `procedural`, `rigfix`, `cleanup`, `retarget` and `selftest` fail on Blender 5.x: `tools/blender/common.py` uses
   `action.fcurves`, which 5.0 removed (slotted actions: `staff.py`'s `fcurves()` reads both). They run on the VPS's 4.5; the owner's
   workstation has 5.2 (found 2026-10-25).
+- `server/death-muffin/model-view.sh` queues a plan without checking it against the game's plan limits (`client/main/qa_clips.gd`,
+  `qa_ui_shots.gd`) or the model's clip names: a plan that breaks one fails on the team PC, after the build and the upload (found 2026-10-26).
+- A model view plays a hero's combat clips as the file holds them, where the game lifts them by the idle's hip height, so a hero sinks into
+  the floor there in clips that look right in the game (found 2026-10-26).
 - **The agent's sandbox test can leave a folder in `wt/`** (found 2026-10-21, context Stage 4). `world()` in
   `server/death-muffin/discord-agent/test/sandbox.test.cjs` makes `wt/dm-sbx-test-*` and runs `git init` before the cleanup exists, so a run
   whose next write fails (seen in reviews run under a restricted sandbox) leaves the folder behind: 16 were left on 2026-10-20 and 2026-10-21,
@@ -206,6 +210,9 @@ Notes for the asset and effects work (ROADMAP):
 - The baked crowd is 234 MB (positions 140, normals 70, level-of-detail meshes 23); each level of detail's mesh repeats the vertex arrays,
   where one array with Godot's own mesh LODs would share them.
 - The Bone Colossus's rim reads fuller than the old game's (a pose that differs, or the baked normals at its hard edges).
+- The Weeping Seraph's wings stretch and tear in its `cast`: the shipped model's own skin weights at the wing roots (seen while testing
+  Pixal3D remakes, 2026-10-26); a weight fix is a Blender job.
+- The skull rat's `idle` dips its tail tip up to 2 cm below the floor (its `run` lifts the tail chain for the same reason; found 2026-10-26).
 - The owner's licensed effect pack's VESPER and REEBOO 3D scenes were ruled out because they need Forward+ or GPU particles while players
   ran Compatibility (ASSET_PIPELINE.md "Flipbook sheets", B12); the game is Forward+ since launch day, so they could be used once their cost
   is measured (ROADMAP Phase 2, the effects standard).
