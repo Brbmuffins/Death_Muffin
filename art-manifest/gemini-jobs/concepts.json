@@ -58,5 +58,20 @@
     "refs": ["necromancer-character-minions-reference.png"],
     "aspect": "3:4",
     "prompt": "Using the attached sheet ONLY as a style and palette reference, design a boss: the Bell-Sworn Prelate. A towering undead cathedral bishop whose ribcage has fused into a huge cracked bronze processional bell (the bell forms the torso), tattered black and deep-purple ceremonial vestments with oxidised silver trim, a crown-like broken mitre, a gaunt skull face with violet eye light, long skeletal arms. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally, empty hands, legs visible and slightly apart below the vestments. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, imposing readable silhouette."
+  },
+  {
+    "id": "concept_bone_hound_3d",
+    "out": "art-src/concepts/bone_hound_3d.png",
+    "refs": ["art-src/concepts/bone_hound.png"],
+    "aspect": "4:3",
+    "prompt": "3D modeling source. Redraw exactly this skeletal hound as a clean, sculpted, 3D-ready design: the same ivory bones, spiked spine, purple cloth, leather straps, iron collar and glowing violet eye sockets, the same proportions, the same three-quarter side view facing right, a neutral standing pose with all four legs straight and visible and the tail extended. Make every part a solid, readable shape: smooth sculpted bones with clean edges and no cracks, pits or painted grime; the ribcage as a few clear, thick ribs; no lacy or webbed bone. The tattered purple cloth as fewer, thicker strips: five or six broad strips hanging from the back, each clearly separate, with simple torn ends, no thin threads or wisps. Straps as flat leather bands with simple buckles. Even, flat studio lighting, no cast shadows, no rim light, no smoke, no brush strokes. Entire body visible and centered. Plain flat light grey background (#c8c8c8). No text, no other characters."
+  },
+  {
+    "id": "concept_bone_hound_views",
+    "out": "art-src/concepts/bone_hound_views.png",
+    "refs": ["art-src/concepts/bone_hound_3d.png"],
+    "aspect": "21:9",
+    "size": "4K",
+    "prompt": "Turnaround model sheet of exactly this skeletal hound, for 3D modeling, rendered in exactly the same style as the reference image: the same solid, sculpted, fully opaque 3D-render look, the same colours and soft shading, no line art, no outlines, no sketchiness, no transparent or faded parts, no ears (the skull has none). Exactly four figures in total, in a single horizontal row, nothing above or below them: the same hound drawn once in each of four views, evenly spaced with clear empty space between figures, all at exactly the same scale, all feet at the same height, the same neutral standing pose in every view (all four legs straight, head level, tail extended straight back). From left to right: 1) front view, facing the viewer head-on; 2) left side view, full profile with its left side toward the viewer and its head pointing left; 3) back view, seen from directly behind; 4) right side view, full profile with its right side toward the viewer and its head pointing right. Orthographic views at eye level: no perspective, no three-quarter angles, no figure cropped by the frame. Every detail identical across the four views: the same smooth ivory bones and ribs, the same broad purple cloth strips, the same leather straps and buckles, the same iron collar rings, the same glowing violet eye sockets. Even, flat studio lighting, no cast shadows, no floor line, no smoke. Plain flat light grey background (#c8c8c8). No text, no labels, no grid lines, no other characters."
   }
 ]

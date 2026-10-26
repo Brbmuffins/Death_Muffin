@@ -272,13 +272,15 @@ test('usage and picture problems exit 2 before the backend is asked', async () =
 
 // The workflow's named settings, read from the file model-gen.sh checks them against: a number setting with a step, a true/false one, and the one that needs the newest
 // team app (each setting's `app`); a PC on that app takes any setting.
-const SETTINGS = JSON.parse(fs.readFileSync(path.join(__dirname, '../../teamapp/comfy/image-to-model.json'), 'utf8')).settings;
+const WORKFLOW = JSON.parse(fs.readFileSync(path.join(__dirname, '../../teamapp/comfy/image-to-model.json'), 'utf8'));
+const SETTINGS = WORKFLOW.settings;
 const [NUM, num] = Object.entries(SETTINGS).find(([, s]) => s.type !== 'bool' && s.step);
 const [FLAG, flag] = Object.entries(SETTINGS).find(([, s]) => s.type === 'bool');
 const cmpVersion = (a, b) => { const x = a.split('.').map(Number), y = b.split('.').map(Number); return x[0] - y[0] || x[1] - y[1] || x[2] - y[2]; };
 const [LATE, late] = Object.entries(SETTINGS).sort(([, a], [, b]) => cmpVersion(a.app, b.app)).pop();
 const SET_APP = { version: late.app };
 const reVersion = (v) => v.replace(/\./g, '\\.');
+const justBefore = (v) => { const [x, y, z] = v.split('.').map(Number); return z > 0 ? `${x}.${y}.${z - 1}` : y > 0 ? `${x}.${y - 1}.99` : `${x - 1}.99.99`; };
 
 test('--set and a run\'s settings go into the runs that change them, --set winning; a run that changes none carries no settings', async () => {
   await withWorld({ pcs: [pcRow(PC_H, ABLE, SET_APP)] }, async (w, backend) => {
@@ -328,8 +330,7 @@ test('a job that changes a setting goes only to a PC on the team app the setting
     assert.strictEqual(backend.jobs[0].body.targetPc, undefined, 'every PC fills settings: any of them');
   });
   // the job needs the newest app any of its settings needs: a PC on the app just before that one takes the older settings only
-  const [x, y, z] = late.app.split('.').map(Number);
-  const before = z > 0 ? `${x}.${y}.${z - 1}` : y > 0 ? `${x}.${y - 1}.99` : `${x - 1}.99.99`;
+  const before = justBefore(late.app);
   const lateValue = late.type === 'bool' ? 'true' : String(late.min);
   await withWorld({ pcs: [pcRow(PC_H, ABLE, { version: before })] }, async (w, backend) => {
     const named = await gen(w, backend, ['--pc', 'helix', '--set', `${LATE}=${lateValue}`, w.out, w.hound]);
@@ -368,6 +369,69 @@ test('settings problems exit 2 before the backend is asked', async () => {
       const r = await gen(w, backend, args);
       assert.strictEqual(r.code, 2, `${args.join(' ')}: ${r.all}`);
       assert.match(r.err, want, args.join(' '));
+    }
+    assert.strictEqual(backend.calls.length, 0, 'the backend is never asked');
+    assert.deepStrictEqual(w.modelDirs(), []);
+  });
+});
+
+// Runs from several views of the subject: the views the workflow takes and the team app that first takes them (its views.app), read from the workflow.
+const VIEW_NAMES = ['left', 'back', 'right'].filter((v) => v in WORKFLOW.views.pictures);   // in the app's order (Comfy.cs ComfyRules.ViewNames)
+const VIEWS_APP = { version: WORKFLOW.views.app };
+const PNG_2x1 = Buffer.from(PNG_1x1);
+PNG_2x1.writeUInt32BE(2, 16);   // the header's width: model-gen.sh reads only the header
+
+/** The hound's views beside it (square .pngs), and a runs file of one run with `views`. */
+function viewRuns(w, views, over = {}) {
+  for (const name of ['left.png', 'back.png']) fs.writeFileSync(path.join(path.dirname(w.hound), name), PNG_1x1);
+  fs.writeFileSync(path.join(path.dirname(w.hound), 'wide.png'), PNG_2x1);
+  const runsFile = path.join(w.root, 'views.json');
+  fs.writeFileSync(runsFile, JSON.stringify([{ label: 'hound-views', image: 'Hound Concept.png', model: 'pixal3d', faces: 5000, texture: 1024, views, ...over }]));
+  return runsFile;
+}
+const picture = (w, name) => path.join(path.dirname(w.hound), name);
+
+test('a run\'s views go to the PC by their names there, each picture in the job once, to a PC on the team app that takes views', async () => {
+  assert.ok(VIEW_NAMES.length > 0 && /^\d+\.\d+\.\d+$/.test(VIEWS_APP.version), 'the workflow names its views and the team app that first takes them');
+  await withWorld({ pcs: [pcRow(PC_H, ABLE, VIEWS_APP)] }, async (w, backend) => {
+    const views = { [VIEW_NAMES[0]]: 'left.png', [VIEW_NAMES[1]]: 'Hound Concept.png' };
+    const runsFile = viewRuns(w, views);
+    const r = await gen(w, backend, ['--runs', runsFile, w.out, w.hound, picture(w, 'left.png')]);
+    assert.strictEqual(r.code, 0, r.all);
+    const { body } = backend.jobs[0];
+    assert.deepStrictEqual(body.payload.runs[0].views, { [VIEW_NAMES[0]]: 'left.png', [VIEW_NAMES[1]]: 'hound-concept.png' }, 'a view\'s picture is named as on the PC');
+    assert.deepStrictEqual(body.payload.files.map((f) => f.name), ['hound-concept.png', 'left.png']);
+  });
+  await withWorld({ pcs: [pcRow(PC_H, ABLE, { version: justBefore(VIEWS_APP.version) })] }, async (w, backend) => {
+    const runsFile = viewRuns(w, { [VIEW_NAMES[0]]: 'left.png' });
+    const args = ['--runs', runsFile, w.out, w.hound, picture(w, 'left.png')];
+    const named = await gen(w, backend, ['--pc', 'helix', ...args]);
+    assert.strictEqual(named.code, 1, named.all);
+    assert.match(named.err, new RegExp(`helix is on team app ${reVersion(justBefore(VIEWS_APP.version))}: these workflow views need ${reVersion(VIEWS_APP.version)} or later`));
+    const any = await gen(w, backend, args);
+    assert.strictEqual(any.code, 1, any.all);
+    assert.match(any.err, /no team PC runs model jobs with these views/);
+    assert.strictEqual(backend.created(), 0);
+  });
+});
+
+test('views problems exit 2 before the backend is asked', async () => {
+  await withWorld({ pcs: [pcRow(PC_H, ABLE, VIEWS_APP)] }, async (w, backend) => {
+    const view = VIEW_NAMES[0];
+    const given = [w.hound, picture(w, 'left.png'), picture(w, 'wide.png'), w.brazier];
+    const cases = [
+      [[], /views is an object/],
+      ['left.png', /views is an object/],
+      [{ [view]: 'left.png' }, /only pixal3d takes views/, { model: 'trellis2' }],
+      [{ top: 'left.png' }, new RegExp(`takes no 'top' view \\(it takes ${VIEW_NAMES.join(', ')}\\)`)],
+      [{ [view]: 'back.png' }, new RegExp(`not given for its ${view} view: back\\.png`)],
+      [{ [view]: 'wide.png' }, /square \.png pictures \(wide\.png is 2x1\)/],
+      [{ [view]: 'brazier.JPEG' }, /square \.png pictures \(brazier\.jpg is not a \.png\)/],
+    ];
+    for (const [views, want, over] of cases) {
+      const r = await gen(w, backend, ['--runs', viewRuns(w, views, over), w.out, ...given]);
+      assert.strictEqual(r.code, 2, `${JSON.stringify(views)}: ${r.all}`);
+      assert.match(r.err, want, JSON.stringify(views));
     }
     assert.strictEqual(backend.calls.length, 0, 'the backend is never asked');
     assert.deepStrictEqual(w.modelDirs(), []);

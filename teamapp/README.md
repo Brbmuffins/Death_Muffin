@@ -255,20 +255,24 @@ up 10 minutes after its last job (a job soon after does not wait for a start), t
 Desktop's own server is the member's and is never stopped.
 
 **The payload** (`JobPlan.ParseModel`): `files`, the pictures (`.png`, `.jpg`, `.jpeg`, `.webp`, each at most 32 MB, no `cacheKey`; downloaded and checked like any job's files) and `runs`, 1 to 8 of
-`{label, image, model, faces, texture, seed, settings}`: `label` `^[a-z0-9][a-z0-9-]{0,23}$` (once; the model is `<label>.glb`), `image` one of the files, `model` `pixal3d` or `trellis2`, `faces` 500 to 200,000, `texture`
+`{label, image, model, faces, texture, seed, settings, views}`: `label` `^[a-z0-9][a-z0-9-]{0,23}$` (once; the model is `<label>.glb`), `image` one of the files, `model` `pixal3d` or `trellis2`, `faces` 500 to 200,000, `texture`
 512, 1024, 2048 or 4096 (the colour and normal maps), `seed` 0 to 1,000,000 (default 0; added to the template's own seeds, so 0 is the template as it is and the same seed gives the same model), `settings`
-(optional) at most 16 of `name: number or true/false`, names `^[a-z][a-z0-9_]{0,23}$`: the workflow's named settings this run changes. A run whose setting the app's workflow does not have, or whose value is
+(optional) at most 16 of `name: number or true/false`, names `^[a-z][a-z0-9_]{0,23}$`: the workflow's named settings this run changes, `views` (optional, `pixal3d` only, 0.5.5) an object of `left`,
+`back` and/or `right`, each one of the files: more views of the subject, `image` being its front (ASSET_PIPELINE.md "Several views"). A run whose setting or view the app's workflow does not have, or whose value is
 outside the setting's range or step, fails the job before ComfyUI is asked. No `args`.
 
 **What it runs**: the workflow built into the app (`teamapp/comfy/image-to-model.json`, made from the template by `teamapp/comfy/make-workflow.py <ComfyUI url>` against a running ComfyUI: only the nodes the saved
 model needs, in the API format, with `slots` naming the inputs a run fills in and `settings` the named settings a run may change: the inputs each goes into, its type (a whole number, a number or true/false),
 a number's range and step, from ComfyUI's node definitions, and `app`, the first team app that has it; each checked against those definitions when it is made; what each setting does: ASSET_PIPELINE.md "Image to model").
-A slot holds a plain value; a setting may also go in an input another node feeds (`fov`, MoGe's guess of the picture's camera angle), and the run's value then replaces that link. Each distinct picture is uploaded once into ComfyUI's input
-folder as `dmteam/<job>-<picture>`; then each run, one after the other: the workflow filled in (picture, the TRELLIS.2 switch, `DecimateMesh`'s face count, texture size, seeds, the run's settings, `dmteam/<job>-<label>` as the save name), queued, watched every 2 s,
+A slot holds a plain value; a setting may also go in an input another node feeds (`fov`, MoGe's guess of the picture's camera angle), and the run's value then replaces that link. `views` names Pixal3D's
+multi-view node (which the template does not use), a LoadImage for each view and the inputs the single-picture conditioning feeds: a run from one picture is sent without those nodes; a run with views has each
+of its views' pictures in its LoadImage (a view it does not give is dropped, node and link), its picture as the front as given (no background removal or framing) and the multi-view node's two outputs in the
+single-picture conditioning's place. Each distinct picture (a view's too) is uploaded once into ComfyUI's input
+folder as `dmteam/<job>-<picture>`; then each run, one after the other: the workflow filled in (picture and views, the TRELLIS.2 switch, `DecimateMesh`'s face count, texture size, seeds, the run's settings, `dmteam/<job>-<label>` as the save name), queued, watched every 2 s,
 at most 30 minutes from its queueing; the `.glb` fetched from ComfyUI (`/view`), checked (a whole binary glTF, at most 48 MB) and kept as `out\<label>.glb`. A run ComfyUI refuses (its reasons, such as a missing
 node), fails (the node and its error, such as running out of the card's memory), saves no model or runs past the limit is noted in the log and the next run goes on; a stopped run is taken out of ComfyUI's
 queue and interrupted. The player's game, the server's cancel or the app closing stop the job. After the runs (whatever happened), ComfyUI is asked to **let go of the card's memory** (`/free`, so a game started
-next finds the card empty) and the job's files are removed from ComfyUI's `dmteam` folders. The log has ComfyUI's version and card, each run's settings and how long it took.
+next finds the card empty) and the job's files are removed from ComfyUI's `dmteam` folders. The log has ComfyUI's version and card, each run's settings and pictures and how long it took.
 
 **Uploads**: every model as `<label>.glb` (`Content-Type: model/gltf-binary`; the server checks it is a whole glTF binary of at most 48 MB), then `done`. A job with no model at all fails, with the reasons in the log; one
 with some is done, and the log names the runs that made none. The tray says "N model(s) uploaded".
@@ -339,6 +343,8 @@ the models' look against a run made by hand in Desktop.
 
 ### Changelog
 
+- **0.5.5** (2026-10-26) - A model run may give more views of its subject (`views`: its left, back and right sides, each another picture of the job) for Pixal3D's multi-view conditioning: the model is
+  made from all of them, so its sides and back follow drawn views instead of guesses from the front. The log names each run's pictures. `model-gen.sh` sends such a job only to 0.5.5 or later.
 - **0.5.4** (2026-10-26) - A new model setting, `fov`: the camera angle Pixal3D projects the concept picture with, in place of MoGe's guess from the picture (a painting is not a photo), so a run can
   try the angle a concept is drawn with. `model-gen.sh` sends a job using it only to 0.5.4 or later (each setting names the app that first has it).
 - **0.5.3** (2026-10-26) - A model job's run may change the workflow's named settings (`settings`: the shape's detail, the rebuild's grid, rounding and sharp edges, how closely the shape follows the

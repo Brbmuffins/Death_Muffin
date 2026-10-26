@@ -18,6 +18,7 @@ namespace DeathMuffinTeam
     /// <summary>
     /// One run of a `model` job: ComfyUI's image-to-model workflow on one picture of the job (<see cref="Image"/>, a file of the job), with Pixal3D or TRELLIS.2 (<see cref="Model"/>), the face count the
     /// mesh is cut to before it is painted (<see cref="Faces"/>), the colour texture's size (<see cref="Texture"/>, the normal map's too) and the seed (<see cref="Seed"/>, added to the template's own seeds: 0 keeps them).
+    /// With <see cref="Views"/>, Pixal3D makes the model from several views of the subject: the picture is the front, and each view another picture of the job.
     /// The run's model is uploaded as `&lt;label&gt;.glb`.
     /// </summary>
     internal sealed class ModelRun
@@ -29,6 +30,32 @@ namespace DeathMuffinTeam
         public long Seed;
         /// <summary>Setting name -> value (a number or true/false, as the job gave it); empty keeps the template's values.</summary>
         public SortedDictionary<string, object> Settings = new SortedDictionary<string, object>(StringComparer.Ordinal);
+        /// <summary>View (<see cref="ComfyRules.ViewNames"/>) -> a picture of the job; empty for a run from one picture.</summary>
+        public Dictionary<string, string> Views = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        /// <summary>The run's pictures, the front first, then its views in <see cref="ComfyRules.ViewNames"/> order.</summary>
+        public IEnumerable<string> Pictures()
+        {
+            yield return Image;
+            foreach (string v in ComfyRules.ViewNames)
+            {
+                string file;
+                if (Views.TryGetValue(v, out file)) yield return file;
+            }
+        }
+
+        /// <summary>"picture concept.png", or with views "pictures front f.png, left l.png, back b.png" (the log's words).</summary>
+        public string DescribePictures()
+        {
+            if (Views.Count == 0) return "picture " + Image;
+            var sb = new StringBuilder("pictures front " + Image);
+            foreach (string v in ComfyRules.ViewNames)
+            {
+                string file;
+                if (Views.TryGetValue(v, out file)) sb.Append(", " + v + " " + file);
+            }
+            return sb.ToString();
+        }
 
         /// <summary>"pixal3d, 5000 faces, texture 1024, seed 0" and each setting ("detail 1024") (the log's words for the run).</summary>
         public string Describe()
@@ -53,6 +80,8 @@ namespace DeathMuffinTeam
         public const int FacesMin = 500, FacesMax = 200000;
         public static readonly int[] TextureSizes = { 512, 1024, 2048, 4096 };
         public const int MaxRuns = 8;
+        /// <summary>The views a run may add to its picture (the front), in the order Pixal3D's multi-view conditioning takes them: 90 degrees apart around the subject.</summary>
+        public static readonly string[] ViewNames = { "left", "back", "right" };
         public const long SeedMax = 1000000;
         /// <summary>The server's limit for one model (team-jobs.cjs GLB_MAX_BYTES).</summary>
         public const int MaxModelBytes = 48 << 20;
@@ -98,9 +127,16 @@ namespace DeathMuffinTeam
         readonly Dictionary<string, List<KeyValuePair<string, string>>> slots = new Dictionary<string, List<KeyValuePair<string, string>>>();
         readonly Dictionary<string, long> seedBase = new Dictionary<string, long>();
         readonly SortedDictionary<string, Setting> settings = new SortedDictionary<string, Setting>(StringComparer.Ordinal);
+        /// <summary>The multi-view conditioning node (null: the workflow takes one picture a run), the LoadImage input of each view, and the inputs its two outputs go in.</summary>
+        string viewsNode;
+        readonly Dictionary<string, KeyValuePair<string, string>> viewPictures = new Dictionary<string, KeyValuePair<string, string>>(StringComparer.Ordinal);
+        List<KeyValuePair<string, string>> viewsPositive, viewsNegative;
 
         /// <summary>The names of the settings a run may change, in order.</summary>
         public IEnumerable<string> SettingNames { get { return settings.Keys; } }
+
+        /// <summary>The views a run may add, in order (none when the workflow takes one picture a run).</summary>
+        public IEnumerable<string> ViewNames { get { foreach (string v in ComfyRules.ViewNames) if (viewPictures.ContainsKey(v)) yield return v; } }
 
         /// <summary>The workflow built into the app; null with the reason when it is missing or does not read (a broken build).</summary>
         public static ComfyWorkflow Embedded(out string error)
@@ -144,6 +180,9 @@ namespace DeathMuffinTeam
                     { error = "The model workflow's setting " + kv.Key + " is not valid (a name, a type int, float or bool, a range for a number, and the inputs it goes in)."; return null; }
                     w.settings[kv.Key] = set;
                 }
+            var rawViews = MiniJson.Obj(d, "views");
+            if (rawViews != null && !w.ParseViews(rawViews))
+            { error = "The model workflow's views are not valid (its multi-view node, a LoadImage input for each of left, back and right, and the inputs the node's two outputs go in)."; return null; }
             var bases = MiniJson.Obj(d, "seedBase");
             foreach (var s in w.slots["seed"])
             {
@@ -202,11 +241,51 @@ namespace DeathMuffinTeam
             return null;
         }
 
-        /// <summary>The nodes for one run, as ComfyUI's /prompt takes them (a copy: the workflow itself is never changed). <paramref name="image"/> is the picture's name in ComfyUI's input folder, <paramref name="prefix"/> where the model is saved.</summary>
+        /// <summary>
+        /// `views`: {node, pictures: {left, back, right: [[node, input]]}, positive, negative}: the multi-view node takes the run's picture as its front (linked to the image slot's node) and an input per
+        /// view named like it; `positive` and `negative` are the inputs the single-picture conditioning feeds, which a multi-view run links to the node's outputs 0 and 1 instead.
+        /// </summary>
+        bool ParseViews(Dictionary<string, object> v)
+        {
+            viewsNode = MiniJson.Str(v, "node");
+            var nodeInputs = MiniJson.Obj(MiniJson.Obj(prompt, viewsNode), "inputs");
+            var pictures = MiniJson.Obj(v, "pictures");
+            viewsPositive = Inputs(MiniJson.Arr(v, "positive"), true);
+            viewsNegative = Inputs(MiniJson.Arr(v, "negative"), true);
+            if (nodeInputs == null || pictures == null || pictures.Count == 0 || viewsPositive == null || viewsNegative == null) return false;
+            foreach (var kv in pictures)
+            {
+                var into = Inputs(kv.Value as List<object>);
+                if (Array.IndexOf(ComfyRules.ViewNames, kv.Key) < 0 || into == null || into.Count != 1 || !(nodeInputs.ContainsKey(kv.Key))) return false;
+                viewPictures[kv.Key] = into[0];
+            }
+            return true;
+        }
+
+        /// <summary>Why a run's views cannot go in this workflow (it takes one picture a run, or not that view), or null when they can.</summary>
+        public string CheckViews(ModelRun run)
+        {
+            foreach (string v in run.Views.Keys)
+                if (!viewPictures.ContainsKey(v))
+                    return "The model run " + run.Label + " gives a " + v + " view, which this app's workflow does not take" + (viewPictures.Count == 0 ? " (it makes a model from one picture)." : " (it takes " + string.Join(", ", ViewNames) + ").");
+            return null;
+        }
+
+        /// <summary>The nodes for one run from one picture (<paramref name="image"/>, its name in ComfyUI's input folder); see the other <see cref="Fill(ModelRun, IDictionary{string, string}, string)"/>.</summary>
         public Dictionary<string, object> Fill(ModelRun run, string image, string prefix)
         {
+            return Fill(run, new Dictionary<string, string> { { run.Image, image } }, prefix);
+        }
+
+        /// <summary>
+        /// The nodes for one run, as ComfyUI's /prompt takes them (a copy: the workflow itself is never changed). <paramref name="uploaded"/> gives each of the run's pictures its name in ComfyUI's input
+        /// folder, <paramref name="prefix"/> where the model is saved. A run from one picture loses the multi-view nodes; a run with views loses the LoadImage of each view it does not give, and the
+        /// single-picture conditioning's place goes to the multi-view node.
+        /// </summary>
+        public Dictionary<string, object> Fill(ModelRun run, IDictionary<string, string> uploaded, string prefix)
+        {
             var copy = (Dictionary<string, object>)MiniJson.Parse(MiniJson.Write(prompt));
-            Set(copy, "image", image);
+            Set(copy, "image", uploaded[run.Image]);
             Set(copy, "trellis2", run.Model == ComfyRules.Trellis2);
             Set(copy, "faces", (long)run.Faces);
             Set(copy, "texture", (long)run.Texture);
@@ -219,6 +298,22 @@ namespace DeathMuffinTeam
                 object value = set.Type == "int" ? (object)(long)(double)kv.Value : kv.Value;
                 foreach (var s in set.Into) Input(copy, s)[s.Value] = value;
             }
+            if (viewsNode == null) return copy;
+            if (run.Views.Count == 0)
+            {
+                copy.Remove(viewsNode);
+                foreach (var p in viewPictures.Values) copy.Remove(p.Key);
+                return copy;
+            }
+            var node = MiniJson.Obj(MiniJson.Obj(copy, viewsNode), "inputs");
+            foreach (var kv in viewPictures)
+            {
+                string file;
+                if (run.Views.TryGetValue(kv.Key, out file)) Input(copy, kv.Value)[kv.Value.Value] = uploaded[file];
+                else { copy.Remove(kv.Value.Key); node.Remove(kv.Key); }
+            }
+            foreach (var s in viewsPositive) Input(copy, s)[s.Value] = new List<object> { viewsNode, 0.0 };
+            foreach (var s in viewsNegative) Input(copy, s)[s.Value] = new List<object> { viewsNode, 1.0 };
             return copy;
         }
 

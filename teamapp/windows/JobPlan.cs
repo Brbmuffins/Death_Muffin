@@ -544,6 +544,20 @@ namespace DeathMuffinTeam
                         r.Settings[kv.Key] = kv.Value;
                     }
                 }
+                object rawViews;
+                if (rd.TryGetValue("views", out rawViews) && rawViews != null)
+                {
+                    var vd = rawViews as Dictionary<string, object>;
+                    if (vd == null || vd.Count == 0) { error = "The views of the model run " + r.Label + " are not an object of " + string.Join(", ", ComfyRules.ViewNames) + " pictures."; return false; }
+                    if (r.Model != ComfyRules.Pixal3d) { error = "The model run " + r.Label + " gives more views of its subject, which only Pixal3D takes."; return false; }
+                    foreach (var kv in vd)
+                    {
+                        if (Array.IndexOf(ComfyRules.ViewNames, kv.Key) < 0) { error = "The model run " + r.Label + " gives a view the app does not know: \"" + Shorten(kv.Key) + "\" (" + string.Join(", ", ComfyRules.ViewNames) + ")."; return false; }
+                        string file = kv.Value as string;
+                        if (p.FileNamed(file) == null) { error = "The model run " + r.Label + " names a picture the job does not include for its " + kv.Key + " view: \"" + Shorten(file) + "\"."; return false; }
+                        r.Views[kv.Key] = file;
+                    }
+                }
                 p.ModelRuns.Add(r);
             }
             return true;

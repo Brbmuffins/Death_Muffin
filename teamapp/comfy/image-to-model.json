@@ -1,5 +1,5 @@
 {
- "about": "ComfyUI 0.42.5, template 3d_pixal3d_trellis2_image_to_model (templates 0.11.96); made by teamapp/comfy/make-workflow.py. A seed slot adds the run's seed to the value the template has. Settings ranges from ComfyUI's node definitions (Trellis2UpsampleStage, RemeshMesh, KSampler, Pixal3DConditioning); added by hand on 2026-10-26, the next make-workflow.py run writes them from the PC's ComfyUI.",
+ "about": "ComfyUI 0.42.5, template 3d_pixal3d_trellis2_image_to_model (templates 0.11.96); made by teamapp/comfy/make-workflow.py. A seed slot adds the run's seed to the value the template has. Settings ranges from ComfyUI's node definitions (Trellis2UpsampleStage, RemeshMesh, KSampler, Pixal3DConditioning), and the views' Pixal3DMultiViewConditioning node with its three LoadImage nodes; added by hand on 2026-10-26, the next make-workflow.py run writes them from the PC's ComfyUI.",
  "prompt": {
   "108": {
    "_meta": {
@@ -661,6 +661,62 @@
     "width": 1024
    }
   },
+  "323": {
+   "_meta": {
+    "title": "LoadImage left"
+   },
+   "class_type": "LoadImage",
+   "inputs": {
+    "image": "viking_wolf_rune_axe.png"
+   }
+  },
+  "324": {
+   "_meta": {
+    "title": "LoadImage back"
+   },
+   "class_type": "LoadImage",
+   "inputs": {
+    "image": "viking_wolf_rune_axe.png"
+   }
+  },
+  "325": {
+   "_meta": {
+    "title": "LoadImage right"
+   },
+   "class_type": "LoadImage",
+   "inputs": {
+    "image": "viking_wolf_rune_axe.png"
+   }
+  },
+  "326": {
+   "_meta": {
+    "title": "Pixal3DMultiViewConditioning"
+   },
+   "class_type": "Pixal3DMultiViewConditioning",
+   "inputs": {
+    "back": [
+     "324",
+     0
+    ],
+    "clip_vision_model": [
+     "15",
+     0
+    ],
+    "fov": 20.0,
+    "front": [
+     "122",
+     0
+    ],
+    "left": [
+     "323",
+     0
+    ],
+    "right": [
+     "325",
+     0
+    ]
+   }
+  },
   "40": {
    "_meta": {
     "title": "UNETLoader"
@@ -861,6 +917,10 @@
     [
      "298",
      "camera_angle_x"
+    ],
+    [
+     "326",
+     "fov"
     ]
    ],
    "max": 170.0,
@@ -955,6 +1015,42 @@
    [
     "316",
     "value"
+   ]
+  ]
+ },
+ "views": {
+  "app": "0.5.5",
+  "negative": [
+   [
+    "315",
+    "on_false"
+   ]
+  ],
+  "node": "326",
+  "pictures": {
+   "back": [
+    [
+     "324",
+     "image"
+    ]
+   ],
+   "left": [
+    [
+     "323",
+     "image"
+    ]
+   ],
+   "right": [
+    [
+     "325",
+     "image"
+    ]
+   ]
+  },
+  "positive": [
+   [
+    "314",
+    "on_false"
    ]
   ]
  }

@@ -6,12 +6,15 @@
 #                [--wait MINUTES] <out dir> <picture> [<picture> ...]
 #
 # <picture>: a .png, .jpg or .webp of at most 32 MB (one subject; ComfyUI removes the background). The runs: every picture with every model and every seed (default: Pixal3D,
-# 5000 faces, texture 1024, seed 0), each labelled <picture>-<model>[-s<seed>]; or --runs, a JSON list of { label, image (a picture's file name), model, faces, texture, seed, settings }.
+# 5000 faces, texture 1024, seed 0), each labelled <picture>-<model>[-s<seed>]; or --runs, a JSON list of { label, image (a picture's file name), model, faces, texture, seed, settings,
+# views }. A run's `views` ({ left, back, right: a picture's file name }, Pixal3D only) are more views of the subject, its picture the front (ASSET_PIPELINE.md "Several views"):
+# every picture of such a run is a square .png, the subject on black at the same scale in each.
 # --set (repeatable, every run) and a run's `settings` ({ name: number or true/false }) change the workflow's named settings, checked here against its `settings`
 # (teamapp/comfy/image-to-model.json): detail (the shape's final grid, 1024-2048 in 128s; the template's 1536), grid (the rebuild's grid before the shrink; 768), round (the rebuild's
 # closing radius in voxels; 1), sharp (the rebuild keeps sharp edges and flat faces; false), follow (how closely the shape stages follow the picture; 7.5), fov (the camera angle in
-# degrees Pixal3D projects the picture with, 1-170; MoGe's guess from the picture). A job goes only to a PC on the team app its settings need (each setting's `app`: 0.5.3, fov 0.5.4;
-# an older app runs the template's values or refuses the setting): without --pc, to the first such PC when an older one also runs model jobs.
+# degrees Pixal3D projects the picture with, 1-170; MoGe's guess from the picture, and 20 for views). A job goes only to a PC on the team app its settings and views need (each
+# setting's `app`: 0.5.3, fov 0.5.4; the workflow's views.app: 0.5.5; an older app runs the template's values or refuses the setting): without --pc, to the first such PC when an
+# older one also runs model jobs.
 # At most 8 runs a job. A seed is added to the template's own seeds (0 keeps them), so the same seed gives the same model again.
 # 1. The pictures: copied into <team root>/model-<24 hex>/ (removed at the end; team-files-prune.sh takes one a killed run left).
 # 2. ONE `model` job, for the PC named by --pc (its name or its user's; default: any PC that runs model jobs), time to live 12 hours (a PC whose player is in the game takes
@@ -39,6 +42,7 @@ FACES_MIN, FACES_MAX, SEED_MAX, RUNS_MAX = 500, 200000, 1000000, 8          # te
 PICTURE_MAX = 32 * 1024 * 1024                                              # teamapp/windows/JobPlan.cs MaxModelImageBytes
 LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,23}$")                         # JobPlan.cs VariantLabelRe: the model is <label>.glb
 PICTURE_TYPES = (".png", ".jpg", ".jpeg", ".webp")
+VIEWS = ("left", "back", "right")                                          # Comfy.cs ComfyRules.ViewNames: a run's views besides its picture (the front)
 SETTINGS_APP = "0.5.3"                                                      # the first team app that fills a run's settings (a setting without its own `app`)
 WORKFLOW = env("DM_MODEL_WORKFLOW")                                        # the app's workflow in this checkout: its `settings`
 TTL_S = 12 * 3600
@@ -63,6 +67,14 @@ def call(method, path, body=None):
 def slug(text, cut):
     s = re.sub(r"-+", "-", re.sub(r"[^a-z0-9-]+", "-", text.lower())).strip("-")
     return s[:cut].strip("-") or "picture"
+
+
+def png_size(path):   # (width, height) from a PNG's header, None when it is not a PNG
+    with open(path, "rb") as f:
+        head = f.read(24)
+    if head[:8] != b"\x89PNG\r\n\x1a\n" or head[12:16] != b"IHDR":
+        return None
+    return int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big")
 
 
 ap = argparse.ArgumentParser(prog="model-gen.sh", description="3D models from concept pictures on a team PC (ComfyUI)")
@@ -102,6 +114,8 @@ if a.runs:
         die(2, "the runs file is a list of { label, image, model, faces, texture, seed }")
     for r in runs:
         r["image"] = by_given.get(str(r.get("image", "")), str(r.get("image", "")))
+        if isinstance(r.get("views"), dict):
+            r["views"] = {k: by_given.get(str(v), str(v)) for k, v in r["views"].items()}
 else:
     try:
         seeds = [int(s) for s in a.seeds.split(",") if s.strip()]
@@ -126,11 +140,14 @@ for item in a.set:
         given[name] = {"true": True, "false": False}[text.lower()] if text.lower() in ("true", "false") else json.loads(text)
     except ValueError:
         die(2, "--set %s: the value is a number or true/false" % item)
-if a.set or any(isinstance(r, dict) and r.get("settings") for r in runs):
+known, views_of, takes = {}, {}, []   # the workflow's settings, its views (views.app: the first team app that takes them), the views it takes
+if a.set or any(isinstance(r, dict) and (r.get("settings") or "views" in r) for r in runs):
     try:
-        known = json.load(open(WORKFLOW)).get("settings") or {}
+        wf = json.load(open(WORKFLOW))
     except Exception as e:
         die(2, "the workflow %s does not read (%s)" % (WORKFLOW, e))
+    known, views_of = wf.get("settings") or {}, wf.get("views") or {}
+    takes = [v for v in VIEWS if v in (views_of.get("pictures") or {})] if views_of.get("app") else []
 labels = set()
 for r in runs:
     label = str(r.get("label", ""))
@@ -167,6 +184,21 @@ for r in runs:
             die(2, "run %s: %s is %s from %s to %s%s" % (label, name, "a whole number" if spec["type"] == "int" else "a number", spec["min"], spec["max"], " in steps of %s" % step if step else ""))
     if not r["settings"]:
         del r["settings"]
+    if "views" in r:
+        views = r["views"]
+        if not isinstance(views, dict) or not views:
+            die(2, "run %s: views is an object of view: picture (%s)" % (label, ", ".join(VIEWS)))
+        if r["model"] != "pixal3d":
+            die(2, "run %s: only pixal3d takes views" % label)
+        for view, name in views.items():
+            if view not in takes:
+                die(2, "run %s: the workflow takes no %r view (it takes %s)" % (label, view, ", ".join(takes) or "none"))
+            if name not in pictures:
+                die(2, "run %s names a picture that was not given for its %s view: %s" % (label, view, name))
+        for name in [r["image"], *views.values()]:
+            size = png_size(pictures[name])
+            if size is None or size[0] != size[1]:
+                die(2, "run %s: a run with views takes square .png pictures (%s is %s)" % (label, name, "%dx%d" % size if size else "not a .png"))
 
 # ---- a PC that runs model jobs
 try:
@@ -180,11 +212,13 @@ def app_version(p):
         return ()
 def version(text):
     return tuple(int(x) for x in text.split("."))
-needs_app = max([version(known[n].get("app") or SETTINGS_APP) for r in runs for n in r.get("settings", {})], default=None)
-needs_settings = needs_app is not None
+uses = [w for w, used in (("settings", any(r.get("settings") for r in runs)), ("views", any("views" in r for r in runs))) if used]
+needs_app = max([version(known[n].get("app") or SETTINGS_APP) for r in runs for n in r.get("settings", {})]
+                + ([version(views_of["app"])] if "views" in uses else []), default=None)
+needs_new = needs_app is not None
 need = ".".join(map(str, needs_app or (0, 5, 0)))
 able = [p for p in pcs if isinstance(p.get("state"), dict) and p["state"].get("models") is True
-        and (not needs_settings or app_version(p) >= needs_app)]
+        and (not needs_new or app_version(p) >= needs_app)]
 def who(p):
     st = p.get("state") if isinstance(p.get("state"), dict) else {}
     why = st.get("modelsWhy") if st.get("models") is not True and isinstance(st.get("modelsWhy"), str) and st.get("modelsWhy") else ""
@@ -195,14 +229,14 @@ if a.pc:
     if not hit:
         die(1, "no team PC called %s was seen in the last 14 days (seen: %s)" % (a.pc, "; ".join(map(who, pcs)) or "none"))
     if hit[0] not in able:
-        if needs_settings and app_version(hit[0]) < needs_app and isinstance(hit[0].get("state"), dict) and hit[0]["state"].get("models") is True:
-            die(1, "%s is on team app %s: these workflow settings need %s or later (the app updates itself between jobs)" % (a.pc, hit[0].get("version"), need))
+        if needs_new and app_version(hit[0]) < needs_app and isinstance(hit[0].get("state"), dict) and hit[0]["state"].get("models") is True:
+            die(1, "%s is on team app %s: these workflow %s need %s or later (the app updates itself between jobs)" % (a.pc, hit[0].get("version"), " and ".join(uses), need))
         die(1, "%s runs no model jobs: it needs a graphics card with 12 GB or more, ComfyUI Desktop and team app 0.5.0 or later (%s)" % (a.pc, who(hit[0])))
     target = hit[0]["pcId"]
 elif not able:
     die(1, "no team PC runs model jobs%s: one needs a graphics card with 12 GB or more, ComfyUI Desktop and team app %s or later (seen: %s)"
-        % (" with these settings" if needs_settings else "", need, "; ".join(map(who, pcs)) or "none"))
-elif needs_settings and any(isinstance(p.get("state"), dict) and p["state"].get("models") is True and p not in able for p in pcs):
+        % (" with these " + " and ".join(uses) if needs_new else "", need, "; ".join(map(who, pcs)) or "none"))
+elif needs_new and any(isinstance(p.get("state"), dict) and p["state"].get("models") is True and p not in able for p in pcs):
     target = able[0]["pcId"]                                                # an older app could claim it and run the template's values
 
 os.makedirs(a.out, exist_ok=True)

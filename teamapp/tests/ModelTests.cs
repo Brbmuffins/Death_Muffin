@@ -382,21 +382,25 @@ namespace DeathMuffinTeam.Tests
         public FakeComfy StartDesktop() { return DesktopServer = new FakeComfy(DesktopPort, Desktop.Base); }
 
         public static Dictionary<string, object> Run(string label, string image = "concept.png", string model = "pixal3d", int faces = 5000, int texture = 1024, long? seed = null,
-            Dictionary<string, object> settings = null)
+            Dictionary<string, object> settings = null, Dictionary<string, object> views = null)
         {
             var d = new Dictionary<string, object> { { "label", label }, { "image", image }, { "model", model }, { "faces", (double)faces }, { "texture", (double)texture } };
             if (seed != null) d["seed"] = (double)seed.Value;
             if (settings != null) d["settings"] = settings;
+            if (views != null) d["views"] = views;
             return d;
         }
 
-        /// <summary>A `model` payload: one picture on the test server and the runs given (default: the hound with Pixal3D and with TRELLIS.2).</summary>
+        /// <summary>A `model` payload: its pictures on the test server (concept.png and each other picture a run names) and the runs given (default: the hound with Pixal3D and with TRELLIS.2).</summary>
         public JobPlan Plan(params Dictionary<string, object>[] runs)
         {
             string folder = "model" + (++n) + "x";
+            var files = new List<object> { R.Srv.Publish(folder, "concept.png", Util.FakePng(70 + n)) };
+            var named = runs.Select(r => (string)r["image"]).Concat(runs.Where(r => r.ContainsKey("views")).SelectMany(r => ((Dictionary<string, object>)r["views"]).Values.Cast<string>()));
+            foreach (string picture in named.Distinct().Where(f => f != "concept.png")) files.Add(R.Srv.Publish(folder, picture, Util.FakePng(170 + files.Count)));
             var p = new Dictionary<string, object>
             {
-                { "files", new List<object> { R.Srv.Publish(folder, "concept.png", Util.FakePng(70 + n)) } },
+                { "files", files },
                 { "runs", (runs.Length > 0 ? runs : new[] { Run("hound-pixal3d"), Run("hound-trellis2", model: "trellis2", seed: 7) }).Cast<object>().ToList() },
             };
             JobPlan plan; string err;
@@ -422,6 +426,7 @@ namespace DeathMuffinTeam.Tests
         {
             Workflow();
             Settings();
+            Views();
             Plans();
             ClientText();
             Install();
@@ -434,6 +439,7 @@ namespace DeathMuffinTeam.Tests
             NotInstalled();
             SomeRunsFail();
             SettingsRefused();
+            ViewRuns();
             StoppedRuns();
             Helpers();
         }
@@ -557,6 +563,57 @@ namespace DeathMuffinTeam.Tests
             T.Eq(broken(d => d.Remove("settings")), null, "a workflow without settings still reads (its runs change none)");
         }
 
+        /// <summary>Runs from several views of the subject: the multi-view node takes the single-picture conditioning's place, and a run from one picture never sends it.</summary>
+        static void Views()
+        {
+            string error;
+            ComfyWorkflow w = ComfyWorkflow.Embedded(out error);
+            if (w == null) { T.Ok(false, "the workflow reads (" + error + ")"); return; }
+            var original = MiniJson.TryObject(WorkflowText());
+            var views = MiniJson.Obj(original, "views");
+            if (views == null) { T.Ok(false, "the workflow has views"); return; }
+            string mv = MiniJson.Str(views, "node"), front = (string)((List<object>)MiniJson.Arr(MiniJson.Obj(original, "slots"), "image")[0])[0];
+            Func<string, string> loader = v => (string)((List<object>)MiniJson.Arr(MiniJson.Obj(views, "pictures"), v)[0])[0];
+            Func<string, List<KeyValuePair<string, string>>> fed = side => MiniJson.Arr(views, side).Cast<List<object>>().Select(p => new KeyValuePair<string, string>((string)p[0], (string)p[1])).ToList();
+            T.Eq(string.Join(",", w.ViewNames), string.Join(",", ComfyRules.ViewNames), "the workflow takes every view the app knows");
+
+            var plain = w.Fill(new ModelRun { Label = "a", Image = "front.png", Faces = 5000, Texture = 1024 }, "dmteam/j-front.png", "dmteam/j-a");
+            T.Ok(!plain.ContainsKey(mv) && ComfyRules.ViewNames.All(v => !plain.ContainsKey(loader(v))), "a run from one picture sends no multi-view nodes (ComfyUI would check their pictures)");
+            T.Ok(fed("positive").Concat(fed("negative")).All(s => MiniJson.Write(FakeComfy.Input(plain, s.Key, s.Value)) == MiniJson.Write(FakeComfy.Input(MiniJson.Obj(original, "prompt"), s.Key, s.Value))), "and keeps the single-picture conditioning");
+
+            var run = new ModelRun { Label = "b", Image = "front.png", Faces = 5000, Texture = 1024 };
+            run.Views["left"] = "left.png"; run.Views["back"] = "back.png";
+            run.Settings["fov"] = 25.0;
+            T.Eq(w.CheckViews(run), null, "views the workflow takes pass");
+            var b = w.Fill(run, new Dictionary<string, string> { { "front.png", "dmteam/j-front.png" }, { "left.png", "dmteam/j-left.png" }, { "back.png", "dmteam/j-back.png" } }, "dmteam/j-b");
+            T.Eq(FakeComfy.Input(b, front, "image"), (object)"dmteam/j-front.png", "the run's picture is the front");
+            T.Eq(MiniJson.Write(FakeComfy.Input(b, mv, "front")), MiniJson.Write(new List<object> { front, 0.0 }), "and goes in the multi-view node as given, like the views");
+            T.Ok(Equals(FakeComfy.Input(b, loader("left"), "image"), "dmteam/j-left.png") && Equals(FakeComfy.Input(b, loader("back"), "image"), "dmteam/j-back.png"), "each view's picture goes in its own LoadImage");
+            T.Ok(!b.ContainsKey(loader("right")) && !MiniJson.Obj(MiniJson.Obj(b, mv), "inputs").ContainsKey("right"), "a view the run does not give is dropped, its node and its link");
+            T.Ok(fed("positive").All(s => MiniJson.Write(FakeComfy.Input(b, s.Key, s.Value)) == MiniJson.Write(new List<object> { mv, 0.0 }))
+                && fed("negative").All(s => MiniJson.Write(FakeComfy.Input(b, s.Key, s.Value)) == MiniJson.Write(new List<object> { mv, 1.0 })), "the multi-view node's two outputs take the single-picture conditioning's place");
+            T.Eq(FakeComfy.Input(b, mv, "fov"), (object)25.0, "the fov setting reaches the views' camera too");
+            T.Eq(run.DescribePictures(), "pictures front front.png, left left.png, back back.png", "the log names each view's picture");
+            T.Eq(new ModelRun { Image = "x.png" }.DescribePictures(), "picture x.png", "and a run's one picture");
+
+            var right = new ModelRun { Label = "c", Image = "front.png" };
+            right.Views["right"] = "r.png";
+            ComfyWorkflow single = ComfyWorkflow.Parse(MiniJson.Write(original.Where(kv => kv.Key != "views").ToDictionary(kv => kv.Key, kv => kv.Value)), out error);
+            T.Has(single == null ? error : single.CheckViews(right), "makes a model from one picture", "a workflow without views refuses a run with one, before it is queued");
+
+            Func<Action<Dictionary<string, object>>, string> broken = mutate =>
+            {
+                var d = MiniJson.TryObject(WorkflowText());
+                mutate(d);
+                string e;
+                return ComfyWorkflow.Parse(MiniJson.Write(d), out e) == null ? e : null;
+            };
+            T.Has(broken(d => MiniJson.Obj(d, "views")["node"] = "999"), "views are not valid", "views without their node are refused");
+            T.Has(broken(d => MiniJson.Obj(MiniJson.Obj(d, "views"), "pictures")["top"] = MiniJson.Obj(MiniJson.Obj(d, "views"), "pictures")["left"]), "views are not valid", "a view the app does not know is refused");
+            T.Has(broken(d => MiniJson.Obj(MiniJson.Obj(d, "views"), "pictures")["left"] = new List<object> { new List<object> { mv, "front" } }), "views are not valid", "a view's picture that names a link is refused");
+            T.Has(broken(d => MiniJson.Obj(d, "views").Remove("negative")), "views are not valid", "views without the inputs they feed are refused");
+        }
+
         static void Plans()
         {
             JobPlan plan; string error;
@@ -587,6 +644,14 @@ namespace DeathMuffinTeam.Tests
             T.Has(Refused(p => p["runs"] = new List<object> { ModelRig.Run("a", settings: new Dictionary<string, object> { { "Detail!", 1024.0 } }) }), "setting that is not a name", "a setting's name is a plain word");
             T.Has(Refused(p => p["runs"] = new List<object> { ModelRig.Run("a", settings: new Dictionary<string, object> { { "detail", "high" } }) }), "number or true/false", "a setting's value is a number or true/false");
             T.Has(Refused(p => { var r = ModelRig.Run("a"); r["settings"] = new List<object>(); p["runs"] = new List<object> { r }; }), "not an object", "settings are an object");
+            var twoViews = new Dictionary<string, object> { { "left", "side.jpg" }, { "back", "concept.png" } };
+            T.Ok(JobPlan.TryParse(JobPlan.ModelKind, Payload(p => p["runs"] = new List<object> { ModelRig.Run("a", views: twoViews) }), Site, out plan, out error), "a run with views parses (" + error + ")");
+            if (plan != null) T.Eq(string.Join(",", plan.ModelRuns[0].Pictures()), "concept.png,side.jpg,concept.png", "its pictures are the front, then the views in order");
+            T.Has(Refused(p => p["runs"] = new List<object> { ModelRig.Run("a", model: "trellis2", views: twoViews) }), "only Pixal3D", "TRELLIS.2 takes one picture");
+            T.Has(Refused(p => p["runs"] = new List<object> { ModelRig.Run("a", views: new Dictionary<string, object> { { "top", "side.jpg" } }) }), "view the app does not know: \"top\"", "an unknown view is refused");
+            T.Has(Refused(p => p["runs"] = new List<object> { ModelRig.Run("a", views: new Dictionary<string, object> { { "left", "other.png" } }) }), "for its left view", "a view's picture is one of the job's files");
+            T.Has(Refused(p => p["runs"] = new List<object> { ModelRig.Run("a", views: new Dictionary<string, object>()) }), "views of the model run a are not", "views name at least one view");
+            T.Has(Refused(p => { var r = ModelRig.Run("a"); r["views"] = "side.jpg"; p["runs"] = new List<object> { r }; }), "views of the model run a are not", "views are an object");
             T.Has(Refused(p => p["files"] = new List<object> { Program.File_("concept.png"), Program.File_("notes.txt") }), "pictures only", "a model job's files are pictures");
             T.Has(Refused(p => p["files"] = new List<object> { Program.File_("concept.png", bytes: (double)(JobPlan.MaxModelImageBytes + 1)) }), "too big", "a picture over the limit is refused");
             T.Has(Refused(p => p["files"] = new List<object> { Program.File_("concept.png", cacheKey: "art-1") }), "cache", "a model job's pictures are not cached");
@@ -975,6 +1040,27 @@ namespace DeathMuffinTeam.Tests
                 RunResult r = m.R.Run("modeljob16", m.Plan(ModelRig.Run("a"), ModelRig.Run("b", settings: new Dictionary<string, object> { { "smooth", 3.0 } })));
                 T.Ok(!r.Ok && r.Error.Contains("does not have: smooth"), "a run with a setting the workflow lacks fails the job (" + r.Error + ")");
                 T.Eq(desk.Prompts.Count, 0, "before any run is queued, so no PC time is spent on a job that would not do what was asked");
+            }
+        }
+
+        static void ViewRuns()
+        {
+            using (var m = new ModelRig())
+            {
+                FakeComfy desk = m.StartDesktop();
+                var views = new Dictionary<string, object> { { "left", "left.png" }, { "back", "back.png" } };
+                RunResult r = m.R.Run("modeljob22", m.Plan(ModelRig.Run("hound-views", views: views), ModelRig.Run("hound-left", image: "left.png")));
+                T.Ok(r.Ok, "a job with a run from three views is done (" + r.Error + ")");
+                T.Eq(string.Join(",", desk.Uploads.Select(u => u.Split(' ')[0])), "dmteam/modeljob22-concept.png,dmteam/modeljob22-left.png,dmteam/modeljob22-back.png", "each picture is put in ComfyUI once, though two runs use the left one");
+                T.Eq(desk.Prompts.Count, 2, "one prompt each");
+                var mv = MiniJson.Str(MiniJson.Obj(MiniJson.TryObject(WorkflowText()), "views"), "node");
+                if (desk.Prompts.Count == 2)
+                {
+                    T.Ok(desk.Prompts[0].ContainsKey(mv) && Equals(FakeComfy.Input(desk.Prompts[0], "122", "image"), "dmteam/modeljob22-concept.png"), "the run with views sends the multi-view node, its front the run's picture");
+                    T.Ok(!desk.Prompts[1].ContainsKey(mv) && Equals(FakeComfy.Input(desk.Prompts[1], "122", "image"), "dmteam/modeljob22-left.png"), "the run from one picture does not");
+                }
+                T.Has(r.Log, "run hound-views: pixal3d, 5000 faces, texture 1024, seed 0, pictures front concept.png, left left.png, back back.png", "the log names each run's pictures");
+                T.Ok(!Directory.Exists(Path.Combine(m.Desktop.Base, "input", "dmteam")) || Directory.GetFiles(Path.Combine(m.Desktop.Base, "input", "dmteam")).Length == 0, "every picture is removed from ComfyUI's input afterwards");
             }
         }
 

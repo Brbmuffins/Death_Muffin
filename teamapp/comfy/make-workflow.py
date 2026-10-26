@@ -8,6 +8,8 @@ through) are bridged, so the run does no preview work and needs no preview passt
 the inputs the app fills in for each run; each is checked against the node definitions here, so a changed template fails now, not on a PC. `settings` are the
 named knobs a run may change (`detail`, `grid`, `round`, `sharp`, `follow`, `fov`), with each number's range read from the node definitions and `app`, the first team app
 whose workflow has the knob (model-gen.sh sends a run using it only to that app or later); a new knob is a line in `knobs` and one in `FIRST_APP` when it is not 0.5.3's.
+`views` (team app 0.5.5 and later) adds Pixal3D's multi-view node, which the template does not use: a LoadImage per extra view (left, back, right), the run's picture as
+the front, and the inputs the single-picture conditioning feeds, which a run with views links to the multi-view node instead (the app removes these nodes from a run without).
 """
 import json, sys, urllib.request
 
@@ -15,6 +17,8 @@ TEMPLATE = '3d_pixal3d_trellis2_image_to_model'
 PASS_THROUGH = {'PreviewImage', 'MaskPreview'}
 UI_ONLY = {'control_after_generate', 'upload', 'fixed'}   # editor widgets that are not node inputs
 FIRST_APP = {'fov': '0.5.4'}                               # the team app that first has a knob; the rest came with settings in 0.5.3
+VIEWS = ('left', 'back', 'right')                           # the extra views a run may give, besides its picture (the front)
+VIEWS_APP = '0.5.5'                                         # the first team app that takes runs with views
 
 
 def get(url):
@@ -82,6 +86,31 @@ def main():
     }
     seeds = {k: prompt[k]['inputs']['seed'] for k, _ in slots['seed']}
 
+    # the multi-view node beside the single-picture conditioning, with a LoadImage per view; new ids above the template's
+    single = one('Pixal3DConditioning', 'image', wired=True)[0]
+    mv_def = info.get('Pixal3DMultiViewConditioning')
+    mv_spec = {**mv_def['input'].get('required', {}), **mv_def['input'].get('optional', {})} if mv_def else {}
+    if any(v not in mv_spec for v in ('front', 'fov') + VIEWS):
+        sys.exit('this ComfyUI has no Pixal3DMultiViewConditioning node taking front, fov, ' + ', '.join(VIEWS))
+    ids = iter(range(max(int(k) for k in prompt) + 1, 1 << 30))
+    picture = slots['image'][0][0]
+    mv_inputs = {'clip_vision_model': prompt[single]['inputs']['clip_vision_model'], 'fov': mv_spec['fov'][1]['default'], 'front': [picture, 0]}
+    pictures = {}
+    for v in VIEWS:
+        nid = str(next(ids))
+        prompt[nid] = {'class_type': 'LoadImage', 'inputs': {'image': prompt[picture]['inputs']['image']}, '_meta': {'title': f'LoadImage {v}'}}
+        mv_inputs[v] = [nid, 0]
+        pictures[v] = [[nid, 'image']]
+    mv = str(next(ids))
+    prompt[mv] = {'class_type': 'Pixal3DMultiViewConditioning', 'inputs': mv_inputs, '_meta': {'title': 'Pixal3DMultiViewConditioning'}}
+
+    def fed_by(node, output):   # the inputs a node's output goes in
+        return sorted([k, i] for k, v in prompt.items() for i, val in v['inputs'].items() if val == [node, output])
+
+    views = {'app': VIEWS_APP, 'node': mv, 'pictures': pictures, 'positive': fed_by(single, 0), 'negative': fed_by(single, 1)}
+    if not views['positive'] or not views['negative']:
+        sys.exit(f'Pixal3DConditioning {single} does not feed the sampling')
+
     # the named settings a run may change (model-gen.sh --set name=value): the inputs each goes in, its type, and a number's range from the node's own definition
     def sampler_into(cls, inp):
         return one('KSampler', 'cfg', feeds(cls, inp))
@@ -94,7 +123,8 @@ def main():
         'sharp': [[remesh, 'sign_mode.qef']],                               # the rebuild keeps sharp edges and flat faces (hard surfaces)
         'follow': [sampler_into('VaeDecodeStructureTrellis2', 'samples'),   # how closely the three shape stages follow the picture (cfg)
                    sampler_into('Trellis2UpsampleStage', 'shape_latent'), sampler_into('VaeDecodeShapeTrellis', 'samples')],
-        'fov': [one('Pixal3DConditioning', 'camera_angle_x', wired=True)],  # the camera angle Pixal3D projects the picture with, instead of MoGe's guess from it
+        'fov': [one('Pixal3DConditioning', 'camera_angle_x', wired=True),   # the camera angle Pixal3D projects the picture with, instead of MoGe's guess from it,
+                [mv, 'fov']],                                               # and the views' (20 unless set)
     }
     settings = {}
     for name, into in knobs.items():
@@ -118,6 +148,7 @@ def main():
         'slots': slots,
         'seedBase': seeds,
         'settings': settings,
+        'views': views,
         'prompt': prompt,
     }
     with open(out, 'w') as f:

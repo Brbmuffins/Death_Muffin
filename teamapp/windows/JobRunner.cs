@@ -459,8 +459,8 @@ namespace DeathMuffinTeam
             note("workflow: " + workflow.About);
             foreach (ModelRun run in plan.ModelRuns)
             {
-                string settingsError = workflow.CheckSettings(run);
-                if (settingsError != null) throw new JobFailure(settingsError);
+                string runError = workflow.CheckSettings(run) ?? workflow.CheckViews(run);
+                if (runError != null) throw new JobFailure(runError);
             }
             string gameDir = folders.GameDir(jobId), outDir = folders.OutDir(jobId);
             string stem = ComfyStem(jobId);
@@ -482,13 +482,14 @@ namespace DeathMuffinTeam
 
                         var images = new Dictionary<string, string>();   // the job's picture -> its name in ComfyUI ("dmteam/<stem>-concept.png")
                         foreach (ModelRun run in plan.ModelRuns)
-                        {
-                            if (images.ContainsKey(run.Image)) continue;
-                            ct.ThrowIfCancellationRequested();
-                            byte[] data = File.ReadAllBytes(Path.Combine(gameDir, run.Image));
-                            images[run.Image] = await lease.Client.UploadImageAsync(data, stem + "-" + run.Image.ToLowerInvariant(), ComfyRules.Folder, ct).ConfigureAwait(false);
-                            note("picture " + run.Image + " is " + images[run.Image] + " in ComfyUI");
-                        }
+                            foreach (string picture in run.Pictures())
+                            {
+                                if (images.ContainsKey(picture)) continue;
+                                ct.ThrowIfCancellationRequested();
+                                byte[] data = File.ReadAllBytes(Path.Combine(gameDir, picture));
+                                images[picture] = await lease.Client.UploadImageAsync(data, stem + "-" + picture.ToLowerInvariant(), ComfyRules.Folder, ct).ConfigureAwait(false);
+                                note("picture " + picture + " is " + images[picture] + " in ComfyUI");
+                            }
 
                         string clientId = "dmteam-" + Guid.NewGuid().ToString("N");
                         for (int i = 0; i < plan.ModelRuns.Count; i++)
@@ -497,12 +498,12 @@ namespace DeathMuffinTeam
                             CheckPlayer(0);
                             ModelRun run = plan.ModelRuns[i];
                             progress(plan.ModelRuns.Count > 1 ? "Making 3D model " + (i + 1) + " of " + plan.ModelRuns.Count + " (" + run.Label + ")" : "Making the 3D model");
-                            note("run " + run.Label + ": " + run.Describe() + ", picture " + run.Image);
+                            note("run " + run.Label + ": " + run.Describe() + ", " + run.DescribePictures());
                             var clock = Stopwatch.StartNew();
                             runClock.Start();
                             try
                             {
-                                byte[] glb = await ModelRunAsync(lease.Client, workflow, run, images[run.Image], ComfyRules.Folder + "/" + stem + "-" + run.Label, clientId, note, ct).ConfigureAwait(false);
+                                byte[] glb = await ModelRunAsync(lease.Client, workflow, run, images, ComfyRules.Folder + "/" + stem + "-" + run.Label, clientId, note, ct).ConfigureAwait(false);
                                 string path = Path.Combine(outDir, run.Label + ".glb");
                                 File.WriteAllBytes(path, glb);
                                 models.Add(new KeyValuePair<string, string>(path, run.Label + ".glb"));
@@ -537,9 +538,9 @@ namespace DeathMuffinTeam
 
         /// <summary>One run: queued, watched until it ends, its model fetched and checked. A run ComfyUI refuses or fails, or one past the time limit, is a <see cref="JobFailure"/>; the player's game, the app
         /// closing or the server's cancel stop it in ComfyUI too (so it does not keep the card busy) and end the job.</summary>
-        async Task<byte[]> ModelRunAsync(ComfyClient client, ComfyWorkflow workflow, ModelRun run, string image, string prefix, string clientId, Action<string> note, CancellationToken ct)
+        async Task<byte[]> ModelRunAsync(ComfyClient client, ComfyWorkflow workflow, ModelRun run, IDictionary<string, string> images, string prefix, string clientId, Action<string> note, CancellationToken ct)
         {
-            string promptId = await client.QueueAsync(workflow.Fill(run, image, prefix), clientId, ct).ConfigureAwait(false);
+            string promptId = await client.QueueAsync(workflow.Fill(run, images, prefix), clientId, ct).ConfigureAwait(false);
             var clock = Stopwatch.StartNew();
             ComfyOutcome outcome;
             try

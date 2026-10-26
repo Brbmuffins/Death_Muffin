@@ -8570,5 +8570,35 @@
     "quality": 88,
     "outHash": "sha256:dabf51e7ac0de094fd758dcf6bdf1f3c722e88842e84cd7b2fecf6e76b48e6fb",
     "builtAt": "2026-10-20T21:36:39.414Z"
+  },
+  "concept_bone_hound_3d": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling source. Redraw exactly this skeletal hound as a clean, sculpted, 3D-ready design: the same ivory bones, spiked spine, purple cloth, leather straps, iron collar and glowing violet eye sockets, the same proportions, the same three-quarter side view facing right, a neutral standing pose with all four legs straight and visible and the tail extended. Make every part a solid, readable shape: smooth sculpted bones with clean edges and no cracks, pits or painted grime; the ribcage as a few clear, thick ribs; no lacy or webbed bone. The tattered purple cloth as fewer, thicker strips: five or six broad strips hanging from the back, each clearly separate, with simple torn ends, no thin threads or wisps. Straps as flat leather bands with simple buckles. Even, flat studio lighting, no cast shadows, no rim light, no smoke, no brush strokes. Entire body visible and centered. Plain flat light grey background (#c8c8c8). No text, no other characters.",
+    "refs": [
+      "art-src/concepts/bone_hound.png"
+    ],
+    "crop": null,
+    "aspect": "4:3",
+    "post": null,
+    "out": "art-src/concepts/bone_hound_3d.png",
+    "rawHash": "sha256:910c4d494a6770920c62440bd2d2645c026b13728ce631a660e20abbc88363b4",
+    "outHash": "sha256:b29dc853351c40889b2d812adb169f2b980e49f43c1246e89838a7ca5ba52d0b",
+    "generatedAt": "2026-10-26T17:20:42.412Z"
+  },
+  "concept_bone_hound_views": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Turnaround model sheet of exactly this skeletal hound, for 3D modeling, rendered in exactly the same style as the reference image: the same solid, sculpted, fully opaque 3D-render look, the same colours and soft shading, no line art, no outlines, no sketchiness, no transparent or faded parts, no ears (the skull has none). Exactly four figures in total, in a single horizontal row, nothing above or below them: the same hound drawn once in each of four views, evenly spaced with clear empty space between figures, all at exactly the same scale, all feet at the same height, the same neutral standing pose in every view (all four legs straight, head level, tail extended straight back). From left to right: 1) front view, facing the viewer head-on; 2) left side view, full profile with its left side toward the viewer and its head pointing left; 3) back view, seen from directly behind; 4) right side view, full profile with its right side toward the viewer and its head pointing right. Orthographic views at eye level: no perspective, no three-quarter angles, no figure cropped by the frame. Every detail identical across the four views: the same smooth ivory bones and ribs, the same broad purple cloth strips, the same leather straps and buckles, the same iron collar rings, the same glowing violet eye sockets. Even, flat studio lighting, no cast shadows, no floor line, no smoke. Plain flat light grey background (#c8c8c8). No text, no labels, no grid lines, no other characters.",
+    "refs": [
+      "art-src/concepts/bone_hound_3d.png"
+    ],
+    "crop": null,
+    "aspect": "21:9",
+    "post": null,
+    "out": "art-src/concepts/bone_hound_views.png",
+    "rawHash": "sha256:2935803f558eb1926031fceb7f0247d2a3c1aa18522953a2c28ae84dbe94012a",
+    "outHash": "sha256:ef066761ac979c44c41a7519a2aa45804c09b9fef4342767a6979e36adaeb103",
+    "generatedAt": "2026-10-26T17:23:05.650Z"
   }
 }

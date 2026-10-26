@@ -64,6 +64,12 @@ rounder). `round`: the rebuild's closing radius in voxels, creases filleted and 
 and buildings). `follow`: how closely the shape stages follow the picture (7.5; lower is looser). `fov` (team app 0.5.4): the camera angle in degrees Pixal3D projects the picture with,
 1 to 170 (the template: MoGe's guess from the picture). MoGe's depth detail is not a setting: Pixal3D takes only its angle, not its depth. The rebuild's own smoothing is already at its most.
 
+**Several views** (team app 0.5.5; a run's `views` in the runs file, Pixal3D only): the model is made from more than one picture of the subject. The run's picture is the front; `views` adds
+`left` (the subject's left side: its head to the picture's left), `back` and `right` (head to the right), any of them. Every picture goes in as given, so they are made together: square
+`.png`s, the subject on black (no background removal here), centred at the same scale in each, the widest spanning about 1/1.1 of the frame (model-gen.sh refuses pictures that are not square
+`.png`s). The views come from a turnaround sheet of the concept in its own style (a Gemini job beside the concept's, `concept_<id>_views`), cut into one picture a view; a subject that is
+the same on both sides may use its left view mirrored as the right. `fov` is the views' camera angle too (20 unless set; drawn views are close to flat).
+
 ## Build
 
 `node tools/build-characters.mjs [id ...]` merges the clip files onto the idle mesh by joint name into one `character.glb`
