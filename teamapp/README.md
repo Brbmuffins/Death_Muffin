@@ -261,8 +261,9 @@ Desktop's own server is the member's and is never stopped.
 outside the setting's range or step, fails the job before ComfyUI is asked. No `args`.
 
 **What it runs**: the workflow built into the app (`teamapp/comfy/image-to-model.json`, made from the template by `teamapp/comfy/make-workflow.py <ComfyUI url>` against a running ComfyUI: only the nodes the saved
-model needs, in the API format, with `slots` naming the inputs a run fills in and `settings` the named settings a run may change: the inputs each goes into, its type (a whole number, a number or true/false) and
-a number's range and step, from ComfyUI's node definitions; each checked against those definitions when it is made; what each setting does: ASSET_PIPELINE.md "Image to model"). Each distinct picture is uploaded once into ComfyUI's input
+model needs, in the API format, with `slots` naming the inputs a run fills in and `settings` the named settings a run may change: the inputs each goes into, its type (a whole number, a number or true/false),
+a number's range and step, from ComfyUI's node definitions, and `app`, the first team app that has it; each checked against those definitions when it is made; what each setting does: ASSET_PIPELINE.md "Image to model").
+A slot holds a plain value; a setting may also go in an input another node feeds (`fov`, MoGe's guess of the picture's camera angle), and the run's value then replaces that link. Each distinct picture is uploaded once into ComfyUI's input
 folder as `dmteam/<job>-<picture>`; then each run, one after the other: the workflow filled in (picture, the TRELLIS.2 switch, `DecimateMesh`'s face count, texture size, seeds, the run's settings, `dmteam/<job>-<label>` as the save name), queued, watched every 2 s,
 at most 30 minutes from its queueing; the `.glb` fetched from ComfyUI (`/view`), checked (a whole binary glTF, at most 48 MB) and kept as `out\<label>.glb`. A run ComfyUI refuses (its reasons, such as a missing
 node), fails (the node and its error, such as running out of the card's memory), saves no model or runs past the limit is noted in the log and the next run goes on; a stopped run is taken out of ComfyUI's
@@ -338,6 +339,8 @@ the models' look against a run made by hand in Desktop.
 
 ### Changelog
 
+- **0.5.4** (2026-10-26) - A new model setting, `fov`: the camera angle Pixal3D projects the concept picture with, in place of MoGe's guess from the picture (a painting is not a photo), so a run can
+  try the angle a concept is drawn with. `model-gen.sh` sends a job using it only to 0.5.4 or later (each setting names the app that first has it).
 - **0.5.3** (2026-10-26) - A model job's run may change the workflow's named settings (`settings`: the shape's detail, the rebuild's grid, rounding and sharp edges, how closely the shape follows the
   picture), for tuning Pixal3D's shapes at the source; the log names them with each run. Older apps would run the template's values, so `model-gen.sh` sends such a job only to 0.5.3 or later.
 - **0.5.2** (2026-10-26) - Comfy Desktop, the 2.0 app, is found and started: its install launched last, with its own Python, ComfyUI folder and model folders, and its server when it runs

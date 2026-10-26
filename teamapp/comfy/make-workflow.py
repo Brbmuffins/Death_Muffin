@@ -6,13 +6,15 @@ The template is in the editor's format; ComfyUI's /prompt takes the API format: 
 [source node id, output index]. Only the nodes the saved model needs are kept, and the preview nodes on the way (they pass their input
 through) are bridged, so the run does no preview work and needs no preview passthrough (older ComfyUI versions have none). `slots` names
 the inputs the app fills in for each run; each is checked against the node definitions here, so a changed template fails now, not on a PC. `settings` are the
-named knobs a run may change (`detail`, `grid`, `round`, `sharp`, `follow`), with each number's range read from the node definitions; a new knob is a line in `knobs`.
+named knobs a run may change (`detail`, `grid`, `round`, `sharp`, `follow`, `fov`), with each number's range read from the node definitions and `app`, the first team app
+whose workflow has the knob (model-gen.sh sends a run using it only to that app or later); a new knob is a line in `knobs` and one in `FIRST_APP` when it is not 0.5.3's.
 """
 import json, sys, urllib.request
 
 TEMPLATE = '3d_pixal3d_trellis2_image_to_model'
 PASS_THROUGH = {'PreviewImage', 'MaskPreview'}
 UI_ONLY = {'control_after_generate', 'upload', 'fixed'}   # editor widgets that are not node inputs
+FIRST_APP = {'fov': '0.5.4'}                               # the team app that first has a knob; the rest came with settings in 0.5.3
 
 
 def get(url):
@@ -59,11 +61,11 @@ def main():
             sys.exit(f'node {nid} ({n["type"]}) lacks required inputs {missing}')
         prompt[str(nid)] = {'class_type': n['type'], 'inputs': inputs, '_meta': {'title': n.get('title') or n['type']}}
 
-    def one(cls, inp, where=None):   # the single node of a class (or the one whose input feeds `where`) and its input, checked
+    def one(cls, inp, where=None, wired=False):   # the single node of a class (or the one whose input feeds `where`) and its input, checked; `wired`: another node may feed it
         found = [k for k, v in prompt.items() if v['class_type'] == cls and (where is None or where(k, v))]
         if len(found) != 1:
             sys.exit(f'expected one {cls} node for slot {inp}, found {found}')
-        if inp not in prompt[found[0]]['inputs'] or isinstance(prompt[found[0]]['inputs'][inp], list):
+        if inp not in prompt[found[0]]['inputs'] or (isinstance(prompt[found[0]]['inputs'][inp], list) and not wired):
             sys.exit(f'{cls} {found[0]} has no plain input {inp}')
         return [found[0], inp]
 
@@ -92,20 +94,21 @@ def main():
         'sharp': [[remesh, 'sign_mode.qef']],                               # the rebuild keeps sharp edges and flat faces (hard surfaces)
         'follow': [sampler_into('VaeDecodeStructureTrellis2', 'samples'),   # how closely the three shape stages follow the picture (cfg)
                    sampler_into('Trellis2UpsampleStage', 'shape_latent'), sampler_into('VaeDecodeShapeTrellis', 'samples')],
+        'fov': [one('Pixal3DConditioning', 'camera_angle_x', wired=True)],  # the camera angle Pixal3D projects the picture with, instead of MoGe's guess from it
     }
     settings = {}
     for name, into in knobs.items():
         node, inp = into[0]
         value = prompt[node]['inputs'][inp]
         if isinstance(value, bool):
-            settings[name] = {'type': 'bool', 'into': into}
+            settings[name] = {'type': 'bool', 'into': into, 'app': FIRST_APP.get(name, '0.5.3')}
             continue
         d = info[prompt[node]['class_type']]['input']
         spec = {**d.get('required', {}), **d.get('optional', {})}.get(inp)
         if not spec or spec[0] not in ('INT', 'FLOAT'):
             sys.exit(f'setting {name}: {prompt[node]["class_type"]}.{inp} is not a number input')
         rng = spec[1] if len(spec) > 1 else {}
-        settings[name] = {'type': 'int' if spec[0] == 'INT' else 'float', 'min': rng.get('min'), 'max': rng.get('max'), 'into': into}
+        settings[name] = {'type': 'int' if spec[0] == 'INT' else 'float', 'min': rng.get('min'), 'max': rng.get('max'), 'into': into, 'app': FIRST_APP.get(name, '0.5.3')}
         if rng.get('step'):
             settings[name]['step'] = rng['step']
     doc = {

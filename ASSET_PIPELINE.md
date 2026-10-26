@@ -61,7 +61,8 @@ painted model down afterwards: the paint smears. The concept rules are Tripo's (
 Blender afterwards. Each name, its inputs and range are in the workflow's `settings` (`teamapp/comfy/image-to-model.json`; model-gen.sh refuses anything else); the template's
 value in brackets. `detail`: the grid the shape is refined to (1536; lower gives fewer fine bits). `grid`: the grid the mesh is rebuilt on before the cut (768; lower is simpler and
 rounder). `round`: the rebuild's closing radius in voxels, creases filleted and gaps bridged at that size (1). `sharp`: the rebuild keeps sharp edges and flat faces (false; for props
-and buildings). `follow`: how closely the shape stages follow the picture (7.5; lower is looser). The rebuild's own smoothing is already at its most.
+and buildings). `follow`: how closely the shape stages follow the picture (7.5; lower is looser). `fov` (team app 0.5.4): the camera angle in degrees Pixal3D projects the picture with,
+1 to 170 (the template: MoGe's guess from the picture). MoGe's depth detail is not a setting: Pixal3D takes only its angle, not its depth. The rebuild's own smoothing is already at its most.
 
 ## Build
 

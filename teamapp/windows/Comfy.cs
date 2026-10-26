@@ -75,7 +75,8 @@ namespace DeathMuffinTeam
     /// <summary>
     /// The workflow a `model` job runs: ComfyUI's "Pixal3D &amp; TRELLIS.2: Image to Model" template in the API format, made by teamapp/comfy/make-workflow.py and built into the app
     /// (teamapp/comfy/image-to-model.json). `slots` name the inputs a run fills in; a seed slot adds the run's seed to the template's own value (`seedBase`). `settings` are the named knobs a run may
-    /// change (each: its type `int`, `float` or `bool`, the node's own `min`/`max`/`step` for a number, and the inputs it goes in); a new knob is a line in make-workflow.py, not app code.
+    /// change (each: its type `int`, `float` or `bool`, the node's own `min`/`max`/`step` for a number, and the inputs it goes in); a new knob is a line in make-workflow.py, not app code. A setting
+    /// may go in an input another node feeds (`fov`, the camera angle MoGe guesses from the picture): the run's value replaces that link, and nodes that only fed it do not run.
     /// </summary>
     internal sealed class ComfyWorkflow
     {
@@ -137,7 +138,7 @@ namespace DeathMuffinTeam
                 {
                     var sd = kv.Value as Dictionary<string, object>;
                     var set = new Setting { Type = MiniJson.Str(sd, "type"), Min = Num(sd, "min"), Max = Num(sd, "max"), Step = Num(sd, "step") };
-                    set.Into = w.Inputs(MiniJson.Arr(sd, "into"));
+                    set.Into = w.Inputs(MiniJson.Arr(sd, "into"), true);
                     if (!SettingNameRe.IsMatch(kv.Key) || set.Into == null || (set.Type != "int" && set.Type != "float" && set.Type != "bool")
                         || (set.Type != "bool" && (set.Min == null || set.Max == null || set.Min > set.Max)))
                     { error = "The model workflow's setting " + kv.Key + " is not valid (a name, a type int, float or bool, a range for a number, and the inputs it goes in)."; return null; }
@@ -161,8 +162,8 @@ namespace DeathMuffinTeam
             return d != null && d.TryGetValue(key, out v) && v is double ? (double?)(double)v : null;
         }
 
-        /// <summary>A list of [node, input] pairs, each a plain value input of a node here; null when the list is empty or one is not.</summary>
-        List<KeyValuePair<string, string>> Inputs(List<object> list)
+        /// <summary>A list of [node, input] pairs, each a plain value input of a node here (or, when <paramref name="wired"/>, one another node feeds); null when the list is empty or one is not.</summary>
+        List<KeyValuePair<string, string>> Inputs(List<object> list, bool wired = false)
         {
             if (list == null || list.Count == 0) return null;
             var into = new List<KeyValuePair<string, string>>();
@@ -172,7 +173,7 @@ namespace DeathMuffinTeam
                 string node = pair != null && pair.Count == 2 ? pair[0] as string : null, input = pair != null && pair.Count == 2 ? pair[1] as string : null;
                 var inputs = node == null ? null : MiniJson.Obj(MiniJson.Obj(prompt, node), "inputs");
                 object v = null;
-                if (inputs == null || input == null || !inputs.TryGetValue(input, out v) || v is List<object> || v is Dictionary<string, object>) return null;
+                if (inputs == null || input == null || !inputs.TryGetValue(input, out v) || (v is List<object> && !wired) || v is Dictionary<string, object>) return null;
                 into.Add(new KeyValuePair<string, string>(node, input));
             }
             return into;

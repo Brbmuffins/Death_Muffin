@@ -514,11 +514,12 @@ namespace DeathMuffinTeam.Tests
             string error;
             ComfyWorkflow w = ComfyWorkflow.Embedded(out error);
             if (w == null) { T.Ok(false, "the workflow reads (" + error + ")"); return; }
-            T.Eq(string.Join(",", w.SettingNames), "detail,follow,grid,round,sharp", "the workflow names its settings");
+            T.Eq(string.Join(",", w.SettingNames), "detail,follow,fov,grid,round,sharp", "the workflow names its settings");
             var plain = w.Fill(new ModelRun { Label = "a", Image = "concept.png", Faces = 5000, Texture = 1024 }, "dmteam/c.png", "dmteam/j-a");
             T.Eq(FakeComfy.Input(plain, "94", "target_resolution"), (object)1536.0, "a run without settings keeps the template's detail");
+            T.Eq(MiniJson.Write(FakeComfy.Input(plain, "298", "camera_angle_x")), "[\"242\",0]", "and Pixal3D's camera angle still comes from MoGe's guess");
             var run = new ModelRun { Label = "b", Image = "concept.png", Faces = 5000, Texture = 1024 };
-            run.Settings["detail"] = 1024.0; run.Settings["grid"] = 384.0; run.Settings["round"] = 2.5; run.Settings["sharp"] = true; run.Settings["follow"] = 4.5;
+            run.Settings["detail"] = 1024.0; run.Settings["grid"] = 384.0; run.Settings["round"] = 2.5; run.Settings["sharp"] = true; run.Settings["follow"] = 4.5; run.Settings["fov"] = 20.0;
             T.Eq(w.CheckSettings(run), null, "settings inside their ranges pass");
             var b = w.Fill(run, "dmteam/c.png", "dmteam/j-b");
             T.Eq(FakeComfy.Input(b, "94", "target_resolution"), (object)1024L, "detail goes in the upsample stage, as a whole number");
@@ -527,7 +528,8 @@ namespace DeathMuffinTeam.Tests
             T.Eq(FakeComfy.Input(b, "241", "sign_mode.qef"), (object)true, "sharp turns on the rebuild's sharp edges");
             T.Ok(new[] { "3", "18", "23" }.All(n => Equals(FakeComfy.Input(b, n, "cfg"), 4.5)), "follow goes in the three shape samplers");
             T.Eq(FakeComfy.Input(b, "12", "cfg"), FakeComfy.Input(plain, "12", "cfg"), "follow leaves the paint sampler alone");
-            T.Eq(run.Describe(), "pixal3d, 5000 faces, texture 1024, seed 0, detail 1024, follow 4.5, grid 384, round 2.5, sharp true", "the log names each setting");
+            T.Eq(FakeComfy.Input(b, "298", "camera_angle_x"), (object)20.0, "fov replaces MoGe's guess with the run's camera angle");
+            T.Eq(run.Describe(), "pixal3d, 5000 faces, texture 1024, seed 0, detail 1024, follow 4.5, fov 20, grid 384, round 2.5, sharp true", "the log names each setting");
 
             Func<string, object, string> check = (name, value) =>
             {
@@ -535,7 +537,7 @@ namespace DeathMuffinTeam.Tests
                 r.Settings[name] = value;
                 return w.CheckSettings(r);
             };
-            T.Has(check("smooth", 3.0), "does not have: smooth (it has detail, follow, grid, round, sharp)", "a setting the workflow lacks is refused with the ones it has");
+            T.Has(check("smooth", 3.0), "does not have: smooth (it has detail, follow, fov, grid, round, sharp)", "a setting the workflow lacks is refused with the ones it has");
             T.Has(check("detail", 1000.0), "from 1024 to 2048 in steps of 128", "a number under the range is refused with the range");
             T.Has(check("detail", 1100.0), "in steps of 128", "a number off the node's step is refused");
             T.Has(check("grid", 384.5), "a whole number", "a whole-number setting refuses a fraction");

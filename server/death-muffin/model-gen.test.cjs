@@ -270,11 +270,15 @@ test('usage and picture problems exit 2 before the backend is asked', async () =
   });
 });
 
-// The workflow's named settings, read from the file model-gen.sh checks them against: a number setting with a step and a true/false one.
+// The workflow's named settings, read from the file model-gen.sh checks them against: a number setting with a step, a true/false one, and the one that needs the newest
+// team app (each setting's `app`); a PC on that app takes any setting.
 const SETTINGS = JSON.parse(fs.readFileSync(path.join(__dirname, '../../teamapp/comfy/image-to-model.json'), 'utf8')).settings;
 const [NUM, num] = Object.entries(SETTINGS).find(([, s]) => s.type !== 'bool' && s.step);
-const [FLAG] = Object.entries(SETTINGS).find(([, s]) => s.type === 'bool');
-const SET_APP = { version: '0.5.3' };
+const [FLAG, flag] = Object.entries(SETTINGS).find(([, s]) => s.type === 'bool');
+const cmpVersion = (a, b) => { const x = a.split('.').map(Number), y = b.split('.').map(Number); return x[0] - y[0] || x[1] - y[1] || x[2] - y[2]; };
+const [LATE, late] = Object.entries(SETTINGS).sort(([, a], [, b]) => cmpVersion(a.app, b.app)).pop();
+const SET_APP = { version: late.app };
+const reVersion = (v) => v.replace(/\./g, '\\.');
 
 test('--set and a run\'s settings go into the runs that change them, --set winning; a run that changes none carries no settings', async () => {
   await withWorld({ pcs: [pcRow(PC_H, ABLE, SET_APP)] }, async (w, backend) => {
@@ -299,14 +303,15 @@ test('--set and a run\'s settings go into the runs that change them, --set winni
   });
 });
 
-test('a job that changes a setting goes only to a PC on team app 0.5.3 or later; a job that changes none still goes to older ones', async () => {
+test('a job that changes a setting goes only to a PC on the team app the setting needs or later; a job that changes none still goes to older ones', async () => {
+  for (const [name, s] of Object.entries(SETTINGS)) assert.match(String(s.app), /^\d+\.\d+\.\d+$/, `setting ${name} names the team app that first has it`);
   await withWorld({ pcs: [pcRow(PC_H, ABLE)] }, async (w, backend) => {
     const any = await gen(w, backend, ['--set', `${FLAG}=true`, w.out, w.hound]);
     assert.strictEqual(any.code, 1, any.all);
-    assert.match(any.err, /no team PC runs model jobs with settings.*0\.5\.3 or later.*app 0\.5\.0/);
+    assert.match(any.err, new RegExp(`no team PC runs model jobs with these settings.*${reVersion(flag.app)} or later.*app 0\\.5\\.0`));
     const named = await gen(w, backend, ['--pc', 'helix', '--set', `${FLAG}=true`, w.out, w.hound]);
     assert.strictEqual(named.code, 1, named.all);
-    assert.match(named.err, /helix is on team app 0\.5\.0: changing workflow settings needs 0\.5\.3/);
+    assert.match(named.err, new RegExp(`helix is on team app 0\\.5\\.0: these workflow settings need ${reVersion(flag.app)}`));
     assert.strictEqual(backend.created(), 0);
     const plain = await gen(w, backend, [w.out, w.hound]);
     assert.strictEqual(plain.code, 0, plain.all);
@@ -317,10 +322,25 @@ test('a job that changes a setting goes only to a PC on team app 0.5.3 or later;
     assert.strictEqual(r.code, 0, r.all);
     assert.strictEqual(backend.jobs[0].body.targetPc, PC_H);
   });
-  await withWorld({ pcs: [pcRow(PC_W, ABLE, SET_APP), pcRow(PC_H, ABLE, { version: '0.6.0' })] }, async (w, backend) => {
+  await withWorld({ pcs: [pcRow(PC_W, ABLE, SET_APP), pcRow(PC_H, ABLE, { version: '9.0.0' })] }, async (w, backend) => {
     const r = await gen(w, backend, ['--set', `${FLAG}=true`, w.out, w.hound]);
     assert.strictEqual(r.code, 0, r.all);
     assert.strictEqual(backend.jobs[0].body.targetPc, undefined, 'every PC fills settings: any of them');
+  });
+  // the job needs the newest app any of its settings needs: a PC on the app just before that one takes the older settings only
+  const [x, y, z] = late.app.split('.').map(Number);
+  const before = z > 0 ? `${x}.${y}.${z - 1}` : y > 0 ? `${x}.${y - 1}.99` : `${x - 1}.99.99`;
+  const lateValue = late.type === 'bool' ? 'true' : String(late.min);
+  await withWorld({ pcs: [pcRow(PC_H, ABLE, { version: before })] }, async (w, backend) => {
+    const named = await gen(w, backend, ['--pc', 'helix', '--set', `${LATE}=${lateValue}`, w.out, w.hound]);
+    assert.strictEqual(named.code, 1, named.all);
+    assert.match(named.err, new RegExp(`helix is on team app ${reVersion(before)}: these workflow settings need ${reVersion(late.app)}`));
+    const older = Object.entries(SETTINGS).find(([, s]) => cmpVersion(s.app, late.app) < 0);
+    if (older) {
+      const r = await gen(w, backend, ['--set', `${older[0]}=${older[1].type === 'bool' ? 'true' : older[1].min}`, w.out, w.hound]);
+      assert.strictEqual(r.code, 0, r.all);
+    }
+    assert.strictEqual(backend.created(), older ? 1 : 0);
   });
 });
 

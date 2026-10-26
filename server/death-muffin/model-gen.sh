@@ -9,9 +9,9 @@
 # 5000 faces, texture 1024, seed 0), each labelled <picture>-<model>[-s<seed>]; or --runs, a JSON list of { label, image (a picture's file name), model, faces, texture, seed, settings }.
 # --set (repeatable, every run) and a run's `settings` ({ name: number or true/false }) change the workflow's named settings, checked here against its `settings`
 # (teamapp/comfy/image-to-model.json): detail (the shape's final grid, 1024-2048 in 128s; the template's 1536), grid (the rebuild's grid before the shrink; 768), round (the rebuild's
-# closing radius in voxels; 1), sharp (the rebuild keeps sharp edges and flat faces; false), follow (how closely the shape stages follow the picture; 7.5). A job that changes any
-# setting goes only to a PC on team app 0.5.3 or later (older apps would run the template's values without saying so): without --pc, to the first such PC when an older one
-# also runs model jobs.
+# closing radius in voxels; 1), sharp (the rebuild keeps sharp edges and flat faces; false), follow (how closely the shape stages follow the picture; 7.5), fov (the camera angle in
+# degrees Pixal3D projects the picture with, 1-170; MoGe's guess from the picture). A job goes only to a PC on the team app its settings need (each setting's `app`: 0.5.3, fov 0.5.4;
+# an older app runs the template's values or refuses the setting): without --pc, to the first such PC when an older one also runs model jobs.
 # At most 8 runs a job. A seed is added to the template's own seeds (0 keeps them), so the same seed gives the same model again.
 # 1. The pictures: copied into <team root>/model-<24 hex>/ (removed at the end; team-files-prune.sh takes one a killed run left).
 # 2. ONE `model` job, for the PC named by --pc (its name or its user's; default: any PC that runs model jobs), time to live 12 hours (a PC whose player is in the game takes
@@ -39,7 +39,7 @@ FACES_MIN, FACES_MAX, SEED_MAX, RUNS_MAX = 500, 200000, 1000000, 8          # te
 PICTURE_MAX = 32 * 1024 * 1024                                              # teamapp/windows/JobPlan.cs MaxModelImageBytes
 LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,23}$")                         # JobPlan.cs VariantLabelRe: the model is <label>.glb
 PICTURE_TYPES = (".png", ".jpg", ".jpeg", ".webp")
-SETTINGS_APP = (0, 5, 3)                                                    # the first team app that fills a run's settings
+SETTINGS_APP = "0.5.3"                                                      # the first team app that fills a run's settings (a setting without its own `app`)
 WORKFLOW = env("DM_MODEL_WORKFLOW")                                        # the app's workflow in this checkout: its `settings`
 TTL_S = 12 * 3600
 RUN_S = 420                                                                 # about how long one run holds the card (a 4070 SUPER: 4 to 7 minutes)
@@ -178,9 +178,13 @@ def app_version(p):
         return tuple(int(x) for x in str(p.get("version") or "").split(".")[:3])
     except ValueError:
         return ()
-needs_settings = any(r.get("settings") for r in runs)
+def version(text):
+    return tuple(int(x) for x in text.split("."))
+needs_app = max([version(known[n].get("app") or SETTINGS_APP) for r in runs for n in r.get("settings", {})], default=None)
+needs_settings = needs_app is not None
+need = ".".join(map(str, needs_app or (0, 5, 0)))
 able = [p for p in pcs if isinstance(p.get("state"), dict) and p["state"].get("models") is True
-        and (not needs_settings or app_version(p) >= SETTINGS_APP)]
+        and (not needs_settings or app_version(p) >= needs_app)]
 def who(p):
     st = p.get("state") if isinstance(p.get("state"), dict) else {}
     why = st.get("modelsWhy") if st.get("models") is not True and isinstance(st.get("modelsWhy"), str) and st.get("modelsWhy") else ""
@@ -191,13 +195,13 @@ if a.pc:
     if not hit:
         die(1, "no team PC called %s was seen in the last 14 days (seen: %s)" % (a.pc, "; ".join(map(who, pcs)) or "none"))
     if hit[0] not in able:
-        if needs_settings and app_version(hit[0]) < SETTINGS_APP and isinstance(hit[0].get("state"), dict) and hit[0]["state"].get("models") is True:
-            die(1, "%s is on team app %s: changing workflow settings needs 0.5.3 or later (the app updates itself between jobs)" % (a.pc, hit[0].get("version")))
+        if needs_settings and app_version(hit[0]) < needs_app and isinstance(hit[0].get("state"), dict) and hit[0]["state"].get("models") is True:
+            die(1, "%s is on team app %s: these workflow settings need %s or later (the app updates itself between jobs)" % (a.pc, hit[0].get("version"), need))
         die(1, "%s runs no model jobs: it needs a graphics card with 12 GB or more, ComfyUI Desktop and team app 0.5.0 or later (%s)" % (a.pc, who(hit[0])))
     target = hit[0]["pcId"]
 elif not able:
     die(1, "no team PC runs model jobs%s: one needs a graphics card with 12 GB or more, ComfyUI Desktop and team app %s or later (seen: %s)"
-        % (" with settings" if needs_settings else "", "0.5.3" if needs_settings else "0.5.0", "; ".join(map(who, pcs)) or "none"))
+        % (" with these settings" if needs_settings else "", need, "; ".join(map(who, pcs)) or "none"))
 elif needs_settings and any(isinstance(p.get("state"), dict) and p["state"].get("models") is True and p not in able for p in pcs):
     target = able[0]["pcId"]                                                # an older app could claim it and run the template's values
 
