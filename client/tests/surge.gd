@@ -615,9 +615,11 @@ func _h_through_the_director() -> void:
 	var cleared := sev.filter(func(e: Dictionary) -> bool: return String(e["t"]) == "surgeCleared")
 	check(cleared.size() == 1 and sev.size() == 2 and _banners().has("Surge Quelled"), "one 'surgeCleared' and the banner (%s)" % str(sev.map(func(e: Dictionary) -> String: return String(e["t"]))))
 	var gold_due := DmMath.js_round((24.0 + 10.0 * float(DmContent.area("graves")["level"])) * float(DmWaveUpgrades.wave_modifiers(d.wave_tier)["rewardMult"]) * float(DmContent.difficulty(d.difficulty)["rewardMult"]))
-	var paid := dropped.filter(func(x: Array) -> bool: return String((x[0] as Dictionary).get("kind", "")) == "gold" and int((x[0] as Dictionary)["amount"]) == gold_due)
+	# the offering is the gold on the ground at the crypt: a kill's own gold can be the same amount (its roll), but it lies where the body fell
+	var crypt := Vector3(float(cleared[0]["x"]), 0.0, float(cleared[0]["z"])) if cleared.size() == 1 else Vector3.INF
+	var paid := dropped.filter(func(x: Array) -> bool: return String((x[0] as Dictionary).get("kind", "")) == "gold" and (x[1] as Vector3).distance_to(crypt) < 0.01)
 	var items := dropped.filter(func(x: Array) -> bool: return (x[0] as Dictionary).has("claim") and String(x[0]["claim"]["kind"]) == "surge")
-	check(paid.size() == 1 and items.size() >= 1, "the offering is paid: %d gold and %d item(s) from the surge tape" % [gold_due, items.size()])
+	check(paid.size() == 1 and int(paid[0][0]["amount"]) == gold_due and items.size() >= 1, "the offering is paid at the crypt: %d gold (%s) and %d item(s) from the surge tape" % [gold_due, str(paid.map(func(x: Array) -> int: return int(x[0]["amount"]))), items.size()])
 	check(s.surge_in >= float(DmSimData.SURGE["minIntervalS"]) and s.surge_in <= float(DmSimData.SURGE["maxIntervalS"]), "the next surge is %.0f s away" % s.surge_in)
 	host.enemy_spawned.disconnect(on_spawn)
 	host.ticked.disconnect(on_ticked)
