@@ -175,10 +175,12 @@ function harness({ missingTable = false, members = [MUFFINS, HELIX, WAR], result
         for (const j of jobs) if (j.status === 'queued' && j.expires_at <= clock) { Object.assign(j, { status: 'expired', finished_at: clock }); n++; }
         return affected(n);
       }
-      if (sql.startsWith("SELECT id, kind, title, weight_s, result, UNIX_TIMESTAMP(expires_at) AS expires_ts, UNIX_TIMESTAMP(created_at) AS created_ts, requested_by, thread_name, CASE WHEN kind = 'release' THEN JSON_EXTRACT(payload, '$.steps') END AS steps FROM team_jobs WHERE status = 'queued' AND expires_at > NOW() AND (target_pc IS NULL OR target_pc = ?) ORDER BY CASE kind WHEN 'shots' THEN 0 WHEN 'clip' THEN 1 WHEN 'release' THEN 2 WHEN 'bench' THEN 3 ELSE 4 END ASC, created_at ASC, id ASC LIMIT 50")) {
-        need(p, 1, sql);
-        const rank = (j) => ['shots', 'clip', 'release', 'bench'].indexOf(j.kind) === -1 ? 4 : ['shots', 'clip', 'release', 'bench'].indexOf(j.kind);
-        const open = jobs.filter((j) => j.status === 'queued' && j.expires_at > clock && (j.target_pc == null || j.target_pc === p[0])).sort((a, b) => rank(a) - rank(b) || a.created_at - b.created_at || (a.id < b.id ? -1 : 1));
+      if (sql.startsWith("SELECT id, kind, title, weight_s, result, UNIX_TIMESTAMP(expires_at) AS expires_ts, UNIX_TIMESTAMP(created_at) AS created_ts, requested_by, thread_name, CASE WHEN kind = 'release' THEN JSON_EXTRACT(payload, '$.steps') END AS steps FROM team_jobs WHERE status = 'queued' AND expires_at > NOW() AND (target_pc IS NULL OR target_pc = ?) AND (kind <> 'model' OR ? = 1) ORDER BY CASE kind WHEN 'shots' THEN 0 WHEN 'clip' THEN 1 WHEN 'model' THEN 2 WHEN 'release' THEN 3 WHEN 'bench' THEN 4 ELSE 5 END ASC, created_at ASC, id ASC LIMIT 50")) {
+        need(p, 2, sql);
+        const order = ['shots', 'clip', 'model', 'release', 'bench'];
+        const rank = (j) => order.indexOf(j.kind) === -1 ? order.length : order.indexOf(j.kind);
+        const open = jobs.filter((j) => j.status === 'queued' && j.expires_at > clock && (j.target_pc == null || j.target_pc === p[0]) && (j.kind !== 'model' || p[1] === 1))
+          .sort((a, b) => rank(a) - rank(b) || a.created_at - b.created_at || (a.id < b.id ? -1 : 1));
         const steps = (j) => { const pl = typeof j.payload === 'string' ? JSON.parse(j.payload) : j.payload; return j.kind === 'release' && pl && pl.steps !== undefined ? JSON.stringify(pl.steps) : null; };   // MySQL's JSON_EXTRACT
         return [open.slice(0, 50).map((j) => ({ id: j.id, kind: j.kind, title: j.title, weight_s: j.weight_s, result: json(j.result), expires_ts: secs(j.expires_at), created_ts: secs(j.created_at),
           requested_by: j.requested_by, thread_name: j.thread_name, steps: steps(j), created_ts: j.created_at / 1000 }))];   // DATETIME(3): to the millisecond
@@ -396,7 +398,7 @@ async function withHarness(opts, fn) {
 
 test('parseHeartbeat accepts the contract body, trims and caps strings, defaults the mode and drops unknown keys', () => {
   const { pc } = parseHeartbeat(beat());
-  assert.deepStrictEqual(pc, { pcId: PC_A, name: 'Muffins PC', version: '0.1.0', gpu: 'NVIDIA GeForce RTX 4070', mode: 'ask', state: { gameRunning: false, fullscreen: false, onBattery: false, busy: false, paused: false, benchmarks: true } });
+  assert.deepStrictEqual(pc, { pcId: PC_A, name: 'Muffins PC', version: '0.1.0', gpu: 'NVIDIA GeForce RTX 4070', mode: 'ask', state: { gameRunning: false, fullscreen: false, onBattery: false, busy: false, paused: false, benchmarks: true, models: false, vramMb: 0 } });
   assert.strictEqual(parseHeartbeat(beat({ state: { benchmarks: false } })).pc.state.benchmarks, false, 'benchmarks switched off on the PC (team app 0.4.4); anything else, or an older app that sends nothing, is on');
   assert.strictEqual(parseHeartbeat(beat({ state: { benchmarks: 'no' } })).pc.state.benchmarks, true);
   const messy = parseHeartbeat(beat({
@@ -409,9 +411,16 @@ test('parseHeartbeat accepts the contract body, trims and caps strings, defaults
   assert.strictEqual(messy.gpu, '');
   assert.strictEqual(messy.version.length, 32);
   assert.strictEqual(messy.mode, 'ask', 'an unknown mode becomes ask');
-  assert.deepStrictEqual(messy.state, { gameRunning: true, fullscreen: false, onBattery: false, busy: false, paused: true, benchmarks: true }, 'only true counts (benchmarks: only false switches them off), unknown keys are dropped');
+  assert.deepStrictEqual(messy.state, { gameRunning: true, fullscreen: false, onBattery: false, busy: false, paused: true, benchmarks: true, models: false, vramMb: 0 }, 'only true counts (benchmarks: only false switches them off), unknown keys are dropped');
   for (const mode of ['auto', 'yes']) assert.strictEqual(parseHeartbeat(beat({ mode })).pc.mode, mode);
-  assert.deepStrictEqual(Object.keys(parseHeartbeat({ pcId: PC_A }).pc.state).sort(), ['benchmarks', 'busy', 'fullscreen', 'gameRunning', 'onBattery', 'paused']);
+  assert.deepStrictEqual(Object.keys(parseHeartbeat({ pcId: PC_A }).pc.state).sort(), ['benchmarks', 'busy', 'fullscreen', 'gameRunning', 'models', 'onBattery', 'paused', 'vramMb']);
+  // model jobs (team app 0.5.0): only true runs them; the card's memory is a whole number of MiB, anything else 0
+  const big = parseHeartbeat(beat({ state: { models: true, vramMb: 12281.6 } })).pc.state;
+  assert.deepStrictEqual([big.models, big.vramMb], [true, 12282]);
+  for (const [models, vramMb, want] of [['yes', '12288', [false, 0]], [1, -5, [false, 0]], [true, 1e12, [true, 1 << 20]], [false, Infinity, [false, 0]]]) {
+    const st = parseHeartbeat(beat({ state: { models, vramMb } })).pc.state;
+    assert.deepStrictEqual([st.models, st.vramMb], want, JSON.stringify([models, vramMb]));
+  }
 });
 
 test('parseHeartbeat refuses a malformed pc id with a readable reason and takes none (the token names the PC)', () => {
@@ -712,7 +721,7 @@ test('a heartbeat upserts the PC and a repeat updates the same row', async () =>
     await h.call('POST /team/heartbeat', { body: beat({ mode: 'auto', gpu: 'Intel UHD', version: '0.1.1', state: { busy: true } }) });
     assert.strictEqual(h.pcs.size, 1, 'the same account and pc id is one row');
     assert.deepStrictEqual([row.mode, row.gpu, row.version, row.last_seen], ['auto', 'Intel UHD', '0.1.1', h.now()]);
-    assert.deepStrictEqual(JSON.parse(row.state), { gameRunning: false, fullscreen: false, onBattery: false, busy: true, paused: false, benchmarks: true });
+    assert.deepStrictEqual(JSON.parse(row.state), { gameRunning: false, fullscreen: false, onBattery: false, busy: true, paused: false, benchmarks: true, models: false, vramMb: 0 });
     await h.call('POST /api/team/heartbeat', { body: beat({ pcId: PC_B }), accountId: HELIX });
     await h.call('POST /api/team/heartbeat', { body: beat({ pcId: PC_A }), accountId: HELIX, pcId: PC_A });   // the same pc id under another account is another PC
     assert.strictEqual(h.pcs.size, 3);
@@ -1362,7 +1371,7 @@ test('the runner sees the PCs seen in the last 2 minutes, with mode and state', 
     let r = await h.internal('GET /internal/team/pcs');
     assert.strictEqual(r.statusCode, 200);
     assert.deepStrictEqual(r.body.data.pcs.map((p) => [p.username, p.pcId, p.mode]), [['Helix', PC_B, 'yes'], ['Brbmuffins', PC_A, 'auto']], 'newest first');
-    assert.deepStrictEqual(r.body.data.pcs[1].state, { gameRunning: false, fullscreen: true, onBattery: false, busy: false, paused: false, benchmarks: true });
+    assert.deepStrictEqual(r.body.data.pcs[1].state, { gameRunning: false, fullscreen: true, onBattery: false, busy: false, paused: false, benchmarks: true, models: false, vramMb: 0 });
     assert.deepStrictEqual(Object.keys(r.body.data.pcs[0]).sort(), ['accountId', 'gpu', 'lastSeen', 'mode', 'name', 'pcId', 'state', 'username', 'version']);
     h.advance(40_000);   // the first PC was last seen 130 s ago
     r = await h.internal('GET /internal/team/pcs');
@@ -1754,12 +1763,12 @@ test('the heartbeat offers shots before bench before any other kind, then the ol
   });
 });
 
-test('the ordering is the one SQL statement: a shots, clip, release, bench, other rank built from the kinds, and the oldest within each', async () => {
+test('the ordering is the one SQL statement: a shots, clip, model, release, bench, other rank built from the kinds, and the oldest within each', async () => {
   await withHarness(async (h) => {
     await h.call('POST /api/team/heartbeat', { body: beat() });
     const q = h.sqlLog.find((sql) => sql.startsWith('SELECT id, kind, title, weight_s, result'));
-    assert.ok(q.includes("ORDER BY CASE kind WHEN 'shots' THEN 0 WHEN 'clip' THEN 1 WHEN 'release' THEN 2 WHEN 'bench' THEN 3 ELSE 4 END ASC, created_at ASC, id ASC LIMIT 50"), q);
-    assert.deepStrictEqual(mountTeamJobs.KIND_ORDER, ['shots', 'clip', 'release', 'bench']);
+    assert.ok(q.includes("ORDER BY CASE kind WHEN 'shots' THEN 0 WHEN 'clip' THEN 1 WHEN 'model' THEN 2 WHEN 'release' THEN 3 WHEN 'bench' THEN 4 ELSE 5 END ASC, created_at ASC, id ASC LIMIT 50"), q);
+    assert.deepStrictEqual(mountTeamJobs.KIND_ORDER, ['shots', 'clip', 'model', 'release', 'bench']);
   });
 });
 
@@ -3325,5 +3334,129 @@ test('an mp4 is only for a clip job, and a done that names one never uploaded or
     const broken = await doneClips(h, id, ['slow_wraith.mp4'], {}, { accountId: HELIX });
     assert.deepStrictEqual([broken.statusCode, broken.body.error], [400, 'The clip slow_wraith is not a playable video.']);
     assert.strictEqual(h.jobs.find((j) => j.id === id).status, 'failed', 'the job fails with that reason');
+  });
+});
+
+// ── Model jobs (team app 0.5.0: 3D models made with ComfyUI on a team PC with a 12 GB+ card) ───────────────────────────────
+
+/** A binary glTF: the 12-byte header, a JSON chunk of `doc` (padded to 4 bytes) and a BIN chunk of `bin` bytes. */
+const glb = (doc = { asset: { version: '2.0' }, meshes: [{ primitives: [{ attributes: { POSITION: 0 } }] }] }, bin = 64) => {
+  let json = Buffer.from(JSON.stringify(doc));
+  json = Buffer.concat([json, Buffer.alloc((4 - (json.length % 4)) % 4, 0x20)]);
+  const chunkOf = (type, data) => { const h = Buffer.alloc(8); h.writeUInt32LE(data.length, 0); h.write(type, 4, 'latin1'); return Buffer.concat([h, data]); };
+  const body = Buffer.concat([chunkOf('JSON', json), ...(bin ? [chunkOf('BIN\0', Buffer.alloc(bin, 3))] : [])]);
+  const head = Buffer.alloc(12);
+  head.write('glTF', 0, 'latin1');
+  head.writeUInt32LE(2, 4);
+  head.writeUInt32LE(12 + body.length, 8);
+  return Buffer.concat([head, body]);
+};
+const MODEL = { files: [{ name: 'concept.png', url: 'https://example.invalid/concept.png', sha256: 'aa', bytes: 1 }], runs: [{ label: 'pixal3d', image: 'concept.png', model: 'pixal3d', faces: 5000, texture: 1024, seed: 0 }] };
+const newModel = (over = {}) => ({ kind: 'model', title: '3D models from a picture, about 10 minutes', weightS: 600, payload: MODEL, ttlS: 86400, ...over });
+const uploadGlb = (h, id, name, buf, opts = {}) => h.upload(id, name, buf, { type: 'model/gltf-binary', ...opts });
+
+test('checkGlb takes a whole binary glTF 2.0 with a mesh and refuses anything else with a reason', () => {
+  const { checkGlb } = mountTeamJobs;
+  assert.deepStrictEqual(checkGlb(glb()), {});
+  assert.deepStrictEqual(checkGlb(glb(undefined, 0)), {}, 'a model with no binary chunk is still whole');
+  const whole = glb();
+  const v1 = Buffer.from(whole); v1.writeUInt32LE(1, 4);
+  const shortHeader = Buffer.from(whole); shortHeader.writeUInt32LE(whole.length + 4, 8);
+  const overChunk = Buffer.from(whole); overChunk.writeUInt32LE(whole.readUInt32LE(12) + 4096, 12);
+  const binFirst = Buffer.from(whole); binFirst.write('BIN\0', 16, 'latin1');
+  const cases = [
+    [Buffer.from('not a model at all, just some words that are long enough'), /not a whole binary glTF/],
+    [whole.subarray(0, whole.length - 10), /cut off/],
+    [v1, /not glTF 2\.0/],
+    [shortHeader, /cut off/],
+    [overChunk, /not a whole binary glTF/],
+    [binFirst, /not a whole binary glTF/],
+    [glb({ asset: { version: '2.0' }, meshes: [] }), /holds no mesh/],
+    [glb({ meshes: [{}] }), /holds no mesh/],
+    [glb([1, 2]), /holds no mesh/],
+    ['a string', /not a whole binary glTF/],
+  ];
+  for (const [buf, why] of cases) assert.match(checkGlb(buf).error || '', why);
+  const badJson = glb(); badJson.write('{', 20, 'latin1'); badJson.write('}', 21, 'latin1'); badJson.write('x', 22, 'latin1');
+  assert.match(checkGlb(badJson).error || '', /not a whole binary glTF/, 'a JSON chunk that does not parse');
+});
+
+test('a model job is offered and listed only to a PC that says it runs them, in its place between clip and release', async () => {
+  await withHarness(async (h) => {
+    const bench = await h.makeJob(newBench());
+    const model = await h.makeJob(newModel());
+    const offered = async (state) => (await h.call('POST /api/team/heartbeat', { body: beat({ state: { ...beat().state, ...state } }) })).body.data;
+    const old = await offered({});
+    assert.strictEqual(old.offer.id, bench, 'an older app (no models field) is never offered a model job');
+    assert.deepStrictEqual(old.queue.map((q) => q.id), [bench], 'nor shown one in its list');
+    assert.strictEqual((await offered({ models: false, vramMb: 8176 })).offer.id, bench, 'a card under 12 GB: the app says models false');
+    const big = await offered({ models: true, vramMb: 12282 });
+    assert.deepStrictEqual([big.offer.id, big.offer.kind], [model, 'model'], 'a model job comes before a release or bench job');
+    assert.deepStrictEqual(big.queue.map((q) => q.id), [bench, model], 'the list stays oldest first');
+    const shots = await h.makeJob({ title: 'newer shots' });
+    assert.strictEqual((await offered({ models: true })).offer.id, shots, 'and after shots');
+    const pcs = (await h.internal('GET /internal/team/pcs', {})).body.data.pcs;
+    assert.deepStrictEqual([pcs[0].state.models, pcs[0].state.vramMb], [true, 0], 'the runner reads what the PC said last (model-gen.sh picks a PC by it)');
+  });
+});
+
+test('a held heartbeat of a PC that runs models wakes for a new model job; one that does not keeps waiting', async () => {
+  await withHarness({ mount: { waitUnitMs: 20 } }, async (h) => {
+    const wait = (state, accountId = MUFFINS) => h.call('POST /api/team/heartbeat', { accountId, body: beat({ pcId: PC_OF[accountId], wait: 5, state: { ...beat().state, ...state } }) });
+    const small = wait({ models: false });
+    const big = wait({ models: true }, HELIX);
+    await new Promise((r) => setTimeout(r, 15));
+    const id = await h.makeJob(newModel());
+    const b = await big;
+    assert.strictEqual(b.body.data.offer.id, id);
+    const s = await small;
+    assert.strictEqual(s.body.data.offer, null, 'the small card is answered when its wait runs out, with nothing');
+  });
+});
+
+test('a model job takes .glb models only, checked whole, at most 48 MB; other jobs take none', async () => {
+  await withHarness(async (h) => {
+    const shots = await h.runningJob();
+    const onShots = await uploadGlb(h, shots, 'hound.glb', glb());
+    assert.deepStrictEqual([onShots.statusCode, onShots.body.error], [400, 'This job takes no models (.glb files).']);
+    const id = await h.runningJob({ over: newModel(), accountId: HELIX });
+    const picture = await h.upload(id, 'hound.png', png(), { accountId: HELIX });
+    assert.deepStrictEqual([picture.statusCode, picture.body.error], [400, 'This job takes models (.glb files) only.']);
+    const wrongType = await h.upload(id, 'hound.glb', glb(), { accountId: HELIX, type: 'application/octet-stream' });
+    assert.deepStrictEqual([wrongType.statusCode, wrongType.body.code], [415, 'bad_type']);
+    const declared = await h.call('PUT /api/team/jobs/:id/files/:name', { accountId: HELIX, params: { id, name: 'big.glb' }, raw: glb(), headers: { 'content-type': 'model/gltf-binary', 'content-length': String(mountTeamJobs.GLB_MAX_BYTES + 1) } });
+    assert.deepStrictEqual([declared.statusCode, declared.body.code], [413, 'too_large']);
+    assert.match(declared.body.error, /48 MB/);
+    const cut = await uploadGlb(h, id, 'hound.glb', glb().subarray(0, 40), { accountId: HELIX });
+    assert.deepStrictEqual([cut.statusCode, cut.body.code], [400, 'bad_request']);
+    for (const name of ['Hound.glb', '-hound.glb', 'hound.GLB', 'hound.gltf', `${'a'.repeat(61)}.glb`]) {
+      assert.strictEqual((await uploadGlb(h, id, name, glb(), { accountId: HELIX })).statusCode, 400, name);
+    }
+    const model = glb(undefined, 5000);
+    const ok = await uploadGlb(h, id, 'hound-pixal3d.glb', model, { accountId: HELIX });
+    assert.deepStrictEqual([ok.statusCode, JSON.parse(JSON.stringify(ok.body))], [200, { success: true, data: { name: 'hound-pixal3d.glb', bytes: model.length } }], 'no size: a model has none');
+    assert.ok(fs.readFileSync(path.join(h.jobFolder(id), 'hound-pixal3d.glb')).equals(model));
+  });
+});
+
+test('a model job done names its models (at least one, each uploaded) and the runner sees them', async () => {
+  await withHarness(async (h) => {
+    const id = await h.runningJob({ over: newModel(), accountId: HELIX });
+    const done = (files) => h.call('POST /api/team/jobs/:id/done', { accountId: HELIX, params: { id }, body: { files, log: 'pixal3d: 6 min', timings: { downloadS: 1, runS: 360 } } });
+    const a = glb(undefined, 100);
+    const b = glb(undefined, 200);
+    await uploadGlb(h, id, 'hound-pixal3d.glb', a, { accountId: HELIX });
+    await uploadGlb(h, id, 'hound-trellis2.glb', b, { accountId: HELIX });
+    for (const [files, why] of [[[], /name its models/], [['hound.png'], /name its models/], [['hound-pixal3d.glb', 'never.glb'], /The model never\.glb was never uploaded\./]]) {
+      const r = await done(files);
+      assert.strictEqual(r.statusCode, 400, JSON.stringify(files));
+      assert.match(r.body.error, why);
+    }
+    assert.strictEqual(h.jobs.find((j) => j.id === id).status, 'running', 'a refused done leaves the job running');
+    const ok = await done(['hound-pixal3d.glb', 'hound-trellis2.glb']);
+    assert.deepStrictEqual([ok.statusCode, ok.body], [200, { success: true, data: { id, status: 'done' } }]);
+    const row = (await h.internal('GET /internal/team/jobs/:id', { params: { id } })).body.data;
+    assert.deepStrictEqual(row.files.map((f) => [f.name, f.bytes]), [['hound-pixal3d.glb', a.length], ['hound-trellis2.glb', b.length]]);
+    assert.ok(row.files.every((f) => path.isAbsolute(f.path)), 'with the paths model-gen.sh copies from');
   });
 });

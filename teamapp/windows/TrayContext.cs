@@ -22,6 +22,8 @@ namespace DeathMuffinTeam
         readonly TeamSettings settings;
         readonly TeamFolders folders = new TeamFolders(TeamSettings.Root);
         readonly TeamController controller;
+        /// <summary>ComfyUI for `model` jobs: Desktop's server, or the app's own (in comfy\, ended with the app).</summary>
+        readonly ComfyHost comfy;
         readonly HttpClient updateHttp = FileFetcher.CreateClient(Program.Version);
         readonly NotifyIcon tray = new NotifyIcon();
         readonly Control marshal = new Control();
@@ -62,10 +64,12 @@ namespace DeathMuffinTeam
             var platform = new WindowsPlatform(TeamSettings.Root);
             DisplayWatch.Start();   // is the screen on? (a benchmark run with it off is noted)
             var probe = new WindowsPcProbe(platform);   // one reader for both: the controller reads while a benchmark waits, the runner while a job runs
+            string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            comfy = new ComfyHost(new HttpComfyHttp(), new ProcessComfyLauncher(Native.ContainProcess), (out string why) => ComfyInstall.Find(appData, localAppData, out why), Path.Combine(TeamSettings.Root, "comfy"));
             var runner = new JobRunner(api, folders, new FileFetcher(FileFetcher.CreateClient(Program.Version)), new ProcessGameHost(Native.TendGameWindow, platform.Launched), platform, Native.TryHardLink, probe)
-                { ShotsPosition = Native.OffscreenPosition, WindowPosition = Native.OffscreenPositionFor, CrashRecord = Native.CrashRecord, BenchmarksAllowed = () => settings.RunBenchmarks };
+                { ShotsPosition = Native.OffscreenPosition, WindowPosition = Native.OffscreenPositionFor, CrashRecord = Native.CrashRecord, BenchmarksAllowed = () => settings.RunBenchmarks, Comfy = comfy };
             controller = new TeamController(api, settings, () => settings.Save(protector), platform, runner, this, () => DateTime.UtcNow,
-                Program.Version, Environment.MachineName, new Uri(TeamUrls.SiteBase), log.Line, probe);
+                Program.Version, Environment.MachineName, new Uri(TeamUrls.SiteBase), log.Line, probe) { ComfyInstalled = () => comfy.Installed, PlayerPlaying = comfy.PlayerPlaying };
 
             BuildMenu();
             try { tray.Icon = Icon.ExtractAssociatedIcon(ExePath); } catch (Exception) { tray.Icon = SystemIcons.Application; }
@@ -359,6 +363,7 @@ namespace DeathMuffinTeam
             if (afkBox != null) { afkBox.Close(); afkBox = null; }
             tray.Visible = false;
             tray.Dispose();
+            comfy.Dispose();   // the app's own ComfyUI server ends with the app (Desktop's is left alone)
             ExitThread();
         }
 

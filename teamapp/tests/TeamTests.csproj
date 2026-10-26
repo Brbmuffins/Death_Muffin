@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Logic tests for the team app's pure code (offer decision, quiet and disturbed rules, job plan, settings, server calls, downloads, job runner, controller, self-update). Runs on Linux and Windows:
+  <!-- Logic tests for the team app's pure code (offer decision, quiet and disturbed rules, job plan, settings, server calls, downloads, ComfyUI, job runner, controller, self-update). Runs on Linux and Windows:
        dotnet run in this folder, or run-local.sh when only a .NET 8 runtime and a Roslyn csc.dll are available. -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -19,8 +19,10 @@
     <Compile Include="..\windows\FileFetcher.cs" />
     <Compile Include="..\windows\GameHost.cs" />
     <Compile Include="..\windows\VideoEncoder.cs" />
+    <Compile Include="..\windows\Comfy.cs" />
     <Compile Include="..\windows\JobRunner.cs" />
     <Compile Include="..\windows\SelfUpdate.cs" />
     <Compile Include="..\windows\TeamController.cs" />
+    <EmbeddedResource Include="..\comfy\image-to-model.json" LogicalName="image-to-model.json" />
   </ItemGroup>
 </Project>

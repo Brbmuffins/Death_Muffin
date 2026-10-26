@@ -6,6 +6,7 @@ exists. Every generation step is scripted and resumable, and spend is reported p
 ```
 concept (Gemini)     art-src/concepts/<id>.png       <- art-manifest/gemini-jobs/*.json
   -> 3D + rig (Tripo) art-src/tripo/<id>/*.glb         <- art-manifest/tripo-specs/<id>.json
+     or 3D (ComfyUI)  art-src/comfy/<id>/<label>.glb   <- model-gen.sh on a team PC ("Image to model")
   -> build            public/models/<id>/character.glb   (props: public/models/props/<id>.glb)
   -> into the game    client/assets/...                 ("Into the game" below)
   -> import           godot --headless --path client --import   (commit the .import files)
@@ -42,6 +43,19 @@ ignored:
   skeleton or its combat clips; over the face budget but under the cap is a warning. Crowd creatures are checked by the crowd bake (5k).
 - Combat-trim source clips (`box_03`, `pitch_baseball`, `sing_01`, `basketball_shot`, see `build-characters.mjs` `COMBAT_TRIMS`) need no retarget credits for another biped hero: all Tripo biped rigs share one joint set, so copy the four `anim_*.glb` files from `art-src/tripo/hero_gravecaller/` into the new hero's folder before `build-characters.mjs`; it borrows them from there by itself for `hero_leg_*` bodies and the heroes in `NECRO_HEROES` (include a new playable hero there, or it loses its combat swings).
 - Runs are resumable: task ids are written to `art-src/tripo/<id>/state.json` before polling; failed tasks refund.
+
+## Image to model (ComfyUI on a team PC)
+
+A concept picture made into a model, free, on a team PC's graphics card: ComfyUI's "Pixal3D & TRELLIS.2: Image to Model" template run by the team
+app's `model` job (DECISIONS B76; teamapp/README.md "The model job" for the PC's side). In the Tripo bake-off of 2026-10-26 Pixal3D won the brazier and
+the hound, with its own paint. It makes **no skeleton**: a creature that moves gets its rig and clips from Blender (B74) or Tripo.
+
+`server/death-muffin/model-gen.sh [--pc <name>] [--model pixal3d|trellis2|both] [--faces N] [--texture 1024] [--seeds 0,1] [--runs runs.json] <out dir> <picture>...`
+queues one job (at most 8 runs: every picture with every model and seed, or the runs file's list), waits for it and copies `<label>.glb` and the PC's log
+into `<out dir>` (use `art-src/comfy/<id>/`). **Set `--faces` to the model's face budget (above) here**: the mesh is cut before it is painted. Never cut a
+painted model down afterwards: the paint smears. The concept rules are Tripo's (one subject, plain background; ComfyUI removes the background). A run takes
+4 to 7 minutes on a 4070 SUPER. The same picture, model, faces, texture and seed give the same model again, so a model that goes into the game is recorded as its run
+(`art-manifest/comfy/<id>.json`: the picture, the run's settings and the ComfyUI version the log names).
 
 ## Build
 

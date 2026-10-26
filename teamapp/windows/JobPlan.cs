@@ -58,7 +58,7 @@ namespace DeathMuffinTeam
 
     /// <summary>
     /// A job's payload, checked (kind `shots`: screenshots of a proposal on some presets, of one build or of a before and an after build; kind `clip`: short videos of a change, one game run for each
-    /// variant to choose from; kind `bench`: the game's own benchmark on some setups). Everything here comes from the
+    /// variant to choose from; kind `bench`: the game's own benchmark on some setups; kind `model`: 3D models made from pictures with ComfyUI, Comfy.cs). Everything here comes from the
     /// server, but the app still refuses anything that could leave the job's folder, reach another host, or change how the game starts: file names and URLs, checksums, the
     /// arguments the game is started with, the graphics presets and the benchmark setups.
     /// </summary>
@@ -67,6 +67,11 @@ namespace DeathMuffinTeam
         public const string ShotsKind = "shots";
         public const string BenchKind = "bench";
         public const string ClipKind = "clip";
+        /// <summary>3D models made from concept pictures with ComfyUI on this PC (README.md "The model job"): one run for each <see cref="ModelRun"/>, its model uploaded as `&lt;label&gt;.glb`.</summary>
+        public const string ModelKind = "model";
+        /// <summary>The pictures a `model` job may give ComfyUI, and how big one may be.</summary>
+        public static readonly string[] ModelImageTypes = { ".png", ".jpg", ".jpeg", ".webp" };
+        public const long MaxModelImageBytes = 32L << 20;
         /// <summary>The release checks of a new client on a team PC: steps run in order, each result uploaded as it finishes, a step that fails does not stop the next.</summary>
         public const string ReleaseKind = "release";
         /// <summary>The two builds a `release` job lists: the RELEASE files (install, quit while loading, bench) and the DEBUG build of the same revision (screens, stutter, soak).</summary>
@@ -158,7 +163,7 @@ namespace DeathMuffinTeam
         static readonly Regex BootOkRe = new Regex("(?:^|\\s)BOOT OK ([0-9]{1,9})(?:\\s|$)", RegexOptions.CultureInvariant | RegexOptions.Multiline);
         static readonly Regex UiScaleRe = new Regex("^[0-9]{1,2}(\\.[0-9]{1,3})?$", RegexOptions.CultureInvariant);
 
-        /// <summary>`shots`, `clip` or `bench`.</summary>
+        /// <summary>`shots`, `clip`, `model`, `release` or `bench`.</summary>
         public string Kind = ShotsKind;
         public string Rev = "";
         public string GodotVersion = "";
@@ -188,6 +193,8 @@ namespace DeathMuffinTeam
         public int SoakMinutes = DefaultSoakMinutes;
         /// <summary>`bench`, and the `bench` step of a `release` job: the runs, in order.</summary>
         public List<BenchSetup> Setups = new List<BenchSetup>();
+        /// <summary>`model`: the ComfyUI runs, in order.</summary>
+        public List<ModelRun> ModelRuns = new List<ModelRun>();
         /// <summary>The game's options after `--`, as the server sent them and checked (`shots` adds `--dev-offline` when missing).</summary>
         public List<string> Args = new List<string>();
         /// <summary>When the job's life ends (the offer's expiry): a `bench` job stops waiting for a quiet PC then. Null when not known.</summary>
@@ -216,7 +223,7 @@ namespace DeathMuffinTeam
         public bool HasStep(string step) { return Steps.Contains(step); }
 
         /// <summary>The kinds of job this version can run.</summary>
-        public static bool RunsKind(string kind) { return kind == ShotsKind || kind == ClipKind || kind == ReleaseKind || kind == BenchKind; }
+        public static bool RunsKind(string kind) { return kind == ShotsKind || kind == ClipKind || kind == ModelKind || kind == ReleaseKind || kind == BenchKind; }
 
         /// <summary>A `shots` payload, checked (see the other overload).</summary>
         public static bool TryParse(object payload, Uri siteBase, out JobPlan plan, out string error)
@@ -270,6 +277,10 @@ namespace DeathMuffinTeam
             {
                 if (!ParseRelease(d, p, out error)) return false;
             }
+            else if (kind == ModelKind)
+            {
+                if (!ParseModel(d, p, out error)) return false;
+            }
             else
             {
                 foreach (PlanBuild b in p.AllBuilds())
@@ -281,6 +292,7 @@ namespace DeathMuffinTeam
             object rawArgs;
             if (d.TryGetValue("args", out rawArgs) && rawArgs != null && !(rawArgs is List<object>)) { error = "The job's game options are not a list."; return false; }
             var args = MiniJson.Arr(d, "args") ?? new List<object>();
+            if (kind == ModelKind && args.Count > 0) { error = "A model job starts no game, so it takes no game options."; return false; }
             if (args.Count > MaxArgs) { error = "The job passes too many game options."; return false; }
             foreach (object o in args)
             {
@@ -476,6 +488,52 @@ namespace DeathMuffinTeam
         /// `clip`: the clip plan (1 to 4 clips, each with a name that is a safe token, at most 8 seconds long), the variants (1 to 4, each a label and an optional tune object; none given is one run labelled `clip`)
         /// and the one graphics preset (`high` when none is given).
         /// </summary>
+        /// <summary>
+        /// A `model` job's runs (`runs`, 1 to <see cref="ComfyRules.MaxRuns"/>): each a label (its model is `&lt;label&gt;.glb`), a picture of the job (`image`), the model (`pixal3d` or `trellis2`), the face count
+        /// (`faces`), the texture size (`texture`) and the seed (`seed`, 0 when missing).
+        /// </summary>
+        static bool ParseModel(Dictionary<string, object> d, JobPlan p, out string error)
+        {
+            error = null;
+            foreach (PlanFile f in p.Files)
+            {
+                if (Array.IndexOf(ModelImageTypes, Path.GetExtension(f.Name).ToLowerInvariant()) < 0) { error = "A model job gives pictures only (.png, .jpg or .webp), not " + f.Name + "."; return false; }
+                if (f.Bytes > MaxModelImageBytes) { error = "The picture " + f.Name + " is too big (at most " + (MaxModelImageBytes >> 20) + " MB)."; return false; }
+                if (f.IsCached) { error = "A model job's pictures are its own: " + f.Name + " is not kept in the cache."; return false; }
+            }
+            object raw;
+            d.TryGetValue("runs", out raw);
+            var runs = raw as List<object>;
+            if (runs == null || runs.Count == 0) { error = "The job has no model runs."; return false; }
+            if (runs.Count > ComfyRules.MaxRuns) { error = "The job has too many model runs (" + runs.Count + "; no more than " + ComfyRules.MaxRuns + " are allowed)."; return false; }
+            foreach (object o in runs)
+            {
+                var rd = o as Dictionary<string, object>;
+                if (rd == null) { error = "A model run in the job is not valid."; return false; }
+                var r = new ModelRun { Label = MiniJson.Str(rd, "label"), Image = MiniJson.Str(rd, "image"), Model = MiniJson.Str(rd, "model") };
+                if (!VariantLabelRe.IsMatch(r.Label)) { error = "A model run has a label that is not allowed: \"" + Shorten(r.Label) + "\"."; return false; }
+                foreach (ModelRun earlier in p.ModelRuns)
+                    if (earlier.Label == r.Label) { error = "The job lists the model run " + r.Label + " twice."; return false; }
+                if (p.FileNamed(r.Image) == null) { error = "The model run " + r.Label + " names a picture the job does not include: \"" + Shorten(r.Image) + "\"."; return false; }
+                if (r.Model != ComfyRules.Pixal3d && r.Model != ComfyRules.Trellis2) { error = "The model run " + r.Label + " names a model the app does not know: \"" + Shorten(r.Model) + "\" (pixal3d or trellis2)."; return false; }
+                long? faces = MiniJson.Int(rd, "faces");
+                if (faces == null || faces.Value < ComfyRules.FacesMin || faces.Value > ComfyRules.FacesMax)
+                { error = "The model run " + r.Label + " needs a face count from " + ComfyRules.FacesMin + " to " + ComfyRules.FacesMax + "."; return false; }
+                r.Faces = (int)faces.Value;
+                long? texture = MiniJson.Int(rd, "texture");
+                if (texture == null || Array.IndexOf(ComfyRules.TextureSizes, (int)texture.Value) < 0)
+                { error = "The model run " + r.Label + " needs a texture size of " + string.Join(", ", Array.ConvertAll(ComfyRules.TextureSizes, t => t.ToString(CultureInfo.InvariantCulture))) + "."; return false; }
+                r.Texture = (int)texture.Value;
+                object rawSeed;
+                long? seed = 0;
+                if (rd.TryGetValue("seed", out rawSeed) && rawSeed != null) seed = MiniJson.Int(rd, "seed");
+                if (seed == null || seed.Value < 0 || seed.Value > ComfyRules.SeedMax) { error = "The model run " + r.Label + " needs a seed from 0 to " + ComfyRules.SeedMax + "."; return false; }
+                r.Seed = seed.Value;
+                p.ModelRuns.Add(r);
+            }
+            return true;
+        }
+
         static bool ParseClips(Dictionary<string, object> d, JobPlan p, out string error)
         {
             error = null;

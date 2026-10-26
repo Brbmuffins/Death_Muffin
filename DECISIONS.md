@@ -387,6 +387,15 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   Blender job (its branch's build carries the model); a session sends one with `server/death-muffin/model-view.sh`. The Blender sheet on the
   VPS stays the quick check; the team PC's GPU is the judge of how it looks in play. No team app change: the jobs are the existing shots and
   clip jobs.
+- **B76. A team PC makes models from a concept picture with ComfyUI, whenever a job is queued** (Helix, 2026-10-26: "use Comfy UI whenever
+  there is a job... not just overnight", "the team app should launch it if it is not already running", "only run comfy ui on GPUs with 12GB+
+  vRAM"). The team app's `model` job runs ComfyUI's "Pixal3D & TRELLIS.2: Image to Model" template (both models, for comparison) on a PC with a
+  12 GB card and ComfyUI Desktop: Desktop's server when it is open, else one the app starts out of sight from Desktop's files and stops 10
+  minutes after its last job or when Death Muffin starts. The card's memory is let go after every job. The face count and texture size are set
+  in the workflow, so the mesh is cut before it is painted: a Pixal3D model cut down after it was painted looked much worse ("it was looking a
+  lot better straight from pixal"). In the bake-off against Tripo (2026-10-26) Pixal3D won the brazier and the hound; it makes no skeleton, so
+  rigs and clips stay with Blender (B74) and Tripo. A session queues jobs with `server/death-muffin/model-gen.sh`; the server offers them only
+  to PCs whose heartbeat says they can run them. It costs nothing per model, against Tripo's 50 to 60 credits.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

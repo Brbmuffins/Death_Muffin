@@ -8,7 +8,7 @@ using System.Text;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-// Everything that needs Windows: DPAPI, the full-screen and battery checks, the CPU and keyboard/mouse readings, hard links, the game's window, the start-with-Windows switch.
+// Everything that needs Windows: DPAPI, the full-screen and battery checks, the CPU and keyboard/mouse readings, the graphics card, hard links, the game's window, ComfyUI's job object, the start-with-Windows switch.
 // Not compiled by teamapp/tests; teamapp/tests/compile-check.sh compiles it against the .NET Framework 4.8 reference assemblies.
 namespace DeathMuffinTeam
 {
@@ -204,27 +204,64 @@ namespace DeathMuffinTeam
             {
                 try
                 {
-                    using (RegistryKey cls = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11cd-b6bb-00a0c91d1e40}"))
+                    EachDisplayAdapter(k =>
                     {
-                        if (cls != null)
-                            foreach (string sub in cls.GetSubKeyNames())
-                            {
-                                if (sub.Length != 4) continue;
-                                try
-                                {
-                                    using (RegistryKey k = cls.OpenSubKey(sub))
-                                    {
-                                        string desc = k == null ? null : k.GetValue("DriverDesc") as string;
-                                        if (!string.IsNullOrWhiteSpace(desc) && !names.Contains(desc.Trim())) names.Add(desc.Trim());
-                                    }
-                                }
-                                catch (Exception) { }
-                            }
-                    }
+                        string desc = k.GetValue("DriverDesc") as string;
+                        if (!string.IsNullOrWhiteSpace(desc) && !names.Contains(desc.Trim())) names.Add(desc.Trim());
+                    });
                 }
                 catch (Exception) { }
             }
             return string.Join(" + ", names);
+        }
+
+        /// <summary>
+        /// The largest graphics card's memory in MiB, from the display adapters' registry entries (the driver writes HardwareInformation.qwMemorySize, in bytes; older drivers only the 32-bit
+        /// HardwareInformation.MemorySize, which stops at 4 GB). 0 when no entry says.
+        /// </summary>
+        public long VramMb()
+        {
+            long best = 0;
+            try
+            {
+                EachDisplayAdapter(k =>
+                {
+                    long bytes = RegistryBytes(k.GetValue("HardwareInformation.qwMemorySize"));
+                    if (bytes <= 0) bytes = RegistryBytes(k.GetValue("HardwareInformation.MemorySize"));
+                    best = Math.Max(best, bytes / (1024 * 1024));
+                });
+            }
+            catch (Exception) { }
+            return best;
+        }
+
+        static long RegistryBytes(object v)
+        {
+            if (v is long) return (long)v;
+            if (v is int) return (long)(uint)(int)v;
+            var b = v as byte[];
+            if (b != null && b.Length >= 8) return BitConverter.ToInt64(b, 0);
+            if (b != null && b.Length >= 4) return BitConverter.ToUInt32(b, 0);
+            return 0;
+        }
+
+        /// <summary>Each display adapter's registry entry (the display class, {4d36e968-e325-11ce-bfc1-08002be10318}), one at a time: one that cannot be opened must not hide the others (0.1.0 reported nothing on Helix's PC).</summary>
+        static void EachDisplayAdapter(Action<RegistryKey> each)
+        {
+            using (RegistryKey cls = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}"))
+            {
+                if (cls == null) return;
+                foreach (string sub in cls.GetSubKeyNames())
+                {
+                    if (sub.Length != 4) continue;
+                    try
+                    {
+                        using (RegistryKey k = cls.OpenSubKey(sub))
+                            if (k != null) each(k);
+                    }
+                    catch (Exception) { }
+                }
+            }
         }
     }
 
@@ -519,6 +556,70 @@ namespace DeathMuffinTeam
         {
             System.Drawing.Rectangle v = SystemInformation.VirtualScreen;
             return JobPlan.OffscreenPosition(v.Left, v.Top, width);
+        }
+
+        // ---- ComfyUI's job object ----------------------------------------------------------------------------------------------------
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] static extern IntPtr CreateJobObject(IntPtr attributes, string name);
+        [DllImport("kernel32.dll", SetLastError = true)] static extern bool SetInformationJobObject(IntPtr job, int infoClass, ref JobExtendedLimits info, int length);
+        [DllImport("kernel32.dll", SetLastError = true)] static extern bool AssignProcessToJobObject(IntPtr job, IntPtr process);
+        [DllImport("kernel32.dll", SetLastError = true)] static extern bool TerminateJobObject(IntPtr job, uint exitCode);
+
+        const int JobObjectExtendedLimitInformation = 9;
+        const uint JobObjectLimitKillOnJobClose = 0x2000;
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct JobBasicLimits
+        {
+            public long PerProcessUserTimeLimit, PerJobUserTimeLimit;
+            public uint LimitFlags;
+            public UIntPtr MinimumWorkingSetSize, MaximumWorkingSetSize;
+            public uint ActiveProcessLimit;
+            public UIntPtr Affinity;
+            public uint PriorityClass, SchedulingClass;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct IoCounters { public ulong ReadOps, WriteOps, OtherOps, ReadBytes, WriteBytes, OtherBytes; }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct JobExtendedLimits
+        {
+            public JobBasicLimits Basic;
+            public IoCounters Io;
+            public UIntPtr ProcessMemoryLimit, JobMemoryLimit, PeakProcessMemoryUsed, PeakJobMemoryUsed;
+        }
+
+        /// <summary>
+        /// Puts the app's own ComfyUI server in a Windows job object that ends it, and every process it started, when the job object closes: when the app stops the server (Dispose), and when the app
+        /// ends any other way (a crash, Task Manager), because Windows closes the app's handles then. Null when Windows says no (the server still runs; the app's own stop still ends it).
+        /// </summary>
+        public static IDisposable ContainProcess(Process p)
+        {
+            IntPtr job = CreateJobObject(IntPtr.Zero, null);
+            if (job == IntPtr.Zero) return null;
+            var info = new JobExtendedLimits();
+            info.Basic.LimitFlags = JobObjectLimitKillOnJobClose;
+            if (!SetInformationJobObject(job, JobObjectExtendedLimitInformation, ref info, Marshal.SizeOf(typeof(JobExtendedLimits))) || !AssignProcessToJobObject(job, p.Handle))
+            {
+                CloseHandle(job);
+                return null;
+            }
+            return new JobHandle(job);
+        }
+
+        sealed class JobHandle : IDisposable
+        {
+            IntPtr job;
+            public JobHandle(IntPtr job) { this.job = job; }
+
+            public void Dispose()
+            {
+                if (job == IntPtr.Zero) return;
+                TerminateJobObject(job, 1);
+                CloseHandle(job);
+                job = IntPtr.Zero;
+            }
         }
 
         // ---- Keeping the game's window out of the way -------------------------------------------------------------------------------

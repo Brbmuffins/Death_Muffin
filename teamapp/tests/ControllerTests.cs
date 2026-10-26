@@ -67,6 +67,75 @@ namespace DeathMuffinTeam.Tests
             JobList();
             BenchmarksSwitch();
             AfkSwitch();
+            ModelJobs();
+        }
+
+        /// <summary>Helix 2026-10-26: ComfyUI only on a graphics card with 12 GB or more; such a PC with ComfyUI Desktop says so in its heartbeat, and only it lists and runs model jobs.</summary>
+        static void ModelJobs()
+        {
+            var r = new CtlRig();
+            r.Start();
+            T.Ok(!r.Api.LastState.Models && r.Api.LastState.VramMb == 4096, "a 4 GB card runs no model jobs, and its memory is sent");
+            T.Ok(r.Log.Any(l => l.Contains("graphics card: NVIDIA GeForce GTX 970, 4.0 GB (model jobs need 12 GB or more)")), "the app's log says why");
+
+            r = new CtlRig();
+            r.Plat.Vram = 12282;
+            r.Start();
+            T.Ok(!r.Api.LastState.Models, "a 12 GB card without ComfyUI Desktop runs none");
+
+            bool installed = true;
+            r = new CtlRig();
+            r.Plat.Vram = 11264;
+            r.C.ComfyInstalled = () => installed;
+            r.Start();
+            T.Ok(!r.Api.LastState.Models, "an 11 GB card with ComfyUI Desktop runs none");
+
+            r = new CtlRig(mode: OfferMode.Auto);
+            r.Plat.Gpu = "NVIDIA GeForce RTX 4070 SUPER";
+            r.Plat.Vram = 12282;
+            r.C.ComfyInstalled = () => installed;
+            r.Start();
+            T.Ok(r.Api.LastState.Models && r.Api.LastState.VramMb == 12282, "a 12 GB card with ComfyUI Desktop runs model jobs, and says so");
+            ListReply(r, Listed("job000000001", "model", "", 600), Listed("job000000002", "shots", "Screenshots", 60));
+            r.Beat();
+            T.Eq(r.C.JobsAvailable, 2, "it lists them");
+            installed = false;
+            r.Beat();
+            T.Ok(!r.Api.LastState.Models && r.C.JobsAvailable == 1 && r.C.CurrentOffer.Id == "job000000002", "ComfyUI Desktop gone: model jobs are left out at once");
+            T.Eq(r.Api.Declines.Count, 0, "and nothing is refused (the server stops offering them)");
+            installed = true;
+
+            var payload = new Dictionary<string, object>
+            {
+                { "files", new List<object> { Program.File_("concept.png") } },
+                { "runs", new List<object> { ModelRig.Run("hound") } },
+            };
+            r.Api.Claim = id => FakeApi.Ok(new Dictionary<string, object> { { "id", id }, { "kind", "model" }, { "title", "3D models from a picture, about 10 minutes" }, { "payload", payload } });
+            r.Runner.Result = new RunResult { Ok = true, Files = new List<string> { "hound.glb" } };
+            r.Runner.Gate = new TaskCompletionSource<int>();
+            r.Api.Heartbeat = () => FakeApi.OfferReply("job000000001", "model");
+            r.Beat();
+            Task running = r.C.EvaluateAsync();
+            T.Ok(WaitFor(() => r.C.IsBusy && r.Runner.Ran.Count == 1), "a model job runs like any job");
+            T.Ok(r.Runner.LastPlan != null && r.Runner.LastPlan.Kind == JobPlan.ModelKind && r.Runner.LastPlan.ModelRuns.Count == 1, "with its runs");
+            r.Api.Heartbeat = () => FakeApi.OfferReply("job000000003", "model");
+            r.Beat(); r.Beat();
+            T.Eq(r.Api.Declines.Count, 0, "a second model job offered while one runs is not declined busy (few PCs can run one: it waits for this one)");
+            r.Runner.Gate.SetResult(0);
+            Util.Wait(running);
+            T.Ok(r.Ui.Status.StartsWith("Last job: 1 model(s) uploaded at "), "the status says models were uploaded: " + r.Ui.Status);
+
+            int told = 0;
+            r.C.PlayerPlaying = () => told++;
+            r.Api.Heartbeat = () => FakeApi.Ok(new Dictionary<string, object> { { "serverTime", "2026-10-19T12:00:00Z" }, { "offer", null } });
+            r.Beat();
+            T.Eq(told, 0, "a heartbeat without the game says nothing to ComfyUI");
+            r.Plat.IsGame = true;
+            r.Beat();
+            T.Ok(told == 1 && r.Api.LastState.GameRunning, "a heartbeat that sees the player's game tells the app's ComfyUI to go");
+            r.C.PlayerPlaying = () => { throw new InvalidOperationException("no access"); };
+            r.Beat();
+            T.Ok(r.Log.Any(l => l.Contains("could not stop the app's ComfyUI for the game: no access")), "a failure there is logged, and the heartbeat still goes");
         }
 
         static Dictionary<string, object> Listed(string id, string kind, string title, double weightS, string who = null, string thread = null, params string[] steps)

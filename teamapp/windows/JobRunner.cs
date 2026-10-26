@@ -92,6 +92,12 @@ namespace DeathMuffinTeam
         public TimeSpan QuietWaitLimit = TimeSpan.FromDays(3);
         public int ApiAttempts = 3;
         public TimeSpan ApiRetryDelay = TimeSpan.FromSeconds(2);
+        /// <summary>The ComfyUI server a `model` job runs on (Desktop's, or the app's own started for it). Null: this app runs no model jobs.</summary>
+        public ComfyHost Comfy;
+        /// <summary>The workflow a `model` job's runs fill in; null: the one built into the app (tests give their own).</summary>
+        public ComfyWorkflow Workflow { get; set; }
+        public TimeSpan ModelRunLimit = ComfyRules.RunLimit;
+        public int ComfyPollMs = 2000;
 
         /// <param name="linker">Makes the second path a hard link to the first (Windows: CreateHardLink); false makes the runner copy the file. Null always copies.</param>
         /// <param name="probe">Reads the PC (CPU, keyboard and mouse, battery, full screen, the player's game): what a `bench` job needs to know whether the PC is quiet.</param>
@@ -126,8 +132,9 @@ namespace DeathMuffinTeam
                 var builds = plan.AllBuilds();
                 string what = plan.Kind == JobPlan.BenchKind ? "benchmark, " + plan.Setups.Count + " setup(s)"
                     : plan.Kind == JobPlan.ClipKind ? "clips, " + plan.Variants.Count + " variant(s), preset " + plan.Presets[0]
+                    : plan.Kind == JobPlan.ModelKind ? "3D models, " + plan.ModelRuns.Count + " run(s)"
                     : "presets " + string.Join(",", plan.Presets) + (plan.Builds.Count > 0 ? ", builds " + BuildNames(plan) : "");
-                note("job " + jobId + ", build " + (plan.Rev.Length > 0 ? plan.Rev : "?") + ", Godot " + (plan.GodotVersion.Length > 0 ? plan.GodotVersion : "?") + ", " + what);
+                note("job " + jobId + (plan.Kind == JobPlan.ModelKind ? "" : ", build " + (plan.Rev.Length > 0 ? plan.Rev : "?") + ", Godot " + (plan.GodotVersion.Length > 0 ? plan.GodotVersion : "?")) + ", " + what);
                 string outDir = folders.OutDir(jobId);
                 foreach (PlanBuild b in builds) Directory.CreateDirectory(folders.GameDir(jobId, b.Label));
                 Directory.CreateDirectory(outDir);
@@ -144,11 +151,12 @@ namespace DeathMuffinTeam
                 // (a `release` job fetches each build when the first step that needs it runs: a download that fails fails that step, not the job)
                 string encoder = plan.Kind == JobPlan.ClipKind ? await FetchEncoderAsync(fetched, note, progress, ct).ConfigureAwait(false) : null;
                 fetched.UsedKeys.Add(EncoderFile.CacheKey);   // the video encoder stays in cache\ whatever job runs (105 MB, needed by every clip job)
-                if (plan.Kind != JobPlan.ReleaseKind) folders.PruneCache(TeamLogic.KeepCacheKeys, fetched.UsedKeys);
+                if (plan.Kind != JobPlan.ReleaseKind && plan.Kind != JobPlan.ModelKind) folders.PruneCache(TeamLogic.KeepCacheKeys, fetched.UsedKeys);   // (a model job's pictures are not cached)
                 result.DownloadS = clock.Elapsed.TotalSeconds;
                 if (plan.Kind == JobPlan.BenchKind) return await RunBenchAsync(jobId, plan, result, log, note, progress, ct).ConfigureAwait(false);
                 if (plan.Kind == JobPlan.ClipKind) return await RunClipsAsync(jobId, plan, encoder, result, log, note, progress, ct).ConfigureAwait(false);
                 if (plan.Kind == JobPlan.ReleaseKind) return await RunReleaseAsync(jobId, plan, fetched, result, log, note, progress, ct).ConfigureAwait(false);
+                if (plan.Kind == JobPlan.ModelKind) return await RunModelAsync(jobId, plan, result, log, note, progress, ct).ConfigureAwait(false);
 
                 string planPath = folders.PlanFile(jobId);
                 File.WriteAllText(planPath, plan.PlanJson, new UTF8Encoding(false));
@@ -435,6 +443,163 @@ namespace DeathMuffinTeam
         }
 
         // ---- The `clip` job --------------------------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// A `model` job with its pictures in place: a ComfyUI server (<see cref="Comfy"/>: Desktop's when it is open, else the app's own, started now), its card checked (12 GB or more), the pictures put in
+        /// its input folder, then each run in turn: the workflow filled in and queued, watched (<see cref="ModelRunLimit"/> at most, stopped if the player starts Death Muffin), the model fetched and checked
+        /// and kept as `&lt;label&gt;.glb`. A run that fails is noted and the next one runs; the job fails only when no run made a model. The card's memory is freed and the job's files in ComfyUI's folders
+        /// removed at the end, then the models are uploaded and the job is done.
+        /// </summary>
+        async Task<RunResult> RunModelAsync(string jobId, JobPlan plan, RunResult result, StringBuilder log, Action<string> note, Action<string> progress, CancellationToken ct)
+        {
+            if (Comfy == null) throw new JobFailure("This PC does not run model jobs.");
+            string workflowError = null;
+            ComfyWorkflow workflow = Workflow ?? ComfyWorkflow.Embedded(out workflowError);
+            if (workflow == null) throw new JobFailure(workflowError);
+            note("workflow: " + workflow.About);
+            string gameDir = folders.GameDir(jobId), outDir = folders.OutDir(jobId);
+            string stem = ComfyStem(jobId);
+            var models = new List<KeyValuePair<string, string>>();
+            var failed = new List<string>();
+            var runClock = new Stopwatch();
+            CheckPlayer(0);
+            try
+            {
+                using (ComfyHost.Lease lease = await Comfy.AcquireAsync(note, progress, ct).ConfigureAwait(false))
+                {
+                    try
+                    {
+                        ComfyStats stats = await lease.Client.StatsAsync(ct).ConfigureAwait(false);
+                        if (stats == null) throw new JobFailure("ComfyUI stopped answering before the first run.");
+                        note("ComfyUI " + stats.Version + " on " + (stats.Device.Length > 0 ? stats.Device : "an unnamed device") + " (" + ComfyRules.Gb(stats.VramMb) + ")");
+                        if (!ComfyRules.CardFits(stats.VramMb))
+                            throw new JobFailure("ComfyUI runs on a graphics card with " + ComfyRules.Gb(stats.VramMb) + " of memory; model jobs need one with 12 GB or more.");
+
+                        var images = new Dictionary<string, string>();   // the job's picture -> its name in ComfyUI ("dmteam/<stem>-concept.png")
+                        foreach (ModelRun run in plan.ModelRuns)
+                        {
+                            if (images.ContainsKey(run.Image)) continue;
+                            ct.ThrowIfCancellationRequested();
+                            byte[] data = File.ReadAllBytes(Path.Combine(gameDir, run.Image));
+                            images[run.Image] = await lease.Client.UploadImageAsync(data, stem + "-" + run.Image.ToLowerInvariant(), ComfyRules.Folder, ct).ConfigureAwait(false);
+                            note("picture " + run.Image + " is " + images[run.Image] + " in ComfyUI");
+                        }
+
+                        string clientId = "dmteam-" + Guid.NewGuid().ToString("N");
+                        for (int i = 0; i < plan.ModelRuns.Count; i++)
+                        {
+                            ct.ThrowIfCancellationRequested();
+                            CheckPlayer(0);
+                            ModelRun run = plan.ModelRuns[i];
+                            progress(plan.ModelRuns.Count > 1 ? "Making 3D model " + (i + 1) + " of " + plan.ModelRuns.Count + " (" + run.Label + ")" : "Making the 3D model");
+                            note("run " + run.Label + ": " + run.Describe() + ", picture " + run.Image);
+                            var clock = Stopwatch.StartNew();
+                            runClock.Start();
+                            try
+                            {
+                                byte[] glb = await ModelRunAsync(lease.Client, workflow, run, images[run.Image], ComfyRules.Folder + "/" + stem + "-" + run.Label, clientId, note, ct).ConfigureAwait(false);
+                                string path = Path.Combine(outDir, run.Label + ".glb");
+                                File.WriteAllBytes(path, glb);
+                                models.Add(new KeyValuePair<string, string>(path, run.Label + ".glb"));
+                                note("run " + run.Label + ": a model of " + (glb.Length / 1e6).ToString("0.0", CultureInfo.InvariantCulture) + " MB in " + clock.Elapsed.TotalSeconds.ToString("0", CultureInfo.InvariantCulture) + " s");
+                            }
+                            catch (JobStopped) { throw; }
+                            catch (JobFailure jf)
+                            {
+                                failed.Add(run.Label);
+                                note("run " + run.Label + " FAILED: " + jf.Message);
+                            }
+                            finally { runClock.Stop(); }
+                        }
+                    }
+                    finally
+                    {
+                        await lease.Client.FreeAsync().ConfigureAwait(false);   // the models leave the card (Desktop's too: the member's game must not find it full)
+                        RemoveComfyFiles(lease, stem, note);
+                    }
+                }
+            }
+            catch (JobStopped)
+            {
+                Comfy.PlayerPlaying();   // the app's own server goes now, so the game has the whole card
+                throw;
+            }
+            result.RunS = runClock.Elapsed.TotalSeconds;
+            if (models.Count == 0) throw new JobFailure(plan.ModelRuns.Count == 1 ? "ComfyUI made no model: the reason is in the job's log." : "None of the " + plan.ModelRuns.Count + " runs made a model: the reasons are in the job's log.");
+            if (failed.Count > 0) note(failed.Count + " run(s) made no model: " + string.Join(", ", failed));
+            return await UploadAndFinishAsync(jobId, models, "model", ComfyRules.MaxModelBytes, result, log, note, progress, ct).ConfigureAwait(false);
+        }
+
+        /// <summary>One run: queued, watched until it ends, its model fetched and checked. A run ComfyUI refuses or fails, or one past the time limit, is a <see cref="JobFailure"/>; the player's game, the app
+        /// closing or the server's cancel stop it in ComfyUI too (so it does not keep the card busy) and end the job.</summary>
+        async Task<byte[]> ModelRunAsync(ComfyClient client, ComfyWorkflow workflow, ModelRun run, string image, string prefix, string clientId, Action<string> note, CancellationToken ct)
+        {
+            string promptId = await client.QueueAsync(workflow.Fill(run, image, prefix), clientId, ct).ConfigureAwait(false);
+            var clock = Stopwatch.StartNew();
+            ComfyOutcome outcome;
+            try
+            {
+                while (true)
+                {
+                    outcome = await client.ResultAsync(promptId, workflow.SaveNode, ct).ConfigureAwait(false);
+                    if (outcome.Finished) break;
+                    CheckPlayer(0);
+                    if (clock.Elapsed > ModelRunLimit) throw new JobFailure("The run took longer than " + (int)ModelRunLimit.TotalMinutes + " minutes, so it was stopped.");
+                    await Task.Delay(ComfyPollMs, ct).ConfigureAwait(false);
+                }
+            }
+            catch (Exception)
+            {
+                await client.StopAsync(promptId).ConfigureAwait(false);
+                throw;
+            }
+            if (!outcome.Ok) throw new JobFailure(outcome.Error);
+            byte[] glb = await client.ViewAsync(outcome.FileName, outcome.Subfolder, outcome.Type, ct).ConfigureAwait(false);
+            string bad = GlbProblem(glb);
+            if (bad != null) throw new JobFailure("ComfyUI's model " + outcome.FileName + " " + bad + ".");
+            return glb;
+        }
+
+        /// <summary>Why a model is not a whole binary glTF of a size the server takes (the server checks it again, fully), or null.</summary>
+        internal static string GlbProblem(byte[] b)
+        {
+            if (b == null || b.Length < 20 || b[0] != (byte)'g' || b[1] != (byte)'l' || b[2] != (byte)'T' || b[3] != (byte)'F') return "is not a binary glTF model";
+            if (BitConverter.ToUInt32(b, 8) != (uint)b.Length) return "is cut off";
+            if (b.Length > ComfyRules.MaxModelBytes) return "is too big (" + Mb(b.Length) + "; the server takes " + Mb(ComfyRules.MaxModelBytes) + ")";
+            return null;
+        }
+
+        /// <summary>The start of every file the job puts in ComfyUI's folders: the job's id in the letters a file name may have.</summary>
+        internal static string ComfyStem(string jobId)
+        {
+            var sb = new StringBuilder();
+            foreach (char c in jobId ?? "") if (sb.Length < 40 && (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_')) sb.Append(c);
+            return sb.Length > 0 ? sb.ToString() : "job";
+        }
+
+        /// <summary>Removes the job's pictures and models from ComfyUI's input and output folders (only the files of its dmteam folder that start with the job's id). Never throws.</summary>
+        static void RemoveComfyFiles(ComfyHost.Lease lease, string stem, Action<string> note)
+        {
+            int removed = 0;
+            foreach (string root in new[] { lease.InputRoot, lease.OutputRoot })
+            {
+                if (string.IsNullOrEmpty(root)) continue;
+                try
+                {
+                    string dir = Path.Combine(root, ComfyRules.Folder);
+                    if (!Directory.Exists(dir)) continue;
+                    foreach (string f in Directory.GetFiles(dir, stem + "-*"))
+                    {
+                        try { File.Delete(f); removed++; }
+                        catch (IOException) { }
+                        catch (UnauthorizedAccessException) { }
+                    }
+                }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+            if (removed > 0) note("removed the job's " + removed + " file(s) from ComfyUI's folders");
+        }
 
         /// <summary>
         /// A `clip` job with its files in place: one game run for each variant (its own empty folders, 1080p at the engine's `--fixed-fps 60`, the clip plan, and the variant's tune when it has one), then

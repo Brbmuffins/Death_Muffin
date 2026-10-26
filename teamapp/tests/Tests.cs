@@ -34,6 +34,7 @@ namespace DeathMuffinTeam.Tests
             SelfUpdateTests();
             RunnerTests.Run();
             LogCancelTests.Run();
+            ModelTests.Run();
             ControllerTests.Run();
             return T.Done();
         }
@@ -644,7 +645,8 @@ namespace DeathMuffinTeam.Tests
             var st = MiniJson.Obj(hbBody, "state");
             T.Ok(MiniJson.Bool(st, "gameRunning") && !MiniJson.Bool(st, "fullscreen") && MiniJson.Bool(st, "onBattery") && !MiniJson.Bool(st, "busy") && MiniJson.Bool(st, "paused"), "heartbeat state flags");
             T.Ok(MiniJson.Bool(st, "benchmarks"), "heartbeat state says benchmarks are on (the default)");
-            T.Eq(st.Count, 6, "heartbeat state has exactly the six contract keys");
+            T.Ok(!MiniJson.Bool(st, "models") && MiniJson.Int(st, "vramMb") == 0, "heartbeat state says the PC runs no model jobs (the default) and its card's memory");
+            T.Eq(st.Count, 8, "heartbeat state has exactly the eight contract keys");
             var offer = TeamApi.ParseOffer(hb);
             T.Ok(offer != null && offer.Id == "ab12cd34ef56" && offer.Kind == "shots" && offer.WeightS == 60 && offer.Title == "Screenshots of a change", "heartbeat offer is read");
             tr.Respond = r => new HttpReply { Status = 200, Body = "{\"success\":true,\"data\":{\"serverTime\":\"x\",\"offer\":null}}" };

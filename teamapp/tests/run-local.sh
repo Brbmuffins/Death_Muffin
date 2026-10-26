@@ -12,8 +12,8 @@ mkdir -p "$out"
 refs=()
 for f in "$RT"/*.dll; do case "$(basename "$f")" in *Native*|mscordaccore*|clrjit*|coreclr*|hostpolicy*|libSystem*) ;; *) refs+=("-r:$f");; esac; done
 win="$here/../windows"
-logic=("$win/Json.cs" "$win/TeamLogic.cs" "$win/Quiet.cs" "$win/JobPlan.cs" "$win/Settings.cs" "$win/TeamApi.cs" "$win/TeamFolders.cs" "$win/FileFetcher.cs" "$win/GameHost.cs" "$win/VideoEncoder.cs" "$win/JobRunner.cs" "$win/SelfUpdate.cs" "$win/TeamController.cs")
-nice -n 10 dotnet "$CSC" -nologo -nostdlib+ -langversion:9 -warn:4 -out:"$out/TeamTests.dll" -target:exe "${refs[@]}" "$here"/*.cs "${logic[@]}"
+logic=("$win/Json.cs" "$win/TeamLogic.cs" "$win/Quiet.cs" "$win/JobPlan.cs" "$win/Settings.cs" "$win/TeamApi.cs" "$win/TeamFolders.cs" "$win/FileFetcher.cs" "$win/GameHost.cs" "$win/VideoEncoder.cs" "$win/Comfy.cs" "$win/JobRunner.cs" "$win/SelfUpdate.cs" "$win/TeamController.cs")
+nice -n 10 dotnet "$CSC" -nologo -nostdlib+ -langversion:9 -warn:4 -out:"$out/TeamTests.dll" -target:exe -resource:"$here/../comfy/image-to-model.json",image-to-model.json "${refs[@]}" "$here"/*.cs "${logic[@]}"
 cat > "$out/TeamTests.runtimeconfig.json" <<JSON
 {"runtimeOptions":{"tfm":"net8.0","framework":{"name":"Microsoft.NETCore.App","version":"${RT##*/}"}}}
 JSON

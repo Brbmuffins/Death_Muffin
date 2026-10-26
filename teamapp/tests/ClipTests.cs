@@ -566,7 +566,7 @@ namespace DeathMuffinTeam.Tests
             // a kind the app still does not know says which it knows
             r = new CtlRig(mode: OfferMode.Auto);
             r.Start(); r.Offer("job0000000cc", "stutter"); r.Eval();
-            T.Ok(r.Ran == 0 && r.Api.Count("claim") == 0 && r.Log.Any(l => l.Contains("shots, clip, release and bench")), "a job kind this version cannot run is skipped, and the log names the four it runs");
+            T.Ok(r.Ran == 0 && r.Api.Count("claim") == 0 && r.Log.Any(l => l.Contains("shots, clip, model, release and bench")), "a job kind this version cannot run is skipped, and the log names the five it runs");
             T.Has(r.Ui.Status, "newer team app", "and the status asks for a newer app");
         }
 

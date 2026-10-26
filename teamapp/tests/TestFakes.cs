@@ -359,7 +359,9 @@ namespace DeathMuffinTeam.Tests
     {
         public bool IsFullscreen, IsGame, IsBattery;
         public string Gpu = "NVIDIA GeForce GTX 970";
+        public long Vram = 4096;
         public bool Fullscreen() { return IsFullscreen; }
+        public long VramMb() { return Vram; }
         public bool OnBattery() { return IsBattery; }
         public bool GameRunning() { return IsGame; }
         public string GpuName() { return Gpu; }

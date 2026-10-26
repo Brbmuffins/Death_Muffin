@@ -9,7 +9,7 @@
     <AssemblyName>DeathMuffinTeam</AssemblyName>
     <RootNamespace>DeathMuffinTeam</RootNamespace>
     <!-- Three parts, always: the app compares it with the version.json on the game's site (SelfUpdate.cs). -->
-    <Version>0.4.7</Version>
+    <Version>0.5.0</Version>
     <ApplicationIcon>Resources\DeathMuffin.ico</ApplicationIcon>
     <AssemblyTitle>Death Muffin Team</AssemblyTitle>
     <Product>Death Muffin Team</Product>
@@ -30,6 +30,11 @@
     <Reference Include="System.Drawing" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Security" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The `model` job's ComfyUI workflow (teamapp/comfy/make-workflow.py makes it; ComfyWorkflow.Embedded reads it). -->
+    <EmbeddedResource Include="..\comfy\image-to-model.json" LogicalName="image-to-model.json" />
   </ItemGroup>
 
 </Project>

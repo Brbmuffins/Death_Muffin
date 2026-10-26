@@ -22,6 +22,6 @@ for n in mscorlib System System.Core System.Drawing System.Windows.Forms System.
 done
 refs+=("-r:$REF/Facades/netstandard.dll" "-r:$REF/Facades/System.Runtime.dll")
 cd "$app"
-nice -n 10 dotnet "$CSC" -nologo -nostdlib+ -langversion:9 -warn:4 -warnaserror+ -platform:x64 -target:winexe -win32icon:Resources/DeathMuffin.ico \
+nice -n 10 dotnet "$CSC" -nologo -nostdlib+ -langversion:9 -warn:4 -warnaserror+ -platform:x64 -target:winexe -win32icon:Resources/DeathMuffin.ico -resource:../comfy/image-to-model.json,image-to-model.json \
   -out:"$out/DeathMuffinTeam.exe" "${refs[@]}" ./*.cs "$stamp"
 echo "compile-check: OK, DeathMuffinTeam.exe $ver ($(stat -c %s "$out/DeathMuffinTeam.exe") bytes)"

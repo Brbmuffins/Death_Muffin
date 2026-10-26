@@ -3,7 +3,7 @@
 A small Windows app for the three team PCs (War, Muffins and Helix; DECISIONS B54 and B55). It sits in the tray and runs the jobs that need a
 real graphics card, which the server does not have. Its jobs: **screenshots of a Discord-agent proposal on the graphics presets the job names** (`shots`; also of a *before* and an *after* build, side by side),
 **short videos of a change** (`clip`; one game run for each variant the team can choose between, such as three speeds of a spell), **the game's own benchmark of a release build**
-(`bench`, made by hand; the `release` job's bench step does it otherwise), run on a PC that is left alone, and **the checks of a revision before it goes live** (`release`: install, quit while loading, screens at four window sizes, stutter, bench and soak, one job and one report, asked for by whoever ships it; every publish also asks for the first two steps). It is not the players' launcher: it is installed only on those PCs, updates itself, and a bug in it never reaches players.
+(`bench`, made by hand; the `release` job's bench step does it otherwise), run on a PC that is left alone, **the checks of a revision before it goes live** (`release`: install, quit while loading, screens at four window sizes, stutter, bench and soak, one job and one report, asked for by whoever ships it; every publish also asks for the first two steps), and **3D models from a concept picture** (`model`: ComfyUI's Pixal3D or TRELLIS.2 on a PC with a 12 GB card and ComfyUI Desktop, whenever one is queued). It is not the players' launcher: it is installed only on those PCs, updates itself, and a bug in it never reaches players.
 
 The server keeps everything with keys or passwords and everything that changes the live game. The app only downloads builds our server made and
 uploads results; the server checks each result before it uses it.
@@ -35,10 +35,10 @@ Only the accounts on the server's team list (a table the server's team routes re
   its own resolution (the display mode is not changed; each run records its resolution), brought in front of everything with the focus once the game answers. For that switch the app joins the
   input of the window in front for a moment (Windows lets no background program hand out the focus otherwise; the app still sends no keys or clicks). It tries for 15 s after the window appears
   and stops once the window has had the focus, so a window you pick over it stays picked. The box says it takes the whole screen.
-- **Low priority.** The app and the game a screenshot or clip job starts run below normal priority. A benchmark's game runs at **normal** priority (a lower one would skew the numbers), and
+- **Low priority.** The app, the game a screenshot or clip job starts and the ComfyUI the app starts for a model job run below normal priority. A benchmark's game runs at **normal** priority (a lower one would skew the numbers), and
   the box says so.
 - **It stops for you.** If you start Death Muffin while a screenshot or clip job runs, the job's game is closed and the job is reported as
-  "stopped: the game started". Closing the app does the same ("stopped: the team app was closed"). A benchmark treats it as a touch of the PC: the run is thrown away and the
+  "stopped: the game started" (a model job too: its run is stopped in ComfyUI and the card's memory let go). Closing the app does the same ("stopped: the team app was closed"). A benchmark treats it as a touch of the PC: the run is thrown away and the
   benchmark waits for the PC to be quiet again ("The benchmark job" below).
 - **Its own folder, offline.** The game it starts runs with `APPDATA` and `LOCALAPPDATA` pointed into the job's folder (screenshots and clips also with `--dev-offline`; a benchmark with
   `--bench-dir`, which makes it a trial that sends nothing), so it never touches your game, settings or account. **Every run of the game has its own empty pair** (`jobs\<id>\run-<n>\appdata` and
@@ -229,14 +229,48 @@ screen and quit 0; quit itself while loading; write the stutter and soak JSON in
 release job is not declined for being busy (it is queued for this PC alone); the box says the game starts several times, that the benchmark takes the whole screen and that the benchmark and the soak want the PC left alone; the tray says "N of M release check step(s) passed".
 If the player starts Death Muffin (a game that has stayed open 3 s: one listed for a moment is not the player's), or the app closes, the job fails with the steps it had finished (`fail` carries them) and their result files stay on the server for the report.
 
+## The model job (`model`)
+
+"3D models from a picture, about N minutes" (DECISIONS B76, ASSET_PIPELINE.md "Image to model"): a session sends a concept picture (`server/death-muffin/model-gen.sh`) and this PC makes the model with
+ComfyUI's **"Pixal3D & TRELLIS.2: Image to Model"** template on its own graphics card: the background removed, the shape, the mesh cut to the face count asked for, **then** painted (the model is never cut down
+after it was painted: that ruins the paint), saved as one `.glb`. Whenever a job is queued, day or night, like any job (the box asks first; mode, pause and the waits above apply).
+
+**Which PCs**: one with a graphics card of **12 GB or more** (Helix, 2026-10-26; Windows' own figure for the card, `HardwareInformation.qwMemorySize`: 11,500 MiB or more, a 12 GB card reports a little under 12,288)
+and **ComfyUI Desktop** installed (`%APPDATA%\ComfyUI\config.json` naming its folder, with its `.venv`, and Desktop's program files with `resources\ComfyUI\main.py`; looked up every 5 minutes) with the template's
+models downloaded (opening the template once in Desktop does it). The heartbeat says so (`models`, and the card's `vramMb`), and the server offers and lists model jobs only to such a PC; one that stops qualifying
+leaves them out at once without refusing them. A model job offered while another job runs is not declined busy (it waits for this PC). The app's log names the card and its memory at start.
+
+**ComfyUI**: when the Desktop app is open (its server on `127.0.0.1:8000`), the job uses it (Desktop's queue: a run waits behind the member's own work). Otherwise **the app starts ComfyUI itself**, out of sight:
+Desktop's Python and ComfyUI files with Desktop's own core options, its models and custom nodes (`--base-directory` the Desktop folder, its `extra_models_config.yaml`), but its own user, input and output folders
+(`comfy\` below, so it never touches Desktop's settings or history), on `127.0.0.1` and the first free port of 8190 to 8199, below normal priority, no window, inside a Windows job object (it goes when the app goes,
+even if the app crashes). It must answer within 10 minutes (a first start after a ComfyUI update is the slow one); one that stops while starting fails the job with the end of what it said in the log. It stays
+up 10 minutes after its last job (a job soon after does not wait for a start), then stops; it also stops at once when the player's Death Muffin is seen (each heartbeat), and when the app closes.
+Desktop's own server is the member's and is never stopped.
+
+**The payload** (`JobPlan.ParseModel`): `files`, the pictures (`.png`, `.jpg`, `.jpeg`, `.webp`, each at most 32 MB, no `cacheKey`; downloaded and checked like any job's files) and `runs`, 1 to 8 of
+`{label, image, model, faces, texture, seed}`: `label` `^[a-z0-9][a-z0-9-]{0,23}$` (once; the model is `<label>.glb`), `image` one of the files, `model` `pixal3d` or `trellis2`, `faces` 500 to 200,000, `texture`
+512, 1024, 2048 or 4096 (the colour and normal maps), `seed` 0 to 1,000,000 (default 0; added to the template's own seeds, so 0 is the template as it is and the same seed gives the same model). No `args`.
+
+**What it runs**: the workflow built into the app (`teamapp/comfy/image-to-model.json`, made from the template by `teamapp/comfy/make-workflow.py <ComfyUI url>` against a running ComfyUI: only the nodes the saved
+model needs, in the API format, with `slots` naming the inputs a run fills in, each checked against ComfyUI's node definitions when it is made). Each distinct picture is uploaded once into ComfyUI's input
+folder as `dmteam/<job>-<picture>`; then each run, one after the other: the workflow filled in (picture, the TRELLIS.2 switch, `DecimateMesh`'s face count, texture size, seeds, `dmteam/<job>-<label>` as the save name), queued, watched every 2 s,
+at most 30 minutes from its queueing; the `.glb` fetched from ComfyUI (`/view`), checked (a whole binary glTF, at most 48 MB) and kept as `out\<label>.glb`. A run ComfyUI refuses (its reasons, such as a missing
+node), fails (the node and its error, such as running out of the card's memory), saves no model or runs past the limit is noted in the log and the next run goes on; a stopped run is taken out of ComfyUI's
+queue and interrupted. The player's game, the server's cancel or the app closing stop the job. After the runs (whatever happened), ComfyUI is asked to **let go of the card's memory** (`/free`, so a game started
+next finds the card empty) and the job's files are removed from ComfyUI's `dmteam` folders. The log has ComfyUI's version and card, each run's settings and how long it took.
+
+**Uploads**: every model as `<label>.glb` (`Content-Type: model/gltf-binary`; the server checks it is a whole glTF binary of at most 48 MB), then `done`. A job with no model at all fails, with the reasons in the log; one
+with some is done, and the log names the runs that made none. The tray says "N model(s) uploaded".
+
 ## Folders (`%LOCALAPPDATA%\DeathMuffinTeam\`)
 
 | What | Where |
 |---|---|
 | Settings (signed-in account, protected token, this PC's id, mode, pause) | `settings.json` |
 | The app's own log | `app.log` (and `app.old.log`) |
+| The ComfyUI the app starts | `comfy\user\` (its settings and database), `comfy\input\` and `comfy\output\` (a model job's files, removed after it) |
 | Files kept across jobs | `cache\<cacheKey>\` |
-| One job | `jobs\<id>\` with `game\` (`game-before\` and `game-after\` for a screenshots job with two builds), `run-<n>\appdata\` and `run-<n>\localappdata\` (a fresh pair for each run of the game), `out\<preset>\` (`out\<build>\<preset>\` with two builds) for screenshots, `out\<variant>\` and `tune-<variant>.json` for clips, `out\screens\<w>x<h>[_s<scale>]\`, `out\stutter\` and `out\soak\` for a release job (with `game-release\` and `game-debug\`), `bench-<i>\` (a benchmark setup's `pending.json`), `plan.json`, `job.log` |
+| One job | `jobs\<id>\` with `game\` (`game-before\` and `game-after\` for a screenshots job with two builds), `run-<n>\appdata\` and `run-<n>\localappdata\` (a fresh pair for each run of the game), `out\<preset>\` (`out\<build>\<preset>\` with two builds) for screenshots, `out\<variant>\` and `tune-<variant>.json` for clips, `out\screens\<w>x<h>[_s<scale>]\`, `out\stutter\` and `out\soak\` for a release job (with `game-release\` and `game-debug\`), the pictures in `game\` and `out\<label>.glb` for a model job, `bench-<i>\` (a benchmark setup's `pending.json`), `plan.json`, `job.log` |
 
 ## Updating itself
 
@@ -270,9 +304,9 @@ numbers) for each release and add a line below.
 `TeamLogic.cs` (modes, the offer decision, texts, token expiry, version compare, hashing), `Quiet.cs` (when a PC is quiet enough for a benchmark and when a run was disturbed: pure rules over readings of the PC),
 `JobPlan.cs` (payload checks for each kind, command lines, upload names, reading a benchmark's result),
 `TeamApi.cs` (the login and the server's team routes behind an injectable transport; how long each kind of request may take), `TeamController.cs` (the heartbeat's long poll, offers, answers, claim, sign-in problems),
-`JobRunner.cs` (download, game runs, uploads or benchmark runs, done or fail), `FileFetcher.cs` (checked, resumable downloads), `GameHost.cs` (starting the game and watching for
+`JobRunner.cs` (download, game runs, uploads or benchmark runs, model runs, done or fail), `Comfy.cs` (the model job's ComfyUI: its rules, the workflow, the server's routes, finding ComfyUI Desktop and starting its server), `FileFetcher.cs` (checked, resumable downloads), `GameHost.cs` (starting the game and watching for
 the player's Death Muffin), `TeamFolders.cs`, `Settings.cs`, `SelfUpdate.cs`, `Json.cs`: none of them touches Windows or WinForms, and `teamapp/tests` runs all of them.
-`Platform.cs` (DPAPI, full screen and battery checks, the CPU and keyboard/mouse readings, hard links, the game's window, start with Windows), `TrayContext.cs`, `OfferBox.cs`, `AfkNotice.cs`, `SignInForm.cs`,
+`Platform.cs` (DPAPI, full screen and battery checks, the card's name and memory, the Windows job object of the ComfyUI it starts, the CPU and keyboard/mouse readings, hard links, the game's window, start with Windows), `TrayContext.cs`, `OfferBox.cs`, `AfkNotice.cs`, `SignInForm.cs`,
 `Art.cs` (the launcher's look) and `Program.cs` are the Windows side.
 
 ### What only a PC can check
@@ -287,10 +321,16 @@ long poll against the live server through nginx (a held heartbeat ending at once
 not allow it; the benchmark's window full screen at the screen's resolution and in front with the focus (a window picked over it staying picked), and not counting as input; the release build honouring `--bench-quit`, `--bench-dir` and `--bench-preset` (exit codes 0, 1, 2) and leaving
 `pending.json`; a disturbed run on a real PC (a busy program started during it) being discarded and retried; the box's note; and one whole benchmark job against the server, including a screenshot job interleaved with a waiting benchmark (the controller reads the PC on the interface thread once a second). Also on a real PC: `--audio-driver Dummy` really silent (loading screen and game), a screenshot job's window really never seen (no boot splash, no taskbar button: it starts minimized from `override.cfg`
 and is restored left of every monitor; the pictures still taken, at their exact sizes: Godot and the driver draw a window that is off screen), a cancel in the heartbeat reply stopping a running game; the AFK notice (shown without taking the keyboard or the focus, End AFK mode working from it and from the tray menu); the box's job list (a click on a row picks it without taking the keyboard
-or the focus, the box growing with the list and staying in its corner).
+or the focus, the box growing with the list and staying in its corner). For the model job: the card's memory read from the registry (a 12 GB card over 11,500 MiB, an 8 GB one under); ComfyUI Desktop found
+from its `config.json` and program files; a job using Desktop's open server; with Desktop closed, the app's own ComfyUI starting (no window, below normal priority, Desktop's models and custom nodes found),
+answering, making the models and stopping 10 minutes later, when Death Muffin starts and with the app (also when the app is killed: the job object); the card's memory let go after a job (Task Manager);
+the models' look against a run made by hand in Desktop.
 
 ### Changelog
 
+- **0.5.0** (2026-10-26) - The `model` job (Helix): 3D models from a concept picture with ComfyUI's Pixal3D or TRELLIS.2, the face count set before the model is painted, on a PC with a 12 GB card and ComfyUI Desktop,
+  whenever one is queued. The app uses Desktop's server when Desktop is open and starts ComfyUI itself, out of sight, when it is not; it lets go of the card's memory after each job. The heartbeat sends the card's memory
+  and whether this PC runs model jobs.
 - **0.4.7** (2026-10-19) - Screenshots at 1080p (Helix): a screenshots job that names no sizes runs the game at 1920x1080 instead of 1600x900, and every picture run passes `--qa-window` with its size, so a
   1080p (or smaller) screen no longer cuts the window's height; its spot outside every monitor leaves room for its width.
 - **0.4.6** (2026-10-19) - The tray menu shows a tick beside Run benchmarks, Allow AFK mode and Start with Windows when they are on (the menu had no check column, so on and off looked the same; Helix).

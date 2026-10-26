@@ -7,7 +7,9 @@
  * Job kinds: `shots` (pictures of a proposal, uploaded as PNG files), `release` (the release checks of a new client on a team PC: one job, steps run in order, each step's
  * result uploaded as a `<step>.json` file beside the screens' PNGs as it finishes, then `done` with how each step went; the reporter reads them with the internal list route),
  * `clip` (short videos of a change: since team app 0.4.5 the PC makes each mp4 itself (1080p at 60, Helix 2026-10-19) and uploads it, checked and kept as it is; an older app uploads
- * motion-JPEG files, and `done` turns each into an mp4 with ffmpeg here, because the game's debug build has no video encoder) and `bench` (the release's benchmark runs on a team PC, handed over in `done` and stored
+ * motion-JPEG files, and `done` turns each into an mp4 with ffmpeg here, because the game's debug build has no video encoder), `model` (3D models made from a concept picture with ComfyUI on a
+ * team PC whose graphics card has 12 GB or more (team app 0.5.0, teamapp/README.md "The model job"): one `<run>.glb` uploaded for each run, checked as a whole binary glTF; only a PC whose heartbeat says
+ * state.models true is offered one or shown one in its queue) and `bench` (the release's benchmark runs on a team PC, handed over in `done` and stored
  * in the benchmark history, benchmarks.cjs, marked as team-PC runs; the `release` job, which server/death-muffin/team-check.sh queues for a revision before it goes live, carries the same runs).
  *
  * The app signs in with its own team token, never the game's login session: POST /api/team/login checks the account's password like /login does
@@ -19,8 +21,9 @@
  *   POST /api/team/login                       { username, password, pcId, pcName } -> { success, data: { token, expiresAt, accountId, username } }
  *   POST /api/team/logout                      revokes the token it came with -> { success }
  *   GET  /api/team/me                          -> { success, data: { accountId, username } }
- *   POST /api/team/heartbeat                   the PC's state (+ optional `wait`, 0..25 seconds, default 0; state.benchmarks false = the member switched benchmarks off on that PC) -> { success, data: { serverTime, offer, cancel, queue } }   offer: null or the oldest queued job
- *                                              of the first kind in KIND_ORDER that has one (shots, then clip, then bench, then any other kind) that this PC has not declined; cancel: the ids of jobs this PC claimed that were cancelled in the last 10 minutes (the
+ *   POST /api/team/heartbeat                   the PC's state (+ optional `wait`, 0..25 seconds, default 0; state.benchmarks false = the member switched benchmarks off on that PC; state.models true = it runs
+ *                                              model jobs, state.vramMb its graphics card's memory in MiB, kept for the runner's PC list) -> { success, data: { serverTime, offer, cancel, queue } }   offer: null or the oldest queued job
+ *                                              of the first kind in KIND_ORDER that has one (shots, clip, model, release, bench, then any other kind) that this PC has not declined and may run (a model job only for state.models); cancel: the ids of jobs this PC claimed that were cancelled in the last 10 minutes (the
  *                                              app stops the one it runs and ignores the rest); queue: the jobs this PC may take, oldest first (Helix 2026-10-19: the app's job list shows the first 10 oldest to newest), at most 20, each
  *                                              { id, kind, title, weightS, expiresAt, requestedBy?, thread?, steps? } (requestedBy and thread: who started the Discord thread the job came from and its name; steps: a release job's steps). With `wait` > 0 the request is held (long poll) while there is nothing to say:
  *                                              no offer for this PC and no cancel it has not been told, until a job this PC may take is queued (the runner creates one, or a
@@ -32,8 +35,9 @@
  *   PUT  /api/team/jobs/:id/files/:name        one file as the raw body, 40 a job (120 for a release job): a PNG (`image/png`, at most 20 MB; not for a clip job), for a clip job only a
  *                                              clip's video (`<name>.mp4`, `video/mp4`, at most 8,000,000 bytes, whole boxes: ftyp first, moov, mdat with data) or a
  *                                              motion-JPEG clip (`<name>.mjpeg`, `video/x-motion-jpeg`, at most 48 MB, starting with a JPEG picture), for a release job only a step's
- *                                              result (`<name>.json`, `application/json`, at most 1 MB, valid JSON) -> { success, data: { name, bytes, width, height } } (no size for a JSON file)
- *   POST /api/team/jobs/:id/done               shots: { files, log, timings }; clip: { files: [the uploaded .mp4 or .mjpeg names], log, timings }: an mp4 is kept as it is (it must still hold a
+ *                                              result (`<name>.json`, `application/json`, at most 1 MB, valid JSON), for a model job only a model (`<name>.glb`, `model/gltf-binary`, at most 48 MB,
+ *                                              checkGlb) -> { success, data: { name, bytes, width, height } } (no size for a JSON file or a model)
+ *   POST /api/team/jobs/:id/done               shots: { files, log, timings }; model: { files: [the uploaded .glb names, at least one], log, timings }; clip: { files: [the uploaded .mp4 or .mjpeg names], log, timings }: an mp4 is kept as it is (it must still hold a
  *                                              video), a .mjpeg is turned into <name>.mp4 (ffmpeg, below) and only the mp4 kept; release: { steps: [{ step, ok, error?, ms? }], files: [uploaded .png/.json names],
  *                                              runs?: [the bench step's benchmark payloads, as for bench], log, timings } (a step the PC skipped, a benchmark with benchmarks off there, is { step, ok: true, skipped: true, error }); bench: { runs: [the benchmark payloads DmApi.post_benchmark sends, at most 6, each at
  *                                              most 64 KB of JSON], log, timings } -> { success, data: { id, status } }. A bench run that does not validate (the words
@@ -58,7 +62,7 @@
  * A running job whose PC sends no heartbeat for 3 minutes goes back to queued once (tries + 1); the second time it fails. A queued job past its
  * expires_at becomes expired. Both are swept on every heartbeat and every internal call, so no timer is needed.
  * Everything a PC sends is untrusted: strings are trimmed, stripped of control characters and capped; a result file must be a real PNG (or a motion-JPEG clip
- * that starts with a JPEG picture) of a sane size, with a name from a closed alphabet, written only under <resultsDir>/<job id>/.
+ * that starts with a JPEG picture, or a whole binary glTF model) of a sane size, with a name from a closed alphabet, written only under <resultsDir>/<job id>/.
  * A clip's mp4 is made by `/usr/bin/nice -n 10 $FFMPEG` (default /usr/bin/ffmpeg) started with an argument array, never a shell, with its working folder and HOME in
  * the job's folder (the service's unit lets it write nothing else), a 120 s limit (killed after it), crf 26 and, when the mp4 is not under 8 MB (Discord's limit for the
  * bot), crf 32; one transcode at a time on this machine. A clip that does not turn into a video fails the job with a readable reason.
@@ -84,6 +88,8 @@ const FFMPEG_NOTE_MAX = 1500;             // characters of ffmpeg's own words ke
 const FILES_PER_JOB = 40;
 const RELEASE_FILES_PER_JOB = 120;        // a release job's screens alone are up to 4 resolutions x 2 UI scales x 6 shots, and every step has its result file
 const JSON_MAX_BYTES = 1024 * 1024;       // one step's result file
+const GLB_MAX_BYTES = 48 * 1024 * 1024;   // one model (nginx takes 50 MB a request): a 4096 colour texture with its 2048 normal and 1024 shading maps stays well under it
+const VRAM_MB_MAX = 1 << 20;              // a heartbeat's state.vramMb is kept as a whole number 0 to this
 const LIST_LIMIT_DEFAULT = 50;
 const LIST_LIMIT_MAX = 100;
 const RUNS_PER_JOB = 6;                   // benchmark runs a `bench` job hands over
@@ -94,7 +100,7 @@ const DONE_ROUTE_RE = /^\/(?:api\/)?team\/jobs\/[0-9a-f]{12}\/done\/?$/;   // th
 // The uploads read their own body too: a .json step result is sent as application/json, and server.js's JSON parser would read it first and leave
 // the route waiting for a body already gone (2026-10-19: Helix's release checks timed out three times on install.json).
 const FILES_ROUTE_RE = /^\/(?:api\/)?team\/jobs\/[0-9a-f]{12}\/files\/[^/]+$/;
-const KIND_ORDER = ['shots', 'clip', 'release', 'bench'];   // what a heartbeat offers first: a release or bench job waits on its PC until it is quiet, so it must never hide a newer shots or clip job; other kinds come last
+const KIND_ORDER = ['shots', 'clip', 'model', 'release', 'bench'];   // what a heartbeat offers first: a release or bench job waits on its PC until it is quiet, so it must never hide a newer shots, clip or model job; other kinds come last
 const KIND_RANK_SQL = `CASE kind ${KIND_ORDER.map((k, i) => `WHEN '${k}' THEN ${i}`).join(' ')} ELSE ${KIND_ORDER.length} END`;
 const CANCEL_MINUTES = 10;                // a heartbeat names the PC's jobs cancelled this recently
 const CANCELS_MAX = 20;
@@ -132,11 +138,14 @@ const FILE_NAME_RE = /^[a-z0-9_-]{1,60}\.png$/;
 const CLIP_NAME_RE = /^[a-z0-9][a-z0-9_-]{0,59}\.mjpeg$/;
 const MP4_NAME_RE = /^[a-z0-9][a-z0-9_-]{0,59}\.mp4$/;
 const JSON_NAME_RE = /^[a-z0-9][a-z0-9_-]{0,59}\.json$/;
-const RESULT_NAME_RE = { result: [FILE_NAME_RE, MP4_NAME_RE, JSON_NAME_RE], stored: [FILE_NAME_RE, CLIP_NAME_RE, MP4_NAME_RE, JSON_NAME_RE] };   // what a job's listing shows (pictures and videos), and what its folder may hold
+const GLB_NAME_RE = /^[a-z0-9][a-z0-9_-]{0,59}\.glb$/;
+const RESULT_NAME_RE = { result: [FILE_NAME_RE, MP4_NAME_RE, JSON_NAME_RE, GLB_NAME_RE], stored: [FILE_NAME_RE, CLIP_NAME_RE, MP4_NAME_RE, JSON_NAME_RE, GLB_NAME_RE] };   // what a job's listing shows (pictures, videos, models), and what its folder may hold
 const CLIP_TYPE = 'video/x-motion-jpeg';
 const MP4_TYPE = 'video/mp4';
+const GLB_TYPE = 'model/gltf-binary';
 const KIND_CLIP = 'clip';
 const KIND_RELEASE = 'release';
+const KIND_MODEL = 'model';
 const STEP_NAMES = ['install', 'quit-loading', 'screens', 'stutter', 'bench', 'soak'];   // a release job's steps, in the order they run
 const STATUS_FILTERS = { finished: ['done', 'failed'], open: ['queued', 'running'], queued: ['queued'], running: ['running'], done: ['done'], failed: ['failed'], cancelled: ['cancelled'], expired: ['expired'] };
 const TERMINAL = ['done', 'failed', 'cancelled', 'expired'];
@@ -201,7 +210,10 @@ function parseHeartbeat(body) {
     pc: {
       pcId, name: text(b.name, 64), version: text(b.version, 32), gpu: text(b.gpu, 120),
       mode: MODES.includes(b.mode) ? b.mode : 'ask',
-      state: { gameRunning: s.gameRunning === true, fullscreen: s.fullscreen === true, onBattery: s.onBattery === true, busy: s.busy === true, paused: s.paused === true, benchmarks: s.benchmarks !== false },
+      state: {
+        gameRunning: s.gameRunning === true, fullscreen: s.fullscreen === true, onBattery: s.onBattery === true, busy: s.busy === true, paused: s.paused === true, benchmarks: s.benchmarks !== false,
+        models: s.models === true, vramMb: clampInt(s.vramMb, 0, VRAM_MB_MAX) ?? 0,
+      },
     },
   };
 }
@@ -313,6 +325,31 @@ function checkJson(buf) {
   } catch {
     return { error: 'That file is not valid JSON.' };
   }
+  return {};
+}
+
+/**
+ * Check a model a team PC made (a model job's `<name>.glb`): a whole binary glTF 2.0. The 12-byte header (magic `glTF`, version 2, the file's length), then chunks that fill the file exactly,
+ * the first one JSON that parses to an object with `asset` and at least one mesh, any after it whole. What the model looks like is the reporter's to show (model-view.sh). Returns { error } or {}.
+ */
+function checkGlb(buf) {
+  const notModel = { error: 'That file is not a whole binary glTF model (.glb).' };
+  if (!Buffer.isBuffer(buf) || buf.length < 20 || buf.toString('latin1', 0, 4) !== 'glTF') return notModel;
+  if (buf.readUInt32LE(4) !== 2) return { error: 'That model is not glTF 2.0.' };
+  if (buf.readUInt32LE(8) !== buf.length) return { error: 'That model is cut off (its length does not match its header).' };
+  let json = null;
+  for (let at = 12, chunks = 0; at < buf.length; chunks++) {
+    if (chunks >= 16 || at + 8 > buf.length) return notModel;
+    const len = buf.readUInt32LE(at);
+    const type = buf.toString('latin1', at + 4, at + 8);
+    if (at + 8 + len > buf.length) return notModel;
+    if (chunks === 0) {
+      if (type !== 'JSON') return notModel;
+      try { json = JSON.parse(buf.toString('utf8', at + 8, at + 8 + len)); } catch { return notModel; }
+    }
+    at += 8 + len;
+  }
+  if (!isObject(json) || !isObject(json.asset) || !Array.isArray(json.meshes) || !json.meshes.length) return { error: 'That model holds no mesh.' };
   return {};
 }
 
@@ -639,14 +676,16 @@ module.exports = function mountTeamJobs(app, pool, {
     return w;
   }
 
-  /** What a heartbeat answers: the offer for this PC and the ids of the jobs it claimed that were cancelled lately (after the sweep). */
-  async function heartbeatAnswer(account, pcId) {
+  /** What a heartbeat answers: the offer for this PC and the ids of the jobs it claimed that were cancelled lately (after the sweep). `models`: the PC runs model jobs (its state.models). */
+  async function heartbeatAnswer(account, pcId, models) {
     await sweep();
-    // The oldest queued job of the first kind that has one (KIND_ORDER) that this PC has not declined and that is not meant for another PC. At most OPEN_JOBS_MAX jobs are queued, so the list is every one of them.
+    // The oldest queued job of the first kind that has one (KIND_ORDER) that this PC has not declined, that is not meant for another PC and that it can run (a model job needs a PC that
+    // runs them: an older app, or a card under 12 GB, is never offered one). At most OPEN_JOBS_MAX jobs are queued, so the list is every one of them.
     const [rows] = await pool.execute(
       `SELECT id, kind, title, weight_s, result, UNIX_TIMESTAMP(expires_at) AS expires_ts, UNIX_TIMESTAMP(created_at) AS created_ts, requested_by, thread_name,
               CASE WHEN kind = '${KIND_RELEASE}' THEN JSON_EXTRACT(payload, '$.steps') END AS steps FROM team_jobs
-        WHERE status = 'queued' AND expires_at > NOW() AND (target_pc IS NULL OR target_pc = ?) ORDER BY ${KIND_RANK_SQL} ASC, created_at ASC, id ASC LIMIT ${OPEN_JOBS_MAX}`, [pcId]);
+        WHERE status = 'queued' AND expires_at > NOW() AND (target_pc IS NULL OR target_pc = ?) AND (kind <> '${KIND_MODEL}' OR ? = 1)
+        ORDER BY ${KIND_RANK_SQL} ASC, created_at ASC, id ASC LIMIT ${OPEN_JOBS_MAX}`, [pcId, models ? 1 : 0]);
     const j = rows.find((r) => !declinedBy(r.result, pcId));
     const offer = j ? { id: String(j.id), kind: String(j.kind), title: String(j.title), weightS: Number(j.weight_s), expiresAt: isoOf(j.expires_ts) } : null;
     // The jobs this PC claimed that were cancelled lately: a cancel reaches the PC within a heartbeat (it cannot know until it asks). A job cancelled while queued was never claimed.
@@ -730,14 +769,14 @@ module.exports = function mountTeamJobs(app, pool, {
       // This PC's own running job is alive (renewed before the sweep, so a PC that woke up late keeps it).
       await pool.execute("UPDATE team_jobs SET heartbeat_at = NOW() WHERE status = 'running' AND claimed_account = ? AND claimed_pc = ?", [account, pcId]);
       const key = `${account}/${pcId}`;
-      let answer = await heartbeatAnswer(account, pcId);
+      let answer = await heartbeatAnswer(account, pcId, pc.state.models);
       if (waiter && !hasNews(answer, key)) {
         // Nothing to say: hold the request until there is, or `wait` runs out (then it answers as it always does).
         const deadline = Date.now() + waitS * waitUnitMs;
         for (;;) {
           await waiter.sleep(deadline - Date.now());
           if (waiter.gone) return;   // the PC hung up: nobody to answer
-          answer = await heartbeatAnswer(account, pcId);
+          answer = await heartbeatAnswer(account, pcId, pc.state.models);
           if (hasNews(answer, key) || Date.now() >= deadline) break;
         }
       }
@@ -794,11 +833,11 @@ module.exports = function mountTeamJobs(app, pool, {
     if (!id) return;
     const name = typeof req.params.name === 'string' ? req.params.name : '';
     // what the file is: a clip's video made on the PC (.mp4) or a motion-JPEG clip the server makes it of (.mjpeg, the team app before 0.4.5), both for a clip job; a step's JSON result (a release job);
-    // or a PNG picture (any job but a clip job)
-    const sort = MP4_NAME_RE.test(name) ? 'video' : CLIP_NAME_RE.test(name) ? 'clip' : JSON_NAME_RE.test(name) ? 'result' : FILE_NAME_RE.test(name) ? 'picture' : null;
-    if (!sort) return fail(res, 400, 'bad_request', 'A file name uses lowercase letters, digits, - and _, and ends in .png (a picture), .mp4 or .mjpeg (a video clip) or .json (a step\'s result), at most 60 characters before it.');
-    const limit = sort === 'video' ? MP4_MAX_BYTES : sort === 'clip' ? CLIP_MAX_BYTES : sort === 'result' ? JSON_MAX_BYTES : FILE_MAX_BYTES;
-    const type = sort === 'video' ? MP4_TYPE : sort === 'clip' ? CLIP_TYPE : sort === 'result' ? 'application/json' : 'image/png';
+    // a model (.glb, a model job); or a PNG picture (any job but a clip or model job)
+    const sort = MP4_NAME_RE.test(name) ? 'video' : CLIP_NAME_RE.test(name) ? 'clip' : JSON_NAME_RE.test(name) ? 'result' : GLB_NAME_RE.test(name) ? 'model' : FILE_NAME_RE.test(name) ? 'picture' : null;
+    if (!sort) return fail(res, 400, 'bad_request', 'A file name uses lowercase letters, digits, - and _, and ends in .png (a picture), .mp4 or .mjpeg (a video clip), .json (a step\'s result) or .glb (a model), at most 60 characters before it.');
+    const limit = sort === 'video' ? MP4_MAX_BYTES : sort === 'clip' ? CLIP_MAX_BYTES : sort === 'result' ? JSON_MAX_BYTES : sort === 'model' ? GLB_MAX_BYTES : FILE_MAX_BYTES;
+    const type = sort === 'video' ? MP4_TYPE : sort === 'clip' ? CLIP_TYPE : sort === 'result' ? 'application/json' : sort === 'model' ? GLB_TYPE : 'image/png';
     if (String((req.headers || {})['content-type'] || '').split(';')[0].trim().toLowerCase() !== type) return fail(res, 415, 'bad_type', `Send the ${sort} as ${type}.`);
     const tooLarge = () => {
       res.set('Connection', 'close');   // the rest of the upload is not read; the connection ends with the answer
@@ -811,6 +850,7 @@ module.exports = function mountTeamJobs(app, pool, {
     if ((sort === 'clip' || sort === 'video') && job.kind !== KIND_CLIP) return fail(res, 400, 'bad_request', 'This job takes pictures, not video clips.');
     if (sort === 'result' && job.kind !== KIND_RELEASE) return fail(res, 400, 'bad_request', 'This job takes no step results (.json files).');
     if (sort === 'picture' && job.kind === KIND_CLIP) return fail(res, 400, 'bad_request', 'This job takes video clips (.mp4 or .mjpeg), not pictures.');
+    if ((sort === 'model') !== (job.kind === KIND_MODEL)) return fail(res, 400, 'bad_request', sort === 'model' ? 'This job takes no models (.glb files).' : 'This job takes models (.glb files) only.');
     const cap = job.kind === KIND_RELEASE ? RELEASE_FILES_PER_JOB : FILES_PER_JOB;
     const files = await listFiles(resultsDir, id, 'stored');
     if (files.length >= cap && !files.some((f) => f.name === name)) return fail(res, 409, 'too_many', `A job takes at most ${cap} ${sort}s.`);
@@ -822,7 +862,7 @@ module.exports = function mountTeamJobs(app, pool, {
       throw err;
     }
     if (body.tooLarge) return tooLarge();
-    const checked = sort === 'video' ? checkMp4(body) : sort === 'clip' ? checkMjpeg(body) : sort === 'result' ? checkJson(body) : checkPng(body);
+    const checked = sort === 'video' ? checkMp4(body) : sort === 'clip' ? checkMjpeg(body) : sort === 'result' ? checkJson(body) : sort === 'model' ? checkGlb(body) : checkPng(body);
     if (checked.error) return fail(res, 400, 'bad_request', checked.error);
     await storeFile(resultsDir, id, name, body);
     await pool.execute("UPDATE team_jobs SET heartbeat_at = NOW() WHERE id = ? AND status = 'running'", [id]);   // an upload shows the PC is alive
@@ -1095,13 +1135,15 @@ module.exports = function mountTeamJobs(app, pool, {
     if (job.kind === 'bench') return finishBench(req, res, id, job, b);
     if (job.kind === KIND_CLIP) return finishClip(req, res, id, job, b);
     if (job.kind === KIND_RELEASE) return finishRelease(req, res, id, job, b);
+    // shots and any other kind: its pictures; a model job: its models (at least one: a job that made none failed)
+    const model = job.kind === KIND_MODEL;
     const named = Array.isArray(b.files) ? b.files : [];
-    if (named.length > FILES_PER_JOB || !named.every((n) => typeof n === 'string' && FILE_NAME_RE.test(n))) {
-      return fail(res, 400, 'bad_request', `The finished job must name its pictures (up to ${FILES_PER_JOB}, like shot_1.png).`);
+    if ((model && !named.length) || named.length > FILES_PER_JOB || !named.every((n) => typeof n === 'string' && (model ? GLB_NAME_RE : FILE_NAME_RE).test(n))) {
+      return fail(res, 400, 'bad_request', model ? `The finished job must name its models (1 to ${FILES_PER_JOB}, like hound-pixal3d.glb).` : `The finished job must name its pictures (up to ${FILES_PER_JOB}, like shot_1.png).`);
     }
     const onDisk = new Map((await listFiles(resultsDir, id)).map((f) => [f.name, f.bytes]));
     const missing = named.find((n) => !onDisk.has(n));
-    if (missing) return fail(res, 400, 'bad_request', `The picture ${missing} was never uploaded.`);
+    if (missing) return fail(res, 400, 'bad_request', `The ${model ? 'model' : 'picture'} ${missing} was never uploaded.`);
     const old = isObject(asJson(job.result)) ? asJson(job.result) : {};
     const result = { ...old, files: [...new Set(named)].map((n) => ({ name: n, bytes: onDisk.get(n) })), log: cleanLog(b.log), timings: cleanTimings(b.timings) };
     const [done] = await pool.execute(
@@ -1326,6 +1368,8 @@ module.exports.HELD_MAX = HELD_MAX;
 module.exports.checkPng = checkPng;
 module.exports.checkMjpeg = checkMjpeg;
 module.exports.checkJson = checkJson;
+module.exports.checkGlb = checkGlb;
+module.exports.GLB_MAX_BYTES = GLB_MAX_BYTES;
 module.exports.cleanSteps = cleanSteps;
 module.exports.STEP_NAMES = STEP_NAMES;
 module.exports.RELEASE_FILES_PER_JOB = RELEASE_FILES_PER_JOB;

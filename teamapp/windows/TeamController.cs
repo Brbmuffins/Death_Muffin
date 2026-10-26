@@ -65,6 +65,8 @@ namespace DeathMuffinTeam
         /// <summary>The player has Death Muffin open (not the app's own job game).</summary>
         bool GameRunning();
         string GpuName();
+        /// <summary>The graphics card's memory in MiB (the largest card's), 0 when not known.</summary>
+        long VramMb();
     }
 
     internal sealed class SignInResult
@@ -95,6 +97,13 @@ namespace DeathMuffinTeam
         readonly Action<string> log;
         readonly IPcProbe probe;
         string gpu;
+        long vramMb;
+
+        /// <summary>ComfyUI Desktop is installed on this PC (ComfyHost.Installed): with a 12 GB card, the PC runs `model` jobs. Null: it runs none.</summary>
+        public Func<bool> ComfyInstalled;
+
+        /// <summary>Called on each heartbeat that finds the player's Death Muffin running (ComfyHost.PlayerPlaying: an idle ComfyUI the app started goes).</summary>
+        public Action PlayerPlaying;
 
         /// <summary>The words of the tray status while a benchmark that was accepted waits for the PC to be left alone.</summary>
         public const string BenchWaitingText = "Benchmark waiting for a quiet PC";
@@ -175,6 +184,8 @@ namespace DeathMuffinTeam
             settings.EnsurePcId();
             save();
             gpu = platform.GpuName();
+            vramMb = platform.VramMb();
+            log("graphics card: " + (string.IsNullOrEmpty(gpu) ? "?" : gpu) + ", " + ComfyRules.Gb(vramMb) + (ComfyRules.CardFits(vramMb) ? "" : " (model jobs need 12 GB or more)"));
             api.Token = settings.Token;
             if (!settings.SignedIn)
             {
@@ -248,15 +259,30 @@ namespace DeathMuffinTeam
 
         PcState BuildState()
         {
+            bool game = platform.GameRunning();
+            if (game && PlayerPlaying != null)
+            {
+                try { PlayerPlaying(); } catch (Exception ex) { log("could not stop the app's ComfyUI for the game: " + ex.Message); }
+            }
             return new PcState
             {
-                GameRunning = platform.GameRunning(),
+                GameRunning = game,
                 Fullscreen = platform.Fullscreen(),
                 OnBattery = platform.OnBattery(),
                 Busy = running,
                 Paused = settings.IsPaused(utcNow()),
                 Benchmarks = settings.RunBenchmarks,
+                Models = RunsModels(),
+                VramMb = vramMb,
             };
+        }
+
+        /// <summary>This PC runs `model` jobs: a graphics card with 12 GB or more and ComfyUI Desktop installed (the runner checks the card again on ComfyUI's own numbers).</summary>
+        bool RunsModels()
+        {
+            if (!ComfyRules.CardFits(vramMb) || ComfyInstalled == null) return false;
+            try { return ComfyInstalled(); }
+            catch (Exception) { return false; }
         }
 
         /// <summary>
@@ -327,13 +353,14 @@ namespace DeathMuffinTeam
                 DateTime now = utcNow();
                 available = AboutWaitingBench(JobsOf(r, offer), TeamApi.HasQueue(r));
                 if (!settings.RunBenchmarks) available.RemoveAll(j => j.BenchmarkOnly);
+                if (!RunsModels()) available.RemoveAll(j => j.Kind == JobPlan.ModelKind);   // (the server offers none to a PC whose heartbeat said no; this one changed since)
                 listed = available.FindAll(j => !Snoozed(j.Id, now));
                 if (offer != null && Snoozed(offer.Id, now)) offer = null;
                 if (running)
                 {
                     // A second job offered while one runs: say so once; the job stays queued for the other PCs.
-                    // (a benchmark and a release job are not declined for being busy: the server would not offer them to this PC again, and each is queued for this PC alone)
-                    if (offer != null && offer.Id != runningJobId && offer.Kind != JobPlan.BenchKind && offer.Kind != JobPlan.ReleaseKind && sentDeclines.Add(offer.Id + "|busy"))
+                    // (a benchmark and a release job are not declined for being busy: each is queued for this PC alone; nor is a model job: few PCs can run one, so it waits for this one)
+                    if (offer != null && offer.Id != runningJobId && offer.Kind != JobPlan.BenchKind && offer.Kind != JobPlan.ReleaseKind && offer.Kind != JobPlan.ModelKind && sentDeclines.Add(offer.Id + "|busy"))
                         await api.DeclineAsync(offer.Id, settings.PcId, "busy", CancellationToken.None).ConfigureAwait(true);
                     return;
                 }
@@ -470,7 +497,7 @@ namespace DeathMuffinTeam
                     if (sentDeclines.Add(offer.Id + "|kind"))
                     {
                         await api.DeclineAsync(offer.Id, settings.PcId, "not_now", CancellationToken.None).ConfigureAwait(true);
-                        log("skipped a " + offer.Kind + " job: this version runs " + JobPlan.ShotsKind + ", " + JobPlan.ClipKind + ", " + JobPlan.ReleaseKind + " and " + JobPlan.BenchKind + " jobs only");
+                        log("skipped a " + offer.Kind + " job: this version runs " + JobPlan.ShotsKind + ", " + JobPlan.ClipKind + ", " + JobPlan.ModelKind + ", " + JobPlan.ReleaseKind + " and " + JobPlan.BenchKind + " jobs only");
                     }
                     SetStatus("A newer team app is needed for " + offer.Kind + " jobs", StatusLevel.Warn);
                     return;
@@ -809,7 +836,7 @@ namespace DeathMuffinTeam
                 {
                     string sent = plan.Kind == JobPlan.BenchKind ? result.Runs + " benchmark run(s) sent"
                         : plan.Kind == JobPlan.ReleaseKind ? StepsPassed(result) + " of " + (result.Steps == null ? 0 : result.Steps.Count) + " release check step(s) passed"
-                        : result.Files.Count + (plan.Kind == JobPlan.ClipKind ? " clip(s) uploaded" : " picture(s) uploaded");
+                        : result.Files.Count + (plan.Kind == JobPlan.ClipKind ? " clip(s) uploaded" : plan.Kind == JobPlan.ModelKind ? " model(s) uploaded" : " picture(s) uploaded");
                     SetStatus("Last job: " + sent + " at " + DateTime.Now.ToString("HH:mm", CultureInfo.InvariantCulture), StatusLevel.Ok);
                     log("job " + jobId + " done: " + sent);
                 }

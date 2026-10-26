@@ -331,7 +331,7 @@ test('the publish runs the gate after the boot smoke and before the switch, and 
   assert.ok(at < text.indexOf('mv -f "$OUT_DIR/manifest.json.tmp" "$OUT_DIR/manifest.json"') && at < text.indexOf('DEST="$OUT_DIR/$VERSION"'), 'before anything is copied or switched');
   assert.ok(text.includes('TEAM_GATE EXPORT_ONLY'));
   const prune = fs.readFileSync(PRUNE, 'utf8');
-  assert.match(prune, /\(release\|bench\|gate\|check\|view\)-\[0-9a-f\]\{24\}/);
+  assert.match(prune, /\(release\|bench\|gate\|check\|view\|model\)-\[0-9a-f\]\{24\}/);
   execFileSync('bash', ['-n', GATE]);
   execFileSync('bash', ['-n', PUBLISH]);
 });

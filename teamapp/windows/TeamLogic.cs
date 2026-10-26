@@ -237,6 +237,7 @@ namespace DeathMuffinTeam
             if (kind == JobPlan.ReleaseKind) return "Release checks of the new client";
             if (kind == JobPlan.ShotsKind) return "Screenshots of a change";
             if (kind == JobPlan.BenchKind) return "Benchmark of the new release";
+            if (kind == JobPlan.ModelKind) return "3D models from a picture";
             return "A job";
         }
 
@@ -247,6 +248,7 @@ namespace DeathMuffinTeam
         public static string OfferNote(string kind)
         {
             if (kind == JobPlan.ReleaseKind) return "The game starts several times, off screen and silent; the benchmark takes the whole screen. The benchmark and the soak test wait until other programs have used little of the processor for a minute, and run at normal priority.";
+            if (kind == JobPlan.ModelKind) return "ComfyUI makes the models on the graphics card, out of sight (the app starts it when it is not open), and lets go of the card's memory when it is done. Starting Death Muffin stops it.";
             return kind == JobPlan.BenchKind ? "It starts once other programs have used little of the processor for a minute, takes the whole screen and runs at normal priority. A busy processor restarts it." : "";
         }
 
@@ -330,12 +332,17 @@ namespace DeathMuffinTeam
         public bool GameRunning, Fullscreen, OnBattery, Busy, Paused;
         /// <summary>The tray's Run benchmarks (the server shows it; a release check's benchmark is skipped on a PC with it off).</summary>
         public bool Benchmarks = true;
+        /// <summary>This PC runs `model` jobs: a graphics card with 12 GB or more (ComfyRules.CardFits) and ComfyUI Desktop installed. The server offers model jobs only to a PC that says so.</summary>
+        public bool Models;
+        /// <summary>The graphics card's memory in MiB (0 when not known), for the runner's list of PCs.</summary>
+        public long VramMb;
 
         public Dictionary<string, object> ToJson()
         {
             return new Dictionary<string, object>
             {
                 { "gameRunning", GameRunning }, { "fullscreen", Fullscreen }, { "onBattery", OnBattery }, { "busy", Busy }, { "paused", Paused }, { "benchmarks", Benchmarks },
+                { "models", Models }, { "vramMb", VramMb },
             };
         }
     }

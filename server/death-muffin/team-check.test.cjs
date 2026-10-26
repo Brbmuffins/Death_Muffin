@@ -484,7 +484,7 @@ test('the publish\'s EXPORT_ONLY mode skips the CI gate and the lobby check, and
 
 // ── team-files-prune.sh ──────────────────────────────────────────────────────────────────────────────────────────────────
 
-test('team-files-prune.sh keeps the newest N preview folders, removes check-, gate-, view-, release- and bench- folders older than the days given, and touches nothing else', async () => {
+test('team-files-prune.sh keeps the newest N preview folders, removes check-, gate-, view-, model-, release- and bench- folders older than the days given, and touches nothing else', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'team-prune-test-'));
   try {
     const dirs = [];
@@ -504,14 +504,15 @@ test('team-files-prune.sh keeps the newest N preview folders, removes check-, ga
       return d;
     };
     const hex = () => crypto.randomBytes(12).toString('hex');
-    const old = ['check', 'gate', 'view', 'release', 'bench'].map((k) => aged(5, `${k}-${hex()}`));
-    const young = ['check', 'gate', 'view', 'release', 'bench'].map((k) => aged(1, `${k}-${hex()}`));
+    const kinds = ['check', 'gate', 'view', 'model', 'release', 'bench'];
+    const old = kinds.map((k) => aged(5, `${k}-${hex()}`));
+    const young = kinds.map((k) => aged(1, `${k}-${hex()}`));
     const badNames = [aged(9, 'check-ABCDEF'), aged(9, `check-${'a'.repeat(23)}`), aged(9, `xcheck-${'a'.repeat(24)}`), aged(9, `other-${'a'.repeat(24)}`)];
     const r = await run('bash', [PRUNE, root], { PATH: process.env.PATH });
     assert.deepStrictEqual([r.code, r.all], [0, ''], 'it prints nothing');
     assert.deepStrictEqual(dirs.filter((d) => fs.existsSync(d)), dirs.slice(4), 'previews: the newest 6');
-    assert.deepStrictEqual(old.map((d) => fs.existsSync(d)), [false, false, false, false, false], 'older than 4 days: gone');
-    assert.deepStrictEqual(young.map((d) => fs.existsSync(d)), [true, true, true, true, true]);
+    assert.deepStrictEqual(old.map((d) => fs.existsSync(d)), kinds.map(() => false), 'older than 4 days: gone');
+    assert.deepStrictEqual(young.map((d) => fs.existsSync(d)), kinds.map(() => true));
     assert.ok([upper, ...badNames].every((d) => fs.existsSync(d)), 'other names stay');
     assert.strictEqual((await run('bash', [PRUNE, root, '2', '0'], { PATH: process.env.PATH })).code, 0);
     assert.deepStrictEqual([dirs.filter((d) => fs.existsSync(d)).length, young.some((d) => fs.existsSync(d))], [2, false], 'keep 2, and release-days 0');

@@ -35,6 +35,9 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
 - **A new weapon's Atlas row is written by hand** (War's Scythe of Undeath, 2026-10-20): `tools/generate-armor-assets.mjs` copies items.json
   and computed.json for every item but adds `client/data/panels_a/atlas.json` rows for armor pieces only, so the `data` suite catches a
   missing weapon row late (the agent's job lost a check run and a session handoff to it).
+- **A model made with ComfyUI has no build step into the game** (2026-10-26): `model-gen.sh` (ASSET_PIPELINE.md "Image to model") leaves
+  `<label>.glb` in `art-src/comfy/<id>/`, but `tools/build-characters.mjs` and `build-art.sh` read only `art-src/tripo/<id>/`, so a Pixal3D prop
+  goes into `public/models/props/` and the game by hand, and the Discord agent cannot ask for one (it has no `model` job).
 
 ## Operations
 
