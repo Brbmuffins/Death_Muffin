@@ -236,14 +236,19 @@ ComfyUI's **"Pixal3D & TRELLIS.2: Image to Model"** template on its own graphics
 after it was painted: that ruins the paint), saved as one `.glb`. Whenever a job is queued, day or night, like any job (the box asks first; mode, pause and the waits above apply).
 
 **Which PCs**: one with a graphics card of **12 GB or more** (Helix, 2026-10-26; Windows' own figure for the card, `HardwareInformation.qwMemorySize`: 11,500 MiB or more, a 12 GB card reports a little under 12,288)
-and **ComfyUI Desktop** installed (`%APPDATA%\ComfyUI\config.json` naming its folder, with its `.venv`, and Desktop's program files with `resources\ComfyUI\main.py`, looked for first in the folders
-Windows names for Desktop (its uninstall entries' install folder, icon and uninstaller, and a running `ComfyUI.exe`: the installer lets the member choose the folder), then under `%LOCALAPPDATA%\Programs`;
-looked up every 5 minutes) with the template's models downloaded (opening the template once in Desktop does it). The heartbeat says so (`models`, and the card's `vramMb`), and when it does not, why in plain
+and a **ComfyUI Desktop** installed, looked up every 5 minutes, with the template's models downloaded (opening the template once in Desktop does it). Either Desktop:
+**Comfy Desktop** (the 2.0 app): its list of installs (`%APPDATA%\Comfy Desktop\installations.json`, or the folder's older names), of which the one launched last whose folder, Python and `ComfyUI\main.py`
+are on this PC (a standalone install, one taken over from the older Desktop, a portable or a git ComfyUI; not a cloud one), with the model folders file Comfy Desktop writes for it
+(`instance-model-paths\<id>.yaml`); or, when it has none, **the older ComfyUI Desktop**: `%APPDATA%\ComfyUI\config.json` naming its folder, with its `.venv`, and its program files with
+`resources\ComfyUI\main.py`, looked for first in the folders Windows names for it (its uninstall entries' install folder, icon and uninstaller, and a running `ComfyUI.exe`: the installer lets the member
+choose the folder), then under `%LOCALAPPDATA%\Programs`. The heartbeat says so (`models`, and the card's `vramMb`), and when it does not, why in plain
 words (`modelsWhy`: the card, or what of Desktop was not found; also in the app's log when it changes), so a session sees it in the PC list (`model-gen.sh` prints it). The server offers and lists model jobs only
 to such a PC; one that stops qualifying leaves them out at once without refusing them. A model job offered while another job runs is not declined busy (it waits for this PC). The app's log names the card and its memory at start.
 
-**ComfyUI**: when the Desktop app is open (its server on `127.0.0.1:8000`), the job uses it (Desktop's queue: a run waits behind the member's own work). Otherwise **the app starts ComfyUI itself**, out of sight:
-Desktop's Python and ComfyUI files with Desktop's own core options, its models and custom nodes (`--base-directory` the Desktop folder, its `extra_models_config.yaml`), but its own user, input and output folders
+**ComfyUI**: when a Desktop's server runs (Comfy Desktop's: the port of the install's launch settings, 8188 by default, or one its records of the servers it started name, `comfy-procs\*.json`;
+the older Desktop's: `127.0.0.1:8000`), the job uses it (Desktop's queue: a run waits behind the member's own work). Otherwise **the app starts ComfyUI itself**, out of sight:
+the install's Python and ComfyUI files with the Desktop's own core options (Comfy Desktop's `-s`), its models and custom nodes (`--base-directory` its ComfyUI folder, its model folders file), but not the
+member's own launch settings, and its own user, input and output folders
 (`comfy\` below, so it never touches Desktop's settings or history), on `127.0.0.1` and the first free port of 8190 to 8199, below normal priority, no window, inside a Windows job object (it goes when the app goes,
 even if the app crashes). It must answer within 10 minutes (a first start after a ComfyUI update is the slow one); one that stops while starting fails the job with the end of what it said in the log. It stays
 up 10 minutes after its last job (a job soon after does not wait for a start), then stops; it also stops at once when the player's Death Muffin is seen (each heartbeat), and when the app closes.
@@ -323,13 +328,15 @@ long poll against the live server through nginx (a held heartbeat ending at once
 not allow it; the benchmark's window full screen at the screen's resolution and in front with the focus (a window picked over it staying picked), and not counting as input; the release build honouring `--bench-quit`, `--bench-dir` and `--bench-preset` (exit codes 0, 1, 2) and leaving
 `pending.json`; a disturbed run on a real PC (a busy program started during it) being discarded and retried; the box's note; and one whole benchmark job against the server, including a screenshot job interleaved with a waiting benchmark (the controller reads the PC on the interface thread once a second). Also on a real PC: `--audio-driver Dummy` really silent (loading screen and game), a screenshot job's window really never seen (no boot splash, no taskbar button: it starts minimized from `override.cfg`
 and is restored left of every monitor; the pictures still taken, at their exact sizes: Godot and the driver draw a window that is off screen), a cancel in the heartbeat reply stopping a running game; the AFK notice (shown without taking the keyboard or the focus, End AFK mode working from it and from the tray menu); the box's job list (a click on a row picks it without taking the keyboard
-or the focus, the box growing with the list and staying in its corner). For the model job: the card's memory read from the registry (a 12 GB card over 11,500 MiB, an 8 GB one under); ComfyUI Desktop found
-from its `config.json` and program files (also installed in a folder of the member's choosing; `modelsWhy` in the PC list when it is not found); a job using Desktop's open server; with Desktop closed, the app's own ComfyUI starting (no window, below normal priority, Desktop's models and custom nodes found),
+or the focus, the box growing with the list and staying in its corner). For the model job: the card's memory read from the registry (a 12 GB card over 11,500 MiB, an 8 GB one under); Comfy Desktop's install found, and the
+older Desktop from its `config.json` and program files (also installed in a folder of the member's choosing; `modelsWhy` in the PC list when it is not found); a job using a Desktop's open server; with Desktop closed, the app's own ComfyUI starting (no window, below normal priority, Desktop's models and custom nodes found),
 answering, making the models and stopping 10 minutes later, when Death Muffin starts and with the app (also when the app is killed: the job object); the card's memory let go after a job (Task Manager);
 the models' look against a run made by hand in Desktop.
 
 ### Changelog
 
+- **0.5.2** (2026-10-26) - Comfy Desktop, the 2.0 app, is found and started: its install launched last, with its own Python, ComfyUI folder and model folders, and its server when it runs
+  (port 8188 or the one it chose). 0.5.1 looked only for the older ComfyUI Desktop, so Helix's PC still ran no model jobs.
 - **0.5.1** (2026-10-26) - ComfyUI Desktop installed outside `%LOCALAPPDATA%\Programs` is found (where Windows' uninstall entry or a running `ComfyUI.exe` says it is: 0.5.0 ran no model jobs
   on Helix's PC). The heartbeat says why a PC runs no model jobs (`modelsWhy`), and the app's log says it when it changes.
 - **0.5.0** (2026-10-26) - The `model` job (Helix): 3D models from a concept picture with ComfyUI's Pixal3D or TRELLIS.2, the face count set before the model is painted, on a PC with a 12 GB card and ComfyUI Desktop,

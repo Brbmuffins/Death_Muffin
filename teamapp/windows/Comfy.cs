@@ -52,9 +52,9 @@ namespace DeathMuffinTeam
         public const long SeedMax = 1000000;
         /// <summary>The server's limit for one model (team-jobs.cjs GLB_MAX_BYTES).</summary>
         public const int MaxModelBytes = 48 << 20;
-        /// <summary>ComfyUI Desktop's server, when the Desktop app is open (its default port).</summary>
+        /// <summary>The older ComfyUI Desktop's server, when its window is open (Comfy Desktop's installs say their own port: ComfyInstall.Ports).</summary>
         public const int DesktopPort = 8000;
-        /// <summary>The ports the app's own ComfyUI server may use: away from Desktop's 8000, so Desktop opened later still gets its own.</summary>
+        /// <summary>The ports the app's own ComfyUI server may use: away from the Desktops' 8000 and 8188, so a Desktop opened later still gets its own.</summary>
         public const int OwnPortFirst = 8190, OwnPortLast = 8199;
         /// <summary>The app's own server must answer within this after it starts (the first start after a ComfyUI update is the slow one).</summary>
         public static readonly TimeSpan StartLimit = TimeSpan.FromMinutes(10);
@@ -415,51 +415,229 @@ namespace DeathMuffinTeam
     // ---- ComfyUI Desktop on this PC ---------------------------------------------------------------------------------------------------
 
     /// <summary>
-    /// Where ComfyUI Desktop keeps what the app needs to start its server without the Desktop window: its settings (%APPDATA%\ComfyUI\config.json, whose `basePath` is the ComfyUI folder the member chose,
-    /// with the models, custom nodes and Desktop's Python in .venv), the ComfyUI it bundles (%LOCALAPPDATA%\Programs\&lt;app&gt;\resources\ComfyUI\main.py), its web page (optional) and its extra model
-    /// folders (%APPDATA%\ComfyUI\extra_models_config.yaml, optional). The layout is Desktop's own (Comfy-Org/desktop, src/main-process/comfyServer.ts).
+    /// What the app needs to start ComfyUI's server without Desktop's window, from either Desktop. Comfy Desktop (the 2.0 app, Comfy-Org/Comfy-Desktop) keeps a list of ComfyUI installs
+    /// (%APPDATA%\Comfy Desktop\installations.json), each a folder with its own ComfyUI, Python, models and custom nodes; the app takes the one launched last. The older ComfyUI Desktop
+    /// (Comfy-Org/desktop) has one: its settings (%APPDATA%\ComfyUI\config.json, whose `basePath` is the ComfyUI folder the member chose, with the models, custom nodes and Desktop's Python in
+    /// .venv), the ComfyUI it bundles (%LOCALAPPDATA%\Programs\&lt;app&gt;\resources\ComfyUI\main.py), its web page and its extra model folders. The layouts are the Desktops' own
+    /// (Comfy Desktop: src/main/sources/*, src/main/models.ts; the older one: src/main-process/comfyServer.ts).
     /// </summary>
     internal sealed class ComfyInstall
     {
-        public string Python = "", MainPy = "", BasePath = "", FrontEnd = "", ExtraModels = "";
+        /// <summary>Which ComfyUI this is, for the log ("Comfy Desktop's install \"ComfyUI\"").</summary>
+        public string Name = "";
+        public string Python = "", MainPy = "", BasePath = "", WorkingDir = "", Venv = "", FrontEnd = "", ExtraModels = "";
+        /// <summary>Python's -s (no packages from the member's own Python folder), as Comfy Desktop starts ComfyUI.</summary>
+        public bool NoUserSite;
+        /// <summary>The ports this install's own server listens on when Desktop runs it (looked at before the app starts one; the older Desktop's 8000 is ComfyHost's own).</summary>
+        public List<int> Ports = new List<int>();
+        /// <summary>Comfy Desktop's records of the servers it started (&lt;userData&gt;\comfy-procs\*.json, each with its install's id and port): a server it started on another port is found too.</summary>
+        public string ProcsDir = "", InstallId = "";
+        /// <summary>The input and output folders of Desktop's own server ("" when not known), where a job run there leaves its files until it removes them.</summary>
+        public string InputRoot = "", OutputRoot = "";
+
         /// <summary>Desktop's app folders under %LOCALAPPDATA%\Programs, the usual first (the folder's name has changed between Desktop versions); any other folder that bundles ComfyUI comes after them.</summary>
         static readonly string[] AppFolders = { "ComfyUI", "@comfyorgcomfyui-electron" };
+        /// <summary>Comfy Desktop's folders in %APPDATA%, the current name first (it had others while it was new).</summary>
+        static readonly string[] Desktop2Folders = { "Comfy Desktop", "ComfyUI Desktop 2.0", "ComfyUI Launcher", "comfyui-desktop-2", "comfyui-launcher" };
+        /// <summary>The port Comfy Desktop's installs listen on unless their launch settings name one (ComfyUI's own default).</summary>
+        public const int Desktop2Port = 8188;
 
         public static ComfyInstall Find(string appData, string localAppData, out string why) { return Find(appData, localAppData, null, out why); }
 
-        /// <param name="desktopApps">The folders Windows says Desktop's program is in (its uninstall entry, a running ComfyUI.exe: WindowsPlatform.ComfyDesktopFolders), looked in first: Desktop's
+        /// <param name="desktopApps">The folders Windows says the older Desktop's program is in (its uninstall entry, a running ComfyUI.exe: WindowsPlatform.ComfyDesktopFolders), looked in first: its
         /// installer lets the member choose the folder, so it need not be under %LOCALAPPDATA%\Programs.</param>
         public static ComfyInstall Find(string appData, string localAppData, IEnumerable<string> desktopApps, out string why)
         {
             why = null;
             try
             {
+                string why2, whyOld;
+                ComfyInstall i = FindDesktop2(appData ?? "", out why2);
+                if (i != null) return i;
                 string config = Path.Combine(appData ?? "", "ComfyUI", "config.json");
-                if (!File.Exists(config)) { why = "ComfyUI Desktop is not set up on this PC (no " + config + ")"; return null; }
-                string basePath = MiniJson.Str(MiniJson.TryObject(File.ReadAllText(config)), "basePath");
-                if (basePath.Length == 0 || !Directory.Exists(basePath)) { why = "ComfyUI Desktop's settings name no ComfyUI folder that exists"; return null; }
-                string python = Path.Combine(basePath, ".venv", "Scripts", "python.exe");
-                if (!File.Exists(python)) { why = "ComfyUI Desktop's Python is not in " + Path.Combine(basePath, ".venv"); return null; }
-                string programs = Path.Combine(localAppData ?? "", "Programs");
-                var apps = new List<string>();
-                if (desktopApps != null) foreach (string a in desktopApps) if (!string.IsNullOrEmpty(a) && !apps.Contains(a)) apps.Add(a);
-                int listed = apps.Count;
-                foreach (string a in AppFolders) apps.Add(Path.Combine(programs, a));
-                if (Directory.Exists(programs))
-                    foreach (string d in Directory.GetDirectories(programs)) if (!apps.Contains(d)) apps.Add(d);
-                foreach (string app in apps)
+                if (!File.Exists(config))
                 {
-                    string comfy = Path.Combine(app, "resources", "ComfyUI");
-                    string main = Path.Combine(comfy, "main.py");
-                    if (!File.Exists(main)) continue;
-                    string web = Path.Combine(comfy, "web_custom_versions", "desktop_app");
-                    string extra = Path.Combine(appData, "ComfyUI", "extra_models_config.yaml");
-                    return new ComfyInstall { Python = python, MainPy = main, BasePath = basePath, FrontEnd = Directory.Exists(web) ? web : "", ExtraModels = File.Exists(extra) ? extra : "" };
+                    why = why2 ?? "ComfyUI Desktop is not set up on this PC (no " + Path.Combine(appData ?? "", Desktop2Folders[0], "installations.json") + " or " + config + ")";
+                    return null;
                 }
-                why = "ComfyUI Desktop's program files (resources\\ComfyUI\\main.py) are not in " + programs + (listed > 0 ? " or " + string.Join(", ", apps.GetRange(0, listed)) : " and Windows names no other folder for it");
-                return null;
+                i = FindOlderDesktop(config, appData ?? "", localAppData ?? "", desktopApps, out whyOld);
+                if (i == null) why = why2 == null ? whyOld : why2 + "; the older ComfyUI Desktop: " + whyOld;
+                return i;
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { why = "ComfyUI Desktop's files could not be read: " + ex.Message; return null; }
+        }
+
+        /// <summary>Comfy Desktop's install launched last that can be started here (a ComfyUI folder on this PC with its Python and main.py). Null with no reason when Comfy Desktop is not set up.</summary>
+        static ComfyInstall FindDesktop2(string appData, out string why)
+        {
+            why = null;
+            foreach (string folder in Desktop2Folders)
+            {
+                string userData = Path.Combine(appData, folder);
+                string list = Path.Combine(userData, "installations.json");
+                if (!File.Exists(list)) continue;
+                List<object> records;
+                try { records = MiniJson.Parse(File.ReadAllText(list)) as List<object>; }
+                catch (FormatException) { records = null; }
+                if (records == null) { why = "Comfy Desktop's list of installs (" + list + ") does not read"; return null; }
+                var settings = MiniJson.TryObject(ReadOrEmpty(Path.Combine(userData, "settings.json")));
+                ComfyInstall best = null;
+                double bestAt = double.MinValue;
+                var skipped = new List<string>();
+                foreach (object o in records)
+                {
+                    var r = o as Dictionary<string, object>;
+                    string status = MiniJson.Str(r, "status");
+                    if (r == null || (status.Length > 0 && status != "installed")) continue;
+                    string whyNot;
+                    ComfyInstall i = FromRecord(r, userData, settings, out whyNot);
+                    if (i == null) { if (whyNot != null) skipped.Add(whyNot); continue; }
+                    object at;
+                    double when = r.TryGetValue("lastLaunchedAt", out at) && at is double ? (double)at : 0;
+                    if (best == null || when > bestAt) { best = i; bestAt = when; }
+                }
+                if (best != null) return best;
+                why = "Comfy Desktop has no ComfyUI install this app can start" + (skipped.Count > 0 ? ": " + string.Join("; ", skipped) : " (none of its installs is on this PC)");
+                return null;
+            }
+            return null;
+        }
+
+        /// <summary>One install of Comfy Desktop's list, as Comfy Desktop would start it (its sources' getLaunchCommand); null for one that runs elsewhere (cloud, remote) or is the older Desktop's,
+        /// and null with the reason for one whose files are missing.</summary>
+        static ComfyInstall FromRecord(Dictionary<string, object> r, string userData, Dictionary<string, object> settings, out string why)
+        {
+            why = null;
+            string id = MiniJson.Str(r, "id"), source = MiniJson.Str(r, "sourceId"), dir = MiniJson.Str(r, "installPath");
+            string name = "Comfy Desktop's install \"" + (MiniJson.Str(r, "name").Length > 0 ? MiniJson.Str(r, "name") : id) + "\"";
+            if (dir.Length == 0 || (source != "standalone" && source != "portable" && source != "git")) return null;
+            if (!Directory.Exists(dir)) { why = name + " is not on this PC (no " + dir + ")"; return null; }
+            var i = new ComfyInstall { Name = name, NoUserSite = true, InstallId = id, ProcsDir = Path.Combine(userData, "comfy-procs") };
+            if (source == "standalone")
+            {
+                string adoptedBase = MiniJson.Bool(r, "adopted") ? MiniJson.Str(r, "adoptedBaseDir") : "";
+                string adoptedPython = MiniJson.Bool(r, "adopted") ? MiniJson.Str(r, "adoptedPythonPath") : "";
+                foreach (string p in new[] { adoptedPython, Path.Combine(dir, "ComfyUI", ".venv", "Scripts", "python.exe"), Path.Combine(dir, "envs", "default", "Scripts", "python.exe") })
+                    if (p.Length > 0 && File.Exists(p)) { i.Python = p; break; }
+                i.MainPy = Path.Combine(dir, "ComfyUI", "main.py");
+                i.BasePath = adoptedBase.Length > 0 ? adoptedBase : Path.Combine(dir, "ComfyUI");
+                i.WorkingDir = dir;
+                if (i.Python.Length > 0) i.Venv = Path.GetDirectoryName(Path.GetDirectoryName(i.Python));
+            }
+            else if (source == "portable")
+            {
+                string root = Directory.Exists(Path.Combine(dir, "python_embeded")) ? dir : "";
+                if (root.Length == 0) foreach (string sub in Directory.GetDirectories(dir)) if (Directory.Exists(Path.Combine(sub, "python_embeded"))) { root = sub; break; }
+                if (root.Length == 0) { why = name + " has no python_embeded folder in " + dir; return null; }
+                i.Python = Path.Combine(root, "python_embeded", "python.exe");
+                i.MainPy = Path.Combine(root, "ComfyUI", "main.py");
+                i.BasePath = Path.Combine(root, "ComfyUI");
+                i.WorkingDir = root;
+            }
+            else
+            {
+                string venv = MiniJson.Str(r, "venvPath");
+                i.Python = venv.Length > 0 ? Path.Combine(venv, "Scripts", "python.exe") : "";
+                i.Venv = venv;
+                i.MainPy = File.Exists(Path.Combine(dir, "main.py")) ? Path.Combine(dir, "main.py") : Path.Combine(dir, "ComfyUI", "main.py");
+                i.BasePath = Path.GetDirectoryName(i.MainPy);
+                i.WorkingDir = i.BasePath;
+            }
+            if (i.Python.Length == 0 || !File.Exists(i.Python)) { why = name + " has no Python in " + dir; return null; }
+            if (!File.Exists(i.MainPy)) { why = name + " has no " + i.MainPy; return null; }
+            // its model folders: the file Comfy Desktop writes for the install at each launch (models.ts instanceModelPathsYaml), or the shared one of older versions
+            foreach (string y in new[] { Path.Combine(userData, "instance-model-paths", id + ".yaml"), Path.Combine(userData, "shared_model_paths.yaml") })
+                if (id.Length > 0 && File.Exists(y)) { i.ExtraModels = y; break; }
+            i.Ports.Add(PortIn(MiniJson.Str(r, "launchArgs")) ?? Desktop2Port);
+            i.InputRoot = ServerFolder(r, settings, "Input", Path.Combine(i.BasePath, "input"), dir);
+            i.OutputRoot = ServerFolder(r, settings, "Output", Path.Combine(i.BasePath, "output"), dir);
+            return i;
+        }
+
+        /// <summary>
+        /// Where Comfy Desktop's own server for the install keeps its input or output (launch.ts): the shared folder (settings.json, or by default ComfyUI-Shared next to the ComfyUI-Installs folder
+        /// the install is in), or the install's own when it does not share. "" when not known.
+        /// </summary>
+        static string ServerFolder(Dictionary<string, object> r, Dictionary<string, object> settings, string which, string own, string installDir)
+        {
+            object shared;
+            if (r.TryGetValue("useShared" + which, out shared) && shared is bool && !(bool)shared)
+                return MiniJson.Str(r, which.ToLowerInvariant() + "Dir").Length > 0 ? MiniJson.Str(r, which.ToLowerInvariant() + "Dir") : own;
+            string set = MiniJson.Str(settings, which.ToLowerInvariant() + "Dir");
+            if (set.Length > 0) return set;
+            string installs = Path.GetDirectoryName(installDir.TrimEnd('\\', '/'));
+            return installs != null && string.Equals(Path.GetFileName(installs), "ComfyUI-Installs", StringComparison.OrdinalIgnoreCase)
+                ? Path.Combine(Path.GetDirectoryName(installs) ?? "", "ComfyUI-Shared", which.ToLowerInvariant()) : "";
+        }
+
+        /// <summary>The port in launch settings ("--enable-manager --port 8189", "--port=8189"); null when they name none.</summary>
+        public static int? PortIn(string launchArgs)
+        {
+            string[] a = (launchArgs ?? "").Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            int? port = null;
+            for (int k = 0; k < a.Length; k++)
+            {
+                string v = a[k] == "--port" && k + 1 < a.Length ? a[k + 1] : a[k].StartsWith("--port=") ? a[k].Substring(7) : null;
+                int n;
+                if (v != null && int.TryParse(v, NumberStyles.None, CultureInfo.InvariantCulture, out n) && n > 0 && n < 65536) port = n;
+            }
+            return port;
+        }
+
+        /// <summary>The ports to look for this install's running server on: its own, then those of the servers Comfy Desktop says it started for it (read now: they change while the app runs).</summary>
+        public List<int> ServerPorts()
+        {
+            var ports = new List<int>(Ports);
+            try
+            {
+                if (ProcsDir.Length > 0 && Directory.Exists(ProcsDir))
+                    foreach (string f in Directory.GetFiles(ProcsDir, "*.json"))
+                    {
+                        var rec = MiniJson.TryObject(ReadOrEmpty(f));
+                        long? port = MiniJson.Int(rec, "port");
+                        if (MiniJson.Str(rec, "installationId") == InstallId && port > 0 && port < 65536 && !ports.Contains((int)port.Value)) ports.Add((int)port.Value);
+                    }
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { }
+            return ports;
+        }
+
+        static string ReadOrEmpty(string path)
+        {
+            try { return File.Exists(path) ? File.ReadAllText(path) : ""; }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { return ""; }
+        }
+
+        static ComfyInstall FindOlderDesktop(string config, string appData, string localAppData, IEnumerable<string> desktopApps, out string why)
+        {
+            why = null;
+            string basePath = MiniJson.Str(MiniJson.TryObject(File.ReadAllText(config)), "basePath");
+            if (basePath.Length == 0 || !Directory.Exists(basePath)) { why = "ComfyUI Desktop's settings name no ComfyUI folder that exists"; return null; }
+            string python = Path.Combine(basePath, ".venv", "Scripts", "python.exe");
+            if (!File.Exists(python)) { why = "ComfyUI Desktop's Python is not in " + Path.Combine(basePath, ".venv"); return null; }
+            string programs = Path.Combine(localAppData, "Programs");
+            var apps = new List<string>();
+            if (desktopApps != null) foreach (string a in desktopApps) if (!string.IsNullOrEmpty(a) && !apps.Contains(a)) apps.Add(a);
+            int listed = apps.Count;
+            foreach (string a in AppFolders) apps.Add(Path.Combine(programs, a));
+            if (Directory.Exists(programs))
+                foreach (string d in Directory.GetDirectories(programs)) if (!apps.Contains(d)) apps.Add(d);
+            foreach (string app in apps)
+            {
+                string comfy = Path.Combine(app, "resources", "ComfyUI");
+                string main = Path.Combine(comfy, "main.py");
+                if (!File.Exists(main)) continue;
+                string web = Path.Combine(comfy, "web_custom_versions", "desktop_app");
+                string extra = Path.Combine(appData, "ComfyUI", "extra_models_config.yaml");
+                return new ComfyInstall
+                {
+                    Name = "ComfyUI Desktop", Python = python, MainPy = main, BasePath = basePath, WorkingDir = basePath, Venv = Path.Combine(basePath, ".venv"),
+                    FrontEnd = Directory.Exists(web) ? web : "", ExtraModels = File.Exists(extra) ? extra : "",
+                    InputRoot = Path.Combine(basePath, "input"), OutputRoot = Path.Combine(basePath, "output"),   // its server's own folders (comfyServer.ts)
+                };
+            }
+            why = "ComfyUI Desktop's program files (resources\\ComfyUI\\main.py) are not in " + programs + (listed > 0 ? " or " + string.Join(", ", apps.GetRange(0, listed)) : " and Windows names no other folder for it");
+            return null;
         }
 
         /// <summary>The folder of the program an uninstall entry's DisplayIcon or UninstallString names: <c>C:\x\ComfyUI.exe,0</c> and <c>"C:\x\Uninstall ComfyUI.exe" /currentuser</c> give
@@ -575,9 +753,9 @@ namespace DeathMuffinTeam
     }
 
     /// <summary>
-    /// Finds a ComfyUI server for a `model` job, starting one when none answers (Helix, 2026-10-26: "the team app should launch it if it is not already running"). The Desktop app's own server is used when
-    /// it is open (port 8000: the member's settings, models and queue; the app's run waits behind the member's own work there). Otherwise the app starts ComfyUI from Desktop's files with Desktop's Python, the
-    /// member's ComfyUI folder as its base (models, custom nodes) and its own user, input and output folders (under the app's folder, comfy\), on 127.0.0.1 only, port 8190 to 8199, hidden; it frees the
+    /// Finds a ComfyUI server for a `model` job, starting one when none answers (Helix, 2026-10-26: "the team app should launch it if it is not already running"). A Desktop's own server is used when
+    /// it runs (the install's ports, then the older Desktop's 8000: the member's settings, models and queue; the app's run waits behind the member's own work there). Otherwise the app starts ComfyUI from the
+    /// install's files with its Python, its ComfyUI folder as the base (models, custom nodes) and the app's own user, input and output folders (under the app's folder, comfy\), on 127.0.0.1 only, port 8190 to 8199, hidden; it frees the
     /// card's memory after each job and stops 10 minutes after the last one, and when the app closes. The runner checks the card (12 GB or more) on whichever server it gets.
     /// </summary>
     internal sealed class ComfyHost : IDisposable
@@ -678,13 +856,16 @@ namespace DeathMuffinTeam
 
         async Task<Lease> FindOrStartAsync(Action<string> note, Action<string> progress, CancellationToken ct)
         {
-            var desktop = new ComfyClient(http, ComfyClient.At(DesktopPort));
-            ComfyStats stats = await desktop.StatsAsync(ct).ConfigureAwait(false);
-            if (stats != null)
+            ComfyInstall found = Install(false);
+            var ports = found == null ? new List<int>() : found.ServerPorts();
+            if (!ports.Contains(DesktopPort)) ports.Add(DesktopPort);
+            foreach (int p in ports)
             {
-                ComfyInstall found = Install(false);
-                note("ComfyUI " + stats.Version + " is already running (port " + DesktopPort + "): using it");
-                return new Lease(this, desktop, false, found == null ? "" : Path.Combine(found.BasePath, "input"), found == null ? "" : Path.Combine(found.BasePath, "output"));   // Desktop's own folders (comfyServer.ts)
+                var desktop = new ComfyClient(http, ComfyClient.At(p));
+                ComfyStats stats = await desktop.StatsAsync(ct).ConfigureAwait(false);
+                if (stats == null) continue;
+                note("ComfyUI " + stats.Version + " is already running (port " + p + "): using it");
+                return new Lease(this, desktop, false, found == null ? "" : found.InputRoot, found == null ? "" : found.OutputRoot);
             }
             IGameProcess running;
             int port;
@@ -717,7 +898,7 @@ namespace DeathMuffinTeam
             if (port < 0) throw new JobFailure("ComfyUI could not be started: ports " + OwnPortFirst + " to " + OwnPortLast + " are all taken on this PC.");
             ComfyLaunch launch = LaunchFor(install, ownRoot, port);
             foreach (string sub in new[] { "user", "input", "output" }) Directory.CreateDirectory(Path.Combine(ownRoot, sub));
-            note("starting ComfyUI (Desktop's files in " + install.BasePath + ", port " + port + "): " + launch.Python + " " + CommandLineText.Join(launch.Args));
+            note("starting ComfyUI (" + install.Name + ", " + install.BasePath + ", port " + port + "): " + launch.Python + " " + CommandLineText.Join(launch.Args));
             progress("Starting ComfyUI");
             IGameProcess proc;
             try { proc = launcher.Start(launch); }
@@ -757,24 +938,28 @@ namespace DeathMuffinTeam
             }
         }
 
-        /// <summary>The command that starts ComfyUI headless from Desktop's files: Desktop's own core arguments (comfyServer.ts coreLaunchArgs) with the app's folders, on 127.0.0.1 only.</summary>
+        /// <summary>
+        /// The command that starts ComfyUI headless from Desktop's files, with the install's ComfyUI folder as its base (models, custom nodes) and the app's own folders, on 127.0.0.1 only: the core
+        /// arguments both Desktops give (the older one's comfyServer.ts coreLaunchArgs; Comfy Desktop's -s and model folders file). The member's own launch settings are not used.
+        /// </summary>
         public static ComfyLaunch LaunchFor(ComfyInstall install, string ownRoot, int port)
         {
-            var args = new List<string> { install.MainPy, "--base-directory", install.BasePath,
+            var args = new List<string>();
+            if (install.NoUserSite) args.Add("-s");
+            args.AddRange(new[] { install.MainPy, "--base-directory", install.BasePath,
                 "--user-directory", Path.Combine(ownRoot, "user"), "--input-directory", Path.Combine(ownRoot, "input"), "--output-directory", Path.Combine(ownRoot, "output"),
-                "--database-url", "sqlite:///" + Path.Combine(ownRoot, "user", "comfyui.db").Replace('\\', '/') };
+                "--database-url", "sqlite:///" + Path.Combine(ownRoot, "user", "comfyui.db").Replace('\\', '/') });
             if (install.ExtraModels.Length > 0) { args.Add("--extra-model-paths-config"); args.Add(install.ExtraModels); }
             if (install.FrontEnd.Length > 0) { args.Add("--front-end-root"); args.Add(install.FrontEnd); }
             args.AddRange(new[] { "--listen", "127.0.0.1", "--port", port.ToString(CultureInfo.InvariantCulture) });
-            string venv = Path.GetDirectoryName(Path.GetDirectoryName(install.Python));
             var env = new Dictionary<string, string>
             {
-                { "VIRTUAL_ENV", venv },
                 { "PATH", Path.GetDirectoryName(install.Python) + Path.PathSeparator + (Environment.GetEnvironmentVariable("PATH") ?? "") },
                 { "PYTHONUNBUFFERED", "1" },        // its output arrives as it is written
                 { "PYTHONIOENCODING", "utf-8" },    // a redirected Windows console is not UTF-8: a node printing a name in another script would stop ComfyUI
             };
-            return new ComfyLaunch { Python = install.Python, WorkingDir = install.BasePath, Args = args, Env = env };
+            if (install.Venv.Length > 0) env["VIRTUAL_ENV"] = install.Venv;   // a portable ComfyUI's embedded Python has none
+            return new ComfyLaunch { Python = install.Python, WorkingDir = install.WorkingDir.Length > 0 ? install.WorkingDir : install.BasePath, Args = args, Env = env };
         }
 
         void Release(Lease lease)
