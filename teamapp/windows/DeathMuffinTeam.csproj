@@ -9,7 +9,7 @@
     <AssemblyName>DeathMuffinTeam</AssemblyName>
     <RootNamespace>DeathMuffinTeam</RootNamespace>
     <!-- Three parts, always: the app compares it with the version.json on the game's site (SelfUpdate.cs). -->
-    <Version>0.5.2</Version>
+    <Version>0.5.3</Version>
     <ApplicationIcon>Resources\DeathMuffin.ico</ApplicationIcon>
     <AssemblyTitle>Death Muffin Team</AssemblyTitle>
     <Product>Death Muffin Team</Product>

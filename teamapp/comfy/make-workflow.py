@@ -5,7 +5,8 @@
 The template is in the editor's format; ComfyUI's /prompt takes the API format: node id -> {class_type, inputs}, an input either a value or
 [source node id, output index]. Only the nodes the saved model needs are kept, and the preview nodes on the way (they pass their input
 through) are bridged, so the run does no preview work and needs no preview passthrough (older ComfyUI versions have none). `slots` names
-the inputs the app fills in for each run; each is checked against the node definitions here, so a changed template fails now, not on a PC.
+the inputs the app fills in for each run; each is checked against the node definitions here, so a changed template fails now, not on a PC. `settings` are the
+named knobs a run may change (`detail`, `grid`, `round`, `sharp`, `follow`), with each number's range read from the node definitions; a new knob is a line in `knobs`.
 """
 import json, sys, urllib.request
 
@@ -78,12 +79,42 @@ def main():
         'prefix': [one('Save3DAdvanced', 'filename_prefix')],
     }
     seeds = {k: prompt[k]['inputs']['seed'] for k, _ in slots['seed']}
+
+    # the named settings a run may change (model-gen.sh --set name=value): the inputs each goes in, its type, and a number's range from the node's own definition
+    def sampler_into(cls, inp):
+        return one('KSampler', 'cfg', feeds(cls, inp))
+
+    remesh = one('RemeshMesh', 'resolution')[0]
+    knobs = {
+        'detail': [one('Trellis2UpsampleStage', 'target_resolution')],      # the shape's final voxel grid: lower = fewer fine bits
+        'grid': [[remesh, 'resolution']],                                   # the rebuild's voxel grid before the shrink: lower = simpler, rounder
+        'round': [[remesh, 'band']],                                        # the rebuild's closing radius in voxels: creases filleted, small gaps bridged
+        'sharp': [[remesh, 'sign_mode.qef']],                               # the rebuild keeps sharp edges and flat faces (hard surfaces)
+        'follow': [sampler_into('VaeDecodeStructureTrellis2', 'samples'),   # how closely the three shape stages follow the picture (cfg)
+                   sampler_into('Trellis2UpsampleStage', 'shape_latent'), sampler_into('VaeDecodeShapeTrellis', 'samples')],
+    }
+    settings = {}
+    for name, into in knobs.items():
+        node, inp = into[0]
+        value = prompt[node]['inputs'][inp]
+        if isinstance(value, bool):
+            settings[name] = {'type': 'bool', 'into': into}
+            continue
+        d = info[prompt[node]['class_type']]['input']
+        spec = {**d.get('required', {}), **d.get('optional', {})}.get(inp)
+        if not spec or spec[0] not in ('INT', 'FLOAT'):
+            sys.exit(f'setting {name}: {prompt[node]["class_type"]}.{inp} is not a number input')
+        rng = spec[1] if len(spec) > 1 else {}
+        settings[name] = {'type': 'int' if spec[0] == 'INT' else 'float', 'min': rng.get('min'), 'max': rng.get('max'), 'into': into}
+        if rng.get('step'):
+            settings[name]['step'] = rng['step']
     doc = {
         'about': f'ComfyUI {stats["system"]["comfyui_version"]}, template {TEMPLATE} (templates {stats["system"].get("installed_templates_version")}); '
                  'made by teamapp/comfy/make-workflow.py. A seed slot adds the run\'s seed to the value the template has.',
         'save': slots['prefix'][0][0],
         'slots': slots,
         'seedBase': seeds,
+        'settings': settings,
         'prompt': prompt,
     }
     with open(out, 'w') as f:

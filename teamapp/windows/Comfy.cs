@@ -27,11 +27,15 @@ namespace DeathMuffinTeam
         public string Model = ComfyRules.Pixal3d;
         public int Faces, Texture;
         public long Seed;
+        /// <summary>Setting name -> value (a number or true/false, as the job gave it); empty keeps the template's values.</summary>
+        public SortedDictionary<string, object> Settings = new SortedDictionary<string, object>(StringComparer.Ordinal);
 
-        /// <summary>"pixal3d, 5000 faces, texture 1024, seed 0" (the log's words for the run).</summary>
+        /// <summary>"pixal3d, 5000 faces, texture 1024, seed 0" and each setting ("detail 1024") (the log's words for the run).</summary>
         public string Describe()
         {
-            return Model + ", " + Faces.ToString(CultureInfo.InvariantCulture) + " faces, texture " + Texture.ToString(CultureInfo.InvariantCulture) + ", seed " + Seed.ToString(CultureInfo.InvariantCulture);
+            var sb = new StringBuilder(Model + ", " + Faces.ToString(CultureInfo.InvariantCulture) + " faces, texture " + Texture.ToString(CultureInfo.InvariantCulture) + ", seed " + Seed.ToString(CultureInfo.InvariantCulture));
+            foreach (var kv in Settings) sb.Append(", " + kv.Key + " " + MiniJson.Write(kv.Value));
+            return sb.ToString();
         }
     }
 
@@ -70,10 +74,19 @@ namespace DeathMuffinTeam
 
     /// <summary>
     /// The workflow a `model` job runs: ComfyUI's "Pixal3D &amp; TRELLIS.2: Image to Model" template in the API format, made by teamapp/comfy/make-workflow.py and built into the app
-    /// (teamapp/comfy/image-to-model.json). `slots` name the inputs a run fills in; a seed slot adds the run's seed to the template's own value (`seedBase`).
+    /// (teamapp/comfy/image-to-model.json). `slots` name the inputs a run fills in; a seed slot adds the run's seed to the template's own value (`seedBase`). `settings` are the named knobs a run may
+    /// change (each: its type `int`, `float` or `bool`, the node's own `min`/`max`/`step` for a number, and the inputs it goes in); a new knob is a line in make-workflow.py, not app code.
     /// </summary>
     internal sealed class ComfyWorkflow
     {
+        /// <summary>One named setting: its type, range and the inputs it fills.</summary>
+        sealed class Setting
+        {
+            public string Type = "";
+            public double? Min, Max, Step;
+            public List<KeyValuePair<string, string>> Into = new List<KeyValuePair<string, string>>();
+        }
+
         public const string ResourceName = "image-to-model.json";
         static readonly string[] SlotNames = { "image", "trellis2", "faces", "texture", "seed", "prefix" };
 
@@ -83,6 +96,10 @@ namespace DeathMuffinTeam
         Dictionary<string, object> prompt;
         readonly Dictionary<string, List<KeyValuePair<string, string>>> slots = new Dictionary<string, List<KeyValuePair<string, string>>>();
         readonly Dictionary<string, long> seedBase = new Dictionary<string, long>();
+        readonly SortedDictionary<string, Setting> settings = new SortedDictionary<string, Setting>(StringComparer.Ordinal);
+
+        /// <summary>The names of the settings a run may change, in order.</summary>
+        public IEnumerable<string> SettingNames { get { return settings.Keys; } }
 
         /// <summary>The workflow built into the app; null with the reason when it is missing or does not read (a broken build).</summary>
         public static ComfyWorkflow Embedded(out string error)
@@ -110,21 +127,22 @@ namespace DeathMuffinTeam
             var rawSlots = MiniJson.Obj(d, "slots");
             foreach (string name in SlotNames)
             {
-                var list = MiniJson.Arr(rawSlots, name);
-                if (list == null || list.Count == 0) { error = "The model workflow does not say where its " + name + " goes."; return null; }
-                var into = new List<KeyValuePair<string, string>>();
-                foreach (object o in list)
-                {
-                    var pair = o as List<object>;
-                    string node = pair != null && pair.Count == 2 ? pair[0] as string : null, input = pair != null && pair.Count == 2 ? pair[1] as string : null;
-                    var inputs = node == null ? null : MiniJson.Obj(MiniJson.Obj(w.prompt, node), "inputs");
-                    object v = null;
-                    if (inputs == null || input == null || !inputs.TryGetValue(input, out v) || v is List<object> || v is Dictionary<string, object>)
-                    { error = "The model workflow's " + name + " slot names an input it does not have."; return null; }
-                    into.Add(new KeyValuePair<string, string>(node, input));
-                }
+                var into = w.Inputs(MiniJson.Arr(rawSlots, name));
+                if (into == null) { error = "The model workflow's " + name + " slot names an input it does not have."; return null; }
                 w.slots[name] = into;
             }
+            var rawSettings = MiniJson.Obj(d, "settings");
+            if (rawSettings != null)
+                foreach (var kv in rawSettings)
+                {
+                    var sd = kv.Value as Dictionary<string, object>;
+                    var set = new Setting { Type = MiniJson.Str(sd, "type"), Min = Num(sd, "min"), Max = Num(sd, "max"), Step = Num(sd, "step") };
+                    set.Into = w.Inputs(MiniJson.Arr(sd, "into"));
+                    if (!SettingNameRe.IsMatch(kv.Key) || set.Into == null || (set.Type != "int" && set.Type != "float" && set.Type != "bool")
+                        || (set.Type != "bool" && (set.Min == null || set.Max == null || set.Min > set.Max)))
+                    { error = "The model workflow's setting " + kv.Key + " is not valid (a name, a type int, float or bool, a range for a number, and the inputs it goes in)."; return null; }
+                    w.settings[kv.Key] = set;
+                }
             var bases = MiniJson.Obj(d, "seedBase");
             foreach (var s in w.slots["seed"])
             {
@@ -133,6 +151,54 @@ namespace DeathMuffinTeam
                 w.seedBase[s.Key] = b.Value;
             }
             return w;
+        }
+
+        public static readonly Regex SettingNameRe = new Regex("^[a-z][a-z0-9_]{0,23}$", RegexOptions.CultureInvariant);
+
+        static double? Num(Dictionary<string, object> d, string key)
+        {
+            object v;
+            return d != null && d.TryGetValue(key, out v) && v is double ? (double?)(double)v : null;
+        }
+
+        /// <summary>A list of [node, input] pairs, each a plain value input of a node here; null when the list is empty or one is not.</summary>
+        List<KeyValuePair<string, string>> Inputs(List<object> list)
+        {
+            if (list == null || list.Count == 0) return null;
+            var into = new List<KeyValuePair<string, string>>();
+            foreach (object o in list)
+            {
+                var pair = o as List<object>;
+                string node = pair != null && pair.Count == 2 ? pair[0] as string : null, input = pair != null && pair.Count == 2 ? pair[1] as string : null;
+                var inputs = node == null ? null : MiniJson.Obj(MiniJson.Obj(prompt, node), "inputs");
+                object v = null;
+                if (inputs == null || input == null || !inputs.TryGetValue(input, out v) || v is List<object> || v is Dictionary<string, object>) return null;
+                into.Add(new KeyValuePair<string, string>(node, input));
+            }
+            return into;
+        }
+
+        /// <summary>Why a run's settings cannot go in this workflow (a name it does not have, the wrong type, out of range or off the step), or null when they all can.</summary>
+        public string CheckSettings(ModelRun run)
+        {
+            foreach (var kv in run.Settings)
+            {
+                Setting set;
+                if (!settings.TryGetValue(kv.Key, out set))
+                    return "The model run " + run.Label + " changes a setting this app's workflow does not have: " + kv.Key + " (it has " + (settings.Count == 0 ? "none" : string.Join(", ", settings.Keys)) + ").";
+                if (set.Type == "bool")
+                {
+                    if (!(kv.Value is bool)) return "The model run " + run.Label + " needs true or false for " + kv.Key + ".";
+                    continue;
+                }
+                double v = kv.Value is double ? (double)kv.Value : double.NaN;
+                string range = MiniJson.Write(set.Min.Value) + " to " + MiniJson.Write(set.Max.Value) + (set.Step != null ? " in steps of " + MiniJson.Write(set.Step.Value) : "");
+                bool whole = !double.IsNaN(v) && v == Math.Floor(v);
+                bool onStep = set.Step == null || set.Step.Value <= 0 || Math.Abs(Math.IEEERemainder(v - set.Min.Value, set.Step.Value)) < 1e-6;
+                if (double.IsNaN(v) || v < set.Min.Value || v > set.Max.Value || (set.Type == "int" && !whole) || !onStep)
+                    return "The model run " + run.Label + " needs " + (set.Type == "int" ? "a whole number" : "a number") + " from " + range + " for " + kv.Key + ".";
+            }
+            return null;
         }
 
         /// <summary>The nodes for one run, as ComfyUI's /prompt takes them (a copy: the workflow itself is never changed). <paramref name="image"/> is the picture's name in ComfyUI's input folder, <paramref name="prefix"/> where the model is saved.</summary>
@@ -145,6 +211,13 @@ namespace DeathMuffinTeam
             Set(copy, "texture", (long)run.Texture);
             Set(copy, "prefix", prefix);
             foreach (var s in slots["seed"]) Input(copy, s)[s.Value] = seedBase[s.Key] + run.Seed;
+            foreach (var kv in run.Settings)
+            {
+                Setting set;
+                if (!settings.TryGetValue(kv.Key, out set)) throw new InvalidOperationException("unchecked setting " + kv.Key);
+                object value = set.Type == "int" ? (object)(long)(double)kv.Value : kv.Value;
+                foreach (var s in set.Into) Input(copy, s)[s.Value] = value;
+            }
             return copy;
         }
 

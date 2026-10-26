@@ -2,11 +2,16 @@
 # 3D models from a concept picture, made on a team PC (teamapp/README.md "The model job", ASSET_PIPELINE.md "Image to model"): ComfyUI's Pixal3D / TRELLIS.2 image-to-model
 # workflow on the PC's graphics card (12 GB or more, ComfyUI Desktop installed: the PC's heartbeat says state.models), the face count set before the model is painted.
 #
-#   model-gen.sh [--pc <name or user>] [--model pixal3d|trellis2|both] [--faces N] [--texture 512|1024|2048|4096] [--seeds 0,1,...] [--runs <runs.json>] [--wait MINUTES]
-#                <out dir> <picture> [<picture> ...]
+#   model-gen.sh [--pc <name or user>] [--model pixal3d|trellis2|both] [--faces N] [--texture 512|1024|2048|4096] [--seeds 0,1,...] [--set <name>=<value> ...] [--runs <runs.json>]
+#                [--wait MINUTES] <out dir> <picture> [<picture> ...]
 #
 # <picture>: a .png, .jpg or .webp of at most 32 MB (one subject; ComfyUI removes the background). The runs: every picture with every model and every seed (default: Pixal3D,
-# 5000 faces, texture 1024, seed 0), each labelled <picture>-<model>[-s<seed>]; or --runs, a JSON list of { label, image (a picture's file name), model, faces, texture, seed }.
+# 5000 faces, texture 1024, seed 0), each labelled <picture>-<model>[-s<seed>]; or --runs, a JSON list of { label, image (a picture's file name), model, faces, texture, seed, settings }.
+# --set (repeatable, every run) and a run's `settings` ({ name: number or true/false }) change the workflow's named settings, checked here against its `settings`
+# (teamapp/comfy/image-to-model.json): detail (the shape's final grid, 1024-2048 in 128s; the template's 1536), grid (the rebuild's grid before the shrink; 768), round (the rebuild's
+# closing radius in voxels; 1), sharp (the rebuild keeps sharp edges and flat faces; false), follow (how closely the shape stages follow the picture; 7.5). A job that changes any
+# setting goes only to a PC on team app 0.5.3 or later (older apps would run the template's values without saying so): without --pc, to the first such PC when an older one
+# also runs model jobs.
 # At most 8 runs a job. A seed is added to the template's own seeds (0 keeps them), so the same seed gives the same model again.
 # 1. The pictures: copied into <team root>/model-<24 hex>/ (removed at the end; team-files-prune.sh takes one a killed run left).
 # 2. ONE `model` job, for the PC named by --pc (its name or its user's; default: any PC that runs model jobs), time to live 12 hours (a PC whose player is in the game takes
@@ -17,8 +22,9 @@
 #      DM_TEAM_SECRET_FILE (/home/ubuntu/death-muffin/discord-agent/secret), DM_TEAM_POLL_S (10).
 set -uo pipefail
 command -v python3 >/dev/null || { echo "model gen: python3 is required" >&2; exit 2; }
+export DM_MODEL_WORKFLOW=${DM_MODEL_WORKFLOW:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../teamapp/comfy" && pwd)/image-to-model.json}
 exec python3 - "$@" <<'PY'
-import argparse, hashlib, json, os, re, secrets, shutil, sys, time, urllib.request
+import argparse, hashlib, json, math, os, re, secrets, shutil, sys, time, urllib.request
 
 env = os.environ.get
 root = env("DM_TEAM_ROOT") or "/var/www/death-muffin/team-files"
@@ -33,6 +39,8 @@ FACES_MIN, FACES_MAX, SEED_MAX, RUNS_MAX = 500, 200000, 1000000, 8          # te
 PICTURE_MAX = 32 * 1024 * 1024                                              # teamapp/windows/JobPlan.cs MaxModelImageBytes
 LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,23}$")                         # JobPlan.cs VariantLabelRe: the model is <label>.glb
 PICTURE_TYPES = (".png", ".jpg", ".jpeg", ".webp")
+SETTINGS_APP = (0, 5, 3)                                                    # the first team app that fills a run's settings
+WORKFLOW = env("DM_MODEL_WORKFLOW")                                        # the app's workflow in this checkout: its `settings`
 TTL_S = 12 * 3600
 RUN_S = 420                                                                 # about how long one run holds the card (a 4070 SUPER: 4 to 7 minutes)
 
@@ -63,6 +71,7 @@ ap.add_argument("--model", default="pixal3d", choices=MODELS + ("both",))
 ap.add_argument("--faces", type=int, default=5000)
 ap.add_argument("--texture", type=int, default=1024, choices=TEXTURES)
 ap.add_argument("--seeds", default="0")
+ap.add_argument("--set", action="append", default=[], metavar="NAME=VALUE")
 ap.add_argument("--runs", default="")
 ap.add_argument("--wait", type=float, default=0, help="minutes to wait for the job (default 12 hours and 30 minutes a run)")
 ap.add_argument("out")
@@ -107,6 +116,21 @@ else:
                 runs.append({"label": slug(os.path.splitext(name)[0], 24 - len(tail)) + tail, "image": name, "model": m, "faces": a.faces, "texture": a.texture, "seed": s})
 if not 1 <= len(runs) <= RUNS_MAX:
     die(2, "a job has 1 to %d runs (this one would have %d): fewer pictures, models or seeds" % (RUNS_MAX, len(runs)))
+# ---- the workflow's named settings (--set and a run's settings)
+given = {}
+for item in a.set:
+    name, eq, text = item.partition("=")
+    if not eq or not re.match(r"^[a-z][a-z0-9_]{0,23}$", name):
+        die(2, "--set %s: name=value" % item)
+    try:
+        given[name] = {"true": True, "false": False}[text.lower()] if text.lower() in ("true", "false") else json.loads(text)
+    except ValueError:
+        die(2, "--set %s: the value is a number or true/false" % item)
+if a.set or any(isinstance(r, dict) and r.get("settings") for r in runs):
+    try:
+        known = json.load(open(WORKFLOW)).get("settings") or {}
+    except Exception as e:
+        die(2, "the workflow %s does not read (%s)" % (WORKFLOW, e))
 labels = set()
 for r in runs:
     label = str(r.get("label", ""))
@@ -124,13 +148,39 @@ for r in runs:
     r.setdefault("seed", 0)
     if not isinstance(r["seed"], int) or not 0 <= r["seed"] <= SEED_MAX:
         die(2, "run %s: seed from 0 to %d" % (label, SEED_MAX))
+    if not isinstance(r.get("settings") or {}, dict):
+        die(2, "run %s: settings is an object of name: value" % label)
+    r["settings"] = {**(r.get("settings") or {}), **given}
+    for name, v in r["settings"].items():
+        spec = known.get(name)
+        if spec is None:
+            die(2, "run %s: the workflow has no setting %r (it has %s)" % (label, name, ", ".join(sorted(known)) or "none"))
+        if spec["type"] == "bool":
+            if not isinstance(v, bool):
+                die(2, "run %s: %s is true or false" % (label, name))
+            continue
+        step = spec.get("step")
+        ok = isinstance(v, (int, float)) and not isinstance(v, bool) and spec["min"] <= v <= spec["max"] and (spec["type"] != "int" or float(v).is_integer())
+        if ok and step:
+            ok = abs(math.remainder(v - spec["min"], step)) < 1e-6
+        if not ok:
+            die(2, "run %s: %s is %s from %s to %s%s" % (label, name, "a whole number" if spec["type"] == "int" else "a number", spec["min"], spec["max"], " in steps of %s" % step if step else ""))
+    if not r["settings"]:
+        del r["settings"]
 
 # ---- a PC that runs model jobs
 try:
     pcs = (call("GET", "/pcs?days=14") or {}).get("pcs", [])
 except Exception as e:
     die(1, "the backend did not answer (%s)" % e)
-able = [p for p in pcs if isinstance(p.get("state"), dict) and p["state"].get("models") is True]
+def app_version(p):
+    try:
+        return tuple(int(x) for x in str(p.get("version") or "").split(".")[:3])
+    except ValueError:
+        return ()
+needs_settings = any(r.get("settings") for r in runs)
+able = [p for p in pcs if isinstance(p.get("state"), dict) and p["state"].get("models") is True
+        and (not needs_settings or app_version(p) >= SETTINGS_APP)]
 def who(p):
     st = p.get("state") if isinstance(p.get("state"), dict) else {}
     why = st.get("modelsWhy") if st.get("models") is not True and isinstance(st.get("modelsWhy"), str) and st.get("modelsWhy") else ""
@@ -141,10 +191,15 @@ if a.pc:
     if not hit:
         die(1, "no team PC called %s was seen in the last 14 days (seen: %s)" % (a.pc, "; ".join(map(who, pcs)) or "none"))
     if hit[0] not in able:
+        if needs_settings and app_version(hit[0]) < SETTINGS_APP and isinstance(hit[0].get("state"), dict) and hit[0]["state"].get("models") is True:
+            die(1, "%s is on team app %s: changing workflow settings needs 0.5.3 or later (the app updates itself between jobs)" % (a.pc, hit[0].get("version")))
         die(1, "%s runs no model jobs: it needs a graphics card with 12 GB or more, ComfyUI Desktop and team app 0.5.0 or later (%s)" % (a.pc, who(hit[0])))
     target = hit[0]["pcId"]
 elif not able:
-    die(1, "no team PC runs model jobs: one needs a graphics card with 12 GB or more, ComfyUI Desktop and team app 0.5.0 or later (seen: %s)" % ("; ".join(map(who, pcs)) or "none"))
+    die(1, "no team PC runs model jobs%s: one needs a graphics card with 12 GB or more, ComfyUI Desktop and team app %s or later (seen: %s)"
+        % (" with settings" if needs_settings else "", "0.5.3" if needs_settings else "0.5.0", "; ".join(map(who, pcs)) or "none"))
+elif needs_settings and any(isinstance(p.get("state"), dict) and p["state"].get("models") is True and p not in able for p in pcs):
+    target = able[0]["pcId"]                                                # an older app could claim it and run the template's values
 
 os.makedirs(a.out, exist_ok=True)
 folder = "model-" + secrets.token_hex(12)

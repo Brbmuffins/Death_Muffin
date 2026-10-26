@@ -72,6 +72,8 @@ namespace DeathMuffinTeam
         /// <summary>The pictures a `model` job may give ComfyUI, and how big one may be.</summary>
         public static readonly string[] ModelImageTypes = { ".png", ".jpg", ".jpeg", ".webp" };
         public const long MaxModelImageBytes = 32L << 20;
+        /// <summary>How many workflow settings one model run may change.</summary>
+        public const int MaxModelSettings = 16;
         /// <summary>The release checks of a new client on a team PC: steps run in order, each result uploaded as it finishes, a step that fails does not stop the next.</summary>
         public const string ReleaseKind = "release";
         /// <summary>The two builds a `release` job lists: the RELEASE files (install, quit while loading, bench) and the DEBUG build of the same revision (screens, stutter, soak).</summary>
@@ -490,7 +492,8 @@ namespace DeathMuffinTeam
         /// </summary>
         /// <summary>
         /// A `model` job's runs (`runs`, 1 to <see cref="ComfyRules.MaxRuns"/>): each a label (its model is `&lt;label&gt;.glb`), a picture of the job (`image`), the model (`pixal3d` or `trellis2`), the face count
-        /// (`faces`), the texture size (`texture`) and the seed (`seed`, 0 when missing).
+        /// (`faces`), the texture size (`texture`), the seed (`seed`, 0 when missing) and the workflow settings it changes (`settings`, optional: name -> number or true/false; the runner checks
+        /// them against the workflow before the first run).
         /// </summary>
         static bool ParseModel(Dictionary<string, object> d, JobPlan p, out string error)
         {
@@ -529,6 +532,18 @@ namespace DeathMuffinTeam
                 if (rd.TryGetValue("seed", out rawSeed) && rawSeed != null) seed = MiniJson.Int(rd, "seed");
                 if (seed == null || seed.Value < 0 || seed.Value > ComfyRules.SeedMax) { error = "The model run " + r.Label + " needs a seed from 0 to " + ComfyRules.SeedMax + "."; return false; }
                 r.Seed = seed.Value;
+                object rawSettings;
+                if (rd.TryGetValue("settings", out rawSettings) && rawSettings != null)
+                {
+                    var sd = rawSettings as Dictionary<string, object>;
+                    if (sd == null || sd.Count > MaxModelSettings) { error = "The settings of the model run " + r.Label + " are not an object of at most " + MaxModelSettings + " names."; return false; }
+                    foreach (var kv in sd)
+                    {
+                        if (!ComfyWorkflow.SettingNameRe.IsMatch(kv.Key) || !(kv.Value is double || kv.Value is bool))
+                        { error = "The model run " + r.Label + " has a setting that is not a name with a number or true/false: \"" + Shorten(kv.Key) + "\"."; return false; }
+                        r.Settings[kv.Key] = kv.Value;
+                    }
+                }
                 p.ModelRuns.Add(r);
             }
             return true;

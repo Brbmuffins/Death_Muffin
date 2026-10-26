@@ -381,10 +381,12 @@ namespace DeathMuffinTeam.Tests
 
         public FakeComfy StartDesktop() { return DesktopServer = new FakeComfy(DesktopPort, Desktop.Base); }
 
-        public static Dictionary<string, object> Run(string label, string image = "concept.png", string model = "pixal3d", int faces = 5000, int texture = 1024, long? seed = null)
+        public static Dictionary<string, object> Run(string label, string image = "concept.png", string model = "pixal3d", int faces = 5000, int texture = 1024, long? seed = null,
+            Dictionary<string, object> settings = null)
         {
             var d = new Dictionary<string, object> { { "label", label }, { "image", image }, { "model", model }, { "faces", (double)faces }, { "texture", (double)texture } };
             if (seed != null) d["seed"] = (double)seed.Value;
+            if (settings != null) d["settings"] = settings;
             return d;
         }
 
@@ -419,6 +421,7 @@ namespace DeathMuffinTeam.Tests
         public static void Run()
         {
             Workflow();
+            Settings();
             Plans();
             ClientText();
             Install();
@@ -430,6 +433,7 @@ namespace DeathMuffinTeam.Tests
             OwnServerFails();
             NotInstalled();
             SomeRunsFail();
+            SettingsRefused();
             StoppedRuns();
             Helpers();
         }
@@ -504,6 +508,53 @@ namespace DeathMuffinTeam.Tests
             T.Ok(ComfyWorkflow.Parse("{}", out error) == null && error.Length > 0, "an empty workflow is refused");
         }
 
+        /// <summary>The workflow's named settings: what a run's setting fills, and what the workflow refuses before the first run.</summary>
+        static void Settings()
+        {
+            string error;
+            ComfyWorkflow w = ComfyWorkflow.Embedded(out error);
+            if (w == null) { T.Ok(false, "the workflow reads (" + error + ")"); return; }
+            T.Eq(string.Join(",", w.SettingNames), "detail,follow,grid,round,sharp", "the workflow names its settings");
+            var plain = w.Fill(new ModelRun { Label = "a", Image = "concept.png", Faces = 5000, Texture = 1024 }, "dmteam/c.png", "dmteam/j-a");
+            T.Eq(FakeComfy.Input(plain, "94", "target_resolution"), (object)1536.0, "a run without settings keeps the template's detail");
+            var run = new ModelRun { Label = "b", Image = "concept.png", Faces = 5000, Texture = 1024 };
+            run.Settings["detail"] = 1024.0; run.Settings["grid"] = 384.0; run.Settings["round"] = 2.5; run.Settings["sharp"] = true; run.Settings["follow"] = 4.5;
+            T.Eq(w.CheckSettings(run), null, "settings inside their ranges pass");
+            var b = w.Fill(run, "dmteam/c.png", "dmteam/j-b");
+            T.Eq(FakeComfy.Input(b, "94", "target_resolution"), (object)1024L, "detail goes in the upsample stage, as a whole number");
+            T.Eq(FakeComfy.Input(b, "241", "resolution"), (object)384L, "grid goes in the rebuild's resolution");
+            T.Eq(FakeComfy.Input(b, "241", "band"), (object)2.5, "round goes in the rebuild's band");
+            T.Eq(FakeComfy.Input(b, "241", "sign_mode.qef"), (object)true, "sharp turns on the rebuild's sharp edges");
+            T.Ok(new[] { "3", "18", "23" }.All(n => Equals(FakeComfy.Input(b, n, "cfg"), 4.5)), "follow goes in the three shape samplers");
+            T.Eq(FakeComfy.Input(b, "12", "cfg"), FakeComfy.Input(plain, "12", "cfg"), "follow leaves the paint sampler alone");
+            T.Eq(run.Describe(), "pixal3d, 5000 faces, texture 1024, seed 0, detail 1024, follow 4.5, grid 384, round 2.5, sharp true", "the log names each setting");
+
+            Func<string, object, string> check = (name, value) =>
+            {
+                var r = new ModelRun { Label = "c" };
+                r.Settings[name] = value;
+                return w.CheckSettings(r);
+            };
+            T.Has(check("smooth", 3.0), "does not have: smooth (it has detail, follow, grid, round, sharp)", "a setting the workflow lacks is refused with the ones it has");
+            T.Has(check("detail", 1000.0), "from 1024 to 2048 in steps of 128", "a number under the range is refused with the range");
+            T.Has(check("detail", 1100.0), "in steps of 128", "a number off the node's step is refused");
+            T.Has(check("grid", 384.5), "a whole number", "a whole-number setting refuses a fraction");
+            T.Has(check("sharp", 1.0), "true or false", "a true/false setting refuses a number");
+            T.Has(check("follow", true), "a number", "a number setting refuses true/false");
+
+            Func<Action<Dictionary<string, object>>, string> broken = mutate =>
+            {
+                var d = MiniJson.TryObject(WorkflowText());
+                mutate(d);
+                string e;
+                return ComfyWorkflow.Parse(MiniJson.Write(d), out e) == null ? e : null;
+            };
+            T.Has(broken(d => ((Dictionary<string, object>)MiniJson.Obj(d, "settings")["grid"])["type"] = "text"), "setting grid", "a setting of an unknown type is refused");
+            T.Has(broken(d => ((Dictionary<string, object>)MiniJson.Obj(d, "settings")["detail"])["into"] = new List<object> { new List<object> { "94", "nope" } }), "setting detail", "a setting that names a missing input is refused");
+            T.Has(broken(d => ((Dictionary<string, object>)MiniJson.Obj(d, "settings")["round"]).Remove("max")), "setting round", "a number setting without its range is refused");
+            T.Eq(broken(d => d.Remove("settings")), null, "a workflow without settings still reads (its runs change none)");
+        }
+
         static void Plans()
         {
             JobPlan plan; string error;
@@ -528,6 +579,12 @@ namespace DeathMuffinTeam.Tests
             T.Has(Refused(p => p["runs"] = new List<object> { ModelRig.Run("a", faces: ComfyRules.FacesMax + 1) }), "face count", "too many faces are refused");
             T.Has(Refused(p => p["runs"] = new List<object> { ModelRig.Run("a", texture: 1000) }), "texture size", "a texture size the bake does not take is refused");
             T.Has(Refused(p => p["runs"] = new List<object> { ModelRig.Run("a", seed: -1) }), "seed", "a negative seed is refused");
+            var withSettings = new Dictionary<string, object> { { "detail", 1024.0 }, { "sharp", true } };
+            T.Ok(JobPlan.TryParse(JobPlan.ModelKind, Payload(p => p["runs"] = new List<object> { ModelRig.Run("a", settings: withSettings) }), Site, out plan, out error), "a run with settings parses (" + error + ")");
+            if (plan != null) T.Eq(plan.ModelRuns[0].Describe(), "pixal3d, 5000 faces, texture 1024, seed 0, detail 1024, sharp true", "its settings are kept in order");
+            T.Has(Refused(p => p["runs"] = new List<object> { ModelRig.Run("a", settings: new Dictionary<string, object> { { "Detail!", 1024.0 } }) }), "setting that is not a name", "a setting's name is a plain word");
+            T.Has(Refused(p => p["runs"] = new List<object> { ModelRig.Run("a", settings: new Dictionary<string, object> { { "detail", "high" } }) }), "number or true/false", "a setting's value is a number or true/false");
+            T.Has(Refused(p => { var r = ModelRig.Run("a"); r["settings"] = new List<object>(); p["runs"] = new List<object> { r }; }), "not an object", "settings are an object");
             T.Has(Refused(p => p["files"] = new List<object> { Program.File_("concept.png"), Program.File_("notes.txt") }), "pictures only", "a model job's files are pictures");
             T.Has(Refused(p => p["files"] = new List<object> { Program.File_("concept.png", bytes: (double)(JobPlan.MaxModelImageBytes + 1)) }), "too big", "a picture over the limit is refused");
             T.Has(Refused(p => p["files"] = new List<object> { Program.File_("concept.png", cacheKey: "art-1") }), "cache", "a model job's pictures are not cached");
@@ -905,6 +962,17 @@ namespace DeathMuffinTeam.Tests
                 T.Ok(!r.Ok && r.Error.Contains("None of the 2 runs made a model"), "a job with no model fails (" + r.Error + ")");
                 T.Has(m.R.Api.FailLog, "CUDA out of memory", "and the server gets the reasons in the log");
                 T.Eq(desk.CallCount("free"), 1, "the card's memory is let go after a failed job too");
+            }
+        }
+
+        static void SettingsRefused()
+        {
+            using (var m = new ModelRig())
+            {
+                FakeComfy desk = m.StartDesktop();
+                RunResult r = m.R.Run("modeljob16", m.Plan(ModelRig.Run("a"), ModelRig.Run("b", settings: new Dictionary<string, object> { { "smooth", 3.0 } })));
+                T.Ok(!r.Ok && r.Error.Contains("does not have: smooth"), "a run with a setting the workflow lacks fails the job (" + r.Error + ")");
+                T.Eq(desk.Prompts.Count, 0, "before any run is queued, so no PC time is spent on a job that would not do what was asked");
             }
         }
 

@@ -50,12 +50,18 @@ A concept picture made into a model, free, on a team PC's graphics card: ComfyUI
 app's `model` job (DECISIONS B76; teamapp/README.md "The model job" for the PC's side). In the Tripo bake-off of 2026-10-26 Pixal3D won the brazier and
 the hound, with its own paint. It makes **no skeleton**: a creature that moves gets its rig and clips from Blender (B74) or Tripo.
 
-`server/death-muffin/model-gen.sh [--pc <name>] [--model pixal3d|trellis2|both] [--faces N] [--texture 1024] [--seeds 0,1] [--runs runs.json] <out dir> <picture>...`
+`server/death-muffin/model-gen.sh [--pc <name>] [--model pixal3d|trellis2|both] [--faces N] [--texture 1024] [--seeds 0,1] [--set name=value] [--runs runs.json] <out dir> <picture>...`
 queues one job (at most 8 runs: every picture with every model and seed, or the runs file's list), waits for it and copies `<label>.glb` and the PC's log
 into `<out dir>` (use `art-src/comfy/<id>/`). **Set `--faces` to the model's face budget (above) here**: the mesh is cut before it is painted. Never cut a
 painted model down afterwards: the paint smears. The concept rules are Tripo's (one subject, plain background; ComfyUI removes the background). A run takes
 4 to 7 minutes on a 4070 SUPER. The same picture, model, faces, texture and seed give the same model again, so a model that goes into the game is recorded as its run
 (`art-manifest/comfy/<id>.json`: the picture, the run's settings and the ComfyUI version the log names).
+
+**Shape settings** (team app 0.5.3; `--set name=value` for every run, or a run's `settings`): shape Pixal3D's model before it is cut and painted, rather than fixing it in
+Blender afterwards. Each name, its inputs and range are in the workflow's `settings` (`teamapp/comfy/image-to-model.json`; model-gen.sh refuses anything else); the template's
+value in brackets. `detail`: the grid the shape is refined to (1536; lower gives fewer fine bits). `grid`: the grid the mesh is rebuilt on before the cut (768; lower is simpler and
+rounder). `round`: the rebuild's closing radius in voxels, creases filleted and gaps bridged at that size (1). `sharp`: the rebuild keeps sharp edges and flat faces (false; for props
+and buildings). `follow`: how closely the shape stages follow the picture (7.5; lower is looser). The rebuild's own smoothing is already at its most.
 
 ## Build
 

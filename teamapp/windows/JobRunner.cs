@@ -457,6 +457,11 @@ namespace DeathMuffinTeam
             ComfyWorkflow workflow = Workflow ?? ComfyWorkflow.Embedded(out workflowError);
             if (workflow == null) throw new JobFailure(workflowError);
             note("workflow: " + workflow.About);
+            foreach (ModelRun run in plan.ModelRuns)
+            {
+                string settingsError = workflow.CheckSettings(run);
+                if (settingsError != null) throw new JobFailure(settingsError);
+            }
             string gameDir = folders.GameDir(jobId), outDir = folders.OutDir(jobId);
             string stem = ComfyStem(jobId);
             var models = new List<KeyValuePair<string, string>>();

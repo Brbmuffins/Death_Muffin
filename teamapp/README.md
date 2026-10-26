@@ -255,12 +255,15 @@ up 10 minutes after its last job (a job soon after does not wait for a start), t
 Desktop's own server is the member's and is never stopped.
 
 **The payload** (`JobPlan.ParseModel`): `files`, the pictures (`.png`, `.jpg`, `.jpeg`, `.webp`, each at most 32 MB, no `cacheKey`; downloaded and checked like any job's files) and `runs`, 1 to 8 of
-`{label, image, model, faces, texture, seed}`: `label` `^[a-z0-9][a-z0-9-]{0,23}$` (once; the model is `<label>.glb`), `image` one of the files, `model` `pixal3d` or `trellis2`, `faces` 500 to 200,000, `texture`
-512, 1024, 2048 or 4096 (the colour and normal maps), `seed` 0 to 1,000,000 (default 0; added to the template's own seeds, so 0 is the template as it is and the same seed gives the same model). No `args`.
+`{label, image, model, faces, texture, seed, settings}`: `label` `^[a-z0-9][a-z0-9-]{0,23}$` (once; the model is `<label>.glb`), `image` one of the files, `model` `pixal3d` or `trellis2`, `faces` 500 to 200,000, `texture`
+512, 1024, 2048 or 4096 (the colour and normal maps), `seed` 0 to 1,000,000 (default 0; added to the template's own seeds, so 0 is the template as it is and the same seed gives the same model), `settings`
+(optional) at most 16 of `name: number or true/false`, names `^[a-z][a-z0-9_]{0,23}$`: the workflow's named settings this run changes. A run whose setting the app's workflow does not have, or whose value is
+outside the setting's range or step, fails the job before ComfyUI is asked. No `args`.
 
 **What it runs**: the workflow built into the app (`teamapp/comfy/image-to-model.json`, made from the template by `teamapp/comfy/make-workflow.py <ComfyUI url>` against a running ComfyUI: only the nodes the saved
-model needs, in the API format, with `slots` naming the inputs a run fills in, each checked against ComfyUI's node definitions when it is made). Each distinct picture is uploaded once into ComfyUI's input
-folder as `dmteam/<job>-<picture>`; then each run, one after the other: the workflow filled in (picture, the TRELLIS.2 switch, `DecimateMesh`'s face count, texture size, seeds, `dmteam/<job>-<label>` as the save name), queued, watched every 2 s,
+model needs, in the API format, with `slots` naming the inputs a run fills in and `settings` the named settings a run may change: the inputs each goes into, its type (a whole number, a number or true/false) and
+a number's range and step, from ComfyUI's node definitions; each checked against those definitions when it is made; what each setting does: ASSET_PIPELINE.md "Image to model"). Each distinct picture is uploaded once into ComfyUI's input
+folder as `dmteam/<job>-<picture>`; then each run, one after the other: the workflow filled in (picture, the TRELLIS.2 switch, `DecimateMesh`'s face count, texture size, seeds, the run's settings, `dmteam/<job>-<label>` as the save name), queued, watched every 2 s,
 at most 30 minutes from its queueing; the `.glb` fetched from ComfyUI (`/view`), checked (a whole binary glTF, at most 48 MB) and kept as `out\<label>.glb`. A run ComfyUI refuses (its reasons, such as a missing
 node), fails (the node and its error, such as running out of the card's memory), saves no model or runs past the limit is noted in the log and the next run goes on; a stopped run is taken out of ComfyUI's
 queue and interrupted. The player's game, the server's cancel or the app closing stop the job. After the runs (whatever happened), ComfyUI is asked to **let go of the card's memory** (`/free`, so a game started
@@ -335,6 +338,8 @@ the models' look against a run made by hand in Desktop.
 
 ### Changelog
 
+- **0.5.3** (2026-10-26) - A model job's run may change the workflow's named settings (`settings`: the shape's detail, the rebuild's grid, rounding and sharp edges, how closely the shape follows the
+  picture), for tuning Pixal3D's shapes at the source; the log names them with each run. Older apps would run the template's values, so `model-gen.sh` sends such a job only to 0.5.3 or later.
 - **0.5.2** (2026-10-26) - Comfy Desktop, the 2.0 app, is found and started: its install launched last, with its own Python, ComfyUI folder and model folders, and its server when it runs
   (port 8188 or the one it chose). 0.5.1 looked only for the older ComfyUI Desktop, so Helix's PC still ran no model jobs.
 - **0.5.1** (2026-10-26) - ComfyUI Desktop installed outside `%LOCALAPPDATA%\Programs` is found (where Windows' uninstall entry or a running `ComfyUI.exe` says it is: 0.5.0 ran no model jobs
