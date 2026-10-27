@@ -491,7 +491,7 @@ func _test_look() -> void:
 			print("INFO no model file for %s" % slug)
 			continue
 		read += 1
-		var gltf := _glb_json(path)
+		var gltf := Baker.glb_json(path)
 		for mat: Dictionary in gltf.get("materials", []):
 			var pbr: Dictionary = mat.get("pbrMetallicRoughness", {})
 			check(not pbr.has("metallicFactor") and not pbr.has("roughnessFactor") and not pbr.has("baseColorFactor") and not mat.has("emissiveFactor"),
@@ -536,18 +536,6 @@ func bumped(n: Vector3, dp1: Vector3, dp2: Vector3, du1: Vector2, du2: Vector2, 
 	var b := -(p2 * du1.y + p1 * du2.y)
 	var inv := 1.0 / sqrt(maxf(maxf(t.dot(t), b.dot(b)), 1e-20))
 	return (t * (inv * m.x) + b * (inv * m.y) + n * m.z).normalized()
-
-
-## The JSON chunk of a .glb.
-func _glb_json(path: String) -> Dictionary:
-	var f := FileAccess.open(path, FileAccess.READ)
-	if f == null:
-		return {}
-	f.seek(12)
-	var length := f.get_32()
-	f.get_32()
-	var parsed: Variant = JSON.parse_string(f.get_buffer(length).get_string_from_utf8())
-	return parsed if parsed is Dictionary else {}
 
 
 func _test_packing() -> void:

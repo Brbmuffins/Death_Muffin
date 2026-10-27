@@ -1225,18 +1225,50 @@ static func _save(res: Resource, path: String) -> Resource:
 	return ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_REPLACE)
 
 
-## The colour, ORM and normal textures next to a model's glb (glTF's own file names), relative to the assets folder.
+## The colour, ORM and normal textures of a model, relative to the assets folder: the images its glTF material names (a crowd model has one
+## material: material -> texture -> image), as Godot's import writes them next to the glb (`<glb name>_<image name>.webp|png`). Whatever made the
+## model (Tripo, ComfyUI) names its images; "" for a slot the material has no texture for or whose image is not there.
 static func _texture_paths(assets_dir: String, url: String) -> Dictionary:
 	var out := {"albedo": "", "orm": "", "normal": ""}
+	var gltf := glb_json(assets_dir.path_join(url))
+	var mats: Array = gltf.get("materials", [])
+	if mats.is_empty():
+		return out
+	var mat: Dictionary = mats[0]
+	var pbr: Dictionary = mat.get("pbrMetallicRoughness", {})
 	var rel_dir := url.get_base_dir()
 	var files := DirAccess.get_files_at(assets_dir.path_join(rel_dir))
-	files.sort()
-	for f in files:
-		if f.ends_with(".webp") or f.ends_with(".png"):
-			if f.contains("_Color_") and out.albedo == "":
-				out.albedo = rel_dir.path_join(f)
-			elif f.contains("_ORM_") and out.orm == "":
-				out.orm = rel_dir.path_join(f)
-			elif f.contains("_Normal") and out.normal == "":
-				out.normal = rel_dir.path_join(f)
+	for slot: Array in [["albedo", pbr.get("baseColorTexture")], ["orm", pbr.get("metallicRoughnessTexture")], ["normal", mat.get("normalTexture")]]:
+		var image := _image_name(gltf, slot[1])
+		for ext in ["webp", "png"]:
+			var f := "%s_%s.%s" % [url.get_file().get_basename(), image, ext]
+			if image != "" and files.has(f):
+				out[slot[0]] = rel_dir.path_join(f)
+				break
 	return out
+
+
+## The name of the image a glTF texture slot ({index}) shows: the texture's source, or its extension's (EXT_texture_webp); "" when there is none.
+static func _image_name(gltf: Dictionary, slot: Variant) -> String:
+	var textures: Array = gltf.get("textures", [])
+	if not (slot is Dictionary) or int(slot.get("index", -1)) < 0 or int(slot.index) >= textures.size():
+		return ""
+	var tex: Dictionary = textures[int(slot.index)]
+	var source := int(tex.get("source", -1))
+	for ext: Variant in (tex.get("extensions", {}) as Dictionary).values():
+		if ext is Dictionary and ext.has("source"):
+			source = int(ext.source)
+	var images: Array = gltf.get("images", [])
+	return String(images[source].get("name", "")) if source >= 0 and source < images.size() else ""
+
+
+## The JSON chunk of a .glb; {} when it cannot be read.
+static func glb_json(path: String) -> Dictionary:
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return {}
+	f.seek(12)
+	var length := f.get_32()
+	f.get_32()
+	var parsed: Variant = JSON.parse_string(f.get_buffer(length).get_string_from_utf8())
+	return parsed if parsed is Dictionary else {}

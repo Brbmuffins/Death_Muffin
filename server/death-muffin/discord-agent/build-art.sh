@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # The agent's way to turn an approved, generated model into game files (no keys, no network, nothing outside the worktree is writable).
 #   build-art.sh <id>      run from the worktree root, after the runner said the generation finished
-# Same sandbox as check-godot.sh (sandbox-lib.sh). Inside: tools/build-characters.mjs <id> (Tripo outputs in art-src/tripo/<id>/ -> public/models/...), then the
+# Same sandbox as check-godot.sh (sandbox-lib.sh). Inside: tools/build-characters.mjs <id> (Tripo outputs in art-src/tripo/<id>/, or for a model made from a
+# ComfyUI run, art-manifest/comfy/<id>.json, its game file in art-src/comfy/<id>/ -> public/models/...), then the
 # result is DEQUANTIZED (Godot's glTF importer rejects KHR_mesh_quantization) and copied into the Godot client:
 #   characters/creatures  public/models/<id>/character.glb      -> client/assets/slice/models/<id>/character.glb
 #   props (id prop_<name>) public/models/props/<name>.glb        -> client/assets/slice/models/props/<name>.glb
@@ -11,7 +12,8 @@ set -uo pipefail
 ID=${1:-}
 [[ "$ID" =~ ^[a-z0-9_]{3,40}$ ]] || { echo "usage: build-art.sh <id>   (id = [a-z0-9_], the one that was generated)"; exit 2; }
 TOP=$(git rev-parse --show-toplevel) || exit 2
-[ -d "$TOP/art-src/tripo/$ID" ] && [ ! -L "$TOP/art-src/tripo/$ID" ] || { echo "nothing generated for $ID yet (no art-src/tripo/$ID)"; exit 2; }
+RAW="$TOP/art-src/tripo/$ID"; [ -f "$TOP/art-manifest/comfy/$ID.json" ] && RAW="$TOP/art-src/comfy/$ID"
+[ -d "$RAW" ] && [ ! -L "$RAW" ] || { echo "nothing generated for $ID yet (no ${RAW#"$TOP"/})"; exit 2; }
 [ -f "$TOP/tools/build-characters.mjs" ] && [ -d "$TOP/client" ] || { echo "this worktree has no tools/build-characters.mjs or client/"; exit 2; }
 export DM_SANDBOX_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/sandbox-lib.sh"
 # Combat-trim source clips for a hero (build-characters.mjs COMBAT_TRIMS): the shared checkout's raw hero_gravecaller run, read-only in the sandbox.

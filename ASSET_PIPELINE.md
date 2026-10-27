@@ -48,14 +48,17 @@ ignored:
 
 A concept picture made into a model, free, on a team PC's graphics card: ComfyUI's "Pixal3D & TRELLIS.2: Image to Model" template run by the team
 app's `model` job (DECISIONS B76; teamapp/README.md "The model job" for the PC's side). In the Tripo bake-off of 2026-10-26 Pixal3D won the brazier and
-the hound, with its own paint. It makes **no skeleton**: a creature that moves gets its rig and clips from Blender (B74) or Tripo.
+the hound, with its own paint. It makes **no skeleton**: a creature that moves gets its rig and clips from Blender (B74) or Tripo. The live bone hound is
+the first one in the game (2026-10-27, "Into the game" below).
 
 `server/death-muffin/model-gen.sh [--pc <name>] [--model pixal3d|trellis2|both] [--faces N] [--texture 1024] [--seeds 0,1] [--set name=value] [--runs runs.json] <out dir> <picture>...`
 queues one job (at most 8 runs: every picture with every model and seed, or the runs file's list), waits for it and copies `<label>.glb` and the PC's log
-into `<out dir>` (use `art-src/comfy/<id>/`). **Set `--faces` to the model's face budget (above) here**: the mesh is cut before it is painted. Never cut a
-painted model down afterwards: the paint smears. The concept rules are Tripo's (one subject, plain background; ComfyUI removes the background). A run takes
-4 to 7 minutes on a 4070 SUPER. The same picture, model, faces, texture and seed give the same model again, so a model that goes into the game is recorded as its run
-(`art-manifest/comfy/<id>.json`: the picture, the run's settings and the ComfyUI version the log names).
+into `<out dir>` (use `art-src/comfy/<id>/`). Either set `--faces` to the model's face budget (above), so the mesh is cut before it is painted, or make a
+detailed model (200000 faces, `--set detail=2048 --set grid=1024`, texture 2048: the bone hound's run) and bake it down in Blender onto a new mesh at the
+budget (new UVs, the detailed paint baked onto them). Never just cut a painted model down: the paint smears. The concept rules are Tripo's (one subject,
+plain background; ComfyUI removes the background). A run takes 2 to 10 minutes on a 4070 SUPER. The same picture, model, faces, texture and seed give the
+same model again, so a model that goes into the game is recorded as its run (`art-manifest/comfy/<id>.json`: the picture, the run's settings and the
+ComfyUI version the log names), with the Blender steps after it and the `game` file they made in `art-src/comfy/<id>/`.
 
 **Shape settings** (team app 0.5.3; `--set name=value` for every run, or a run's `settings`): shape Pixal3D's model before it is cut and painted, rather than fixing it in
 Blender afterwards. Each name, its inputs and range are in the workflow's `settings` (`teamapp/comfy/image-to-model.json`; model-gen.sh refuses anything else); the template's
@@ -73,11 +76,17 @@ the same on both sides may use its left view mirrored as the right. `fov` is the
 ## Build
 
 `node tools/build-characters.mjs [id ...]` merges the clip files onto the idle mesh by joint name into one `character.glb`
-(dedup, resample, WebP textures 1024/512 px, quantize, prune) plus `clips.json`. Colour variants without new spend:
+(dedup, resample, WebP textures 1024/512 px, quantize, prune) plus `clips.json`. A model with a ComfyUI record is built from the record's `game` file
+the same way, never from Tripo files; its clips are Blender jobs. Colour variants without new spend:
 `node tools/tint-variants.mjs [base]`. Free animation: `node tools/blender.mjs` writes `anim_<name>.glb` from code (gaits,
 rig fixes, CC0 retargets); see `docs/BLENDER-PIPELINE.md`. Moves and edits on a model the game already ships (the default over a new Tripo run,
 DECISIONS B74) are Blender jobs, `node tools/blender/jobs.mjs run <job.json>` (docs/BLENDER-PIPELINE.md "Jobs"); a rebuild from the Tripo files
 loses them until `node tools/blender/jobs.mjs replay <id>` (`build-art.sh` does it).
+
+A four-legged ComfyUI creature gets the standard skeleton Blender builds from its shape: the bone hound's is `Root`, `Hip`, `Spine1-2`,
+`Chest`, `Neck1-2`, `Head`, `Tail_A-D`, `FL/FR_Upper/Lower/Paw`, `HL/HR_Thigh/Shin/Meta/Paw`, and its moves are one `motion` job on
+`tools/blender/recipes/bone_hound.json`. The scripts of the steps between the run and the `game` file (bake-down, head bend, placement, skeleton) are
+not in the repo yet (KNOWN-GAPS.md).
 
 ## Into the game
 

@@ -230,7 +230,7 @@ Shrouded affix's ward (opacity eases toward 0.38 at `min(1, 6 dt)` a frame while
 `crowd_looks.json` holds the looks as data: the model of each enemy def (`enemy_model`) and thrall kind (`thrall_model`), the legions' models and tints (`legion`), the
 thralls' own looks, the casters, the hover heights. `CrowdView.setup` turns them into `DmCrowd.set_enemy_look` and `set_thrall_look` (per kind and legion), loads each baked model it
 needs from `res://assets/crowd/baked/<slug>/` (the `baked_dir` option) and builds its nodes. A def whose model is not baked is drawn with the nearest one that is: the rig fallback (`enemy_fallback`), else a baked model of the same rig (`enemies.json` `rig`), else the skeleton, else any baked model; each substitution is listed once in `CrowdView.warnings` (and `push_warning`).
-A model with no colour texture is drawn white, and one baked by another version of the baker (`CrowdVatData.format`) is listed too (bake again).
+The baker finds a model's colour, ORM and normal textures through its glTF material (material, texture, image name: the files Godot's import writes next to the glb as `<glb name>_<image name>`), so any model maker's file names work. A model with no colour texture is drawn white, and one baked by another version of the baker (`CrowdVatData.format`) is listed too (bake again).
 
 ### Test of the views
 
@@ -293,7 +293,7 @@ software Vulkan driver; the lighting alone, a thrall with no glow and no rim, co
 - **The model's factors.** Metallic and roughness 1, the glTF default of every crowd model (the ORM texture scales them; `crowd_bake.gd` reads each model's glTF material to prove it). With
   metallic 0 armour, helmets and bone read matt and silver, +38 levels brighter over a thrall's pixels: a pale, flat look.
 - **The normal map**, drawn from the crowd mesh without tangents: the frame comes from the screen-space derivatives of the position and the UVs (`bumped()` in the shader: tangent along +U, bitangent along
-  -V as Godot's own, z rebuilt from xy; `crowd_bake.gd` holds a line-by-line mirror to the expected frame). The texture is the glTF's `NormalGL` (`CrowdVatData.normal_path`, found by the baker; a bake
+  -V as Godot's own, z rebuilt from xy; `crowd_bake.gd` holds a line-by-line mirror to the expected frame). The texture is the glTF material's normal texture (`CrowdVatData.normal_path`, found by the baker; a bake
   from before it has none and is drawn without, until baked again). Costs one texture fetch and some arithmetic per fragment.
 - **The friend rim** (`rim += rim.rgb * strength * smoothstep(.35, .95, fresnel) * .9`, read from the geometric normal as DmCreatureMat reads it): a thrall's spirit colour (SPELL_FX `exhume.spirit`) at 0.9, at
   0.6 for another player's thralls (`CrowdView.set_owner_ally`, set by `DmCoreHost` for every hero but the local one), gold at 1.4 for a champion (`crowd_looks.json` `thrall_rim`: own, ally and champion). It rides the glow's palette slot, in `rim_palette`: **no instance data, no draw call and no material more.** A material per rim would split every thrall

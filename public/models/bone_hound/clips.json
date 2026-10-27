@@ -1,8 +1,4 @@
 {
-  "clips": [
-    "idle",
-    "run",
-    "walk"
-  ],
-  "tris": 3523
+  "clips": [],
+  "tris": 4887
 }

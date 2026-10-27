@@ -8,20 +8,25 @@
  * from the idle clip file and copy every other file's animation channels onto
  * it by joint name, so the runtime loads one file with named clips.
  *
- * Usage: node tools/build-characters.mjs [slug ...]   (default: every slug with a state.json)
+ * A model made from a ComfyUI run instead (art-manifest/comfy/<slug>.json, ASSET_PIPELINE.md "Image to model") is built from the
+ * record's `game` file in art-src/comfy/<slug>/ (the run's model after the record's Blender steps), never from Tripo files; its
+ * clips come from its Blender jobs (tools/blender/jobs.mjs replay).
+ *
+ * Usage: node tools/build-characters.mjs [slug ...]   (default: every slug with a state.json or a ComfyUI record and its files)
  */
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { dedup, prune, resample, textureCompress, quantize } from '@gltf-transform/functions';
 import sharp from 'sharp';
-import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // ART_SUB=fen reads raw outputs from art-src/fen/tripo/ (a zone's own folder); pass slugs explicitly when it is set.
 const RAW = join(ROOT, 'art-src', process.env.ART_SUB ?? '', 'tripo');
 const OUT = join(ROOT, 'public', 'models');
+const MADE = join(ROOT, 'art-manifest', 'comfy');
 
 /** Tripo preset suffix → runtime clip name. */
 const CLIP_NAMES = {
@@ -134,14 +139,24 @@ function copyTrimmed(srcDoc, dstDoc, clipName, { start, end }) {
   return channels > 0;
 }
 
+/** The game file of a model made from a ComfyUI run (its record's `game`, in art-src/comfy/<slug>/), or null for a Tripo model. */
+function madeFile(slug) {
+  const rec = join(MADE, `${slug}.json`);
+  if (!existsSync(rec)) return null;
+  const file = join(ROOT, 'art-src', 'comfy', slug, JSON.parse(readFileSync(rec, 'utf8')).game);
+  if (!existsSync(file)) throw new Error(`made from a ComfyUI run: ${relative(ROOT, file)} (${relative(ROOT, rec)} "game") is not on this machine`);
+  return file;
+}
+
 async function build(slug) {
+  const made = madeFile(slug);
   const dir = join(RAW, slug);
-  const clips = readdirSync(dir)
+  const clips = made ? [] : readdirSync(dir)
     .filter((f) => /^anim_.+\.glb$/.test(f))
     .map((f) => ({ file: join(dir, f), preset: f.slice(5, -4) }));
   // Quadrupeds: the generic walk preset is named "walk" too.
   const base = clips.find((c) => c.preset === 'idle') ?? clips[0];
-  const source = base ? base.file : join(dir, existsSync(join(dir, 'rig.glb')) ? 'rig.glb' : 'model.glb');
+  const source = made ?? (base ? base.file : join(dir, existsSync(join(dir, 'rig.glb')) ? 'rig.glb' : 'model.glb'));
   console.log(`\n== ${slug}  (base: ${source.split(/[\\/]/).pop()}, ${clips.length} clip file(s))`);
 
   const doc = await io.read(source);
@@ -175,7 +190,7 @@ async function build(slug) {
     prune(),
   );
   // Static props (no rig/clips) ship flat under models/props/.
-  const isProp = clips.length === 0 && !existsSync(join(dir, 'rig.glb'));
+  const isProp = made ? doc.getRoot().listSkins().length === 0 : clips.length === 0 && !existsSync(join(dir, 'rig.glb'));
   const outDir = isProp ? join(OUT, 'props') : join(OUT, slug);
   mkdirSync(outDir, { recursive: true });
   // Environment props drop the `prop_` prefix (layout ids like `tombstone_round`); gathering nodes
@@ -191,9 +206,15 @@ async function build(slug) {
   if (!isProp) writeFileSync(join(outDir, 'clips.json'), JSON.stringify({ clips: names, tris, ...(Object.keys(release).length ? { release } : {}) }, null, 2) + '\n');
 }
 
+/** Every model this machine has the raw files of: Tripo runs (a state.json) and ComfyUI-made models (a record and their folder). */
+function allSlugs() {
+  const tripo = existsSync(RAW) ? readdirSync(RAW).filter((s) => existsSync(join(RAW, s, 'state.json'))) : [];
+  const made = existsSync(MADE) ? readdirSync(MADE).filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -5)) : [];
+  return [...new Set([...tripo, ...made.filter((s) => existsSync(join(ROOT, 'art-src', 'comfy', s)))])];
+}
+
 const slugs = process.argv.slice(2);
-const all = readdirSync(RAW).filter((s) => existsSync(join(RAW, s, 'state.json')));
-for (const slug of slugs.length ? slugs : all) {
+for (const slug of slugs.length ? slugs : allSlugs()) {
   try {
     await build(slug);
   } catch (err) {

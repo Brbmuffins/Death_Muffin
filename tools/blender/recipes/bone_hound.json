@@ -1,256 +1,12 @@
 {
   "slug": "bone_hound",
-  "source": "rigfixed.glb",
   "forward": [
     0,
     1,
     0
   ],
-  "headBone": "tripo::Head_1",
-  "root": "tripo::Root",
-  "rigfix": {
-    "from": "rig.glb",
-    "legs": [
-      {
-        "prefix": "FL",
-        "parent": "tripo::0_Left_Limb_5",
-        "joints": [
-          [
-            -0.1,
-            0.24,
-            0.47
-          ],
-          [
-            -0.135,
-            0.1,
-            0.27
-          ],
-          [
-            -0.135,
-            0.2,
-            0.12
-          ],
-          [
-            -0.15,
-            0.3,
-            0.01
-          ]
-        ],
-        "names": [
-          "FL_Upper",
-          "FL_Lower",
-          "FL_Paw"
-        ],
-        "select": {
-          "radii": [
-            0.06,
-            0.05,
-            0.1
-          ],
-          "soft": 0.025,
-          "zTop": [
-            0.36,
-            0.46
-          ]
-        }
-      },
-      {
-        "prefix": "FR",
-        "parent": "tripo::0_Left_Limb_5",
-        "joints": [
-          [
-            0.05,
-            0.24,
-            0.47
-          ],
-          [
-            0.09,
-            0.115,
-            0.26
-          ],
-          [
-            0.085,
-            0.19,
-            0.12
-          ],
-          [
-            0.115,
-            0.27,
-            0.0
-          ]
-        ],
-        "names": [
-          "FR_Upper",
-          "FR_Lower",
-          "FR_Paw"
-        ],
-        "select": {
-          "radii": [
-            0.06,
-            0.05,
-            0.1
-          ],
-          "soft": 0.025,
-          "zTop": [
-            0.36,
-            0.46
-          ]
-        }
-      },
-      {
-        "prefix": "HL",
-        "parent": "tripo::Root",
-        "joints": [
-          [
-            -0.09,
-            -0.26,
-            0.52
-          ],
-          [
-            -0.135,
-            -0.255,
-            0.31
-          ],
-          [
-            -0.145,
-            -0.395,
-            0.19
-          ],
-          [
-            -0.155,
-            -0.36,
-            0.07
-          ],
-          [
-            -0.19,
-            -0.28,
-            0.01
-          ]
-        ],
-        "names": [
-          "HL_Thigh",
-          "HL_Shin",
-          "HL_Meta",
-          "HL_Paw"
-        ],
-        "select": {
-          "radii": [
-            0.07,
-            0.05,
-            0.05,
-            0.095
-          ],
-          "soft": 0.025,
-          "zTop": [
-            0.4,
-            0.5
-          ]
-        }
-      },
-      {
-        "prefix": "HR",
-        "parent": "tripo::Root",
-        "joints": [
-          [
-            0.04,
-            -0.26,
-            0.52
-          ],
-          [
-            0.07,
-            -0.25,
-            0.31
-          ],
-          [
-            0.08,
-            -0.385,
-            0.19
-          ],
-          [
-            0.1,
-            -0.35,
-            0.07
-          ],
-          [
-            0.14,
-            -0.29,
-            0.01
-          ]
-        ],
-        "names": [
-          "HR_Thigh",
-          "HR_Shin",
-          "HR_Meta",
-          "HR_Paw"
-        ],
-        "select": {
-          "radii": [
-            0.07,
-            0.05,
-            0.05,
-            0.095
-          ],
-          "soft": 0.025,
-          "zTop": [
-            0.4,
-            0.5
-          ]
-        }
-      },
-      {
-        "prefix": "T",
-        "parent": "tripo::Root",
-        "joints": [
-          [
-            -0.025,
-            -0.29,
-            0.52
-          ],
-          [
-            -0.025,
-            -0.42,
-            0.47
-          ],
-          [
-            -0.025,
-            -0.5,
-            0.36
-          ],
-          [
-            -0.025,
-            -0.5,
-            0.22
-          ],
-          [
-            -0.025,
-            -0.46,
-            0.16
-          ]
-        ],
-        "names": [
-          "Tail_A",
-          "Tail_B",
-          "Tail_C",
-          "Tail_D"
-        ],
-        "select": {
-          "radii": [
-            0.04,
-            0.035,
-            0.035,
-            0.035
-          ],
-          "soft": 0.02,
-          "zTop": [
-            9,
-            10
-          ],
-          "rootFade": 0.8
-        },
-        "tail": true
-      }
-    ]
-  },
+  "headBone": "Head",
+  "root": "Root",
   "legs": {
     "FL": {
       "chain": [
@@ -312,7 +68,7 @@
       "mods": [
         {
           "bones": [
-            "tripo::Root"
+            "Root"
           ],
           "kind": "lift",
           "amp": 0.006,
@@ -321,7 +77,7 @@
         },
         {
           "bones": [
-            "tripo::Root"
+            "Hip"
           ],
           "kind": "roll",
           "amp": 1.2,
@@ -329,8 +85,8 @@
         },
         {
           "bones": [
-            "tripo::Head_0",
-            "tripo::Head_1"
+            "Neck2",
+            "Head"
           ],
           "kind": "pitch",
           "amp": 3,
@@ -378,7 +134,7 @@
       "mods": [
         {
           "bones": [
-            "tripo::Root"
+            "Root"
           ],
           "kind": "lift",
           "amp": 0.02,
@@ -387,8 +143,8 @@
         },
         {
           "bones": [
-            "tripo::Head_0",
-            "tripo::Head_1"
+            "Neck2",
+            "Head"
           ],
           "kind": "pitch",
           "amp": -4,
@@ -416,7 +172,7 @@
       "mods": [
         {
           "bones": [
-            "tripo::Root"
+            "Root"
           ],
           "kind": "lift",
           "amp": 0.004,
@@ -424,8 +180,8 @@
         },
         {
           "bones": [
-            "tripo::Head_0",
-            "tripo::Head_1"
+            "Neck2",
+            "Head"
           ],
           "kind": "yaw",
           "amp": 8,
@@ -434,8 +190,8 @@
         },
         {
           "bones": [
-            "tripo::Head_0",
-            "tripo::Head_1"
+            "Neck2",
+            "Head"
           ],
           "kind": "pitch",
           "amp": 3,
@@ -462,10 +218,10 @@
       "mods": [
         {
           "bones": [
-            "tripo::Root"
+            "Root"
           ],
           "kind": "surge",
-          "amp": 0.0624,
+          "amp": 0.09,
           "keys": [
             [
               0,
@@ -491,10 +247,10 @@
         },
         {
           "bones": [
-            "tripo::Root"
+            "Root"
           ],
           "kind": "lift",
-          "amp": 0.0277,
+          "amp": 0.04,
           "keys": [
             [
               0,
@@ -524,7 +280,7 @@
         },
         {
           "bones": [
-            "tripo::0_Left_Limb_5"
+            "Chest"
           ],
           "kind": "pitch",
           "amp": 10,
@@ -553,10 +309,11 @@
         },
         {
           "bones": [
-            "tripo::Head_0"
+            "Neck1",
+            "Neck2"
           ],
           "kind": "pitch",
-          "amp": 32.0,
+          "amp": 16,
           "lag": 0.02,
           "keys": [
             [
@@ -583,7 +340,7 @@
         },
         {
           "bones": [
-            "tripo::Head_1"
+            "Head"
           ],
           "kind": "pitch",
           "amp": 22,
@@ -643,7 +400,7 @@
       "feet": {
         "FL": [
           {
-            "fwd": 0.0693,
+            "fwd": 0.1,
             "keys": [
               [
                 0,
@@ -668,7 +425,7 @@
             ]
           },
           {
-            "up": 0.0485,
+            "up": 0.07,
             "keys": [
               [
                 0,
@@ -691,7 +448,7 @@
         ],
         "FR": [
           {
-            "fwd": 0.0693,
+            "fwd": 0.1,
             "keys": [
               [
                 0,
@@ -716,7 +473,7 @@
             ]
           },
           {
-            "up": 0.0485,
+            "up": 0.07,
             "keys": [
               [
                 0,
@@ -727,7 +484,7 @@
                 0
               ],
               [
-                0.42,
+                0.42000000000000004,
                 1
               ],
               [
@@ -739,7 +496,7 @@
         ],
         "HL": [
           {
-            "fwd": 0.0277,
+            "fwd": 0.04,
             "keys": [
               [
                 0,
@@ -766,7 +523,7 @@
         ],
         "HR": [
           {
-            "fwd": 0.0277,
+            "fwd": 0.04,
             "keys": [
               [
                 0,
@@ -799,10 +556,10 @@
       "mods": [
         {
           "bones": [
-            "tripo::Root"
+            "Root"
           ],
           "kind": "surge",
-          "amp": 0.0416,
+          "amp": 0.06,
           "keys": [
             [
               0,
@@ -820,10 +577,10 @@
         },
         {
           "bones": [
-            "tripo::Root"
+            "Root"
           ],
           "kind": "lift",
-          "amp": 0.0243,
+          "amp": 0.035,
           "keys": [
             [
               0,
@@ -841,7 +598,7 @@
         },
         {
           "bones": [
-            "tripo::0_Left_Limb_5"
+            "Chest"
           ],
           "kind": "roll",
           "amp": 10,
@@ -862,8 +619,8 @@
         },
         {
           "bones": [
-            "tripo::Head_0",
-            "tripo::Head_1"
+            "Neck2",
+            "Head"
           ],
           "kind": "pitch",
           "amp": -22,
@@ -889,11 +646,12 @@
         },
         {
           "bones": [
-            "tripo::Head_0",
-            "tripo::Head_1"
+            "Neck1",
+            "Neck2",
+            "Head"
           ],
           "kind": "yaw",
-          "amp": 24.0,
+          "amp": 16,
           "lag": 0.02,
           "keys": [
             [
@@ -947,7 +705,7 @@
       "mods": [
         {
           "bones": [
-            "tripo::Root"
+            "Root"
           ],
           "kind": "roll",
           "amp": 85,
@@ -980,10 +738,10 @@
         },
         {
           "bones": [
-            "tripo::Root"
+            "Root"
           ],
           "kind": "lift",
-          "amp": 0.0832,
+          "amp": 0.12,
           "keys": [
             [
               0,
@@ -1005,11 +763,12 @@
         },
         {
           "bones": [
-            "tripo::Head_0",
-            "tripo::Head_1"
+            "Neck1",
+            "Neck2",
+            "Head"
           ],
           "kind": "pitch",
-          "amp": 27.0,
+          "amp": 18,
           "lag": 0.03,
           "keys": [
             [

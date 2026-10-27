@@ -40,7 +40,7 @@ def seg_dist(p, a, b):
 
 def reweight_capsule(mesh, spec, names, skip_idx):
     """
-    Capsule selection (hound, tails): every vertex within `radii[i]` of bone i's segment moves its old influences onto the
+    Capsule selection (legs, tails): every vertex within `radii[i]` of bone i's segment moves its old influences onto the
     new bones (shared by how close it is to each segment), fading out over `soft` metres at the surface and over
     select.zTop (full, zero) in height so the top of the limb stays on the body. `rootFade` ramps in the first bone's
     first part (a tail must stay joined to the rump). Vertices already owned by earlier new chains (`skip_idx`) are left alone.

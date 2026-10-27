@@ -2232,7 +2232,7 @@ func groups_follow_instances(view: CrowdView, crowd: RefCounted) -> void:
 			fade_ok = fade_ok and fm.shader == CrowdVatData.fade_shader(false) and fm.shader.code.contains("#define FADE") and not fm.shader.code.contains("#define SPECTRAL") \
 				and (c as MultiMeshInstance3D).cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF and fm != sm and fm.get_shader_parameter("vat_pos") == sm.get_shader_parameter("vat_pos") \
 				and fm.get_shader_parameter("albedo_tex") == sm.get_shader_parameter("albedo_tex") and (fm.get_shader_parameter("vat_clips") as PackedVector4Array) == (sm.get_shader_parameter("vat_clips") as PackedVector4Array)
-	check(fade_nodes == 6 and fade_ok, "each level of each model has a fade node: the fade shader on the model's own textures and clips, casting no shadow (%d nodes)" % fade_nodes)
+	check(fade_nodes == levels and fade_ok, "each level of each model has a fade node: the fade shader on the model's own textures and clips, casting no shadow (%d nodes)" % fade_nodes)
 	view.clear()   # every body forgotten: every group empties
 	for f in 20:
 		crowd.draw(DT, 0.5, CAM)

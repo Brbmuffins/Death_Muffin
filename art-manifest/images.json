@@ -8600,5 +8600,21 @@
     "rawHash": "sha256:2935803f558eb1926031fceb7f0247d2a3c1aa18522953a2c28ae84dbe94012a",
     "outHash": "sha256:ef066761ac979c44c41a7519a2aa45804c09b9fef4342767a6979e36adaeb103",
     "generatedAt": "2026-10-26T17:23:05.650Z"
+  },
+  "concept_bone_hound_3d_a": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling source: a game-ready 3D render of a skeletal hound, drawn the way it should look in the game. Take the shapes from the FIRST image: the same solid, sculpted bones, the same few thick ribs, the same broad strips of purple cloth, the same proportions, the same three-quarter side view facing right, a neutral standing pose with all four legs straight and visible and the tail extended. Take the detail and wear from the SECOND image, simplified into solid shapes: old, yellowed, brown-stained bone with dark grime in the joints, the eye sockets, between the ribs and in the cracks, and dirtier towards the feet; a row of short, thick bone spikes along the spine with one taller spike over the shoulders; worn, dark leather straps with iron buckles and a few studs; a dark iron collar with short studs; dark leather wraps around the lower legs; deep, muted, dirty purple cloth with frayed but thick torn ends; glowing violet eye sockets. Every part must be a solid shape big enough to model: no thin threads, wisps, lace or webbed bone, no hair-thin cracks. The grime, stains and wear are painted into the surface colours, not shading. Even, flat studio lighting, no cast shadows, no strong highlights, no rim light, no smoke. Entire body visible and centered. Plain flat light grey background (#c8c8c8). No text, no other characters.",
+    "refs": [
+      "art-src/concepts/bone_hound_3d.png",
+      "art-src/concepts/bone_hound.png"
+    ],
+    "crop": null,
+    "aspect": "4:3",
+    "post": null,
+    "out": "art-src/concepts/bone_hound_3d_a.png",
+    "rawHash": "sha256:ffb1ea366c0d4e57e5cecfd51b633fc8d7a672b907f7785fd8d987c43053d98b",
+    "outHash": "sha256:5b5bc8a28080c5cecec07c204a7d15278df250f0b0dbfd40cfcef7bc236349f6",
+    "generatedAt": "2026-10-27T12:06:33.623Z"
   }
 }

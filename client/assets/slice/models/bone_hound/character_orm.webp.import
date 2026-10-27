@@ -2,18 +2,21 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bqnyx38x0x3ki"
-path.bptc="res://.godot/imported/character_NormalGL_a6be8430-adb2-4da3-aa07-fc7613a2bf67.webp-150464040816d96c5cdeb38b3ec7fe22.bptc.ctex"
-path.astc="res://.godot/imported/character_NormalGL_a6be8430-adb2-4da3-aa07-fc7613a2bf67.webp-150464040816d96c5cdeb38b3ec7fe22.astc.ctex"
+uid="uid://cg1xgekma7u1r"
+path.bptc="res://.godot/imported/character_orm.webp-a6ceea7142f7beca4c06accb305a6797.bptc.ctex"
+path.astc="res://.godot/imported/character_orm.webp-a6ceea7142f7beca4c06accb305a6797.astc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
+generator_parameters={
+"md5": "a90d4af090657178e022128816496597"
+}
 
 [deps]
 
-source_file="res://assets/slice/models/bone_hound/character_NormalGL_a6be8430-adb2-4da3-aa07-fc7613a2bf67.webp"
-dest_files=["res://.godot/imported/character_NormalGL_a6be8430-adb2-4da3-aa07-fc7613a2bf67.webp-150464040816d96c5cdeb38b3ec7fe22.bptc.ctex", "res://.godot/imported/character_NormalGL_a6be8430-adb2-4da3-aa07-fc7613a2bf67.webp-150464040816d96c5cdeb38b3ec7fe22.astc.ctex"]
+source_file="res://assets/slice/models/bone_hound/character_orm.webp"
+dest_files=["res://.godot/imported/character_orm.webp-a6ceea7142f7beca4c06accb305a6797.bptc.ctex", "res://.godot/imported/character_orm.webp-a6ceea7142f7beca4c06accb305a6797.astc.ctex"]
 
 [params]
 
@@ -23,7 +26,7 @@ compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=1
+compress/normal_map=0
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

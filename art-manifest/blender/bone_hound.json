@@ -5,11 +5,14 @@
     {
       "kind": "motion",
       "clips": [
+        "idle",
+        "walk",
+        "run",
         "attack",
         "hurt",
         "death"
       ],
-      "date": "2026-10-26"
+      "date": "2026-10-27"
     }
   ]
 }

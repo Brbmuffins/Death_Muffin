@@ -1,0 +1,104 @@
+{
+  "id": "bone_hound",
+  "concept": "concept_bone_hound_3d_a",
+  "picture": "art-src/concepts/bone_hound_3d_a.png",
+  "run": {
+    "label": "hounda-best-s2",
+    "model": "pixal3d",
+    "faces": 200000,
+    "texture": 2048,
+    "seed": 2,
+    "settings": {
+      "detail": 2048,
+      "grid": 1024
+    },
+    "comfyui": "0.42.5",
+    "template": "3d_pixal3d_trellis2_image_to_model (templates 0.11.96)",
+    "teamApp": "0.5.6",
+    "pc": "helix",
+    "job": "d61a5dbf87b3",
+    "date": "2026-10-27",
+    "file": "hounda-best-s2.glb"
+  },
+  "tools": "Blender 4.5 scripts in ~/.cache/dm-ops/pixal3d-tests on the VPS (pipeline/, rig/, rig2/), not in the repo yet (KNOWN-GAPS.md)",
+  "frame": {
+    "what": "the game's placement found by rig/align.py against the Tripo bone hound: z up, head toward +y; shares below are of the model's box in it",
+    "matrix": [
+      [
+        -0.6577753328017578,
+        -0.8361228411003274,
+        0.0,
+        0.0024740167791591564
+      ],
+      [
+        0.8361228411003274,
+        -0.6577753328017578,
+        0.0,
+        -0.02621656764888545
+      ],
+      [
+        0.0,
+        0.0,
+        1.0638466965931448,
+        0.3325059915725833
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ]
+  },
+  "steps": [
+    {
+      "do": "bend",
+      "tool": "pipeline/bend.py",
+      "what": "head and collar raised 20 degrees at the neck, so the open jaw faces the game camera",
+      "pivot": [
+        0.5,
+        0.75,
+        0.7
+      ],
+      "axis": "x",
+      "angle": 20,
+      "blend": [
+        0.76,
+        0.86
+      ],
+      "above": 0.38
+    },
+    {
+      "do": "finish",
+      "tool": "pipeline/finish.py",
+      "what": "solid rebuild, cut to the crowd budget with the head keeping 40% of the triangles (its fangs), new UVs, the detailed paint baked",
+      "args": "4900 --cells 512 --keep-regions {head} --metal none --tex 512",
+      "head": {
+        "boxes": [
+          [
+            0,
+            0.8,
+            0.5,
+            1,
+            1,
+            0.92
+          ]
+        ],
+        "share": 0.4
+      }
+    },
+    {
+      "do": "place",
+      "tool": "rig/apply_xform.py",
+      "what": "moved into the frame above"
+    },
+    {
+      "do": "rig",
+      "tool": "rig2/build_quad.py",
+      "args": "--leg-top 0.8",
+      "what": "the standard four-legged skeleton found from the shape (Root, Hip, Spine1-2, Chest, Neck1-2, Head, Tail_A-D, FL/FR_Upper/Lower/Paw, HL/HR_Thigh/Shin/Meta/Paw), skinned by geodesic voxel binding; no clips (they are Blender jobs)"
+    }
+  ],
+  "game": "game.glb",
+  "tris": 4887
+}

@@ -26,7 +26,7 @@ there is nothing to license; the recipe is the exact source of every key.
 |---|---|---|
 | `skull_rat` | `idle`, `walk`, `run`; `attack` (bite), `hurt`, `death` (Blender job kind `motion`, recorded in `art-manifest/blender/skull_rat.json`) | yes (one-shots 2026-10-26) |
 | `cinderhound` | `idle`, `walk`, `run` (on a rig with two new foreleg bones: `rigfix`); hock-flex hind legs; `attack` (bite), `hurt`, `death` (job kind `motion`, recorded in `art-manifest/blender/cinderhound.json`) | yes (one-shots 2026-10-26) |
-| `bone_hound` | `idle`, `walk`, `run` (on a rig with new leg and tail bones: `rigfix`); `attack` (bite), `hurt`, `death` (job kind `motion`, recorded in `art-manifest/blender/bone_hound.json`) | yes (one-shots 2026-10-26) |
+| `bone_hound` | `idle`, `walk`, `run`, `attack` (bite), `hurt`, `death` on the standard four-legged skeleton Blender built for the Pixal3D model (`art-manifest/comfy/bone_hound.json`); one job of kind `motion`, recorded in `art-manifest/blender/bone_hound.json` | yes (2026-10-27) |
 | `hero_gravecaller`, `hero_ossuary`, `hero_mourner`, `hero_rotweaver` | `idle_staff`, `walk_staff`, `run_staff`, `cast_staff`, `flick_staff`, `slam_staff`, `channel_staff`, `summon_staff`: the shipped clips with the right arm re-solved around the held staff (Blender job kind `staff`, recorded in `art-manifest/blender/<slug>.json`; recipe `tools/blender/recipes/staff.json`); body motion is Tripo's | yes (2026-10-25) |
 | `belfry_gargoyle` | wing motion (bones `L_/R_Wing_A/B` from `rigfix`) laid over Tripo's own `idle`, `dive`, `slash`, `hit_to_*`, `fall`, `defeat_03`, plus a new `walk` that is the Tripo idle with a faster flap. Body motion in these clips is Tripo's, re-exported through Blender. | yes |
 

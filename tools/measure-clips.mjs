@@ -51,11 +51,15 @@ function sample(arr, times, t, stride, out, isQuat) {
 }
 
 /**
- * Bone names per rig. The biped heroes and enemies share one skeleton (Hip, R_Hand, ...); the quadrupeds (bone hound,
- * skull rat, cinderhound) are a different Tripo rig: their root is `tripo::Root`, the head leads the bite, and there is
- * no hand or toe bone, so the head stands in for the striking hand and the body's forward is hip-to-head.
+ * Bone names per rig. The biped heroes and enemies share one skeleton (Hip, R_Hand, ...); the Tripo quadrupeds (skull rat,
+ * cinderhound) are a different rig: their root is `tripo::Root`, the head leads the bite, and there is no hand or toe bone,
+ * so the head stands in for the striking hand and the body's forward is hip-to-head. The standard four-legged skeleton
+ * Blender builds for a ComfyUI-made creature (the bone hound: Hip, Head, FL_Paw, ...) is measured the same way.
  */
 export function rigNames(byName, file = '') {
+  if (byName.has('Hip') && byName.has('Head') && byName.has('FL_Paw') && !byName.has('R_Hand')) {
+    return { quad: true, hip: 'Hip', head: 'Head', rHand: 'Head', lHand: 'Head', lFoot: null, lToe: null };
+  }
   if (byName.has('Hip')) {
     for (const n of ['R_Hand', 'L_Hand', 'Head', 'L_Foot', 'L_ToeBase']) if (!byName.has(n)) throw new Error(`${file}: no ${n}`);
     return { quad: false, hip: 'Hip', head: 'Head', rHand: 'R_Hand', lHand: 'L_Hand', lFoot: 'L_Foot', lToe: 'L_ToeBase' };

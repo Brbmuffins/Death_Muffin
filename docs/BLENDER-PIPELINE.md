@@ -8,7 +8,7 @@ how their files drop into the same flow. Sources and licences: [ANIMATION-SOURCE
 
 ```
 node tools/blender.mjs procedural <slug> [clip ...] [--install]     author clips from a recipe (quadruped gaits, idles, one-shots, overlays on Tripo clips)
-node tools/blender.mjs rigfix     <slug>                            add bones + move vertex weights (hound legs/tail, gargoyle wings)
+node tools/blender.mjs rigfix     <slug>                            add bones + move vertex weights (cinderhound forelegs, gargoyle wings)
 node tools/blender.mjs cleanup    <in.glb> <clip> [--loop] [--drift] [--foot-lock] [--recipe r.json]
 node tools/blender.mjs retarget   <source.glb> <target-rig.glb> <clip-map.json> [--only a,b]
 node tools/blender.mjs staff      <slug> [clip ...] [--sheets]      staff versions of a hero's clips: the arm re-solved around the held staff
@@ -58,7 +58,7 @@ node tools/blender/jobs.mjs kinds                             the kinds and thei
   strides and timings, and the steps are appended to `art-manifest/blender/<id>.json`. A failing step or check writes nothing.
 - The library is the shared checkout's `art-src/vendor/quaternius-ual/UAL1_Standard.glb` (`DM_BLENDER_LIBRARY` overrides); scratch files go
   to `DM_BLENDER_SCRATCH` or the system temp dir.
-- `tools/build-characters.mjs` rebuilds a model from `art-src/tripo/<id>/`, which loses its jobs: `build-art.sh` replays them; by hand, run
+- `tools/build-characters.mjs` rebuilds a model from `art-src/tripo/<id>/` (or a ComfyUI-made one from its record's `game` file, ASSET_PIPELINE.md "Build"), which loses its jobs: `build-art.sh` replays them; by hand, run
   `replay` after it. Tests: `node --test tools/blender/jobs.test.mjs` (no Blender).
 - Limits: one skinned mesh per model. `reshape` scales the vertices a bone moves around its head, best at the ends of the body (a head,
   horns, claws); in the middle of the body it bends the seams. `remove` deletes the faces whose vertices those bones move most; the bones stay.
@@ -122,10 +122,10 @@ toward the shoulder (`zTop`), a cross-fade at elbow and wrist, then normalises. 
 Three selection modes (all in `rigfix.py`, all move *every* old influence in the region onto the new bones, then normalise):
 
 - column (`select.radius` ...): cinderhound forelegs, vertical columns around an axis, as above.
-- **capsule** (`select.radii`, `soft`, `zTop`, `rootFade`): each new bone has a radius around its segment; a vertex shares its weight among the segments it is close to and fades over `soft` metres at the surface and over `zTop` in height so the top of a limb stays on the body. Used for the bone hound's four legs (`Upper/Lower/Paw`, `Thigh/Shin/Meta/Paw`) and its tail. A vertex that an earlier chain already owns (> 0.3) is skipped; `rootFade` keeps the first tail bone joined to the rump.
+- **capsule** (`select.radii`, `soft`, `zTop`, `rootFade`): each new bone has a radius around its segment; a vertex shares its weight among the segments it is close to and fades over `soft` metres at the surface and over `zTop` in height so the top of a limb stays on the body; for legs and tails (no shipped recipe uses it today). A vertex that an earlier chain already owns (> 0.3) is skipped; `rootFade` keeps the first tail bone joined to the rump.
 - **region** (`select.box`, `select.along`): axis constraints with soft edges (`absy`, `x`, `z`, ...) plus a position-along-axis spread over the bones; for thin sheets such as wings. The gargoyle's wings are "behind the body plane (`x < 0.12`), more than 7 cm off the centre line, above 0.4 m".
 
-`node tools/blender/skinview.py` (via `blender -b --python`) renders a rig as coloured skin weights (strongest vertex group per vertex) plus bone lines, optionally at a frame of an animated GLB: that is how the hound's and gargoyle's skinning was read. Its bone lines of *old* Tripo bones are drawn about 0.35 m low (the armature object offset), bones added by `rigfix` are correct; the mesh colours are what matters.
+`node tools/blender/skinview.py` (via `blender -b --python`) renders a rig as coloured skin weights (strongest vertex group per vertex) plus bone lines, optionally at a frame of an animated GLB: that is how the gargoyle's skinning was read. Its bone lines of *old* Tripo bones are drawn about 0.35 m low (the armature object offset), bones added by `rigfix` are correct; the mesh colours are what matters.
 
 ## Overlays: new bones on top of Tripo's own clips
 
