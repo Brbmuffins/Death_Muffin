@@ -22,6 +22,10 @@ namespace DeathMuffinTeam.Tests
         public string Version = "0.22.3";
         public string Device = "cuda:0 NVIDIA GeForce RTX 4070 SUPER : cudaMallocAsync";
         public Func<Dictionary<string, object>, string> Outcome = p => "ok";
+        /// <summary>The command line /system_stats reports (ComfyUI's sys.argv): Desktop's defaults, no low-memory option.</summary>
+        public List<object> Argv = new List<object> { "main.py", "--listen", "127.0.0.1" };
+        /// <summary>Whether /queue shows work running (the member's own, in Desktop).</summary>
+        public bool Busy;
         /// <summary>How many /history polls of a run answer "not yet" before it ends.</summary>
         public int PollsBeforeDone = 2;
         public readonly List<Dictionary<string, object>> Prompts = new List<Dictionary<string, object>>();
@@ -100,7 +104,7 @@ namespace DeathMuffinTeam.Tests
                 {
                     Reply(c, 200, new Dictionary<string, object>
                     {
-                        { "system", new Dictionary<string, object> { { "os", "nt" }, { "comfyui_version", Version }, { "python_version", "3.12.9" } } },
+                        { "system", new Dictionary<string, object> { { "os", "nt" }, { "comfyui_version", Version }, { "python_version", "3.12.9" }, { "argv", Argv } } },
                         { "devices", new List<object> { new Dictionary<string, object> { { "name", Device }, { "type", "cuda" }, { "index", 0.0 }, { "vram_total", (double)VramBytes }, { "vram_free", (double)VramBytes / 2 } } } },
                     });
                     return;
@@ -113,6 +117,12 @@ namespace DeathMuffinTeam.Tests
                     string file = Path.Combine(Root, c.Request.QueryString["type"] ?? "output", c.Request.QueryString["subfolder"] ?? "", c.Request.QueryString["filename"] ?? "");
                     if (!File.Exists(file)) { Reply(c, 404, new Dictionary<string, object>()); return; }
                     Bytes(c, 200, File.ReadAllBytes(file), "model/gltf-binary");
+                    return;
+                }
+                if (path == "/queue" && c.Request.HttpMethod == "GET")
+                {
+                    var running = Busy ? new List<object> { new List<object> { 0.0, "theirs" } } : new List<object>();
+                    Reply(c, 200, new Dictionary<string, object> { { "queue_running", running }, { "queue_pending", new List<object>() } });
                     return;
                 }
                 if (path == "/queue" || path == "/interrupt" || path == "/free")
@@ -246,7 +256,7 @@ namespace DeathMuffinTeam.Tests
             if (Mode == "exit") { Proc.Exited = true; Proc.Code = 1; Proc.Text = "Traceback (most recent call last):\nModuleNotFoundError: No module named 'comfy_aimdo'"; return Proc; }
             if (Mode == "serve")
             {
-                Server = new FakeComfy(port, root) { Outcome = Outcome };
+                Server = new FakeComfy(port, root) { Outcome = Outcome, Argv = launch.Args.Cast<object>().ToList() };
                 Proc.Server = Server;
             }
             return Proc;
@@ -379,7 +389,13 @@ namespace DeathMuffinTeam.Tests
             R.Runner.ComfyPollMs = 5;
         }
 
-        public FakeComfy StartDesktop() { return DesktopServer = new FakeComfy(DesktopPort, Desktop.Base); }
+        /// <summary>Desktop's server, started with <paramref name="option"/>: by default a low-memory one, which the job uses; null: Desktop's defaults, under which the app makes the models on its own.</summary>
+        public FakeComfy StartDesktop(string option = "--disable-smart-memory")
+        {
+            DesktopServer = new FakeComfy(DesktopPort, Desktop.Base);
+            if (option != null) DesktopServer.Argv.Add(option);
+            return DesktopServer;
+        }
 
         public static Dictionary<string, object> Run(string label, string image = "concept.png", string model = "pixal3d", int faces = 5000, int texture = 1024, long? seed = null,
             Dictionary<string, object> settings = null, Dictionary<string, object> views = null)
@@ -433,6 +449,7 @@ namespace DeathMuffinTeam.Tests
             Desktop2();
             DesktopServerRuns();
             Desktop2ServerRuns();
+            DesktopKeepsModels();
             SmallCard();
             OwnServer();
             OwnServerFails();
@@ -864,9 +881,10 @@ namespace DeathMuffinTeam.Tests
                 {
                     using (var desk = new FakeComfy(port, d.Shared))
                     {
+                        desk.Argv.Add("--lowvram");
                         RunResult r = m.R.Run("modeljob20", m.Plan(ModelRig.Run("hound")));
                         T.Ok(r.Ok && m.Launcher.Starts.Count == 0 && desk.Prompts.Count == 1, "Comfy Desktop's server, on the port it chose, does the job: nothing is started (" + r.Error + ")");
-                        T.Has(r.Log, "already running (port " + port + ")", "the log says which server");
+                        T.Has(r.Log, "already running (port " + port + ") with --lowvram: using it", "the log says which server, and that it runs low on memory");
                         T.Ok(!Directory.Exists(Path.Combine(d.Shared, "input", "dmteam")) || Directory.GetFiles(Path.Combine(d.Shared, "input", "dmteam")).Length == 0, "the job's picture is removed from its shared input");
                     }
                     RunResult own = m.R.Run("modeljob21", m.Plan(ModelRig.Run("hound")));
@@ -911,6 +929,47 @@ namespace DeathMuffinTeam.Tests
                 RunResult again = m.R.Run("modeljob2", m.Plan(ModelRig.Run("brazier", faces: 3000)));
                 T.Ok(again.Ok && File.Exists(theirs), "only the job's own files are removed from ComfyUI's folders");
                 T.Eq(desk.Uploads.LastOrDefault(), "dmteam/modeljob2-concept.png input overwrite=true", "a second job's picture is its own");
+            }
+        }
+
+        /// <summary>Desktop's server under its default options keeps each model on the card for the next step, so the big runs run out of memory on 12 GB: the app lets go of Desktop's models and
+        /// makes them on its own server, unless Desktop is busy with the member's work or the app's own cannot start.</summary>
+        static void DesktopKeepsModels()
+        {
+            using (var m = new ModelRig())
+            {
+                FakeComfy desk = m.StartDesktop(null);
+                RunResult r = m.R.Run("modeljob23", m.Plan(ModelRig.Run("hound")));
+                T.Ok(r.Ok && m.Launcher.Starts.Count == 1 && desk.Prompts.Count == 0 && m.Launcher.Server.Prompts.Count == 1, "Desktop under its defaults: the app's own server makes the model (" + r.Error + ")");
+                ComfyLaunch l = m.Launcher.Starts.FirstOrDefault();
+                T.Ok(l != null && l.Args.Contains("--disable-smart-memory"), "started so that each model leaves the card when the next one loads");
+                T.Eq(desk.CallCount("free"), 1, "Desktop's models are let go first, so the card is the job's");
+                T.Has(r.Log, "keeps its models on the card between steps", "the log says why");
+            }
+            using (var m = new ModelRig())
+            {
+                FakeComfy desk = m.StartDesktop(null);
+                desk.Busy = true;
+                RunResult r = m.R.Run("modeljob24", m.Plan(ModelRig.Run("hound")));
+                T.Ok(r.Ok && m.Launcher.Starts.Count == 0 && desk.Prompts.Count == 1, "Desktop busy with the member's work: the run waits behind it there (" + r.Error + ")");
+                T.Eq(desk.CallCount("free"), 1, "its models are let go only after the job, not taken away mid-work");
+                T.Has(r.Log, "with the member's own work: using it", "the log says so");
+            }
+            using (var m = new ModelRig())
+            {
+                FakeComfy desk = m.StartDesktop(null);
+                m.Host.PortFree = p => false;
+                RunResult r = m.R.Run("modeljob25", m.Plan(ModelRig.Run("hound")));
+                T.Ok(r.Ok && m.Launcher.Starts.Count == 0 && desk.Prompts.Count == 1, "the app's own server cannot start: Desktop's makes the model after all (" + r.Error + ")");
+                T.Has(r.Log, "Desktop's server makes the models instead", "the log says why");
+            }
+            using (var m = new ModelRig())
+            {
+                FakeComfy desk = m.StartDesktop(null);
+                m.Installed = false;
+                RunResult r = m.R.Run("modeljob26", m.Plan(ModelRig.Run("hound")));
+                T.Ok(r.Ok && m.Launcher.Starts.Count == 0 && desk.Prompts.Count == 1, "Desktop's files not found: its running server makes the model (" + r.Error + ")");
+                T.Has(r.Log, "the app cannot start its own", "the log says why");
             }
         }
 

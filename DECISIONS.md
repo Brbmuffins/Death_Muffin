@@ -390,8 +390,10 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 - **B76. A team PC makes models from a concept picture with ComfyUI, whenever a job is queued** (Helix, 2026-10-26: "use Comfy UI whenever
   there is a job... not just overnight", "the team app should launch it if it is not already running", "only run comfy ui on GPUs with 12GB+
   vRAM"). The team app's `model` job runs ComfyUI's "Pixal3D & TRELLIS.2: Image to Model" template (both models, for comparison) on a PC with a
-  12 GB card and ComfyUI Desktop: Desktop's server when it is open, else one the app starts out of sight from Desktop's files and stops 10
-  minutes after its last job or when Death Muffin starts. The card's memory is let go after every job. The face count and texture size are set
+  12 GB card and ComfyUI Desktop: the app's own server, started out of sight from Desktop's files with `--disable-smart-memory` and stopped 10
+  minutes after its last job or when Death Muffin starts; Desktop's server only while it is busy with the member's work or runs a low-memory
+  option itself (Helix, 2026-10-26: "i dont think we are using the low vram setting": under Desktop's defaults the big runs ran out of memory).
+  The card's memory is let go after every job. The face count and texture size are set
   in the workflow, so the mesh is cut before it is painted: a Pixal3D model cut down after it was painted looked much worse ("it was looking a
   lot better straight from pixal"). In the bake-off against Tripo (2026-10-26) Pixal3D won the brazier and the hound; it makes no skeleton, so
   rigs and clips stay with Blender (B74) and Tripo. A session queues jobs with `server/death-muffin/model-gen.sh`; the server offers them only

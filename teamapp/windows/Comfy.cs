@@ -97,6 +97,9 @@ namespace DeathMuffinTeam
         public static readonly TimeSpan IdleStop = TimeSpan.FromMinutes(10);
         /// <summary>The app's folder in ComfyUI's input and output folders: its pictures and models, named after the job, removed when the job ends.</summary>
         public const string Folder = "dmteam";
+        /// <summary>ComfyUI options under which each model leaves the graphics card when the next one loads, instead of staying for the next step: with them the big model runs fit a 12 GB card (a
+        /// Pixal3D run at detail 2048 runs out of memory at its texture step with the earlier steps' models still on the card). The app's own server starts with the first.</summary>
+        public static readonly string[] LowMemoryOptions = { "--disable-smart-memory", "--lowvram", "--novram" };
 
         public static string Gb(long mb) { return (mb / 1024.0).ToString("0.0", CultureInfo.InvariantCulture) + " GB"; }
     }
@@ -380,6 +383,8 @@ namespace DeathMuffinTeam
         public string Version = "";
         public string Device = "";
         public long VramMb;
+        /// <summary>The first of <see cref="ComfyRules.LowMemoryOptions"/> the server was started with ("" when none).</summary>
+        public string LowMemory = "";
     }
 
     /// <summary>How a queued run stands: not finished yet, or finished with the saved model (its name in ComfyUI's output folder) or with ComfyUI's reason.</summary>
@@ -414,6 +419,9 @@ namespace DeathMuffinTeam
             var system = MiniJson.Obj(d, "system");
             if (system == null) return null;
             var s = new ComfyStats { Version = MiniJson.Str(system, "comfyui_version") };
+            var argv = MiniJson.Arr(system, "argv") ?? new List<object>();
+            foreach (string option in ComfyRules.LowMemoryOptions)
+                if (s.LowMemory.Length == 0 && argv.Contains(option)) s.LowMemory = option;
             var devices = MiniJson.Arr(d, "devices");
             var first = devices != null && devices.Count > 0 ? devices[0] as Dictionary<string, object> : null;
             if (first != null)
@@ -423,6 +431,17 @@ namespace DeathMuffinTeam
                 s.VramMb = bytes.HasValue ? bytes.Value / (1024 * 1024) : 0;
             }
             return s;
+        }
+
+        /// <summary>Whether the server runs or holds work (the member's own, in Desktop); also true when its queue cannot be read.</summary>
+        public async Task<bool> BusyAsync(CancellationToken ct)
+        {
+            ComfyReply r = await http.SendAsync("GET", U("queue"), null, null, Short, ct).ConfigureAwait(false);
+            var d = r.Ok ? MiniJson.TryObject(r.Text) : null;
+            if (d == null) return true;
+            var running = MiniJson.Arr(d, "queue_running");
+            var pending = MiniJson.Arr(d, "queue_pending");
+            return running == null || pending == null || running.Count > 0 || pending.Count > 0;
         }
 
         /// <summary>Puts a picture in ComfyUI's input folder (under <paramref name="subfolder"/>) and returns its name as LoadImage takes it ("dmteam/&lt;name&gt;").</summary>
@@ -506,7 +525,7 @@ namespace DeathMuffinTeam
             catch (Exception) { }
         }
 
-        /// <summary>Lets go of the models and the graphics card's memory (the app's own server, after a job). Best effort, never throws.</summary>
+        /// <summary>Lets go of the models and the graphics card's memory (after a job, and Desktop's before the app's own server runs one). Best effort, never throws.</summary>
         public async Task FreeAsync()
         {
             try
@@ -1028,13 +1047,22 @@ namespace DeathMuffinTeam
             ComfyInstall found = Install(false);
             var ports = found == null ? new List<int>() : found.ServerPorts();
             if (!ports.Contains(DesktopPort)) ports.Add(DesktopPort);
+            Lease desktop = null;   // Desktop's server, when it answers but keeps its models on the card: used only if the app's own cannot be
             foreach (int p in ports)
             {
-                var desktop = new ComfyClient(http, ComfyClient.At(p));
-                ComfyStats stats = await desktop.StatsAsync(ct).ConfigureAwait(false);
+                var client = new ComfyClient(http, ComfyClient.At(p));
+                ComfyStats stats = await client.StatsAsync(ct).ConfigureAwait(false);
                 if (stats == null) continue;
-                note("ComfyUI " + stats.Version + " is already running (port " + p + "): using it");
-                return new Lease(this, desktop, false, found == null ? "" : found.InputRoot, found == null ? "" : found.OutputRoot);
+                var lease = new Lease(this, client, false, found == null ? "" : found.InputRoot, found == null ? "" : found.OutputRoot);
+                string already = "ComfyUI " + stats.Version + " is already running (port " + p + ")";
+                if (stats.LowMemory.Length > 0) { note(already + " with " + stats.LowMemory + ": using it"); return lease; }
+                if (await client.BusyAsync(ct).ConfigureAwait(false)) { note(already + " with the member's own work: using it (the runs wait behind that work)"); return lease; }
+                string why;
+                if (Install(true, out why) == null) { note(already + ": using it (the app cannot start its own: " + why + ")"); return lease; }
+                note(already + " but keeps its models on the card between steps: its models are let go and the app's own ComfyUI (" + ComfyRules.LowMemoryOptions[0] + ") makes the models");
+                await client.FreeAsync().ConfigureAwait(false);
+                desktop = lease;
+                break;
             }
             IGameProcess running;
             int port;
@@ -1049,7 +1077,12 @@ namespace DeathMuffinTeam
                 }
                 StopOwn("it stopped answering");
             }
-            return await StartOwnAsync(note, progress, ct).ConfigureAwait(false);
+            try { return await StartOwnAsync(note, progress, ct).ConfigureAwait(false); }
+            catch (JobFailure jf) when (desktop != null)
+            {
+                note(jf.Message + " Desktop's server makes the models instead.");
+                return desktop;
+            }
         }
 
         Lease OwnLease(ComfyClient client)
@@ -1109,7 +1142,8 @@ namespace DeathMuffinTeam
 
         /// <summary>
         /// The command that starts ComfyUI headless from Desktop's files, with the install's ComfyUI folder as its base (models, custom nodes) and the app's own folders, on 127.0.0.1 only: the core
-        /// arguments both Desktops give (the older one's comfyServer.ts coreLaunchArgs; Comfy Desktop's -s and model folders file). The member's own launch settings are not used.
+        /// arguments both Desktops give (the older one's comfyServer.ts coreLaunchArgs; Comfy Desktop's -s and model folders file), and the first of <see cref="ComfyRules.LowMemoryOptions"/>. The member's
+        /// own launch settings are not used.
         /// </summary>
         public static ComfyLaunch LaunchFor(ComfyInstall install, string ownRoot, int port)
         {
@@ -1120,7 +1154,7 @@ namespace DeathMuffinTeam
                 "--database-url", "sqlite:///" + Path.Combine(ownRoot, "user", "comfyui.db").Replace('\\', '/') });
             if (install.ExtraModels.Length > 0) { args.Add("--extra-model-paths-config"); args.Add(install.ExtraModels); }
             if (install.FrontEnd.Length > 0) { args.Add("--front-end-root"); args.Add(install.FrontEnd); }
-            args.AddRange(new[] { "--listen", "127.0.0.1", "--port", port.ToString(CultureInfo.InvariantCulture) });
+            args.AddRange(new[] { "--listen", "127.0.0.1", "--port", port.ToString(CultureInfo.InvariantCulture), ComfyRules.LowMemoryOptions[0] });
             var env = new Dictionary<string, string>
             {
                 { "PATH", Path.GetDirectoryName(install.Python) + Path.PathSeparator + (Environment.GetEnvironmentVariable("PATH") ?? "") },

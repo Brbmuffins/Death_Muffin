@@ -246,9 +246,11 @@ words (`modelsWhy`: the card, or what of Desktop was not found; also in the app'
 to such a PC; one that stops qualifying leaves them out at once without refusing them. A model job offered while another job runs is not declined busy (it waits for this PC). The app's log names the card and its memory at start.
 
 **ComfyUI**: when a Desktop's server runs (Comfy Desktop's: the port of the install's launch settings, 8188 by default, or one its records of the servers it started name, `comfy-procs\*.json`;
-the older Desktop's: `127.0.0.1:8000`), the job uses it (Desktop's queue: a run waits behind the member's own work). Otherwise **the app starts ComfyUI itself**, out of sight:
-the install's Python and ComfyUI files with the Desktop's own core options (Comfy Desktop's `-s`), its models and custom nodes (`--base-directory` its ComfyUI folder, its model folders file), but not the
-member's own launch settings, and its own user, input and output folders
+the older Desktop's: `127.0.0.1:8000`), the job uses it only when it was started with a low-memory option (`--disable-smart-memory`, `--lowvram` or `--novram`, read from `/system_stats`), when it is
+busy with the member's own work (`/queue`: a run waits behind that work), or when the app cannot start its own. Under Desktop's defaults each model stays on the card for the next step, and the big
+Pixal3D runs (detail 2048) ran out of a 12 GB card's memory at their texture step, so the app lets go of Desktop's models (`/free`) and makes them on its own server. Otherwise too **the app starts
+ComfyUI itself**, out of sight: the install's Python and ComfyUI files with the Desktop's own core options (Comfy Desktop's `-s`), its models and custom nodes (`--base-directory` its ComfyUI folder,
+its model folders file) and `--disable-smart-memory` (each model leaves the card when the next one loads), but not the member's own launch settings, and its own user, input and output folders
 (`comfy\` below, so it never touches Desktop's settings or history), on `127.0.0.1` and the first free port of 8190 to 8199, below normal priority, no window, inside a Windows job object (it goes when the app goes,
 even if the app crashes). It must answer within 10 minutes (a first start after a ComfyUI update is the slow one); one that stops while starting fails the job with the end of what it said in the log. It stays
 up 10 minutes after its last job (a job soon after does not wait for a start), then stops; it also stops at once when the player's Death Muffin is seen (each heartbeat), and when the app closes.
@@ -337,12 +339,15 @@ not allow it; the benchmark's window full screen at the screen's resolution and 
 `pending.json`; a disturbed run on a real PC (a busy program started during it) being discarded and retried; the box's note; and one whole benchmark job against the server, including a screenshot job interleaved with a waiting benchmark (the controller reads the PC on the interface thread once a second). Also on a real PC: `--audio-driver Dummy` really silent (loading screen and game), a screenshot job's window really never seen (no boot splash, no taskbar button: it starts minimized from `override.cfg`
 and is restored left of every monitor; the pictures still taken, at their exact sizes: Godot and the driver draw a window that is off screen), a cancel in the heartbeat reply stopping a running game; the AFK notice (shown without taking the keyboard or the focus, End AFK mode working from it and from the tray menu); the box's job list (a click on a row picks it without taking the keyboard
 or the focus, the box growing with the list and staying in its corner). For the model job: the card's memory read from the registry (a 12 GB card over 11,500 MiB, an 8 GB one under); Comfy Desktop's install found, and the
-older Desktop from its `config.json` and program files (also installed in a folder of the member's choosing; `modelsWhy` in the PC list when it is not found); a job using a Desktop's open server; with Desktop closed, the app's own ComfyUI starting (no window, below normal priority, Desktop's models and custom nodes found),
+older Desktop from its `config.json` and program files (also installed in a folder of the member's choosing; `modelsWhy` in the PC list when it is not found); a job with Desktop open (its models let go and the app's own server making the models; Desktop's used while it is busy); with Desktop closed, the app's own ComfyUI starting (no window, below normal priority, Desktop's models and custom nodes found),
 answering, making the models and stopping 10 minutes later, when Death Muffin starts and with the app (also when the app is killed: the job object); the card's memory let go after a job (Task Manager);
 the models' look against a run made by hand in Desktop.
 
 ### Changelog
 
+- **0.5.6** (2026-10-26) - Model runs fit the card (Helix: "i dont think we are using the low vram setting"): the app's own ComfyUI starts with `--disable-smart-memory`, so each model leaves the
+  card when the next one loads, and with Desktop open under its defaults the app lets go of Desktop's models and makes the models on its own server (Desktop's is used when it runs a low-memory
+  option or the member's own work). Two of eight detail-2048 runs on Helix's PC had run out of memory at the texture step on Desktop's server.
 - **0.5.5** (2026-10-26) - A model run may give more views of its subject (`views`: its left, back and right sides, each another picture of the job) for Pixal3D's multi-view conditioning: the model is
   made from all of them, so its sides and back follow drawn views instead of guesses from the front. The log names each run's pictures. `model-gen.sh` sends such a job only to 0.5.5 or later.
 - **0.5.4** (2026-10-26) - A new model setting, `fov`: the camera angle Pixal3D projects the concept picture with, in place of MoGe's guess from the picture (a painting is not a photo), so a run can
