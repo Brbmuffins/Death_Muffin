@@ -27,7 +27,9 @@ const CULL_BACK_SLUGS := ["necromancer", "hero_gravecaller", "hero_rotweaver", "
 	"bone_colossus", "belfry_gargoyle", "bell_templar", "cinderhound", "slag_brute", "mire_leech", "fen_wisp", "skull_niche",
 	"npc_prior", "npc_sexton", "npc_apothecary"]
 
-const REGION_OF_BONE := [["Foot|ToeBase", 3], ["Hand|Forearm", 2], ["Thigh|Calf|Pelvis|^Hip$", 1], ["Spine|Waist|Clavicle|Upperarm", 0]]
+## Gear regions by bone name, first match: 0 chest, 1 legs, 2 hands, 3 feet. A cloak's bones (tools/blender/cloak.mjs) keep the region of the
+## cloth they took: the arm copies match their arm's names, the cape's top link is the back, its lower links the legs.
+const REGION_OF_BONE := [["Foot|ToeBase", 3], ["Hand|Forearm", 2], ["Thigh|Calf|Pelvis|^Hip$|^Cape0[2-9]", 1], ["Spine|Waist|Clavicle|Upperarm|^Cape01$", 0]]
 
 static func shader(fade: bool, wings: bool, gear: bool, cull_back := false) -> Shader:
 	var key := "%d%d%d%d" % [int(fade), int(wings), int(gear), int(cull_back)]

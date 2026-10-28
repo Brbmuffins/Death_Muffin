@@ -5,6 +5,11 @@
     {
       "kind": "staff",
       "date": "2026-10-25"
+    },
+    {
+      "kind": "cloak",
+      "cape": true,
+      "date": "2026-10-28"
     }
   ]
 }

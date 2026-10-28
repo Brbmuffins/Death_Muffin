@@ -10,6 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isCloakBone } from '../blender/cloak.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const LIVE_DIR = 'client/assets/slice/models';
@@ -71,8 +72,10 @@ export function check(rel, model, kind, refJoints, staff = []) {
   if (model.materials > r.materials) errors.push(`${model.materials} materials (a ${kind} uses ${r.materials}: one draw call)`);
   if (r.rig === 'none' && model.joints.length) errors.push(`has a skeleton (${model.joints.length} bones): a ${kind} is unrigged and rides a hand, the head or the back`);
   if (r.rig === 'biped' && refJoints && refJoints.length) {
-    const want = refJoints.join('|');
-    if (model.joints.join('|') !== want) errors.push(`its skeleton is not the shared biped (${model.joints.length} bones, the heroes use ${refJoints.length}: Tripo's biped rig)`);
+    // a hero's cloak bones (tools/blender/cloak.mjs: arm copies, a cape chain) are its own: the shared skeleton is the rest
+    const shared = (j) => j.filter((n) => !isCloakBone(n));
+    const want = shared(refJoints);
+    if (shared(model.joints).join('|') !== want.join('|')) errors.push(`its skeleton is not the shared biped (${shared(model.joints).length} bones, the heroes use ${want.length}: Tripo's biped rig)`);
   }
   if (r.clips) {
     const missing = HERO_CLIPS.filter((c) => !model.clips.includes(c));

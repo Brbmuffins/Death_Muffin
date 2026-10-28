@@ -49,6 +49,16 @@
       "targets": ["character"],
       "params": { "clips": { "type": "strings", "min": 1, "max": 8 } }
     },
+    "cloak": {
+      "what": "Stop a two-legged hero's cloak riding up with its body (the shared biped skeleton). arms (default on): the cloth hanging below the arms moves onto copies of the arm bones that follow the arms but never rise more than top degrees (default 20) above the chest's level, so a slam no longer lifts the side panels into a sail. cape (default off; only for a cape that hangs free behind the body, never a robe's skirt): a bone chain down the back cloth that the chest carries but that hangs at most lift degrees (default 10) above its rest, so a deep bow no longer stands the cape up behind (it then hangs from the back instead of following the legs in a walk). With arms down (idle, walk, run) the arms look the same. Later steps that change clips re-key it.",
+      "targets": ["character"],
+      "params": {
+        "arms": { "type": "bool" },
+        "cape": { "type": "bool" },
+        "top": { "type": "number", "min": 5, "max": 60 },
+        "lift": { "type": "number", "min": 0, "max": 45 }
+      }
+    },
     "recolor": {
       "what": "Shift the colour texture: hue (degrees), saturation and brightness (multipliers). only: {color: '#rrggbb', within: 0.05-1} limits it to texels near that colour (soft edge).",
       "targets": ["character", "prop"],

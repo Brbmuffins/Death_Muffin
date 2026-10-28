@@ -93,7 +93,6 @@ polish list). Also:
   the Gravecaller) away. Anchoring to the Hip's rest position would remove the slide.
 - Hero `walk` and `run` lose their vertical bob (about 7 cm in `run`): `prep_clips` removes the whole Hip position track from non-combat
   hero clips, while its comment says the vertical bob is kept.
-- The Gravecaller's cloak stretches into a flat sheet behind the legs in the `flick` crouch (skin weights on the cloak).
 - The crowd's shader changes are checked in text, not in a rendered frame: run `client/tests/crowd_look_smoke.gd` (Forward+, about two
   minutes) in the look pass; the aim ring showed about 3 m above the hero in the look probe's frames (no mouse there).
 
@@ -216,6 +215,9 @@ Notes for the asset and effects work (ROADMAP):
 - The Bone Colossus's rim reads fuller than the old game's (a pose that differs, or the baked normals at its hard edges).
 - The Weeping Seraph's wings stretch and tear in its `cast`: the shipped model's own skin weights at the wing roots (seen while testing
   Pixal3D remakes, 2026-10-26); a weight fix is a Blender job.
+- The Legion Unburied set body (`hero_leg_legion_unburied`) stands its back cape up behind it in the `slam` and `dig`, as the Gravecaller's
+  did before its `cloak` job (seen in stills, 2026-10-28): a Blender job `{"kind": "cloak", "cape": true}` is the likely fix, untried on it.
+  The other set bodies and the Reaper body looked fine in the same stills.
 - The skull rat's `idle` dips its tail tip up to 2 cm below the floor (its `run` lifts the tail chain for the same reason; found 2026-10-26).
 - The owner's licensed effect pack's VESPER and REEBOO 3D scenes were ruled out because they need Forward+ or GPU particles while players
   ran Compatibility (ASSET_PIPELINE.md "Flipbook sheets", B12); the game is Forward+ since launch day, so they could be used once their cost

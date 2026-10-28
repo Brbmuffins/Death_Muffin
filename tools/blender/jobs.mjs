@@ -12,7 +12,8 @@
  * (art-src/) is needed; what Blender makes is merged back by merge.mjs, which keeps materials, textures and the other clips as they are.
  * Every step that changed the model is appended to art-manifest/blender/<id>.json (the record; replay redoes it). The model's rows
  * (client/game/view_models.json and the copies in client/data/slice/*.json) get the new clip list, the walk/run strides and the strike
- * timings. Then the model check runs; a failure leaves every file as it was.
+ * timings. A model with a cloak (kind `cloak`) gets it re-keyed in every clip a later step changed. Then the model check runs; a failure
+ * leaves every file as it was.
  */
 import { Logger, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
@@ -28,6 +29,7 @@ import { runBlender, staffInputs } from '../blender.mjs';
 import { bindHeight, measureFile, strideOfClip } from '../measure-clips.mjs';
 import { clipLength, dropClip, onlyClip, pruneAccessors, transplantClip, transplantGeometry, jointNames } from './merge.mjs';
 import { addClip, packFile } from './pack.mjs';
+import { cloakModel, hasCloak, rebakeCloak } from './cloak.mjs';
 import { check, kindOf, readGlb } from '../assets/check-models.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -382,6 +384,23 @@ export const KIND_RUN = {
     return { touched: res.clips.map((r) => r.clip), report: `re-baked ${said.join(', ')}${res.sheetError ? `; no staff sheets (${res.sheetError})` : ''}` };
   },
 
+  async cloak(ctx, step) {
+    const doc = await io.read(ctx.cur);
+    const r = cloakModel(doc, { arms: step.arms, cape: step.cape, top: step.top, lift: step.lift });
+    await pruneAccessors(doc);
+    await io.write(ctx.cur, doc);
+    // the clips it changed most, for the preview: the most any of the part's links was lowered
+    const most = {};
+    for (const [c, a] of Object.entries(r.arms?.clips ?? {})) most[c] = Math.max(most[c] ?? 0, ...Object.values(a).flat());
+    for (const [c, d] of Object.entries(r.cape?.clips ?? {})) most[c] = Math.max(most[c] ?? 0, d);
+    const top = Object.entries(most).filter(([, d]) => d >= 10).sort((a, b) => b[1] - a[1]);
+    const said = [r.added.length ? `added ${r.added.length} bones` : 'bones kept'];
+    if (r.arms) said.push(`arms: ${r.arms.moved} vertices ride the cloak`);
+    if (r.cape) said.push(`cape: ${r.cape.moved} vertices ride it`);
+    said.push(top.length ? `lowered most in ${top.slice(0, 6).map(([c, d]) => `${c} ${d} deg`).join(', ')}` : 'no clip lowered 10 deg or more');
+    return { touched: top.slice(0, 4).map(([c]) => c), report: said.join('; ') };
+  },
+
   async recolor(ctx, step) {
     if (step.hue === undefined && step.saturation === undefined && step.brightness === undefined) throw new Error('recolor needs hue, saturation or brightness');
     const doc = await io.read(ctx.cur);
@@ -502,6 +521,19 @@ async function preview(ctx, before, touched, changedLook, shots) {
 }
 
 // ---------- running a job ----------
+/** A model with a cloak: its cloak bones follow the clips a step changed (the step made them from the arms as they were, or not at all). */
+async function rekeyCloak(ctx, clips) {
+  const doc = await io.read(ctx.cur);
+  if (ctx.prop || !hasCloak(doc)) return '';
+  const have = new Set(doc.getRoot().listAnimations().map((a) => a.getName()));
+  const live = [...new Set(clips)].filter((c) => have.has(c));
+  if (!live.length) return '';
+  rebakeCloak(doc, live);
+  await pruneAccessors(doc);
+  await io.write(ctx.cur, doc);
+  return `; cloak re-keyed in ${live.join(', ')}`;
+}
+
 export async function runJob(job, { shots = null, record = true, quiet = false } = {}) {
   const errors = validateJob(job);
   if (errors.length) throw new Error(errors.join('\n'));
@@ -518,6 +550,7 @@ export async function runJob(job, { shots = null, record = true, quiet = false }
   try {
     for (const [i, step] of job.steps.entries()) {
       const r = await KIND_RUN[step.kind](ctx, step);
+      if (r.touched.length && step.kind !== 'cloak') r.report += await rekeyCloak(ctx, r.touched);
       touched.push(...r.touched);
       geometry ||= !!r.geometry; texture ||= !!r.texture;
       if (!quiet) console.log(`STEP ${i + 1} ${step.kind}: ${r.report}`);

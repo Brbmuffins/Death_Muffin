@@ -5,7 +5,7 @@
 # voxel binding, geoskin.py; heat: Blender's bone heat) on the bones the game's skins use: the twist bones for the limbs, Waist, Spine01, Spine02, NeckTwist01, Head,
 # the clavicles, hands, feet and toes. The body is first turned to the heroes' frame (+X forward; the game placement faces +Y, away from the game's
 # camera, as render-model.sh's half turn shows): `facing` reads which way it faces, and a body whose feet then point backwards is refused. Exports the rigged body with no clips, facing +X like every hero body (its row turns it, as hero_gravecaller's yaw does).
-import bpy, sys, os, json, math
+import bpy, sys, os, json, math, re
 import numpy as np
 from mathutils import Matrix, Vector
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -92,6 +92,8 @@ assert all(abs(arm.matrix_world[i][j] - (i == j)) < 1e-6 for i in range(4) for j
 select_only(arm)
 bpy.ops.object.mode_set(mode='EDIT')
 eb = arm.data.edit_bones
+for b in [b for b in eb if re.match(r'^([LR]_Cloak|Cape\d)', b.name)]:   # a template's own cloak bones (tools/blender/cloak.mjs isCloakBone)
+    eb.remove(b)
 old = {b.name: (b.head.copy(), b.tail.copy(), b.z_axis.copy()) for b in eb}
 th = old['Head'][0].z - min(old[n][0].z for n in ('L_ToeBase', 'R_ToeBase'))
 s = (J['Head'][2] - min(J['L_ToeBase'][2], J['R_ToeBase'][2])) / th          # template -> body size, for bones with no joint pair

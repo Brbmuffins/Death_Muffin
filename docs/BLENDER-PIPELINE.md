@@ -43,6 +43,8 @@ node tools/blender/jobs.mjs kinds                             the kinds and thei
   `transplantClip`), replacing a clip of that name. Nothing else in the file changes. `staff` re-bakes a discipline hero's `<clip>_staff`
   clips from its clips as they are ("`staff`" below), each starting where the clip it re-bakes starts (`pack.mjs` `addClip`); a job that
   changes one of those clips on such a hero ends with a `staff` step for it, or the game keeps playing the old motion with a staff in hand.
+  On a model with a cloak ("`cloak`" below) every clip a step made or changed gets the cloak re-keyed from the settings saved in the file.
+- **Cloth** (`cloak`, `cloak.mjs`, no Blender): new bones, re-weighted cloth and keys for them in every clip ("`cloak`" below).
 - **Geometry** (`rigfix`, `decimate`, `reshape`, `remove`; `edit.py`, `rigfix.py`): Blender writes a static export and only the skinned mesh's
   vertex data, indices and, for new bones, the skin are moved into the shipped file (`transplantGeometry`). Tripo's binds carry a scale that
   Blender's export normalises, so the two binds may differ by one transform for the whole mesh; vertices are moved by it, and a bone whose
@@ -179,6 +181,34 @@ armature it is given and the meshes under it): the source has the same bone name
 channels, which `transplantClip` refuses. The job prints the body's own `STRIDE` and `TIMINGS` for its row. Skinning limit: cloth hanging below the knee (a long robe or skirt) is weighted to the legs and
 stretches between them on a stride.
 
+## `cloak`: cloth that stops riding the arms and the bent back
+
+Tripo weights loose cloth to the nearest bones, so the cloth moves as if it were part of them. On the heroes two cases broke the big moves
+(Helix, 2026-10-28, the Gravecaller's slam): the side panels hanging below the T-pose arms ride the arm bones, so an arm raised overhead lifts
+them into a flat sail; and the Gravecaller's long back cape rides the spine and the thighs, so the slam's deep bow carries it up behind the
+hero like a board. `{"kind": "cloak"}` fixes the arms, `"cape": true` the cape:
+
+- **Arms** (default on): each arm gets a copy of its bones (`L_/R_CloakUpperarm` and its twists, `CloakForearm` and its twists, `CloakHand`),
+  with the arm's rest pose and bind, under the same clavicle. Cloth more than 3% of the body's height below the arm line (upper arm, forearm,
+  hand) starts to move onto the copy, wholly from 9%; the sleeve and the hand keep the arm. In every clip the copy follows the arm, except
+  that its upper arm and forearm point at most `top` degrees (default 20) above the chest's level, easing off from level, so a pose with
+  the arms down (idle, walk, run) plays the arm's own keys.
+- **Cape** (default off): a chain `Cape01`..`Cape04` from `Spine02` down the middle of the back cloth to its hem, each joint at the cloth's
+  depth at its height. Cloth more than 8% of the height behind the body's middle line (the spine above the hips, between the legs below)
+  starts to move onto it, wholly from 14%, by its height along the chain. In every clip the chest carries each link, swung down to at most
+  `lift` degrees (default 10) above its rest hang, easing over 25 more. The cape then hangs from the back in a walk instead of following
+  the legs. Only for a cape that hangs free: on a robe the skirt is the back cloth and it flares backward (tried on the Ossuary, Mourner and
+  Rotweaver, 2026-10-28). Their arm part alone barely showed in the game's camera, so of the heroes only the Gravecaller has the job.
+- The rest pose and the binds are unchanged, so a still model looks the same. The settings ride in the file (`L_CloakUpperarm`'s and
+  `Cape01`'s extras): a re-run re-tunes them, and `jobs.mjs` re-keys the cloak in every clip a later step changes.
+- The bones are the hero's own: the model check compares the shared skeleton without them (`isCloakBone`), the biped rig for a new body
+  (`comfy/build_rig.py`, whose template is hero_gravecaller) drops them, and `DmCreatureMat.REGION_OF_BONE` gives them the gear region of
+  the cloth they took (the arm copies match their arm's names; `Cape01` the chest, the lower links the legs). They cost 14 bones (arms) and
+  4 (cape) on top of the shared 41, keyed in every clip.
+- Limits: the chain has no inertia (it moves with the chest at once, with no follow-through or flutter), so in a deep bow (`flick`, `dig`) the
+  cape stands out behind at its limit (rest hang + `lift` + 25 degrees) like cloth in wind rather than falling against the legs; nothing keeps
+  cloth out of the legs in a deep crouch.
+
 ## `staff`: the arm re-solved around a held staff
 
 The hero clips were made for an empty hand, and `DmCreature.attach_held` bolts the staff rigidly to `R_Hand`, so the staff
@@ -250,5 +280,5 @@ have no staff version: the game hides the staff while they play.
 5. Check the clip in the Godot client.
 
 Files: `tools/blender.mjs`, `tools/blender/{common,kin,procedural,rigfix,cleanup,retarget,selftest,skinview,staff,edit,preview}.py`, `tools/blender/pack.mjs`,
-`tools/blender/{jobs,merge}.mjs`, `tools/blender/kinds.json`, `tools/blender/recipes/*.json`, `tools/blender/maps/*.json`, measurement additions in
+`tools/blender/{jobs,merge,cloak}.mjs`, `tools/blender/kinds.json`, `tools/blender/recipes/*.json`, `tools/blender/maps/*.json`, measurement additions in
 `tools/measure-clips.mjs`.

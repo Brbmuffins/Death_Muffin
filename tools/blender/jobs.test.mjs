@@ -5,6 +5,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Document } from '@gltf-transform/core';
+import { Matrix4, Quaternion, Vector3 } from 'three';
+import { ARM_DEFAULTS, CAPE, armLimits, capeLimits, cloakModel, rebakeCloak } from './cloak.mjs';
 import { KINDS, KIND_RUN, maskBlend, rowsOf, staffPlan, updateRow, validateJob } from './jobs.mjs';
 import { invAffine, mul, transplantClip, transplantGeometry } from './merge.mjs';
 import { addClip } from './pack.mjs';
@@ -197,4 +199,187 @@ test('a bone that moved in Blender is refused; a new bone joins the skin under i
   assert.equal(jaw.getParentNode(), nodes.Head);
   assert.ok(near(ibmsOf(dst).slice(48), mul(jawIbm, invAffine(D))), 'its bind is in the shipped space');
   assert.ok(near(ibmsOf(dst).slice(0, 48), SHIPPED_IBM.flat()), 'the other binds are unchanged');
+});
+
+// ---------- the cloak job (cloak.mjs) ----------
+/**
+ * A small T-pose biped with the shared skeleton's names (Y up, facing +X, the arms along Z, no rotations, bind = rest). `points`: [x, y, z,
+ * bone] vertices; `cape` adds a grid of cloth hanging well behind the back, on the spine and the thigh as Tripo weights it.
+ */
+function biped(points, { cape = false } = {}) {
+  const at = { Root: [0, 0, 0], Hip: [0, 1, 0], Waist: [0, 1.1, 0], Spine01: [0, 1.25, 0], Spine02: [0, 1.4, 0], NeckTwist01: [0, 1.6, 0], Head: [0, 1.7, 0] };
+  const parent = { Hip: 'Root', Waist: 'Hip', Spine01: 'Waist', Spine02: 'Spine01', NeckTwist01: 'Spine02', Head: 'NeckTwist01' };
+  for (const [s, z] of [['L', 1], ['R', -1]]) {
+    const bones = { Clavicle: [[0, 1.5, 0.1 * z], 'Spine02'], Upperarm: [[0, 1.5, 0.2 * z], 'Clavicle'], UpperarmTwist01: [[0, 1.5, 0.32 * z], 'Upperarm'],
+      Forearm: [[0, 1.5, 0.45 * z], 'Upperarm'], Hand: [[0, 1.5, 0.7 * z], 'Forearm'], Thigh: [[0, 1, 0.1 * z], 'Hip'], Calf: [[0, 0.55, 0.1 * z], 'Thigh'],
+      Foot: [[0, 0.1, 0.1 * z], 'Calf'], ToeBase: [[0.15, 0.02, 0.1 * z], 'Foot'] };
+    for (const [b, [p, par]] of Object.entries(bones)) { at[`${s}_${b}`] = p; parent[`${s}_${b}`] = par === 'Hip' || par === 'Spine02' ? par : `${s}_${par}`; }
+  }
+  const pts = [...points, [0, 1.75, 0, 'Head'], [0.1, 0, 0.1, 'L_Foot'], [0.1, 1.3, 0, 'Spine01']];
+  if (cape) for (let y = 1.35; y > 0.14; y -= 0.05) for (const z of [-0.1, 0, 0.1]) pts.push([-0.4, y, z, y > 1.25 ? 'Spine02' : y > 1 ? 'Waist' : 'L_Thigh']);
+  const names = Object.keys(at);
+  const joints = names.map((n) => ({ name: n, parent: parent[n], t: parent[n] ? at[n].map((v, i) => v - at[parent[n]][i]) : at[n] }));
+  const { doc, nodes } = model(joints, names.map((n) => invAffine(T(...at[n]))), { positions: Array(names.length * 9).fill(0) });
+  const p = prim(doc), buf = doc.getRoot().listBuffers()[0];
+  p.setAttribute('POSITION', doc.createAccessor().setType('VEC3').setArray(new Float32Array(pts.flatMap((q) => q.slice(0, 3)))).setBuffer(buf));
+  p.setAttribute('NORMAL', null);
+  p.setAttribute('JOINTS_0', doc.createAccessor().setType('VEC4').setArray(new Uint8Array(pts.flatMap((q) => [names.indexOf(q[3]), 0, 0, 0]))).setBuffer(buf));
+  p.setAttribute('WEIGHTS_0', doc.createAccessor().setType('VEC4').setArray(new Float32Array(pts.flatMap(() => [1, 0, 0, 0]))).setBuffer(buf));
+  p.setIndices(null);
+  return { doc, nodes };
+}
+
+/** Add a clip keyed at t = 0 and 1: {bone: [rotation at 0, rotation at 1]}. */
+function clip(doc, nodes, name, rots) {
+  const a = doc.createAnimation(name), buf = doc.getRoot().listBuffers()[0];
+  for (const [bone, [q0, q1]] of Object.entries(rots)) {
+    const s = doc.createAnimationSampler().setInput(doc.createAccessor().setType('SCALAR').setArray(new Float32Array([0, 1])).setBuffer(buf))
+      .setOutput(doc.createAccessor().setType('VEC4').setArray(new Float32Array([...q0, ...q1])).setBuffer(buf));
+    a.addSampler(s).addChannel(doc.createAnimationChannel().setTargetNode(nodes[bone]).setTargetPath('rotation').setSampler(s));
+  }
+}
+const about = (axis, deg) => new Quaternion().setFromAxisAngle(new Vector3(...axis), deg * Math.PI / 180).toArray();
+const NONE = [0, 0, 0, 1];
+
+/** Bone positions and rotations in a clip at a key time (rest where a bone has no channel). */
+function poseAt(doc, name, t) {
+  const anim = doc.getRoot().listAnimations().find((a) => a.getName() === name);
+  const val = new Map();
+  for (const ch of anim.listChannels()) {
+    const s = ch.getSampler(), k = Array.from(s.getInput().getArray()).findIndex((x) => Math.abs(x - t) < 1e-6), n = ch.getTargetPath() === 'rotation' ? 4 : 3;
+    assert.ok(k >= 0, `${ch.getTargetNode().getName()} has a key at ${t}`);
+    val.set(`${ch.getTargetNode().getName()}.${ch.getTargetPath()}`, Array.from(s.getOutput().getArray().slice(k * n, k * n + n)));
+  }
+  const memo = new Map();
+  const world = (node) => {
+    if (!node) return new Matrix4();
+    if (!memo.has(node)) {
+      const g = (p, rest) => val.get(`${node.getName()}.${p}`) ?? rest;
+      memo.set(node, world(node.getParentNode()).clone().multiply(new Matrix4().compose(new Vector3(...g('translation', node.getTranslation())), new Quaternion(...g('rotation', node.getRotation())), new Vector3(...g('scale', node.getScale())))));
+    }
+    return memo.get(node);
+  };
+  const byName = (n) => world(doc.getRoot().listNodes().find((x) => x.getName() === n));
+  return { at: (n) => new Vector3().setFromMatrixPosition(byName(n)), rot: (n) => new Quaternion().setFromRotationMatrix(byName(n)) };
+}
+const elevation = (d, up = new Vector3(0, 1, 0)) => Math.asin(d.clone().normalize().dot(up)) * 180 / Math.PI;
+
+/** Each vertex's {bone: weight}. */
+function weightsOf(doc) {
+  const names = doc.getRoot().listSkins()[0].listJoints().map((j) => j.getName());
+  const J = prim(doc).getAttribute('JOINTS_0').getArray(), W = prim(doc).getAttribute('WEIGHTS_0').getArray();
+  return Array.from({ length: J.length / 4 }, (_, v) => {
+    const m = {};
+    for (let k = 0; k < 4; k++) if (W[v * 4 + k] > 0) m[names[J[v * 4 + k]]] = (m[names[J[v * 4 + k]]] ?? 0) + W[v * 4 + k];
+    return m;
+  });
+}
+
+// the arm's sleeve on the arm line, a side panel hanging well below it (both sides)
+const ARM_POINTS = [[0, 1.5, 0.35, 'L_Upperarm'], [0, 1.49, 0.6, 'L_Forearm'], [0, 1.15, 0.55, 'L_Forearm'], [0, 1.15, -0.55, 'R_Forearm']];
+// idle: arms down; slam: arms overhead while the back bows forward 70 degrees (forward is +X)
+const IDLE = { L_Upperarm: [about([1, 0, 0], 80), about([1, 0, 0], 80)], R_Upperarm: [about([1, 0, 0], -80), about([1, 0, 0], -80)] };
+const SLAM = { L_Upperarm: [NONE, about([1, 0, 0], -80)], R_Upperarm: [NONE, about([1, 0, 0], 80)], Spine01: [NONE, about([0, 0, 1], -70)] };
+
+test('the arm cloak: panels below the arm ride a copy that never rises over the limit; arms down are the arm\'s own keys', () => {
+  const { doc, nodes } = biped(ARM_POINTS);
+  clip(doc, nodes, 'idle', IDLE);
+  clip(doc, nodes, 'slam', SLAM);
+  const bindBefore = ibmsOf(doc);
+  const r = cloakModel(doc);
+  assert.deepEqual(r.added.sort(), ['L_CloakForearm', 'L_CloakHand', 'L_CloakUpperarm', 'L_CloakUpperarmTwist01', 'R_CloakForearm', 'R_CloakHand', 'R_CloakUpperarm', 'R_CloakUpperarmTwist01']);
+  assert.equal(r.cape, null, 'no cape unless asked');
+  const joints = doc.getRoot().listSkins()[0].listJoints().map((j) => j.getName());
+  const ibm = ibmsOf(doc);
+  assert.ok(near(ibm.slice(0, bindBefore.length), bindBefore), 'the shared bones keep their binds');
+  for (const c of r.added) {
+    const arm = c.replace('Cloak', '');
+    assert.ok(near(ibm.slice(joints.indexOf(c) * 16, joints.indexOf(c) * 16 + 16), ibm.slice(joints.indexOf(arm) * 16, joints.indexOf(arm) * 16 + 16)), `${c} has ${arm}'s bind`);
+    assert.equal(doc.getRoot().listNodes().find((n) => n.getName() === c).getParentNode().getName(), arm === 'L_Upperarm' || arm === 'R_Upperarm' ? arm.replace('Upperarm', 'Clavicle') : nodes[arm].getParentNode().getName().replace(/^([LR])_/, '$1_Cloak'));
+  }
+  const w = weightsOf(doc);
+  assert.deepEqual(w[0], { L_Upperarm: 1 }, 'the sleeve keeps the arm');
+  assert.deepEqual(w[1], { L_Forearm: 1 });
+  assert.deepEqual(w[2], { L_CloakForearm: 1 }, 'the panel rides the cloak');
+  assert.deepEqual(w[3], { R_CloakForearm: 1 });
+  for (const m of w) assert.ok(Math.abs(Object.values(m).reduce((a, b) => a + b, 0) - 1) < 1e-6, 'weights sum to 1');
+
+  // idle: the copy carries the arm's own keys
+  const idle = doc.getRoot().listAnimations().find((a) => a.getName() === 'idle');
+  const keys = (n) => Array.from(idle.listChannels().find((c) => c.getTargetNode().getName() === n && c.getTargetPath() === 'rotation').getSampler().getOutput().getArray());
+  assert.ok(near(keys('L_CloakUpperarm'), keys('L_Upperarm')));
+  assert.equal(r.arms.clips.idle.L[0], 0);
+  // slam: the arm goes 80 degrees over the chest's level, the copy at most `top`; before the swing it is the arm
+  const top = ARM_DEFAULTS.top;
+  for (const t of [0, 1]) {
+    const p = poseAt(doc, 'slam', t), up = new Vector3(0, 1, 0).applyQuaternion(p.rot('Spine02'));
+    for (const s of ['L', 'R']) {
+      const arm = elevation(p.at(`${s}_Forearm`).sub(p.at(`${s}_Upperarm`)), up), cl = elevation(p.at(`${s}_CloakForearm`).sub(p.at(`${s}_CloakUpperarm`)), up);
+      const fore = elevation(p.at(`${s}_CloakHand`).sub(p.at(`${s}_CloakForearm`)), up);
+      if (t === 0) assert.ok(Math.abs(cl - arm) < 1e-3, `${s} at rest: the copy is the arm`);
+      else {
+        assert.ok(arm > 75, `${s} arm overhead (${arm})`);
+        assert.ok(cl <= top + 0.5 && cl > 0, `${s} cloak upper arm ${cl} <= ${top}`);
+        assert.ok(fore <= top + 0.5, `${s} cloak forearm ${fore} <= ${top}`);
+        assert.ok(p.at(`${s}_CloakUpperarm`).distanceTo(p.at(`${s}_Upperarm`)) < 1e-5, 'the copy hangs from the same shoulder');
+      }
+    }
+  }
+  // a re-run with the same settings changes nothing; another top re-tunes the keys and is saved in the file
+  const again = cloakModel(doc);
+  assert.deepEqual(again.added, []);
+  assert.deepEqual(weightsOf(doc), w);
+  cloakModel(doc, { top: 40 });
+  assert.equal(armLimits(doc).top, 40);
+  const hi = poseAt(doc, 'slam', 1), up = new Vector3(0, 1, 0).applyQuaternion(hi.rot('Spine02'));
+  const e = elevation(hi.at('L_CloakForearm').sub(hi.at('L_CloakUpperarm')), up);
+  assert.ok(e > top + 1 && e <= 40.5, `re-tuned to 40 (${e})`);
+});
+
+test('the cape: a chain down the back cloth hangs instead of standing up when the body bows; the rest pose is unchanged', () => {
+  assert.throws(() => cloakModel(biped(ARM_POINTS).doc, { arms: false, cape: true }), /no cloth hangs behind/);
+  assert.throws(() => cloakModel(biped(ARM_POINTS).doc, { arms: false }), /needs arms or cape/);
+  const { doc, nodes } = biped(ARM_POINTS, { cape: true });
+  clip(doc, nodes, 'idle', IDLE);
+  clip(doc, nodes, 'slam', SLAM);
+  const rest = (n) => { let m = new Matrix4(); for (let x = doc.getRoot().listNodes().find((y) => y.getName() === n); x; x = x.getParentNode()) m = new Matrix4().compose(new Vector3(...x.getTranslation()), new Quaternion(...x.getRotation()), new Vector3(...x.getScale())).multiply(m); return m; };
+  const r = cloakModel(doc, { arms: false, cape: true });
+  assert.deepEqual(r.added, CAPE);
+  assert.equal(r.arms, null);
+  assert.equal(nodes.Spine02.listChildren().find((c) => c.getName() === 'Cape01')?.getName(), 'Cape01', 'the cape hangs from the chest');
+  const joints = doc.getRoot().listSkins()[0].listJoints().map((j) => j.getName()), ibm = ibmsOf(doc);
+  for (const c of CAPE) assert.ok(near(rest(c).multiply(new Matrix4().fromArray(ibm, joints.indexOf(c) * 16)).toArray(), new Matrix4().toArray()), `${c}: bind = rest, so the still model is unchanged`);
+  // the cloth behind rides the chain, by height; the chest's front keeps its bone
+  const w = weightsOf(doc);
+  const pts = Array.from(prim(doc).getAttribute('POSITION').getArray());
+  const at = (x, y, z) => w[Array.from({ length: pts.length / 3 }, (_, v) => v).find((v) => Math.abs(pts[v * 3] - x) < 1e-4 && Math.abs(pts[v * 3 + 1] - y) < 1e-4 && Math.abs(pts[v * 3 + 2] - z) < 1e-4)];
+  assert.deepEqual(at(0.1, 1.3, 0), { Spine01: 1 });
+  assert.ok(Object.keys(at(-0.4, 0.6, 0)).every((b) => /^Cape0[1-3]$/.test(b)), 'the low back cloth is all cape');
+  for (const m of w) assert.ok(Math.abs(Object.values(m).reduce((a, b) => a + b, 0) - 1) < 1e-6, 'weights sum to 1');
+  // bowing 70 degrees would lift the lowest link 70 degrees: carried by the chest, it hangs at most lift + give above its rest
+  const { lift, give } = capeLimits(doc);
+  const p0 = poseAt(doc, 'slam', 0), p1 = poseAt(doc, 'slam', 1);
+  for (let k = 0; k + 1 < CAPE.length; k++) {
+    const restE = elevation(p0.at(CAPE[k + 1]).sub(p0.at(CAPE[k]))), e = elevation(p1.at(CAPE[k + 1]).sub(p1.at(CAPE[k])));
+    assert.ok(e <= restE + lift + give + 0.5, `${CAPE[k]}: ${e} <= ${restE} + ${lift + give}`);
+  }
+  assert.ok(r.cape.clips.slam > 20, 'the slam was lowered');
+  assert.ok(p1.at('Cape01').distanceTo(p1.at('Spine02')) - p0.at('Cape01').distanceTo(p0.at('Spine02')) < 1e-5, 'the top stays on the chest');
+});
+
+test('a clip changed after the cloak gets the cloak re-keyed from the saved settings', () => {
+  const { doc, nodes } = biped(ARM_POINTS, { cape: true });
+  clip(doc, nodes, 'slam', SLAM);
+  cloakModel(doc, { cape: true, top: 30 });
+  // the slam is replaced by one with the arms down and the back straight (as a staff or retarget step would): the old cloak keys are stale
+  doc.getRoot().listAnimations()[0].dispose();
+  clip(doc, nodes, 'slam', IDLE);
+  const r = rebakeCloak(doc, ['slam']);
+  assert.deepEqual(r.arms.slam, { L: [0, 0], R: [0, 0] });
+  assert.equal(r.cape.slam, 0);
+  assert.equal(armLimits(doc).top, 30, 'the settings stay');
+  const p = poseAt(doc, 'slam', 1);
+  assert.ok(p.at('L_CloakHand').distanceTo(p.at('L_Hand')) < 1e-5, 'the cloak follows the new arm');
+  const hasNoCloak = biped(ARM_POINTS).doc;
+  assert.deepEqual(rebakeCloak(hasNoCloak, ['slam']), { arms: null, cape: null });
 });

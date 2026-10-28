@@ -64,6 +64,10 @@ test('a hero body needs the shared skeleton and its combat clips', () => {
   const hero = (o) => check('x.glb', readGlb(glb({ tris: 11000, joints: BIPED, clips: [...HERO_CLIPS, 'death2', 'dig', 'hurt2'], ...o })), 'hero', BIPED);
   assert.deepStrictEqual(hero({}), { errors: [], warnings: [] });
   assert.match(hero({ joints: BIPED.slice(0, 4) }).errors[0], /not the shared biped/);
+  // a cloak's bones (tools/blender/cloak.mjs) are the hero's own, on the reference or not
+  assert.deepStrictEqual(hero({ joints: [...BIPED, 'L_CloakUpperarm', 'R_CloakHand', 'Cape01', 'Cape02'] }).errors, []);
+  assert.deepStrictEqual(check('x.glb', readGlb(glb({ tris: 11000, joints: BIPED, clips: [...HERO_CLIPS, 'death2', 'dig', 'hurt2'] })), 'hero', [...BIPED, 'Cape01']).errors, []);
+  assert.match(hero({ joints: [...BIPED.slice(0, 4), 'L_CloakUpperarm'] }).errors[0], /not the shared biped/);
   assert.match(hero({ clips: HERO_CLIPS.filter((c) => c !== 'slam' && c !== 'summon') }).errors[0], /missing the clips slam, summon/);
   const noExtras = hero({ clips: HERO_CLIPS });
   assert.deepStrictEqual(noExtras.errors, []);

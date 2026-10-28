@@ -25,6 +25,8 @@ Blender can make (DECISIONS B74).
   `tools/blender/recipes/staff.json` while they hold a staff (the default staff too). A job that changes one of those clips on them ends with a
   `staff` step for it (`{"kind": "staff", "clips": ["run"]}`), or the game keeps the old move; its preview shows the staff in hand, the plain
   clip above the re-bake, and takes a few minutes. Never drop or rename a `_staff` clip.
+- Cloth that rides up with a two-legged body (side panels lifting into a sail with the arms, a back cape standing up behind a bowed hero): `cloak`
+  (`{"kind": "cloak", "cape": true}` for a cape that hangs free behind; never `cape` on a robe's skirt). Later steps re-key it themselves.
 
 **A job.** Read `tools/blender/kinds.json` (every kind, what it does, its parameters and limits) before writing one. Write `.dm-blender.json` in the
 worktree root (git ignores it; never commit it):
