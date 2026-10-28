@@ -635,7 +635,7 @@ other down. A job's check gets the import from the shared cache (`prep.sh`), and
 2. `bash install-bot.sh <rev>` (sudo): `/opt/muffin/discord/dm-agent.js`, patched `bot.js` (backup kept), `/opt/muffin/dm-agent.env`. When the live `bot.js` already loads `./dm-agent` but carries other hooks too (the Hammy Xchange agent patches the same file from its own repo), it leaves `bot.js` alone and updates only the adapter and env (old adapter backed up); a `bot.js` without the hook is refused as before.
 3. `sudo systemctl enable --now death-muffin-discord-agent`, then `sudo systemctl restart muffin-discord`.
 
-Tests (part of CI's backend job; about 2 minutes, need git, `unshare`, `zip` and `unzip`): `node --test server/death-muffin/discord-agent/test/*.test.cjs`.
+Tests (part of CI's backend job; about 2 minutes, need git, `unshare`, `zip` and `unzip`): `npm run test:agent` (its `tools/check/test-tmp.cjs` preload removes the test worlds when each test file ends; a bare `node --test` leaves them in /tmp).
 
 **Practice run** (Helix, 2026-10-19: so a promoted test build or a reinstall cannot break the agent unnoticed): after every `install-runner.sh`
 and every test build that goes live, with the agent restarted and idle, run `node ~/death-muffin/discord-agent/runner/canary.cjs` before it takes

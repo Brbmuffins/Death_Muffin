@@ -238,6 +238,11 @@ TFKB=$(du -sk "$WWW/team-files" 2>/dev/null | cut -f1); TRKB=$(du -sk "$DM/team-
 info "team-files/ size: $(du -sh "$WWW/team-files" 2>/dev/null | cut -f1), team-results/ size: $(du -sh "$DM/team-results" 2>/dev/null | cut -f1)"
 [ "${TFKB:-0}" -gt $((10 * 1024 * 1024)) ] && drift "team-files/ holds $(du -sh "$WWW/team-files" | cut -f1) (over 10 GB): is the death-muffin-team-prune timer running?"
 [ "${TRKB:-0}" -gt $((5 * 1024 * 1024)) ] && drift "team-results/ holds $(du -sh "$DM/team-results" | cut -f1) (over 5 GB): the backend removes a job's results 14 days after it finished, when a new job is made"
+# Test runs make their folders in /tmp (npm run test:server and test:agent remove theirs: tools/check/test-tmp.cjs); a big /tmp means a run
+# without that preload, or another leak. Counted as this user, so folders it cannot read are left out.
+TMPKB=$(du -sxk /tmp 2>/dev/null | cut -f1)
+info "/tmp size: $(du -sxh /tmp 2>/dev/null | cut -f1)"
+[ "${TMPKB:-0}" -gt $((10 * 1024 * 1024)) ] && drift "/tmp holds $(du -sxh /tmp 2>/dev/null | cut -f1) (over 10 GB): $(cd /tmp && ls -1 | sed -E 's/[-.][A-Za-z0-9]{6,}$//' | sort | uniq -c | sort -rn | head -4 | awk '{printf "%s%s x%s", (NR>1?", ":""), $2, $1}')"
 # deploy-release.sh and deploy-lobby.sh keep their newest 5 backups each after a good deploy: more means that pruning stopped
 for P in backup-pre-release backup-lobby; do
   NB=$(find "$DM/deploy" -maxdepth 1 -mindepth 1 -type d -name "$P-*" 2>/dev/null | wc -l)

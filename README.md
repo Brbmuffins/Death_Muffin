@@ -75,6 +75,7 @@ node tools/rebuild/affected-suites.mjs            # the suites a change can affe
 tools/check/ci.sh wait <rev>                      # GitHub CI's verdict on a pushed revision (the gate before any merge, deploy or publish; tools/check/README.md)
 npm run test:rules                                # shared rules (vitest, server/rules), with the client parity fixtures
 npm run test:server                               # backend suites (node --test)
+npm run test:agent                                # the Discord agent's suites (both remove their temp folders: tools/check/test-tmp.cjs)
 npm test --prefix server/death-muffin/lobby       # lobby + relay (run `npm ci --prefix server/death-muffin/lobby` once)
 npm run typecheck                                 # tsc --noEmit
 npm run hygiene                                   # stale docs and paths, retired terms, big files, texture imports
