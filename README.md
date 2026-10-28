@@ -25,6 +25,7 @@ Pick the row for the task, read that document (or the named section), then the g
 | Co-op lobby and relay, launcher, team app | [lobby](server/death-muffin/lobby/README.md), [relay](server/death-muffin/relay/README.md), [launcher](launcher/windows/README.md), [team app](teamapp/README.md); the client's co-op guide when both sides change |
 | Build, test, CI, publish, operations | "Tests" and "Export, publish, deploy" below, [tools/check/README.md](tools/check/README.md), [server/death-muffin/ops/README.md](server/death-muffin/ops/README.md) |
 | Art, sound, models, generation | [ASSET_PIPELINE.md](ASSET_PIPELINE.md) and the system that shows it (the Discord agent has its media guides) |
+| Story and lore: the world, its history, factions, bosses and classes | [docs/LORE.md](docs/LORE.md) (the team's working draft; what players read today is in `client/data/content/codex.json`) |
 | Scope, design, a reported problem, choosing work | the matching part of [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md) or [KNOWN-GAPS.md](KNOWN-GAPS.md): search by feature or decision id |
 | The instructions themselves, context and rule checks | [tools/context/README.md](tools/context/README.md) |
 

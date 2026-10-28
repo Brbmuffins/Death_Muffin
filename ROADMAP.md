@@ -151,7 +151,8 @@ one budget table for every kind of asset, and checks for everything but models.
   database migration. It gives: updates never break or silently change players' characters.
 - [ ] **New: the writing rules and the lore bible (the writing page),** written with the team: the voice (dark, with dry humour where it
   fits), naming patterns for items, enemies, places and rites, what a tooltip says and in what order, the patch-note style; and the world
-  (its factions, history and places), which names, quests, bosses and the Codex then follow.
+  (its factions, history and places), which names, quests, bosses and the Codex then follow. The story's working draft is
+  [docs/LORE.md](docs/LORE.md) (2026-10-27, under team review).
 - [ ] **New: the look check and the review checklist.** A scene that shows a new model beside existing ones from the game camera, in each
   area's light, on Low and Ultra, with its triangle count, next to approved reference shots of each area. Every new visual asset is posted
   to the team with those shots and passes the checklist (the look, the budgets, the rig, the clips, readability) before it ships.
