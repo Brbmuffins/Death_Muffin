@@ -127,8 +127,12 @@ polish list). Also:
   workstation has 5.2 (found 2026-10-25).
 - `server/death-muffin/model-view.sh` queues a plan without checking it against the game's plan limits (`client/main/qa_clips.gd`,
   `qa_ui_shots.gd`) or the model's clip names: a plan that breaks one fails on the team PC, after the build and the upload (found 2026-10-26).
-- A model view plays a hero's combat clips as the file holds them, where the game lifts them by the idle's hip height, so a hero sinks into
-  the floor there in clips that look right in the game (found 2026-10-26).
+- The agent runner's shot-plan check (`server/death-muffin/discord-agent/runner/lib/clips.cjs`, `checkShotWords`) is stricter and looser than
+  the game in three places (found 2026-10-28, B80). Stricter: a step's `at` must be before the `wait_ms` given, but the game lengthens a
+  `perf` shot's or a model view's wait (`client/main/qa_ui_shots.gd`, `PERF_WAIT_MS`, `DmQaModel.SETTLE_MS`), so a step the game would take
+  is refused. Looser: a shot with the `walk` key and a walk step, or `fight` with the stand-ins or thralls words, is not refused, and what
+  the game does with both is untested (only the `thralls` key with the `thralls` word is refused).
+- `tools/rebuild/run-client-tests.sh` is not executable in git (mode 100644): run it with `bash` (found 2026-10-28).
 - **The agent's sandbox test can leave a folder in `wt/`** (found 2026-10-21, context Stage 4). `world()` in
   `server/death-muffin/discord-agent/test/sandbox.test.cjs` makes `wt/dm-sbx-test-*` and runs `git init` before the cleanup exists, so a run
   whose next write fails (seen in reviews run under a restricted sandbox) leaves the folder behind: 16 were left on 2026-10-20 and 2026-10-21,
