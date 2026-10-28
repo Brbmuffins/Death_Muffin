@@ -65,11 +65,11 @@ func _why() -> int:
 	game.director.surge = null
 	game.core_host.core.set_wander(false)
 	var origin := hero.position
-	var spots := DmQaClips.layout("pack", 8, origin)
-	var ids := DmQaClips.stand_ins(game, spots)
+	var spots := DmQaScene.layout("pack", 8, origin)
+	var ids := DmQaScene.stand_ins(game, spots)
 	for i in 30:
 		await process_frame
-	var aim := DmQaClips.aim_at(spots, origin)
+	var aim := DmQaScene.aim_at(spots, origin)
 	var vp := game.get_viewport()
 	var steps := [
 		["first cast", func() -> void: pass],

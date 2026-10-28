@@ -787,6 +787,27 @@ function createRunner(cfgIn, opts = {}) {
       handOver(job, String(ev.userId));
       return { action: 'accepted' };
     }
+    // ✅ / ❌ on the sweep's "Keep it?" question (askKeep): ✅ from anyone allowed keeps it, ❌ from anyone who may discard deletes it. Activity in the thread
+    // since the question makes it out of date.
+    if (job && !goneThread(job.threadId) && job.keepAsk && job.keepAsk.messageId && job.keepAsk.messageId === ev.messageId) {
+      if (!['✅', '❌'].includes(ev.emoji)) return { action: 'ignore' };
+      const uid = String(ev.userId), k = job.keepAsk;
+      if (ev.emoji === '✅' ? !auth.isAllowed(uid) : !auth.canDiscard(uid, job, job.proposal && job.proposal.tier)) return { action: 'remove_reaction' };
+      if (k.kept) { if (ev.emoji === '❌') say(job, `${nameOf(k.kept.by)} kept it. Type \`!discard\` to delete this change.`); return { action: 'ignore' }; }
+      if ((job.lastActive || 0) > k.at || job.running || ['shipping', 'shipped', 'discarded', 'deleted'].includes(job.status)) {
+        job.keepAsk = null; save();
+        if (ev.emoji === '❌') say(job, 'That question is out of date: this thread was busy again since. Nothing was deleted; type `!discard` to delete this change.');
+        return { action: 'ignore' };
+      }
+      if (ev.emoji === '✅') {
+        k.kept = { by: uid, at: now() }; save(); audit.log('keep-kept', { job: job.id, userId: uid });
+        say(job, `Kept (${nameOf(uid)}). Nothing here is deleted unless someone reacts ❌ on a question like that or types \`!discard\`.`);
+        return { action: 'accepted' };
+      }
+      audit.log('keep-deleted', { job: job.id, userId: uid });
+      discard(job, uid).catch((e) => say(job, `Delete failed: ${e.message}`));
+      return { action: 'accepted' };
+    }
     // ❌ on the "Discard this change?" question confirms it (anyone who may discard; the question goes stale with the next proposal)
     if (job && !goneThread(job.threadId) && job.discardAsk && job.discardAsk.messageId && job.discardAsk.messageId === ev.messageId) {
       if (ev.emoji !== '❌') return { action: 'ignore' };
@@ -866,7 +887,7 @@ function createRunner(cfgIn, opts = {}) {
       stopStep(job);
       say(job, 'Discarding as soon as the current step stops.'); save(); return;
     }
-    job.discardRequested = null; job.discardAsk = null;
+    job.discardRequested = null; job.discardAsk = null; job.keepAsk = null;
     audit.log('discarded', { job: job.id, userId: String(byId) });
     job.artRequest = null;
     await G.removeJobArtifacts(cfg, job);
@@ -1123,6 +1144,7 @@ function createRunner(cfgIn, opts = {}) {
     if (art && await modelStage(job)) return;     // 3D tries are being made on a team PC (or were refused): people pick one before anything is built
     if (sound && await soundStage(job)) return;   // a sound is being generated (or was refused): the agent continues once the takes exist
     if (await clipStage(job)) return;    // short videos of the options are on their way to a team PC: people pick one before any change is proposed
+    if (await shotPlanStage(job)) return;
     await afterTurn(job, readResult(job.worktree), o);
   }
 
@@ -1582,7 +1604,8 @@ function createRunner(cfgIn, opts = {}) {
     const stale = () => ['discarded', 'deleted'].includes(job.status) || !!job.deleteRequested || (proposal && (!job.proposal || job.proposal.head !== head));
     const fail = (why, extra = {}) => { audit.log('team-shots', { job: job.id, ok: false, why: clip(why, 300), ...extra }); if (o.say || o.forced) say(job, `⚠ No pictures from a team PC this time (${clip(why, 300)}). ${o.live ? 'Ask again to retry.' : 'Say `!shot` to ask again.'}`); };
     try {
-      const sp = CL.readShotPlan(o.planDir || job.worktree);
+      const sp = CL.readShotPlan(o.planDir || job.worktree, job.worktree || cfg.repo);   // the words of the job's branch (a discussion's: latest main)
+      if (sp && sp.error) return fail(`the shot plan was not usable: ${sp.error}`);
       if (!sp) { if (o.forced) say(job, fs.existsSync(path.join(o.planDir || job.worktree, '.dm-shot.json')) ? '⚠ No pictures this time: the shot plan was not usable (it needs a "shots" list).' : '⚠ No pictures this time: no shot plan was made for them.'); return; }
       const plan = sp.plan, notes = sp.notes.slice();
       const pcs = o.pcs && o.pcs.length ? o.pcs : await teamPcs();
@@ -1720,6 +1743,24 @@ function createRunner(cfgIn, opts = {}) {
     const note = clip(redactText(v.note || '').replace(/\s+/g, ' '), 300) || 'no reason given';
     if (v.verdict === 'retake' && !retake && v.plan) return { retake: v.plan, why: note };
     return { line: v.verdict === 'ok' ? `✔ Checked: ${note}` : v.verdict === 'wrong' ? `⚠ Looking at these: ${note}` : v.verdict === 'retake' && retake ? `⚠ Second try, still not right: ${note}` : `⚠ ${note}` };
+  }
+
+  // A shot plan whose scene words the runner refuses (lib/clips.cjs readShotPlan, against the branch's qa_clip_steps.json) goes back to the agent to
+  // fix, twice, before anything is built for a team PC; then it is dropped and the thread is told why. true = the turn is over (cancelled or failed).
+  async function shotPlanStage(job) {
+    if (!teamEnabled() || !job.worktree) return false;
+    for (let attempt = 0; ; attempt++) {
+      const sp = CL.readShotPlan(job.worktree);
+      if (!sp || !sp.error) return false;
+      audit.log('shot-plan-invalid', { job: job.id, error: clip(sp.error, 300) });
+      if (attempt >= 2) {
+        try { fs.rmSync(path.join(job.worktree, '.dm-shot.json'), { force: true }); } catch { /* none */ }
+        say(job, `⚠ No pictures this time: the shot plan was not usable (${clip(sp.error, 900)}).`); return false;
+      }
+      const r = await agentTurn(job, `The runner rejected your shot plan (.dm-shot.json). Fix it and write the file again, or delete it for no pictures. Problems: ${sp.error}`);
+      if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return true; }
+      if (r.error) { say(job, `The agent hit an error: ${clip(redactText(r.error), 300)}`); job.status = 'idle'; return true; }
+    }
   }
 
   // ---------- short videos of a change (.dm-clip.json: variants of a tune over the game's data; a `clip` job on a team PC; "Which do you like best?") ----------
@@ -2632,6 +2673,9 @@ function createRunner(cfgIn, opts = {}) {
     return n;
   }
   // sweep: abandoned idle threads release their worktree
+  // The sweep never deletes work (Helix 2026-10-28: "i dont like the idea of auto deleting the workspace"). A quiet discussion's workspace and a quiet job's
+  // workspace with nothing in it to lose go quietly (the next message rebuilds one from the latest main; the keep holds the thread's notes, images and
+  // conversation). A job holding a change is asked once per quiet spell, "✅ keep, ❌ delete", and only a ❌ deletes it (handleReaction).
   async function sweep(staleDays = 7) {
     tidy(); dropStaleConcepts(); dropStaleKeeps();
     for (const j of Object.values(jobs)) {
@@ -2641,9 +2685,28 @@ function createRunner(cfgIn, opts = {}) {
         if (j.worktree && !j.queue.length && now() - j.lastActive > (cfg.talkIdleHours || 24) * 3600e3) { await G.removeJobArtifacts(cfg, j, { remote: false }).catch(() => {}); j.worktree = null; j.sessionId = null; audit.log('talk-workspace-removed', { job: j.id }); }
         continue;
       }
-      if (now() - j.lastActive > staleDays * 86400e3) { await G.removeJobArtifacts(cfg, j).catch(() => {}); (j.history = j.history || []).push({ round: j.round || 1, branch: j.branch, discarded: 'swept', at: new Date(now()).toISOString() }); j.status = 'discarded'; j.worktree = null; j.proposal = null; say(j, `Closed after ${staleDays} days without activity; the branch and workspace were removed. Message me here to start a fresh round.`); audit.log('swept', { job: j.id }); }
+      if (j.queue.length || now() - j.lastActive <= staleDays * 86400e3 || (j.keepAsk && j.keepAsk.at >= j.lastActive)) continue;
+      if (await unsaved(j)) { if (!goneThread(j.threadId)) askKeep(j, staleDays); continue; }
+      if (j.worktree) { await G.removeJobArtifacts(cfg, j).catch(() => {}); j.worktree = null; j.sessionId = null; audit.log('workspace-removed', { job: j.id }); }
     }
     save();
+  }
+  // What a quiet job would lose with its workspace: an open proposal, commits on its branch, or edits not committed (the runner's own files are git-excluded).
+  async function unsaved(j) {
+    if (j.proposal) return true;
+    if (!j.worktree || !fs.existsSync(j.worktree)) return false;
+    const st = await G.git(j.worktree, ['status', '--porcelain'], { allowFail: true });
+    if (st.code !== 0 || st.out.trim() || !j.base) return true;   // what cannot be read counts as work
+    const n = await G.git(j.worktree, ['rev-list', '--count', `${j.base}..HEAD`], { allowFail: true });
+    return n.code !== 0 || Number(n.out.trim()) > 0;
+  }
+  function askKeep(j, days) {
+    j.keepAsk = { at: now(), messageId: null };
+    audit.log('keep-asked', { job: j.id });
+    const ping = pingRequester(j);
+    const text = `This ${j.proposal ? 'change is not shipped and has' : 'job has work in it that is not shipped, and has'} been quiet for ${days} days. Keep it? React ✅ to keep it, or ❌ to delete its branch and workspace (nothing of it went live). Nothing is deleted without a ❌.`;
+    post({ threadId: j.threadId }, { ...ping, content: (ping.content ? `${ping.content} ` : '') + text, reactions: ['✅', '❌'] },
+      (res) => { if (res.messageId && j.keepAsk && !j.keepAsk.messageId) { j.keepAsk.messageId = String(res.messageId); save(); } });
   }
 
   tidy();

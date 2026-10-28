@@ -1,24 +1,25 @@
 {
-  "about": "The words a clip's `setup` and `steps` may use (main/qa_clips.gd, client/main/CLIPS.md). Each word lists its arguments: a type (bool, number with min and max, rite, enemy, point, path, owners, candle_group) and whether it is required. The Discord agent's runner checks a clip request against the branch's copy of this file before it goes to a team PC, so a new word is an entry here, its handler in qa_clips.gd (SETUP_WORDS / STEP_WORDS) and a check in tests/qa_shots.gd; nothing in the runner.",
+  "about": "The words a clip's and a shot's `setup` and `steps` may use (main/qa_scene.gd, client/main/CLIPS.md, client/main/SCREENSHOTS.md): one list for both recorders. Each word lists its arguments: a type (bool, number with min and max, rite, enemy, point, path, owners, candle_group) and whether it is required. The Discord agent's runner checks a clip request and a shot plan against the branch's copy of this file before anything goes to a team PC, so a new word is an entry here, its handler in qa_scene.gd (named in SETUP_WORDS or STEP_WORDS, so clips and shots both carry it out) and a check in tests/qa_shots.gd; nothing in the runner.",
   "setup": {
     "hud": {
-      "help": "show the HUD while recording (it is hidden when this is left out)",
+      "help": "show or hide the HUD (a clip hides it when this is left out; a shot keeps the HUD as the shot has it)",
       "args": {
         "show": { "type": "bool", "required": true }
       }
     },
     "stand_ins": {
-      "help": "the stand-in enemies: their kind, their health as a multiple of their normal health (400 when this is left out, so nothing dies), whether they may hurt the hero (not when this is left out), whether they come at the hero and fight (they stand where they are put when this is left out) and how far ahead of the hero they start, in metres (the pack's middle 8 m ahead, a line from 4 m, when this is left out; a melee rite such as scythe_sweep reaches about 3 m)",
+      "help": "the stand-in enemies: their kind, their health as a multiple of their normal health (400 when this is left out, so nothing dies), whether they may hurt the hero (not when this is left out), whether they come at the hero and fight (they stand where they are put when this is left out), how far ahead of the hero they start, in metres (the pack's middle 8 m ahead, a line from 4 m, when this is left out; a melee rite such as scythe_sweep reaches about 3 m) and how many there are (a clip's \"enemies\" when this is left out, 6 in a shot). A clip's stand-ins are always there (a clip with none says \"enemies\": 0); a shot has them only when it has this word, as a pack ahead of the hero, who then faces up the screen",
       "args": {
         "kind": { "type": "enemy" },
         "health": { "type": "number", "min": 0.05, "max": 1000 },
         "harmless": { "type": "bool" },
         "fight": { "type": "bool" },
-        "distance": { "type": "number", "min": 0, "max": 20 }
+        "distance": { "type": "number", "min": 0, "max": 20 },
+        "count": { "type": "number", "min": 0, "max": 12 }
       }
     },
     "souls": {
-      "help": "the Reaper's souls when the recording starts (a full bag when this is left out); held to her bag's size",
+      "help": "the Reaper's souls when the recording or shot starts (a full bag when this is left out); held to her bag's size",
       "args": {
         "value": { "type": "number", "min": 0, "max": 500, "required": true }
       }
@@ -30,13 +31,13 @@
       }
     },
     "stand_at": {
-      "help": "stand the hero at this point [x, z] of the area instead of at its waystone (before the stand-ins are placed, so they start ahead of that point)",
+      "help": "stand the hero at this point [x, z] of the area instead of at its waystone (before the stand-ins are placed, so they start ahead of that point; a shot puts him back after the picture)",
       "args": {
         "at": { "type": "point", "required": true }
       }
     },
     "zoom": {
-      "help": "the camera's zoom for the clip (1 the game's default, 0.7 the closest a player can zoom, 1.45 the widest; it is 1 when this is left out): closer than a player gets is for looking at a detail; in a model clip it scales the model's own framing (1.45: the model and more of the room around it)",
+      "help": "the camera's zoom for the clip or shot (1 the game's default, 0.7 the closest a player can zoom, 1.45 the widest; it is 1 when this is left out): closer than a player gets is for looking at a detail; in a model clip it scales the model's own framing (1.45: the model and more of the room around it)",
       "args": {
         "value": { "type": "number", "min": 0.4, "max": 1.45, "required": true }
       }

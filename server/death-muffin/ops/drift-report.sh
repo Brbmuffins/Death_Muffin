@@ -126,17 +126,40 @@ fi
 # 4. Git leftovers
 section "4. Git leftovers"
 age_days() { echo $(( (now - $1) / 86400 )); }
+# agent_jobs: the Discord agent's open jobs from its state, one "<branch>\t<open|asked|kept>\t<thread>" line each. An open job's branch is the runner's, however old:
+# after 7 quiet days the runner asks the thread "✅ keep, ❌ delete" and deletes only on a ❌ (DECISIONS B80), so only a branch no open job holds is a leftover.
+JOBS_STATE="${JOBS_STATE:-$DM/discord-agent/state/jobs.json}"
+agent_jobs() {
+  python3 - "$JOBS_STATE" <<'PY' 2>/dev/null || true
+import json, sys
+try: jobs = json.load(open(sys.argv[1]))
+except Exception: sys.exit(0)
+for j in (jobs.values() if isinstance(jobs, dict) else []):
+    if not isinstance(j, dict) or not j.get('branch') or j.get('status') in ('shipped', 'discarded', 'deleted'): continue
+    k = j.get('keepAsk') or {}
+    state = 'kept' if k.get('kept') else 'asked' if k.get('at') and k['at'] >= (j.get('lastActive') or 0) else 'open'
+    print('%s\t%s\t%s' % (j['branch'], state, j.get('threadId', '')))
+PY
+}
+agent_jobs > "$TMP/jobs.tsv"
+job_state() { awk -F'\t' -v b="$1" '$1 == b { print $2; exit }' "$TMP/jobs.tsv"; }
+agent_old() {   # <branch> <age in days> <what is reported>: drift only for a job branch no open job holds
+  [ -n "$(job_state "$1")" ] && return 0
+  [ "$2" -gt 7 ] && drift "agent job older than 7 days: $3 (${2}d)"
+  return 0
+}
+while IFS=$'\t' read -r b st th; do [ "$st" = asked ] && note "agent job waiting for the team to answer \"keep or delete\" in its thread ($th): $b"; done < "$TMP/jobs.tsv"
 while read -r _ ref; do b="${ref#refs/heads/}"; [ "$b" = main ] && continue
   d="$(g log -1 --format=%ct "origin/$b" 2>/dev/null || echo "$now")"; a=$(age_days "$d")
   case "$b" in
-    discord/*) info "agent job (remote): $b, ${a}d old"; [ "$a" -gt 7 ] && drift "agent job older than 7 days: origin/$b (${a}d)";;
+    discord/*) info "agent job (remote): $b, ${a}d old"; agent_old "$b" "$a" "origin/$b";;
     *) drift "remote branch other than main: $b";;
   esac
 done < <(g ls-remote --heads origin)
 while read -r b; do [ "$b" = main ] && continue
   d="$(g log -1 --format=%ct "$b")"; a=$(age_days "$d")
   case "$b" in
-    discord/*) info "agent job (local): $b, ${a}d old"; [ "$a" -gt 7 ] && drift "agent job older than 7 days: local $b (${a}d)";;
+    discord/*) info "agent job (local): $b, ${a}d old"; agent_old "$b" "$a" "local $b";;
     *) drift "local branch other than main: $b";;
   esac
 done < <(g for-each-ref --format='%(refname:short)' refs/heads)
@@ -151,7 +174,7 @@ while IFS= read -r line; do
   if [ -n "$wt" ] && { [ -z "$line" ] || [ "${line%% *}" = branch ] || [ "${line%% *}" = detached ]; }; then
     if [ "$wt" != "$MAINWT" ]; then
       case "$br" in
-        discord/*) a=$(age_days "$(g log -1 --format=%ct "$br")"); info "agent job worktree: $wt ($br, ${a}d)"; [ "$a" -gt 7 ] && drift "agent job worktree older than 7 days: $wt (${a}d)";;
+        discord/*) a=$(age_days "$(g log -1 --format=%ct "$br")"); info "agent job worktree: $wt ($br, ${a}d)"; [ -z "$(job_state "$br")" ] && [ "$a" -gt 7 ] && drift "agent job worktree older than 7 days: $wt (${a}d)";;
         *) drift "extra worktree: $wt (${br:-detached})";;
       esac
     fi; wt=""

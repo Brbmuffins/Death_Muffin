@@ -72,6 +72,22 @@ Read them. The plan:
   `"view": "game"` is the normal game camera with the HUD hidden. Without `view` the shot is the normal screen, as before.
   `"view": "model"` with `"model": "<row id of client/game/view_models.json>"` shows that creature alone in the game's light, framed by its size
   (`"turn"`, `"anim"` any of its clips, `"anim_at"` 0 to 1 of it, `"height"` metres); for a creature in motion use a model clip (`.dm-guides/clips.md`).
+- More keys, for what the screen needs set up first: `"at": [x, z]` stands the hero at that point of the area (after `area`); `"perf": true` shows the F3 performance overlay;
+  `"fight": true` makes the wait a real fight for a picture of the HUD in combat (eight enemies made ahead of the hero, the hero casting at them; give it `wait_ms` of 3000 or more);
+  `"thralls": {"mine": ["warrior", "archer"], "ossuary": ["warrior"]}` raises thralls round the hero (`mine`) and round stand-in owners of other disciplines (`wait_ms` 2500 or more so they have risen);
+  `"walk": true` paces the hero to and fro over the wait, as a player walking through water; `"candles_out": ["west", "east"]` puts those Bell Sanctum candle groups out.
+  The plan-level `"legion": [armour item, weapon item]` gives those items to the Legion, so the hero's thralls wear them (use it with `thralls`).
+- `"setup"` and `"steps"` (a shot's own, the same words as a clip's; they are the way to show a scene the keys above cannot: stand-in enemies, a locked door, a kill count, a rite cast at a set moment):
+  lists of `{"do": "<word>", ...}`, a step also with `"at"` (seconds into the shot's wait; it must be before `wait_ms`, which is when the picture is taken). `setup` sets the scene after the
+  area and the view; `steps` go off during the wait. The words, their arguments and ranges are in `client/main/qa_clip_steps.json`: read it first (the clips guide, `.dm-guides/clips.md`,
+  says what the words do). Everything they change is put back after the picture, so the next shot starts clean. Stand-in enemies near the hero with the HUD shown, and one rite cast:
+
+  ```json
+  {"shots": [{"name": "wraith-hits", "area": "graves", "wait_ms": 2500, "view": "game",
+              "setup": [{"do": "hud", "show": true}, {"do": "stand_ins", "count": 4, "health": 1, "distance": 6}],
+              "steps": [{"at": 0.3, "do": "cast", "rite": "haunting_wraith"}]}]}
+  ```
+  A word the change needs that is not there yet is added in your change (`.dm-guides/clips.md`, "A video needs a word that is not there yet"); it then works in shots too. If the runner refuses the plan, the reason comes back to you to fix.
 - A plan holds at most 4 shots; for more angles run a second plan (change `.dm-shot.json`, run the script again).
 - `"resolutions"` (at the top of the plan, only with a team PC online): the screen sizes the team PC renders every shot at, from `1920x1080`, `2560x1440`, `3840x2160` and
   `3440x1440` (at most 4, each once; without it only the standard 1920x1080 is rendered). For a new window or a change to the HUD's layout (anything that sits against a

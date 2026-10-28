@@ -425,6 +425,13 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   or sounds) happens without `!job`. Images, the agent's notes on what was decided and ruled out, long posts and a discussion's whole
   conversation are kept outside the workspace (60 days quiet), so later rounds and rebuilt workspaces start from them. A terminal session's
   posts in a thread reach the agent as team talk.
+- **B80. Nothing the agent made is deleted without a ❌; it plans big asks first and offers lasting rules for this log; shots set up the scene
+  like videos** (Helix, 2026-10-28: "workspaces should be open for 7 days then asks if it should be deleted. i dont like the idea of auto deltong
+  the workspace"). A job thread quiet for 7 days that holds a change is asked "✅ keep, ❌ delete" and only a ❌ deletes it; a workspace with nothing
+  in it goes quietly and is rebuilt from the latest main by the next message (a discussion's after 24 quiet hours, B79). A big or unclear ask gets a
+  plan of about 3 lines first and waits for a yes; a tweak, a clear fix or a confirmed brief does not. A rule the team settles that holds beyond
+  its thread is offered once as an entry here and written only on a yes. A screenshot's `setup` and `steps` use the videos' scene words
+  (`client/main/qa_clip_steps.json`), so a word the agent adds in a change works in both.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

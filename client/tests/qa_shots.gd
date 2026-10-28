@@ -23,6 +23,8 @@ extends SceneTree
 ##     and leaving no file, nothing left behind); `--tune=` (main/qa_tune.gd): the file, every refusal (a file, key or type that is not the data's, a list, null, too many values, a file that cannot be read) changing nothing,
 ##     a valid tune reaching the rules (DmAbilities), the registry's projections, the combat core's tables and the rite that runs, and being put back; the QA flags honoured only where the QA tools start (a release build,
 ##     an online start and a launch without a QA flag ignore --clip-plan= and --tune=), and a real launch with both;
+##   - the scene words (main/qa_scene.gd, main/qa_clip_steps.json): one list for clips and shots, every word accepted by both plans, a shot's `setup` and `steps` parsed and refused (a step not before the wait's end, a word or argument
+##     the file lacks), a shot staged on the game scene with them (the HUD, zoom, place, stand-ins, thralls, a candle step, a walk step, a cast step), failing when a rite is refused, and everything put back after the picture;
 ##   - the release checks ("Release checks"): `--boot-check` and `--quit-while-loading` honoured by every build (the boot check's line and exit code in real headless launches; the loads need a renderer, so only the
 ##     call path), `--stutter`, `--soak=` and `--ui-scale=` only where the QA tools start (`DmMain.qa_scenario`, `qa_soak_minutes`, `qa_ui_scale`: a release build, an online start and a launch without a QA flag ignore them), Interface
 ##     size on loan for a game scene started on it; the stutter scenario's rite list for each discipline and one short run of it on a Reaper (the results file's shape, its rows, the refused rites apart, p50 and p99), the soak
@@ -81,6 +83,7 @@ func _main() -> void:
 	await scene_setup()
 	await legion_shots()
 	await scene_clip()
+	await scene_shot()
 	model_plan_format()
 	await model_view()
 	await scripted_fight()
@@ -462,6 +465,40 @@ func scene_clip() -> void:
 	g.director.enabled = false
 
 
+## A shot with the clips' words on the game scene (the Graves): the setup's HUD, zoom, place, stand-ins and thralls over a view that hides the HUD, a candle step and a walk step going off in the wait, and all of it put back after the picture.
+func scene_shot() -> void:
+	var hero := g.local_body()
+	var host := g.core_host
+	DmQaUiShots.go_area(g, "graves")
+	await ticks(6)
+	var heroes_before: int = host._heroes.size()
+	var hud_before := g.ui.visible
+	var waves_before := g.director.enabled
+	var zoom_before := float(g.camera.target_zoom)
+	var from := hero.position
+	var at := Vector2(0.0, -12.0)
+	var plan := DmQaUiShots.parse(JSON.stringify({"shots": [{"name": "words", "view": "game", "wait_ms": 3000,
+		"setup": [{"do": "hud", "show": true}, {"do": "zoom", "value": 0.8}, {"do": "stand_at", "at": [at.x, at.y]}, {"do": "stand_ins", "count": 3, "distance": 6}, {"do": "thralls", "owners": {"mine": ["warrior", "warrior"]}}],
+		"steps": [{"at": 0.2, "do": "candles", "group": "west"}, {"at": 0.5, "do": "walk", "to": [at.x - 6.0, at.y]}]}]}))
+	check(plan["ok"], "the shot with words parses (%s)" % plan["error"])
+	var s: Dictionary = plan["shots"][0]
+	var st := await DmQaUiShots.stage(root, g, s)
+	check(String(st["problem"]) == "" and st["scene"] != null, "the shot's steps went off (%s)" % st["problem"])
+	check(g.ui.visible, "setup hud: the HUD is on screen though the view hides it")
+	check(absf(float(g.camera.target_zoom) - 0.8) < 0.001, "setup zoom: the camera is at the asked zoom")
+	check(host.alive_count() == 3, "setup stand_ins: the three stand-ins are there and no others (%d)" % host.alive_count())
+	check(host.thrall_count(hero.core_id) == 2 and not g.director.enabled, "setup thralls: two for the hero, the waves away")
+	check(g.world.dressing.candle_off.has("west"), "the candle step put the west group out during the wait")
+	check(Vector2(hero.position.x, hero.position.z).distance_to(at) > 1.0, "the walk step took the hero from the place setup stand_at gave him (%s)" % str(hero.position))
+	DmQaUiShots.capture(root, g, s, st, OUT.path_join("words.png"))
+	await ticks(30)
+	check(host.alive_count() == 0 and host.thrall_count() == 0 and host._heroes.size() == heroes_before, "after the picture the stand-ins and thralls are gone")
+	check(g.world.dressing.candle_off.is_empty() and not hero.has_target, "and the candles are lit and the hero stands still")
+	check(g.ui.visible == hud_before and absf(float(g.camera.target_zoom) - zoom_before) < 0.001 and g.director.enabled == waves_before, "and the HUD, the zoom and the waves are as they were")
+	check(hero.position.distance_to(from) < 0.5, "and the hero is back where he stood before the shot (%s, was %s)" % [str(hero.position), str(from)])
+	g.director.enabled = false
+
+
 # ------------------------------------------------------------------------------------------------------------------ the model view
 
 ## A model row to look at, read from the data: the first (by id) with a file, a walk clip and a walk stride.
@@ -834,8 +871,8 @@ func clip_plan_format() -> void:
 	check(p["ok"] and p["class_index"] == 11 and p["discipline"] == "reaper", "a clip plan parses, its discipline (by name, any case) is the Reaper's class")
 	var clips: Array = p["clips"]
 	check(clips.size() == DmQaClips.MAX_CLIPS and DmQaClips.MAX_CLIPS == 4, "at most 4 clips")
-	check(clips[0] == {"name": "wraith-walk", "area": "graves", "cast": "haunting_wraith", "at": "ahead", "enemies": 12, "seconds": 8.0, "camera": "wide", "equip": [], "dress": false, "setup": DmQaClips._setup_of([]), "steps": [], "model": {}, "dirs": []}, "a clip: the name slugged, enemies and seconds at their limits (%s)" % str(clips[0]))
-	check(clips[1] == {"name": "clip-2", "area": "graves", "cast": "scythe_sweep", "at": "pack", "enemies": 6, "seconds": 5.0, "camera": "follow", "equip": [], "dress": false, "setup": DmQaClips._setup_of([]), "steps": [], "model": {}, "dirs": []}, "the defaults: the second clip's own name, the Graves, a pack of 6, 5 s, the following camera (%s)" % str(clips[1]))
+	check(clips[0] == {"name": "wraith-walk", "area": "graves", "cast": "haunting_wraith", "at": "ahead", "enemies": 12, "seconds": 8.0, "camera": "wide", "equip": [], "dress": false, "setup": DmQaScene.setup_of([]), "steps": [], "model": {}, "dirs": []}, "a clip: the name slugged, enemies and seconds at their limits (%s)" % str(clips[0]))
+	check(clips[1] == {"name": "clip-2", "area": "graves", "cast": "scythe_sweep", "at": "pack", "enemies": 6, "seconds": 5.0, "camera": "follow", "equip": [], "dress": false, "setup": DmQaScene.setup_of([]), "steps": [], "model": {}, "dirs": []}, "the defaults: the second clip's own name, the Graves, a pack of 6, 5 s, the following camera (%s)" % str(clips[1]))
 	check(clips[2]["name"] == "wraith-walk-2" and clips[3]["name"] == "wraith-walk-3" and clips[2]["seconds"] == DmQaClips.MIN_SECONDS and clips[3]["enemies"] == 0, "a name already taken gets a number, a short clip is made 1 s, no enemies is allowed")
 	var notes := String(" | ").join(PackedStringArray(p["notes"]))
 	check(notes.contains("99 enemies is outside 0-12") and notes.contains("30 seconds is outside 1-8") and notes.contains("0.2 seconds is outside") and notes.contains("the plan has 5 clips, only the first 4 are made"), "what was cut or clamped is said (%s)" % notes)
@@ -848,23 +885,23 @@ func clip_plan_format() -> void:
 	check(DmQaClips.class_refusal(p, 11) == "" and DmQaClips.class_refusal(DmQaClips.parse('{"clips": [{"cast": "reap"}]}'), 2) == "" and DmQaClips.class_refusal(p, 2).contains("the game runs class 2, the plan wants reaper (11): start it with --class=11"),
 		"a game of another class than the plan's discipline is refused with the way to start it; a plan without one takes any")
 	# setup and steps: the words of main/qa_clip_steps.json, each one carried out by the recorder (the runner checks requests against the same file)
-	var voc := DmQaClips.vocabulary()
-	var setup_words: Array = DmQaClips.SETUP_WORDS.duplicate()
-	var step_words: Array = DmQaClips.STEP_WORDS.duplicate()
+	var voc := DmQaScene.vocabulary()
+	var setup_words: Array = DmQaScene.SETUP_WORDS.duplicate()
+	var step_words: Array = DmQaScene.STEP_WORDS.duplicate()
 	setup_words.sort()
 	step_words.sort()
 	check(_sorted_keys(voc.get("setup", {})) == setup_words and _sorted_keys(voc.get("steps", {})) == step_words, "every word of main/qa_clip_steps.json is one the recorder carries out, and every one it carries out is there (%s / %s)" % [str(_sorted_keys(voc.get("setup", {}))), str(_sorted_keys(voc.get("steps", {})))])
 	var sp := DmQaClips.parse('{"clips": [{"name": "souls", "seconds": 4, "setup": [{"do": "hud", "show": true}, {"do": "stand_ins", "health": 1, "harmless": false}, {"do": "souls", "value": 0}, {"do": "top_up", "on": false}], '
 		+ '"steps": [{"at": 2, "do": "cast", "rite": "haunting_wraith"}, {"at": 0.3, "do": "cast", "rite": "reap"}]}]}')
 	var c0: Dictionary = sp["clips"][0] if sp["ok"] else {}
-	check(sp["ok"] and c0["cast"] == "" and c0["setup"]["hud"] == true and c0["setup"]["health"] == 1.0 and c0["setup"]["harmless"] == false and c0["setup"]["kind"] == DmQaClips.DUMMY and c0["setup"]["souls"] == 0.0 and c0["setup"]["top_up"] == false,
+	check(sp["ok"] and c0["cast"] == "" and c0["setup"]["hud"] == true and c0["setup"]["health"] == 1.0 and c0["setup"]["harmless"] == false and c0["setup"]["kind"] == DmQaScene.DUMMY and c0["setup"]["souls"] == 0.0 and c0["setup"]["top_up"] == false,
 		"a clip's setup is read with the defaults for what it leaves out, and a clip whose steps cast needs no \"cast\" (%s)" % str(c0.get("setup", sp["error"])))
 	check(sp["ok"] and (c0["steps"] as Array).map(func(x: Dictionary) -> String: return x["rite"]) == ["reap", "haunting_wraith"] and c0["steps"][0]["at"] == 0.3, "the steps run in the order of their times")
 	check(sp["ok"] and c0["setup"]["fight"] == false and c0["setup"]["distance"] < 0.0, "by default the stand-ins stand where they are put, at the layout's own distance")
 	var fp := DmQaClips.parse('{"clips": [{"cast": "scythe_sweep", "setup": [{"do": "stand_ins", "fight": true, "distance": 2}]}]}')
 	check(fp["ok"] and fp["clips"][0]["setup"]["fight"] == true and fp["clips"][0]["setup"]["distance"] == 2.0, "stand-ins that fight, starting 2 m ahead")
 	var o2 := Vector3(1.0, 0.0, 2.0)
-	check(DmQaClips.layout("pack", 1, o2, 2.0)[0].is_equal_approx(o2 + DmQaClips.FACING * 2.0) and DmQaClips.layout("ahead", 2, o2, 1.0)[0].distance_to(o2 + DmQaClips.FACING * 1.0) <= 0.51, "a distance moves a pack's middle, or a line's first stand-in, that far ahead")
+	check(DmQaScene.layout("pack", 1, o2, 2.0)[0].is_equal_approx(o2 + DmQaScene.FACING * 2.0) and DmQaScene.layout("ahead", 2, o2, 1.0)[0].distance_to(o2 + DmQaScene.FACING * 1.0) <= 0.51, "a distance moves a pack's middle, or a line's first stand-in, that far ahead")
 	var refusals := {'{"clips": [{"cast": "reap", "setup": [{"do": "fly"}]}]}': "\"do\" must be one of", '{"clips": [{"cast": "reap", "setup": [{"do": "hud"}]}]}': "needs \"show\"",
 			'{"clips": [{"cast": "reap", "setup": [{"do": "hud", "show": 1}]}]}': "must be true or false", '{"clips": [{"cast": "reap", "setup": [{"do": "stand_ins", "health": 0}]}]}': "must be from",
 			'{"clips": [{"cast": "reap", "setup": [{"do": "stand_ins", "kind": "no_such_beast"}]}]}': "must be an enemy id", '{"clips": [{"cast": "reap", "setup": [{"do": "hud", "show": true, "colour": "red"}]}]}': "unknown argument \"colour\"",
@@ -876,9 +913,34 @@ func clip_plan_format() -> void:
 		var r := DmQaClips.parse(String(bad))
 		check(not r["ok"] and String(r["error"]).contains(String(refusals[bad])), "refused, saying why: %s (%s)" % [String(bad).left(80), r["error"]])
 	# the camera's zoom: none is the game's default, a value is held to the recorder's range (the steps file's limits are the same numbers)
-	var zargs: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DmQaClips.STEPS_FILE))["setup"]["zoom"]["args"]["value"]
-	check(DmQaClips._setup_of([])["zoom"] == 0.0 and DmQaClips._setup_of([{"do": "zoom", "value": 0.55}])["zoom"] == 0.55 and DmQaClips._setup_of([{"do": "zoom", "value": 0.1}])["zoom"] == DmQaClips.ZOOM_MIN
-		and float(zargs["min"]) == DmQaClips.ZOOM_MIN and float(zargs["max"]) == DmQaClips.ZOOM_MAX, "a clip's zoom: left out it is the game's, set it is held to %.2f-%.2f" % [DmQaClips.ZOOM_MIN, DmQaClips.ZOOM_MAX])
+	var zargs: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DmQaScene.STEPS_FILE))["setup"]["zoom"]["args"]["value"]
+	check(DmQaScene.setup_of([])["zoom"] == 0.0 and DmQaScene.setup_of([{"do": "zoom", "value": 0.55}])["zoom"] == 0.55 and DmQaScene.setup_of([{"do": "zoom", "value": 0.1}])["zoom"] == DmQaScene.ZOOM_MIN
+		and float(zargs["min"]) == DmQaScene.ZOOM_MIN and float(zargs["max"]) == DmQaScene.ZOOM_MAX, "a clip's zoom: left out it is the game's, set it is held to %.2f-%.2f" % [DmQaScene.ZOOM_MIN, DmQaScene.ZOOM_MAX])
+	# a shot carries the same words (main/qa_scene.gd): every word of the file is one a shot's parse and a clip's parse both accept, the steps are checked against the wait, and the checker is the clips'
+	var every_word := true
+	for section in ["setup", "steps"]:
+		for word in voc.get(section, {}):
+			var bare := {"do": word, "at": 0.0} if section == "steps" else {"do": word}
+			var shot_try := DmQaUiShots.parse(JSON.stringify({"shots": [{section: [bare]}]}))
+			var clip_try := DmQaClips.parse(JSON.stringify({"clips": [{"cast": "reap", section: [bare]}]}))
+			every_word = every_word and not String(shot_try["error"]).contains("\"do\" must be one of") and not String(clip_try["error"]).contains("\"do\" must be one of")
+	check(every_word, "every word of main/qa_clip_steps.json is accepted by a shot's plan and by a clip's")
+	check(float(voc["setup"]["stand_ins"]["args"]["count"]["max"]) == float(DmQaClips.MAX_ENEMIES), "the stand-ins word's count is held to the clips' most enemies")
+	var wp := DmQaUiShots.parse('{"shots": [{"name": "words", "area": "graves", "wait_ms": 2000, "setup": [{"do": "hud", "show": true}, {"do": "stand_ins", "count": 4, "distance": 6}, {"do": "zoom", "value": 0.8}], '
+		+ '"steps": [{"at": 1.5, "do": "candles", "group": "east"}, {"at": 0.5, "do": "walk", "to": [1, 2]}]}, {"name": "plain"}]}')
+	var w0: Dictionary = wp["shots"][0] if wp["ok"] else {}
+	check(wp["ok"] and w0["setup"]["words"] == ["hud", "stand_ins", "zoom"] and w0["setup"]["hud"] == true and w0["setup"]["count"] == 4 and w0["setup"]["distance"] == 6.0 and w0["setup"]["zoom"] == 0.8, "a shot's setup is read as a clip's is (%s)" % str(w0.get("setup", wp["error"])))
+	check(wp["ok"] and (w0["steps"] as Array).map(func(x: Dictionary) -> String: return x["do"]) == ["walk", "candles"] and w0["steps"][0]["at"] == 0.5, "a shot's steps run in the order of their times")
+	check(wp["ok"] and (wp["shots"][1]["setup"]["words"] as Array).is_empty() and (wp["shots"][1]["steps"] as Array).is_empty() and wp["shots"][1]["setup"] == DmQaScene.setup_of([]), "a shot without words has none: nothing of its scene is changed")
+	var shot_refusals := {'{"shots": [{"setup": [{"do": "fly"}]}]}': "shot 1 setup 1: \"do\" must be one of", '{"shots": [{"setup": [{"do": "hud", "show": true, "colour": "red"}]}]}': "unknown argument \"colour\"",
+			'{"shots": [{"setup": [{"do": "hud"}]}]}': "needs \"show\"", '{"shots": [{"setup": {"do": "hud"}}]}': "must be a list", '{"shots": [{"setup": [{"do": "stand_ins", "count": 99}]}]}': "must be from",
+			'{"shots": [{"steps": [{"do": "candles", "group": "west"}]}]}': "\"at\" must be a number", '{"shots": [{"steps": [{"at": 0.5, "do": "candles", "group": "west"}]}]}': "before the shot's wait of 0.3",
+			'{"shots": [{"wait_ms": 1000, "steps": [{"at": 1, "do": "candles", "group": "west"}]}]}': "before the shot's wait of 1", '{"shots": [{"wait_ms": 0, "steps": [{"at": 0, "do": "candles", "group": "west"}]}]}': "before the shot's wait of 0",
+			'{"shots": [{"wait_ms": 1000, "steps": [{"at": 0.5, "do": "cast", "rite": "no_such_rite"}]}]}': "must be a rite id", '{"shots": [{"thralls": {"mine": ["warrior"]}, "setup": [{"do": "thralls", "owners": {"mine": ["warrior"]}}]}]}': "use one"}
+	for bad in shot_refusals:
+		var r := DmQaUiShots.parse(String(bad))
+		check(not r["ok"] and String(r["error"]).contains(String(shot_refusals[bad])), "a shot is refused, saying why: %s (%s)" % [String(bad).left(80), r["error"]])
+	check(DmQaUiShots.parse('{"shots": [{"wait_ms": 1000, "steps": [{"at": 0.99, "do": "candles", "group": "west"}, {"at": 0, "do": "candles", "group": "west", "out": false}]}]}')["ok"], "a step just before the wait's end, and one at its start, are fine")
 	# the scene words: the plan's Legion kit, a hero stood at a point, thralls, a walk and the Sanctum's candles (a clip of them casts nothing and needs no "cast")
 	var scene := DmQaClips.parse(JSON.stringify({"discipline": "gravecaller", "legion": ["leg_requiem_wraiths_chest", "staff_gold", "staff_moon"], "clips": [{"name": "scene", "area": "fen", "seconds": 6,
 		"setup": [{"do": "stand_at", "at": [-42, -80]}, {"do": "thralls", "owners": {"mine": ["warrior", "archer"], "ossuary": ["warrior"]}}],
@@ -889,7 +951,7 @@ func clip_plan_format() -> void:
 		"a scene clip carries the kit, the point the hero stands at and the thralls (%s)" % str(sc0.get("setup", scene["error"])))
 	check(scene["ok"] and (sc0["steps"] as Array).map(func(x: Dictionary) -> String: return x["do"]) == ["walk", "candles", "candles"] and sc0["steps"][0]["to"] == [[-48.0, -78.0], [-38.0, -72.0]] and sc0["steps"][1].get("out", true) == true and sc0["steps"][2]["out"] == false,
 		"its walk and candle steps run in the order of their times")
-	check(DmQaClips.points_of([1, 2]) == ([Vector3(1.0, 0.0, 2.0)] as Array[Vector3]) and DmQaClips.points_of([[1, 2], [3, 4]]) == ([Vector3(1.0, 0.0, 2.0), Vector3(3.0, 0.0, 4.0)] as Array[Vector3]), "a walk's `to` is one point or a list of them")
+	check(DmQaScene.points_of([1, 2]) == ([Vector3(1.0, 0.0, 2.0)] as Array[Vector3]) and DmQaScene.points_of([[1, 2], [3, 4]]) == ([Vector3(1.0, 0.0, 2.0), Vector3(3.0, 0.0, 4.0)] as Array[Vector3]), "a walk's `to` is one point or a list of them")
 	check(scene["ok"] and scene["clips"][1]["steps"][0]["to"] == [1.0, 2.0], "a walk to one point parses")
 	var scene_refusals := {'{"clips": [{"seconds": 2}]}': "unless its steps cast or the clip is a scene", '{"clips": [{"setup": [{"do": "thralls", "owners": {"nobody": ["warrior"]}}]}]}': "the owner is",
 			'{"clips": [{"setup": [{"do": "thralls", "owners": {"mine": ["dragon"]}}]}]}': "is no kind of thrall", '{"clips": [{"setup": [{"do": "thralls", "owners": [1]}]}]}': "object of owner",
@@ -904,17 +966,17 @@ func clip_plan_format() -> void:
 	check(DmQaClips.parse('{"clips": [{"cast": "reap"}]}')["clips"][0]["setup"]["legion"] == [] and DmQaClips.parse('{"clips": [{"cast": "reap"}]}')["legion"] == [], "no Legion kit is none")
 	# where the stand-ins stand
 	var o := Vector3(10.0, 0.0, 5.0)
-	var pack := DmQaClips.layout("pack", 12, o)
-	var middle := o + DmQaClips.FACING * DmQaClips.PACK_AHEAD
+	var pack := DmQaScene.layout("pack", 12, o)
+	var middle := o + DmQaScene.FACING * DmQaScene.PACK_AHEAD
 	var apart := 99.0
 	for i in pack.size():
 		for j in range(i + 1, pack.size()):
 			apart = minf(apart, pack[i].distance_to(pack[j]))
-	check(pack.size() == 12 and pack[0].is_equal_approx(middle) and pack[1].distance_to(middle) > 1.0 and pack[6].distance_to(middle) < 1.6 and pack[7].distance_to(middle) > 2.9 and apart > 1.2, "a pack of 12 is bunched round the point %d m ahead, nobody on another (%.2f apart)" % [int(DmQaClips.PACK_AHEAD), apart])
-	var line := DmQaClips.layout("ahead", 5, o)
-	check(line.size() == 5 and absf(line[0].z - (o.z - DmQaClips.LINE_FIRST)) < 1e-4 and absf(line[3].z - (o.z - DmQaClips.LINE_FIRST - 3.0 * DmQaClips.LINE_STEP)) < 1e-4 and line[0].x != line[1].x and absf(line[0].x - o.x) <= 0.5, "a line runs down the facing from %d m, %.1f m apart" % [int(DmQaClips.LINE_FIRST), DmQaClips.LINE_STEP])
+	check(pack.size() == 12 and pack[0].is_equal_approx(middle) and pack[1].distance_to(middle) > 1.0 and pack[6].distance_to(middle) < 1.6 and pack[7].distance_to(middle) > 2.9 and apart > 1.2, "a pack of 12 is bunched round the point %d m ahead, nobody on another (%.2f apart)" % [int(DmQaScene.PACK_AHEAD), apart])
+	var line := DmQaScene.layout("ahead", 5, o)
+	check(line.size() == 5 and absf(line[0].z - (o.z - DmQaScene.LINE_FIRST)) < 1e-4 and absf(line[3].z - (o.z - DmQaScene.LINE_FIRST - 3.0 * DmQaScene.LINE_STEP)) < 1e-4 and line[0].x != line[1].x and absf(line[0].x - o.x) <= 0.5, "a line runs down the facing from %d m, %.1f m apart" % [int(DmQaScene.LINE_FIRST), DmQaScene.LINE_STEP])
 	var none: Array[Vector3] = []
-	check(DmQaClips.aim_at(pack, o).is_equal_approx(middle) and DmQaClips.aim_at(line, o) == line[0] and DmQaClips.aim_at(none, o).is_equal_approx(middle) and DmQaClips.layout("pack", 0, o).is_empty(), "the rite is aimed at the middle of a pack, the near end of a line, or where a pack would be")
+	check(DmQaScene.aim_at(pack, o).is_equal_approx(middle) and DmQaScene.aim_at(line, o) == line[0] and DmQaScene.aim_at(none, o).is_equal_approx(middle) and DmQaScene.layout("pack", 0, o).is_empty(), "the rite is aimed at the middle of a pack, the near end of a line, or where a pack would be")
 
 
 ## The frame writer on made-up pictures: the file is a stream of JPEGs and the count, the size and the refusals are as said.
@@ -1229,6 +1291,25 @@ func clips_on_a_reaper() -> void:
 	DmQaTune.apply({"combat/abilities": {"abilities": {"scythe_sweep": {"cooldownMs": sweep_cd0}}}})
 	check(fc["ok"] and (fc["casts"] as Array).size() == 2, "the fighting clip is recorded with its two sweeps (%s)" % str(fc))
 	check(int(near.get("alive", 3)) < 3, "stand-ins that fight come at the Reaper and her sweeps kill them (%s of 3 left; the closest came to %.1f m)" % [str(near.get("alive")), float(near["closest"])])
+	# a shot with the same words: mortal stand-ins, the Reaper's souls set and never topped up, a cast and a candle step in the wait; a refused rite fails the shot
+	var hero_c := cg.local_body()
+	var souls_before := float(caster.p["souls"])
+	var shot_plan := DmQaUiShots.parse(JSON.stringify({"discipline": "reaper", "shots": [{"name": "cast", "area": "graves", "wait_ms": 3000, "view": "game",
+		"setup": [{"do": "hud", "show": true}, {"do": "stand_ins", "health": 0.05, "count": 3, "distance": 6}, {"do": "souls", "value": cost0 + 2}, {"do": "top_up", "on": false}],
+		"steps": [{"at": 0.3, "do": "cast", "rite": "haunting_wraith"}, {"at": 0.6, "do": "candles", "group": "west"}]}]}))
+	check(shot_plan["ok"], "the shot with a cast parses (%s)" % shot_plan["error"])
+	var ss: Dictionary = shot_plan["shots"][0]
+	var sst := await DmQaUiShots.stage(root, cg, ss)
+	check(String(sst["problem"]) == "" and (sst["scene"].casts as Array).size() == 1, "the shot's cast step went off once (%s)" % sst["problem"])
+	check(cg.ui.visible and cg.core_host.alive_count() < 3 and cg.world.dressing.candle_off.has("west"), "the wraith of the step killed stand-ins (%d of 3 left), the HUD is on and the candle step ran" % cg.core_host.alive_count())
+	DmQaUiShots.capture(root, cg, ss, sst, OUT.path_join("cast.png"))
+	await ticks(10)
+	check(cg.core_host.alive_count() == 0 and cg.world.dressing.candle_off.is_empty() and absf(float(caster.p["souls"]) - souls_before) < 0.001 and not hero_c.has_target, "after the picture the stand-ins are gone, the candles lit and the souls as they were")
+	var dear_shot := DmQaTune.apply({"combat/abilities": {"abilities": {"haunting_wraith": {"soulCost": 99}}}})
+	var bad_stage := await DmQaUiShots.stage(root, cg, ss)
+	var bad_ok := DmQaUiShots.capture(root, cg, ss, bad_stage, OUT.path_join("refused.png"))
+	DmQaTune.apply({"combat/abilities": {"abilities": {"haunting_wraith": {"soulCost": cost0}}}})
+	check(dear_shot["ok"] and String(bad_stage["problem"]).contains("was refused (souls)") and not bad_ok and cg.core_host.alive_count() == 0, "a rite the hero cannot pay for fails the shot, saying why, and the scene is put back (%s)" % bad_stage["problem"])
 	cg.process_mode = Node.PROCESS_MODE_DISABLED
 	cg.queue_free()
 	await process_frame
@@ -1240,7 +1321,7 @@ func clips_on_a_reaper() -> void:
 func clip_plan_preview() -> void:
 	var p := DmQaClips.parse('{"discipline": "reaper", "equip": ["staff_moon", "helm_gold"], "clips": [{"name": "preview", "camera": "turntable"}, {"name": "spin", "camera": "Turntable", "cast": "reap", "enemies": 3, "seconds": 3}]}')
 	check(p["ok"] and p["equip"] == ["staff_moon", "helm_gold"], "a clip plan's equip list is parsed (%s)" % str(p.get("error")))
-	check(p["clips"][0] == {"name": "preview", "area": "chapterhouse", "cast": "", "at": "pack", "enemies": 0, "seconds": 6.0, "camera": "turntable", "equip": ["staff_moon", "helm_gold"], "dress": true, "setup": DmQaClips._setup_of([]), "steps": [], "model": {}, "dirs": []},
+	check(p["clips"][0] == {"name": "preview", "area": "chapterhouse", "cast": "", "at": "pack", "enemies": 0, "seconds": 6.0, "camera": "turntable", "equip": ["staff_moon", "helm_gold"], "dress": true, "setup": DmQaScene.setup_of([]), "steps": [], "model": {}, "dirs": []},
 		"a turntable clip needs no cast, area or length: the Chapterhouse, no enemies, 6 s, wearing the plan's items (%s)" % str(p["clips"][0]))
 	var own := DmQaClips.parse('{"clips": [{"name": "a", "camera": "turntable", "equip": ["staff_moon"]}, {"name": "b", "cast": "reap"}, {"name": "c", "camera": "turntable", "equip": [], "area": "graves"}]}')
 	check(own["ok"] and own["equip"] == [] and own["clips"][0]["equip"] == ["staff_moon"] and own["clips"][1]["equip"] == [] and own["clips"][2]["equip"] == [] and own["clips"][2]["area"] == "graves" and own["clips"][0]["dress"] and own["clips"][1]["dress"],

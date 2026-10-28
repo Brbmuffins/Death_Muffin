@@ -121,8 +121,14 @@ it starts no turn, a long one is kept whole under `.dm-keep/posts/` with the cli
 `!cancel` / `!stop` (requester or owner; a near-miss such as `!cencel` or `!stpo` gets "Did you mean !cancel?" and is not passed to the agent) stops the current step, agent turn or the runner's own check run,
 killing the whole process tree (Claude's Bash tool and `timeout` start their own process groups, so a group kill alone orphaned test runs).
 Messages queued before it are dropped, and no review or repair turn follows; the branch and worktree stay, and the next message continues.
-A ship cannot be cancelled. An idle job is closed by the sweep after 7 days without activity. Housekeeping (`tidy()`, at start and with every sweep)
-clears a job's pointer to a workspace that is gone and drops messages stuck in a finished job for over an hour (audit `stale-queue-dropped`).
+A ship cannot be cancelled.
+
+The sweep (every 6 hours) never deletes work (Helix, 2026-10-28; DECISIONS B80). A job quiet for 7 days whose workspace holds nothing to lose (no
+proposal, no commits on its branch, no uncommitted edits) loses its workspace without a word (audit `workspace-removed`); the next message starts a
+fresh round from the latest `main`. A job holding a change is asked once per quiet spell, pinging its requester: "Keep it? ✅ … ❌ …" (audit
+`keep-asked`). ✅ from anyone allowed keeps it (`keep-kept`); ❌ from anyone who may discard deletes it as `!discard` does (`keep-deleted`); with no
+answer it stays, and the nightly drift report lists it. Once the thread was busy again the question is out of date: a ❌ on it deletes nothing, and
+the next quiet spell asks again. Housekeeping (`tidy()`, at start and with every sweep) clears a job's pointer to a workspace that is gone and drops messages stuck in a finished job for over an hour (audit `stale-queue-dropped`).
 
 ## Threads
 
@@ -133,12 +139,12 @@ The thread opens with a cleaned copy of the request (mentions, the bot's name an
 Finished threads are archived so `#death-muffin` only lists live work (owner, 2026-10-11). Every 10 minutes the runner (`archiveQuiet`) archives a shipped or discarded job's thread after an hour without activity (`archiveAfterMin`, default 60) and an idle thread without a proposal after a day (`archiveIdleAfterMin`, default 1440); an open proposal, a running or queued job and a pending rename are never archived. The adapter applies `{ archive: { threadId } }` ops with `setArchived` and acks them (re-sent each minute while the bot is away). Archived threads stay in the channel's Threads list for anyone to browse; a message in one reopens it and it is archived again once quiet. `job.archived` in `jobs.json` records it.
 
 ### Rounds (one thread, many changes)
-A thread does not close when its change ships (or is discarded, or swept after 7 idle days). The next message from an allowed requester starts a new ROUND in the same job record: a fresh branch `discord/<jobid>-<n>` and worktree cut from the current `origin/<baseBranch>`, proposal/shots/preview state reset, and a FRESH claude session (owner, 2026-10-10: resuming carried every earlier round into each step; one thread read 10M cached tokens). The first prompt starts with a note that this is a new round plus a one-line summary of the thread's earlier rounds (`job.history`: `{round, branch, shipSha | discarded, title, at}`). Follow-ups inside a round still resume that round's conversation. The audit log gets a `round` entry.
+A thread does not close when its change ships (or is discarded, or loses a quiet workspace to the sweep). The next message from an allowed requester starts a new ROUND in the same job record: a fresh branch `discord/<jobid>-<n>` and worktree cut from the current `origin/<baseBranch>`, proposal/shots/preview state reset, and a FRESH claude session (owner, 2026-10-10: resuming carried every earlier round into each step; one thread read 10M cached tokens). The first prompt starts with a note that this is a new round plus a one-line summary of the thread's earlier rounds (`job.history`: `{round, branch, shipSha | discarded, title, at}`). Follow-ups inside a round still resume that round's conversation. The audit log gets a `round` entry.
 - A message sent while a ship is running is kept (shown as waiting). If the ship goes live, the next round starts at once and the message is processed there (attached images come along from the thread's keep); if the ship fails, the job returns to idle/proposed and the message is handled on the same branch.
 - Notes (Helix 2026-10-28): the agent keeps `.dm-notes.md` (Asked, Decided and by whom, Ruled out, Open; `PROMPT-godot.md`). After every turn the runner keeps it (`keepNotes`, up to 6,000 characters) and every fresh session (a new round, a rebuilt workspace) gets it in its first prompt and back in the worktree, so a later round does not ask again what was settled.
 - Turns: `maxTurnsPerJob` (40) now counts per round; `maxTurnsPerThread` (120) is a hard cap over the whole thread.
 - Step budget inside a turn (2026-10-11: a session re-reads its whole conversation on every step, so cost grows with steps x context; one 176-step, 443K-token session was a third of three days' spend). Every claude call gets `--max-turns <handoffEveryTurns>` (default 40; 0 = none). When a session stops there (`error_max_turns`), the runner asks that same session (`--max-turns 6`, context still cached) to commit finished work and write `.dm-handoff.md` (git-excluded, about 60 lines in six parts: the request, who asked and what still waits for approval; branch, commit and uncommitted changes; what is done and the decisions and limitations to keep; the checks run, their results and commit; the guides and code files needed next; what is left and the exact next step. A note records approval, it never grants it), then starts a FRESH session with the note plus the original request and carries on (audit `handoff {n, note}`, runs log `handoff`/`step`). Nothing is posted to the thread; one runner turn = one `job.turns`. After `maxHandoffs` (default 5) the turn stops with a plain "needed more than N sessions ... say continue" line; committed work stays.
-- After a sweep a new message also starts a new round (the sweep only released the worktree; the thread and its context are still useful). Commands other than `!status` answer "nothing is open" in a closed thread.
+- After the sweep removed a quiet workspace a new message also starts a new round (the thread and its context are still useful). Commands other than `!status` answer "nothing is open" in a closed thread.
 
 ### What a thread keeps
 A round's worktree goes when it ships or is discarded (a discussion's after a quiet day), so what the thread needs later lives in `state/keep/<job id>/`
@@ -264,7 +270,7 @@ exist and where to point people.
 The Windows zip (`preview-godot.sh`, see above) is built only on request: the proposal's "Try it" field says to use `!preview` (owner, 2026-10-10:
 44 previews were built in a day and none was downloaded; each is a full import + export). `cfg.previewOnProposal: true` brings back building one with every
 proposal. A failed build says so with a short reason. The
-preview folder is deleted when the job ships, is discarded or is swept (`removeJobArtifacts`). `previewRoot` (default `/var/www/death-muffin/preview`, must exist and be
+preview folder is deleted when the job ships, is discarded or loses a quiet workspace to the sweep (`removeJobArtifacts`). `previewRoot` (default `/var/www/death-muffin/preview`, must exist and be
 writable by the runner user) and `previewCmd` (replaces the script, tests) are in config.
 
 ## New models and armor sets (concepts -> Tripo -> renders -> in game), approval-gated and credit-capped
@@ -408,7 +414,7 @@ Nothing works on a report by itself (the old 2-minute bug-fix agent is retired):
 when someone @-mentions Muffin Core there. Its fresh session then gets the report and log as player data (never instructions), and it runs like
 any thread: proposal, ✅ ships. A fix commit is titled `Bug report #<id>: …`, so `announce-release.sh` marks the report released ("Fixed — live
 now"). Once a change is open in the thread, replies go to it without a mention. A report thread nobody picked up is archived after 48 h quiet
-(`archiveReportAfterMin`); the 7-day sweep skips report threads that never had a workspace. `!report` / `!report <id>` still work in any thread.
+(`archiveReportAfterMin`); the sweep skips report threads that never had a workspace. `!report` / `!report <id>` still work in any thread.
 
 ## The #jobs forum
 
@@ -592,7 +598,7 @@ other down. A job's check gets the import from the shared cache (`prep.sh`), and
   than the live client (`RESULT: live-already`). Any later ship whose client contains the stuck commit posts "Live" in that thread too.
   When the release goes live that way (retry or a later ship), the job ends like a normal ship (`shipped`, ✅ title, worktree, branch and preview
   removed) if the thread has not moved on: idle, nothing queued or proposed, and a clean workspace whose HEAD is inside the published release.
-  A thread that already works on its next change keeps its workspace (the sweep closes it later).
+  A thread that already works on its next change keeps its workspace.
 
 ## Parallel jobs and long checks
 

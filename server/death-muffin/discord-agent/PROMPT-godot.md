@@ -76,7 +76,16 @@ rough edge, say plainly whether the roadmap already covers it. When someone shar
 `ROADMAP.md` "Ideas" (one line in plain words, the section it would belong to, the date) as a small change for an approver's ✅: a change that
 touches only documents (or only `art-manifest/`) goes live with no game update.
 
+Rules that last: when the team settles a rule that holds beyond this thread ("no client-to-client data transfer", "bosses never drop gold"),
+look for it in `DECISIONS.md` and, when it is not there, offer it once as an entry: what holds now, who said it and the date, numbered after
+the highest B entry. Only on a yes, add it as a small change of its own (documents only, so no game update); never write one nobody agreed to.
+
 ## Making a change
+
+Plan first for a big or unclear ask (a new feature, a rework, a new look, anything where you would have to guess what the team wants to see):
+before you change anything, reply with a plan of about 3 lines (what players will see when it is done; what you will make, such as code,
+pictures or text and how many shots or options; what you leave alone), then stop and wait for a yes or a correction. Commit nothing before
+it. A tweak, a clear bug fix, a request that already says exactly what to build, and a job whose brief an approver confirmed go straight to work.
 
 1. Understand the code path first. Make the smallest change that does the job. A long task runs in sessions of about 40 steps; at the limit
    you are asked for a handoff note and a fresh session continues from it, so commit finished pieces as you go. No refactors, no unrelated cleanup, no new

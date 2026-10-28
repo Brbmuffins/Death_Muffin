@@ -777,6 +777,30 @@
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Notes: keep `.dm-notes.md` in the worktree root", "In a job that came from a discussion"]}
       ],
       "enforced": []
+    },
+    {
+      "id": "agent-plan-first",
+      "kind": "protocol",
+      "protected": false,
+      "audience": ["agent"],
+      "when": "a big or unclear request in a job thread",
+      "summary": "Reply with a plan of about 3 lines (what players will see, what is made, what is left alone) and wait for a yes before changing anything; tweaks, clear fixes and confirmed briefs go straight to work.",
+      "homes": [
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Plan first for a big or unclear ask", "then stop and wait for a yes or a correction"]}
+      ],
+      "enforced": []
+    },
+    {
+      "id": "agent-lasting-rules-to-decisions",
+      "kind": "protocol",
+      "protected": false,
+      "audience": ["agent"],
+      "when": "the team settles a rule that holds beyond the thread",
+      "summary": "Offer it once as a DECISIONS.md entry when it is not there; write it only on a yes, as a documents-only change.",
+      "homes": [
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Rules that last: when the team settles a rule that holds beyond this thread", "never write one nobody agreed to"]}
+      ],
+      "enforced": []
     }
   ]
 }

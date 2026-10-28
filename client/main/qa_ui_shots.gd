@@ -14,7 +14,8 @@ extends RefCounted
 ##        "shots": [{"name", "open": "bag" | ["bag", ...], "hover": <bag slot 0-47> | "item:<item id>" | "worn:<equip slot>" | "belt:<tool>",
 ##        "area": "<area id>", "at": [x, z], "thralls": {"mine": [kind, ...], "ossuary": [kind, ...]}, "walk": true, "candles_out": ["west", ...],
 ##        "wait_ms": 300, "clip": "window", "view": "hero" | "game" | "model", "turn": <degrees>, "anim": "idle" | "run" | "cast", "fight": true, "perf": true,
-##        "model": "<view_models row>", "model_file": "<name>.glb", "height": <m>, "anim_at": <0-1> (the model view only)}]}.
+##        "model": "<view_models row>", "model_file": "<name>.glb", "height": <m>, "anim_at": <0-1> (the model view only),
+##        "setup": [{"do": "<word>", ...}], "steps": [{"at": <seconds>, "do": "<word>", ...}] (the clip plan's words)}]}.
 ## At most MAX_SHOTS shots per plan: a plan with more is refused (`QA-SHOTS plan error:`, exit code 2), not trimmed (run several plans for more). "open" lists are applied in order (the game keeps one window
 ## open at a time, so the last one stays). "clip": "window" crops to the open window (plus the tooltip when one is shown); default is the whole screen.
 ## "equip": each id is added to the bag (gear gets a real backend roll) and equipped through the backend's equip call, then the bag reloads, so the avatar
@@ -32,6 +33,10 @@ extends RefCounted
 ## wearing no kit), so one shot shows a discipline's legion look beside the hero's, or a kit beside the same thralls without one. The waves and the enemies are away for the shot and the thralls and stand-ins are gone after it.
 ## "walk": true paces the hero to and fro over the wait (a metre and a half either side, a walking pace), as a player walking through water does. "candles_out": puts those candle groups out (DmWorldDressing, "west", "east"
 ## or "north": the Bell Sanctum's) for the shot, as the Prelate does in its fight, and lights them after it.
+## "setup" and "steps": the clip plan's scene words (main/qa_clip_steps.json, main/qa_scene.gd), carried out by the same handlers: "setup": [{"do": "hud", "show": true}, {"do": "stand_ins", "kind": "robber", "count": 4}, ...] sets the scene
+## after the shot's area, place and view are staged (the stand-ins, thralls and the rest wait until they have risen), "steps": [{"at": 0.5, "do": "cast", "rite": "reap"}, ...] go off at their `at` seconds of the wait, and the picture is taken when
+## the wait ends (so a step's `at` is before "wait_ms", checked in parse). A step that fails (a rite refused) fails the shot. What the words changed is put back after the picture. The keys above that do the same as a word
+## ("at" = stand_at, "thralls", "candles_out" = candles) share its handler and stay as they are; a shot gives "thralls" as a key or as a word, not both.
 ## Window ids (WINDOWS): bag/reliquary/inventory, character/gear/sheet, pets/cosmetics, legion, grimoire/spellbook, vault, forge, salvage, shelf,
 ## codex, atlas, ascension, map, class, settings, professions, garden, labor, contracts, social/friends, party.
 
@@ -73,7 +78,8 @@ const DEMO_BAG := [
 
 
 ## Parses and validates plan text. Returns {ok, error, bag, give, equip, class_index (0 = not set), shots} with normalised shots
-## ({name, open: Array[String] of canonical window ids, hover: Variant (int|String|null), area, wait_ms, clip, view, turn (degrees), anim, fight, perf, at (Vector2 or null), thralls ({owner: [kind]}), walk, candles_out}).
+## ({name, open: Array[String] of canonical window ids, hover: Variant (int|String|null), area, wait_ms, clip, view, turn (degrees), anim, fight, perf, at (Vector2 or null), thralls ({owner: [kind]}), walk, candles_out,
+## setup (DmQaScene.setup_of: the scene words' options, `words` naming the ones the shot gives), steps (DmQaScene.words' items, by time)}).
 static func parse(text: String) -> Dictionary:
 	var out := {"ok": false, "error": "", "bag": "demo", "give": [], "equip": [], "legion": [], "class_index": 0, "shots": []}
 	var js := JSON.new()
@@ -169,13 +175,24 @@ static func parse(text: String) -> Dictionary:
 		var walk: Variant = s.get("walk", false)
 		var fight: Variant = s.get("fight", false)
 		var perf: Variant = s.get("perf", false)
+		var wait_ms := clampi(maxi(int(s.get("wait_ms", 300)), maxi(PERF_WAIT_MS if perf is bool and perf else 0, DmQaModel.SETTLE_MS if view == "model" else 0)), 0, MAX_WAIT_MS)
+		var who := "shot %d" % (i + 1)
+		var setup := DmQaScene.words(s.get("setup", []), "setup", who, float(wait_ms) / 1000.0, true)   # the same words as a clip's, checked by the same code
+		var steps := DmQaScene.words(s.get("steps", []), "steps", who, float(wait_ms) / 1000.0, true)
+		for w: Dictionary in [setup, steps]:
+			if w["error"] != "":
+				out["error"] = w["error"]
+				return out
+		if not thralls.is_empty() and (setup["items"] as Array).any(func(w: Dictionary) -> bool: return w["do"] == "thralls"):
+			out["error"] = "%s: the \"thralls\" key and the \"thralls\" setup word both raise thralls: use one" % who
+			return out
 		var nm := String(s.get("name", "shot-%d" % (i + 1))).to_lower()
 		var rx := RegEx.create_from_string("[^a-z0-9-]+")
 		nm = rx.sub(nm, "-", true).substr(0, 40)
 		(out["shots"] as Array).append({"name": nm if nm != "" else "shot-%d" % (i + 1), "open": wins, "hover": hover, "area": String(s.get("area", "")),
-			"wait_ms": clampi(maxi(int(s.get("wait_ms", 300)), maxi(PERF_WAIT_MS if perf is bool and perf else 0, DmQaModel.SETTLE_MS if view == "model" else 0)), 0, MAX_WAIT_MS), "clip": "window" if String(s.get("clip", "")) == "window" else "",
+			"wait_ms": wait_ms, "clip": "window" if String(s.get("clip", "")) == "window" else "",
 			"view": view, "turn": fmod(float(s.get("turn", DEFAULT_TURN)), 360.0), "anim": anim, "fight": fight is bool and fight, "perf": perf is bool and perf,
-			"at": at, "thralls": thralls, "walk": walk is bool and walk, "candles_out": candles, "model": model, "dirs": []})
+			"at": at, "thralls": thralls, "walk": walk is bool and walk, "candles_out": candles, "setup": DmQaScene.setup_of(setup["items"]), "steps": steps["items"], "model": model, "dirs": []})
 		i += 1
 	out["ok"] = true
 	return out
@@ -296,7 +313,8 @@ static func prepare(game: DmNextGame, plan: Dictionary) -> void:
 
 
 ## One shot's scene: the windows closed, the hero stood at the plan's area, the windows opened, the view framed (and the hero posed), the tooltip shown, then two frames to draw it.
-## Returns what `capture` needs: {saved (what `_view_end` puts back; empty without a view), tip (the tooltip's rect; empty without one), undo (what puts the shot's thralls and candles back, Callables)}.
+## Returns what `capture` needs: {saved (what `_view_end` puts back; empty without a view), tip (the tooltip's rect; empty without one), undo (what puts the shot's thralls, candles and scene words back, Callables),
+## scene (the DmQaScene of the shot's words and steps, null without any), problem (why a step of the shot's `steps` went wrong, "" when none did)}.
 static func stage(root: Node, game: DmNextGame, s: Dictionary) -> Dictionary:
 	var tree := root.get_tree()
 	var ui: DmGameUi = game.ui
@@ -305,15 +323,13 @@ static func stage(root: Node, game: DmNextGame, s: Dictionary) -> Dictionary:
 	if s["area"] != "":
 		go_area(game, s["area"])
 	if s["at"] != null:
-		game.chapterhouse.teleport_to(s["at"].x, s["at"].y)
+		DmQaScene.stand_at(game, s["at"])
 	for _i in 3:
 		await tree.process_frame
 	if not (s["thralls"] as Dictionary).is_empty():
-		undo.append_array(_thralls_begin(game, s["thralls"]))
+		undo.append_array(DmQaScene.raise_thralls(game, s["thralls"]))
 	for group in s["candles_out"]:
-		if game.world.dressing != null:
-			game.world.dressing.set_candle_group(group, false)
-			undo.append(game.world.dressing.set_candle_group.bind(group, true))
+		undo.append(DmQaScene.candles(game, group, true))
 	if s["fight"]:
 		_fight_begin(game)
 	for w in s["open"]:
@@ -325,7 +341,10 @@ static func stage(root: Node, game: DmNextGame, s: Dictionary) -> Dictionary:
 		saved = DmQaModel.begin(game, s["model"], float(s["turn"]), s["dirs"], "QA-SHOTS")
 	elif s["view"] != "":
 		saved = _view_begin(game, s)
-	await _wait(root, game, s)
+	var scene: DmQaScene = null
+	if not (s["setup"]["words"] as Array).is_empty() or not (s["steps"] as Array).is_empty():
+		scene = await _scene_begin(root, game, s, saved, undo)
+	await _wait(root, game, s, scene)
 	if not s["open"].is_empty() and not ui.is_open(s["open"][s["open"].size() - 1]):   # the last window of the list is the one that stays
 		var last: String = s["open"][s["open"].size() - 1]
 		print("QA-SHOTS window did not open: %s%s" % [last, " (the Vault opens only in the Chapterhouse: \"area\": \"chapterhouse\")" if last == "vault" else ""])
@@ -338,17 +357,77 @@ static func stage(root: Node, game: DmNextGame, s: Dictionary) -> Dictionary:
 		tip_rect = await _hover(root, ui, s["hover"])
 	await tree.process_frame
 	await tree.process_frame
-	return {"saved": saved, "tip": tip_rect, "undo": undo}
+	return {"saved": saved, "tip": tip_rect, "undo": undo, "scene": scene, "problem": scene.problem() if scene != null else ""}
 
 
-## The shot's wait: `wait_ms` of game time (at least 0.15 s); a "fight" shot casts every FIGHT_STEP_S of it.
-static func _wait(root: Node, game: DmNextGame, s: Dictionary) -> void:
+## The shot's `setup` and `steps` carried out on the staged shot (after its area, place, view and windows): the setup words in the order the words are listed (DmQaScene), the stand-ins made and risen, the scene stood
+## still for a moment so they and any thralls have come up. A step goes off in `_wait` at its time. Returns the scene (its `problem` after the wait says if a step went wrong); `undo` gets what puts it all back.
+## `saved` is what the shot's view changed (the view puts the HUD and the camera back; the words put back what was there once the view is on).
+static func _scene_begin(root: Node, game: DmNextGame, s: Dictionary, saved: Dictionary, undo: Array[Callable]) -> DmQaScene:
+	var opts: Dictionary = s["setup"]
+	var words: Array = opts["words"]
+	var steps: Array = s["steps"]
+	var body := game.local_body()
+	var caster := body.get_node_or_null("Rites") as DmRiteCaster
+	var rites := DmQaScene.rites_of("", steps)
+	var on_field: bool = words.has("stand_ins") or words.has("thralls")
+	if words.has("hud"):
+		undo.append(DmQaScene.show_hud(game, bool(opts["hud"]), bool(saved["hud"]) if saved.has("hud") else game.ui.visible))
+	if words.has("zoom"):
+		if saved.has("size"):   # a model view: the model's framing drawn back or in (DmQaModel.end puts it back)
+			DmQaScene.frame_model(game, saved, saved["size"], float(opts["zoom"]))
+		else:
+			undo.append(DmQaScene.set_zoom(game, float(opts["zoom"]), float(saved["target_zoom"]) if saved.has("target_zoom") else game.camera.target_zoom))
+	var was := body.position
+	if on_field:
+		undo.append(DmQaScene.quiet(game))
+	if words.has("stand_at"):
+		undo.append(DmQaScene.stand_at(game, opts["stand_at"]))
+		for _i in 2:
+			await root.get_tree().process_frame
+	elif steps.any(func(st: Dictionary) -> bool: return st["do"] == "walk"):   # a walk step ends elsewhere: the hero is stood where he was
+		undo.append(func() -> void: body.teleport(was))
+	if words.has("souls") and caster != null:
+		undo.append(DmQaScene.set_souls(caster, float(opts["souls"])))
+	var origin := body.position
+	var spots: Array[Vector3] = []
+	var ids: Array[int] = []
+	if words.has("stand_ins") or not rites.is_empty():
+		DmQaScene.face_up(body)
+	if words.has("stand_ins"):
+		var count := int(opts["count"]) if int(opts["count"]) >= 0 else DmQaScene.SHOT_ENEMIES
+		spots = DmQaScene.layout("pack", count, origin, float(opts["distance"]))
+		ids = DmQaScene.stand_ins(game, spots, opts)
+		undo.append(DmQaScene.remove_stand_ins.bind(game, ids))
+	if words.has("thralls"):
+		undo.append_array(DmQaScene.raise_thralls(game, opts["thralls"], DmQaScene.THRALL_DAMAGE, false))
+	if caster != null and not rites.is_empty():
+		DmQaScene.fresh_caster(caster, rites)
+	var scene := DmQaScene.new(game, caster, opts, DmQaScene.aim_at(spots, origin), steps, rites, "shot")
+	undo.append(scene.close)
+	if on_field:
+		await DmQaScene.settle(root, game.core_host, ids, DmQaScene.still_for(opts["thralls"]))
+	return scene
+
+
+## The shot's wait: `wait_ms` of game time (at least 0.15 s); a "fight" shot casts every FIGHT_STEP_S of it; the steps of a shot (`scene`) go off at their times in it.
+static func _wait(root: Node, game: DmNextGame, s: Dictionary, scene: DmQaScene = null) -> void:
 	var secs := maxf(0.15, float(s["wait_ms"]) / 1000.0)
+	var timed := scene != null and not scene.steps.is_empty()
+	if timed:
+		scene.tick(0.0, null)
 	if s["walk"]:
-		await _walk(root, game, secs)
+		await _walk(root, game, secs, scene if timed else null)
 		return
 	if not s["fight"]:
-		await root.get_tree().create_timer(secs).timeout
+		if not timed:
+			await root.get_tree().create_timer(secs).timeout
+			return
+		var elapsed := 0.0
+		while elapsed < secs:
+			await root.get_tree().process_frame
+			elapsed += root.get_process_delta_time()
+			scene.tick(elapsed, null)
 		return
 	var t := 0.0
 	var n := 0
@@ -356,8 +435,12 @@ static func _wait(root: Node, game: DmNextGame, s: Dictionary) -> void:
 		_fight_step(game, n)
 		n += 1
 		var step := minf(FIGHT_STEP_S, secs - t)
+		if timed:
+			step = maxf(0.02, minf(step, scene.next_at() - t))
 		await root.get_tree().create_timer(step).timeout
 		t += step
+		if timed:
+			scene.tick(t, null)
 
 
 ## "fight": `count` robbers in a fan 6 to 9 m ahead of the hero (up the screen), at the same places every time (`first`: the place to start from), through the director like the scripted fight's.
@@ -402,9 +485,12 @@ static func _fight_step(game: DmNextGame, n: int) -> void:
 static func capture(root: Node, game: DmNextGame, s: Dictionary, staged: Dictionary, file: String) -> bool:
 	var ui: DmGameUi = game.ui
 	var unmade: bool = (staged["saved"] as Dictionary).has("error") and staged["saved"]["error"] != ""   # a model view whose model could not be made (printed by DmQaModel.begin)
-	var img := grab(root) if not unmade else null
+	var problem := String(staged.get("problem", ""))   # a step of the shot's own went wrong: no picture of it
+	var img := grab(root) if not unmade and problem == "" else null
+	if problem != "":
+		print("QA-SHOTS step FAILED: ", problem)
 	if img == null:
-		if not unmade:
+		if not unmade and problem == "":
 			print("QA-SHOTS no picture: this run draws nothing (headless: start it with a renderer, client/tools/qa_shots.sh)")
 	else:
 		var rect := Rect2(Vector2.ZERO, Vector2(img.get_size()))
@@ -539,58 +625,9 @@ static func _give_to_legion(game: DmNextGame, ids: Array) -> void:
 		await game.get_tree().process_frame
 
 
-## What stands in for another player in a "thralls" shot: a body the core host knows as a hero (its place, `alive`, its discipline) that is never in the scene.
-class StandIn:
-	extends Node3D
-	var alive := true
-	var discipline_id := ""
-
-
-## "thralls": the waves and enemies away, the thralls raised (straight into the core, no corpses or cap) round their owners: the hero for "mine", a stand-in owner of a discipline STANDIN_SPOTS away from him for the rest.
-## `damage` is what each thrall hits for (0 = none, a shot's looks; a clip's thralls fight the enemies, with `clear` false so the enemies already about stay). Returns what puts it back: the thralls gone, the stand-ins unregistered, the waves as they were.
-static func _thralls_begin(game: DmNextGame, owners: Dictionary, damage := 0.0, clear := true) -> Array[Callable]:
-	var host := game.core_host
-	var hero := game.local_body()
-	var waves := game.director.enabled
-	game.director.enabled = false
-	if clear:
-		for id in host.enemies_in_radius(hero.position, 400.0):
-			host.remove_enemy(id)
-	var made: Array[StandIn] = []
-	var spot := 0
-	var raised := 0
-	for owner in owners:
-		var id := hero.core_id
-		var at := Vector2(hero.position.x, hero.position.z)
-		if owner != "mine":
-			var body := StandIn.new()
-			body.discipline_id = String(owner)
-			var off: Vector2 = STANDIN_SPOTS[spot]
-			spot += 1
-			body.position = Vector3(at.x + off.x, 0.0, at.y + off.y)
-			id = host.register_hero(body)
-			made.append(body)
-			at += off
-		var kinds: Array = owners[owner]
-		for k in kinds.size():
-			var kind := String(kinds[k])
-			var a := TAU * float(k) / float(maxi(1, kinds.size()))
-			var stats := DmThralls.raise_stats({"kind": kind, "hp": 1.0e6, "damage": damage, "attackSpeedMult": 1.0}, {"kind": "normal", "enemy": "risen", "elite": false}, 1.0, raised + 1, 0.0)
-			host.core.raise_thrall(stats, id, at + Vector2(cos(a), sin(a)) * 1.9, 0.0, -1.0)
-			raised += 1
-	var undo: Array[Callable] = []
-	undo.append(func() -> void:
-		for tid in host.core.thrall_ids():
-			host.core.kill_thrall(tid, "crumbled")
-		for body in made:
-			host.unregister_hero(body)
-			body.free()
-		game.director.enabled = waves)
-	return undo
-
-
 ## "walk": the hero paces to and fro over `secs` of game time (WALK_REACH either side of where he stood, WALK_SPEED radians a second), so his steps ring the water he stands in; where he stood again after.
-static func _walk(root: Node, game: DmNextGame, secs: float) -> void:
+## `scene`: the shot's steps, which go off at their times of the wait.
+static func _walk(root: Node, game: DmNextGame, secs: float, scene: DmQaScene = null) -> void:
 	var hero := game.local_body()
 	var base := hero.position
 	var t := 0.0
@@ -598,7 +635,10 @@ static func _walk(root: Node, game: DmNextGame, secs: float) -> void:
 		await root.get_tree().physics_frame
 		t += 1.0 / float(Engine.physics_ticks_per_second)
 		hero.teleport(base + Vector3(sin(t * WALK_SPEED) * WALK_REACH, 0.0, 0.0))
+		if scene != null:
+			scene.tick(t, null)
 	hero.teleport(base)
+
 
 ## "view" shots: HUD and windows away; "hero" also frames the hero close-up and turns it. Returns what _view_end puts back.
 static func _view_begin(game: DmNextGame, s: Dictionary) -> Dictionary:

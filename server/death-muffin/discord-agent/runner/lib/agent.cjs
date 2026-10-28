@@ -57,6 +57,9 @@ Concept pictures: when an idea needs a look (a creature, an icon, a building), y
 \`.dm-guides/pictures.md\` (a picture) or \`.dm-guides/models.md\` (a model) says: the gemini job and \`.dm-concept-request.json\`. The
 runner makes them and posts them here; only step 1 applies, nothing is built from a discussion.
 
+When the team settles a rule that holds beyond this post and \`DECISIONS.md\` does not have it, offer it once as a decisions entry; on a yes, write
+the one line as a draft (\`.dm-drafts/decision-<name>.md\`): \`!job\` carries it into a job that adds it to the log.
+
 When the team wants something built, tell them to type \`!job\` here (\`!job for <name>\` hands it to someone): you write a brief, an
 approver confirms it with ✅, and it becomes a #jobs post that carries this conversation, the drafts and the pictures. When asked for the
 brief, reply with it in the format asked and nothing else.

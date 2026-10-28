@@ -125,7 +125,7 @@ test('clips: shot plan screen sizes: from the four on the list, at most 4, each 
   assert.deepEqual(C.RESOLUTIONS, ['1920x1080', '2560x1440', '3840x2160', '3440x1440']);
   for (const bad of [[], '1920x1080', ['800x600'], ['1920x1080', '1920x1080'], ['1920x1080', '2560x1440', '3840x2160', '3440x1440', '1600x900'], [1920], null]) assert.ok(C.checkResolutions(bad).error, JSON.stringify(bad));
   const s = wt(); const put = (o) => fs.writeFileSync(path.join(s, '.dm-shot.json'), JSON.stringify(o));
-  put({ shots: [{ name: 'a' }], resolutions: ['2560x1440'] }); assert.deepEqual(C.readShotPlan(s), { plan: { shots: [{ name: 'a' }], resolutions: ['2560x1440'] }, notes: [], before: false, presets: ['ultra'] });
+  put({ shots: [{ name: 'a' }], resolutions: ['2560x1440'] }); assert.deepEqual(C.readShotPlan(s), { plan: { shots: [{ name: 'a' }], resolutions: ['2560x1440'] }, notes: [], before: false, presets: ['ultra'], error: '' });
   put({ shots: [{ name: 'a' }], resolutions: ['640x480'] }); const r = C.readShotPlan(s);
   assert.deepEqual(r.plan, { shots: [{ name: 'a' }] }); assert.match(r.notes[0], /screen sizes asked for were not usable.*so the standard size was used/);
 });
@@ -135,7 +135,7 @@ test('clips: shot plan BEFORE and presets: one AFTER on Ultra by default; asked-
   for (const bad of [[], 'ultra', ['potato'], ['low', 'low'], ['low', 'medium', 'high', 'ultra', 'low'], [1], null]) assert.ok(C.checkPresets(bad).error, JSON.stringify(bad));
   const s = wt(); const put = (o) => fs.writeFileSync(path.join(s, '.dm-shot.json'), JSON.stringify(o));
   put({ shots: [{ name: 'a' }], before: true, presets: ['ultra', 'high'] });
-  assert.deepEqual(C.readShotPlan(s), { plan: { shots: [{ name: 'a' }] }, notes: [], before: true, presets: ['high', 'ultra'] });
+  assert.deepEqual(C.readShotPlan(s), { plan: { shots: [{ name: 'a' }] }, notes: [], before: true, presets: ['high', 'ultra'], error: '' });
   put({ shots: [{ name: 'a' }], before: 'yes', presets: ['potato'] }); const r = C.readShotPlan(s);
   assert.deepEqual(r.plan, { shots: [{ name: 'a' }] }); assert.equal(r.before, false); assert.deepEqual(r.presets, ['ultra']);
   assert.match(r.notes.join(' '), /graphics presets asked for were not usable.*so Ultra was used.*"before" must be true or false/);
@@ -146,7 +146,7 @@ test('clips: a symlink or a directory is not a request; classes and the shot pla
   assert.match(C.readClipRequest(d).error, /regular file/);
   assert.equal(C.classOf('reaper'), 11); assert.equal(C.classOf('hero_gravecaller'), 2); assert.equal(C.classOf(4), 4); assert.equal(C.classOf(7), 0); assert.equal(C.classOf('nope'), 0); assert.equal(C.classOf(undefined), 0);
   const s = wt(); const put = (t) => fs.writeFileSync(path.join(s, '.dm-shot.json'), t);
-  assert.equal(C.readShotPlan(s), null); put('{"shots":[{"name":"a"}]}'); assert.deepEqual(C.readShotPlan(s), { plan: { shots: [{ name: 'a' }] }, notes: [], before: false, presets: ['ultra'] });
+  assert.equal(C.readShotPlan(s), null); put('{"shots":[{"name":"a"}]}'); assert.deepEqual(C.readShotPlan(s), { plan: { shots: [{ name: 'a' }] }, notes: [], before: false, presets: ['ultra'], error: '' });
   put('{"shots":[]}'); assert.equal(C.readShotPlan(s), null); put('[{"name":"a"}]'); assert.equal(C.readShotPlan(s), null); put('{"shots":["a"]}'); assert.equal(C.readShotPlan(s), null);
   put('nope'); assert.equal(C.readShotPlan(s), null); put(JSON.stringify({ shots: [{ name: 'a', pad: 'x'.repeat(40000) }] })); assert.equal(C.readShotPlan(s), null);
 });
@@ -202,4 +202,57 @@ test('clips: the scene words (a Legion kit, a hero stood at a point, thralls, a 
   bad((_p, x) => { x.steps = [{ at: 1, do: 'walk', to: Array(9).fill([0, 0]) }]; }, /"to" must be a point \[x, z\] or a list of 1 to 8/);
   bad((_p, x) => { x.steps = [{ at: 1, do: 'candles', group: 'West Side' }]; }, /"group" must be a candle group/);
   bad((_p, x) => { x.setup = [{ do: 'zoom', value: 0.1 }]; }, /"value" must be from 0.4 to 1.45/);
+});
+
+// ---- a shot's setup and steps: the same words, checked by the same code, and a step's "at" before the shot's wait ends ----
+const readShots = (j, voc = STEPS) => {
+  const d = wt();
+  if (voc != null) { fs.mkdirSync(path.join(d, 'client/main'), { recursive: true }); fs.writeFileSync(path.join(d, C.STEPS_FILE), voc); }
+  fs.writeFileSync(path.join(d, '.dm-shot.json'), JSON.stringify(j));
+  return C.readShotPlan(d);
+};
+
+test('clips: a shot with setup and steps passes the same check as a clip, and the plan goes on unchanged', () => {
+  const shots = [{ name: 'a', wait_ms: 2000, setup: [{ do: 'hud', show: true }, { do: 'stand_ins', kind: 'robber', count: 4, distance: 6 }, { do: 'zoom', value: 0.8 }], steps: [{ at: 0.5, do: 'cast', rite: 'reap' }, { at: 1.99, do: 'candles', group: 'west' }] }, { name: 'plain' }];
+  const r = readShots({ shots });
+  assert.equal(r.error, '', r.error); assert.deepEqual(r.plan.shots, shots, 'the plan is returned as the agent wrote it');
+  assert.equal(readShots({ shots: [{ name: 'a' }] }, null).error, '', 'a shot with no words needs no word list');
+});
+
+test('clips: a shot\'s words are refused by the clip request\'s own rules, naming the shot; the plan is still returned', () => {
+  const bad = (shot, re, voc) => { const r = readShots({ shots: [{ name: 'ok' }, shot] }, voc); assert.ok(r && r.plan.shots.length === 2, 'the plan is kept'); assert.match(r.error, re); return r; };
+  bad({ setup: [{ do: 'fly' }] }, new RegExp(`shot 2 setup 1: "do" must be one of ${Object.keys(JSON.parse(STEPS).setup).join(', ')}`));
+  bad({ setup: [{ do: 'hud' }] }, /shot 2 setup 1 \(hud\) needs "show"/);
+  bad({ setup: [{ do: 'stand_ins', count: 99 }] }, /"count" must be from 0 to 12/);
+  bad({ setup: [{ do: 'hud', show: true, colour: 'red' }] }, /unknown argument "colour"/);
+  bad({ setup: { do: 'hud' } }, /"setup" must be a list/);
+  bad({ steps: [{ do: 'candles', group: 'west' }] }, /"at" must be a number of seconds/);
+  bad({ steps: [{ at: 1, do: 'candles', group: 'south-ish' }] }, /before the shot's wait of 0.3/);   // default wait 300 ms
+  bad({ steps: [{ at: 1, do: 'candles', group: 'west' }], setup: [{ do: 'hud' }] }, /needs "show".*before the shot's wait/, undefined);   // several problems are joined
+  bad({ steps: [{ at: 1, do: 'cast', rite: 'reap' }] }, /no list of setup and step words .* merge the latest main/, null);
+  bad({ thralls: { mine: ['warrior'] }, setup: [{ do: 'thralls', owners: { mine: ['warrior'] } }] }, /"thralls" key and the "thralls" setup word both raise thralls/);
+});
+
+test('clips: a shot step is before the wait\'s end: 300 ms when left out, "wait_ms" up to 5000', () => {
+  const at = (wait, t) => readShots({ shots: [{ ...(wait === undefined ? {} : { wait_ms: wait }), steps: [{ at: t, do: 'candles', group: 'west' }] }] }).error;
+  assert.equal(at(undefined, 0.29), ''); assert.match(at(undefined, 0.3), /before the shot's wait of 0.3/); assert.equal(at(undefined, 0), '');
+  assert.equal(at(1000, 0.99), ''); assert.match(at(1000, 1), /before the shot's wait of 1 /); assert.match(at(0, 0), /before the shot's wait of 0 /);
+  assert.equal(at(5000, 4.9), ''); assert.match(at(5000, 5), /wait of 5 /); assert.match(at(9000, 5), /wait of 5 /, 'the game holds a wait to 5000 ms');
+  assert.match(at(1500, -1), /"at" must be a number of seconds/);
+});
+
+test('clips: a new word in the branch\'s list works in a shot at once, and a shot error line is as long as a clip request\'s', () => {
+  const voc = JSON.parse(STEPS); voc.steps.shake = { args: { power: { type: 'number', min: 0, max: 1, required: true } } };
+  assert.equal(readShots({ shots: [{ wait_ms: 1000, steps: [{ at: 0.5, do: 'shake', power: 0.5 }] }] }, JSON.stringify(voc)).error, '');
+  assert.match(readShots({ shots: [{ wait_ms: 1000, steps: [{ at: 0.5, do: 'shake', power: 5 }] }] }, JSON.stringify(voc)).error, /"power" must be from 0 to 1/);
+  const many = readShots({ shots: [{ setup: Array.from({ length: 10 }, () => ({ do: 'fly' })).slice(0, 1) }, ...Array.from({ length: 10 }, () => ({ setup: [{ do: 'fly' }] }))] });
+  assert.match(many.error, /; and 3 more$/);
+});
+
+test('clips: a plan kept in a scratch folder (a retake, a discussion\'s pictures) is checked against the job\'s own word list', () => {
+  const plan = wt(), game = wt();
+  fs.mkdirSync(path.join(game, 'client/main'), { recursive: true }); fs.writeFileSync(path.join(game, C.STEPS_FILE), STEPS);
+  fs.writeFileSync(path.join(plan, '.dm-shot.json'), JSON.stringify({ shots: [{ name: 'a', wait_ms: 1000, setup: [{ do: 'hud', show: true }], steps: [{ at: 0.5, do: 'candles', group: 'west' }] }] }));
+  assert.match(C.readShotPlan(plan).error, /merge the latest main/, 'the scratch folder has no word list of its own');
+  assert.equal(C.readShotPlan(plan, game).error, '');
 });

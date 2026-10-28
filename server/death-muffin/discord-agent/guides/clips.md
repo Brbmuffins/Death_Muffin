@@ -76,9 +76,10 @@ The stand-ins stand still where they are put (a pack's middle 8 m ahead, a line 
  "variants": [{"label": "now", "title": "the souls filling the bag", "tune": {}}]}
 ```
 
-A video needs a word that is not there yet: add it in your change, in three places: its entry in `client/main/qa_clip_steps.json`, its handler in
-`client/main/qa_clips.gd` (the `SETUP_WORDS` or `STEP_WORDS` list and the code that carries it out), and a check in `client/tests/qa_shots.gd` (the suite fails
-when the file and the recorder disagree). The runner checks a request against your branch's copy of that file, so the new word works in this job's videos at once;
+A video or a picture needs a word that is not there yet: add it in your change, in three places: its entry in `client/main/qa_clip_steps.json`, its handler in
+`client/main/qa_scene.gd` (the `SETUP_WORDS` or `STEP_WORDS` list and the code that carries it out), and a check in `client/tests/qa_shots.gd` (the suite fails
+when the file and the recorder disagree). Clips and shots use the same words and the same handlers, so the new word works in both (a shot's `setup` and `steps`:
+`.dm-guides/screenshots.md`). The runner checks a request or a shot plan against your branch's copy of that file, so the new word works in this job's videos and pictures at once;
 nothing else has to change. A word only sets up or plays the game; it never runs code the plan brings.
 
 The runner reads `.dm-clip.json` after your turn. Do not say the video is queued or on its way: say you asked for it. If the runner refuses the request, the

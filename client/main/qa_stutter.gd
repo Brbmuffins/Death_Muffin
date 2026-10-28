@@ -115,18 +115,18 @@ func _discipline(disc: int, settings: Dictionary) -> void:
 	game.director.surge = null
 	game.core_host.core.set_wander(false)
 	var origin := hero.position
-	var spots := DmQaClips.layout("pack", STAND_INS, origin)
-	var ids := DmQaClips.stand_ins(game, spots)
+	var spots := DmQaScene.layout("pack", STAND_INS, origin)
+	var ids := DmQaScene.stand_ins(game, spots)
 	var settled := 0.0
-	while settled < settle_s or DmQaClips._rising(game.core_host, ids):
+	while settled < settle_s or DmQaScene.rising(game.core_host, ids):
 		await tree.process_frame
 		settled += get_process_delta_time()
-		if settled > DmQaClips.SETTLE_MAX_S:
+		if settled > DmQaScene.SETTLE_MAX_S:
 			break
 	var rites := rites_of(disc)
 	if max_rites > 0 and rites.size() > max_rites:
 		rites = rites.slice(0, max_rites)
-	var aim := DmQaClips.aim_at(spots, origin)
+	var aim := DmQaScene.aim_at(spots, origin)
 	print("QA-STUTTER %s: %d rites" % [who, rites.size()])
 	for rite in rites:
 		ids = _prepare(game, hero, caster, spots, ids, origin)
@@ -162,20 +162,20 @@ func _prepare(game: DmNextGame, hero: DmHeroBody, caster: DmRiteCaster, spots: A
 	hero.heal(1e6)
 	caster.p["cooldowns"].clear()
 	caster.p["castUntil"] = 0.0
-	DmQaClips._top_up(caster)
+	DmQaScene.top_up(caster)
 	var host: DmCoreHost = game.core_host
 	if hero.get("family") != "reaper":   # a rite before it (Grave Offering, Command) may have used the legion up
 		DmBenchFight.raise_thralls(game, hero, THRALLS, origin)
 	for i in ids.size():
 		if not host.enemy_alive(ids[i]):
 			var one: Array[Vector3] = [spots[i]]
-			var made := DmQaClips.stand_ins(game, one)
+			var made := DmQaScene.stand_ins(game, one)
 			if not made.is_empty():
 				ids[i] = made[0]
 	var corpses := host.corpses
 	while corpses != null and corpses.count() < CORPSES:
 		var at := spots[corpses.count() % spots.size()] if not spots.is_empty() else origin
-		if corpses.add_corpse(at.x + 1.0, at.z + 1.0, "normal", DmQaClips.DUMMY, false, 0.0, 1.0, AREA) <= 0:
+		if corpses.add_corpse(at.x + 1.0, at.z + 1.0, "normal", DmQaScene.DUMMY, false, 0.0, 1.0, AREA) <= 0:
 			break
 	return ids
 

@@ -15,9 +15,10 @@
 // stays put). It casts nothing, so `cast` may be left out.
 //
 // A clip may carry `setup` (how the scene is set before recording) and `steps` (what happens when): lists of {"do": "<word>", ...its arguments}, a step
-// also with "at" (seconds into the clip). The words and their arguments are the game's (client/main/qa_clip_steps.json), read from the job's own branch: a new
-// word is a game change the agent makes in its branch (the recorder's handler, the list, a test), and its videos can use it at once. The runner checks a
-// request against that list (known words, known arguments, their types and ranges); the recorder checks it again and carries it out.
+// also with "at" (seconds into the clip). A shot of the shot plan may carry the same two lists, a step's "at" then before the shot's wait ends. The words and
+// their arguments are the game's (client/main/qa_clip_steps.json), read from the job's own branch: a new word is a game change the agent makes in its branch
+// (the handler, the list, a test), and its videos and pictures can use it at once. The runner checks a request against that list (known words, known
+// arguments, their types and ranges); the recorder checks it again and carries it out.
 //
 // The shot plan (.dm-shot.json) may carry `resolutions`: the screen sizes a team PC renders every shot at (default: the one standard size), `before`: true to
 // render the unchanged game too (BEFORE and AFTER pairs), and `presets`: the graphics presets (default Ultra alone). By default a shot is one AFTER picture on
@@ -36,6 +37,7 @@ const CAMERAS = ['follow', 'wide', 'turntable', 'still'];
 const STEPS_FILE = 'client/main/qa_clip_steps.json';
 const MODELS_FILE = 'client/game/view_models.json';   // the model rows a model clip names, read from the job's branch
 const MAX_SETUP = 12, MAX_STEPS = 24;
+const SHOT_WAIT_MS = 300, MAX_SHOT_WAIT_MS = 5000;   // a shot's wait when "wait_ms" is left out, and its most (main/qa_ui_shots.gd)
 const WORD_RE = /^[a-z][a-z0-9_]{0,23}$/, ENEMY_RE = /^[a-z0-9_]{1,40}$/;
 const MODEL_RE = /^[a-z0-9_]{1,60}$/, ANIM_RE = /^[A-Za-z0-9_.|-]{1,48}$/;
 // The screen sizes a shot plan may ask for (a team PC renders each shot at every size listed; with none the team app's standard 1920x1080 is used).
@@ -46,7 +48,7 @@ const TUNE_KEY_RE = /^[A-Za-z0-9_][A-Za-z0-9_./-]{0,79}$/;
 const BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 // Playable disciplines by name -> class index (client/data/combat/disciplines.json by_index; the shot plan and the clip plan name one the same way).
 const CLASSES = { ossuary: 1, gravecaller: 2, mourner: 3, rotweaver: 4, reaper: 11 };
-// The scene words' limits (main/qa_ui_shots.gd: MAX_LEGION, MAX_THRALLS, its stand-in spots; main/qa_clips.gd: a walk of at most 8 points); the game checks them again.
+// The scene words' limits (main/qa_ui_shots.gd: MAX_LEGION, MAX_THRALLS, its stand-in spots; main/qa_scene.gd: a walk of at most 8 points); the game checks them again.
 const MAX_LEGION = 2, MAX_THRALLS = 40, MAX_OWNERS = 4, MAX_PATH = 8, MAX_COORD = 500;
 const KIND_RE = /^[a-z_]{1,24}$/, GROUP_RE = /^[a-z]{1,16}$/;
 const isPoint = (v) => Array.isArray(v) && v.length === 2 && v.every((n) => typeof n === 'number' && Number.isFinite(n) && Math.abs(n) <= MAX_COORD);
@@ -133,8 +135,9 @@ function argRefusal(v, spec) {
   }
 }
 
-// A clip's `setup` or `steps` against the vocabulary. Returns whether the steps cast a rite (a clip that does needs no `cast`).
-function checkWords(list, section, voc, seconds, w, errs) {
+// A clip's or a shot's `setup` or `steps` against the vocabulary. `seconds` is the clip's length (a step's `at` from 0 to it) or, for a shot (`shot` true), the wait's length
+// (an `at` from 0 to before it: the picture is taken when the wait ends). Returns whether the steps cast a rite (a clip that does needs no `cast`).
+function checkWords(list, section, voc, seconds, w, errs, shot = false) {
   if (!Array.isArray(list)) { errs.push(`${w}: "${section}" must be a list of {"do": ...} objects`); return false; }
   const cap = section === 'setup' ? MAX_SETUP : MAX_STEPS;
   if (list.length > cap) { errs.push(`${w}: "${section}" has ${list.length} entries (at most ${cap})`); return false; }
@@ -147,7 +150,9 @@ function checkWords(list, section, voc, seconds, w, errs) {
     if (typeof word !== 'string' || !WORD_RE.test(word) || !isObj(words[word])) { errs.push(`${at}: "do" must be one of ${Object.keys(words).join(', ')} (${STEPS_FILE})`); return; }
     const args = isObj(words[word].args) ? words[word].args : {};
     if (section === 'steps') {
-      if (typeof e.at !== 'number' || !(e.at >= 0 && e.at <= seconds)) errs.push(`${at} (${word}): "at" must be a number of seconds from 0 to the clip's ${seconds}`);
+      if (typeof e.at !== 'number' || !(e.at >= 0 && (shot ? e.at < seconds : e.at <= seconds))) {
+        errs.push(`${at} (${word}): "at" must be a number of seconds from 0 to ${shot ? `before the shot's wait of ${seconds} (the picture is taken when it ends; "wait_ms" is the wait)` : `the clip's ${seconds}`}`);
+      }
       if (word === 'cast') casts = true;
     }
     for (const [k, v] of Object.entries(e)) {
@@ -283,10 +288,35 @@ function checkPresets(v) {
   return { list: SHOT_PRESETS.filter((x) => v.includes(x)) };
 }
 
+// A shot's wait in seconds, as the game holds it (main/qa_ui_shots.gd: "wait_ms", 300 when left out, 0 to 5000).
+function shotWaitSeconds(s) {
+  const ms = typeof s.wait_ms === 'number' && Number.isFinite(s.wait_ms) ? Math.trunc(s.wait_ms) : SHOT_WAIT_MS;
+  return Math.min(Math.max(ms, 0), MAX_SHOT_WAIT_MS) / 1000;
+}
+
+// A shot plan's shots: every problem with their `setup` and `steps` (the clips' words, checked against the branch's word list the way a clip request's are), joined like a clip request's, or ''.
+function checkShotWords(shots, wt) {
+  const errs = [];
+  let voc;   // read from the branch only when a shot has setup or steps
+  shots.forEach((s, i) => {
+    if (s.setup === undefined && s.steps === undefined) return;
+    const w = `shot ${i + 1}`;
+    if (voc === undefined) voc = readVocabulary(wt);
+    if (!voc) { errs.push(`${w}: this branch's game has no list of setup and step words (${STEPS_FILE}): merge the latest main first`); return; }
+    const secs = shotWaitSeconds(s);
+    if (s.setup !== undefined) checkWords(s.setup, 'setup', voc, secs, w, errs, true);
+    if (s.steps !== undefined) checkWords(s.steps, 'steps', voc, secs, w, errs, true);
+    if (s.thralls !== undefined && Array.isArray(s.setup) && s.setup.some((e) => isObj(e) && e.do === 'thralls')) errs.push(`${w}: the "thralls" key and the "thralls" setup word both raise thralls: use one`);
+  });
+  return errs.slice(0, 8).join('; ') + (errs.length > 8 ? `; and ${errs.length - 8} more` : '');
+}
+
 // The shot plan (.dm-shot.json) the agent leaves for a team PC: a JSON object with a list of shots, at most 32 KB (the game itself holds a plan to 4 shots).
-// null = none or unusable; otherwise { plan, notes, before, presets }: the plan as it goes to the team PC (a `resolutions` list that is not allowed is left out and
+// null = none or unusable; otherwise { plan, notes, before, presets, error }: the plan as it goes to the team PC (a `resolutions` list that is not allowed is left out and
 // named in `notes`), whether BEFORE pictures were asked for, and the presets. `before` and `presets` are the runner's, so they are taken out of the plan.
-function readShotPlan(wt) {
+// `error` is '' when the shots' `setup` and `steps` are fine, else every problem in one string (the plan is still returned: the caller says what to fix instead of rendering it).
+// `game` is the checkout whose word list counts (the job's worktree) when the plan sits elsewhere (a retake's or a discussion's plan in a scratch folder).
+function readShotPlan(wt, game = wt) {
   const f = path.join(wt, '.dm-shot.json');
   try {
     const st = fs.lstatSync(f); if (!st.isFile() || st.size > MAX_BYTES) return null;
@@ -297,7 +327,7 @@ function readShotPlan(wt) {
     if (r.error) { delete plan.resolutions; notes.push(`The screen sizes asked for were not usable (${r.error}), so the standard size was used.`); }
     if (pr.error) notes.push(`The graphics presets asked for were not usable (${pr.error}), so Ultra was used.`);
     if (before !== undefined && typeof before !== 'boolean') notes.push('"before" must be true or false, so there are no BEFORE pictures.');
-    return { plan, notes, before: before === true, presets: pr.list || SHOT_PRESETS_DEFAULT.slice() };
+    return { plan, notes, before: before === true, presets: pr.list || SHOT_PRESETS_DEFAULT.slice(), error: checkShotWords(plan.shots, game) };
   } catch { return null; }
 }
 

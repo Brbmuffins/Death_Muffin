@@ -1290,6 +1290,26 @@ test('godot mode: the agent looks at a team PC\'s pictures before the thread doe
   } finally { B.close(); }
 });
 
+test('godot mode: a shot plan with a scene word the game does not have goes back to the agent to fix; one it never fixes brings no pictures and says why', async () => {
+  const B = await teamBackend();
+  try {
+    B.pcs = [PC_WAR];
+    const w = teamWorld(B); const d = makeDiscord(w.runner);
+    const t1 = await request(d, IDS.HELIX, 'GD-UI TEAM-SHOT TEAM-BADWORD-FIX make it visible and show it');
+    const p1 = await waitProposal(d, t1.thread);
+    assert.match(field(p1, 'Screenshots'), /^Pictures from a team PC follow/);
+    await until(() => withFiles(t1.thread, /a\.png$/)[0], d.ad);
+    assert.equal(B.jobs[0].body.payload.plan.shots[0].setup, undefined, 'the fixed plan went to the team PC');
+    const t2 = await request(d, IDS.HELIX, 'GD-UI TEAM-SHOT TEAM-BADWORD make it visible and show it');
+    const p2 = await waitProposal(d, t2.thread); await idle(w, d, t2.thread);
+    assert.ok(texts(t2.thread).some((t) => /^⚠ No pictures this time: the shot plan was not usable \(/.test(t)));
+    assert.match(field(p2, 'Screenshots'), /^None taken/);
+    assert.equal(B.jobs.length, 1, 'nothing went to a team PC for the plan that was never fixed');
+    const audit = fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8');
+    assert.equal((audit.match(/"event":"shot-plan-invalid"/g) || []).length, 4, 'one refusal for the fixed plan, three for the other');
+  } finally { B.close(); }
+});
+
 test('godot mode: by default a team PC makes one AFTER picture a shot on Ultra: no base build, no BEFORE, no Low', async () => {
   const B = await teamBackend({ pcs: [PC_WAR] });
   try {

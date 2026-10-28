@@ -52,3 +52,26 @@ test('a leftover folder whose name starts another worktree\'s name is still drif
     ]);
   } finally { W.cleanup(); }
 });
+
+// The agent's open jobs (agent_jobs .. the waiting-question notes): an open job's branch is never a leftover however old; a closed job's old branch is.
+const JOBS_FN = SCRIPT.slice(SCRIPT.indexOf('JOBS_STATE='), SCRIPT.indexOf('\n', SCRIPT.indexOf('done < "$TMP/jobs.tsv"')) + 1);
+test('an open agent job keeps its branch; a question nobody answered is listed; a closed job\'s old branch is drift', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-drift-jobs-')); try {
+    const state = path.join(dir, 'jobs.json');
+    fs.writeFileSync(state, JSON.stringify({
+      t1: { branch: 'discord/aaa-1', status: 'proposed', threadId: 't1', lastActive: 100, keepAsk: { at: 200 } },
+      t2: { branch: 'discord/bbb-1', status: 'idle', threadId: 't2', lastActive: 100, keepAsk: { at: 200, kept: { by: 'x', at: 300 } } },
+      t3: { branch: 'discord/ccc-2', status: 'idle', threadId: 't3', lastActive: 500, keepAsk: { at: 200 } },
+      t4: { branch: 'discord/ddd-1', status: 'discarded', threadId: 't4' },
+    }));
+    const prog = `TMP="${dir}"; JOBS_STATE="${state}"; drift() { echo "DRIFT $1"; }; note() { echo "NOTE $1"; }\n${JOBS_FN}\n` +
+      'for b in discord/aaa-1 discord/bbb-1 discord/ccc-2 discord/ddd-1; do echo "$b=$(job_state "$b")"; agent_old "$b" 9 "origin/$b"; done';
+    const out = spawnSync('bash', ['-c', prog], { encoding: 'utf8' }).stdout.trim().split('\n');
+    assert.deepEqual(out, [
+      'NOTE agent job waiting for the team to answer "keep or delete" in its thread (t1): discord/aaa-1',
+      'discord/aaa-1=asked', 'discord/bbb-1=kept', 'discord/ccc-2=open', 'discord/ddd-1=',
+      'DRIFT agent job older than 7 days: origin/discord/ddd-1 (9d)',
+    ]);
+    assert.match(SCRIPT, /agent_old "\$b" "\$a" "origin\/\$b"/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

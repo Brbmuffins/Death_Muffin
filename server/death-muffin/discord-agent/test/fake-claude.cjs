@@ -177,9 +177,15 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
     const nShots = /TEAM-SHOTS=(\d)/.exec(p), res = /TEAM-RES=([0-9x,]+)/.exec(p), pairs = /TEAM-PAIRS/.test(p);
     const presets = pairs ? ['low', 'ultra'] : (/TEAM-PRESETS=([a-z0-9,]+)/.exec(p) || [])[1];
     const shots = nShots ? ['a', 'b', 'c', 'd'].slice(0, +nShots[1]).map((name) => ({ name })) : /TEAM-SHOT-2/.test(p) ? [{ name: 'a' }, { name: 'bag-tooltip' }] : [{ name: 'a' }];
+    if (/TEAM-BADWORD/.test(p)) shots[0].setup = [{ do: 'no_such_word' }];   // a scene word the game does not have; TEAM-BADWORD-FIX: the runner's "rejected" turn fixes it
     fs.writeFileSync('.dm-shot.json', JSON.stringify({ shots, ...(res ? { resolutions: res[1].split(',') } : {}), ...(pairs || /TEAM-BEFORE/.test(p) ? { before: true } : {}),
-      ...(presets ? { presets: Array.isArray(presets) ? presets : presets.split(',') } : {}) }));
+      ...(presets ? { presets: Array.isArray(presets) ? presets : presets.split(',') } : {}), ...(/TEAM-BADWORD-FIX/.test(p) ? { fixme: true } : {}) }));
     if (!/\bGD-/.test(p)) text = 'Plan written.';
+  }
+  if (/rejected your shot plan/.test(p)) {
+    const cur = JSON.parse(fs.readFileSync('.dm-shot.json', 'utf8'));
+    if (cur.fixme) fs.writeFileSync('.dm-shot.json', JSON.stringify({ shots: [{ name: 'a' }] }));
+    text = 'Fixed the shot plan.';
   }
   // Like the real agent, the screenshot comes after the last commit (only images newer than it go on the proposal).
   if (/SHOT-PNG|shot-godot\.sh/.test(p) || (/TEAM-SHOT/.test(p) && !teamOn)) {
