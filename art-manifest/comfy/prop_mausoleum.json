@@ -1,0 +1,66 @@
+{
+  "id": "prop_mausoleum",
+  "concept": "concept_prop_mausoleum_3d_b",
+  "picture": "art-src/concepts/props/mausoleum_3d_b.png",
+  "run": {
+    "label": "mausoleum-b-s0",
+    "model": "pixal3d",
+    "faces": 200000,
+    "texture": 2048,
+    "seed": 0,
+    "settings": {
+      "detail": 2048,
+      "grid": 1024
+    },
+    "comfyui": "0.42.5",
+    "template": "3d_pixal3d_trellis2_image_to_model (templates 0.11.96)",
+    "teamApp": "0.5.6",
+    "pc": "helix",
+    "job": "4231c1d20d29",
+    "date": "2026-10-27",
+    "file": "mausoleum-b-s0.glb"
+  },
+  "steps": [
+    {
+      "kind": "finish",
+      "triangles": 8000,
+      "texture": 1024,
+      "metal": "none",
+      "hard": true,
+      "calm": 4
+    },
+    {
+      "kind": "place"
+    }
+  ],
+  "game": "game.glb",
+  "frame": {
+    "matrix": [
+      [
+        0.6543257464467681,
+        1.2200455859300803,
+        0.1698443583941473,
+        -0.0680657641056853
+      ],
+      [
+        -1.2317371563690167,
+        0.6501430081368662,
+        0.0750877278896314,
+        0.009858280499275862
+      ],
+      [
+        -0.013487603410549035,
+        -0.18521165598359804,
+        1.3823947509054584,
+        0.43106788273163626
+      ],
+      [
+        0,
+        0,
+        0,
+        1
+      ]
+    ]
+  },
+  "tris": 7996
+}

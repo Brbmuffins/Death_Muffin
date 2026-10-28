@@ -2,9 +2,9 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://3huyna627mmr"
-path.bptc="res://.godot/imported/mausoleum_Color_e5cf40c4-19e4-49ea-a16a-7cf8f9d59343.webp-38b4283456c4916d539e929178d78a2e.bptc.ctex"
-path.astc="res://.godot/imported/mausoleum_Color_e5cf40c4-19e4-49ea-a16a-7cf8f9d59343.webp-38b4283456c4916d539e929178d78a2e.astc.ctex"
+uid="uid://bna8rfnft653i"
+path.bptc="res://.godot/imported/mausoleum_base.webp-4f304126da8a4d63f013785f1e66017d.bptc.ctex"
+path.astc="res://.godot/imported/mausoleum_base.webp-4f304126da8a4d63f013785f1e66017d.astc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
@@ -12,8 +12,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/slice/models/props/mausoleum_Color_e5cf40c4-19e4-49ea-a16a-7cf8f9d59343.webp"
-dest_files=["res://.godot/imported/mausoleum_Color_e5cf40c4-19e4-49ea-a16a-7cf8f9d59343.webp-38b4283456c4916d539e929178d78a2e.bptc.ctex", "res://.godot/imported/mausoleum_Color_e5cf40c4-19e4-49ea-a16a-7cf8f9d59343.webp-38b4283456c4916d539e929178d78a2e.astc.ctex"]
+source_file="res://assets/slice/models/props/mausoleum_base.webp"
+dest_files=["res://.godot/imported/mausoleum_base.webp-4f304126da8a4d63f013785f1e66017d.bptc.ctex", "res://.godot/imported/mausoleum_base.webp-4f304126da8a4d63f013785f1e66017d.astc.ctex"]
 
 [params]
 

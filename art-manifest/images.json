@@ -8646,5 +8646,20 @@
     "rawHash": "sha256:6691aa987ea6032bf53a5d7e69e5577bb495bfd9b16ed645fcf1073223800686",
     "outHash": "sha256:607520681fd894b8a4addcd1b1039e145774ac0ddf9e49f4a89adc520462166a",
     "generatedAt": "2026-10-28T00:12:19.432Z"
+  },
+  "concept_prop_mausoleum_3d_b": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling source: redraw exactly the gothic mausoleum in the image as a game-ready 3D render, keeping its look and its wear: the soot-dark weathered stone blocks with dark grime in the joints, moss and stains; the steep pointed roof; the front gable with the skull and crossed bones crest; the pointed-arch rusted iron double door with violet light in the gap; the corner pinnacles and the side buttresses. Simplify only what is too fine to model: the rows of thin roof spikes become a few short, thick finials along the ridge; the thin corner pinnacles become fewer and thicker; the flying buttresses become solid buttresses joined to the wall all the way down, with no open gaps behind them; no thin railings, no small gargoyles sticking out, no loose or floating bits. The roof has two equal, straight slopes with a straight ridge, so the hidden back matches the front. The wear stays as painted colour on the surfaces. The same proportions, the same three-quarter view from slightly above. Solid, sculpted 3D-render look, even, flat studio lighting, no cast shadows, no strong highlights, no rim light, no fog, no brush strokes. The whole building visible and centered. Plain flat light grey background (#c8c8c8). No text, no ground plane, no other objects.",
+    "refs": [
+      "art-src/concepts/props/mausoleum.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/mausoleum_3d_b.png",
+    "rawHash": "sha256:20c6b467823c9dd9d31afd83777b076c44a61ca6f24af8ff2562808325bb8cd5",
+    "outHash": "sha256:1ae0a1e1ccd2d9b7a01c8625e38bb17f774506e325f2b92546a4168741df6ed6",
+    "generatedAt": "2026-10-27T19:13:27.832Z"
   }
 }
