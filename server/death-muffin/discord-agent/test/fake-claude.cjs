@@ -32,7 +32,12 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   if (/step limit\. The work continues/.test(p)) { if (!fs.existsSync('NO-NOTE')) fs.writeFileSync('.dm-handoff.md', 'HANDOFF: speed half done; next set speed=9 in client/game/a.gd\n'); return out({ subtype: 'success', is_error: false, result: 'Note written.' }); }
   if (/LONG-FOREVER/.test(p) || (/LONG-TASK/.test(p) && !/<handoff>|left no note/.test(p))) return out({ subtype: 'error_max_turns', is_error: true, errors: ['Reached maximum number of turns (40)'] });
   if (/LOG-MARKER-77/.test(p)) text = 'Saw LOG-MARKER-77 in the report.';
-  if (/Write this discussion up as a job for the #jobs forum/.test(p)) text = `JOB TITLE: Bone shield for the Ossuary\nGive the Ossuary a bone shield.${/LOG-MARKER-77/.test(p) ? ' LOG-MARKER-77 was decided.' : ''}`;
+  // the !job brief (BRIEF-BAD: not in the format); a correction while a brief waits (BRIEF-FIX) rewrites it
+  if (/Write this discussion up as a job brief/.test(p)) text = /BRIEF-BAD/.test(p) ? 'Sure, here is a job.' : `JOB TITLE: Bone shield for the Ossuary\n**Goal:** Give the Ossuary a bone shield.${/LOG-MARKER-77/.test(p) ? ' LOG-MARKER-77 was decided.' : ''}${/An update for the job it already became/i.test(p) ? ' UPDATE-BRIEF' : ''}\n**Decided:** bone (Helix)\n**Ruled out:** wood\n**Open questions:** none\n**Comes along:** nothing`;
+  if (/A job brief you wrote is waiting for an approver/.test(p) && /BRIEF-FIX/.test(p)) text = 'JOB TITLE: Blue bone shield for the Ossuary\n**Goal:** A blue bone shield. BRIEF-FIXED\n**Decided:** blue (Helix)\n**Ruled out:** wood\n**Open questions:** none\n**Comes along:** nothing';
+  // a job a discussion opened: its confirmed brief and what came along (the keep's copies in the worktree)
+  if (/an approver confirmed its brief with ✅/.test(p) && /<brief>[\s\S]*Bone shield[\s\S]*<\/brief>/.test(p)) text += ` HANDOVER-SEEN${fs.existsSync('.dm-keep/handover/discussion.md') && /LOG-MARKER-77/.test(fs.readFileSync('.dm-keep/handover/discussion.md', 'utf8')) ? ' DISCUSSION-CAME' : ''}${fs.existsSync('.dm-keep/handover/drafts/kit.md') ? ' DRAFT-CAME' : ''}`;
+  if (/sent an updated brief/.test(p) && /UPDATE-BRIEF/.test(p)) text += ' UPDATE-SEEN';
   if (/You were paused while the team talked/.test(p)) text = /LOG-MARKER-77/.test(p) ? 'Caught up on LOG-MARKER-77.' : 'Caught up.';
   if (/STATUS-TURN/.test(p)) { fs.writeFileSync('.dm-status', '20% · Hunting the tooltip crash, then fixing it; ~1 min.\n'); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2500); }
   const ttl = /TITLE-TURN="([^"]+)"/.exec(p); if (ttl) { fs.writeFileSync('.dm-title', ttl[1] + '\n'); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 800); }
@@ -196,5 +201,12 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   if (process.argv.includes('--resume')) text += ' RESUMED';
   if (/<handoff>[\s\S]*HANDOFF: speed half done/.test(p)) text += ' CONTINUED-FROM-NOTE';
   if (/<\/handoff>[\s\S]*The request that turn was working on:[\s\S]*LONG-TASK/.test(p)) text += ' WITH-REQUEST';
+  // notes kept across rounds: NOTE-WRITE writes .dm-notes.md; a fresh session that is handed them echoes NOTES-SEEN
+  if (/NOTE-WRITE/.test(p)) fs.writeFileSync('.dm-notes.md', '**Decided:** NOTE-MARK bone, not wood (Helix)\n');
+  if (/<notes>[\s\S]*NOTE-MARK[\s\S]*<\/notes>/.test(p)) text += ' NOTES-SEEN';
+  // a discussion's drafts: DRAFT-WRITE writes .dm-drafts/kit.md (DRAFT-EDIT changes it), DRAFT-BAD a file that is not a draft
+  if (/DRAFT-WRITE|DRAFT-EDIT/.test(p)) { fs.mkdirSync('.dm-drafts', { recursive: true }); fs.writeFileSync('.dm-drafts/kit.md', /DRAFT-EDIT/.test(p) ? '# Bone kit v2\n' : '# Bone kit\nDRAFT-BODY\n'); }
+  if (/DRAFT-BAD/.test(p)) { fs.mkdirSync('.dm-drafts', { recursive: true }); fs.writeFileSync('.dm-drafts/evil.sh', 'echo hi\n'); }
+  if (/BRIEF-CHECK/.test(p) && fs.existsSync('.dm-result.json')) { const r = JSON.parse(fs.readFileSync('.dm-result.json', 'utf8')); r.brief = '4 of 5 done; not yet: the door glow'; fs.writeFileSync('.dm-result.json', JSON.stringify(r)); }
   process.stdout.write(JSON.stringify({ type: 'result', result: text, session_id: 'sess-1', is_error: false, total_cost_usd: 0 }));
 });

@@ -86,38 +86,47 @@ test('a discussion post: a mention brings it in with the post so far; then it an
   await until(() => job.worktree && !job.running && texts(thread).filter((t) => /Saw LOG-MARKER-77/.test(t)).length >= 2, d.ad);
 });
 
-test('!job for War in a discussion post opens a #jobs post tagged To do and War, links it, and a mention there starts the job', async () => {
+test('!job for War in a discussion post writes a brief; an approver\'s ✅ opens the #jobs post tagged To do and War with its job set up, and a mention there builds it', async () => {
   const w = makeWorld({ jobsChannelId: IDS.JOBS, talkChannelIds: [IDS.TALK], jobsOwners: { War: ['war', 'warbogar'], Helix: ['helix'] } });
   const d = makeDiscord(w.runner);
   const { thread } = await d.forumPost(IDS.HELIX, 'Ossuary bone shield', 'LOG-MARKER-77 bone shield idea', [], d.talk);
   const who = await d.say(thread, IDS.HELIX, '!job for nobody');   // !job alone brings the bot in too
   assert.match(who.replies[0].content, /do not know who "nobody" is/);
   await d.say(thread, IDS.HELIX, '!job for warbogar');
+  const brief = await until(() => thread.sent.find((s) => /^📋 \*\*Job brief: Bone shield for the Ossuary\*\*/.test(s.payload.content || '') && s.reactions.includes('✅')), d.ad);
+  assert.match(brief.payload.content, /\*\*Goal:\*\* Give the Ossuary a bone shield\. LOG-MARKER-77 was decided\.[\s\S]*\*\*Ruled out:\*\* wood[\s\S]*✅ from an approver opens it as a #jobs post for War\. Reply here to correct it first\.$/);
+  assert.equal((d.world.posts || []).length, 0, 'nothing is opened before the ✅');
+  assert.ok(!texts(thread).some((t) => /^JOB TITLE/.test(t)), 'the write-up is not also said as a reply');
+  assert.deepEqual(await d.react(brief, IDS.STRANGER, '✅'), [IDS.STRANGER], 'only an approver confirms it');
+  assert.deepEqual(await d.react(brief, IDS.LIMITED, '✅'), []);
   const post = await until(() => (d.world.posts || [])[0], d.ad);
   assert.equal(post.parentId, IDS.JOBS); assert.equal(post.name, 'Bone shield for the Ossuary');
   assert.match(post.starter.content, /LOG-MARKER-77 was decided/, 'written from the discussion');
-  assert.match(post.starter.content, new RegExp(`from <#${thread.id}>, asked by Helix$`));
+  assert.match(post.starter.content, new RegExp(`from <#${thread.id}>, asked by Helix, confirmed by Limited$`));
   assert.deepEqual(post.starter.payload.allowedMentions, { parse: [], repliedUser: false });
   assert.deepEqual(tagsOf(d, post), ['To do', 'War']);
-  await until(() => texts(thread).some((t) => t.startsWith(`Made it a job: <#${post.id}> (tagged To do, War).`)), d.ad);
-  assert.ok(!texts(thread).some((t) => /^JOB TITLE/.test(t)), 'the write-up is not also said in the discussion');
-  // the new post is a #jobs post like any other: the bot stays out until someone mentions it there
-  await d.say(post, IDS.HELIX, 'War this one is yours'); assert.equal(w.runner.jobs()[post.id], undefined);
+  await until(() => texts(thread).some((t) => t.startsWith(`Made it a job: <#${post.id}> (tagged To do, War). This conversation, the drafts and the pictures go with it.`)), d.ad);
+  // the new post's job is already set up with what came along; the bot stays out until someone mentions it there
+  const job = w.runner.jobs()[post.id]; assert.ok(job && job.forumPost && !job.talk && job.handover); assert.equal(w.runner.jobs()[thread.id].handoverTo, post.id);
+  assert.equal(job.creatorId, IDS.HELIX, 'whoever typed !job owns it');
+  await d.say(post, IDS.HELIX, 'War this one is yours'); await d.ad.pollOnce(); assert.equal(job.worktree, null); assert.equal(job.totalTurns, 0);
   await d.say(post, IDS.HELIX, `${BOT} go`);
-  const job = w.runner.jobs()[post.id]; assert.ok(job && job.forumPost && !job.talk);
-  await until(() => texts(post).some((t) => /Saw LOG-MARKER-77/.test(t)), d.ad);
+  await until(() => texts(post).some((t) => /HANDOVER-SEEN DISCUSSION-CAME/.test(t)), d.ad);
   const elsewhere = await d.say(post, IDS.HELIX, '!job'); assert.match(elsewhere.replies[0].content, /works in the discussion forums/);
 });
 
-test('a discussion post\'s agent gets read-only tools and the discussion instructions; a job\'s agent keeps its full set', () => {
+test('a discussion post\'s agent reads and writes only its notes, drafts and concept requests, with the discussion instructions; a job\'s agent keeps its full set', () => {
   const { claudeArgs } = require('../runner/lib/agent.cjs');
   const args = (extra) => {
     const a = claudeArgs({ toolsDir: '/t', webAnyHost: true }, { worktree: '/w', branch: 'b', model: 'sonnet', ...extra }, { systemPrompt: 'CORE' });
     return { tools: a[a.indexOf('--tools') + 1], allowed: a.slice(a.indexOf('--allowedTools') + 1, a.indexOf('--disallowedTools')), sp: a[a.indexOf('--append-system-prompt') + 1] };
   };
   const talk = args({ talk: true }), work = args({});
-  assert.equal(talk.tools, 'Read,Glob,Grep,WebSearch,WebFetch');
-  assert.ok(!talk.allowed.some((t) => /^(Edit|Write|Bash)/.test(t)), talk.allowed.join(' '));
+  // it reads the worktree and writes only its notes, drafts and concept requests; no Bash
+  assert.equal(talk.tools, 'Read,Glob,Grep,Edit,Write,WebSearch,WebFetch');
+  const writes = talk.allowed.filter((t) => /^(Edit|Write)\(/.test(t));
+  assert.ok(writes.length && writes.every((t) => /^(Edit|Write)\(\/\/w\/(\.dm-notes\.md|\.dm-drafts\/\*\*|\.dm-concept-request\.json|art-manifest\/gemini-jobs\/\*\*)\)$/.test(t)), writes.join(' '));
+  assert.ok(!talk.allowed.some((t) => /^Bash/.test(t) || t === 'Edit(//w/**)' || t === 'Write(//w/**)'), talk.allowed.join(' '));
   assert.match(talk.sp, /^CORE[\s\S]*This thread is a discussion post, not a job/);
   assert.equal(work.tools, 'Read,Edit,Write,Glob,Grep,Bash,WebSearch,WebFetch'); assert.equal(work.sp, 'CORE');
   assert.ok(work.allowed.some((t) => /^Bash\(/.test(t)));

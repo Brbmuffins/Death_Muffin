@@ -167,6 +167,7 @@ function createRunner(cfgIn, opts = {}) {
         const t = raw == null ? '' : TT.sanitizeTitle(redactText(raw));
         if (t && TT.titleKey(t) !== job.agentTitleKey) { job.agentTitleKey = TT.titleKey(t); job.title = t; save(); }
       }
+      reportBack(job);
       // a report thread keeps its report number in the name when the agent renames it
       if (job.talk) return;   // a discussion post is the team's: never renamed or tagged
       if (job.forumPost) return void syncTags(job);   // a #jobs post keeps the title its author gave it; its tags show where the job stands
@@ -195,6 +196,7 @@ function createRunner(cfgIn, opts = {}) {
     return ops.map(({ sentAt, createdAt, ...o }) => o);
   }
   function ack(id, res) {
+    if (res) { rememberSent(res.messageId); rememberSent(res.threadId); }
     const i = outbox.findIndex((o) => o.id === id); if (i >= 0) outbox.splice(i, 1);
     const cb = callbacks.get(id); callbacks.delete(id); if (cb) { try { cb(res || {}); } catch (e) { console.error('ack cb', e); } }
   }
@@ -219,11 +221,62 @@ function createRunner(cfgIn, opts = {}) {
     return { ...(/^\d{5,25}$/.test(id) ? { requestedBy: nameOf(id) } : {}), ...(t ? { thread: String(t) } : {}) };
   };
 
-  // ---------- images people attach (written into the worktree for the agent to Read; never redacted, never committed) ----------
+  // ---------- the thread's keep (stateDir/keep/<job id>/): what has to outlive a workspace (Helix 2026-10-28) ----------
+  // A round's worktree goes when it ships or is discarded, and a discussion's after a quiet day, so what the thread needs later lives here and is
+  // copied into each workspace before a turn (syncKeep): inbox/ (images people attached, as .dm-inbox/), notes.md (the agent's .dm-notes.md), drafts/
+  // (a discussion's drafts, as .dm-drafts/), and into .dm-keep/: posts/ (terminal-session posts in full), discussion.md (a discussion's whole
+  // conversation) and handover/ (what a job got from the discussion it came from). It goes with the thread, or after cfg.keepDays (60) quiet.
+  const keepDir = (job, ...p) => path.join(cfg.stateDir, 'keep', String(job.id), ...p);
+  const DISCUSSION_MAX = 2 * 1024 * 1024, NOTES_MAX = 6000, DRAFT_MAX = 100 * 1024, DRAFTS_PER_TURN = 5;
+  const DRAFT_NAME = /^[\w-][\w.-]{0,79}\.(md|txt|json|csv)$/i;
+  const regularFile = (f) => { try { return fs.lstatSync(f).isFile(); } catch { return false; } };   // never a symlink out of the worktree
+  function syncKeep(job) {
+    if (!job.worktree || !fs.existsSync(job.worktree)) return;
+    const put = (from, rel, force) => {
+      try { if (fs.existsSync(from) && !A.pathIssue(job.worktree, rel)) fs.cpSync(from, path.join(job.worktree, rel), { recursive: true, force, errorOnExist: false }); }
+      catch (e) { console.error('keep sync', job.id, rel, e.message); }
+    };
+    put(keepDir(job, 'inbox'), '.dm-inbox', false);
+    put(keepDir(job, 'drafts'), '.dm-drafts', false);   // the agent's own edits to its drafts and notes win over the kept copies
+    put(keepDir(job, 'notes.md'), '.dm-notes.md', false);
+    for (const n of ['discussion.md', 'posts', 'handover']) put(keepDir(job, n), `.dm-keep/${n}`, true);
+  }
+  // The agent's notes on the thread (.dm-notes.md: what was asked, decided and by whom, ruled out, still open) are kept after every turn.
+  function keepNotes(job) {
+    const f = job.worktree && path.join(job.worktree, '.dm-notes.md');
+    if (!f || !regularFile(f)) return;
+    try { const t = fs.readFileSync(f, 'utf8').slice(0, NOTES_MAX); fs.mkdirSync(keepDir(job), { recursive: true }); fs.writeFileSync(keepDir(job, 'notes.md'), t); } catch (e) { console.error('keep notes', job.id, e.message); }
+  }
+  const readKept = (job, rel, max) => { try { return fs.readFileSync(keepDir(job, rel), 'utf8').slice(0, max); } catch { return ''; } };
+  function appendDiscussion(job, name, text) {
+    try {
+      const f = keepDir(job, 'discussion.md'); fs.mkdirSync(path.dirname(f), { recursive: true });
+      fs.appendFileSync(f, `### ${name} · ${new Date(now()).toISOString().slice(0, 16).replace('T', ' ')} UTC\n${String(text).trim()}\n\n`);
+      if (fs.statSync(f).size > DISCUSSION_MAX) {
+        const b = fs.readFileSync(f); const tail = b.subarray(b.length - Math.floor(DISCUSSION_MAX * 0.75)).toString('utf8');
+        fs.writeFileSync(f, `(Older messages were dropped; this keeps the newest part of the conversation.)\n\n${tail.slice(Math.max(0, tail.indexOf('\n### ') + 1))}`);
+      }
+    } catch (e) { console.error('keep discussion', job.id, e.message); }
+  }
+  const dirBytes = (d) => { let n = 0; try { for (const f of fs.readdirSync(d)) { try { n += fs.statSync(path.join(d, f)).size; } catch { /* gone */ } } } catch { /* none */ } return n; };
+  function dropStaleKeeps() {
+    const root = path.join(cfg.stateDir, 'keep'); const keepMs = (cfg.keepDays != null ? cfg.keepDays : 60) * 86400e3;
+    let names = []; try { names = fs.readdirSync(root); } catch { return 0; }
+    let n = 0;
+    for (const name of names) {
+      const j = Object.values(jobs).find((x) => String(x.id) === name);
+      if (j && j.status !== 'deleted' && (j.running || now() - Math.max(j.lastActive || 0, j.seenAt || 0) < keepMs)) continue;
+      try { fs.rmSync(path.join(root, name), { recursive: true, force: true }); n++; } catch { /* next sweep */ }
+    }
+    if (n) audit.log('keeps-dropped', { threads: n });
+    return n;
+  }
+
+  // ---------- images people attach (kept, and copied into the worktree for the agent to Read; never redacted, never committed) ----------
   // Returns the lines to append to the message text (one per image, or a short note for a refused one).
   function saveInboxImages(job, msg, images) {
-    if (!Array.isArray(images) || !images.length || !job.worktree) return '';
-    const dir = path.join(job.worktree, '.dm-inbox'); const lines = [];
+    if (!Array.isArray(images) || !images.length) return '';
+    const dir = keepDir(job, 'inbox'); const lines = [];
     job.inboxBytes = job.inboxBytes || 0;
     for (const im of images.slice(0, INBOX_PER_MESSAGE)) {
       const name = safeName(im && im.name).slice(-60) || 'image';
@@ -239,7 +292,34 @@ function createRunner(cfgIn, opts = {}) {
       } catch (e) { lines.push(`[image ${name} not attached: could not be stored]`); }
     }
     if (images.length > INBOX_PER_MESSAGE) lines.push(`[${images.length - INBOX_PER_MESSAGE} more image(s) not attached: 4 per message]`);
+    syncKeep(job);
     return lines.length ? '\n' + lines.join('\n') : '';
+  }
+
+  // ---------- a terminal session's posts (Helix 2026-10-28) ----------
+  // A Claude session on the VPS posts with the bot's own account, so the adapter used to drop it as the bot's own message. It now forwards the
+  // bot's messages it did not send for the runner (ev.botPost). In a thread with a job they are team talk: kept (in full under .dm-keep/posts/),
+  // read with the next turn, never starting one. sentIds is a second guard next to the adapter's: the ids of the runner's own posts, from the acks.
+  const sentIds = new Set();
+  const rememberSent = (id) => { if (!id) return; sentIds.add(String(id)); if (sentIds.size > 2000) sentIds.delete(sentIds.values().next().value); };
+  const TERMINAL_NAME = 'Claude (terminal session)';
+  function handleBotPost(ev) {
+    const job = ev.threadId && jobs[String(ev.threadId)];
+    if (!job || goneThread(job.threadId) || sentIds.has(String(ev.messageId))) return { action: 'ignore' };
+    const text = String(ev.text || '').trim(); const name = TERMINAL_NAME;
+    const imgs = saveInboxImages(job, { name, messageId: ev.messageId }, ev.images);
+    if (!text && !imgs) return { action: 'ignore' };
+    let pointer = '';
+    if (text.length > 1500) {
+      const id = String(ev.messageId || now()).replace(/\D/g, '').slice(-20) || 'post';
+      try { fs.mkdirSync(keepDir(job, 'posts'), { recursive: true }); fs.writeFileSync(keepDir(job, 'posts', `${id}.md`), text); syncKeep(job); pointer = `\n[the whole post: .dm-keep/posts/${id}.md]`; } catch { /* the clipped text still goes */ }
+    }
+    const said = clip(text, 1500) + pointer + imgs;
+    (job.asides = job.asides || []).push({ name, text: said }); if (job.asides.length > 40) job.asides.shift();
+    if (job.talk) logTalk(job, name, said, text + imgs);
+    hear(job, { name, text, to: 'team' });
+    audit.log('terminal-post', { job: job.id, chars: text.length });
+    save(); return { action: 'ignore' };
   }
 
   // ---------- events from Discord ----------
@@ -275,6 +355,7 @@ function createRunner(cfgIn, opts = {}) {
     if (ev.type === 'thread-deleted') return handleThreadDeleted(ev);
     if (ev.type === 'reaction') return handleReaction(ev);
     if (ev.threadId && jobs[String(ev.threadId)]) { const j = jobs[String(ev.threadId)]; j.archived = false; j.seenAt = now(); }   // anyone's message reopens an archived thread in Discord
+    if (ev.botPost) return handleBotPost(ev);
     const role = auth.roleOf(ev.userId);
     if (!role) { audit.log('ignored-unlisted', { userId: String(ev.userId), mentioned: !!ev.mentioned }); return { action: 'ignore' }; }
     const text = String(ev.text || '').trim();
@@ -316,7 +397,7 @@ function createRunner(cfgIn, opts = {}) {
       const fp = ev.post || {};
       const job = newJob(ev);
       Object.assign(job, { threadId: String(ev.threadId), forumPost: { title: clip(String(fp.title || ''), 100), text: clip(String(fp.text || ''), 4000) }, round: 0, sessionMode: 'godot', title: TT.sanitizeTitle(String(fp.title || '')) || null });
-      if (talk) Object.assign(job, { talk: true, talkLog: postHistory(fp.history) });
+      if (talk) { Object.assign(job, { talk: true, talkLog: postHistory(fp.history) }); for (const m of job.talkLog) appendDiscussion(job, m.name, m.text); }
       else job.forumPost.history = postHistory(fp.history);
       jobs[job.threadId] = job; save();
       audit.log(talk ? 'talk-post' : 'jobs-post', { job: job.id, threadId: job.threadId, userId: msg.userId });
@@ -324,11 +405,14 @@ function createRunner(cfgIn, opts = {}) {
     }
     const job = jobs[ev.threadId];
     if (!job || goneThread(job.threadId)) return { action: 'ignore' };
+    // a #jobs post a discussion opened (handOver) has its job already: its first mention still brings what the team said in the post before it
+    if (job.handover && !job.round && ev.post && !(job.forumPost.history || []).length) job.forumPost.history = postHistory(ev.post.history);
     if (!ev.mentioned && cfg.threadReplyRequiresMention) return { action: 'ignore' };
     // !pause (Helix 2026-10-21): the team talks among themselves. Every message is kept for !resume; only ! commands are handled meanwhile.
     if (job.paused && !text.startsWith('!')) {
-      (job.pausedMsgs = job.pausedMsgs || []).push({ name: msg.name, text: clip(text, 1500) }); if (job.pausedMsgs.length > 80) job.pausedMsgs.shift();
-      if (job.talk) logTalk(job, msg.name, text);
+      const imgs = saveInboxImages(job, msg, ev.images);
+      (job.pausedMsgs = job.pausedMsgs || []).push({ name: msg.name, text: clip(text, 1500) + imgs }); if (job.pausedMsgs.length > 80) job.pausedMsgs.shift();
+      if (job.talk) logTalk(job, msg.name, text + imgs);
       save(); return { action: 'ignore' };
     }
     // !discard comes before the report-thread mention gate, so a report thread nobody brought the agent into can be closed too (owner 2026-10-14).
@@ -349,9 +433,9 @@ function createRunner(cfgIn, opts = {}) {
       const d = await addressee(job, ev, msg, text);
       if (d.how === 'guess' || d.how === 'unsure') audit.log('addressee', { job: job.id, userId: msg.userId, to: d.to, how: d.how, ...(d.cost != null ? { costUsd: d.cost } : {}) });
       if (d.to === 'team') {
-        const said = clip(text, 1500) + saveInboxImages(job, msg, ev.images);
+        const imgs = saveInboxImages(job, msg, ev.images); const said = clip(text, 1500) + imgs;
         (job.asides = job.asides || []).push({ name: msg.name, text: said }); if (job.asides.length > 40) job.asides.shift();
-        if (job.talk) logTalk(job, msg.name, said);
+        if (job.talk) logTalk(job, msg.name, said, text + imgs);
         audit.log('team-talk', { job: job.id, userId: msg.userId, how: d.how });
         save(); return { action: 'ignore' };
       }
@@ -397,12 +481,14 @@ function createRunner(cfgIn, opts = {}) {
     }
     return out;
   }
-  // A discussion post's conversation, kept so a fresh session (a new round, or the workspace removed after talkIdleHours) still knows it.
-  function logTalk(job, name, text) {
+  // A discussion post's conversation, kept so a fresh session (a new round, or the workspace removed after talkIdleHours) still knows it: the
+  // recent part in job.talkLog (each message clipped), all of it in the keep's discussion.md (`full`, when the logged text is a clipped one).
+  function logTalk(job, name, text, full) {
     const t = clip(String(text || '').trim(), 1500); if (!t) return;
     (job.talkLog = job.talkLog || []).push({ name, text: t });
     let total = job.talkLog.reduce((n, m) => n + m.text.length, 0);
     while (job.talkLog.length > 60 || total > 20000) total -= job.talkLog.shift().text.length;
+    appendDiscussion(job, name, full != null ? full : text);
   }
   // Team text quoted for the agent: one line per message, wrapped so it cannot close its own block.
   const transcript = (msgs) => `<conversation>\n${msgs.map((m) => `[${m.name}] ${String(m.text).replace(/<\/?conversation>/gi, '[conversation]')}`).join('\n')}\n</conversation>`;
@@ -430,31 +516,99 @@ function createRunner(cfgIn, opts = {}) {
       job.queue.push({ ...msg, synthetic: true, text: `(You were paused while the team talked among themselves; ${msg.name} just brought you back. What they said, oldest first:)\n${transcript(missed)}\n(Catch up. If they settled something for you to do, do it; otherwise reply briefly to whatever needs you.)` });
       job.lastActive = now(); save(); pump(); return { action: 'accepted' };
     }
-    // !job [for <who>]: the agent writes the discussion up; the runner opens the #jobs post (tagged To do and the owner) and links it here.
+    // !job [new] [for <who>] (the handover, Helix 2026-10-28): the agent writes the discussion up as a brief with fixed parts, posted here; an approver's ✅
+    // opens the #jobs post (tagged To do and the owner), or, when this discussion already has an open job and `new` was not said, sends the brief
+    // there as an update. A reply corrects the brief first. The job gets the brief, the whole conversation, the drafts, the images and the concept
+    // pictures (carryOver), and the brief is its plan.
     if (!job.talk) return { action: 'reply', text: '`!job` works in the discussion forums (#classes, #features, #lore): it turns the discussion into a #jobs post.' };
     if (!cfg.jobsChannelId) return { action: 'reply', text: 'There is no #jobs forum set up.' };
     if (job.queue.some((m) => m.jobAsk) || job.jobAskRunning) return { action: 'reply', text: 'Already writing this one up.' };
-    const forWho = /^!job\s+for\s+(.+)$/i.exec(text); const owner = forWho ? ownerTag(forWho[1]) : null;
+    const rest = text.replace(/^!job\b/i, '').trim(); const fresh = /^new\b/i.test(rest);
+    const forWho = /^(?:new\s+)?for\s+(.+)$/i.exec(rest); const owner = forWho ? ownerTag(forWho[1]) : null;
     if (forWho && !owner) return { action: 'reply', text: `I do not know who "${clip(forWho[1], 40)}" is. Owners: ${Object.keys(cfg.jobsOwners || {}).join(', ')}.` };
+    const said = forWho ? '' : rest.replace(/^new\b/i, '').trim();   // "!job but leave the sound out": the words go along
+    const target = !fresh && job.handoverTo && jobOpen(jobs[job.handoverTo]) ? job.handoverTo : null;
     if (!(job.worktree && fs.existsSync(job.worktree)) && !job.running && !(await beginRound(job))) return { action: 'reply', text: 'I could not set up a workspace to write the job up. Try again in a minute.' };
     const missed = job.paused && (job.pausedMsgs || []).length ? `\n(While you were paused the team also said, oldest first:)\n${transcript(job.pausedMsgs)}` : '';
-    job.queue.push({ ...msg, synthetic: true, jobAsk: { owner, by: msg.name }, text: JOB_ASK + missed });
+    job.queue.push({ ...msg, synthetic: true, jobAsk: { owner, by: msg.name, byId: msg.userId, mode: target ? 'update' : 'new', target }, text: jobAskText(!!target) + (said ? `\n(${msg.name} added: ${clip(said, 500)})` : '') + missed });
     job.lastActive = now(); save(); pump(); return { action: 'accepted' };
   }
-  const JOB_ASK = 'Write this discussion up as a job for the #jobs forum, where the team hands out work. Reply with exactly this and nothing else: a first line `JOB TITLE: <what needs doing, at most 8 words>`, then the job itself in under 1,400 characters: what to build or change, the decisions made here, and any open questions. Plain words for the team; no code.';
-  // The !job reply -> a #jobs post. Returns true when the reply was a write-up (posted or refused), so it is not also said as a normal reply.
-  function openJobPost(job, r, ask) {
-    const m = /^\s*JOB TITLE:\s*(.+)\n+([\s\S]+)$/i.exec(String((r && r.text) || ''));
-    if (!m) { say(job, 'I could not write that up as a job. Try `!job` again.'); return; }
-    const name = TT.sanitizeTitle(redactText(m[1])) || 'Job from a discussion';
-    const content = redactText(`${clip(m[2].trim(), 1500)}\n\n— from <#${job.threadId}>, asked by ${ask.by}`);
-    const tags = [(cfg.jobsTags || {}).todo, ask.owner].filter(Boolean);
-    post({ channelId: cfg.jobsChannelId }, { forumPost: { channelId: cfg.jobsChannelId, name, content, tags } }, (res) => {
-      if (!res || !res.threadId) { audit.log('job-post-failed', { job: job.id, error: clip(String((res && res.error) || 'no post'), 200) }); return say(job, `I could not open the #jobs post: ${clip(String((res && res.error) || 'unknown error'), 200)}`); }
-      audit.log('job-post', { job: job.id, post: res.threadId, owner: ask.owner || null });
-      const line = `Made it a job: <#${res.threadId}>${(res.tags || []).length ? ` (tagged ${res.tags.join(', ')})` : ''}. Mention me there when it is time to build it.`;
+  const jobOpen = (t) => !!t && !t.talk && !['shipped', 'discarded', 'deleted'].includes(t.status) && !goneThread(t.threadId);
+  const BRIEF_PARTS = '**Goal:** what players will see or get, in one or two sentences.\n**Decided:** each decision made here and who made it, e.g. "the glow is green (Helix)".\n' +
+    '**Ruled out:** what the team said no to.\n**Open questions:** what is still undecided, or "none".\n**Comes along:** the drafts (by file name) and concept pictures (by number and id) from here that the job should use, or "nothing".';
+  const jobAskText = (update) => `Write this discussion up as a job brief: ${update ? 'an update for the job it already became (write the whole brief as it stands now and say what changed)' : 'it becomes a post in #jobs, the forum where the team hands out work'}. ` +
+    `Once an approver confirms it, the brief is the job's plan. Reply with exactly this and nothing else, in plain words for the team, no code, under 1,500 characters:\nJOB TITLE: <what needs doing, at most 8 words>\n${BRIEF_PARTS}`;
+  // The !job reply (or a correction of the brief) is posted for a ✅; job.brief holds what a ✅ confirms.
+  function offerBrief(job, reply, ask) {
+    const m = /^\s*JOB TITLE:\s*(.+)\n+([\s\S]+)$/i.exec(reply);
+    if (!m) { say(job, 'I could not write that up as a job brief. Try `!job` again.'); return; }
+    const b = { title: TT.sanitizeTitle(redactText(m[1])) || 'Job from a discussion', text: clip(redactText(m[2].trim()), 1500), mode: ask.mode || 'new', target: ask.target || null,
+      owner: ask.owner || null, by: ask.by, byId: ask.byId || null, at: now(), messageId: null, done: false };
+    job.brief = b;
+    const where = b.mode === 'update' ? `sends it to <#${b.target}> as an update` : `opens it as a #jobs post${b.owner ? ` for ${b.owner}` : ''}`;
+    const content = `📋 **Job brief: ${b.title}**\n${b.text}\n\n✅ from an approver ${where}. Reply here to correct it first.`;
+    logTalk(job, 'Muffin Core', content); hearBot(job, content);
+    audit.log('job-brief', { job: job.id, mode: b.mode, ...(b.target ? { target: b.target } : {}) });
+    post({ threadId: job.threadId }, { content: clip(content, 1950), reactions: ['✅'] }, (res) => { if (res.messageId && job.brief === b) { b.messageId = String(res.messageId); save(); } });
+  }
+  function handOver(job, uid) {
+    const b = job.brief; b.done = true; b.confirmedBy = uid; save();
+    audit.log('job-brief-confirmed', { job: job.id, userId: uid, mode: b.mode });
+    const t = b.mode === 'update' ? jobs[b.target] : null;
+    if (jobOpen(t)) return sendUpdate(job, t, b, uid);
+    const content = redactText(`${b.text}\n\n— from <#${job.threadId}>, asked by ${b.by}, confirmed by ${nameOf(uid)}`);
+    const tags = [(cfg.jobsTags || {}).todo, b.owner].filter(Boolean);
+    post({ channelId: cfg.jobsChannelId }, { forumPost: { channelId: cfg.jobsChannelId, name: b.title, content, tags } }, (res) => {
+      if (!res || !res.threadId) { b.done = false; save(); audit.log('job-post-failed', { job: job.id, error: clip(String((res && res.error) || 'no post'), 200) }); return say(job, `I could not open the #jobs post: ${clip(String((res && res.error) || 'unknown error'), 200)}. Try \`!job\` again.`); }
+      // The job is set up now, so the post's first mention finds its brief and what came along.
+      const nj = newJob({ channelId: cfg.jobsChannelId, userId: b.byId || uid });
+      Object.assign(nj, { threadId: String(res.threadId), forumPost: { title: clip(b.title, 100), text: clip(content, 4000), history: [] }, round: 0, sessionMode: 'godot', title: b.title,
+        handover: { fromThreadId: job.threadId, fromJobId: job.id, from: clip(String((job.forumPost || {}).title || ''), 100), confirmedBy: uid, at: now() } });
+      jobs[nj.threadId] = nj; carryOver(job, nj, b, uid); job.handoverTo = nj.threadId;
+      audit.log('job-post', { job: job.id, post: res.threadId, owner: b.owner || null, newJob: nj.id });
+      const line = `Made it a job: <#${res.threadId}>${(res.tags || []).length ? ` (tagged ${res.tags.join(', ')})` : ''}. This conversation, the drafts and the pictures go with it. Mention me there when it is time to build it.`;
       logTalk(job, 'Muffin Core', line); save(); say(job, line);
     });
+  }
+  function sendUpdate(job, t, b, uid) {
+    carryOver(job, t, b, uid);
+    t.handoverUpdate = { at: now(), by: nameOf(uid) };
+    if (b.owner) post({ threadId: t.threadId }, { tags: { threadId: t.threadId, add: [b.owner], remove: [] } });
+    post({ threadId: t.threadId }, { content: clip(redactText(`📋 **Update from <#${job.threadId}>**, confirmed by ${nameOf(uid)}: ${b.title}\n${b.text}`), 1950) });
+    audit.log('job-update', { job: job.id, target: t.id, userId: uid });
+    const line = `Sent the update to <#${t.threadId}>; the job reads it with its next turn there.`;
+    logTalk(job, 'Muffin Core', line); save(); say(job, line);
+  }
+  // What a job takes from its discussion, copied so each side keeps its own: keep/<job>/handover/ (the confirmed brief, the whole conversation, the
+  // drafts), the images and long posts, and the concept pictures as shown (pinned by hash). An update replaces the brief and refreshes the rest.
+  function carryOver(from, to, b, uid) {
+    const merge = (src, dst) => { if (fs.existsSync(src)) fs.cpSync(src, dst, { recursive: true, force: false, errorOnExist: false }); };
+    try {
+      const h = keepDir(to, 'handover'); fs.mkdirSync(h, { recursive: true });
+      fs.writeFileSync(path.join(h, 'brief.md'), `# ${b.title}\n\nConfirmed with ✅ by ${nameOf(uid)} on ${new Date(now()).toISOString().slice(0, 10)}, from the discussion "${(from.forumPost || {}).title || 'untitled'}" (asked by ${b.by}).\n\n${b.text}\n`);
+      if (fs.existsSync(keepDir(from, 'discussion.md'))) fs.copyFileSync(keepDir(from, 'discussion.md'), path.join(h, 'discussion.md'));
+      if (fs.existsSync(keepDir(from, 'drafts'))) fs.cpSync(keepDir(from, 'drafts'), path.join(h, 'drafts'), { recursive: true, force: true });
+      merge(keepDir(from, 'posts'), keepDir(to, 'posts'));
+      merge(keepDir(from, 'inbox'), keepDir(to, 'inbox')); to.inboxBytes = dirBytes(keepDir(to, 'inbox'));
+      for (const [id, c] of Object.entries(from.concepts || {})) {
+        const f = path.join(conceptStore(from), `${id}.png`);
+        if (!A.ID_RE.test(id) || !c || fileSha(f) !== c.sha) continue;
+        fs.mkdirSync(conceptStore(to), { recursive: true }); fs.copyFileSync(f, path.join(conceptStore(to), `${id}.png`));
+        (to.concepts = to.concepts || {})[id] = { ...c };
+      }
+    } catch (e) { console.error('handover', from.id, to.id, e.message); }
+    syncKeep(to); if (to.worktree) restoreConcepts(to);
+  }
+  // A job from a discussion says once there when a round ships or is dropped (Helix 2026-10-28), so the people who talked it over hear.
+  function reportBack(job) {
+    const h = job.handover; if (!h || !['shipped', 'discarded'].includes(job.status)) return;
+    const key = `${job.round || 1}:${job.status}`; if (h.reported === key) return;
+    h.reported = key; save();
+    const d = jobs[String(h.fromThreadId)]; if (!d || goneThread(d.threadId)) return;
+    const sha = job.proposal && job.proposal.shipSha;
+    const line = job.status === 'shipped' ? `✅ The job from this discussion shipped: <#${job.threadId}>${sha ? ` (\`${String(sha).slice(0, 7)}\`)` : ''}.`
+      : `The job from this discussion was dropped for now: <#${job.threadId}>. It can be picked up there again.`;
+    logTalk(d, 'Muffin Core', line); save(); say(d, line);
   }
 
   // ---------- rounds ----------
@@ -467,9 +621,10 @@ function createRunner(cfgIn, opts = {}) {
     let w;
     try { w = await G.createWorktree(cfg, { ...job, round, branch: `discord/${job.id}-${round}` }); }
     catch (e) { say(job, `I could not set up a workspace for the next change: ${clip(e.message, 300)}`); job.status = 'discarded'; job.queue = []; save(); return false; }
-    // images already attached to messages that are waiting come along; the claude conversation file moves to the new project dir
-    if (prev.worktree) { try { const inbox = path.join(prev.worktree, '.dm-inbox'); if (fs.existsSync(inbox)) fs.cpSync(inbox, path.join(w.worktree, '.dm-inbox'), { recursive: true }); else job.inboxBytes = 0; } catch { /* best effort */ } }
-    else job.inboxBytes = 0;
+    // the thread's images, notes and drafts come along from its keep (syncKeep below); a worktree from before the keep hands its images over first
+    if (prev.worktree) { try { const inbox = path.join(prev.worktree, '.dm-inbox'); if (fs.existsSync(inbox)) { fs.mkdirSync(keepDir(job), { recursive: true }); fs.cpSync(inbox, keepDir(job, 'inbox'), { recursive: true, force: false, errorOnExist: false }); } } catch { /* best effort */ } }
+    keepNotes(job);
+    job.inboxBytes = dirBytes(keepDir(job, 'inbox'));
     const carry = job.sessionMode === 'godot';   // false: the earlier rounds were on the retired web game
     job.sessionId = null;
     const earlier = (job.history || []).slice(-6).map((h) => `round ${h.round || 1} ${h.discarded ? 'discarded' : `shipped${h.shipSha ? ` (${String(h.shipSha).slice(0, 7)})` : ''}`}${h.title ? `: ${clip(h.title, 90)}` : ''}`).join('; ');
@@ -477,8 +632,9 @@ function createRunner(cfgIn, opts = {}) {
     Object.assign(job, { round, branch: `discord/${job.id}-${round}`, worktree: w.worktree, base: w.base, proposal: null, artRequest: null, concepts: job.concepts || {}, conceptCount: 0, modelCount: 0, shotsSeen: {}, lastClip: null, clipAsk: null, turns: 0, status: 'idle', queuedNotice: false, cancelRequested: false, previewBusy: false,
       roundNote: job.talk ? null : carry ? `New round in this thread on a fresh branch from the latest ${BB}; the earlier conversation is not carried over. Earlier rounds here: ${earlier || 'none'}. Work from the request and the code as it is now.`
         : `This thread's earlier work was on a different version of the game, so that conversation is not carried over. You are on a fresh branch from the latest ${BB}; work from the request and the code.`, lastActive: now() });
+    syncKeep(job);
     const kept = restoreConcepts(job);
-    if (kept.length) job.roundNote += ` Concept images people saw in earlier rounds of this thread are back in art-src/concepts/: ${kept.map((id) => `${id}${job.concepts[id].kind ? ` (picture, kind ${job.concepts[id].kind})` : ''}`).join(', ')}.`;
+    if (kept.length) job.roundNote = `${job.roundNote ? job.roundNote + ' ' : ''}Concept images people saw in earlier rounds of this thread are back in art-src/concepts/: ${kept.map((id) => `${id}${job.concepts[id].kind ? ` (picture, kind ${job.concepts[id].kind})` : ''}`).join(', ')}.`;
     audit.log('round', { job: job.id, round, branch: job.branch, base: w.base, ...(kept.length ? { concepts: kept.length } : {}) });
     save(); return true;
   }
@@ -613,6 +769,7 @@ function createRunner(cfgIn, opts = {}) {
     job.deleteRequested = true;   // from here on nothing is posted for this thread
     audit.log('thread-deleted', { job: job.id, round: job.round || 1, branch: job.branch });
     await G.removeJobArtifacts(cfg, job).catch(() => {});
+    try { fs.rmSync(keepDir(job), { recursive: true, force: true }); } catch { /* the keep sweep gets it */ }
     (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, deleted: true, at: new Date(now()).toISOString() });
     renamer.forget(job.threadId); job.status = 'deleted'; job.deleteRequested = false; job.queue = []; job.proposal = null; job.worktree = null; job.running = false; save();
   }
@@ -623,6 +780,13 @@ function createRunner(cfgIn, opts = {}) {
       return requestRetry(job, String(ev.userId)) ? { action: 'accepted' } : { action: 'remove_reaction' };
     }
     if (job && art && !goneThread(job.threadId) && job.artRequest && job.artRequest.messageId && job.artRequest.messageId === ev.messageId) return handleArtReaction(job, ev);
+    // ✅ on a discussion's job brief, from any approver, hands it over (handOver)
+    if (job && job.talk && !goneThread(job.threadId) && job.brief && !job.brief.done && job.brief.messageId && job.brief.messageId === ev.messageId) {
+      if (ev.emoji !== '✅') return { action: 'ignore' };
+      if (!auth.canApprove(String(ev.userId), 'casual')) return { action: 'remove_reaction' };
+      handOver(job, String(ev.userId));
+      return { action: 'accepted' };
+    }
     // ❌ on the "Discard this change?" question confirms it (anyone who may discard; the question goes stale with the next proposal)
     if (job && !goneThread(job.threadId) && job.discardAsk && job.discardAsk.messageId && job.discardAsk.messageId === ev.messageId) {
       if (ev.emoji !== '❌') return { action: 'ignore' };
@@ -766,13 +930,26 @@ function createRunner(cfgIn, opts = {}) {
       if (r.sessionId) { job.sessionId = r.sessionId; job.sessionMode = 'godot'; }
       logRun(r, { handoff: n, step: 'continue' });
     }
-    job.proc = null;
+    job.proc = null; keepNotes(job);
     return r;
+  }
+
+  // A job from a discussion (handOver): its confirmed brief is the plan until a round of it ships; after that it is background.
+  function handoverNote(job) {
+    const h = job.handover; const upd = job.handoverUpdate; job.handoverUpdate = null;
+    const brief = readKept(job, 'handover/brief.md', 4000).trim().replace(/<\/?brief>/gi, '[brief]');
+    const where = 'Everything from the discussion is in .dm-keep/handover/: brief.md, discussion.md (the whole conversation, for the details behind each decision) and drafts/ (write-ups made there); images people posted there are in .dm-inbox/ and the concept pictures they saw in art-src/concepts/.';
+    if ((job.history || []).some((x) => x.shipSha) && !upd) return `This job came from the discussion "${h.from || 'untitled'}" (<#${h.fromThreadId}>), and an earlier round here shipped its brief. ${where}`;
+    return (upd ? `The discussion this job came from (<#${h.fromThreadId}>) sent an updated brief, confirmed with ✅ by ${upd.by}; it replaces the earlier one.`
+      : `This job came from the discussion "${h.from || 'untitled'}" (<#${h.fromThreadId}>), and an approver confirmed its brief with ✅.`) +
+      ` The brief is the plan the team agreed to: build it, without posting a plan first or asking them to confirm it again, and ask only about what it leaves open. The confirmed brief:\n<brief>\n${brief}\n</brief>\n${where}` +
+      ' When you write .dm-result.json, add "brief": one line on how the change measures against the brief, e.g. "4 of 5 done; not yet: the door glow".';
   }
 
   async function processJob(job) {
     job.queuedNotice = false;
     const msgs = job.queue.splice(0); save();
+    syncKeep(job);
     const sync = msgs.some((m) => m.sync);
     const test = msgs.some((m) => m.test); const repost = msgs.some((m) => m.test && m.repost);
     let real = msgs.filter((m) => !m.sync && !m.art && !m.test);
@@ -794,6 +971,15 @@ function createRunner(cfgIn, opts = {}) {
       const fp = job.forumPost;
       extra = (extra ? extra + '\n\n' : '') + `This thread is the post "${fp.title || 'untitled'}" in #jobs, the team's job board; someone there asked you to take it on.`
         + ((fp.history || []).length ? ` The post so far (the team's text, oldest first):\n${transcript(fp.history)}` : (fp.text ? ` The post's opening message (the team's text):\n${fp.text}` : ''));
+    }
+    if (job.handover && real.length && (!job.sessionId || job.handoverUpdate)) extra = (extra ? extra + '\n\n' : '') + handoverNote(job);
+    if (job.talk && real.length && job.brief && !job.brief.done && now() - job.brief.at < 48 * 3600e3 && !real.some((m) => m.jobAsk)) {
+      extra = (extra ? extra + '\n\n' : '') + `(A job brief you wrote is waiting for an approver's ✅ in this thread:\n<brief>\nJOB TITLE: ${job.brief.title}\n${job.brief.text}\n</brief>\n` +
+        'If the message below corrects or adds to it, reply with the whole corrected brief in the same format, first line JOB TITLE:, and nothing else; it is posted again for a ✅. Otherwise answer normally.)';
+    }
+    if (!job.sessionId && real.length) {   // a fresh session (a new round or workspace) gets the thread's notes, kept across both
+      const notes = readKept(job, 'notes.md', NOTES_MAX).trim();
+      if (notes) extra = (extra ? extra + '\n\n' : '') + `Your notes on this thread so far (.dm-notes.md, kept across rounds; keep them current):\n<notes>\n${notes.replace(/<\/?notes>/gi, '[notes]')}\n</notes>`;
     }
     // What the team said among themselves since the last turn (team talk, handleEvent) comes with the next turn, marked as not said to the agent.
     // A fresh session in a discussion post has it in the conversation log already.
@@ -940,21 +1126,46 @@ function createRunner(cfgIn, opts = {}) {
     await afterTurn(job, readResult(job.worktree), o);
   }
 
-  // A discussion post's turn ends here: the reply is said (or, for !job, becomes the #jobs post) and kept in the conversation. Nothing is
-  // verified or proposed: the agent had read-only tools, and anything it left in the workspace is ignored.
+  // A discussion post's turn ends here: the reply is said (or, for !job, becomes the brief to confirm) and kept in the conversation. Nothing is
+  // verified or proposed: the agent could write only its notes, drafts and concept requests (agent.cjs). New or changed drafts are posted, and a
+  // concept request is made like a job's (conceptStage).
   // A ```dm-shot block in the reply asks for screenshots of the live game (Helix 2026-10-23: "only of the live game"): it is taken out of what is
   // said, and a team PC renders it on the live revision (liveShots).
-  function talkAfterTurn(job, real, r) {
+  async function talkAfterTurn(job, real, r) {
     for (const m of real) if (!m.synthetic) logTalk(job, m.name, m.text);
     const ask = (real.find((m) => m.jobAsk) || {}).jobAsk;
+    const reply = String((r && r.text) || '').trim();
     job.status = 'idle';
-    if (ask) openJobPost(job, r, ask);
-    else if (r && r.text.trim()) {
-      const { text, plan } = takeShotBlock(r.text);
+    if (ask || (job.brief && !job.brief.done && /^\s*JOB TITLE:/i.test(reply))) offerBrief(job, reply, ask || job.brief);
+    else if (reply) {
+      const { text, plan } = takeShotBlock(reply);
       if (text) { sayLong(job, text); logTalk(job, 'Muffin Core', text); hearBot(job, text); }
       if (plan !== null) liveShots(job, plan).catch((e) => say(job, `⚠ No pictures this time (${clip(e.message, 200)}).`));
     }
+    postDrafts(job);
     save();
+    if (art) await conceptStage(job);
+  }
+  // A discussion's drafts (.dm-drafts/): each new or changed one is posted in the thread as a file after the turn and kept (keep/drafts), so !job
+  // carries it. Text files only (DRAFT_NAME), DRAFT_MAX each, DRAFTS_PER_TURN a turn (the rest go with the next turn).
+  function postDrafts(job) {
+    if (!job.worktree || A.pathIssue(job.worktree, '.dm-drafts')) return;
+    const dir = path.join(job.worktree, '.dm-drafts');
+    let names = []; try { names = fs.readdirSync(dir).sort(); } catch { return; }
+    let n = 0; const bad = [];
+    for (const name of names) {
+      const f = path.join(dir, name); if (!regularFile(f)) continue;
+      let buf; try { buf = fs.readFileSync(f); } catch { continue; }
+      let old = null; try { old = fs.readFileSync(keepDir(job, 'drafts', name)); } catch { /* a new draft */ }
+      if (old && old.equals(buf)) continue;
+      if (!DRAFT_NAME.test(name) || buf.length > DRAFT_MAX || buf.includes(0)) { bad.push(name); continue; }
+      if (n >= DRAFTS_PER_TURN) continue;
+      n++;
+      try { fs.mkdirSync(keepDir(job, 'drafts'), { recursive: true }); fs.writeFileSync(keepDir(job, 'drafts', name), buf); } catch (e) { console.error('keep draft', job.id, e.message); }
+      post({ threadId: job.threadId }, { content: `📝 ${old ? 'Updated draft' : 'Draft'}: \`${name}\` (a write-up; nothing in the game changed)`, file: { name, text: buf.toString('utf8') } });
+      logTalk(job, 'Muffin Core', `(posted the draft ${name})`);
+    }
+    if (bad.length && (job.draftsRefused || []).join('|') !== bad.join('|')) { job.draftsRefused = bad; say(job, `Not posted: ${bad.map((b) => `\`${clip(b, 60)}\``).join(', ')}. A draft is a .md, .txt, .json or .csv file up to 100 KB with a plain name.`); }
   }
   const SHOT_BLOCK = /```dm-shot[ \t]*\n([\s\S]*?)```/g;
   function takeShotBlock(t) {
@@ -1177,10 +1388,14 @@ function createRunner(cfgIn, opts = {}) {
     const fileLines = v.files.map((f) => `${f.status === 'add' ? '+' : f.status === 'delete' ? '−' : '~'} ${clip(f.path, 90)}`);
     const url = G.compareUrl(cfg, job.branch);
     const owner = approversFor(tier, cfg).map(nameOf);
+    // a job from a discussion says how it measures against its confirmed brief (the agent's "brief" line)
+    const brief = result && typeof result.brief === 'string' && result.brief.trim() ? clip(result.brief.trim(), 300)
+      : (same && same.brief) || (job.handover && !(job.history || []).some((x) => x.shipSha) ? 'not checked' : null);
     const embed = {
       title: clip(`${tier === 'sensitive' ? '⚠ ' : ''}${title}`, 250), url, color: TIER_COLOR[tier],
       description: bullets.join('\n') + (result && result.risk ? `\n\n**Check:** ${clip(result.risk, 300)}` : ''),
       fields: [
+        ...(brief ? [{ name: 'Brief', value: brief, inline: false }] : []),
         { name: 'Review tier', value: tierLabel(tier, cfg) + (tier === 'sensitive' ? '\n⚠ touches ' + [...new Set(v.cls.perFile.filter((f) => f.tier === 'sensitive').map((f) => f.path))].slice(0, 4).join(', ') : ''), inline: false },
         { name: `Files (${v.files.length})`, value: '```\n' + fmtList(fileLines, 10) + '\n```', inline: false },
         { name: 'Tests', value: v.untested ? '🧪 Not tested yet. React 🧪 to run every test, or ✅ to test and ship.' : `✅ ${v.tests.summary}`, inline: !v.untested },
@@ -1200,7 +1415,7 @@ function createRunner(cfgIn, opts = {}) {
       : { name: 'Preview build failed', value: `${pv.why}\nThe proposal is still valid; review the diff, or say !preview to retry.`, inline: false };
     embed.fields.splice(embed.fields.length - 1, 0, previewField);
     for (const f of embed.fields) f.value = clip(f.value, 1024);   // Discord: field value <= 1024 chars (whole embed <= 6000; the caps above keep it well under)
-    job.proposal = { messageId: null, head, base: job.base, tier, title, summary: Array.isArray(result && result.summary) ? result.summary : null, risk: (result && result.risk) || null, files: v.files.map((f) => f.path), migrations: v.migrations, testsOk: !v.untested, draft: !!v.untested, tested: v.untested ? null : v.tests.summary, createdAt: new Date(now()).toISOString() };
+    job.proposal = { messageId: null, head, base: job.base, tier, title, summary: Array.isArray(result && result.summary) ? result.summary : null, risk: (result && result.risk) || null, ...(brief ? { brief } : {}), files: v.files.map((f) => f.path), migrations: v.migrations, testsOk: !v.untested, draft: !!v.untested, tested: v.untested ? null : v.tests.summary, createdAt: new Date(now()).toISOString() };
     job.status = 'proposed'; job.autoReships = 0; job.discardAsk = null; save(); syncName(job);
     hearBot(job, `(posted a proposal for review: ${title})`);
     audit.log('proposal', { job: job.id, tier, head, files: v.files.length, migrations: v.migrations.join(','), ...(v.untested ? { draft: true } : {}) });
@@ -1699,13 +1914,17 @@ function createRunner(cfgIn, opts = {}) {
       const list = done.map((d, i) => `**${i + 1}** \`${d.id}\``).join(' · ');
       const pictures = items.filter((i) => done.some((d) => d.id === i.id) && i.gemini.kind).length, models = done.length - pictures;
       postImages(job, `🎨 Concept art${note ? ` for ${clip(note, 150)}` : ''}: ${list}${failed.length ? `\n(Could not make: ${failed.join(', ')}.)` : ''}\n` +
-        (models ? 'Nothing has been built in 3D and no model credits were spent. ' : 'Nothing is in the game yet. ') +
-        `Reply with what to change, keep or drop, or say which ones to use${models ? ' (models: I will post the cost for a ✅)' : ': I put them in the game and post a proposal with a picture'}.`, done.map((d) => ({ ...d.img, name: `${String(done.indexOf(d) + 1).padStart(2, '0')}-${d.id}.png` })));
+        (job.talk ? 'Nothing is in the game. Reply with what to change, keep or drop; `!job` carries the pictures into the job.'
+          : (models ? 'Nothing has been built in 3D and no model credits were spent. ' : 'Nothing is in the game yet. ') +
+          `Reply with what to change, keep or drop, or say which ones to use${models ? ' (models: I will post the cost for a ✅)' : ': I put them in the game and post a proposal with a picture'}.`), done.map((d) => ({ ...d.img, name: `${String(done.indexOf(d) + 1).padStart(2, '0')}-${d.id}.png` })));
       // The agent waits for people now; it hears about the images with the next message.
-      job.roundNote = (job.roundNote ? job.roundNote + '\n\n' : '') +
-        `The runner generated concept images and posted them in the thread, numbered: ${done.map((d, i) => `${i + 1} = ${d.id} (${conceptRel(d.id)})`).join(', ')}${failed.length ? `; failed: ${failed.join(', ')}` : ''}. Read the ones that matter before you answer. ` +
-        `To change one, edit its gemini job and write ${A.CONCEPT_FILE} again for that id (it is regenerated). When people pick: a picture concept (its job names a kind) goes into the game with ${cfg.toolsDir}/build-picture.sh <kind> <name> <id> (see "Making pictures"); ` +
-        `a model concept goes to free 3D tries on a team PC (${A.MODEL_FILE}, .dm-guides/models.md) or, for a Tripo model, gets its Tripo spec and ${A.REQUEST_FILE} with those ids. The shown images are reused, not regenerated, and they stay available in later rounds of this thread (do not touch art-src/concepts/).`;
+      const shown = `The runner generated concept images and posted them in the thread, numbered: ${done.map((d, i) => `${i + 1} = ${d.id} (${conceptRel(d.id)})`).join(', ')}${failed.length ? `; failed: ${failed.join(', ')}` : ''}. Read the ones that matter before you answer. ` +
+        `To change one, edit its gemini job and write ${A.CONCEPT_FILE} again for that id (it is regenerated). `;
+      job.roundNote = (job.roundNote ? job.roundNote + '\n\n' : '') + shown + (job.talk
+        ? 'Nothing is built from a discussion: `!job` carries the pictures into the job, which builds the ones the team keeps. They stay available in later rounds of this thread (do not touch art-src/concepts/).'
+        : `When people pick: a picture concept (its job names a kind) goes into the game with ${cfg.toolsDir}/build-picture.sh <kind> <name> <id> (see "Making pictures"); ` +
+        `a model concept goes to free 3D tries on a team PC (${A.MODEL_FILE}, .dm-guides/models.md) or, for a Tripo model, gets its Tripo spec and ${A.REQUEST_FILE} with those ids. The shown images are reused, not regenerated, and they stay available in later rounds of this thread (do not touch art-src/concepts/).`);
+      if (job.talk) logTalk(job, 'Muffin Core', `(posted concept pictures: ${done.map((d, i) => `${i + 1} = ${d.id}`).join(', ')})`);
       job.lastActive = now(); save();
     } finally {
       if (ticker) clearInterval(ticker);
@@ -2414,10 +2633,10 @@ function createRunner(cfgIn, opts = {}) {
   }
   // sweep: abandoned idle threads release their worktree
   async function sweep(staleDays = 7) {
-    tidy(); dropStaleConcepts();
+    tidy(); dropStaleConcepts(); dropStaleKeeps();
     for (const j of Object.values(jobs)) {
       if (j.running || ['shipped', 'discarded', 'shipping', 'deleted'].includes(j.status) || j.deleteRequested) continue;
-      if (j.bugReportId && !j.worktree) continue;   // a report thread the agent never worked in: no workspace to free, nothing to say
+      if ((j.bugReportId || j.handover) && !j.worktree) continue;   // a report thread, or a job a discussion opened, the agent never worked in: nothing to free or say
       if (j.talk) {   // a discussion post: its workspace goes quietly; the next message starts a fresh one with the conversation (job.talkLog)
         if (j.worktree && !j.queue.length && now() - j.lastActive > (cfg.talkIdleHours || 24) * 3600e3) { await G.removeJobArtifacts(cfg, j, { remote: false }).catch(() => {}); j.worktree = null; j.sessionId = null; audit.log('talk-workspace-removed', { job: j.id }); }
         continue;

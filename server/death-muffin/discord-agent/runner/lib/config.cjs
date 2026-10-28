@@ -107,8 +107,9 @@ const DEFAULTS = {
   // Paths the agent may never touch (proposal refused, not even for the owner to approve): secrets, and the agent's own rules/deploy scripts.
   // They are still "sensitive" if the owner removes them from this list and makes the change by hand.
   // The CI that grades a change and the game's setup and gate (tools/check/) are never the agent's to change (DECISIONS B59).
-  // .dm-guides/ is the runner's copy of the agent's guides in each worktree (lib/guides.cjs), never part of a change.
-  forbiddenPaths: ['server/death-muffin/discord-agent/**', '**/deploy*.sh', '**/.env*', '.claude/**', 'client/export_presets.cfg', '.github/**', 'tools/check/**', '.dm-guides/**'],
+  // .dm-guides/ is the runner's copy of the agent's guides in each worktree (lib/guides.cjs); the thread's notes, drafts, attachments and
+  // kept discussion are the team's words: none is ever part of a change (the repo is public).
+  forbiddenPaths: ['server/death-muffin/discord-agent/**', '**/deploy*.sh', '**/.env*', '.claude/**', 'client/export_presets.cfg', '.github/**', 'tools/check/**', '.dm-guides/**', '.dm-keep/**', '.dm-drafts/**', '.dm-inbox/**', '.dm-notes.md'],
   // GitHub CI is the gate (DECISIONS B59): a proposal waits for CI's verdict on its branch, a ship for CI on the merged tree (approvals that
   // wait for a ship go out with it, one CI run and one publish), through ciScript (tools/check/ci.sh, installed beside the runner; null = there).
   // false = the fallback while GitHub is down: the local check (check-godot.sh) as before.

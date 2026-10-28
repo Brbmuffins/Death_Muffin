@@ -52,8 +52,12 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
   runner, the core scripts, the prompt and its guides, not `label-shot.py`, `render-model.*`, `art-run.sh`, `build-art.sh`, `build-sound.sh`,
   `sound-*.mjs`, `build-picture.sh`, `blender-job.sh`, `make-model.sh`, `model-run.sh`, `model-gen.sh`, `wait-for-ship.sh` or `reports-cli.cjs`. A file `install-runner.sh` copies can differ from `main` unnoticed
   (found 2026-10-21).
-- **The agent can stage an ignored file.** `agit add -f <path>` is allowed, so the git-excluded job files (`.dm-inbox/` attachments, `.dm-shot.json`,
-  `.dm-shots/`) could be committed; only `.dm-guides/` is in the runner's forbidden paths (found 2026-10-21).
+- **The agent can stage an ignored file.** `agit add -f <path>` is allowed, so the git-excluded screenshot files (`.dm-shot.json`, `.dm-shots/`)
+  could be committed; the guides and the thread's kept files (`.dm-keep/`, `.dm-drafts/`, `.dm-inbox/`, `.dm-notes.md`) are in the runner's
+  forbidden paths (found 2026-10-21).
+- **A job swept after 7 quiet days keeps its "Doing" tag in #jobs** (found 2026-10-28). `sweep()` in `discord-agent/runner/core.cjs` sets the
+  job discarded without the name and tag update a discard gets, so the forum post is not moved back and a job a discussion opened does not
+  report back there.
 
 ## Server authority
 

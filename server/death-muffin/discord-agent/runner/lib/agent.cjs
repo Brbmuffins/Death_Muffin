@@ -41,12 +41,25 @@ const TALK_PROMPT = `
 
 ## This thread is a discussion post, not a job
 
-You are in one of the team's discussion forums (#classes, #features or #lore), talking with the team. Here you can read the game (Read, Glob,
-Grep) and the web, but you cannot change anything: no edits, commits, proposals, models, concept pictures or sounds, and the instructions
-above about making and proposing changes and their pictures do not apply. Help the way the team's senior game designer would: answer from the game as it is now
+You are in one of the team's discussion forums (#classes, #features or #lore), talking with the team. Here you read the game (Read, Glob,
+Grep) and the web, and you may write only three things, none of which changes the game: your notes (\`.dm-notes.md\`), drafts and concept
+pictures. You have no Bash: nothing is committed, built, rendered or proposed here, and the instructions above about making and proposing
+changes do not apply. Models, sounds, voice lines and pictures of a change belong to a job. Help the way the team's senior game designer would: answer from the game as it is now
 (read the code and data, never guess), brainstorm and flesh out ideas, write lore, sketch class kits, and say plainly when an idea would hurt
-the game. Talk like a teammate: short replies unless someone asks for depth, no headings for a one-line answer. When the team wants something
-built, tell them to type \`!job\` here (it opens a #jobs post from this discussion) and to mention you in that post.
+the game. Talk like a teammate: short replies unless someone asks for depth, no headings for a one-line answer.
+
+Drafts: when the team asks you to write something up (a class kit, a lore page, a feature write-up, a list of names), Write it to
+\`.dm-drafts/<name>.md\` (letters, digits, dashes; .md, .txt, .json or .csv; up to 100 KB) and keep your reply to a few lines about it. After
+your turn the runner posts each new or changed draft in the thread as a file, and \`!job\` carries them into the job. Edit the same file to
+revise it.
+
+Concept pictures: when an idea needs a look (a creature, an icon, a building), you may have concept pictures made, exactly as step 1 of
+\`.dm-guides/pictures.md\` (a picture) or \`.dm-guides/models.md\` (a model) says: the gemini job and \`.dm-concept-request.json\`. The
+runner makes them and posts them here; only step 1 applies, nothing is built from a discussion.
+
+When the team wants something built, tell them to type \`!job\` here (\`!job for <name>\` hands it to someone): you write a brief, an
+approver confirms it with ✅, and it becomes a #jobs post that carries this conversation, the drafts and the pictures. When asked for the
+brief, reply with it in the format asked and nothing else.
 
 Messages the team says to each other here do not start a turn; you get them with the next message for you, marked as not said to you.
 
@@ -63,7 +76,8 @@ format; \`before\` does not apply here and you run nothing), then end your reply
 
 At most 4 shots. The runner takes the block out of your reply, says in the thread that the pictures are coming (so never promise them
 yourself) and posts them when the team PC is done, after a short check of yours has looked at them (it may retake them once). Your workspace is the latest main, which can be a little ahead of the
-live game, so plan only for what players already have. Concept pictures (new art ideas) are not made here: they need a #jobs post (\`!job\`).`;
+live game, so plan only for what players already have.`;
+const TALK_WRITABLE = ['.dm-notes.md', '.dm-drafts/**', '.dm-concept-request.json', 'art-manifest/gemini-jobs/**'];
 function claudeArgs(cfg, job, { maxTurns, systemPrompt: sp } = {}) {
   // The only programs the agent may run, all in the sandbox: agit, check-godot.sh only with --rerun and the suites it names (the whole check is
   // the runner's, through CI), regen-godot.sh for generated files (B65), the screenshot, model, sound and picture build scripts (pictures: B70) and Blender jobs (B74).
@@ -72,12 +86,14 @@ function claudeArgs(cfg, job, { maxTurns, systemPrompt: sp } = {}) {
   // which matters more now that a WebFetch could carry what it read out. WebFetch is limited to documentation hosts (cfg.webDocDomains) unless the owner set cfg.webAnyHost.
   const wt = `/${job.worktree}/**`;
   const web = cfg.webAnyHost ? ['WebSearch', 'WebFetch'] : ['WebSearch', ...(cfg.webDocDomains || []).map((d) => `WebFetch(domain:${d})`)];
-  // A discussion post gets read-only tools: no Edit, Write or Bash at all, so nothing can be changed, committed, rendered or bought from there.
+  // A discussion post reads the worktree and writes only its notes, drafts and concept requests (Helix 2026-10-28: "they cant change the game
+  // without a !job"): Edit and Write are scoped to those paths and there is no Bash, so nothing is committed, built, rendered or bought there.
   const files = job.talk ? ['Read', 'Glob', 'Grep'] : ['Read', 'Edit', 'Write', 'Glob', 'Grep'];
+  const talkWrites = ['Edit', 'Write'].flatMap((t) => TALK_WRITABLE.map((p) => `${t}(/${job.worktree}/${p})`));
   const a = ['-p', '--restricted', '--strict-mcp-config', '--permission-mode', 'dontAsk', '--output-format', 'json',
     '--model', job.model, '--append-system-prompt', (sp || systemPrompt(cfg, job)) + (job.talk ? TALK_PROMPT : ''),
-    '--tools', [...files, ...(job.talk ? [] : ['Bash']), 'WebSearch', 'WebFetch'].join(','),
-    '--allowedTools', ...files.map((t) => `${t}(${wt})`), ...(job.talk ? [] : bash), ...web,
+    '--tools', [...files, ...(job.talk ? ['Edit', 'Write'] : ['Bash']), 'WebSearch', 'WebFetch'].join(','),
+    '--allowedTools', ...files.map((t) => `${t}(${wt})`), ...(job.talk ? talkWrites : bash), ...web,
     // No waiting games: Claude Code auto-allows "read-only" commands, so a turn could build its own `until ! pgrep ...; do sleep 5; done`
     // poll loop (2026-10-08: pgrep -f matched the loop itself and job e4388b hung 35 min, blocking every other thread).
     '--disallowedTools', ...NO_WAIT];

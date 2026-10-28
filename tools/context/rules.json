@@ -765,6 +765,18 @@
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Before you say the game does not have something, search for it", "WebFetch hands you a short summary of the page written by another model, not the page itself", "as long as the message you answer"]}
       ],
       "enforced": []
+    },
+    {
+      "id": "agent-thread-notes-and-brief",
+      "kind": "protocol",
+      "protected": false,
+      "audience": ["agent"],
+      "when": "anything settled in a thread; a job that came from a discussion",
+      "summary": "Keep .dm-notes.md (asked, decided and by whom, ruled out, open) current; the runner keeps it across rounds. A job from a discussion builds its confirmed brief and says in .dm-result.json how far it got.",
+      "homes": [
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Notes: keep `.dm-notes.md` in the worktree root", "In a job that came from a discussion"]}
+      ],
+      "enforced": []
     }
   ]
 }

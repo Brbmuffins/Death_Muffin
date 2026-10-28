@@ -2,7 +2,7 @@
 // Death Muffin dev-agent adapter for the Muffin Core Discord bot. A dumb transport: it forwards @mentions / thread messages / ✅🧪❌ reactions
 // in the configured channels (#death-muffin, #in-game-reports for in-game bug reports, the #jobs forum and the discussion forums) to the loopback
 // runner and posts whatever the runner asks it to post, including opening a thread for each new bug report, setting a #jobs post's tags and
-// opening a #jobs post from a discussion (!job). All decisions (allow-list, approver
+// opening a #jobs post from a discussion (!job), and forwards the bot account's posts it did not send (a terminal session's). All decisions (allow-list, approver
 // gate, tiers, rate limits) live in the runner; the bot holds no authority and no secret except the shared runner secret.
 // Installed to /opt/muffin/discord/dm-agent.js. Env (from /opt/muffin/dm-agent.env): DM_AGENT_SECRET, DM_AGENT_URL, DM_AGENT_CHANNEL_ID (optional override).
 
@@ -17,7 +17,7 @@ const IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 const IMAGES_PER_MESSAGE = 4;
 const CDN = /^https:\/\/(cdn\.discordapp\.com|media\.discordapp\.net)\//;
 
-function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile = fetch, channelIdOverride = '', log = console.log, pollWaitSec = 25, retryDelays = [1000, 2000, 4000, 8000, 15000] }) {
+function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile = fetch, channelIdOverride = '', log = console.log, pollWaitSec = 25, retryDelays = [1000, 2000, 4000, 8000, 15000], ownPostWaitMs = 8000 }) {
   let cachedChannel = channelIdOverride || ''; let cachedBugChannel = ''; let cachedJobs = ''; let cachedTalk = []; let cachedAt = 0; let stopped = false;
   const headers = { 'content-type': 'application/json', 'x-dm-secret': secret };
   // Messages, reactions and thread events are retried for ~30 s when the runner is unreachable (it restarts in a couple of seconds after an
@@ -69,11 +69,27 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
     }
     return (out.length ? `\n\n${out.join('\n\n')}` : '') + (skipped.length ? `\n[attachments not visible to the agent: ${skipped.join(', ')}]` : '');
   }
-  const safeReply = (msg, content) => msg.reply({ content: String(content).slice(0, 1900), allowedMentions: NO_PINGS }).catch((e) => log('[dm-agent] reply failed', e.message));
+  const safeReply = (msg, content) => msg.reply({ content: String(content).slice(0, 1900), allowedMentions: NO_PINGS }).then((m) => remember(m && m.id)).catch((e) => log('[dm-agent] reply failed', e.message));
+  // The ids of the messages this adapter sent. The bot's other messages in a thread of ours are a terminal session posting with the bot's account
+  // (Helix 2026-10-28): forwarded as botPost after a short wait, because Discord can deliver a message before send() has returned its id.
+  const own = new Set();
+  const remember = (id) => { if (!id) return; own.add(String(id)); if (own.size > 1000) own.delete(own.values().next().value); };
+  async function onOwnPost(msg) {
+    const ch = msg.channel;
+    if (msg.system || ![0, 19].includes(msg.type) || !(typeof ch.isThread === 'function' && ch.isThread()) || !await ours(ch.parentId)) return;   // plain messages and replies only
+    await new Promise((r) => setTimeout(r, ownPostWaitMs));
+    if (own.has(String(msg.id))) return;
+    const images = [];
+    const text = String(msg.content || '').trim() + await attachmentText(msg, images);
+    if (!text.trim() && !images.length) return;
+    await call('/event', { type: 'message', botPost: true, messageId: msg.id, channelId: ch.parentId, threadId: ch.id, parentId: ch.parentId, userId: msg.author.id,
+      username: 'Claude (terminal session)', text, mentioned: false, mentions: [], ...(images.length ? { images } : {}) });
+  }
 
   async function onMessage(msg) {
     try {
-      if (!msg.guild || !msg.author || msg.author.bot) return;
+      if (!msg.guild || !msg.author) return;
+      if (msg.author.bot) return void (msg.author.id === botId() && await onOwnPost(msg));
       const ch = msg.channel; const isThread = typeof ch.isThread === 'function' && ch.isThread();
       const parentId = isThread ? ch.parentId : null;
       if (!await ours(isThread ? parentId : ch.id)) return;
@@ -152,6 +168,7 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
     }
     if (t.replyTo) payload.reply = { messageReference: t.replyTo, failIfNotExists: false };
     const sent = await ch.send(payload);
+    remember(sent && sent.id);
     return sent;
   }
   // Renaming a thread the bot started itself: Discord lets a thread's owner edit its name, so no extra permission is normally needed.
@@ -198,6 +215,7 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
     const applied = tags.map((n) => byName.get(String(n).toLowerCase())).filter(Boolean).slice(0, 5);
     const t = await forum.threads.create({ name: String(name || 'Job').slice(0, 100), message: { content: String(content || '').slice(0, 1990), allowedMentions: NO_PINGS },
       appliedTags: applied.map((x) => String(x.id)), reason: 'Death Muffin dev agent: !job from a discussion' });
+    remember(t.id);   // a forum post's opening message has the post's id
     return { threadId: t.id, tags: applied.map((x) => String(x.name)) };
   }
   async function pollOnce() {

@@ -415,6 +415,16 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   A lore guide says where the story and the game's words live and to say where each fact comes from; it searches before saying something is
   not there, says a fetched web page was a summary and asks for a paste, and answers about as long as the message. A change to `art-manifest/`
   alone ships like documents, with no game update (notes on concept art had gone out as a full release). Opus was weighed and not taken.
+- **B79. A discussion hands over to a job through a confirmed brief; a thread keeps what it needs outside its workspace** (Helix, 2026-10-28:
+  "there should be a robust system for handing over from a discussion forum to a job", and "maybe just make it so they cant chsnge the gsme
+  without a !job"). `!job` in a discussion posts a brief in fixed parts (goal, decided and by whom, ruled out, open questions, what comes along);
+  a reply corrects it, and a ✅ from any approver opens the #jobs post with its job already set up. The job gets the brief, the whole
+  conversation, the drafts, the images and the concept pictures, and the confirmed brief is its plan (no plan-first step); its proposal says how it
+  measures against the brief. One discussion has one job: `!job` again sends an update there, `!job new` opens another, and the discussion hears
+  when the job ships or is dropped. A discussion may now write drafts and have concept pictures made; nothing else (no commits, builds, models
+  or sounds) happens without `!job`. Images, the agent's notes on what was decided and ruled out, long posts and a discussion's whole
+  conversation are kept outside the workspace (60 days quiet), so later rounds and rebuilt workspaces start from them. A terminal session's
+  posts in a thread reach the agent as team talk.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

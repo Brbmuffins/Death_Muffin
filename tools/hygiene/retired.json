@@ -533,7 +533,11 @@
     ".claude/**": "on purpose: keeps a future .claude folder protected; the repo has none today",
     "client/backend/**": "on purpose: keeps a future client/backend folder sensitive (the offline backend lives in client/net today, also sensitive)",
     "client/tests/realtime/**": "on purpose: keeps a future realtime test folder sensitive, like the relay and backend tests",
-    ".dm-guides/**": "on purpose: the runner's untracked copy of the agent's guides in each job worktree (runner/lib/guides.cjs) may never be committed"
+    ".dm-guides/**": "on purpose: the runner's untracked copy of the agent's guides in each job worktree (runner/lib/guides.cjs) may never be committed",
+    ".dm-keep/**": "on purpose: the thread's kept discussion and long posts, copied into each job worktree (runner/core.cjs syncKeep), may never be committed",
+    ".dm-drafts/**": "on purpose: a discussion's draft write-ups in its worktree, kept by the runner, may never be committed",
+    ".dm-inbox/**": "on purpose: the team's attached images in each job worktree, kept by the runner, may never be committed",
+    ".dm-notes.md": "on purpose: the agent's notes on its thread in each job worktree, kept by the runner, may never be committed"
   },
   "freeRunners": [
     "ubuntu-latest",

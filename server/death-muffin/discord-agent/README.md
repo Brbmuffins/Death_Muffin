@@ -111,6 +111,13 @@ it. Team talk is kept (`job.asides`, last 40; a discussion post's `talkLog` too)
 it; it counts toward no limit. Audit: `team-talk` (with how it was decided), `addressee` (each guess). The adapter sends who a message names
 (`mentions`, from the text's `<@id>`s) and whose message it replies to (`replyTo`).
 
+**Terminal-session posts** (Helix 2026-10-28): a Claude session on the VPS posts with the bot's own account. The adapter remembers the ids of the
+messages it sent for the runner (and the opening message of a #jobs post it made); any other plain message of the bot's account in a thread of
+ours is forwarded after 8 s (`ownPostWaitMs`; Discord can deliver a message before `send()` returns its id) as `{ botPost: true }`. The runner
+(`handleBotPost`, which also skips the ids its acks returned) treats it, in a thread that has a job, as team talk from "Claude (terminal session)":
+it starts no turn, a long one is kept whole under `.dm-keep/posts/` with the clipped text pointing there, and its images go to the inbox. Audit
+`terminal-post`.
+
 `!cancel` / `!stop` (requester or owner; a near-miss such as `!cencel` or `!stpo` gets "Did you mean !cancel?" and is not passed to the agent) stops the current step, agent turn or the runner's own check run,
 killing the whole process tree (Claude's Bash tool and `timeout` start their own process groups, so a group kill alone orphaned test runs).
 Messages queued before it are dropped, and no review or repair turn follows; the branch and worktree stay, and the next message continues.
@@ -127,13 +134,23 @@ Finished threads are archived so `#death-muffin` only lists live work (owner, 20
 
 ### Rounds (one thread, many changes)
 A thread does not close when its change ships (or is discarded, or swept after 7 idle days). The next message from an allowed requester starts a new ROUND in the same job record: a fresh branch `discord/<jobid>-<n>` and worktree cut from the current `origin/<baseBranch>`, proposal/shots/preview state reset, and a FRESH claude session (owner, 2026-10-10: resuming carried every earlier round into each step; one thread read 10M cached tokens). The first prompt starts with a note that this is a new round plus a one-line summary of the thread's earlier rounds (`job.history`: `{round, branch, shipSha | discarded, title, at}`). Follow-ups inside a round still resume that round's conversation. The audit log gets a `round` entry.
-- A message sent while a ship is running is kept (shown as waiting). If the ship goes live, the next round starts at once and the message is processed there (attached images are carried over); if the ship fails, the job returns to idle/proposed and the message is handled on the same branch.
+- A message sent while a ship is running is kept (shown as waiting). If the ship goes live, the next round starts at once and the message is processed there (attached images come along from the thread's keep); if the ship fails, the job returns to idle/proposed and the message is handled on the same branch.
+- Notes (Helix 2026-10-28): the agent keeps `.dm-notes.md` (Asked, Decided and by whom, Ruled out, Open; `PROMPT-godot.md`). After every turn the runner keeps it (`keepNotes`, up to 6,000 characters) and every fresh session (a new round, a rebuilt workspace) gets it in its first prompt and back in the worktree, so a later round does not ask again what was settled.
 - Turns: `maxTurnsPerJob` (40) now counts per round; `maxTurnsPerThread` (120) is a hard cap over the whole thread.
 - Step budget inside a turn (2026-10-11: a session re-reads its whole conversation on every step, so cost grows with steps x context; one 176-step, 443K-token session was a third of three days' spend). Every claude call gets `--max-turns <handoffEveryTurns>` (default 40; 0 = none). When a session stops there (`error_max_turns`), the runner asks that same session (`--max-turns 6`, context still cached) to commit finished work and write `.dm-handoff.md` (git-excluded, about 60 lines in six parts: the request, who asked and what still waits for approval; branch, commit and uncommitted changes; what is done and the decisions and limitations to keep; the checks run, their results and commit; the guides and code files needed next; what is left and the exact next step. A note records approval, it never grants it), then starts a FRESH session with the note plus the original request and carries on (audit `handoff {n, note}`, runs log `handoff`/`step`). Nothing is posted to the thread; one runner turn = one `job.turns`. After `maxHandoffs` (default 5) the turn stops with a plain "needed more than N sessions ... say continue" line; committed work stays.
 - After a sweep a new message also starts a new round (the sweep only released the worktree; the thread and its context are still useful). Commands other than `!status` answer "nothing is open" in a closed thread.
 
+### What a thread keeps
+A round's worktree goes when it ships or is discarded (a discussion's after a quiet day), so what the thread needs later lives in `state/keep/<job id>/`
+(Helix 2026-10-28) and `syncKeep` copies it into the workspace before every turn and when a round starts: `inbox/` (images, as `.dm-inbox/`),
+`notes.md` (as `.dm-notes.md`) and a discussion's `drafts/` (as `.dm-drafts/`) only where the worktree has no copy yet, so the agent's own edits win;
+`posts/` (long terminal-session posts), `discussion.md` (a discussion's whole conversation, every message in full, the newest ~1.5 MB once it passes
+2 MB) and `handover/` (what a job brought from its discussion) into `.dm-keep/`, read-only by convention. All of these are git-excluded
+(`lib/gitops.cjs` JOB_FILES). A thread's keep is deleted with the thread, or by the sweep once the thread has been quiet for `keepDays` (60; audit
+`keeps-dropped`).
+
 ### Images from people
-The adapter downloads image attachments (png/jpg/webp/gif, Discord CDN only, <= 8 MB each, <= 4 per message) and sends them to the runner as `images: [{name, b64}]` in the `/event` body; anything refused stays in the "not visible to the agent" note with the reason. The runner checks the bytes look like an image and writes them to `<worktree>/.dm-inbox/<msgId>-<name>` (git-excluded), appending `[image attached by NAME: .dm-inbox/... — Read it to see it]` to that message so the agent can `Read` it; for a new @mention the files are written in `bind()` once the worktree exists. A job keeps at most 40 MB of images (`job.inboxBytes`), then refuses with a note. Image bytes are never redacted or logged. `/event` accepts bodies up to 48 MB (4 x 8 MB as base64 is about 43 MB); every other route keeps the 1 MB cap.
+The adapter downloads image attachments (png/jpg/webp/gif, Discord CDN only, <= 8 MB each, <= 4 per message) and sends them to the runner as `images: [{name, b64}]` in the `/event` body; anything refused stays in the "not visible to the agent" note with the reason. The runner checks the bytes look like an image and keeps them as `inbox/<msgId>-<name>` in the thread's keep (also for team talk, paused messages and terminal posts), copied to `<worktree>/.dm-inbox/` (git-excluded), appending `[image attached by NAME: .dm-inbox/... — Read it to see it]` to that message so the agent can `Read` it; for a new @mention the files are copied in once the worktree exists. A thread keeps at most 40 MB of images (`job.inboxBytes`), then refuses with a note. Image bytes are never redacted or logged. `/event` accepts bodies up to 48 MB (4 x 8 MB as base64 is about 43 MB); every other route keeps the 1 MB cap.
 
 ### Deleted threads
 The adapter forwards discord.js `threadDelete` for threads under the configured channel as `{type: 'thread-deleted', threadId, ...}`. The runner removes the job's worktree, local + remote branch and preview dir at once, sets `status: 'deleted'` (history `{deleted: true}`, audit `thread-deleted`) and posts nothing to that thread again (queued outbox ops are dropped). A running step is cancelled and cleaned up when it unwinds; a ship in progress is never interrupted: it finishes, then the cleanup runs and queued messages do not start a round. A deleted job ignores all further events and is skipped by the sweep.
@@ -411,21 +428,37 @@ is skipped. The runner archives a post only an hour after its job shipped, never
 
 The forums in `talkChannelIds` are for the team to talk ideas over. The first @-mention in a post (or `!job`) brings Muffin Core in, with the
 post's title and last 50 messages; from then on it answers every message there (no mention needed) until `!pause`. It talks like the team's
-senior designer: answers from the game as it is, brainstorms, writes lore, sketches class kits. It cannot change anything there: the agent runs
-with read-only tools (Read, Glob, Grep and the web; no Edit, Write or Bash, `runner/lib/agent.cjs` TALK_PROMPT), and the runner says its reply
-and ends the turn (`talkAfterTurn`), so nothing is verified, proposed or bought. The one picture it can ask for is a screenshot of the live game
+senior designer: answers from the game as it is, brainstorms, writes lore, sketches class kits. It cannot change the game there (Helix 2026-10-28:
+"they cant change the game without a !job"): it reads the worktree and the web, Edit and Write are allowed only on `.dm-notes.md`, `.dm-drafts/**`,
+`.dm-concept-request.json` and `art-manifest/gemini-jobs/**`, there is no Bash (`runner/lib/agent.cjs` TALK_PROMPT, TALK_WRITABLE), and the runner
+says its reply and ends the turn (`talkAfterTurn`), so nothing is committed, verified, proposed, built or bought. After the turn each new or changed
+draft (`.dm-drafts/<name>`, .md/.txt/.json/.csv, up to 100 KB, 5 a turn; `postDrafts`) is posted as a file and kept; anything else there gets one
+"Not posted" line. A concept request is made like a job's (`conceptStage`, the same budget gate and per-round cap) and posted with "`!job` carries
+the pictures into the job"; nothing is built from it there. The one other picture it can ask for is a screenshot of the live game
 (Helix 2026-10-23: "only of the live game"): with a team PC online (the turn's note says so), it ends its reply with a ```` ```dm-shot ```` block
 holding a shot plan; the runner takes the block out of the reply (`takeShotBlock`), builds the live revision (`rev` of `clientManifest`) in a scratch
-worktree `teamlive-<job>` for a team PC and posts the pictures labelled "LIVE GAME · <rev>" (`liveShots`, `label-shot.py --live`). Concept
-pictures still need a #jobs post. `!discard` has nothing to discard; the post is never
+worktree `teamlive-<job>` for a team PC and posts the pictures labelled "LIVE GAME · <rev>" (`liveShots`, `label-shot.py --live`). `!discard` has nothing to discard; the post is never
 renamed, tagged or archived. The conversation (`job.talkLog`, the last 60 messages / 20k characters, both sides) goes to every fresh session: a
 new round when the turn budget (`maxTurnsPerJob`) is used up, or after `talkIdleHours` (24) without messages, when the sweep quietly removes the
 post's workspace.
 
-`!job` (or `!job for War`) writes the discussion up: the agent answers with `JOB TITLE: ...` and the job text, and the runner opens a new #jobs
-post with it (a `{ forumPost }` op; the adapter creates it with `threads.create`, nobody pinged), tagged To do and the owner, and links it in the
-discussion. `jobsOwners` maps a tag to the words and user ids that mean it (`war`, `warbogar`, an @-mention); an unknown name is refused. The
-new post is an ordinary #jobs post: nothing is built until someone mentions Muffin Core there.
+**The handover** (Helix 2026-10-28: "a robust system for handing over from a discussion forum to a job"). `!job` (`!job for War`, `!job new`; any
+other words after it go to the agent) asks for a brief: `JOB TITLE: ...`, then Goal (what players see), Decided (and who said it), Ruled out, Open
+questions and Comes along (the drafts and pictures the job should use). The runner posts it in the discussion (`offerBrief`, `job.brief`) with ✅;
+a reply corrects it first (while a brief waits, under 48 h, the turn is told to answer a correction with the whole brief again, which replaces it
+and is posted again; only the newest brief's ✅ counts). A ✅ from any approver (`handOver`):
+- **New job**: opens the #jobs post (a `{ forumPost }` op; the adapter creates it with `threads.create`, nobody pinged), tagged To do and the owner,
+  with the brief and "from <#discussion>, asked by X, confirmed by Y", and sets up its job at once (`job.handover`; the one who typed `!job` owns
+  it). `carryOver` copies into its keep the confirmed brief (`handover/brief.md`), the whole conversation (`handover/discussion.md`), the drafts
+  (`handover/drafts/`), the images and long posts, and the concept pictures as shown (pinned by hash, back in `art-src/concepts/`). Nothing is
+  built until someone mentions Muffin Core there; that mention brings the post's own messages too. Until a round of it ships, every fresh session
+  is told the brief is the plan the team agreed to (build it, no plan first, ask only about what it leaves open; `handoverNote`) and to add a
+  `"brief"` line to `.dm-result.json`, shown first on the proposal ("Brief: 4 of 5 done; not yet: the door glow", or "not checked").
+- **Update**: when the discussion's job (`handoverTo`) is still open (not shipped, discarded or deleted) and `!job new` was not used, the brief
+  goes into that job's thread as "Update from <#discussion>", replaces its `brief.md`, refreshes what came along, and its next turn is told.
+`jobsOwners` maps a tag to the words and user ids that mean it (`war`, `warbogar`, an @-mention); an unknown name is refused. When a round of a
+handed-over job ships or is discarded, the discussion gets one line (`reportBack`, once per round and outcome). Audit `job-brief`,
+`job-brief-confirmed`, `job-post`, `job-update`.
 
 ## Under the hood: checks, previews and the ship
 
@@ -581,6 +614,7 @@ other down. A job's check gets the import from the shared cache (`prep.sh`), and
   a sibling worktree and the host `/tmp`, after trying to remount `/` and its parents rw, umount `/tmp` and `/dev/shm`, and unshare again. `/proc`, `/sys`, `/dev` stay as they are (kernel views, root-owned); `/dev/shm` is private.
 - AI box: `claude -p --restricted --permission-mode dontAsk`, tools = Read/Edit/Write/Glob/Grep + `agit` (filtered git) +
   `check-godot.sh --rerun <suites>`, `regen-godot.sh` and `shot-godot.sh` (unshare -rnm: no network, home read-only except the worktree). No push, no deploy, no secrets in its env.
+  A discussion post: Read/Glob/Grep, Edit/Write only on its notes, drafts and concept requests, no Bash.
 - Discord's 2000-character limit: agent replies are split across messages (code blocks kept balanced) and anything over ~4 messages is a preview plus `reply.md` (`runner/lib/discordText.cjs`). A long paste arrives as Discord's `message.txt`; the adapter reads text attachments from Discord's CDN only (≤100 KB each, ≤60,000 characters in all) into the person's message.
 - Person text is wrapped as data (`<request from=… role=…>`, role from config); rules cannot be changed by messages.
 - Runner redacts every outgoing string and audit field; mentions are disabled (no post tags anyone).
