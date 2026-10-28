@@ -260,8 +260,8 @@ approver ✅ ── owner or any full approver (self-approval allowed, like code
 runner     ── per model, in order: art-run.sh in the job's worktree: flock -> balance before -> gemini.mjs (skipped: the shown concept is reused; a concept that changed
               since it was shown is refused, one nobody saw is deleted and regenerated) -> tripo.mjs run --yes -> balance after. One ledger entry per model; a failure stops the
               set and offers the rest again. Posts Tripo's preview images and the REAL spend
-agent turn ── told the files are ready: build-art.sh <id> per model (sandboxed: tools/build-characters.mjs, then dequantize into client/assets/slice/models/...), commits specs + records + GLB,
-              check-godot.sh (adds .import/textures), render-model.sh <ids> (sandboxed Blender, front/side/back sheet, posted after the turn), wires the models in where asked,
+agent turn ── told the files are ready: build-art.sh <id> per model (sandboxed: tools/build-characters.mjs, then dequantize into client/assets/slice/models/... with its textures), commits specs + records + GLB,
+              check-godot.sh (imports them, adds .import files), render-model.sh <ids> (sandboxed Blender, front/side/back sheet, posted after the turn), wires the models in where asked,
               in-game shots of a hero wearing gear (shot plan "equip" + "view": "hero"), PATCH_NOTES, then the usual proposal / ✅ ship (art files make it a sensitive-tier proposal: full approvers only)
 ```
 

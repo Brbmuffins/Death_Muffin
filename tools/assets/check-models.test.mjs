@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { HERO_CLIPS, check, kindOf, readGlb, staffClips } from './check-models.mjs';
+import { BUILDINGS, HERO_CLIPS, RULES, check, kindOf, readGlb, staffClips } from './check-models.mjs';
 
 const SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), 'check-models.mjs');
 const BIPED = ['Hips', 'Spine', 'Head', 'L_Arm', 'R_Arm'];
@@ -48,6 +48,14 @@ test('models sort into heroes, crowd creatures, characters, gear and props', () 
   assert.strictEqual(kindOf('client/assets/slice/models/props/necro_helm_cowl.glb', crowd).kind, 'gear');
   assert.strictEqual(kindOf('client/assets/slice/models/props/gear_soul_lantern.glb', crowd).kind, 'gear');
   assert.strictEqual(kindOf('client/assets/slice/models/props/shroud_moth.glb', crowd).kind, 'prop');
+  for (const b of BUILDINGS) assert.strictEqual(kindOf(`client/assets/slice/models/props/${b}.glb`, crowd).kind, 'building');
+});
+
+test('a building may be heavier than a prop', () => {
+  const big = readGlb(glb({ tris: RULES.prop.cap + 1 }));
+  assert.ok(RULES.building.cap > RULES.prop.cap);
+  assert.deepStrictEqual(check('x.glb', big, 'building', BIPED).errors, []);
+  assert.match(check('x.glb', big, 'prop', BIPED).errors[0], /over the prop cap/);
 });
 
 test('the rules: caps and materials fail, a target is a warning, gear has no skeleton', () => {

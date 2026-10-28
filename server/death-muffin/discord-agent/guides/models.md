@@ -3,8 +3,8 @@
 You cannot call Gemini or the team PCs yourself and you never see a key; the runner generates. Use this only when someone wants a NEW model (a character,
 creature, boss, prop, weapon, helm, mantle, or a whole armor set); never for anything an existing model can do. A new move or an edit to a model that
 exists (colour, size of a part, a part removed, fewer triangles) is a Blender job (`.dm-guides/blender.md`), free and done here. Read `ASSET_PIPELINE.md`
-"Image to model" first. Face budgets: hero 12k, boss 14k, horde enemy 4 to 5k, props 0.9 to 3.5k. `check-godot.sh` refuses a model over its cap (gear 4k,
-props 6k, heroes and characters 20k), with more than one material, or a hero body without the shared biped skeleton and its combat clips
+"Image to model" first. Face budgets: hero 12k, boss 14k, horde enemy 4 to 5k, props 0.9 to 3.5k, buildings (the mausoleum) 8k. `check-godot.sh` refuses a model over its cap (gear 4k,
+props 6k, buildings 10k, heroes and characters 20k), with more than one material, or a hero body without the shared biped skeleton and its combat clips
 (`tools/assets/check-models.mjs`). A new model is made by Pixal3D on a team PC's graphics card (free) and finished in Blender here (DECISIONS B77).
 People see every stage in the thread:
 
@@ -41,11 +41,12 @@ Then, one command per call, foreground (each takes the renderer lock; a build ta
 - `__TOOLS__/make-model.sh fit <id> --stand --height <metres> --yaw <degrees>` for a new subject: it stands the model on its feet and writes the
   record's `frame` and `art-src/comfy/<id>/work/fit.glb`; render that (`render-model.sh art-src/comfy/<id>/work/fit.glb`): the front column must show
   its face. If not, change `--yaw` by what is off (90, 180, ...) and fit again. A remake of a model in the game fits onto the old one instead:
-  `--ref client/assets/slice/models/<id>/character.glb` (props: `.../props/<name>.glb`) `--tilt-min 0`.
+  `--ref client/assets/slice/models/<id>/character.glb` (props: `.../props/<name>.glb`) `--tilt-min 0`. Render the fit beside the old model: a
+  nearly symmetric shape (a building) can fit back to front, its door at the other end; fit again with `--yaw 180`.
 - `__TOOLS__/make-model.sh build <id>` does the steps into `art-src/comfy/<id>/game.glb` (`--from N` redoes from step N after a change to it);
   `render-model.sh art-src/comfy/<id>/game.glb` to check it.
-- `__TOOLS__/build-art.sh <id>` installs it under `client/assets/slice/models/`; run `__TOOLS__/check-godot.sh --rerun code_load` (Godot's import adds
-  `.import` files and textures next to the model: commit those too). Commit the record, the concept's job file, `art-manifest/images.json` and the model.
+- `__TOOLS__/build-art.sh <id>` installs it under `client/assets/slice/models/` with its textures; run `__TOOLS__/check-godot.sh --rerun code_load` (Godot
+  imports them, with `.import` files next to the model: commit those too). Commit the record, the concept's job file, `art-manifest/images.json` and the model.
   A creature's row faces it the way the hounds' do (`client/data/slice/enemies.json` `models.bone_hound`: `"yaw": 3.141592653589793`).
 - A rigged model has no moves yet: they are a `motion` Blender job (`.dm-guides/blender.md`) on a recipe `tools/blender/recipes/<id>.json` (copy
   `bone_hound.json` for four legs, `fen_spider.json` for eight; its bone names are the rig's). A `biped` body takes the heroes' whole move set in

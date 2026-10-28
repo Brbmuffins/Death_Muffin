@@ -8,18 +8,20 @@ by side), and a "Done when" check ends it. The technical detail of each gap is i
 Every item says what kind it is: **Fix** (what happens **now** and what it will be **after**), **New** (what it gives) or **Decide** (a
 question only the team can answer, with Claude's recommendation).
 
-## Where we are (2026-10-22)
+## Where we are (2026-10-28)
 
 - **The rebuilt game is live** since launch day, 2026-10-18 (B49): the same game on a C++ combat core and Forward+ graphics, its biggest
   fight 3 to 4 times faster (the Bell Sanctum's Full Party on Ultra, Helix's PC: 61 to 224 fps). The old game is retired (B57, tag
   `archive/old-game`): a rollback publishes an earlier build of the game.
-- **Now: Phase 1, settle the launch.** Everything in it is built; left are two decisions and a week of play reports (2026-10-26 at the
-  earliest). Beside it, Phase 2's first pieces landed on 2026-10-21: one rules file for every session and Codex (B72), the docs map, and
-  the client manual split into guides.
-- **Next:** Phase 2, the foundation's core (the vision, how we work, the standards, content in one place with checks, recipes, the server
-  owning every value); Phase 3, Ascension redesigned (it left on launch day; players' saved Ascension data is kept, B36); Phase 4, new
-  content (the look of the world, places, enemies and bosses, the other five classes, quests, endgame). **Later:** off-site backups, phones,
-  and 1.0, the first public release.
+- **Phase 1, settling the launch, is done** (Helix closed it 2026-10-28). Its play reports came in thin: 17 sessions, about 3 hours, at most
+  2 players on a build, so how the game runs on weak PCs is still unknown ("Later": the old-PC option).
+- **Now: Phase 2, the foundation's core** (the vision, how we work, the standards, content in one place with checks, recipes, the server
+  owning every value). Its first pieces landed on 2026-10-21 (one rules file for every session and Codex, B72; the docs map; the client
+  manual as guides), and the week after built how models are made: Blender for moves and edits (B74), a model seen in the game before it
+  ships (B75), and new models from a picture on the team PCs with Pixal3D (B76, B77).
+- **Next:** Phase 3, Ascension redesigned (it left on launch day; players' saved Ascension data is kept, B36); Phase 4, new content (the
+  look of the world, places, enemies and bosses, the other five classes, quests, endgame). **Later:** off-site backups, phones, and 1.0,
+  the first public release.
 
 ## Waiting on Helix
 
@@ -34,47 +36,6 @@ Nothing right now. Each Decide item says what it waits for.
 - **Something players notice, every week or two:** the next polish-list item (top first) or a fix players asked for, with its patch notes,
   so the game keeps moving while the foundation is built.
 - Every gameplay change is measured; it is slower only on purpose (DECISIONS B71).
-
-## Phase 1: settle the launch
-
-Goal: the new game has everything the old one had, it is the only game, we hear when something breaks, and we see how it runs on
-players' PCs (Helix, 2026-10-18: "we can do these things asap").
-
-Done, 2026-10-18 to 2026-10-20 (how each works is in the page named):
-- [x] **Fix: nobody was told when the game's servers stopped.** Each service is checked every minute; an outage posts to #build-alerts
-  (`server/death-muffin/ops/health-watch.mjs`).
-- [x] **Fix: Grave Surges are missing.** Back (`client/next/areas/dm_grave_surge.gd`).
-- [x] **Fix: crash reports could not point inside the combat core.** Crash notes and every build's symbols name the function and line
-  (native/README.md "Crash notes"; the Windows half has not met a real crash yet).
-- [x] **Fix: the Discord agent tested the old game, slowly.** It works on the game against the latest main, its proposals are drafts (🧪
-  tests, ✅ tests and ships, B63), and a document-only change ships no update (server/death-muffin/discord-agent/README.md).
-- [x] **Fix: testing was slow and done two ways** (B59). One setup (`tools/check/prep.sh`), CI the one gate for everyone (about 4
-  minutes), and tests that read every number from the game's data (tools/check/README.md).
-- [x] **Fix: the old game's folder was still in the repository** (B57). Deleted 2026-10-19; its useful suites moved to `client/tests`.
-- [x] **Fix: War's content pipelines ran on trust.** Models over their caps or off the shared skeleton are refused
-  (`tools/assets/check-models.mjs`); new sounds are levelled to -20 LUFS and recorded (docs/AUDIO-SOURCES.md).
-- [x] **New: play reports.** Frame times, hitches, graphics card and time per area from every session, per release on the site
-  (client/next/perf/README.md "Play reports").
-- [x] **New: the team app** (B54, B55, B58, B60-B62, B64, B66): a tray app on the three team PCs for proposal pictures and videos,
-  benchmarks and release checks; app 0.4.7 (teamapp/README.md).
-- [x] **Fix: first-use stutters.** A new game or a Settings save threw away the shader pipelines the loading screen had compiled → the
-  preset tells the renderer only what changed. On Brbmuffins' RX 6600: 424 compilations → 10, the worst cast 19.4 → 6.5 ms. The warm-up's
-  blind spots remain (`client/tests/warm_coverage.gd`); weaker cards are watched through the play reports.
-- [x] **Fix: the Discord agent could not put a picture in the game** (B70). Every flat picture is a kind (`tools/pictures/kinds.json`),
-  the agent builds the chosen concepts into the game, and a check fails when an ability borrows another one's icon (ASSET_PIPELINE.md
-  "Pictures").
-
-Open:
-- [ ] **Decide: a team PC runs the Discord agent's unreviewed branch** (found 2026-10-19). Pictures and videos are made from the change
-  itself, so its game code runs on the team PC: offline and in its own folder, but able to reach the PC (run a program, read a file). Today
-  only War, Muffins and Helix can ask the agent for changes, which limits the risk. Claude recommends: before team PCs take jobs from anyone
-  else, refuse a team build whose game code reaches outside the game (programs, files outside its folder, the network); the video steps
-  are data and bring no code (B64). Waits for: anyone outside the team getting the agent.
-- [ ] **Decide: an "Ultra Low (old PCs)" option** (B35). If Low on the new renderer misses the laptop floor (60 fps in normal play, 45 in
-  the biggest fight), add an option that restarts the game in the old, lighter renderer. Waits for: the play reports from weak PCs.
-
-Done when: the old game's folder is gone, every check and screenshot is of the live game, the servers are watched (all three done), and a
-week of play reports is in.
 
 ## Phase 2: the foundation's core
 
@@ -286,6 +247,13 @@ Done 2026-10-20:
 
 ## Later
 
+- **Decide: a team PC runs the Discord agent's unreviewed branch** (found 2026-10-19). Pictures and videos are made from the change
+  itself, so its game code runs on the team PC: offline and in its own folder, but able to reach the PC (run a program, read a file). Today
+  only War, Muffins and Helix can ask the agent for changes, which limits the risk. Claude recommends: before team PCs take jobs from anyone
+  else, refuse a team build whose game code reaches outside the game (programs, files outside its folder, the network); the video steps
+  are data and bring no code (B64). Waits for: anyone outside the team getting the agent.
+- **Decide: an "Ultra Low (old PCs)" option** (B35). If Low on the new renderer misses the laptop floor (60 fps in normal play, 45 in
+  the biggest fight), add an option that restarts the game in the old, lighter renderer. Waits for: the play reports from weak PCs.
 - **Fix: backups never leave this server** (B51). Now: the database is backed up every night, but onto the same server, and the raw art
   sources, the licensed packs and the private effect sheets exist only here. After: every night a copy of everything not in git goes to a
   cloud storage bucket, and a restore from it is tested.
@@ -326,6 +294,9 @@ KNOWN-GAPS.md instead.
   `SpringBoneSimulator3D`), not a full cloth simulation, which is too heavy for weaker PCs. The cape chain built by the Blender `cloak` job
   (`Cape01`-`Cape04`) and the mastery cape's stiff mesh (`DmGearProps.build_cape`) would be the first to move onto it. Section: Phase 4,
   new content. 2026-10-28.
+- The lighting bake as a team app job: the app on a team PC fetches the bake kit, bakes and sends the result back by itself, as it does
+  pictures and model runs, so swapping a building or moving a prop no longer waits for someone to double-click `Bake-Lighting.bat` and drag
+  the zip into Discord (the Graves bake for the mausoleum, 2026-10-28). Section: Phase 2 C, content pipelines. 2026-10-28.
 - A hint for a party guest standing in a boss's rot (a guest's core lists no zones today). Section: polish list, co-op gaps. 2026-10-17.
 - The staff held near its top so its foot rests on the floor at idle: with `grip_t` 0.42 of a 1.7 m staff the hand would have to be 0.72 m
   off the floor, below the hero's reach, so the foot hangs 0.3-0.45 m up; `grip_t` about 0.65 (and the staff recipe re-run) would plant it.
@@ -346,6 +317,9 @@ KNOWN-GAPS.md instead.
 
 ## Done
 
+- 2026-10-18 to 2026-10-28: **Phase 1, settling the launch**: outage alerts, Grave Surges back, crash notes inside the combat core, the
+  Discord agent on the new game, one test setup with CI the one gate (B59), the old game's folder gone (B57), model and sound checks, play
+  reports, the team app (B54-B66), fewer first-use stutters, and pictures by the agent (B70). Closed by Helix with thin play reports.
 - 2026-10-21: **context for every session**: one rules file for Claude and Codex (B72), the docs map, the client manual as guides, the
   Discord agent's guides loaded on demand, and size ceilings on rule files and guides.
 - 2026-10-16 to 2026-10-18: **the rebuild**, a C++ combat core and Forward+ graphics under the same game (B34-B50).

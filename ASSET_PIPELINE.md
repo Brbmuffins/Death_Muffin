@@ -38,9 +38,9 @@ ignored:
 - Bipeds use the biped rig; quadrupeds `rig_type: "quadruped"` (one walk preset). Do not use `rig_type: "avian"` (boned one wing);
   use a biped rig for winged humanoids or no rig for animals.
 - Tripo's `hurt` preset is a 14 s lying-injured clip, not a flinch; `tools/build-characters.mjs` keeps it out of play.
-- Props: omit `rig` and `animations`. Face budgets: hero 12k, boss 14k, horde enemy 4-5k, props 0.9-3.5k. `tools/assets/check-models.mjs`
+- Props: omit `rig` and `animations`. Face budgets: hero 12k, boss 14k, horde enemy 4-5k, props 0.9-3.5k, buildings 8k (`BUILDINGS`: the mausoleum). `tools/assets/check-models.mjs`
   (`npm run check:models`: CI over every model, the Discord agent's check over the models a change adds or edits) fails a model over its cap
-  (gear 4k, props 6k, heroes and other characters 20k), with more than one material, gear with a skeleton, or a hero body without the shared biped
+  (gear 4k, props 6k, buildings 10k, heroes and other characters 20k), with more than one material, gear with a skeleton, or a hero body without the shared biped
   skeleton or its combat clips; over the face budget but under the cap is a warning. Crowd creatures are checked by the crowd bake (5k).
 - Combat-trim source clips (`box_03`, `pitch_baseball`, `sing_01`, `basketball_shot`, see `build-characters.mjs` `COMBAT_TRIMS`) need no retarget credits for another biped hero: all Tripo biped rigs share one joint set, so copy the four `anim_*.glb` files from `art-src/tripo/hero_gravecaller/` into the new hero's folder before `build-characters.mjs`; it borrows them from there by itself for `hero_leg_*` bodies and the heroes in `NECRO_HEROES` (include a new playable hero there, or it loses its combat swings).
 - Runs are resumable: task ids are written to `art-src/tripo/<id>/state.json` before polling; failed tasks refund.
@@ -95,7 +95,7 @@ loses them until `node tools/blender/jobs.mjs replay <id>` (`build-art.sh` does 
 **From a run to the game file:** `node tools/blender/make.mjs` does the Blender steps the record `art-manifest/comfy/<id>.json` lists on the run's
 detailed model and writes the record's `game` file (the Discord agent runs it in its sandbox as `make-model.sh`). `make.mjs fit <id>` finds the game
 placement first: `--stand --height <m> --yaw <deg>` for a new subject (stood on the side it rests on), `--ref <old model>` for a remake (fitted onto
-the old one); either way the placed model is written to `work/fit.glb` to look at. The steps (`tools/blender/comfy/kinds.json`, `make.mjs kinds`):
+the old one; a nearly symmetric shape such as a building can fit back to front, which `--yaw 180` turns round); either way the placed model is written to `work/fit.glb` to look at. The steps (`tools/blender/comfy/kinds.json`, `make.mjs kinds`):
 `finish` (the game mesh: a solid rebuild, cut to the budget, new UVs packed by xatlas, the detailed paint, roughness, metal and normals baked on),
 `place`, `bend` (a part turned about a joint before the bake: the hound's head), `grime` (dirt painted in) and `rig`, a skeleton built from the
 placed model's shape: `quad` is the four-legged one the bone hound has (`Root`, `Hip`, `Spine1-2`, `Chest`, `Neck1-2`, `Head`, `Tail_A-D`,
@@ -119,7 +119,7 @@ The game's files are in `client/assets/` (committed; the masters of older art an
 - Then `godot --headless --path client --import` and commit the generated `.import` files. Textures used in 3D (model textures, floors, FX sprites)
   must be VRAM Compressed: set `compress/mode=2` in their `.import` (normal maps `*NormalGL*` also `compress/normal_map=1`) and re-import; a fresh
   import is Lossless, and `npm run hygiene` fails until it is changed (`npm run hygiene -- --fix-textures` does it; the agent's `build-art.sh` writes
-  a model's texture `.import` files this way before Godot first imports them). UI art stays Lossless.
+  a model's textures next to it, and a new one's `.import` this way, before Godot first imports them). UI art stays Lossless.
 
 ## Pictures (icons, portraits, loading art, floor and wall textures)
 

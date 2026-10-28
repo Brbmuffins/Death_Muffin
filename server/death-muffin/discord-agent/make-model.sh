@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # The agent's Blender steps on a model made from a ComfyUI run (guides/models.md, ASSET_PIPELINE.md "Image to model"), run from the worktree root:
 #   make-model.sh fit <id> --stand [--yaw D] [--height M] [--max-tilt D]     the game placement of a new subject (written as the record's frame)
-#   make-model.sh fit <id> --ref <model.glb> [--tilt-min D] [--max-tilt D]   ... or fitted onto an older model of the same subject (a file in the worktree)
+#   make-model.sh fit <id> --ref <model.glb> [--tilt-min D] [--max-tilt D] [--yaw D]   ... or fitted onto an older model of the same subject (a file in
+#                                                                            the worktree); --yaw 180 turns a fit that came out back to front
 #   make-model.sh build <id> [--from N]                                      the record's steps on the run's model -> art-src/comfy/<id>/<game file>
 #   make-model.sh kinds                                                      what each step does and takes
 # Runs the worktree's tools/blender/make.mjs (the record art-manifest/comfy/<id>.json, the run's model in art-src/comfy/<id>/) inside the same
@@ -11,7 +12,7 @@
 set -uo pipefail
 TOP=$(git rev-parse --show-toplevel) || exit 2
 TOOLS=$(cd "$(dirname "$0")" && pwd)
-usage() { echo "usage: make-model.sh fit <id> --stand [--yaw D] [--height M] [--max-tilt D] | fit <id> --ref <model.glb> [--tilt-min D] [--max-tilt D] | build <id> [--from N] | kinds"; exit 2; }
+usage() { echo "usage: make-model.sh fit <id> --stand [--yaw D] [--height M] [--max-tilt D] | fit <id> --ref <model.glb> [--tilt-min D] [--max-tilt D] [--yaw D] | build <id> [--from N] | kinds"; exit 2; }
 CMD=${1:-}; NUM='^-?[0-9]+([.][0-9]+)?$'
 case "$CMD" in
   kinds) [ $# -eq 1 ] || usage;;

@@ -19,6 +19,7 @@ export const RULES = {
   hero: { target: 12000, cap: 20000, materials: 1, rig: 'biped', clips: true },
   gear: { target: 3500, cap: 4000, materials: 1, rig: 'none' },
   prop: { target: 3500, cap: 6000, materials: 1, rig: 'any' },
+  building: { target: 8000, cap: 10000, materials: 1, rig: 'any' },
   character: { target: 14000, cap: 20000, materials: 1, rig: 'any' },
 };
 // The clips every hero body carries (tools/build-characters.mjs gives them to every hero body): the rites' swings, the hit reaction, the death
@@ -51,6 +52,9 @@ export function readGlb(buf) {
   return { tris, materials: (json.materials || []).length, joints, clips: (json.animations || []).map((a) => a.name || '') };
 }
 
+// The props players walk around, on the building budget (Helix, 2026-10-26: buildings 8,000 triangles)
+export const BUILDINGS = new Set(['mausoleum']);
+
 export function kindOf(rel, crowdModels) {
   const name = rel.endsWith('/character.glb') ? path.basename(path.dirname(rel)) : path.basename(rel, '.glb');
   if (rel.endsWith('/character.glb')) {
@@ -58,7 +62,7 @@ export function kindOf(rel, crowdModels) {
     if (crowdModels.has(name)) return { kind: 'crowd', name };
     return { kind: 'character', name };
   }
-  if (/\/props\//.test(rel)) return { kind: /^(necro_(wpn|helm|mantle)_|gear_)/.test(name) ? 'gear' : 'prop', name };
+  if (/\/props\//.test(rel)) return { kind: /^(necro_(wpn|helm|mantle)_|gear_)/.test(name) ? 'gear' : BUILDINGS.has(name) ? 'building' : 'prop', name };
   return { kind: 'prop', name };
 }
 

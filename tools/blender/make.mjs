@@ -3,9 +3,11 @@
  * make.mjs - a game model from a ComfyUI run (ASSET_PIPELINE.md "Image to model"): the run's detailed model through the Blender steps its record lists.
  *
  *   node tools/blender/make.mjs build <id> [--from N]          do the record's steps on art-src/comfy/<id>/<run.file>, write the record's game file
- *   node tools/blender/make.mjs fit <id> --ref <model.glb> [--tilt-min 15] [--max-tilt 180]
+ *   node tools/blender/make.mjs fit <id> --ref <model.glb> [--tilt-min 15] [--max-tilt 180] [--yaw 0]
  *                                                              find the game placement by fitting the detailed model onto an older model of the same
- *                                                              subject (a Tripo or live one: similarity ICP from 8 turns); written as the record's frame
+ *                                                              subject (a Tripo or live one: similarity ICP from 8 turns); written as the record's frame.
+ *                                                              --yaw turns the fit about its middle: 180 for a nearly symmetric shape (a building) that
+ *                                                              fitted back to front
  *   node tools/blender/make.mjs fit <id> --stand [--yaw 0] [--height 0] [--max-tilt 60]
  *                                                              a new subject: stood on the side it rests on, turned yaw degrees, height metres tall
  *                                                              (either way the placed model is written to work/fit.glb, to look at)
@@ -174,7 +176,7 @@ export function fit(id, flags) {
     const ref = resolve(flags.ref);
     if (!existsSync(ref)) throw new Error(`no ${flags.ref}`);
     process.env.ALIGN_MAX_TILT = String(flags['max-tilt'] ?? 180);
-    runBlender('comfy/align.py', [ref, src, join(work, 'fit.glb'), String(flags['tilt-min'] ?? 15), frame]);
+    runBlender('comfy/align.py', [ref, src, join(work, 'fit.glb'), String(flags['tilt-min'] ?? 15), frame, String(flags.yaw ?? 0)]);
   } else if (flags.stand) {
     runBlender('comfy/stand.py', [src, frame, '--yaw', String(flags.yaw ?? 0), '--height', String(flags.height ?? 0), '--max-tilt', String(flags['max-tilt'] ?? 60)]);
     runBlender('comfy/place.py', [src, join(work, 'fit.glb'), frame]);

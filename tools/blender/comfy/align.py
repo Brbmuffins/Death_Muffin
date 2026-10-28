@@ -1,6 +1,8 @@
-# blender -b --python align.py -- <reference.glb> <model.glb> <out.glb> [<min tilt to fix, degrees: 15>] [<xform.json>] : turns (and scales) a model onto a reference of the same subject (a Pixal3D model onto the
-# TRELLIS.2 or Tripo one, which face forward): similarity ICP from 8 starting turns, the best kept. Prints the turn (about the up axis), the tilt left over (degrees
-# between the model's up and the reference's), the scale and the mean gap (% of height), and writes the model turned, standing on the ground, as <out.glb>.
+# blender -b --python align.py -- <reference.glb> <model.glb> <out.glb> [<min tilt to fix, degrees: 15>] [<xform.json>] [<extra turn, degrees: 0>] : turns (and scales)
+# a model onto a reference of the same subject (a Pixal3D model onto the TRELLIS.2 or Tripo one, which face forward): similarity ICP from 8 starting turns, the best
+# kept. A nearly symmetric shape (a building) can fit back to front just as well; the extra turn then turns the fit about the up axis through its middle. Prints the
+# turn (about the up axis), the tilt left over (degrees between the model's up and the reference's), the scale and the mean gap (% of height), and writes the model
+# turned, standing on the ground, as <out.glb>.
 import bpy, sys, math, json, os
 import mathutils
 import numpy as np
@@ -10,6 +12,7 @@ from mathutils.kdtree import KDTree
 a = sys.argv[sys.argv.index('--') + 1:]
 REF, SRC, OUT = a[0], a[1], a[2]
 TILT_MIN = float(a[3]) if len(a) > 3 else 15.0   # degrees
+EXTRA = math.radians(float(a[5])) if len(a) > 5 else 0.0
 MAX_TILT = float(os.environ.get('ALIGN_MAX_TILT', '180'))   # degrees: a start whose fit tilts more is passed over unless all do (a model from level views stands upright)
 for o in list(bpy.data.objects):
     bpy.data.objects.remove(o, do_unlink=True)
@@ -104,6 +107,15 @@ if not tilt_fixed:
     M2 = sc * Rz
     t = (sample @ M.T + t).mean(0) - (sample @ M2.T).mean(0)
     M = M2
+if EXTRA:
+    placed = src @ M.T + t
+    mid = (placed.min(0) + placed.max(0)) / 2
+    mid[2] = 0
+    Rz = np.array([[math.cos(EXTRA), -math.sin(EXTRA), 0], [math.sin(EXTRA), math.cos(EXTRA), 0], [0, 0, 1]])
+    M, t = Rz @ M, Rz @ (t - mid) + mid
+    turn += math.degrees(EXTRA)
+    cur = sample @ M.T + t
+    g = np.linalg.norm(nearest_surface(cur) - cur, axis=1).mean()
 for v, p in zip(st.data.vertices, src):
     v.co = smw.inverted() @ mathutils.Vector(tuple(M @ p + t))
 st.data.update()

@@ -7,9 +7,10 @@
 #   characters/creatures  public/models/<id>/character.glb      -> client/assets/slice/models/<id>/character.glb
 #   props (id prop_<name>) public/models/props/<name>.glb        -> client/assets/slice/models/props/<name>.glb
 # A model with Blender jobs on record (art-manifest/blender/<id>.json, blender-job.sh) gets them done again on the rebuilt file (tools/blender/jobs.mjs replay).
-# Godot extracts textures the next time it imports the project (check-godot.sh does); commit them and their .import files next to the model.
-# A texture with no .import yet gets one here first, VRAM compressed (a normal map as one), as the repo hygiene check wants: Godot's own
-# for a glTF-extracted image is lossless.
+# The model's textures are written next to it here (<model>_<texture name>.webp, the bytes Godot's extraction would write), and a texture
+# with no .import yet gets one, VRAM compressed (a normal map as one), as the repo hygiene check wants; Godot imports them the next time it
+# imports the project (check-godot.sh does). Commit them and their .import files next to the model. Godot does not extract them itself:
+# it leaves an image alone whose .import it did not write, so a new model's textures never appeared and a rebuilt one's stayed old.
 set -uo pipefail
 ID=${1:-}
 [[ "$ID" =~ ^[a-z0-9_]{3,40}$ ]] || { echo "usage: build-art.sh <id>   (id = [a-z0-9_], the one that was generated)"; exit 2; }
@@ -45,20 +46,26 @@ export DM_PAYLOAD='
     await doc.transform(dequantize());
     for (const ext of doc.getRoot().listExtensionsUsed()) if (ext.extensionName === \"KHR_mesh_quantization\") ext.dispose();
     await io.write(process.env.DST, doc);
-    const { existsSync, writeFileSync } = await import(\"node:fs\");
-    const normals = new Set(doc.getRoot().listMaterials().map((m) => m.getNormalTexture()).filter(Boolean));
-    const EXT = { \"image/webp\": \"webp\", \"image/png\": \"png\", \"image/jpeg\": \"jpg\" };
-    for (const t of doc.getRoot().listTextures()) {
-      if (!t.getName() || !EXT[t.getMimeType()]) continue;
-      const f = process.env.DST.slice(0, -4) + \"_\" + t.getName() + \".\" + EXT[t.getMimeType()] + \".import\";
-      const n = normals.has(t);
-      if (!existsSync(f)) writeFileSync(f, [\"[remap]\", \"\", \"importer=\\\"texture\\\"\", \"type=\\\"CompressedTexture2D\\\"\", \"\", \"[params]\", \"\",
-        \"compress/mode=2\", \"compress/high_quality=\" + !n, \"compress/normal_map=\" + (n ? 1 : 0), \"mipmaps/generate=true\", \"detect_3d/compress_to=1\", \"\"].join(\"\\n\"));
-    }
   " || { echo "dequantize failed"; exit 1; }
   if [ -f "art-manifest/blender/$ID.json" ]; then
     HOME=$(mktemp -d /tmp/dmblender-home.XXXXXX) nice -n 10 node tools/blender/jobs.mjs replay "$ID" || { echo "replaying the Blender jobs of $ID failed"; exit 1; }
   fi
+  DST="$DST" node --input-type=module -e "
+    import { NodeIO } from \"@gltf-transform/core\";
+    import { ALL_EXTENSIONS } from \"@gltf-transform/extensions\";
+    import { existsSync, writeFileSync } from \"node:fs\";
+    const doc = await new NodeIO().registerExtensions(ALL_EXTENSIONS).read(process.env.DST);
+    const normals = new Set(doc.getRoot().listMaterials().map((m) => m.getNormalTexture()).filter(Boolean));
+    const EXT = { \"image/webp\": \"webp\", \"image/png\": \"png\", \"image/jpeg\": \"jpg\" };
+    for (const t of doc.getRoot().listTextures()) {
+      if (!t.getName() || !EXT[t.getMimeType()]) continue;
+      const f = process.env.DST.slice(0, -4) + \"_\" + t.getName() + \".\" + EXT[t.getMimeType()];
+      const n = normals.has(t);
+      writeFileSync(f, t.getImage());
+      if (!existsSync(f + \".import\")) writeFileSync(f + \".import\", [\"[remap]\", \"\", \"importer=\\\"texture\\\"\", \"type=\\\"CompressedTexture2D\\\"\", \"\", \"[params]\", \"\",
+        \"compress/mode=2\", \"compress/high_quality=\" + !n, \"compress/normal_map=\" + (n ? 1 : 0), \"mipmaps/generate=true\", \"detect_3d/compress_to=1\", \"\"].join(\"\\n\"));
+    }
+  " || { echo "writing the textures failed"; exit 1; }
   ls -l "$SRC" "$DST" | awk "{print \$5, \$9}"
   echo "BUILT: $DST"
 '
