@@ -34,7 +34,7 @@ and let people pick. A try came out wrong everywhere: change the concept and ask
 are examples): `{"id": "<id>", "concept": "concept_<id>", "picture": "art-src/concepts/<id>.png", "run": <the try's entry from tries.json, as it is>,
 "steps": [...], "game": "game.glb"}`. `__TOOLS__/make-model.sh kinds` lists the steps and what they take; the usual ones:
 - creature: `finish` (`triangles` = its budget, `texture` 512, `metal` none), `place`, `rig` (`body`: `quad` four legs, `legs` a spider's eight or any number
-  around one body, `biped` the heroes' skeleton, not yet tried on a Pixal model: say so in the proposal);
+  around one body, `biped` the heroes' skeleton for a two-legged body in a T or A pose with its arms clear of its sides);
 - prop or weapon: `finish` (`texture` 512, `metal` mixed when it has iron, `hard: true` for sharp edges), `place`;
 - `grime` after `place` when the model came out cleaner than the picture.
 Then, one command per call, foreground (each takes the renderer lock; a build takes about 3 minutes):
@@ -48,7 +48,9 @@ Then, one command per call, foreground (each takes the renderer lock; a build ta
   `.import` files and textures next to the model: commit those too). Commit the record, the concept's job file, `art-manifest/images.json` and the model.
   A creature's row faces it the way the hounds' do (`client/data/slice/enemies.json` `models.bone_hound`: `"yaw": 3.141592653589793`).
 - A rigged model has no moves yet: they are a `motion` Blender job (`.dm-guides/blender.md`) on a recipe `tools/blender/recipes/<id>.json` (copy
-  `bone_hound.json` for four legs, `fen_spider.json` for eight; its bone names are the rig's).
+  `bone_hound.json` for four legs, `fen_spider.json` for eight; its bone names are the rig's). A `biped` body takes the heroes' whole move set in
+  one step instead: `{"kind": "retarget", "from": "hero_gravecaller"}`. A hero body's row in `client/game/view_models.json` is a copy of
+  `hero_gravecaller`'s (the heroes' `"yaw"`) with its slug and url, and the `STRIDE` and `TIMINGS` that job printed.
 Then `__TOOLS__/render-model.sh <id> [<id> ...]` (built ids, existing models too, up to 6) for the final sheet. Read it; if a piece came out wrong, say
 so plainly. Wire the models into the game only where the request asked.
 
@@ -76,13 +78,13 @@ migration to the live database, deploys the backend and publishes the client. Th
   the set's prop from that many pieces; the Reaper's scythe), `legendary_hero_by_set_id` (a whole rigged body at 3+ pieces; the Reaper takes only her own
   set's; `covers_props: true` when the body already wears the set's hood/mantle). Add new models to `client/data/slice/assets_used.json`.
 - *A legendary set NEEDS its own full body* to look right: props alone (helm + mantle on the class body) read as a pile of armor. Ask for one rigged
-  character in the same concept round as the props: a full-body T-pose concept of a hero wearing the whole set, id `hero_leg_<setId>`. A Pixal body
-  with the `biped` rig has not been tried yet (the combat clips the class's rites play come with a Tripo build): until one has, ask the owner in the
-  proposal whether this body is made with Tripo (`"rig": {"model": "v1.0-20240301", "rig_type": "biped"}`, the same ten animations as
-  `art-manifest/tripo-specs/hero_leg_plague_choir.json`, about 185 credits). After the
-  build (`build-art.sh` gives every Tripo `hero_leg_*` body the combat clips the class's rites play), add its row to `client/game/view_models.json` (copy
-  `hero_leg_plague_choir`'s, or `hero_reaper`'s for a Reaper set, with the new slug and url) and to `legendary_hero_by_set_id`. Then the in-game screenshots
-  of step 4, front and back, at 3+ pieces.
+  character in the same concept round as the props: a full-body T-pose concept of a hero wearing the whole set, id `hero_leg_<setId>`. Make it as in
+  steps 2 and 3 (`finish` with `triangles` 12000, `texture` 1024 and `metal` as for a creature, `place`, `rig` `biped`; `fit --stand --height
+  1.88`), then give it the moves with the Blender job `{"kind": "retarget", "from": "hero_gravecaller"}` (every clip the class's rites play;
+  `"from": "hero_reaper_v2a"` for a Reaper set). Cloth hanging below the knee (a long robe or skirt) stretches between the legs on a stride: ask
+  for a concept whose robe stops at the knee or is split, or say in the proposal that it will stretch. Add its row to `client/game/view_models.json`
+  (step 3's hero row; copy `hero_reaper`'s for a Reaper set) and to `legendary_hero_by_set_id`. Then the in-game screenshots of step 4, front and
+  back, at 3+ pieces. Tripo (`art-manifest/tripo-specs/hero_leg_plague_choir.json`) only when the owner asks for it.
 - *Decisions.* When the requester has not said where it drops or how strong it is, do not stop to ask: use the defaults above (legendary, boss drops,
   legendary stats) and state them in the proposal so they can change them in the next round. Ask only when the request contradicts itself.
 Never edit `tools/ai/`.

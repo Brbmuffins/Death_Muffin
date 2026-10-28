@@ -35,9 +35,9 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
 - **A new weapon's Atlas row is written by hand** (War's Scythe of Undeath, 2026-10-20): `tools/generate-armor-assets.mjs` copies items.json
   and computed.json for every item but adds `client/data/panels_a/atlas.json` rows for armor pieces only, so the `data` suite catches a
   missing weapon row late (the agent's job lost a check run and a session handoff to it).
-- **A two-legged Pixal model has no tried skeleton** (2026-10-27): `make.mjs`'s `rig` step `biped` (the heroes' skeleton, `build_rig.py`) has
-  not been run on a Pixal model, and a hero body's combat clips come only with a Tripo build (`build-characters.mjs` `COMBAT_TRIMS`), so a new
-  legendary hero body is still a Tripo question for the owner (Discord agent `guides/models.md` step 5).
+- **A Pixal biped's long robe stretches between its legs** (2026-10-27): `build_rig.py` skins cloth below the knee to the legs, so a long robe
+  or skirt spreads into a sheet between them on a stride (the test body's long robe did; docs/BLENDER-PIPELINE.md "Biped to biped").
+  The agent asks for a concept whose robe stops at the knee or is split (`guides/models.md` step 5) until cloth gets its own bones.
 - **The Discord agent's detailed models go with its worktree** (2026-10-27): the tries and `work/` files in `art-src/comfy/<id>/` are not
   committed, so a later change to an agent-made model's steps needs its run made again on a team PC (same picture, settings and seed: the
   same model, recorded in `art-manifest/comfy/<id>.json`) before `make-model.sh build`.

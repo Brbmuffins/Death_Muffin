@@ -22,9 +22,9 @@
       "params": {}
     },
     "retarget": {
-      "what": "Put library clips on a two-legged model that has the shared Tripo biped skeleton: clips maps a library clip to {name, loop, sequence (library clips joined in order), inPlace, trim ([from s, to s]), speed (0.25 to 4)}. Record the clip's row in docs/ANIMATION-SOURCES.md when it ships.",
+      "what": "Put clips on a two-legged model that has the shared biped skeleton (the heroes' bone names; a Pixal body rigged by make-model.sh's biped rig has it with its own rest pose), one of: clips, library clips: maps a library clip to {name, loop, sequence (library clips joined in order), inPlace, trim ([from s, to s]), speed (0.25 to 4)}; record the clip's row in docs/ANIMATION-SOURCES.md when it ships. Or from, a two-legged model in the game: every clip of it (hero_gravecaller: the heroes' whole move set, the staff clips too) with each bone's change from rest carried over, so the moves keep the game's timings.",
       "targets": ["character"],
-      "params": { "clips": { "type": "map", "req": true, "min": 1, "max": 6 } }
+      "params": { "clips": { "type": "map", "min": 1, "max": 6 }, "from": { "type": "string", "max": 40 } }
     },
     "cleanup": {
       "what": "Fix one clip in place: loop closes the seam, drift removes the body sliding away over the clip, footLock pins feet while they touch the ground (one contact per foot per cycle).",

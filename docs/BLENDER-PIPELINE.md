@@ -168,6 +168,15 @@ the bone to the source bone's absolute direction afterwards. `sequence` joins se
 game owns the position; keep `inPlace: false` for something like a roll. Quadruped retargeting is not provided: there is
 no CC0 quadruped library in the repo and the Tripo quadruped rigs differ per model.
 
+**Biped to biped** (`retarget` with `from`, `tools/blender/maps/biped-to-biped.json`): every clip of a model in the game onto another body on
+the same skeleton with its own rest pose, as a Pixal body rigged by `make.mjs`'s `biped` rig (`build_rig.py`) has. Same bone names both
+sides; spine, head, hands and feet carry their change from rest (`delta`), arms and legs `aim` where the source limb points, and the hips keep
+their travel (`inPlace: false`), so the clips keep the source's timings. The map's `clips` only says which clips loop. `from:
+"hero_gravecaller"` gives a new hero body the heroes' whole move set, the `_staff` clips too (23 clips; on the 2026-10-27 test body the skin's
+seam copies stayed together to 0.00 mm in every clip, the run's stride matched the hero's and the walk's came 7% shorter). The job prints the
+body's own `STRIDE` and `TIMINGS` for its row. Skinning limit: cloth hanging below the knee (a long robe or skirt) is weighted to the legs and
+stretches between them on a stride.
+
 ## `staff`: the arm re-solved around a held staff
 
 The hero clips were made for an empty hand, and `DmCreature.attach_held` bolts the staff rigidly to `R_Hand`, so the staff

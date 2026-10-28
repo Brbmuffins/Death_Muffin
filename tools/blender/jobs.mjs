@@ -37,6 +37,7 @@ const MODELS = 'client/assets/slice/models';
 const RECORDS = 'art-manifest/blender';
 const ROW_FILES = ['client/game/view_models.json', 'client/data/slice/enemies.json', 'client/data/slice/npcs.json', 'client/data/slice/hero.json'];
 const BIPED_MAP = join(HERE, 'maps', 'ual-to-tripo-biped.json');
+const BIPED_TO_BIPED = join(HERE, 'maps', 'biped-to-biped.json');   // retarget's from: another game biped's clips
 const STAFF_RECIPE = join(HERE, 'recipes', 'staff.json');
 const STAFF_SHEETS = 4;   // staff sheets in one preview
 const LOOPS = new Set(['idle', 'walk', 'run']);
@@ -260,38 +261,55 @@ export const KIND_RUN = {
   },
 
   async retarget(ctx, step) {
-    const map = JSON.parse(readFileSync(BIPED_MAP, 'utf8'));
+    if ((step.from === undefined) === (step.clips === undefined)) throw new Error('retarget takes clips (library clips) or from (a two-legged model in the game), one of them');
+    const map = JSON.parse(readFileSync(step.from === undefined ? BIPED_MAP : BIPED_TO_BIPED, 'utf8'));
     const doc = await io.read(ctx.cur);
     const joints = new Set(jointNames(doc));
     const missing = map.bones.map((b) => b.dst).filter((b) => !joints.has(b));
-    if (missing.length) throw new Error(`retarget needs the shared Tripo biped skeleton; this model lacks ${missing.slice(0, 6).join(', ')}`);
-    const clips = {};
-    for (const [src, spec] of Object.entries(step.clips)) {
-      const ok = spec && typeof spec === 'object' && CLIP.test(spec.name ?? '') &&
-        Object.keys(spec).every((k) => ['name', 'loop', 'sequence', 'inPlace', 'trim', 'speed'].includes(k)) &&
-        (spec.loop === undefined || typeof spec.loop === 'boolean') && (spec.inPlace === undefined || typeof spec.inPlace === 'boolean') &&
-        (spec.sequence === undefined || (Array.isArray(spec.sequence) && spec.sequence.length <= 4 && spec.sequence.every((x) => typeof x === 'string'))) &&
-        (spec.trim === undefined || (Array.isArray(spec.trim) && spec.trim.length === 2 && spec.trim.every((x) => typeof x === 'number' && x >= 0 && x < 60))) &&
-        (spec.speed === undefined || (typeof spec.speed === 'number' && spec.speed >= 0.25 && spec.speed <= 4));
-      if (!ok) throw new Error(`clip ${src}: give {"name": game clip name, "loop"?, "sequence"?, "inPlace"?, "trim"? [from s, to s], "speed"? 0.25-4}`);
-      clips[src] = spec;
+    if (missing.length) throw new Error(`retarget needs the shared biped skeleton; this model lacks ${missing.slice(0, 6).join(', ')}`);
+    let source;
+    if (step.from !== undefined) {
+      if (!ID.test(step.from) || step.from.startsWith('prop_') || step.from === ctx.id) throw new Error(`from must be another two-legged model in the game, not ${step.from}`);
+      source = join(ROOT, modelPath(step.from));
+      if (!existsSync(source)) throw new Error(`no model ${step.from} in the game (${modelPath(step.from)})`);
+      const src = await io.read(source);
+      const lacks = map.bones.map((b) => b.src).filter((b) => !jointNames(src).includes(b));
+      if (lacks.length) throw new Error(`${step.from} is not on the shared biped skeleton; it lacks ${lacks.slice(0, 6).join(', ')}`);
+      // every clip of the source, as it is (the game owns the position: nothing dropped); the map's table closes the loops' seams
+      const has = src.getRoot().listAnimations().map((a) => a.getName()).filter((c) => CLIP.test(c));
+      if (!has.length) throw new Error(`${step.from} has no clips`);
+      map.clips = Object.fromEntries(has.map((c) => [c, { name: c, loop: map.clips[c]?.loop ?? false, inPlace: false }]));
+    } else {
+      const clips = {};
+      for (const [src, spec] of Object.entries(step.clips)) {
+        const ok = spec && typeof spec === 'object' && CLIP.test(spec.name ?? '') &&
+          Object.keys(spec).every((k) => ['name', 'loop', 'sequence', 'inPlace', 'trim', 'speed'].includes(k)) &&
+          (spec.loop === undefined || typeof spec.loop === 'boolean') && (spec.inPlace === undefined || typeof spec.inPlace === 'boolean') &&
+          (spec.sequence === undefined || (Array.isArray(spec.sequence) && spec.sequence.length <= 4 && spec.sequence.every((x) => typeof x === 'string'))) &&
+          (spec.trim === undefined || (Array.isArray(spec.trim) && spec.trim.length === 2 && spec.trim.every((x) => typeof x === 'number' && x >= 0 && x < 60))) &&
+          (spec.speed === undefined || (typeof spec.speed === 'number' && spec.speed >= 0.25 && spec.speed <= 4));
+        if (!ok) throw new Error(`clip ${src}: give {"name": game clip name, "loop"?, "sequence"?, "inPlace"?, "trim"? [from s, to s], "speed"? 0.25-4}`);
+        clips[src] = spec;
+      }
+      map.clips = clips;
+      source = libraryFile();
+      if (!existsSync(source)) throw new Error(`the animation library is not on this machine (${source})`);
     }
-    map.clips = clips;
     const mapFile = join(ctx.scratch, 'map.json');
     writeFileSync(mapFile, JSON.stringify(map));
-    const lib = libraryFile();
-    if (!existsSync(lib)) throw new Error(`the animation library is not on this machine (${lib})`);
     const out = join(ctx.scratch, 'retarget');
     mkdirSync(out, { recursive: true });
-    const res = runBlender('retarget.py', [lib, ctx.cur, mapFile, out]) ?? [];
-    if (res.length !== Object.keys(clips).length) throw new Error('the library lacks one of those clips (the library kind lists them)');
+    const res = runBlender('retarget.py', [source, ctx.cur, mapFile, out]) ?? [];
+    if (res.length !== Object.keys(map.clips).length) throw new Error(step.from === undefined ? 'the library lacks one of those clips (the library kind lists them)' : `${step.from}: not every clip came out`);
     for (const r of res) {
       await packFile(r.file, r.clip);
       transplantClip(doc, await io.read(r.file), r.clip);
     }
     await pruneAccessors(doc);
     await io.write(ctx.cur, doc);
-    return { touched: res.map((r) => r.clip), report: `retargeted ${res.map((r) => `${r.source} -> ${r.clip} (${r.seconds}s)`).join(', ')}` };
+    const what = step.from === undefined ? res.map((r) => `${r.source} -> ${r.clip} (${r.seconds}s)`).join(', ')
+      : `${res.length} clips from ${step.from}: ${res.map((r) => `${r.clip} (${r.seconds}s)`).join(', ')}`;
+    return { touched: res.map((r) => r.clip), report: `retargeted ${what}` };
   },
 
   async cleanup(ctx, step) {

@@ -64,6 +64,7 @@ const DEFAULT_TEXTURE = 512;
  * the source clip's first frame (the standing pose), so the runtime keeps the crouch/leap but drops the drift.
  * The necromancer discipline heroes, the Reaper and every legendary set hero (`hero_leg_*`) get them (the Reaper's rites play sweep / slam / flick / channel /
  * summon). A hero without the four source presets borrows hero_gravecaller's (DM_TRIM_SOURCE overrides the folder; the Discord agent's build-art.sh sets it). `release` ends up in clips.json as a 0..1 fraction.
+ * A hero made from a ComfyUI run gets none: its rest pose is its own, and its clips come from a `retarget` `from` a hero (docs/BLENDER-PIPELINE.md "Biped to biped").
  */
 const NECRO_HEROES = new Set(['hero_gravecaller', 'hero_ossuary', 'hero_mourner', 'hero_rotweaver', 'hero_reaper', 'hero_reaper_v2a']);
 const COMBAT_TRIMS = {
@@ -169,7 +170,7 @@ async function build(slug) {
     if (copyAnimation(srcDoc, doc, name)) names.push(name);
   }
   const release = {};
-  if (NECRO_HEROES.has(slug) || slug.startsWith('hero_leg_')) {
+  if (!made && (NECRO_HEROES.has(slug) || slug.startsWith('hero_leg_'))) {
     for (const [name, trim] of Object.entries(COMBAT_TRIMS)) {
       // A hero generated without the trim source presets borrows them: every Tripo biped rig shares one joint set (ASSET_PIPELINE.md).
       const own = clips.find((x) => x.preset === trim.preset)?.file;

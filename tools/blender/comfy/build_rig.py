@@ -3,10 +3,11 @@
 # biped heroes have it) moved onto the joints landmarks.py finds, each bone's axes turned by the least rotation that takes its old direction to its new
 # one (so a hand's frame, which the game holds props in, stays the same frame relative to the arm), then the body skinned (--skin geo: geodesic
 # voxel binding, geoskin.py; heat: Blender's bone heat) on the bones the game's skins use: the twist bones for the limbs, Waist, Spine01, Spine02, NeckTwist01, Head,
-# the clavicles, hands, feet and toes. Exports the rigged body with no clips.
+# the clavicles, hands, feet and toes. The body is first turned to the heroes' frame (+X forward; the game placement faces -Y): `facing` reads which way
+# it faces. Exports the rigged body with no clips, facing +X like every hero body (its row turns it, as hero_gravecaller's yaw does).
 import bpy, sys, os, json, math
 import numpy as np
-from mathutils import Vector
+from mathutils import Matrix, Vector
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from solid import mesh_arrays
 from landmarks import find
@@ -45,8 +46,30 @@ body = [o for o in bpy.data.objects if o.type == 'MESH'][0]
 select_only(body)
 bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+
+
+def facing(co):
+    """which way the body faces, as a unit vector in the ground plane, and what told: the arms' span (T or A pose) gives the side axis, and the
+    placement the axis comes from the sign: across the arms along Y is the game placement (fit --stand: it faces the preview's front, -Y), along X
+    a Tripo hero's frame (+X; a fit onto one). No clear span: the game placement. (Not the feet: a robe trailing on the floor reads as toes.)"""
+    z0, h = co[:, 2].min(), np.ptp(co[:, 2])
+    band = co[(co[:, 2] > z0 + 0.7 * h) & (co[:, 2] < z0 + 0.86 * h)]
+    span = np.percentile(band[:, :2], 99, axis=0) - np.percentile(band[:, :2], 1, axis=0)
+    if span[1] > 1.15 * span[0]:
+        return np.array([1.0, 0.0]), 'arms'
+    return np.array([0.0, -1.0]), 'arms' if span[0] > 1.15 * span[1] else 'default'
+
+
+# ---- the heroes' frame: +X forward, +Y its left (the template's, and what landmarks.find reads)
 co, tri = mesh_arrays(body.data)
+f, told = facing(co)
+turn = -math.degrees(math.atan2(f[1], f[0]))
+if abs(turn) > 1e-3:
+    body.data.transform(Matrix.Rotation(math.radians(turn), 4, 'Z'))   # the mesh itself (the object's rotation is a glTF quaternion)
+    body.data.update()
+    co, tri = mesh_arrays(body.data)
 J, rep, _ = find(co, tri)
+rep['turn'] = {'degrees': round(turn, 1), 'from': told}
 H = rep['H']
 
 # ---- the template skeleton

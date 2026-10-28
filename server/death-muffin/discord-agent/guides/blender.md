@@ -13,6 +13,8 @@ Blender can make (DECISIONS B74).
 **Which tool for a move.** Run `inspect` first (below): it lists the model's bones and clips.
 - Two-legged on the shared Tripo biped skeleton (bones `Hip`, `Waist`, `Spine01`, `L_Upperarm`, ...; heroes, the thrall, ghouls, NPCs): `retarget` moves from
   the free library (`library` lists its 43: sword and punch attacks, spell casts, hits, deaths, rolls, walks, runs, idles). Record it (end of this guide).
+  A new two-legged body with no moves (a Pixal model rigged `biped`, `.dm-guides/models.md`) takes the heroes' whole move set in one step:
+  `{"kind": "retarget", "from": "hero_gravecaller"}` (every clip of that hero, the `_staff` clips too, at the game's timings).
 - Four-legged, many-legged or winged: `motion`, from the model's recipe `tools/blender/recipes/<model>.json`: walk, run and idle cycles, and one-shots (a bite, a
   flinch, a death: type `once`; the bone hound's, cinderhound's and skull rat's recipes have all three). Without a recipe, write it: `docs/BLENDER-PIPELINE.md`
   "`procedural` and recipes" and the closest existing recipe; bone names and positions from `inspect`. When the rig lacks the bones a leg or tail needs,

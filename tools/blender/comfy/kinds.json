@@ -49,7 +49,7 @@
     },
     "rig": {
       "script": "",
-      "what": "A skeleton built from the placed model's shape, the body skinned by geodesic voxel binding. body: quad (four legs: Root, Hip, Spine1-2, Chest, Neck1-2, Head, Tail_A-D, FL/FR_Upper/Lower/Paw, HL/HR_Thigh/Shin/Meta/Paw; legTop 0.8 when hanging cloth meets the legs low), legs (any number of legs around one body, a spider's eight: Root, Hip, Abdomen, Head, <side><n>_Upper/Lower/Foot), biped (the heroes' skeleton). No clips: they are Blender jobs (tools/blender/recipes/<id>.json). Last.",
+      "what": "A skeleton built from the placed model's shape, the body skinned by geodesic voxel binding. body: quad (four legs: Root, Hip, Spine1-2, Chest, Neck1-2, Head, Tail_A-D, FL/FR_Upper/Lower/Paw, HL/HR_Thigh/Shin/Meta/Paw; legTop 0.8 when hanging cloth meets the legs low), legs (any number of legs around one body, a spider's eight: Root, Hip, Abdomen, Head, <side><n>_Upper/Lower/Foot), biped (the heroes' skeleton on a body in a T or A pose, the body turned to face +X like every hero body). No clips: they are Blender jobs (a motion on tools/blender/recipes/<id>.json; a biped's, a retarget from hero_gravecaller). Last.",
       "params": {
         "body": { "type": "enum", "values": ["quad", "legs", "biped"], "req": true },
         "legTop": { "type": "number", "min": 0.3, "max": 1 }

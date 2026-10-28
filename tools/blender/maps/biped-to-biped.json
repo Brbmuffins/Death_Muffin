@@ -1,0 +1,180 @@
+{
+ "_note": "The shared biped skeleton onto itself with another rest pose (retarget's from: a hero's clips onto a Pixal body rigged by make.mjs's biped rig, or onto another biped): same bone names; spine, head, hands and feet carry their change from rest, arms and legs aim where the source limb points. retarget copies every clip of the source; clips here only says which ones loop (their seam is closed).",
+ "source_forward": [
+  1,
+  0,
+  0
+ ],
+ "target_forward": [
+  1,
+  0,
+  0
+ ],
+ "hip": {
+  "src": "Hip",
+  "dst": "Hip"
+ },
+ "scale": "auto",
+ "bones": [
+  {
+   "src": "Hip",
+   "dst": "Hip"
+  },
+  {
+   "src": "Waist",
+   "dst": "Waist"
+  },
+  {
+   "src": "Spine01",
+   "dst": "Spine01"
+  },
+  {
+   "src": "Spine02",
+   "dst": "Spine02"
+  },
+  {
+   "src": "NeckTwist01",
+   "dst": "NeckTwist01"
+  },
+  {
+   "src": "Head",
+   "dst": "Head"
+  },
+  {
+   "src": "L_Clavicle",
+   "dst": "L_Clavicle"
+  },
+  {
+   "src": "L_Upperarm",
+   "dst": "L_Upperarm",
+   "mode": "aim",
+   "aim": {
+    "src": "L_Forearm",
+    "dst": "L_Forearm"
+   }
+  },
+  {
+   "src": "L_Forearm",
+   "dst": "L_Forearm",
+   "mode": "aim",
+   "aim": {
+    "src": "L_Hand",
+    "dst": "L_Hand"
+   }
+  },
+  {
+   "src": "L_Hand",
+   "dst": "L_Hand"
+  },
+  {
+   "src": "L_Thigh",
+   "dst": "L_Thigh",
+   "mode": "aim",
+   "aim": {
+    "src": "L_Calf",
+    "dst": "L_Calf"
+   }
+  },
+  {
+   "src": "L_Calf",
+   "dst": "L_Calf",
+   "mode": "aim",
+   "aim": {
+    "src": "L_Foot",
+    "dst": "L_Foot"
+   }
+  },
+  {
+   "src": "L_Foot",
+   "dst": "L_Foot"
+  },
+  {
+   "src": "L_ToeBase",
+   "dst": "L_ToeBase"
+  },
+  {
+   "src": "R_Clavicle",
+   "dst": "R_Clavicle"
+  },
+  {
+   "src": "R_Upperarm",
+   "dst": "R_Upperarm",
+   "mode": "aim",
+   "aim": {
+    "src": "R_Forearm",
+    "dst": "R_Forearm"
+   }
+  },
+  {
+   "src": "R_Forearm",
+   "dst": "R_Forearm",
+   "mode": "aim",
+   "aim": {
+    "src": "R_Hand",
+    "dst": "R_Hand"
+   }
+  },
+  {
+   "src": "R_Hand",
+   "dst": "R_Hand"
+  },
+  {
+   "src": "R_Thigh",
+   "dst": "R_Thigh",
+   "mode": "aim",
+   "aim": {
+    "src": "R_Calf",
+    "dst": "R_Calf"
+   }
+  },
+  {
+   "src": "R_Calf",
+   "dst": "R_Calf",
+   "mode": "aim",
+   "aim": {
+    "src": "R_Foot",
+    "dst": "R_Foot"
+   }
+  },
+  {
+   "src": "R_Foot",
+   "dst": "R_Foot"
+  },
+  {
+   "src": "R_ToeBase",
+   "dst": "R_ToeBase"
+  }
+ ],
+ "clips": {
+  "idle": {
+   "loop": true
+  },
+  "walk": {
+   "loop": true
+  },
+  "run": {
+   "loop": true
+  },
+  "channel": {
+   "loop": true
+  },
+  "idle_staff": {
+   "loop": true
+  },
+  "walk_staff": {
+   "loop": true
+  },
+  "run_staff": {
+   "loop": true
+  },
+  "channel_staff": {
+   "loop": true
+  },
+  "talk": {
+   "loop": true
+  },
+  "chop": {
+   "loop": true
+  }
+ }
+}

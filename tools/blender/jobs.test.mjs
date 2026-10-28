@@ -76,6 +76,7 @@ test('a job is checked against the kinds before anything runs', () => {
   assert.match(validateJob({ ...ok, steps: [{ kind: 'decimate', triangles: 1.5 }] }).join(), /triangles must be int/);
   assert.match(validateJob({ model: 'prop_lantern', steps: [{ kind: 'reshape', bone: 'Head', scale: 1.2 }] }).join(), /reshape does not apply to a prop/);
   assert.deepEqual(validateJob({ model: 'prop_lantern', steps: [{ kind: 'recolor', hue: 30 }] }), []);
+  assert.deepEqual(validateJob({ model: 'hero_new', steps: [{ kind: 'retarget', from: 'hero_gravecaller' }] }), []);
 });
 
 test('a staff step re-bakes the recipe\'s clips on the recipe\'s heroes only, and its preview shows at most four', () => {
