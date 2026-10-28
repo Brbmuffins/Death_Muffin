@@ -5,8 +5,8 @@ exists. Every generation step is scripted and resumable, and spend is reported p
 
 ```
 concept (Gemini)     art-src/concepts/<id>.png       <- art-manifest/gemini-jobs/*.json
-  -> 3D + rig (Tripo) art-src/tripo/<id>/*.glb         <- art-manifest/tripo-specs/<id>.json
-     or 3D (ComfyUI)  art-src/comfy/<id>/<label>.glb   <- model-gen.sh on a team PC ("Image to model")
+  -> 3D (ComfyUI)     art-src/comfy/<id>/<label>.glb   <- model-gen.sh on a team PC, then tools/blender/make.mjs ("Image to model")
+     or 3D + rig (Tripo, the backup) art-src/tripo/<id>/*.glb <- art-manifest/tripo-specs/<id>.json
   -> build            public/models/<id>/character.glb   (props: public/models/props/<id>.glb)
   -> into the game    client/assets/...                 ("Into the game" below)
   -> import           godot --headless --path client --import   (commit the .import files)
@@ -31,6 +31,7 @@ hands, plain light-grey background; props one object, three-quarter view. Tintab
 
 ## Models, rigs, clips (Tripo)
 
+The backup since DECISIONS B77 (new models come from "Image to model" below): used only when the owner asks for it, within the owner's grant.
 `node tools/ai/tripo.mjs run art-manifest/tripo-specs/<id>.json` is a dry run; add `--yes` to spend. Rules that cost credits when
 ignored:
 - Always `animationMode: "single"` (batch retargeting bakes all clips into one).
@@ -46,16 +47,24 @@ ignored:
 
 ## Image to model (ComfyUI on a team PC)
 
-A concept picture made into a model, free, on a team PC's graphics card: ComfyUI's "Pixal3D & TRELLIS.2: Image to Model" template run by the team
-app's `model` job (DECISIONS B76; teamapp/README.md "The model job" for the PC's side). In the Tripo bake-off of 2026-10-26 Pixal3D won the brazier and
-the hound, with its own paint. It makes **no skeleton**: a creature that moves gets its rig and clips from Blender (B74) or Tripo. The live bone hound is
-the first one in the game (2026-10-27, "Into the game" below).
+How a new model is made (DECISIONS B77; Tripo is the backup): a concept picture made into a model, free, on a team PC's graphics card, by ComfyUI's
+"Pixal3D & TRELLIS.2: Image to Model" template run by the team app's `model` job (B76; teamapp/README.md "The model job" for the PC's side), then
+finished in Blender here (`tools/blender/make.mjs`, below). In the Tripo bake-off of 2026-10-26 Pixal3D won the brazier and the hound, with its own
+paint. It makes **no skeleton**: Blender builds one from the model's shape and makes its clips (B74). The live bone hound was the first (2026-10-27);
+the fen spider (eight legs) and the necromancer's scythe followed as tests the same day. The Discord agent asks for three tries of a concept with
+`.dm-model-request.json` (server/death-muffin/discord-agent/README.md) and finishes the picked one with `make-model.sh` (its guide: `guides/models.md`).
+
+**The picture** is what Pixal3D builds, so it is a model source, not a painting: "3D modeling source: a game-ready 3D render of ...", one subject whole
+and centred on plain flat light grey, even flat light with no shadows or rim light, every part a solid shape big enough to model (no hair, threads, webs
+or loose bits), and the dirt and wear painted into the colours (a clean picture gives a toy-like model; the hound's first clean picture did). A creature
+stands in a neutral pose with every leg visible, apart and on the ground, seen in three-quarter view from the front and a little above. Good prompts:
+`concept_bone_hound_3d_a`, `concept_fen_spider_3d`, `concept_necro_wpn_scythe_3d` in `art-manifest/gemini-jobs/concepts.json`.
 
 `server/death-muffin/model-gen.sh [--pc <name>] [--model pixal3d|trellis2|both] [--faces N] [--texture 1024] [--seeds 0,1] [--set name=value] [--runs runs.json] <out dir> <picture>...`
 queues one job (at most 8 runs: every picture with every model and seed, or the runs file's list), waits for it and copies `<label>.glb` and the PC's log
-into `<out dir>` (use `art-src/comfy/<id>/`). Either set `--faces` to the model's face budget (above), so the mesh is cut before it is painted, or make a
-detailed model (200000 faces, `--set detail=2048 --set grid=1024`, texture 2048: the bone hound's run) and bake it down in Blender onto a new mesh at the
-budget (new UVs, the detailed paint baked onto them). Never just cut a painted model down: the paint smears. The concept rules are Tripo's (one subject,
+into `<out dir>` (use `art-src/comfy/<id>/`). Make a detailed model (200000 faces, `--set detail=2048 --set grid=1024`, texture 2048, three seeds to pick from: the
+settings of every model so far) and bake it down in Blender onto a new mesh at the budget (`finish` below: new UVs, the detailed paint baked onto them).
+Never just cut a painted model down: the paint smears. The concept rules are Tripo's (one subject,
 plain background; ComfyUI removes the background). A run takes 2 to 10 minutes on a 4070 SUPER. The same picture, model, faces, texture and seed give the
 same model again, so a model that goes into the game is recorded as its run (`art-manifest/comfy/<id>.json`: the picture, the run's settings and the
 ComfyUI version the log names), with the Blender steps after it and the `game` file they made in `art-src/comfy/<id>/`.
@@ -83,10 +92,19 @@ rig fixes, CC0 retargets); see `docs/BLENDER-PIPELINE.md`. Moves and edits on a 
 DECISIONS B74) are Blender jobs, `node tools/blender/jobs.mjs run <job.json>` (docs/BLENDER-PIPELINE.md "Jobs"); a rebuild from the Tripo files
 loses them until `node tools/blender/jobs.mjs replay <id>` (`build-art.sh` does it).
 
-A four-legged ComfyUI creature gets the standard skeleton Blender builds from its shape: the bone hound's is `Root`, `Hip`, `Spine1-2`,
-`Chest`, `Neck1-2`, `Head`, `Tail_A-D`, `FL/FR_Upper/Lower/Paw`, `HL/HR_Thigh/Shin/Meta/Paw`, and its moves are one `motion` job on
-`tools/blender/recipes/bone_hound.json`. The scripts of the steps between the run and the `game` file (bake-down, head bend, placement, skeleton) are
-not in the repo yet (KNOWN-GAPS.md).
+**From a run to the game file:** `node tools/blender/make.mjs` does the Blender steps the record `art-manifest/comfy/<id>.json` lists on the run's
+detailed model and writes the record's `game` file (the Discord agent runs it in its sandbox as `make-model.sh`). `make.mjs fit <id>` finds the game
+placement first: `--stand --height <m> --yaw <deg>` for a new subject (stood on the side it rests on), `--ref <old model>` for a remake (fitted onto
+the old one); either way the placed model is written to `work/fit.glb` to look at. The steps (`tools/blender/comfy/kinds.json`, `make.mjs kinds`):
+`finish` (the game mesh: a solid rebuild, cut to the budget, new UVs packed by xatlas, the detailed paint, roughness, metal and normals baked on),
+`place`, `bend` (a part turned about a joint before the bake: the hound's head), `grime` (dirt painted in) and `rig`, a skeleton built from the
+placed model's shape: `quad` is the four-legged one the bone hound has (`Root`, `Hip`, `Spine1-2`, `Chest`, `Neck1-2`, `Head`, `Tail_A-D`,
+`FL/FR_Upper/Lower/Paw`, `HL/HR_Thigh/Shin/Meta/Paw`), `legs` any number of legs round one body (the fen spider: `Root`, `Hip`, `Head`, `Abdomen`,
+`Abdomen_End`, `L1`-`L4`/`R1`-`R4` `_Upper/_Lower/_Foot`, counted from the front), `biped` the heroes' skeleton (not yet tried on a Pixal model).
+The record keeps the run's settings, so `make.mjs build <id>` remakes the game file from the same run. Its moves are one `motion` job on the
+model's recipe (`tools/blender/recipes/bone_hound.json`, `fen_spider.json`). The xatlas packer is set up once per Blender install
+(`tools/blender/comfy/setup.sh`). A model placed facing forward this way faces away from the game's camera at no turn, so its creature row has
+`"yaw": 3.141592653589793`, as the hounds' do.
 
 ## Into the game
 
@@ -99,7 +117,8 @@ The game's files are in `client/assets/` (committed; the masters of older art an
 - Item icons: `tools/generate-armor-assets.mjs` writes the armor sets' icons; every other flat picture comes in through `tools/pictures/build.mjs` ("Pictures").
 - Then `godot --headless --path client --import` and commit the generated `.import` files. Textures used in 3D (model textures, floors, FX sprites)
   must be VRAM Compressed: set `compress/mode=2` in their `.import` (normal maps `*NormalGL*` also `compress/normal_map=1`) and re-import; a fresh
-  import is Lossless, and `npm run hygiene` fails until it is changed (`npm run hygiene -- --fix-textures` does it). UI art stays Lossless.
+  import is Lossless, and `npm run hygiene` fails until it is changed (`npm run hygiene -- --fix-textures` does it; the agent's `build-art.sh` writes
+  a model's texture `.import` files this way before Godot first imports them). UI art stays Lossless.
 
 ## Pictures (icons, portraits, loading art, floor and wall textures)
 

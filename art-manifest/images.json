@@ -8616,5 +8616,35 @@
     "rawHash": "sha256:ffb1ea366c0d4e57e5cecfd51b633fc8d7a672b907f7785fd8d987c43053d98b",
     "outHash": "sha256:5b5bc8a28080c5cecec07c204a7d15278df250f0b0dbfd40cfcef7bc236349f6",
     "generatedAt": "2026-10-27T12:06:33.623Z"
+  },
+  "concept_fen_spider_3d": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling source: a game-ready 3D render of a NEW creature, a swamp spider from a drowned fen, an enemy for a dark gothic necromancy game. Use only the render style, the flat light and the painted dirt and wear of the reference image, not its creature. A big, heavy spider about three feet tall at the top of its back: a large, round, bloated abdomen, a smaller armoured cephalothorax, eight thick, sturdy, segmented legs like a big crab's (each leg about as thick as a wrist, with clear knobbly joints), two short thick pedipalps and two big curved fangs. Pose: neutral standing pose, body level, all eight legs spread out evenly around the body like a star with all eight feet flat on the ground, every leg fully visible and clearly apart from the others, none crossing another or hidden behind the body. Seen at a three-quarter view from the front-left and from well above (about 35 degrees down, like a game camera), so the back and all eight legs show. Surfaces: dark olive-brown and black chitin plates, wet and caked with dried grey-brown mud; patches of green-grey swamp moss and algae on the back of the abdomen; dull bone-coloured knees; a cluster of small glowing sickly-green eyes on the front of the head; faint pale-green markings on the abdomen. Hair and bristles are painted as colour only, never separate strands. Every part is a solid shape big enough to model: no hair-thin bristles, no webs, no dripping strands, no loose or floating bits. Keep the mud, moss stains, dirt and grime painted into the surface colours, dirtier towards the feet. Even, flat studio lighting, no cast shadows, no strong highlights, no rim light, no fog. The whole body visible and centered. Plain flat light grey background (#c8c8c8). No text, no ground plane, no other creatures.",
+    "refs": [
+      "art-src/concepts/bone_hound_3d_a.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/fen_spider_3d.png",
+    "rawHash": "sha256:e7ab4248a26e0da48efe80a447a67c782b60c0fa873326831f7b9f741b751ace",
+    "outHash": "sha256:be25a3a8f56f0d0fbb46e7c3468923d7ee25e8dc40b2aea97b881d40052c340f",
+    "generatedAt": "2026-10-28T00:12:09.834Z"
+  },
+  "concept_necro_wpn_scythe_3d": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling source: redraw exactly the scythe in the image as a game-ready 3D render, keeping its design, its view and its wear: the dark weathered wooden shaft with its slight bend, the dark leather grip wraps, the four riveted iron bands, the riveted iron strap that holds the blade, the old yellowed skull at the joint, the dark, worn iron blade with its grooves and its toothed inner edge. Make every part solid enough to model: the blade a little thicker, with a clear, thick spine along its outer curve and a bevelled edge; the teeth as fewer, bigger, clear teeth; the shaft a little thicker; no hair-thin cracks, chips or loose bits. The same upright view as the image, filling the frame top to bottom, with the blade sweeping out to the left. Keep the wear as painted colour on the surfaces: rust and grime in the grooves and around the rivets, dark dirt on the grip, worn edges, a stained skull. Solid, sculpted 3D-render look, even, flat studio lighting, no cast shadows, no strong highlights, no rim light, no brush strokes. Plain flat light grey background (#c8c8c8). No text, no hands, no other objects.",
+    "refs": [
+      "art-src/concepts/wpn_scythe.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/wpn_scythe_3d.png",
+    "rawHash": "sha256:6691aa987ea6032bf53a5d7e69e5577bb495bfd9b16ed645fcf1073223800686",
+    "outHash": "sha256:607520681fd894b8a4addcd1b1039e145774ac0ddf9e49f4a89adc520462166a",
+    "generatedAt": "2026-10-28T00:12:19.432Z"
   }
 }

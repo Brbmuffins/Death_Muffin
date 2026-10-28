@@ -1116,7 +1116,7 @@ test('godot mode: !shot is available, the agent may run shot-godot.sh and regen-
   const a = claudeArgs(w.cfg, j); const rest = a.slice(a.indexOf('--allowedTools') + 1); const allowed = rest.slice(0, rest.findIndex((x) => x.startsWith('--')) >>> 0);
   const wt = `/${j.worktree}/**`;
   assert.deepEqual(allowed, [`Read(${wt})`, `Edit(${wt})`, `Write(${wt})`, `Glob(${wt})`, `Grep(${wt})`, `Bash(${w.tools}/agit *)`, `Bash(${w.tools}/check-godot.sh --rerun *)`, `Bash(${w.tools}/regen-godot.sh)`,
-    `Bash(${w.tools}/shot-godot.sh)`, `Bash(${w.tools}/shot-godot.sh *)`, `Bash(${w.tools}/build-art.sh *)`, `Bash(${w.tools}/render-model.sh *)`, `Bash(${w.tools}/build-sound.sh *)`, `Bash(${w.tools}/build-picture.sh *)`, `Bash(${w.tools}/blender-job.sh)`, 'WebSearch', ...w.cfg.webDocDomains.map((h) => `WebFetch(domain:${h})`)]);
+    `Bash(${w.tools}/shot-godot.sh)`, `Bash(${w.tools}/shot-godot.sh *)`, `Bash(${w.tools}/build-art.sh *)`, `Bash(${w.tools}/render-model.sh *)`, `Bash(${w.tools}/make-model.sh *)`, `Bash(${w.tools}/build-sound.sh *)`, `Bash(${w.tools}/build-picture.sh *)`, `Bash(${w.tools}/blender-job.sh)`, 'WebSearch', ...w.cfg.webDocDomains.map((h) => `WebFetch(domain:${h})`)]);
   assert.ok(!allowed.includes('Read') && !allowed.includes('WebFetch'), 'no bare (any-path / any-host) grants');
   assert.ok(!allowed.includes(`Bash(${w.tools}/check-godot.sh)`), 'the whole check is the runner\'s: the agent names its suites');
   assert.ok(j.worktree && path.isAbsolute(j.worktree));

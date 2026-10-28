@@ -80,7 +80,7 @@ npm run typecheck                                 # tsc --noEmit
 npm run hygiene                                   # stale docs and paths, retired terms, big files, texture imports
 npm run check:models                              # every model's budget, materials, skeleton and clips
 node --test tools/pictures/*.test.mjs             # the picture kinds, the picture builder, every ability has its own icon
-node --test tools/blender/jobs.test.mjs           # Blender jobs: the kinds, job checks, model rows, the merge into shipped models
+node --test tools/blender/jobs.test.mjs tools/blender/make.test.mjs   # Blender jobs: the kinds, job checks, model rows, the merge into shipped models; ComfyUI model records
 node tools/context/measure.mjs                    # rule text per audience and the rule inventory check (tools/context/README.md)
 launcher/tests/run-local.sh                       # launcher logic tests
 teamapp/tests/run-local.sh                        # team app logic tests (a local file server and a stand-in game; no Windows)

@@ -83,17 +83,17 @@ joint name.
 
 | key | meaning |
 |---|---|
-| `source` | rig GLB under `art-src/tripo/<slug>/` (default `rig.glb`; the cinderhound uses `rigfixed.glb`) |
+| `source` | rig GLB under `art-src/tripo/<slug>/` (default `rig.glb`; the cinderhound uses `rigfixed.glb`); a `motion` job uses the shipped model |
 | `forward`, `headBone`, `root` | body forward in Blender armature space (Z up), or derived root-to-head |
 | `legs` | `{ FL: { chain: [bones hip..knee], paw: ankle bone, rigidFrom: 1 } ... }`. The paw's *head* is the ankle target. `rigidFrom: 1` treats `chain[1:]` as one stiff lower leg: the solver then has two segments and a unique answer. |
 | `clips.<name>.type` | `gait` (feet on a stance line + swing arc), `idle` (feet planted, body breathes), `once` (a one-shot: attack, hurt, death; frame 0 is the start, the last frame the end, no loop) |
-| `gait` | `duty` (share of the cycle on the ground), `stride`, `lift`, `phase` per leg, `arc` (swing shape), `legScale`, `center` |
+| `gait` | `duty` (share of the cycle on the ground), `stride`, `lift`, `phase` per leg, `arc` (swing shape), `legScale`, `center` (m, or per leg: where the stance sits ahead of the rest foot; the fen spider moves its front legs' stance back and its hind legs' forward, so legs that splay along the body do not overreach) |
 | `paw` | `stance` / `swing` pitch in degrees (positive = toes down) |
 | `mods` | body modulators: `{ bones, kind: lift\|sway\|surge\|pitch\|yaw\|roll, amp (m or deg), cycles, phase, lag, offset }`; `lag` shifts the phase down the bone list, which makes tails and necks wave |
 | `mods[].keys` | `once` clips: `[[u, w], ...]` over the clip (u 0..1, w -1..1, smooth between keys) replaces the sine; `lag` delays the curve down the bone list |
 | `mods[].body` | `true`: the axis turns with what the bone inherited (a tail or leg of a body that has rolled onto its side bends about the body's own axis, not the world's) |
 | `plant` | `once` clips: `false` lets the leg bones take `mods` like any bone (a fall); default `true` keeps the feet on their IK targets |
-| `feet` | `once` clips: `{ FL: [{ fwd, up, side (m), keys }] ... }` moves a planted paw (a pounce lifts and reaches with the front paws) |
+| `feet` | `once` clips: `{ FL: [{ fwd, up, side (m), in (share), keys }] ... }` moves a planted paw (a pounce lifts and reaches with the front paws); `in` 1 brings it under its leg's top joint (a spider curls its legs as it dies) |
 | `floor` | `once` clips: `{ land: u }` lifts the root whenever the skinned body would sink below its rest floor, and from `land` on also lowers it, so a falling body lies on the ground (`floorLift` in the output: the range of that correction) |
 | `crouch` | `auto` (default): the smallest root drop that keeps every foot inside 98.5% of its leg's reach, or a number; a `once` clip's default is `idle` (the idle clip's drop) |
 | `legs.X.hock` | `true`: a digitigrade hind leg of **three chain bones** (thigh, shin, metatarsus) plus the paw. The first two are solved to the hock, the metatarsus then points at the ankle in a direction that flexes with the stride; the clip's `hock: {stance, swing}` gives degrees (positive folds the foot back; the swing is a sine over the swing phase, `stance` a ramp over the stance). Replaces `rigidFrom` (a stiff lower leg) where the rig has the bones. |

@@ -35,10 +35,12 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
 - **A new weapon's Atlas row is written by hand** (War's Scythe of Undeath, 2026-10-20): `tools/generate-armor-assets.mjs` copies items.json
   and computed.json for every item but adds `client/data/panels_a/atlas.json` rows for armor pieces only, so the `data` suite catches a
   missing weapon row late (the agent's job lost a check run and a session handoff to it).
-- **The Blender steps that turn a ComfyUI run into a game model are outside the repo** (2026-10-27): `build-art.sh` builds the model from its
-  record's `game` file (ASSET_PIPELINE.md "Image to model"), but the scripts that make that file from the run (bake-down onto a new mesh, head
-  bend, placement, the standard four-legged skeleton) are in `~/.cache/dm-ops/pixal3d-tests` on the VPS, so only a session there can remake
-  the bone hound, and the Discord agent cannot ask for such a model (it has no `model` job). Fix: move them into `tools/blender/` as job kinds.
+- **A two-legged Pixal model has no tried skeleton** (2026-10-27): `make.mjs`'s `rig` step `biped` (the heroes' skeleton, `build_rig.py`) has
+  not been run on a Pixal model, and a hero body's combat clips come only with a Tripo build (`build-characters.mjs` `COMBAT_TRIMS`), so a new
+  legendary hero body is still a Tripo question for the owner (Discord agent `guides/models.md` step 5).
+- **The Discord agent's detailed models go with its worktree** (2026-10-27): the tries and `work/` files in `art-src/comfy/<id>/` are not
+  committed, so a later change to an agent-made model's steps needs its run made again on a team PC (same picture, settings and seed: the
+  same model, recorded in `art-manifest/comfy/<id>.json`) before `make-model.sh build`.
 
 ## Operations
 
@@ -48,7 +50,7 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
 - **Two install checks list the agent's files by hand, and both miss some.** The drift report (`server/death-muffin/ops/drift-report.sh`, check 1)
   does not compare the installed `build-picture.sh` or `blender-job.sh`; the practice run (`discord-agent/runner/canary.cjs`, step "installed") compares only the
   runner, the core scripts, the prompt and its guides, not `label-shot.py`, `render-model.*`, `art-run.sh`, `build-art.sh`, `build-sound.sh`,
-  `sound-*.mjs`, `build-picture.sh`, `blender-job.sh`, `wait-for-ship.sh` or `reports-cli.cjs`. A file `install-runner.sh` copies can differ from `main` unnoticed
+  `sound-*.mjs`, `build-picture.sh`, `blender-job.sh`, `make-model.sh`, `model-run.sh`, `model-gen.sh`, `wait-for-ship.sh` or `reports-cli.cjs`. A file `install-runner.sh` copies can differ from `main` unnoticed
   (found 2026-10-21).
 - **The agent can stage an ignored file.** `agit add -f <path>` is allowed, so the git-excluded job files (`.dm-inbox/` attachments, `.dm-shot.json`,
   `.dm-shots/`) could be committed; only `.dm-guides/` is in the runner's forbidden paths (found 2026-10-21).

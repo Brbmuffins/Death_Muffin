@@ -2,9 +2,9 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dykd5rrfo52k4"
-path.bptc="res://.godot/imported/necro_wpn_scythe_Color_2dedfdcd-fd7d-4892-b258-1adbe2f8ada8.webp-7438ea3aafc334f4755859dc0da7346a.bptc.ctex"
-path.astc="res://.godot/imported/necro_wpn_scythe_Color_2dedfdcd-fd7d-4892-b258-1adbe2f8ada8.webp-7438ea3aafc334f4755859dc0da7346a.astc.ctex"
+uid="uid://dfgswksdj63jk"
+path.bptc="res://.godot/imported/necro_wpn_scythe_base.webp-528c8fb48d16ce368d8ae27417be63cd.bptc.ctex"
+path.astc="res://.godot/imported/necro_wpn_scythe_base.webp-528c8fb48d16ce368d8ae27417be63cd.astc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
@@ -12,8 +12,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/slice/models/props/necro_wpn_scythe_Color_2dedfdcd-fd7d-4892-b258-1adbe2f8ada8.webp"
-dest_files=["res://.godot/imported/necro_wpn_scythe_Color_2dedfdcd-fd7d-4892-b258-1adbe2f8ada8.webp-7438ea3aafc334f4755859dc0da7346a.bptc.ctex", "res://.godot/imported/necro_wpn_scythe_Color_2dedfdcd-fd7d-4892-b258-1adbe2f8ada8.webp-7438ea3aafc334f4755859dc0da7346a.astc.ctex"]
+source_file="res://assets/slice/models/props/necro_wpn_scythe_base.webp"
+dest_files=["res://.godot/imported/necro_wpn_scythe_base.webp-528c8fb48d16ce368d8ae27417be63cd.bptc.ctex", "res://.godot/imported/necro_wpn_scythe_base.webp-528c8fb48d16ce368d8ae27417be63cd.astc.ctex"]
 
 [params]
 

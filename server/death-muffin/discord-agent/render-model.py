@@ -1,8 +1,9 @@
 """
 render-model.py - review renders of built models for the Discord agent (render-model.sh runs it inside the sandbox):
-  blender -b --factory-startup --python render-model.py -- <out_dir> <label>=<file.glb> [<label>=<file.glb> ...]
+  blender -b --factory-startup --python render-model.py -- <out_dir> <label>=<file.glb>[=<turn>] [...]
 Writes <out_dir>/<n>_<view>.png for each model (n = 0-based index, views front / side / back), textured, Cycles on the CPU with a few
-threads and low samples (the VPS runs live game servers). Characters are shown in their first animation frame (rest pose when there is none).
+threads and low samples (the VPS runs live game servers). <turn> (degrees about the up axis) is the turn the game gives the model (its row's
+yaw), so "front" is the side that faces the game's camera; render-model.sh reads it from the model's row. Characters are shown in their first animation frame (rest pose when there is none).
 Composed into one sheet by render-model.sh afterwards.
 """
 import math
@@ -18,7 +19,7 @@ VIEWS = [('front', 30.0), ('side', 90.0), ('back', 180.0)]
 
 def args():
     a = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
-    return a[0], [x.split('=', 1) for x in a[1:]]
+    return a[0], [(x.split('=') + ['0'])[:3] for x in a[1:]]
 
 
 def reset():
@@ -74,7 +75,7 @@ def setup_scene():
 def main():
     out, models = args()
     os.makedirs(out, exist_ok=True)
-    for n, (label, glb) in enumerate(models):
+    for n, (label, glb, turn) in enumerate(models):
         reset()
         sc, cam = setup_scene()
         before = set(bpy.data.objects)
@@ -94,9 +95,9 @@ def main():
         size = hi - lo
         radius = max(size.length / 2, 0.01)
         dist = radius / math.tan(cam.data.angle / 2) * 1.08
-        # glTF +Z (forward) imports as Blender -Y; Tripo props face +X in the game table, characters face glTF +Z
+        # the game's camera looks down glTF -Z (Blender +Y), so "front" sits on Blender -Y; turning the camera by -turn = the model by turn
         for view, yaw in VIEWS:
-            a = math.radians(yaw)
+            a = math.radians(yaw - float(turn))
             d = Vector((math.sin(a), -math.cos(a), 0.28)).normalized()
             cam.location = ctr + d * dist
             cam.rotation_euler = (-d).to_track_quat('-Z', 'Y').to_euler()

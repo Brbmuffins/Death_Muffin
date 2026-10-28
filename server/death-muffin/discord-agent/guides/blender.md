@@ -1,13 +1,14 @@
 # Blender jobs (movement and edits on models the game has)
 
 Blender runs here, in your sandbox, for free (no credits, no keys, no approval to spend), in seconds. It is the DEFAULT for anything about how a model
-moves or a change to a model that exists; Tripo is only for a brand-new model (a new shape), never for a move or an edit Blender can make (DECISIONS B74).
+moves or a change to a model that exists; a brand-new model (a new shape) is made from a picture (`.dm-guides/models.md`), never for a move or an edit
+Blender can make (DECISIONS B74).
 - **A move** a creature lacks or does badly (walk, run, idle, an attack, a flinch or a death, feet that slide, a hitch where a loop restarts): Blender.
 - **An edit** to a model: another colour, a bigger or smaller part (head, horns, claws), a part taken off (tail, horn, cape), fewer triangles: Blender.
-- **A new model** (`.dm-guides/models.md`): ask Tripo for the model, its rig and only the animations Blender cannot give it (step 2 there), then finish
-  it here after `build-art.sh` (loops, names, library moves, four-legged gaits).
+- **A new model** (`.dm-guides/models.md`): Pixal3D makes its shape and paint on a team PC; Blender builds its game mesh and skeleton
+  (`make-model.sh`), then its moves here after `build-art.sh` (a `motion` recipe, library moves, loops, names).
 - What Blender cannot do, say plainly and offer the next best thing: a new silhouette or new armour on the body, a new texture design (a recolour is
-  not one), facial expressions. Those are a new Tripo model or a human animator.
+  not one), facial expressions. Those are a new model (a new picture) or a human animator.
 
 **Which tool for a move.** Run `inspect` first (below): it lists the model's bones and clips.
 - Two-legged on the shared Tripo biped skeleton (bones `Hip`, `Waist`, `Spine01`, `L_Upperarm`, ...; heroes, the thrall, ghouls, NPCs): `retarget` moves from

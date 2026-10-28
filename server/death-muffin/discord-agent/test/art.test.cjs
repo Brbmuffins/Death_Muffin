@@ -394,11 +394,15 @@ test('install: the trusted art tools come from the committed revision, get their
     fs.cpSync(path.join(REPO, 'server/death-muffin/discord-agent'), path.join(tmp, 'server/death-muffin/discord-agent'), { recursive: true, filter: (s) => !/node_modules|\/test\//.test(s) });
     fs.mkdirSync(path.join(tmp, 'tools/ai'), { recursive: true }); for (const f of ['common', 'gemini', 'tripo']) fs.copyFileSync(path.join(REPO, `tools/ai/${f}.mjs`), path.join(tmp, `tools/ai/${f}.mjs`));
     fs.mkdirSync(path.join(tmp, 'tools/check'), { recursive: true }); fs.copyFileSync(path.join(REPO, 'tools/check/prep.sh'), path.join(tmp, 'tools/check/prep.sh')); fs.copyFileSync(path.join(REPO, 'tools/check/ci.sh'), path.join(tmp, 'tools/check/ci.sh'));
+    fs.copyFileSync(path.join(REPO, 'server/death-muffin/model-gen.sh'), path.join(tmp, 'server/death-muffin/model-gen.sh'));   // the 3D tries' trusted copies
+    fs.mkdirSync(path.join(tmp, 'teamapp/comfy'), { recursive: true }); fs.copyFileSync(path.join(REPO, 'teamapp/comfy/image-to-model.json'), path.join(tmp, 'teamapp/comfy/image-to-model.json'));
     fs.symlinkSync(NM, path.join(tmp, 'node_modules'));
-    sh(tmp, 'add', '-f', 'server', 'tools'); sh(tmp, 'commit', '-q', '-m', 'x');
+    sh(tmp, 'add', '-f', 'server', 'tools', 'teamapp'); sh(tmp, 'commit', '-q', '-m', 'x');
     const r = spawnSync('bash', [path.join(tmp, 'server/death-muffin/discord-agent/install-runner.sh'), 'HEAD'], { env: { ...process.env, REPO: tmp, DEST, NO_SYSTEMD: '1', OWNER_ID: IDS.OWNER }, encoding: 'utf8' });
     assert.equal(r.status, 0, r.stdout + r.stderr);
-    for (const f of ['art-run.sh', 'build-art.sh', 'prep.sh', 'ci.sh']) assert.ok(fs.statSync(path.join(DEST, f)).mode & 0o100, f + ' is executable');
+    for (const f of ['art-run.sh', 'build-art.sh', 'model-run.sh', 'model-gen.sh', 'prep.sh', 'ci.sh']) assert.ok(fs.statSync(path.join(DEST, f)).mode & 0o100, f + ' is executable');
+    assert.equal(fs.readFileSync(path.join(DEST, 'model-gen.sh'), 'utf8'), fs.readFileSync(path.join(REPO, 'server/death-muffin/model-gen.sh'), 'utf8'), 'the committed model-gen.sh, byte for byte');
+    assert.ok(fs.existsSync(path.join(DEST, 'image-to-model.json')), 'the workflow model-gen.sh checks a run against sits beside the scripts (an install has no checkout for it to find)');
     for (const f of ['common', 'gemini', 'tripo']) assert.ok(fs.existsSync(path.join(DEST, 'art-tools/tools/ai', `${f}.mjs`)));
     assert.match(fs.readFileSync(path.join(DEST, 'art-tools/tools/ai/common.mjs'), 'utf8'), /DM_ART_ROOT/);
     assert.ok(fs.existsSync(path.join(DEST, 'art-tools/node_modules/sharp/package.json')) && !fs.lstatSync(path.join(DEST, 'art-tools/node_modules/sharp')).isSymbolicLink(), 'its own copy of sharp, not a link into a worktree-reachable tree');

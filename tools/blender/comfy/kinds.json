@@ -1,0 +1,59 @@
+{
+  "_note": "Steps that make a game model from a ComfyUI run (ASSET_PIPELINE.md 'Image to model'): the record art-manifest/comfy/<id>.json lists them and tools/blender/make.mjs build <id> does them in order on the run's detailed model (art-src/comfy/<id>/<run.file>), writing the record's game file beside it. Positions are shares (0 to 1) of the model's box in its game placement (the record's frame: z up, facing +y). Types: int, number, bool, enum (values), vec (a list of len numbers), boxes (lists of six numbers x0 y0 z0 x1 y1 z1). A new kind is an entry here plus its arguments in make.mjs (STEP_ARGS).",
+  "kinds": {
+    "bend": {
+      "script": "bend.py",
+      "what": "Turn a part of the detailed model about a joint, paint and maps untouched (the bone hound's head raised 20 degrees at the neck, so its open jaw faces the game camera). Each corner turns by angle x its weight: 0 behind blend[0], 1 past blend[1] (along y), only above `above` (z). Before finish.",
+      "params": {
+        "pivot": { "type": "vec", "len": 3, "min": 0, "max": 1, "req": true },
+        "axis": { "type": "enum", "values": ["x", "y", "z"], "req": true },
+        "angle": { "type": "number", "min": -90, "max": 90, "req": true },
+        "blend": { "type": "vec", "len": 2, "min": 0, "max": 1, "req": true },
+        "above": { "type": "number", "min": 0, "max": 1 }
+      }
+    },
+    "finish": {
+      "script": "finish.py",
+      "what": "The game version of the detailed model: a solid rebuild (cells voxels across), cut to `triangles` (the model's budget), fresh UVs in a few large charts packed by xatlas, and the detailed model's paint, roughness, metal and normals baked onto them at `texture` px. metal: none (stone, bone, wood, cloth, flesh), mixed (decided per material), all (by colour), keep (as Pixal made it); metalRegions {boxes, rough} where the metal is when Pixal marks the whole model metal. keep {boxes, share}: parts the cut takes last, so they hold that share of the triangles (a jaw and its fangs). hard: sharp edges kept (smooth by `angle` degrees).",
+      "params": {
+        "triangles": { "type": "int", "min": 300, "max": 20000, "req": true },
+        "texture": { "type": "enum", "values": [256, 512, 1024, 2048], "req": true },
+        "metal": { "type": "enum", "values": ["none", "mixed", "all", "keep"], "req": true },
+        "cells": { "type": "int", "min": 128, "max": 768 },
+        "keep": { "type": "map", "fields": { "boxes": { "type": "boxes", "req": true }, "share": { "type": "number", "min": 0.05, "max": 0.8, "req": true } } },
+        "metalRegions": { "type": "map", "fields": { "boxes": { "type": "boxes", "req": true }, "rough": { "type": "number", "min": 0, "max": 1 } } },
+        "hard": { "type": "bool" },
+        "angle": { "type": "number", "min": 10, "max": 80 },
+        "calm": { "type": "int", "min": 0, "max": 16 },
+        "reach": { "type": "number", "min": 0.005, "max": 0.1 }
+      }
+    },
+    "place": {
+      "script": "place.py",
+      "what": "Move the model into its game placement (the record's frame, found by make.mjs fit). After finish, before rig.",
+      "params": {}
+    },
+    "grime": {
+      "script": "grime.py",
+      "what": "Dirt painted into the colour (and roughness) of a model that came out too clean: film everywhere, crevice grime, stains, mud from the feet, dust on top, old-bone yellowing (age), all scaled by amount. After place (it needs the game's up).",
+      "params": {
+        "amount": { "type": "number", "min": 0, "max": 3 },
+        "film": { "type": "number", "min": 0, "max": 1 },
+        "crevice": { "type": "number", "min": 0, "max": 1 },
+        "stain": { "type": "number", "min": 0, "max": 1 },
+        "ground": { "type": "number", "min": 0, "max": 1 },
+        "top": { "type": "number", "min": 0, "max": 1 },
+        "age": { "type": "number", "min": 0, "max": 1 },
+        "seed": { "type": "int", "min": 0, "max": 9999 }
+      }
+    },
+    "rig": {
+      "script": "",
+      "what": "A skeleton built from the placed model's shape, the body skinned by geodesic voxel binding. body: quad (four legs: Root, Hip, Spine1-2, Chest, Neck1-2, Head, Tail_A-D, FL/FR_Upper/Lower/Paw, HL/HR_Thigh/Shin/Meta/Paw; legTop 0.8 when hanging cloth meets the legs low), legs (any number of legs around one body, a spider's eight: Root, Hip, Abdomen, Head, <side><n>_Upper/Lower/Foot), biped (the heroes' skeleton). No clips: they are Blender jobs (tools/blender/recipes/<id>.json). Last.",
+      "params": {
+        "body": { "type": "enum", "values": ["quad", "legs", "biped"], "req": true },
+        "legTop": { "type": "number", "min": 0.3, "max": 1 }
+      }
+    }
+  }
+}

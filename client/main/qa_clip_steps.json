@@ -36,7 +36,7 @@
       }
     },
     "zoom": {
-      "help": "the camera's zoom for the clip (1 the game's default, 0.7 the closest a player can zoom, 1.45 the widest; it is 1 when this is left out): closer than a player gets is for looking at a detail",
+      "help": "the camera's zoom for the clip (1 the game's default, 0.7 the closest a player can zoom, 1.45 the widest; it is 1 when this is left out): closer than a player gets is for looking at a detail; in a model clip it scales the model's own framing (1.45: the model and more of the room around it)",
       "args": {
         "value": { "type": "number", "min": 0.4, "max": 1.45, "required": true }
       }

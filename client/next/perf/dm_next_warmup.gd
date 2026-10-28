@@ -86,11 +86,15 @@ static func run(game: DmNextGame) -> void:
 	stage.name = "WarmupStage"
 	game.add_child(stage)
 	var bodies := _bodies(stage, at0, game.bosses.served_areas)
-	for k in 2:   # the gear models' two material variants (the model's own, and the emissive tier dress), drawn once so they compile now
-		var w := DmGearModels.weapon("staff", ["bone", "hell"][k])
-		if w != null:
-			stage.add_child(w)
-			w.position = at0 + Vector3(-1.2 + 0.6 * k, 0.9, 0.0)
+	# every weapon kind's model in its two material variants (the model's own, and the emissive tier dress), drawn once so they compile now: a model
+	# made another way (Tripo, Pixal3D) has a material of its own (double-sided, an occlusion map), so one kind does not stand for the others
+	var kinds: Array = DmGearModels.table().get("weapon_kind_prop", {}).keys()
+	for i in kinds.size():
+		for k in 2:
+			var w := DmGearModels.weapon(String(kinds[i]), ["bone", "hell"][k])
+			if w != null:
+				stage.add_child(w)
+				w.position = at0 + Vector3(-1.8 + 3.6 * float(2 * i + k) / float(maxi(2 * kinds.size() - 1, 1)), 0.9, 0.0)
 	var scythe := DmGearProps.scythe_model()   # the Reaper's scythe: worn, and the spinning copy Scythe Throw makes
 	if scythe != null:
 		stage.add_child(scythe)

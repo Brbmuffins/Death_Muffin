@@ -99,6 +99,7 @@ function createRunner(cfgIn, opts = {}) {
   // Sound effects / music (ElevenLabs), for cfg.soundUsers, no budget gate (lib/sound.cjs).
   const sound = S.createSound(cfg, { now });
   let artBusy = false;     // one Tripo run at a time inside this process (art-run.sh also holds a flock across processes)
+  let modelBusy = false;   // one 3D-tries run at a time inside this process (a team PC's card makes one model at a time anyway)
   const jobsFile = path.join(cfg.stateDir, 'jobs.json');
   const shipsFile = path.join(cfg.stateDir, 'ships.jsonl');
   const lockFile = path.join(cfg.deployDir, '.deploy.lock');
@@ -472,7 +473,7 @@ function createRunner(cfgIn, opts = {}) {
     job.sessionId = null;
     const earlier = (job.history || []).slice(-6).map((h) => `round ${h.round || 1} ${h.discarded ? 'discarded' : `shipped${h.shipSha ? ` (${String(h.shipSha).slice(0, 7)})` : ''}`}${h.title ? `: ${clip(h.title, 90)}` : ''}`).join('; ');
     if (prev.worktree) await G.removeJobArtifacts(cfg, { ...job, ...prev }).catch(() => {});
-    Object.assign(job, { round, branch: `discord/${job.id}-${round}`, worktree: w.worktree, base: w.base, proposal: null, artRequest: null, concepts: job.concepts || {}, conceptCount: 0, shotsSeen: {}, lastClip: null, clipAsk: null, turns: 0, status: 'idle', queuedNotice: false, cancelRequested: false, previewBusy: false,
+    Object.assign(job, { round, branch: `discord/${job.id}-${round}`, worktree: w.worktree, base: w.base, proposal: null, artRequest: null, concepts: job.concepts || {}, conceptCount: 0, modelCount: 0, shotsSeen: {}, lastClip: null, clipAsk: null, turns: 0, status: 'idle', queuedNotice: false, cancelRequested: false, previewBusy: false,
       roundNote: job.talk ? null : carry ? `New round in this thread on a fresh branch from the latest ${BB}; the earlier conversation is not carried over. Earlier rounds here: ${earlier || 'none'}. Work from the request and the code as it is now.`
         : `This thread's earlier work was on a different version of the game, so that conversation is not carried over. You are on a fresh branch from the latest ${BB}; work from the request and the code.`, lastActive: now() });
     const kept = restoreConcepts(job);
@@ -930,6 +931,7 @@ function createRunner(cfgIn, opts = {}) {
     postNewShots(job);
     if (art && await conceptStage(job)) return;   // concept images are being made (or were refused): people look at them before anything is built
     if (art && await artStage(job)) return;       // a model request is waiting for an approver (or was refused): nothing to verify or propose yet
+    if (art && await modelStage(job)) return;     // 3D tries are being made on a team PC (or were refused): people pick one before anything is built
     if (sound && await soundStage(job)) return;   // a sound is being generated (or was refused): the agent continues once the takes exist
     if (await clipStage(job)) return;    // short videos of the options are on their way to a team PC: people pick one before any change is proposed
     await afterTurn(job, readResult(job.worktree), o);
@@ -1664,7 +1666,7 @@ function createRunner(cfgIn, opts = {}) {
       job.roundNote = (job.roundNote ? job.roundNote + '\n\n' : '') +
         `The runner generated concept images and posted them in the thread, numbered: ${done.map((d, i) => `${i + 1} = ${d.id} (${conceptRel(d.id)})`).join(', ')}${failed.length ? `; failed: ${failed.join(', ')}` : ''}. Read the ones that matter before you answer. ` +
         `To change one, edit its gemini job and write ${A.CONCEPT_FILE} again for that id (it is regenerated). When people pick: a picture concept (its job names a kind) goes into the game with ${cfg.toolsDir}/build-picture.sh <kind> <name> <id> (see "Making pictures"); ` +
-        `a model concept gets its Tripo spec and ${A.REQUEST_FILE} with those ids. The shown images are reused, not regenerated, and they stay available in later rounds of this thread (do not touch art-src/concepts/).`;
+        `a model concept goes to free 3D tries on a team PC (${A.MODEL_FILE}, .dm-guides/models.md) or, for a Tripo model, gets its Tripo spec and ${A.REQUEST_FILE} with those ids. The shown images are reused, not regenerated, and they stay available in later rounds of this thread (do not touch art-src/concepts/).`;
       job.lastActive = now(); save();
     } finally {
       if (ticker) clearInterval(ticker);
@@ -1672,6 +1674,66 @@ function createRunner(cfgIn, opts = {}) {
       if (job.deleteRequested) await cleanupDeleted(job).catch(() => {});
       else if (job.discardRequested) await discard(job, job.discardRequested).catch((e) => say(job, `Discard failed: ${e.message}`));
       pump();
+    }
+  }
+
+  // ---------- 3D model tries: Pixal3D on a team PC's graphics card (free), from a concept picture people saw; nothing to approve ----------
+  // The agent writes .dm-model-request.json {"ids": [...], "note"} (1 to A.MAX_MODELS ids). Each id needs the concept the runner posted in this thread, unchanged
+  // (job.concepts pins its hash). Same gate as concepts: the asker has a model budget (or is an owner), plus a per-round cap. model-run.sh makes three tries per id
+  // (art-src/comfy/<id>/, with tries.json holding each try's run record); the agent renders them, people pick, and the agent builds the picked one (guides/models.md).
+  const MAX_MODELS_PER_ROUND = 6;
+  async function modelStage(job) {
+    for (let attempt = 0; ; attempt++) {
+      const rq = A.readRequest(job.worktree, A.MODEL_FILE, A.MAX_MODELS);
+      if (!rq) return false;
+      const v = rq.error ? { ok: false, errors: [rq.error] } : A.validateModels({ wt: job.worktree, request: rq, concepts: job.concepts });
+      if (v.ok) {
+        const who = artWho(job);
+        const refuse = (why, text) => { audit.log('model-refused', { job: job.id, userId: who.id, why }); say(job, text); job.status = 'idle'; return true; };
+        if (!(art.store.budgetOf(who.id) > 0 || cfg.ownerIds.includes(who.id))) return refuse('no budget', `${who.name} has no model-generation budget, so I will not make 3D tries. The owner sets budgets. Nothing was generated.`);
+        if ((job.modelCount || 0) + v.items.length > MAX_MODELS_PER_ROUND) return refuse('round cap', `That would pass ${MAX_MODELS_PER_ROUND} 3D models in this round (${job.modelCount || 0} made so far). Pick from the tries already posted, or ship/discard and start a new round.`);
+        if (modelBusy) return refuse('busy', 'Another set of 3D tries is being made right now (one at a time). Ask again when it is done.');
+        // awaited (unlike the concept run): the job stays "running" for the whole run, so !cancel reaches the step and the scheduler's finally settles a !discard afterwards
+        await runModels(job, v.items.map((i) => i.id), who, rq.note).catch((e) => { console.error('model run crashed', e); say(job, `The 3D model run crashed: ${clip(redactText(e.message), 300)}`); });
+        return true;
+      }
+      audit.log('model-invalid', { job: job.id, errors: v.errors.join(' | ') });
+      if (attempt >= 2) { say(job, `The 3D model request still has problems, so nothing was generated:\n${v.errors.map((e) => `- ${clip(e, 200)}`).join('\n')}\nTell me what to change.`); job.status = 'idle'; return true; }
+      const r = await agentTurn(job, `The runner rejected your 3D model request. Write ${A.MODEL_FILE} again once fixed (ids: 1 to ${A.MAX_MODELS}, each with a concept the runner made and posted). Problems:\n${v.errors.map((e) => `- ${e}`).join('\n')}`);
+      if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return true; }
+      if (r.error) { say(job, `The agent hit an error: ${clip(redactText(r.error), 300)}`); job.status = 'idle'; return true; }
+    }
+  }
+  async function runModels(job, ids, who, note) {
+    modelBusy = true; job.status = 'generating'; save();
+    let ticker = null;
+    try {
+      audit.log('model-start', { job: job.id, ids, userId: who.id });
+      say(job, `🧊 Making 3D tries of ${ids.map((i) => `"${i}"`).join(', ')} on a team PC's graphics card (free, about 10 minutes each)…${note ? ` (${clip(note, 150)})` : ''}`);
+      typing(job); const t0 = now(); let nextUpdate = t0 + 5 * 60000; let current = ids[0];
+      ticker = setInterval(() => { typing(job); if (now() >= nextUpdate) { nextUpdate = now() + 5 * 60000; say(job, `🧊 Still making the 3D tries of "${current}" · ${Math.max(1, Math.round((now() - t0) / 60000))} min`); } }, 8000); ticker.unref();
+      const done = [], failed = []; let lastTail = '';
+      for (const id of ids) {
+        if (job.cancelRequested || job.discardRequested) break;
+        current = id;
+        let r; try { r = await art.runModel(job.worktree, id, { onSpawn: (p) => { job.proc = p; } }); } catch (e) { r = { ok: false, result: 'crashed', tries: [], tail: redactText(e.message) }; }
+        job.modelCount = (job.modelCount || 0) + 1;
+        if (r.ok) done.push({ id, files: r.tries.map((t) => t.file) });
+        else { failed.push(`"${id}" (${{ failed: 'the team PC made no model', timeout: 'it took too long', crashed: 'the run crashed', 'no-concept': 'the concept picture is missing' }[r.result] || r.result})`); lastTail = r.tail; }
+      }
+      audit.log('model-result', { job: job.id, userId: who.id, done: done.map((d) => `${d.id}:${d.files.length}`), failed });
+      if (job.cancelRequested || job.discardRequested) { job.cancelRequested = false; say(job, `Stopped. ${done.length} model(s) had tries made.`); return; }
+      if (!done.length) { say(job, `No 3D try came back: ${failed.join(', ')}.${lastTail ? '\n```\n' + clip(lastTail, 700) + '\n```' : ''}\nAsk again to retry.`); return; }
+      say(job, `🧊 3D tries are ready: ${done.map((d) => `"${d.id}" (${d.files.length} ${d.files.length === 1 ? 'try' : 'tries'})`).join(', ')}.${failed.length ? ` Could not make: ${failed.join(', ')}.` : ''} The agent renders them next, so you can pick one.`);
+      const dir = (d) => `art-src/comfy/${d.id}`;
+      job.queue.push({ userId: 'runner', name: 'runner', role: 'runner', art: true, ts: now(), text:
+        `The runner made 3D tries on a team PC (Pixal3D, free) from the concept pictures people saw. ${done.map((d) => `"${d.id}": ${d.files.map((f) => `${dir(d)}/${f}`).join(' ')} (run details: ${dir(d)}/tries.json)`).join('; ')}${failed.length ? `; failed: ${failed.join(', ')}` : ''}. ` +
+        `art-src/ is git-ignored: do not commit it. Next, per id: run ${cfg.toolsDir}/render-model.sh with that id's try files (one call per id; the sheet is posted in the thread), Read the sheet, say in one or two lines which try you would pick and why, and let people pick. ` +
+        `Then follow .dm-guides/models.md step 3 for the picked try: write the record art-manifest/comfy/<id>.json (its "run" block is that try's entry in tries.json), run ${cfg.toolsDir}/make-model.sh fit … and make-model.sh build <id>, then ${cfg.toolsDir}/build-art.sh <id>. Keep your reply short.` });
+      job.lastActive = now(); save();
+    } finally {
+      if (ticker) clearInterval(ticker);
+      modelBusy = false; job.proc = null; if (job.status === 'generating') job.status = 'idle'; save();
     }
   }
 

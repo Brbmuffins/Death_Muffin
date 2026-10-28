@@ -16,6 +16,7 @@ const WIDE := 2.4             ## the hero close-up fits a body this many times i
 const HERO_ROW := "hero_gravecaller"   ## the body DmQaUiShots.HERO_CAM frames
 const CUT_MARGIN := 1.3       ## the near plane stands this many times the model's turning radius in front of its middle
 const MIN_NEAR := 0.05
+const FLOOR_KEEP := 0.9       ## the near plane stays this share of the way to the floor at the bottom of the picture
 const AREA := "chapterhouse"            ## where a model view stands when the plan names no place: the same backdrop every time
 const SPOT := Vector2(-4.0, 25.0)       ## in it: open floor between the pillars, the hall behind, the camera inside the room (data/slice/world.json); what stands between is cut away (cut_near)
 
@@ -158,15 +159,19 @@ static func frame(game: DmNextGame, size: Vector3) -> void:
 	game.camera.cfg = cfg
 	game.camera.zoom = 1.0
 	game.camera.target_zoom = 1.0
-	game.camera.near = cut_near(cfg, size)
+	game.camera.near = cut_near(cfg, size, game.camera.fov)
 
 
-## The camera's near plane for a model of `size` framed by `cfg`: just in front of the model (its turning circle, CUT_MARGIN times), so a wall, pillar or tomb between
-## the camera and the model is cut away; the floor in the picture lies beyond it.
-static func cut_near(cfg: Dictionary, size: Vector3) -> float:
+## The camera's near plane for a model of `size` framed by `cfg` (vertical `fov` degrees): just in front of the model (its turning circle, CUT_MARGIN times), so a wall, pillar or tomb
+## between the camera and the model is cut away, but never into the floor at the bottom of the picture (FLOOR_KEEP of its depth: a camera drawn back for a walk sees floor nearer than the model).
+static func cut_near(cfg: Dictionary, size: Vector3, fov: float) -> float:
 	var dist := float(cfg["dist"])
-	var to_model := Vector2(dist * float(cfg["backFactor"]), dist * float(cfg["heightFactor"]) - float(cfg["lookAtY"])).length()
-	return maxf(MIN_NEAR, to_model - CUT_MARGIN * 0.5 * Vector2(size.x, size.z).length())
+	var up := dist * float(cfg["heightFactor"])
+	var back := dist * float(cfg["backFactor"])
+	var to_model := Vector2(back, up - float(cfg["lookAtY"])).length()
+	var half := deg_to_rad(fov) * 0.5
+	var floor_depth := up / sin(atan2(up - float(cfg["lookAtY"]), back) + half) * cos(half)   # the bottom edge's ray meets the floor this far in front of the camera
+	return maxf(MIN_NEAR, minf(to_model - CUT_MARGIN * 0.5 * Vector2(size.x, size.z).length(), FLOOR_KEEP * floor_depth))
 
 
 ## A still's pose: `anim` at `at` of its length, frozen.

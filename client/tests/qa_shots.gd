@@ -492,7 +492,8 @@ func model_plan_format() -> void:
 			[{"view": "hero", "anim": "walk"}, "anim must be idle, run or cast"]]:
 		var r := DmQaUiShots.parse(JSON.stringify({"shots": [bad[0]]}))
 		check(not r["ok"] and String(r["error"]).contains(bad[1]), "a model view refusal names the problem: %s (%s)" % [bad[1], r["error"]])
-	var clips := DmQaClips.parse(JSON.stringify({"clips": [{"name": "walk", "model": id, "move": true}, {"name": "turn", "model": id, "camera": "turntable"}, {"name": "fast", "model_file": "x.glb", "move": true, "speed": 3}]}))
+	var clips := DmQaClips.parse(JSON.stringify({"clips": [{"name": "walk", "model": id, "move": true}, {"name": "turn", "model": id, "camera": "turntable"}, {"name": "fast", "model_file": "x.glb", "move": true, "speed": 3},
+		{"name": "still", "model": id, "move": true, "camera": "still"}]}))
 	check(clips["ok"], "a model clip plan parses (%s)" % clips["error"])
 	if clips["ok"]:
 		var walk: Dictionary = clips["clips"][0]
@@ -502,7 +503,9 @@ func model_plan_format() -> void:
 		check(is_equal_approx(float(walk["model"]["speed"]), float(row["stride"]["walk"]) * float(row["height"])), "it moves at its stride times its height (%s m/s)" % str(walk["model"]["speed"]))
 		check(not clips["clips"][1]["model"]["move"] and float(clips["clips"][1]["model"]["turn"]) == DmQaUiShots.DEFAULT_TURN, "a turntable model stays in place, starting three-quarter on")
 		check(float(clips["clips"][2]["model"]["speed"]) == 3.0, "a file's move takes the plan's speed")
-	for bad in [[{"model_file": "x.glb", "move": true}, "needs \"speed\""], [{"model": id, "camera": "wide"}, "follow (one side) or turntable"], [{"cast": "reap", "move": true}, "is for a model clip"],
+		check(clips["clips"][3]["model"]["still"] and clips["clips"][3]["model"]["move"] and not walk["model"]["still"], "a still camera is the clip's own: the others follow")
+	for bad in [[{"model_file": "x.glb", "move": true}, "needs \"speed\""], [{"model": id, "camera": "wide"}, "follow (one side), still"], [{"cast": "reap", "move": true}, "is for a model clip"],
+			[{"cast": "reap", "camera": "still"}, "\"still\" is for a model clip"],
 			[{"model": id, "move": "yes"}, "true or false"]]:
 		var r := DmQaClips.parse(JSON.stringify({"clips": [bad[0]]}))
 		check(not r["ok"] and String(r["error"]).contains(bad[1]), "a model clip refusal names the problem: %s (%s)" % [bad[1], r["error"]])
@@ -547,9 +550,11 @@ func model_view() -> void:
 		check(not is_instance_valid(holder) and hero.avatar.c.root.visible and g.ui.visible and g.camera.cfg == cfg_before and g.look._ring.size() == rings, "%s: after the shot the model is gone, the hero, HUD and camera back" % s["name"])
 	check(sizes.has("row") and sizes.has("file") and absf((sizes["row"] as Vector3).y - float(row["height"])) < 0.01 and absf((sizes["file"] as Vector3).y - float(row["height"])) < 0.01, "a row's model and the same file with its row stand the row's height (%s, %s)" % [sizes.get("row"), sizes.get("file")])
 	check(sizes.has("raw") and absf((sizes["raw"] as Vector3).y - 3.0) < 0.01, "a file alone stands the height asked (%s)" % sizes.get("raw"))
-	var clips := DmQaClips.parse(JSON.stringify({"clips": [{"name": "walk", "model": id, "move": true, "seconds": 2}, {"name": "spin", "model_file": "sent.glb", "camera": "turntable", "seconds": 2}]}))
+	var clips := DmQaClips.parse(JSON.stringify({"clips": [{"name": "walk", "model": id, "move": true, "seconds": 2}, {"name": "spin", "model_file": "sent.glb", "camera": "turntable", "seconds": 2},
+		{"name": "still", "model": id, "move": true, "camera": "still", "seconds": 2},
+		{"name": "still-wide", "model": id, "move": true, "camera": "still", "seconds": 2, "setup": [{"do": "zoom", "value": 1.4}]}]}))
 	var start := hero.position
-	var seen := {"n": 0, "from": Vector3.ZERO, "to": Vector3.ZERO, "yaws": [], "follow": true}
+	var seen := {"n": 0, "from": Vector3.ZERO, "to": Vector3.ZERO, "yaws": [], "follow": true, "heroes": [], "dist": 0.0, "floor": 0.0, "near": 0.0}
 	var fake := func() -> Image:
 		seen["n"] += 1
 		var holders := g.get_children().filter(func(n: Node) -> bool: return String(n.name).begins_with("QaModel") and not n.is_queued_for_deletion())
@@ -560,6 +565,12 @@ func model_view() -> void:
 			seen["to"] = h.position
 			(seen["yaws"] as Array).append(h.rotation.y)
 			seen["follow"] = seen["follow"] and Vector2(h.position.x, h.position.z).distance_to(Vector2(hero.position.x, hero.position.z)) < 0.01
+			(seen["heroes"] as Array).append(hero.position)
+			seen["dist"] = float(g.camera.cfg["dist"])
+			var bottom := Vector2(g.camera.get_viewport().get_visible_rect().size.x * 0.5, g.camera.get_viewport().get_visible_rect().size.y - 1.0)
+			var ray := g.camera.project_ray_normal(bottom)   # where the picture's bottom edge meets the floor, as deep as the camera sees it
+			seen["floor"] = (g.camera.global_position.y / -ray.y) * ray.dot(-g.camera.global_transform.basis.z) if ray.y < 0.0 else INF
+			seen["near"] = g.camera.near
 		var img := Image.create_empty(320, 180, false, Image.FORMAT_RGBA8)
 		img.fill(Color.from_hsv(fmod(float(seen["n"]) * 0.02, 1.0), 0.7, 0.8))
 		return img
@@ -567,11 +578,26 @@ func model_view() -> void:
 	DirAccess.make_dir_recursive_absolute(out)
 	clips["clips"][0]["dirs"] = ["", dir]
 	clips["clips"][1]["dirs"] = ["", dir]
+	clips["clips"][2]["dirs"] = ["", dir]
+	clips["clips"][3]["dirs"] = ["", dir]
 	var r: Dictionary = await DmQaClips.record(root, g, clips["clips"][0], out, fake)
 	var walked: float = (seen["to"] as Vector3).distance_to(seen["from"])
 	var want := float(clips["clips"][0]["model"]["speed"]) * 2.0 * float(r["frames"] - 1) / float(r["frames"])
 	check(r["ok"] and r["casts"] == [], "a moving model clip is recorded with no cast (%s)" % str(r))
 	check(absf(walked - want) < 0.15 * want + 0.05 and seen["follow"], "the model walks its stride's speed and the camera's hero goes with it (%.2f m of %.2f)" % [walked, want])
+	var follow_dist := float(seen["dist"])
+	seen.merge({"n": 0, "heroes": []}, true)
+	r = await DmQaClips.record(root, g, clips["clips"][2], out, fake)
+	walked = (seen["to"] as Vector3).distance_to(seen["from"])
+	var heroes: Array = seen["heroes"]
+	check(r["ok"] and absf(walked - want) < 0.15 * want + 0.05 and heroes.size() > 10 and (heroes[0] as Vector3).distance_to(heroes[heroes.size() - 1]) < 0.01 and float(seen["dist"]) > follow_dist,
+		"a still model clip walks the model past a camera that stays put, drawn back (%.2f m of %.2f; camera %.1f m, following %.1f m)" % [walked, want, float(seen["dist"]), follow_dist])
+	check(float(seen["near"]) < float(seen["floor"]), "and its near plane does not cut into the floor at the bottom of the picture (near %.2f m, floor %.2f m)" % [float(seen["near"]), float(seen["floor"])])
+	var still_dist := float(seen["dist"])
+	seen.merge({"n": 0}, true)
+	r = await DmQaClips.record(root, g, clips["clips"][3], out, fake)
+	check(r["ok"] and absf(float(seen["dist"]) - 1.4 * still_dist) < 0.01 and float(seen["near"]) < float(seen["floor"]),
+		"the setup's zoom draws a model clip's framing back (camera %.2f m, unzoomed %.2f m; near %.2f m, floor %.2f m)" % [float(seen["dist"]), still_dist, float(seen["near"]), float(seen["floor"])])
 	seen.merge({"n": 0, "yaws": []}, true)   # the same dictionary: the stand-in picture holds it
 	r = await DmQaClips.record(root, g, clips["clips"][1], out, fake)
 	var yaws: Array = seen["yaws"]

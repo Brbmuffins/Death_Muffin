@@ -67,7 +67,7 @@ live game, so plan only for what players already have. Concept pictures (new art
 function claudeArgs(cfg, job, { maxTurns, systemPrompt: sp } = {}) {
   // The only programs the agent may run, all in the sandbox: agit, check-godot.sh only with --rerun and the suites it names (the whole check is
   // the runner's, through CI), regen-godot.sh for generated files (B65), the screenshot, model, sound and picture build scripts (pictures: B70) and Blender jobs (B74).
-  const bash = [`Bash(${cfg.toolsDir}/agit *)`, `Bash(${cfg.toolsDir}/check-godot.sh --rerun *)`, `Bash(${cfg.toolsDir}/regen-godot.sh)`, `Bash(${cfg.toolsDir}/shot-godot.sh)`, `Bash(${cfg.toolsDir}/shot-godot.sh *)`, `Bash(${cfg.toolsDir}/build-art.sh *)`, `Bash(${cfg.toolsDir}/render-model.sh *)`, `Bash(${cfg.toolsDir}/build-sound.sh *)`, `Bash(${cfg.toolsDir}/build-picture.sh *)`, `Bash(${cfg.toolsDir}/blender-job.sh)`];
+  const bash = [`Bash(${cfg.toolsDir}/agit *)`, `Bash(${cfg.toolsDir}/check-godot.sh --rerun *)`, `Bash(${cfg.toolsDir}/regen-godot.sh)`, `Bash(${cfg.toolsDir}/shot-godot.sh)`, `Bash(${cfg.toolsDir}/shot-godot.sh *)`, `Bash(${cfg.toolsDir}/build-art.sh *)`, `Bash(${cfg.toolsDir}/render-model.sh *)`, `Bash(${cfg.toolsDir}/make-model.sh *)`, `Bash(${cfg.toolsDir}/build-sound.sh *)`, `Bash(${cfg.toolsDir}/build-picture.sh *)`, `Bash(${cfg.toolsDir}/blender-job.sh)`];
   // File tools are scoped to the worktree ("//" = absolute path): a bare "Read" grants every path on the machine (runner secret, /opt),
   // which matters more now that a WebFetch could carry what it read out. WebFetch is limited to documentation hosts (cfg.webDocDomains) unless the owner set cfg.webAnyHost.
   const wt = `/${job.worktree}/**`;

@@ -61,7 +61,7 @@ function makeWorld(over = {}) {
     projects: { deathmuffin: { requesters: [IDS.HELIX, IDS.LIMITED], approvers: { casual: [IDS.HELIX, IDS.LIMITED], gameplay: [IDS.HELIX], sensitive: [IDS.HELIX] } } },
     repo, worktreeRoot: wtRoot, stateDir: path.join(tools, 'state'), toolsDir: tools, deployDir: deploy,
     claudeCmd: path.join(__dirname, 'fake-claude.cjs'), turnTimeoutMin: 1, ciGate: false, clientManifest: path.join(T, 'client', 'manifest.json'), deployCmd: `echo deployed "$1" >> ${deploy}/deploys.log`,
-    artToolsDir: artDir, artKeysFile: path.join(T, 'keys.local'), artBudgetFile: path.join(T, 'budget.json'), artLedgerFile: path.join(T, 'ledger.json'), artLockFile: path.join(T, 'tripo.lock'), artLockWaitSec: 5,
+    modelRunScript: path.join(artDir, 'model-run.sh'), artToolsDir: artDir, artKeysFile: path.join(T, 'keys.local'), artBudgetFile: path.join(T, 'budget.json'), artLedgerFile: path.join(T, 'ledger.json'), artLockFile: path.join(T, 'tripo.lock'), artLockWaitSec: 5,
     soundRunScript: path.join(SRC, 'sound-run.mjs'), soundKeyFile: path.join(T, 'eleven.key'), soundLedgerFile: path.join(T, 'eleven-ledger.json'),
     previewRoot: path.join(T, 'preview'), previewUrl: 'https://example.test/death-muffin/preview/',
     teamApi: '',   // team PC pictures off unless a test brings its own fake backend (never the real one)

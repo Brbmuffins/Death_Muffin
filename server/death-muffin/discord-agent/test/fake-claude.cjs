@@ -8,7 +8,7 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   let text = 'The answer is in client/game/a.gd.';
   // step budget: LONG-TASK runs out of steps (error_max_turns) unless it is continuing from a handoff; LONG-FOREVER always does; the runner's
   // note request writes .dm-handoff.md (NO-NOTE in the worktree: writes none). Every call logs its --max-turns and whether it resumed.
-  try { const ex = require('path').join(String(execFileSync('git', ['rev-parse', '--git-common-dir'])).trim(), 'info', 'exclude'); if (!fs.readFileSync(ex, 'utf8').includes('.fake-calls')) fs.appendFileSync(ex, '\n.fake-calls\n.fake-sp\n'); } catch { /* not a repo */ }
+  try { const ex = require('path').join(String(execFileSync('git', ['rev-parse', '--git-common-dir'])).trim(), 'info', 'exclude'); if (!fs.readFileSync(ex, 'utf8').includes('.fake-calls')) fs.appendFileSync(ex, '\n.fake-calls\n.fake-sp\n.fake-model-req\n.fake-model-prompt\n'); } catch { /* not a repo */ }
   const mtI = process.argv.indexOf('--max-turns'); fs.appendFileSync('.fake-calls', `${mtI >= 0 ? process.argv[mtI + 1] : '-'} ${process.argv.includes('--resume') ? 'resume' : 'fresh'} ${/step limit\. The work continues/.test(p) ? 'note' : /<handoff>/.test(p) ? 'continue' : /automatic review failed/.test(p) ? (/check-godot\.sh --rerun <suite>/.test(p) ? 'fixup-rerun' : 'fixup') : 'turn'}\n`);
   // what each call was given (guides.test.cjs): the system prompt's hash and size, the guides in the worktree then, and the prompt's start
   { const i = process.argv.indexOf('--append-system-prompt'); const sp = i >= 0 ? process.argv[i + 1] : ''; let guides = []; try { guides = fs.readdirSync('.dm-guides').sort(); } catch { /* none */ }
@@ -35,6 +35,8 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   const conflictList = /left conflicts in:\n([\s\S]*?)\nResolve/.exec(p);
   // concept + set requests: GD-CONCEPT ids=a,b writes Gemini jobs + .dm-concept-request.json; GD-SET ids=a,b writes props' Tripo specs (+ jobs if missing) + one .dm-art-request.json
   const cset = /GD-(CONCEPT|SET) ids=([a-z0-9_,]+)/.exec(p);
+  // 3D model requests: GD-MODEL ids=a,b writes .dm-model-request.json (GD-MODEL-STUBBORN also keeps a copy, so the runner's "rejected your 3D model request" turn writes the same request again)
+  const mdl = /GD-MODEL(-STUBBORN)? ids=([a-z0-9_,]+)/.exec(p);
   // picture concepts: GD-PICTURE ids=a,b writes ability-icon concept jobs (a kind, the subject only) + .dm-concept-request.json
   const pics = /GD-PICTURE ids=([a-z0-9_,]+)/.exec(p);
   if (pics && !/rejected your concept request/.test(p)) {
@@ -52,6 +54,13 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
       for (const id of ids) wr(`art-manifest/tripo-specs/${id}.json`, JSON.stringify({ id, input: `art-src/concepts/${id}.png`, generation: { model: 'P1-20260311', face_limit: 2500, texture_quality: 'detailed' } }));
       wr('.dm-art-request.json', JSON.stringify({ ids, note: 'the bone set' })); text = 'Asked for the set.' + (/The runner generated concept images/.test(p) ? ' CONCEPT-NOTE-SEEN' : '');
     }
+  } else if (mdl && !/The runner made 3D tries/.test(p) && !/rejected your 3D model request/.test(p)) {
+    const req = JSON.stringify({ ids: mdl[2].split(','), note: 'a bone hound for the crypt' });
+    wr('.dm-model-request.json', req); if (mdl[1]) wr('.fake-model-req', req); text = 'Asked for 3D tries.';
+  } else if (/rejected your 3D model request/.test(p)) {
+    if (fs.existsSync('.fake-model-req')) wr('.dm-model-request.json', fs.readFileSync('.fake-model-req', 'utf8')); text = 'Tried the request again.';
+  } else if (/The runner made 3D tries/.test(p)) {
+    wr('.fake-model-prompt', p); text = 'Looked at the tries.';
   } else if (art && !/The runner generated the approved model/.test(p) && !/rejected your model request/.test(p)) {
     const kind = art[1] || '', id = art[2];
     const spec = { id, input: `art-src/concepts/${id}.png`, generation: { model: 'P1-20260311', face_limit: 7000, texture_quality: 'detailed' } };

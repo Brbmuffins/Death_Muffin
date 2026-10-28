@@ -198,9 +198,9 @@
       "protected": true,
       "audience": ["agent"],
       "when": "always",
-      "summary": "The agent never calls Gemini, Tripo or ElevenLabs or sees their keys; the runner generates, within budgets and after an approver's check for models.",
+      "summary": "The agent never calls Gemini, the team PCs, Tripo or ElevenLabs or sees their keys; the runner generates, within budgets, and a paid model (Tripo) only after an approver's check.",
       "homes": [
-        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["You cannot call Gemini or Tripo yourself and you never see their keys; the runner generates.", "the estimated credits with the requester's remaining budget and the live Tripo balance, and waits for an approver's ✅.", "You cannot call ElevenLabs yourself and you never see its key; the runner generates."]}
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["You cannot call Gemini, the team PCs or Tripo yourself and you never see a key; the runner generates.", "the estimated credits with the requester's remaining budget and the live Tripo balance, and waits for an approver's ✅.", "You cannot call ElevenLabs yourself and you never see its key; the runner generates."]}
       ],
       "enforced": ["server/death-muffin/discord-agent/runner/lib/art.cjs", "server/death-muffin/discord-agent/runner/lib/sound.cjs"]
     },
@@ -736,7 +736,7 @@
       "summary": "Blender is the default (free, in the sandbox): a job file, blender-job.sh, its preview; Tripo only for new models.",
       "homes": [
         {"file": "server/death-muffin/discord-agent/guides/blender.md", "clauses": ["# Blender jobs", "It is the DEFAULT for anything about how a model moves or a change to a model that exists"]},
-        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["`.dm-guides/blender.md`: how a model moves, or a change to one that exists", "free and the default; Tripo only makes new models"]}
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["`.dm-guides/blender.md`: how a model moves, or a change to one that exists", "free and the default; a new model is made from a picture"]}
       ],
       "enforced": ["tools/blender/kinds.json", "tools/blender/jobs.mjs"]
     },

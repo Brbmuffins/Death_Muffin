@@ -1,19 +1,25 @@
 #!/usr/bin/env bash
 # The agent's way to turn an approved, generated model into game files (no keys, no network, nothing outside the worktree is writable).
-#   build-art.sh <id>      run from the worktree root, after the runner said the generation finished
+#   build-art.sh <id>      run from the worktree root, after the runner said the generation finished (a ComfyUI model: after make-model.sh build <id>)
 # Same sandbox as check-godot.sh (sandbox-lib.sh). Inside: tools/build-characters.mjs <id> (Tripo outputs in art-src/tripo/<id>/, or for a model made from a
 # ComfyUI run, art-manifest/comfy/<id>.json, its game file in art-src/comfy/<id>/ -> public/models/...), then the
 # result is DEQUANTIZED (Godot's glTF importer rejects KHR_mesh_quantization) and copied into the Godot client:
 #   characters/creatures  public/models/<id>/character.glb      -> client/assets/slice/models/<id>/character.glb
 #   props (id prop_<name>) public/models/props/<name>.glb        -> client/assets/slice/models/props/<name>.glb
 # A model with Blender jobs on record (art-manifest/blender/<id>.json, blender-job.sh) gets them done again on the rebuilt file (tools/blender/jobs.mjs replay).
-# Godot extracts textures and writes .import files the next time it imports the project (check-godot.sh does); commit those next to the model.
+# Godot extracts textures the next time it imports the project (check-godot.sh does); commit them and their .import files next to the model.
+# A texture with no .import yet gets one here first, VRAM compressed (a normal map as one), as the repo hygiene check wants: Godot's own
+# for a glTF-extracted image is lossless.
 set -uo pipefail
 ID=${1:-}
 [[ "$ID" =~ ^[a-z0-9_]{3,40}$ ]] || { echo "usage: build-art.sh <id>   (id = [a-z0-9_], the one that was generated)"; exit 2; }
 TOP=$(git rev-parse --show-toplevel) || exit 2
 RAW="$TOP/art-src/tripo/$ID"; [ -f "$TOP/art-manifest/comfy/$ID.json" ] && RAW="$TOP/art-src/comfy/$ID"
 [ -d "$RAW" ] && [ ! -L "$RAW" ] || { echo "nothing generated for $ID yet (no ${RAW#"$TOP"/})"; exit 2; }
+if [ "$RAW" = "$TOP/art-src/comfy/$ID" ]; then   # a ComfyUI model: its game file comes from make-model.sh build, after the record's last change
+  GAME="$RAW/$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["game"])' "$TOP/art-manifest/comfy/$ID.json" 2>/dev/null)"
+  [ -f "$GAME" ] && [ "$GAME" -nt "$TOP/art-manifest/comfy/$ID.json" ] || { echo "the game file of $ID is missing or older than its record: run make-model.sh build $ID first"; exit 2; }
+fi
 [ -f "$TOP/tools/build-characters.mjs" ] && [ -d "$TOP/client" ] || { echo "this worktree has no tools/build-characters.mjs or client/"; exit 2; }
 export DM_SANDBOX_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/sandbox-lib.sh"
 # Combat-trim source clips for a hero (build-characters.mjs COMBAT_TRIMS): the shared checkout's raw hero_gravecaller run, read-only in the sandbox.
@@ -39,6 +45,16 @@ export DM_PAYLOAD='
     await doc.transform(dequantize());
     for (const ext of doc.getRoot().listExtensionsUsed()) if (ext.extensionName === \"KHR_mesh_quantization\") ext.dispose();
     await io.write(process.env.DST, doc);
+    const { existsSync, writeFileSync } = await import(\"node:fs\");
+    const normals = new Set(doc.getRoot().listMaterials().map((m) => m.getNormalTexture()).filter(Boolean));
+    const EXT = { \"image/webp\": \"webp\", \"image/png\": \"png\", \"image/jpeg\": \"jpg\" };
+    for (const t of doc.getRoot().listTextures()) {
+      if (!t.getName() || !EXT[t.getMimeType()]) continue;
+      const f = process.env.DST.slice(0, -4) + \"_\" + t.getName() + \".\" + EXT[t.getMimeType()] + \".import\";
+      const n = normals.has(t);
+      if (!existsSync(f)) writeFileSync(f, [\"[remap]\", \"\", \"importer=\\\"texture\\\"\", \"type=\\\"CompressedTexture2D\\\"\", \"\", \"[params]\", \"\",
+        \"compress/mode=2\", \"compress/high_quality=\" + !n, \"compress/normal_map=\" + (n ? 1 : 0), \"mipmaps/generate=true\", \"detect_3d/compress_to=1\", \"\"].join(\"\\n\"));
+    }
   " || { echo "dequantize failed"; exit 1; }
   if [ -f "art-manifest/blender/$ID.json" ]; then
     HOME=$(mktemp -d /tmp/dmblender-home.XXXXXX) nice -n 10 node tools/blender/jobs.mjs replay "$ID" || { echo "replaying the Blender jobs of $ID failed"; exit 1; }

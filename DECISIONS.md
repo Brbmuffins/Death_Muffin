@@ -398,6 +398,14 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   lot better straight from pixal"). In the bake-off against Tripo (2026-10-26) Pixal3D won the brazier and the hound; it makes no skeleton, so
   rigs and clips stay with Blender (B74) and Tripo. A session queues jobs with `server/death-muffin/model-gen.sh`; the server offers them only
   to PCs whose heartbeat says they can run them. It costs nothing per model, against Tripo's 50 to 60 credits.
+- **B77. New models come from Pixal3D and Blender; Tripo is the backup** (Helix, 2026-10-27: asked whether Pixal3D and Blender can replace
+  Tripo, then "1 fix it. 2 we can test making a swamp spider (3 foot tall). 3 we can make a scyth. 4 yes"). A new model is a concept picture made
+  into a detailed model by Pixal3D on a team PC (B76, three seeds to pick from) and turned into the game model in Blender from steps its record
+  lists (`tools/blender/make.mjs`: the bake-down, the placement, a skeleton built from the model's shape), its moves a Blender recipe (B74). The
+  tests on 2026-10-27: an eight-legged fen spider, 0.9 m tall, from one picture to six clips seen in the game, and the necromancer's scythe next
+  to its Tripo one, both with nothing spent. The Discord agent asks for tries itself (free, no approval, like concepts) and runs the Blender steps
+  in its sandbox (`make-model.sh`). The Tripo account and its credits stay for what this way has not done yet (a two-legged hero body with its
+  combat clips) and only when the owner asks; Tripo spending stays paused until the owner says otherwise.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

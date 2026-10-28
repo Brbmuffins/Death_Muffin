@@ -3,6 +3,7 @@
 # cannot edit its own rules). Does NOT start anything.   install-runner.sh [rev]
 # Env overrides (tests): DEST, REPO, OWNER_ID, NO_SYSTEMD=1
 # Also installs art-run.sh / build-art.sh, the trusted art tools (art-tools/) and an empty tripo-budget.json if there is none (the owner edits it),
+# model-run.sh with the trusted copies of model-gen.sh and its workflow (3D tries on a team PC),
 # and the agent's guides (guides/, the how-tos PROMPT-godot.md names as .dm-guides/<name>.md; runner/lib/guides.cjs copies them into each job).
 set -euo pipefail
 REPO="${REPO:-/home/ubuntu/vps-handoffs/DeathMuffin/game}"
@@ -16,7 +17,7 @@ for n in $(git -C "$REPO" show "$REV:$SRC/PROMPT-godot.md" | grep -o '\.dm-guide
 done
 mkdir -p "$DEST/runner/lib" "$DEST/state"
 chmod 700 "$DEST/state"
-for f in $(git -C "$REPO" ls-tree -r --name-only "$REV" -- "$SRC/runner" | sed "s#^$SRC/##") ship.sh rollback.sh sandbox-lib.sh check-godot.sh regen-godot.sh shot-godot.sh label-shot.py render-model.sh render-model.py art-run.sh build-art.sh sound-run.mjs build-sound.sh sound-build.mjs build-picture.sh blender-job.sh preview-godot.sh agit wait-for-ship.sh reports-cli.cjs PROMPT-godot.md config.example.json death-muffin-discord-agent.service; do
+for f in $(git -C "$REPO" ls-tree -r --name-only "$REV" -- "$SRC/runner" | sed "s#^$SRC/##") ship.sh rollback.sh sandbox-lib.sh check-godot.sh regen-godot.sh shot-godot.sh label-shot.py render-model.sh render-model.py make-model.sh art-run.sh build-art.sh model-run.sh sound-run.mjs build-sound.sh sound-build.mjs build-picture.sh blender-job.sh preview-godot.sh agit wait-for-ship.sh reports-cli.cjs PROMPT-godot.md config.example.json death-muffin-discord-agent.service; do
   mkdir -p "$DEST/$(dirname "$f")"; git -C "$REPO" show "$REV:$SRC/$f" > "$DEST/$f"
 done
 # The guides: the folder is replaced whole, so a guide removed from the repo is gone from the install too.
@@ -30,7 +31,12 @@ git -C "$REPO" show "$REV:tools/check/prep.sh" > "$DEST/prep.sh"
 # and the CI gate (DECISIONS B59): GitHub CI's verdict on a proposal and on a ship's merged tree
 git -C "$REPO" show "$REV:tools/check/ci.sh" > "$DEST/ci.sh"
 chmod 755 "$DEST/prep.sh" "$DEST/ci.sh"
-chmod 755 "$DEST/ship.sh" "$DEST/rollback.sh" "$DEST/check-godot.sh" "$DEST/regen-godot.sh" "$DEST/shot-godot.sh" "$DEST/label-shot.py" "$DEST/render-model.sh" "$DEST/art-run.sh" "$DEST/build-art.sh" "$DEST/build-sound.sh" "$DEST/build-picture.sh" "$DEST/blender-job.sh" "$DEST/preview-godot.sh" "$DEST/agit" "$DEST/wait-for-ship.sh"
+chmod 755 "$DEST/ship.sh" "$DEST/rollback.sh" "$DEST/check-godot.sh" "$DEST/regen-godot.sh" "$DEST/shot-godot.sh" "$DEST/label-shot.py" "$DEST/render-model.sh" "$DEST/make-model.sh" "$DEST/art-run.sh" "$DEST/build-art.sh" "$DEST/model-run.sh" "$DEST/build-sound.sh" "$DEST/build-picture.sh" "$DEST/blender-job.sh" "$DEST/preview-godot.sh" "$DEST/agit" "$DEST/wait-for-ship.sh"
+# 3D tries (Pixal3D on a team PC, free): TRUSTED copies of model-gen.sh and of the workflow whose settings it checks a run against. model-run.sh runs these through the runner
+# (DM_MODEL_GEN, DM_MODEL_WORKFLOW), never the worktree's copies (the agent can edit those); model-gen.sh would look for the workflow beside its checkout, which an install has not.
+git -C "$REPO" show "$REV:server/death-muffin/model-gen.sh" > "$DEST/model-gen.sh"
+git -C "$REPO" show "$REV:teamapp/comfy/image-to-model.json" > "$DEST/image-to-model.json"
+chmod 755 "$DEST/model-gen.sh"
 # Model generation (Gemini concept -> Tripo): TRUSTED copies of the three tools, run by the runner (art-run.sh) with the API keys, never the ones in a worktree (the agent can edit those).
 # They get their own copy of sharp and its dependencies, so nothing the agent can write through a worktree symlink is ever loaded by a process that holds keys.
 ART="$DEST/art-tools"; mkdir -p "$ART/tools/ai"

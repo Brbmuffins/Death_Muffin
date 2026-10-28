@@ -9,7 +9,7 @@ extends RefCounted
 ## Plan: {"discipline": "reaper" (or 1-4 / 11; the game must have been started as that class: `--class=N`),
 ##        "equip": ["<item id>", ...] (at most DmQaUiShots.MAX_EQUIP, worn by the hero for every clip, through the backend's equip call like the shot plan's: the model previews),
 ##        "legion": ["<item id>", ...] (at most DmQaUiShots.MAX_LEGION: given to the Legion like the shot plan's, so the hero's thralls wear them; one armour piece and one weapon),
-##        "clips": [{"name": "wraith", "area": "graves", "cast": "<rite id, e.g. haunting_wraith>", "at": "pack" | "ahead", "enemies": 6, "seconds": 5, "camera": "follow" | "wide" | "turntable",
+##        "clips": [{"name": "wraith", "area": "graves", "cast": "<rite id, e.g. haunting_wraith>", "at": "pack" | "ahead", "enemies": 6, "seconds": 5, "camera": "follow" | "wide" | "turntable" | "still",
 ##                   "equip": ["<item id>", ...] (this clip's own list: it wins over the plan's; the pieces worn before that are not in it are taken off),
 ##                   "setup": [{"do": "<word>", <its arguments>}, ...] (how the scene is set before recording), "steps": [{"at": <seconds>, "do": "<word>", ...}, ...] (what happens when)}]}
 ## `setup` and `steps` use the words of STEPS_FILE (main/qa_clip_steps.json: each word, its arguments and their types), e.g. setup [{"do": "hud", "show": true}, {"do": "stand_ins", "health": 1,
@@ -23,7 +23,8 @@ extends RefCounted
 ## "turntable" = the hero's close-up (the shot plan's "hero" view) while the hero turns once round slowly, standing idle in place at the area's waystone, over the clip (a model preview: "cast" is not needed, "area" is the Chapterhouse
 ## unless it says another, "seconds" 6 unless it says another, and no enemies unless asked for).
 ## A clip with "model" or "model_file" (main/qa_model.gd, DmQaModel: with "height", "anim", "turn") records that model instead of the hero, framed by its size; "move": true walks it across the frame at "speed"
-## (else its row's stride times its height) with the camera following, "camera": "turntable" turns it round. Such a clip needs no "cast" and stands at DmQaModel.SPOT of the Chapterhouse unless it says where.
+## (else its row's stride times its height) with the camera following, or with "camera": "still" past a camera that stays put, drawn back to frame the whole walk; "camera": "turntable" turns it round.
+## Such a clip needs no "cast" and stands at DmQaModel.SPOT of the Chapterhouse unless it says where.
 ## Unless the setup says otherwise, the stand-ins are the Graves' robbers with a lot of health and no damage that stand where they are put (a tune that changes the rite's damage cannot kill them or
 ## hurt the hero), and the HUD is hidden. Without cast steps the rite of `cast` is cast LEAD_FRAMES frames in (so the first frames show the scene before it) and again each time it is off cooldown (a rite with no cooldown is cast once);
 ## the hero's souls and essence are topped up for each cast unless the setup turns that off.
@@ -39,7 +40,7 @@ const MAX_SECONDS := 8.0
 const MAX_ENEMIES := 12
 const MAX_NAME := 32            ## characters (the team app puts the variant's label before it in a file name)
 const ATS := ["pack", "ahead"]
-const CAMERAS := ["follow", "wide", "turntable"]
+const CAMERAS := ["follow", "wide", "turntable", "still"]
 const LEAD_FRAMES := 6          ## the scene is recorded this long (at FPS) before the first cast: 0.2 s, the same time at any frame rate
 const SETTLE_S := 1.5           ## game seconds the scene stands still after the stand-ins have risen
 const SETTLE_MAX_S := 20.0      ## and the longest wait for them to rise
@@ -199,19 +200,22 @@ static func parse(text: String) -> Dictionary:
 
 
 ## A clip's model view (DmQaModel: "model" / "model_file", "height", "anim", "turn" degrees, "move", "speed"), checked: {} for a clip without one, {error} when it is wrong, else DmQaModel.spec_of's
-## fields with turn (default: side on for a "move", else DmQaUiShots.DEFAULT_TURN), move and speed (m/s: the plan's, else the row's stride for the clip; a "move" without either is refused).
+## fields with turn (default: side on for a "move", else DmQaUiShots.DEFAULT_TURN), move, speed (m/s: the plan's, else the row's stride for the clip; a "move" without either is refused) and
+## still (the camera stays put: "camera": "still").
 static func _model_of(c: Dictionary, camera: String, n: int) -> Dictionary:
 	if not (c.has("model") or c.has("model_file")):
 		for key in ["move", "speed", "height"]:
 			if c.has(key):
 				return {"error": "clip %d: \"%s\" is for a model clip (\"model\" or \"model_file\")" % [n, key]}
+		if camera == "still":
+			return {"error": "clip %d: \"camera\": \"still\" is for a model clip (\"model\" or \"model_file\")" % n}
 		return {}
 	var spec := DmQaModel.spec_of(c)
 	if spec["error"] != "":
 		return {"error": "clip %d: %s" % [n, spec["error"]]}
 	spec.erase("error")
 	if camera == "wide":
-		return {"error": "clip %d: a model clip's \"camera\" is follow (one side) or turntable" % n}
+		return {"error": "clip %d: a model clip's \"camera\" is follow (one side), still (one side, the camera not moving) or turntable" % n}
 	for key in ["turn", "speed"]:
 		if c.has(key) and not (c[key] is float or c[key] is int):
 			return {"error": "clip %d: \"%s\" must be a number" % [n, key]}
@@ -219,6 +223,7 @@ static func _model_of(c: Dictionary, camera: String, n: int) -> Dictionary:
 	if not move is bool:
 		return {"error": "clip %d: \"move\" is true or false" % n}
 	spec["move"] = move
+	spec["still"] = camera == "still"
 	spec["turn"] = fmod(float(c.get("turn", 90.0 if move else DmQaUiShots.DEFAULT_TURN)), 360.0)
 	spec["speed"] = 0.0
 	if move:
@@ -638,6 +643,17 @@ static func stage(root: Node, game: DmNextGame, clip: Dictionary) -> Dictionary:
 	var saved := {}
 	if not (clip.get("model", {}) as Dictionary).is_empty():   # the model alone where the hero stands, the hero hidden (DmQaModel); the record loop turns, moves and plays it
 		saved = DmQaModel.begin(game, clip["model"], float(clip["model"]["turn"]), clip.get("dirs", []), "QA-CLIPS")
+		var m: Dictionary = clip["model"]
+		var back := float(opts["zoom"])
+		if saved.has("size") and ((bool(m["still"]) and bool(m["move"])) or back > 0.0):
+			var size: Vector3 = saved["size"]
+			var view := size
+			if bool(m["still"]) and bool(m["move"]):   # the camera stays put, drawn back to frame the walk with a body length to spare at each end
+				view.x = float(m["speed"]) * float(clip["seconds"]) + 2.0 * maxf(size.x, size.z)
+			DmQaModel.frame(game, view)
+			game.camera.cfg["dist"] = float(game.camera.cfg["dist"]) * (back if back > 0.0 else 1.0)   # the setup's `zoom` draws the framing back (or in)
+			game.camera.near = DmQaModel.cut_near(game.camera.cfg, size, game.camera.fov)   # what stands between the camera and the model is cut away as for the model alone
+			game.camera.snap(body.position)
 	elif clip["camera"] == "turntable":   # the hero's close-up from the front, the HUD away (the shot plan's "hero" view); the record loop turns the hero
 		saved = DmQaUiShots._view_begin(game, {"view": "hero", "turn": 0.0})
 	var settled := 0.0
@@ -701,7 +717,7 @@ static func stand_ins(game: DmNextGame, spots: Array[Vector3], opts := {}) -> Ar
 	return ids
 
 
-## One frame of a model clip: the clip played on (a clip that does not loop starts again), the model at `at` with the hidden hero under it so the camera follows a "move", and turned `spin`
+## One frame of a model clip: the clip played on (a clip that does not loop starts again), the model at `at` with the hidden hero under it so the camera follows a "move" (not a still one), and turned `spin`
 ## of the way round from its "turn" on a turntable (-1 = not turning).
 static func _model_step(game: DmNextGame, holder: Node3D, ap: AnimationPlayer, anim: String, model: Dictionary, at: Vector3, spin: float) -> void:
 	if ap != null and anim != "" and not ap.is_playing():
@@ -710,7 +726,8 @@ static func _model_step(game: DmNextGame, holder: Node3D, ap: AnimationPlayer, a
 		holder.rotation.y = deg_to_rad(float(model["turn"])) + TAU * spin
 	if bool(model["move"]):
 		holder.position = Vector3(at.x, 0.0, at.z)
-		game.local_body().teleport(holder.position)
+		if not bool(model["still"]):
+			game.local_body().teleport(holder.position)
 
 
 ## The turntable: the hero turned `t` of the way round (0 = facing the camera), the avatar with it.

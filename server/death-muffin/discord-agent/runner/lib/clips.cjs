@@ -11,7 +11,8 @@
 // wears the items of `equip` (the plan's list is for every clip, a clip's own list replaces it for that clip), written with one variant and an empty tune.
 // A model clip films one creature's model alone instead of the hero (the recorder's model view, client/main/CLIPS.md "Model clips"): "model" is its row id of
 // client/game/view_models.json, as the job's branch has it (a Blender job's changed model is seen as it ships), with "anim" (a clip of the model), "turn",
-// "height", and "move" (it walks along the ground at its stride's speed, or "speed" m/s, so sliding feet show). It casts nothing, so `cast` may be left out.
+// "height", and "move" (it walks along the ground at its stride's speed, or "speed" m/s, so sliding feet show; camera "still" walks it past a camera that
+// stays put). It casts nothing, so `cast` may be left out.
 //
 // A clip may carry `setup` (how the scene is set before recording) and `steps` (what happens when): lists of {"do": "<word>", ...its arguments}, a step
 // also with "at" (seconds into the clip). The words and their arguments are the game's (client/main/qa_clip_steps.json), read from the job's own branch: a new
@@ -31,7 +32,7 @@ const MAX_TUNE_DEPTH = 6, MAX_TUNE_LEAVES = 64, MAX_TUNE_TEXT = 100;
 const LABEL_RE = /^[a-z0-9][a-z0-9-]{0,23}$/;           // a variant's label: the first half of the uploaded file's name
 const CLIP_NAME_RE = /^[a-z0-9][a-z0-9-]{0,29}$/;       // no underscore: `<label>_<clip>` splits at the first one
 const AREA_RE = /^[a-z0-9_-]{1,40}$/, CAST_RE = /^[a-z0-9_]{1,60}$/, ITEM_RE = /^[a-z0-9_]{1,60}$/;
-const CAMERAS = ['follow', 'wide', 'turntable'];
+const CAMERAS = ['follow', 'wide', 'turntable', 'still'];
 const STEPS_FILE = 'client/main/qa_clip_steps.json';
 const MODELS_FILE = 'client/game/view_models.json';   // the model rows a model clip names, read from the job's branch
 const MAX_SETUP = 12, MAX_STEPS = 24;
@@ -181,7 +182,7 @@ function checkPlan(plan, errs, wt) {
       if (rows === undefined) rows = readModelRows(wt);
       checkModel(c, w, errs, rows);
     }
-    else if (['anim', 'turn', 'height', 'move', 'speed'].some((k) => c[k] !== undefined)) errs.push(`${w}: "anim", "turn", "height", "move" and "speed" are for a model clip (one with "model")`);
+    else if (['anim', 'turn', 'height', 'move', 'speed'].some((k) => c[k] !== undefined) || c.camera === 'still') errs.push(`${w}: "anim", "turn", "height", "move", "speed" and camera "still" are for a model clip (one with "model")`);
     let stepCasts = false;
     if (c.setup !== undefined || c.steps !== undefined) {
       if (voc === undefined) voc = readVocabulary(wt);
@@ -200,7 +201,7 @@ function checkPlan(plan, errs, wt) {
     if (c.cast === undefined && (c.camera === 'turntable' || model || stepCasts || scene)) { /* a model preview, the steps cast, or a scene */ }
     else if (typeof c.cast !== 'string' || !CAST_RE.test(c.cast)) errs.push(`${w}: "cast" must be a rite id such as haunting_wraith (only a "turntable" or model clip, one whose steps cast, or a scene of thralls or walks may leave it out)`);
     if (c.at !== undefined && c.at !== 'pack' && c.at !== 'ahead') errs.push(`${w}: "at" must be "pack" or "ahead"`);
-    if (c.camera !== undefined && !CAMERAS.includes(c.camera)) errs.push(`${w}: "camera" must be "follow", "wide" or "turntable"`);
+    if (c.camera !== undefined && !CAMERAS.includes(c.camera)) errs.push(`${w}: "camera" must be "follow", "wide", "turntable" or "still" (a model clip)`);
     if (c.equip !== undefined) checkEquip(c.equip, w, errs);
     if (c.enemies !== undefined && !(Number.isInteger(c.enemies) && c.enemies >= 0 && c.enemies <= MAX_ENEMIES)) errs.push(`${w}: "enemies" must be a whole number from 0 to ${MAX_ENEMIES}`);
     if (c.seconds !== undefined && !(typeof c.seconds === 'number' && c.seconds > 0 && c.seconds <= MAX_SECONDS)) errs.push(`${w}: "seconds" must be a number above 0 and at most ${MAX_SECONDS} (5 when left out)`);
@@ -219,7 +220,7 @@ function checkModel(c, w, errs, rows) {
   }
   if (c.anim !== undefined && (typeof c.anim !== 'string' || !ANIM_RE.test(c.anim))) errs.push(`${w}: "anim" must be a clip name of the model, such as walk`);
   else if (c.anim !== undefined && isObj(row) && Array.isArray(row.clips) && !row.clips.includes(c.anim)) errs.push(`${w}: the model ${c.model} has no clip "${c.anim}" (it has: ${row.clips.join(', ')})`);
-  if (c.camera === 'wide') errs.push(`${w}: a model clip's "camera" is "follow" (one side) or "turntable"`);
+  if (c.camera === 'wide') errs.push(`${w}: a model clip's "camera" is "follow" (one side), "still" (one side, the camera not moving) or "turntable"`);
   for (const [k, lo, hi] of [['turn', -360, 360], ['height', 0.1, 30], ['speed', 0, 15]]) {
     if (c[k] !== undefined && !(typeof c[k] === 'number' && Number.isFinite(c[k]) && c[k] >= lo && c[k] <= hi)) errs.push(`${w}: "${k}" must be a number from ${lo} to ${hi}`);
   }

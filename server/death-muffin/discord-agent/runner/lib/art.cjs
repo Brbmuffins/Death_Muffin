@@ -9,6 +9,8 @@
 //    which the agent can edit) with the keys in the environment of that one child process only.
 //  * What runs is the canonical spec stored at request time, not whatever the worktree holds at approval time.
 //  * Budgets (owner-edited file) and the ledger (written here) live outside every repo checkout.
+//  * 3D model tries (Pixal3D on a team PC, free, no key): .dm-model-request.json names concept pictures the runner made; validateModels pins them by hash and
+//    runModel runs model-run.sh, which runs the TRUSTED installed model-gen.sh.
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -31,8 +33,11 @@ const JOB_KEYS = ['id', 'prompt', 'out', 'refs', 'aspect', 'size', 'model', 'pos
 const KINDS_FILE = 'tools/pictures/kinds.json';   // the game's picture kinds (ASSET_PIPELINE.md "Pictures"); a concept that names one gets its look
 const REQUEST_FILE = '.dm-art-request.json';
 const CONCEPT_FILE = '.dm-concept-request.json';
+const MODEL_FILE = '.dm-model-request.json';
 const MAX_SET = 6, MAX_SET_ESTIMATE = 1200;      // one request may build an armor set (helm, mantle, weapon, hero body ...) under one ✅
 const MAX_CONCEPTS = 8;                          // concept images per concept request (Gemini only, no Tripo credits)
+const MAX_MODELS = 4;                            // ids per 3D model request (three tries each on a team PC's card, about 10 minutes an id)
+const TRY_FILE_RE = /^[a-z0-9][a-z0-9-]{0,23}\.glb$/;   // a try model-gen.sh made: <label>.glb
 const MAX_FILE = 64 * 1024, MAX_REF = 8 * 1024 * 1024;
 const IMG_MAGIC = [[0x89, 0x50, 0x4e, 0x47], [0xff, 0xd8, 0xff]];   // png, jpeg (and RIFF....WEBP, checked in imageOk)
 const PICTURE_REF_RE = /^client\/assets\/[a-z0-9_/-]+\.(webp|png)$/;  // a committed game picture: a style reference, or the picture an edit starts from
@@ -86,7 +91,7 @@ function imageOk(wt, rel) {
 
 // ---------- the request file ----------
 // Returns null (no request), {error} or {id, ids, note}: {"id": "x"} or {"ids": ["x", "y"]} (1 to `max`, no repeats). The file is removed once read
-// (like .dm-result.json). Also reads the concept request (CONCEPT_FILE, up to MAX_CONCEPTS ids).
+// (like .dm-result.json). Also reads the concept request (CONCEPT_FILE, up to MAX_CONCEPTS ids) and the 3D model request (MODEL_FILE, up to MAX_MODELS).
 function readRequest(wt, file = REQUEST_FILE, max = MAX_SET) {
   const f = path.join(wt, file);
   let st; try { st = fs.lstatSync(f); } catch { return null; }
@@ -233,6 +238,29 @@ function validateConcepts({ wt, request, info }) {
   return errors.length ? { ok: false, errors: [...new Set(errors)].slice(0, 12) } : { ok: true, errors: [], items };
 }
 
+// A 3D model request (Pixal3D tries on a team PC): each id is built from the concept picture the runner made and posted in this thread, unchanged since: `concepts`
+// is the job's record of them ({ <id>: { sha, kind? } }, job.concepts). An id may name an existing model (a new version of it); a picture concept (a kind) is never
+// turned into a model. model-gen.sh writes into art-src/comfy/<id>/, so no symlink may be on that path (a write would leave the worktree).
+// Returns { ok, errors[], items: [{ id }] }.
+function validateModels({ wt, request, concepts }) {
+  if (!request || request.error) return { ok: false, errors: [request ? request.error : 'no request'] };
+  const errors = [], items = [];
+  for (const id of request.ids) {
+    const rel = `art-src/concepts/${id}.png`; const known = (concepts || {})[id]; const e = [];
+    if (!known) e.push(`no concept picture for "${id}" was made and posted in this thread: ask for the concept first (${CONCEPT_FILE}), and never put a picture in art-src/concepts/ yourself`);
+    else if (known.kind) e.push(`"${id}" is a picture concept (kind ${known.kind}): pictures are built with build-picture.sh, not turned into models`);
+    else {
+      const bad = imageOk(wt, rel);
+      if (bad) e.push(`${bad}; ask for the concept first (${CONCEPT_FILE}) and do not edit art-src/concepts/`);
+      else if (crypto.createHash('sha256').update(fs.readFileSync(path.join(wt, rel))).digest('hex') !== known.sha) e.push(`${rel} is not the picture people saw (it changed): do not edit art-src/concepts/; ask for a new concept (${CONCEPT_FILE}) instead`);
+    }
+    for (const r of ['art-src', 'art-src/comfy', `art-src/comfy/${id}`]) { const iss = pathIssue(wt, r); if (iss) e.push(iss); }
+    try { const walk = (d) => { for (const x of fs.readdirSync(d, { withFileTypes: true })) { if (x.isSymbolicLink()) e.push(`art-src/comfy/${id} holds a symlink`); else if (x.isDirectory()) walk(path.join(d, x.name)); } }; walk(path.join(wt, 'art-src', 'comfy', id)); } catch { /* none yet */ }
+    if (e.length) errors.push(...e.map((x) => (request.ids.length > 1 ? `${id}: ${x}` : x))); else items.push({ id });
+  }
+  return errors.length ? { ok: false, errors: [...new Set(errors)].slice(0, 12) } : { ok: true, errors: [], items };
+}
+
 // A model request for one or several ids (an armor set: helm, mantle, weapon, hero body ...). Each id is validated like a single request; the
 // set's total must stay under MAX_SET_ESTIMATE. Returns { ok, errors[], items: [validate() results], estimate: { total, parts } }.
 function validateSet({ wt, request, info }) {
@@ -349,6 +377,9 @@ function paths(cfg) {
     keys: cfg.artKeysFile || path.join(cfg.repo, '.ai-keys.local'),
     budget: cfg.artBudgetFile || path.join(td, 'tripo-budget.json'),
     ledger: cfg.artLedgerFile || path.join(td, 'tripo-ledger.json'),
+    modelRun: cfg.modelRunScript || path.join(td, 'model-run.sh'),            // 3D tries (model-run.sh), and the trusted installed copies it runs:
+    modelGen: cfg.modelGenScript || path.join(td, 'model-gen.sh'),            // server/death-muffin/model-gen.sh
+    modelWorkflow: cfg.modelWorkflow || path.join(td, 'image-to-model.json'),  // teamapp/comfy/image-to-model.json (the settings model-gen.sh checks a run's against)
   };
 }
 
@@ -412,6 +443,21 @@ function createArt(cfg, { audit, now = () => Date.now() } = {}) {
     const out = r.out + r.err; const res = /^RESULT: (\S+)/m.exec(out);
     return { ok: !!res && res[1] === 'ok', result: res ? res[1] : (r.timedOut ? 'timeout' : 'crashed'), tail: redactText(out.trim().split('\n').slice(-6).join('\n')) };
   }
+  // The tries of one id: the entries of art-src/comfy/<id>/tries.json that model-run.sh wrote (a list of run records, each with its `file`), only well-formed names.
+  function readTries(wt, id) {
+    const j = parseJson(readSmall(wt, `art-src/comfy/${id}/tries.json`), 'tries.json');
+    return Array.isArray(j.value) ? j.value.filter((t) => isObj(t) && typeof t.file === 'string' && TRY_FILE_RE.test(t.file) && !pathIssue(wt, `art-src/comfy/${id}/${t.file}`)) : [];
+  }
+  // 3D tries of art-src/concepts/<id>.png (Pixal3D on a team PC, free): model-run.sh in the worktree, which runs the TRUSTED model-gen.sh (never the worktree's copy). No
+  // key is involved; model-gen.sh reads the team secret itself. Returns { ok, result, tries: [run record], tail }; ok = at least one model arrived.
+  async function runModel(wt, id, { onSpawn } = {}) {
+    const env = { ...baseEnv(), DM_MODEL_GEN: P.modelGen, DM_MODEL_WORKFLOW: P.modelWorkflow, ...(cfg.teamApi ? { DM_TEAM_API: cfg.teamApi } : {}), ...(cfg.secretFile ? { DM_TEAM_SECRET_FILE: cfg.secretFile } : {}) };
+    for (const k of ['DM_TEAM_ROOT', 'DM_TEAM_URL', 'DM_TEAM_POLL_S']) if (process.env[k]) env[k] = process.env[k];
+    const r = await G.run('bash', [P.modelRun, id], { cwd: wt, onSpawn, timeoutMs: 60 * 60000, env });
+    const out = r.out + r.err; const res = /^RESULT: (\S+)/m.exec(out);
+    const tries = res && res[1] === 'ok' ? readTries(wt, id) : [];
+    return { ok: tries.length > 0, result: res ? res[1] : (r.timedOut ? 'timeout' : 'crashed'), tries, tail: redactText(out.trim().split('\n').slice(-6).join('\n')) };
+  }
   // Called at startup: runs that were 'started' but never finished (the runner died mid-run) are closed from the balance delta.
   async function reconcile() {
     const open = store.open(); if (!open.length) return 0;
@@ -424,7 +470,7 @@ function createArt(cfg, { audit, now = () => Date.now() } = {}) {
     }
     return open.length;
   }
-  return { store, paths: P, loadKeys, balance, run, runConcept, reconcile, parseBalance };
+  return { store, paths: P, loadKeys, balance, run, runConcept, runModel, reconcile, parseBalance };
 }
 
-module.exports = { KINDS_FILE, readKinds, kindAspect, ID_RE, DEFAULT_COSTS, MAX_ESTIMATE, MAX_ANIMS, MAX_SET, MAX_SET_ESTIMATE, MAX_CONCEPTS, REQUEST_FILE, CONCEPT_FILE, WRITE_PATHS, ANIMS, RIGS, readRequest, baseInfo, loadCostHistory, validate, validateSet, validateConcepts, estimate, describe, parseKeyFile, paths, createStore, createArt, pathIssue };
+module.exports = { KINDS_FILE, readKinds, kindAspect, ID_RE, DEFAULT_COSTS, MAX_ESTIMATE, MAX_ANIMS, MAX_SET, MAX_SET_ESTIMATE, MAX_CONCEPTS, MAX_MODELS, REQUEST_FILE, CONCEPT_FILE, MODEL_FILE, WRITE_PATHS, ANIMS, RIGS, readRequest, baseInfo, loadCostHistory, validate, validateSet, validateConcepts, validateModels, estimate, describe, parseKeyFile, paths, createStore, createArt, pathIssue };

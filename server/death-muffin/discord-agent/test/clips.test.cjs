@@ -48,7 +48,7 @@ test('clips: every refusal is a readable line naming the problem', () => {
   bad((j) => { j.plan.clips[0].name = 'a_b'; }, /"name" must be lowercase letters, digits and dashes/);
   bad((j) => { j.plan.clips.push({ ...j.plan.clips[0] }); }, /the name "wraith" is used twice/);
   bad((j) => { j.plan.clips[0].at = 'behind'; }, /"at" must be "pack" or "ahead"/);
-  bad((j) => { j.plan.clips[0].camera = 'top'; }, /"camera" must be "follow", "wide" or "turntable"/);
+  bad((j) => { j.plan.clips[0].camera = 'top'; }, /"camera" must be "follow", "wide", "turntable" or "still"/);
   bad((j) => { j.plan.clips[0].enemies = 99; }, /"enemies" must be a whole number from 0 to 12/);
   bad((j) => { j.plan.clips[0].area = 'The Graves'; }, /"area" must be an area id/);
   bad((j) => { j.plan.clips[0].equip = []; }, /clip 1: "equip" must be a list of 1 to 12 item ids/);
@@ -56,7 +56,7 @@ test('clips: every refusal is a readable line naming the problem', () => {
   bad((j) => { j.plan.equip = Array.from({ length: 13 }, (_, i) => `item_${i}`); }, /"plan": "equip" must be a list of 1 to 12 item ids/);
   bad((j) => { j.plan.equip = ['staff_moon', 'staff_moon']; }, /"equip" names an item twice/);
   bad((j) => { j.plan.clips[0].cast = undefined; }, /"cast" must be a rite id.*only a "turntable" or model clip, one whose steps cast, or a scene of thralls or walks may leave it out/);
-  bad((j) => { j.plan.clips[0].camera = 'orbit'; }, /"camera" must be "follow", "wide" or "turntable"/);
+  bad((j) => { j.plan.clips[0].camera = 'orbit'; }, /"camera" must be "follow", "wide", "turntable" or "still"/);
   bad((j) => { j.plan.clips[0].cast = 'Haunting Wraith'; }, /"cast" must be a rite id/);
   bad((j) => { j.plan.clips[0].exec = 'rm -rf'; }, /clip 1 has an unknown field "exec"/);
   bad((j) => { j.plan.hack = 1; }, /"plan" has an unknown field "hack"/);
@@ -87,6 +87,8 @@ test('clips: a model clip films one model alone: no cast, its own fields checked
   bad((j) => { j.plan.clips[0].model = 'skull_rat'; j.plan.clips[0].move = 'yes'; }, /"move" must be true or false/);
   bad((j) => { j.plan.clips[0].model = 'skull_rat'; j.plan.clips[0].anim = 'walk cycle'; }, /"anim" must be a clip name/);
   bad((j) => { j.plan.clips[0].anim = 'walk'; }, /are for a model clip/);
+  bad((j) => { delete j.plan.clips[0].model; j.plan.clips[0].cast = 'reap'; j.plan.clips[0].camera = 'still'; }, /camera "still" are for a model clip/);
+  assert.equal(read(mutate((j) => { Object.assign(j.plan.clips[0], { model: 'skull_rat', move: true, camera: 'still' }); })).error, undefined, 'a model clip may keep the camera still');
   bad((j) => { j.plan.clips[0].model_file = 'x.glb'; }, /unknown field "model_file"/);
 });
 

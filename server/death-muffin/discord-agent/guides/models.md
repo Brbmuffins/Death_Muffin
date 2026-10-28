@@ -1,40 +1,58 @@
 # Making new models and armor sets (concepts -> 3D -> renders -> in game)
 
-You cannot call Gemini or Tripo yourself and you never see their keys; the runner generates. Use this only when someone wants a NEW model (a character,
+You cannot call Gemini or the team PCs yourself and you never see a key; the runner generates. Use this only when someone wants a NEW model (a character,
 creature, boss, prop, weapon, helm, mantle, or a whole armor set); never for anything an existing model can do. A new move or an edit to a model that
-exists (colour, size of a part, a part removed, fewer triangles) is a Blender job (`.dm-guides/blender.md`), free and done here. Read `ASSET_PIPELINE.md` first (concept
-rules: one subject, strict T-pose and empty hands for characters, three-quarter view for props, plain light grey background, flat lighting; face
-budgets: hero 12k, boss 14k, horde enemy 4 to 5k, props 0.9 to 3.5k). `check-godot.sh` refuses a model over its cap (gear 4k, props 6k, heroes and
-characters 20k), with more than one material, or a hero body without the shared biped skeleton and its combat clips (`tools/assets/check-models.mjs`).
-People see every stage in the thread, the way the necromancer gear was made:
+exists (colour, size of a part, a part removed, fewer triangles) is a Blender job (`.dm-guides/blender.md`), free and done here. Read `ASSET_PIPELINE.md`
+"Image to model" first. Face budgets: hero 12k, boss 14k, horde enemy 4 to 5k, props 0.9 to 3.5k. `check-godot.sh` refuses a model over its cap (gear 4k,
+props 6k, heroes and characters 20k), with more than one material, or a hero body without the shared biped skeleton and its combat clips
+(`tools/assets/check-models.mjs`). A new model is made by Pixal3D on a team PC's graphics card (free) and finished in Blender here (DECISIONS B77).
+People see every stage in the thread:
 
-**1. Concepts first (no model credits).** For each piece write `art-manifest/gemini-jobs/<id>.json` (no `kind`: that is a picture), a list with ONE job:
-`[{"id": "concept_<id>", "prompt": "...", "out": "art-src/concepts/<id>.png", "aspect": "3:4"}]` (optional: `refs`, up to 3 images: `art-src/concepts/<name>.png`
+**1. Concepts first.** For each piece write `art-manifest/gemini-jobs/<id>.json` (no `kind`: that is a picture), a list with ONE job:
+`[{"id": "concept_<id>", "prompt": "...", "out": "art-src/concepts/<id>.png", "aspect": "1:1"}]` (optional: `refs`, up to 3 images: `art-src/concepts/<name>.png`
 or a reference sheet committed at the repo root; `post: {"resize": [w, h], "format": "png"}`). Then write `.dm-concept-request.json` (never commit it):
 `{"ids": ["<id>", ...], "note": "one plain sentence"}` (1 to 8 ids), stop, and say in one line what concepts you asked for. The runner makes the images
 and posts them numbered in the thread; you hear about them with the next message (Read them before answering). Ask for 2 or 3 variants (separate ids)
 when the look is open. To change one, edit its job and request that id again. Always start here unless the requester explicitly skips concepts.
+The picture is what Pixal3D builds, so write it as a model source (`art-manifest/gemini-jobs/concepts.json`, `concept_fen_spider_3d` and
+`concept_necro_wpn_scythe_3d`, are good prompts to copy): "3D modeling source: a game-ready 3D render of ..."; one subject, whole and centred, on a plain
+flat light grey background (#c8c8c8); even flat studio light, no cast shadows, no rim light, no fog; every part a solid shape big enough to model (no hair,
+threads, webs, lace or loose bits; fur and bristles painted as colour); the dirt, stains and wear painted into the surface colours (a clean picture gives a
+toy-like model). Creatures in a neutral standing pose with every leg visible, apart from the others and flat on the ground, a three-quarter view from the
+front and a little above; a prop in a three-quarter view, or upright filling the frame (a weapon). To remake an existing piece, use its old concept as a
+`ref` and say "redraw exactly ... as a game-ready 3D render".
 
-**2. 3D, after people pick.** For each chosen piece write `art-manifest/tripo-specs/<id>.json`: `{"id": "<id>", "input": "art-src/concepts/<id>.png",
-"generation": {"model": "P1-20260311", "face_limit": 7000, "texture_quality": "detailed"}, "rig": {"model": "v1.0-20240301", "rig_type": "biped"},
-"animations": ["preset:biped:idle", "preset:biped:walk"], "animationMode": "single"}`. `rig_type: "quadruped"` uses model `v2.5-20260210` and only
-`preset:quadruped:walk`. Props (weapons, helms, mantles) have no `rig` and no `animations`, and their id starts with `prop_`. `<id>` is lower-case letters, digits
-and underscores (3 to 40) and must not be an existing model. `face_limit` 300 to 14000, `texture_quality` `standard` or `detailed`, at most 10 animations, biped
-presets only from the pipeline doc (idle, walk, run, slash, cast_a_spell, hurt, fall, dig, dive, hit_to_body_01, hit_to_head, defeat_03, front_kick_01, ...).
-No other fields are accepted. Ask Tripo for the fewest animations the model needs that Blender cannot give it
-(`.dm-guides/blender.md`): idle and walk for a two-legged model (library moves cover attacks, casts, hits, deaths and runs), only the walk preset for a
-four-legged one (its gaits come from a recipe), and the presets for moves neither can make (a dig, a dive, a creature's own attack). Then write `.dm-art-request.json` (never commit it): `{"ids": ["<id>", ...], "note": "one plain sentence"}` (1 to 6 ids; a
-whole set goes in one request). The concept images people saw are reused as they are: never touch `art-src/concepts/` yourself.
-Ask for as little as does the job: a prop costs about 60 credits, a rigged and animated character 150 to 285 (60 for the model, 25 for the rig, 10 per
-animation). The runner posts the concepts, what will be generated and the estimated credits with the requester's remaining budget and the live Tripo
-balance, and waits for an approver's ✅. End your reply with one line saying what you asked for and that it is waiting for approval; do not start the other work yet.
+**2. 3D tries (free), after people pick.** Write `.dm-model-request.json` (never commit it): `{"ids": ["<id>", ...], "note": "one plain sentence"}` (1 to 4
+ids, each one a concept the runner made in this thread; props' ids start with `prop_`; never touch `art-src/concepts/` yourself), stop, and say in one
+line what you asked for. The runner makes three tries of each picture on a team PC (about 10 minutes an id) into `art-src/comfy/<id>/` (`bone_hound` gives
+`bone-hound-s0.glb`, `-s1`, `-s2`; its message names the files), with each try's run details in `art-src/comfy/<id>/tries.json` (`art-src/` is not committed),
+and tells you when they are there. Then run `__TOOLS__/render-model.sh` with that id's three try files (`art-src/comfy/<id>/<file>`; one sheet, the runner posts it), Read
+it, say in a line or two which try you would take and why (whole and clean shapes, every leg there, nothing fused or missing, the paint like the picture),
+and let people pick. A try came out wrong everywhere: change the concept and ask again.
 
-**3. Build, render, fit.** After the generation the runner tells you the files are ready. For each id (one command per call, foreground): `__TOOLS__/build-art.sh <id>`,
-then commit the two spec files, `art-manifest/tripo/<id>.json`, `art-manifest/images.json` and the GLB it installs under `client/assets/slice/models/`; run
-`__TOOLS__/check-godot.sh --rerun code_load` (Godot's import adds `.import` files and textures next to the model: commit those too). Then `__TOOLS__/render-model.sh <id> [<id> ...]`
-(1 to 6 ids, existing models too; about 20 s per model): it writes one sheet `.dm-shots/models-<first id>.png` with front, side and back of each model, which the
-runner posts after your turn. Read it; if a piece came out wrong, say so plainly. Then finish each rigged model with a Blender job (`.dm-guides/blender.md`):
-the library moves or recipe gaits it was not given, a `cleanup` of loops that hitch or slide, clip names the game plays. Wire the models into the game only where the request asked.
+**3. The game model.** For the picked try write the record `art-manifest/comfy/<id>.json` (`art-manifest/comfy/fen_spider.json` and `prop_necro_wpn_scythe.json`
+are examples): `{"id": "<id>", "concept": "concept_<id>", "picture": "art-src/concepts/<id>.png", "run": <the try's entry from tries.json, as it is>,
+"steps": [...], "game": "game.glb"}`. `__TOOLS__/make-model.sh kinds` lists the steps and what they take; the usual ones:
+- creature: `finish` (`triangles` = its budget, `texture` 512, `metal` none), `place`, `rig` (`body`: `quad` four legs, `legs` a spider's eight or any number
+  around one body, `biped` the heroes' skeleton, not yet tried on a Pixal model: say so in the proposal);
+- prop or weapon: `finish` (`texture` 512, `metal` mixed when it has iron, `hard: true` for sharp edges), `place`;
+- `grime` after `place` when the model came out cleaner than the picture.
+Then, one command per call, foreground (each takes the renderer lock; a build takes about 3 minutes):
+- `__TOOLS__/make-model.sh fit <id> --stand --height <metres> --yaw <degrees>` for a new subject: it stands the model on its feet and writes the
+  record's `frame` and `art-src/comfy/<id>/work/fit.glb`; render that (`render-model.sh art-src/comfy/<id>/work/fit.glb`): the front column must show
+  its face. If not, change `--yaw` by what is off (90, 180, ...) and fit again. A remake of a model in the game fits onto the old one instead:
+  `--ref client/assets/slice/models/<id>/character.glb` (props: `.../props/<name>.glb`) `--tilt-min 0`.
+- `__TOOLS__/make-model.sh build <id>` does the steps into `art-src/comfy/<id>/game.glb` (`--from N` redoes from step N after a change to it);
+  `render-model.sh art-src/comfy/<id>/game.glb` to check it.
+- `__TOOLS__/build-art.sh <id>` installs it under `client/assets/slice/models/`; run `__TOOLS__/check-godot.sh --rerun code_load` (Godot's import adds
+  `.import` files and textures next to the model: commit those too). Commit the record, the concept's job file, `art-manifest/images.json` and the model.
+  A creature's row faces it the way the hounds' do (`client/data/slice/enemies.json` `models.bone_hound`: `"yaw": 3.141592653589793`).
+- A rigged model has no moves yet: they are a `motion` Blender job (`.dm-guides/blender.md`) on a recipe `tools/blender/recipes/<id>.json` (copy
+  `bone_hound.json` for four legs, `fen_spider.json` for eight; its bone names are the rig's).
+Then `__TOOLS__/render-model.sh <id> [<id> ...]` (built ids, existing models too, up to 6) for the final sheet. Read it; if a piece came out wrong, say
+so plainly. Wire the models into the game only where the request asked.
+
+Tripo (`.dm-art-request.json`, `art-manifest/tripo-specs/`) is the backup: use it only when the owner asks for it in the thread (Tripo spending is paused).
 
 **4. In game.** For gear, take screenshots of a hero wearing it (`.dm-guides/screenshots.md`: `"equip"`, `"view": "hero"`, front and `"turn": 180` for the back; `"discipline"`
 for another necromancer) even though screenshots are otherwise only on request, check them, and fix fit or scale before you propose. With a team PC online
@@ -58,9 +76,11 @@ migration to the live database, deploys the backend and publishes the client. Th
   the set's prop from that many pieces; the Reaper's scythe), `legendary_hero_by_set_id` (a whole rigged body at 3+ pieces; the Reaper takes only her own
   set's; `covers_props: true` when the body already wears the set's hood/mantle). Add new models to `client/data/slice/assets_used.json`.
 - *A legendary set NEEDS its own full body* to look right: props alone (helm + mantle on the class body) read as a pile of armor. Ask for one rigged
-  character in the same concept round as the props: a full-body T-pose concept of a hero wearing the whole set (`"rig": {"model": "v1.0-20240301",
-  "rig_type": "biped"}`, the same ten animations as `art-manifest/tripo-specs/hero_leg_plague_choir.json`, about 185 credits), id `hero_leg_<setId>`. After the
-  build (`build-art.sh` gives every `hero_leg_*` body the combat clips the class's rites play), add its row to `client/game/view_models.json` (copy
+  character in the same concept round as the props: a full-body T-pose concept of a hero wearing the whole set, id `hero_leg_<setId>`. A Pixal body
+  with the `biped` rig has not been tried yet (the combat clips the class's rites play come with a Tripo build): until one has, ask the owner in the
+  proposal whether this body is made with Tripo (`"rig": {"model": "v1.0-20240301", "rig_type": "biped"}`, the same ten animations as
+  `art-manifest/tripo-specs/hero_leg_plague_choir.json`, about 185 credits). After the
+  build (`build-art.sh` gives every Tripo `hero_leg_*` body the combat clips the class's rites play), add its row to `client/game/view_models.json` (copy
   `hero_leg_plague_choir`'s, or `hero_reaper`'s for a Reaper set, with the new slug and url) and to `legendary_hero_by_set_id`. Then the in-game screenshots
   of step 4, front and back, at 3+ pieces.
 - *Decisions.* When the requester has not said where it drops or how strong it is, do not stop to ask: use the defaults above (legendary, boss drops,

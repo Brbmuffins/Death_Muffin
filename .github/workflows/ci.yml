@@ -72,8 +72,8 @@ jobs:
       - name: Pictures (the kinds list, the picture builder, every ability has its own icon)
         run: node --test tools/pictures/*.test.mjs
 
-      - name: Blender jobs (the kinds list, job checks, model rows, the merge into shipped models)
-        run: node --test tools/blender/jobs.test.mjs
+      - name: Blender jobs (the kinds list, job checks, model rows, the merge into shipped models, ComfyUI model records)
+        run: node --test tools/blender/jobs.test.mjs tools/blender/make.test.mjs
 
       - name: Shared rules tests
         run: npm run test:rules

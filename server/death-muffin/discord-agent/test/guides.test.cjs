@@ -316,7 +316,9 @@ test('install: the guides are installed from the revision, the folder is replace
     fs.cpSync(SRC, path.join(tmp, 'server/death-muffin/discord-agent'), { recursive: true, filter: (s) => !/node_modules|\/test\//.test(s) });
     fs.mkdirSync(path.join(tmp, 'tools/ai'), { recursive: true }); for (const f of ['common', 'gemini', 'tripo']) fs.copyFileSync(path.join(REPO, `tools/ai/${f}.mjs`), path.join(tmp, `tools/ai/${f}.mjs`));
     fs.mkdirSync(path.join(tmp, 'tools/check'), { recursive: true }); for (const f of ['prep.sh', 'ci.sh']) fs.copyFileSync(path.join(REPO, 'tools/check', f), path.join(tmp, 'tools/check', f));
-    sh(tmp, 'add', '-f', 'server', 'tools'); sh(tmp, 'commit', '-q', '-m', 'x');
+    fs.copyFileSync(path.join(REPO, 'server/death-muffin/model-gen.sh'), path.join(tmp, 'server/death-muffin/model-gen.sh'));   // the 3D tries' trusted copies
+    fs.mkdirSync(path.join(tmp, 'teamapp/comfy'), { recursive: true }); fs.copyFileSync(path.join(REPO, 'teamapp/comfy/image-to-model.json'), path.join(tmp, 'teamapp/comfy/image-to-model.json'));
+    sh(tmp, 'add', '-f', 'server', 'tools', 'teamapp'); sh(tmp, 'commit', '-q', '-m', 'x');
     let r = install(); assert.equal(r.status, 0, r.stdout + r.stderr);
     assert.deepEqual(fs.readdirSync(path.join(DEST, 'guides')).sort(), GUIDE_FILES);
     for (const f of GUIDE_FILES) assert.ok(fs.readFileSync(path.join(DEST, 'guides', f)).equals(fs.readFileSync(path.join(SRC, 'guides', f))), f);

@@ -1,0 +1,65 @@
+{
+  "id": "prop_necro_wpn_scythe",
+  "concept": "concept_necro_wpn_scythe_3d",
+  "picture": "art-src/concepts/wpn_scythe_3d.png",
+  "run": {
+    "label": "scythe3d-s0",
+    "model": "pixal3d",
+    "faces": 200000,
+    "texture": 2048,
+    "seed": 0,
+    "settings": {
+      "detail": 2048,
+      "grid": 1024
+    },
+    "comfyui": "0.42.5",
+    "template": "3d_pixal3d_trellis2_image_to_model (templates 0.11.96)",
+    "teamApp": "0.5.6",
+    "pc": "helix",
+    "job": "80c183488649",
+    "date": "2026-10-27",
+    "file": "scythe3d-s0.glb"
+  },
+  "steps": [
+    {
+      "kind": "finish",
+      "triangles": 2400,
+      "texture": 512,
+      "metal": "mixed",
+      "hard": true
+    },
+    {
+      "kind": "place"
+    }
+  ],
+  "game": "game.glb",
+  "frame": {
+    "matrix": [
+      [
+        0.492489338315325,
+        -0.9060108409926054,
+        -0.07017701698606574,
+        -0.003766530424874088
+      ],
+      [
+        0.908545874340371,
+        0.4893388305864507,
+        0.05846459751707685,
+        -0.01708663855302009
+      ],
+      [
+        -0.018023649138898288,
+        -0.08954368178500488,
+        1.0295548956648994,
+        0.5254378065489018
+      ],
+      [
+        0,
+        0,
+        0,
+        1
+      ]
+    ]
+  },
+  "tris": 2400
+}

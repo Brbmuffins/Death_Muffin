@@ -1,0 +1,68 @@
+{
+  "id": "fen_spider",
+  "concept": "concept_fen_spider_3d",
+  "picture": "art-src/concepts/fen_spider_3d.png",
+  "run": {
+    "label": "spider-s2",
+    "model": "pixal3d",
+    "faces": 200000,
+    "texture": 2048,
+    "seed": 2,
+    "settings": {
+      "detail": 2048,
+      "grid": 1024
+    },
+    "comfyui": "0.42.5",
+    "template": "3d_pixal3d_trellis2_image_to_model (templates 0.11.96)",
+    "teamApp": "0.5.6",
+    "pc": "helix",
+    "job": "80c183488649",
+    "date": "2026-10-27",
+    "file": "spider-s2.glb"
+  },
+  "steps": [
+    {
+      "kind": "finish",
+      "triangles": 5000,
+      "texture": 512,
+      "metal": "none"
+    },
+    {
+      "kind": "place"
+    },
+    {
+      "kind": "rig",
+      "body": "legs"
+    }
+  ],
+  "game": "game.glb",
+  "frame": {
+    "matrix": [
+      [
+        -2.0006940364837646,
+        0.8594110608100891,
+        0.627411961555481,
+        0.008511140942573547
+      ],
+      [
+        -1.056857705116272,
+        -1.760198712348938,
+        -0.959042489528656,
+        0.06377365440130234
+      ],
+      [
+        0.12363240122795105,
+        -1.1393522024154663,
+        1.9548916816711426,
+        0.19549569487571716
+      ],
+      [
+        0,
+        0,
+        0,
+        1
+      ]
+    ]
+  },
+  "tris": 4996
+}

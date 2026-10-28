@@ -6,7 +6,7 @@ Clip types in a recipe (see tools/blender/recipes/*.json and docs/BLENDER-PIPELI
          and a swing arc, solved with IK from the hip; the body bobs, pitches and sways around it.
   idle   feet planted, body breathes, head and tail drift.
   once   a one-shot (attack, hurt, death): mods follow `keys` curves over the clip instead of sines, the feet stay planted
-         (or move by `feet` offsets) unless `plant` is false (then the leg bones take mods like any bone), and `floor` keeps
+         (or move by `feet` offsets: up, fwd, side in metres, in as a share of the way to under the leg's top) unless `plant` is false (then the leg bones take mods like any bone), and `floor` keeps
          the skinned body on the ground.
 
 Everything is expressed in armature space of the imported rig (Blender Z up). `forward` is the horizontal direction
@@ -80,6 +80,8 @@ class Gait:
             self.leg_bones.add(lg.paw)
         self.first_of = {lg.chain[0]: k for k, lg in self.legs.items()}
         self.A0 = {k: rig.head[lg.paw].copy() for k, lg in self.legs.items()}
+        # `in` (a share) moves a planted paw toward the point under its leg's top joint, seen from above (a spider curling its legs)
+        self.inward = {k: Vector(((rig.head[lg.chain[0]] - self.A0[k]).x, (rig.head[lg.chain[0]] - self.A0[k]).y, 0)) for k, lg in self.legs.items()}
 
     # --- foot path -------------------------------------------------------------------------------
     def foot(self, key, phase, g):
@@ -152,7 +154,8 @@ class Gait:
                     fo = clip.get('feet', {}).get(key, [])
                     for o in (fo if isinstance(fo, list) else [fo]):              # a one-shot moves a planted paw (a pounce lifts the front paws)
                         w = interp(o['keys'], t)
-                        ankle += (UP * o.get('up', 0.0) + self.fwd * o.get('fwd', 0.0) + self.lat * o.get('side', 0.0) * self.side[key]) * w
+                        ankle += (UP * o.get('up', 0.0) + self.fwd * o.get('fwd', 0.0) + self.lat * o.get('side', 0.0) * self.side[key]
+                                  + self.inward[key] * o.get('in', 0.0)) * w
                 # pitch the paw a little with the stride (heel-off late in stance, toe-down in swing)
                 pawrot = None
                 pr = clip.get('paw')
