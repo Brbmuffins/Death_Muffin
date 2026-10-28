@@ -406,6 +406,15 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   to its Tripo one, both with nothing spent. The Discord agent asks for tries itself (free, no approval, like concepts) and runs the Blender steps
   in its sandbox (`make-model.sh`). The Tripo account and its credits stay for what this way has not done yet (a two-legged hero body with its
   combat clips) and only when the owner asks; Tripo spending stays paused until the owner says otherwise.
+- **B78. The Discord agent checks its own pictures and gets what it needs to fix its own failures; it stays on Sonnet** (Helix, 2026-10-28:
+  "i want to make thw discord agent smarter", then yes to the plan from a review of its threads). A team PC's pictures go to the thread only
+  after a short separate call of the agent has looked at them against the request: it adds one line (what they show, or what looks wrong with
+  the change) and may retake them once with a better plan (`runner/lib/look.cjs`; the threads had pictures of a gate seen edge-on and eight
+  shots without the thing asked about). `agit rm` and `agit mv` let it remove and rename files (it left files behind and the check stopped on
+  uncommitted changes). When CI fails outside the game suites it gets the failing step's output (`ci.sh log`), not only a link it cannot open.
+  A lore guide says where the story and the game's words live and to say where each fact comes from; it searches before saying something is
+  not there, says a fetched web page was a summary and asks for a paste, and answers about as long as the message. A change to `art-manifest/`
+  alone ships like documents, with no game update (notes on concept art had gone out as a full release). Opus was weighed and not taken.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

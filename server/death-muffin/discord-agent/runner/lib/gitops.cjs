@@ -29,7 +29,7 @@ async function git(cwd, args, opts = {}) {
 const trim = async (p) => (await p).out.trim();
 
 // The runner's files in a job worktree, kept out of `git status` by the repository's shared info/exclude (every job worktree shares it).
-const JOB_FILES = ['.dm-result.json', '.dm-shots/', '.dm-shot.json', '.dm-clip.json', '.dm-preview/', '.dm-inbox/', '.dm-art-request.json', '.dm-model-request.json', '.dm-sound-request.json', '.dm-blender.json', '.dm-status', '.dm-check-progress', '.dm-title', '.dm-handoff.md', '.dm-guides/'];
+const JOB_FILES = ['.dm-result.json', '.dm-shots/', '.dm-shot.json', '.dm-clip.json', '.dm-preview/', '.dm-inbox/', '.dm-art-request.json', '.dm-model-request.json', '.dm-sound-request.json', '.dm-blender.json', '.dm-status', '.dm-check-progress', '.dm-title', '.dm-handoff.md', '.dm-guides/', '.dm-look/'];
 // Adds what is missing; returns the entries it added. Also run before a turn (lib/guides.cjs), so a worktree made by an older runner gets new entries.
 function excludeJobFiles(commonDir, files = JOB_FILES) {
   const ex = path.join(commonDir, 'info', 'exclude');

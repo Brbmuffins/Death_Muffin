@@ -1,14 +1,30 @@
 #!/usr/bin/env bash
-# The bug-report agent's git: a few subcommands, no hooks, and no flags that read or write files outside the worktree
+# The Discord agent's git: a few subcommands, no hooks, and no flags that read or write files outside the worktree
 # (--output, -F/--file, --template) or bypass staging rules (-A, --all, `.`).
+# `agit rm <paths>` deletes files and folders (2026-10-28: without it the agent left files it meant to drop and the check stopped on
+# "uncommitted changes"): tracked paths through `git rm -r`, new ones through `git clean -f -d`. Both are git's own commands, so a path
+# outside the worktree is refused, and `git clean` never touches ignored files (the runner's .dm-* files, art-src/). `agit mv` renames.
 set -euo pipefail
 deny() { echo "agit: not allowed: $*" >&2; exit 2; }
 sub="${1:-}"; shift || true
-case "$sub" in status|diff|log|show|add|commit|revert) ;; *) deny "git $sub";; esac
+case "$sub" in status|diff|log|show|add|commit|revert|rm|mv) ;; *) deny "git $sub";; esac
 for a in "$@"; do
   case "$a" in
     --output*|-o|-F*|--file*|-t|--template*|--exec*|--git-dir*|--work-tree*|--ext-diff|--no-verify|-c|--config*|--pathspec-from-file*) deny "$a";;
   esac
-  if [ "$sub" = add ]; then case "$a" in -A|--all|.|./|:/|-u|--update|*'*'*) deny "git add $a (stage explicit paths)";; esac; fi
+  if [ "$sub" = add ] || [ "$sub" = rm ] || [ "$sub" = mv ]; then case "$a" in -A|--all|.|./|:/|-u|--update|''|*'*'*|*'?'*|*'['*) deny "git $sub $a (name explicit paths)";; esac; fi
+  if [ "$sub" = rm ] || [ "$sub" = mv ]; then case "$a" in --) ;; -*) deny "git $sub $a (agit $sub takes paths only)";; esac; fi
 done
-exec git -c core.hooksPath=/dev/null -c diff.external= -c core.pager=cat "$sub" "$@"
+G=(git -c core.hooksPath=/dev/null -c diff.external= -c core.pager=cat)
+if [ "$sub" = rm ]; then
+  tracked=(); fresh=()
+  for p in "$@"; do
+    [ "$p" = -- ] && continue
+    if [ -n "$("${G[@]}" ls-files -- "$p")" ]; then tracked+=("$p"); else fresh+=("$p"); fi
+  done
+  [ ${#tracked[@]} -eq 0 ] && [ ${#fresh[@]} -eq 0 ] && deny "git rm with no paths"
+  [ ${#tracked[@]} -gt 0 ] && "${G[@]}" rm -r -q -- "${tracked[@]}"
+  [ ${#fresh[@]} -gt 0 ] && "${G[@]}" clean -f -d -q -- "${fresh[@]}"
+  exit 0
+fi
+exec "${G[@]}" "$sub" "$@"

@@ -31,6 +31,7 @@ const A = require('./lib/art.cjs');
 const S = require('./lib/sound.cjs');
 const CL = require('./lib/clips.cjs');
 const AD = require('./lib/addressee.cjs');
+const LK = require('./lib/look.cjs');
 
 const TIER_COLOR = { casual: 0x16a34a, gameplay: 0xb45309, sensitive: 0xdc2626 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -775,6 +776,8 @@ function createRunner(cfgIn, opts = {}) {
     const sync = msgs.some((m) => m.sync);
     const test = msgs.some((m) => m.test); const repost = msgs.some((m) => m.test && m.repost);
     let real = msgs.filter((m) => !m.sync && !m.art && !m.test);
+    // what people asked this turn, in their words: the look check (lib/look.cjs) judges the pictures against it
+    { const asked = real.filter((m) => !m.synthetic && m.text); if (asked.length) job.lastAsk = clip(asked.map((m) => `${m.name || 'someone'}: ${m.text}`).join('\n'), 3000); }
     let extra = '';
     if (job.roundNote) { extra = job.roundNote; job.roundNote = null; }
     if (job.bugReportId && !job.sessionId && real.length) {   // a report thread: every fresh session gets the report itself
@@ -1056,8 +1059,11 @@ function createRunner(cfgIn, opts = {}) {
       const suites = String(f.out || '').split('\n').map((x) => x.trim()).filter((x) => /^[A-Za-z0-9_/-]+$/.test(x));
       if (!suites.length) {
         const t = await runChecks(job);
-        return t.ok ? { ok: false, tail: `CI failed outside the game suites (the backend or lobby tests, hygiene or the model check), and the check here passed: ${url}`, summary: 'CI — FAILED outside the game suites' }
-          : { ...t, summary: `CI FAILED; here: ${t.summary}` };
+        if (!t.ok) return { ...t, summary: `CI FAILED; here: ${t.summary}` };
+        // what CI printed where it failed (ci.sh log: the failing step's last lines), so the agent can fix it rather than get a link it cannot open
+        let log = ''; try { log = String((await ci(['log', head], 180000)).out || '').trim(); } catch { log = ''; } finally { checkProcs.delete(job.id); }
+        return { ok: false, tail: `CI failed outside the game suites (the backend or lobby tests, hygiene or the model check), and the check here passed: ${url}`
+          + (log ? `\nWhat CI printed where it failed:\n${clip(redactText(log), 6000)}` : ''), summary: 'CI — FAILED outside the game suites' };
       }
       return { ok: false, tail: [...suites.map((x) => `${x} (CI) exit=1`), `GODOT TESTS: CI (${url}) — ${suites.length} FAILED`].join('\n'), summary: `CI — ${suites.length} FAILED (${suites.join(', ')})` };
     }
@@ -1341,7 +1347,19 @@ function createRunner(cfgIn, opts = {}) {
   // Pictures for the proposal (o.proposal, the default) or for the game as it is (!shot with nothing to propose). o.pcs: the PCs the caller already found online;
   // o.say: say in the thread when nothing came (the proposal said pictures follow); o.forced: the person asked (`!shot`), so answer even when nothing can be done.
   // o.live (a discussion post, liveShots): head is the live revision, o.planDir holds the plan; it is built in a scratch worktree and labelled as the live game.
+  // The look check (lib/look.cjs) may ask for one retake with a better plan: the first pictures are not posted, the second set is, with the verdict.
   async function teamShots(job, head, o = {}) {
+    const r = await teamShotsOnce(job, head, o);
+    if (!r || !r.retake) return;
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-retake-plan-'));
+    try {
+      const plan = { ...r.retake }; if (o.live) delete plan.before;
+      fs.writeFileSync(path.join(dir, '.dm-shot.json'), JSON.stringify(plan));
+      say(job, `📸 Taking the pictures again: ${r.why || 'the first ones did not show it'}`);
+      await teamShotsOnce(job, head, { ...o, planDir: dir, retake: true, forced: false, say: true });
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  }
+  async function teamShotsOnce(job, head, o = {}) {
     if (!teamEnabled() || (!o.live && !job.worktree)) return;
     if (teamBusy.has(job.id)) { if (o.forced) say(job, 'A team PC is already making pictures for this thread; they will follow here.'); return; }
     teamBusy.add(job.id);
@@ -1393,7 +1411,8 @@ function createRunner(cfgIn, opts = {}) {
       if (paired && !r.stale && r.error && r.status === 'failed') { audit.log('team-shots', { job: job.id, teamJob: r.id, paired: false, retry: true, why: clip(r.error, 200) }); paired = false; r = await attempt(false); }
       if (r.stale || stale()) return;
       if (r.error) return fail(r.error, { teamJob: r.id });
-      const pics = await teamPictures(job, r.t, r.id, { paired, plan, who: whoOf(pcs, r.t), noBefore: paired0 && !paired, notes, live: o.live ? head : null });
+      const pics = await teamPictures(job, r.t, r.id, { paired, plan, who: whoOf(pcs, r.t), noBefore: paired0 && !paired, notes, live: o.live ? head : null, retake: !!o.retake });
+      if (pics && pics.retake) { audit.log('team-shots', { job: job.id, teamJob: r.id, retake: true }); return { retake: pics.retake, why: pics.why }; }
       if (!pics) return fail('the team PC finished without pictures that could be labelled', { teamJob: r.id });
       audit.log('team-shots', { job: job.id, teamJob: r.id, ok: true, pictures: pics, paired, ...(o.live ? { live: head.slice(0, 12) } : {}) });
     } catch (e) { fail(e && e.message ? e.message : String(e)); } finally { teamBusy.delete(job.id); }
@@ -1422,7 +1441,7 @@ function createRunner(cfgIn, opts = {}) {
   }
   // Reads a finished shots job's pictures from the backend's results folder, labels them and posts them. Returns how many were posted (0 = none usable).
   // Names the app uploads: `<preset>_<shot>.png`, or `<before|after>_<preset>_<shot>.png` for a two-build job; Discord gets `low-a.png` / `before-low-a.png`.
-  async function teamPictures(job, t, id, { paired, plan, who, noBefore, notes = [], live = null }) {
+  async function teamPictures(job, t, id, { paired, plan, who, noBefore, notes = [], live = null, retake = false }) {
     const dir = path.join(path.resolve(cfg.teamResultsDir), id);
     const rank = (n) => (CL.SHOT_PRESETS.includes(n) ? CL.SHOT_PRESETS.indexOf(n) : CL.SHOT_PRESETS.length);
     const items = [];   // { build, preset, shot, raw, src, buf }; `raw` is the neutral name label-shot.py gets (its names are short and fixed; the posted names carry the preset and shot)
@@ -1445,6 +1464,9 @@ function createRunner(cfgIn, opts = {}) {
     } finally { for (const l of labs) fs.rmSync(l, { recursive: true, force: true }); }
     const got = items.filter((x) => x.buf);
     if (!got.some((x) => x.build === 'after')) return 0;
+    const look = await lookCheck(job, got, { plan, live, retake });
+    if (look && look.retake) return { retake: look.retake, why: look.why };
+    if (look && look.line) notes = [...notes, look.line];
     const file = (x) => ({ name: safeName(`${paired ? `${x.build}-` : ''}${x.preset}-${x.shot}.png`), b64: x.buf.toString('base64') });
     const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
     const tail = `${live ? ` · the live game (${live.slice(0, 7)}), offline demo character` : ' · branch preview, not live'}${notes.length ? `\n${notes.join(' ')}` : ''}`;
@@ -1466,6 +1488,23 @@ function createRunner(cfgIn, opts = {}) {
       chunked(groups).forEach((c, i) => { n += c.length; post({ threadId: job.threadId }, { content: i === 0 ? `📸 ${cap(preset)} on a real graphics card (${who}): each pair is BEFORE (the game as it is now), then AFTER (this change)${first ? tail : ' · branch preview, not live'}` : `📸 ${cap(preset)} (more)`, files: c.map(file) }); first = false; });
     }
     return n;
+  }
+
+  // The agent looks at the pictures before the thread does (lib/look.cjs). Returns { retake, why } (one more try with a better plan), { line } (the verdict
+  // shown on the pictures) or null (no check, or no usable answer: the pictures go out as they are).
+  async function lookCheck(job, got, { plan, live, retake }) {
+    if (cfg.lookCheck === false || !job.worktree || !fs.existsSync(job.worktree)) return null;
+    const files = got.slice(0, 12).map((x) => ({ name: `${x.build === 'before' ? 'before-' : ''}${x.preset}-${x.shot}.png`, buf: x.buf }));
+    const p = !live && job.proposal;
+    const change = p ? clip(`${p.title || ''}${Array.isArray(p.summary) && p.summary.length ? `: ${p.summary.join(' ')}` : ''}`, 1500) : null;
+    let v; try { v = await LK.runLook(cfg, job, { files, plan, ask: job.lastAsk, change, live: !!live }); } catch (e) { v = { verdict: null, error: e && e.message ? e.message : String(e) }; }
+    if (!v) return null;
+    audit.log('look', { job: job.id, verdict: v.verdict, retake: !!retake, ...(v.costUsd != null ? { costUsd: v.costUsd } : {}), ...(v.error ? { why: clip(v.error, 200) } : {}) });
+    try { fs.mkdirSync(path.join(cfg.stateDir, 'runs'), { recursive: true }); fs.appendFileSync(path.join(cfg.stateDir, 'runs', `${job.id}.log`), JSON.stringify({ ts: new Date(now()).toISOString(), look: v.verdict, model: cfg.lookModel || job.model, costUsd: v.costUsd }) + '\n'); } catch { /* best effort */ }
+    if (!v.verdict) return null;
+    const note = clip(redactText(v.note || '').replace(/\s+/g, ' '), 300) || 'no reason given';
+    if (v.verdict === 'retake' && !retake && v.plan) return { retake: v.plan, why: note };
+    return { line: v.verdict === 'ok' ? `✔ Checked: ${note}` : v.verdict === 'wrong' ? `⚠ Looking at these: ${note}` : v.verdict === 'retake' && retake ? `⚠ Second try, still not right: ${note}` : `⚠ ${note}` };
   }
 
   // ---------- short videos of a change (.dm-clip.json: variants of a tune over the game's data; a `clip` job on a team PC; "Which do you like best?") ----------
@@ -2082,11 +2121,11 @@ function createRunner(cfgIn, opts = {}) {
       say(job, `✅ Merged into ${BB} as \`${sha}\`. Another approved change is right behind it, so both go live together with the next publish (a few minutes).`);
       pump(); return;
     }
-    if (kind === 'docs') {   // only documents changed (ship.sh): on the base branch, and there is nothing to deploy or publish
+    if (kind === 'docs') {   // only documents or art records changed (ship.sh): on the base branch, and there is nothing to deploy or publish
       const sha = detail.split(' ')[0];
       logShip({ type: 'docs', jobId: job.id, sha, approverId: String(approverId), approverName: nameOf(approverId), tier: p.tier, title: p.title, rollback: null });
       job.status = 'shipped'; job.proposal = { ...p, shipSha: sha }; (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, shipSha: sha, title: p.title, at: new Date(now()).toISOString() }); save(); syncName(job);
-      say(job, `✅ Merged into ${BB} as \`${sha}\`. It only changes documents, so no game update went out. Keep going here for the next change.`);
+      say(job, `✅ Merged into ${BB} as \`${sha}\`. It only changes documents or art records, nothing players see, so no game update went out. Keep going here for the next change.`);
       if (job.queue.length && !job.deleteRequested) await beginRound(job);
       else { await G.removeJobArtifacts(cfg, job); job.worktree = null; save(); }
       pump(); return;
@@ -2165,7 +2204,7 @@ function createRunner(cfgIn, opts = {}) {
     const pj = j.proposal;
     logShip({ type: kind, jobId: j.id, sha, approverId: String(approverId), approverName: nameOf(approverId), tier: pj.tier, title: pj.title, rollback: kind === 'live' && rb && rb !== 'none' ? rb : null, batchedWith: lead.id });
     j.status = 'shipped'; j.proposal = { ...pj, shipSha: sha }; (j.history = j.history || []).push({ round: j.round || 1, branch: j.branch, shipSha: sha, title: pj.title, at: new Date(now()).toISOString() }); save(); syncName(j);
-    say(j, kind === 'docs' ? `✅ Merged into ${BB} as \`${sha}\` with \`${lead.id}\`. It only changes documents, so no game update went out. Keep going here for the next change.`
+    say(j, kind === 'docs' ? `✅ Merged into ${BB} as \`${sha}\` with \`${lead.id}\`. It only changes documents or art records, nothing players see, so no game update went out. Keep going here for the next change.`
       : `🚀 Live. Release \`${sha}\` (with \`${lead.id}\`) is on ${BB} and deployed. Thanks, ${nameOf(j.creatorId)}.\nPlayers get it in the Windows launcher on next start.`);
     if (j.queue.length && !j.deleteRequested) await beginRound(j);
     else { await G.removeJobArtifacts(cfg, j); j.worktree = null; save(); }

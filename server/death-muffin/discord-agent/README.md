@@ -37,7 +37,8 @@ check never skips an untested proposal (`PROPOSAL_UNTESTED`). A ship whose tests
 files (`ci.sh wait <head>`, audit `ci-check`): every suite, the backend and lobby tests, hygiene and the model check; the proposal's "Tests" reads
 `CI — every suite passed (<run link>)`. Failing suites come back from the run's annotations as `<suite> (CI) exit=1` lines, so 1-3 of them get one
 re-run here (`check-godot.sh --rerun`) and the clean-base check works as before; CI failing outside the suites runs the local check to say what it
-is; no verdict at all (GitHub down, `ci-unavailable`) runs the full set here. The ship merges, gates, then takes CI's verdict: on the proposal when the
+is, and when that passes the agent gets what CI printed where it failed (`ci.sh log <head>`: each failed job's failing step and its last 40
+lines, clipped to 6,000 characters); no verdict at all (GitHub down, `ci-unavailable`) runs the full set here. The ship merges, gates, then takes CI's verdict: on the proposal when the
 merged tree is the same files, else on the merged change pushed as `ship/<job>` (removed afterwards); 1-3 failing suites get one re-run here. Only
 then it takes the deploy lock (the wait never blocks another deploy) and pushes, if the base branch did not move meanwhile (`master-moved`, shipped
 again by itself). **Batch:** approvals that wait for a ship go out with the next one (`BATCH`): each merged and gated with its own approver's tier,
@@ -58,7 +59,8 @@ workspace means no new checks, preview or re-post (`proposal-kept` in the audit 
 no check for such messages.
 Rollback undoes the live release only; revert the commit on the base branch afterwards.
 
-**Documents only:** an approved change that touches only Markdown files and `docs/` is pushed and stops there: no backend or lobby deploy, no client publish, no release notice (`RESULT: docs`;
+**Documents only:** an approved change that touches only Markdown files, `docs/` and `art-manifest/` (the art tools' specs and job files, which
+the game never reads) is pushed and stops there: no backend or lobby deploy, no client publish, no release notice (`RESULT: docs`;
 the thread is told no game update went out, the ships log records `type: docs`).
 
 ## Who can do what (`config.json`, owner-edited, never by the AI)
@@ -179,6 +181,13 @@ in the thread asks (words after `!shot` go to the agent too):
    at most two pairs a post and 20 MB (a post Discord refuses is lost), a pair never split. Every picture is labelled by `label-shot.py` like the server's ("BRANCH PREVIEW · not live ·
    <branch>": the base branch's name on BEFORE, the job's branch on AFTER) and posted only after the label step; names are `ultra-<shot>.png`, or `before-low-<shot>.png` /
    `after-low-<shot>.png` for pairs, and the post says whose PC and card made them (`bogar1's PC, Intel Arc B580`).
+   **The look check** (Helix 2026-10-28, `runner/lib/look.cjs`; `cfg.lookCheck: false` turns it off): before posting, the runner copies the labelled pictures (at most 12) into the
+   worktree's `.dm-look/` and makes one short claude call of its own (never the job's session, so the thread can go on; Read/Glob/Grep in the worktree, Write only in `.dm-look/`,
+   `cfg.lookModel` else the job's model) with what people asked (`job.lastAsk`), the proposal's title and summary and the plan. It answers one line: `LOOK: ok` (the post gets
+   "✔ Checked: <what they show>"), `wrong` ("⚠ Looking at these: <what is off with the change>"), `cannot` ("⚠ <why>") or `retake` with a better plan in `.dm-look/plan.json`:
+   then those pictures are not posted, the thread gets "📸 Taking the pictures again: <why>" and the plan goes to a team PC once more; the second set is posted with its own verdict
+   ("⚠ Second try, still not right" when it asks again). No usable answer: the pictures go out as before. Audit `look` (verdict, cost; the run log too); discussion posts' live
+   pictures get the same check.
 5. **Screen sizes.** A shot plan may carry `resolutions`: up to 4 different sizes from `1920x1080`, `2560x1440`, `3840x2160` and `3440x1440` (default: only the standard 1920x1080, team app 0.4.7), which
    the prompt asks for on a new window or a change to the HUD's layout. `readShotPlan` (`runner/lib/clips.cjs`) checks the list: a list that is not allowed is dropped and the first post says so
    ("The screen sizes asked for were not usable ..., so the standard size was used"). A valid list stays in the plan the app gets and is also set beside it as the payload's `resolutions`;
@@ -432,8 +441,8 @@ with `ciGate: false`) · generated files `regen-godot.sh` · preview `preview-go
 
 **Prompt and guides.** `PROMPT-godot.md` is the core the agent always carries (`--append-system-prompt`, about 9K tokens): who it serves and what it may
 never do, its sandbox, making a change, the owner principles, when pictures and videos apply, the paid-generation limits, and an index of the guides.
-The how-to for each media workflow is a guide in `guides/` (`screenshots`, `clips`, `pictures`, `models`, `sound`), which the agent Reads only when
-it uses that workflow; the core's index (`.dm-guides/<name>.md`) is the one list of guides. `runner/lib/guides.cjs` before every turn: a snapshot
+The how-to for each media workflow is a guide in `guides/` (`screenshots`, `clips`, `pictures`, `models`, `blender`, `sound`; `lore` for the story and the
+game's words), which the agent Reads only when it uses that workflow; the core's index (`.dm-guides/<name>.md`) is the one list of guides. `runner/lib/guides.cjs` before every turn: a snapshot
 per round in `state/guides/<job>/` of the INSTALLED core and guides (placeholders filled, a hash per file), made on the round's first turn and
 again, core and guides together, after a reinstall, when it no longer matches its hashes, or for a job from before the guides (the agent is told
 when its conversation carries on); every call of the turn, handoffs included, carries the snapshot's core; the guides are copied into the

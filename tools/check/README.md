@@ -73,6 +73,7 @@ branch replaces that branch's older run. Nothing is merged, deployed or publishe
 tools/check/ci.sh status <rev>                 # passed | failed | pending | none, and the run's link
 tools/check/ci.sh wait <rev> [<minutes>]       # waits (default 60): exit 0 passed, 1 failed or cancelled, 2 no run or out of time
 tools/check/ci.sh failed <rev>                 # the game suites that failed (one per line)
+tools/check/ci.sh log <rev>                    # each failed job's failing step and its last 40 lines (needs the token; nothing without it)
 ```
 
 - **A verdict belongs to the files, not the commit.** A run of any commit with exactly the same tree counts, so a fast-forward of `main`, a

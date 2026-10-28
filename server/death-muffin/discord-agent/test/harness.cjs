@@ -42,7 +42,7 @@ function makeWorld(over = {}) {
   fs.writeFileSync(path.join(tools, 'check-godot.sh'), '#!/usr/bin/env bash\n[ -e FAILTESTS ] && { echo "godot boom"; exit 1; }\necho "tests/game run.gd exit=0  12 passed"; echo "$*" >> "$(dirname "$0")/check-godot.calls"; if [ "${1:-}" = --full ]; then echo "GODOT TESTS: full (2 suites) — 2 passed"; else echo "GODOT TESTS: quick (2 suites) — 2 passed"; fi\n', { mode: 0o755 });
   // ci.sh stand-in (tools/check/ci.sh; used when a test sets ciGate: true): CI answers at once. A CIFAIL file next to it fails a revision when every
   // line in it matches that revision ("<path>" = the file exists there, "<path>:<text>" = the file holds that text; an empty file fails every
-  // revision); `failed` names the suites in CIFAIL_SUITES (default "game"). Every call is logged to ci.calls.
+  // revision); `failed` names the suites in CIFAIL_SUITES (default "game"), `log` prints CIFAIL_LOG. Every call is logged to ci.calls.
   fs.writeFileSync(path.join(tools, 'ci.sh'), [
     '#!/usr/bin/env bash',
     'd="$(dirname "$0")"; echo "$*" >> "$d/ci.calls"; bad=',
@@ -53,6 +53,7 @@ function makeWorld(over = {}) {
     '  status) [ -n "$bad" ] && echo "failed https://ci.test/actions/runs/1" || echo "passed https://ci.test/actions/runs/1";;',
     '  wait) [ -n "$bad" ] && { echo "failed https://ci.test/actions/runs/1"; exit 1; }; echo "passed https://ci.test/actions/runs/1";;',
     '  failed) [ -z "$bad" ] || { [ -s "$d/CIFAIL_SUITES" ] && cat "$d/CIFAIL_SUITES" || echo game; };;',
+    '  log) [ -z "$bad" ] || { [ -s "$d/CIFAIL_LOG" ] && cat "$d/CIFAIL_LOG"; };;',
     'esac', 'exit 0', ''].join('\n'), { mode: 0o755 });
   // shot-godot.sh stand-in: writes a PNG-ish file; in a base-<id> scratch worktree it writes the BEFORE picture (unless NOBASE exists)
   fs.writeFileSync(path.join(tools, 'shot-godot.sh'), '#!/usr/bin/env bash\n[ -f .dm-shot.json ] || exit 2\nmkdir -p .dm-shots\ncase "$PWD" in */base-*) [ -e "$(dirname "$PWD")/NOBASE" ] && exit 1; echo PNG-before > .dm-shots/a.png;; *) echo PNG-after > .dm-shots/a.png;; esac\n', { mode: 0o755 });

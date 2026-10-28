@@ -5,8 +5,9 @@
 #   RESULT: <live|live-already|merged|docs|conflict|head-moved|gate|sync-failed|tests-failed|master-moved|backup-failed|deploy-failed|lock-timeout> ...      ("master-moved" = BASE_BRANCH moved)
 # DEFER_PUBLISH=1 (the runner sets it when another approved ship waits): merge, gate, test and push, but no client publish ("RESULT: merged
 # <sha>"); the next ship's client carries it (one publish and one notice for a backlog). The runner publishes it alone if nothing else ships.
-# A change that touches only documents (Markdown files, docs/) is pushed and stops there: no backend or lobby deploy, no client publish, no
-# release notice ("RESULT: docs <sha>"; a roadmap line from Discord used to send every player an update notice).
+# A change that touches only documents (Markdown files, docs/) and art records (art-manifest/: the specs and job files the art tools read; the
+# game never reads them) is pushed and stops there: no backend or lobby deploy, no client publish, no release notice ("RESULT: docs <sha>"; a
+# roadmap line from Discord used to send every player an update notice, and on 2026-10-27 notes on concept art went out as a full release).
 # PUBLISH_ONLY=1 PUBLISH_SHA=<sha> (the retry after a failed client publish): no merge/tests/push. Publishes that already-tested, already-
 # pushed commit with a fresh rollback, or prints "RESULT: live-already" when the live client already contains it (never publishes an older client).
 # The Godot publish itself is tried up to 3 times (PUBLISH_RETRY_SLEEPS, default "30 90") before deploy-failed: one-off Godot import crashes heal by themselves.
@@ -154,7 +155,7 @@ DEFER="${DEFER_PUBLISH:-}"; [ -n "$PUBLISH_ONLY" ] && DEFER=""
 DOCS_ONLY=""
 if [ -z "$PUBLISH_ONLY" ]; then
   CHANGED=$(g diff --name-only "$OLD" "$SHA")
-  OTHER=$(printf '%s\n' "$CHANGED" | grep -vE '(\.md$|^docs/)')   # grep reads the whole list: no early exit for pipefail to misread
+  OTHER=$(printf '%s\n' "$CHANGED" | grep -vE '(\.md$|^docs/|^art-manifest/)')   # grep reads the whole list: no early exit for pipefail to misread
   [ -n "$CHANGED" ] && [ -z "$OTHER" ] && DOCS_ONLY=1
 fi
 if [ -z "$DEFER" ] && [ -z "$DOCS_ONLY" ]; then
@@ -190,7 +191,7 @@ rm -f /tmp/ship-push.$$
 drop_ship_branch
 for b in $BATCHED; do echo "BATCH: $b"; done
 fi
-if [ -n "$DOCS_ONLY" ]; then echo "RESULT: docs ${SHA:0:12}"; exit 0; fi   # documents only: nothing to deploy or publish
+if [ -n "$DOCS_ONLY" ]; then echo "RESULT: docs ${SHA:0:12}"; exit 0; fi   # documents and art records only: nothing to deploy or publish
 if [ -n "$DEFER" ]; then echo "RESULT: merged ${SHA:0:12}"; exit 0; fi   # the next ship (or the runner) publishes it
 
 say "deploying ${SHA:0:12}"

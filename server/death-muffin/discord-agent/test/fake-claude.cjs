@@ -4,6 +4,18 @@
 const fs = require('fs'); const { execFileSync } = require('child_process');
 let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   const git = (...a) => execFileSync('git', a, { stdio: 'pipe' });
+  // the look check (runner/lib/look.cjs): its own call, logged in .fake-looks (not .fake-calls, which counts the job's turns). LOOK-OK / LOOK-WRONG in the
+  // request give that verdict; LOOK-RETAKE writes a better plan (one shot "retaken") and asks for a retake, then passes the retaken pictures; else no verdict.
+  if (/^What was asked \(the team's words/.test(p)) {
+    try { const ex = require('path').join(String(execFileSync('git', ['rev-parse', '--git-common-dir'])).trim(), 'info', 'exclude'); if (!fs.readFileSync(ex, 'utf8').includes('.fake-looks')) fs.appendFileSync(ex, '\n.fake-looks\n'); } catch { /* not a repo */ }
+    fs.appendFileSync('.fake-looks', JSON.stringify({ resume: process.argv.includes('--resume'), tools: process.argv[process.argv.indexOf('--tools') + 1], pictures: (p.match(/\.dm-look\/[\w.-]+\.png/g) || []).filter((f) => fs.existsSync(f)) }) + '\n');
+    const said = (r) => process.stdout.write(JSON.stringify({ type: 'result', session_id: 'look-' + Math.random().toString(16).slice(2, 8), total_cost_usd: 0.01, subtype: 'success', result: r }));
+    if (/LOOK-RETAKE/.test(p) && !/"name":"retaken"/.test(p)) { fs.writeFileSync('.dm-look/plan.json', JSON.stringify({ shots: [{ name: 'retaken', view: 'game' }] })); return said('LOOK: retake — the door is seen edge-on; turning the camera to face it.'); }
+    if (/LOOK-RETAKE/.test(p)) return said('LOOK: ok — the door faces the camera with its lock showing.');
+    if (/LOOK-WRONG/.test(p)) return said('LOOK: wrong — the counter still shows 0 with the door open.');
+    if (/LOOK-OK/.test(p)) return said('LOOK: ok — the title is bigger and still fits the window.');
+    return said('The answer is in client/game/a.gd.');
+  }
   const ready = (title, summary) => fs.writeFileSync('.dm-result.json', JSON.stringify({ status: 'ready', title, summary, testing: 'check-godot.sh', risk: 'none' }));
   let text = 'The answer is in client/game/a.gd.';
   // step budget: LONG-TASK runs out of steps (error_max_turns) unless it is continuing from a handoff; LONG-FOREVER always does; the runner's
@@ -28,7 +40,7 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   const edit = (file, from, to, msg, extraMsg = '') => { fs.mkdirSync(require('path').dirname(file), { recursive: true }); fs.writeFileSync(file, (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '').replace(from, to) || to); git('add', '--', file); git('commit', '-q', '-m', msg + extraMsg); };
   // SHOT-PNG / SHOT-PNG2: pretend shot-godot.sh ran (a shot plan + a PNG; PNG2 = different bytes). The !shot prompt mentions shot-godot.sh.
   const wr = (f, c) => { fs.mkdirSync(require('path').dirname(f), { recursive: true }); fs.writeFileSync(f, c); };
-  // GD-GAMEPLAY = client/game/a.gd (GD-SHOT in the same request also leaves a shot plan + picture), GD-NET = sensitive net code, GD-DOC = readme, GD-PRESET = a forbidden path
+  // GD-GAMEPLAY = client/game/a.gd (GD-SHOT in the same request also leaves a shot plan + picture), GD-NET = sensitive net code, GD-DOC = readme, GD-ARTNOTE = an art-manifest file only, GD-PRESET = a forbidden path
   // model requests: GD-ART [kind] id=<id>. kinds: (none) rigged biped with 6 clips | PROP | BAD (unknown field) | BADFIX (bad first, valid once the runner says it was rejected) | LINK (concept png is a symlink) | SWAP (rewrites the spec bigger, no request)
   const art = /GD-ART(?:-(\w+))? id=([a-z0-9_]+)/.exec(p);
   // a sync that hit conflicts: keep this branch's side of each conflicted file and commit the merge (a CONFLICT-ADD marker file in the worktree makes it also touch a new file)
@@ -128,6 +140,7 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   else if (/GD-GAMEPLAY/.test(p)) { edit('client/game/a.gd', 'speed=1', 'speed=9', 'Faster movement'); ready('Faster movement', ['speed 9']); text = 'Done.'; }
   else if (/GD-NET/.test(p)) { edit('client/net/dm_api.gd', 'url=1', 'url=2', 'Change the api url'); ready('Api url', ['url 2']); text = 'Done.'; }
   else if (/GD-UI/.test(p)) { edit('client/ui/menu.gd', 'title=1', 'title=2', 'Rename the menu title'); ready('Menu title', ['title 2']); text = 'Done.'; }
+  else if (/GD-ARTNOTE/.test(p)) { fs.mkdirSync('art-manifest', { recursive: true }); fs.writeFileSync('art-manifest/notes.json', '{"wraith": "concept art picked"}\n'); git('add', '--', 'art-manifest/notes.json'); git('commit', '-q', '-m', 'Note the wraith concept'); ready('Art note', ['note']); text = 'Done.'; }
   else if (/GD-DOC/.test(p)) { edit('client/README.md', 'client readme', 'client readme v2', 'Clarify the game readme'); ready('Readme', ['readme']); text = 'Done.'; }
   // GD-GUIDE-COMMIT commits the runner's guide copy (a forbidden path); GD-GUIDE-EDIT only edits it
   else if (/GD-GUIDE-COMMIT/.test(p)) { fs.appendFileSync('.dm-guides/clips.md', 'mine now\n'); git('add', '-f', '--', '.dm-guides/clips.md'); git('commit', '-q', '-m', 'Keep the guide'); ready('Guide', ['guide']); text = 'Done.'; }

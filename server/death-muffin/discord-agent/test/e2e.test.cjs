@@ -873,20 +873,21 @@ test('godot mode: question, gameplay proposal (main compare link, zip preview on
   await until(() => !fs.existsSync(path.join(w.cfg.worktreeRoot, `discord-${id}`)) && !fs.existsSync(path.join(w.cfg.worktreeRoot, `ship-${id}`)), d.ad);
 });
 
-test('godot mode: a change that touches only documents merges with no game update (no backend, lobby or client step, no rollback backup)', async () => {
+for (const [what, ask] of [['documents', 'GD-DOC readme'], ['art records (art-manifest/)', 'GD-ARTNOTE wraith']]) test(`godot mode: a change that touches only ${what} merges with no game update (no backend, lobby or client step, no rollback backup)`, async () => {
   const w = godotWorld(); const d = makeDiscord(w.runner);
   const order = path.join(w.deploy, 'order.log');
   w.cfg.deployCmd = `echo client >> ${order}; ` + w.cfg.deployCmd;
   w.cfg.backendDeployCmd = `echo backend >> ${order}`;
   w.cfg.lobbyDeployCmd = `echo lobby >> ${order}`;
   const before = remoteHead(w, 'main');
-  const { thread } = await request(d, IDS.HELIX, 'GD-DOC readme');
+  const { thread } = await request(d, IDS.HELIX, ask);
   const p = await waitProposal(d, thread);
   assert.deepEqual(await d.react(p, IDS.HELIX, '✅'), []);
   const msg = await until(() => texts(thread).find((t) => /only changes documents/.test(t)), d.ad);
-  assert.match(msg, /Merged into main as `[0-9a-f]{12}`\. It only changes documents, so no game update went out\./);
+  assert.match(msg, /Merged into main as `[0-9a-f]{12}`\. It only changes documents or art records, nothing players see, so no game update went out\./);
   assert.notEqual(remoteHead(w, 'main'), before, 'pushed to the base branch');
-  assert.equal(sh(w.repo, 'show', 'origin/main:client/README.md').trim(), 'client readme v2');
+  if (ask.startsWith('GD-DOC')) assert.equal(sh(w.repo, 'show', 'origin/main:client/README.md').trim(), 'client readme v2');
+  else assert.match(sh(w.repo, 'show', 'origin/main:art-manifest/notes.json'), /concept art picked/);
   assert.ok(!fs.existsSync(order), 'no backend, lobby or client step ran');
   assert.ok(!fs.existsSync(path.join(w.deploy, 'deploys.log')), 'no client publish');
   assert.equal(godotBackups(w).length, 0, 'no rollback backup for a documents-only change');
@@ -1255,6 +1256,37 @@ test('godot mode: team pictures need no !shot: nobody online = the server render
     assert.ok(!sh(w.repo, 'worktree', 'list').includes('teambase-'), 'the scratch worktree is removed');
     assert.ok(B.seen.every((x) => x.secret === 'test-team-secret-0123456789'), 'every call carries the secret');
     assert.match(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /"event":"team-shots".*"ok":true.*"paired":true/);
+  } finally { B.close(); }
+});
+
+test('godot mode: the agent looks at a team PC\'s pictures before the thread does: ok and wrong add a line, retake takes them once more with its better plan', async () => {
+  const B = await teamBackend({ pcs: [PC_WAR] });
+  try {
+    const w = teamWorld(B); const d = makeDiscord(w.runner);
+    const looks = (j) => (fs.existsSync(path.join(j.worktree, '.fake-looks')) ? fs.readFileSync(path.join(j.worktree, '.fake-looks'), 'utf8').trim().split('\n').map((l) => JSON.parse(l)) : []);
+    const t1 = await request(d, IDS.HELIX, 'GD-UI TEAM-SHOT LOOK-OK make the title bigger and show it');
+    await waitProposal(d, t1.thread); const j1 = jobOf(w, t1.thread);
+    const p1 = await until(() => withFiles(t1.thread, /^ultra-a/)[0], d.ad); await idle(w, d, t1.thread);
+    assert.match(p1.payload.content, /^📸 On a real graphics card \(bogar1's PC, Intel Arc B580\), Ultra · branch preview, not live\n✔ Checked: the title is bigger and still fits the window\.$/);
+    const l1 = looks(j1); assert.equal(l1.length, 1, 'one look'); assert.equal(l1[0].resume, false, 'its own session, never the job\'s'); assert.equal(l1[0].tools, 'Read,Glob,Grep,Write');
+    assert.deepEqual(l1[0].pictures, ['.dm-look/ultra-a.png'], 'it was given the labelled picture to read');
+    assert.ok(!fs.existsSync(path.join(j1.worktree, '.dm-look')), 'the pictures are removed after the look');
+    assert.match(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /"event":"look","job":"[0-9a-f]+","verdict":"ok"/);
+    // the pictures show the change is off: they still go out, with the warning on them
+    const t2 = await request(d, IDS.HELIX, 'GD-UI TEAM-SHOT LOOK-WRONG count the doors and show it');
+    await waitProposal(d, t2.thread);
+    const p2 = await until(() => withFiles(t2.thread, /^ultra-a/)[0], d.ad); await idle(w, d, t2.thread);
+    assert.match(p2.payload.content, /\n⚠ Looking at these: the counter still shows 0 with the door open\.$/);
+    // a retake: the first pictures are not posted; the thread is told why, the better plan goes to the team PC, and the second set is posted with its verdict
+    const before = B.jobs.length;
+    const t3 = await request(d, IDS.HELIX, 'GD-UI TEAM-SHOT LOOK-RETAKE show the locked door');
+    await waitProposal(d, t3.thread); const j3 = jobOf(w, t3.thread);
+    const p3 = await until(() => withFiles(t3.thread, /^ultra-retaken/)[0], d.ad); await idle(w, d, t3.thread);
+    assert.ok(texts(t3.thread).some((t) => t === '📸 Taking the pictures again: the door is seen edge-on; turning the camera to face it.'));
+    assert.equal(withFiles(t3.thread, /^ultra-a/).length, 0, 'the first pictures never reach the thread');
+    assert.match(p3.payload.content, /\n✔ Checked: the door faces the camera with its lock showing\.$/);
+    assert.equal(B.jobs.length, before + 2); assert.deepEqual(B.jobs[before + 1].body.payload.plan.shots.map((s) => s.name), ['retaken']);
+    assert.equal(looks(j3).length, 2, 'the retaken pictures are looked at too');
   } finally { B.close(); }
 });
 
@@ -2077,6 +2109,17 @@ test('CI gate (drafts off): a suite that fails only on CI gets one re-run here b
   assert.ok(localChecks(w).includes('--rerun game'));
   await d.react(pa, IDS.HELIX, '✅');
   await until(() => texts(a).some((t) => /Live\. Release/.test(t)), d.ad);
+});
+test('CI gate (drafts off): CI failing outside the game suites hands the agent what CI printed there, not just the link', async () => {
+  const w = godotWorld({ ciGate: true, drafts: false }); const d = makeDiscord(w.runner);
+  fs.writeFileSync(path.join(w.tools, 'CIFAIL'), ''); fs.writeFileSync(path.join(w.tools, 'CIFAIL_SUITES'), 'not a suite name\n');
+  fs.writeFileSync(path.join(w.tools, 'CIFAIL_LOG'), '== Backend + lobby tests: npm run test:server\n✖ CI-LOG-MARKER the save route refuses a bad position\nProcess completed with exit code 1.\n');
+  const a = (await request(d, IDS.HELIX, 'GD-GAMEPLAY faster')).thread;
+  const audit = () => fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+  const vf = await until(() => audit().find((e) => e.event === 'verify-failed'), d.ad);
+  assert.match(vf.why, /CI failed outside the game suites[^]*What CI printed where it failed:\n== Backend \+ lobby tests: npm run test:server\n✖ CI-LOG-MARKER/);
+  assert.ok(ciCalls(w).some((c) => c.startsWith('log ')), 'the log was asked for');
+  await idle(w, d, a);
 });
 test('CI gate: approvals that wait for a ship go out together: one merge, one CI run, one publish, and every thread is told it is live', async () => {
   const w = godotWorld({ ciGate: true }); const d = makeDiscord(w.runner);

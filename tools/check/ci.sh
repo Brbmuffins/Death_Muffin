@@ -3,6 +3,7 @@
 #   tools/check/ci.sh status <rev>               prints "<passed|failed|pending|none> <run url or ->" and exits 0
 #   tools/check/ci.sh wait <rev> [<minutes>]     waits (default 60 minutes): exit 0 passed, 1 failed or cancelled, 2 no run or out of time
 #   tools/check/ci.sh failed <rev>               the game suites CI reported failing, one per line (from the run's annotations)
+#   tools/check/ci.sh log <rev>                  each failed CI job's failing step: its name and its last 40 lines (needs the token; nothing without it)
 # A verdict belongs to a tree, not a commit: a CI run of any commit with exactly the same files counts (a fast-forward, a re-push, a merge
 # that changed nothing), so a revision CI already passed is never waited for again. Only the "CI" workflow counts. Every caller on this
 # machine shares one copy of the recent runs ($DM_CI_CACHE, default /home/ubuntu/death-muffin/ci-status), refreshed with a conditional request
@@ -16,7 +17,7 @@ API="${DM_GITHUB_API:-https://api.github.com}/repos/$REPO_SLUG"
 CACHE="${DM_CI_CACHE:-/home/ubuntu/death-muffin/ci-status}"
 TOKEN_FILE="${DM_GITHUB_TOKEN_FILE:-/home/ubuntu/death-muffin/private/github-api-token}"
 CMD="${1:-}"; REV="${2:-}"
-[ -n "$CMD" ] && [ -n "$REV" ] || { sed -n '2,5p' "$0" >&2; exit 2; }
+[ -n "$CMD" ] && [ -n "$REV" ] || { sed -n '2,6p' "$0" >&2; exit 2; }
 SHA=$(git rev-parse --verify "$REV^{commit}") || exit 2
 TREE=$(git rev-parse "$SHA^{tree}")
 mkdir -p "$CACHE"
@@ -151,5 +152,25 @@ for c in json.load(sys.stdin).get("check_runs", []):
         if m and m.group(1) not in seen: seen.append(m.group(1))
 print("\n".join(seen))
 ' "$API" "${auth[@]}" < "$CACHE/.checks-$$"; rm -f "$CACHE/.checks-$$" ;;
-  *) echo "ci.sh: unknown command $CMD (status, wait, failed)" >&2; exit 2 ;;
+  log)
+    # What a failure outside the game suites printed (the backend or lobby tests, hygiene, the model check: no annotation names those), so the Discord
+    # agent can fix it instead of getting only a link it cannot open. A check run of the CI workflow is its job, whose log GitHub serves only with a token.
+    gh_get "$CACHE/.checks-$$" "$API/commits/$SHA/check-runs?per_page=100" -H 'Accept: application/vnd.github+json' >/dev/null
+    python3 -c '
+import json, re, sys, subprocess
+api = sys.argv[1]; auth = sys.argv[2:]
+if not auth: sys.exit(0)
+stamp = re.compile(r"^\ufeff?\d{4}-\d\d-\d\dT[\d:.]+Z ?")
+for c in json.load(sys.stdin).get("check_runs", []):
+    if c.get("conclusion") != "failure": continue
+    out = subprocess.run(["curl", "-s", "-L", "-m", "60", *auth, api + "/actions/jobs/" + str(c["id"]) + "/logs"], capture_output=True, text=True, errors="replace").stdout
+    lines = [stamp.sub("", l) for l in out.splitlines()]
+    errs = [i for i, l in enumerate(lines) if l.startswith("##[error]")]
+    if not errs: continue
+    end = errs[0]; start = max([i for i in range(end) if lines[i].startswith("##[group]Run ")] or [0])
+    step = lines[start][len("##[group]Run "):].strip() if lines[start].startswith("##[group]Run ") else "?"
+    body = [l for l in lines[start + 1:end] if not l.startswith("##[")][-40:]
+    print("== " + str(c.get("name")) + ": " + step[:120]); print("\n".join(l[:300] for l in body)); print(lines[end][len("##[error]"):][:300])
+' "$API" "${auth[@]}" < "$CACHE/.checks-$$"; rm -f "$CACHE/.checks-$$" ;;
+  *) echo "ci.sh: unknown command $CMD (status, wait, failed, log)" >&2; exit 2 ;;
 esac

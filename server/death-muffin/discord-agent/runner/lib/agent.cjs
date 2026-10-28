@@ -62,7 +62,7 @@ format; \`before\` does not apply here and you run nothing), then end your reply
 \`\`\`
 
 At most 4 shots. The runner takes the block out of your reply, says in the thread that the pictures are coming (so never promise them
-yourself) and posts them when the team PC is done; you do not see them. Your workspace is the latest main, which can be a little ahead of the
+yourself) and posts them when the team PC is done, after a short check of yours has looked at them (it may retake them once). Your workspace is the latest main, which can be a little ahead of the
 live game, so plan only for what players already have. Concept pictures (new art ideas) are not made here: they need a #jobs post (\`!job\`).`;
 function claudeArgs(cfg, job, { maxTurns, systemPrompt: sp } = {}) {
   // The only programs the agent may run, all in the sandbox: agit, check-godot.sh only with --rerun and the suites it names (the whole check is

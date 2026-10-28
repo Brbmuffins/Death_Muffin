@@ -13,7 +13,7 @@
     "old-clients-keep-running": {"audience": ["agent", "codex", "session"], "clauses": "sha256:f45d39ff32eb93d1378a262adcb1281e9265df74a1075e586441bd5970a635eb", "acceptedGaps": []},
     "propose-then-approve": {"audience": ["agent", "codex", "session"], "clauses": "sha256:f6e6d5f9e92b5bcbd670cb35433a11f8bc2ee532dedb07c81664721627187fcc", "acceptedGaps": []},
     "untrusted-requests": {"audience": ["agent"], "clauses": "sha256:d8354936246c82f95b0e659514b15413f31de5e8b5cc808e4c85e7a21fb77910", "acceptedGaps": []},
-    "agent-tool-limits": {"audience": ["agent"], "clauses": "sha256:2e59ce396af7fe5ac6ca8ad31c45b69c3ca0b4485242a4dbc7a282b10a6c9c28", "acceptedGaps": []},
+    "agent-tool-limits": {"audience": ["agent"], "clauses": "sha256:cf24bc73168b74c5f770570561f70c6a209bb605a8a18f0167ec56518f367742", "acceptedGaps": []},
     "agent-never-touch": {"audience": ["agent"], "clauses": "sha256:7289215661286b01252a39fd452115964ba389428bd0c4302f56892e94c93ecb", "acceptedGaps": []},
     "agent-review-tiers": {"audience": ["agent"], "clauses": "sha256:302016f698b078c29cc097aedebf9f7a903f2a5ea66d0821f716dc60e9a50813", "acceptedGaps": []},
     "agent-paid-generation": {"audience": ["agent"], "clauses": "sha256:753252ac9d5eeaa1b4cf847be8b179e2cb322be17ae9a6413aaba808d35688f4", "acceptedGaps": []},

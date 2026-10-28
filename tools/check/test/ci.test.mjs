@@ -1,5 +1,5 @@
 // tools/check/ci.sh, the CI gate (tools/check/README.md "CI is the gate"), against a stand-in GitHub API on this machine: a verdict follows the
-// files (a run of another commit with the same tree counts), the four answers, waiting, the failed suites, and conditional requests.
+// files (a run of another commit with the same tree counts), the four answers, waiting, the failed suites, the failure log, and conditional requests.
 // Run: node --test tools/check/test/*.test.mjs (also in CI).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,7 +23,7 @@ async function world() {
   const same = git('rev-parse', 'HEAD');
   fs.writeFileSync(path.join(repo, 'a.txt'), 'two\n'); git('commit', '-qam', 'two');
   const two = git('rev-parse', 'HEAD');
-  const state = { runs: [], checkRuns: {}, annotations: {}, hits: [], auths: [], etag: 'v1', goodToken: 'good-token' };
+  const state = { runs: [], checkRuns: {}, annotations: {}, logs: {}, hits: [], auths: [], etag: 'v1', goodToken: 'good-token' };
   const server = http.createServer((req, res) => {
     state.hits.push(`${req.method} ${req.url} ${req.headers['if-none-match'] || ''}`);
     const u = new URL(req.url, 'http://x');
@@ -42,6 +42,9 @@ async function world() {
     if (m) return send(200, { check_runs: state.checkRuns[m[1]] || [] });
     m = /^\/repos\/o\/r\/check-runs\/(\d+)\/annotations$/.exec(u.pathname);
     if (m) return send(200, state.annotations[m[1]] || []);
+    // a job's log: plain text, served only with a token (GitHub's answer without one is a 403)
+    m = /^\/repos\/o\/r\/actions\/jobs\/(\d+)\/logs$/.exec(u.pathname);
+    if (m) { if (!req.headers.authorization) return send(403, { message: 'Must have admin rights to Repository.' }); res.writeHead(200, { 'content-type': 'text/plain' }); return res.end(state.logs[m[1]] || ''); }
     send(404, { message: 'Not Found' });
   });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -103,6 +106,22 @@ test('failed names the game suites from the annotations of the failing jobs, eac
     W.state.annotations[13] = [{ title: 'client suite rites failed', message: 'again' }];
     W.state.annotations[12] = [{ title: 'client suite hud failed', message: 'from a passing job: ignored' }];
     assert.deepEqual((await W.ci('failed', W.two)).out.split('\n'), ['rites', 'relay/udp']);
+  } finally { W.cleanup(); }
+});
+
+test('log prints each failed job\'s failing step and its last lines, and nothing without a token', async () => {
+  const W = await world(); try {
+    W.state.checkRuns[W.two] = [{ id: 21, name: 'Backend + lobby tests', conclusion: 'failure' }, { id: 22, name: 'Godot suites', conclusion: 'success' }];
+    const t = (l) => `2026-10-28T12:00:00.0000000Z ${l}`;
+    W.state.logs[21] = ['\ufeff' + t('##[group]Run npm ci'), t('added 10 packages'), t('##[endgroup]'), t('##[group]Run npm run test:server'),
+      t('##[endgroup]'), t('ok 1 - the save route'), t('not ok 2 - the save route refuses a bad position'), t('##[error]Process completed with exit code 1.'),
+      t('##[group]Run cleanup'), t('##[error]a later error')].join('\n');
+    W.state.logs[22] = t('##[error]a passing job is not read');
+    assert.equal((await W.ci('log', W.two)).out, '', 'no token: nothing');
+    W.useToken('good-token');
+    assert.equal((await W.ci('log', W.two)).out, ['== Backend + lobby tests: npm run test:server', 'ok 1 - the save route',
+      'not ok 2 - the save route refuses a bad position', 'Process completed with exit code 1.'].join('\n'));
+    assert.ok(!W.state.hits.some((h) => h.includes('/actions/jobs/22/')), 'a passing job is not read');
   } finally { W.cleanup(); }
 });
 

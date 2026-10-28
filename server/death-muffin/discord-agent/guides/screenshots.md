@@ -9,9 +9,10 @@ has a real graphics card, so pictures need no `!shot`:
   changes nobody can see (logic, data behind the scenes, server work, docs) and for pure Q&A. If someone says to skip pictures, write no plan.
 - After your turn the runner builds your branch and a team PC renders the plan: with your proposal (it says "Pictures from a team PC follow"), and also
   when the turn changed nothing ("show me the gate", "a better angle": the open proposal, or the game as it is on your branch). The runner tells the thread
-  that pictures are coming or why none came, so never say it yourself and never re-propose to get pictures. You will not see
-  them, so make the plan show exactly the change: the window or hero view that proves it, with `give` / `equip` / `area` set up so it appears. Keep it to
-  what the plan format below offers.
+  that pictures are coming or why none came, so never say it yourself and never re-propose to get pictures. Before the thread sees them, a short
+  check of yours looks at them against the request: it can ask for one retake with a better plan, and its verdict goes on the pictures (a "✔ Checked"
+  or "⚠" line). Still make the plan show exactly the change the first time: the window or hero view that proves it, with `give` / `equip` / `area` set
+  up so it appears. Keep it to what the plan format below offers.
 - Ask for as few pictures as show the change (Helix, 2026-10-20: "sometimes only 1 high quality screenshot is required"). By default each shot is ONE
   AFTER picture on Ultra, and that is enough for most changes. Ask for more only when it helps people judge the change, or when someone in the thread
   asks for it (words after `!shot` count too):

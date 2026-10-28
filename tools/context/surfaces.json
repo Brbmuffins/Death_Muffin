@@ -26,7 +26,7 @@
       "what": "the Discord dev agent (claude -p --restricted in a job worktree; CLAUDE.md is not loaded for it)",
       "always": ["server/death-muffin/discord-agent/PROMPT-godot.md"],
       "delivery": "raw",
-      "guides": ["server/death-muffin/discord-agent/guides/screenshots.md", "server/death-muffin/discord-agent/guides/clips.md", "server/death-muffin/discord-agent/guides/pictures.md", "server/death-muffin/discord-agent/guides/models.md", "server/death-muffin/discord-agent/guides/blender.md", "server/death-muffin/discord-agent/guides/sound.md"],
+      "guides": ["server/death-muffin/discord-agent/guides/screenshots.md", "server/death-muffin/discord-agent/guides/clips.md", "server/death-muffin/discord-agent/guides/pictures.md", "server/death-muffin/discord-agent/guides/models.md", "server/death-muffin/discord-agent/guides/blender.md", "server/death-muffin/discord-agent/guides/sound.md", "server/death-muffin/discord-agent/guides/lore.md"],
       "discovery": [{"file": "README.md", "section": "Documentation map"}, {"file": "client/README.md"}]
     }
   }

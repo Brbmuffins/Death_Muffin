@@ -164,7 +164,7 @@
       "when": "always",
       "summary": "The agent runs only its sandboxed scripts and agit, one command per call, in the foreground; no polling or background work.",
       "homes": [
-        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["You have no other shell. One command per tool call: no `&&`, `;`, pipes or `cd`.", "Never run it in the background, and never poll, loop, sleep or check whether it is still running (those commands are refused).", "Git is `__TOOLS__/agit <status|diff|log|show|add|commit|revert> ...` (plain `git` is not available)."]}
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["You have no other shell. One command per tool call: no `&&`, `;`, pipes or `cd`.", "Never run it in the background, and never poll, loop, sleep or check whether it is still running (those commands are refused).", "Git is `__TOOLS__/agit <status|diff|log|show|add|commit|revert|rm|mv> ...` (plain `git` is not available)."]}
       ],
       "enforced": ["server/death-muffin/discord-agent/runner/lib/agent.cjs", "server/death-muffin/discord-agent/sandbox-lib.sh"]
     },
@@ -752,6 +752,19 @@
         {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["`.dm-guides/sound.md`: a new sound effect or music track"]}
       ],
       "enforced": ["server/death-muffin/discord-agent/runner/lib/sound.cjs"]
+    },
+    {
+      "id": "agent-lore-and-honest-answers",
+      "kind": "protocol",
+      "protected": false,
+      "audience": ["agent"],
+      "when": "a question, the story or lore, a web page, any reply",
+      "summary": "Search before saying something is not there; say where a lore fact comes from (game, draft, idea); a WebFetch is a summary, ask for a paste; replies as long as the message.",
+      "homes": [
+        {"file": "server/death-muffin/discord-agent/guides/lore.md", "clauses": ["# The story, lore and the game's words", "Search before you say something is not there.", "Never present the draft or an idea as settled"]},
+        {"file": "server/death-muffin/discord-agent/PROMPT-godot.md", "clauses": ["Before you say the game does not have something, search for it", "WebFetch hands you a short summary of the page written by another model, not the page itself", "as long as the message you answer"]}
+      ],
+      "enforced": []
     }
   ]
 }
