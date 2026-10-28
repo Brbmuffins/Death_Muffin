@@ -93,6 +93,10 @@ polish list). Also:
   the Gravecaller) away. Anchoring to the Hip's rest position would remove the slide.
 - Hero `walk` and `run` lose their vertical bob (about 7 cm in `run`): `prep_clips` removes the whole Hip position track from non-combat
   hero clips, while its comment says the vertical bob is kept.
+- **The mausoleum's collision box is not the building's shape**: `data/content/layout.json` makes it 4.2 m by 5.2 m (x by z; `data/slice/world.json`
+  and `data/sim/world.json` hold the same two boxes, as generated), while the model is 4.85 m by 4.53 m, so a hero walks about 0.3 m into two of
+  its walls and stops about 0.3 m short of the other two. Fix: the boxes from the model's footprint in those three files, then
+  `tools/rebuild/build-areas.sh graves` for the navigation.
 - The crowd's shader changes are checked in text, not in a rendered frame: run `client/tests/crowd_look_smoke.gd` (Forward+, about two
   minutes) in the look pass; the aim ring showed about 3 m above the hero in the look probe's frames (no mouse there).
 
