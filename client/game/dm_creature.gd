@@ -132,6 +132,10 @@ static func model_entry(s: String) -> Dictionary:
 	var e: Dictionary = DmData.enemies().get("models", {})
 	return e.get(s, {})
 
+## A body the hero wears (DmAvatar's, whose clips play in place: prep_clips' hero side): the necromancer and every hero_* row, as tools/assets/check-models.mjs counts heroes.
+static func is_hero_row(s: String) -> bool:
+	return s == "necromancer" or s.begins_with("hero_")
+
 static func lin(hex: int) -> Vector3:
 	var c := Color(float((hex >> 16) & 255) / 255.0, float((hex >> 8) & 255) / 255.0, float(hex & 255) / 255.0).srgb_to_linear()
 	return Vector3(c.r, c.g, c.b)
@@ -175,7 +179,7 @@ func _init(model_slug: String, o: Dictionary = {}) -> void:
 		skeleton = sk
 	_build_materials()
 	if ap != null:
-		_prep_clips()
+		prep_clips(ap, bool(o.get("in_place", false)))
 		ap.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	loaded = true
 	if not bool(o.get("in_place", false)):
@@ -352,24 +356,24 @@ func set_head_tint(tint: Variant) -> void:
 
 # ----------------------------------------------------------------------------------------------------------------- clips
 
-func _track_of(a: Animation, bone: String, type: int) -> int:
+static func _track_of(a: Animation, bone: String, type: int) -> int:
 	for i in a.get_track_count():
 		if a.track_get_type(i) == type and String(a.track_get_path(i)).get_slice(":", 1) == bone:
 			return i
 	return -1
 
 ## stripRootTravel / inPlaceHeroClip: the sim owns the body's ground position, so the Hip's ground-plane travel is pinned (enemies) or
-## dropped (heroes), keeping only the vertical bob. Applied once per shared Animation resource.
-func _prep_clips() -> void:
-	var hero := bool(opts.get("in_place", false))
-	var idle: Animation = ap.get_animation("idle") if ap.has_animation("idle") else null
+## dropped (heroes), keeping only the vertical bob. Applied once per shared Animation resource. `hero`: the hero's body (DmAvatar's in_place; the model view's
+## hero rows, DmQaModel), whose combat clips keep the hips' height from idle's standing pose.
+static func prep_clips(player: AnimationPlayer, hero: bool) -> void:
+	var idle: Animation = player.get_animation("idle") if player.has_animation("idle") else null
 	var anchor: Variant = null
 	if idle != null:
 		var it := _track_of(idle, "Hip", Animation.TYPE_POSITION_3D)
 		if it >= 0 and idle.track_get_key_count(it) > 0:
 			anchor = idle.track_get_key_value(it, 0)
-	for nm in ap.get_animation_list():
-		var a := ap.get_animation(nm)
+	for nm in player.get_animation_list():
+		var a := player.get_animation(nm)
 		if a.has_meta("dm_prep") and a.get_meta("dm_prep") == (2 if hero else 1):
 			continue
 		var clip := DmModels.base_clip(String(nm))   # a `_staff` clip is prepared as the clip it re-bakes
@@ -405,13 +409,13 @@ func _prep_clips() -> void:
 						a.track_set_key_value(ht2, k, Vector3(ax, ay, v2.z))
 		a.set_meta("dm_prep", 2 if hero else 1)
 
-func _drop_root(a: Animation) -> void:
+static func _drop_root(a: Animation) -> void:
 	for i in range(a.get_track_count() - 1, -1, -1):
 		var p := String(a.track_get_path(i))
 		if p.get_slice(":", 1) == "Root":
 			a.remove_track(i)
 
-func _trim(a: Animation, to: float) -> void:
+static func _trim(a: Animation, to: float) -> void:
 	for i in a.get_track_count():
 		for k in range(a.track_get_key_count(i) - 1, -1, -1):
 			if a.track_get_key_time(i, k) > to + 1e-6:

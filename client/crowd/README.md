@@ -23,7 +23,7 @@ repository. Run `bash client/tools/bake_crowd.sh` before a publish; the test bak
 ## What is baked
 
 The creature as `client/game/dm_creature.gd` puts it in the world: the height normalisation of `client/world/dm_models.gd` (`analyze`), the row's yaw
-(`client/game/view_models.json`), the clip preparation of `_prep_anims` and `_prep_clips` (loops, walk and run drift, Hip pinned). Feet at the origin, +Z
+(`client/game/view_models.json`), the clip preparation of `_prep_anims` and `prep_clips` (loops, walk and run drift, Hip pinned). Feet at the origin, +Z
 forward, before the enemy's own `scale`. Clips are the ones `DmCreature` can play: idle, walk, run, attack and its variants, cast, hurt, death, dig, ...
 (its `FALLBACK` table, stored as `roles`: role -> clips). Per model one `model.tres` (clip table, roles, texture paths, bounds, and what the views play the
 clips with: per clip the whole source length, the second the blow lands and, for a death, the second the body comes to rest; the model row's stride),

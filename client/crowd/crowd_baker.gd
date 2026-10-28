@@ -5,7 +5,7 @@ extends RefCounted
 ## position and normal textures, next to a mesh with an animation id per vertex and a table of clips. Run through tools/bake_crowd.gd.
 ##
 ## The creature is baked exactly as DmModels / DmCreature put it in the world: the height normalisation of DmModels.analyze, the yaw
-## of its model row, the clip preparation of DmModels._prep_anims and DmCreature._prep_clips. Feet at the origin, +Z forward.
+## of its model row, the clip preparation of DmModels._prep_anims and DmCreature.prep_clips. Feet at the origin, +Z forward.
 
 const FLINCH_CLIP_SECONDS := 0.5 * 1.35   # DmCreature.flinch plays this much of a hurt clip
 const STRIKE_MAX_SPEED := 2.2             # DmAnimator.strike_timing: the fastest a strike clip plays
@@ -210,7 +210,7 @@ static func _track_of(a: Animation, bone: String, type: int) -> int:
 	return -1
 
 
-## DmModels._prep_anims (loops, walk and run drift) then DmCreature._prep_clips (an enemy's Hip pinned to the idle's ground position).
+## DmModels._prep_anims (loops, walk and run drift) then DmCreature.prep_clips (an enemy's Hip pinned to the idle's ground position).
 static func prep_clips(ap: AnimationPlayer) -> void:
 	for nm in ap.get_animation_list():
 		var a := ap.get_animation(nm)

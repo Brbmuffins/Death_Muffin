@@ -155,6 +155,12 @@ test('a clip from Blender lands on the shipped skeleton by bone name and replace
   assert.equal(walks.length, 1, 'the old walk is replaced, not doubled');
   assert.equal(walks[0].listChannels()[0].getTargetNode(), nodes.Head);
   assert.throws(() => transplantClip(dst, src, 'walk', 'missing'), /no clip missing/);
+  // a second skeleton with the same bone names (a retarget's source exported beside its target) is refused, not mixed in
+  const twinHead = src.createNode('Head');
+  src.getRoot().listScenes()[0].addChild(twinHead);
+  const s2 = src.createAnimationSampler().setInput(src.createAccessor().setType('SCALAR').setArray(new Float32Array([0, 1.5]))).setOutput(src.createAccessor().setType('VEC4').setArray(new Float32Array([0, 0, 0, 1, 0, 0, 0, 1])));
+  a.addSampler(s2).addChannel(src.createAnimationChannel().setTargetNode(twinHead).setTargetPath('rotation').setSampler(s2));
+  assert.throws(() => transplantClip(dst, src, 'walk'), /two channels drive Head rotation/);
 });
 
 test('edited geometry from Blender is moved into the shipped bind space; skin indices follow the bone names', () => {

@@ -72,6 +72,7 @@ def find(co, tri, cells=192):
     hipz = zc + 0.065 * H
     anklez = z0 + 0.045 * H
     kneez = anklez + 0.48 * (hipz - anklez)
+    ahead = []                                                                  # each foot's share of its length ahead of the ankle
     for side, p in ((1, 'L_'), (-1, 'R_')):
         top = leg_at(zc - 0.03 * H, side)[0]
         J[p + 'Thigh'] = np.array([top[0], top[1], hipz])
@@ -84,6 +85,7 @@ def find(co, tri, cells=192):
         sel = np.abs(Y - an[1]) < 0.05 * H
         xs = np.flatnonzero(sl[:, sel].any(1))
         heel, toe = X[xs.min()], X[xs.max()]
+        ahead.append((toe - an[0]) / max(toe - heel, cell))
         J[p + 'ToeBase'] = np.array([heel + 0.72 * (toe - heel), an[1], z0 + 0.018 * H])
         J[p + 'ToeEnd'] = np.array([toe, an[1], z0 + 0.012 * H])
 
@@ -166,6 +168,7 @@ def find(co, tri, cells=192):
         off = 0.5 * ((l[1] - ymid) + (ymid - r[1]))
         J[k] = np.array([x, ymid + off, z])
         J['R_' + k[2:]] = np.array([x, ymid - off, z])
+    rep['feetAhead'] = round(float(np.mean(ahead)), 3)
     rep['neck'] = round((neck_mid - z0) / H, 3)
     rep['ymid'] = round(ymid, 4)
     return J, rep, dict(solid=solid, D=D, lo=lo, cell=cell)

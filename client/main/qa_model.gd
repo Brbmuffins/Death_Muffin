@@ -3,7 +3,8 @@ extends RefCounted
 ## The model view of the QA plans (a shot's "view": "model", a clip's "model"): one model alone where the hero stands, in the area's own light, the hero hidden, the HUD and the waves away,
 ## the camera framing the model by its size like the hero close-up (DmQaUiShots.HERO_CAM) frames the hero. The model is a row of game/view_models.json ("model": "<id>", at the row's
 ## height and turn, as the game shows it) or a GLB the job brought along ("model_file": "<name>.glb", found beside the game's exe or the plan file; with "model" too it takes that row's height,
-## turn and stride, so a changed model is seen as its creature will be). A file is loaded with GLTFDocument at run time, so a team PC sees a new model without a new build. SCREENSHOTS.md "Model view".
+## turn and stride, so a changed model is seen as its creature will be). A file is loaded with GLTFDocument at run time, so a team PC sees a new model without a new build. Its clips are prepared as
+## the game prepares them (DmCreature.prep_clips; a hero row's as the hero's body, DmCreature.is_hero_row). SCREENSHOTS.md "Model view".
 
 const FILE_RE := "^[A-Za-z0-9][A-Za-z0-9_-]{0,59}\\.glb$"
 const ANIM_RE := "^[A-Za-z0-9_.|-]{1,48}$"
@@ -100,6 +101,7 @@ static func make(spec: Dictionary, dirs: Array) -> Dictionary:
 		out["root"] = c.root
 		out["ap"] = c.anim
 	if out["ap"] != null:
+		DmCreature.prep_clips(out["ap"], DmCreature.is_hero_row(String(spec["model"])))   # as the game plays them: a hero row's combat clips with the hips at standing height
 		for nm in (out["ap"] as AnimationPlayer).get_animation_list():
 			if nm != "RESET":
 				(out["clips"] as Array).append(String(nm))

@@ -172,9 +172,11 @@ no CC0 quadruped library in the repo and the Tripo quadruped rigs differ per mod
 the same skeleton with its own rest pose, as a Pixal body rigged by `make.mjs`'s `biped` rig (`build_rig.py`) has. Same bone names both
 sides; spine, head, hands and feet carry their change from rest (`delta`), arms and legs `aim` where the source limb points, and the hips keep
 their travel (`inPlace: false`), so the clips keep the source's timings. The map's `clips` only says which clips loop. `from:
-"hero_gravecaller"` gives a new hero body the heroes' whole move set, the `_staff` clips too (23 clips; on the 2026-10-27 test body the skin's
-seam copies stayed together to 0.00 mm in every clip, the run's stride matched the hero's and the walk's came 7% shorter). The job prints the
-body's own `STRIDE` and `TIMINGS` for its row. Skinning limit: cloth hanging below the knee (a long robe or skirt) is weighted to the legs and
+"hero_gravecaller"` gives a new hero body the heroes' whole move set, the `_staff` clips too (23 clips; on the 2026-10-28 test body the skin's
+seam copies stayed together to 0.00 mm in every clip, the knees bent forward, the hips kept the body's own height, the run's stride matched
+the hero's and the walk's came 8% shorter). Blender writes each clip with the target's skeleton only (`common.export_glb` exports the
+armature it is given and the meshes under it): the source has the same bone names, and a file holding both would give every bone two
+channels, which `transplantClip` refuses. The job prints the body's own `STRIDE` and `TIMINGS` for its row. Skinning limit: cloth hanging below the knee (a long robe or skirt) is weighted to the legs and
 stretches between them on a stride.
 
 ## `staff`: the arm re-solved around a held staff
@@ -192,7 +194,7 @@ BLENDER=<blender> node tools/blender.mjs staff hero_gravecaller --sheets  the sa
 
 `staff.py` reads `client/assets/slice/models/<slug>/character.glb` (the model the client loads; the `staff` command falls back to `public/models/`), sizes the hero to its `heroModels` height
 (`client/data/slice/npcs.json`) and the staff to `necro_gear.json` (`length_m`, `grip_t`), prepares the clips as
-`DmCreature._prep_clips` does (Root dropped, combat clips' Hip pinned to idle's first key, other clips' Hip track dropped),
+`DmCreature.prep_clips` does (Root dropped, combat clips' Hip pinned to idle's first key, other clips' Hip track dropped),
 then for every clip in `tools/blender/recipes/staff.json` (or those named) keys `R_Upperarm`, `R_Forearm` and `R_Hand` so the staff sits
 where the recipe says. Every other channel is the clip's own: the export swaps the shipped body channels back in. Staff clips the
 model already has are dropped on import and made again from their clips. The job puts each new clip on the model in place of the old

@@ -550,6 +550,27 @@ func model_view() -> void:
 		check(not is_instance_valid(holder) and hero.avatar.c.root.visible and g.ui.visible and g.camera.cfg == cfg_before and g.look._ring.size() == rings, "%s: after the shot the model is gone, the hero, HUD and camera back" % s["name"])
 	check(sizes.has("row") and sizes.has("file") and absf((sizes["row"] as Vector3).y - float(row["height"])) < 0.01 and absf((sizes["file"] as Vector3).y - float(row["height"])) < 0.01, "a row's model and the same file with its row stand the row's height (%s, %s)" % [sizes.get("row"), sizes.get("file")])
 	check(sizes.has("raw") and absf((sizes["raw"] as Vector3).y - 3.0) < 0.01, "a file alone stands the height asked (%s)" % sizes.get("raw"))
+	# a hero body sent as a file, with its row, plays its combat moves as the hero's body does (DmCreature.prep_clips): the hips where the game has them, not on the floor
+	var hrow := DmCreature.model_entry(DmQaModel.HERO_ROW)
+	DirAccess.copy_absolute(ProjectSettings.globalize_path(DmModels.BASE + String(hrow["url"])), dir.path_join("hero.glb"))
+	var made := DmQaModel.make(DmQaModel.spec_of({"model": DmQaModel.HERO_ROW, "model_file": "hero.glb"}), ["", dir])
+	var worn := DmCreature.new(DmQaModel.HERO_ROW, {"in_place": true})
+	var moves: Array = DmCreature.COMBAT.filter(func(n: String) -> bool: return (made["clips"] as Array).has(n) and worn.ap.has_animation(n))
+	var off := 0.0 if not moves.is_empty() else INF
+	for nm: String in moves:
+		var a: Animation = (made["ap"] as AnimationPlayer).get_animation(nm)
+		var b: Animation = worn.ap.get_animation(nm)
+		var ta := DmCreature._track_of(a, "Hip", Animation.TYPE_POSITION_3D)
+		var tb := DmCreature._track_of(b, "Hip", Animation.TYPE_POSITION_3D)
+		if ta < 0 or tb < 0:
+			off = INF
+			continue
+		for i in 6:
+			var t := b.length * float(i) / 5.0
+			off = maxf(off, a.position_track_interpolate(ta, t).distance_to(b.position_track_interpolate(tb, t)))
+	check(off < 0.01, "a hero body sent as a file plays its combat moves with the hips where the hero's body has them (%s; off by %.3f)" % [", ".join(moves), off])
+	(made["root"] as Node).free()
+	worn.root.free()
 	var clips := DmQaClips.parse(JSON.stringify({"clips": [{"name": "walk", "model": id, "move": true, "seconds": 2}, {"name": "spin", "model_file": "sent.glb", "camera": "turntable", "seconds": 2},
 		{"name": "still", "model": id, "move": true, "camera": "still", "seconds": 2},
 		{"name": "still-wide", "model": id, "move": true, "camera": "still", "seconds": 2, "setup": [{"do": "zoom", "value": 1.4}]}]}))

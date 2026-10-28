@@ -45,6 +45,8 @@ export function transplantClip(dst, src, name, fromName = null) {
   for (const ch of from.listChannels()) {
     const target = byName.get(ch.getTargetNode()?.getName());
     if (!target) { skipped++; continue; }
+    // two channels for one bone: two skeletons with the same bone names in the Blender output, and which one plays would be chance
+    if (made.some((m) => m.target === target && m.path === ch.getTargetPath())) throw new Error(`clip ${name}: two channels drive ${target.getName()} ${ch.getTargetPath()} (two skeletons in the Blender output?)`);
     const s = ch.getSampler();
     const input = dst.createAccessor().setType('SCALAR').setArray(s.getInput().getArray().slice()).setBuffer(buffer);
     const output = dst.createAccessor().setType(s.getOutput().getType()).setArray(s.getOutput().getArray().slice()).setBuffer(buffer);

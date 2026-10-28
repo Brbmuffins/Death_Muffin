@@ -3,8 +3,8 @@
 # biped heroes have it) moved onto the joints landmarks.py finds, each bone's axes turned by the least rotation that takes its old direction to its new
 # one (so a hand's frame, which the game holds props in, stays the same frame relative to the arm), then the body skinned (--skin geo: geodesic
 # voxel binding, geoskin.py; heat: Blender's bone heat) on the bones the game's skins use: the twist bones for the limbs, Waist, Spine01, Spine02, NeckTwist01, Head,
-# the clavicles, hands, feet and toes. The body is first turned to the heroes' frame (+X forward; the game placement faces -Y): `facing` reads which way
-# it faces. Exports the rigged body with no clips, facing +X like every hero body (its row turns it, as hero_gravecaller's yaw does).
+# the clavicles, hands, feet and toes. The body is first turned to the heroes' frame (+X forward; the game placement faces +Y, away from the game's
+# camera, as render-model.sh's half turn shows): `facing` reads which way it faces, and a body whose feet then point backwards is refused. Exports the rigged body with no clips, facing +X like every hero body (its row turns it, as hero_gravecaller's yaw does).
 import bpy, sys, os, json, math
 import numpy as np
 from mathutils import Matrix, Vector
@@ -50,14 +50,15 @@ bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 
 def facing(co):
     """which way the body faces, as a unit vector in the ground plane, and what told: the arms' span (T or A pose) gives the side axis, and the
-    placement the axis comes from the sign: across the arms along Y is the game placement (fit --stand: it faces the preview's front, -Y), along X
-    a Tripo hero's frame (+X; a fit onto one). No clear span: the game placement. (Not the feet: a robe trailing on the floor reads as toes.)"""
+    placement the axis comes from the sign: arms along X is the game placement (fit --stand: it faces +Y, away from the game's camera, so the
+    preview's front column shows its face after the preview's half turn), along Y a Tripo hero's frame (+X; a fit onto one). No clear span: the
+    game placement. (Not the feet: a robe trailing on the floor reads as toes.)"""
     z0, h = co[:, 2].min(), np.ptp(co[:, 2])
     band = co[(co[:, 2] > z0 + 0.7 * h) & (co[:, 2] < z0 + 0.86 * h)]
     span = np.percentile(band[:, :2], 99, axis=0) - np.percentile(band[:, :2], 1, axis=0)
     if span[1] > 1.15 * span[0]:
         return np.array([1.0, 0.0]), 'arms'
-    return np.array([0.0, -1.0]), 'arms' if span[0] > 1.15 * span[1] else 'default'
+    return np.array([0.0, 1.0]), 'arms' if span[0] > 1.15 * span[1] else 'default'
 
 
 # ---- the heroes' frame: +X forward, +Y its left (the template's, and what landmarks.find reads)
@@ -70,6 +71,11 @@ if abs(turn) > 1e-3:
     co, tri = mesh_arrays(body.data)
 J, rep, _ = find(co, tri)
 rep['turn'] = {'degrees': round(turn, 1), 'from': told}
+# a body facing +X has most of each foot ahead of the ankle (0.6 to 0.85 of it on the game's heroes; a hem hiding the feet about half): far less
+# is a body turned backwards, which would walk heels first with its knees bent the wrong way
+if rep['feetAhead'] < 0.35:
+    raise SystemExit("rig: the feet point backwards (%.2f of each foot ahead of the ankle): the body faces the wrong way; check the frame's turn "
+                     "(make.mjs fit --yaw)" % rep['feetAhead'])
 H = rep['H']
 
 # ---- the template skeleton

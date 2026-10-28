@@ -122,8 +122,12 @@ def fix_hemispheres(act):
 
 
 def export_glb(path, arm, action, skins=True):
-    """Export armature + meshes + the given action as a GLB."""
+    """Export the armature, the meshes under it and the given action as a GLB: only those, so a second rig in the scene (retarget's
+    source, the same bone names when it is a game biped) stays out of the file."""
     arm.animation_data.action = action
+    bpy.ops.object.select_all(action='DESELECT')
+    for o in [arm, *arm.children_recursive]:
+        o.select_set(True)
     bpy.context.scene.frame_start = int(action.frame_range[0])
     bpy.context.scene.frame_end = int(action.frame_range[1])
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
@@ -131,7 +135,7 @@ def export_glb(path, arm, action, skins=True):
         filepath=path, export_format='GLB', export_yup=True, export_animations=True,
         export_animation_mode='ACTIVE_ACTIONS', export_force_sampling=True, export_frame_range=True,
         export_optimize_animation_size=False, export_skins=skins, export_def_bones=False,
-        export_apply=False, export_lights=False, export_cameras=False, export_reset_pose_bones=False,
+        export_apply=False, export_lights=False, export_cameras=False, export_reset_pose_bones=False, use_selection=True,
     )
     try:
         bpy.ops.export_scene.gltf(**kw)

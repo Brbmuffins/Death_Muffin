@@ -88,10 +88,10 @@ polish list). Also:
   clips, made for an empty hand, with the old grip (in `run` the staff swings flat twice a stride; in the casts its head points behind the
   hero or at the floor). The four discipline heroes have them (client/game/README.md "Held props and gear look"); a body gets them from its
   slug in the recipe's `heroes` and a Blender job step `{"kind": "staff"}`. The scythe, wand and sickle were not looked at.
-- **A hero slides about 25 cm to its left when a spell clip starts**: `DmCreature._prep_clips` pins a combat clip's Hip to idle's first Hip
+- **A hero slides about 25 cm to its left when a spell clip starts**: `DmCreature.prep_clips` pins a combat clip's Hip to idle's first Hip
   key, but idle (like every other hero clip) has its Hip track removed and stands at the Hip's rest position, 0.13 rig units (about 25 cm on
   the Gravecaller) away. Anchoring to the Hip's rest position would remove the slide.
-- Hero `walk` and `run` lose their vertical bob (about 7 cm in `run`): `_prep_clips` removes the whole Hip position track from non-combat
+- Hero `walk` and `run` lose their vertical bob (about 7 cm in `run`): `prep_clips` removes the whole Hip position track from non-combat
   hero clips, while its comment says the vertical bob is kept.
 - The Gravecaller's cloak stretches into a flat sheet behind the legs in the `flick` crouch (skin weights on the cloak).
 - The crowd's shader changes are checked in text, not in a rendered frame: run `client/tests/crowd_look_smoke.gd` (Forward+, about two

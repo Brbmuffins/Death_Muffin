@@ -5,7 +5,7 @@ staff.py - staff-aware re-bake of a hero's right arm (docs/BLENDER-PIPELINE.md "
                                   [--sheets <staff_prop.glb>] [--sheet-clips clip,clip]
 
 Reads the hero the client loads (client/assets/slice/models/<slug>/character.glb), prepares the clips as
-DmCreature._prep_clips does for a hero, and for every recipe clip re-solves R_Upperarm / R_Forearm / R_Hand so the staff
+DmCreature.prep_clips does for a hero, and for every recipe clip re-solves R_Upperarm / R_Forearm / R_Hand so the staff
 held the way DmCreature.attach_held holds it sits where the recipe says: the grip point (metres from the shoulder) and the
 staff's long axis (tilt and azimuth). Every other channel is the clip's own, untouched. Writes anim_<clip>_staff.glb.
 
@@ -138,7 +138,7 @@ def assign(arm, act):
 
 
 def prep_clips(arm, js, bin_):
-    """DmCreature._prep_clips for a hero (in_place): Root tracks dropped; combat clips' Hip pinned to idle's first Hip
+    """DmCreature.prep_clips for a hero (in_place): Root tracks dropped; combat clips' Hip pinned to idle's first Hip
     position plus their own vertical; other clips (not death) lose the Hip position track. Returns the max error of the
     fitted glTF -> Blender Hip location map (the importer's map is affine; fitted from every clip's keys)."""
     gl = hip_tracks(js, bin_)

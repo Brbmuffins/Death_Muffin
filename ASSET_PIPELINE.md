@@ -101,7 +101,7 @@ the old one); either way the placed model is written to `work/fit.glb` to look a
 placed model's shape: `quad` is the four-legged one the bone hound has (`Root`, `Hip`, `Spine1-2`, `Chest`, `Neck1-2`, `Head`, `Tail_A-D`,
 `FL/FR_Upper/Lower/Paw`, `HL/HR_Thigh/Shin/Meta/Paw`), `legs` any number of legs round one body (the fen spider: `Root`, `Hip`, `Head`, `Abdomen`,
 `Abdomen_End`, `L1`-`L4`/`R1`-`R4` `_Upper/_Lower/_Foot`, counted from the front), `biped` the heroes' skeleton on a body in a T or A pose, the
-body turned to face +X as every hero body does. The record keeps the run's settings, so `make.mjs build <id>` remakes the game file from the
+body turned to face +X as every hero body does (refused when its feet then point backwards: the frame's `fit --yaw` is half a turn out). The record keeps the run's settings, so `make.mjs build <id>` remakes the game file from the
 same run. A four-legged or many-legged model's moves are one `motion` job on its recipe (`tools/blender/recipes/bone_hound.json`,
 `fen_spider.json`); a biped's are one `retarget` job `from` a hero (docs/BLENDER-PIPELINE.md "Biped to biped"). The xatlas packer is set up
 once per Blender install (`tools/blender/comfy/setup.sh`). A model placed facing forward this way faces away from the game's camera at no turn,
