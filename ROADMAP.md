@@ -25,7 +25,7 @@ question only the team can answer, with Claude's recommendation).
 
 ## Waiting on Helix
 
-Nothing right now. Each Decide item says what it waits for.
+The logins' email service (Polish list): who creates its account and adds its DNS records. Each Decide item says what it waits for.
 
 ## Always on
 
@@ -225,6 +225,20 @@ Worked through beside the phases, top first. Each change is shown to the team wi
 - [ ] **Fix: the look pass** (B49). Now: blended effects (decals, telegraphs, particles) look wider and brighter than in the old game, most
   on Low and Medium; the Depths' walls are darker; the hero reads darker in bright areas (the Coliseum, the Cloister, the Pyre, the Wing) and
   brighter in dark ones. After: every preset looks like the old game or better, and Helix has signed off each area on their PC.
+- [ ] **Fix + Decide: logins** (Helix, 2026-10-28: "we need to flush out the logins"). Now: email is optional at signup and 7 of the 12
+  real accounts have none, nobody can reset or change a password, and a login lasts 24 hours, so a player who forgets their password is
+  locked out until Claude resets it by hand. After:
+  - signup asks for an email and confirms it with a 6-digit code sent to it (old clients keep running: the server still takes a signup
+    without one until the release after);
+  - "Forgot password?" on the login screen: a username or email, a 6-digit code by email (good for 15 minutes, a few tries), a new
+    password, and every other open window signed out;
+  - an account without an email is asked for one at its next login;
+  - a login lasts 30 days and renews while the player plays;
+  - the login screen can show the password, warns about Caps Lock and remembers the username;
+  - Settings changes the password and the email.
+  - Decide (Claude's recommendations): the email service, Resend (its free plan covers a friends-only game; mail sent from this server
+    lands in spam), which needs someone to create its account and add three DNS records to muffindevelopment.com; and whether an account
+    without an email must add one before it plays (yes, or it stays one forgotten password from being locked out).
 - [ ] **Fix: the Reaper is unfinished.** Now: she has her rites (Haunting Wraith since 2026-10-18), her own rite icons (2026-10-20), a
   signature (R) rite and a legendary set with its own body, but borrows the Mourner's body outside that set and has no runes. After: her
   own model and runes.
@@ -260,8 +274,8 @@ Done 2026-10-20:
 - **New: phones.** The Mobile renderer, touch controls built with the HUD, phones join as guests. The game stays ready for them (B40: phone
   texture formats, shaders that run on Mobile, a scalable HUD) and Phase 2's quality tiers set their budgets.
 - **New: a co-op test between two team PCs** (the team app).
-- **New: 1.0, the first public release** (B52). The repository goes private and the game's files are encrypted in the build; accounts get
-  an email address and password recovery (none exist today); chat gets reporting and moderation; a privacy policy and terms; a signed
+- **New: 1.0, the first public release** (B52). The repository goes private and the game's files are encrypted in the build; accounts have
+  an email address and password recovery (Polish list: logins); chat gets reporting and moderation; a privacy policy and terms; a signed
   launcher and game so Windows does not warn new players; a review of the servers' capacity and of cheating; a licence check of every asset
   against how the game is offered (Tripo models, ElevenLabs sounds and music, the sound and effect packs); the test runs fitted to a private
   repository's paid minutes (about $80 to $115 a month at the 2026-10-19 pace; first an Actions budget of $0 with "Stop usage", and the
