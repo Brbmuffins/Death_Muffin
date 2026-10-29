@@ -3,6 +3,7 @@
     "date": "2026-10-19",
     "title": "Small Fixes",
     "items": [
+      "The volume and brightness sliders in Settings can now be dragged, not only clicked to a spot.",
       "The Gravecaller's cape now hangs from the back instead of standing up behind the hero in a slam, and the cloth under the arms no longer lifts into a sail.",
       "Scythes have a new model (the Reaper's own scythe is unchanged): a dark, grooved iron blade with a toothed inner edge, an old skull at the joint and a bent, leather-wrapped wooden shaft.",
       "The Reaper's rites now have their own icons instead of borrowing other classes' pictures.",

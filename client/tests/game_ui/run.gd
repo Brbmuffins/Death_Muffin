@@ -197,6 +197,21 @@ func _more(game: DmMockGame, ui: DmGameUi) -> void:
 	_check(is_equal_approx(ui.hud.hud_scale, DmHud.HUD_SCALE_MAX), "HUD size is clamped")
 	_check(sp.find_children("*", "OptionButton", true, false).size() >= 1 and sp.values.has("hud_scale"), "Settings panel carries HUD size")
 	ui.update_setting({"hud_scale": 1.0})
+	# a slider drag sends a change per step: each reaches the game, and the window keeps the slider being dragged (a rebuild would drop the drag)
+	var vol: HSlider = sp.find_children("*", "HSlider", true, false)[0]
+	var n0: int = game.applied_settings.size()
+	vol.value = vol.min_value if vol.value > vol.min_value else vol.max_value
+	vol.value = (vol.min_value + vol.max_value) * 0.5
+	_check(vol.is_inside_tree() and game.applied_settings.size() == n0 + 2, "each step of a slider drag reaches the game and the slider stays on screen")
+	# ... and it still redraws what the game changed in answer: picking Easy turns Auto combat on, and its box shows it
+	game.character["auto_combat_allowed"] = true
+	ui.set_ui.open()
+	var diff0: String = game.settings["difficulty"]
+	sp._put("difficulty", "medium")
+	sp._put("difficulty", "easy")
+	_check(game.settings["auto_combat"] == true and sp._auto_cb != null and sp._auto_cb.is_inside_tree() and sp._auto_cb.button_pressed, "Easy turns Auto combat on and the open Settings shows it ticked")
+	sp._put("difficulty", diff0)
+	game.character["auto_combat_allowed"] = false
 	sp.action.emit("bug_report")
 	await _frames(3)
 	_check(not sp.strip_slot.visible, "the tab strip is hidden while the bug report fills the Settings body")

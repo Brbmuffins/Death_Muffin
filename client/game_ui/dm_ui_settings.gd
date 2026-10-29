@@ -44,12 +44,14 @@ func _options() -> void:
 	panel.kit_legion = ui.is_necromancer()
 
 
+## Called after every settings change: redraws the panel only when the game changed something it shows (leaving Easy turns auto combat off),
+## never for the value the player just set (a rebuild under a dragged slider would drop the drag).
 func sync_values() -> void:
 	for k in panel.values:
 		if game.settings.has(k):
 			panel.values[k] = game.settings[k]
 	if panel.visible:
-		panel.build()
+		panel.build_if_changed()
 
 
 func open() -> void:

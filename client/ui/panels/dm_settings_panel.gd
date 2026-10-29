@@ -434,7 +434,10 @@ func _idx(arr: Array, v: Variant) -> int:
 
 
 func _put(key: String, v: Variant) -> void:
+	var shown := _built_sig != 0 and _sig() == _built_sig
 	values[key] = v
+	if shown:
+		_built_sig = _sig()   # the control that changed already shows v: the game handing it back rebuilds nothing (a slider keeps its drag)
 	changed.emit(key, v)
 	if key == "difficulty":
 		_refresh_diff()

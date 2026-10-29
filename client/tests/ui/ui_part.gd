@@ -18,14 +18,31 @@ func _tab_click(vp: Viewport, at: Vector2) -> void:
 	mv.position = at
 	mv.global_position = at
 	vp.push_input(mv)
-	for pressed in [true, false]:
-		var e := InputEventMouseButton.new()
-		e.button_index = MOUSE_BUTTON_LEFT
-		e.pressed = pressed
-		e.position = at
-		e.global_position = at
-		e.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
-		vp.push_input(e)
+	_press(vp, at, true)
+	_press(vp, at, false)
+
+
+## Press at `from`, move to `to` in `steps` motions with the button held, release there.
+func _drag(vp: Viewport, from: Vector2, to: Vector2, steps: int) -> void:
+	_press(vp, from, true)
+	for i in range(1, steps + 1):
+		var mv := InputEventMouseMotion.new()
+		mv.position = from.lerp(to, float(i) / steps)
+		mv.global_position = mv.position
+		mv.relative = (to - from) / steps
+		mv.button_mask = MOUSE_BUTTON_MASK_LEFT
+		vp.push_input(mv)
+	_press(vp, to, false)
+
+
+func _press(vp: Viewport, at: Vector2, pressed: bool) -> void:
+	var e := InputEventMouseButton.new()
+	e.button_index = MOUSE_BUTTON_LEFT
+	e.pressed = pressed
+	e.position = at
+	e.global_position = at
+	e.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
+	vp.push_input(e)
 
 
 func _frames(n: int) -> void:
@@ -178,6 +195,25 @@ func _run() -> void:
 	var vis := sp.find_children("*", "HSlider", true, false).filter(func(n: Node) -> bool: return n.is_visible_in_tree())
 	var vol_keys := sp.values.keys().filter(func(k: Variant) -> bool: return String(k).begins_with("vol_"))   # the volume settings
 	_check(sp.active == "audio" and vis.size() == vol_keys.size() and vol_keys.size() > 0, "clicking Audio shows a slider for each volume setting (%d)" % vol_keys.size())
+	# a slider drags: press on its knob, move, release; the game hands every change back (DmUiSettings.sync_values) and the knob stays under the mouse
+	var sync := func(_k: String, _v: Variant) -> void: sp.build_if_changed()
+	sp.changed.connect(sync)
+	var sl: HSlider = vis[0]
+	var sent: Array = []
+	var log_change := func(_k: String, v: Variant) -> void: sent.append(v)
+	sp.changed.connect(log_change)
+	var g := sl.get_theme_icon("grabber").get_size().x
+	var start := sl.value
+	var to := sl.min_value if start > (sl.min_value + sl.max_value) * 0.5 else sl.max_value
+	var x0 := sl.get_global_rect().position.x + g * 0.5 + sl.get_as_ratio() * (sl.size.x - g)
+	var x1 := sl.get_global_rect().position.x + g * 0.5 + (to - sl.min_value) / (sl.max_value - sl.min_value) * (sl.size.x - g)
+	var y := sl.get_global_rect().get_center().y
+	_drag(sv, Vector2(x0, y), Vector2(x1, y), 8)
+	await _frames(2)
+	var kept := is_instance_valid(sl) and sl.is_inside_tree()
+	_check(kept and is_equal_approx(sl.value, to) and sent.size() > 2, "dragging a volume knob end to end moves it the whole way (%.2f -> %s, %d changes)" % [start, ("%.2f" % sl.value) if kept else "slider rebuilt", sent.size()])
+	sp.changed.disconnect(log_change)
+	sp.changed.disconnect(sync)
 	sp.build()
 	await _frames(2)
 	_check(sp.active == "audio", "the last opened tab is remembered across a rebuild")
