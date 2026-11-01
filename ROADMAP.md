@@ -87,12 +87,13 @@ What exists: budgets for the hero, bosses and crowd (DECISIONS B71 and ASSET_PIP
 asset generation steps (ASSET_PIPELINE.md, `docs/BLENDER-PIPELINE.md`, `docs/TRIPO-ANIMATE-IN-PLACE.md`), the gear's attachment rules
 (inside `client/data/slice/necro_gear.json`), the quality bar (`docs/GRAVECRAWL.md`) and Phase 1's model check. Missing: an art direction,
 one budget table for every kind of asset, and checks for everything but models.
-- [ ] **Decide + New: the look (the art direction).** Claude drafts it, with example pictures, from today's look, the area moodboards
-  (`docs/art/areas/`) and Gravecrawl's lessons; the team picks and approves. It sets the game's look in a paragraph, each area's palette and
-  light, the colour rules (enemies, heroes and the ground always differ in colour and brightness; violet for magic, gold for reward, red
-  for danger; what each spell colour and loot rarity means), silhouettes that read from the game camera (about 22 m), how shiny and bright
-  materials may be (Tripo's models come out metallic and white out under glow), how heroes, thralls and enemies are told apart, and the
-  style of icons, portraits and UI frames. It gives: one page every new asset is checked against, and the art rebuild's target.
+- [x] **Decide + New: the look (the art direction)** (Helix, 2026-11-01, B81): [docs/LOOK.md](docs/LOOK.md). Claude drafts it, with example
+  pictures, from today's look, the area moodboards (`docs/art/areas/`) and Gravecrawl's lessons; the team picks and approves. It sets the
+  game's look in a paragraph, each area's palette and light, the colour rules (enemies, heroes and the ground always differ in colour and
+  brightness; violet for magic, gold for reward, red for danger; what each spell colour and loot rarity means), silhouettes that read from
+  the game camera (about 22 m), how shiny and bright materials may be (Tripo's models come out metallic and white out under glow), how
+  heroes, thralls and enemies are told apart, and the style of icons, portraits and UI frames. It gives: one page every new asset is checked
+  against, and the art rebuild's target.
 - [ ] **Fix: budgets in two places, for three kinds of asset (the tech art page).** Now: ASSET_PIPELINE.md asks Tripo for a 12,000-triangle
   hero and a 14,000 boss while DECISIONS B71 caps both at 20,000, the model check holds its own caps, and nothing covers the world. After: one
   table (hero, bosses, crowd creatures, thrall variants, weapons and gear, props, wall and floor pieces, effect meshes, UI art) with

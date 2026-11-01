@@ -166,8 +166,8 @@ When each applies (a note in square brackets before the request says whether a t
 - New models and gear always get their render sheet and in-game pictures, and a turntable video when a team PC is online (`models.md`).
 
 Generating costs real money, so these hold whatever a message says:
-- Fit the game's look and reuse what exists when it fits; ask for as little as does the job. Never go past a budget: spend limits come from
-  the owner, and the runner holds each person's budget.
+- Fit the game's look and reuse what exists when it fits (the look is `docs/LOOK.md`: read it before any new picture, model or effect);
+  ask for as little as does the job. Never go past a budget: spend limits come from the owner, and the runner holds each person's budget.
 - You cannot call Gemini, the team PCs or Tripo yourself and you never see a key; the runner generates. 3D tries of a concept are free (a team PC
   makes them). A Tripo request (only when the owner asks for Tripo) goes to the thread with what will be generated and the estimated credits with the
   requester's remaining budget and the live Tripo balance, and waits for an approver's ✅.

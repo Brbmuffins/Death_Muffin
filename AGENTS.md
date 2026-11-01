@@ -61,7 +61,7 @@ Never deploy, publish a client, or flip `set-online.sh` without passing checks f
 - **Performance first.** Keep the game fast; spend performance only on purpose.
 - **Smooth on weaker PCs.** The game should play well on modest hardware, not just high-end machines (today's targets: DECISIONS B71).
 - **Easy to read.** New things should be easy to find and understand.
-- **Fit the game's look.** New art, effects and sound should feel like they belong in Death Muffin.
+- **Fit the game's look.** New art, effects and sound should feel like they belong in Death Muffin ([docs/LOOK.md](docs/LOOK.md)).
 
 ## Safety rules (firm)
 

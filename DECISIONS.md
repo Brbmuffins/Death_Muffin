@@ -173,7 +173,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   Compatibility renderer reads every vertex colour as sRGB and multiplies a material's colours in sRGB, Forward+ does both in linear light. The rebuilt client matches today's look by making
   Forward+ do what Compatibility does where it shows (the pools' and the particles' vertex colours as sRGB, the effects' shader colours converted, the floors' and walls' tints lifted by the
   measured ratio of their textures) and by an exposure lift calibrated per area (the bake carries each area's light differently, so no one number fits all twelve) instead of retuning each light, so the lights keep today's numbers (a fix that stays right when a light is
-  changed on both sides). What is still not today's, and the bake's colour space, are listed in client/README.md "The look against today's game"; the look pass is on the ROADMAP's polish list (B50).
+  changed on both sides). What is still not today's, and the bake's colour space, are listed in client/next/look/README.md "Still different"; the look pass is on the ROADMAP's polish list (B50).
 - **B49. Launch day** (Helix, 2026-10-18: "launch", twice, the second time after hearing that the look pass, Gate D, was not done). `client/` is the
   game: its endpoints are the live server's (`net/dm_config.gd`; B38 turned round, the build never reaches the test server), `publish-godot-client.sh`
   exports it by default, and the test channel keeps its last test build. The look pass's two open items (effects on Low and Medium, Helix's sign-off
@@ -432,6 +432,13 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   plan of about 3 lines first and waits for a yes; a tweak, a clear fix or a confirmed brief does not. A rule the team settles that holds beyond
   its thread is offered once as an entry here and written only on a yes. A screenshot's `setup` and `steps` use the videos' scene words
   (`client/main/qa_clip_steps.json`), so a word the agent adds in a change works in both.
+- **B81. The look: natural world, colour from light and meaning; male and female bodies, classes told apart by their gear** (Helix,
+  2026-11-01: "standard colors for the world is best and we can add coloring effects through lighting or baked into specific locations";
+  "II yes. III Yes IV Yes"). [docs/LOOK.md](docs/LOOK.md) is the game's art direction. The world's materials keep their natural colours and
+  an area's mood comes from its light or light baked where its source is; every enemy warning shares one edge; each colour family owns its
+  colour (thralls jade-teal, magic violet, reward gold); models are grimy painted realism. Heroes use two bodies, male and female, for every
+  class; a class looks like itself through its starting outfit and gear made once in its style, wearable by anyone (loot is personal and
+  leans to the player's class).
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

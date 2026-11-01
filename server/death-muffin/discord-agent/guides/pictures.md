@@ -2,7 +2,7 @@
 
 Every flat picture the game shows is one of the kinds in `tools/pictures/kinds.json`: ability, skill, omen, status, item and currency icons, portraits,
 loading art, floor and wall textures. A kind sets the folder, the size, the size limit, the style pictures new ones copy and how Godot imports it. You
-cannot call Gemini yourself; the runner makes the concepts, and you put the chosen ones in the game. Reuse a picture that fits; make a new one when the
+cannot call Gemini yourself; the runner makes the concepts, and you put the chosen ones in the game. Pictures follow `docs/LOOK.md` "Pictures and UI" and its colour families. Reuse a picture that fits; make a new one when the
 request asks for it or nothing fits. Each ability has its own icon: `tools/pictures/pictures.test.mjs` fails when an ability borrows another one's.
 
 **1. Concepts.** For each picture write `art-manifest/gemini-jobs/<id>.json`, a list with ONE job:

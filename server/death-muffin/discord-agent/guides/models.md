@@ -2,8 +2,8 @@
 
 You cannot call Gemini or the team PCs yourself and you never see a key; the runner generates. Use this only when someone wants a NEW model (a character,
 creature, boss, prop, weapon, helm, mantle, or a whole armor set); never for anything an existing model can do. A new move or an edit to a model that
-exists (colour, size of a part, a part removed, fewer triangles) is a Blender job (`.dm-guides/blender.md`), free and done here. Read `ASSET_PIPELINE.md`
-"Image to model" first. Face budgets: hero 12k, boss 14k, horde enemy 4 to 5k, props 0.9 to 3.5k, buildings (the mausoleum) 8k. `check-godot.sh` refuses a model over its cap (gear 4k,
+exists (colour, size of a part, a part removed, fewer triangles) is a Blender job (`.dm-guides/blender.md`), free and done here. Read `docs/LOOK.md` (the
+game's look: "Models", "Colour carries meaning") and `ASSET_PIPELINE.md` "Image to model" first. Face budgets: hero 12k, boss 14k, horde enemy 4 to 5k, props 0.9 to 3.5k, buildings (the mausoleum) 8k. `check-godot.sh` refuses a model over its cap (gear 4k,
 props 6k, buildings 10k, heroes and characters 20k), with more than one material, or a hero body without the shared biped skeleton and its combat clips
 (`tools/assets/check-models.mjs`). A new model is made by Pixal3D on a team PC's graphics card (free) and finished in Blender here (DECISIONS B77).
 People see every stage in the thread:

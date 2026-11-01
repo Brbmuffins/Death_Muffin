@@ -101,6 +101,24 @@ polish list). Also:
 - The crowd's shader changes are checked in text, not in a rendered frame: run `client/tests/crowd_look_smoke.gd` (Forward+, about two
   minutes) in the look pass; the aim ring showed about 3 m above the hero in the look probe's frames (no mouse there).
 
+Where today's game breaks [docs/LOOK.md](docs/LOOK.md) (each a Fix for the look pass or the art rebuild):
+- **The world is violet, not only the magic.** Now: every area shares a violet rim light (`#7a5cd6`, `world.json` "lighting"), and the Hollow
+  Graves' floor reads purple under it, the same hue as the spells and the elite ring. After: natural-coloured stone, each area's mood from its
+  own light and violet light only where a place has a violet source (a shrine, a rite); spells keep violet to themselves.
+- **Enemy warnings have no shared look.** Now: each family draws its own colour (bell bronze, Pyre orange, Fen teal, the Hag magenta), so
+  "step out" looks different in every area. After: the family colour inside one shared warning edge (LOOK.md "Telling things apart").
+- **Enemies wear the thralls' colour.** Now: the Fen's risen glow (`#1f8f86`, `crowd_looks.json`) is the thralls' own deep jade, and the
+  Choir Wraith enemy (`#9fb6d8`) and the Mourner's wraith thrall (`#8f9ed1`) are both pale spectral blue. After: no enemy in jade-teal; the
+  enemy wraith moves to another colour.
+- **Colours shared across families.** Now: the Reaper's accent `#6ee7a0` is nearly the thrall jade `#6fe3c8`; the bell toll warning and
+  Incensed (`#d9a441`) are the champion thrall's gold; the Rotweaver's accent is lilac `#b58cc7` while her rites and thralls are chartreuse.
+  After: each family's colour is its own.
+- **The Catacomb Depths' moodboard is violet** (`docs/art/areas/catacomb_depths.webp`, torchlight "violet fading into the deep") while the
+  area is lit warm brown-grey (`areas.json`); nine of the thirteen areas have no moodboard (reference shots from the game camera, ROADMAP
+  "the look check", would cover them).
+- The necromancer essence orb shows the default indigo: `client/next/hud/dm_next_hud_vm.gd` passes no colour for necromancers, while
+  `gameplay_resources.json` gives `#7bd3c8`.
+
 ## Party and online
 
 - **A dropped player's seat is not held:** the rejoin offer lasts 5 minutes, but a party that filled up in that time answers `full` (the lobby reserves nothing; a held seat would show a party as full while it lists a free one).
