@@ -35,9 +35,14 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
 - **A new weapon's Atlas row is written by hand** (War's Scythe of Undeath, 2026-10-20): `tools/generate-armor-assets.mjs` copies items.json
   and computed.json for every item but adds `client/data/panels_a/atlas.json` rows for armor pieces only, so the `data` suite catches a
   missing weapon row late (the agent's job lost a check run and a session handoff to it).
-- **A Pixal biped's long robe stretches between its legs** (2026-10-27): `build_rig.py` skins cloth below the knee to the legs, so a long robe
-  or skirt spreads into a sheet between them on a stride (the test body's long robe did; docs/BLENDER-PIPELINE.md "Biped to biped").
-  The agent asks for a concept whose robe stops at the knee or is split (`guides/models.md` step 5) until cloth gets its own bones.
+- **A Pixal biped's long robe still flares in a deep lunge** (2026-11-04): `build_rig.py` blends a robe's cloth across both legs and hangs it
+  from the thighs, which brought the Ossuary's cast from 16% of the body's surface stretched over 3 times to 2-4% (Tripo's split robe: 1%); the rest
+  is the robe lifting over the raised knee, as one cloth with no bones of its own does.
+- **A Pixal biped's cloak stretches over the chest when an arm swings across it** (2026-11-04): the Pixal Gravecaller's cloak is one sheet over
+  its arms and chest, so its attack's swing across the body pulls the front with the arm: 13-16% of the body's surface stretched over 3 times at
+  the swing's peak, 4-7% in a walk or run (the Tripo Gravecaller, whose sleeves and chest are separate: 1-2% from the arms). Its arm weights are
+  about Tripo's; holding the arm's bones off the chest made it worse and blending the cloth's weights over a longer stretch gained a tenth. The
+  `cloak` job's arm copies only hold down a raised arm.
 - **The Discord agent's detailed models go with its worktree** (2026-10-27): the tries and `work/` files in `art-src/comfy/<id>/` are not
   committed, so a later change to an agent-made model's steps needs its run made again on a team PC (same picture, settings and seed: the
   same model, recorded in `art-manifest/comfy/<id>.json`) before `make-model.sh build`.

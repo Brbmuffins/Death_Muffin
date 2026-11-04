@@ -3,7 +3,7 @@
 # biped heroes have it) moved onto the joints landmarks.py finds, each bone's axes turned by the least rotation that takes its old direction to its new
 # one (so a hand's frame, which the game holds props in, stays the same frame relative to the arm), then the body skinned (--skin geo: geodesic
 # voxel binding, geoskin.py; heat: Blender's bone heat) on the bones the game's skins use: the twist bones for the limbs, Waist, Spine01, Spine02, NeckTwist01, Head,
-# the clavicles, hands, feet and toes; a leg's bones reach only the column round their leg. The body is first turned to the heroes' frame (+X forward; the game placement faces +Y, away from the game's
+# the clavicles, hands, feet and toes; a leg's bones reach no further out than a little past their leg. The body is first turned to the heroes' frame (+X forward; the game placement faces +Y, away from the game's
 # camera, as render-model.sh's half turn shows): `facing` reads which way it faces, and a body whose feet then point backwards is refused. Each rigid
 # piece (armour: finish.py's _DM_RIGID) gets one set of weights, its corners' mean, so it moves as one. Exports the rigged body with no clips, facing +X like every hero body (its row turns it, as hero_gravecaller's yaw does).
 import bpy, sys, os, json, math, re
@@ -167,10 +167,14 @@ else:
     nv = len(me.vertices)
     names = [b.name for b in arm.data.bones if b.use_deform]
     bl = [(b.name, np.array(b.head_local), np.array(b.tail_local)) for b in arm.data.bones if b.use_deform]
-    # a leg's bones reach only the column round that leg: a sleeve hanging to the hip or a robe's side would otherwise follow the thigh
-    # (the Gravecaller's sleeve, flung sideways in a lunge) and stays with the body instead
-    legy = {p: arm.data.bones[p + 'Thigh'].head_local.y for p in ('L_', 'R_')}
-    allow = {n: (lambda P, y=legy[n[:2]]: np.abs(P[:, 1] - y) < 0.08 * H) for n, _, _ in bl if re.match(r'^[LR]_(Thigh|Calf|Foot|ToeBase)', n)}
+    # a leg's bones reach no further out than 0.03 of the height past the lower body's side under the hips (the thigh's or robe's, landmarks
+    # legEdge): a sleeve hanging to the hip would otherwise follow the thigh (the Gravecaller's sleeve, flung sideways in a lunge) and stays
+    # with the arm instead; between the legs a robe still follows both (held to the hips alone, its middle stayed put while its sides strode,
+    # and tore between them: the Ossuary's cast)
+    legy = dict(rep['legEdge'])
+    midy = 0.5 * (legy['L_'] + legy['R_'])
+    allow = {n: (lambda P, y=legy[n[:2]]: np.sign(y - midy) * (P[:, 1] - y) < 0.03 * H)
+             for n, _, _ in bl if re.match(r'^[LR]_(Thigh|Calf|Foot|ToeBase)', n)}
     W, st = weights(co, tri, co, bl, H=H, allow=allow)
     ed = np.empty(len(me.edges) * 2, np.int64); me.edges.foreach_get('vertices', ed); ed = ed.reshape(-1, 2)
     u = weld(co)
@@ -185,20 +189,99 @@ W[W < 1e-3] = 0
 W = W / np.maximum(W.sum(1, keepdims=True), 1e-9)
 # armour that moves as one piece (finish.py's _DM_RIGID: a shoulder plate, a gorget) is carried by the bones it rests on: one set of weights for the
 # whole piece, from the three deform bones nearest its corners among those whose middle is no higher than its middle (2% of the height spare, for a
-# level T-pose arm's bracer): a helm's middle is above the head bone's, a plate's or a gorget's well below it. By 1/distance^4. The skin's own weights would not do: the Gravecaller's plates and gorget touch the hood and took 40% and
+# level T-pose arm's bracer): a helm's middle is above the head bone's, a plate's or a gorget's well below it. A piece may also hang from the trunk
+# (Waist, Spine01, Spine02 starting below its top: a belt and what hangs from it), and one across the middle never follows a leg (the Ossuary's belt
+# of vertebrae, whose column hangs between the legs, took both thighs). By 1/distance^4. The skin's own weights would not do: the Gravecaller's plates and gorget touch the hood and took 40% and
 # 82% of the head from it, and a piece weighted like the skin under it stretches between its bones (the plates smeared toward the arm in a cast)
 ra = me.attributes.get('_DM_RIGID')
+LEG, TRUNK = re.compile(r'^[LR]_(Thigh|Calf|Foot|ToeBase)'), ('Waist', 'Spine01', 'Spine02')
+
+
+def robe(W):
+    """a robe's cloth below the hips (over 0.05 of the height from its leg's thigh and shin line: a leg is thinner) follows both legs evenly
+    across the middle (sides blended over 0.12 H either way, then 10 rounds of neighbour averaging) and its thigh for half its shin's share
+    (cloth hangs from the knee, it does not wrap the shin); this blends in over the next 0.05 H, and shoes (mostly foot) keep their weights.
+    Weighted like a leg, the Ossuary's robe swelled into a bell in its cast with the inside turned out over the raised knee: 16% of the body's
+    surface stretched over 3 times, 5% after (Tripo's split robe 1%)"""
+    gi = {n: i for i, n in enumerate(names)}
+    Lc = [i for i, n in enumerate(names) if LEG.match(n) and n.startswith('L_')]
+    Rc = [gi['R_' + names[i][2:]] for i in Lc]
+    if not Lc:
+        return W, 0
+    d = np.full(nv, np.inf)
+    for b in arm.data.bones:
+        if re.match(r'^[LR]_(Thigh|Calf)$', b.name):
+            h, t = np.array(b.head_local), np.array(b.tail_local); sg = t - h
+            s = np.clip((co - h) @ sg / max(float(sg @ sg), 1e-12), 0, 1)
+            d = np.minimum(d, np.linalg.norm(co - (h + s[:, None] * sg), axis=1))
+    bl = np.clip((d - 0.05 * H) / (0.05 * H), 0, 1)
+    bl[W[:, [gi[n] for n in names if re.search('Foot|Toe', n)]].sum(1) > 0.5] = 0
+    lw, rw = W[:, Lc].sum(1), W[:, Rc].sum(1)
+    hip = arm.data.bones['Hip'].head_local
+    m = (bl > 0) & (lw + rw > 0.3) & (co[:, 2] < hip.z)
+    if not m.any():
+        return W, 0
+    W = W.copy()
+    tot = lw + rw
+    pl = np.where(lw[:, None] > 1e-6, W[:, Lc] / np.maximum(lw, 1e-9)[:, None], W[:, Rc] / np.maximum(rw, 1e-9)[:, None])
+    pr = np.where(rw[:, None] > 1e-6, W[:, Rc] / np.maximum(rw, 1e-9)[:, None], W[:, Lc] / np.maximum(lw, 1e-9)[:, None])
+    ymid = hip.y
+    tL = bl * np.clip(0.5 + 0.5 * (co[:, 1] - ymid) / (0.12 * H), 0, 1) + (1 - bl) * lw / np.maximum(tot, 1e-9)
+    W[np.ix_(m, Lc)] = (pl * (tot * tL)[:, None])[m]
+    W[np.ix_(m, Rc)] = (pr * (tot * (1 - tL))[:, None])[m]
+    legs = Lc + Rc
+    Wu, eu = _welded(W, ed, u)
+    mu = np.zeros(len(Wu), bool); mu[u[m]] = True
+    deg = np.bincount(eu.ravel(), minlength=len(Wu)).astype(float)
+    for _ in range(10):
+        acc = np.zeros((len(Wu), len(legs)))
+        np.add.at(acc, eu[:, 0], Wu[eu[:, 1]][:, legs]); np.add.at(acc, eu[:, 1], Wu[eu[:, 0]][:, legs])
+        new = 0.5 * Wu[:, legs] + 0.5 * acc / np.maximum(deg, 1)[:, None]
+        new *= Wu[:, legs].sum(1, keepdims=True) / np.maximum(new.sum(1, keepdims=True), 1e-9)
+        Wu[np.ix_(mu, legs)] = new[mu]
+    W[m] = bl[m, None] * Wu[u][m] + (1 - bl[m, None]) * W[m]
+    for side in ('L_', 'R_'):
+        tgt = gi.get(side + 'ThighTwist02')
+        for k, n in enumerate(names):
+            if tgt is not None and n.startswith(side) and re.search('Calf|Foot|Toe', n):
+                mv = W[:, k] * bl * 0.5 * m
+                W[:, k] -= mv; W[:, tgt] += mv
+    # the game's files keep four weights a vertex, and the averaging spread the cloth over more (the export's cut lost half the gain): each
+    # side's leg weight goes onto the two neighbouring bones of its chain at its weighted mean place along it, then anything past four goes
+    r = np.arange(nv)
+    for side in ('L_', 'R_'):
+        ci = [gi[side + c] for c in ('ThighTwist01', 'ThighTwist02', 'CalfTwist01', 'CalfTwist02', 'Foot', 'ToeBase') if side + c in gi]
+        Wc = W[:, ci]; ts = Wc.sum(1)
+        pos = (Wc * np.arange(len(ci))).sum(1) / np.maximum(ts, 1e-9)
+        lo = np.floor(pos).astype(int); fr = pos - lo
+        N = np.zeros_like(Wc)
+        np.add.at(N, (r, lo), ts * (1 - fr)); np.add.at(N, (r, np.minimum(lo + 1, len(ci) - 1)), ts * fr)
+        W[np.ix_(m, ci)] = N[m]
+    k4 = np.argsort(-W, 1)[:, 4:]
+    Wm = W.copy(); Wm[np.repeat(r, k4.shape[1]), k4.ravel()] = 0
+    W[m] = Wm[m] / np.maximum(Wm[m].sum(1, keepdims=True), 1e-9)
+    return W, int(m.sum())
+
+
+from geoskin import _welded, weld
+ed = np.empty(len(me.edges) * 2, np.int64); me.edges.foreach_get('vertices', ed); ed = ed.reshape(-1, 2)
+u = weld(co)
+W, rep['robe'] = robe(W)
 if ra is not None:
+    midy = 0.5 * (arm.data.bones['L_Thigh'].head_local.y + arm.data.bones['R_Thigh'].head_local.y)
     piece = np.empty(nv, np.float32); ra.data.foreach_get('value', piece); piece = np.rint(piece).astype(int)
     ends = {b.name: (np.array(b.head_local), np.array(b.tail_local)) for b in arm.data.bones}
     rep['rigid'] = {}
     for k in np.unique(piece[piece > 0]):
         m = piece == k
         C = co[m]
+        across = C[:, 1].min() < midy - 0.05 * H and C[:, 1].max() > midy + 0.05 * H
         d = np.full(len(names), np.inf)
         for j, n in enumerate(names):
             h, t = ends[n]
-            if (h[2] + t[2]) / 2 > C[:, 2].mean() + 0.02 * H:
+            if across and LEG.match(n):
+                continue
+            if (h[2] + t[2]) / 2 > C[:, 2].mean() + 0.02 * H and not (n in TRUNK and h[2] <= C[:, 2].max()):
                 continue
             sg = t - h
             u = np.clip((C - h) @ sg / max(float(sg @ sg), 1e-12), 0, 1)

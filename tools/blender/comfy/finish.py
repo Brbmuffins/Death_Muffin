@@ -307,6 +307,74 @@ def shrink(o):
         collapse_to(o, TARGET)
 
 
+def drop_inner_walls(o, gap=0.006, rays=16, patch=64):
+    """Pixal's surfaces are double: a thin shell round each one, so a head is a mask over a second, inward-facing head and a veil two sheets
+    (0.2% of the height apart over 82% of the Mourner's head close-up; 50% of a body's surface). Of each face with the shell's other wall right
+    behind it (within <gap> of the height, facing away), the side seen less from outside goes: the share of <rays> directions over its half that
+    leave the model, averaged with its neighbours', is nil or under half its partner's. The shrink spent 43% of a head close-up's triangles on walls
+    no one sees, and at 6k triangles a veil's two sheets crossed each other in strips; the game draws both sides of every face, so a sheet left
+    single still shows from inside a hood. Two sides seen alike (a hanging strip) both stay"""
+    bm = bmesh.new(); bm.from_mesh(o.data); bm.faces.ensure_lookup_table(); bm.normal_update()
+    tree = BVHTree.FromBMesh(bm)
+    n = len(bm.faces)
+    k = np.arange(rays) + 0.5
+    D = np.c_[np.cos(np.pi * (1 + 5 ** 0.5) * k) * np.sqrt(1 - (1 - 2 * k / rays) ** 2),
+              np.sin(np.pi * (1 + 5 ** 0.5) * k) * np.sqrt(1 - (1 - 2 * k / rays) ** 2), 1 - 2 * k / rays]
+    partner, near = np.full(n, -1), np.zeros(n, bool)                          # near: a wall behind within 4x <gap>, facing away at all
+    for f in bm.faces:
+        c, nr = f.calc_center_median(), f.normal
+        loc, hn, j, d = tree.ray_cast(c - nr * 1e-5 * height, -nr, 4 * gap * height)
+        if loc is not None and hn.dot(nr) < 0:
+            near[f.index] = True
+            if d < gap * height and hn.dot(nr) < -0.5:
+                partner[f.index] = j
+    need = np.zeros(n, bool); need[partner >= 0] = True; need[partner[partner >= 0]] = True
+    seen = np.zeros(n)
+    for i in np.flatnonzero(need):
+        f = bm.faces[i]; nr = np.array(f.normal); c = f.calc_center_median() + f.normal * 1e-4 * height
+        out = 0
+        for d in D:
+            d = 0.3 * nr + (d if d @ nr >= 0 else -d)
+            out += tree.ray_cast(c, Vector(d / np.linalg.norm(d)), 4 * height)[0] is None
+        seen[i] = out / rays
+    for _ in range(2):
+        seen = np.array([(seen[f.index] + sum(seen[g.index] for e in f.edges for g in e.link_faces if g is not f)) /
+                         (1 + sum(1 for e in f.edges for g in e.link_faces if g is not f)) for f in bm.faces])
+    p = np.maximum(partner, 0)
+    drop = (partner >= 0) & ((seen == 0) | (seen < 0.5 * seen[p]))
+    # decided face by face the cut is patchy (the Mourner's head: 14k open edges, 700 islands), and the shrink cannot cut down round open edges
+    # (the Gravecaller's parts stuck at 9.8k of their 6k): a few rounds of majority among neighbours, then patches under <patch> faces flip. A
+    # face with a wall a little further behind follows its neighbours too (one just missing the test stayed, an island on a dropped wall)
+    nb = [[g.index for e in f.edges for g in e.link_faces if g is not f] for f in bm.faces]
+    for _ in range(4):
+        drop = near & np.array([2 * (drop[i] + sum(drop[j] for j in nb[i])) > 1 + len(nb[i]) for i in range(n)])
+    for flip in (True, False):
+        done = np.zeros(n, bool)
+        for i in np.flatnonzero((drop == flip) & near):
+            if done[i]:
+                continue
+            comp, st = [i], [i]; done[i] = True
+            while st:
+                for j in nb[st.pop()]:
+                    if not done[j] and drop[j] == flip and near[j]:
+                        done[j] = True; comp.append(j); st.append(j)
+            if len(comp) <= patch:
+                drop[comp] = not flip
+    area = np.array([f.calc_area() for f in bm.faces])
+    bmesh.ops.delete(bm, geom=[bm.faces[i] for i in np.flatnonzero(drop)], context='FACES_ONLY')
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context='VERTS')
+    # Pixal's pinholes through a sheet (black specks on the Mourner's veil) were tunnels joining its two walls; with one wall gone each is a
+    # hole: closed (up to 12 sides)
+    filled = bmesh.ops.holes_fill(bm, edges=[e for e in bm.edges if e.is_boundary], sides=12)['faces']
+    lay = bm.faces.layers.int.get('dm_part')
+    if lay is not None:                                                          # a part's hole is the part's (the shrink groups by it)
+        for f in filled:
+            f[lay] = max((g[lay] for e in f.edges for g in e.link_faces if g is not f), default=0)
+    bm.to_mesh(o.data); bm.free()
+    return {'double': round(float(area[partner >= 0].sum() / area.sum()), 3), 'dropped': round(float(area[drop].sum() / area.sum()), 3),
+            'holesFilled': len(filled)}
+
+
 def meshopt_shrink(o):
     """to the budget with meshoptimizer (shrink.mjs), each group to its share: the keep boxes and the rest, or a body's close-up parts and the body"""
     V, F = arrays(o)
@@ -360,6 +428,7 @@ if METHOD == 'solid':
             moved += 1
     rep['snapped'] = round(moved / max(1, len(lo.data.vertices)), 3)
 elif METHOD == 'meshopt':
+    rep['innerWalls'] = drop_inner_walls(lo)
     rep['meshopt'] = meshopt_shrink(lo)
 else:
     raise SystemExit('unknown method ' + METHOD)

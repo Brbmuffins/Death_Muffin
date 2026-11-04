@@ -104,12 +104,17 @@ the old one; a nearly symmetric shape such as a building can fit back to front, 
 `parts` (close-ups fitted onto the detailed body before the bake: "A character's detail" below),
 `finish` (the game mesh: a solid rebuild, or `method: meshopt` straight on the detailed mesh, cut to the budget, new UVs packed by xatlas, the detailed
 paint, roughness, metal and normals baked on; a body with parts keeps each part's charts apart, drawn `partScale` times larger, and gives the parts `partTris`
-of the triangles), `materials` (what each part of the finished model is made of, from label pictures, and the shine that goes with it: below),
+of the triangles; meshopt first drops the less-seen wall of each of Pixal's double walls, so the triangles go to the surface that shows and a veil's
+two sheets no longer cross in strips), `materials` (what each part of the finished model is made of, from label pictures, and the shine that goes with it: below),
 `place`, `bend` (a part turned about a joint before the bake: the hound's head), `grime` (dirt painted in) and `rig`, a skeleton built from the
 placed model's shape: `quad` is the four-legged one the bone hound has (`Root`, `Hip`, `Spine1-2`, `Chest`, `Neck1-2`, `Head`, `Tail_A-D`,
 `FL/FR_Upper/Lower/Paw`, `HL/HR_Thigh/Shin/Meta/Paw`), `legs` any number of legs round one body (the fen spider: `Root`, `Hip`, `Head`, `Abdomen`,
 `Abdomen_End`, `L1`-`L4`/`R1`-`R4` `_Upper/_Lower/_Foot`, counted from the front), `biped` the heroes' skeleton on a body in a T or A pose, the
-body turned to face +X as every hero body does (refused when its feet then point backwards: the frame's `fit --yaw` is half a turn out). The record keeps the run's settings, so `make.mjs build <id>` remakes the game file from the
+body turned to face +X as every hero body does (refused when its feet then point backwards: the frame's `fit --yaw` is half a turn out); its joints
+come from the body's filled shape (an open robe, sleeve or neck still reads as a body, not its skin) and sit within 0.01 of the height of the four Tripo
+heroes' own skeletons on their bodies, shoulders under sleeves and pauldrons and hips under a long robe included (`tools/blender/comfy/landmarks.py`),
+and a robe's cloth follows both legs evenly across the middle and hangs from the thigh, so a stride or a lunge swings it instead of tearing it between
+the legs. The record keeps the run's settings, so `make.mjs build <id>` remakes the game file from the
 same run. A four-legged or many-legged model's moves are one `motion` job on its recipe (`tools/blender/recipes/bone_hound.json`,
 `fen_spider.json`); a biped's are one `retarget` job `from` a hero (docs/BLENDER-PIPELINE.md "Biped to biped"). The xatlas packer is set up
 once per Blender install (`tools/blender/comfy/setup.sh`). A model placed facing forward this way faces away from the game's camera at no turn,
@@ -127,6 +132,9 @@ the model is made of comes from a label picture of the concept (`materials`). A 
    examples): `refs` the concept twice, the first cropped to the part (`crop`, in the concept's pixels) and the second whole for context, square, 2K,
    the picture rules above. A shoulder plate is made once, the subject's left (the picture's right), and worn on both sides (`mirror`). Look at each
    before its run: Gemini sometimes restyles a part (the Ossuary's shoulder plate came back a mask three times); then that part stays the body's own.
+   A part replaces a piece that stands on its own (a head, a shoulder plate, a gorget, a ribcage, a pendant). A belt, or anything else the body made of
+   its cloth's own surface, stays the body's: the body's version shows beside the part or leaves a hole (the Ossuary's belt). So do small repeated
+   pieces (the Mourner's twenty bells): a part is one box.
 3. **Part runs:** each close-up into a detailed model, two seeds (one model-gen job holds 8 runs); pick by close-up against its picture.
 4. **Boxes:** each part's box measured on the concept, its rectangle over the figure's (the non-background pixels' box), as `[x0, z0, x1, z1]`
    shares with z from the bottom; `facing` is the side the close-up saw (a shoulder plate drawn from outside the arm faces `left`). A part the close-up
@@ -139,6 +147,10 @@ the model is made of comes from a label picture of the concept (`materials`). A 
    A body made from the front alone takes the front's labels alone: a back view labels belts, bones and hair the model's back does not have.
 6. **The record:** `parts`, then `finish` with `method: meshopt` at 20000 triangles (`partScale` 1.5, `partTris` 0.3, `tex` 1024, `metal: keep`),
    `materials`, `place`, `rig: biped`; the part runs' files and the labels sit beside the run's model in `art-src/comfy/<id>/`.
+7. **Into the game:** the finished body is open (one wall of each double wall is gone), so the swap takes its slug out of `CULL_BACK_SLUGS`
+   (`client/game/dm_creature_mat.gd`); drawn one-sided, the inside of a hood or a robe would show holes. The hero's Blender jobs
+   (`art-manifest/blender/<id>.json`) run again on the new body: a `cloak` with `cape` needs cloth hanging free behind it, which a Pixal body
+   from a front concept may not have (the Pixal Gravecaller's cloak is arms only).
 
 Gemini costs about $0.10 a close-up, so a hero's parts cost $0.50 to $1; the model runs are free.
 

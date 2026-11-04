@@ -82,8 +82,8 @@ migration to the live database, deploys the backend and publishes the client. Th
   character in the same concept round as the props: a full-body T-pose concept of a hero wearing the whole set, id `hero_leg_<setId>`. Make it as in
   steps 2 and 3 (`finish` with `triangles` 12000, `texture` 1024 and `metal` as for a creature, `place`, `rig` `biped`; `fit --stand --height
   1.88`), then give it the moves with the Blender job `{"kind": "retarget", "from": "hero_gravecaller"}` (every clip the class's rites play;
-  `"from": "hero_reaper_v2a"` for a Reaper set). Cloth hanging below the knee (a long robe or skirt) stretches between the legs on a stride: ask
-  for a concept whose robe stops at the knee or is split, or say in the proposal that it will stretch. Add its row to `client/game/view_models.json`
+  `"from": "hero_reaper_v2a"` for a Reaper set). Cloth hanging below the knee (a long robe or skirt) swings with both legs but flares over the knee in a
+  deep lunge: say so in the proposal for a long robe. Add its row to `client/game/view_models.json`
   (step 3's hero row; copy `hero_reaper`'s for a Reaper set) and to `legendary_hero_by_set_id`. Then the in-game screenshots of step 4, front and
   back, at 3+ pieces. Tripo (`art-manifest/tripo-specs/hero_leg_plague_choir.json`) only when the owner asks for it.
 - *Decisions.* When the requester has not said where it drops or how strong it is, do not stop to ask: use the defaults above (legendary, boss drops,

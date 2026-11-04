@@ -7,8 +7,9 @@
 # middle (a part drawn in another pose than the body wears it: the Gravecaller's plate, drawn from outside the arm, lies over the shoulder at tilt 40,
 # scale 1.3), centred on the box and moved along the depth until its front meets the body's there (rays from the picture's side, the median gap).
 # Fitting it to the picture as well (correlation of the two pictures' grey) moved parts to worse places on dark renders (2026-11-03), so the box is
-# the placement. The body's own version of each part then goes (its surface inside the part, within `skin` of the part's size round it, within
-# `front` over it on the side its picture saw, and the bits that leaves loose), and each part joins as its own material (finish.py moves every
+# the placement. The body's own version of each part then goes (its surface inside the part, within `skin` of the part's size round it where it
+# faces away from the picture, within `front` over it on the side its picture saw, and the bits that leaves loose; the surface beside a part facing
+# the picture stays: below), and each part joins as its own material (finish.py moves every
 # material's paint). mirror: a copy placed on the other side, mirrored across the body's middle (one shoulder plate made, both worn). rigid: armour
 # that moves as one piece (a shoulder plate, a gorget): its material is named dm_rigid_<n>, which finish.py turns into the rig's piece numbers.
 # parts.json: {"parts": [{"file": <part model .glb>, "box": [x0, z0, x1, z1], "facing": "front", "tilt": 0, "scale": 1, "mirror": false, "rigid": false}, ...],
@@ -247,12 +248,18 @@ for spec in cfg['parts']:
         placed.append(twin)
     rep['parts'].append(info)
 
-# ---- the body's own version of each part goes: its surface inside the part, just outside it (within SKIN of the part's size; a little
-# bigger or smaller, it would show through the part in patches) and just over it on the side its picture saw (within FRONT: a hood's brim
-# standing over the new face), then the bits of the body that leaves loose round the parts (under 1% of the body: a hood's old tip)
+# ---- the body's own version of each part goes: its surface inside the part (the part round it on five of the six sides, a head open at
+# the neck), just outside it where it faces away from the part's picture (within SKIN of the part's size; a little bigger, it would show
+# through the part in patches), and just over it on the side its picture saw (within FRONT: a hood's brim standing over the new face), then
+# the bits of the body that leaves loose round the parts (under 1% of the body: a hood's old tip). Surface facing the picture beside or
+# behind a part stays: it is what shows between a ribcage's ribs, and under a part once the body moves. Cutting it too, and all a part's
+# ring closed round, holed the Ossuary's chest behind its ribs and its robe from a belt to the thighs. A part over cloth that the body made
+# of the cloth's own surface (a belt's column, pouch and medallion) cannot go cleanly: the body's version shows beside it or leaves a hole,
+# so a part replaces what stands on its own (a head, a shoulder plate, a gorget, a ribcage)
 SKIN = float(cfg.get('skin', 0.08))
 FRONT = float(cfg.get('front', 0.15))
-bm = bmesh.new(); bm.from_mesh(body.data); bm.verts.ensure_lookup_table()
+AXES = [Vector(r) for r in ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1))]   # closed round: 5 of 6 (a head's neck is open)
+bm = bmesh.new(); bm.from_mesh(body.data); bm.verts.ensure_lookup_table(); bm.normal_update()
 inside = np.zeros(len(bm.verts), bool)
 for c in placed:
     tree = bvh(c)
@@ -269,10 +276,13 @@ for c in placed:
         if inside[v.index]:
             continue
         loc, n, _, d = tree.find_nearest(p)
-        if loc is not None and ((p - loc).dot(n) < 0 or d < reach):
-            inside[v.index] = True
-        elif tree.ray_cast(p, look, ahead)[0] is not None:
-            inside[v.index] = True
+        if loc is None:
+            continue
+        if (p - loc).dot(n) >= 0:                                          # outside the part: gone where it stands over the part, and
+            over = tree.ray_cast(p, look, ahead)[0] is not None            # near it unless it faces the picture
+            inside[v.index] = over or (d < reach and v.normal.dot(-look) <= 0)
+        else:                                                              # behind it: gone only where the part closes round it
+            inside[v.index] = sum(tree.ray_cast(p, r)[0] is not None for r in AXES) >= 5
 gone = [f for f in bm.faces if all(inside[v.index] for v in f.verts)]
 rep['bodyTrisRemoved'] = sum(len(f.verts) - 2 for f in gone)
 bmesh.ops.delete(bm, geom=gone, context='FACES')

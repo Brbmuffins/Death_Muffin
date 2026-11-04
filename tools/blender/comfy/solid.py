@@ -57,8 +57,21 @@ def mesh_arrays(me):
     return co, tri
 
 
-def solid_grid(co, tri, cells=256, close=1):
-    """the solid a surface encloses, as voxels: (solid, surface, lo corner, cell size); cells across the largest side"""
+def _enclosed(occ, need=5):
+    """cells with the surface ahead in at least `need` of the six axis directions"""
+    hits = np.zeros(occ.shape, np.int8)
+    for ax in range(3):
+        for rev in (False, True):
+            a = np.flip(occ, ax) if rev else occ
+            seen = np.logical_or.accumulate(a, axis=ax)
+            hits += np.flip(seen, ax) if rev else seen
+    return hits >= need
+
+
+def solid_grid(co, tri, cells=256, close=1, fill_open=False):
+    """the solid a surface encloses, as voxels: (solid, surface, lo corner, cell size); cells across the largest side. fill_open also fills what
+    the surface surrounds on five of six sides: a robe's hem, a sleeve's cuff or a neck hole lets the outside in, and a Pixal or Tripo body is
+    otherwise only its skin (7 of 8 heroes)"""
     size = (co.max(0) - co.min(0)).max()
     cell = size / cells
     pad = close + 2
@@ -71,6 +84,8 @@ def solid_grid(co, tri, cells=256, close=1):
     outside = _outside(blocked)
     for _ in range(close):                                                      # the closing's second half: back to the true surface
         outside = _dilate(outside) & ~occ
+    if fill_open:
+        outside &= ~_enclosed(occ)
     return ~outside, occ, lo, cell
 
 

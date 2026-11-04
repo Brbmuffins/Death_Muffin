@@ -178,8 +178,8 @@ their travel (`inPlace: false`), so the clips keep the source's timings. The map
 seam copies stayed together to 0.00 mm in every clip, the knees bent forward, the hips kept the body's own height, the run's stride matched
 the hero's and the walk's came 8% shorter). Blender writes each clip with the target's skeleton only (`common.export_glb` exports the
 armature it is given and the meshes under it): the source has the same bone names, and a file holding both would give every bone two
-channels, which `transplantClip` refuses. The job prints the body's own `STRIDE` and `TIMINGS` for its row. Skinning limit: cloth hanging below the knee (a long robe or skirt) is weighted to the legs and
-stretches between them on a stride.
+channels, which `transplantClip` refuses. The job prints the body's own `STRIDE` and `TIMINGS` for its row. Cloth hanging below the knee (a long robe or skirt) follows
+both legs evenly across the middle and hangs from the thighs, so it swings on a stride; in a deep lunge it still flares over the raised knee (KNOWN-GAPS.md).
 
 ## `cloak`: cloth that stops riding the arms and the bent back
 
