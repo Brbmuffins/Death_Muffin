@@ -105,7 +105,8 @@ the old one; a nearly symmetric shape such as a building can fit back to front, 
 `finish` (the game mesh: a solid rebuild, or `method: meshopt` straight on the detailed mesh, cut to the budget, new UVs packed by xatlas, the detailed
 paint, roughness, metal and normals baked on; a body with parts keeps each part's charts apart, drawn `partScale` times larger, and gives the parts `partTris`
 of the triangles; meshopt first drops the less-seen wall of each of Pixal's double walls, so the triangles go to the surface that shows and a veil's
-two sheets no longer cross in strips), `materials` (what each part of the finished model is made of, from label pictures, and the shine that goes with it: below),
+two sheets no longer cross in strips; a dropped face that some look from outside would see through (nothing kept right behind it, as where the kept side
+switches walls) comes back, and the report's `seeThrough` counts the holes the game mesh has that the detailed one has not), `materials` (what each part of the finished model is made of, from label pictures, and the shine that goes with it: below),
 `place`, `bend` (a part turned about a joint before the bake: the hound's head), `grime` (dirt painted in) and `rig`, a skeleton built from the
 placed model's shape: `quad` is the four-legged one the bone hound has (`Root`, `Hip`, `Spine1-2`, `Chest`, `Neck1-2`, `Head`, `Tail_A-D`,
 `FL/FR_Upper/Lower/Paw`, `HL/HR_Thigh/Shin/Meta/Paw`), `legs` any number of legs round one body (the fen spider: `Root`, `Hip`, `Head`, `Abdomen`,
@@ -140,7 +141,14 @@ the model is made of comes from a label picture of the concept (`materials`). A 
    shares with z from the bottom; `facing` is the side the close-up saw (a shoulder plate drawn from outside the arm faces `left`). A part the close-up
    drew in another pose turns `tilt` degrees about its middle and sizes by `scale` against its box (the Gravecaller's plate: `left`, tilt 40, scale 1.3,
    `mirror`). Armour is `rigid`: the rig moves each piece as one with the bones nearest it, so a plate or gorget never bends with the arm or neck. The white
-   fill Gemini paints round a part (the Gravecaller's neck behind the gorget) is cut off the part's model on its own.
+   fill Gemini paints round a part (the Gravecaller's neck behind the gorget) is cut off the part's model on its own. A front part names its close-up
+   (`picture`; the record's `picture` is the concept): Gemini frames each close-up its own way (a box-sized head sat up to a face's height off), so the
+   part is sized and placed where its close-up matches the concept best, and keeps its box when no place stands out (the report's `fit`).
+   A head joins as the body's surface (`join: surface`): the body keeps its whole hood, and the head's face shows where the concept's labels (step 5)
+   mark skin, the body's face and low brim pushed back behind it (what the push leaves in front of the face is cut, the face behind it) and the
+   head's own brim left to the body's. The hood is not cut round the new face, so it cannot open there (cutting it out did on the first heroes,
+   2026-11-04). Other parts cut the body's own version of them away, except
+   where that would open a hole; the report's `seeThrough` counts the holes left (a share of rays; 0.0001 or less is a clean join).
 5. **Labels:** `bash tools/assets/matmap/setup.sh` once (a Python venv and three pinned models in `~/.cache/dm-ops/matmap`), then
    `bash tools/assets/matmap/run.sh <concept.png> <labels.png> --overlay <check.jpg>` (CPU, about 4 minutes and 3.6 GB; SAM 2.1 cuts the figure into
    regions, SigLIP 2 names each region's material, YuNet keeps the face skin). Look at the overlay: the labels go into `materials` as the front view.

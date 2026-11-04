@@ -37,9 +37,10 @@ from mathutils.bvhtree import BVHTree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from solid import solid_rebuild
 from charts import make_charts
-from transfer import transfer, image_array, _loops, _raster
+from transfer import transfer, image_array, material_maps, _loops, _raster
 from metal import metal_by_material, metal_colour
 from surface import denoise
+from seethrough import see_through, tree_of
 
 a = sys.argv[sys.argv.index('--') + 1:]
 HI, OUT, TARGET = a[0], a[1], int(a[2])
@@ -321,22 +322,25 @@ def drop_inner_walls(o, gap=0.006, rays=16, patch=64):
     D = np.c_[np.cos(np.pi * (1 + 5 ** 0.5) * k) * np.sqrt(1 - (1 - 2 * k / rays) ** 2),
               np.sin(np.pi * (1 + 5 ** 0.5) * k) * np.sqrt(1 - (1 - 2 * k / rays) ** 2), 1 - 2 * k / rays]
     partner, near = np.full(n, -1), np.zeros(n, bool)                          # near: a wall behind within 4x <gap>, facing away at all
+    behind, wall = np.full(n, -1), np.full(n, 4 * gap * height)                 # that wall, and how far behind
     for f in bm.faces:
         c, nr = f.calc_center_median(), f.normal
         loc, hn, j, d = tree.ray_cast(c - nr * 1e-5 * height, -nr, 4 * gap * height)
         if loc is not None and hn.dot(nr) < 0:
-            near[f.index] = True
+            near[f.index] = True; behind[f.index] = j; wall[f.index] = d
             if d < gap * height and hn.dot(nr) < -0.5:
                 partner[f.index] = j
     need = np.zeros(n, bool); need[partner >= 0] = True; need[partner[partner >= 0]] = True
-    seen = np.zeros(n)
-    for i in np.flatnonzero(need):
+
+    def out_dirs(i):
+        """the directions over a face's half (<rays>, leaning 0.3 to its normal) and which of them leave the model"""
         f = bm.faces[i]; nr = np.array(f.normal); c = f.calc_center_median() + f.normal * 1e-4 * height
-        out = 0
-        for d in D:
-            d = 0.3 * nr + (d if d @ nr >= 0 else -d)
-            out += tree.ray_cast(c, Vector(d / np.linalg.norm(d)), 4 * height)[0] is None
-        seen[i] = out / rays
+        ds = 0.3 * nr + np.where((D @ nr >= 0)[:, None], D, -D)
+        ds /= np.linalg.norm(ds, axis=1)[:, None]
+        return ds, np.array([tree.ray_cast(c, Vector(d), 4 * height)[0] is None for d in ds])
+    seen, outs = np.zeros(n), {}
+    for i in np.flatnonzero(need):
+        outs[i] = out_dirs(i); seen[i] = outs[i][1].mean()
     for _ in range(2):
         seen = np.array([(seen[f.index] + sum(seen[g.index] for e in f.edges for g in e.link_faces if g is not f)) /
                          (1 + sum(1 for e in f.edges for g in e.link_faces if g is not f)) for f in bm.faces])
@@ -360,19 +364,57 @@ def drop_inner_walls(o, gap=0.006, rays=16, patch=64):
                         done[j] = True; comp.append(j); st.append(j)
             if len(comp) <= patch:
                 drop[comp] = not flip
+    # the votes and flips weigh a face against its neighbours, not against its own other wall, so both walls of a sheet could go (holes through
+    # the Ossuary's shoulder plates, 2026-11-04): of a face and the wall behind it both dropped, the one seen more comes back
+    for _ in range(4):
+        both = np.flatnonzero(drop & (behind >= 0) & drop[np.maximum(behind, 0)])
+        if not len(both):
+            break
+        j = behind[both]
+        drop[np.where(seen[both] >= seen[j], both, j)] = False
+    lt = bm.calc_loop_triangles()
+    TV = np.array([[l.vert.index for l in t] for t in lt]); TF = np.array([t[0].face.index for t in lt])
+    V = np.array([v.co[:] for v in bm.verts]); cen = np.array([f.calc_center_median()[:] for f in bm.faces])
+    full = BVHTree.FromPolygons(V.tolist(), TV.tolist(), all_triangles=True)
+    # a dropped face is seen from outside along some of its directions; along each, the kept surface must lie right behind it (within 1.5x its
+    # wall's depth on that slant). Where the side kept switches from one wall to the other, a slanted look passed both walls' cut edges and saw
+    # through the plate (the Ossuary's shoulder, 2026-11-04: the straight rays below missed it); such a face comes back
+    kept = BVHTree.FromPolygons(V.tolist(), TV[~drop[TF]].tolist(), all_triangles=True)
+    window = np.zeros(n, bool)
+    for i in np.flatnonzero(drop):
+        ds, out = outs[i] if i in outs else out_dirs(i)
+        nr, c = np.array(bm.faces[i].normal), bm.faces[i].calc_center_median()
+        for d in ds[out]:
+            if kept.ray_cast(c, Vector(-d), 1.5 * wall[i] / max(float(d @ nr), 0.3) + 1e-3 * height)[0] is None:
+                window[i] = True
+                break
+    drop &= ~window
+    # a hole the drop still opens (seethrough.py: rays that met the surface and now go on past it) keeps the dropped faces within 0.015 of the
+    # height round it, in up to three rounds; a pinhole the fill below would close keeps its wall too
+    back = np.zeros(n, bool)
+    for round_ in range(4):                                                     # the last round only looks
+        pts = []
+        holes = see_through(full, BVHTree.FromPolygons(V.tolist(), TV[~drop[TF]].tolist(), all_triangles=True), V.min(0), V.max(0), points=pts)
+        near_ = np.zeros(n, bool)
+        for q in pts:
+            near_ |= drop & (np.linalg.norm(cen - np.array(q[:]), axis=1) < 0.015 * height)
+        if round_ == 3 or not near_.any():
+            break
+        drop &= ~near_; back |= near_
     area = np.array([f.calc_area() for f in bm.faces])
     bmesh.ops.delete(bm, geom=[bm.faces[i] for i in np.flatnonzero(drop)], context='FACES_ONLY')
     bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context='VERTS')
     # Pixal's pinholes through a sheet (black specks on the Mourner's veil) were tunnels joining its two walls; with one wall gone each is a
-    # hole: closed (up to 12 sides)
-    filled = bmesh.ops.holes_fill(bm, edges=[e for e in bm.edges if e.is_boundary], sides=12)['faces']
+    # hole, and so is a gap where the kept wall stops short of the dropped one (a plate's rim): closed up to 32 sides (12 left a third of the
+    # Ossuary's holes; an opening that is meant, a cuff or a hood's face, runs to hundreds)
+    filled = bmesh.ops.holes_fill(bm, edges=[e for e in bm.edges if e.is_boundary], sides=32)['faces']
     lay = bm.faces.layers.int.get('dm_part')
     if lay is not None:                                                          # a part's hole is the part's (the shrink groups by it)
         for f in filled:
             f[lay] = max((g[lay] for e in f.edges for g in e.link_faces if g is not f), default=0)
     bm.to_mesh(o.data); bm.free()
     return {'double': round(float(area[partner >= 0].sum() / area.sum()), 3), 'dropped': round(float(area[drop].sum() / area.sum()), 3),
-            'holesFilled': len(filled)}
+            'holesFilled': len(filled), 'windows': int(window.sum()), 'kept': int(back.sum()), 'seeThrough': holes}
 
 
 def meshopt_shrink(o):
@@ -436,6 +478,7 @@ apply_mod(lo, kind='TRIANGULATE', quad_method='BEAUTY', ngon_method='BEAUTY')
 rep['specks'] = drop_specks(lo)
 rep['degenerate'] = fix_degenerate(lo, height)
 rep['tris'] = tris(lo)
+rep['seeThrough'] = see_through(tree_of(hi.data)[0], tree_of(lo.data)[0], co.min(0), co.max(0))   # holes the game mesh has that the detailed one has not
 if KEEP:
     V, F = arrays(lo)
     rep['keep']['trisIn'] = round(float(in_regions(V[F].mean(1), KEEP, co).mean()), 3)
@@ -487,27 +530,6 @@ rep['uvS'] = round(time.time() - t0, 1)
 
 # ---- the detailed model's maps (base colour, ORM: R occlusion G roughness B metal, normal) onto the game mesh; a model of several materials (a body
 # with parts joined on) moves each part's own paint
-
-
-def src_image_node(sock):
-    while sock.is_linked:
-        n = sock.links[0].from_node
-        if n.type == 'TEX_IMAGE':
-            return n
-        sock = next((i for i in n.inputs if i.is_linked), None)
-        if sock is None:
-            return None
-    return None
-
-
-def material_maps(mat):
-    bsdf = next((n for n in mat.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'), None) if mat and mat.use_nodes else None
-    out = {}
-    for key, sock in (('base', 'Base Color'), ('orm', 'Roughness'), ('normal', 'Normal')):
-        n = bsdf and (src_image_node(bsdf.inputs[sock]) or (src_image_node(bsdf.inputs['Metallic']) if key == 'orm' else None))
-        if n:
-            out[key] = image_array(n.image)
-    return out
 
 
 hi_maps = [material_maps(m) for m in hi.data.materials] or [{}]

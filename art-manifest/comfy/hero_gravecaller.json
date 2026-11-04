@@ -1,0 +1,125 @@
+{
+  "id": "hero_gravecaller",
+  "concept": "concept_hero_gravecaller",
+  "picture": "art-src/concepts/hero_gravecaller.png",
+  "run": {
+    "label": "gc-pixal-s0",
+    "model": "pixal3d",
+    "faces": 200000,
+    "texture": 2048,
+    "seed": 0,
+    "settings": {
+      "detail": 2048,
+      "grid": 1024
+    },
+    "comfyui": "0.42.5",
+    "template": "3d_pixal3d_trellis2_image_to_model (templates 0.11.96)",
+    "pc": "helix",
+    "job": "8c704e832b8c",
+    "date": "2026-11-03",
+    "file": "gc-pixal-s0.glb"
+  },
+  "steps": [
+    {
+      "kind": "parts",
+      "parts": [
+        {
+          "file": "head-pixal-s1.glb",
+          "box": [
+            0.416,
+            0.82,
+            0.583,
+            1
+          ],
+          "facing": "front",
+          "join": "surface",
+          "picture": "art-src/concepts/hero_gravecaller_part_head.png"
+        },
+        {
+          "file": "pl-trellis-s0.glb",
+          "box": [
+            0.571,
+            0.793,
+            0.679,
+            0.894
+          ],
+          "facing": "left",
+          "tilt": 40,
+          "scale": 1.3,
+          "mirror": true,
+          "rigid": true
+        },
+        {
+          "file": "gorget-trellis-s0.glb",
+          "box": [
+            0.43,
+            0.773,
+            0.58,
+            0.863
+          ],
+          "facing": "front",
+          "rigid": true,
+          "picture": "art-src/concepts/hero_gravecaller_part_gorget.png"
+        }
+      ]
+    },
+    {
+      "kind": "finish",
+      "triangles": 20000,
+      "method": "meshopt",
+      "partScale": 1.5,
+      "partTris": 0.3,
+      "texture": 1024,
+      "metal": "keep"
+    },
+    {
+      "kind": "materials",
+      "labels": [
+        {
+          "file": "front-label.png",
+          "view": "front"
+        }
+      ],
+      "occlusion": 0.4,
+      "wear": 1
+    },
+    {
+      "kind": "place"
+    },
+    {
+      "kind": "rig",
+      "body": "biped"
+    }
+  ],
+  "game": "game.glb",
+  "note": "Parts from model-gen job 1f10c2a36cff on helix (2026-11-03, same workflow and settings as the run, 200000 faces, texture 2048): head-pixal-s1 (concept_hero_gravecaller_part_head, pixal3d seed 1), pl-trellis-s0 (concept_hero_gravecaller_part_pauldron_l, trellis2 seed 0), gorget-trellis-s0 (concept_hero_gravecaller_part_gorget, trellis2 seed 0). front-label.png: tools/assets/matmap on the concept.",
+  "frame": {
+    "matrix": [
+      [
+        0.036677158121736476,
+        -1.1243485077469906,
+        0,
+        0.08316496866418625
+      ],
+      [
+        1.1243485077469906,
+        0.036677158121736476,
+        0,
+        0.003183986262903832
+      ],
+      [
+        0,
+        0,
+        1.1249465679759068,
+        0.501408588598421
+      ],
+      [
+        0,
+        0,
+        0,
+        1
+      ]
+    ]
+  },
+  "tris": 19605
+}

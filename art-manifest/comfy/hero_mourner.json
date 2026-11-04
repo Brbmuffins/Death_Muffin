@@ -1,0 +1,111 @@
+{
+  "id": "hero_mourner",
+  "concept": "concept_hero_mourner",
+  "picture": "art-src/concepts/hero_mourner.png",
+  "run": {
+    "label": "mo-pixal-s2",
+    "model": "pixal3d",
+    "faces": 200000,
+    "texture": 2048,
+    "seed": 2,
+    "settings": {
+      "detail": 2048,
+      "grid": 1024
+    },
+    "comfyui": "0.42.5",
+    "template": "3d_pixal3d_trellis2_image_to_model (templates 0.11.96)",
+    "pc": "helix",
+    "job": "90adc63766dd",
+    "date": "2026-11-03",
+    "file": "mo-pixal-s2.glb"
+  },
+  "steps": [
+    {
+      "kind": "parts",
+      "parts": [
+        {
+          "file": "mo-head-pixal-s0.glb",
+          "box": [
+            0.394,
+            0.824,
+            0.609,
+            1
+          ],
+          "facing": "front",
+          "join": "surface",
+          "picture": "art-src/concepts/hero_mourner_part_head.png"
+        },
+        {
+          "file": "mo-pendant-pixal-s0.glb",
+          "box": [
+            0.473,
+            0.691,
+            0.529,
+            0.785
+          ],
+          "facing": "front",
+          "rigid": true,
+          "picture": "art-src/concepts/hero_mourner_part_pendant.png"
+        }
+      ]
+    },
+    {
+      "kind": "finish",
+      "triangles": 20000,
+      "method": "meshopt",
+      "texture": 1024,
+      "metal": "keep",
+      "partScale": 1.5,
+      "partTris": 0.3
+    },
+    {
+      "kind": "materials",
+      "labels": [
+        {
+          "file": "front-label.png",
+          "view": "front"
+        }
+      ],
+      "occlusion": 0.4,
+      "wear": 1
+    },
+    {
+      "kind": "place"
+    },
+    {
+      "kind": "rig",
+      "body": "biped"
+    }
+  ],
+  "game": "game.glb",
+  "note": "Parts from model-gen jobs d0d70e31f8a0 and 7ebef67ca8d7 on helix (2026-11-04, same workflow and settings as the run): mo-head-pixal-s0 (concept_hero_mourner_part_head, pixal3d seed 0) and mo-pendant-pixal-s0 (concept_hero_mourner_part_pendant, pixal3d seed 0). The bells stay the body's own: there are twenty, and a part is one box. front-label.png: tools/assets/matmap on the concept.",
+  "frame": {
+    "matrix": [
+      [
+        -0.018171101576059098,
+        -1.1281954732838195,
+        0,
+        0.03228346178614784
+      ],
+      [
+        1.1281954732838195,
+        -0.018171101576059098,
+        0,
+        -0.004129700425557434
+      ],
+      [
+        0,
+        0,
+        1.1283417987784503,
+        0.5020675021941305
+      ],
+      [
+        0,
+        0,
+        0,
+        1
+      ]
+    ]
+  },
+  "tris": 19316
+}

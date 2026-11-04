@@ -1,0 +1,123 @@
+{
+  "id": "hero_rotweaver",
+  "concept": "concept_hero_rotweaver",
+  "picture": "art-src/concepts/hero_rotweaver.png",
+  "run": {
+    "label": "ro-pixal-s2",
+    "model": "pixal3d",
+    "faces": 200000,
+    "texture": 2048,
+    "seed": 2,
+    "settings": {
+      "detail": 2048,
+      "grid": 1024
+    },
+    "comfyui": "0.42.5",
+    "template": "3d_pixal3d_trellis2_image_to_model (templates 0.11.96)",
+    "pc": "helix",
+    "job": "7a3640fdd224",
+    "date": "2026-11-03",
+    "file": "ro-pixal-s2.glb"
+  },
+  "steps": [
+    {
+      "kind": "parts",
+      "parts": [
+        {
+          "file": "ro-head-pixal-s0.glb",
+          "box": [
+            0.413,
+            0.831,
+            0.586,
+            1
+          ],
+          "facing": "front",
+          "join": "surface",
+          "picture": "art-src/concepts/hero_rotweaver_part_head.png"
+        },
+        {
+          "file": "ro-shoulder-l-pixal-s0.glb",
+          "box": [
+            0.563,
+            0.786,
+            0.702,
+            0.9
+          ],
+          "facing": "front",
+          "rigid": true,
+          "picture": "art-src/concepts/hero_rotweaver_part_shoulder_l.png"
+        },
+        {
+          "file": "ro-shoulder-r-pixal-s0.glb",
+          "box": [
+            0.314,
+            0.798,
+            0.422,
+            0.898
+          ],
+          "facing": "front",
+          "rigid": true,
+          "picture": "art-src/concepts/hero_rotweaver_part_shoulder_r.png"
+        }
+      ]
+    },
+    {
+      "kind": "finish",
+      "triangles": 20000,
+      "method": "meshopt",
+      "texture": 1024,
+      "metal": "keep",
+      "partScale": 1.5,
+      "partTris": 0.3
+    },
+    {
+      "kind": "materials",
+      "labels": [
+        {
+          "file": "front-label.png",
+          "view": "front"
+        }
+      ],
+      "occlusion": 0.4,
+      "wear": 1
+    },
+    {
+      "kind": "place"
+    },
+    {
+      "kind": "rig",
+      "body": "biped"
+    }
+  ],
+  "game": "game.glb",
+  "note": "Parts from model-gen jobs 7ebef67ca8d7 and e2a73df844ac on helix (2026-11-04, same workflow and settings as the run): ro-head-pixal-s0 (concept_hero_rotweaver_part_head, pixal3d seed 0; seed 1 lost hair on one side), ro-shoulder-l-pixal-s0 and ro-shoulder-r-pixal-s0 (the mushroom clusters, pixal3d seed 0; Trellis made no right shoulder). The belt stays the body's (cloth-made). front-label.png: tools/assets/matmap on the concept.",
+  "frame": {
+    "matrix": [
+      [
+        -0.007768703041024724,
+        -1.122592986030529,
+        0,
+        0.011698600750411688
+      ],
+      [
+        1.122592986030529,
+        -0.007768703041024724,
+        0,
+        -0.0006780907163433704
+      ],
+      [
+        0,
+        0,
+        1.1226198666654172,
+        0.50034912022269
+      ],
+      [
+        0,
+        0,
+        0,
+        1
+      ]
+    ]
+  },
+  "tris": 19506
+}

@@ -28,6 +28,7 @@ export const KINDS = JSON.parse(readFileSync(join(ROOT, 'tools', 'blender', 'com
 const ID = /^[a-z0-9_]{3,40}$/;
 const FILE = /^[a-z0-9][a-z0-9._-]{0,60}\.glb$/;
 const PICTURE = /^[a-z0-9][a-z0-9._-]{0,60}\.png$/;
+const CONCEPT = /^art-src\/concepts\/[a-z0-9][a-z0-9._-]{0,80}\.png$/;
 const RECORD_FIELDS = ['id', 'concept', 'picture', 'run', 'frame', 'steps', 'game', 'tris', 'note'];
 const BIPED_TEMPLATE = 'client/assets/slice/models/hero_gravecaller/character.glb';   // the heroes' skeleton: names, parents, each bone's axes
 
@@ -47,12 +48,13 @@ function typeOk(p, v) {
     case 'list': return Array.isArray(v) && v.length >= (p.min ?? 1) && v.length <= (p.max ?? 8) && v.every((x) => typeOk({ type: 'map', fields: p.fields }, x));
     case 'file': return typeof v === 'string' && FILE.test(v);
     case 'picture': return typeof v === 'string' && PICTURE.test(v);
+    case 'concept': return typeof v === 'string' && CONCEPT.test(v);
     default: return false;
   }
 }
 
 const want = (p) => p.type === 'enum' ? `one of ${p.values.join(', ')}` : p.type === 'vec' ? `${p.len} numbers` : p.type === 'map' ? `{${Object.keys(p.fields).join(', ')}}`
-  : p.type === 'list' ? `a list of ${p.min ?? 1} to ${p.max ?? 8} {${Object.keys(p.fields).join(', ')}}` : p.type === 'file' ? 'a .glb file name' : p.type === 'picture' ? 'a .png file name' : p.type;
+  : p.type === 'list' ? `a list of ${p.min ?? 1} to ${p.max ?? 8} {${Object.keys(p.fields).join(', ')}}` : p.type === 'file' ? 'a .glb file name' : p.type === 'picture' ? 'a .png file name' : p.type === 'concept' ? 'a picture under art-src/concepts/ (.png)' : p.type;
 
 function fieldErrors(params, obj, at) {
   const e = [];
@@ -96,6 +98,11 @@ export function validateRecord(rec, id) {
         const b = p?.box;
         if (Array.isArray(b) && b.length === 4 && !(b[0] < b[2] && b[1] < b[3])) e.push(`${at}: part ${j + 1}'s box must run from its low corner to its high one`);
         if (p?.file === rec.run?.file) e.push(`${at}: part ${j + 1} is the run's own model`);
+        if (p?.join === 'surface' && p.rigid) e.push(`${at}: part ${j + 1} joins as the body's own surface, which bends with it: never rigid`);
+        if (p?.join === 'surface' && (p.facing ?? 'front') !== 'front') e.push(`${at}: part ${j + 1} joins where the concept shows a face: a front-facing part only`);
+        if (p?.join === 'surface' && !frontLabel(rec)) e.push(`${at}: part ${j + 1} joins where the concept's labels mark skin: the record needs a materials step with a front label`);
+        if (p?.picture !== undefined && (p.facing ?? 'front') !== 'front') e.push(`${at}: part ${j + 1}'s picture fits it onto the concept, which shows the front: a front-facing part only`);
+        if (p?.picture !== undefined && !rec.picture) e.push(`${at}: part ${j + 1}'s picture fits it onto the record's picture: the record needs one`);
       }
     }
   });
@@ -113,8 +120,11 @@ export function readRecord(id) {
 
 const writeRecord = (rec) => writeFileSync(recordPath(rec.id), JSON.stringify(rec, null, 2) + '\n');
 
+/** The materials step's label picture of the concept's front: where the concept's skin is (a surface part's face). */
+const frontLabel = (rec) => rec.steps?.find((s) => s?.kind === 'materials')?.labels?.find((l) => (l?.view ?? 'front') === 'front')?.file;
+
 /** The arguments a step's script takes after the input and output files. */
-function stepArgs(step, frameFile, work, n) {
+function stepArgs(step, frameFile, work, n, picture, label) {
   const report = join(work, `${n}-${step.kind}.json`);
   if (step.kind === 'bend') {
     const cfg = join(work, `${n}-bend.cfg.json`);
@@ -133,7 +143,9 @@ function stepArgs(step, frameFile, work, n) {
     const cfg = join(work, `${n}-parts.cfg.json`);
     const dir = dirname(work);
     for (const p of step.parts) if (!existsSync(join(dir, p.file))) throw new Error(`step ${n} (parts): no ${p.file} beside the run's model (a model-gen run of the part's picture)`);
-    writeFileSync(cfg, JSON.stringify({ parts: step.parts.map((p) => ({ ...p, file: join(dir, p.file) })) }));
+    for (const p of step.parts) if (p.picture && !existsSync(join(ROOT, p.picture))) throw new Error(`step ${n} (parts): no ${p.picture}`);
+    if (label && !existsSync(join(dir, label))) throw new Error(`step ${n} (parts): no ${label} beside the run's model`);
+    writeFileSync(cfg, JSON.stringify({ parts: step.parts.map((p) => ({ ...p, file: join(dir, p.file), ...(p.picture ? { picture: join(ROOT, p.picture) } : {}) })), ...(picture ? { picture } : {}), ...(label ? { labels: join(dir, label) } : {}) }));
     return [cfg, '--report', report];
   }
   if (step.kind === 'materials') {
@@ -177,7 +189,7 @@ export function build(id, { from = 1, log = console.log } = {}) {
     const step = rec.steps[i - 1];
     const t0 = Date.now();
     const script = step.kind === 'rig' ? RIG_SCRIPT[step.body] : KINDS[step.kind].script;
-    const args = stepArgs(step, frameFile, work, i);
+    const args = stepArgs(step, frameFile, work, i, rec.picture ? join(ROOT, rec.picture) : null, frontLabel(rec));
     const files = step.kind === 'rig' && step.body === 'biped' ? [input, join(ROOT, BIPED_TEMPLATE), out(i)] : [input, out(i)];
     runBlender(join('comfy', script), [...files, ...args]);
     if (!existsSync(out(i))) throw new Error(`step ${i} (${step.kind}) wrote nothing`);

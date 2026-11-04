@@ -1,5 +1,5 @@
 {
-  "_note": "Steps that make a game model from a ComfyUI run (ASSET_PIPELINE.md 'Image to model'): the record art-manifest/comfy/<id>.json lists them and tools/blender/make.mjs build <id> does them in order on the run's detailed model (art-src/comfy/<id>/<run.file>), writing the record's game file beside it. Positions are shares (0 to 1) of the model's box in its game placement (the record's frame: z up, facing +y). Types: int, number, bool, enum (values), vec (a list of len numbers), boxes (lists of six numbers x0 y0 z0 x1 y1 z1), map (an object of fields), list (min to max objects of fields), file (a .glb file name beside the run's model), picture (a .png file name beside it). A new kind is an entry here plus its arguments in make.mjs (STEP_ARGS).",
+  "_note": "Steps that make a game model from a ComfyUI run (ASSET_PIPELINE.md 'Image to model'): the record art-manifest/comfy/<id>.json lists them and tools/blender/make.mjs build <id> does them in order on the run's detailed model (art-src/comfy/<id>/<run.file>), writing the record's game file beside it. Positions are shares (0 to 1) of the model's box in its game placement (the record's frame: z up, facing +y). Types: int, number, bool, enum (values), vec (a list of len numbers), boxes (lists of six numbers x0 y0 z0 x1 y1 z1), map (an object of fields), list (min to max objects of fields), file (a .glb file name beside the run's model), picture (a .png file name beside it), concept (a .png under art-src/concepts/). A new kind is an entry here plus its arguments in make.mjs (STEP_ARGS).",
   "kinds": {
     "bend": {
       "script": "bend.py",
@@ -14,7 +14,7 @@
     },
     "parts": {
       "script": "parts.py",
-      "what": "Close-up parts fitted onto the detailed body, each keeping its own paint: a part too small for Pixal3D to read in the whole picture (a face, the skull on a shoulder plate) drawn large on its own and made into its own model (`file`, a model-gen run beside the run's model). Pixal3D's white fill (no subject there: a neck under a head) cut off, turned so the side its picture saw faces `facing` (the subject's own left and right), sized to `box` times `scale`, turned `tilt` degrees about its middle (a part drawn in another pose than the body wears it: a shoulder plate drawn from outside the arm lies over the shoulder at tilt 40, scale 1.3), and set at the depth the body has there; the body's own surface inside and just over the part goes. box: [x0, z0, x1, z1], where the part is on the body's picture as shares of the detailed model's own box (x the picture's left to right, z bottom to top). mirror: a copy on the other side (one shoulder plate made, both worn). rigid: armour that moves as one piece (a shoulder plate, a gorget): the rig gives all of it the same bone weights. Before finish.",
+      "what": "Close-up parts fitted onto the detailed body, each keeping its own paint: a part too small for Pixal3D to read in the whole picture (a face, the skull on a shoulder plate) drawn large on its own and made into its own model (`file`, a model-gen run beside the run's model). Pixal3D's white fill (no subject there: a neck under a head) cut off, turned so the side its picture saw faces `facing` (the subject's own left and right), sized to `box` times `scale`, turned `tilt` degrees about its middle (a part drawn in another pose than the body wears it: a shoulder plate drawn from outside the arm lies over the shoulder at tilt 40, scale 1.3), and set at the depth the body has there. picture (a front part): its close-up under art-src/concepts/, which sizes and places it where it matches the record's picture best, when one place stands out (else the box). join: piece (the default): the body's own surface inside and just over the part goes, except where that would open a hole; surface (a head in its hood): the body keeps its hood and the part's face shows where the concept's front label (the materials step's) marks skin, the body's surface there pushed back behind it (what still stands in front is cut) and the part's own brim left to the body's. box: [x0, z0, x1, z1], where the part is on the body's picture as shares of the detailed model's own box (x the picture's left to right, z bottom to top). mirror: a copy on the other side (one shoulder plate made, both worn). rigid: armour that moves as one piece (a shoulder plate, a gorget): the rig gives all of it the same bone weights. Before finish.",
       "params": {
         "parts": {
           "type": "list", "min": 1, "max": 8, "req": true,
@@ -25,7 +25,9 @@
             "tilt": { "type": "number", "min": -90, "max": 90 },
             "scale": { "type": "number", "min": 0.5, "max": 2 },
             "mirror": { "type": "bool" },
-            "rigid": { "type": "bool" }
+            "rigid": { "type": "bool" },
+            "join": { "type": "enum", "values": ["piece", "surface"] },
+            "picture": { "type": "concept" }
           }
         }
       }

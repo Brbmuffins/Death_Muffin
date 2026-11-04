@@ -11,7 +11,7 @@ import { KINDS, RIG_SCRIPT, validateRecord } from './make.mjs';
 const DIR = new URL('../../art-manifest/comfy/', import.meta.url);
 const COMFY = new URL('./comfy/', import.meta.url);
 const records = readdirSync(DIR).filter((f) => f.endsWith('.json')).map((f) => [f.slice(0, -5), JSON.parse(readFileSync(new URL(f, DIR), 'utf8'))]);
-const TYPES = ['int', 'number', 'bool', 'enum', 'vec', 'boxes', 'map', 'list', 'file', 'picture'];
+const TYPES = ['int', 'number', 'bool', 'enum', 'vec', 'boxes', 'map', 'list', 'file', 'picture', 'concept'];
 const copy = (x) => JSON.parse(JSON.stringify(x));
 
 test('every recorded model checks out', () => {
@@ -66,4 +66,13 @@ test('a record that breaks a rule is refused', () => {
   bad((r) => { r.steps.splice(fin(r), 0, copy(mats)); }, 'materials before finish');
   bad((r) => { r.steps.splice(r.steps.findIndex((s) => s.kind === 'place') + 1, 0, copy(mats)); }, 'materials after place');
   bad((r) => { r.steps.splice(fin(r) + 1, 0, { ...copy(mats), labels: [{ file: 'labels.jpg', view: 'front' }] }); }, 'a label that is not a .png');
+  bad(withParts((s) => { s.parts[0].picture = 'art-src/concepts/head.jpg'; }), 'a close-up that is not a concept .png');
+  bad(withParts((s) => { s.parts[0].picture = 'art-src/concepts/head.png'; s.parts[0].facing = 'left'; }), 'a close-up on a side-facing part');
+  const head = (extra) => (r) => { r.steps.unshift({ kind: 'parts', parts: [{ ...copy(part), join: 'surface', ...extra }] }); r.steps.splice(fin(r) + 1, 0, copy(mats)); };
+  const ok3 = copy(base);
+  head({})(ok3);
+  assert.deepEqual(validateRecord(ok3, id), [], "a head laid into the body's surface, with the concept's labels, checks out");
+  bad((r) => { r.steps.unshift({ kind: 'parts', parts: [{ ...copy(part), join: 'surface' }] }); }, "a head laid into the body's surface without labels");
+  bad(head({ rigid: true }), 'a rigid part laid into the surface');
+  bad(head({ facing: 'left' }), 'a side-facing part laid into the surface');
 });

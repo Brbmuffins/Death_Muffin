@@ -1,0 +1,111 @@
+{
+  "id": "hero_ossuary",
+  "concept": "concept_hero_ossuary",
+  "picture": "art-src/concepts/hero_ossuary.png",
+  "run": {
+    "label": "os-pixal-s2",
+    "model": "pixal3d",
+    "faces": 200000,
+    "texture": 2048,
+    "seed": 2,
+    "settings": {
+      "detail": 2048,
+      "grid": 1024
+    },
+    "comfyui": "0.42.5",
+    "template": "3d_pixal3d_trellis2_image_to_model (templates 0.11.96)",
+    "pc": "helix",
+    "job": "90adc63766dd",
+    "date": "2026-11-03",
+    "file": "os-pixal-s2.glb"
+  },
+  "steps": [
+    {
+      "kind": "parts",
+      "parts": [
+        {
+          "file": "os-head-pixal-s0.glb",
+          "box": [
+            0.409,
+            0.838,
+            0.592,
+            1
+          ],
+          "facing": "front",
+          "join": "surface",
+          "picture": "art-src/concepts/hero_ossuary_part_head.png"
+        },
+        {
+          "file": "os-ribcage-pixal-s0.glb",
+          "box": [
+            0.384,
+            0.665,
+            0.617,
+            0.786
+          ],
+          "facing": "front",
+          "rigid": true,
+          "picture": "art-src/concepts/hero_ossuary_part_ribcage.png"
+        }
+      ]
+    },
+    {
+      "kind": "finish",
+      "triangles": 20000,
+      "method": "meshopt",
+      "texture": 1024,
+      "metal": "keep",
+      "partScale": 1.5,
+      "partTris": 0.3
+    },
+    {
+      "kind": "materials",
+      "labels": [
+        {
+          "file": "front-label.png",
+          "view": "front"
+        }
+      ],
+      "occlusion": 0.4,
+      "wear": 1
+    },
+    {
+      "kind": "place"
+    },
+    {
+      "kind": "rig",
+      "body": "biped"
+    }
+  ],
+  "game": "game.glb",
+  "note": "Parts from model-gen job d0d70e31f8a0 on helix (2026-11-04, same workflow and settings as the run): os-head-pixal-s0 (concept_hero_ossuary_part_head, pixal3d seed 0) and os-ribcage-pixal-s0 (concept_hero_ossuary_part_ribcage, pixal3d seed 0). front-label.png: tools/assets/matmap on the concept. The belt close-up is left out: the body made its belt of the robe's own surface, so a part over it doubled it or holed the robe.",
+  "frame": {
+    "matrix": [
+      [
+        -0.0030008588948598975,
+        -1.1238522435937899,
+        0,
+        0.02150783101906376
+      ],
+      [
+        1.1238522435937899,
+        -0.0030008588948598975,
+        0,
+        -0.0013995572690577108
+      ],
+      [
+        0,
+        0,
+        1.1238562499647817,
+        0.49216516243050423
+      ],
+      [
+        0,
+        0,
+        0,
+        1
+      ]
+    ]
+  },
+  "tris": 19664
+}

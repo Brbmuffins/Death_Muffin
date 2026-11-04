@@ -12,7 +12,7 @@
 import bpy, sys, os, json, math
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from transfer import _loops, _raster, _frame, image_array, grow
+from transfer import _loops, _raster, _frame, image_array, grow, src_image_node
 
 a = sys.argv[sys.argv.index('--') + 1:]
 IN, OUT = a[0], a[1]
@@ -36,17 +36,6 @@ pts = np.array([lo.matrix_world @ v.co for v in lo.data.vertices])
 zmin, height = pts[:, 2].min(), np.ptp(pts[:, 2])
 sc = bpy.context.scene
 rep = dict(input=IN, height=round(float(height), 3))
-
-
-def src_image_node(sock):
-    while sock.is_linked:
-        n = sock.links[0].from_node
-        if n.type == 'TEX_IMAGE':
-            return n
-        sock = next((i for i in n.inputs if i.is_linked), None)
-        if sock is None:
-            return None
-    return None
 
 
 mat = lo.active_material
