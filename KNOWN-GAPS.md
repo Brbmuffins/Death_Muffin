@@ -44,9 +44,6 @@ The numbers are the VPS's headless Full Party fight (2026-10-17) unless they say
 - **Pixal3D shifts some colours off the concept** (the Gravecaller, 2026-11-03): the charcoal sleeves and robe panels come out purple, and a few
   small bone and leather specks on the cloak's back take the wrong material where the labels' colour fallback guesses. A per-material colour match
   against the concept was tried and dropped (it darkened the face and hair with the concept's painted shading).
-- **The biped rig puts a robed hero's legs low** (the Gravecaller, 2026-11-03): under a long robe `build_rig.py` finds the crotch where the robe
-  parts, 0.20 of the height, so the hip sits at 0.27 and the knee at 0.15, where a person's are near 0.5 and 0.28. The clips play, but a stride
-  bends the robe low, like short legs.
 
 ## Operations
 

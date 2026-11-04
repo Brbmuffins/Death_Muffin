@@ -3,7 +3,7 @@
 # biped heroes have it) moved onto the joints landmarks.py finds, each bone's axes turned by the least rotation that takes its old direction to its new
 # one (so a hand's frame, which the game holds props in, stays the same frame relative to the arm), then the body skinned (--skin geo: geodesic
 # voxel binding, geoskin.py; heat: Blender's bone heat) on the bones the game's skins use: the twist bones for the limbs, Waist, Spine01, Spine02, NeckTwist01, Head,
-# the clavicles, hands, feet and toes. The body is first turned to the heroes' frame (+X forward; the game placement faces +Y, away from the game's
+# the clavicles, hands, feet and toes; a leg's bones reach only the column round their leg. The body is first turned to the heroes' frame (+X forward; the game placement faces +Y, away from the game's
 # camera, as render-model.sh's half turn shows): `facing` reads which way it faces, and a body whose feet then point backwards is refused. Each rigid
 # piece (armour: finish.py's _DM_RIGID) gets one set of weights, its corners' mean, so it moves as one. Exports the rigged body with no clips, facing +X like every hero body (its row turns it, as hero_gravecaller's yaw does).
 import bpy, sys, os, json, math, re
@@ -167,7 +167,11 @@ else:
     nv = len(me.vertices)
     names = [b.name for b in arm.data.bones if b.use_deform]
     bl = [(b.name, np.array(b.head_local), np.array(b.tail_local)) for b in arm.data.bones if b.use_deform]
-    W, st = weights(co, tri, co, bl, H=H)
+    # a leg's bones reach only the column round that leg: a sleeve hanging to the hip or a robe's side would otherwise follow the thigh
+    # (the Gravecaller's sleeve, flung sideways in a lunge) and stays with the body instead
+    legy = {p: arm.data.bones[p + 'Thigh'].head_local.y for p in ('L_', 'R_')}
+    allow = {n: (lambda P, y=legy[n[:2]]: np.abs(P[:, 1] - y) < 0.08 * H) for n, _, _ in bl if re.match(r'^[LR]_(Thigh|Calf|Foot|ToeBase)', n)}
+    W, st = weights(co, tri, co, bl, H=H, allow=allow)
     ed = np.empty(len(me.edges) * 2, np.int64); me.edges.foreach_get('vertices', ed); ed = ed.reshape(-1, 2)
     u = weld(co)
     W, st['filled'], st['loose'] = fill_missing(W, ed, co, u)

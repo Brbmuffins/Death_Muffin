@@ -1,7 +1,10 @@
 # The joints of a humanoid body found from its shape (no skeleton needed). The body becomes a solid in voxels, and each voxel gets its depth (the
 # erosion steps it survives, i.e. its distance inside the surface). Limbs, spine and neck are then read along the depth ridge, the line of deepest
 # voxels: a sleeve, robe, cape or hood is a thin layer and never holds the ridge, so cloth does not pull the joints. Proportions place what the
-# shape cannot show (the elbow along the arm, the knee along the leg, the hand's length). Mirrored pairs are made symmetric about the midline.
+# shape cannot show (the elbow along the arm, the knee along the leg, the hand's length), and the hip where a robe hides the legs (a crotch the shape
+# puts outside a person's, 0.38 to 0.56 of the height, is the robe's slit: the hip then sits at 0.555 of the height, the four Tripo-rigged heroes'
+# 0.54 to 0.61), the shoulders and elbows where sleeves pull the arm's ridge down, and the head where a hood or collar hides the neck. Mirrored
+# pairs are made symmetric about the midline.
 # Body: Z up, +X forward, +Y its left, feet on the floor (the caller straightens it). T or A pose.
 import numpy as np
 import sys, os
@@ -65,9 +68,11 @@ def find(co, tri, cells=192):
         if dl and dmid >= 0.6 * dl and dmid >= 3:
             zc = float(Z[k])
             break
-    rep['crotchFound'] = zc is not None
-    if zc is None:
-        zc = z0 + 0.46 * H
+    rep['crotchFound'] = zc is not None and 0.38 * H <= zc - z0 <= 0.56 * H
+    if zc is not None and not rep['crotchFound']:
+        rep['crotchShape'] = round((zc - z0) / H, 3)                         # a robe's slit or a hem, not the legs
+    if not rep['crotchFound']:
+        zc = z0 + 0.49 * H
     rep['crotch'] = round((zc - z0) / H, 3)
     hipz = zc + 0.065 * H
     anklez = z0 + 0.045 * H
@@ -127,7 +132,11 @@ def find(co, tri, cells=192):
             return np.array([line[i, 0], y, line[i, 2]])
         hand_len = 0.10 * H
         wr = on_line(tip_y - side * hand_len)
+        # a hanging sleeve or a robed, armoured torso pulls the ridge down (a sleeve filled solid is deep); the wrist is not pulled, so a level
+        # arm's shoulder is never below it (an A pose's wrist is far below and leaves it be), and the elbow is on the straight arm between them
+        sh[2] = max(sh[2], wr[2])
         el = on_line(sh[1] + 0.55 * (wr[1] - sh[1]))
+        el[2] = sh[2] + 0.55 * (wr[2] - sh[2])
         tip = on_line(tip_y)
         J[p + 'Upperarm'], J[p + 'Forearm'], J[p + 'Hand'], J[p + 'HandEnd'] = sh, el, wr, tip
         arms[p] = {'armDepth': da, 'points': n, 'shoulderEdge': round(float(edge[1]), 4)}
@@ -151,8 +160,10 @@ def find(co, tri, cells=192):
             neck_mid = float(zs[plateau].mean())
             break
     rep['neckProf'] = [int(d) for d in prof]
-    headz = max(neck_mid + 0.01 * H, neckz + 0.03 * H)
     top = float(Z[np.flatnonzero(D[:, jm - 3:jm + 4, :].max((0, 1)) >= 2).max()])
+    # a hood, gorget or collar hides the neck, so the head is held between 0.17 of the height under the top and 0.06 over the shoulders
+    # (the four Tripo-rigged heroes: 0.15 under the top, 0.02 over the shoulders)
+    headz = min(max(neck_mid + 0.01 * H, neckz + 0.03 * H, top - 0.17 * H), shz + 0.06 * H)
     for name, z in (('Hip', hipz), ('Spine01', hipz + 0.21 * (neckz - hipz)), ('Spine02', hipz + 0.63 * (neckz - hipz)),
                     ('NeckTwist01', neckz), ('NeckTwist02', neckz + 0.7 * (headz - neckz)), ('Head', headz), ('HeadEnd', top)):
         q = mid_ridge(z)[0]
