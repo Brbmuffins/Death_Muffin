@@ -105,7 +105,8 @@ the old one; a nearly symmetric shape such as a building can fit back to front, 
 `finish` (the game mesh: a solid rebuild, or `method: meshopt` straight on the detailed mesh, cut to the budget, new UVs packed by xatlas, the detailed
 paint, roughness, metal and normals baked on; a body with parts keeps each part's charts apart, drawn `partScale` times larger, and gives the parts `partTris`
 of the triangles; meshopt first drops the less-seen wall of each of Pixal's double walls, so the triangles go to the surface that shows and a veil's
-two sheets no longer cross in strips), `materials` (what each part of the finished model is made of, from label pictures, and the shine that goes with it: below),
+two sheets no longer cross in strips; a dropped face that some look from outside would see through (nothing kept right behind it, as where the kept side
+switches walls) comes back, and the report's `seeThrough` counts the holes the game mesh has that the detailed one has not), `materials` (what each part of the finished model is made of, from label pictures, and the shine that goes with it: below),
 `place`, `bend` (a part turned about a joint before the bake: the hound's head), `grime` (dirt painted in) and `rig`, a skeleton built from the
 placed model's shape: `quad` is the four-legged one the bone hound has (`Root`, `Hip`, `Spine1-2`, `Chest`, `Neck1-2`, `Head`, `Tail_A-D`,
 `FL/FR_Upper/Lower/Paw`, `HL/HR_Thigh/Shin/Meta/Paw`), `legs` any number of legs round one body (the fen spider: `Root`, `Hip`, `Head`, `Abdomen`,

@@ -89,6 +89,29 @@ def image_array(im):
     return p.reshape(h, w, 4)
 
 
+def src_image_node(sock):
+    """the image node feeding a material socket, through any nodes between (a normal map, a channel split)"""
+    while sock.is_linked:
+        n = sock.links[0].from_node
+        if n.type == 'TEX_IMAGE':
+            return n
+        sock = next((i for i in n.inputs if i.is_linked), None)
+        if sock is None:
+            return None
+    return None
+
+
+def material_maps(mat):
+    """a material's maps as arrays: base colour, ORM (R occlusion, G roughness, B metal), normal; the ones it has"""
+    bsdf = next((n for n in mat.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'), None) if mat and mat.use_nodes else None
+    out = {}
+    for key, sock in (('base', 'Base Color'), ('orm', 'Roughness'), ('normal', 'Normal')):
+        n = bsdf and (src_image_node(bsdf.inputs[sock]) or (src_image_node(bsdf.inputs['Metallic']) if key == 'orm' else None))
+        if n:
+            out[key] = image_array(n.image)
+    return out
+
+
 def grow(filled, px):
     """for each texel within px of a filled one: the flat index of a filled texel to copy (edge padding); -1 elsewhere"""
     h, w = filled.shape
