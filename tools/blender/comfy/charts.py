@@ -153,8 +153,10 @@ def set_seams(o, chart):
     bmesh.update_edit_mesh(o.data)
 
 
-def pack(o, size, padding):
-    """(object mode) the UV charts packed by xatlas, rotated as needed, <padding> texels apart on a <size> texture, density kept. None if it could not"""
+def pack(o, size, padding, face_scale=None):
+    """(object mode) the UV charts packed by xatlas, rotated as needed, <padding> texels apart on a <size> texture, None if it could not. xatlas gives
+    every chart the same texels per metre (it reads a chart's size from its surface), so a face's chart is drawn <face_scale> (per polygon) times larger
+    by handing xatlas that chart's corners that much further apart"""
     if XATLAS not in sys.path:
         sys.path.insert(0, XATLAS)
     import xatlas
@@ -168,14 +170,27 @@ def pack(o, size, padding):
         return None
     key = np.concatenate([vi[:, None], np.round(uv.astype(np.float64) * (1 << 24)).astype(np.int64)], 1)    # one corner per (vertex, uv)
     _, first, inv = np.unique(key, axis=0, return_index=True, return_inverse=True); inv = inv.ravel()
-    at = xatlas.Atlas()
-    at.add_mesh(co[vi[first]], inv[lt].astype(np.uint32), None, uv[first])
-    c = xatlas.ChartOptions(); c.use_input_mesh_uvs = True
-    p = xatlas.PackOptions(); p.resolution = size; p.padding = padding; p.bruteForce = True; p.rotate_charts = True; p.bilinear = True
-    at.generate(c, p)
+    pos = co[vi[first]] * (100.0 / max(float(np.ptp(co, 0).max()), 1e-9))   # 100 units across: xatlas leaves out triangles under 1.2e-7 square units,
+                                                                                 # and in metres a close-up part's smallest are (246 of 20k on the Gravecaller, 2026-11-03)
+    if face_scale is not None:                                                   # a corner is one chart's (charts never share one), so its chart's scale
+        tp = np.empty(len(me.loop_triangles), np.int64); me.loop_triangles.foreach_get('polygon_index', tp)
+        k = np.ones(len(first)); k[inv[lt].ravel()] = np.repeat(np.asarray(face_scale, float)[tp], 3)
+        pos = pos * k[:, None].astype(np.float32)
+    tpu = 0.0                                                                    # xatlas's own estimate first; when the charts spill onto a second
+    for _ in range(16):                                                          # page (big ones, scaled-up parts), a little smaller each time
+        at = xatlas.Atlas()
+        at.add_mesh(pos, inv[lt].astype(np.uint32), None, uv[first])
+        c = xatlas.ChartOptions(); c.use_input_mesh_uvs = True
+        p = xatlas.PackOptions(); p.resolution = size; p.padding = padding; p.bruteForce = True; p.rotate_charts = True; p.bilinear = True
+        p.texels_per_unit = tpu
+        at.generate(c, p)
+        if at.atlas_count <= 1:
+            break
+        tpu = at.texels_per_unit * 0.94
     vm, ind, out = (np.asarray(x) for x in at[0])
-    ignored = np.asarray(at.get_mesh_vertex_assignment(0)[0]).astype(np.int64) >= at.atlas_count       # a face xatlas left out: atlas -1 (as uint32)
+    ignored = np.asarray(at.get_mesh_vertex_assignment(0)[0]).astype(np.int64) >= at.atlas_count       # a corner xatlas left out: atlas -1 (as uint32)
     if at.atlas_count != 1 or ind.size != lt.size or not np.isfinite(out).all() or ignored.any():
+        print('xatlas: no single page (atlases %d, corners left out %d)' % (at.atlas_count, int(ignored.sum())))
         return None
     new = np.empty_like(uv); new[lt.ravel()] = out[ind].reshape(-1, 2)
     uvd.foreach_set('uv', new.ravel())
@@ -183,7 +198,40 @@ def pack(o, size, padding):
     return {'packer': 'xatlas', 'used': round(float(at.utilization), 3), 'charts': int(at.chart_count)}
 
 
-def make_charts(o, angle=60.0, min_faces=12, margin=0.005, report=None, levels=4, size=1024, padding=None):
+def scale_charts(o, faces, factor):
+    """(object mode) the UVs of these faces grown <factor> times about each of their islands' middles (more texels for them once packed)"""
+    me = o.data
+    uv = np.empty(len(me.loops) * 2); me.uv_layers.active.data.foreach_get('uv', uv); uv = uv.reshape(-1, 2)
+    ls = np.empty(len(me.polygons), dtype=np.int64); me.polygons.foreach_get('loop_start', ls)
+    lt = np.empty(len(me.polygons), dtype=np.int64); me.polygons.foreach_get('loop_total', lt)
+    bm = bmesh.new(); bm.from_mesh(me); bm.faces.ensure_lookup_table()
+    uvl = bm.loops.layers.uv.active
+    pick = set(int(f) for f in faces)
+    seen = set()
+    for f0 in pick:                                                              # each island of picked faces joined by shared UV corners
+        if f0 in seen:
+            continue
+        island, stack = [], [f0]
+        seen.add(f0)
+        while stack:
+            f = stack.pop(); island.append(f)
+            for l in bm.faces[f].loops:
+                for e in (l.edge,):
+                    if e.seam:
+                        continue
+                    for g in e.link_faces:
+                        if g.index in pick and g.index not in seen:
+                            seen.add(g.index); stack.append(g.index)
+        loops = np.concatenate([np.arange(ls[f], ls[f] + lt[f]) for f in island])
+        c = uv[loops].mean(0)
+        uv[loops] = c + (uv[loops] - c) * factor
+    bm.free()
+    me.uv_layers.active.data.foreach_set('uv', uv.ravel())
+
+
+def make_charts(o, angle=60.0, min_faces=12, margin=0.005, report=None, levels=4, size=1024, padding=None, groups=None, group_scale=1.0):
+    """groups: a label per face (a body 0 and its close-up parts 1): no chart crosses from one to another, and group 1's charts are drawn
+    <group_scale> times larger on the texture (texels on the face and the skulls the close-ups carry)"""
     me = o.data
     bm = bmesh.new(); bm.from_mesh(me); bm.faces.ensure_lookup_table(); bm.edges.ensure_lookup_table()
     nf = len(bm.faces)
@@ -193,6 +241,8 @@ def make_charts(o, angle=60.0, min_faces=12, margin=0.005, report=None, levels=4
     for e in bm.edges:
         if len(e.link_faces) == 2:
             a, b = e.link_faces[0].index, e.link_faces[1].index
+            if groups is not None and groups[a] != groups[b]:
+                continue
             nbr[a].append(b); nbr[b].append(a)
     bm.free()
     chart = np.full(nf, -1, dtype=np.int64)
@@ -241,10 +291,16 @@ def make_charts(o, angle=60.0, min_faces=12, margin=0.005, report=None, levels=4
     bpy.ops.mesh.select_all(action='SELECT')
     bpy.ops.uv.average_islands_scale()
     bpy.ops.object.mode_set(mode='OBJECT')
+    face_scale = None
+    if groups is not None and group_scale != 1.0 and (np.asarray(groups) > 0).any():
+        scale_charts(o, np.flatnonzero(np.asarray(groups) > 0), group_scale)   # for Blender's packer, which keeps the charts' sizes
+        face_scale = np.where(np.asarray(groups) > 0, group_scale, 1.0)
+        if report is not None:
+            report['partFaces'] = int((np.asarray(groups) > 0).sum())
     if padding is None:                                                          # the gap between charts grows with the texture: the same mip
         padding = max(2, size // 256)                                            # level bleeds at every size (2 below 512, 4 at 1024)
     try:
-        packed = pack(o, size, padding)
+        packed = pack(o, size, padding, face_scale)
     except Exception as e:                                                       # a missing or failing xatlas: Blender packs instead
         packed = None; print('xatlas pack failed:', e)
     if packed is None:

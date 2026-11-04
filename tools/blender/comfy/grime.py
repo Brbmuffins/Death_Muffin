@@ -143,7 +143,8 @@ if orm_node is not None and orm_node.image is not None and orm_node.image != bas
         rep['rough'] = True
 
 bpy.ops.object.select_all(action='SELECT')
-bpy.ops.export_scene.gltf(filepath=OUT, use_selection=True, export_format='GLB', export_yup=True, export_tangents=True, export_image_format='AUTO')
+bpy.ops.export_scene.gltf(filepath=OUT, use_selection=True, export_format='GLB', export_yup=True, export_tangents=True, export_image_format='AUTO',
+                          export_attributes=True)   # _DM_RIGID (finish.py) for the rig
 if REPORT:
     json.dump(rep, open(REPORT, 'w'), indent=1)
 print('GRIME', json.dumps(rep))

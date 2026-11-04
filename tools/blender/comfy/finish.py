@@ -1,11 +1,13 @@
-# blender -b --python finish.py -- <detailed.glb> <out.glb> <triangles> [--method solid|collapse] [--metal none|mixed|all|keep] [--hard] [--angle 40]
-#   [--tex 1024] [--bake N] [--reach 0.03] [--cells 256] [--calm N] [--metal-regions <json>] [--keep-regions <json>] [--report <json>]
+# blender -b --python finish.py -- <detailed.glb> <out.glb> <triangles> [--method solid|meshopt] [--metal none|mixed|all|keep] [--hard] [--angle 40]
+#   [--part-scale 1.5] [--part-tris 0.3] [--tex 1024] [--bake N] [--reach 0.03] [--cells 256] [--calm N] [--metal-regions <json>] [--keep-regions <json>] [--report <json>]
 # The game version of a detailed model (a Pixal3D model at ~200k faces), the studio way: a new mesh at <triangles>, fresh UVs in a few large charts, and the
 # detailed model's paint, shine and surface detail moved onto it (transfer.py). --method:
 #   solid     (default) the detailed surface into voxels (<cells> across), pinholes closed, everything the outside cannot reach filled (solid.py): hollow
 #             skins become walls and noise tunnels close, so the shrink can reach the budget; then edge collapse, and each corner within 2 voxels of the
 #             detailed surface moved onto it
-#   collapse  edge collapse on the welded detailed mesh (fine for bulky, clean models; stalls above the budget on hollow or tunnelled ones)
+#   meshopt   the welded detailed surface itself cut down by meshoptimizer (shrink.mjs: edge collapse that refuses folds and moves the kept corners to
+#             where they hold the shape best); a hero's face and skulls keep their shape at 20k triangles where Blender's collapse folded them into
+#             spikes (Gravecaller, 2026-11-03). Each group shrinks to its own share: the keep boxes and the rest, or a body's close-up parts and the body
 # The shrink spends triangles where removing them would change the shape most, so Pixal's wobble on flat walls costs triangles the ornaments need, and a thin
 # bar costs little to flatten (its error is small because it is thin). --calm N: the rebuilt surface's wobble calmed first (N rounds of bilateral normal
 # filtering, real edges kept: surface.py denoise), default 4: on the fence, hound, helm and mausoleum masters (2026-10-27) 4 rounds gave the closest outline
@@ -15,15 +17,19 @@
 # material its own roughness; a material is metal where Pixal's metal on it is high and sure and its colour reads as metal), so the fence's stone is never
 # patchy iron; all = by colour alone (grey, or gold/brass); keep = as Pixal made it. --metal-regions: where the metal is when Pixal marks the whole model
 # metal ({"boxes": [[x0, y0, z0, x1, y1, z1], ...], "rough": 0.5}, shares of the model's size; metal.py by_regions); without it such a model gets none. --hard: sharp edges kept (smooth by angle, --angle degrees). --reach: how far the transfer looks, share of the height.
-# --keep-regions: parts the shrink takes last, so they keep more of the triangles (a creature's open jaw and teeth): {"boxes": [[x0, y0, z0, x1, y1, z1],
+# --keep-regions: parts the shrink takes last (or, holding more than their share after a plain cut, first), so they keep that share of the triangles (a creature's open jaw and teeth): {"boxes": [[x0, y0, z0, x1, y1, z1],
 # ...], "frame": "<xform.json>", "share": 0.3}; boxes are shares of the detailed model's size in the frame its xform.json moves it to (the game's placement,
 # so one box fits every version of a creature), or its own frame without "frame"; share = the boxes' share of the finished triangles. Blender's decimate
-# vertex group (0.05 inside, 1 outside; never 0, which Blender never shrinks at all) with its strength searched until the boxes hold that share (within
+# vertex group (0.05 on the side kept, 1 on the other; never 0, which Blender never shrinks at all) with its strength searched until the boxes hold that share (within
 # 0.02): the same strength gives the hound's head 15% of the triangles on a 256 rebuild and 8% on a 512 one, so a fixed strength means nothing.
+# A detailed model of several materials (a body with close-up parts joined on, parts.py): every material's paint is moved, no chart crosses from the
+# body onto a part, and the parts' charts are drawn --part-scale (default 1.5) times larger, so the face and the skulls keep the detail their close-ups
+# carry (2.25x the texels, the body packed a little smaller), and the cut leaves the parts --part-tris (default 0.3) of the triangles (0: the cut decides;
+# keep boxes, when given, decide instead). A rigid part's corners (armour, parts.py) are numbered by piece in the _DM_RIGID attribute for the rig.
 # --tex: the texture size. The paint is moved at up to 4x that (at most 2048) and averaged down, so a 512 texture is each 4x4 block's mean, not one
 # point's colour (the UV gutters are packed for the final size; 2048 over 1024 gave visibly cleaner edges on a 512 hound, ~50 s more). --bake: the size
 # it is moved at instead (a whole multiple of --tex).
-import bpy, bmesh, sys, os, math, json, time
+import bpy, bmesh, sys, os, math, json, time, tempfile, shutil, subprocess
 import numpy as np
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
@@ -56,6 +62,8 @@ CELLS = opt('--cells', 256, int)
 REPORT = opt('--report', '', str)
 CALM = opt('--calm', 4, int)
 REGIONS = opt('--metal-regions', '', str)
+PART_SCALE = opt('--part-scale', 1.5)
+PART_TRIS = opt('--part-tris', 0.3)
 KEEP = json.load(open(opt('--keep-regions', '', str))) if '--keep-regions' in a else None
 t0 = time.time()
 rep = {'method': METHOD, 'target': TARGET, 'hard': HARD, 'tex': TEX, 'bake': BAKE, 'metal': METAL, 'calm': CALM}
@@ -119,47 +127,57 @@ def in_regions(P, regions, ref):
     return inside
 
 
-def collapse_keeping(o, n, regions, ref, tol=0.02, tries=10):
-    """edge collapse to <n> triangles with the regions' corners taken last, the vertex group's strength searched (doubling, then halving the gap in
-    log steps) until the regions hold <regions['share']> of the triangles; the closest try is kept"""
+def collapse_keeping(o, n, want, within, tol=0.02, tries=10):
+    """edge collapse to <n> triangles with <want> of them on the corners `within` (points -> bool) takes: a plain cut first; when it leaves them
+    fewer, their corners are taken last (a creature's jaw, a hero's face), when more, the rest's are (close-up parts denser than the body); the
+    vertex group's strength searched (doubling, then halving the gap in log steps) until the share is within <tol>; the closest try is kept"""
     V, F = arrays(o)
     if len(F) <= n:
         return {}
-    inside = in_regions(V, regions, ref)
-    g = o.vertex_groups.new(name='keep')
-    g.add(np.nonzero(~inside)[0].tolist(), 1.0, 'REPLACE')
-    g.add(np.nonzero(inside)[0].tolist(), 0.05, 'REPLACE')
-    want, src, best, lo_f, hi_f, f, log = regions['share'], o.data, None, None, None, 1.0, []
-    for _ in range(tries):
+    inside = within(V)
+    src, log = o.data, []
+
+    def attempt(f):
         t = bpy.data.objects.new('try', src.copy())
-        bpy.context.scene.collection.objects.link(t)
-        apply_mod(t, kind='DECIMATE', decimate_type='COLLAPSE', ratio=n / len(F), use_collapse_triangulate=True, vertex_group='keep',
-                  vertex_group_factor=f)
+        bpy.context.scene.collection.objects.link(t)                    # the mesh's copy carries the vertex group (Blender keeps their names on it)
+        kw = dict(vertex_group='keep', vertex_group_factor=f) if f else {}
+        apply_mod(t, kind='DECIMATE', decimate_type='COLLAPSE', ratio=n / len(F), use_collapse_triangulate=True, **kw)
         Vt, Ft = arrays(t)
-        got = float(in_regions(Vt[Ft].mean(1), regions, ref).mean())
+        got = float(within(Vt[Ft].mean(1)).mean())
         log.append([round(f, 3), round(got, 3)])
-        if best is None or abs(got - want) < abs(best[1] - want):
-            if best is not None:
+        return t, got
+
+    best = attempt(0.0)
+    plain = best[1]
+    if abs(plain - want) > tol:
+        keep_in = want > plain                                          # the side whose corners go last
+        g = o.vertex_groups.new(name='keep')
+        g.add(np.nonzero(~inside if keep_in else inside)[0].tolist(), 1.0, 'REPLACE')
+        g.add(np.nonzero(inside if keep_in else ~inside)[0].tolist(), 0.05, 'REPLACE')
+        lo_f, hi_f, f = None, None, 1.0
+        for _ in range(tries - 1):
+            t, got = attempt(f)
+            if abs(got - want) < abs(best[1] - want):
                 bpy.data.objects.remove(best[0], do_unlink=True)
-            best = (t, got)
-        else:
-            bpy.data.objects.remove(t, do_unlink=True)
-        if abs(got - want) <= tol:
-            break
-        if got < want:
-            lo_f = f
-        else:
-            hi_f = f
-        f = math.sqrt(lo_f * hi_f) if lo_f is not None and hi_f is not None else (f * 8 if hi_f is None else f / 8)
-        if f > 1000:                                                    # Blender's limit
-            break
+                best = (t, got)
+            else:
+                bpy.data.objects.remove(t, do_unlink=True)
+            if abs(got - want) <= tol:
+                break
+            if (got < want) == keep_in:                                 # not far enough: stronger
+                lo_f = f
+            else:
+                hi_f = f
+            f = math.sqrt(lo_f * hi_f) if lo_f is not None and hi_f is not None else (f * 8 if hi_f is None else f / 8)
+            if f > 1000:                                                # Blender's limit
+                break
     old = o.data
     o.data = best[0].data
     bpy.data.objects.remove(best[0], do_unlink=True)
     bpy.data.meshes.remove(old)
     for vg in list(o.vertex_groups):
         o.vertex_groups.remove(vg)
-    return {'share': want, 'cornersIn': round(float(inside.mean()), 3), 'tries': log}
+    return {'share': want, 'plain': round(plain, 3), 'cornersIn': round(float(inside.mean()), 3), 'tries': log}
 
 
 def drop_specks(o, share=1e-4, float_share=0.02, gap=0.015):
@@ -252,12 +270,22 @@ hi.data.vertices.foreach_get('co', co)
 co = co.reshape(-1, 3)
 height = float(co[:, 2].max() - co[:, 2].min())
 rep['hiTris'] = tris(hi)
+part_of = None
+if len(hi.data.materials) > 1:                                                   # a body with close-up parts (parts.py): a point is on a part when its
+    hm = hi.data                                                                 # nearest detailed surface is a part's (a material past the body's)
+    hb_parts = BVHTree.FromPolygons([v.co[:] for v in hm.vertices], [p.vertices[:] for p in hm.polygons])
+    hmat = np.array([p.material_index for p in hm.polygons])
+    part_of = lambda P: np.array([hmat[hb_parts.find_nearest(Vector(p))[2]] > 0 for p in P], dtype=bool)
+    rigid_mat = np.array([int(m.name.split('dm_rigid_')[1].split('.')[0]) if m and 'dm_rigid_' in m.name else 0 for m in hm.materials])
 
 # ---- the game mesh
 lo = hi.copy()
 lo.data = hi.data.copy()
 lo.name = 'game'
 bpy.context.scene.collection.objects.link(lo)
+mi = np.empty(len(lo.data.polygons), np.int32)
+lo.data.polygons.foreach_get('material_index', mi)
+lo.data.attributes.new('dm_part', 'INT', 'FACE').data.foreach_set('value', mi)   # clearing the materials zeroes their indices; meshopt groups by it
 lo.data.materials.clear()
 for uv in list(lo.data.uv_layers):
     lo.data.uv_layers.remove(uv)
@@ -269,15 +297,57 @@ bm.free()
 select_only(lo)
 bpy.ops.mesh.customdata_custom_splitnormals_clear()                 # the import's stored normals do not survive a rebuild: the game mesh gets its own
 
+def shrink(o):
+    """to the budget: the keep boxes, or else a body's close-up parts, held to their share of the triangles"""
+    if KEEP:
+        rep['keep'] = collapse_keeping(o, TARGET, KEEP['share'], lambda P: in_regions(P, KEEP, co))
+    elif part_of is not None and PART_TRIS > 0:
+        rep['partTris'] = collapse_keeping(o, TARGET, PART_TRIS, part_of)
+    else:
+        collapse_to(o, TARGET)
+
+
+def meshopt_shrink(o):
+    """to the budget with meshoptimizer (shrink.mjs), each group to its share: the keep boxes and the rest, or a body's close-up parts and the body"""
+    V, F = arrays(o)
+    if len(F) <= TARGET:
+        return {}
+    me = o.data
+    if KEEP:
+        g, shares = in_regions(V[F].mean(1), KEEP, co).astype(int), [1 - KEEP['share'], KEEP['share']]
+    elif part_of is not None and PART_TRIS > 0:
+        part = np.empty(len(me.polygons), np.int32); me.attributes['dm_part'].data.foreach_get('value', part)
+        poly = np.empty(len(me.loop_triangles), np.int64); me.loop_triangles.foreach_get('polygon_index', poly)
+        g, shares = (part[poly] > 0).astype(int), [1 - PART_TRIS, PART_TRIS]
+    else:
+        g, shares = np.zeros(len(F), int), [1.0]
+    d = tempfile.mkdtemp(prefix='dm-shrink-')
+    try:
+        V.astype(np.float32).tofile(os.path.join(d, 'pos.f32'))
+        for k in range(len(shares)):
+            F[g == k].astype(np.uint32).tofile(os.path.join(d, 'idx-%d.u32' % k))
+        json.dump({'targets': [int(round(s * TARGET)) for s in shares]}, open(os.path.join(d, 'job.json'), 'w'))
+        run = subprocess.run(['node', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shrink.mjs'), d], capture_output=True, text=True)
+        if run.returncode:
+            raise SystemExit('shrink.mjs failed: ' + run.stderr[-2000:])
+        P = np.fromfile(os.path.join(d, 'pos.out.f32'), np.float32).reshape(-1, 3)
+        T = np.fromfile(os.path.join(d, 'idx.out.u32'), np.uint32).reshape(-1, 3)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    used, T = np.unique(T, return_inverse=True)
+    new = bpy.data.meshes.new('game')
+    new.from_pydata(P[used].tolist(), [], T.reshape(-1, 3).tolist())
+    o.data = new
+    bpy.data.meshes.remove(me)
+    return json.loads(run.stdout.strip().splitlines()[-1])
+
+
 if METHOD == 'solid':
     rep['solid'] = solid_rebuild(lo, CELLS)
     if CALM:
         apply_mod(lo, kind='TRIANGULATE')
         rep['calmed'] = calm(lo, CALM, max(lo.dimensions))
-    if KEEP:
-        rep['keep'] = collapse_keeping(lo, TARGET, KEEP, co)
-    else:
-        collapse_to(lo, TARGET)
+    shrink(lo)
     hm = hi.data
     hm.calc_loop_triangles()
     hb = BVHTree.FromPolygons([v.co[:] for v in hm.vertices], [t.vertices[:] for t in hm.loop_triangles], all_triangles=True)
@@ -289,11 +359,8 @@ if METHOD == 'solid':
             v.co = loc
             moved += 1
     rep['snapped'] = round(moved / max(1, len(lo.data.vertices)), 3)
-elif METHOD == 'collapse':
-    if KEEP:
-        rep['keep'] = collapse_keeping(lo, TARGET, KEEP, co)
-    else:
-        collapse_to(lo, TARGET)
+elif METHOD == 'meshopt':
+    rep['meshopt'] = meshopt_shrink(lo)
 else:
     raise SystemExit('unknown method ' + METHOD)
 apply_mod(lo, kind='TRIANGULATE', quad_method='BEAUTY', ngon_method='BEAUTY')
@@ -305,6 +372,36 @@ if KEEP:
     rep['keep']['trisIn'] = round(float(in_regions(V[F].mean(1), KEEP, co).mean()), 3)
 rep['meshS'] = round(time.time() - t0, 1)
 
+
+def rigid_pieces(o):
+    """the parts that move as one piece (parts.py's rigid: armour), as each corner's piece number (0 none) in _DM_RIGID, which the next steps carry
+    and the rig reads (every corner of a piece gets the same bone weights); each loose piece of the game mesh takes its corners' majority"""
+    me = o.data
+    V, F = arrays(o)
+    near = np.array([rigid_mat[hmat[hb_parts.find_nearest(Vector(p))[2]]] for p in V])
+    parent = np.arange(len(V))
+    def root(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]; i = parent[i]
+        return i
+    for t in F:
+        for a_, b_ in ((t[0], t[1]), (t[1], t[2])):
+            ra, rb = root(a_), root(b_)
+            if ra != rb:
+                parent[ra] = rb
+    comp = np.array([root(i) for i in range(len(V))])
+    piece = np.zeros(len(V), int)
+    for c in np.unique(comp):
+        m = comp == c
+        ids, n = np.unique(near[m], return_counts=True)
+        piece[m] = ids[n.argmax()]
+    me.attributes.new('_DM_RIGID', 'FLOAT', 'POINT').data.foreach_set('value', piece.astype(np.float32))
+    return {int(k): int((piece == k).sum()) for k in np.unique(piece) if k}
+
+
+if part_of is not None and rigid_mat.any():
+    rep['rigid'] = rigid_pieces(lo)
+
 # ---- shading and UVs
 for p in lo.data.polygons:
     p.use_smooth = True
@@ -312,11 +409,15 @@ select_only(lo)
 if HARD:
     bpy.ops.object.shade_smooth_by_angle(angle=math.radians(ANGLE), keep_sharp_edges=True)
 lo.data.uv_layers.new(name='UVMap')
-rep['charts'] = make_charts(lo, report=rep, size=TEX)
+groups = None
+if part_of is not None:
+    groups = part_of([p.center for p in lo.data.polygons]).astype(int)
+    rep['partShare'] = round(float(groups.mean()), 3)
+rep['charts'] = make_charts(lo, report=rep, size=TEX, groups=groups, group_scale=PART_SCALE)
 rep['uvS'] = round(time.time() - t0, 1)
 
-# ---- the detailed model's maps (base colour, ORM: R occlusion G roughness B metal, normal) onto the game mesh
-hbsdf = next(n for n in hi.active_material.node_tree.nodes if n.type == 'BSDF_PRINCIPLED')
+# ---- the detailed model's maps (base colour, ORM: R occlusion G roughness B metal, normal) onto the game mesh; a model of several materials (a body
+# with parts joined on) moves each part's own paint
 
 
 def src_image_node(sock):
@@ -330,11 +431,18 @@ def src_image_node(sock):
     return None
 
 
-hi_maps = {}
-for key, sock in (('base', 'Base Color'), ('orm', 'Roughness'), ('normal', 'Normal')):
-    n = src_image_node(hbsdf.inputs[sock]) or (src_image_node(hbsdf.inputs['Metallic']) if key == 'orm' else None)
-    if n:
-        hi_maps[key] = image_array(n.image)
+def material_maps(mat):
+    bsdf = next((n for n in mat.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'), None) if mat and mat.use_nodes else None
+    out = {}
+    for key, sock in (('base', 'Base Color'), ('orm', 'Roughness'), ('normal', 'Normal')):
+        n = bsdf and (src_image_node(bsdf.inputs[sock]) or (src_image_node(bsdf.inputs['Metallic']) if key == 'orm' else None))
+        if n:
+            out[key] = image_array(n.image)
+    return out
+
+
+hi_maps = [material_maps(m) for m in hi.data.materials] or [{}]
+rep['hiMaterials'] = len(hi_maps)
 maps, st = transfer(hi, lo, hi_maps, BAKE, REACH * height, margin=16 * (BAKE // TEX))   # edge padding 16 texels of the final size at any bake size
 rep.update({'xfer_' + k: v for k, v in st.items()})
 
@@ -408,7 +516,8 @@ if 'normal' in tex:
 
 bpy.data.objects.remove(hi, do_unlink=True)
 select_only(lo)
-bpy.ops.export_scene.gltf(filepath=OUT, use_selection=True, export_format='GLB', export_yup=True, export_tangents=True, export_image_format='AUTO')
+bpy.ops.export_scene.gltf(filepath=OUT, use_selection=True, export_format='GLB', export_yup=True, export_tangents=True, export_image_format='AUTO',
+                          export_attributes=True)                                # _DM_RIGID, when there are rigid parts
 rep['totalS'] = round(time.time() - t0, 1)
 print('FINISH', json.dumps(rep))
 if REPORT:

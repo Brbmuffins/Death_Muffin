@@ -4,7 +4,8 @@
 # one (so a hand's frame, which the game holds props in, stays the same frame relative to the arm), then the body skinned (--skin geo: geodesic
 # voxel binding, geoskin.py; heat: Blender's bone heat) on the bones the game's skins use: the twist bones for the limbs, Waist, Spine01, Spine02, NeckTwist01, Head,
 # the clavicles, hands, feet and toes. The body is first turned to the heroes' frame (+X forward; the game placement faces +Y, away from the game's
-# camera, as render-model.sh's half turn shows): `facing` reads which way it faces, and a body whose feet then point backwards is refused. Exports the rigged body with no clips, facing +X like every hero body (its row turns it, as hero_gravecaller's yaw does).
+# camera, as render-model.sh's half turn shows): `facing` reads which way it faces, and a body whose feet then point backwards is refused. Each rigid
+# piece (armour: finish.py's _DM_RIGID) gets one set of weights, its corners' mean, so it moves as one. Exports the rigged body with no clips, facing +X like every hero body (its row turns it, as hero_gravecaller's yaw does).
 import bpy, sys, os, json, math, re
 import numpy as np
 from mathutils import Matrix, Vector
@@ -178,6 +179,35 @@ else:
     body.parent = arm
 W[W < 1e-3] = 0
 W = W / np.maximum(W.sum(1, keepdims=True), 1e-9)
+# armour that moves as one piece (finish.py's _DM_RIGID: a shoulder plate, a gorget) is carried by the bones it rests on: one set of weights for the
+# whole piece, from the three deform bones nearest its corners among those whose middle is no higher than its middle (2% of the height spare, for a
+# level T-pose arm's bracer): a helm's middle is above the head bone's, a plate's or a gorget's well below it. By 1/distance^4. The skin's own weights would not do: the Gravecaller's plates and gorget touch the hood and took 40% and
+# 82% of the head from it, and a piece weighted like the skin under it stretches between its bones (the plates smeared toward the arm in a cast)
+ra = me.attributes.get('_DM_RIGID')
+if ra is not None:
+    piece = np.empty(nv, np.float32); ra.data.foreach_get('value', piece); piece = np.rint(piece).astype(int)
+    ends = {b.name: (np.array(b.head_local), np.array(b.tail_local)) for b in arm.data.bones}
+    rep['rigid'] = {}
+    for k in np.unique(piece[piece > 0]):
+        m = piece == k
+        C = co[m]
+        d = np.full(len(names), np.inf)
+        for j, n in enumerate(names):
+            h, t = ends[n]
+            if (h[2] + t[2]) / 2 > C[:, 2].mean() + 0.02 * H:
+                continue
+            sg = t - h
+            u = np.clip((C - h) @ sg / max(float(sg @ sg), 1e-12), 0, 1)
+            d[j] = np.linalg.norm(C - (h + u[:, None] * sg), axis=1).mean()
+        near = [j for j in np.argsort(d)[:3] if np.isfinite(d[j])]
+        w = np.zeros(len(names))
+        if near:
+            w[near] = 1 / np.maximum(d[near], 1e-6) ** 4
+            W[m] = w / w.sum()
+        else:
+            W[m] = W[m].mean(0)
+        rep['rigid'][int(k)] = {'corners': int(m.sum()), 'bones': {names[j]: round(float(W[m][0, j]), 2) for j in np.argsort(-W[m][0])[:3] if W[m][0, j] > 0.01}}
+    me.attributes.remove(me.attributes['_DM_RIGID'])
 for gi, n in enumerate(names):
     vg = body.vertex_groups[n]
     vg.remove(list(range(nv)))

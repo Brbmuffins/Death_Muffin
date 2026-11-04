@@ -27,6 +27,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const KINDS = JSON.parse(readFileSync(join(ROOT, 'tools', 'blender', 'comfy', 'kinds.json'), 'utf8')).kinds;
 const ID = /^[a-z0-9_]{3,40}$/;
 const FILE = /^[a-z0-9][a-z0-9._-]{0,60}\.glb$/;
+const PICTURE = /^[a-z0-9][a-z0-9._-]{0,60}\.png$/;
 const RECORD_FIELDS = ['id', 'concept', 'picture', 'run', 'frame', 'steps', 'game', 'tris', 'note'];
 const BIPED_TEMPLATE = 'client/assets/slice/models/hero_gravecaller/character.glb';   // the heroes' skeleton: names, parents, each bone's axes
 
@@ -43,11 +44,15 @@ function typeOk(p, v) {
     case 'vec': return Array.isArray(v) && v.length === p.len && v.every(num);
     case 'boxes': return Array.isArray(v) && v.length >= 1 && v.length <= 8 && v.every((b) => Array.isArray(b) && b.length === 6 && b.every((x) => typeof x === 'number' && x >= 0 && x <= 1) && b[0] < b[3] && b[1] < b[4] && b[2] < b[5]);
     case 'map': return !!v && typeof v === 'object' && !Array.isArray(v) && fieldErrors(p.fields, v, '').length === 0;
+    case 'list': return Array.isArray(v) && v.length >= (p.min ?? 1) && v.length <= (p.max ?? 8) && v.every((x) => typeOk({ type: 'map', fields: p.fields }, x));
+    case 'file': return typeof v === 'string' && FILE.test(v);
+    case 'picture': return typeof v === 'string' && PICTURE.test(v);
     default: return false;
   }
 }
 
-const want = (p) => p.type === 'enum' ? `one of ${p.values.join(', ')}` : p.type === 'vec' ? `${p.len} numbers` : p.type === 'map' ? `{${Object.keys(p.fields).join(', ')}}` : p.type;
+const want = (p) => p.type === 'enum' ? `one of ${p.values.join(', ')}` : p.type === 'vec' ? `${p.len} numbers` : p.type === 'map' ? `{${Object.keys(p.fields).join(', ')}}`
+  : p.type === 'list' ? `a list of ${p.min ?? 1} to ${p.max ?? 8} {${Object.keys(p.fields).join(', ')}}` : p.type === 'file' ? 'a .glb file name' : p.type === 'picture' ? 'a .png file name' : p.type;
 
 function fieldErrors(params, obj, at) {
   const e = [];
@@ -83,7 +88,16 @@ export function validateRecord(rec, id) {
     if (s.kind === 'finish' && (s.keep || s.metalRegions) && !rec.frame) e.push(`${at}: finish's boxes are in the game placement: find the frame first (make.mjs fit)`);
     if (s.kind === 'rig' && i !== rec.steps.length - 1) e.push(`${at}: rig must be the last step`);
     if (['grime', 'rig'].includes(s.kind) && !kinds.slice(0, i).includes('place')) e.push(`${at}: ${s.kind} needs the game placement: a place step before it`);
-    if (s.kind === 'bend' && kinds.indexOf('finish') !== -1 && kinds.indexOf('finish') < i) e.push(`${at}: bend works on the detailed model: before finish`);
+    if (['bend', 'parts'].includes(s.kind) && kinds.indexOf('finish') !== -1 && kinds.indexOf('finish') < i) e.push(`${at}: ${s.kind} works on the detailed model: before finish`);
+    if (s.kind === 'materials' && !(kinds.indexOf('finish') !== -1 && kinds.indexOf('finish') < i)) e.push(`${at}: materials works on the game mesh: after finish`);
+    if (s.kind === 'materials' && kinds.indexOf('place') !== -1 && kinds.indexOf('place') < i) e.push(`${at}: materials needs the picture's frame: before place`);
+    if (s.kind === 'parts' && Array.isArray(s.parts)) {
+      for (const [j, p] of s.parts.entries()) {
+        const b = p?.box;
+        if (Array.isArray(b) && b.length === 4 && !(b[0] < b[2] && b[1] < b[3])) e.push(`${at}: part ${j + 1}'s box must run from its low corner to its high one`);
+        if (p?.file === rec.run?.file) e.push(`${at}: part ${j + 1} is the run's own model`);
+      }
+    }
   });
   if (kinds.filter((k) => k === 'finish').length !== 1) e.push('steps need exactly one finish (the game mesh)');
   return e;
@@ -109,11 +123,25 @@ function stepArgs(step, frameFile, work, n) {
   }
   if (step.kind === 'finish') {
     const a = [String(step.triangles), '--tex', String(step.texture), '--metal', step.metal, '--report', report];
-    for (const [k, f] of [['cells', '--cells'], ['angle', '--angle'], ['calm', '--calm'], ['reach', '--reach']]) if (step[k] !== undefined) a.push(f, String(step[k]));
+    for (const [k, f] of [['method', '--method'], ['partScale', '--part-scale'], ['partTris', '--part-tris'], ['cells', '--cells'], ['angle', '--angle'], ['calm', '--calm'], ['reach', '--reach']]) if (step[k] !== undefined) a.push(f, String(step[k]));
     if (step.hard) a.push('--hard');
     if (step.keep) { const f = join(work, `${n}-keep.json`); writeFileSync(f, JSON.stringify({ ...step.keep, frame: frameFile })); a.push('--keep-regions', f); }
     if (step.metalRegions) { const f = join(work, `${n}-metal.json`); writeFileSync(f, JSON.stringify(step.metalRegions)); a.push('--metal-regions', f); }
     return a;
+  }
+  if (step.kind === 'parts') {
+    const cfg = join(work, `${n}-parts.cfg.json`);
+    const dir = dirname(work);
+    for (const p of step.parts) if (!existsSync(join(dir, p.file))) throw new Error(`step ${n} (parts): no ${p.file} beside the run's model (a model-gen run of the part's picture)`);
+    writeFileSync(cfg, JSON.stringify({ parts: step.parts.map((p) => ({ ...p, file: join(dir, p.file) })) }));
+    return [cfg, '--report', report];
+  }
+  if (step.kind === 'materials') {
+    const cfg = join(work, `${n}-materials.cfg.json`);
+    const dir = dirname(work);
+    for (const l of step.labels) if (!existsSync(join(dir, l.file))) throw new Error(`step ${n} (materials): no ${l.file} beside the run's model`);
+    writeFileSync(cfg, JSON.stringify({ labels: step.labels.map((l) => ({ ...l, file: join(dir, l.file) })), ...(step.occlusion !== undefined ? { occlusion: step.occlusion } : {}), ...(step.wear !== undefined ? { wear: step.wear } : {}) }));
+    return [cfg, '--report', report];
   }
   if (step.kind === 'place') return [frameFile];
   if (step.kind === 'grime') {

@@ -79,8 +79,13 @@ and buildings). `follow`: how closely the shape stages follow the picture (7.5; 
 **Several views** (team app 0.5.5; a run's `views` in the runs file, Pixal3D only): the model is made from more than one picture of the subject. The run's picture is the front; `views` adds
 `left` (the subject's left side: its head to the picture's left), `back` and `right` (head to the right), any of them. Every picture goes in as given, so they are made together: square
 `.png`s, the subject on black (no background removal here), centred at the same scale in each, the widest spanning about 1/1.1 of the frame (model-gen.sh refuses pictures that are not square
-`.png`s). The views come from a turnaround sheet of the concept in its own style (a Gemini job beside the concept's, `concept_<id>_views`), cut into one picture a view; a subject that is
-the same on both sides may use its left view mirrored as the right. `fov` is the views' camera angle too (20 unless set; drawn views are close to flat).
+`.png`s). The views come from a turnaround sheet of the concept in its own style (a Gemini job beside the concept's, `concept_<id>_views`), cut into one picture a view by
+`node tools/assets/cut-views.mjs <sheet> <out dir> [--names front,left,back,right]` (the figures left to right, the same scale and floor in each); a subject that is
+the same on both sides may use its left view mirrored as the right. Look at every view before using it: a figure in a T-pose often comes back with three-quarter "side"
+views, which bend the model, so such a run takes only the views that are true (the back). `fov` is the views' camera angle too (20 unless set; drawn views are close to flat).
+Views help only where the front cannot show the shape: on the Gravecaller (2026-11-03) the concept alone beat front + back on all five seeds (with the back, the
+face sank into the hood's shadow, the chest smeared, the paint went grey and the robe split into ribbons), so a figure whose back differs from its front (a cape over
+an open robe) is made from its front alone; its small parts get their detail from close-ups instead ("Image to model", `parts`).
 
 ## Build
 
@@ -96,7 +101,10 @@ loses them until `node tools/blender/jobs.mjs replay <id>` (`build-art.sh` does 
 detailed model and writes the record's `game` file (the Discord agent runs it in its sandbox as `make-model.sh`). `make.mjs fit <id>` finds the game
 placement first: `--stand --height <m> --yaw <deg>` for a new subject (stood on the side it rests on), `--ref <old model>` for a remake (fitted onto
 the old one; a nearly symmetric shape such as a building can fit back to front, which `--yaw 180` turns round); either way the placed model is written to `work/fit.glb` to look at. The steps (`tools/blender/comfy/kinds.json`, `make.mjs kinds`):
-`finish` (the game mesh: a solid rebuild, cut to the budget, new UVs packed by xatlas, the detailed paint, roughness, metal and normals baked on),
+`parts` (close-ups fitted onto the detailed body before the bake: "A character's detail" below),
+`finish` (the game mesh: a solid rebuild, or `method: meshopt` straight on the detailed mesh, cut to the budget, new UVs packed by xatlas, the detailed
+paint, roughness, metal and normals baked on; a body with parts keeps each part's charts apart, drawn `partScale` times larger, and gives the parts `partTris`
+of the triangles), `materials` (what each part of the finished model is made of, from label pictures, and the shine that goes with it: below),
 `place`, `bend` (a part turned about a joint before the bake: the hound's head), `grime` (dirt painted in) and `rig`, a skeleton built from the
 placed model's shape: `quad` is the four-legged one the bone hound has (`Root`, `Hip`, `Spine1-2`, `Chest`, `Neck1-2`, `Head`, `Tail_A-D`,
 `FL/FR_Upper/Lower/Paw`, `HL/HR_Thigh/Shin/Meta/Paw`), `legs` any number of legs round one body (the fen spider: `Root`, `Hip`, `Head`, `Abdomen`,
@@ -106,6 +114,33 @@ same run. A four-legged or many-legged model's moves are one `motion` job on its
 `fen_spider.json`); a biped's are one `retarget` job `from` a hero (docs/BLENDER-PIPELINE.md "Biped to biped"). The xatlas packer is set up
 once per Blender install (`tools/blender/comfy/setup.sh`). A model placed facing forward this way faces away from the game's camera at no turn,
 so its creature row has `"yaw": 3.141592653589793`, as the hounds' do; a biped's row has the heroes' `"yaw": -1.5707963267948966`.
+
+### A character's detail
+
+Pixal3D reads a whole figure at 512 to 1024 px, so a hero's face or the skull on a shoulder plate is about 25 px of it and comes out a lump; triangles are
+not the limit (the Gravecaller, 2026-11-03). Such parts are made on their own from close-ups and fitted onto the body (`parts`), and what each part of
+the model is made of comes from a label picture of the concept (`materials`). A hero, step by step:
+
+1. **The body:** the concept as the run's picture (alone for a figure whose back differs from its front: "Several views" above), three seeds at the
+   detailed settings; pick the seed whose face, hands and outline are closest to the concept in close-up renders.
+2. **Close-ups:** a Gemini job per small part, `concept_<id>_part_<part>` in `concepts.json` (the Gravecaller's head, shoulder plate and gorget are the
+   examples): `refs` the concept twice, the first cropped to the part (`crop`, in the concept's pixels) and the second whole for context, square, 2K,
+   the picture rules above. A shoulder plate is made once, the subject's left (the picture's right), and worn on both sides (`mirror`). Look at each
+   before its run: Gemini sometimes restyles a part (the Ossuary's shoulder plate came back a mask three times); then that part stays the body's own.
+3. **Part runs:** each close-up into a detailed model, two seeds (one model-gen job holds 8 runs); pick by close-up against its picture.
+4. **Boxes:** each part's box measured on the concept, its rectangle over the figure's (the non-background pixels' box), as `[x0, z0, x1, z1]`
+   shares with z from the bottom; `facing` is the side the close-up saw (a shoulder plate drawn from outside the arm faces `left`). A part the close-up
+   drew in another pose turns `tilt` degrees about its middle and sizes by `scale` against its box (the Gravecaller's plate: `left`, tilt 40, scale 1.3,
+   `mirror`). Armour is `rigid`: the rig moves each piece as one with the bones nearest it, so a plate or gorget never bends with the arm or neck. The white
+   fill Gemini paints round a part (the Gravecaller's neck behind the gorget) is cut off the part's model on its own.
+5. **Labels:** `bash tools/assets/matmap/setup.sh` once (a Python venv and three pinned models in `~/.cache/dm-ops/matmap`), then
+   `bash tools/assets/matmap/run.sh <concept.png> <labels.png> --overlay <check.jpg>` (CPU, about 4 minutes and 3.6 GB; SAM 2.1 cuts the figure into
+   regions, SigLIP 2 names each region's material, YuNet keeps the face skin). Look at the overlay: the labels go into `materials` as the front view.
+   A body made from the front alone takes the front's labels alone: a back view labels belts, bones and hair the model's back does not have.
+6. **The record:** `parts`, then `finish` with `method: meshopt` at 20000 triangles (`partScale` 1.5, `partTris` 0.3, `tex` 1024, `metal: keep`),
+   `materials`, `place`, `rig: biped`; the part runs' files and the labels sit beside the run's model in `art-src/comfy/<id>/`.
+
+Gemini costs about $0.10 a close-up, so a hero's parts cost $0.50 to $1; the model runs are free.
 
 ## Into the game
 

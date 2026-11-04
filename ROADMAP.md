@@ -305,6 +305,8 @@ New ideas and requests from anyone land here first, one line each with its date 
 the team says yes, because every unchecked item in a phase or the polish list is treated as approved work by every session. When a phase
 is planned, its ideas move into its checklist as Fix or New items (or straight away, when Helix says so). Bugs and gaps go to
 KNOWN-GAPS.md instead.
+- The `solid` finish's shrink on meshoptimizer too (the `meshopt` finish's `shrink.mjs`, which keeps a face's shape where Blender's collapse folded
+  it into spikes), so props and buildings rebuilt solid keep fine edges at the same budget. Section: Phase 2 C, content pipelines. 2026-11-04.
 - Cloaks as a separate wearable item that sways with the body (Helix). Claude's recommendation: a short chain of spring bones (Godot's
   `SpringBoneSimulator3D`), not a full cloth simulation, which is too heavy for weaker PCs. The cape chain built by the Blender `cloak` job
   (`Cape01`-`Cape04`) and the mastery cape's stiff mesh (`DmGearProps.build_cape`) would be the first to move onto it. Section: Phase 4,

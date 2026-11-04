@@ -11,7 +11,7 @@ import { KINDS, RIG_SCRIPT, validateRecord } from './make.mjs';
 const DIR = new URL('../../art-manifest/comfy/', import.meta.url);
 const COMFY = new URL('./comfy/', import.meta.url);
 const records = readdirSync(DIR).filter((f) => f.endsWith('.json')).map((f) => [f.slice(0, -5), JSON.parse(readFileSync(new URL(f, DIR), 'utf8'))]);
-const TYPES = ['int', 'number', 'bool', 'enum', 'vec', 'boxes', 'map'];
+const TYPES = ['int', 'number', 'bool', 'enum', 'vec', 'boxes', 'map', 'list', 'file', 'picture'];
 const copy = (x) => JSON.parse(JSON.stringify(x));
 
 test('every recorded model checks out', () => {
@@ -25,7 +25,7 @@ test('every step kind has its script and known parameter types', () => {
     for (const s of scripts) assert.ok(s && existsSync(join(COMFY.pathname, s)), `${name}: no script ${s}`);
     for (const [p, spec] of Object.entries(kind.params)) {
       assert.ok(TYPES.includes(spec.type), `${name}.${p}: unknown type ${spec.type}`);
-      if (spec.type === 'map') for (const [f, fs] of Object.entries(spec.fields)) assert.ok(TYPES.includes(fs.type), `${name}.${p}.${f}: unknown type ${fs.type}`);
+      if (spec.type === 'map' || spec.type === 'list') for (const [f, fs] of Object.entries(spec.fields)) assert.ok(TYPES.includes(fs.type), `${name}.${p}.${f}: unknown type ${fs.type}`);
     }
   }
 });
@@ -46,5 +46,24 @@ test('a record that breaks a rule is refused', () => {
   bad((r) => { delete r.frame; }, 'a place without a frame');
   bad((r) => { r.steps.find((s) => s.kind === 'finish').triangles = KINDS.finish.params.triangles.max + 1; }, 'triangles over the kind\'s range');
   bad((r) => { r.steps.find((s) => s.kind === 'finish').texture = 333; }, 'a texture size the kind does not list');
-  bad((r) => { r.steps[0].kind = 'paint'; }, 'an unknown kind');
+  bad((r) => { r.steps[0].kind = 'sculpt'; }, 'an unknown kind');
+  const part = { file: 'head-pixal-s0.glb', box: [0.4, 0.8, 0.6, 1], facing: 'front' };
+  const withParts = (change) => (r) => { r.steps.unshift({ kind: 'parts', parts: [copy(part)] }); change(r.steps[0]); };
+  const ok = copy(base);
+  withParts(() => {})(ok);
+  assert.deepEqual(validateRecord(ok, id), [], 'a parts step before finish checks out');
+  bad(withParts((s) => { s.parts = []; }), 'parts with no part');
+  bad(withParts((s) => { s.parts[0].box = [0.6, 0.8, 0.4, 1]; }), 'a part box that runs backwards');
+  bad(withParts((s) => { s.parts[0].file = 'head.png'; }), 'a part that is not a model file');
+  bad(withParts((s) => { s.parts[0].facing = 'sideways'; }), 'a facing the kind does not list');
+  bad((r) => { r.steps.splice(r.steps.findIndex((s) => s.kind === 'finish') + 1, 0, { kind: 'parts', parts: [copy(part)] }); }, 'parts after finish');
+  bad(withParts((s) => { s.parts[0].file = base.run.file; }), "a part that is the run's own model");
+  const fin = (r) => r.steps.findIndex((s) => s.kind === 'finish');
+  const mats = { kind: 'materials', labels: [{ file: 'labels-front.png', view: 'front' }] };
+  const ok2 = copy(base);
+  ok2.steps.splice(fin(ok2) + 1, 0, copy(mats));
+  assert.deepEqual(validateRecord(ok2, id), [], 'a materials step right after finish checks out');
+  bad((r) => { r.steps.splice(fin(r), 0, copy(mats)); }, 'materials before finish');
+  bad((r) => { r.steps.splice(r.steps.findIndex((s) => s.kind === 'place') + 1, 0, copy(mats)); }, 'materials after place');
+  bad((r) => { r.steps.splice(fin(r) + 1, 0, { ...copy(mats), labels: [{ file: 'labels.jpg', view: 'front' }] }); }, 'a label that is not a .png');
 });

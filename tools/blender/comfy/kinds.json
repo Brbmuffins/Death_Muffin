@@ -1,5 +1,5 @@
 {
-  "_note": "Steps that make a game model from a ComfyUI run (ASSET_PIPELINE.md 'Image to model'): the record art-manifest/comfy/<id>.json lists them and tools/blender/make.mjs build <id> does them in order on the run's detailed model (art-src/comfy/<id>/<run.file>), writing the record's game file beside it. Positions are shares (0 to 1) of the model's box in its game placement (the record's frame: z up, facing +y). Types: int, number, bool, enum (values), vec (a list of len numbers), boxes (lists of six numbers x0 y0 z0 x1 y1 z1). A new kind is an entry here plus its arguments in make.mjs (STEP_ARGS).",
+  "_note": "Steps that make a game model from a ComfyUI run (ASSET_PIPELINE.md 'Image to model'): the record art-manifest/comfy/<id>.json lists them and tools/blender/make.mjs build <id> does them in order on the run's detailed model (art-src/comfy/<id>/<run.file>), writing the record's game file beside it. Positions are shares (0 to 1) of the model's box in its game placement (the record's frame: z up, facing +y). Types: int, number, bool, enum (values), vec (a list of len numbers), boxes (lists of six numbers x0 y0 z0 x1 y1 z1), map (an object of fields), list (min to max objects of fields), file (a .glb file name beside the run's model), picture (a .png file name beside it). A new kind is an entry here plus its arguments in make.mjs (STEP_ARGS).",
   "kinds": {
     "bend": {
       "script": "bend.py",
@@ -12,11 +12,32 @@
         "above": { "type": "number", "min": 0, "max": 1 }
       }
     },
+    "parts": {
+      "script": "parts.py",
+      "what": "Close-up parts fitted onto the detailed body, each keeping its own paint: a part too small for Pixal3D to read in the whole picture (a face, the skull on a shoulder plate) drawn large on its own and made into its own model (`file`, a model-gen run beside the run's model). Pixal3D's white fill (no subject there: a neck under a head) cut off, turned so the side its picture saw faces `facing` (the subject's own left and right), sized to `box` times `scale`, turned `tilt` degrees about its middle (a part drawn in another pose than the body wears it: a shoulder plate drawn from outside the arm lies over the shoulder at tilt 40, scale 1.3), and set at the depth the body has there; the body's own surface inside and just over the part goes. box: [x0, z0, x1, z1], where the part is on the body's picture as shares of the detailed model's own box (x the picture's left to right, z bottom to top). mirror: a copy on the other side (one shoulder plate made, both worn). rigid: armour that moves as one piece (a shoulder plate, a gorget): the rig gives all of it the same bone weights. Before finish.",
+      "params": {
+        "parts": {
+          "type": "list", "min": 1, "max": 8, "req": true,
+          "fields": {
+            "file": { "type": "file", "req": true },
+            "box": { "type": "vec", "len": 4, "min": 0, "max": 1, "req": true },
+            "facing": { "type": "enum", "values": ["front", "back", "left", "right", "top"] },
+            "tilt": { "type": "number", "min": -90, "max": 90 },
+            "scale": { "type": "number", "min": 0.5, "max": 2 },
+            "mirror": { "type": "bool" },
+            "rigid": { "type": "bool" }
+          }
+        }
+      }
+    },
     "finish": {
       "script": "finish.py",
-      "what": "The game version of the detailed model: a solid rebuild (cells voxels across), cut to `triangles` (the model's budget), fresh UVs in a few large charts packed by xatlas, and the detailed model's paint, roughness, metal and normals baked onto them at `texture` px. metal: none (stone, bone, wood, cloth, flesh), mixed (decided per material), all (by colour), keep (as Pixal made it); metalRegions {boxes, rough} where the metal is when Pixal marks the whole model metal. keep {boxes, share}: parts the cut takes last, so they hold that share of the triangles (a jaw and its fangs). hard: sharp edges kept (smooth by `angle` degrees).",
+      "what": "The game version of the detailed model: a solid rebuild (cells voxels across; method meshopt: none, the detailed surface itself cut down by meshoptimizer, which keeps faces, folds and thin cloth crisp on a clean model such as a hero), cut to `triangles` (the model's budget), fresh UVs in a few large charts packed by xatlas, and the detailed model's paint, roughness, metal and normals baked onto them at `texture` px. metal: none (stone, bone, wood, cloth, flesh), mixed (decided per material), all (by colour), keep (as Pixal made it); metalRegions {boxes, rough} where the metal is when Pixal marks the whole model metal. keep {boxes, share}: parts the cut takes last, so they hold that share of the triangles (a jaw and its fangs). hard: sharp edges kept (smooth by `angle` degrees). A body with close-up parts (a parts step): each part's paint moved, partScale (default 1.5) times the texture size on its charts, partTris (default 0.3; 0 lets the cut decide) of the triangles.",
       "params": {
         "triangles": { "type": "int", "min": 300, "max": 20000, "req": true },
+        "method": { "type": "enum", "values": ["solid", "meshopt"] },
+        "partScale": { "type": "number", "min": 1, "max": 3 },
+        "partTris": { "type": "number", "min": 0, "max": 0.6 },
         "texture": { "type": "enum", "values": [256, 512, 1024, 2048], "req": true },
         "metal": { "type": "enum", "values": ["none", "mixed", "all", "keep"], "req": true },
         "cells": { "type": "int", "min": 128, "max": 768 },
@@ -26,6 +47,21 @@
         "angle": { "type": "number", "min": 10, "max": 80 },
         "calm": { "type": "int", "min": 0, "max": 16 },
         "reach": { "type": "number", "min": 0.005, "max": 0.1 }
+      }
+    },
+    "materials": {
+      "script": "materials.py",
+      "what": "What each part of the finished model is made of, and its shine: a label picture per view (`labels`: a .png beside the run's model, the same framing as the picture the model was made from, each pixel's red 1 metal, 2 leather, 3 cloth, 4 skin, 5 hair, 6 bone, 7 wood, 8 stone, 9 gem, 0 unknown) gives every texel its camera sees a material, the rest from the nearest seen texels of like colour, then by matching colours. Each material gets its own roughness and metal, varied by the paint's light and dark; metal gets worn bright edges and dark crevices (`wear`, 0 none to 2), and the occlusion is lightened to `occlusion` of its depth (Pixal3D bakes it deep: dull, flat paint). After finish, before place.",
+      "params": {
+        "labels": {
+          "type": "list", "min": 1, "max": 4, "req": true,
+          "fields": {
+            "file": { "type": "picture", "req": true },
+            "view": { "type": "enum", "values": ["front", "back"], "req": true }
+          }
+        },
+        "occlusion": { "type": "number", "min": 0, "max": 1 },
+        "wear": { "type": "number", "min": 0, "max": 2 }
       }
     },
     "place": {

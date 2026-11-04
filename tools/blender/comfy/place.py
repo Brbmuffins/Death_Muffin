@@ -11,5 +11,5 @@ bpy.ops.import_scene.gltf(filepath=SRC)
 for o in [o for o in bpy.data.objects if o.type == 'MESH']:
     o.data.transform(o.matrix_world.inverted() @ X @ o.matrix_world)
 bpy.ops.object.select_all(action='SELECT')
-bpy.ops.export_scene.gltf(filepath=OUT, use_selection=True, export_format='GLB', export_yup=True, export_tangents=True)
+bpy.ops.export_scene.gltf(filepath=OUT, use_selection=True, export_format='GLB', export_yup=True, export_tangents=True, export_attributes=True)   # _DM_RIGID for the rig
 print('PLACE', OUT)

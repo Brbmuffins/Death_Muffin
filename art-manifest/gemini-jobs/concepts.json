@@ -94,5 +94,130 @@
     "refs": ["art-src/concepts/wpn_scythe.png"],
     "aspect": "1:1",
     "prompt": "3D modeling source: redraw exactly the scythe in the image as a game-ready 3D render, keeping its design, its view and its wear: the dark weathered wooden shaft with its slight bend, the dark leather grip wraps, the four riveted iron bands, the riveted iron strap that holds the blade, the old yellowed skull at the joint, the dark, worn iron blade with its grooves and its toothed inner edge. Make every part solid enough to model: the blade a little thicker, with a clear, thick spine along its outer curve and a bevelled edge; the teeth as fewer, bigger, clear teeth; the shaft a little thicker; no hair-thin cracks, chips or loose bits. The same upright view as the image, filling the frame top to bottom, with the blade sweeping out to the left. Keep the wear as painted colour on the surfaces: rust and grime in the grooves and around the rivets, dark dirt on the grip, worn edges, a stained skull. Solid, sculpted 3D-render look, even, flat studio lighting, no cast shadows, no strong highlights, no rim light, no brush strokes. Plain flat light grey background (#c8c8c8). No text, no hands, no other objects."
+  },
+  {
+    "id": "concept_hero_gravecaller_views",
+    "out": "art-src/concepts/hero_gravecaller_views.png",
+    "refs": ["art-src/concepts/hero_gravecaller.png"],
+    "aspect": "21:9",
+    "size": "4K",
+    "prompt": "Turnaround model sheet of exactly this hooded necromancer, for 3D modeling, rendered in exactly the same style as the reference images: the same painterly-realistic dark fantasy game-art look, the same colours, materials, wear and grime, solid and fully opaque, no line art, no outlines, no sketchiness. Exactly four figures in total, in a single horizontal row, nothing above or below them: the same character drawn once in each of four views, evenly spaced with clear empty space between figures, all at exactly the same scale, all feet at the same height, the same strict T-pose in every view (arms straight out horizontally, empty hands, legs straight and slightly apart). From left to right: 1) front view, facing the viewer head-on; 2) left side view, full profile with the character's left side toward the viewer and the face pointing left; 3) back view, seen from directly behind; 4) right side view, full profile with the right side toward the viewer and the face pointing right. Orthographic views at eye level: no perspective, no three-quarter angles, no figure cropped by the frame. Every detail identical across the four views: the same deep hood, pale face and long ash-brown hair, the same blackened-iron pauldrons with a skull on each shoulder, the same iron gorget with a skull, the same black and deep-violet robes with violet rune embroidery, the same crossed leather straps and belts with buckles and pouch, the same sash of hanging bones and the bronze bell, the same tattered cape and ragged sleeves, the same leather boots. Even, flat studio lighting, no cast shadows, no floor line, no smoke. Plain flat light grey background (#c8c8c8). No text, no labels, no grid lines, no other characters."
+  },
+  {
+    "id": "concept_hero_gravecaller_part_head",
+    "out": "art-src/concepts/hero_gravecaller_part_head.png",
+    "refs": ["art-src/concepts/hero_gravecaller.png", "art-src/concepts/hero_gravecaller.png"],
+    "crop": { "left": 365, "top": 50, "width": 170, "height": 190 },
+    "aspect": "1:1",
+    "size": "2K",
+    "prompt": "3D modeling source: a close-up of exactly the head in its deep hood shown in the FIRST image (a close crop of the character in the SECOND image), redrawn large, sharp and fully detailed as a game-ready 3D render, rendered in exactly the same style as the reference images: the same painterly-realistic dark fantasy game-art look, the same colours, materials, wear and grime, solid and fully opaque, no line art, no outlines, no sketchiness. The same design, shapes, proportions, colours and wear; nothing added, removed or restyled. The pale gaunt face with its exact features and expression, the dark eye shadows, and the long lank ash-brown hair falling from under the hood as one solid mass with the strands painted in. The hood's ragged rim. The head and hood end cleanly at the neck, just above the collar. Show only this piece, whole and centred, seen from the front at the same angle as in the reference, alone and floating on a plain flat light grey background (#c8c8c8), filling most of the frame. Even, flat studio lighting, no cast shadows, no rim light, no glow. No text, no labels, no body, no other objects."
+  },
+  {
+    "id": "concept_hero_gravecaller_part_pauldron_l",
+    "out": "art-src/concepts/hero_gravecaller_part_pauldron_l.png",
+    "refs": ["art-src/concepts/hero_gravecaller.png", "art-src/concepts/hero_gravecaller.png"],
+    "crop": { "left": 505, "top": 165, "width": 145, "height": 120 },
+    "aspect": "1:1",
+    "size": "2K",
+    "prompt": "3D modeling source: a close-up of exactly the blackened-iron shoulder plate (pauldron) shown in the FIRST image (a close crop of the character in the SECOND image), redrawn large, sharp and fully detailed as a game-ready 3D render, rendered in exactly the same style as the reference images: the same painterly-realistic dark fantasy game-art look, the same colours, materials, wear and grime, solid and fully opaque, no line art, no outlines, no sketchiness. The same design, shapes, proportions, colours and wear; nothing added, removed or restyled. The skull moulded on top of it with its eye socket, nose hole, cheekbone and teeth, the layered overlapping plates with their raised rims and rivets, and the upright spike at the neck side. Real iron: dark, worn, scratched, with bright worn edges. Show only this piece, whole and centred, seen from the front at the same angle as in the reference, alone and floating on a plain flat light grey background (#c8c8c8), filling most of the frame. Even, flat studio lighting, no cast shadows, no rim light, no glow. No text, no labels, no body, no other objects."
+  },
+  {
+    "id": "concept_hero_gravecaller_part_gorget",
+    "out": "art-src/concepts/hero_gravecaller_part_gorget.png",
+    "refs": ["art-src/concepts/hero_gravecaller.png", "art-src/concepts/hero_gravecaller.png"],
+    "crop": { "left": 345, "top": 215, "width": 210, "height": 100 },
+    "aspect": "1:1",
+    "size": "2K",
+    "prompt": "3D modeling source: a close-up of exactly the blackened-iron gorget (the collar plate around the neck and upper chest) shown in the FIRST image (a close crop of the character in the SECOND image), redrawn large, sharp and fully detailed as a game-ready 3D render, rendered in exactly the same style as the reference images: the same painterly-realistic dark fantasy game-art look, the same colours, materials, wear and grime, solid and fully opaque, no line art, no outlines, no sketchiness. The same design, shapes, proportions, colours and wear; nothing added, removed or restyled. The skull at its front centre with its eye sockets, nose hole and teeth, the engraved ornament around it, the raised rims and rivets. Real iron: dark, worn, scratched, with bright worn edges. The gorget ends cleanly at its own lower edge: nothing hangs below it or behind it, no chest, no cloth, no smoke or mist. Show only this piece, whole and centred, seen from the front at the same angle as in the reference, alone and floating on a plain flat light grey background (#c8c8c8), filling most of the frame. Even, flat studio lighting, no cast shadows, no rim light, no glow. No text, no labels, no body, no other objects."
+  },
+  {
+    "id": "concept_hero_ossuary_part_head",
+    "out": "art-src/concepts/hero_ossuary_part_head.png",
+    "refs": ["art-src/concepts/hero_ossuary.png", "art-src/concepts/hero_ossuary.png"],
+    "crop": { "left": 365, "top": 50, "width": 170, "height": 200 },
+    "aspect": "1:1",
+    "size": "2K",
+    "prompt": "3D modeling source: a close-up of exactly the head in its deep hood shown in the FIRST image (a close crop of the character in the SECOND image), redrawn large, sharp and fully detailed as a game-ready 3D render, rendered in exactly the same style as the reference images: the same painterly-realistic dark fantasy game-art look, the same colours, materials, wear and grime, solid and fully opaque, no line art, no outlines, no sketchiness. The same design, shapes, proportions, colours and wear; nothing added, removed or restyled. The pale gaunt face with its exact features and expression, the dark eye shadows and the dark streaks under the eyes, and the long lank ash-blond hair falling from under the hood as one solid mass with the strands painted in. The hood's ragged rim. The head and hood end cleanly at the neck, just above the scarf. Show only this piece, whole and centred, seen from the front at the same angle as in the reference, alone and floating on a plain flat light grey background (#c8c8c8), filling most of the frame. Even, flat studio lighting, no cast shadows, no rim light, no glow. No text, no labels, no body, no other objects."
+  },
+  {
+    "id": "concept_hero_ossuary_part_ribcage",
+    "out": "art-src/concepts/hero_ossuary_part_ribcage.png",
+    "refs": ["art-src/concepts/hero_ossuary.png", "art-src/concepts/hero_ossuary.png"],
+    "crop": { "left": 340, "top": 280, "width": 220, "height": 140 },
+    "aspect": "1:1",
+    "size": "2K",
+    "prompt": "3D modeling source: a close-up of exactly the ribcage chest piece (bone ribs and breastbone worn over the robe) shown in the FIRST image (a close crop of the character in the SECOND image), redrawn large, sharp and fully detailed as a game-ready 3D render, rendered in exactly the same style as the reference images: the same painterly-realistic dark fantasy game-art look, the same colours, materials, wear and grime, solid and fully opaque, no line art, no outlines, no sketchiness. The same design, shapes, proportions, colours and wear; nothing added, removed or restyled. Each rib curving out from the breastbone, the breastbone's segments, the dark purple cloth showing between the ribs. Real old bone: yellowed, cracked, with dark grime in the gaps. It ends cleanly at its own edges: nothing hangs below it, no smoke or mist. Show only this piece, whole and centred, seen from the front at the same angle as in the reference, alone and floating on a plain flat light grey background (#c8c8c8), filling most of the frame. Even, flat studio lighting, no cast shadows, no rim light, no glow. No text, no labels, no body, no other objects."
+  },
+  {
+    "id": "concept_hero_ossuary_part_belt",
+    "out": "art-src/concepts/hero_ossuary_part_belt.png",
+    "refs": ["art-src/concepts/hero_ossuary.png", "art-src/concepts/hero_ossuary.png"],
+    "crop": { "left": 330, "top": 420, "width": 245, "height": 180 },
+    "aspect": "1:1",
+    "size": "2K",
+    "prompt": "3D modeling source: a close-up of exactly the belt of vertebrae with its skulls shown in the FIRST image (a close crop of the character in the SECOND image), redrawn large, sharp and fully detailed as a game-ready 3D render, rendered in exactly the same style as the reference images: the same painterly-realistic dark fantasy game-art look, the same colours, materials, wear and grime, solid and fully opaque, no line art, no outlines, no sketchiness. The same design, shapes, proportions, colours and wear; nothing added, removed or restyled. The chain of vertebrae around the waist, the big skull at its front centre with the spine hanging down from it, the skulls hanging at the side on their cords. Real old bone: yellowed, cracked, with dark grime in the gaps. Only the belt and what hangs from it, cut off cleanly just below the hanging skulls: no robe, no legs. Show only this piece, whole and centred, seen from the front at the same angle as in the reference, alone and floating on a plain flat light grey background (#c8c8c8), filling most of the frame. Even, flat studio lighting, no cast shadows, no rim light, no glow. No text, no labels, no body, no other objects."
+  },
+  {
+    "id": "concept_hero_mourner_part_head",
+    "out": "art-src/concepts/hero_mourner_part_head.png",
+    "refs": ["art-src/concepts/hero_mourner.png", "art-src/concepts/hero_mourner.png"],
+    "crop": { "left": 355, "top": 50, "width": 190, "height": 200 },
+    "aspect": "1:1",
+    "size": "2K",
+    "prompt": "3D modeling source: a close-up of exactly the head under its thin grey veil shown in the FIRST image (a close crop of the character in the SECOND image), redrawn large, sharp and fully detailed as a game-ready 3D render, rendered in exactly the same style as the reference images: the same painterly-realistic dark fantasy game-art look, the same colours, materials, wear and grime, solid and fully opaque, no line art, no outlines, no sketchiness. The same design, shapes, proportions, colours and wear; nothing added, removed or restyled. The pale gaunt face with its exact features and expression and the dark eye shadows, the dark hair at its sides, and the thin pale grey veil draped over the head, made a solid thin cloth layer with its folds and see-through look painted in. The head and veil end cleanly just below the chin. Show only this piece, whole and centred, seen from the front at the same angle as in the reference, alone and floating on a plain flat light grey background (#c8c8c8), filling most of the frame. Even, flat studio lighting, no cast shadows, no rim light, no glow. No text, no labels, no body, no other objects."
+  },
+  {
+    "id": "concept_hero_mourner_part_pendant",
+    "out": "art-src/concepts/hero_mourner_part_pendant.png",
+    "refs": ["art-src/concepts/hero_mourner.png", "art-src/concepts/hero_mourner.png"],
+    "crop": { "left": 405, "top": 305, "width": 90, "height": 100 },
+    "aspect": "1:1",
+    "size": "2K",
+    "prompt": "3D modeling source: a close-up of exactly the silver pendant on its chain shown in the FIRST image (a close crop of the character in the SECOND image), redrawn large, sharp and fully detailed as a game-ready 3D render, rendered in exactly the same style as the reference images: the same painterly-realistic dark fantasy game-art look, the same colours, materials, wear and grime, solid and fully opaque, no line art, no outlines, no sketchiness. The same design, shapes, proportions, colours and wear; nothing added, removed or restyled. The rectangular silver frame with its ornamented border, the dark plate inside it with its engraved rune, and the chain above it. Real silver: tarnished, dark in the recesses, bright on the edges. Show only this piece, whole and centred, seen from the front at the same angle as in the reference, alone and floating on a plain flat light grey background (#c8c8c8), filling most of the frame. Even, flat studio lighting, no cast shadows, no rim light, no glow. No text, no labels, no body, no other objects."
+  },
+  {
+    "id": "concept_hero_mourner_part_bell",
+    "out": "art-src/concepts/hero_mourner_part_bell.png",
+    "refs": ["art-src/concepts/hero_mourner.png", "art-src/concepts/hero_mourner.png"],
+    "crop": { "left": 462, "top": 478, "width": 42, "height": 46 },
+    "aspect": "1:1",
+    "size": "2K",
+    "prompt": "3D modeling source: a close-up of exactly the small silver bell shown in the FIRST image (a close crop of the character in the SECOND image), redrawn large, sharp and fully detailed as a game-ready 3D render, rendered in exactly the same style as the reference images: the same painterly-realistic dark fantasy game-art look, the same colours, materials, wear and grime, solid and fully opaque, no line art, no outlines, no sketchiness. The same design, shapes, proportions, colours and wear; nothing added, removed or restyled. Its pierced pattern of small holes, the rim at its mouth, the loop at its top. Real tarnished silver: dark in the holes, bright on the edges. Show only this piece, whole and centred, seen from the front at the same angle as in the reference, alone and floating on a plain flat light grey background (#c8c8c8), filling most of the frame. Even, flat studio lighting, no cast shadows, no rim light, no glow. No text, no labels, no body, no other objects."
+  },
+  {
+    "id": "concept_hero_rotweaver_part_head",
+    "out": "art-src/concepts/hero_rotweaver_part_head.png",
+    "refs": ["art-src/concepts/hero_rotweaver.png", "art-src/concepts/hero_rotweaver.png"],
+    "crop": { "left": 360, "top": 50, "width": 180, "height": 200 },
+    "aspect": "1:1",
+    "size": "2K",
+    "prompt": "3D modeling source: a close-up of exactly the head in its moss-covered hood shown in the FIRST image (a close crop of the character in the SECOND image), redrawn large, sharp and fully detailed as a game-ready 3D render, rendered in exactly the same style as the reference images: the same painterly-realistic dark fantasy game-art look, the same colours, materials, wear and grime, solid and fully opaque, no line art, no outlines, no sketchiness. The same design, shapes, proportions, colours and wear; nothing added, removed or restyled. The pale gaunt face with its exact features and expression, the dark eye shadows and streaks, and the long lank ash-blond hair falling from under the hood as one solid mass with the strands painted in. The ragged hood covered in green moss and rot, with the small brown shelf mushrooms growing on its rim. The head and hood end cleanly at the neck, just above the scarf. Show only this piece, whole and centred, seen from the front at the same angle as in the reference, alone and floating on a plain flat light grey background (#c8c8c8), filling most of the frame. Even, flat studio lighting, no cast shadows, no rim light, no glow. No text, no labels, no body, no other objects."
+  },
+  {
+    "id": "concept_hero_rotweaver_part_shoulder_l",
+    "out": "art-src/concepts/hero_rotweaver_part_shoulder_l.png",
+    "refs": ["art-src/concepts/hero_rotweaver.png", "art-src/concepts/hero_rotweaver.png"],
+    "crop": { "left": 505, "top": 160, "width": 115, "height": 130 },
+    "aspect": "1:1",
+    "size": "2K",
+    "prompt": "3D modeling source: a close-up of exactly the cluster of mushrooms and moss growing on the character's left shoulder shown in the FIRST image (a close crop of the character in the SECOND image), redrawn large, sharp and fully detailed as a game-ready 3D render, rendered in exactly the same style as the reference images: the same painterly-realistic dark fantasy game-art look, the same colours, materials, wear and grime, solid and fully opaque, no line art, no outlines, no sketchiness. The same design, shapes, proportions, colours and wear; nothing added, removed or restyled. The tall pale mushrooms with their caps and stems, the layered brown shelf fungus below them, the green moss they grow from. Each mushroom a solid shape. Only the growth itself on a patch of mossy cloth. Show only this piece, whole and centred, seen from the front at the same angle as in the reference, alone and floating on a plain flat light grey background (#c8c8c8), filling most of the frame. Even, flat studio lighting, no cast shadows, no rim light, no glow. No text, no labels, no body, no other objects."
+  },
+  {
+    "id": "concept_hero_rotweaver_part_shoulder_r",
+    "out": "art-src/concepts/hero_rotweaver_part_shoulder_r.png",
+    "refs": ["art-src/concepts/hero_rotweaver.png", "art-src/concepts/hero_rotweaver.png"],
+    "crop": { "left": 280, "top": 165, "width": 105, "height": 100 },
+    "aspect": "1:1",
+    "size": "2K",
+    "prompt": "3D modeling source: a close-up of exactly the cluster of mushrooms and moss growing on the character's right shoulder shown in the FIRST image (a close crop of the character in the SECOND image), redrawn large, sharp and fully detailed as a game-ready 3D render, rendered in exactly the same style as the reference images: the same painterly-realistic dark fantasy game-art look, the same colours, materials, wear and grime, solid and fully opaque, no line art, no outlines, no sketchiness. The same design, shapes, proportions, colours and wear; nothing added, removed or restyled. The big pale mushrooms with their caps and stems, the brown shelf fungus, the green moss they grow from. Each mushroom a solid shape. Only the growth itself on a patch of mossy cloth. Show only this piece, whole and centred, seen from the front at the same angle as in the reference, alone and floating on a plain flat light grey background (#c8c8c8), filling most of the frame. Even, flat studio lighting, no cast shadows, no rim light, no glow. No text, no labels, no body, no other objects."
+  },
+  {
+    "id": "concept_hero_rotweaver_part_belt",
+    "out": "art-src/concepts/hero_rotweaver_part_belt.png",
+    "refs": ["art-src/concepts/hero_rotweaver.png", "art-src/concepts/hero_rotweaver.png"],
+    "crop": { "left": 325, "top": 405, "width": 280, "height": 250 },
+    "aspect": "1:1",
+    "size": "2K",
+    "prompt": "3D modeling source: a close-up of exactly the belt with its hanging skulls and glass flasks shown in the FIRST image (a close crop of the character in the SECOND image), redrawn large, sharp and fully detailed as a game-ready 3D render, rendered in exactly the same style as the reference images: the same painterly-realistic dark fantasy game-art look, the same colours, materials, wear and grime, solid and fully opaque, no line art, no outlines, no sketchiness. The same design, shapes, proportions, colours and wear; nothing added, removed or restyled. The leather belt and buckles, the skulls hanging from it on cords, the round and square glass potion flasks with their corks and dark liquid, the chains. Real worn leather, old yellowed bone, thick dirty glass. Only the belt and what hangs from it, cut off cleanly below the lowest flask: no robe, no legs. Seen straight from the front at eye level, the belt one straight horizontal band across the top with everything hanging straight down from it, as it is worn in the reference, not curved, not seen from above. Show only this piece, whole and centred, seen from the front at the same angle as in the reference, alone and floating on a plain flat light grey background (#c8c8c8), filling most of the frame. Even, flat studio lighting, no cast shadows, no rim light, no glow. No text, no labels, no body, no other objects."
   }
 ]

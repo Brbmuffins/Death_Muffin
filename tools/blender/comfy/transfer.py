@@ -23,7 +23,9 @@ def _loops(me, uvname=None):
     me.loops.foreach_get('vertex_index', vi)
     co = np.empty(len(me.vertices) * 3)
     me.vertices.foreach_get('co', co)
-    return dict(tri=lt.reshape(-1, 3), uv=uv.reshape(nl, 2), pos=co.reshape(-1, 3)[vi], n=g('normal', 3), t=g('tangent', 3), s=g('bitangent_sign', 1))
+    mat = np.empty(len(me.loop_triangles), dtype=np.int64)
+    me.loop_triangles.foreach_get('material_index', mat)
+    return dict(tri=lt.reshape(-1, 3), uv=uv.reshape(nl, 2), pos=co.reshape(-1, 3)[vi], n=g('normal', 3), t=g('tangent', 3), s=g('bitangent_sign', 1), mat=mat)
 
 
 def _frame(L, tri, bary):
@@ -103,8 +105,15 @@ def grow(filled, px):
     return src
 
 
+# what a material without one of the maps reads as: mid grey, no occlusion (1), fairly rough, no metal; a flat normal
+MISSING = {'base': (0.5, 0.5, 0.5, 1.0), 'orm': (1.0, 0.8, 0.0, 1.0), 'normal': (0.5, 0.5, 1.0, 1.0)}
+
+
 def transfer(hi, lo, hi_maps, size, reach, margin=16):
-    """hi_maps: {'base': HxWx4, 'orm': ..., 'normal': ...} on the detailed model's UVs. Returns the same keys at size x size on the game mesh's UVs, and stats."""
+    """hi_maps: {'base': HxWx4, 'orm': ..., 'normal': ...} on the detailed model's UVs, or a list of such, one per material slot (a body with parts
+    joined on, each part keeping its own paint): each texel samples the maps of the material its hit belongs to. Returns the keys any material has, at
+    size x size on the game mesh's UVs, and stats."""
+    per_mat = hi_maps if isinstance(hi_maps, list) else [hi_maps]
     t0 = time.time()
     H = _loops(hi.data, hi.data.uv_layers.active.name)
     L = _loops(lo.data)
@@ -206,8 +215,13 @@ def transfer(hi, lo, hi_maps, size, reach, margin=16):
     fill = np.zeros(size * size, bool); fill[flat] = True
     src = grow(fill.reshape(size, size), margin)
     out = {}
-    for key, img in hi_maps.items():
-        s = _sample(img, huv)
+    hmat = np.clip(H['mat'][hit_tri[ok]], 0, len(per_mat) - 1)
+    for key in [k for k in ('base', 'orm', 'normal') if any(k in m for m in per_mat)]:
+        s = np.empty((len(huv), 4))
+        for mi, maps in enumerate(per_mat):
+            sel = hmat == mi
+            if sel.any():
+                s[sel] = _sample(maps[key], huv[sel]) if key in maps else MISSING[key]
         if key == 'normal':
             m = s[:, :3] * 2 - 1
             w = m[:, :1] * ht + m[:, 1:2] * hbt + m[:, 2:3] * hn                 # the detailed surface's shading normal, model space
