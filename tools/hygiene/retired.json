@@ -120,6 +120,7 @@
       "pattern": "\\b(REBUILD|PARITY|PORTING|HANDOFF|LOOT-TABLES|BALANCE|FIRST_HOUR|CLARITY)\\.md",
       "reason": "doc was deleted",
       "allow": [
+        "docs/model-pipeline-review/*.md",
         "DECISIONS.md",
         "tools/hygiene/**"
       ]
