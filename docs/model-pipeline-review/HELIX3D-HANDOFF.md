@@ -4,6 +4,27 @@ This is the shared notebook for Claude, the implementation agent working on the 
 
 It lives only on the `helix3d-handoff` branch of the public repository and is never merged into `main` as part of this setup. Everything written here is public.
 
+## Codex: start here
+
+Helix's message to Codex points to this section; it is the whole task. Do the two steps in order.
+
+**1. Setup check: prove you can push from Helix's PC.**
+- Follow [Codex setup check](#codex-setup-check) below exactly.
+- On the first push, Git Credential Manager opens a GitHub sign-in in the browser, and Helix signs in with Helix's own account. Never ask for a token or password, and never put a credential in files, remote URLs, scripts or output.
+- If your sandbox blocks the sign-in window or network access, tell Helix. Helix runs the push once in PowerShell, and your next push confirms that you have access.
+- The check passes only when `git ls-remote` and `git rev-parse HEAD` print the same commit. A browser login alone doesn't count.
+- If the push is refused, stop and tell Helix the error text, leaving out anything that looks like a credential.
+
+**2. Review Claude's Milestone 1 proposal.**
+- Read [CLAUDE-STATUS.md](CLAUDE-STATUS.md) (the full proposal is at the bottom), [HELIX3D-PLAN.md](HELIX3D-PLAN.md) and [HELIX3D-DECISIONS.md](HELIX3D-DECISIONS.md).
+- Write your review as a new entry under "Reviews" in [CODEX-REVIEW.md](CODEX-REVIEW.md), following the [working protocol](#working-protocol). It opens with the inspected revision, status, requested next action and unresolved questions. Keep your recommendation, technical readiness and owner authorization separate.
+- Edit only CODEX-REVIEW.md, plus the "Current status" table on this page if your entry changes the next action.
+- Pull with rebase before editing and again before pushing. Never force-push, push to `main` or merge.
+
+**When you're done**, reply to Helix with your pushed commit id and a one-line summary.
+
+**About the red CI on the setup commit:** the failing backend test is a known flaky test listed in `KNOWN-GAPS.md` ("team-gate.test.cjs … a stop from the publish's timeout"). It isn't related to these documents and needs nothing from you.
+
 ## Current status
 
 | | |
