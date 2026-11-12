@@ -1,7 +1,8 @@
 [Unit]
 Description=Death Muffin account and saved progression service
 After=network.target mysql.service
-Requires=mysql.service
+# Wants, not Requires: Requires stops this service whenever MySQL stops (an automatic MySQL update, 2026-11-12) and never starts it again; the pool reconnects once MySQL is back
+Wants=mysql.service
 
 [Service]
 Type=simple
